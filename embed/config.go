@@ -330,6 +330,12 @@ type Config struct {
 	// UnsafeNoFsync disables all uses of fsync.
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
+
+	// InsecureHealthEndpoint enables an additional /health listener on the specified
+	// address. The listener serves the usual /health endpoint over HTTP. This is
+	// useful for health probes (e.g. Kubernetes) where TLS is an undesirable
+	// complication.
+	InsecureHealthEndpoint string `json:"insecure-health-endpoint"`
 }
 
 // configYAML holds the config suitable for yaml parsing

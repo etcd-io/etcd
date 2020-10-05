@@ -61,8 +61,9 @@ type etcdServerProcessConfig struct {
 
 	purl url.URL
 
-	acurl string
-	murl  string
+	acurl                  string
+	murl                   string
+	insecureHealthEndpoint string
 
 	initialToken   string
 	initialCluster string

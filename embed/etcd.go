@@ -201,6 +201,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		EnableLeaseCheckpoint:       cfg.ExperimentalEnableLeaseCheckpoint,
 		CompactionBatchLimit:        cfg.ExperimentalCompactionBatchLimit,
 		WatchProgressNotifyInterval: cfg.ExperimentalWatchProgressNotifyInterval,
+		InsecureHealthEndpoint:      cfg.InsecureHealthEndpoint,
 	}
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
@@ -634,6 +635,21 @@ func (e *Etcd) serveClients() (err error) {
 		mux := http.NewServeMux()
 		etcdhttp.HandleBasic(e.cfg.logger, mux, e.Server)
 		etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, mux, e.Server)
+		if len(e.cfg.InsecureHealthEndpoint) > 0 {
+			healthMux := http.NewServeMux()
+			etcdhttp.HandleHealthForV3(e.cfg.logger, healthMux, e.Server)
+			s := &http.Server{
+				Addr:    e.cfg.InsecureHealthEndpoint,
+				Handler: healthMux,
+			}
+			e.cfg.logger.Info("listening for /health on insecure endpoint", zap.String("insecure-health-endpoint", s.Addr))
+			go func() {
+				if err := s.ListenAndServe(); err != nil {
+					e.cfg.logger.Info("insecure /health listener stopped with error", zap.Error(err))
+				}
+			}()
+		}
+
 		h = mux
 	}
 

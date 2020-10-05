@@ -601,6 +601,7 @@ type memberConfig struct {
 	enableLeaseCheckpoint       bool
 	leaseCheckpointInterval     time.Duration
 	WatchProgressNotifyInterval time.Duration
+	InsecureHealthEndpoint      string
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -697,6 +698,8 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
 	m.InitialCorruptCheck = true
+
+	m.InsecureHealthEndpoint = mcfg.InsecureHealthEndpoint
 
 	lcfg := logutil.DefaultZapLoggerConfig
 	m.LoggerConfig = &lcfg

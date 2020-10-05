@@ -42,10 +42,20 @@ func HandleMetricsHealth(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.Serv
 	mux.Handle(PathHealth, NewHealthHandler(lg, func() Health { return checkV2Health(lg, srv) }))
 }
 
-// HandleMetricsHealthForV3 registers metrics and health handlers. it checks health by using v3 range request
-// and its corresponding timeout.
+// HandleMetricsHealthForV3 registers metrics and health handlers.
 func HandleMetricsHealthForV3(lg *zap.Logger, mux *http.ServeMux, srv *etcdserver.EtcdServer) {
+	HandleMetricsForV3(lg, mux, srv)
+	HandleHealthForV3(lg, mux, srv)
+}
+
+// HandleMetricsForV3 registers a metrics handler.
+func HandleMetricsForV3(lg *zap.Logger, mux *http.ServeMux, srv *etcdserver.EtcdServer) {
 	mux.Handle(PathMetrics, promhttp.Handler())
+}
+
+// HandleHealthForV3 registers a health handler. It checks health by using v3 range request
+// and its corresponding timeout.
+func HandleHealthForV3(lg *zap.Logger, mux *http.ServeMux, srv *etcdserver.EtcdServer) {
 	mux.Handle(PathHealth, NewHealthHandler(lg, func() Health { return checkV3Health(lg, srv) }))
 }
 

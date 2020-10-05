@@ -16,7 +16,9 @@ package e2e
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
+	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
 )
@@ -63,4 +65,34 @@ func metricsTest(cx ctlCtx) {
 			cx.t.Fatalf("failed get with curl (%v)", err)
 		}
 	}
+}
+
+func TestInsecureHealthEndpointEnabled(t *testing.T) {
+	cfg := etcdProcessClusterConfig{
+		clusterSize:                   1,
+		initialToken:                  "new",
+		enableV2:                      false,
+		insecureHealthEndpointEnabled: true,
+	}
+	testCtl(t, func(cx ctlCtx) {
+		if err := ctlV3Put(cx, "k", "v", ""); err != nil {
+			cx.t.Fatal(err)
+		}
+		addr := cx.epc.procs[0].Config().insecureHealthEndpoint
+		if len(addr) == 0 {
+			t.Fatal("expected endpoint")
+		}
+		endpoint := fmt.Sprintf("http://%s/health", addr)
+		client := http.Client{
+			Timeout: 5 * time.Second,
+		}
+		resp, err := client.Get(endpoint)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if e, a := http.StatusOK, resp.StatusCode; e != a {
+			t.Fatalf("expected %d response from health endpoint %q, got %d", e, endpoint, a)
+		}
+	}, withCfg(cfg))
 }

@@ -129,13 +129,14 @@ type etcdProcessClusterConfig struct {
 
 	cipherSuites []string
 
-	forceNewCluster     bool
-	initialToken        string
-	quotaBackendBytes   int64
-	noStrictReconfig    bool
-	enableV2            bool
-	initialCorruptCheck bool
-	authTokenOpts       string
+	forceNewCluster               bool
+	initialToken                  string
+	quotaBackendBytes             int64
+	noStrictReconfig              bool
+	enableV2                      bool
+	initialCorruptCheck           bool
+	authTokenOpts                 string
+	insecureHealthEndpointEnabled bool
 
 	rollingStart bool
 }
@@ -269,6 +270,12 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 			args = append(args, "--listen-metrics-urls", murl)
 		}
 
+		var insecureHealthEndpoint string
+		if cfg.insecureHealthEndpointEnabled {
+			insecureHealthEndpoint = fmt.Sprintf("localhost:%d", port+3)
+			args = append(args, "--insecure-health-endpoint", insecureHealthEndpoint)
+		}
+
 		args = append(args, cfg.tlsArgs()...)
 
 		if cfg.authTokenOpts != "" {
@@ -276,16 +283,17 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
-			execPath:     cfg.execPath,
-			args:         args,
-			tlsArgs:      cfg.tlsArgs(),
-			dataDirPath:  dataDirPath,
-			keepDataDir:  cfg.keepDataDir,
-			name:         name,
-			purl:         purl,
-			acurl:        curl,
-			murl:         murl,
-			initialToken: cfg.initialToken,
+			execPath:               cfg.execPath,
+			args:                   args,
+			tlsArgs:                cfg.tlsArgs(),
+			dataDirPath:            dataDirPath,
+			keepDataDir:            cfg.keepDataDir,
+			name:                   name,
+			purl:                   purl,
+			acurl:                  curl,
+			murl:                   murl,
+			insecureHealthEndpoint: insecureHealthEndpoint,
+			initialToken:           cfg.initialToken,
 		}
 	}
 
