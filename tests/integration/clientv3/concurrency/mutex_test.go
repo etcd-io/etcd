@@ -23,7 +23,7 @@ import (
 )
 
 func TestMutexLockSessionExpired(t *testing.T) {
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := clientv3.New(clientv3.Config{Endpoints: exampleEndpoints()})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -28,7 +28,7 @@ import (
 func TestResumeElection(t *testing.T) {
 	const prefix = "/resume-election/"
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := clientv3.New(clientv3.Config{Endpoints: exampleEndpoints()})
 	if err != nil {
 		log.Fatal(err)
 	}
