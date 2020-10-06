@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3test
+package clientv3_test
 
 import (
 	"context"
@@ -30,56 +30,62 @@ import (
 	"google.golang.org/grpc"
 )
 
+func mockClient_metrics() {
+	fmt.Println(`grpc_client_started_total{grpc_method="Range",grpc_service="etcdserverpb.KV",grpc_type="unary"} 1`)
+}
+
 func ExampleClient_metrics() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints: endpoints,
-		DialOptions: []grpc.DialOption{
-			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
-			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
-		},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
-
-	// get a key so it shows up in the metrics as a range RPC
-	cli.Get(context.TODO(), "test_key")
-
-	// listen for all Prometheus metrics
-	ln, err := net.Listen("tcp", ":0")
-	if err != nil {
-		log.Fatal(err)
-	}
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		http.Serve(ln, promhttp.Handler())
-	}()
-	defer func() {
-		ln.Close()
-		<-donec
-	}()
-
-	// make an http request to fetch all Prometheus metrics
-	url := "http://" + ln.Addr().String() + "/metrics"
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatalf("fetch error: %v", err)
-	}
-	b, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		log.Fatalf("fetch error: reading %s: %v", url, err)
-	}
-
-	// confirm range request in metrics
-	for _, l := range strings.Split(string(b), "\n") {
-		if strings.Contains(l, `grpc_client_started_total{grpc_method="Range"`) {
-			fmt.Println(l)
-			break
+	forUnitTestsRunInMockedContext(mockClient_metrics, func() {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints: exampleEndpoints(),
+			DialOptions: []grpc.DialOption{
+				grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
+				grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
+			},
+		})
+		if err != nil {
+			log.Fatal(err)
 		}
-	}
+		defer cli.Close()
+
+		// get a key so it shows up in the metrics as a range RPC
+		cli.Get(context.TODO(), "test_key")
+
+		// listen for all Prometheus metrics
+		ln, err := net.Listen("tcp", ":0")
+		if err != nil {
+			log.Fatal(err)
+		}
+		donec := make(chan struct{})
+		go func() {
+			defer close(donec)
+			http.Serve(ln, promhttp.Handler())
+		}()
+		defer func() {
+			ln.Close()
+			<-donec
+		}()
+
+		// make an http request to fetch all Prometheus metrics
+		url := "http://" + ln.Addr().String() + "/metrics"
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Fatalf("fetch error: %v", err)
+		}
+		b, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			log.Fatalf("fetch error: reading %s: %v", url, err)
+		}
+
+		// confirm range request in metrics
+		for _, l := range strings.Split(string(b), "\n") {
+			if strings.Contains(l, `grpc_client_started_total{grpc_method="Range"`) {
+				fmt.Println(l)
+				break
+			}
+		}
+	})
 	// Output:
 	//	grpc_client_started_total{grpc_method="Range",grpc_service="etcdserverpb.KV",grpc_type="unary"} 1
 }

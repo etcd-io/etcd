@@ -312,7 +312,8 @@ func (c *cluster) mustNewMember(t testing.TB) *member {
 	return m
 }
 
-func (c *cluster) addMember(t testing.TB) {
+// addMember return PeerURLs of the added member.
+func (c *cluster) addMember(t testing.TB) types.URLs {
 	m := c.mustNewMember(t)
 
 	scheme := schemeFromTLSInfo(c.cfg.PeerTLS)
@@ -327,7 +328,11 @@ func (c *cluster) addMember(t testing.TB) {
 		}
 	}
 	if err != nil {
-		t.Fatalf("add member failed on all members error: %v", err)
+		if t != nil {
+			t.Fatalf("add member failed on all members error: %v", err)
+		} else {
+			log.Fatalf("add member failed on all members error: %v", err)
+		}
 	}
 
 	m.InitialPeerURLsMap = types.URLsMap{}
@@ -342,6 +347,7 @@ func (c *cluster) addMember(t testing.TB) {
 	c.Members = append(c.Members, m)
 	// wait cluster to be stable to receive future client requests
 	c.waitMembersMatch(t, c.HTTPMembers())
+	return m.PeerURLs
 }
 
 func (c *cluster) addMemberByURL(t testing.TB, clientURL, peerURL string) error {
@@ -360,8 +366,9 @@ func (c *cluster) addMemberByURL(t testing.TB, clientURL, peerURL string) error 
 	return nil
 }
 
-func (c *cluster) AddMember(t testing.TB) {
-	c.addMember(t)
+// AddMember return PeerURLs of the added member.
+func (c *cluster) AddMember(t testing.TB) types.URLs {
+	return c.addMember(t)
 }
 
 func (c *cluster) RemoveMember(t testing.TB, id uint64) {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3test
+package clientv3_test
 
 import (
 	"context"
@@ -22,92 +22,101 @@ import (
 	"go.etcd.io/etcd/v3/clientv3"
 )
 
+func mockAuth() {
+	fmt.Println(`etcdserver: permission denied`)
+	fmt.Println(`user u permission: key "foo", range end "zoo"`)
+}
+
 func ExampleAuth() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
+	forUnitTestsRunInMockedContext(
+		mockAuth,
+		func() {
+			cli, err := clientv3.New(clientv3.Config{
+				Endpoints:   exampleEndpoints(),
+				DialTimeout: dialTimeout,
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer cli.Close()
 
-	if _, err = cli.RoleAdd(context.TODO(), "root"); err != nil {
-		log.Fatal(err)
-	}
-	if _, err = cli.UserAdd(context.TODO(), "root", "123"); err != nil {
-		log.Fatal(err)
-	}
-	if _, err = cli.UserGrantRole(context.TODO(), "root", "root"); err != nil {
-		log.Fatal(err)
-	}
+			if _, err = cli.RoleAdd(context.TODO(), "root"); err != nil {
+				log.Fatal(err)
+			}
+			if _, err = cli.UserAdd(context.TODO(), "root", "123"); err != nil {
+				log.Fatal(err)
+			}
+			if _, err = cli.UserGrantRole(context.TODO(), "root", "root"); err != nil {
+				log.Fatal(err)
+			}
 
-	if _, err = cli.RoleAdd(context.TODO(), "r"); err != nil {
-		log.Fatal(err)
-	}
+			if _, err = cli.RoleAdd(context.TODO(), "r"); err != nil {
+				log.Fatal(err)
+			}
 
-	if _, err = cli.RoleGrantPermission(
-		context.TODO(),
-		"r",   // role name
-		"foo", // key
-		"zoo", // range end
-		clientv3.PermissionType(clientv3.PermReadWrite),
-	); err != nil {
-		log.Fatal(err)
-	}
-	if _, err = cli.UserAdd(context.TODO(), "u", "123"); err != nil {
-		log.Fatal(err)
-	}
-	if _, err = cli.UserGrantRole(context.TODO(), "u", "r"); err != nil {
-		log.Fatal(err)
-	}
-	if _, err = cli.AuthEnable(context.TODO()); err != nil {
-		log.Fatal(err)
-	}
+			if _, err = cli.RoleGrantPermission(
+				context.TODO(),
+				"r",   // role name
+				"foo", // key
+				"zoo", // range end
+				clientv3.PermissionType(clientv3.PermReadWrite),
+			); err != nil {
+				log.Fatal(err)
+			}
+			if _, err = cli.UserAdd(context.TODO(), "u", "123"); err != nil {
+				log.Fatal(err)
+			}
+			if _, err = cli.UserGrantRole(context.TODO(), "u", "r"); err != nil {
+				log.Fatal(err)
+			}
+			if _, err = cli.AuthEnable(context.TODO()); err != nil {
+				log.Fatal(err)
+			}
 
-	cliAuth, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-		Username:    "u",
-		Password:    "123",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cliAuth.Close()
+			cliAuth, err := clientv3.New(clientv3.Config{
+				Endpoints:   exampleEndpoints(),
+				DialTimeout: dialTimeout,
+				Username:    "u",
+				Password:    "123",
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer cliAuth.Close()
 
-	if _, err = cliAuth.Put(context.TODO(), "foo1", "bar"); err != nil {
-		log.Fatal(err)
-	}
+			if _, err = cliAuth.Put(context.TODO(), "foo1", "bar"); err != nil {
+				log.Fatal(err)
+			}
 
-	_, err = cliAuth.Txn(context.TODO()).
-		If(clientv3.Compare(clientv3.Value("zoo1"), ">", "abc")).
-		Then(clientv3.OpPut("zoo1", "XYZ")).
-		Else(clientv3.OpPut("zoo1", "ABC")).
-		Commit()
-	fmt.Println(err)
+			_, err = cliAuth.Txn(context.TODO()).
+				If(clientv3.Compare(clientv3.Value("zoo1"), ">", "abc")).
+				Then(clientv3.OpPut("zoo1", "XYZ")).
+				Else(clientv3.OpPut("zoo1", "ABC")).
+				Commit()
+			fmt.Println(err)
 
-	// now check the permission with the root account
-	rootCli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-		Username:    "root",
-		Password:    "123",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rootCli.Close()
+			// now check the permission with the root account
+			rootCli, err := clientv3.New(clientv3.Config{
+				Endpoints:   exampleEndpoints(),
+				DialTimeout: dialTimeout,
+				Username:    "root",
+				Password:    "123",
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer rootCli.Close()
 
-	resp, err := rootCli.RoleGet(context.TODO(), "r")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("user u permission: key %q, range end %q\n", resp.Perm[0].Key, resp.Perm[0].RangeEnd)
+			resp, err := rootCli.RoleGet(context.TODO(), "r")
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("user u permission: key %q, range end %q\n", resp.Perm[0].Key, resp.Perm[0].RangeEnd)
 
-	if _, err = rootCli.AuthDisable(context.TODO()); err != nil {
-		log.Fatal(err)
-	}
+			if _, err = rootCli.AuthDisable(context.TODO()); err != nil {
+				log.Fatal(err)
+			}
+		})
 	// Output: etcdserver: permission denied
 	// user u permission: key "foo", range end "zoo"
 }

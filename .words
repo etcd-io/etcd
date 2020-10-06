@@ -108,6 +108,7 @@ uncontended
 unfreed
 unlisting
 unprefixed
+WatchProgressNotifyInterval
 WAL
 WithBackoff
 WithDialer

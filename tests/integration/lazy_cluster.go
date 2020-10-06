@@ -23,12 +23,25 @@ import (
 	"go.etcd.io/etcd/v3/pkg/transport"
 )
 
+// Infrastructure to provision a single shared cluster for tests - only
+// when its needed.
+//
+// See ./tests/integration/clientv3/examples/main_test.go for canonical usage.
+// Please notice that the shared (LazyCluster's) state is preserved between
+// testcases, so left-over state might has cross-testcase effects.
+// Prefer dedicated clusters for substancial test-cases.
+
 type LazyCluster interface {
-	// EndpointsV2 - call to this method might initialize the cluster.
+	// EndpointsV2 - exposes connection points for client v2.
+	// Calls to this method might initialize the cluster.
 	EndpointsV2() []string
 
-	// EndpointsV2 - call to this method might initialize the cluster.
+	// EndpointsV3 - exposes connection points for client v3.
+	// Calls to this method might initialize the cluster.
 	EndpointsV3() []string
+
+	// Cluster - calls to this method might initialize the cluster.
+	Cluster() *ClusterV3
 
 	// Transport - call to this method might initialize the cluster.
 	Transport() *http.Transport
@@ -46,7 +59,13 @@ type lazyCluster struct {
 // NewLazyCluster returns a new test cluster handler that gets created on the
 // first call to GetEndpoints() or GetTransport()
 func NewLazyCluster() LazyCluster {
-	return &lazyCluster{cfg: ClusterConfig{Size: 1}}
+	return NewLazyClusterWithConfig(ClusterConfig{Size: 1})
+}
+
+// NewLazyClusterWithConfig returns a new test cluster handler that gets created
+// on the first call to GetEndpoints() or GetTransport()
+func NewLazyClusterWithConfig(cfg ClusterConfig) LazyCluster {
+	return &lazyCluster{cfg: cfg}
 }
 
 func (lc *lazyCluster) mustLazyInit() {
@@ -61,19 +80,23 @@ func (lc *lazyCluster) mustLazyInit() {
 }
 
 func (lc *lazyCluster) Terminate() {
-	if lc != nil {
+	if lc != nil && lc.cluster != nil {
 		lc.cluster.Terminate(nil)
+		lc.cluster = nil
 	}
 }
 
 func (lc *lazyCluster) EndpointsV2() []string {
-	lc.mustLazyInit()
-	return []string{lc.cluster.Members[0].URL()}
+	return []string{lc.Cluster().Members[0].URL()}
 }
 
 func (lc *lazyCluster) EndpointsV3() []string {
+	return lc.Cluster().Client(0).Endpoints()
+}
+
+func (lc *lazyCluster) Cluster() *ClusterV3 {
 	lc.mustLazyInit()
-	return []string{lc.cluster.Client(0).Endpoints()[0]}
+	return lc.cluster
 }
 
 func (lc *lazyCluster) Transport() *http.Transport {

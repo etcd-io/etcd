@@ -12,51 +12,56 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3test
+package clientv3_test
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"go.etcd.io/etcd/v3/clientv3"
 )
 
-func ExampleMaintenance_status() {
-	for _, ep := range endpoints {
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   []string{ep},
-			DialTimeout: dialTimeout,
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer cli.Close()
+func mockMaintenance_status() {}
 
-		resp, err := cli.Status(context.Background(), ep)
-		if err != nil {
-			log.Fatal(err)
+func ExampleMaintenance_status() {
+	forUnitTestsRunInMockedContext(mockMaintenance_status, func() {
+		for _, ep := range exampleEndpoints() {
+			cli, err := clientv3.New(clientv3.Config{
+				Endpoints:   []string{ep},
+				DialTimeout: dialTimeout,
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer cli.Close()
+
+			_, err = cli.Status(context.Background(), ep)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
-		fmt.Printf("endpoint: %s / Leader: %v\n", ep, resp.Header.MemberId == resp.Leader)
-	}
-	// endpoint: localhost:2379 / Leader: false
-	// endpoint: localhost:22379 / Leader: false
-	// endpoint: localhost:32379 / Leader: true
+	})
+	// Output:
 }
 
-func ExampleMaintenance_defragment() {
-	for _, ep := range endpoints {
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   []string{ep},
-			DialTimeout: dialTimeout,
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer cli.Close()
+func mockMaintenance_defragment() {}
 
-		if _, err = cli.Defragment(context.TODO(), ep); err != nil {
-			log.Fatal(err)
+func ExampleMaintenance_defragment() {
+	forUnitTestsRunInMockedContext(mockMaintenance_defragment, func() {
+		for _, ep := range exampleEndpoints() {
+			cli, err := clientv3.New(clientv3.Config{
+				Endpoints:   []string{ep},
+				DialTimeout: dialTimeout,
+			})
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer cli.Close()
+
+			if _, err = cli.Defragment(context.TODO(), ep); err != nil {
+				log.Fatal(err)
+			}
 		}
-	}
+	})
+	// Output:
 }

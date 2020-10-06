@@ -12,89 +12,148 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3test
+package clientv3_test
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"go.etcd.io/etcd/v3/clientv3"
 )
 
-func ExampleWatcher_watch() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
+func mockWatcher_watch() {
+	fmt.Println(`PUT "foo" : "bar"`)
+}
 
-	rch := cli.Watch(context.Background(), "foo")
-	for wresp := range rch {
-		for _, ev := range wresp.Events {
-			fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+func ExampleWatcher_watch() {
+	forUnitTestsRunInMockedContext(mockWatcher_watch, func() {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   exampleEndpoints(),
+			DialTimeout: dialTimeout,
+		})
+		if err != nil {
+			log.Fatal(err)
 		}
-	}
+		defer cli.Close()
+
+		rch := cli.Watch(context.Background(), "foo")
+		for wresp := range rch {
+			for _, ev := range wresp.Events {
+				fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			}
+		}
+	})
 	// PUT "foo" : "bar"
 }
 
-func ExampleWatcher_watchWithPrefix() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
+func mockWatcher_watchWithPrefix() {
+	fmt.Println(`PUT "foo1" : "bar"`)
+}
 
-	rch := cli.Watch(context.Background(), "foo", clientv3.WithPrefix())
-	for wresp := range rch {
-		for _, ev := range wresp.Events {
-			fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+func ExampleWatcher_watchWithPrefix() {
+	forUnitTestsRunInMockedContext(mockWatcher_watchWithPrefix, func() {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   exampleEndpoints(),
+			DialTimeout: dialTimeout,
+		})
+		if err != nil {
+			log.Fatal(err)
 		}
-	}
+		defer cli.Close()
+
+		rch := cli.Watch(context.Background(), "foo", clientv3.WithPrefix())
+		for wresp := range rch {
+			for _, ev := range wresp.Events {
+				fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+			}
+		}
+	})
 	// PUT "foo1" : "bar"
+}
+
+func mockWatcher_watchWithRange() {
+	fmt.Println(`PUT "foo1" : "bar1"`)
+	fmt.Println(`PUT "foo2" : "bar2"`)
+	fmt.Println(`PUT "foo3" : "bar3"`)
 }
 
 func ExampleWatcher_watchWithRange() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
-
-	// watches within ['foo1', 'foo4'), in lexicographical order
-	rch := cli.Watch(context.Background(), "foo1", clientv3.WithRange("foo4"))
-	for wresp := range rch {
-		for _, ev := range wresp.Events {
-			fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+	forUnitTestsRunInMockedContext(mockWatcher_watchWithRange, func() {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   exampleEndpoints(),
+			DialTimeout: dialTimeout,
+		})
+		if err != nil {
+			log.Fatal(err)
 		}
-	}
-	// PUT "foo1" : "bar"
-	// PUT "foo2" : "bar"
-	// PUT "foo3" : "bar"
+		defer cli.Close()
+
+		// watches within ['foo1', 'foo4'), in lexicographical order
+		rch := cli.Watch(context.Background(), "foo1", clientv3.WithRange("foo4"))
+
+		go func() {
+			cli.Put(context.Background(), "foo1", "bar1")
+			cli.Put(context.Background(), "foo5", "bar5")
+			cli.Put(context.Background(), "foo2", "bar2")
+			cli.Put(context.Background(), "foo3", "bar3")
+		}()
+
+		i := 0
+		for wresp := range rch {
+			for _, ev := range wresp.Events {
+				fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+				i++
+				if i == 3 {
+					// After 3 messages we are done.
+					cli.Delete(context.Background(), "foo", clientv3.WithPrefix())
+					cli.Close()
+					return
+				}
+			}
+		}
+	})
+
+	// Output:
+	// PUT "foo1" : "bar1"
+	// PUT "foo2" : "bar2"
+	// PUT "foo3" : "bar3"
+}
+
+func mockWatcher_watchWithProgressNotify() {
+	fmt.Println(`wresp.IsProgressNotify: true`)
 }
 
 func ExampleWatcher_watchWithProgressNotify() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	forUnitTestsRunInMockedContext(mockWatcher_watchWithProgressNotify, func() {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   exampleEndpoints(),
+			DialTimeout: dialTimeout,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	rch := cli.Watch(context.Background(), "foo", clientv3.WithProgressNotify())
-	wresp := <-rch
-	fmt.Printf("wresp.Header.Revision: %d\n", wresp.Header.Revision)
-	fmt.Println("wresp.IsProgressNotify:", wresp.IsProgressNotify())
-	// wresp.Header.Revision: 0
+		rch := cli.Watch(context.Background(), "foo", clientv3.WithProgressNotify())
+		closedch := make(chan bool)
+		go func() {
+			// This assumes that cluster is configured with frequent WatchProgressNotifyInterval
+			// e.g. WatchProgressNotifyInterval: 200 * time.Millisecond.
+			time.Sleep(time.Second)
+			err := cli.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
+			close(closedch)
+		}()
+		wresp := <-rch
+		fmt.Println("wresp.IsProgressNotify:", wresp.IsProgressNotify())
+		<-closedch
+	})
+
+	// TODO: Rather wresp.IsProgressNotify: true should be expected
+
+	// Output:
 	// wresp.IsProgressNotify: true
 }
