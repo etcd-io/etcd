@@ -15,19 +15,18 @@
 package client_test
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"testing"
-	"time"
 
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/v3/pkg/testutil"
-	"go.etcd.io/etcd/v3/pkg/transport"
 )
 
-var exampleEndpoints []string
-var exampleTransport *http.Transport
+var lazyCluster = integration.NewLazyCluster()
+
+func exampleEndpoints() []string        { return lazyCluster.EndpointsV2() }
+func exampleTransport() *http.Transport { return lazyCluster.Transport() }
 
 func forUnitTestsRunInMockedContext(mocking func(), example func()) {
 	// For integration tests runs in the provided environment
@@ -36,22 +35,8 @@ func forUnitTestsRunInMockedContext(mocking func(), example func()) {
 
 // TestMain sets up an etcd cluster if running the examples.
 func TestMain(m *testing.M) {
-	tr, trerr := transport.NewTransport(transport.TLSInfo{}, time.Second)
-	if trerr != nil {
-		fmt.Fprintf(os.Stderr, "%v", trerr)
-		os.Exit(1)
-	}
-	cfg := integration.ClusterConfig{Size: 1}
-	clus := integration.NewClusterV3(nil, &cfg)
-	exampleEndpoints = []string{clus.Members[0].URL()}
-	exampleTransport = tr
 	v := m.Run()
-	clus.Terminate(nil)
-	if err := testutil.CheckAfterTest(time.Second); err != nil {
-		fmt.Fprintf(os.Stderr, "%v", err)
-		os.Exit(1)
-	}
-
+	lazyCluster.Terminate()
 	if v == 0 {
 		testutil.MustCheckLeakedGoroutine()
 	}

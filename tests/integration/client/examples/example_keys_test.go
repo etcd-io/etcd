@@ -34,8 +34,8 @@ func ExampleKeysAPI_directory() {
 		mockKeysAPI_directory,
 		func() {
 			c, err := client.New(client.Config{
-				Endpoints: exampleEndpoints,
-				Transport: exampleTransport,
+				Endpoints: exampleEndpoints(),
+				Transport: exampleTransport(),
 			})
 			if err != nil {
 				log.Fatal(err)
@@ -85,8 +85,8 @@ func ExampleKeysAPI_setget() {
 		mockKeysAPI_setget,
 		func() {
 			c, err := client.New(client.Config{
-				Endpoints: exampleEndpoints,
-				Transport: exampleTransport,
+				Endpoints: exampleEndpoints(),
+				Transport: exampleTransport(),
 			})
 			if err != nil {
 				log.Fatal(err)

@@ -133,6 +133,8 @@ func interestingGoroutines() (gs []string) {
 func MustCheckLeakedGoroutine() {
 	http.DefaultTransport.(*http.Transport).CloseIdleConnections()
 
+	CheckAfterTest(5 * time.Second)
+
 	// Let the other goroutines finalize.
 	runtime.Gosched()
 

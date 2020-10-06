@@ -21,8 +21,8 @@ import (
 	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
-var exampleEndpoints []string
-var exampleTransport *http.Transport
+func exampleEndpoints() []string        { return nil }
+func exampleTransport() *http.Transport { return nil }
 
 func forUnitTestsRunInMockedContext(mocking func(), example func()) {
 	mocking()
