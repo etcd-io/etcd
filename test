@@ -485,14 +485,35 @@ function bom_pass {
   fi
   log_callout "Checking bill of materials..."
   # https://github.com/golang/go/commit/7c388cc89c76bc7167287fb488afcaf5a4aa12bf
-  run license-bill-of-materials \
-    --override-file bill-of-materials.override.json \
-    go.etcd.io/etcd/v3 go.etcd.io/etcd/v3/etcdctl go.etcd.io/etcd/api/v3/... >bom-now.json || true
-  if ! diff bill-of-materials.json bom-now.json; then
-    log_error "modularized licenses do not match given bill of materials"
-    return 255
-  fi
-  rm bom-now.json
+  (
+    cd tests
+    # shellcheck disable=SC2207
+    modules=($(modules_exp))
+
+    # Internally license-bill-of-materials tends to modify go.sum
+    run cp go.sum go.sum.tmp || return 2
+    run cp go.mod go.mod.tmp || return 2
+
+    output=$(GOFLAGS=-mod=mod run license-bill-of-materials \
+      --override-file ../bill-of-materials.override.json \
+      "${modules[@]}")
+    code="$?"
+
+    run cp go.sum.tmp go.sum || return 2
+    run cp go.mod.tmp go.mod || return 2
+
+    if [ "${code}" -ne 0 ] ; then
+      log_error -e "license-bill-of-materials (code: ${code}) failed with:\n${output}"
+      return 255
+    else
+      echo "${output}" > "bom-now.json.tmp"
+    fi
+    if ! diff ../bill-of-materials.json bom-now.json.tmp; then
+      log_error "modularized licenses do not match given bill of materials"
+      return 255
+    fi
+    rm bom-now.json.tmp
+  )
 }
 
 ######## VARIOUS CHECKERS ######################################################
@@ -546,13 +567,13 @@ function mod_tidy_for_module {
   # Watch for upstream solution: https://github.com/golang/go/issues/27005
   local tmpModDir
   tmpModDir=$(mktemp -d --suffix "etcd-mod")
-  cp "./go.mod" "./go.sum" "${tmpModDir}"
+  run cp "./go.mod" "./go.sum" "${tmpModDir}" || return 2
 
   # Guarantees keeping go.sum minimal
   # If this is causing too much problems, we should
   # stop controlling go.sum at all.
   rm go.sum
-  run go mod tidy
+  run go mod tidy || return 2
 
   set +e
   local tmpFileGoModInSync
@@ -569,11 +590,11 @@ function mod_tidy_for_module {
   mv "${tmpModDir}/go.sum" "./go.sum"
 
   if [ "${tmpFileGoModInSync}" -ne 0 ]; then
-    log_error "./go.mod is not in sync with 'go mod tidy'"
+    log_error "${PWD}/go.mod is not in sync with 'go mod tidy'"
     return 255
   fi
   if [ "${tmpFileGoSumInSync}" -ne 0 ]; then
-    log_error "./go.sum is not in sync with 'rm go.sum; go mod tidy'"
+    log_error "${PWD}/go.sum is not in sync with 'rm go.sum; go mod tidy'"
     return 255
   fi
 }

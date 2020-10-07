@@ -86,6 +86,16 @@ function run_for_module {
   )
 }
 
+function modules() {
+  echo "go.etcd.io/etcd/v3 go.etcd.io/etcd/tests/v3"
+}
+
+function modules_exp() {
+  for m in $(modules); do
+    echo -n "${m}/... "
+  done
+}
+
 #  run_for_modules [cmd]
 #  run given command across all modules and packages
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
