@@ -24,8 +24,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/v3/client"
-	"go.etcd.io/etcd/v3/integration"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 

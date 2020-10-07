@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/v3/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 

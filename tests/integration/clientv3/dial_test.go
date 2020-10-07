@@ -22,8 +22,8 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/integration"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 	"go.etcd.io/etcd/v3/pkg/transport"
 	"google.golang.org/grpc"

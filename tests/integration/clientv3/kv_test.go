@@ -28,8 +28,8 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/integration"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 
 	"google.golang.org/grpc"
