@@ -19,7 +19,7 @@ import (
 	"sort"
 	"testing"
 
-	"go.etcd.io/etcd/v3/functional/rpcpb"
+	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
 )
@@ -262,7 +262,7 @@ func Test_read(t *testing.T) {
 	}
 	defer logger.Sync()
 
-	cfg, err := read(logger, "../../functional.yaml")
+	cfg, err := read(logger, "../functional.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -25,7 +25,7 @@ import (
 	"syscall"
 	"time"
 
-	"go.etcd.io/etcd/v3/functional/rpcpb"
+	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 	"go.etcd.io/etcd/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/pkg/proxy"
 

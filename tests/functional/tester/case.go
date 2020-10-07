@@ -19,7 +19,7 @@ import (
 	"math/rand"
 	"time"
 
-	"go.etcd.io/etcd/v3/functional/rpcpb"
+	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
 )

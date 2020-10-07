@@ -19,7 +19,7 @@ import (
 	"flag"
 
 	_ "github.com/etcd-io/gofail/runtime"
-	"go.etcd.io/etcd/v3/functional/tester"
+	"go.etcd.io/etcd/tests/v3/functional/tester"
 	"go.uber.org/zap"
 )
 

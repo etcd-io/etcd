@@ -14,7 +14,7 @@
 
 package tester
 
-import "go.etcd.io/etcd/v3/functional/rpcpb"
+import "go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 func inject_BLACKHOLE_PEER_PORT_TX_RX(clus *Cluster, idx int) error {
 	return clus.sendOp(idx, rpcpb.Operation_BLACKHOLE_PEER_PORT_TX_RX)
