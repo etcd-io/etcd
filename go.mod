@@ -39,6 +39,7 @@ require (
 	github.com/urfave/cli v1.20.0
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.5
+	go.etcd.io/etcd/api/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
@@ -50,3 +51,9 @@ require (
 	gopkg.in/yaml.v2 v2.2.2
 	sigs.k8s.io/yaml v1.1.0
 )
+
+// Bad imports are sometimes causing attempts to pull that code.
+// This makes the error more explicit.
+replace go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
+
+replace go.etcd.io/etcd/api/v3 => ./api

@@ -18,10 +18,10 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/mvcc/backend"
-	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 	"go.etcd.io/etcd/v3/pkg/traceutil"
 
 	"go.uber.org/zap"

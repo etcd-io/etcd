@@ -22,14 +22,14 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/etcdserver/api/membership/membershippb"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/mvcc"
-	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 	"go.etcd.io/etcd/v3/pkg/traceutil"
 	"go.etcd.io/etcd/v3/pkg/types"
 

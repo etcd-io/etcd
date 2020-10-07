@@ -27,12 +27,12 @@ import (
 	"testing"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/v3/etcdserver/cindex"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/mvcc"
 	"go.etcd.io/etcd/v3/mvcc/backend"

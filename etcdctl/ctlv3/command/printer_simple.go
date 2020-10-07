@@ -19,9 +19,9 @@ import (
 	"os"
 	"strings"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/clientv3/snapshot"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/types"
 )
 

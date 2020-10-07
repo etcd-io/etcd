@@ -22,10 +22,10 @@ import (
 	"strconv"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/etcdserver/api/membership/membershippb"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/lease/leasehttp"
 	"go.etcd.io/etcd/v3/mvcc"

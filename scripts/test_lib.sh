@@ -96,6 +96,7 @@ function run_for_module {
 function run_for_modules {
   local pkg="${PKG:-./...}"
   if [ -z "${USERMOD}" ]; then
+    run_for_module "api" "$@" "${pkg}" || return "$?"
     run_for_module "." "$@" "${pkg}" || return "$?"
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"

@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/v3/etcdserver"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 	"go.etcd.io/etcd/v3/pkg/transport"
 )

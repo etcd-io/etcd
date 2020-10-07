@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"

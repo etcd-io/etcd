@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
@@ -40,7 +41,6 @@ import (
 	runtimeutil "go.etcd.io/etcd/v3/pkg/runtime"
 	"go.etcd.io/etcd/v3/pkg/transport"
 	"go.etcd.io/etcd/v3/pkg/types"
-	"go.etcd.io/etcd/v3/version"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"

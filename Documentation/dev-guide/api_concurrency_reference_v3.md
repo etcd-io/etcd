@@ -143,7 +143,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `Event` (mvcc/mvccpb/kv.proto)
+##### message `Event` (api/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -153,7 +153,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `KeyValue` (mvcc/mvccpb/kv.proto)
+##### message `KeyValue` (api/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |

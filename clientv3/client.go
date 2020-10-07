@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/v3/clientv3/balancer"
 	"go.etcd.io/etcd/v3/clientv3/balancer/picker"
 	"go.etcd.io/etcd/v3/clientv3/balancer/resolver/endpoint"
 	"go.etcd.io/etcd/v3/clientv3/credentials"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/v3/pkg/logutil"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/clientv3/leasing"
 	"go.etcd.io/etcd/v3/clientv3/namespace"
@@ -36,7 +37,6 @@ import (
 	"go.etcd.io/etcd/v3/embed"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/pkg/debugutil"
 	"go.etcd.io/etcd/v3/pkg/logutil"
 	"go.etcd.io/etcd/v3/pkg/transport"

@@ -10,13 +10,13 @@ if ! [[ "$0" =~ scripts/genproto.sh ]]; then
 	exit 255
 fi
 
-if [[ $(protoc --version | cut -f2 -d' ') != "3.7.1" ]]; then
-	echo "could not find protoc 3.7.1, is it installed + in PATH?"
+if [[ $(protoc --version | cut -f2 -d' ') != "3.12.3" ]]; then
+	echo "could not find protoc 3.12.3, is it installed + in PATH?"
 	exit 255
 fi
 
 # directories containing protos to be built
-DIRS="./wal/walpb ./etcdserver/etcdserverpb ./etcdserver/api/snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb ./etcdserver/api/membership/membershippb"
+DIRS="./wal/walpb ./api/etcdserverpb ./etcdserver/api/snap/snappb ./raft/raftpb ./api/mvccpb ./lease/leasepb ./api/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb ./api/membershippb"
 
 # disable go mod - this is for the go get/install invocations
 export GO111MODULE=off
@@ -82,7 +82,9 @@ for dir in ${DIRS}; do
 		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import _ \"google\.golang\.org\/genproto\/googleapis\/api\/annotations\"//g' ./*.pb.go
 		# shellcheck disable=SC1117
-		sed -i.bak -E "s/go.etcd.io\/etcd\//go.etcd.io\/etcd\/v3\//" ./*.pb.go
+		sed -i.bak -E "s|go.etcd.io/etcd|go.etcd.io/etcd/v3|g" ./*.pb.go
+		# shellcheck disable=SC1117
+		sed -i.bak -E "s|go.etcd.io/etcd/v3/api|go.etcd.io/etcd/api/v3|g" ./*.pb.go
 		rm -f ./*.bak
 		gofmt -s -w ./*.pb.go
 		goimports -w ./*.pb.go
@@ -91,8 +93,8 @@ done
 
 # remove old swagger files so it's obvious whether the files fail to generate
 rm -rf Documentation/dev-guide/apispec/swagger/*json
-for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionpb/v3election; do
-	protobase="etcdserver/${pb}"
+for pb in api/etcdserverpb/rpc etcdserver/api/v3lock/v3lockpb/v3lock etcdserver/api/v3election/v3electionpb/v3election; do
+	protobase="${pb}"
 	protoc -I. \
 	    -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
 	    -I"${GOGOPROTO_PATH}" \
@@ -104,6 +106,10 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 	pkgpath=$(dirname "${protobase}")
 	pkg=$(basename "${pkgpath}")
 	gwfile="${protobase}.pb.gw.go"
+
+	echo ">>> $gwfile"
+	head -n 30 "$gwfile"
+
 	sed -i.bak -E "s/package $pkg/package gw/g" ${gwfile}
 	# shellcheck disable=SC1117
 	sed -i.bak -E "s/protoReq /&$pkg\./g" ${gwfile}
@@ -113,15 +119,17 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 	sed -i.bak -E "s/New[A-Za-z]*Client/${pkg}.&/" ${gwfile}
 	# darwin doesn't like newlines in sed...
 	# shellcheck disable=SC1117
-	sed -i.bak -E "s|import \(|& \"go.etcd.io/etcd/v3/${pkgpath}\"|" ${gwfile}
+	sed -i.bak -E "s|import \(|& \"go.etcd.io/etcd/${pkgpath}\"|" ${gwfile}
 	# shellcheck disable=SC1117
-	sed -i.bak -E "s/go.etcd.io\etcd\//go.etcd.io\/etcd\/v3/" ${gwfile}
+	sed -i.bak -E "s|go.etcd.io/etcd|go.etcd.io/etcd/v3|g" ${gwfile}
+	# shellcheck disable=SC1117
+	sed -i.bak -E "s|go.etcd.io/etcd/v3/api|go.etcd.io/etcd/api/v3|g" ${gwfile} 
 	mkdir -p  "${pkgpath}"/gw/
 	go fmt ${gwfile}
 	mv ${gwfile} "${pkgpath}/gw/"
-	rm -f ./etcdserver/${pb}*.bak
-	swaggerName=$(basename ${pb})
-	mv	Documentation/dev-guide/apispec/swagger/etcdserver/${pb}.swagger.json \
+	rm -f ./${protobase}*.bak
+	swaggerName=$(basename ${protobase})
+	mv	Documentation/dev-guide/apispec/swagger/${protobase}.swagger.json \
 		Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
 rm -rf Documentation/dev-guide/apispec/swagger/etcdserver/
@@ -151,13 +159,13 @@ if [ "$1" != "--skip-protodoc" ]; then
 		echo "protodoc is updated"
 	popd
 
-	protodoc --directories="etcdserver/etcdserverpb=service_message,mvcc/mvccpb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
+	protodoc --directories="api/etcdserverpb=service_message,api/mvccpb=service_message,lease/leasepb=service_message,api/authpb=service_message" \
 		--title="etcd API Reference" \
 		--output="Documentation/dev-guide/api_reference_v3.md" \
-		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto" \
+		--message-only-from-this-file="api/etcdserverpb/rpc.proto" \
 		--disclaimer="This is a generated documentation. Please read the proto files for more."
 
-	protodoc --directories="etcdserver/api/v3lock/v3lockpb=service_message,etcdserver/api/v3election/v3electionpb=service_message,mvcc/mvccpb=service_message" \
+	protodoc --directories="etcdserver/api/v3lock/v3lockpb=service_message,etcdserver/api/v3election/v3electionpb=service_message,api/mvccpb=service_message" \
 		--title="etcd concurrency API Reference" \
 		--output="Documentation/dev-guide/api_concurrency_reference_v3.md" \
 		--disclaimer="This is a generated documentation. Please read the proto files for more."

@@ -34,10 +34,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/etcdserver/api/membership/membershippb"
 	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2discovery"
@@ -47,7 +49,6 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/v3/etcdserver/cindex"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/lease/leasehttp"
 	"go.etcd.io/etcd/v3/mvcc"
@@ -62,7 +63,6 @@ import (
 	"go.etcd.io/etcd/v3/pkg/wait"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"
-	"go.etcd.io/etcd/v3/version"
 	"go.etcd.io/etcd/v3/wal"
 )
 
