@@ -267,10 +267,10 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 		// Configure certificates for connection proxy ---> server.
 		// This certificate must NOT have CN set.
 		tlsArgs = append(tlsArgs,
-			"--cert", "../../integration/fixtures/client-nocn.crt",
-			"--key", "../../integration/fixtures/client-nocn.key.insecure",
-			"--cacert", "../../integration/fixtures/ca.crt",
-			"--client-crl-file", "../../integration/fixtures/revoke.crl")
+			"--cert", "../fixtures/client-nocn.crt",
+			"--key", "../fixtures/client-nocn.key.insecure",
+			"--cacert", "../fixtures/ca.crt",
+			"--client-crl-file", "../fixtures/revoke.crl")
 	}
 	return &proxyV3Proc{
 		proxyProc{

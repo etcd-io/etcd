@@ -38,9 +38,9 @@ import (
 var testLogger = zap.NewExample()
 
 var testTLSInfo = transport.TLSInfo{
-	KeyFile:        "./fixtures/server.key.insecure",
-	CertFile:       "./fixtures/server.crt",
-	TrustedCAFile:  "./fixtures/ca.crt",
+	KeyFile:        "../../tests/fixtures/server.key.insecure",
+	CertFile:       "../../tests/fixtures/server.crt",
+	TrustedCAFile:  "../../tests/fixtures/ca.crt",
 	ClientCertAuth: true,
 }
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ordering
+package clientv3test
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/clientv3/ordering"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
@@ -38,6 +39,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer cli.Close()
 
 	ctx := context.TODO()
 
@@ -64,7 +66,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	// NewOrderViolationSwitchEndpointClosure will be able to
 	// access the full list of endpoints.
 	cli.SetEndpoints(eps...)
-	OrderingKv := NewKV(cli.KV, NewOrderViolationSwitchEndpointClosure(*cli))
+	OrderingKv := ordering.NewKV(cli.KV, ordering.NewOrderViolationSwitchEndpointClosure(*cli))
 	// set prevRev to the second member's revision of "foo" such that
 	// the revision is higher than the third member's revision of "foo"
 	_, err = OrderingKv.Get(ctx, "foo")
@@ -97,6 +99,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer cli.Close()
 	eps := cli.Endpoints()
 	ctx := context.TODO()
 
@@ -123,7 +126,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	// access the full list of endpoints.
 	cli.SetEndpoints(eps...)
 	time.Sleep(1 * time.Second) // give enough time for operation
-	OrderingKv := NewKV(cli.KV, NewOrderViolationSwitchEndpointClosure(*cli))
+	OrderingKv := ordering.NewKV(cli.KV, ordering.NewOrderViolationSwitchEndpointClosure(*cli))
 	// set prevRev to the first member's revision of "foo" such that
 	// the revision is higher than the fourth and fifth members' revision of "foo"
 	_, err = OrderingKv.Get(ctx, "foo")
@@ -147,7 +150,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	time.Sleep(5 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if err != ErrNoGreaterRev {
-		t.Fatalf("expected %v, got %v", ErrNoGreaterRev, err)
+	if err != ordering.ErrNoGreaterRev {
+		t.Fatalf("expected %v, got %v", ordering.ErrNoGreaterRev, err)
 	}
 }

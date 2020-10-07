@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package clientv3test
 
 import (
 	"context"
@@ -31,16 +31,16 @@ import (
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "../../integration/fixtures/server.key.insecure",
-		CertFile:       "../../integration/fixtures/server.crt",
-		TrustedCAFile:  "../../integration/fixtures/ca.crt",
+		KeyFile:        "../../fixtures/server.key.insecure",
+		CertFile:       "../../fixtures/server.crt",
+		TrustedCAFile:  "../../fixtures/ca.crt",
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoExpired = transport.TLSInfo{
-		KeyFile:        "../../integration/fixtures-expired/server.key.insecure",
-		CertFile:       "../../integration/fixtures-expired/server.crt",
-		TrustedCAFile:  "../../integration/fixtures-expired/ca.crt",
+		KeyFile:        "../fixtures-expired/server.key.insecure",
+		CertFile:       "../fixtures-expired/server.crt",
+		TrustedCAFile:  "../fixtures-expired/ca.crt",
 		ClientCertAuth: true,
 	}
 )

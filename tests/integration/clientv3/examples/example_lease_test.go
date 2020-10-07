@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3_test
+package clientv3test
 
 import (
 	"context"

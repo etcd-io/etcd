@@ -81,16 +81,16 @@ var (
 	localListenCount = int64(0)
 
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "./fixtures/server.key.insecure",
-		CertFile:       "./fixtures/server.crt",
-		TrustedCAFile:  "./fixtures/ca.crt",
+		KeyFile:        "../fixtures/server.key.insecure",
+		CertFile:       "../fixtures/server.crt",
+		TrustedCAFile:  "../fixtures/ca.crt",
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoIP = transport.TLSInfo{
-		KeyFile:        "./fixtures/server-ip.key.insecure",
-		CertFile:       "./fixtures/server-ip.crt",
-		TrustedCAFile:  "./fixtures/ca.crt",
+		KeyFile:        "../fixtures/server-ip.key.insecure",
+		CertFile:       "../fixtures/server-ip.crt",
+		TrustedCAFile:  "../fixtures/ca.crt",
 		ClientCertAuth: true,
 	}
 
@@ -108,7 +108,7 @@ var (
 		ClientCertAuth: true,
 	}
 
-	defaultTokenJWT = "jwt,pub-key=./fixtures/server.crt,priv-key=./fixtures/server.key.insecure,sign-method=RS256,ttl=1s"
+	defaultTokenJWT = "jwt,pub-key=../fixtures/server.crt,priv-key=../fixtures/server.key.insecure,sign-method=RS256,ttl=1s"
 
 	lg = zap.NewNop()
 )

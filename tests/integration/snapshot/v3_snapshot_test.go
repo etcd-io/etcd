@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/clientv3/snapshot"
 	"go.etcd.io/etcd/v3/embed"
 	"go.etcd.io/etcd/v3/pkg/fileutil"
 	"go.etcd.io/etcd/v3/pkg/testutil"
@@ -55,12 +56,12 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
 	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 
-	sp := NewV3(zap.NewExample())
+	sp := snapshot.NewV3(zap.NewExample())
 	pss := make([]string, 0, len(pURLs))
 	for _, p := range pURLs {
 		pss = append(pss, p.String())
 	}
-	if err := sp.Restore(RestoreConfig{
+	if err := sp.Restore(snapshot.RestoreConfig{
 		SnapshotPath:        dbPath,
 		Name:                cfg.Name,
 		OutputDataDir:       cfg.Dir,
@@ -168,7 +169,7 @@ func TestCorruptedBackupFileCheck(t *testing.T) {
 		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)
 	}
 
-	sp := NewV3(zap.NewExample())
+	sp := snapshot.NewV3(zap.NewExample())
 	_, err := sp.Status(dbPath)
 	expectedErrKeywords := "snapshot file integrity check failed"
 	/* example error message:
@@ -236,7 +237,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		}
 	}
 
-	sp := NewV3(zap.NewExample())
+	sp := snapshot.NewV3(zap.NewExample())
 	dpPath := filepath.Join(os.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
 	if err = sp.Save(context.Background(), ccfg, dpPath); err != nil {
 		t.Fatal(err)
@@ -275,8 +276,8 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		cfg.InitialCluster = ics
 		cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()+i))
 
-		sp := NewV3(zap.NewExample())
-		if err := sp.Restore(RestoreConfig{
+		sp := snapshot.NewV3(zap.NewExample())
+		if err := sp.Restore(snapshot.RestoreConfig{
 			SnapshotPath:        dbPath,
 			Name:                cfg.Name,
 			OutputDataDir:       cfg.Dir,

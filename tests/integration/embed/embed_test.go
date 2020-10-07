@@ -37,9 +37,9 @@ import (
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "../fixtures/server.key.insecure",
-		CertFile:       "../fixtures/server.crt",
-		TrustedCAFile:  "../fixtures/ca.crt",
+		KeyFile:        "../../fixtures/server.key.insecure",
+		CertFile:       "../../fixtures/server.crt",
+		TrustedCAFile:  "../../fixtures/ca.crt",
 		ClientCertAuth: true,
 	}
 )

@@ -25,9 +25,9 @@ import (
 )
 
 var (
-	certPath       = "../../tests/integration/fixtures/server.crt"
-	privateKeyPath = "../../tests/integration/fixtures/server.key.insecure"
-	caPath         = "../../tests/integration/fixtures/ca.crt"
+	certPath       = "../../tests/fixtures/server.crt"
+	privateKeyPath = "../../tests/fixtures/server.key.insecure"
+	caPath         = "../../tests/fixtures/ca.crt"
 )
 
 func TestConfigFromFile(t *testing.T) {

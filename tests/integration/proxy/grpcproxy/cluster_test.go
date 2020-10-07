@@ -24,6 +24,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/proxy/grpcproxy"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -114,8 +115,8 @@ func newClusterProxyServer(lg *zap.Logger, endpoints []string, t *testing.T) *cl
 		cts.server.Serve(cts.l)
 	}()
 
-	Register(lg, client, "test-prefix", cts.l.Addr().String(), 7)
-	cts.cp, cts.donec = NewClusterProxy(lg, client, cts.l.Addr().String(), "test-prefix")
+	grpcproxy.Register(lg, client, "test-prefix", cts.l.Addr().String(), 7)
+	cts.cp, cts.donec = grpcproxy.NewClusterProxy(lg, client, cts.l.Addr().String(), "test-prefix")
 	cts.caddr = cts.l.Addr().String()
 	pb.RegisterClusterServer(cts.server, cts.cp)
 	close(servec)

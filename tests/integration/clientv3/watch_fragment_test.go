@@ -14,7 +14,7 @@
 
 // +build !cluster_proxy
 
-package integration
+package clientv3test
 
 import (
 	"context"

@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/clientv3/naming"
 	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/v3/proxy/grpcproxy"
 
 	"go.uber.org/zap"
 	gnaming "google.golang.org/grpc/naming"
@@ -45,7 +46,7 @@ func TestRegister(t *testing.T) {
 		t.Fatalf("len(ups) expected 0, got %d (%v)", len(ups), ups)
 	}
 
-	donec := Register(zap.NewExample(), cli, testPrefix, paddr, 5)
+	donec := grpcproxy.Register(zap.NewExample(), cli, testPrefix, paddr, 5)
 
 	ups, err = wa.Next()
 	if err != nil {
