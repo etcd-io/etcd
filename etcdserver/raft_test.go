@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"expvar"
 	"reflect"
 	"sync"
 	"testing"
@@ -266,4 +267,18 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	if got != want {
 		t.Errorf("count = %d, want %d", got, want)
 	}
+}
+
+// Test that none of the expvars that get added during init panic.
+// This matters if another package imports etcdserver,
+// doesn't use it, but does use expvars.
+func TestExpvarWithNoRaftStatus(t *testing.T) {
+	defer func() {
+		if err := recover(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	expvar.Do(func(kv expvar.KeyValue) {
+		_ = kv.Value.String()
+	})
 }
