@@ -303,6 +303,8 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 				return ttl, err
 			}
 		}
+		// Throttle in case of e.g. connection problems.
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	if cctx.Err() == context.DeadlineExceeded {

@@ -51,10 +51,6 @@ function pkgs_in_module {
   go list -mod=mod "${1:-./...}";
 }
 
-function filter_out_integration_style_tests {
-  grep -Ev '/(tests/e2e|integration|functional)(/|$)'
-}
-
 ####    Running actions against multiple modules ####
 
 # run [command...] - runs given command, printing it first and
@@ -90,6 +86,16 @@ function run_for_module {
   )
 }
 
+function modules() {
+  echo "go.etcd.io/etcd/v3 go.etcd.io/etcd/tests/v3"
+}
+
+function modules_exp() {
+  for m in $(modules); do
+    echo -n "${m}/... "
+  done
+}
+
 #  run_for_modules [cmd]
 #  run given command across all modules and packages
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
@@ -98,6 +104,7 @@ function run_for_modules {
   if [ -z "${USERMOD}" ]; then
     run_for_module "api" "$@" "${pkg}" || return "$?"
     run_for_module "." "$@" "${pkg}" || return "$?"
+    run_for_module "tests" "$@" "${pkg}" || return "$?"
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi

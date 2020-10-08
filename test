@@ -73,6 +73,7 @@ fi
 
 function build_pass {
   log_callout "Building etcd"
+  run_for_modules run go build "${@}" || return 2
   GO_BUILD_FLAGS="-v" etcd_build "${@}"
   GO_BUILD_FLAGS="-v" tools_build "${@}"
 }
@@ -93,25 +94,22 @@ function unit_pass {
 
 function integration_extra {
   if [ -z "${PKG}" ] ; then
-    if [[ -z "${RUN_ARG[*]}" ]]; then
-      go_test "./client/... ./clientv3/..." "parallel" : -timeout="${TIMEOUT:-5m}" "${COMMON_TEST_FLAGS[@]}" --run=Example "$@" || return $?
-    fi
-
-    go_test "./etcdserver/api/v2store/..." "parallel" : -tags v2v3 -timeout="${TIMEOUT:-5m}" "${RUN_ARG[@]}" "${COMMON_TEST_FLAGS[@]}" "$@" || return $?
+    run_for_module "."  go_test "./contrib/raftexample" "keep_going" :  -timeout="${TIMEOUT:-5m}" "${RUN_ARG[@]}" "${COMMON_TEST_FLAGS[@]}" "$@" || return $?
+    run_for_module "tests"  go_test "./integration/v2store/..." "keep_going" : -tags v2v3 -timeout="${TIMEOUT:-5m}" "${RUN_ARG[@]}" "${COMMON_TEST_FLAGS[@]}" "$@" || return $?
   else
     log_warning "integration_extra ignored when PKG is specified"
   fi
 }
 
 function integration_pass {
-  local pkgs=${USERPKG:-"./integration/... ./clientv3/snapshot/... ./client/integration/... ./clientv3/integration/... ./contrib/raftexample"}
-  go_test "${pkgs}" "keep_going" : -timeout="${TIMEOUT:-30m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@" || return $?
+  local pkgs=${USERPKG:-"./integration/..."}
+  run_for_module "tests" go_test "${pkgs}" "keep_going" : -timeout="${TIMEOUT:-30m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@" || return $?
   integration_extra "$@"
 }
 
 function e2e_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  run_for_module "." go_test "./tests/e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
+  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
 }
 
 function integration_e2e_pass {
@@ -137,34 +135,38 @@ function generic_checker {
 }
 
 function functional_pass {
-  ./functional/build
+  run ./tests/functional/build
 
   # Clean up any data and logs from previous runs
   rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
 
+  # TODO: These ports should be dynamically allocated instead of hard-coded.
   for a in 1 2 3; do
-    ./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 &
+    ./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 < /dev/null &
     pid="$!"
     agent_pids="${agent_pids} $pid"
   done
 
   for a in 1 2 3; do
-    echo "Waiting for 'etcd-agent' on ${a}9027..."
+    log_callout "Waiting for 'etcd-agent' on ${a}9027..."
     while ! nc -z localhost ${a}9027; do
       sleep 1
     done
   done
 
-  echo "functional test START!"
-  run ./bin/etcd-tester --config ./functional.yaml && log_success "'etcd-tester' succeeded"
-  ETCD_TESTER_EXIT_CODE=$?
-  echo "ETCD_TESTER_EXIT_CODE:" ${ETCD_TESTER_EXIT_CODE}
+  log_callout "functional test START!"
+  run ./bin/etcd-tester --config ./tests/functional/functional.yaml && log_success "'etcd-tester' succeeded"
+  local etcd_tester_exit_code=$?
+
+  if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
+    log_error "ETCD_TESTER_EXIT_CODE:" ${etcd_tester_exit_code}
+  fi
 
   # shellcheck disable=SC2206
   agent_pids=($agent_pids)
   kill -s TERM "${agent_pids[@]}" || true
 
-  if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
+  if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
     log_error -e "\nFAILED! 'tail -1000 /tmp/etcd-functional-1/etcd.log'"
     tail -1000 /tmp/etcd-functional-1/etcd.log
 
@@ -174,14 +176,14 @@ function functional_pass {
     log_error -e "\nFAILED! 'tail -1000 /tmp/etcd-functional-3/etcd.log'"
     tail -1000 /tmp/etcd-functional-3/etcd.log
 
-    log_error "--- FAIL: exit code" ${ETCD_TESTER_EXIT_CODE}
-    return ${ETCD_TESTER_EXIT_CODE}
+    log_error "--- FAIL: exit code" ${etcd_tester_exit_code}
+    return ${etcd_tester_exit_code}
   fi
   log_success "functional test PASS!"
 }
 
 function grpcproxy_pass {
-  go_test "./integration ./clientv3/integration ./tests/e2e" "fail_fast" : \
+  run_for_module "tests" go_test "./integration/... ./e2e" "fail_fast" : \
       -timeout=30m -tags cluster_proxy "${COMMON_TEST_FLAGS[@]}" "$@"
 }
 
@@ -228,7 +230,7 @@ function cov_pass {
   rm -f "${coverdir}/*.coverprofile" "${coverdir}/cover.*"
 
   local covpkgs
-  covpkgs=$(pkgs_in_module "./..." | filter_out_integration_style_tests)
+  covpkgs=$(pkgs_in_module "./...")
   local coverpkg_comma
   coverpkg_comma=$(echo "${covpkgs[@]}" | xargs | tr ' ' ',')
   local gocov_build_flags=("-covermode=set" "-coverpkg=$coverpkg_comma")
@@ -240,25 +242,22 @@ function cov_pass {
       "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
 
   log_callout "Collecting coverage from integration tests ..."
-  go_test "./integration ./clientv3/integration ./client/integration" "keep_going" "pkg_to_coverprofileflag integration" \
+  run_for_module "tests" go_test "./integration/..." "keep_going" "pkg_to_coverprofileflag integration" \
       -timeout=30m "${gocov_build_flags[@]}" "$@" || failed="$failed integration"
-  # integration-extra
-  go_test "./client/... ./clientv3/..." "keep_going" "pkg_to_coverprofileflag integration_example" \
-      -timeout=5m --run=Example "${gocov_build_flags[@]}" "$@" || failed="$failed integration-examples"
   # integration-store-v2
-  go_test "./etcdserver/api/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
-      -tags v2v3 -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed etcdserver_api_v2store"
+  run_for_module "tests" go_test "./integration/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
+      -tags v2v3 -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_v2v3"
   # integration_cluster_proxy
-  go_test "./clientv3/... ./client/integration/... ./clientv3/snapshot/... ./integration/..." "keep_going" "pkg_to_coverprofileflag integration_cluster_proxy" \
+  run_for_module "tests" go_test "./integration/..." "keep_going" "pkg_to_coverprofileflag integration_cluster_proxy" \
       -tags cluster_proxy -timeout=5m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
 
   log_callout "Collecting coverage from e2e tests ..."
   # We don't pass 'gocov_build_flags' nor 'pkg_to_coverprofileflag' here,
   # as the coverage is colleced from the ./bin/etcd_test & ./bin/etcdctl_test internally spawned.
-  go_test "./tests/e2e/..." "keep_going" : -tags=cov -timeout 30m "$@" || failed="$failed tests_e2e"
+  run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags=cov -timeout 30m "$@" || failed="$failed tests_e2e"
 
   log_callout "Collecting coverage from e2e tests with proxy ..."
-  go_test "./tests/e2e/..." "keep_going" : -tags="cov cluster_proxy" -timeout 30m "$@" || failed="$failed tests_e2e_proxy"
+  run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags="cov cluster_proxy" -timeout 30m "$@" || failed="$failed tests_e2e_proxy"
 
   log_callout "Merging coverage results ..."
   local cover_out_file="${coverdir}/cover.out"
@@ -445,13 +444,7 @@ function commit_title_pass {
 function goword_for_package {
   mapfile -t gofiles < <(go_srcs_in_module "$1")
   # only check for broke exported godocs
-  gowordRes=$(goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort)
-  if [ -n "$gowordRes" ]; then
-    log_error -e "goword checking failed:\\n${gowordRes}"
-    return 255
-  fi
-  # check some spelling
-  gowordRes=$(goword -ignore-file=.words clientv3/{*,*/*}.go 2>&1 | grep spell | sort)
+  gowordRes=$(run goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort)
   if [ -n "$gowordRes" ]; then
     log_error -e "goword checking failed:\\n${gowordRes}"
     return 255
@@ -461,6 +454,13 @@ function goword_for_package {
 function goword_pass {
   if tool_exists "goword" "./scripts_install_tool.sh github.com/chzchzchz/goword"; then
     run_for_modules goword_for_package
+  fi
+
+  # check some spelling
+  gowordRes=$(run goword -ignore-file=.words clientv3/{*,*/*}.go | grep spell | sort)
+  if [ -n "$gowordRes" ]; then
+    log_error -e "goword checking failed:\\n${gowordRes}"
+    return 255
   fi
 }
 
@@ -482,14 +482,35 @@ function bom_pass {
   fi
   log_callout "Checking bill of materials..."
   # https://github.com/golang/go/commit/7c388cc89c76bc7167287fb488afcaf5a4aa12bf
-  run license-bill-of-materials \
-    --override-file bill-of-materials.override.json \
-    go.etcd.io/etcd/v3 go.etcd.io/etcd/v3/etcdctl go.etcd.io/etcd/api/v3/... >bom-now.json || true
-  if ! diff bill-of-materials.json bom-now.json; then
-    log_error "modularized licenses do not match given bill of materials"
-    return 255
-  fi
-  rm bom-now.json
+  (
+    cd tests
+    # shellcheck disable=SC2207
+    modules=($(modules_exp))
+
+    # Internally license-bill-of-materials tends to modify go.sum
+    run cp go.sum go.sum.tmp || return 2
+    run cp go.mod go.mod.tmp || return 2
+
+    output=$(GOFLAGS=-mod=mod run license-bill-of-materials \
+      --override-file ../bill-of-materials.override.json \
+      "${modules[@]}")
+    code="$?"
+
+    run cp go.sum.tmp go.sum || return 2
+    run cp go.mod.tmp go.mod || return 2
+
+    if [ "${code}" -ne 0 ] ; then
+      log_error -e "license-bill-of-materials (code: ${code}) failed with:\n${output}"
+      return 255
+    else
+      echo "${output}" > "bom-now.json.tmp"
+    fi
+    if ! diff ../bill-of-materials.json bom-now.json.tmp; then
+      log_error "modularized licenses do not match given bill of materials"
+      return 255
+    fi
+    rm bom-now.json.tmp
+  )
 }
 
 ######## VARIOUS CHECKERS ######################################################
@@ -539,17 +560,17 @@ function release_pass {
   mv /tmp/etcd ./bin/etcd-last-release
 }
 
-function mod_tidy_pass {
+function mod_tidy_for_module {
   # Watch for upstream solution: https://github.com/golang/go/issues/27005
   local tmpModDir
   tmpModDir=$(mktemp -d --suffix "etcd-mod")
-  cp "./go.mod" "./go.sum" "${tmpModDir}"
+  run cp "./go.mod" "./go.sum" "${tmpModDir}" || return 2
 
   # Guarantees keeping go.sum minimal
   # If this is causing too much problems, we should
   # stop controlling go.sum at all.
   rm go.sum
-  go mod tidy
+  run go mod tidy || return 2
 
   set +e
   local tmpFileGoModInSync
@@ -566,13 +587,17 @@ function mod_tidy_pass {
   mv "${tmpModDir}/go.sum" "./go.sum"
 
   if [ "${tmpFileGoModInSync}" -ne 0 ]; then
-    log_error "./go.mod is not in sync with 'go mod tidy'"
+    log_error "${PWD}/go.mod is not in sync with 'go mod tidy'"
     return 255
   fi
   if [ "${tmpFileGoSumInSync}" -ne 0 ]; then
-    log_error "./go.sum is not in sync with 'rm go.sum; go mod tidy'"
+    log_error "${PWD}/go.sum is not in sync with 'rm go.sum; go mod tidy'"
     return 255
   fi
+}
+
+function mod_tidy_pass {
+  run_for_modules mod_tidy_for_module
 }
 
 ########### MAIN ###############################################################

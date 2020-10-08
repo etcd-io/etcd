@@ -15,63 +15,23 @@
 package client_test
 
 import (
-	"fmt"
 	"net/http"
-	"os"
-	"regexp"
-	"strings"
 	"testing"
-	"time"
 
-	"go.etcd.io/etcd/v3/integration"
 	"go.etcd.io/etcd/v3/pkg/testutil"
-	"go.etcd.io/etcd/v3/pkg/transport"
 )
 
-var exampleEndpoints []string
-var exampleTransport *http.Transport
+func exampleEndpoints() []string        { return nil }
+func exampleTransport() *http.Transport { return nil }
 
-// TestMain sets up an etcd cluster if running the examples.
+func forUnitTestsRunInMockedContext(mocking func(), example func()) {
+	mocking()
+	// TODO: Call 'example' when mocking() provides realistic mocking of transport.
+
+	// The real testing logic of examples gets executed
+	// as part of ./tests/integration/client/example/...
+}
+
 func TestMain(m *testing.M) {
-	useCluster, hasRunArg := false, false // default to running only Test*
-	for _, arg := range os.Args {
-		if strings.HasPrefix(arg, "-test.run=") {
-			exp := strings.Split(arg, "=")[1]
-			match, err := regexp.MatchString(exp, "Example")
-			useCluster = (err == nil && match) || strings.Contains(exp, "Example")
-			hasRunArg = true
-			break
-		}
-	}
-	if !hasRunArg {
-		// force only running Test* if no args given to avoid leak false
-		// positives from having a long-running cluster for the examples.
-		os.Args = append(os.Args, "-test.run=Test")
-	}
-
-	var v int
-	if useCluster {
-		tr, trerr := transport.NewTransport(transport.TLSInfo{}, time.Second)
-		if trerr != nil {
-			fmt.Fprintf(os.Stderr, "%v", trerr)
-			os.Exit(1)
-		}
-		cfg := integration.ClusterConfig{Size: 1}
-		clus := integration.NewClusterV3(nil, &cfg)
-		exampleEndpoints = []string{clus.Members[0].URL()}
-		exampleTransport = tr
-		v = m.Run()
-		clus.Terminate(nil)
-		if err := testutil.CheckAfterTest(time.Second); err != nil {
-			fmt.Fprintf(os.Stderr, "%v", err)
-			os.Exit(1)
-		}
-	} else {
-		v = m.Run()
-	}
-
-	if v == 0 && testutil.CheckLeakedGoroutine() {
-		os.Exit(1)
-	}
-	os.Exit(v)
+	testutil.MustTestMainWithLeakDetection(m)
 }

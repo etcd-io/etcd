@@ -18,5 +18,6 @@ hack/tls-setup/certs
 /contrib/raftexample/raftexample-*
 /vendor
 /tests/e2e/default.proxy
+*.tmp
 
 *.bak

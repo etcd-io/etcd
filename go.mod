@@ -10,7 +10,6 @@ require (
 	github.com/creack/pty v1.1.11
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
-	github.com/etcd-io/gofail v0.0.0-20190801230047-ad7f989257ca
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903
@@ -48,7 +47,6 @@ require (
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
 	google.golang.org/grpc v1.26.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.25
-	gopkg.in/yaml.v2 v2.2.2
 	sigs.k8s.io/yaml v1.1.0
 )
 

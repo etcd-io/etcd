@@ -15,30 +15,21 @@
 package concurrency_test
 
 import (
-	"fmt"
-	"os"
 	"testing"
-	"time"
 
-	"go.etcd.io/etcd/v3/integration"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
-var endpoints []string
+func exampleEndpoints() []string { return nil }
 
-// TestMain sets up an etcd cluster for running the examples.
+func forUnitTestsRunInMockedContext(mocking func(), example func()) {
+	mocking()
+	// TODO: Call 'example' when mocking() provides realistic mocking of transport.
+
+	// The real testing logic of examples gets executed
+	// as part of ./tests/integration/clientv3/integration/...
+}
+
 func TestMain(m *testing.M) {
-	cfg := integration.ClusterConfig{Size: 1}
-	clus := integration.NewClusterV3(nil, &cfg)
-	endpoints = []string{clus.Client(0).Endpoints()[0]}
-	v := m.Run()
-	clus.Terminate(nil)
-	if err := testutil.CheckAfterTest(time.Second); err != nil {
-		fmt.Fprintf(os.Stderr, "%v", err)
-		os.Exit(1)
-	}
-	if v == 0 && testutil.CheckLeakedGoroutine() {
-		os.Exit(1)
-	}
-	os.Exit(v)
+	testutil.MustTestMainWithLeakDetection(m)
 }

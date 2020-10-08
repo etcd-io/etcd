@@ -90,7 +90,7 @@ var (
 	configJWT = etcdProcessClusterConfig{
 		clusterSize:   1,
 		initialToken:  "new",
-		authTokenOpts: "jwt,pub-key=../../integration/fixtures/server.crt,priv-key=../../integration/fixtures/server.key.insecure,sign-method=RS256,ttl=1s",
+		authTokenOpts: "jwt,pub-key=../fixtures/server.crt,priv-key=../fixtures/server.key.insecure,sign-method=RS256,ttl=1s",
 	}
 )
 
