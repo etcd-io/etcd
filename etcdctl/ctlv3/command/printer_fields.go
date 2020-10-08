@@ -20,7 +20,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	spb "go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/snapshot"
+	"go.etcd.io/etcd/v3/etcdctl/snapshot"
 )
 
 type fieldsPrinter struct{ printer }
