@@ -191,6 +191,9 @@ function go_test {
 # tool_exists [tool] [instruction]
 # Checks whether given [tool] is installed. In case of failure,
 # prints a warning with installation [instruction] and returns !=0 code.
+#
+# WARNING: This depend on "any" version of the 'binary' that might be tricky
+# from hermetic build perspective. For go binaries prefer 'tool_go_run'
 function tool_exists {
   local tool="${1}"
   local instruction="${2}"
@@ -198,5 +201,33 @@ function tool_exists {
     log_warning "Tool: '${tool}' not found on PATH. ${instruction}"
     return 255
   fi
+}
+
+# tool_get_bin [tool] - returns absolute path to a tool binary (or returns error)
+function tool_get_bin {
+  tool_exists "gobin" "GO111MODULE=off go get -u github.com/myitcv/gobin" || return 2
+
+  local tool="$1"
+  if [[ "$tool" == *"@"* ]]; then
+    run gobin -p "${tool}" || return 2
+  else
+    run_for_module ./tools/mod run gobin -p -m --mod=readonly "${tool}" || return 2
+  fi
+}
+
+# tool_pkg_dir [pkg] - returns absolute path to a directory that stores given pkg.
+# The pkg versions must be defined in ./tools/mod directory.
+function tool_pkg_dir {
+  run_for_module ./tools/mod run go list -f '{{.Dir}}' "${1}"
+}
+
+# tool_get_bin [tool]
+function run_go_tool {
+  local cmdbin
+  if ! cmdbin=$(tool_get_bin "${1}"); then
+    return 2
+  fi
+  shift 1
+  run "${cmdbin}" "$@" || return 2
 }
 
