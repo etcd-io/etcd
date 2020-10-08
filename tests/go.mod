@@ -2,9 +2,11 @@ module go.etcd.io/etcd/tests/v3
 
 go 1.15
 
-replace go.etcd.io/etcd/v3 => ../
-
-replace go.etcd.io/etcd/api/v3 => ../api
+replace (
+	go.etcd.io/etcd/v3 => ../
+	go.etcd.io/etcd/api/v3 => ../api
+	go.etcd.io/etcd/pkg/v3 => ../pkg
+)
 
 require (
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4

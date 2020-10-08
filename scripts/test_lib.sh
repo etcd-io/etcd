@@ -92,7 +92,7 @@ function run_for_module {
 }
 
 function modules() {
-  echo "go.etcd.io/etcd/v3 go.etcd.io/etcd/tests/v3"
+  echo "go.etcd.io/etcd/api/v3 go.etcd.io/etcd/pkg/v3 go.etcd.io/etcd/v3 go.etcd.io/etcd/tests/v3"
 }
 
 function modules_exp() {
@@ -108,6 +108,7 @@ function run_for_modules {
   local pkg="${PKG:-./...}"
   if [ -z "${USERMOD}" ]; then
     run_for_module "api" "$@" "${pkg}" || return "$?"
+    run_for_module "pkg" "$@" "${pkg}" || return "$?"
     run_for_module "." "$@" "${pkg}" || return "$?"
     run_for_module "tests" "$@" "${pkg}" || return "$?"
   else
