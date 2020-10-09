@@ -59,14 +59,19 @@ function pkgs_in_module {
 # the test.
 function run {
   local rpath
+  local command
   rpath=$(realpath "--relative-to=${ETCD_ROOT_DIR}" "${PWD}")
-  local repro="$*"
+  # Quoting all components as the commands are fully copy-parsable:
+  command=("${@}")
+  command=("${command[@]@Q}")
   if [ "${rpath}" != "." ]; then
-    repro="(cd ${rpath} && ${repro})"
+    repro="(cd ${rpath} && ${command[*]})"
+  else 
+    repro="${command[*]}"
   fi
 
   log_callout "% ${repro}"
-  "${@}"
+  "${@}" 2> >(while read -r line; do echo -e "\e[01;31m$line\e[0m" >&2; done)
   local error_code=$?
   if [ ${error_code} -ne 0 ]; then
     log_error -e "FAIL: (code:${error_code}):\n  % ${repro}"
