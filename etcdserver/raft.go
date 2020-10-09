@@ -61,6 +61,9 @@ func init() {
 	expvar.Publish("raft.status", expvar.Func(func() interface{} {
 		raftStatusMu.Lock()
 		defer raftStatusMu.Unlock()
+		if raftStatus == nil {
+			return nil
+		}
 		return raftStatus()
 	}))
 }
