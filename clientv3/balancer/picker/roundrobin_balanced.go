@@ -15,7 +15,6 @@
 package picker
 
 import (
-	"context"
 	"sync"
 
 	"go.uber.org/zap"
@@ -52,12 +51,12 @@ type rrBalanced struct {
 func (rb *rrBalanced) String() string { return rb.p.String() }
 
 // Pick is called for every client request.
-func (rb *rrBalanced) Pick(ctx context.Context, opts balancer.PickInfo) (balancer.SubConn, func(balancer.DoneInfo), error) {
+func (rb *rrBalanced) Pick(opts balancer.PickInfo) (balancer.PickResult, error) {
 	rb.mu.RLock()
 	n := len(rb.scs)
 	rb.mu.RUnlock()
 	if n == 0 {
-		return nil, nil, balancer.ErrNoSubConnAvailable
+		return balancer.PickResult{}, balancer.ErrNoSubConnAvailable
 	}
 
 	rb.mu.Lock()
@@ -91,5 +90,5 @@ func (rb *rrBalanced) Pick(ctx context.Context, opts balancer.PickInfo) (balance
 			rb.lg.Warn("balancer failed", fss...)
 		}
 	}
-	return sc, doneFunc, nil
+	return balancer.PickResult{SubConn: sc, Done: doneFunc}, nil
 }
