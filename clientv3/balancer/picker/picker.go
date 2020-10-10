@@ -24,7 +24,7 @@ import (
 
 // Picker defines balancer Picker methods.
 type Picker interface {
-	balancer.Picker
+	balancer.V2Picker
 	String() string
 }
 
