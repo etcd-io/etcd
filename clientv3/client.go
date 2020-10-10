@@ -433,7 +433,7 @@ func newClient(cfg *Config) (*Client, error) {
 
 	// Use a provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
-	conn, err := client.dialWithBalancer(dialEndpoint, grpc.WithBalancerName(roundRobinBalancerName))
+	conn, err := client.dialWithBalancer(dialEndpoint, grpc.WithDefaultServiceConfig(roundRobinBalancerName))
 	if err != nil {
 		client.cancel()
 		client.resolverGroup.Close()
@@ -480,7 +480,7 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 	return func(attempt uint) time.Duration {
 		// after each round robin across quorum, backoff for our wait between duration
 		n := uint(len(c.Endpoints()))
-		quorum := (n/2 + 1)
+		quorum := n/2 + 1
 		if attempt%quorum == 0 {
 			c.lg.Debug("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
 			return jitterUp(waitBetween, jitterFraction)
