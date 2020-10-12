@@ -337,11 +337,6 @@ func (a *applierV3Corrupt) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevo
 	return nil, ErrCorrupt
 }
 
-type ServerPeerV2 interface {
-	ServerPeer
-	HashKVHandler() http.Handler
-}
-
 const PeerHashKVPath = "/members/hashkv"
 
 type hashKVHandler struct {

@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -369,7 +370,101 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 
 // getDowngradeEnabledFromRemotePeers will get the downgrade enabled status of the cluster.
 func getDowngradeEnabledFromRemotePeers(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+	members := cl.Members()
+
+	for _, m := range members {
+		if m.ID == local {
+			continue
+		}
+		enable, err := getDowngradeEnabled(lg, m, rt)
+		if err != nil {
+			lg.Warn("failed to get downgrade enabled status", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
+		} else {
+			// Since the "/downgrade/enabled" serves linearized data,
+			// this function can return once it gets a non-error response from the endpoint.
+			return enable
+		}
+	}
 	return false
+}
+
+// getDowngradeEnabled returns the downgrade enabled status of the given member
+// via its peerURLs. Returns the last error if it fails to get it.
+func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (bool, error) {
+	cc := &http.Client{
+		Transport: rt,
+	}
+	var (
+		err  error
+		resp *http.Response
+	)
+
+	for _, u := range m.PeerURLs {
+		addr := u + DowngradeEnabledPath
+		resp, err = cc.Get(addr)
+		if err != nil {
+			lg.Warn(
+				"failed to reach the peer URL",
+				zap.String("address", addr),
+				zap.String("remote-member-id", m.ID.String()),
+				zap.Error(err),
+			)
+			continue
+		}
+		var b []byte
+		b, err = ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			lg.Warn(
+				"failed to read body of response",
+				zap.String("address", addr),
+				zap.String("remote-member-id", m.ID.String()),
+				zap.Error(err),
+			)
+			continue
+		}
+		var enable bool
+		if enable, err = strconv.ParseBool(string(b)); err != nil {
+			lg.Warn(
+				"failed to convert response",
+				zap.String("address", addr),
+				zap.String("remote-member-id", m.ID.String()),
+				zap.Error(err),
+			)
+			continue
+		}
+		return enable, nil
+	}
+	return false, err
+}
+
+// isMatchedVersions returns true if all server versions are equal to target version, otherwise return false.
+// It can be used to decide the whether the cluster finishes downgrading to target version.
+func isMatchedVersions(lg *zap.Logger, targetVersion *semver.Version, vers map[string]*version.Versions) bool {
+	for mid, ver := range vers {
+		if ver == nil {
+			return false
+		}
+		v, err := semver.NewVersion(ver.Cluster)
+		if err != nil {
+			lg.Warn(
+				"failed to parse server version of remote member",
+				zap.String("remote-member-id", mid),
+				zap.String("remote-member-version", ver.Server),
+				zap.Error(err),
+			)
+			return false
+		}
+		if !targetVersion.Equal(*v) {
+			lg.Warn("remotes server has mismatching etcd version",
+				zap.String("remote-member-id", mid),
+				zap.String("current-server-version", v.String()),
+				zap.String("target-version", targetVersion.String()),
+			)
+			return false
+		}
+	}
+	return true
 }
 
 func convertToClusterVersion(v string) (*semver.Version, error) {
