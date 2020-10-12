@@ -24,6 +24,9 @@ import (
 	"strings"
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
+	"go.etcd.io/etcd/pkg/v3/debugutil"
+	"go.etcd.io/etcd/pkg/v3/httputil"
+	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/v3/clientv3/credentials"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
@@ -34,9 +37,6 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
 	v3lockgw "go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb/gw"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/v3/pkg/debugutil"
-	"go.etcd.io/etcd/v3/pkg/httputil"
-	"go.etcd.io/etcd/v3/pkg/transport"
 
 	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/soheilhy/cmux"

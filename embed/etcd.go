@@ -30,6 +30,10 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/debugutil"
+	runtimeutil "go.etcd.io/etcd/pkg/v3/runtime"
+	"go.etcd.io/etcd/pkg/v3/transport"
+	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
@@ -37,10 +41,6 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v2v3"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/v3/pkg/debugutil"
-	runtimeutil "go.etcd.io/etcd/v3/pkg/runtime"
-	"go.etcd.io/etcd/v3/pkg/transport"
-	"go.etcd.io/etcd/v3/pkg/types"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"

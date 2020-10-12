@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api"
 	"go.etcd.io/etcd/v3/etcdserver/api/etcdhttp"
@@ -37,7 +38,6 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v2http/httptypes"
 	stats "go.etcd.io/etcd/v3/etcdserver/api/v2stats"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/v3/pkg/types"
 
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"

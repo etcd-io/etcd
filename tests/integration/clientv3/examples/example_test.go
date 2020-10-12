@@ -16,8 +16,8 @@ package clientv3_test
 
 import (
 	"context"
+	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/pkg/transport"
 	"log"
 )
 

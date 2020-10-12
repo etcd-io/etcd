@@ -20,9 +20,9 @@ import (
 	"path"
 	"time"
 
+	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/v3/pkg/pbutil"
 
 	"go.uber.org/zap"
 )

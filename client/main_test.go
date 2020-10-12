@@ -18,7 +18,7 @@ import (
 	"net/http"
 	"testing"
 
-	"go.etcd.io/etcd/v3/pkg/testutil"
+	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 func exampleEndpoints() []string        { return nil }

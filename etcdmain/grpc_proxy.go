@@ -30,6 +30,9 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/v3/debugutil"
+	"go.etcd.io/etcd/pkg/v3/logutil"
+	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/clientv3/leasing"
 	"go.etcd.io/etcd/v3/clientv3/namespace"
@@ -37,9 +40,6 @@ import (
 	"go.etcd.io/etcd/v3/embed"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
-	"go.etcd.io/etcd/v3/pkg/debugutil"
-	"go.etcd.io/etcd/v3/pkg/logutil"
-	"go.etcd.io/etcd/v3/pkg/transport"
 	"go.etcd.io/etcd/v3/proxy/grpcproxy"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"

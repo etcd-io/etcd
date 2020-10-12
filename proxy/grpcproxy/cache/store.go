@@ -23,7 +23,7 @@ import (
 	"github.com/golang/groupcache/lru"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/v3/pkg/adt"
+	"go.etcd.io/etcd/pkg/v3/adt"
 )
 
 var (

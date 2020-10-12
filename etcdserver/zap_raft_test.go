@@ -17,7 +17,7 @@ package etcdserver
 import (
 	"bytes"
 	"fmt"
-	"go.etcd.io/etcd/v3/pkg/logutil"
+	"go.etcd.io/etcd/pkg/v3/logutil"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"io/ioutil"
