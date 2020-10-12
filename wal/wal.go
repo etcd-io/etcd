@@ -123,6 +123,7 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		)
 		return nil, err
 	}
+	defer os.RemoveAll(tmpdirpath)
 
 	p := filepath.Join(tmpdirpath, walName(0, 0))
 	f, err := fileutil.LockFile(p, os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode)
