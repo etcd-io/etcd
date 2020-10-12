@@ -68,6 +68,7 @@ before_install:
 install:
   - go get -t -v -d ./...
   - (cd tests && go get -t -v -d ./...)
+  - (cd pkg && go get -t -v -d ./...)
 
 script:
   - echo "TRAVIS_GO_VERSION=${TRAVIS_GO_VERSION}"
