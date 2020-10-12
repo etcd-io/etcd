@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/v3/clientv3/snapshot"
+	"go.etcd.io/etcd/v3/etcdctl/snapshot"
 	"go.etcd.io/etcd/v3/pkg/expect"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 )

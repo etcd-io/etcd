@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package snapshot
+package snapshot_test
 
 import (
 	"context"
@@ -26,9 +26,8 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/snapshot"
 	"go.etcd.io/etcd/v3/embed"
-	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/v3/etcdctl/snapshot"
 	"go.etcd.io/etcd/v3/pkg/testutil"
 
 	"go.uber.org/zap"
@@ -140,25 +139,6 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 				t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, string(gresp.Kvs[0].Value))
 			}
 		}
-	}
-}
-
-// TestSnapshotFilePermissions ensures that the snapshot is saved with
-// the correct file permissions.
-func TestSnapshotFilePermissions(t *testing.T) {
-	expectedFileMode := os.FileMode(fileutil.PrivateFileMode)
-	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
-	dbPath := createSnapshotFile(t, kvs)
-	defer os.RemoveAll(dbPath)
-
-	dbInfo, err := os.Stat(dbPath)
-	if err != nil {
-		t.Fatalf("failed to get test snapshot file status: %v", err)
-	}
-	actualFileMode := dbInfo.Mode()
-
-	if expectedFileMode != actualFileMode {
-		t.Fatalf("expected test snapshot file mode %s, got %s:", expectedFileMode, actualFileMode)
 	}
 }
 

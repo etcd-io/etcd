@@ -24,7 +24,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/snapshot"
+	"go.etcd.io/etcd/v3/etcdctl/snapshot"
 	"go.etcd.io/etcd/v3/pkg/logutil"
 	"go.etcd.io/etcd/v3/pkg/transport"
 
