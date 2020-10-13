@@ -27,9 +27,9 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/pkg/testutil"
-	"go.etcd.io/etcd/v3/pkg/transport"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

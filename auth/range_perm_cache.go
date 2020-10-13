@@ -16,8 +16,8 @@ package auth
 
 import (
 	"go.etcd.io/etcd/api/v3/authpb"
+	"go.etcd.io/etcd/pkg/v3/adt"
 	"go.etcd.io/etcd/v3/mvcc/backend"
-	"go.etcd.io/etcd/v3/pkg/adt"
 
 	"go.uber.org/zap"
 )

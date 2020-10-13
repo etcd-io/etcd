@@ -25,9 +25,9 @@ import (
 	"runtime"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/flags"
+	"go.etcd.io/etcd/pkg/v3/logutil"
 	"go.etcd.io/etcd/v3/embed"
-	"go.etcd.io/etcd/v3/pkg/flags"
-	"go.etcd.io/etcd/v3/pkg/logutil"
 
 	"go.uber.org/zap"
 	"sigs.k8s.io/yaml"

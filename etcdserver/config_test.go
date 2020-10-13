@@ -18,7 +18,7 @@ import (
 	"net/url"
 	"testing"
 
-	"go.etcd.io/etcd/v3/pkg/types"
+	"go.etcd.io/etcd/pkg/v3/types"
 
 	"go.uber.org/zap"
 )

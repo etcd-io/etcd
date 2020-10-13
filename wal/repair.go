@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.etcd.io/etcd/v3/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/v3/fileutil"
 	"go.etcd.io/etcd/v3/wal/walpb"
 	"go.uber.org/zap"
 )

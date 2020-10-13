@@ -1,13 +1,12 @@
 module go.etcd.io/etcd/v3
 
-go 1.14
+go 1.15
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa
 	github.com/coreos/go-semver v0.2.0
 	github.com/coreos/go-systemd/v22 v22.0.0
-	github.com/creack/pty v1.1.11
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
 	github.com/fatih/color v1.7.0 // indirect
@@ -39,10 +38,10 @@ require (
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.5
 	go.etcd.io/etcd/api/v3 v3.0.0-00010101000000-000000000000
+	go.etcd.io/etcd/pkg/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
-	golang.org/x/sys v0.0.0-20200918174421-af09f7315aff
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2
 	google.golang.org/grpc v1.26.0
@@ -50,8 +49,14 @@ require (
 	sigs.k8s.io/yaml v1.1.0
 )
 
+replace (
+	go.etcd.io/etcd/api/v3 => ./api
+	go.etcd.io/etcd/pkg/v3 => ./pkg
+)
+
 // Bad imports are sometimes causing attempts to pull that code.
 // This makes the error more explicit.
-replace go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
-
-replace go.etcd.io/etcd/api/v3 => ./api
+replace (
+	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
+	go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
+)

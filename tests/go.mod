@@ -2,9 +2,11 @@ module go.etcd.io/etcd/tests/v3
 
 go 1.15
 
-replace go.etcd.io/etcd/v3 => ../
-
-replace go.etcd.io/etcd/api/v3 => ../api
+replace (
+	go.etcd.io/etcd/api/v3 => ../api
+	go.etcd.io/etcd/pkg/v3 => ../pkg
+	go.etcd.io/etcd/v3 => ../
+)
 
 require (
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
@@ -19,6 +21,7 @@ require (
 	github.com/spf13/pflag v1.0.1
 	go.etcd.io/bbolt v1.3.5
 	go.etcd.io/etcd/api/v3 v3.0.0-00010101000000-000000000000
+	go.etcd.io/etcd/pkg/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc

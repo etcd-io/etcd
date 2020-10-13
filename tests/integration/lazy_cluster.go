@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/pkg/v3/transport"
 )
 
 // Infrastructure to provision a single shared cluster for tests - only

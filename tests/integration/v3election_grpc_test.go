@@ -21,8 +21,8 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/v3/testutil"
 	epb "go.etcd.io/etcd/v3/etcdserver/api/v3election/v3electionpb"
-	"go.etcd.io/etcd/v3/pkg/testutil"
 )
 
 // TestV3ElectionCampaign checks that Campaign will not give
