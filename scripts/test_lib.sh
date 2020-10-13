@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-ETCD_ROOT_DIR="$(pwd)"
+if [[ "$(go list)" != "go.etcd.io/etcd/v3" ]]; then
+	echo "must be run from 'go.etcd.io/etcd/v3' module directory"
+	exit 255
+fi
+
+ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "go.etcd.io/etcd/v3")
 
 ####   Convenient IO methods #####
 
@@ -8,11 +13,13 @@ COLOR_RED='\033[0;31m'
 COLOR_ORANGE='\033[0;33m'
 COLOR_GREEN='\033[0;32m'
 COLOR_LIGHTCYAN='\033[0;36m'
-
+COLOR_BLUE='\033[0;94m'
+COLOR_MAGENTA='\033[95m'
+COLOR_BOLD='\033[1m'
 COLOR_NONE='\033[0m' # No Color
 
 function log_error {
-  >&2 echo -n -e "${COLOR_RED}"
+  >&2 echo -n -e "${COLOR_BOLD}${COLOR_RED}"
   >&2 echo "$@"
   >&2 echo -n -e "${COLOR_NONE}"
 }
@@ -25,6 +32,12 @@ function log_warning {
 
 function log_callout {
   >&2 echo -n -e "${COLOR_LIGHTCYAN}"
+  >&2 echo "$@"
+  >&2 echo -n -e "${COLOR_NONE}"
+}
+
+function log_cmd {
+  >&2 echo -n -e "${COLOR_BLUE}"
   >&2 echo "$@"
   >&2 echo -n -e "${COLOR_NONE}"
 }
@@ -70,8 +83,8 @@ function run {
     repro="${command[*]}"
   fi
 
-  log_callout "% ${repro}"
-  "${@}" 2> >(while read -r line; do echo -e "\e[01;31m$line\e[0m" >&2; done)
+  log_cmd "% ${repro}"
+  "${@}" 2> >(while read -r line; do echo -e "stderr: ${COLOR_MAGENTA}${line}${COLOR_NONE}" >&2; done)
   local error_code=$?
   if [ ${error_code} -ne 0 ]; then
     log_error -e "FAIL: (code:${error_code}):\n  % ${repro}"
@@ -87,7 +100,7 @@ function run_for_module {
   local module=${1:-"."}
   shift 1
   (
-    cd "${module}" && "$@"
+    cd "${ETCD_ROOT_DIR}/${module}" && "$@"
   )
 }
 
@@ -211,13 +224,15 @@ function tool_exists {
 
 # tool_get_bin [tool] - returns absolute path to a tool binary (or returns error)
 function tool_get_bin {
-  tool_exists "gobin" "GO111MODULE=off go get -u github.com/myitcv/gobin" || return 2
+  tool_exists "gobin" "GO111MODULE=off go get github.com/myitcv/gobin" || return 2
 
   local tool="$1"
   if [[ "$tool" == *"@"* ]]; then
-    run gobin -p "${tool}" || return 2
+    # shellcheck disable=SC2086
+    run gobin ${GOBINARGS} -p "${tool}" || return 2
   else
-    run_for_module ./tools/mod run gobin -p -m --mod=readonly "${tool}" || return 2
+    # shellcheck disable=SC2086
+    run_for_module ./tools/mod run gobin ${GOBINARGS} -p -m --mod=readonly "${tool}" || return 2
   fi
 }
 
@@ -237,3 +252,5 @@ function run_go_tool {
   run "${cmdbin}" "$@" || return 2
 }
 
+# Ensure gobin is available, as it runs majority of the tools
+run env GO111MODULE=off go get github.com/myitcv/gobin

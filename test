@@ -33,13 +33,17 @@
 # $ go tool cover -html ./coverage/cover.out
 set -e
 
+# Consider command as failed when any component of the pipe fails:
+# https://stackoverflow.com/questions/1221833/pipe-output-and-capture-exit-status-in-bash
+set -o pipefail
+
 # The test script is not supposed to make any changes to the files
 # e.g. add/update missing dependencies. Such divergences should be 
 # detected and trigger a failure that needs explicit developer's action.
 export GOFLAGS=-mod=readonly
 
-source ./build
 source ./scripts/test_lib.sh
+source ./build
 
 PASSES=${PASSES:-"fmt bom dep build unit"}
 PKG=${PKG:-}
@@ -207,12 +211,6 @@ function pkg_to_coverprofileflag {
 }
 
 function cov_pass {
-  # gocovmerge merges coverage files
-  if ! command -v gocovmerge >/dev/null; then
-    log_error "gocovmerge not installed (need: ./scripts/install_tool.sh github.com/gyuho/gocovmerge)"
-    return 255
-  fi
-
   # shellcheck disable=SC2153
   if [ -z "$COVERDIR" ]; then
     log_error "COVERDIR undeclared"
@@ -267,7 +265,7 @@ function cov_pass {
   # incrementally merge to get coverage data even if some coverage files are corrupted
   for f in "${coverdir}"/*.coverprofile; do
     echo "merging test coverage file ${f}"
-    gocovmerge "${f}" "${cover_out_file}"  > "${coverdir}/cover.tmp" || failed="$failed gocovmerge:$f"
+    run_go_tool "github.com/gyuho/gocovmerge" "${f}" "${cover_out_file}"  > "${coverdir}/cover.tmp" || failed="$failed gocovmerge:$f"
     if [ -s "${coverdir}"/cover.tmp ]; then
       mv "${coverdir}/cover.tmp" "${cover_out_file}"
     fi
@@ -336,50 +334,38 @@ function govet_pass {
 }
 
 function govet_shadow_pass {
-  if tool_exists "shadow" "./scripts/install_tool.sh golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow"; then
-    run_for_modules generic_checker run go vet -all -vettool="$(command -v shadow)"
-  fi
+  local shadow
+  shadow=$(tool_get_bin "golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow")
+  run_for_modules generic_checker run go vet -all -vettool="${shadow}"
 }
 
 function unparam_pass {
-  if tool_exists "unparam" "./scripts/install_tool.sh mvdan.cc/unparam"; then
-    run_for_modules generic_checker run unparam
-  fi
+  run_for_modules generic_checker run_go_tool "mvdan.cc/unparam"
 }
 
 function staticcheck_pass {
-  if tool_exists "staticcheck" "./scripts/install_tool.sh honnef.co/go/tools/cmd/staticcheck"; then
-    run_for_modules generic_checker run staticcheck
-  fi
+  run_for_modules generic_checker run_go_tool "honnef.co/go/tools/cmd/staticcheck"
 }
 
 function revive_pass {
-  if tool_exists "revive" "./scripts/install_tool.sh github.com/mgechev/revive"; then
-    run_for_modules generic_checker run revive -config "${ETCD_ROOT_DIR}/tests/revive.toml" -exclude "vendor/..."
-  fi
+  run_for_modules generic_checker run_go_tool "github.com/mgechev/revive" -config "${ETCD_ROOT_DIR}/tests/revive.toml" -exclude "vendor/..."
 }
 
 function unconvert_pass {
-  if tool_exists "unconvert" "./scripts/install_tool.sh github.com/mdempsky/unconvert"; then
-    run_for_modules generic_checker run unconvert -v
-  fi
+  run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
 }
 
 function ineffassign_per_package {
   mapfile -t gofiles < <(go_srcs_in_module "$1")
-  run ineffassign "${gofiles[@]}"
+  run_go_tool github.com/gordonklaus/ineffassign "${gofiles[@]}"
 }
 
 function ineffassign_pass {
-  if tool_exists "ineffassign" "./scripts/install_tool.sh github.com/gordonklaus/ineffassign"; then
-    run_for_modules generic_checker ineffassign_per_package
-  fi
+  run_for_modules generic_checker ineffassign_per_package
 }
 
 function nakedret_pass {
-  if tool_exists "nakedret" "./scripts/install_tool.sh github.com/alexkohler/nakedret"; then
-    run_for_modules generic_checker run nakedret
-  fi
+  run_for_modules generic_checker run_go_tool "github.com/alexkohler/nakedret"
 }
 
 function license_header_pass {
@@ -441,23 +427,31 @@ function commit_title_pass {
 
 # goword_for_package package
 # checks spelling and comments in the 'package' in the current module
+#
 function goword_for_package {
   mapfile -t gofiles < <(go_srcs_in_module "$1")
+  local gowordRes
+
+  # spellchecking can be enabled with GOBINARGS="--tags=spell"
+  # but it requires heavy dependencies installation, like:
+  # apt-get install libaspell-dev libhunspell-dev hunspell-en-us aspell-en
+
   # only check for broke exported godocs
-  gowordRes=$(run goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort)
-  if [ -n "$gowordRes" ]; then
+  if gowordRes=$(run_go_tool "github.com/chzchzchz/goword" -use-spell=false "${gofiles[@]}" | grep godoc-export | sort); then
     log_error -e "goword checking failed:\\n${gowordRes}"
+    return 255
+  fi
+  if [ -n "$gowordRes" ]; then
+    log_error -e "goword checking returned output:\\n${gowordRes}"
     return 255
   fi
 }
 
 function goword_pass {
-  if tool_exists "goword" "./scripts_install_tool.sh github.com/chzchzchz/goword"; then
-    run_for_modules goword_for_package
-  fi
+  run_for_modules goword_for_package || return 255
 
   # check some spelling
-  gowordRes=$(run goword -ignore-file=.words clientv3/{*,*/*}.go | grep spell | sort)
+  gowordRes=$(run_go_tool "github.com/chzchzchz/goword" -ignore-file=.words clientv3/{*,*/*}.go | grep spell | sort)
   if [ -n "$gowordRes" ]; then
     log_error -e "goword checking failed:\\n${gowordRes}"
     return 255
@@ -475,11 +469,6 @@ function gofmt_pass {
 }
 
 function bom_pass {
-  if ! command -v license-bill-of-materials >/dev/null; then
-    log_warning "./license-bill-of-materials not FOUND"
-    log_warning "USE: ./scripts/install_tool.sh github.com/coreos/license-bill-of-materials"
-    return
-  fi
   log_callout "Checking bill of materials..."
   # https://github.com/golang/go/commit/7c388cc89c76bc7167287fb488afcaf5a4aa12bf
   (
@@ -491,7 +480,7 @@ function bom_pass {
     run cp go.sum go.sum.tmp || return 2
     run cp go.mod go.mod.tmp || return 2
 
-    output=$(GOFLAGS=-mod=mod run license-bill-of-materials \
+    output=$(GOFLAGS=-mod=mod run_go_tool github.com/coreos/license-bill-of-materials \
       --override-file ../bill-of-materials.override.json \
       "${modules[@]}")
     code="$?"
