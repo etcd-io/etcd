@@ -12,27 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build tools
+// +build libs
 
 // This file implements that pattern:
 // https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
 // for etcd. Thanks to this file 'go mod tidy' does not removes dependencies.
 
-package tools
+package libs
 
 import (
-	// Uncomment when upgrading to >1.9.0 version
-	// _ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway"
-	_ "github.com/alexkohler/nakedret"
-	_ "github.com/chzchzchz/goword"
-	_ "github.com/coreos/license-bill-of-materials"
-	_ "github.com/gordonklaus/ineffassign"
-	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger"
-	_ "github.com/gyuho/gocovmerge"
-	_ "github.com/hexfusion/schwag"
-	_ "github.com/mdempsky/unconvert"
-	_ "github.com/mgechev/revive"
-	_ "go.etcd.io/protodoc"
-	_ "honnef.co/go/tools/cmd/staticcheck"
-	_ "mvdan.cc/unparam"
+	_ "github.com/gogo/protobuf/proto"
 )
