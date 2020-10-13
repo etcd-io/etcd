@@ -33,7 +33,7 @@ func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateT
 func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
 func TestCtlV3AuthRoleRevokeDuringOps(t *testing.T) { testCtl(t, authRoleRevokeDuringOpsTest) }
 func TestCtlV3AuthTxn(t *testing.T)                 { testCtl(t, authTestTxn) }
-func TestCtlV3AuthTxnJWT(t *testing.T)              { testCtl(t, authTestTxn, withCfg(configJWT)) }
+func TestCtlV3AuthTxnJWT(t *testing.T)              { testCtl(t, authTestTxn, withCfg(*newConfigJWT())) }
 func TestCtlV3AuthPrefixPerm(t *testing.T)          { testCtl(t, authTestPrefixPerm) }
 func TestCtlV3AuthMemberAdd(t *testing.T)           { testCtl(t, authTestMemberAdd) }
 func TestCtlV3AuthMemberRemove(t *testing.T) {
@@ -44,7 +44,7 @@ func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWith
 func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
 func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
 func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
-func TestCtlV3AuthAndWatchJWT(t *testing.T)      { testCtl(t, authTestWatch, withCfg(configJWT)) }
+func TestCtlV3AuthAndWatchJWT(t *testing.T)      { testCtl(t, authTestWatch, withCfg(*newConfigJWT())) }
 
 func TestCtlV3AuthLeaseTestKeepAlive(t *testing.T) { testCtl(t, authLeaseTestKeepAlive) }
 func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) {
@@ -52,7 +52,7 @@ func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) {
 }
 func TestCtlV3AuthLeaseGrantLeases(t *testing.T) { testCtl(t, authLeaseTestLeaseGrantLeases) }
 func TestCtlV3AuthLeaseGrantLeasesJWT(t *testing.T) {
-	testCtl(t, authLeaseTestLeaseGrantLeases, withCfg(configJWT))
+	testCtl(t, authLeaseTestLeaseGrantLeases, withCfg(*newConfigJWT()))
 }
 func TestCtlV3AuthLeaseRevoke(t *testing.T) { testCtl(t, authLeaseTestLeaseRevoke) }
 
@@ -65,8 +65,8 @@ func TestCtlV3AuthEndpointHealth(t *testing.T) {
 	testCtl(t, authTestEndpointHealth, withQuorum())
 }
 func TestCtlV3AuthSnapshot(t *testing.T)            { testCtl(t, authTestSnapshot) }
-func TestCtlV3AuthSnapshotJWT(t *testing.T)         { testCtl(t, authTestSnapshot, withCfg(configJWT)) }
-func TestCtlV3AuthJWTExpire(t *testing.T)           { testCtl(t, authTestJWTExpire, withCfg(configJWT)) }
+func TestCtlV3AuthSnapshotJWT(t *testing.T)         { testCtl(t, authTestSnapshot, withCfg(*newConfigJWT())) }
+func TestCtlV3AuthJWTExpire(t *testing.T)           { testCtl(t, authTestJWTExpire, withCfg(*newConfigJWT())) }
 func TestCtlV3AuthRevisionConsistency(t *testing.T) { testCtl(t, authTestRevisionConsistency) }
 
 func authEnableTest(cx ctlCtx) {

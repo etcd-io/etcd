@@ -24,11 +24,11 @@ import (
 	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
-func TestCtlV2Set(t *testing.T)          { testCtlV2Set(t, &configNoTLS, false) }
-func TestCtlV2SetQuorum(t *testing.T)    { testCtlV2Set(t, &configNoTLS, true) }
-func TestCtlV2SetClientTLS(t *testing.T) { testCtlV2Set(t, &configClientTLS, false) }
-func TestCtlV2SetPeerTLS(t *testing.T)   { testCtlV2Set(t, &configPeerTLS, false) }
-func TestCtlV2SetTLS(t *testing.T)       { testCtlV2Set(t, &configTLS, false) }
+func TestCtlV2Set(t *testing.T)          { testCtlV2Set(t, newConfigNoTLS(), false) }
+func TestCtlV2SetQuorum(t *testing.T)    { testCtlV2Set(t, newConfigNoTLS(), true) }
+func TestCtlV2SetClientTLS(t *testing.T) { testCtlV2Set(t, newConfigClientTLS(), false) }
+func TestCtlV2SetPeerTLS(t *testing.T)   { testCtlV2Set(t, newConfigPeerTLS(), false) }
+func TestCtlV2SetTLS(t *testing.T)       { testCtlV2Set(t, newConfigTLS(), false) }
 func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	os.Setenv("ETCDCTL_API", "2")
 	defer os.Unsetenv("ETCDCTL_API")
@@ -49,9 +49,9 @@ func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	}
 }
 
-func TestCtlV2Mk(t *testing.T)       { testCtlV2Mk(t, &configNoTLS, false) }
-func TestCtlV2MkQuorum(t *testing.T) { testCtlV2Mk(t, &configNoTLS, true) }
-func TestCtlV2MkTLS(t *testing.T)    { testCtlV2Mk(t, &configTLS, false) }
+func TestCtlV2Mk(t *testing.T)       { testCtlV2Mk(t, newConfigNoTLS(), false) }
+func TestCtlV2MkQuorum(t *testing.T) { testCtlV2Mk(t, newConfigNoTLS(), true) }
+func TestCtlV2MkTLS(t *testing.T)    { testCtlV2Mk(t, newConfigTLS(), false) }
 func testCtlV2Mk(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	os.Setenv("ETCDCTL_API", "2")
 	defer os.Unsetenv("ETCDCTL_API")
@@ -75,8 +75,8 @@ func testCtlV2Mk(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	}
 }
 
-func TestCtlV2Rm(t *testing.T)    { testCtlV2Rm(t, &configNoTLS) }
-func TestCtlV2RmTLS(t *testing.T) { testCtlV2Rm(t, &configTLS) }
+func TestCtlV2Rm(t *testing.T)    { testCtlV2Rm(t, newConfigNoTLS()) }
+func TestCtlV2RmTLS(t *testing.T) { testCtlV2Rm(t, newConfigTLS()) }
 func testCtlV2Rm(t *testing.T, cfg *etcdProcessClusterConfig) {
 	os.Setenv("ETCDCTL_API", "2")
 	defer os.Unsetenv("ETCDCTL_API")
@@ -100,9 +100,9 @@ func testCtlV2Rm(t *testing.T, cfg *etcdProcessClusterConfig) {
 	}
 }
 
-func TestCtlV2Ls(t *testing.T)       { testCtlV2Ls(t, &configNoTLS, false) }
-func TestCtlV2LsQuorum(t *testing.T) { testCtlV2Ls(t, &configNoTLS, true) }
-func TestCtlV2LsTLS(t *testing.T)    { testCtlV2Ls(t, &configTLS, false) }
+func TestCtlV2Ls(t *testing.T)       { testCtlV2Ls(t, newConfigNoTLS(), false) }
+func TestCtlV2LsQuorum(t *testing.T) { testCtlV2Ls(t, newConfigNoTLS(), true) }
+func TestCtlV2LsTLS(t *testing.T)    { testCtlV2Ls(t, newConfigTLS(), false) }
 func testCtlV2Ls(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	os.Setenv("ETCDCTL_API", "2")
 	defer os.Unsetenv("ETCDCTL_API")
@@ -123,8 +123,8 @@ func testCtlV2Ls(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	}
 }
 
-func TestCtlV2Watch(t *testing.T)    { testCtlV2Watch(t, &configNoTLS, false) }
-func TestCtlV2WatchTLS(t *testing.T) { testCtlV2Watch(t, &configTLS, false) }
+func TestCtlV2Watch(t *testing.T)    { testCtlV2Watch(t, newConfigNoTLS(), false) }
+func TestCtlV2WatchTLS(t *testing.T) { testCtlV2Watch(t, newConfigTLS(), false) }
 
 func testCtlV2Watch(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	os.Setenv("ETCDCTL_API", "2")
@@ -156,9 +156,9 @@ func TestCtlV2GetRoleUser(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
-	copied := configNoTLS
+	copied := newConfigNoTLS()
 	copied.enableV2 = true
-	epc := setupEtcdctlTest(t, &copied, false)
+	epc := setupEtcdctlTest(t, copied, false)
 	defer cleanupEtcdProcessCluster(epc, t)
 
 	if err := etcdctlRoleAdd(epc, "foo"); err != nil {
@@ -189,9 +189,9 @@ func testCtlV2UserList(t *testing.T, username string) {
 	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
-	copied := configNoTLS
+	copied := newConfigNoTLS()
 	copied.enableV2 = true
-	epc := setupEtcdctlTest(t, &copied, false)
+	epc := setupEtcdctlTest(t, copied, false)
 	defer cleanupEtcdProcessCluster(epc, t)
 
 	if err := etcdctlUserAdd(epc, username, "password"); err != nil {
@@ -207,9 +207,9 @@ func TestCtlV2RoleList(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
-	copied := configNoTLS
+	copied := newConfigNoTLS()
 	copied.enableV2 = true
-	epc := setupEtcdctlTest(t, &copied, false)
+	epc := setupEtcdctlTest(t, copied, false)
 	defer cleanupEtcdProcessCluster(epc, t)
 
 	if err := etcdctlRoleAdd(epc, "foo"); err != nil {
@@ -237,10 +237,10 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	}
 	defer os.RemoveAll(backupDir)
 
-	etcdCfg := configNoTLS
+	etcdCfg := newConfigNoTLS()
 	etcdCfg.snapshotCount = snapCount
 	etcdCfg.enableV2 = true
-	epc1 := setupEtcdctlTest(t, &etcdCfg, false)
+	epc1 := setupEtcdctlTest(t, etcdCfg, false)
 
 	// v3 put before v2 set so snapshot happens after v3 operations to confirm
 	// v3 data is preserved after snapshot.
@@ -268,12 +268,12 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	}
 
 	// restart from the backup directory
-	cfg2 := configNoTLS
+	cfg2 := newConfigNoTLS()
 	cfg2.dataDirPath = backupDir
 	cfg2.keepDataDir = true
 	cfg2.forceNewCluster = true
 	cfg2.enableV2 = true
-	epc2 := setupEtcdctlTest(t, &cfg2, false)
+	epc2 := setupEtcdctlTest(t, cfg2, false)
 	// Make sure a failing test is not leaking resources (running server).
 	defer epc2.Close()
 
@@ -313,10 +313,10 @@ func TestCtlV2AuthWithCommonName(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
-	copiedCfg := configClientTLS
+	copiedCfg := newConfigClientTLS()
 	copiedCfg.clientCertAuthEnabled = true
 	copiedCfg.enableV2 = true
-	epc := setupEtcdctlTest(t, &copiedCfg, false)
+	epc := setupEtcdctlTest(t, copiedCfg, false)
 	defer cleanupEtcdProcessCluster(epc, t)
 
 	if err := etcdctlRoleAdd(epc, "testrole"); err != nil {
@@ -347,9 +347,9 @@ func TestCtlV2ClusterHealth(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
-	copied := configNoTLS
+	copied := newConfigNoTLS()
 	copied.enableV2 = true
-	epc := setupEtcdctlTest(t, &copied, true)
+	epc := setupEtcdctlTest(t, copied, true)
 	defer cleanupEtcdProcessCluster(epc, t)
 
 	// all members available

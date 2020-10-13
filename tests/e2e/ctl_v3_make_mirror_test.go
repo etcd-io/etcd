@@ -59,12 +59,12 @@ func makeMirrorNoDestPrefixTest(cx ctlCtx) {
 
 func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvExec, srcprefix, destprefix string) {
 	// set up another cluster to mirror with
-	mirrorcfg := configAutoTLS
+	mirrorcfg := newConfigAutoTLS()
 	mirrorcfg.clusterSize = 1
 	mirrorcfg.basePort = 10000
 	mirrorctx := ctlCtx{
 		t:           cx.t,
-		cfg:         mirrorcfg,
+		cfg:         *mirrorcfg,
 		dialTimeout: 7 * time.Second,
 	}
 

@@ -20,13 +20,13 @@ func TestCtlV3TxnInteractiveSuccess(t *testing.T) {
 	testCtl(t, txnTestSuccess, withInteractive())
 }
 func TestCtlV3TxnInteractiveSuccessNoTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configNoTLS))
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*newConfigNoTLS()))
 }
 func TestCtlV3TxnInteractiveSuccessClientTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configClientTLS))
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3TxnInteractiveSuccessPeerTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configPeerTLS))
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*newConfigPeerTLS()))
 }
 func TestCtlV3TxnInteractiveFail(t *testing.T) {
 	testCtl(t, txnTestFail, withInteractive())

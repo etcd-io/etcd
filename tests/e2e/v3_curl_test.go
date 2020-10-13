@@ -36,27 +36,27 @@ var apiPrefix = []string{"/v3", "/v3beta"}
 
 func TestV3CurlPutGetNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(configNoTLS))
+		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*newConfigNoTLS()))
 	}
 }
 func TestV3CurlPutGetAutoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(configAutoTLS))
+		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*newConfigAutoTLS()))
 	}
 }
 func TestV3CurlPutGetAllTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(configTLS))
+		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*newConfigTLS()))
 	}
 }
 func TestV3CurlPutGetPeerTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(configPeerTLS))
+		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*newConfigPeerTLS()))
 	}
 }
 func TestV3CurlPutGetClientTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(configClientTLS))
+		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*newConfigClientTLS()))
 	}
 }
 func TestV3CurlWatch(t *testing.T) {
@@ -76,7 +76,7 @@ func TestV3CurlAuth(t *testing.T) {
 }
 func TestV3CurlAuthClientTLSCertAuth(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlAuth, withApiPrefix(p), withCfg(configClientTLSCertAuthWithNoCN))
+		testCtl(t, testV3CurlAuth, withApiPrefix(p), withCfg(*newConfigClientTLSCertAuthWithNoCN()))
 	}
 }
 
@@ -269,7 +269,7 @@ func testV3CurlAuth(cx ctlCtx) {
 
 func TestV3CurlCampaignNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlCampaign, withApiPrefix(p), withCfg(configNoTLS))
+		testCtl(t, testV3CurlCampaign, withApiPrefix(p), withCfg(*newConfigNoTLS()))
 	}
 }
 
@@ -331,7 +331,7 @@ func testV3CurlCampaign(cx ctlCtx) {
 
 func TestV3CurlProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlProclaimMissiongLeaderKey, withApiPrefix(p), withCfg(configNoTLS))
+		testCtl(t, testV3CurlProclaimMissiongLeaderKey, withApiPrefix(p), withCfg(*newConfigNoTLS()))
 	}
 }
 
@@ -351,7 +351,7 @@ func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
 
 func TestV3CurlResignMissiongLeaderKeyNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlResignMissiongLeaderKey, withApiPrefix(p), withCfg(configNoTLS))
+		testCtl(t, testV3CurlResignMissiongLeaderKey, withApiPrefix(p), withCfg(*newConfigNoTLS()))
 	}
 }
 
