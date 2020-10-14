@@ -17,13 +17,11 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.12.3" ]]; then
 	exit 255
 fi
 
-export GOMOD="./tools/mod"
-
 run env GO111MODULE=off go get -u github.com/myitcv/gobin
 
 GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)
 GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)
-SWAGGER_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger@v1.15.0)
+SWAGGER_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger)
 GOGOPROTO_ROOT="$(tool_pkg_dir github.com/gogo/protobuf/proto)/.."
 GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)/.."
 
@@ -44,69 +42,52 @@ log_callout -e "\nRunning gofast proto generation..."
 
 for dir in ${DIRS}; do
 	run pushd "${dir}"
-		run protoc --gofast_out=plugins=grpc,import_prefix=go.etcd.io/:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
+		run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
 		  --plugin="${GOFAST_BIN}" ./*.proto
-		# shellcheck disable=SC1117
-		sed -i.bak -E 's/go\.etcd\.io\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/\1/g' ./*.pb.go
-		# shellcheck disable=SC1117
-		sed -i.bak -E 's/go\.etcd\.io\/(errors|fmt|io)/\1/g' ./*.pb.go
-		# shellcheck disable=SC1117
-		sed -i.bak -E 's/import _ \"gogoproto\"//g' ./*.pb.go
-		# shellcheck disable=SC1117
-		sed -i.bak -E 's/import fmt \"fmt\"//g' ./*.pb.go
-		# shellcheck disable=SC1117
-		sed -i.bak -E 's/import _ \"go\.etcd\.io\/google\/api\"//g' ./*.pb.go
-		# shellcheck disable=SC1117
-		sed -i.bak -E 's/import _ \"google\.golang\.org\/genproto\/googleapis\/api\/annotations\"//g' ./*.pb.go
-		# shellcheck disable=SC1117
-		sed -i.bak -E "s|go.etcd.io/etcd|go.etcd.io/etcd/v3|g" ./*.pb.go
-		# shellcheck disable=SC1117
-		sed -i.bak -E "s|go.etcd.io/etcd/v3/api|go.etcd.io/etcd/api/v3|g" ./*.pb.go
+
+		sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./*.pb.go
+
 		rm -f ./*.bak
 		run gofmt -s -w ./*.pb.go
 		run goimports -w ./*.pb.go
 	run popd
 done
 
+#return
 log_callout -e "\nRunning swagger & grpc_gateway proto generation..."
 
 # remove old swagger files so it's obvious whether the files fail to generate
 rm -rf Documentation/dev-guide/apispec/swagger/*json
 for pb in api/etcdserverpb/rpc etcdserver/api/v3lock/v3lockpb/v3lock etcdserver/api/v3election/v3electionpb/v3election; do
-	protobase="${pb}"
+	log_callout "grpc & swagger for: ${pb}.proto"
 	run protoc -I. \
 	    -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
 	    -I"${GOGOPROTO_PATH}" \
 	    -I"${ETCD_ROOT_DIR}/.." \
-	    --grpc-gateway_out=logtostderr=true:. \
+	    --grpc-gateway_out=logtostderr=true,paths=source_relative:. \
 	    --swagger_out=logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
 	    --plugin="${SWAGGER_BIN}" --plugin="${GRPC_GATEWAY_BIN}" \
-	    ${protobase}.proto
+	    ${pb}.proto
 	# hack to move gw files around so client won't include them
-	pkgpath=$(dirname "${protobase}")
+	pkgpath=$(dirname "${pb}")
 	pkg=$(basename "${pkgpath}")
-	gwfile="${protobase}.pb.gw.go"
+	gwfile="${pb}.pb.gw.go"
 
-	sed -i.bak -E "s/package $pkg/package gw/g" ${gwfile}
-	# shellcheck disable=SC1117
-	sed -i.bak -E "s/protoReq /&$pkg\./g" ${gwfile}
-	sed -i.bak -E "s/, client /, client $pkg./g" ${gwfile}
-	sed -i.bak -E "s/Client /, client $pkg./g" ${gwfile}
-	sed -i.bak -E "s/[^(]*Client, runtime/${pkg}.&/" ${gwfile}
-	sed -i.bak -E "s/New[A-Za-z]*Client/${pkg}.&/" ${gwfile}
-	# darwin doesn't like newlines in sed...
-	# shellcheck disable=SC1117
-	sed -i.bak -E "s|import \(|& \"go.etcd.io/etcd/${pkgpath}\"|" ${gwfile}
-	# shellcheck disable=SC1117
-	sed -i.bak -E "s|go.etcd.io/etcd|go.etcd.io/etcd/v3|g" ${gwfile}
-	# shellcheck disable=SC1117
-	sed -i.bak -E "s|go.etcd.io/etcd/v3/api|go.etcd.io/etcd/api/v3|g" ${gwfile} 
-	mkdir -p  "${pkgpath}"/gw/
-	run go fmt ${gwfile}
-	mv ${gwfile} "${pkgpath}/gw/"
-	rm -f ./${protobase}*.bak
-	swaggerName=$(basename ${protobase})
-	run mv	Documentation/dev-guide/apispec/swagger/${protobase}.swagger.json \
+	sed -i -E "s#package $pkg#package gw#g" "${gwfile}"
+	sed -i -E "s#import \(#import \(\"go.etcd.io/etcd/${pkgpath}\"#g" "${gwfile}"
+	sed -i -E "s#([ (])([a-zA-Z0-9_]*(Client|Server|Request)([^(]|$))#\1${pkg}.\2#g" "${gwfile}"
+	sed -i -E "s# (New[a-zA-Z0-9_]*Client\()# ${pkg}.\1#g" "${gwfile}"
+	sed -i -E "s|go.etcd.io/etcd|go.etcd.io/etcd/v3|g" "${gwfile}"
+	sed -i -E "s|go.etcd.io/etcd/v3/api|go.etcd.io/etcd/api/v3|g" "${gwfile}"
+	
+	run go fmt "${gwfile}"
+
+	gwdir="${pkgpath}/gw/"
+	run mkdir -p "${gwdir}"
+	run mv "${gwfile}" "${gwdir}"
+
+	swaggerName=$(basename ${pb})
+	run mv	Documentation/dev-guide/apispec/swagger/${pb}.swagger.json \
 		Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
 

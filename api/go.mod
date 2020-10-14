@@ -4,11 +4,11 @@ go 1.15
 
 require (
 	github.com/coreos/go-semver v0.2.0
-	github.com/gogo/protobuf v1.2.1
-	github.com/golang/protobuf v1.3.2
-	github.com/grpc-ecosystem/grpc-gateway v1.9.5
-	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
-	google.golang.org/grpc v1.26.0
+	github.com/gogo/protobuf v1.3.1
+	github.com/golang/protobuf v1.3.5
+	github.com/grpc-ecosystem/grpc-gateway v1.14.6
+	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884
+	google.golang.org/grpc v1.29.1
 )
 
 // Bad imports are sometimes causing attempts to pull that code.
