@@ -303,6 +303,7 @@ function fmt_pass {
       receiver_name \
       commit_title \
       mod_tidy \
+      dep \
       ; do
     run_pass "${p}" "${@}"
   done
@@ -504,16 +505,32 @@ function bom_pass {
 
 ######## VARIOUS CHECKERS ######################################################
 
-function dep_pass {
-  log_callout "Checking package dependencies..."
-  # don't pull in etcdserver package
-  pushd clientv3 >/dev/null
-  badpkg="(etcdserver$|mvcc$|backend$|grpc-gateway)"
-  deps=$(go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | grep -E "${badpkg}" || echo "")
-  popd >/dev/null
-  if [ -n "$deps" ]; then
-    log_error -e "clientv3 has masked dependencies:\\n${deps}"
+function dump_deps_of_module() {
+  local module
+  if ! module=$(run go list -m); then
     return 255
+  fi
+  run go list -f "{{if not .Indirect}}{{if .Version}}{{.Path}},{{.Version}},${module}{{end}}{{end}}" -m all
+}
+
+# Checks whether dependencies are consistent across modules
+function dep_pass {
+  local all_dependencies
+  all_dependencies=$(run_for_modules dump_deps_of_module | sort) || return 2
+
+  local duplicates
+  duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
+#  echo
+  for dup in ${duplicates}; do
+    log_error "FAIL: inconsistent versions for depencency: ${dup}"
+    echo "${dup}:"
+    echo "${all_dependencies}" | grep "${dup}" | sed 's|\([^,]*\),\([^,]*\),\([^,]*\)|  - \2 from: \3|g'
+  done
+  if [[ -n "${duplicates}" ]]; then
+    log_error "FAIL: inconsistent dependencies"
+    return 2
+  else
+    log_success "SUCCESS: dependencies are consistent across modules"
   fi
 }
 
