@@ -9,6 +9,8 @@ replace (
 	go.etcd.io/etcd/v3 => ../
 )
 
+replace go.etcd.io/etcd/raft/v3 => ../raft
+
 require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/etcd-io/gofail v0.0.0-20190801230047-ad7f989257ca
@@ -24,6 +26,7 @@ require (
 	go.etcd.io/etcd/api/v3 v3.0.0-20201012212543-0b95e8cef14a
 	go.etcd.io/etcd/client/v2 v2.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/pkg/v3 v3.0.0-00010101000000-000000000000
+	go.etcd.io/etcd/raft/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
