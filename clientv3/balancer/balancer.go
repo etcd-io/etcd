@@ -136,15 +136,34 @@ type baseBalancer struct {
 	connectivityRecorder connectivity.Recorder
 
 	picker picker.Picker
+
+	resolverErr error // the last error reported by the resolver; cleared on successful resolution
 }
 
-// HandleResolvedAddrs implements "grpc/balancer.Balancer" interface.
-// gRPC sends initial or updated resolved addresses from "Build".
-func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) {
-	if err != nil {
-		bb.lg.Warn("HandleResolvedAddrs called with error", zap.String("balancer-id", bb.id), zap.Error(err))
+func (bb *baseBalancer) ResolverError(err error) {
+	bb.resolverErr = err
+	if len(bb.addrToSc) == 0 {
+		bb.connectivityRecorder.RecordTransition(bb.connectivityRecorder.GetCurrentState(), grpcconnectivity.TransientFailure)
+	}
+
+	if bb.connectivityRecorder.GetCurrentState() != grpcconnectivity.TransientFailure {
+		// The picker will not change since the balancer does not currently
+		// report an error.
 		return
 	}
+	bb.updatePicker()
+	bb.currentConn.UpdateState(balancer.State{
+		ConnectivityState: bb.connectivityRecorder.GetCurrentState(),
+		Picker:            bb.picker,
+	})
+}
+
+// UpdateClientConnState implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) UpdateClientConnState(state balancer.ClientConnState) error {
+	addrs := state.ResolverState.Addresses
+	// Successful resolution; clear resolver error and ensure we return nil.
+	bb.resolverErr = nil
+
 	bb.lg.Info("resolved",
 		zap.String("picker", bb.picker.String()),
 		zap.String("balancer-id", bb.id),
@@ -191,10 +210,14 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 			// (DO NOT) delete(bb.scToSt, sc)
 		}
 	}
+
+	return nil
 }
 
-// HandleSubConnStateChange implements "grpc/balancer.Balancer" interface.
-func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s grpcconnectivity.State) {
+// UpdateSubConnState implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) UpdateSubConnState(sc balancer.SubConn, state balancer.SubConnState) {
+	s := state.ConnectivityState
+
 	bb.mu.Lock()
 	defer bb.mu.Unlock()
 
@@ -247,7 +270,7 @@ func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s grpcconn
 		bb.updatePicker()
 	}
 
-	bb.currentConn.UpdateBalancerState(bb.connectivityRecorder.GetCurrentState(), bb.picker)
+	bb.currentConn.UpdateState(balancer.State{ConnectivityState: bb.connectivityRecorder.GetCurrentState(), Picker: bb.picker})
 }
 
 func (bb *baseBalancer) updatePicker() {

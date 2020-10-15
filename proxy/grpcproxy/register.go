@@ -16,6 +16,7 @@ package grpcproxy
 
 import (
 	"encoding/json"
+	gnaming "go.etcd.io/etcd/v3/clientv3/naming/grpcnaming"
 	"os"
 
 	"go.etcd.io/etcd/v3/clientv3"
@@ -24,7 +25,6 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-	gnaming "google.golang.org/grpc/naming"
 )
 
 // allow maximum 1 retry per second

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	gnaming "go.etcd.io/etcd/v3/clientv3/naming/grpcnaming"
 	"os"
 	"sync"
 
@@ -28,7 +29,6 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-	gnaming "google.golang.org/grpc/naming"
 )
 
 // allow maximum 1 retry per second
