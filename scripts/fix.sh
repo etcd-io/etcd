@@ -6,7 +6,7 @@ source ./scripts/test_lib.sh
 source ./scripts/updatebom.sh
 
 function mod_tidy_fix {
-  run rm ./go.sum || return 2
+  run rm ./go.sum
   run go mod tidy || return 2
 }
 

@@ -21,11 +21,9 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.0
-	github.com/json-iterator/go v1.1.7
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/mattn/go-runewidth v0.0.2 // indirect
-	github.com/modern-go/reflect2 v1.0.1
 	github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5
 	github.com/prometheus/client_golang v1.0.0
 	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4
@@ -37,7 +35,8 @@ require (
 	github.com/urfave/cli v1.20.0
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.5
-	go.etcd.io/etcd/api/v3 v3.0.0-00010101000000-000000000000
+	go.etcd.io/etcd/api/v3 v3.0.0-20201012212543-0b95e8cef14a
+	go.etcd.io/etcd/client/v2 v2.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/pkg/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc
@@ -52,6 +51,7 @@ require (
 
 replace (
 	go.etcd.io/etcd/api/v3 => ./api
+	go.etcd.io/etcd/client/v2 => ./client/v2
 	go.etcd.io/etcd/pkg/v3 => ./pkg
 )
 
