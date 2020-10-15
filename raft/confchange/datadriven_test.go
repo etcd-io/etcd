@@ -44,7 +44,7 @@ func TestConfChangeDataDriven(t *testing.T) {
 		// - ln: make n a learner,
 		// - rn: remove n, and
 		// - un: update n.
-		datadriven.RunTest(t, path, func(d *datadriven.TestData) string {
+		datadriven.RunTest(t, path, func(t *testing.T, d *datadriven.TestData) string {
 			defer func() {
 				c.LastIndex++
 			}()
