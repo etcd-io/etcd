@@ -3,7 +3,7 @@ module go.etcd.io/etcd/api/v3
 go 1.15
 
 require (
-	github.com/coreos/go-semver v0.2.0
+	github.com/coreos/go-semver v0.3.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.5
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6

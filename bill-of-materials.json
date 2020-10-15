@@ -18,7 +18,43 @@
 		]
 	},
 	{
+		"project": "github.com/certifi/gocertifi",
+		"licenses": [
+			{
+				"type": "\"Do What The F*ck You Want To Public License\"",
+				"confidence": 0.3287671232876712
+			}
+		]
+	},
+	{
+		"project": "github.com/cespare/xxhash/v2",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/cockroachdb/datadriven",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/cockroachdb/errors",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/cockroachdb/logtags",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -41,6 +77,15 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 0.9966703662597114
+			}
+		]
+	},
+	{
+		"project": "github.com/cpuguy83/go-md2man/v2/md2man",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},
@@ -77,6 +122,15 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/getsentry/raven-go",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
 			}
 		]
 	},
@@ -234,6 +288,24 @@
 		]
 	},
 	{
+		"project": "github.com/pkg/errors",
+		"licenses": [
+			{
+				"type": "BSD 2-clause \"Simplified\" License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/pmezard/go-difflib/difflib",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9830508474576272
+			}
+		]
+	},
+	{
 		"project": "github.com/prometheus/client_golang/prometheus",
 		"licenses": [
 			{
@@ -265,6 +337,24 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/russross/blackfriday/v2",
+		"licenses": [
+			{
+				"type": "BSD 2-clause \"Simplified\" License",
+				"confidence": 0.9626168224299065
+			}
+		]
+	},
+	{
+		"project": "github.com/shurcooL/sanitized_anchor_name",
+		"licenses": [
+			{
+				"type": "MIT License",
 				"confidence": 1
 			}
 		]
