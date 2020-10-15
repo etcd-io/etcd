@@ -1,0 +1,1 @@
+../../../tests/integration/clientv3/concurrency/example_stm_test.go

@@ -1,1 +1,0 @@
-../../tests/integration/clientv3/concurrency/example_election_test.go
