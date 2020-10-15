@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/pkg/v3/fileutil"
-	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/v3/wal/walpb"
 	"go.uber.org/zap"
 )

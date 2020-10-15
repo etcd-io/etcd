@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 func TestMessage(t *testing.T) {

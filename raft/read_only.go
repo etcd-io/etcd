@@ -14,7 +14,7 @@
 
 package raft
 
-import pb "go.etcd.io/etcd/v3/raft/raftpb"
+import pb "go.etcd.io/etcd/raft/v3/raftpb"
 
 // ReadState provides state for read only query.
 // It's caller's responsibility to call ReadIndex first before getting

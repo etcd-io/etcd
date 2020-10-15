@@ -22,8 +22,8 @@ import (
 
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/v3/etcdserver/api/v2stats"
-	"go.etcd.io/etcd/v3/raft/raftpb"
 
 	"github.com/xiang90/probing"
 	"go.uber.org/zap"

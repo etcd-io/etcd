@@ -25,8 +25,8 @@ import (
 	"go.etcd.io/etcd/pkg/v3/httputil"
 	pioutil "go.etcd.io/etcd/pkg/v3/ioutil"
 	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/v3/raft"
 
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"

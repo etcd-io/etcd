@@ -21,9 +21,9 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api"
-	"go.etcd.io/etcd/v3/raft"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.uber.org/zap"
