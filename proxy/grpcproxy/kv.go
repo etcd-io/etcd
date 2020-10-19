@@ -69,7 +69,7 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 
 // TODO yxj
 func (p *kvProxy) RangeStream(*pb.RangeStreamRequest, pb.KV_RangeStreamServer) error {
-	panic("implement me")
+	panic("not support")
 }
 
 func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
