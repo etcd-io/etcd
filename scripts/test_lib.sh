@@ -105,7 +105,12 @@ function run_for_module {
 }
 
 function modules() {
-  echo "go.etcd.io/etcd/api/v3 go.etcd.io/etcd/pkg/v3 go.etcd.io/etcd/client/v2 go.etcd.io/etcd/v3 go.etcd.io/etcd/tests/v3"
+  echo "go.etcd.io/etcd/api/v3
+        go.etcd.io/etcd/pkg/v3
+	go.etcd.io/etcd/raft/v3
+	go.etcd.io/etcd/client/v2
+	go.etcd.io/etcd/v3
+	go.etcd.io/etcd/tests/v3"
 }
 
 function modules_exp() {
@@ -123,6 +128,7 @@ function run_for_modules {
     run_for_module "api" "$@" "${pkg}" || return "$?"
     run_for_module "pkg" "$@" "${pkg}" || return "$?"
     run_for_module "client/v2" "$@" "${pkg}" || return "$?"
+    run_for_module "raft" "$@" "${pkg}" || return "$?"
     run_for_module "." "$@" "${pkg}" || return "$?"
     run_for_module "tests" "$@" "${pkg}" || return "$?"
   else

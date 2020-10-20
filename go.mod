@@ -4,7 +4,6 @@ go 1.15
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
-	github.com/cockroachdb/datadriven v0.0.0-20200714090401-bf6692d28da5
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -25,7 +24,6 @@ require (
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/olekukonko/tablewriter v0.0.4
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.5.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.10.0 // indirect
@@ -41,6 +39,7 @@ require (
 	go.etcd.io/etcd/api/v3 v3.0.0-20201012212543-0b95e8cef14a
 	go.etcd.io/etcd/client/v2 v2.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/pkg/v3 v3.0.0-00010101000000-000000000000
+	go.etcd.io/etcd/raft/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
@@ -57,6 +56,7 @@ replace (
 	go.etcd.io/etcd/api/v3 => ./api
 	go.etcd.io/etcd/client/v2 => ./client/v2
 	go.etcd.io/etcd/pkg/v3 => ./pkg
+	go.etcd.io/etcd/raft/v3 => ./raft
 )
 
 // Bad imports are sometimes causing attempts to pull that code.

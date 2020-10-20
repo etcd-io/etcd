@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
@@ -37,7 +38,6 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/v3/mvcc"
 	"go.etcd.io/etcd/v3/mvcc/backend"
-	"go.etcd.io/etcd/v3/raft/raftpb"
 	"go.etcd.io/etcd/v3/wal"
 	"go.etcd.io/etcd/v3/wal/walpb"
 
