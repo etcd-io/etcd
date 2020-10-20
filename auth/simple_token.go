@@ -36,6 +36,7 @@ const (
 )
 
 // var for testing purposes
+// TODO: Remove this mutable global state - as it's race-prone.
 var (
 	simpleTokenTTLDefault    = 300 * time.Second
 	simpleTokenTTLResolution = 1 * time.Second

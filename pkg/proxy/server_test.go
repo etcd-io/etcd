@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/v3/pkg/transport"
+	"go.etcd.io/etcd/pkg/v3/transport"
 
 	"go.uber.org/zap"
 )
@@ -38,9 +38,9 @@ import (
 var testLogger = zap.NewExample()
 
 var testTLSInfo = transport.TLSInfo{
-	KeyFile:        "./fixtures/server.key.insecure",
-	CertFile:       "./fixtures/server.crt",
-	TrustedCAFile:  "./fixtures/ca.crt",
+	KeyFile:        "../../tests/fixtures/server.key.insecure",
+	CertFile:       "../../tests/fixtures/server.crt",
+	TrustedCAFile:  "../../tests/fixtures/ca.crt",
 	ClientCertAuth: true,
 }
 

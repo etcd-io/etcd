@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	jwtRSAPubKey  = "../integration/fixtures/server.crt"
-	jwtRSAPrivKey = "../integration/fixtures/server.key.insecure"
+	jwtRSAPubKey  = "../tests/fixtures/server.crt"
+	jwtRSAPrivKey = "../tests/fixtures/server.key.insecure"
 
-	jwtECPubKey  = "../integration/fixtures/server-ecdsa.crt"
-	jwtECPrivKey = "../integration/fixtures/server-ecdsa.key.insecure"
+	jwtECPubKey  = "../tests/fixtures/server-ecdsa.crt"
+	jwtECPrivKey = "../tests/fixtures/server-ecdsa.key.insecure"
 )
 
 func TestJWTInfo(t *testing.T) {

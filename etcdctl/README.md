@@ -1682,6 +1682,6 @@ backward compatibility for `JSON` format and the format in non-interactive mode.
 [etcd]: https://github.com/coreos/etcd
 [READMEv2]: READMEv2.md
 [v2key]: ../store/node_extern.go#L28-L37
-[v3key]: ../mvcc/mvccpb/kv.proto#L12-L29
-[etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
-[storagerpc]: ../mvcc/mvccpb/kv.proto
+[v3key]: ../api/mvccpb/kv.proto#L12-L29
+[etcdrpc]: ../api/etcdserverpb/rpc.proto
+[storagerpc]: ../api/mvccpb/kv.proto

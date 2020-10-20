@@ -24,11 +24,11 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/v3/traceutil"
+	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/v3/mvcc"
-	"go.etcd.io/etcd/v3/pkg/traceutil"
-	"go.etcd.io/etcd/v3/pkg/types"
 
 	"go.uber.org/zap"
 )
@@ -180,7 +180,7 @@ func (s *EtcdServer) checkHashKV() error {
 			Action:   pb.AlarmRequest_ACTIVATE,
 			Alarm:    pb.AlarmType_CORRUPT,
 		}
-		s.goAttach(func() {
+		s.GoAttach(func() {
 			s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
 		})
 	}

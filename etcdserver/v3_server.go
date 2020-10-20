@@ -19,16 +19,17 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"strconv"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
+	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/etcdserver/api/membership/membershippb"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/lease/leasehttp"
 	"go.etcd.io/etcd/v3/mvcc"
-	"go.etcd.io/etcd/v3/pkg/traceutil"
 	"go.etcd.io/etcd/v3/raft"
 
 	"github.com/gogo/protobuf/proto"
@@ -344,6 +345,8 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 				return ttl, err
 			}
 		}
+		// Throttle in case of e.g. connection problems.
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	if cctx.Err() == context.DeadlineExceeded {
@@ -689,13 +692,16 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		ID: s.reqIDGen.Next(),
 	}
 
-	authInfo, err := s.AuthInfoFromCtx(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if authInfo != nil {
-		r.Header.Username = authInfo.Username
-		r.Header.AuthRevision = authInfo.Revision
+	// check authinfo if it is not InternalAuthenticateRequest
+	if r.Authenticate == nil {
+		authInfo, err := s.AuthInfoFromCtx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if authInfo != nil {
+			r.Header.Username = authInfo.Username
+			r.Header.AuthRevision = authInfo.Revision
+		}
 	}
 
 	data, err := r.Marshal()
@@ -757,6 +763,9 @@ func (s *EtcdServer) linearizableReadLoop() {
 			return
 		}
 
+		// as a single loop is can unlock multiple reads, it is not very useful
+		// to propagate the trace from Txn or Range.
+		trace := traceutil.New("linearizableReadLoop", s.getLogger())
 		nextnr := newNotifier()
 
 		s.readMu.Lock()
@@ -817,16 +826,26 @@ func (s *EtcdServer) linearizableReadLoop() {
 		if !done {
 			continue
 		}
+		trace.Step("read index received")
 
-		if ai := s.getAppliedIndex(); ai < rs.Index {
+		index := rs.Index
+		trace.AddField(traceutil.Field{Key: "readStateIndex", Value: index})
+
+		ai := s.getAppliedIndex()
+		trace.AddField(traceutil.Field{Key: "appliedIndex", Value: strconv.FormatUint(ai, 10)})
+
+		if ai < index {
 			select {
-			case <-s.applyWait.Wait(rs.Index):
+			case <-s.applyWait.Wait(index):
 			case <-s.stopping:
 				return
 			}
 		}
 		// unblock all l-reads requested at indices before rs.Index
 		nr.notify(nil)
+		trace.Step("applied index is now lower than readState.Index")
+
+		trace.LogAllStepsIfLong(traceThreshold)
 	}
 }
 

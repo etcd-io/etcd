@@ -26,17 +26,18 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/pkg/v3/flags"
+	"go.etcd.io/etcd/pkg/v3/logutil"
+	"go.etcd.io/etcd/pkg/v3/netutil"
+	"go.etcd.io/etcd/pkg/v3/srv"
+	"go.etcd.io/etcd/pkg/v3/tlsutil"
+	"go.etcd.io/etcd/pkg/v3/transport"
+	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3compactor"
-	"go.etcd.io/etcd/v3/pkg/flags"
-	"go.etcd.io/etcd/v3/pkg/logutil"
-	"go.etcd.io/etcd/v3/pkg/netutil"
-	"go.etcd.io/etcd/v3/pkg/srv"
-	"go.etcd.io/etcd/v3/pkg/tlsutil"
-	"go.etcd.io/etcd/v3/pkg/transport"
-	"go.etcd.io/etcd/v3/pkg/types"
 
 	bolt "go.etcd.io/bbolt"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
@@ -614,7 +615,7 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 	case cfg.DNSCluster != "":
 		clusterStrs, cerr := cfg.GetDNSClusterNames()
 		lg := cfg.logger
-		if cerr != nil {
+		if len(clusterStrs) == 0 && cerr != nil {
 			lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
 			return nil, "", cerr
 		}
@@ -672,7 +673,7 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 	)
 
 	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
-	if httpCerr != nil {
+	if httpCerr == nil {
 		clusterStrs = append(clusterStrs, defaultHTTPClusterStrs...)
 	}
 	lg.Info(
@@ -686,7 +687,7 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 		zap.Error(httpCerr),
 	)
 
-	return clusterStrs, cerr
+	return clusterStrs, multierr.Combine(cerr, httpCerr)
 }
 
 func (cfg Config) InitialClusterFromName(name string) (ret string) {

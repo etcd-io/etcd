@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/v3/pkg/fileutil"
-	"go.etcd.io/etcd/v3/pkg/pbutil"
+	"go.etcd.io/etcd/pkg/v3/fileutil"
+	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"
 	"go.etcd.io/etcd/v3/wal/walpb"
@@ -114,6 +114,8 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 			return nil, err
 		}
 	}
+	defer os.RemoveAll(tmpdirpath)
+
 	if err := fileutil.CreateDirAll(tmpdirpath); err != nil {
 		lg.Warn(
 			"failed to create a temporary WAL directory",

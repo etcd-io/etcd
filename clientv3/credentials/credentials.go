@@ -22,7 +22,7 @@ import (
 	"net"
 	"sync"
 
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	grpccredentials "google.golang.org/grpc/credentials"
 )
 
@@ -111,6 +111,9 @@ func (rc *perRPCCredential) GetRequestMetadata(ctx context.Context, s ...string)
 	rc.authTokenMu.RLock()
 	authToken := rc.authToken
 	rc.authTokenMu.RUnlock()
+	if authToken == "" {
+		return nil, nil
+	}
 	return map[string]string{rpctypes.TokenFieldNameGRPC: authToken}, nil
 }
 

@@ -14,7 +14,7 @@
 
 package clientv3
 
-import pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+import pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 
 type opType int
 
@@ -235,7 +235,7 @@ func (op Op) isWrite() bool {
 // OpGet returns "get" operation based on given key and operation options.
 func OpGet(key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
-	if isWithPrefix(opts) && isWithFromKey(opts) {
+	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
 	ret := Op{t: tRange, key: []byte(key)}
@@ -256,7 +256,7 @@ func OpGetStream(key string, opts ...OpOption) Op {
 // OpDelete returns "delete" operation based on given key and operation options.
 func OpDelete(key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
-	if isWithPrefix(opts) && isWithFromKey(opts) {
+	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
 	ret := Op{t: tDeleteRange, key: []byte(key)}
@@ -579,8 +579,8 @@ func toLeaseTimeToLiveRequest(id LeaseID, opts ...LeaseOption) *pb.LeaseTimeToLi
 	return &pb.LeaseTimeToLiveRequest{ID: int64(id), Keys: ret.attachedKeys}
 }
 
-// isWithPrefix returns true if WithPrefix is being called in the op
-func isWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
+// IsOptsWithPrefix returns true if WithPrefix option is called in the given opts.
+func IsOptsWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
 
-// isWithFromKey returns true if WithFromKey is being called in the op
-func isWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }
+// IsOptsWithFromKey returns true if WithFromKey option is called in the given opts.
+func IsOptsWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }

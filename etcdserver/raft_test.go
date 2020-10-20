@@ -16,17 +16,18 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"expvar"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/pkg/mock/mockstorage"
-	"go.etcd.io/etcd/v3/pkg/pbutil"
-	"go.etcd.io/etcd/v3/pkg/types"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"
+	"go.etcd.io/etcd/v3/server/mock/mockstorage"
 	"go.uber.org/zap"
 )
 
@@ -266,4 +267,18 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	if got != want {
 		t.Errorf("count = %d, want %d", got, want)
 	}
+}
+
+// Test that none of the expvars that get added during init panic.
+// This matters if another package imports etcdserver,
+// doesn't use it, but does use expvars.
+func TestExpvarWithNoRaftStatus(t *testing.T) {
+	defer func() {
+		if err := recover(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	expvar.Do(func(kv expvar.KeyValue) {
+		_ = kv.Value.String()
+	})
 }

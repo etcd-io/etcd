@@ -18,10 +18,10 @@ import (
 	"context"
 	"sync"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -48,12 +48,12 @@ type watchProxy struct {
 	lg *zap.Logger
 }
 
-func NewWatchProxy(lg *zap.Logger, c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
-	cctx, cancel := context.WithCancel(c.Ctx())
+func NewWatchProxy(ctx context.Context, lg *zap.Logger, c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
+	cctx, cancel := context.WithCancel(ctx)
 	wp := &watchProxy{
 		cw:     c.Watcher,
 		ctx:    cctx,
-		leader: newLeader(c.Ctx(), c.Watcher),
+		leader: newLeader(cctx, c.Watcher),
 
 		kv: c.KV, // for permission checking
 		lg: lg,

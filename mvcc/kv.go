@@ -15,10 +15,10 @@
 package mvcc
 
 import (
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/mvcc/backend"
-	"go.etcd.io/etcd/v3/mvcc/mvccpb"
-	"go.etcd.io/etcd/v3/pkg/traceutil"
 )
 
 type RangeOptions struct {

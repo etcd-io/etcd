@@ -34,10 +34,20 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
+	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/fileutil"
+	"go.etcd.io/etcd/pkg/v3/idutil"
+	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/pkg/v3/runtime"
+	"go.etcd.io/etcd/pkg/v3/schedule"
+	"go.etcd.io/etcd/pkg/v3/traceutil"
+	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/etcdserver/api/membership/membershippb"
 	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/v3/etcdserver/api/v2discovery"
@@ -47,22 +57,12 @@ import (
 	"go.etcd.io/etcd/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/v3/etcdserver/cindex"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/lease/leasehttp"
 	"go.etcd.io/etcd/v3/mvcc"
 	"go.etcd.io/etcd/v3/mvcc/backend"
-	"go.etcd.io/etcd/v3/pkg/fileutil"
-	"go.etcd.io/etcd/v3/pkg/idutil"
-	"go.etcd.io/etcd/v3/pkg/pbutil"
-	"go.etcd.io/etcd/v3/pkg/runtime"
-	"go.etcd.io/etcd/v3/pkg/schedule"
-	"go.etcd.io/etcd/v3/pkg/traceutil"
-	"go.etcd.io/etcd/v3/pkg/types"
-	"go.etcd.io/etcd/v3/pkg/wait"
 	"go.etcd.io/etcd/v3/raft"
 	"go.etcd.io/etcd/v3/raft/raftpb"
-	"go.etcd.io/etcd/v3/version"
 	"go.etcd.io/etcd/v3/wal"
 )
 
@@ -698,13 +698,13 @@ func (s *EtcdServer) adjustTicks() {
 // should be implemented in goroutines.
 func (s *EtcdServer) Start() {
 	s.start()
-	s.goAttach(func() { s.adjustTicks() })
-	s.goAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
-	s.goAttach(s.purgeFile)
-	s.goAttach(func() { monitorFileDescriptor(s.getLogger(), s.stopping) })
-	s.goAttach(s.monitorVersions)
-	s.goAttach(s.linearizableReadLoop)
-	s.goAttach(s.monitorKVHash)
+	s.GoAttach(func() { s.adjustTicks() })
+	s.GoAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
+	s.GoAttach(s.purgeFile)
+	s.GoAttach(func() { monitorFileDescriptor(s.getLogger(), s.stopping) })
+	s.GoAttach(s.monitorVersions)
+	s.GoAttach(s.linearizableReadLoop)
+	s.GoAttach(s.monitorKVHash)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -939,7 +939,7 @@ func (s *EtcdServer) run() {
 	}
 
 	defer func() {
-		s.wgMu.Lock() // block concurrent waitgroup adds in goAttach while stopping
+		s.wgMu.Lock() // block concurrent waitgroup adds in GoAttach while stopping
 		close(s.stopping)
 		s.wgMu.Unlock()
 		s.cancel()
@@ -986,7 +986,7 @@ func (s *EtcdServer) run() {
 			f := func(context.Context) { s.applyAll(&ep, &ap) }
 			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
-			s.goAttach(func() {
+			s.GoAttach(func() {
 				// Increases throughput of expired leases deletion process through parallelization
 				c := make(chan struct{}, maxPendingRevokes)
 				for _, lease := range leases {
@@ -996,7 +996,7 @@ func (s *EtcdServer) run() {
 						return
 					}
 					lid := lease.ID
-					s.goAttach(func() {
+					s.GoAttach(func() {
 						ctx := s.authStore.WithRoot(s.ctx)
 						_, lerr := s.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: int64(lid)})
 						if lerr == nil {
@@ -1346,6 +1346,10 @@ func (s *EtcdServer) stopWithDelay(d time.Duration, err error) {
 // StopNotify returns a channel that receives a empty struct
 // when the server is stopped.
 func (s *EtcdServer) StopNotify() <-chan struct{} { return s.done }
+
+// StoppingNotify returns a channel that receives a empty struct
+// when the server is being stopped.
+func (s *EtcdServer) StoppingNotify() <-chan struct{} { return s.stopping }
 
 func (s *EtcdServer) SelfStats() []byte { return s.stats.JSON() }
 
@@ -1767,7 +1771,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 	// There is no promise that node has leader when do SYNC request,
 	// so it uses goroutine to propose.
 	ctx, cancel := context.WithTimeout(s.ctx, timeout)
-	s.goAttach(func() {
+	s.GoAttach(func() {
 		s.r.Propose(ctx, data)
 		cancel()
 	})
@@ -1908,7 +1912,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 	s.r.transport.SendSnapshot(merged)
 	lg.Info("sending merged snapshot", fields...)
 
-	s.goAttach(func() {
+	s.GoAttach(func() {
 		select {
 		case ok := <-merged.CloseNotify():
 			// delay releasing inflight snapshot for another 30 seconds to
@@ -2051,7 +2055,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		zap.Error(ar.err),
 	)
 
-	s.goAttach(func() {
+	s.GoAttach(func() {
 		a := &pb.AlarmRequest{
 			MemberID: uint64(s.ID()),
 			Action:   pb.AlarmRequest_ACTIVATE,
@@ -2144,7 +2148,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	// the go routine created below.
 	s.KV().Commit()
 
-	s.goAttach(func() {
+	s.GoAttach(func() {
 		lg := s.getLogger()
 
 		d, err := clone.SaveNoCopy()
@@ -2268,12 +2272,12 @@ func (s *EtcdServer) monitorVersions() {
 			if v != nil {
 				verStr = v.String()
 			}
-			s.goAttach(func() { s.updateClusterVersion(verStr) })
+			s.GoAttach(func() { s.updateClusterVersion(verStr) })
 			continue
 		}
 
 		if v != nil && membership.IsValidVersionChange(s.cluster.Version(), v) {
-			s.goAttach(func() { s.updateClusterVersion(v.String()) })
+			s.GoAttach(func() { s.updateClusterVersion(v.String()) })
 		}
 	}
 }
@@ -2372,15 +2376,16 @@ func (s *EtcdServer) restoreAlarms() error {
 	return nil
 }
 
-// goAttach creates a goroutine on a given function and tracks it using
+// GoAttach creates a goroutine on a given function and tracks it using
 // the etcdserver waitgroup.
-func (s *EtcdServer) goAttach(f func()) {
+// The passed function should interrupt on s.StoppingNotify().
+func (s *EtcdServer) GoAttach(f func()) {
 	s.wgMu.RLock() // this blocks with ongoing close(s.stopping)
 	defer s.wgMu.RUnlock()
 	select {
 	case <-s.stopping:
 		lg := s.getLogger()
-		lg.Warn("server has stopped; skipping goAttach")
+		lg.Warn("server has stopped; skipping GoAttach")
 		return
 	default:
 	}

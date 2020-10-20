@@ -35,7 +35,7 @@ import (
 // influence the result; if it does, this is noted in the test's output.
 func TestDataDriven(t *testing.T) {
 	datadriven.Walk(t, "testdata", func(t *testing.T, path string) {
-		datadriven.RunTest(t, path, func(d *datadriven.TestData) string {
+		datadriven.RunTest(t, path, func(t *testing.T, d *datadriven.TestData) string {
 			// Two majority configs. The first one is always used (though it may
 			// be empty) and the second one is used iff joint is true.
 			var joint bool
