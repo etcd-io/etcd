@@ -275,6 +275,7 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 						return outgoing
 					},
 				),
+				wsproxy.WithMaxRespBodyBufferSize(0x7fffffff),
 			),
 		)
 	}
