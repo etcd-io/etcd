@@ -1,9 +1,8 @@
-module go.etcd.io/etcd/v3
+module go.etcd.io/etcd/server/v3
 
 go 1.15
 
 require (
-	github.com/bgentry/speakeasy v0.1.0
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -18,8 +17,6 @@ require (
 	github.com/jonboulle/clockwork v0.2.2
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.8 // indirect
-	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/prometheus/client_golang v1.5.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.10.0 // indirect
@@ -43,16 +40,15 @@ require (
 	golang.org/x/tools v0.0.0-20201014170642-d1624618ad65 // indirect
 	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884
 	google.golang.org/grpc v1.29.1
-	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	sigs.k8s.io/yaml v1.2.0
 )
 
 replace (
-	go.etcd.io/etcd/api/v3 => ./api
-	go.etcd.io/etcd/client/v2 => ./client/v2
-	go.etcd.io/etcd/client/v3 => ./client/v3
-	go.etcd.io/etcd/pkg/v3 => ./pkg
-	go.etcd.io/etcd/raft/v3 => ./raft
+	go.etcd.io/etcd/api/v3 => ../api
+	go.etcd.io/etcd/client/v2 => ../client/v2
+	go.etcd.io/etcd/client/v3 => ../client/v3
+	go.etcd.io/etcd/pkg/v3 => ../pkg
+	go.etcd.io/etcd/raft/v3 => ../raft
 )
 
 // Bad imports are sometimes causing attempts to pull that code.

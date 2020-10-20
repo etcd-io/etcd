@@ -18,7 +18,7 @@ GO_BUILD_ENV=("CGO_ENABLED=0" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS}" "GOOS=${GOOS}" 
 toggle_failpoints() {
   mode="$1"
   if command -v gofail >/dev/null 2>&1; then
-    run gofail "$mode" etcdserver/ mvcc/backend/
+    run gofail "$mode" server/etcdserver/ server/mvcc/backend/
   elif [[ "$mode" != "disable" ]]; then
     log_error "FAILPOINTS set but gofail not found"
     exit 1
@@ -37,12 +37,15 @@ etcd_build() {
   toggle_failpoints_default
 
   run rm -f "${out}/etcd"
-  # Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
-  # shellcheck disable=SC2086
-  run env "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
-    -installsuffix=cgo \
-    "-ldflags=${GO_LDFLAGS[*]}" \
-    -o="${out}/etcd" . || return 2
+  (
+    cd ./server
+    # Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
+    # shellcheck disable=SC2086
+    run env "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
+      -installsuffix=cgo \
+      "-ldflags=${GO_LDFLAGS[*]}" \
+      -o="../${out}/etcd" . || return 2
+  ) || return 2
 
   run rm -f "${out}/etcdctl"
   # shellcheck disable=SC2086
