@@ -20,6 +20,9 @@ function bom_fixlet {
     log_success "bom refreshed"
   else
     log_error "FAIL: bom refreshing failed"
+    mv go.mod.tmp go.mod
+    mv go.sum.tmp go.sum
+    return 2
   fi
   mv go.mod.tmp go.mod
   mv go.sum.tmp go.sum

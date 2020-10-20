@@ -13,7 +13,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/golang/protobuf v1.3.5
 	github.com/google/btree v1.0.0
-	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -36,8 +35,9 @@ require (
 	github.com/urfave/cli v1.22.1
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.5
-	go.etcd.io/etcd/api/v3 v3.0.0-20201012212543-0b95e8cef14a
+	go.etcd.io/etcd/api/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/client/v2 v2.0.0-00010101000000-000000000000
+	go.etcd.io/etcd/client/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/pkg/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/raft/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.16.0
@@ -55,6 +55,7 @@ require (
 replace (
 	go.etcd.io/etcd/api/v3 => ./api
 	go.etcd.io/etcd/client/v2 => ./client/v2
+	go.etcd.io/etcd/client/v3 => ./client/v3
 	go.etcd.io/etcd/pkg/v3 => ./pkg
 	go.etcd.io/etcd/raft/v3 => ./raft
 )

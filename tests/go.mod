@@ -5,6 +5,7 @@ go 1.15
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
 	go.etcd.io/etcd/client/v2 => ../client/v2
+	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/v3 => ../
 )
@@ -23,8 +24,9 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/bbolt v1.3.5
-	go.etcd.io/etcd/api/v3 v3.0.0-20201012212543-0b95e8cef14a
+	go.etcd.io/etcd/api/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/client/v2 v2.0.0-00010101000000-000000000000
+	go.etcd.io/etcd/client/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/pkg/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/raft/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/v3 v3.0.0-00010101000000-000000000000
