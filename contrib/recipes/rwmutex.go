@@ -18,8 +18,8 @@ import (
 	"context"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	v3 "go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/concurrency"
+	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
 type RWMutex struct {

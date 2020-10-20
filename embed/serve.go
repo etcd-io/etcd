@@ -24,10 +24,10 @@ import (
 	"strings"
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
+	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
 	"go.etcd.io/etcd/pkg/v3/transport"
-	"go.etcd.io/etcd/v3/clientv3/credentials"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3election"

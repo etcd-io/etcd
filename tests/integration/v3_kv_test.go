@@ -2,9 +2,9 @@ package integration
 
 import (
 	"context"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/namespace"
 	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/namespace"
 	"go.etcd.io/etcd/v3/embed"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3client"
 	"io/ioutil"

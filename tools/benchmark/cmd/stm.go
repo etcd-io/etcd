@@ -23,9 +23,9 @@ import (
 	"os"
 	"time"
 
+	v3 "go.etcd.io/etcd/client/v3"
+	v3sync "go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/pkg/v3/report"
-	v3 "go.etcd.io/etcd/v3/clientv3"
-	v3sync "go.etcd.io/etcd/v3/clientv3/concurrency"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
 
 	"github.com/spf13/cobra"

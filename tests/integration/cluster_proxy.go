@@ -20,8 +20,8 @@ import (
 	"context"
 	"sync"
 
-	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/namespace"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/namespace"
 	"go.etcd.io/etcd/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/v3/proxy/grpcproxy/adapter"
 
