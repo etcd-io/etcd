@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go.etcd.io/etcd/v3/etcdctl/snapshot"
+	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"

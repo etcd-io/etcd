@@ -26,9 +26,9 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/v3/embed"
-	"go.etcd.io/etcd/v3/etcdctl/snapshot"
 
 	"go.uber.org/zap"
 )
