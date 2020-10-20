@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
 )
 
 func UpdateConsistentIndex(be backend.Backend, index uint64) {

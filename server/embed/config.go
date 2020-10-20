@@ -33,8 +33,8 @@ import (
 	"go.etcd.io/etcd/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/pkg/v3/types"
-	"go.etcd.io/etcd/v3/etcdserver"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3compactor"
+	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"

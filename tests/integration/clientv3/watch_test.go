@@ -29,8 +29,8 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/tests/v3/integration"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
 
 	"google.golang.org/grpc/metadata"
 )

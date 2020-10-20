@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/pkg/v3/fileutil"
-	"go.etcd.io/etcd/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
 )
 

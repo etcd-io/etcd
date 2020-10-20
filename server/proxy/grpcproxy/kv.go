@@ -19,7 +19,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/v3/proxy/grpcproxy/cache"
+	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 )
 
 type kvProxy struct {

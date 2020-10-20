@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"go.etcd.io/etcd/v3/auth"
+	"go.etcd.io/etcd/server/v3/auth"
 )
 
 // TestStartEtcdWrongToken ensures that StartEtcd with wrong configs returns with error.

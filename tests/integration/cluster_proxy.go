@@ -22,8 +22,8 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/namespace"
-	"go.etcd.io/etcd/v3/proxy/grpcproxy"
-	"go.etcd.io/etcd/v3/proxy/grpcproxy/adapter"
+	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
+	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/adapter"
 
 	"go.uber.org/zap"
 )

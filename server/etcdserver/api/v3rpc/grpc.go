@@ -19,7 +19,7 @@ import (
 	"math"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
