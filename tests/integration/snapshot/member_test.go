@@ -24,8 +24,8 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/v3/embed"
-	"go.etcd.io/etcd/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 )
 
 // TestSnapshotV3RestoreMultiMemberAdd ensures that multiple members

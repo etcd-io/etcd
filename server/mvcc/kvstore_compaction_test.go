@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/v3/lease"
-	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/lease"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	"go.uber.org/zap"
 )
 

@@ -23,7 +23,7 @@ import (
 
 	"go.etcd.io/etcd/pkg/v3/report"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/v3/lease"
+	"go.etcd.io/etcd/server/v3/lease"
 
 	"github.com/spf13/cobra"
 )

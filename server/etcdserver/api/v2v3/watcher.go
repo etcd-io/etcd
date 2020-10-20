@@ -19,8 +19,8 @@ import (
 	"strings"
 
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/v3/etcdserver/api/v2error"
-	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 )
 
 func (s *v2v3Store) Watch(prefix string, recursive, stream bool, sinceIndex uint64) (v2store.Watcher, error) {

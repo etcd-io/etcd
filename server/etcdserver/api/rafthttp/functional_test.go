@@ -24,7 +24,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	stats "go.etcd.io/etcd/v3/etcdserver/api/v2stats"
+	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 
 	"go.uber.org/zap"
 )

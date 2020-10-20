@@ -21,9 +21,9 @@ import (
 	"path/filepath"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/v3/lease/leasepb"
-	"go.etcd.io/etcd/v3/mvcc"
-	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/lease/leasepb"
+	"go.etcd.io/etcd/server/v3/mvcc"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
 
 	bolt "go.etcd.io/bbolt"
 )

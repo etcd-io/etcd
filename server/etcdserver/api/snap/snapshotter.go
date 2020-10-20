@@ -30,8 +30,8 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/v3/etcdserver/api/snap/snappb"
-	"go.etcd.io/etcd/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap/snappb"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 
 	"go.uber.org/zap"
 )

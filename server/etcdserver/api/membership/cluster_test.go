@@ -26,8 +26,8 @@ import (
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/v3/server/mock/mockstore"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/mock/mockstore"
 
 	"go.uber.org/zap"
 )

@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 )
 
 type v2TestStore struct {

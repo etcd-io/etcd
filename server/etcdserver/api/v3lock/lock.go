@@ -19,7 +19,7 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 )
 
 type lockServer struct {

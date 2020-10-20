@@ -20,7 +20,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/types"
-	"go.etcd.io/etcd/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
 
 	"go.uber.org/zap"
 )

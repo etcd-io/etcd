@@ -10,7 +10,7 @@ package gw
 
 import (
 	"context"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3lock/v3lockpb"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"io"
 	"net/http"
 

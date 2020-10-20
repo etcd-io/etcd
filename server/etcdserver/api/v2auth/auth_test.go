@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/v3/etcdserver"
-	"go.etcd.io/etcd/v3/etcdserver/api/v2error"
-	"go.etcd.io/etcd/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 
 	"go.uber.org/zap"
 )
