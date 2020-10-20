@@ -110,6 +110,7 @@ function modules() {
 	go.etcd.io/etcd/raft/v3
 	go.etcd.io/etcd/client/v2
 	go.etcd.io/etcd/client/v3
+	go.etcd.io/etcd/etcdctl/v3
 	go.etcd.io/etcd/v3
 	go.etcd.io/etcd/tests/v3"
 }
@@ -131,6 +132,7 @@ function run_for_modules {
     run_for_module "raft" "$@" "${pkg}" || return "$?"
     run_for_module "client/v2" "$@" "${pkg}" || return "$?"
     run_for_module "client/v3" "$@" "${pkg}" || return "$?"
+    run_for_module "etcdctl" "$@" "${pkg}" || return "$?"
     run_for_module "." "$@" "${pkg}" || return "$?"
     run_for_module "tests" "$@" "${pkg}" || return "$?"
   else
