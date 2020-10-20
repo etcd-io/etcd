@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/client/v3"
 )
 
 func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }

@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/concurrency"
 	recipe "go.etcd.io/etcd/v3/contrib/recipes"
 )
 

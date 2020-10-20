@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/clientv3/snapshot"
 	"go.etcd.io/etcd/v3/embed"
 
 	"go.uber.org/zap"

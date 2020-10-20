@@ -450,15 +450,9 @@ function goword_for_package {
   fi
 }
 
+
 function goword_pass {
   run_for_modules goword_for_package || return 255
-
-  # check some spelling
-  gowordRes=$(run_go_tool "github.com/chzchzchz/goword" -ignore-file=.words clientv3/{*,*/*}.go | grep spell | sort)
-  if [ -n "$gowordRes" ]; then
-    log_error -e "goword checking failed:\\n${gowordRes}"
-    return 255
-  fi
 }
 
 function go_fmt_for_package {

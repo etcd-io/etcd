@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/flags"
-	v3 "go.etcd.io/etcd/v3/clientv3"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"

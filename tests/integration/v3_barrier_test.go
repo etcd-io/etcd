@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/v3/clientv3"
 	recipe "go.etcd.io/etcd/v3/contrib/recipes"
 )
 

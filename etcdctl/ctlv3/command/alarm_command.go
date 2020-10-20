@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	v3 "go.etcd.io/etcd/v3/clientv3"
+	v3 "go.etcd.io/etcd/client/v3"
 )
 
 // NewAlarmCommand returns the cobra command for "alarm".

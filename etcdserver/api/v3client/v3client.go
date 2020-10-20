@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	"go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/v3/proxy/grpcproxy/adapter"
