@@ -16,7 +16,6 @@ package clientv3
 
 import (
 	"context"
-	v3rpc "go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	"go.uber.org/zap"
 	"io"
 	"time"
