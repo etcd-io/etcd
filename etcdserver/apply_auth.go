@@ -92,7 +92,7 @@ func (aa *authApplierV3) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Rang
 	return aa.applierV3.Range(ctx, txn, r)
 }
 
-func (aa *authApplierV3) RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) (*pb.RangeStreamResponse, error) {
+func (aa *authApplierV3) RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest, rspC chan *pb.RangeResponse, errC chan error) (*pb.RangeResponse, error) {
 	if err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
 		return nil, err
 	}

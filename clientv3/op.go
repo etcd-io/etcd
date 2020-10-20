@@ -167,11 +167,11 @@ func (op Op) toRangeRequest() *pb.RangeRequest {
 	return r
 }
 
-func (op Op) toRangeStreamRequest() *pb.RangeStreamRequest {
+func (op Op) toRangeStreamRequest() *pb.RangeRequest {
 	if op.t != tRangeStream {
 		panic("op.t != tRangeStream")
 	}
-	r := &pb.RangeStreamRequest{
+	r := &pb.RangeRequest{
 		Key:          op.key,
 		RangeEnd:     op.end,
 		Limit:        op.limit,
@@ -245,7 +245,7 @@ func OpGet(key string, opts ...OpOption) Op {
 
 func OpGetStream(key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
-	if isWithPrefix(opts) && isWithFromKey(opts) {
+	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
 	ret := Op{t: tRangeStream, key: []byte(key)}

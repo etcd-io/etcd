@@ -45,6 +45,7 @@ This is a generated documentation. Please read the proto files for more.
 | Method | Request Type | Response Type | Description |
 | ------ | ------------ | ------------- | ----------- |
 | Range | RangeRequest | RangeResponse | Range gets the keys in the range from the key-value store. |
+| RangeStream | RangeRequest | RangeResponse | RangeStream gets the keys in the range stream from the key-value store. |
 | Put | PutRequest | PutResponse | Put puts the given key into the key-value store. A put request increments the revision of the key-value store and generates one event in the event history. |
 | DeleteRange | DeleteRangeRequest | DeleteRangeResponse | DeleteRange deletes the given range from the key-value store. A delete request increments the revision of the key-value store and generates a delete event in the event history for every deleted key. |
 | Txn | TxnRequest | TxnResponse | Txn processes multiple requests in a single transaction. A txn request increments the revision of the key-value store and generates events with the same revision for every completed request. It is not allowed to modify the same key several times within one txn. |
@@ -805,6 +806,8 @@ Empty field.
 | kvs | kvs is the list of key-value pairs matched by the range request. kvs is empty when count is requested. | (slice of) mvccpb.KeyValue |
 | more | more indicates if there are more keys to return in the requested range. | bool |
 | count | count is set to the number of keys within the range when requested. | int64 |
+| sub_count |  | int64 |
+| total_size |  | int64 |
 
 
 

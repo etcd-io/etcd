@@ -171,7 +171,7 @@ func (m *mockKVServer) Range(context.Context, *pb.RangeRequest) (*pb.RangeRespon
 	return &pb.RangeResponse{}, nil
 }
 
-func (m *mockKVServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamServer) error {
+func (m *mockKVServer) RangeStream(r *pb.RangeRequest, rss pb.KV_RangeStreamServer) error {
 	return nil
 }
 

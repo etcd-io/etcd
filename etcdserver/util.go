@@ -152,10 +152,10 @@ func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, now time.Time, reqStrin
 	warnOfExpensiveGenericRequest(lg, now, reqStringer, "read-only range ", resp, err)
 }
 
-func warnOfExpensiveReadOnlyRangeStreamRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, rangeStreamResponse *pb.RangeStreamResponse, err error) {
+func warnOfExpensiveReadOnlyRangeStreamRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
 	var resp string
-	if !isNil(rangeStreamResponse) {
-		resp = fmt.Sprintf("range_stream_response_total_count:%d, size:%d", rangeStreamResponse.GetTotalCount(), rangeStreamResponse.GetTotalSize())
+	if !isNil(rangeResponse) {
+		resp = fmt.Sprintf("range_stream_response_total_count:%d, size:%d", rangeResponse.GetCount(), rangeResponse.GetTotalSize())
 	}
 	warnOfExpensiveGenericRequest(lg, now, reqStringer, "read-only rangeStream ", resp, err)
 }

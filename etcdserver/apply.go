@@ -64,7 +64,7 @@ type applierV3 interface {
 
 	Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
-	RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) (*pb.RangeStreamResponse, error)
+	RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest, rspC chan *pb.RangeResponse, errC chan error) (*pb.RangeResponse, error)
 	DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
@@ -386,7 +386,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 	return resp, nil
 }
 
-func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) (*pb.RangeStreamResponse, error) {
+func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest, rspC chan *pb.RangeResponse, errC chan error) (*pb.RangeResponse, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			switch e := err.(type) {
@@ -404,7 +404,7 @@ func (a *applierV3backend) RangeStream(ctx context.Context, txn mvcc.TxnRead, r 
 
 	lg := a.s.getLogger()
 
-	resp := &pb.RangeStreamResponse{}
+	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	streamC := make(chan *mvcc.RangeResult)
 
@@ -450,15 +450,14 @@ Loop:
 				}
 			}
 
-			subResp := &pb.RangeStreamResponse{}
+			subResp := &pb.RangeResponse{}
 			subResp.Header = &pb.ResponseHeader{}
 
 			subResp.Header.Revision = rr.Rev
-			subResp.Count = int64(rr.Count)
+			subResp.SubCount = int64(rr.Count)
 
-			// resp TotalCount just use monitor long time range stream
-			resp.TotalCount += int64(rr.Count)
-			subResp.TotalCount = resp.TotalCount
+			resp.Count += int64(rr.Count)
+			subResp.Count = resp.Count
 			subResp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
 			for i := range rr.KVs {
 				if r.KeysOnly {

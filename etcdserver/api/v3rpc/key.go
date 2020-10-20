@@ -55,7 +55,7 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 	return resp, nil
 }
 
-func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamServer) error {
+func (s *kvServer) RangeStream(r *pb.RangeRequest, rss pb.KV_RangeStreamServer) error {
 	defer func() {
 		if err := recover(); err != nil {
 			switch e := err.(type) {
@@ -66,11 +66,11 @@ func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamSe
 		}
 	}()
 
-	if err := checkRangeStreamRequest(r); err != nil {
+	if err := checkRangeRequest(r); err != nil {
 		return err
 	}
 
-	respC := make(chan *pb.RangeStreamResponse)
+	respC := make(chan *pb.RangeResponse)
 	errC := make(chan error)
 
 	go func() {
@@ -173,13 +173,6 @@ func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Co
 }
 
 func checkRangeRequest(r *pb.RangeRequest) error {
-	if len(r.Key) == 0 {
-		return rpctypes.ErrGRPCEmptyKey
-	}
-	return nil
-}
-
-func checkRangeStreamRequest(r *pb.RangeStreamRequest) error {
 	if len(r.Key) == 0 {
 		return rpctypes.ErrGRPCEmptyKey
 	}

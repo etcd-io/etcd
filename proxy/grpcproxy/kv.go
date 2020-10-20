@@ -68,7 +68,7 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 }
 
 // TODO yxj
-func (p *kvProxy) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamServer) error {
+func (p *kvProxy) RangeStream(r *pb.RangeRequest, rss pb.KV_RangeStreamServer) error {
 	panic("not support")
 }
 

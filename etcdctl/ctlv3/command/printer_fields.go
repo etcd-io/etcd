@@ -63,7 +63,7 @@ func (p *fieldsPrinter) GetStream(r v3.GetStreamResponse) {
 	for _, kv := range r.Kvs {
 		p.kv("", kv)
 	}
-	fmt.Println(`"Count" :`, r.TotalCount)
+	fmt.Println(`"Count" :`, r.Count)
 }
 
 func (p *fieldsPrinter) Put(r v3.PutResponse) {
