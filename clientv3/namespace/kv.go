@@ -97,6 +97,8 @@ func (kv *kvPrefix) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse
 	switch {
 	case r.Get() != nil:
 		kv.unprefixGetResponse(r.Get())
+	case r.GetStream() != nil:
+		kv.unprefixGetStreamResponse(r.GetStream())
 	case r.Put() != nil:
 		kv.unprefixPutResponse(r.Put())
 	case r.Del() != nil:

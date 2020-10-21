@@ -136,6 +136,18 @@ func (lc *leaseCache) Add(key string, resp *v3.GetResponse, op v3.Op) *v3.GetRes
 	return ret
 }
 
+func (lc *leaseCache) AddStream(key string, resp *v3.GetStreamResponse, op v3.Op) *v3.GetStreamResponse {
+	lk := &leaseKey{(*v3.GetResponse)(resp), resp.Header.Revision, closedCh}
+	lc.mu.Lock()
+	if lc.header == nil || lc.header.Revision < resp.Header.Revision {
+		lc.header = resp.Header
+	}
+	lc.entries[key] = lk
+	ret := lk.getStream(op)
+	lc.mu.Unlock()
+	return ret
+}
+
 func (lc *leaseCache) Update(key, val []byte, respHeader *v3pb.ResponseHeader) {
 	li := lc.entries[string(key)]
 	if li == nil {
@@ -216,6 +228,27 @@ func (lc *leaseCache) Get(ctx context.Context, op v3.Op) (*v3.GetResponse, bool)
 	return ret, true
 }
 
+func (lc *leaseCache) GetStream(ctx context.Context, op v3.Op) (*v3.GetStreamResponse, bool) {
+	if isBadOp(op) {
+		return nil, false
+	}
+	key := string(op.KeyBytes())
+	li, wc := lc.notify(key)
+	if li == nil {
+		return nil, true
+	}
+	select {
+	case <-wc:
+	case <-ctx.Done():
+		return nil, true
+	}
+	lc.mu.RLock()
+	lk := *li
+	ret := lk.getStream(op)
+	lc.mu.RUnlock()
+	return ret, true
+}
+
 func (lk *leaseKey) get(op v3.Op) *v3.GetResponse {
 	ret := *lk.response
 	ret.Header = copyHeader(ret.Header)
@@ -237,6 +270,27 @@ func (lk *leaseKey) get(op v3.Op) *v3.GetResponse {
 		ret.Kvs = []*mvccpb.KeyValue{&kv}
 	}
 	return &ret
+}
+
+func (lk *leaseKey) getStream(op v3.Op) *v3.GetStreamResponse {
+	ret := *lk.response
+	ret.Header = copyHeader(ret.Header)
+	empty := len(ret.Kvs) == 0
+	if empty {
+		ret.Kvs = nil
+	} else {
+		kv := *ret.Kvs[0]
+		kv.Key = make([]byte, len(kv.Key))
+		copy(kv.Key, ret.Kvs[0].Key)
+		if !op.IsKeysOnly() {
+			kv.Value = make([]byte, len(kv.Value))
+			copy(kv.Value, ret.Kvs[0].Value)
+		}
+		ret.Kvs = []*mvccpb.KeyValue{&kv}
+	}
+
+	retNew := (v3.GetStreamResponse)(ret)
+	return &retNew
 }
 
 func (lc *leaseCache) notify(key string) (*leaseKey, <-chan struct{}) {

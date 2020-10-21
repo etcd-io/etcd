@@ -91,7 +91,7 @@ func (resp *PutResponse) OpResponse() OpResponse {
 func (resp *GetResponse) OpResponse() OpResponse {
 	return OpResponse{get: resp}
 }
-func (resp *GetStreamResponse) OpStreamResponse() OpResponse {
+func (resp *GetStreamResponse) OpResponse() OpResponse {
 	return OpResponse{getStream: resp}
 }
 func (resp *DeleteResponse) OpResponse() OpResponse {

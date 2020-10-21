@@ -110,6 +110,8 @@ func (op Op) IsPut() bool { return op.t == tPut }
 // IsGet returns true iff the operation is a Get.
 func (op Op) IsGet() bool { return op.t == tRange }
 
+func (op Op) IsGetStream() bool { return op.t == tRangeStream }
+
 // IsDelete returns true iff the operation is a Delete.
 func (op Op) IsDelete() bool { return op.t == tDeleteRange }
 
@@ -202,6 +204,8 @@ func (op Op) toRequestOp() *pb.RequestOp {
 	switch op.t {
 	case tRange:
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: op.toRangeRequest()}}
+	case tRangeStream:
+		return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: op.toRangeStreamRequest()}}
 	case tPut:
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV, IgnoreValue: op.ignoreValue, IgnoreLease: op.ignoreLease}
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: r}}
@@ -229,7 +233,7 @@ func (op Op) isWrite() bool {
 		}
 		return false
 	}
-	return op.t != tRange
+	return op.t != tRange || op.t != tRangeStream
 }
 
 // OpGet returns "get" operation based on given key and operation options.
