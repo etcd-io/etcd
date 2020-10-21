@@ -32,7 +32,10 @@ func TestElectionWait(t *testing.T) {
 	leaders := 3
 	followers := 3
 	var clients []*clientv3.Client
-	newClient := makeMultiNodeClients(t, clus.cluster, &clients)
+	newClient := MakeMultiNodeClients(t, clus, &clients)
+	defer func() {
+		CloseClients(t, clients)
+	}()
 
 	electedc := make(chan string)
 	nextc := []chan struct{}{}
@@ -100,8 +103,6 @@ func TestElectionWait(t *testing.T) {
 	for i := 0; i < followers; i++ {
 		<-donec
 	}
-
-	closeClients(t, clients)
 }
 
 // TestElectionFailover tests that an election will

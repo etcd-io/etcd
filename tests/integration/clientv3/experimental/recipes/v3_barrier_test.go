@@ -12,27 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package recipes_test
 
 import (
 	"testing"
 	"time"
 
 	"go.etcd.io/etcd/client/v3"
+	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
 	"go.etcd.io/etcd/pkg/v3/testutil"
-	recipe "go.etcd.io/etcd/v3/contrib/recipes"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestBarrierSingleNode(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
-	testBarrier(t, 5, func() *clientv3.Client { return clus.clients[0] })
+	testBarrier(t, 5, func() *clientv3.Client { return clus.Client(0) })
 }
 
 func TestBarrierMultiNode(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testBarrier(t, 5, func() *clientv3.Client { return clus.RandClient() })
 }
