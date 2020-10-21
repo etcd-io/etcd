@@ -22,7 +22,7 @@ import (
 	"strconv"
 
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/v3/etcdctl/snapshot"
+	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 )
 
 type jsonPrinter struct {

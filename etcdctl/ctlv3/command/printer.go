@@ -21,7 +21,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/v3/etcdctl/snapshot"
+	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 
 	"github.com/dustin/go-humanize"
 )
