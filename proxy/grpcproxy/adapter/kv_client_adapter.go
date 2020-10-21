@@ -17,7 +17,7 @@ package adapter
 import (
 	"context"
 
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 
 	grpc "google.golang.org/grpc"
 )
@@ -32,7 +32,7 @@ func (s *kvs2kvc) Range(ctx context.Context, in *pb.RangeRequest, opts ...grpc.C
 	return s.kvs.Range(ctx, in)
 }
 
-func (s *kvs2kvc) RangeStream(ctx context.Context, in *pb.RangeStreamRequest, opts ...grpc.CallOption) (pb.KV_RangeStreamClient, error) {
+func (s *kvs2kvc) RangeStream(ctx context.Context, in *pb.RangeRequest, opts ...grpc.CallOption) (pb.KV_RangeStreamClient, error) {
 	cs := newPipeStream(ctx, func(ss chanServerStream) error {
 		return s.kvs.RangeStream(in, (&rs2rcServerStream{ss}))
 	})
@@ -59,24 +59,24 @@ type rs2rcClientStream struct{ chanClientStream }
 
 type rs2rcServerStream struct{ chanServerStream }
 
-func (s *rs2rcClientStream) Send(wr *pb.RangeStreamRequest) error {
+func (s *rs2rcClientStream) Send(wr *pb.RangeRequest) error {
 	return s.SendMsg(wr)
 }
-func (s *rs2rcClientStream) Recv() (*pb.RangeStreamResponse, error) {
+func (s *rs2rcClientStream) Recv() (*pb.RangeResponse, error) {
 	var v interface{}
 	if err := s.RecvMsg(&v); err != nil {
 		return nil, err
 	}
-	return v.(*pb.RangeStreamResponse), nil
+	return v.(*pb.RangeResponse), nil
 }
 
-func (s *rs2rcServerStream) Send(wr *pb.RangeStreamResponse) error {
+func (s *rs2rcServerStream) Send(wr *pb.RangeResponse) error {
 	return s.SendMsg(wr)
 }
-func (s *rs2rcServerStream) Recv() (*pb.RangeStreamRequest, error) {
+func (s *rs2rcServerStream) Recv() (*pb.RangeRequest, error) {
 	var v interface{}
 	if err := s.RecvMsg(&v); err != nil {
 		return nil, err
 	}
-	return v.(*pb.RangeStreamRequest), nil
+	return v.(*pb.RangeRequest), nil
 }

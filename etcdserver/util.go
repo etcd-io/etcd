@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/v3/etcdserver/api/rafthttp"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/v3/pkg/types"
 
 	"go.uber.org/zap"
 )
@@ -152,10 +152,10 @@ func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, now time.Time, reqStrin
 	warnOfExpensiveGenericRequest(lg, now, reqStringer, "read-only range ", resp, err)
 }
 
-func warnOfExpensiveReadOnlyRangeStreamRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, rangeStreamResponse *pb.RangeStreamResponse, err error) {
+func warnOfExpensiveReadOnlyRangeStreamRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
 	var resp string
-	if !isNil(rangeStreamResponse) {
-		resp = fmt.Sprintf("range_stream_response_total_count:%d, size:%d", rangeStreamResponse.GetTotalCount(), rangeStreamResponse.GetTotalSize())
+	if !isNil(rangeResponse) {
+		resp = fmt.Sprintf("range_stream_response_total_count:%d, size:%d", rangeResponse.GetCount(), rangeResponse.GetTotalSize())
 	}
 	warnOfExpensiveGenericRequest(lg, now, reqStringer, "read-only rangeStream ", resp, err)
 }

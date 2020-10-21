@@ -20,11 +20,11 @@ import (
 	"sync"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	v3 "go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/clientv3/concurrency"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -86,9 +86,8 @@ func (lkv *leasingKV) Get(ctx context.Context, key string, opts ...v3.OpOption) 
 	return lkv.get(ctx, v3.OpGet(key, opts...))
 }
 
-// TODO yxj
 func (lkv *leasingKV) GetStream(ctx context.Context, key string, opts ...v3.OpOption) (*v3.GetStreamResponse, error) {
-	panic("unsupported")
+	return lkv.getStream(ctx, v3.OpGetStream(key, opts...))
 }
 
 func (lkv *leasingKV) Put(ctx context.Context, key, val string, opts ...v3.OpOption) (*v3.PutResponse, error) {
@@ -103,6 +102,9 @@ func (lkv *leasingKV) Do(ctx context.Context, op v3.Op) (v3.OpResponse, error) {
 	switch {
 	case op.IsGet():
 		resp, err := lkv.get(ctx, op)
+		return resp.OpResponse(), err
+	case op.IsGetStream():
+		resp, err := lkv.getStream(ctx, op)
 		return resp.OpResponse(), err
 	case op.IsPut():
 		resp, err := lkv.put(ctx, op)
@@ -297,6 +299,41 @@ func (lkv *leasingKV) acquire(ctx context.Context, key string, op v3.Op) (*v3.Tx
 	return nil, ctx.Err()
 }
 
+func (lkv *leasingKV) acquireStream(ctx context.Context, key string, op v3.Op) (*v3.TxnResponse, error) {
+	for ctx.Err() == nil {
+		if err := lkv.waitSession(ctx); err != nil {
+			return nil, err
+		}
+		lcmp := v3.Cmp{Key: []byte(key), Target: pb.Compare_LEASE}
+		resp, err := lkv.kv.Txn(ctx).If(
+			v3.Compare(v3.CreateRevision(lkv.pfx+key), "=", 0),
+			v3.Compare(lcmp, "=", 0)).
+			Then(
+				op,
+				v3.OpPut(lkv.pfx+key, "", v3.WithLease(lkv.leaseID()))).
+			Else(
+				op,
+				v3.OpGetStream(lkv.pfx+key),
+			).Commit()
+		if err == nil {
+			if !resp.Succeeded {
+				kvs := resp.Responses[1].GetResponseRange().Kvs
+				// if txn failed since already owner, lease is acquired
+				resp.Succeeded = len(kvs) > 0 && v3.LeaseID(kvs[0].Lease) == lkv.leaseID()
+			}
+			return resp, nil
+		}
+		// retry if transient error
+		if _, ok := err.(rpctypes.EtcdError); ok {
+			return nil, err
+		}
+		if ev, ok := status.FromError(err); ok && ev.Code() != codes.Unavailable {
+			return nil, err
+		}
+	}
+	return nil, ctx.Err()
+}
+
 func (lkv *leasingKV) get(ctx context.Context, op v3.Op) (*v3.GetResponse, error) {
 	do := func() (*v3.GetResponse, error) {
 		r, err := lkv.kv.Do(ctx, op)
@@ -327,6 +364,45 @@ func (lkv *leasingKV) get(ctx context.Context, op v3.Op) (*v3.GetResponse, error
 	getResp.Header = resp.Header
 	if resp.Succeeded {
 		getResp = lkv.leases.Add(key, getResp, op)
+		lkv.wg.Add(1)
+		go func() {
+			defer lkv.wg.Done()
+			lkv.monitorLease(ctx, key, resp.Header.Revision)
+		}()
+	}
+	return getResp, nil
+}
+
+func (lkv *leasingKV) getStream(ctx context.Context, op v3.Op) (*v3.GetStreamResponse, error) {
+	do := func() (*v3.GetStreamResponse, error) {
+		r, err := lkv.kv.Do(ctx, op)
+		return r.GetStream(), err
+	}
+	if !lkv.readySession() {
+		return do()
+	}
+
+	if resp, ok := lkv.leases.GetStream(ctx, op); resp != nil {
+		return resp, nil
+	} else if !ok || op.IsSerializable() {
+		// must be handled by server or can skip linearization
+		return do()
+	}
+
+	key := string(op.KeyBytes())
+	if !lkv.leases.MayAcquire(key) {
+		resp, err := lkv.kv.Do(ctx, op)
+		return resp.GetStream(), err
+	}
+
+	resp, err := lkv.acquireStream(ctx, key, v3.OpGetStream(key))
+	if err != nil {
+		return nil, err
+	}
+	getResp := (*v3.GetStreamResponse)(resp.Responses[0].GetResponseRange())
+	getResp.Header = resp.Header
+	if resp.Succeeded {
+		getResp = lkv.leases.AddStream(key, getResp, op)
 		lkv.wg.Add(1)
 		go func() {
 			defer lkv.wg.Done()

@@ -19,13 +19,13 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/v3/etcdserver"
 	"go.etcd.io/etcd/v3/etcdserver/api"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/v3/pkg/types"
 	"go.etcd.io/etcd/v3/raft"
 
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -264,13 +264,13 @@ func monitorLeader(s *etcdserver.EtcdServer) *streamsMap {
 		streams: make(map[grpc.ServerStream]struct{}),
 	}
 
-	go func() {
+	s.GoAttach(func() {
 		election := time.Duration(s.Cfg.TickMs) * time.Duration(s.Cfg.ElectionTicks) * time.Millisecond
 		noLeaderCnt := 0
 
 		for {
 			select {
-			case <-s.StopNotify():
+			case <-s.StoppingNotify():
 				return
 			case <-time.After(election):
 				if s.Leader() == types.ID(raft.None) {
@@ -295,7 +295,7 @@ func monitorLeader(s *etcdserver.EtcdServer) *streamsMap {
 				}
 			}
 		}
-	}()
+	})
 
 	return smap
 }

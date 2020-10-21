@@ -22,14 +22,14 @@ import (
 	"strconv"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
+	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/v3/auth"
 	"go.etcd.io/etcd/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/v3/etcdserver/api/membership/membershippb"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/lease"
 	"go.etcd.io/etcd/v3/lease/leasehttp"
 	"go.etcd.io/etcd/v3/mvcc"
-	"go.etcd.io/etcd/v3/pkg/traceutil"
 	"go.etcd.io/etcd/v3/raft"
 
 	"github.com/gogo/protobuf/proto"
@@ -48,7 +48,7 @@ const (
 
 type RaftKV interface {
 	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
-	RangeStream(ctx context.Context, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) error
+	RangeStream(ctx context.Context, r *pb.RangeRequest, rspC chan *pb.RangeResponse, errC chan error) error
 	Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error)
 	DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error)
@@ -132,7 +132,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	return resp, err
 }
 
-func (s *EtcdServer) RangeStream(ctx context.Context, r *pb.RangeStreamRequest, rspC chan *pb.RangeStreamResponse, errC chan error) error {
+func (s *EtcdServer) RangeStream(ctx context.Context, r *pb.RangeRequest, rspC chan *pb.RangeResponse, errC chan error) error {
 	trace := traceutil.New("rangeStream",
 		s.getLogger(),
 		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
@@ -141,13 +141,13 @@ func (s *EtcdServer) RangeStream(ctx context.Context, r *pb.RangeStreamRequest, 
 
 	ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 
-	var resp *pb.RangeStreamResponse
+	var resp *pb.RangeResponse
 	var err error
 	defer func(start time.Time) {
 		warnOfExpensiveReadOnlyRangeStreamRequest(s.getLogger(), start, r, resp, err)
 		if resp != nil {
 			trace.AddField(
-				traceutil.Field{Key: "response_total_count", Value: resp.GetTotalCount},
+				traceutil.Field{Key: "response_total_count", Value: resp.GetCount()},
 				traceutil.Field{Key: "response_revision", Value: resp.Header.Revision},
 			)
 		}
@@ -345,6 +345,8 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 				return ttl, err
 			}
 		}
+		// Throttle in case of e.g. connection problems.
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	if cctx.Err() == context.DeadlineExceeded {

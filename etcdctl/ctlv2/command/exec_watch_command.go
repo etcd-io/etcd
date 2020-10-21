@@ -22,7 +22,7 @@ import (
 	"os/exec"
 	"os/signal"
 
-	"go.etcd.io/etcd/v3/client"
+	"go.etcd.io/etcd/client/v2"
 
 	"github.com/urfave/cli"
 )

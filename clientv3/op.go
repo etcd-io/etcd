@@ -14,7 +14,7 @@
 
 package clientv3
 
-import pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+import pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 
 type opType int
 
@@ -110,6 +110,8 @@ func (op Op) IsPut() bool { return op.t == tPut }
 // IsGet returns true iff the operation is a Get.
 func (op Op) IsGet() bool { return op.t == tRange }
 
+func (op Op) IsGetStream() bool { return op.t == tRangeStream }
+
 // IsDelete returns true iff the operation is a Delete.
 func (op Op) IsDelete() bool { return op.t == tDeleteRange }
 
@@ -167,11 +169,11 @@ func (op Op) toRangeRequest() *pb.RangeRequest {
 	return r
 }
 
-func (op Op) toRangeStreamRequest() *pb.RangeStreamRequest {
+func (op Op) toRangeStreamRequest() *pb.RangeRequest {
 	if op.t != tRangeStream {
 		panic("op.t != tRangeStream")
 	}
-	r := &pb.RangeStreamRequest{
+	r := &pb.RangeRequest{
 		Key:          op.key,
 		RangeEnd:     op.end,
 		Limit:        op.limit,
@@ -202,6 +204,8 @@ func (op Op) toRequestOp() *pb.RequestOp {
 	switch op.t {
 	case tRange:
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: op.toRangeRequest()}}
+	case tRangeStream:
+		return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: op.toRangeStreamRequest()}}
 	case tPut:
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV, IgnoreValue: op.ignoreValue, IgnoreLease: op.ignoreLease}
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: r}}
@@ -229,13 +233,13 @@ func (op Op) isWrite() bool {
 		}
 		return false
 	}
-	return op.t != tRange
+	return op.t != tRange || op.t != tRangeStream
 }
 
 // OpGet returns "get" operation based on given key and operation options.
 func OpGet(key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
-	if isWithPrefix(opts) && isWithFromKey(opts) {
+	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
 	ret := Op{t: tRange, key: []byte(key)}
@@ -245,7 +249,7 @@ func OpGet(key string, opts ...OpOption) Op {
 
 func OpGetStream(key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
-	if isWithPrefix(opts) && isWithFromKey(opts) {
+	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
 	ret := Op{t: tRangeStream, key: []byte(key)}
@@ -256,7 +260,7 @@ func OpGetStream(key string, opts ...OpOption) Op {
 // OpDelete returns "delete" operation based on given key and operation options.
 func OpDelete(key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
-	if isWithPrefix(opts) && isWithFromKey(opts) {
+	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
 	ret := Op{t: tDeleteRange, key: []byte(key)}
@@ -579,8 +583,8 @@ func toLeaseTimeToLiveRequest(id LeaseID, opts ...LeaseOption) *pb.LeaseTimeToLi
 	return &pb.LeaseTimeToLiveRequest{ID: int64(id), Keys: ret.attachedKeys}
 }
 
-// isWithPrefix returns true if WithPrefix is being called in the op
-func isWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
+// IsOptsWithPrefix returns true if WithPrefix option is called in the given opts.
+func IsOptsWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
 
-// isWithFromKey returns true if WithFromKey is being called in the op
-func isWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }
+// IsOptsWithFromKey returns true if WithFromKey option is called in the given opts.
+func IsOptsWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }

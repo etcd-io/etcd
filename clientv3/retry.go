@@ -17,8 +17,8 @@ package clientv3
 import (
 	"context"
 
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -105,7 +105,7 @@ func (rkv *retryKVClient) Range(ctx context.Context, in *pb.RangeRequest, opts .
 	return rkv.kc.Range(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
-func (rkv *retryKVClient) RangeStream(ctx context.Context, in *pb.RangeStreamRequest, opts ...grpc.CallOption) (pb.KV_RangeStreamClient, error) {
+func (rkv *retryKVClient) RangeStream(ctx context.Context, in *pb.RangeRequest, opts ...grpc.CallOption) (pb.KV_RangeStreamClient, error) {
 	return rkv.kc.RangeStream(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 

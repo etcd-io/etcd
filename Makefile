@@ -18,18 +18,15 @@ build:
 
 clean:
 	rm -f ./codecov
-	rm -rf ./agent-*
 	rm -rf ./covdir
-	rm -f ./*.coverprofile
-	rm -f ./*.log
 	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/etcd*
 	rm -rf ./default.etcd
 	rm -rf ./tests/e2e/default.etcd
 	rm -rf ./release
-	rm -f ./snapshot/localhost:*
-	rm -f ./tools/etcd-dump-metrics/localhost:*
-	find ./ -name "127.0.0.1:*" -o -name "localhost:*" -delete
+	rm -rf ./coverage/*.err ./coverage/*.out
+	rm -rf ./tests/e2e/default.proxy
+	find ./ -name "127.0.0.1:*" -o -name "localhost:*" -o -name "*.log" -o -name "agent-*" -o -name "*.coverprofile" -o -name "testname-proxy-*" | xargs -r rm -r
 
 docker-clean:
 	docker images
@@ -494,7 +491,7 @@ docker-dns-srv-test-certs-wildcard-run:
 build-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	./functional/build
+	./tests/functional/build
 	./bin/etcd-agent -help || true && \
 	  ./bin/etcd-proxy -help || true && \
 	  ./bin/etcd-runner --help || true && \
@@ -503,13 +500,13 @@ build-functional:
 build-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./functional/Dockerfile
+	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/functional/Dockerfile
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \
-	  --file ./functional/Dockerfile \
+	  --file ./tests/functional/Dockerfile \
 	  .
-	@mv ./functional/Dockerfile.bak ./functional/Dockerfile
+	@mv ./tests/functional/Dockerfile.bak ./tests/functional/Dockerfile
 
 	docker run \
 	  --rm \

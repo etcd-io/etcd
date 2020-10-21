@@ -17,10 +17,12 @@ package grpcproxy
 import (
 	"context"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/v3/clientv3"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/v3/proxy/grpcproxy/cache"
 )
+
+const RangeStreamBatch int = 1000
 
 type kvProxy struct {
 	kv    clientv3.KV
@@ -67,9 +69,79 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 	return gresp, nil
 }
 
-// TODO yxj
-func (p *kvProxy) RangeStream(*pb.RangeStreamRequest, pb.KV_RangeStreamServer) error {
-	panic("implement me")
+func (p *kvProxy) RangeStream(r *pb.RangeRequest, rss pb.KV_RangeStreamServer) error {
+
+	sendFunc := func(resp *pb.RangeResponse) (err error) {
+		subRSP := &pb.RangeResponse{}
+		subRSP.Header = &pb.ResponseHeader{}
+
+		if resp.Kvs == nil || len(resp.Kvs) == 0 {
+			err = rss.Send(subRSP)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		start := int64(0)
+		end := int64(RangeStreamBatch)
+		for {
+			if end > resp.Count {
+				end = resp.Count
+			}
+			subRSP.Kvs = resp.Kvs[start:end]
+			subRSP.Count = subRSP.Count
+			subRSP.Header = subRSP.Header
+			err = rss.Send(subRSP)
+			if err != nil {
+				return err
+			}
+			if resp.Count <= end {
+				break
+			}
+
+			start = end
+			end += int64(RangeStreamBatch)
+		}
+		return nil
+	}
+
+	if r.Serializable {
+		resp, err := p.cache.Get(r)
+		switch err {
+		case nil:
+			cacheHits.Inc()
+			err := sendFunc(resp)
+			if err != nil {
+				return err
+			}
+			return nil
+		case cache.ErrCompacted:
+			cacheHits.Inc()
+			return err
+		}
+
+		cachedMisses.Inc()
+	}
+
+	resp, err := p.kv.Do(rss.Context(), RangeStreamRequestToOp(r))
+	if err != nil {
+		return err
+	}
+
+	// cache linearizable as serializable
+	req := *r
+	req.Serializable = true
+	gresp := (*pb.RangeResponse)(resp.GetStream())
+	err = sendFunc(gresp)
+	if err != nil {
+		return err
+	}
+
+	p.cache.Add(&req, gresp)
+	cacheKeys.Set(float64(p.cache.Size()))
+
+	return nil
 }
 
 func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
@@ -192,6 +264,23 @@ func RangeRequestToOp(r *pb.RangeRequest) clientv3.Op {
 	}
 
 	return clientv3.OpGet(string(r.Key), opts...)
+}
+
+func RangeStreamRequestToOp(r *pb.RangeRequest) clientv3.Op {
+	opts := []clientv3.OpOption{}
+	if len(r.RangeEnd) != 0 {
+		opts = append(opts, clientv3.WithRange(string(r.RangeEnd)))
+	}
+	opts = append(opts, clientv3.WithRev(r.Revision))
+	opts = append(opts, clientv3.WithLimit(r.Limit))
+	if r.KeysOnly {
+		opts = append(opts, clientv3.WithKeysOnly())
+	}
+	if r.Serializable {
+		opts = append(opts, clientv3.WithSerializable())
+	}
+
+	return clientv3.OpGetStream(string(r.Key), opts...)
 }
 
 func PutRequestToOp(r *pb.PutRequest) clientv3.Op {

@@ -19,10 +19,10 @@ import (
 	"context"
 	"go.uber.org/zap"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/v3/adt"
 	"go.etcd.io/etcd/v3/etcdserver"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/v3/pkg/adt"
 )
 
 type kvServer struct {
@@ -55,7 +55,7 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 	return resp, nil
 }
 
-func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamServer) error {
+func (s *kvServer) RangeStream(r *pb.RangeRequest, rss pb.KV_RangeStreamServer) error {
 	defer func() {
 		if err := recover(); err != nil {
 			switch e := err.(type) {
@@ -66,11 +66,11 @@ func (s *kvServer) RangeStream(r *pb.RangeStreamRequest, rss pb.KV_RangeStreamSe
 		}
 	}()
 
-	if err := checkRangeStreamRequest(r); err != nil {
+	if err := checkRangeRequest(r); err != nil {
 		return err
 	}
 
-	respC := make(chan *pb.RangeStreamResponse)
+	respC := make(chan *pb.RangeResponse)
 	errC := make(chan error)
 
 	go func() {
@@ -173,13 +173,6 @@ func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Co
 }
 
 func checkRangeRequest(r *pb.RangeRequest) error {
-	if len(r.Key) == 0 {
-		return rpctypes.ErrGRPCEmptyKey
-	}
-	return nil
-}
-
-func checkRangeStreamRequest(r *pb.RangeStreamRequest) error {
 	if len(r.Key) == 0 {
 		return rpctypes.ErrGRPCEmptyKey
 	}

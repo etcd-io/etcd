@@ -64,7 +64,7 @@ The command should show that the handshake succeed. Since we use self-signed cer
 
 **OSX 10.9+ Users**: curl 7.30.0 on OSX 10.9+ doesn't understand certificates passed in on the command line.
 Instead, import the dummy ca.crt directly into the keychain or add the `-k` flag to curl to ignore errors.
-To test without the `-k` flag, run `open ./fixtures/ca/ca.crt` and follow the prompts.
+To test without the `-k` flag, run `open ./tests/fixtures/ca/ca.crt` and follow the prompts.
 Please remove this certificate after testing!
 If there is a workaround, let us know.
 

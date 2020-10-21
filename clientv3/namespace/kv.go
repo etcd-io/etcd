@@ -17,9 +17,9 @@ package namespace
 import (
 	"context"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
 )
 
 type kvPrefix struct {
@@ -48,7 +48,7 @@ func (kv *kvPrefix) Put(ctx context.Context, key, val string, opts ...clientv3.O
 }
 
 func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
-	if len(key) == 0 {
+	if len(key) == 0 && !(clientv3.IsOptsWithFromKey(opts) || clientv3.IsOptsWithPrefix(opts)) {
 		return nil, rpctypes.ErrEmptyKey
 	}
 	r, err := kv.KV.Do(ctx, kv.prefixOp(clientv3.OpGet(key, opts...)))
@@ -74,7 +74,7 @@ func (kv *kvPrefix) GetStream(ctx context.Context, key string, opts ...clientv3.
 }
 
 func (kv *kvPrefix) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
-	if len(key) == 0 {
+	if len(key) == 0 && !(clientv3.IsOptsWithFromKey(opts) || clientv3.IsOptsWithPrefix(opts)) {
 		return nil, rpctypes.ErrEmptyKey
 	}
 	r, err := kv.KV.Do(ctx, kv.prefixOp(clientv3.OpDelete(key, opts...)))
@@ -97,6 +97,8 @@ func (kv *kvPrefix) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse
 	switch {
 	case r.Get() != nil:
 		kv.unprefixGetResponse(r.Get())
+	case r.GetStream() != nil:
+		kv.unprefixGetStreamResponse(r.GetStream())
 	case r.Put() != nil:
 		kv.unprefixPutResponse(r.Put())
 	case r.Del() != nil:

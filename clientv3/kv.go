@@ -16,12 +16,12 @@ package clientv3
 
 import (
 	"context"
-	v3rpc "go.etcd.io/etcd/v3/etcdserver/api/v3rpc/rpctypes"
 	"go.uber.org/zap"
 	"io"
 	"time"
 
-	pb "go.etcd.io/etcd/v3/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 
 	"google.golang.org/grpc"
 )
@@ -30,7 +30,7 @@ type (
 	CompactResponse   pb.CompactionResponse
 	PutResponse       pb.PutResponse
 	GetResponse       pb.RangeResponse
-	GetStreamResponse pb.RangeStreamResponse
+	GetStreamResponse pb.RangeResponse
 	DeleteResponse    pb.DeleteRangeResponse
 	TxnResponse       pb.TxnResponse
 )
@@ -91,7 +91,7 @@ func (resp *PutResponse) OpResponse() OpResponse {
 func (resp *GetResponse) OpResponse() OpResponse {
 	return OpResponse{get: resp}
 }
-func (resp *GetStreamResponse) OpStreamResponse() OpResponse {
+func (resp *GetStreamResponse) OpResponse() OpResponse {
 	return OpResponse{getStream: resp}
 }
 func (resp *DeleteResponse) OpResponse() OpResponse {
@@ -170,7 +170,7 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 		}
 	case tRangeStream:
 		var rangeStreamClient pb.KV_RangeStreamClient
-		var resp *pb.RangeStreamResponse
+		var resp *pb.RangeResponse
 		rangeStreamClient, err = kv.openRangeStreamClient(ctx, op.toRangeStreamRequest(), kv.callOpts...)
 		resp, err = kv.serveRangeStream(ctx, rangeStreamClient)
 		if err == nil {
@@ -205,7 +205,7 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 // openRangeStreamClient retries opening a rangeStream client until success or halt.
 // manually retry in case "rsc==nil && err==nil"
 // TODO: remove FailFast=false
-func (kv *kv) openRangeStreamClient(ctx context.Context, in *pb.RangeStreamRequest, opts ...grpc.CallOption) (rsc pb.KV_RangeStreamClient, err error) {
+func (kv *kv) openRangeStreamClient(ctx context.Context, in *pb.RangeRequest, opts ...grpc.CallOption) (rsc pb.KV_RangeStreamClient, err error) {
 	backoff := time.Millisecond
 	for {
 		select {
@@ -237,11 +237,12 @@ func (kv *kv) openRangeStreamClient(ctx context.Context, in *pb.RangeStreamReque
 	return rsc, nil
 }
 
-func (kv *kv) serveRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient) (*pb.RangeStreamResponse, error) {
-	rspC := make(chan *pb.RangeStreamResponse)
+func (kv *kv) serveRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient) (*pb.RangeResponse, error) {
+	rspC := make(chan *pb.RangeResponse)
 	errC := make(chan error)
 
-	mainRSP := &pb.RangeStreamResponse{}
+	mainRSP := &pb.RangeResponse{}
+	mainRSP.Header = &pb.ResponseHeader{}
 
 	go kv.handleRangeStream(ctx, rsc, rspC, errC)
 
@@ -254,7 +255,8 @@ Loop:
 			}
 
 			mainRSP.Kvs = append(mainRSP.Kvs, subRsp.Kvs...)
-			mainRSP.TotalCount = subRsp.TotalCount
+			mainRSP.Count = subRsp.Count
+			mainRSP.Header = subRsp.Header
 		case err := <-errC:
 			return nil, err
 		case <-ctx.Done():
@@ -265,7 +267,7 @@ Loop:
 	return mainRSP, nil
 }
 
-func (kv *kv) handleRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient, rspC chan *pb.RangeStreamResponse, errC chan error) {
+func (kv *kv) handleRangeStream(ctx context.Context, rsc pb.KV_RangeStreamClient, rspC chan *pb.RangeResponse, errC chan error) {
 	defer func() {
 		if err := recover(); err != nil {
 			switch e := err.(type) {

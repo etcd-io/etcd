@@ -75,9 +75,30 @@ func (kv *kvOrdering) Get(ctx context.Context, key string, opts ...clientv3.OpOp
 	}
 }
 
-// TODO yxj
 func (kv *kvOrdering) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetStreamResponse, error) {
-	panic("unsupported")
+	// prevRev is stored in a local variable in order to record the prevRev
+	// at the beginning of the Get operation, because concurrent
+	// access to kvOrdering could change the prevRev field in the
+	// middle of the Get operation.
+	prevRev := kv.getPrevRev()
+	op := clientv3.OpGetStream(key, opts...)
+	for {
+		r, err := kv.KV.Do(ctx, op)
+		if err != nil {
+			return nil, err
+		}
+		resp := r.GetStream()
+		if resp.Header.Revision == prevRev {
+			return resp, nil
+		} else if resp.Header.Revision > prevRev {
+			kv.setPrevRev(resp.Header.Revision)
+			return resp, nil
+		}
+		err = kv.orderViolationFunc(op, r, prevRev)
+		if err != nil {
+			return nil, err
+		}
+	}
 }
 
 func (kv *kvOrdering) Txn(ctx context.Context) clientv3.Txn {
