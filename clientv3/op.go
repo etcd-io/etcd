@@ -233,7 +233,7 @@ func (op Op) isWrite() bool {
 		}
 		return false
 	}
-	return op.t != tRange || op.t != tRangeStream
+	return op.t != tRange && op.t != tRangeStream
 }
 
 // OpGet returns "get" operation based on given key and operation options.

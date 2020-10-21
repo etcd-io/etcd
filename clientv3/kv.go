@@ -116,7 +116,11 @@ func NewKV(c *Client) KV {
 }
 
 func NewKVFromKVClient(remote pb.KVClient, c *Client) KV {
-	api := &kv{remote: remote, lg: c.lg}
+	var lg *zap.Logger
+	if c != nil {
+		lg = c.lg
+	}
+	api := &kv{remote: remote, lg: lg}
 	if c != nil {
 		api.callOpts = c.callOpts
 	}
