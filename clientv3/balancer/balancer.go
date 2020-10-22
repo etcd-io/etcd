@@ -140,6 +140,7 @@ type baseBalancer struct {
 	resolverErr error // the last error reported by the resolver; cleared on successful resolution
 }
 
+// ResolverError implements "grpc/balancer.Balancer" interface.
 func (bb *baseBalancer) ResolverError(err error) {
 	bb.resolverErr = err
 	if len(bb.addrToSc) == 0 {
