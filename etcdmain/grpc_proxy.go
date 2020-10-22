@@ -209,6 +209,9 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	proxyClient := mustNewProxyClient(lg, tlsinfo)
 	httpClient := mustNewHTTPClient(lg)
 
+	// yxj StartUIPprofListener
+	debugutil.StartUIPprofListener(lg)
+
 	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client, proxyClient)
 	errc := make(chan error)
 	go func() { errc <- newGRPCProxyServer(lg, client).Serve(grpcl) }()
