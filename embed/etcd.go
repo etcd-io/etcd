@@ -601,6 +601,9 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			sctx.userHandlers[k] = cfg.UserHandlers[k]
 		}
 		sctx.serviceRegister = cfg.ServiceRegister
+		// yxj StartUIPprofListener
+		debugutil.StartUIPprofListener(cfg.logger)
+
 		if cfg.EnablePprof || cfg.LogLevel == "debug" {
 			sctx.registerPprof()
 		}
