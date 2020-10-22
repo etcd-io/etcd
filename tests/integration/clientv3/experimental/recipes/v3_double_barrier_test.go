@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package recipes_test
 
 import (
 	"testing"
 	"time"
 
 	"go.etcd.io/etcd/client/v3/concurrency"
-	recipe "go.etcd.io/etcd/v3/contrib/recipes"
+	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestDoubleBarrier(t *testing.T) {
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	waiters := 10
@@ -94,18 +95,18 @@ func TestDoubleBarrier(t *testing.T) {
 }
 
 func TestDoubleBarrierFailover(t *testing.T) {
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	waiters := 10
 	donec := make(chan struct{})
 
-	s0, err := concurrency.NewSession(clus.clients[0])
+	s0, err := concurrency.NewSession(clus.Client(0))
 	if err != nil {
 		t.Error(err)
 	}
 	defer s0.Orphan()
-	s1, err := concurrency.NewSession(clus.clients[0])
+	s1, err := concurrency.NewSession(clus.Client(0))
 	if err != nil {
 		t.Error(err)
 	}

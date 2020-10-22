@@ -1312,6 +1312,47 @@ func (c *ClusterV3) Client(i int) *clientv3.Client {
 	return c.clients[i]
 }
 
+// NewClientV3 creates a new grpc client connection to the member
+func (c *ClusterV3) NewClientV3(memberIndex int) (*clientv3.Client, error) {
+	return NewClientV3(c.Members[memberIndex])
+}
+
+func makeClients(t *testing.T, clus *ClusterV3, clients *[]*clientv3.Client, chooseMemberIndex func() int) func() *clientv3.Client {
+	var mu sync.Mutex
+	*clients = nil
+	return func() *clientv3.Client {
+		cli, err := clus.NewClientV3(chooseMemberIndex())
+		if err != nil {
+			t.Fatalf("cannot create client: %v", err)
+		}
+		mu.Lock()
+		*clients = append(*clients, cli)
+		mu.Unlock()
+		return cli
+	}
+}
+
+// MakeSingleNodeClients creates factory of clients that all connect to member 0.
+// All the created clients are put on the 'clients' list. The factory is thread-safe.
+func MakeSingleNodeClients(t *testing.T, clus *ClusterV3, clients *[]*clientv3.Client) func() *clientv3.Client {
+	return makeClients(t, clus, clients, func() int { return 0 })
+}
+
+// MakeMultiNodeClients creates factory of clients that all connect to random members.
+// All the created clients are put on the 'clients' list. The factory is thread-safe.
+func MakeMultiNodeClients(t *testing.T, clus *ClusterV3, clients *[]*clientv3.Client) func() *clientv3.Client {
+	return makeClients(t, clus, clients, func() int { return rand.Intn(len(clus.Members)) })
+}
+
+// CloseClients closes all the clients from the 'clients' list.
+func CloseClients(t *testing.T, clients []*clientv3.Client) {
+	for _, cli := range clients {
+		if err := cli.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 type grpcAPI struct {
 	// Cluster is the cluster API for the client's connection.
 	Cluster pb.ClusterClient
