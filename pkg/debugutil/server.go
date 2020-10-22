@@ -131,6 +131,17 @@ If you are not redirected automatically, follow this <a href='/#/debug'>link</a>
 `)
 }
 
+// http://127.0.0.1/debug/pprof/ui/
+// http://127.0.0.1/debug/pprof/ui/allocs
+// http://127.0.0.1/debug/pprof/ui/profile
+// http://127.0.0.1/debug/pprof/ui/heap
+// http://127.0.0.1/debug/pprof/goroutineui/
+
+// http://127.0.0.1/debug/pprof/ui/block
+// http://127.0.0.1/debug/pprof/ui/goroutine
+// http://127.0.0.1/debug/pprof/ui/mutex
+// http://127.0.0.1/debug/pprof/ui/threadcreate
+
 func StartUIPprofListener(logger *zap.Logger) {
 	pprofServer := NewServer()
 	listener, err := net.Listen("tcp", ":80")

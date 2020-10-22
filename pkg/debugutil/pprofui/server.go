@@ -224,7 +224,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.hook(profileName, r.Form.Get("labels") != "", func() { fetchHandler(rw, req) })
 
 		if rw.statusCode != http.StatusOK && rw.statusCode != 0 {
-			return errors.New("unexpected status: " + string(rw.statusCode))
+			return errors.New("unexpected status: " + strconv.Itoa(rw.statusCode))
 		}
 		return nil
 	}); err != nil {
