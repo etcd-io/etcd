@@ -19,11 +19,6 @@
 // Package naming defines the naming API and related data structures for gRPC.
 //
 // This package is deprecated: please use package resolver instead.
-
-
-// Notice: this file is a copy of naming/naming.go from grpc-go v1.29.1.
-// The package of grpc naming is removed since grpc-go v1.30.0.
-// This is a work around to make etcd work with grpc new version (>=v1.30.0) without too many code change.
 package grpcnaming
 
 // Operation defines the corresponding operations for a name resolution change.
