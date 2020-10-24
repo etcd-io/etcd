@@ -67,6 +67,7 @@ func CheckAfterTest(d time.Duration) error {
 		").noteClientGone(":     "a closenotifier sender",
 		").readLoop(":           "a Transport",
 		".grpc":                 "a gRPC resource",
+		").sendCloseSubstream(": "a stream closing routine",
 	}
 
 	var stacks string
