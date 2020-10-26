@@ -1,13 +1,13 @@
 #!/bin/bash
 
 if ! [[ "$0" =~ "./gencerts.sh" ]]; then
-	echo "must be run from 'fixtures'"
-	exit 255
+  echo "must be run from 'fixtures'"
+  exit 255
 fi
 
 if ! which cfssl; then
-	echo "cfssl is not installed"
-	exit 255
+  echo "cfssl is not installed"
+  exit 255
 fi
 
 cfssl gencert --initca=true ./ca-csr.json | cfssljson --bare ./ca
