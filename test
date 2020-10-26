@@ -306,6 +306,8 @@ function fmt_pass {
       commit_title \
       mod_tidy \
       dep \
+      shellcheck \
+      shellws \
       ; do
     run_pass "${p}" "${@}"
   done
@@ -314,6 +316,21 @@ function fmt_pass {
 function shellcheck_pass {
   if tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
     generic_checker run shellcheck -fgcc build test scripts/*.sh
+  fi
+}
+
+function shellws_pass {
+  log_callout "Ensuring no tab-based indention in shell scripts"
+  local files
+  files=$(find ./ -name '*.sh' -print0 | xargs -0 )
+  log_cmd "grep -E -n $'^ *\t' ${files}"
+  # shellcheck disable=SC2086
+  if grep -E -n $'^ *\t' ${files} | sed -s $'s|\t|[\\\\tab]|g'; then
+    log_error "FAIL: found tab-based indention in bash scripts. Use '  ' (double space)."
+    return 1
+  else
+    log_success "SUCCESS: no tabulators found."
+    return 0
   fi
 }
 
