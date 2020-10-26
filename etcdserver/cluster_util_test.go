@@ -215,3 +215,52 @@ func TestDecideAllowedVersionRange(t *testing.T) {
 		})
 	}
 }
+
+func TestIsMatchedVersions(t *testing.T) {
+	tests := []struct {
+		name             string
+		targetVersion    *semver.Version
+		versionMap       map[string]*version.Versions
+		expectedFinished bool
+	}{
+		{
+			"When downgrade finished",
+			&semver.Version{Major: 3, Minor: 4},
+			map[string]*version.Versions{
+				"mem1": {Server: "3.4.1", Cluster: "3.4.0"},
+				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
+				"mem3": {Server: "3.4.2", Cluster: "3.4.0"},
+			},
+			true,
+		},
+		{
+			"When cannot parse peer version",
+			&semver.Version{Major: 3, Minor: 4},
+			map[string]*version.Versions{
+				"mem1": {Server: "3.4.1", Cluster: "3.4"},
+				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
+				"mem3": {Server: "3.4.2", Cluster: "3.4.0"},
+			},
+			false,
+		},
+		{
+			"When downgrade not finished",
+			&semver.Version{Major: 3, Minor: 4},
+			map[string]*version.Versions{
+				"mem1": {Server: "3.4.1", Cluster: "3.4.0"},
+				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
+				"mem3": {Server: "3.5.2", Cluster: "3.5.0"},
+			},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := isMatchedVersions(zap.NewNop(), tt.targetVersion, tt.versionMap)
+			if actual != tt.expectedFinished {
+				t.Errorf("expected downgrade finished is %v; got %v", tt.expectedFinished, actual)
+			}
+		})
+	}
+}

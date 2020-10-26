@@ -38,7 +38,7 @@ const (
 
 // NewPeerHandler generates an http.Handler to handle etcd peer requests.
 func NewPeerHandler(lg *zap.Logger, s etcdserver.ServerPeerV2) http.Handler {
-	return newPeerHandler(lg, s, s.RaftHandler(), s.LeaseHandler(), s.HashKVHandler())
+	return newPeerHandler(lg, s, s.RaftHandler(), s.LeaseHandler(), s.HashKVHandler(), s.DowngradeEnabledHandler())
 }
 
 func newPeerHandler(
@@ -47,6 +47,7 @@ func newPeerHandler(
 	raftHandler http.Handler,
 	leaseHandler http.Handler,
 	hashKVHandler http.Handler,
+	downgradeEnabledHandler http.Handler,
 ) http.Handler {
 	if lg == nil {
 		lg = zap.NewNop()
@@ -63,6 +64,9 @@ func newPeerHandler(
 	if leaseHandler != nil {
 		mux.Handle(leasehttp.LeasePrefix, leaseHandler)
 		mux.Handle(leasehttp.LeaseInternalPrefix, leaseHandler)
+	}
+	if downgradeEnabledHandler != nil {
+		mux.Handle(etcdserver.DowngradeEnabledPath, downgradeEnabledHandler)
 	}
 	if hashKVHandler != nil {
 		mux.Handle(etcdserver.PeerHashKVPath, hashKVHandler)

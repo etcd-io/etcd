@@ -56,6 +56,7 @@ const (
 	DefaultGRPCKeepAliveMinTime  = 5 * time.Second
 	DefaultGRPCKeepAliveInterval = 2 * time.Hour
 	DefaultGRPCKeepAliveTimeout  = 20 * time.Second
+	DefaultDowngradeCheckTime    = 5 * time.Second
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
@@ -330,6 +331,8 @@ type Config struct {
 	// UnsafeNoFsync disables all uses of fsync.
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
+
+	ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -413,6 +416,8 @@ func NewConfig() *Config {
 		LogOutputs:        []string{DefaultLogOutput},
 		LogLevel:          logutil.DefaultLogLevel,
 		EnableGRPCGateway: true,
+
+		ExperimentalDowngradeCheckTime: DefaultDowngradeCheckTime,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg

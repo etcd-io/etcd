@@ -172,7 +172,7 @@ func TestIssue6361(t *testing.T) {
 		}
 	}()
 
-	dialTimeout := 7 * time.Second
+	dialTimeout := 10 * time.Second
 	prefixArgs := []string{ctlBinPath, "--endpoints", strings.Join(epc.EndpointsV3(), ","), "--dial-timeout", dialTimeout.String()}
 
 	// write some keys

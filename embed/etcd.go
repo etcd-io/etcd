@@ -201,6 +201,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		EnableLeaseCheckpoint:       cfg.ExperimentalEnableLeaseCheckpoint,
 		CompactionBatchLimit:        cfg.ExperimentalCompactionBatchLimit,
 		WatchProgressNotifyInterval: cfg.ExperimentalWatchProgressNotifyInterval,
+		DowngradeCheckTime:          cfg.ExperimentalDowngradeCheckTime,
 	}
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
@@ -303,6 +304,7 @@ func print(lg *zap.Logger, ec Config, sc etcdserver.ServerConfig, memberInitiali
 		zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
+		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
 	)
 }
 

@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -101,6 +102,8 @@ const (
 	recommendedMaxRequestBytes = 10 * 1024 * 1024
 
 	readyPercent = 0.9
+
+	DowngradeEnabledPath = "/downgrade/enabled"
 )
 
 var (
@@ -705,6 +708,7 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(s.monitorVersions)
 	s.GoAttach(s.linearizableReadLoop)
 	s.GoAttach(s.monitorKVHash)
+	s.GoAttach(s.monitorDowngrade)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -813,6 +817,56 @@ func (s *EtcdServer) LeaseHandler() http.Handler {
 }
 
 func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
+
+type ServerPeerV2 interface {
+	ServerPeer
+	HashKVHandler() http.Handler
+	DowngradeEnabledHandler() http.Handler
+}
+
+func (s *EtcdServer) DowngradeInfo() *membership.DowngradeInfo { return s.cluster.DowngradeInfo() }
+
+type downgradeEnabledHandler struct {
+	lg      *zap.Logger
+	cluster api.Cluster
+	server  *EtcdServer
+}
+
+func (s *EtcdServer) DowngradeEnabledHandler() http.Handler {
+	return &downgradeEnabledHandler{
+		lg:      s.getLogger(),
+		cluster: s.cluster,
+		server:  s,
+	}
+}
+
+func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
+
+	if r.URL.Path != DowngradeEnabledPath {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), h.server.Cfg.ReqTimeout())
+	defer cancel()
+
+	// serve with linearized downgrade info
+	if err := h.server.linearizableReadNotify(ctx); err != nil {
+		http.Error(w, fmt.Sprintf("failed linearized read: %v", err),
+			http.StatusInternalServerError)
+		return
+	}
+	enabled := h.server.DowngradeInfo().Enabled
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(strconv.FormatBool(enabled)))
+}
 
 // Process takes a raft message and applies it to the server's raft state
 // machine, respecting any timeout of the given context.
@@ -2315,6 +2369,41 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 
 	default:
 		lg.Warn("failed to update cluster version", zap.Error(err))
+	}
+}
+
+func (s *EtcdServer) monitorDowngrade() {
+	t := s.Cfg.DowngradeCheckTime
+	if t == 0 {
+		return
+	}
+	lg := s.getLogger()
+	for {
+		select {
+		case <-time.After(t):
+		case <-s.stopping:
+			return
+		}
+
+		if !s.isLeader() {
+			continue
+		}
+
+		d := s.cluster.DowngradeInfo()
+		if !d.Enabled {
+			continue
+		}
+
+		targetVersion := d.TargetVersion
+		v := semver.Must(semver.NewVersion(targetVersion))
+		if isMatchedVersions(s.getLogger(), v, getVersions(s.getLogger(), s.cluster, s.id, s.peerRt)) {
+			lg.Info("the cluster has been downgraded", zap.String("cluster-version", targetVersion))
+			ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
+			if _, err := s.downgradeCancel(ctx); err != nil {
+				lg.Warn("failed to cancel downgrade", zap.Error(err))
+			}
+			cancel()
+		}
 	}
 }
 

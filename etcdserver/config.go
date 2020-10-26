@@ -162,6 +162,8 @@ type ServerConfig struct {
 	// UnsafeNoFsync disables all uses of fsync.
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
+
+	DowngradeCheckTime time.Duration
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
