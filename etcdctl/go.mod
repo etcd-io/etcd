@@ -16,7 +16,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/pkg/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/etcd/raft/v3 v3.0.0-00010101000000-000000000000
-	go.etcd.io/etcd/v3 v3.0.0-00010101000000-000000000000
+	go.etcd.io/etcd/server/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.16.0
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	google.golang.org/grpc v1.29.1
@@ -29,7 +29,8 @@ replace (
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/raft/v3 => ../raft
-	go.etcd.io/etcd/v3 => ../
+	go.etcd.io/etcd/server/v3 => ../server
+//	go.etcd.io/etcd/v3 => ../
 )
 
 // Bad imports are sometimes causing attempts to pull that code.

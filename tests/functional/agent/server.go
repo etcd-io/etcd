@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"go.etcd.io/etcd/pkg/v3/proxy"
+	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
-	"go.etcd.io/etcd/v3/embed"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
