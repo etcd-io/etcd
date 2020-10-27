@@ -517,7 +517,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 			zap.String("cluster-id", c.cid.String()),
 			zap.String("local-member-id", c.localID.String()),
 			zap.String("from", version.Cluster(c.version.String())),
-			zap.String("from", version.Cluster(ver.String())),
+			zap.String("to", version.Cluster(ver.String())),
 		)
 	} else {
 		c.lg.Info(
