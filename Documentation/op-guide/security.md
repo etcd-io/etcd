@@ -197,7 +197,6 @@ The etcd members will form a cluster and all communication between members in th
 ## Example 4: Automatic self-signed transport security
 
 For cases where communication encryption, but not authentication, is needed, etcd supports encrypting its messages with automatically generated self-signed certificates. This simplifies deployment because there is no need for managing certificates and keys outside of etcd.
-
 Configure etcd to use self-signed certificates for client and peer connections with the flags `--auto-tls` and `--peer-auto-tls`:
 
 ```sh

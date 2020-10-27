@@ -76,6 +76,7 @@ var (
 	grpcProxyListenKey     string
 	grpcProxyListenAutoTLS bool
 	grpcProxyListenCRL     string
+	selfSignedCertValidity uint
 
 	grpcProxyAdvertiseClientURL string
 	grpcProxyResolverPrefix     string
@@ -149,6 +150,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyListenCA, "trusted-ca-file", "", "verify certificates of TLS-enabled secure proxy using this CA bundle")
 	cmd.Flags().BoolVar(&grpcProxyListenAutoTLS, "auto-tls", false, "proxy TLS using generated certificates")
 	cmd.Flags().StringVar(&grpcProxyListenCRL, "client-crl-file", "", "proxy client certificate revocation list file.")
+	cmd.Flags().UintVar(&selfSignedCertValidity, "self-signed-cert-validity", 1, "The validity period of the proxy certificates, unit is year")
 
 	// experimental flags
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
@@ -189,7 +191,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	if tlsinfo == nil && grpcProxyListenAutoTLS {
 		host := []string{"https://" + grpcProxyListenAddr}
 		dir := filepath.Join(grpcProxyDataDir, "fixtures", "proxy")
-		autoTLS, err := transport.SelfCert(lg, dir, host)
+		autoTLS, err := transport.SelfCert(lg, dir, host, selfSignedCertValidity)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -252,6 +254,10 @@ func checkArgs() {
 	}
 	if grpcProxyResolverPrefix != "" && grpcProxyResolverTTL > 0 && grpcProxyAdvertiseClientURL == "" {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("invalid advertise-client-url %q", grpcProxyAdvertiseClientURL))
+		os.Exit(1)
+	}
+	if grpcProxyListenAutoTLS && selfSignedCertValidity == 0 {
+		fmt.Fprintln(os.Stderr, fmt.Errorf("selfSignedCertValidity is invalid,it should be greater than 0"))
 		os.Exit(1)
 	}
 }

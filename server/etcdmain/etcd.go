@@ -393,7 +393,7 @@ func startProxy(cfg *config) error {
 	}
 	listenerTLS := cfg.ec.ClientTLSInfo
 	if cfg.ec.ClientAutoTLS && cTLS {
-		listenerTLS, err = transport.SelfCert(cfg.ec.GetLogger(), filepath.Join(cfg.ec.Dir, "clientCerts"), cHosts)
+		listenerTLS, err = transport.SelfCert(cfg.ec.GetLogger(), filepath.Join(cfg.ec.Dir, "clientCerts"), cHosts, cfg.ec.SelfSignedCertValidity)
 		if err != nil {
 			lg.Fatal("failed to initialize self-signed client cert", zap.Error(err))
 		}
