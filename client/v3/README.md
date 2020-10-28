@@ -8,7 +8,7 @@
 ## Install
 
 ```bash
-go get go.etcd.io/etcd/clientv3
+go get go.etcd.io/etcd/client/v3
 ```
 
 ## Get started
