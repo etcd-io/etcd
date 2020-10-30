@@ -114,8 +114,16 @@ func (info TLSInfo) Empty() bool {
 	return info.CertFile == "" && info.KeyFile == ""
 }
 
-func SelfCert(lg *zap.Logger, dirpath string, hosts []string, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
+func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertValidity uint, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
 	info.Logger = lg
+	if selfSignedCertValidity == 0 {
+		err = fmt.Errorf("selfSignedCertValidity is invalid,it should be greater than 0")
+		info.Logger.Warn(
+			"cannot generate cert",
+			zap.Error(err),
+		)
+		return
+	}
 	err = fileutil.TouchDirAll(dirpath)
 	if err != nil {
 		if info.Logger != nil {
@@ -154,11 +162,18 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, additionalUsages .
 		SerialNumber: serialNumber,
 		Subject:      pkix.Name{Organization: []string{"etcd"}},
 		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(365 * (24 * time.Hour)),
+		NotAfter:     time.Now().Add(time.Duration(selfSignedCertValidity) * 365 * (24 * time.Hour)),
 
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           append([]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, additionalUsages...),
 		BasicConstraintsValid: true,
+	}
+
+	if info.Logger != nil {
+		info.Logger.Warn(
+			"automatically generate certificates",
+			zap.Time("certificate-validity-bound-not-after", tmpl.NotAfter),
+		)
 	}
 
 	for _, host := range hosts {
@@ -227,7 +242,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, additionalUsages .
 	if info.Logger != nil {
 		info.Logger.Info("created key file", zap.String("path", keyPath))
 	}
-	return SelfCert(lg, dirpath, hosts)
+	return SelfCert(lg, dirpath, hosts, selfSignedCertValidity)
 }
 
 // baseConfig is called on initial TLS handshake start.

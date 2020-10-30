@@ -37,7 +37,7 @@ func createSelfCertEx(host string, additionalUsages ...x509.ExtKeyUsage) (*TLSIn
 	if terr != nil {
 		return nil, nil, terr
 	}
-	info, err := SelfCert(zap.NewExample(), d, []string{host + ":0"}, additionalUsages...)
+	info, err := SelfCert(zap.NewExample(), d, []string{host + ":0"}, 1, additionalUsages...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -366,7 +366,7 @@ func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmpdir)
-	tlsinfo, err := SelfCert(zap.NewExample(), tmpdir, []string{"127.0.0.1"})
+	tlsinfo, err := SelfCert(zap.NewExample(), tmpdir, []string{"127.0.0.1"}, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
