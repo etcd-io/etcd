@@ -278,6 +278,11 @@ function tool_exists {
   fi
 }
 
+# Ensure gobin is available, as it runs majority of the tools
+if ! command -v "gobin" >/dev/null; then
+    run env GO111MODULE=off go get github.com/myitcv/gobin || exit 1
+fi
+
 # tool_get_bin [tool] - returns absolute path to a tool binary (or returns error)
 function tool_get_bin {
   tool_exists "gobin" "GO111MODULE=off go get github.com/myitcv/gobin" || return 2
@@ -308,5 +313,3 @@ function run_go_tool {
   run "${cmdbin}" "$@" || return 2
 }
 
-# Ensure gobin is available, as it runs majority of the tools
-run env GO111MODULE=off go get github.com/myitcv/gobin
