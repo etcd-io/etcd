@@ -65,7 +65,7 @@ func (e *ResolverGroup) addResolver(r *Resolver) {
 	addrs := epsToAddrs(e.endpoints...)
 	e.resolvers = append(e.resolvers, r)
 	e.mu.Unlock()
-	r.cc.NewAddress(addrs)
+	r.cc.UpdateState(resolver.State{Addresses: addrs})
 }
 
 func (e *ResolverGroup) removeResolver(r *Resolver) {
@@ -85,8 +85,9 @@ func (e *ResolverGroup) SetEndpoints(endpoints []string) {
 	addrs := epsToAddrs(endpoints...)
 	e.mu.Lock()
 	e.endpoints = endpoints
+	state := resolver.State{Addresses: addrs}
 	for _, r := range e.resolvers {
-		r.cc.NewAddress(addrs)
+		r.cc.UpdateState(state)
 	}
 	e.mu.Unlock()
 }
