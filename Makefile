@@ -10,6 +10,15 @@
 #   make docker-kill
 #   make docker-remove
 
+UNAME := $(shell uname)
+XARGS = xargs
+
+# -r is only necessary on GNU xargs.
+ifeq ($(UNAME), Linux)
+XARGS += -r
+endif
+XARGS += rm -r
+
 .PHONY: build
 build:
 	GO_BUILD_FLAGS="-v" ./build
@@ -26,7 +35,7 @@ clean:
 	rm -rf ./release
 	rm -rf ./coverage/*.err ./coverage/*.out
 	rm -rf ./tests/e2e/default.proxy
-	find ./ -name "127.0.0.1:*" -o -name "localhost:*" -o -name "*.log" -o -name "agent-*" -o -name "*.coverprofile" -o -name "testname-proxy-*" | xargs -r rm -r
+	find ./ -name "127.0.0.1:*" -o -name "localhost:*" -o -name "*.log" -o -name "agent-*" -o -name "*.coverprofile" -o -name "testname-proxy-*" | $(XARGS)
 
 docker-clean:
 	docker images
