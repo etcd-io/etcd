@@ -13,8 +13,8 @@ function mod_tidy_fix {
 function bash_ws_fix {
   log_callout "Fixing whitespaces in the bash scripts"
   # Makes sure all bash scripts do use '  ' (double space) for indention. 
-  log_cmd "% find ./ -name '*.sh' | xargs sed --follow-symlinks -i 's|\t|  |g'"
-  find ./ -print0 -name '*.sh' | xargs -0 sed --follow-symlinks -i 's|\t|  |g'
+  log_cmd "find ./ -name '*.sh' -print0 | xargs -0 sed --follow-symlinks -i 's|\t|  |g'"
+  find ./ -name '*.sh' -print0 | xargs -0 sed --follow-symlinks -i 's|\t|  |g'
 }
 
 log_callout -e "\nFixing etcd code for you...\n"
