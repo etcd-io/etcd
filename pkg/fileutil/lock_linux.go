@@ -21,19 +21,14 @@ import (
 	"io"
 	"os"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // This used to call syscall.Flock() but that call fails with EBADF on NFS.
 // An alternative is lockf() which works on NFS but that call lets a process lock
 // the same file twice. Instead, use Linux's non-standard open file descriptor
 // locks which will block if the process already holds the file lock.
-//
-// constants from /usr/include/bits/fcntl-linux.h
-const (
-	F_OFD_GETLK  = 37
-	F_OFD_SETLK  = 37
-	F_OFD_SETLKW = 38
-)
 
 var (
 	wrlck = syscall.Flock_t{
@@ -50,7 +45,7 @@ var (
 func init() {
 	// use open file descriptor locks if the system supports it
 	getlk := syscall.Flock_t{Type: syscall.F_RDLCK}
-	if err := syscall.FcntlFlock(0, F_OFD_GETLK, &getlk); err == nil {
+	if err := syscall.FcntlFlock(0, unix.F_OFD_GETLK, &getlk); err == nil {
 		linuxTryLockFile = ofdTryLockFile
 		linuxLockFile = ofdLockFile
 	}
@@ -67,7 +62,7 @@ func ofdTryLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error
 	}
 
 	flock := wrlck
-	if err = syscall.FcntlFlock(f.Fd(), F_OFD_SETLK, &flock); err != nil {
+	if err = syscall.FcntlFlock(f.Fd(), unix.F_OFD_SETLK, &flock); err != nil {
 		f.Close()
 		if err == syscall.EWOULDBLOCK {
 			err = ErrLocked
@@ -88,7 +83,7 @@ func ofdLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 	}
 
 	flock := wrlck
-	err = syscall.FcntlFlock(f.Fd(), F_OFD_SETLKW, &flock)
+	err = syscall.FcntlFlock(f.Fd(), unix.F_OFD_SETLKW, &flock)
 	if err != nil {
 		f.Close()
 		return nil, err
