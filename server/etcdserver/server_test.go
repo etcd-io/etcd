@@ -999,7 +999,8 @@ func TestSnapshot(t *testing.T) {
 		defer func() { ch <- struct{}{} }()
 
 		if len(gaction) != 2 {
-			t.Fatalf("len(action) = %d, want 2", len(gaction))
+			t.Errorf("len(action) = %d, want 2", len(gaction))
+			return
 		}
 		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "SaveSnap"}) {
 			t.Errorf("action = %s, want SaveSnap", gaction[0])
@@ -1156,6 +1157,7 @@ func TestTriggerSnap(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
+		defer close(donec)
 		wcnt := 3 + snapc
 		gaction, _ := p.Wait(wcnt)
 
@@ -1163,9 +1165,9 @@ func TestTriggerSnap(t *testing.T) {
 		// (SnapshotCount+1) * Puts + SaveSnap = (SnapshotCount+1) * Save + SaveSnap + Release
 		if len(gaction) != wcnt {
 			t.Logf("gaction: %v", gaction)
-			t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
+			t.Errorf("len(action) = %d, want %d", len(gaction), wcnt)
+			return
 		}
-
 		if !reflect.DeepEqual(gaction[wcnt-2], testutil.Action{Name: "SaveSnap"}) {
 			t.Errorf("action = %s, want SaveSnap", gaction[wcnt-2])
 		}
@@ -1173,7 +1175,6 @@ func TestTriggerSnap(t *testing.T) {
 		if !reflect.DeepEqual(gaction[wcnt-1], testutil.Action{Name: "Release"}) {
 			t.Errorf("action = %s, want Release", gaction[wcnt-1])
 		}
-		close(donec)
 	}()
 
 	for i := 0; i < snapc+1; i++ {
