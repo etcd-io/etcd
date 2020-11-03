@@ -303,7 +303,6 @@ function fmt_pass {
       revive \
       license_header \
       receiver_name \
-      commit_title \
       mod_tidy \
       dep \
       shellcheck \
@@ -419,30 +418,6 @@ function receiver_name_for_package {
 
 function receiver_name_pass {
   run_for_modules receiver_name_for_package
-}
-
-function commit_title_pass {
-  git log --oneline "$(git merge-base HEAD master)"...HEAD | while read -r l; do
-    commitMsg=$(echo "$l" | cut -f2- -d' ')
-    if [[ "$commitMsg" == Merge* ]]; then
-      # ignore "Merge pull" commits
-      continue
-    fi
-    if [[ "$commitMsg" == Revert* ]]; then
-      # ignore revert commits
-      continue
-    fi
-
-    pkgPrefix=$(echo "$commitMsg" | cut -f1 -d':')
-    spaceCommas=$(echo "$commitMsg" | sed 's/ /\n/g' | grep -c ',$' || echo 0)
-    commaSpaces=$(echo "$commitMsg" | sed 's/,/\n/g' | grep -c '^ ' || echo 0)
-    if [[ $(echo "$commitMsg" | grep -c ":..*") == 0 || "$commitMsg" == "$pkgPrefix" || "$spaceCommas" != "$commaSpaces" ]]; then
-      log_error "$l"...
-      log_error "Expected commit title format '<package>{\", \"<package>}: <description>'"
-      log_error "Got: $l"
-      return 255
-    fi
-  done
 }
 
 # goword_for_package package
