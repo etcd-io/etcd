@@ -17,8 +17,6 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.12.3" ]]; then
   exit 255
 fi
 
-run env GO111MODULE=off go get -u github.com/myitcv/gobin
-
 GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)
 GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)
 SWAGGER_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger)
