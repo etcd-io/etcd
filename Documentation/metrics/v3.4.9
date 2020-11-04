@@ -1,9 +1,9 @@
-# server version: etcd_server_version{server_version="3.5.0-pre"}
+# server version: etcd_server_version{server_version="3.4.9"}
 
 # name: "etcd_cluster_version"
 # description: "Which version is running. 1 for 'cluster_version' label with current cluster version"
 # type: "gauge"
-etcd_cluster_version{cluster_version="3.5"}
+etcd_cluster_version{cluster_version="3.4"}
 
 # name: "etcd_debugging_auth_revision"
 # description: "The current revision of auth store."
@@ -133,11 +133,6 @@ etcd_debugging_mvcc_current_revision
 # description: "Total number of db keys compacted."
 # type: "counter"
 etcd_debugging_mvcc_db_compaction_keys_total
-
-# name: "etcd_debugging_mvcc_db_compaction_last"
-# description: "The unix time of the last db compaction. Resets to 0 on start."
-# type: "gauge"
-etcd_debugging_mvcc_db_compaction_last
 
 # name: "etcd_debugging_mvcc_db_compaction_pause_duration_milliseconds"
 # description: "Bucketed histogram of db compaction pause duration."
@@ -425,6 +420,31 @@ etcd_disk_wal_fsync_duration_seconds_count
 # type: "gauge"
 etcd_disk_wal_write_bytes_total
 
+# name: "etcd_grpc_proxy_cache_hits_total"
+# description: "Total number of cache hits"
+# type: "gauge"
+etcd_grpc_proxy_cache_hits_total
+
+# name: "etcd_grpc_proxy_cache_keys_total"
+# description: "Total number of keys/ranges cached"
+# type: "gauge"
+etcd_grpc_proxy_cache_keys_total
+
+# name: "etcd_grpc_proxy_cache_misses_total"
+# description: "Total number of cache misses"
+# type: "gauge"
+etcd_grpc_proxy_cache_misses_total
+
+# name: "etcd_grpc_proxy_events_coalescing_total"
+# description: "Total number of events coalescing"
+# type: "counter"
+etcd_grpc_proxy_events_coalescing_total
+
+# name: "etcd_grpc_proxy_watchers_coalescing_total"
+# description: "Total number of current watchers coalescing"
+# type: "gauge"
+etcd_grpc_proxy_watchers_coalescing_total
+
 # name: "etcd_mvcc_db_open_read_transactions"
 # description: "The number of currently open read transactions"
 # type: "gauge"
@@ -561,7 +581,7 @@ etcd_server_client_requests_total{client_api_version="3.5",type="unary"}
 # name: "etcd_server_go_version"
 # description: "Which Go version server is running with. 1 for 'server_go_version' label with current version."
 # type: "gauge"
-etcd_server_go_version{server_go_version="go1.14.3"}
+etcd_server_go_version{server_go_version="go1.12.17"}
 
 # name: "etcd_server_has_leader"
 # description: "Whether or not a leader exists. 1 is existence, 0 is not."
@@ -586,8 +606,7 @@ etcd_server_heartbeat_send_failures_total
 # name: "etcd_server_id"
 # description: "Server or member ID in hexadecimal format. 1 for 'server_id' label with current ID."
 # type: "gauge"
-etcd_server_id{server_id="451af08594378132"}
-etcd_server_id{server_id="61791325a7fedcf8"}
+etcd_server_id{server_id="7339c4e5e833c029"}
 
 # name: "etcd_server_is_leader"
 # description: "Whether or not this member is a leader. 1 if is, 0 otherwise."
@@ -657,7 +676,7 @@ etcd_server_snapshot_apply_in_progress_total
 # name: "etcd_server_version"
 # description: "Which version is running. 1 for 'server_version' label with current version."
 # type: "gauge"
-etcd_server_version{server_version="3.5.0-pre"}
+etcd_server_version{server_version="3.4.9"}
 
 # name: "etcd_snap_db_fsync_duration_seconds"
 # description: "The latency distributions of fsyncing .snap.db file"
@@ -737,7 +756,7 @@ go_goroutines
 # name: "go_info"
 # description: "Information about the Go environment."
 # type: "gauge"
-go_info{version="go1.14.3"}
+go_info{version="go1.12.17"}
 
 # name: "go_memstats_alloc_bytes"
 # description: "Number of bytes allocated and still in use."
@@ -888,13 +907,11 @@ go_threads
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Alarm",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="AuthDisable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="AuthEnable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
-grpc_server_handled_total{grpc_code="CODE",grpc_method="AuthStatus",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Authenticate",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Check",grpc_service="grpc.health.v1.Health",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Compact",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Defragment",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
-grpc_server_handled_total{grpc_code="CODE",grpc_method="Downgrade",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Hash",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="HashKV",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="LeaseGrant",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
@@ -935,13 +952,11 @@ grpc_server_handled_total{grpc_code="CODE",grpc_method="Watch",grpc_service="grp
 grpc_server_msg_received_total{grpc_method="Alarm",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="AuthDisable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="AuthEnable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
-grpc_server_msg_received_total{grpc_method="AuthStatus",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Authenticate",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Check",grpc_service="grpc.health.v1.Health",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Compact",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Defragment",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
-grpc_server_msg_received_total{grpc_method="Downgrade",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Hash",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="HashKV",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="LeaseGrant",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
@@ -982,13 +997,11 @@ grpc_server_msg_received_total{grpc_method="Watch",grpc_service="grpc.health.v1.
 grpc_server_msg_sent_total{grpc_method="Alarm",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="AuthDisable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="AuthEnable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
-grpc_server_msg_sent_total{grpc_method="AuthStatus",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Authenticate",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Check",grpc_service="grpc.health.v1.Health",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Compact",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Defragment",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
-grpc_server_msg_sent_total{grpc_method="Downgrade",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Hash",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="HashKV",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="LeaseGrant",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
@@ -1029,13 +1042,11 @@ grpc_server_msg_sent_total{grpc_method="Watch",grpc_service="grpc.health.v1.Heal
 grpc_server_started_total{grpc_method="Alarm",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="AuthDisable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_started_total{grpc_method="AuthEnable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
-grpc_server_started_total{grpc_method="AuthStatus",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Authenticate",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Check",grpc_service="grpc.health.v1.Health",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Compact",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Defragment",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
-grpc_server_started_total{grpc_method="Downgrade",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Hash",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="HashKV",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="LeaseGrant",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
@@ -1069,16 +1080,6 @@ grpc_server_started_total{grpc_method="UserList",grpc_service="etcdserverpb.Auth
 grpc_server_started_total{grpc_method="UserRevokeRole",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Watch",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"}
 grpc_server_started_total{grpc_method="Watch",grpc_service="grpc.health.v1.Health",grpc_type="server_stream"}
-
-# name: "os_fd_limit"
-# description: "The file descriptor limit."
-# type: "gauge"
-os_fd_limit
-
-# name: "os_fd_used"
-# description: "The number of used file descriptors."
-# type: "gauge"
-os_fd_used
 
 # name: "process_cpu_seconds_total"
 # description: "Total user and system CPU time spent in seconds."
