@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
-if [[ "$(go list)" != "go.etcd.io/etcd/v3" ]]; then
-  echo "must be run from 'go.etcd.io/etcd/v3' module directory"
+REPO="go.etcd.io/etcd"
+
+if [[ "$(go list)" != "${REPO}/v3" ]]; then
+  echo "must be run from '${REPO}/v3' module directory"
   exit 255
 fi
 
-ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "go.etcd.io/etcd/v3")
+ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "${REPO}/v3")
 
 ####   Convenient IO methods #####
 
@@ -44,6 +46,12 @@ function log_cmd {
 
 function log_success {
   >&2 echo -n -e "${COLOR_GREEN}"
+  >&2 echo "$@"
+  >&2 echo -n -e "${COLOR_NONE}"
+}
+
+function log_info {
+  >&2 echo -n -e "${COLOR_NONE}"
   >&2 echo "$@"
   >&2 echo -n -e "${COLOR_NONE}"
 }
@@ -105,6 +113,11 @@ function pkgs_in_module {
   go list -mod=mod "${1:-./...}";
 }
 
+# Prints subdirectory (from the repo root) for the current module.
+function module_subdir {
+  relativePath "${ETCD_ROOT_DIR}" "${PWD}"
+}
+
 ####    Running actions against multiple modules ####
 
 # run [command...] - runs given command, printing it first and
@@ -114,11 +127,11 @@ function pkgs_in_module {
 function run {
   local rpath
   local command
-  rpath=$(relativePath "${ETCD_ROOT_DIR}" "${PWD}")
+  rpath=$(module_subdir)
   # Quoting all components as the commands are fully copy-parsable:
   command=("${@}")
   command=("${command[@]@Q}")
-  if [ "${rpath}" != "." ]; then
+  if [[ "${rpath}" != "." && "${rpath}" != "" ]]; then
     repro="(cd ${rpath} && ${command[*]})"
   else 
     repro="${command[*]}"
@@ -147,15 +160,15 @@ function run_for_module {
 
 function modules() {
   modules=(
-    go.etcd.io/etcd/api/v3
-    go.etcd.io/etcd/pkg/v3
-    go.etcd.io/etcd/raft/v3
-    go.etcd.io/etcd/client/v2
-    go.etcd.io/etcd/client/v3
-    go.etcd.io/etcd/server/v3
-    go.etcd.io/etcd/etcdctl/v3
-    go.etcd.io/etcd/tests/v3
-    go.etcd.io/etcd/v3)
+    "${REPO}/api/v3"
+    "${REPO}/pkg/v3"
+    "${REPO}/raft/v3"
+    "${REPO}/client/v2"
+    "${REPO}/client/v3"
+    "${REPO}/server/v3"
+    "${REPO}/etcdctl/v3"
+    "${REPO}/tests/v3"
+    "${REPO}/v3")
   echo "${modules[@]}"
 }
 
@@ -311,5 +324,18 @@ function run_go_tool {
   fi
   shift 1
   run "${cmdbin}" "$@" || return 2
+}
+
+# assert_no_git_modifications fails if there are any uncommited changes.
+function assert_no_git_modifications {
+  log_callout "Making sure everything is committed."
+  if ! git diff --cached --exit-code; then
+    log_error "Found staged by uncommited changes. Do commit/stash your changes first."
+    return 2
+  fi
+  if ! git diff  --exit-code; then
+    log_error "Found unstaged and uncommited changes. Do commit/stash your changes first."
+    return 2
+  fi
 }
 
