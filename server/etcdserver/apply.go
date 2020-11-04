@@ -39,8 +39,7 @@ import (
 )
 
 const (
-	warnApplyDuration = 100 * time.Millisecond
-	v3Version         = "v3"
+	v3Version = "v3"
 )
 
 type applyResult struct {
@@ -137,7 +136,7 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	defer func(start time.Time) {
 		success := ar.err == nil || ar.err == mvcc.ErrCompacted
 		applySec.WithLabelValues(v3Version, op, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		warnOfExpensiveRequest(a.s.getLogger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
+		warnOfExpensiveRequest(a.s.getLogger(), a.s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		if !success {
 			warnOfFailedRequest(a.s.getLogger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		}
