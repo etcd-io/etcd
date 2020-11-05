@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strconv"
 	"time"
 
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -26,6 +27,8 @@ import (
 
 	"go.uber.org/zap"
 )
+
+const v2Version = "v2"
 
 // ApplierV2 is the interface for processing V2 raft messages
 type ApplierV2 interface {
@@ -109,12 +112,16 @@ func (a *applierV2store) Sync(r *RequestV2) Response {
 
 // applyV2Request interprets r as a call to v2store.X
 // and returns a Response interpreted from v2store.Event
-func (s *EtcdServer) applyV2Request(r *RequestV2) Response {
+func (s *EtcdServer) applyV2Request(r *RequestV2) (resp Response) {
 	stringer := panicAlternativeStringer{
 		stringer:    r,
 		alternative: func() string { return fmt.Sprintf("id:%d,method:%s,path:%s", r.ID, r.Method, r.Path) },
 	}
-	defer warnOfExpensiveRequest(s.getLogger(), time.Now(), stringer, nil, nil)
+	defer func(start time.Time) {
+		success := resp.Err == nil
+		applySec.WithLabelValues(v2Version, r.Method, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
+		warnOfExpensiveRequest(s.getLogger(), start, stringer, nil, nil)
+	}(time.Now())
 
 	switch r.Method {
 	case "POST":

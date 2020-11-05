@@ -164,6 +164,17 @@ var (
 		Name:      "limit",
 		Help:      "The file descriptor limit.",
 	})
+	applySec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "apply_duration_seconds",
+		Help:      "The latency distributions of v2 apply called by backend.",
+
+		// lowest bucket start of upper bound 0.0001 sec (0.1 ms) with factor 2
+		// highest bucket start of 0.0001 sec * 2^19 == 52.4288 sec
+		Buckets: prometheus.ExponentialBuckets(0.0001, 2, 20),
+	},
+		[]string{"version", "op", "success"})
 )
 
 func init() {
@@ -189,6 +200,7 @@ func init() {
 	prometheus.MustRegister(learnerPromoteFailed)
 	prometheus.MustRegister(fdUsed)
 	prometheus.MustRegister(fdLimit)
+	prometheus.MustRegister(applySec)
 
 	currentVersion.With(prometheus.Labels{
 		"server_version": version.Version,
