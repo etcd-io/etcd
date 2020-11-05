@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"context"
 	"testing"
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -67,7 +68,7 @@ func benchmarkStoreRange(b *testing.B, n int) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.Range(begin, end, RangeOptions{})
+		s.Range(context.TODO(), begin, end, RangeOptions{})
 	}
 }
 

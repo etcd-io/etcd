@@ -15,6 +15,8 @@
 package mvcc
 
 import (
+	"context"
+
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 )
@@ -33,10 +35,10 @@ func (rv *readView) Rev() int64 {
 	return tr.Rev()
 }
 
-func (rv *readView) Range(key, end []byte, ro RangeOptions) (r *RangeResult, err error) {
+func (rv *readView) Range(ctx context.Context, key, end []byte, ro RangeOptions) (r *RangeResult, err error) {
 	tr := rv.kv.Read(traceutil.TODO())
 	defer tr.End()
-	return tr.Range(key, end, ro)
+	return tr.Range(ctx, key, end, ro)
 }
 
 type writeView struct{ kv KV }
