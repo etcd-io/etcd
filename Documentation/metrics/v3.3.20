@@ -1,123 +1,9 @@
-# server version: etcd_server_version{server_version="3.5.0-pre"}
+# server version: etcd_server_version{server_version="3.3.20"}
 
 # name: "etcd_cluster_version"
 # description: "Which version is running. 1 for 'cluster_version' label with current cluster version"
 # type: "gauge"
-etcd_cluster_version{cluster_version="3.5"}
-
-# name: "etcd_debugging_auth_revision"
-# description: "The current revision of auth store."
-# type: "gauge"
-etcd_debugging_auth_revision
-
-# name: "etcd_debugging_disk_backend_commit_rebalance_duration_seconds"
-# description: "The latency distributions of commit.rebalance called by bboltdb backend."
-# type: "histogram"
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.001"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.002"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.004"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.008"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.016"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.032"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.064"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.128"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.256"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="0.512"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="1.024"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="2.048"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="4.096"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="8.192"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_bucket{le="+Inf"}
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_sum
-etcd_debugging_disk_backend_commit_rebalance_duration_seconds_count
-
-# name: "etcd_debugging_disk_backend_commit_spill_duration_seconds"
-# description: "The latency distributions of commit.spill called by bboltdb backend."
-# type: "histogram"
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.001"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.002"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.004"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.008"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.016"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.032"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.064"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.128"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.256"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="0.512"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="1.024"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="2.048"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="4.096"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="8.192"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_bucket{le="+Inf"}
-etcd_debugging_disk_backend_commit_spill_duration_seconds_sum
-etcd_debugging_disk_backend_commit_spill_duration_seconds_count
-
-# name: "etcd_debugging_disk_backend_commit_write_duration_seconds"
-# description: "The latency distributions of commit.write called by bboltdb backend."
-# type: "histogram"
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.001"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.002"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.004"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.008"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.016"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.032"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.064"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.128"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.256"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="0.512"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="1.024"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="2.048"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="4.096"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="8.192"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_bucket{le="+Inf"}
-etcd_debugging_disk_backend_commit_write_duration_seconds_sum
-etcd_debugging_disk_backend_commit_write_duration_seconds_count
-
-# name: "etcd_debugging_lease_granted_total"
-# description: "The total number of granted leases."
-# type: "counter"
-etcd_debugging_lease_granted_total
-
-# name: "etcd_debugging_lease_renewed_total"
-# description: "The number of renewed leases seen by the leader."
-# type: "counter"
-etcd_debugging_lease_renewed_total
-
-# name: "etcd_debugging_lease_revoked_total"
-# description: "The total number of revoked leases."
-# type: "counter"
-etcd_debugging_lease_revoked_total
-
-# name: "etcd_debugging_lease_ttl_total"
-# description: "Bucketed histogram of lease TTLs."
-# type: "histogram"
-etcd_debugging_lease_ttl_total_bucket{le="1"}
-etcd_debugging_lease_ttl_total_bucket{le="2"}
-etcd_debugging_lease_ttl_total_bucket{le="4"}
-etcd_debugging_lease_ttl_total_bucket{le="8"}
-etcd_debugging_lease_ttl_total_bucket{le="16"}
-etcd_debugging_lease_ttl_total_bucket{le="32"}
-etcd_debugging_lease_ttl_total_bucket{le="64"}
-etcd_debugging_lease_ttl_total_bucket{le="128"}
-etcd_debugging_lease_ttl_total_bucket{le="256"}
-etcd_debugging_lease_ttl_total_bucket{le="512"}
-etcd_debugging_lease_ttl_total_bucket{le="1024"}
-etcd_debugging_lease_ttl_total_bucket{le="2048"}
-etcd_debugging_lease_ttl_total_bucket{le="4096"}
-etcd_debugging_lease_ttl_total_bucket{le="8192"}
-etcd_debugging_lease_ttl_total_bucket{le="16384"}
-etcd_debugging_lease_ttl_total_bucket{le="32768"}
-etcd_debugging_lease_ttl_total_bucket{le="65536"}
-etcd_debugging_lease_ttl_total_bucket{le="131072"}
-etcd_debugging_lease_ttl_total_bucket{le="262144"}
-etcd_debugging_lease_ttl_total_bucket{le="524288"}
-etcd_debugging_lease_ttl_total_bucket{le="1.048576e+06"}
-etcd_debugging_lease_ttl_total_bucket{le="2.097152e+06"}
-etcd_debugging_lease_ttl_total_bucket{le="4.194304e+06"}
-etcd_debugging_lease_ttl_total_bucket{le="8.388608e+06"}
-etcd_debugging_lease_ttl_total_bucket{le="+Inf"}
-etcd_debugging_lease_ttl_total_sum
-etcd_debugging_lease_ttl_total_count
+etcd_cluster_version{cluster_version="3.3"}
 
 # name: "etcd_debugging_mvcc_compact_revision"
 # description: "The revision of the last compaction in store."
@@ -133,11 +19,6 @@ etcd_debugging_mvcc_current_revision
 # description: "Total number of db keys compacted."
 # type: "counter"
 etcd_debugging_mvcc_db_compaction_keys_total
-
-# name: "etcd_debugging_mvcc_db_compaction_last"
-# description: "The unix time of the last db compaction. Resets to 0 on start."
-# type: "gauge"
-etcd_debugging_mvcc_db_compaction_last
 
 # name: "etcd_debugging_mvcc_db_compaction_pause_duration_milliseconds"
 # description: "Bucketed histogram of db compaction pause duration."
@@ -181,7 +62,7 @@ etcd_debugging_mvcc_db_compaction_total_duration_milliseconds_sum
 etcd_debugging_mvcc_db_compaction_total_duration_milliseconds_count
 
 # name: "etcd_debugging_mvcc_db_total_size_in_bytes"
-# description: "Total size of the underlying database physically allocated in bytes."
+# description: "Total size of the underlying database physically allocated in bytes. Use etcd_mvcc_db_total_size_in_bytes"
 # type: "gauge"
 etcd_debugging_mvcc_db_total_size_in_bytes
 
@@ -210,8 +91,6 @@ etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_bucket{le="128"
 etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_bucket{le="256"}
 etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_bucket{le="512"}
 etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_bucket{le="1024"}
-etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_bucket{le="2048"}
-etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_bucket{le="4096"}
 etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_bucket{le="+Inf"}
 etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_sum
 etcd_debugging_mvcc_index_compaction_pause_duration_milliseconds_count
@@ -400,7 +279,7 @@ etcd_disk_backend_snapshot_duration_seconds_sum
 etcd_disk_backend_snapshot_duration_seconds_count
 
 # name: "etcd_disk_wal_fsync_duration_seconds"
-# description: "The latency distributions of fsync called by WAL."
+# description: "The latency distributions of fsync called by wal."
 # type: "histogram"
 etcd_disk_wal_fsync_duration_seconds_bucket{le="0.001"}
 etcd_disk_wal_fsync_duration_seconds_bucket{le="0.002"}
@@ -425,10 +304,30 @@ etcd_disk_wal_fsync_duration_seconds_count
 # type: "gauge"
 etcd_disk_wal_write_bytes_total
 
-# name: "etcd_mvcc_db_open_read_transactions"
-# description: "The number of currently open read transactions"
+# name: "etcd_grpc_proxy_cache_hits_total"
+# description: "Total number of cache hits"
 # type: "gauge"
-etcd_mvcc_db_open_read_transactions
+etcd_grpc_proxy_cache_hits_total
+
+# name: "etcd_grpc_proxy_cache_keys_total"
+# description: "Total number of keys/ranges cached"
+# type: "gauge"
+etcd_grpc_proxy_cache_keys_total
+
+# name: "etcd_grpc_proxy_cache_misses_total"
+# description: "Total number of cache misses"
+# type: "gauge"
+etcd_grpc_proxy_cache_misses_total
+
+# name: "etcd_grpc_proxy_events_coalescing_total"
+# description: "Total number of events coalescing"
+# type: "counter"
+etcd_grpc_proxy_events_coalescing_total
+
+# name: "etcd_grpc_proxy_watchers_coalescing_total"
+# description: "Total number of current watchers coalescing"
+# type: "gauge"
+etcd_grpc_proxy_watchers_coalescing_total
 
 # name: "etcd_mvcc_db_total_size_in_bytes"
 # description: "Total size of the underlying database physically allocated in bytes."
@@ -439,11 +338,6 @@ etcd_mvcc_db_total_size_in_bytes
 # description: "Total size of the underlying database logically in use in bytes."
 # type: "gauge"
 etcd_mvcc_db_total_size_in_use_in_bytes
-
-# name: "etcd_mvcc_delete_total"
-# description: "Total number of deletes seen by this member."
-# type: "counter"
-etcd_mvcc_delete_total
 
 # name: "etcd_mvcc_hash_duration_seconds"
 # description: "The latency distribution of storage hash operation."
@@ -489,26 +383,6 @@ etcd_mvcc_hash_rev_duration_seconds_bucket{le="+Inf"}
 etcd_mvcc_hash_rev_duration_seconds_sum
 etcd_mvcc_hash_rev_duration_seconds_count
 
-# name: "etcd_mvcc_put_total"
-# description: "Total number of puts seen by this member."
-# type: "counter"
-etcd_mvcc_put_total
-
-# name: "etcd_mvcc_range_total"
-# description: "Total number of ranges seen by this member."
-# type: "counter"
-etcd_mvcc_range_total
-
-# name: "etcd_mvcc_txn_total"
-# description: "Total number of txns seen by this member."
-# type: "counter"
-etcd_mvcc_txn_total
-
-# name: "etcd_network_active_peers"
-# description: "The current number of active peer connections."
-# type: "gauge"
-etcd_network_active_peers{Local="LOCAL_NODE_ID",Remote="REMOTE_PEER_NODE_ID"}
-
 # name: "etcd_network_client_grpc_received_bytes_total"
 # description: "The total number of bytes received from grpc clients."
 # type: "counter"
@@ -525,7 +399,7 @@ etcd_network_client_grpc_sent_bytes_total
 etcd_network_peer_received_bytes_total{From="REMOTE_PEER_NODE_ID"}
 
 # name: "etcd_network_peer_round_trip_time_seconds"
-# description: "Round-Trip-Time histogram between peers"
+# description: "Round-Trip-Time histogram between peers."
 # type: "histogram"
 etcd_network_peer_round_trip_time_seconds_bucket{To="REMOTE_PEER_NODE_ID",le="+Inf"}
 etcd_network_peer_round_trip_time_seconds_bucket{To="REMOTE_PEER_NODE_ID",le="0.0001"}
@@ -542,8 +416,6 @@ etcd_network_peer_round_trip_time_seconds_bucket{To="REMOTE_PEER_NODE_ID",le="0.
 etcd_network_peer_round_trip_time_seconds_bucket{To="REMOTE_PEER_NODE_ID",le="0.2048"}
 etcd_network_peer_round_trip_time_seconds_bucket{To="REMOTE_PEER_NODE_ID",le="0.4096"}
 etcd_network_peer_round_trip_time_seconds_bucket{To="REMOTE_PEER_NODE_ID",le="0.8192"}
-etcd_network_peer_round_trip_time_seconds_bucket{To="REMOTE_PEER_NODE_ID",le="1.6384"}
-etcd_network_peer_round_trip_time_seconds_bucket{To="REMOTE_PEER_NODE_ID",le="3.2768"}
 etcd_network_peer_round_trip_time_seconds_count{To="REMOTE_PEER_NODE_ID"}
 etcd_network_peer_round_trip_time_seconds_sum{To="REMOTE_PEER_NODE_ID"}
 
@@ -561,7 +433,7 @@ etcd_server_client_requests_total{client_api_version="3.5",type="unary"}
 # name: "etcd_server_go_version"
 # description: "Which Go version server is running with. 1 for 'server_go_version' label with current version."
 # type: "gauge"
-etcd_server_go_version{server_go_version="go1.14.3"}
+etcd_server_go_version{server_go_version="go1.12.17"}
 
 # name: "etcd_server_has_leader"
 # description: "Whether or not a leader exists. 1 is existence, 0 is not."
@@ -586,28 +458,17 @@ etcd_server_heartbeat_send_failures_total
 # name: "etcd_server_id"
 # description: "Server or member ID in hexadecimal format. 1 for 'server_id' label with current ID."
 # type: "gauge"
-etcd_server_id{server_id="451af08594378132"}
-etcd_server_id{server_id="61791325a7fedcf8"}
+etcd_server_id{server_id="7339c4e5e833c029"}
 
 # name: "etcd_server_is_leader"
 # description: "Whether or not this member is a leader. 1 if is, 0 otherwise."
 # type: "gauge"
 etcd_server_is_leader
 
-# name: "etcd_server_is_learner"
-# description: "Whether or not this member is a learner. 1 if is, 0 otherwise."
-# type: "gauge"
-etcd_server_is_learner
-
 # name: "etcd_server_leader_changes_seen_total"
 # description: "The number of leader changes seen."
 # type: "counter"
 etcd_server_leader_changes_seen_total
-
-# name: "etcd_server_learner_promote_successes"
-# description: "The total number of successful learner promotions while this member is leader."
-# type: "counter"
-etcd_server_learner_promote_successes
 
 # name: "etcd_server_proposals_applied_total"
 # description: "The total number of consensus proposals applied."
@@ -657,7 +518,7 @@ etcd_server_snapshot_apply_in_progress_total
 # name: "etcd_server_version"
 # description: "Which version is running. 1 for 'server_version' label with current version."
 # type: "gauge"
-etcd_server_version{server_version="3.5.0-pre"}
+etcd_server_version{server_version="3.3.20"}
 
 # name: "etcd_snap_db_fsync_duration_seconds"
 # description: "The latency distributions of fsyncing .snap.db file"
@@ -697,27 +558,6 @@ etcd_snap_db_save_total_duration_seconds_bucket{le="+Inf"}
 etcd_snap_db_save_total_duration_seconds_sum
 etcd_snap_db_save_total_duration_seconds_count
 
-# name: "etcd_snap_fsync_duration_seconds"
-# description: "The latency distributions of fsync called by snap."
-# type: "histogram"
-etcd_snap_fsync_duration_seconds_bucket{le="0.001"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.002"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.004"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.008"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.016"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.032"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.064"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.128"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.256"}
-etcd_snap_fsync_duration_seconds_bucket{le="0.512"}
-etcd_snap_fsync_duration_seconds_bucket{le="1.024"}
-etcd_snap_fsync_duration_seconds_bucket{le="2.048"}
-etcd_snap_fsync_duration_seconds_bucket{le="4.096"}
-etcd_snap_fsync_duration_seconds_bucket{le="8.192"}
-etcd_snap_fsync_duration_seconds_bucket{le="+Inf"}
-etcd_snap_fsync_duration_seconds_sum
-etcd_snap_fsync_duration_seconds_count
-
 # name: "go_gc_duration_seconds"
 # description: "A summary of the GC invocation durations."
 # type: "summary"
@@ -737,7 +577,7 @@ go_goroutines
 # name: "go_info"
 # description: "Information about the Go environment."
 # type: "gauge"
-go_info{version="go1.14.3"}
+go_info{version="go1.12.17"}
 
 # name: "go_memstats_alloc_bytes"
 # description: "Number of bytes allocated and still in use."
@@ -888,13 +728,11 @@ go_threads
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Alarm",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="AuthDisable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="AuthEnable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
-grpc_server_handled_total{grpc_code="CODE",grpc_method="AuthStatus",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Authenticate",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Check",grpc_service="grpc.health.v1.Health",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Compact",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Defragment",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
-grpc_server_handled_total{grpc_code="CODE",grpc_method="Downgrade",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="Hash",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="HashKV",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="LeaseGrant",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
@@ -904,7 +742,6 @@ grpc_server_handled_total{grpc_code="CODE",grpc_method="LeaseRevoke",grpc_servic
 grpc_server_handled_total{grpc_code="CODE",grpc_method="LeaseTimeToLive",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="MemberAdd",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="MemberList",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
-grpc_server_handled_total{grpc_code="CODE",grpc_method="MemberPromote",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="MemberRemove",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="MemberUpdate",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_handled_total{grpc_code="CODE",grpc_method="MoveLeader",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
@@ -935,13 +772,11 @@ grpc_server_handled_total{grpc_code="CODE",grpc_method="Watch",grpc_service="grp
 grpc_server_msg_received_total{grpc_method="Alarm",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="AuthDisable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="AuthEnable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
-grpc_server_msg_received_total{grpc_method="AuthStatus",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Authenticate",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Check",grpc_service="grpc.health.v1.Health",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Compact",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Defragment",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
-grpc_server_msg_received_total{grpc_method="Downgrade",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="Hash",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="HashKV",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="LeaseGrant",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
@@ -951,7 +786,6 @@ grpc_server_msg_received_total{grpc_method="LeaseRevoke",grpc_service="etcdserve
 grpc_server_msg_received_total{grpc_method="LeaseTimeToLive",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="MemberAdd",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="MemberList",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
-grpc_server_msg_received_total{grpc_method="MemberPromote",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="MemberRemove",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="MemberUpdate",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_msg_received_total{grpc_method="MoveLeader",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
@@ -982,13 +816,11 @@ grpc_server_msg_received_total{grpc_method="Watch",grpc_service="grpc.health.v1.
 grpc_server_msg_sent_total{grpc_method="Alarm",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="AuthDisable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="AuthEnable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
-grpc_server_msg_sent_total{grpc_method="AuthStatus",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Authenticate",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Check",grpc_service="grpc.health.v1.Health",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Compact",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Defragment",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
-grpc_server_msg_sent_total{grpc_method="Downgrade",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="Hash",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="HashKV",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="LeaseGrant",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
@@ -998,7 +830,6 @@ grpc_server_msg_sent_total{grpc_method="LeaseRevoke",grpc_service="etcdserverpb.
 grpc_server_msg_sent_total{grpc_method="LeaseTimeToLive",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="MemberAdd",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="MemberList",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
-grpc_server_msg_sent_total{grpc_method="MemberPromote",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="MemberRemove",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="MemberUpdate",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_msg_sent_total{grpc_method="MoveLeader",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
@@ -1029,13 +860,11 @@ grpc_server_msg_sent_total{grpc_method="Watch",grpc_service="grpc.health.v1.Heal
 grpc_server_started_total{grpc_method="Alarm",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="AuthDisable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_started_total{grpc_method="AuthEnable",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
-grpc_server_started_total{grpc_method="AuthStatus",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Authenticate",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Check",grpc_service="grpc.health.v1.Health",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Compact",grpc_service="etcdserverpb.KV",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Defragment",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="DeleteRange",grpc_service="etcdserverpb.KV",grpc_type="unary"}
-grpc_server_started_total{grpc_method="Downgrade",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Hash",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="HashKV",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
 grpc_server_started_total{grpc_method="LeaseGrant",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
@@ -1045,7 +874,6 @@ grpc_server_started_total{grpc_method="LeaseRevoke",grpc_service="etcdserverpb.L
 grpc_server_started_total{grpc_method="LeaseTimeToLive",grpc_service="etcdserverpb.Lease",grpc_type="unary"}
 grpc_server_started_total{grpc_method="MemberAdd",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_started_total{grpc_method="MemberList",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
-grpc_server_started_total{grpc_method="MemberPromote",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_started_total{grpc_method="MemberRemove",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_started_total{grpc_method="MemberUpdate",grpc_service="etcdserverpb.Cluster",grpc_type="unary"}
 grpc_server_started_total{grpc_method="MoveLeader",grpc_service="etcdserverpb.Maintenance",grpc_type="unary"}
@@ -1069,16 +897,6 @@ grpc_server_started_total{grpc_method="UserList",grpc_service="etcdserverpb.Auth
 grpc_server_started_total{grpc_method="UserRevokeRole",grpc_service="etcdserverpb.Auth",grpc_type="unary"}
 grpc_server_started_total{grpc_method="Watch",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"}
 grpc_server_started_total{grpc_method="Watch",grpc_service="grpc.health.v1.Health",grpc_type="server_stream"}
-
-# name: "os_fd_limit"
-# description: "The file descriptor limit."
-# type: "gauge"
-os_fd_limit
-
-# name: "os_fd_used"
-# description: "The number of used file descriptors."
-# type: "gauge"
-os_fd_used
 
 # name: "process_cpu_seconds_total"
 # description: "Total user and system CPU time spent in seconds."
@@ -1109,21 +927,4 @@ process_start_time_seconds
 # description: "Virtual memory size in bytes."
 # type: "gauge"
 process_virtual_memory_bytes
-
-# name: "process_virtual_memory_max_bytes"
-# description: "Maximum amount of virtual memory available in bytes."
-# type: "gauge"
-process_virtual_memory_max_bytes
-
-# name: "promhttp_metric_handler_requests_in_flight"
-# description: "Current number of scrapes being served."
-# type: "gauge"
-promhttp_metric_handler_requests_in_flight
-
-# name: "promhttp_metric_handler_requests_total"
-# description: "Total number of scrapes by HTTP status code."
-# type: "counter"
-promhttp_metric_handler_requests_total{code="200"}
-promhttp_metric_handler_requests_total{code="500"}
-promhttp_metric_handler_requests_total{code="503"}
 
