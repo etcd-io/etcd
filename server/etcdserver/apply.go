@@ -263,7 +263,7 @@ func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.Put
 	var rr *mvcc.RangeResult
 	if p.IgnoreValue || p.IgnoreLease || p.PrevKv {
 		trace.StepWithFunction(func() {
-			rr, err = txn.Range(p.Key, nil, mvcc.RangeOptions{})
+			rr, err = txn.Range(context.TODO(), p.Key, nil, mvcc.RangeOptions{})
 		}, "get previous kv pair")
 
 		if err != nil {
@@ -304,7 +304,7 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 	}
 
 	if dr.PrevKv {
-		rr, err := txn.Range(dr.Key, end, mvcc.RangeOptions{})
+		rr, err := txn.Range(context.TODO(), dr.Key, end, mvcc.RangeOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -349,7 +349,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 		Count: r.CountOnly,
 	}
 
-	rr, err := txn.Range(r.Key, mkGteRange(r.RangeEnd), ro)
+	rr, err := txn.Range(ctx, r.Key, mkGteRange(r.RangeEnd), ro)
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +536,7 @@ func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
 	// * rewrite rules for common patterns:
 	//	ex. "[a, b) createrev > 0" => "limit 1 /\ kvs > 0"
 	// * caching
-	rr, err := rv.Range(c.Key, mkGteRange(c.RangeEnd), mvcc.RangeOptions{})
+	rr, err := rv.Range(context.TODO(), c.Key, mkGteRange(c.RangeEnd), mvcc.RangeOptions{})
 	if err != nil {
 		return false
 	}
@@ -664,7 +664,7 @@ func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.Com
 		return nil, ch, nil, err
 	}
 	// get the current revision. which key to get is not important.
-	rr, _ := a.s.KV().Range([]byte("compaction"), nil, mvcc.RangeOptions{})
+	rr, _ := a.s.KV().Range(context.TODO(), []byte("compaction"), nil, mvcc.RangeOptions{})
 	resp.Header.Revision = rr.Rev
 	return resp, ch, trace, err
 }
@@ -1032,7 +1032,7 @@ func (a *applierV3backend) checkRequestPut(rv mvcc.ReadView, reqOp *pb.RequestOp
 	req := tv.RequestPut
 	if req.IgnoreValue || req.IgnoreLease {
 		// expects previous key-value, error if not exist
-		rr, err := rv.Range(req.Key, nil, mvcc.RangeOptions{})
+		rr, err := rv.Range(context.TODO(), req.Key, nil, mvcc.RangeOptions{})
 		if err != nil {
 			return err
 		}
