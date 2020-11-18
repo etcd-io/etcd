@@ -52,6 +52,7 @@ const (
 	DefaultMaxSnapshots          = 5
 	DefaultMaxWALs               = 5
 	DefaultMaxTxnOps             = uint(128)
+	DefaultWarningApplyDuration  = 100 * time.Millisecond
 	DefaultMaxRequestBytes       = 1.5 * 1024 * 1024
 	DefaultGRPCKeepAliveMinTime  = 5 * time.Second
 	DefaultGRPCKeepAliveInterval = 2 * time.Hour
@@ -289,6 +290,9 @@ type Config struct {
 	ExperimentalEnableLeaseCheckpoint       bool          `json:"experimental-enable-lease-checkpoint"`
 	ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit"`
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
+	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
+	// takes more time than this value.
+	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -382,8 +386,9 @@ func NewConfig() *Config {
 		SnapshotCount:          etcdserver.DefaultSnapshotCount,
 		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
 
-		MaxTxnOps:       DefaultMaxTxnOps,
-		MaxRequestBytes: DefaultMaxRequestBytes,
+		MaxTxnOps:                        DefaultMaxTxnOps,
+		MaxRequestBytes:                  DefaultMaxRequestBytes,
+		ExperimentalWarningApplyDuration: DefaultWarningApplyDuration,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,

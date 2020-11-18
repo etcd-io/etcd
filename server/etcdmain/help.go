@@ -214,6 +214,8 @@ Experimental feature:
     Skip verification of SAN field in client certificate for peer connections.
   --experimental-watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification.
+  --experimental-warning-apply-duration '100ms'
+	Warning is generated if requests take more than this duration.
 
 Unsafe feature:
   --force-new-cluster 'false'
