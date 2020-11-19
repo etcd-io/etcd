@@ -282,8 +282,10 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 		// then close the boltdb tx
 		go func(tx *bolt.Tx, wg *sync.WaitGroup) {
 			wg.Wait()
-			if err := tx.Rollback(); err != nil {
-				t.backend.lg.Fatal("failed to rollback tx", zap.Error(err))
+			if tx != nil {
+				if err := tx.Rollback(); err != nil {
+					t.backend.lg.Fatal("failed to rollback tx", zap.Error(err))
+				}
 			}
 		}(t.backend.readTx.tx, t.backend.readTx.txWg)
 		t.backend.readTx.reset()
