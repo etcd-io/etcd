@@ -27,7 +27,7 @@ var (
 )
 
 func TestGateway(t *testing.T) {
-	ec, err := newEtcdProcessCluster(t, &configNoTLS)
+	ec, err := newEtcdProcessCluster(t, newConfigNoTLS())
 	if err != nil {
 		t.Fatal(err)
 	}

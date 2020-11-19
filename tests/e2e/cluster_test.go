@@ -36,63 +36,89 @@ const (
 	clientTLSAndNonTLS
 )
 
-var (
-	configNoTLS = etcdProcessClusterConfig{
-		clusterSize:  3,
+func newConfigNoTLS() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{clusterSize: 3,
 		initialToken: "new",
 	}
-	configAutoTLS = etcdProcessClusterConfig{
+}
+
+func newConfigAutoTLS() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:   3,
 		isPeerTLS:     true,
 		isPeerAutoTLS: true,
 		initialToken:  "new",
 	}
-	configTLS = etcdProcessClusterConfig{
+}
+
+func newConfigTLS() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:  3,
 		clientTLS:    clientTLS,
 		isPeerTLS:    true,
 		initialToken: "new",
 	}
-	configClientTLS = etcdProcessClusterConfig{
+}
+
+func newConfigClientTLS() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:  3,
 		clientTLS:    clientTLS,
 		initialToken: "new",
 	}
-	configClientBoth = etcdProcessClusterConfig{
+}
+
+func newConfigClientBoth() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:  1,
 		clientTLS:    clientTLSAndNonTLS,
 		initialToken: "new",
 	}
-	configClientAutoTLS = etcdProcessClusterConfig{
+}
+
+func newConfigClientAutoTLS() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:     1,
 		isClientAutoTLS: true,
 		clientTLS:       clientTLS,
 		initialToken:    "new",
 	}
-	configPeerTLS = etcdProcessClusterConfig{
+}
+
+func newConfigPeerTLS() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:  3,
 		isPeerTLS:    true,
 		initialToken: "new",
 	}
-	configClientTLSCertAuth = etcdProcessClusterConfig{
+}
+
+func newConfigClientTLSCertAuth() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:           1,
 		clientTLS:             clientTLS,
 		initialToken:          "new",
 		clientCertAuthEnabled: true,
 	}
-	configClientTLSCertAuthWithNoCN = etcdProcessClusterConfig{
+}
+
+func newConfigClientTLSCertAuthWithNoCN() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:           1,
 		clientTLS:             clientTLS,
 		initialToken:          "new",
 		clientCertAuthEnabled: true,
 		noCN:                  true,
 	}
-	configJWT = etcdProcessClusterConfig{
+}
+
+func newConfigJWT() *etcdProcessClusterConfig {
+	return &etcdProcessClusterConfig{
 		clusterSize:   1,
 		initialToken:  "new",
 		authTokenOpts: "jwt,pub-key=../fixtures/server.crt,priv-key=../fixtures/server.key.insecure,sign-method=RS256,ttl=1s",
 	}
-)
+}
 
 func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
 	ret := cfg

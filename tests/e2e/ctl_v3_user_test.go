@@ -17,33 +17,41 @@ package e2e
 import "testing"
 
 func TestCtlV3UserAdd(t *testing.T)          { testCtl(t, userAddTest) }
-func TestCtlV3UserAddNoTLS(t *testing.T)     { testCtl(t, userAddTest, withCfg(configNoTLS)) }
-func TestCtlV3UserAddClientTLS(t *testing.T) { testCtl(t, userAddTest, withCfg(configClientTLS)) }
-func TestCtlV3UserAddPeerTLS(t *testing.T)   { testCtl(t, userAddTest, withCfg(configPeerTLS)) }
+func TestCtlV3UserAddNoTLS(t *testing.T)     { testCtl(t, userAddTest, withCfg(*newConfigNoTLS())) }
+func TestCtlV3UserAddClientTLS(t *testing.T) { testCtl(t, userAddTest, withCfg(*newConfigClientTLS())) }
+func TestCtlV3UserAddPeerTLS(t *testing.T)   { testCtl(t, userAddTest, withCfg(*newConfigPeerTLS())) }
 func TestCtlV3UserAddTimeout(t *testing.T)   { testCtl(t, userAddTest, withDialTimeout(0)) }
 func TestCtlV3UserAddClientAutoTLS(t *testing.T) {
-	testCtl(t, userAddTest, withCfg(configClientAutoTLS))
+	testCtl(t, userAddTest, withCfg(*newConfigClientAutoTLS()))
 }
-func TestCtlV3UserList(t *testing.T)          { testCtl(t, userListTest) }
-func TestCtlV3UserListNoTLS(t *testing.T)     { testCtl(t, userListTest, withCfg(configNoTLS)) }
-func TestCtlV3UserListClientTLS(t *testing.T) { testCtl(t, userListTest, withCfg(configClientTLS)) }
-func TestCtlV3UserListPeerTLS(t *testing.T)   { testCtl(t, userListTest, withCfg(configPeerTLS)) }
+func TestCtlV3UserList(t *testing.T)      { testCtl(t, userListTest) }
+func TestCtlV3UserListNoTLS(t *testing.T) { testCtl(t, userListTest, withCfg(*newConfigNoTLS())) }
+func TestCtlV3UserListClientTLS(t *testing.T) {
+	testCtl(t, userListTest, withCfg(*newConfigClientTLS()))
+}
+func TestCtlV3UserListPeerTLS(t *testing.T) { testCtl(t, userListTest, withCfg(*newConfigPeerTLS())) }
 func TestCtlV3UserListClientAutoTLS(t *testing.T) {
-	testCtl(t, userListTest, withCfg(configClientAutoTLS))
+	testCtl(t, userListTest, withCfg(*newConfigClientAutoTLS()))
 }
-func TestCtlV3UserDelete(t *testing.T)          { testCtl(t, userDelTest) }
-func TestCtlV3UserDeleteNoTLS(t *testing.T)     { testCtl(t, userDelTest, withCfg(configNoTLS)) }
-func TestCtlV3UserDeleteClientTLS(t *testing.T) { testCtl(t, userDelTest, withCfg(configClientTLS)) }
-func TestCtlV3UserDeletePeerTLS(t *testing.T)   { testCtl(t, userDelTest, withCfg(configPeerTLS)) }
+func TestCtlV3UserDelete(t *testing.T)      { testCtl(t, userDelTest) }
+func TestCtlV3UserDeleteNoTLS(t *testing.T) { testCtl(t, userDelTest, withCfg(*newConfigNoTLS())) }
+func TestCtlV3UserDeleteClientTLS(t *testing.T) {
+	testCtl(t, userDelTest, withCfg(*newConfigClientTLS()))
+}
+func TestCtlV3UserDeletePeerTLS(t *testing.T) { testCtl(t, userDelTest, withCfg(*newConfigPeerTLS())) }
 func TestCtlV3UserDeleteClientAutoTLS(t *testing.T) {
-	testCtl(t, userDelTest, withCfg(configClientAutoTLS))
+	testCtl(t, userDelTest, withCfg(*newConfigClientAutoTLS()))
 }
-func TestCtlV3UserPasswd(t *testing.T)          { testCtl(t, userPasswdTest) }
-func TestCtlV3UserPasswdNoTLS(t *testing.T)     { testCtl(t, userPasswdTest, withCfg(configNoTLS)) }
-func TestCtlV3UserPasswdClientTLS(t *testing.T) { testCtl(t, userPasswdTest, withCfg(configClientTLS)) }
-func TestCtlV3UserPasswdPeerTLS(t *testing.T)   { testCtl(t, userPasswdTest, withCfg(configPeerTLS)) }
+func TestCtlV3UserPasswd(t *testing.T)      { testCtl(t, userPasswdTest) }
+func TestCtlV3UserPasswdNoTLS(t *testing.T) { testCtl(t, userPasswdTest, withCfg(*newConfigNoTLS())) }
+func TestCtlV3UserPasswdClientTLS(t *testing.T) {
+	testCtl(t, userPasswdTest, withCfg(*newConfigClientTLS()))
+}
+func TestCtlV3UserPasswdPeerTLS(t *testing.T) {
+	testCtl(t, userPasswdTest, withCfg(*newConfigPeerTLS()))
+}
 func TestCtlV3UserPasswdClientAutoTLS(t *testing.T) {
-	testCtl(t, userPasswdTest, withCfg(configClientAutoTLS))
+	testCtl(t, userPasswdTest, withCfg(*newConfigClientAutoTLS()))
 }
 
 type userCmdDesc struct {

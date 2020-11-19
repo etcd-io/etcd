@@ -23,22 +23,22 @@ import (
 
 func TestV3CurlLeaseGrantNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseGrant, withApiPrefix(p), withCfg(configNoTLS))
+		testCtl(t, testV3CurlLeaseGrant, withApiPrefix(p), withCfg(*newConfigNoTLS()))
 	}
 }
 func TestV3CurlLeaseRevokeNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseRevoke, withApiPrefix(p), withCfg(configNoTLS))
+		testCtl(t, testV3CurlLeaseRevoke, withApiPrefix(p), withCfg(*newConfigNoTLS()))
 	}
 }
 func TestV3CurlLeaseLeasesNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseLeases, withApiPrefix(p), withCfg(configNoTLS))
+		testCtl(t, testV3CurlLeaseLeases, withApiPrefix(p), withCfg(*newConfigNoTLS()))
 	}
 }
 func TestV3CurlLeaseKeepAliveNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseKeepAlive, withApiPrefix(p), withCfg(configNoTLS))
+		testCtl(t, testV3CurlLeaseKeepAlive, withApiPrefix(p), withCfg(*newConfigNoTLS()))
 	}
 }
 

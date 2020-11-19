@@ -22,14 +22,14 @@ import (
 )
 
 func TestV3MetricsSecure(t *testing.T) {
-	cfg := configTLS
+	cfg := newConfigTLS()
 	cfg.clusterSize = 1
 	cfg.metricsURLScheme = "https"
 	testCtl(t, metricsTest)
 }
 
 func TestV3MetricsInsecure(t *testing.T) {
-	cfg := configTLS
+	cfg := newConfigTLS()
 	cfg.clusterSize = 1
 	cfg.metricsURLScheme = "http"
 	testCtl(t, metricsTest)

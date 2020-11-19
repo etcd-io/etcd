@@ -36,13 +36,13 @@ func TestEtcdCorruptHash(t *testing.T) {
 	// defer os.Setenv("EXPECT_DEBUG", oldenv)
 	// os.Setenv("EXPECT_DEBUG", "1")
 
-	cfg := configNoTLS
+	cfg := newConfigNoTLS()
 
 	// trigger snapshot so that restart member can load peers from disk
 	cfg.snapshotCount = 3
 
 	testCtl(t, corruptTest, withQuorum(),
-		withCfg(cfg),
+		withCfg(*cfg),
 		withInitialCorruptCheck(),
 		withCorruptFunc(corruptHash),
 	)

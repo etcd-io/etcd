@@ -22,10 +22,12 @@ import (
 	"testing"
 )
 
-func TestCtlV3AuthCertCN(t *testing.T) { testCtl(t, authTestCertCN, withCfg(configClientTLSCertAuth)) }
+func TestCtlV3AuthCertCN(t *testing.T) {
+	testCtl(t, authTestCertCN, withCfg(*newConfigClientTLSCertAuth()))
+}
 func TestCtlV3AuthCertCNAndUsername(t *testing.T) {
-	testCtl(t, authTestCertCNAndUsername, withCfg(configClientTLSCertAuth))
+	testCtl(t, authTestCertCNAndUsername, withCfg(*newConfigClientTLSCertAuth()))
 }
 func TestCtlV3AuthCertCNAndUsernameNoPassword(t *testing.T) {
-	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(configClientTLSCertAuth))
+	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(*newConfigClientTLSCertAuth()))
 }

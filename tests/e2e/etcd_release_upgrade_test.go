@@ -36,12 +36,12 @@ func TestReleaseUpgrade(t *testing.T) {
 
 	defer testutil.AfterTest(t)
 
-	copiedCfg := configNoTLS
+	copiedCfg := newConfigNoTLS()
 	copiedCfg.execPath = lastReleaseBinary
 	copiedCfg.snapshotCount = 3
 	copiedCfg.baseScheme = "unix" // to avoid port conflict
 
-	epc, err := newEtcdProcessCluster(t, &copiedCfg)
+	epc, err := newEtcdProcessCluster(t, copiedCfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -69,7 +69,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
-		cfg:         configNoTLS,
+		cfg:         *newConfigNoTLS(),
 		dialTimeout: 7 * time.Second,
 		quorum:      true,
 		epc:         epc,
@@ -127,12 +127,12 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 
 	defer testutil.AfterTest(t)
 
-	copiedCfg := configNoTLS
+	copiedCfg := newConfigNoTLS()
 	copiedCfg.execPath = lastReleaseBinary
 	copiedCfg.snapshotCount = 10
 	copiedCfg.baseScheme = "unix"
 
-	epc, err := newEtcdProcessCluster(t, &copiedCfg)
+	epc, err := newEtcdProcessCluster(t, copiedCfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -146,7 +146,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
-		cfg:         configNoTLS,
+		cfg:         *newConfigNoTLS(),
 		dialTimeout: 7 * time.Second,
 		quorum:      true,
 		epc:         epc,

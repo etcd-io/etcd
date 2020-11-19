@@ -24,81 +24,87 @@ import (
 
 func TestCtlV3LeaseGrantTimeToLive(t *testing.T) { testCtl(t, leaseTestGrantTimeToLive) }
 func TestCtlV3LeaseGrantTimeToLiveNoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(configNoTLS))
+	testCtl(t, leaseTestGrantTimeToLive, withCfg(*newConfigNoTLS()))
 }
 func TestCtlV3LeaseGrantTimeToLiveClientTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(configClientTLS))
+	testCtl(t, leaseTestGrantTimeToLive, withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3LeaseGrantTimeToLiveClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(configClientAutoTLS))
+	testCtl(t, leaseTestGrantTimeToLive, withCfg(*newConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseGrantTimeToLivePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(configPeerTLS))
+	testCtl(t, leaseTestGrantTimeToLive, withCfg(*newConfigPeerTLS()))
 }
 
 func TestCtlV3LeaseGrantLeases(t *testing.T) { testCtl(t, leaseTestGrantLeaseListed) }
 func TestCtlV3LeaseGrantLeasesNoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(configNoTLS))
+	testCtl(t, leaseTestGrantLeaseListed, withCfg(*newConfigNoTLS()))
 }
 func TestCtlV3LeaseGrantLeasesClientTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(configClientTLS))
+	testCtl(t, leaseTestGrantLeaseListed, withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3LeaseGrantLeasesClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(configClientAutoTLS))
+	testCtl(t, leaseTestGrantLeaseListed, withCfg(*newConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseGrantLeasesPeerTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(configPeerTLS))
+	testCtl(t, leaseTestGrantLeaseListed, withCfg(*newConfigPeerTLS()))
 }
 
 func TestCtlV3LeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, leaseTestTimeToLiveExpired) }
 func TestCtlV3LeaseTestTimeToLiveExpiredNoTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(configNoTLS))
+	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*newConfigNoTLS()))
 }
 func TestCtlV3LeaseTestTimeToLiveExpiredClientTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(configClientTLS))
+	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3LeaseTestTimeToLiveExpiredClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(configClientAutoTLS))
+	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*newConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseTestTimeToLiveExpiredPeerTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(configPeerTLS))
+	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*newConfigPeerTLS()))
 }
 
-func TestCtlV3LeaseKeepAlive(t *testing.T)      { testCtl(t, leaseTestKeepAlive) }
-func TestCtlV3LeaseKeepAliveNoTLS(t *testing.T) { testCtl(t, leaseTestKeepAlive, withCfg(configNoTLS)) }
+func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
+func TestCtlV3LeaseKeepAliveNoTLS(t *testing.T) {
+	testCtl(t, leaseTestKeepAlive, withCfg(*newConfigNoTLS()))
+}
 func TestCtlV3LeaseKeepAliveClientTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(configClientTLS))
+	testCtl(t, leaseTestKeepAlive, withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3LeaseKeepAliveClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(configClientAutoTLS))
+	testCtl(t, leaseTestKeepAlive, withCfg(*newConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseKeepAlivePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(configPeerTLS))
+	testCtl(t, leaseTestKeepAlive, withCfg(*newConfigPeerTLS()))
 }
 
 func TestCtlV3LeaseKeepAliveOnce(t *testing.T) { testCtl(t, leaseTestKeepAliveOnce) }
 func TestCtlV3LeaseKeepAliveOnceNoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAliveOnce, withCfg(configNoTLS))
+	testCtl(t, leaseTestKeepAliveOnce, withCfg(*newConfigNoTLS()))
 }
 func TestCtlV3LeaseKeepAliveOnceClientTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAliveOnce, withCfg(configClientTLS))
+	testCtl(t, leaseTestKeepAliveOnce, withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3LeaseKeepAliveOnceClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAliveOnce, withCfg(configClientAutoTLS))
+	testCtl(t, leaseTestKeepAliveOnce, withCfg(*newConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseKeepAliveOncePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAliveOnce, withCfg(configPeerTLS))
+	testCtl(t, leaseTestKeepAliveOnce, withCfg(*newConfigPeerTLS()))
 }
 
-func TestCtlV3LeaseRevoke(t *testing.T)      { testCtl(t, leaseTestRevoked) }
-func TestCtlV3LeaseRevokeNoTLS(t *testing.T) { testCtl(t, leaseTestRevoked, withCfg(configNoTLS)) }
+func TestCtlV3LeaseRevoke(t *testing.T) { testCtl(t, leaseTestRevoked) }
+func TestCtlV3LeaseRevokeNoTLS(t *testing.T) {
+	testCtl(t, leaseTestRevoked, withCfg(*newConfigNoTLS()))
+}
 func TestCtlV3LeaseRevokeClientTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(configClientTLS))
+	testCtl(t, leaseTestRevoked, withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3LeaseRevokeClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(configClientAutoTLS))
+	testCtl(t, leaseTestRevoked, withCfg(*newConfigClientAutoTLS()))
 }
-func TestCtlV3LeaseRevokePeerTLS(t *testing.T) { testCtl(t, leaseTestRevoked, withCfg(configPeerTLS)) }
+func TestCtlV3LeaseRevokePeerTLS(t *testing.T) {
+	testCtl(t, leaseTestRevoked, withCfg(*newConfigPeerTLS()))
+}
 
 func leaseTestGrantTimeToLive(cx ctlCtx) {
 	id, err := ctlV3LeaseGrant(cx, 10)

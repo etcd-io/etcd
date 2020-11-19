@@ -25,22 +25,26 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
-func TestCtlV3MemberList(t *testing.T)          { testCtl(t, memberListTest) }
-func TestCtlV3MemberListWithHex(t *testing.T)   { testCtl(t, memberListWithHexTest) }
-func TestCtlV3MemberListNoTLS(t *testing.T)     { testCtl(t, memberListTest, withCfg(configNoTLS)) }
-func TestCtlV3MemberListClientTLS(t *testing.T) { testCtl(t, memberListTest, withCfg(configClientTLS)) }
-func TestCtlV3MemberListClientAutoTLS(t *testing.T) {
-	testCtl(t, memberListTest, withCfg(configClientAutoTLS))
+func TestCtlV3MemberList(t *testing.T)        { testCtl(t, memberListTest) }
+func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest) }
+func TestCtlV3MemberListNoTLS(t *testing.T)   { testCtl(t, memberListTest, withCfg(*newConfigNoTLS())) }
+func TestCtlV3MemberListClientTLS(t *testing.T) {
+	testCtl(t, memberListTest, withCfg(*newConfigClientTLS()))
 }
-func TestCtlV3MemberListPeerTLS(t *testing.T) { testCtl(t, memberListTest, withCfg(configPeerTLS)) }
+func TestCtlV3MemberListClientAutoTLS(t *testing.T) {
+	testCtl(t, memberListTest, withCfg(*newConfigClientAutoTLS()))
+}
+func TestCtlV3MemberListPeerTLS(t *testing.T) {
+	testCtl(t, memberListTest, withCfg(*newConfigPeerTLS()))
+}
 func TestCtlV3MemberRemove(t *testing.T) {
 	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig())
 }
 func TestCtlV3MemberRemoveNoTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(configNoTLS))
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*newConfigNoTLS()))
 }
 func TestCtlV3MemberRemoveClientTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(configClientTLS))
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3MemberRemoveClientAutoTLS(t *testing.T) {
 	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(
@@ -53,25 +57,31 @@ func TestCtlV3MemberRemoveClientAutoTLS(t *testing.T) {
 		}))
 }
 func TestCtlV3MemberRemovePeerTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(configPeerTLS))
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*newConfigPeerTLS()))
 }
-func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
-func TestCtlV3MemberAddNoTLS(t *testing.T)     { testCtl(t, memberAddTest, withCfg(configNoTLS)) }
-func TestCtlV3MemberAddClientTLS(t *testing.T) { testCtl(t, memberAddTest, withCfg(configClientTLS)) }
+func TestCtlV3MemberAdd(t *testing.T)      { testCtl(t, memberAddTest) }
+func TestCtlV3MemberAddNoTLS(t *testing.T) { testCtl(t, memberAddTest, withCfg(*newConfigNoTLS())) }
+func TestCtlV3MemberAddClientTLS(t *testing.T) {
+	testCtl(t, memberAddTest, withCfg(*newConfigClientTLS()))
+}
 func TestCtlV3MemberAddClientAutoTLS(t *testing.T) {
-	testCtl(t, memberAddTest, withCfg(configClientAutoTLS))
+	testCtl(t, memberAddTest, withCfg(*newConfigClientAutoTLS()))
 }
-func TestCtlV3MemberAddPeerTLS(t *testing.T)    { testCtl(t, memberAddTest, withCfg(configPeerTLS)) }
+func TestCtlV3MemberAddPeerTLS(t *testing.T)    { testCtl(t, memberAddTest, withCfg(*newConfigPeerTLS())) }
 func TestCtlV3MemberAddForLearner(t *testing.T) { testCtl(t, memberAddForLearnerTest) }
 func TestCtlV3MemberUpdate(t *testing.T)        { testCtl(t, memberUpdateTest) }
-func TestCtlV3MemberUpdateNoTLS(t *testing.T)   { testCtl(t, memberUpdateTest, withCfg(configNoTLS)) }
+func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
+	testCtl(t, memberUpdateTest, withCfg(*newConfigNoTLS()))
+}
 func TestCtlV3MemberUpdateClientTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(configClientTLS))
+	testCtl(t, memberUpdateTest, withCfg(*newConfigClientTLS()))
 }
 func TestCtlV3MemberUpdateClientAutoTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(configClientAutoTLS))
+	testCtl(t, memberUpdateTest, withCfg(*newConfigClientAutoTLS()))
 }
-func TestCtlV3MemberUpdatePeerTLS(t *testing.T) { testCtl(t, memberUpdateTest, withCfg(configPeerTLS)) }
+func TestCtlV3MemberUpdatePeerTLS(t *testing.T) {
+	testCtl(t, memberUpdateTest, withCfg(*newConfigPeerTLS()))
+}
 
 func memberListTest(cx ctlCtx) {
 	if err := ctlV3MemberList(cx); err != nil {

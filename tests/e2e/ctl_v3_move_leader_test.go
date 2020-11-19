@@ -29,11 +29,11 @@ import (
 )
 
 func TestCtlV3MoveLeaderSecure(t *testing.T) {
-	testCtlV3MoveLeader(t, configTLS)
+	testCtlV3MoveLeader(t, *newConfigTLS())
 }
 
 func TestCtlV3MoveLeaderInsecure(t *testing.T) {
-	testCtlV3MoveLeader(t, configNoTLS)
+	testCtlV3MoveLeader(t, *newConfigNoTLS())
 }
 
 func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
@@ -92,7 +92,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
 	defer os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
-		cfg:         configNoTLS,
+		cfg:         *newConfigNoTLS(),
 		dialTimeout: 7 * time.Second,
 		epc:         epc,
 	}
