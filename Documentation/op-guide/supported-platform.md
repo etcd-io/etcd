@@ -1,5 +1,6 @@
 ---
 title: Supported systems
+weight: 4800
 ---
 
 ## Current support

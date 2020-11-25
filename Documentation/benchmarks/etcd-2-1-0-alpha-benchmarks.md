@@ -1,5 +1,6 @@
 ---
 title: Benchmarking etcd v2.1.0
+weight: 8875
 ---
 
 ## Physical machines

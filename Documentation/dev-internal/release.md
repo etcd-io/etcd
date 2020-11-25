@@ -1,5 +1,6 @@
 ---
 title: etcd release guide
+weight: 1550
 ---
 
 The guide talks about how to release a new version of etcd.

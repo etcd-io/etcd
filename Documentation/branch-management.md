@@ -1,6 +1,6 @@
 ---
 title: Branch management
-weight: 1
+weight: 1250
 ---
 
 ## Guide

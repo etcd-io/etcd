@@ -1,5 +1,6 @@
 ---
 title: Frequently Asked Questions (FAQ)
+weight: 1150
 ---
 
 ## etcd, general

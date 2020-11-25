@@ -1,5 +1,6 @@
 ---
 title: Storage Memory Usage Benchmark
+weight: 8125
 ---
 
 <!---todo: link storage to storage design doc-->

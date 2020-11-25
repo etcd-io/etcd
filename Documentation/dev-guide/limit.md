@@ -1,5 +1,7 @@
 ---
 title: System limits
+weight: 2625
+description: "etcd limits: requests and storage"
 ---
 
 ## Request size limit

@@ -1,5 +1,6 @@
 ---
 title: Glossary
+weight: 3900
 ---
 
 This document defines the various terms used in etcd documentation, command line and source code.

@@ -1,5 +1,6 @@
 ---
 title: Versioning
+weight: 4900
 ---
 
 ## Service versioning

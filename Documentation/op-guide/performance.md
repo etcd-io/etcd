@@ -1,5 +1,6 @@
 ---
 title: Performance
+weight: 4550
 ---
 
 ## Understanding performance
