@@ -221,6 +221,16 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
 - [Add `Linearizable` field to `etcdserverpb.MemberListRequest`](https://github.com/etcd-io/etcd/pull/11639).
 
+### Package `netutil`
+
+- Remove [`netutil.DropPort/RecoverPort/SetLatency/RemoveLatency`](https://github.com/etcd-io/etcd/pull/12491).
+  - These are not used anymore. They were only used for older versions of functional testing.
+  - Removed to adhere to best security practices, minimize arbitrary shell invocation.
+
+### `tools/etcd-dump-metrics`
+
+- Implement [input validation to prevent arbitrary shell invocation](https://github.com/etcd-io/etcd/pull/12491).
+
 ### Dependency
 
 - Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.26.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.26.0).
