@@ -31,6 +31,7 @@ main() {
   RELEASE_VERSION="v${VERSION}"
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
   BRANCH="release-${MINOR_VERSION}"
+  STABLE_VERSION="3.3"
 
   if ! command -v docker >/dev/null; then
     echo "cannot find docker"
@@ -196,9 +197,11 @@ main() {
 
     echo "Pushing container images to quay.io ${RELEASE_VERSION}"
     docker push "quay.io/coreos/etcd:${RELEASE_VERSION}"
+    [[ "${MINOR_VERSION}" == "${STABLE_VERSION}" ]] && docker push "quay.io/coreos/etcd:latest"
 
     echo "Pushing container images to gcr.io ${RELEASE_VERSION}"
     gcloud docker -- push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
+    [[ "${MINOR_VERSION}" == "${STABLE_VERSION}" ]] && gcloud docker -- push "gcr.io/etcd-development/etcd:latest"
 
     for TARGET_ARCH in "-arm64" "-ppc64le" "-s390x"; do
       echo "Pushing container images to quay.io ${RELEASE_VERSION}${TARGET_ARCH}"
