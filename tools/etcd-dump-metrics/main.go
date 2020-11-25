@@ -87,7 +87,7 @@ func main() {
 			rc := make(chan run)
 
 			cs1 := getCommand(bp, "s1", d1, "http://localhost:2379", "http://localhost:2380", cluster)
-			cmd1 := exec.Command("bash", "-c", cs1)
+			cmd1 := exec.Command(cs1[0], cs1[1:]...)
 			go func() {
 				if *debug {
 					cmd1.Stderr = os.Stderr
@@ -101,7 +101,7 @@ func main() {
 				rc <- run{cmd: cmd1}
 			}()
 			cs2 := getCommand(bp, "s2", d2, "http://localhost:22379", "http://localhost:22380", cluster)
-			cmd2 := exec.Command("bash", "-c", cs2)
+			cmd2 := exec.Command(cs2[0], cs2[1:]...)
 			go func() {
 				if *debug {
 					cmd2.Stderr = os.Stderr
