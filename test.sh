@@ -322,10 +322,15 @@ function shellws_pass {
   log_callout "Ensuring no tab-based indention in shell scripts"
   local files
   files=$(find ./ -name '*.sh' -print0 | xargs -0 )
-  log_cmd "grep -E -n $'^ *\t' ${files}"
+  # shellcheck disable=SC2206
+  files=( ${files[@]} "./scripts/build-binary" "./scripts/build-docker" "./scripts/release" )
+  log_cmd "grep -E -n $'^ *\t' ${files[*]}"
   # shellcheck disable=SC2086
-  if grep -E -n $'^ *\t' ${files} | sed $'s|\t|[\\\\tab]|g'; then
+  if grep -E -n $'^ *\t' "${files[@]}" | sed $'s|\t|[\\\\tab]|g'; then
     log_error "FAIL: found tab-based indention in bash scripts. Use '  ' (double space)."
+    local files_with_tabs
+    files_with_tabs=$(grep -E -l $'^ *\t' "${files[@]}")
+    log_warning "Try: sed -i 's|\t|  |g' $files_with_tabs"
     return 1
   else
     log_success "SUCCESS: no tabulators found."

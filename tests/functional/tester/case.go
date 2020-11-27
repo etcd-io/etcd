@@ -29,7 +29,7 @@ import (
 //  1. implement "Case" interface
 //  2. define fail case name in "rpcpb.Case"
 type Case interface {
-	// Inject injeccts the failure into the testing cluster at the given
+	// Inject injects the failure into the testing cluster at the given
 	// round. When calling the function, the cluster should be in health.
 	Inject(clus *Cluster) error
 	// Recover recovers the injected failure caused by the injection of the

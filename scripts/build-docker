@@ -3,8 +3,8 @@
 set -e
 
 if [ "$#" -ne 1 ]; then
-	echo "Usage: $0 VERSION" >&2
-	exit 1
+  echo "Usage: $0 VERSION" >&2
+  exit 1
 fi
 
 VERSION=${1}
@@ -12,20 +12,20 @@ ARCH=$(go env GOARCH)
 DOCKERFILE="Dockerfile-release"
 
 if [ -z "${BINARYDIR}" ]; then
-	RELEASE="etcd-${1}"-$(go env GOOS)-$(go env GOARCH)
-	BINARYDIR="${RELEASE}"
-	TARFILE="${RELEASE}.tar.gz"
-	TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
-	if ! curl -f -L -o "${TARFILE}" "${TARURL}" ; then
-		echo "Failed to download ${TARURL}."
-		exit 1
-	fi
-	tar -zvxf "${TARFILE}"
+  RELEASE="etcd-${1}"-$(go env GOOS)-$(go env GOARCH)
+  BINARYDIR="${RELEASE}"
+  TARFILE="${RELEASE}.tar.gz"
+  TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
+  if ! curl -f -L -o "${TARFILE}" "${TARURL}" ; then
+    echo "Failed to download ${TARURL}."
+    exit 1
+  fi
+  tar -zvxf "${TARFILE}"
 fi
 
 if [ "${ARCH}" != "amd64" ]; then
-	DOCKERFILE+=".${ARCH}"
-	VERSION+="-${ARCH}"
+  DOCKERFILE+=".${ARCH}"
+  VERSION+="-${ARCH}"
 fi
 
 BINARYDIR=${BINARYDIR:-.}
