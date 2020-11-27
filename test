@@ -334,7 +334,8 @@ function shellws_pass {
 }
 
 function markdown_you_find_eschew_you {
-  find . -name \*.md ! -path '*/vendor/*' ! -path './Documentation/*' ! -path './gopath.proto/*' -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + || true
+  local find_you_cmd="find . -name \*.md ! -path '*/vendor/*' ! -path './Documentation/*' ! -path './gopath.proto/*' ! -path './release/*' -exec grep -E --color '[Yy]ou[r]?[ '\''.,;]' {} + || true"
+  run eval "${find_you_cmd}"
 }
 
 function markdown_you_pass {
