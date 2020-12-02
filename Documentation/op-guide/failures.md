@@ -30,7 +30,7 @@ Once a majority of members works, the etcd cluster elects a new leader automatic
 
 ## Network partition
 
-A network partition is similar to a minor followers failure or a leader failure. A network partition divides the etcd cluster into two parts; one with a member majority and the other with a member minority. The majority side becomes the available cluster and the minority side is unavailable; there is no “split-brain” in etcd. 
+A network partition is similar to a minor followers failure or a leader failure. A network partition divides the etcd cluster into two parts; one with a member majority and the other with a member minority. The majority side becomes the available cluster and the minority side is unavailable; there is no “split-brain” in etcd.  ( no “split-brain” is possible because etcd cluster members are explicitly added/removed, such that all cluster members know the target cluster size and can therefore determine majority. ) 
 
 If the leader is on the majority side, then from the majority point of view the failure is a minority follower failure. If the leader is on the minority side, then it is a leader failure. The leader on the minority side steps down and the majority side elects a new leader.
 
