@@ -550,21 +550,21 @@ func (m *KeyValue) Unmarshal(dAtA []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKv(dAtA[iNdEx:])
+			skp, err := skipKv(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
+			if skp < 0 {
 				return ErrInvalidLengthKv
 			}
-			if (iNdEx + skippy) < 0 {
+			if (iNdEx + skp) < 0 {
 				return ErrInvalidLengthKv
 			}
-			if (iNdEx + skippy) > l {
+			if (iNdEx + skp) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skp]...)
+			iNdEx += skp
 		}
 	}
 
@@ -695,21 +695,21 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKv(dAtA[iNdEx:])
+			skp, err := skipKv(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
+			if skp < 0 {
 				return ErrInvalidLengthKv
 			}
-			if (iNdEx + skippy) < 0 {
+			if (iNdEx + skp) < 0 {
 				return ErrInvalidLengthKv
 			}
-			if (iNdEx + skippy) > l {
+			if (iNdEx + skp) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skp]...)
+			iNdEx += skp
 		}
 	}
 
