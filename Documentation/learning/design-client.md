@@ -1,5 +1,6 @@
 ---
 title: etcd client design
+weight: 2250
 ---
 
 etcd Client Design

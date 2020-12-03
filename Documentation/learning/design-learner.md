@@ -1,5 +1,6 @@
 ---
 title: etcd learner design
+weight: 2375
 ---
 
 etcd Learner
