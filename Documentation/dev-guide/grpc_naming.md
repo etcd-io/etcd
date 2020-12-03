@@ -1,5 +1,6 @@
 ---
 title: gRPC naming and discovery
+weight: 3500
 ---
 
 etcd provides a gRPC resolver to support an alternative name system that fetches endpoints from etcd for discovering gRPC services. The underlying mechanism is based on watching updates to keys prefixed with the service name.
