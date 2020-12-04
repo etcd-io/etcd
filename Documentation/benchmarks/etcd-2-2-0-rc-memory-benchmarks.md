@@ -1,5 +1,6 @@
 ---
 title: Benchmarking etcd v2.2.0-rc-memory
+weight: 5500
 ---
 
 ## Physical machine
