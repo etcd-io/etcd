@@ -1,5 +1,7 @@
 ---
 title: etcd gateway
+weight: 4300
+description: etcd gateway, when to use it, and how to set it up
 ---
 
 ## What is etcd gateway

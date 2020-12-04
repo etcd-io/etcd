@@ -1,5 +1,7 @@
 ---
 title: Design of runtime reconfiguration
+weight: 4650
+description: The design of etcd’s runtime reconfiguration commands
 ---
 
 Runtime reconfiguration is one of the hardest and most error prone features in a distributed system, especially in a consensus based system like etcd.

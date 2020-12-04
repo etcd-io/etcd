@@ -1,5 +1,7 @@
 ---
 title: Maintenance
+weight: 4450
+description: Periodic etcd cluster maintenance guide
 ---
 
 ## Overview

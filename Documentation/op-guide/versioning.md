@@ -1,5 +1,7 @@
 ---
 title: Versioning
+weight: 4900
+description: Semantic versioning with etcd
 ---
 
 ## Service versioning

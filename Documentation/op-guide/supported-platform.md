@@ -1,5 +1,7 @@
 ---
 title: Supported systems
+weight: 4800
+description: etcd support status for common architectures & operating systems
 ---
 
 ## Current support

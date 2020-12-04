@@ -1,5 +1,7 @@
 ---
 title: Performance
+weight: 4550
+description: "Understanding performance: latency & throughput"
 ---
 
 ## Understanding performance

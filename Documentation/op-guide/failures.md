@@ -1,5 +1,7 @@
 ---
 title: Failure modes
+weight: 4250
+description: Kinds of failures and ectd's tolerance for them
 ---
 
 Failures are common in a large deployment of machines. A machine fails when its hardware or software malfunctions. Multiple machines fail together when there are power failures or network issues. Multiple kinds of failures can also happen at once; it is almost impossible to enumerate all possible failure cases. 

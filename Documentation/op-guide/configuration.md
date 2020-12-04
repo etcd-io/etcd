@@ -1,5 +1,7 @@
 ---
 title: Configuration flags
+weight: 4050
+description: "etcd configuration: files, flags, and environment variables"
 ---
 
 etcd is configurable through a configuration file, various command-line flags, and environment variables.
