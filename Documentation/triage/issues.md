@@ -1,5 +1,6 @@
 ---
 title: Issue Triage Guidelines
+weight: 8100
 ---
 
 ## Purpose
