@@ -1,5 +1,7 @@
 ---
 title: Upgrade etcd from 3.3 to 3.4
+weight: 6700
+description: Processes, checklists, and notes on upgrading etcd from 3.3 to 3.4
 ---
 
 In the general case, upgrading from etcd 3.3 to 3.4 can be a zero-downtime, rolling upgrade:

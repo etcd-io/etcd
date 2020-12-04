@@ -1,5 +1,7 @@
 ---
 title: Issue Triage Guidelines
+weight: 8100
+description: Managing incoming issues
 ---
 
 ## Purpose

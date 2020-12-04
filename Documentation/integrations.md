@@ -1,5 +1,7 @@
 ---
 title: Libraries and tools
+weight: 1300
+description: A listing of etcd tools and client libraries
 ---
 
 ## Tools

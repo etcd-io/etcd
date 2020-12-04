@@ -1,5 +1,7 @@
 ---
 title: Download and build
+weight: 1150
+description: Instructions for downloading and building different versions of etcd
 ---
 
 ## System requirements

@@ -1,5 +1,7 @@
 ---
 title: Logging conventions
+weight: 1600
+description: Logging level categories
 ---
 
 etcd uses the [capnslog][capnslog] library for logging application output categorized into *levels*. A log message's level is determined according to these conventions:

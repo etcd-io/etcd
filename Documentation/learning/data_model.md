@@ -1,5 +1,7 @@
 ---
 title: Data model
+weight: 2125
+description: etcd data storage methodologies
 ---
 
 etcd is designed to reliably store infrequently updated data and provide reliable watch queries. etcd exposes previous versions of key-value pairs to support inexpensive snapshots and watch history events (“time travel queries”). A persistent, multi-version, concurrency-control data model is a good fit for these use cases.

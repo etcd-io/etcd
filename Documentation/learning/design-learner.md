@@ -1,5 +1,7 @@
 ---
 title: etcd learner design
+weight: 2375
+description: Mitigating common challenges with membership reconfiguration
 ---
 
 etcd Learner

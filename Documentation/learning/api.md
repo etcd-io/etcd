@@ -1,5 +1,7 @@
 ---
 title: etcd3 API
+weight: 2625
+description: etcd3 API central design overview
 ---
 
 This document is meant to give an overview of the etcd3 API's central design. It is by no means all encompassing, but intended to focus on the basic ideas needed to understand etcd without the distraction of less common API calls. All etcd3 API's are defined in [gRPC services][grpc-service], which categorize remote procedure calls (RPCs) understood by the etcd server. A full listing of all etcd RPCs are documented in markdown in the [gRPC API listing][grpc-api].
