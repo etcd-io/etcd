@@ -1,5 +1,7 @@
 ---
 title: Golang modules
+weight: 1650
+description: Organization of the etcd project's golang modules
 ---
 
 The etcd project (since version 3.5) is organized into multiple 
