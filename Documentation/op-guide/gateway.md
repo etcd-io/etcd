@@ -1,5 +1,6 @@
 ---
 title: etcd gateway
+weight: 4300
 ---
 
 ## What is etcd gateway

@@ -1,5 +1,6 @@
 ---
 title: Runtime reconfiguration
+weight: 4700
 ---
 
 etcd comes with support for incremental runtime reconfiguration, which allows users to update the membership of the cluster at run time.

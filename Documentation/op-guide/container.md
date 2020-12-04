@@ -1,5 +1,6 @@
 ---
 title: Run etcd clusters inside containers
+weight: 4200
 ---
 
 The following guide shows how to run etcd with rkt and Docker using the [static bootstrap process](clustering.md#static).

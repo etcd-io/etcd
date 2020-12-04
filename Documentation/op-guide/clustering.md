@@ -1,5 +1,6 @@
 ---
 title: Clustering Guide
+weight: 4150
 ---
 
 ## Overview
