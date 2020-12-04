@@ -1,6 +1,6 @@
 ---
 title: Demo
-weight: 1
+weight: 1100
 ---
 
 This series of examples shows the basic procedures for working with an etcd cluster.
