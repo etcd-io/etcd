@@ -1,5 +1,6 @@
 ---
 title: Container Linux with systemd
+weight: 7200
 ---
 
 The following guide shows how to run etcd with [systemd][systemd-docs] under [Container Linux][container-linux-docs].
