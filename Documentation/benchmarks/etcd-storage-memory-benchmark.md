@@ -1,5 +1,7 @@
 ---
 title: Storage Memory Usage Benchmark
+weight: 5125
+description: Performance measures for etcd storage (in-memory index & page cache)
 ---
 
 <!---todo: link storage to storage design doc-->

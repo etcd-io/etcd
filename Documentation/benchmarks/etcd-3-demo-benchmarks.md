@@ -1,5 +1,7 @@
 ---
 title: Benchmarking etcd v3
+weight: 5375
+description: Performance measures for etcd v3
 ---
 
 ## Physical machines
