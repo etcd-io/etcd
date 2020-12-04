@@ -1,5 +1,6 @@
 ---
 title: Upgrading etcd clusters and applications
+weight: 6500
 ---
 
 This section contains documents specific to upgrading etcd clusters and applications.

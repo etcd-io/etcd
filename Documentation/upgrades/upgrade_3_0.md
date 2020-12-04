@@ -1,5 +1,6 @@
 ---
 title: Upgrade etcd from 2.3 to 3.0
+weight: 6900
 ---
 
 In the general case, upgrading from etcd 2.3 to 3.0 can be a zero-downtime, rolling upgrade:
