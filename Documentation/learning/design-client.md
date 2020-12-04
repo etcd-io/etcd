@@ -1,6 +1,7 @@
 ---
 title: etcd client design
-weight: 3250
+weight: 2250
+description: Client architectural decisions & their implementation details
 ---
 
 etcd Client Design

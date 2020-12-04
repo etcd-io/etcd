@@ -1,6 +1,7 @@
 ﻿---
 title: etcd v3 authentication design
-weight: 3500
+weight: 2500
+description: etcd v3 authentication
 ---
 
 ## Why not reuse the v2 auth system?
