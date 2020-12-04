@@ -1,5 +1,7 @@
 ---
 title: Set up a local cluster
+weight: 3125
+description: Configuring local clusters for testing and development 
 ---
 
 For testing and development deployments, the quickest and easiest way is to configure a local cluster. For a production deployment, refer to the [clustering][clustering] section.
