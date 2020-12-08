@@ -171,7 +171,8 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		readTx: &readTx{
 			baseReadTx: baseReadTx{
-				buf: txReadBuffer{
+				mu: &sync.RWMutex{},
+				buf: &txReadBuffer{
 					txBuffer: txBuffer{make(map[string]*bucketBuffer)},
 				},
 				buckets: make(map[string]*bolt.Bucket),
@@ -210,7 +211,8 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 	// TODO: might want to copy the read buffer lazily - create copy when A) end of a write transaction B) end of a batch interval.
 	return &concurrentReadTx{
 		baseReadTx: baseReadTx{
-			buf:     b.readTx.buf.unsafeCopy(),
+			mu:      b.readTx.mu,
+			buf:     b.readTx.buf,
 			txMu:    b.readTx.txMu,
 			tx:      b.readTx.tx,
 			buckets: b.readTx.buckets,

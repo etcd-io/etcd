@@ -248,7 +248,7 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 func (t *batchTxBuffered) Unlock() {
 	if t.pending != 0 {
 		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
-		t.buf.writeback(&t.backend.readTx.buf)
+		t.buf.writeback(t.backend.readTx.buf)
 		t.backend.readTx.Unlock()
 		if t.pending >= t.backend.batchLimit {
 			t.commit(false)

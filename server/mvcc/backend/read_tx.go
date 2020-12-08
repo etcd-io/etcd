@@ -40,8 +40,8 @@ type ReadTx interface {
 // Base type for readTx and concurrentReadTx to eliminate duplicate functions between these
 type baseReadTx struct {
 	// mu protects accesses to the txReadBuffer
-	mu  sync.RWMutex
-	buf txReadBuffer
+	mu  *sync.RWMutex
+	buf *txReadBuffer
 
 	// TODO: group and encapsulate {txMu, tx, buckets, txWg}, as they share the same lifecycle.
 	// txMu protects accesses to buckets and tx on Range requests.
@@ -87,7 +87,10 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketName, key, endKey []byte, limit 
 	if limit > 1 && !bytes.Equal(bucketName, safeRangeBucket) {
 		panic("do not use unsafeRange on non-keys bucket")
 	}
+	// Hold the read lock as buffer maybe modified by write request.
+	baseReadTx.mu.RLock()
 	keys, vals := baseReadTx.buf.Range(bucketName, key, endKey, limit)
+	baseReadTx.mu.RUnlock()
 	if int64(len(keys)) == limit {
 		return keys, vals
 	}
