@@ -109,7 +109,7 @@ The [lock directory][executable-example] contains an executable example which fo
 [etcd-etcdctl-lock]: ../../etcdctl/README.md#lock-options-lockname-command-arg1-arg2-
 [etcd-etcdctl-elect]: ../../etcdctl/README.md#elect-options-election-name-proposal
 [etcd-mvcc]: data_model.md
-[etcd-recipe]: https://godoc.org/github.com/etcd-io/etcd/client/v3/experimental
+[etcd-recipe]: https://godoc.org/github.com/etcd-io/etcd/client/v3/experimental/recipes
 [consul-lock]: https://www.consul.io/commands/lock
 [newsql-leader]: http://dl.acm.org/citation.cfm?id=2960999
 [etcd-reconfig]: ../op-guide/runtime-configuration.md
