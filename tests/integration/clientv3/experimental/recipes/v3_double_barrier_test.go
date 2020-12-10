@@ -36,6 +36,7 @@ func TestDoubleBarrier(t *testing.T) {
 
 	b := recipe.NewDoubleBarrier(session, "test-barrier", waiters)
 	donec := make(chan struct{})
+	defer close(donec)
 	for i := 0; i < waiters-1; i++ {
 		go func() {
 			session, err := concurrency.NewSession(clus.RandClient())
@@ -48,17 +49,17 @@ func TestDoubleBarrier(t *testing.T) {
 			if err := bb.Enter(); err != nil {
 				t.Errorf("could not enter on barrier (%v)", err)
 			}
-			donec <- struct{}{}
+			<-donec
 			if err := bb.Leave(); err != nil {
 				t.Errorf("could not leave on barrier (%v)", err)
 			}
-			donec <- struct{}{}
+			<-donec
 		}()
 	}
 
 	time.Sleep(10 * time.Millisecond)
 	select {
-	case <-donec:
+	case donec <- struct{}{}:
 		t.Fatalf("barrier did not enter-wait")
 	default:
 	}
@@ -72,13 +73,13 @@ func TestDoubleBarrier(t *testing.T) {
 		select {
 		case <-timerC:
 			t.Fatalf("barrier enter timed out")
-		case <-donec:
+		case donec <- struct{}{}:
 		}
 	}
 
 	time.Sleep(10 * time.Millisecond)
 	select {
-	case <-donec:
+	case donec <- struct{}{}:
 		t.Fatalf("barrier did not leave-wait")
 	default:
 	}
@@ -89,7 +90,7 @@ func TestDoubleBarrier(t *testing.T) {
 		select {
 		case <-timerC:
 			t.Fatalf("barrier leave timed out")
-		case <-donec:
+		case donec <- struct{}{}:
 		}
 	}
 }
@@ -100,6 +101,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 
 	waiters := 10
 	donec := make(chan struct{})
+	defer close(donec)
 
 	s0, err := concurrency.NewSession(clus.Client(0))
 	if err != nil {
@@ -118,7 +120,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 		if berr := b.Enter(); berr != nil {
 			t.Errorf("could not enter on barrier (%v)", berr)
 		}
-		donec <- struct{}{}
+		<-donec
 	}()
 
 	for i := 0; i < waiters-1; i++ {
@@ -127,16 +129,16 @@ func TestDoubleBarrierFailover(t *testing.T) {
 			if berr := b.Enter(); berr != nil {
 				t.Errorf("could not enter on barrier (%v)", berr)
 			}
-			donec <- struct{}{}
+			<-donec
 			b.Leave()
-			donec <- struct{}{}
+			<-donec
 		}()
 	}
 
 	// wait for barrier enter to unblock
 	for i := 0; i < waiters; i++ {
 		select {
-		case <-donec:
+		case donec <- struct{}{}:
 		case <-time.After(10 * time.Second):
 			t.Fatalf("timed out waiting for enter, %d", i)
 		}
@@ -148,7 +150,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 	// join on rest of waiters
 	for i := 0; i < waiters-1; i++ {
 		select {
-		case <-donec:
+		case donec <- struct{}{}:
 		case <-time.After(10 * time.Second):
 			t.Fatalf("timed out waiting for leave, %d", i)
 		}

@@ -779,7 +779,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 		t.Fatalf("got success on disconnected put, wanted error")
 	}
 
-	donec := make(chan struct{})
+	donec := make(chan struct{}, 1)
 	go func() {
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(context.TODO(), "foo")

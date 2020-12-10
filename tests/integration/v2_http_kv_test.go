@@ -954,7 +954,7 @@ func TestV2WatchKeyInDir(t *testing.T) {
 	tc := NewTestClient()
 
 	var body map[string]interface{}
-	c := make(chan bool)
+	c := make(chan bool, 1)
 
 	// Create an expiring directory
 	v := url.Values{}

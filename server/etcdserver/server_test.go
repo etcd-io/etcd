@@ -213,7 +213,7 @@ func TestApplyRepeat(t *testing.T) {
 	// wait for conf change message
 	act, err := n.Wait(1)
 	// wait for stop message (async to avoid deadlock)
-	stopc := make(chan error)
+	stopc := make(chan error, 1)
 	go func() {
 		_, werr := n.Wait(1)
 		stopc <- werr
