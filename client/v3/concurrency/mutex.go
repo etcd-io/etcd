@@ -18,10 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/client/v3"
+	"sync"
 )
 
 // ErrLocked is returned by TryLock when Mutex is already locked by another session.
@@ -80,16 +79,31 @@ func (m *Mutex) Lock(ctx context.Context) error {
 		return nil
 	}
 	client := m.s.Client()
+
+	ch := make(chan bool, 1)
+	errorc := make(chan error, 1)
+	go func() {
+		werr := waitDeleteWithCancel(ctx, client, m.myKey, m.myRev, ch)
+		// If session key gets deleted, send cancellation to watches created using prefix
+		if werr == nil {
+			ch <- true
+			errorc <- ErrSessionExpired
+		}
+		errorc <- nil
+	}()
+
 	// wait for deletion revisions prior to myKey
-	// TODO: early termination if the session key is deleted before other session keys with smaller revisions.
-	_, werr := waitDeletes(ctx, client, m.pfx, m.myRev-1)
-	// release lock key if wait failed
-	if werr != nil {
+	_, werr := waitDeletesWithCancel(ctx, client, m.pfx, m.myRev-1, ch)
+
+	if error := <-errorc; error != nil {
+		return error
+	}
+
+	if werr != nil { // release lock key if wait failed
 		m.Unlock(client.Ctx())
 		return werr
 	}
 
-	// make sure the session is not expired, and the owner key still exists.
 	gresp, werr := client.Get(ctx, m.myKey)
 	if werr != nil {
 		m.Unlock(client.Ctx())
@@ -100,7 +114,6 @@ func (m *Mutex) Lock(ctx context.Context) error {
 		return ErrSessionExpired
 	}
 	m.hdr = gresp.Header
-
 	return nil
 }
 
