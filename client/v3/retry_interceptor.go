@@ -74,6 +74,12 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 				continue
 			}
 			if callOpts.retryAuth && rpctypes.Error(lastErr) == rpctypes.ErrInvalidAuthToken {
+				// clear auth token before refreshing it.
+				// call c.Auth.Authenticate with an invalid token will always fail the auth check on the server-side,
+				// if the server has not apply the patch of pr #12165 (https://github.com/etcd-io/etcd/pull/12165)
+				// and a rpctypes.ErrInvalidAuthToken will recursively call c.getToken until system run out of resource.
+				c.authTokenBundle.UpdateAuthToken("")
+
 				gterr := c.getToken(ctx)
 				if gterr != nil {
 					logger.Warn(
@@ -240,6 +246,9 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}
 		return true, err
 	}
 	if s.callOpts.retryAuth && rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
+		// clear auth token to avoid failure when call getToken
+		s.client.authTokenBundle.UpdateAuthToken("")
+
 		gterr := s.client.getToken(s.ctx)
 		if gterr != nil {
 			s.client.lg.Warn("retry failed to fetch new auth token", zap.Error(gterr))
