@@ -30,7 +30,6 @@ replace (
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/raft/v3 => ../raft
 	go.etcd.io/etcd/server/v3 => ../server
-//	go.etcd.io/etcd/v3 => ../
 )
 
 // Bad imports are sometimes causing attempts to pull that code.
