@@ -151,7 +151,13 @@ var (
 		Help:      "Server or member ID in hexadecimal format. 1 for 'server_id' label with current ID.",
 	},
 		[]string{"server_id"})
-
+	serverAlive = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "alive",
+		Help:      "Server or member ID alive time.",
+	},
+		[]string{"server_alive"})
 	fdUsed = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "os",
 		Subsystem: "fd",
@@ -195,6 +201,7 @@ func init() {
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)
+	prometheus.MustRegister(serverAlive)
 	prometheus.MustRegister(isLearner)
 	prometheus.MustRegister(learnerPromoteSucceed)
 	prometheus.MustRegister(learnerPromoteFailed)

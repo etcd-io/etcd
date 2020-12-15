@@ -90,6 +90,8 @@ const (
 	// (since it will timeout).
 	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
+	monitorAliveInterval = 30 * time.Second
+
 	// max number of in-flight snapshot messages etcdserver allows to have
 	// This number is more than enough for most clusters with 5 machines.
 	maxInFlightMsgSnap = 16
@@ -109,6 +111,7 @@ const (
 var (
 	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
 	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
+	serverStartTime                  = time.Now()
 )
 
 func init() {
@@ -709,6 +712,7 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(s.linearizableReadLoop)
 	s.GoAttach(s.monitorKVHash)
 	s.GoAttach(s.monitorDowngrade)
+	s.GoAttach(s.monitorAlive)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -2333,6 +2337,27 @@ func (s *EtcdServer) monitorVersions() {
 		if v != nil && membership.IsValidVersionChange(s.cluster.Version(), v) {
 			s.GoAttach(func() { s.updateClusterVersion(v.String()) })
 		}
+	}
+}
+
+// monitorAlive checks the member's alive every monitorAliveInterval.
+func (s *EtcdServer) monitorAlive() {
+	updateAlive := func() {
+		aliveDuration := time.Now().Sub(serverStartTime)
+		fmt.Println("alive: ", aliveDuration.Seconds())
+		serverAlive.WithLabelValues(strconv.Itoa(int(s.ID()))).Set(aliveDuration.Seconds())
+	}
+
+	updateAlive()
+
+	for {
+		select {
+		case <-time.After(monitorAliveInterval):
+		case <-s.stopping:
+			return
+		}
+
+		updateAlive()
 	}
 }
 
