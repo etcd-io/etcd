@@ -24,6 +24,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const BigValueSize int = 1 * 1024 * 1024
+
 type storeTxnRead struct {
 	s  *store
 	tx backend.ReadTx
@@ -211,6 +213,12 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	tw.s.kvindex.Put(key, idxRev)
 	tw.changes = append(tw.changes, kv)
 	tw.trace.Step("store kv pair into bolt db")
+
+	// big value metrics
+	valueSize := len(value)
+	if valueSize > BigValueSize {
+		putBigValue.WithLabelValues(string(key)).Set(float64(valueSize))
+	}
 
 	if oldLease != lease.NoLease {
 		if tw.s.le == nil {
