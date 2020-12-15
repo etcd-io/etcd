@@ -61,17 +61,6 @@ func newCluster(n int) *cluster {
 	return clus
 }
 
-// sinkReplay reads all commits in each node's local log.
-func (clus *cluster) sinkReplay() {
-	for i := range clus.peers {
-		for s := range clus.commitC[i] {
-			if s == nil {
-				break
-			}
-		}
-	}
-}
-
 // Close closes all cluster nodes and returns an error if any failed.
 func (clus *cluster) Close() (err error) {
 	for i := range clus.peers {
@@ -101,8 +90,6 @@ func (clus *cluster) closeNoErrors(t *testing.T) {
 func TestProposeOnCommit(t *testing.T) {
 	clus := newCluster(3)
 	defer clus.closeNoErrors(t)
-
-	clus.sinkReplay()
 
 	donec := make(chan struct{})
 	for i := range clus.peers {
@@ -148,8 +135,6 @@ func TestCloseProposerBeforeReplay(t *testing.T) {
 func TestCloseProposerInflight(t *testing.T) {
 	clus := newCluster(1)
 	defer clus.closeNoErrors(t)
-
-	clus.sinkReplay()
 
 	// some inflight ops
 	go func() {
