@@ -2344,7 +2344,6 @@ func (s *EtcdServer) monitorVersions() {
 func (s *EtcdServer) monitorAlive() {
 	updateAlive := func() {
 		aliveDuration := time.Now().Sub(serverStartTime)
-		fmt.Println("alive: ", aliveDuration.Seconds())
 		serverAlive.WithLabelValues(strconv.Itoa(int(s.ID()))).Set(aliveDuration.Seconds())
 	}
 
