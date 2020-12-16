@@ -37,11 +37,12 @@ func (txb *txBuffer) reset() {
 // txWriteBuffer buffers writes of pending updates that have not yet committed.
 type txWriteBuffer struct {
 	txBuffer
-	seq bool
+	seq map[string]bool
 }
 
+
 func (txw *txWriteBuffer) put(bucket, k, v []byte) {
-	txw.seq = false
+	txw.seq[string(bucket)] = false
 	txw.putSeq(bucket, k, v)
 }
 
@@ -54,6 +55,18 @@ func (txw *txWriteBuffer) putSeq(bucket, k, v []byte) {
 	b.add(k, v)
 }
 
+func (txw *txWriteBuffer) reset() {
+	txw.txBuffer.reset()
+	for k := range txw.seq {
+		v, ok := txw.buckets[k]
+		if !ok {
+			delete(txw.seq, k)
+		} else if v.used == 0 {
+			txw.seq[k] = true
+		}
+	}
+}
+
 func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 	for k, wb := range txw.buckets {
 		rb, ok := txr.buckets[k]
@@ -62,7 +75,7 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 			txr.buckets[k] = wb
 			continue
 		}
-		if !txw.seq && wb.used > 1 {
+		if seq, ok := txw.seq[k]; ok && !seq && wb.used > 1 {
 			// assume no duplicate keys
 			sort.Sort(wb)
 		}
