@@ -1,5 +1,7 @@
 ---
 title: Interacting with etcd
+weight: 3250
+description: "etcdctl: a command line tool for interacting with the etcd server"
 ---
 
 Users mostly interact with etcd by putting or getting the value of a key. This section describes how to do that by using etcdctl, a command line tool for interacting with etcd server. The concepts described here should apply to the gRPC APIs or client library APIs.

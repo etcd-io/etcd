@@ -1,6 +1,7 @@
 ---
 title: Branch management
-weight: 1
+weight: 1250
+description: etcd branch management
 ---
 
 ## Guide

@@ -1,5 +1,7 @@
 ---
 title: etcd versus other key-value stores
+weight: 2875
+description: History and use of etcd & comparison with other tools
 ---
 
 The name "etcd" originated from two ideas, the unix "/etc" folder and "d"istributed systems. The "/etc" folder is a place to store configuration data for a single system whereas etcd stores configuration information for large scale distributed systems. Hence, a "d"istributed "/etc" is "etcd".

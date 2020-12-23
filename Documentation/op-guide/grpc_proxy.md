@@ -1,5 +1,7 @@
 ---
 title: gRPC proxy
+weight: 4350
+description: A stateless etcd reverse proxy operating at the gRPC layer
 ---
 
 The gRPC proxy is a stateless etcd reverse proxy operating at the gRPC layer (L7). The proxy is designed to reduce the total processing load on the core etcd cluster. For horizontal scalability, it coalesces watch and lease API requests. To protect the cluster against abusive clients, it caches key range requests.

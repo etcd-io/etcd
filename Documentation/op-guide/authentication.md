@@ -1,5 +1,7 @@
 ---
 title: Role-based access control
+weight: 4100
+description: A basic authentication and role-based access control guide
 ---
 
 ## Overview

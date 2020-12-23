@@ -1,5 +1,7 @@
 ---
 title: Clustering Guide
+weight: 4150
+description: "Bootstrapping an etcd cluster: Static, etcd Discovery, and DNS Discovery"
 ---
 
 ## Overview

@@ -1,5 +1,7 @@
 ---
 title: Upgrade etcd from 3.1 to 3.2
+weight: 6800
+description: Processes, checklists, and notes on upgrading etcd from 3.1 to 3.2
 ---
 
 In the general case, upgrading from etcd 3.1 to 3.2 can be a zero-downtime, rolling upgrade:

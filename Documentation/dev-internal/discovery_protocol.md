@@ -1,5 +1,7 @@
 ---
 title: Discovery service protocol
+weight: 1500
+description: Discover other etcd members in a cluster bootstrap phase
 ---
 
 Discovery service protocol helps new etcd member to discover all other members in cluster bootstrap phase using a shared discovery URL.
