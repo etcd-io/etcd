@@ -305,8 +305,13 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 	}
 
 	p, err := spawnCmd(argsWithEmptyCN)
+	defer func() {
+		if p != nil {
+			p.Stop()
+		}
+	}()
+
 	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
+		t.Fatal(err)
 	}
-	p.Stop()
 }
