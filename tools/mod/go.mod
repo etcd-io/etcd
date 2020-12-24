@@ -7,7 +7,6 @@ require (
 	github.com/alexkohler/nakedret v1.0.0
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e
-	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-openapi/loads v0.19.5 // indirect
 	github.com/go-openapi/spec v0.19.9 // indirect
 	github.com/gogo/protobuf v1.3.1
