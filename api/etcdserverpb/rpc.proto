@@ -238,7 +238,9 @@ service Maintenance {
     };
   }
 
-  // Downgrade requests downgrade, cancel downgrade on the cluster version.
+  // Downgrade requests downgrades, verifies feasibility or cancels downgrade
+  // on the cluster version.
+  // Supported since etcd 3.5.
   rpc Downgrade(DowngradeRequest) returns (DowngradeResponse) {
     option (google.api.http) = {
       post: "/v3/maintenance/downgrade"
