@@ -42,6 +42,50 @@ func (p *jsonPrinter) EndpointStatus(r []epStatus) { printJSON(r) }
 func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
 func (p *jsonPrinter) DBStatus(r snapshot.Status)  { printJSON(r) }
 
+func (p *jsonPrinter) Get(r clientv3.GetResponse) {
+	if !p.isHex {
+		printGetWithHexJSON(r)
+	} else {
+		printJSON(r)
+	}
+}
+
+func printGetWithHexJSON(r clientv3.GetResponse) {
+	var buffer bytes.Buffer
+	var b []byte
+	buffer.WriteString("{\"header\":{\"cluster_id\":\"")
+	b = strconv.AppendUint(nil, r.Header.ClusterId, 16)
+	buffer.Write(b)
+	buffer.WriteString("\",\"member_id\":\"")
+	b = strconv.AppendUint(nil, r.Header.MemberId, 16)
+	buffer.Write(b)
+	buffer.WriteString("\",\"raft_term\":")
+	b = strconv.AppendUint(nil, r.Header.RaftTerm, 16)
+	buffer.Write(b)
+	buffer.WriteByte('}')
+	for i := 0; i < len(r.Kvs); i++ {
+		if i == 0 {
+			buffer.WriteString(",\"kvs\":[{\"key\":\"")
+		} else {
+			buffer.WriteString(",{\"key\":\"")
+		}
+		b = r.Kvs[i].Key
+		buffer.Write(b)
+		buffer.WriteString("\",\"create_revision\":\"" + strconv.FormatInt(r.Kvs[i].CreateRevision, 10))
+		buffer.WriteString("\",\"mod_revision\":\"" + strconv.FormatInt(r.Kvs[i].ModRevision, 10))
+		buffer.WriteString("\",\"version\":\"" + strconv.FormatInt(r.Kvs[i].Version, 10))
+		buffer.WriteString("\",\"value\":\"" + string(r.Kvs[i].Value) + "\"}")
+
+		if i == len(r.Kvs)-1 {
+			buffer.WriteString("]")
+		}
+	}
+
+	buffer.WriteString("}")
+	fmt.Println(string(buffer.Bytes()))
+
+}
+
 func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) {
 	if p.isHex {
 		printMemberListWithHexJSON(r)
