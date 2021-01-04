@@ -34,7 +34,7 @@ func (ep *errPicker) String() string {
 
 func (ep *errPicker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 	return balancer.PickResult{
+		Done:    func(info balancer.DoneInfo) {},
 		SubConn: nil,
-		Done:    nil,
 	}, ep.err
 }
