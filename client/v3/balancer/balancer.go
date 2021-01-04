@@ -134,6 +134,7 @@ type baseBalancer struct {
 
 	currentConn          balancer.ClientConn
 	connectivityRecorder connectivity.Recorder
+	resolverErr          error // the last error reported by the resolver; cleared on successful resolution
 
 	picker picker.Picker
 }
@@ -193,10 +194,12 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 	}
 }
 
-// HandleSubConnStateChange implements "grpc/balancer.Balancer" interface.
-func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s grpcconnectivity.State) {
+// UpdateSubConnState implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) UpdateSubConnState(sc balancer.SubConn, state balancer.SubConnState) {
 	bb.mu.Lock()
 	defer bb.mu.Unlock()
+
+	s := state.ConnectivityState
 
 	old, ok := bb.scToSt[sc]
 	if !ok {
@@ -247,7 +250,10 @@ func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s grpcconn
 		bb.updatePicker()
 	}
 
-	bb.currentConn.UpdateBalancerState(bb.connectivityRecorder.GetCurrentState(), bb.picker)
+	bb.currentConn.UpdateState(balancer.State{
+		ConnectivityState: s,
+		Picker:            bb.picker,
+	})
 }
 
 func (bb *baseBalancer) updatePicker() {
@@ -289,5 +295,81 @@ func (bb *baseBalancer) updatePicker() {
 // Close is a nop because base balancer doesn't have internal state to clean up,
 // and it doesn't need to call RemoveSubConn for the SubConns.
 func (bb *baseBalancer) Close() {
-	// TODO
+	defer bb.Close()
+	bb.currentConn.UpdateState(balancer.State{
+		ConnectivityState: grpcconnectivity.Shutdown,
+		Picker:            bb.picker,
+	})
+}
+
+// UpdateClientConnState implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) UpdateClientConnState(state balancer.ClientConnState) error {
+	addrs := state.ResolverState.Addresses
+	bb.resolverErr = nil
+
+	bb.lg.Info("client conn state resolved",
+		zap.String("picker", bb.picker.String()),
+		zap.String("balancer-id", bb.id),
+		zap.Strings("addresses", addrsToStrings(addrs)),
+	)
+
+	bb.mu.Lock()
+	defer bb.mu.Unlock()
+
+	resolved := make(map[resolver.Address]struct{})
+	for _, addr := range addrs {
+		resolved[addr] = struct{}{}
+		if _, ok := bb.addrToSc[addr]; !ok {
+			sc, err := bb.currentConn.NewSubConn([]resolver.Address{addr}, balancer.NewSubConnOptions{})
+			if err != nil {
+				bb.lg.Warn("NewSubConn failed", zap.String("picker", bb.picker.String()), zap.String("balancer-id", bb.id), zap.Error(err), zap.String("address", addr.Addr))
+				continue
+			}
+			bb.lg.Info("created subconn", zap.String("address", addr.Addr))
+			bb.addrToSc[addr] = sc
+			bb.scToAddr[sc] = addr
+			bb.scToSt[sc] = grpcconnectivity.Idle
+			sc.Connect()
+		}
+	}
+
+	for addr, sc := range bb.addrToSc {
+		if _, ok := resolved[addr]; !ok {
+			// was removed by resolver or failed to create subconn
+			bb.currentConn.RemoveSubConn(sc)
+			delete(bb.addrToSc, addr)
+			bb.lg.Info(
+				"removed subconn",
+				zap.String("picker", bb.picker.String()),
+				zap.String("balancer-id", bb.id),
+				zap.String("address", addr.Addr),
+				zap.String("subconn", scToString(sc)),
+			)
+			// Keep the state of this sc in bb.scToSt until sc's state becomes Shutdown.
+			// The entry will be deleted in HandleSubConnStateChange.
+			// (DO NOT) delete(bb.scToAddr, sc)
+			// (DO NOT) delete(bb.scToSt, sc)
+		}
+	}
+
+	return nil
+}
+
+// ResolverError implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) ResolverError(err error) {
+	bb.resolverErr = err
+	if len(bb.addrToSc) == 0 {
+		bb.connectivityRecorder.RecordTransition(bb.connectivityRecorder.GetCurrentState(), grpcconnectivity.TransientFailure)
+	}
+
+	if bb.connectivityRecorder.GetCurrentState() != grpcconnectivity.TransientFailure {
+		// The picker will not change since the balancer does not currently
+		// report an error.
+		return
+	}
+	bb.updatePicker()
+	bb.currentConn.UpdateState(balancer.State{
+		ConnectivityState: bb.connectivityRecorder.GetCurrentState(),
+		Picker:            bb.picker,
+	})
 }

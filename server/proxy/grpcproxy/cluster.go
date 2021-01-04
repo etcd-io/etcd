@@ -28,11 +28,19 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-	gnaming "google.golang.org/grpc/naming"
 )
 
 // allow maximum 1 retry per second
 const resolveRetryRate = 1
+
+type PeerOperation uint8
+
+const (
+	// Add indicates a new address is added.
+	Add PeerOperation = iota
+	// Delete indicates an existing address is deleted.
+	Delete
+)
 
 type clusterProxy struct {
 	lg   *zap.Logger
@@ -45,7 +53,7 @@ type clusterProxy struct {
 	prefix  string
 
 	umu  sync.RWMutex
-	umap map[string]gnaming.Update
+	umap map[string]naming.Update
 }
 
 // NewClusterProxy takes optional prefix to fetch grpc-proxy member endpoints.
@@ -63,7 +71,7 @@ func NewClusterProxy(lg *zap.Logger, c *clientv3.Client, advaddr string, prefix 
 
 		advaddr: advaddr,
 		prefix:  prefix,
-		umap:    make(map[string]gnaming.Update),
+		umap:    make(map[string]naming.Update),
 	}
 
 	donec := make(chan struct{})
@@ -91,7 +99,7 @@ func (cp *clusterProxy) resolve(prefix string) {
 	}
 }
 
-func (cp *clusterProxy) monitor(wa gnaming.Watcher) {
+func (cp *clusterProxy) monitor(wa naming.Watcher) {
 	for cp.ctx.Err() == nil {
 		ups, err := wa.Next()
 		if err != nil {
@@ -104,9 +112,9 @@ func (cp *clusterProxy) monitor(wa gnaming.Watcher) {
 		cp.umu.Lock()
 		for i := range ups {
 			switch ups[i].Op {
-			case gnaming.Add:
+			case naming.Add:
 				cp.umap[ups[i].Addr] = *ups[i]
-			case gnaming.Delete:
+			case naming.Delete:
 				delete(cp.umap, ups[i].Addr)
 			}
 		}
