@@ -16,11 +16,11 @@ package grpcproxy
 
 import (
 	"encoding/json"
-	"go.etcd.io/etcd/client/v3/naming"
 	"os"
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"go.etcd.io/etcd/client/v3/naming"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
