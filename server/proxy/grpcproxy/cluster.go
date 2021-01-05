@@ -33,15 +33,6 @@ import (
 // allow maximum 1 retry per second
 const resolveRetryRate = 1
 
-type PeerOperation uint8
-
-const (
-	// Add indicates a new address is added.
-	Add PeerOperation = iota
-	// Delete indicates an existing address is deleted.
-	Delete
-)
-
 type clusterProxy struct {
 	lg   *zap.Logger
 	clus clientv3.Cluster
