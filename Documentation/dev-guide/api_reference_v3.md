@@ -765,6 +765,8 @@ Empty field.
 | prev_kv | If prev_kv is set, etcd gets the previous key-value pair before changing it. The previous key-value pair will be returned in the put response. | bool |
 | ignore_value | If ignore_value is set, etcd updates the key using its current value. Returns an error if the key does not exist. | bool |
 | ignore_lease | If ignore_lease is set, etcd updates the key using its current lease. Returns an error if the key does not exist. | bool |
+| auto_lease | if auto_lease is set,etcd renew the lease with given ttl if the key has lease before.or create a lease for key not functional in txn | bool |
+| ttl | ttl for auto_lease | int64 |
 
 
 
@@ -984,7 +986,7 @@ Empty field.
 
 
 
-##### message `Lease` (lease/leasepb/lease.proto)
+##### message `Lease` (server/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -994,7 +996,7 @@ Empty field.
 
 
 
-##### message `LeaseInternalRequest` (lease/leasepb/lease.proto)
+##### message `LeaseInternalRequest` (server/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -1002,7 +1004,7 @@ Empty field.
 
 
 
-##### message `LeaseInternalResponse` (lease/leasepb/lease.proto)
+##### message `LeaseInternalResponse` (server/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |

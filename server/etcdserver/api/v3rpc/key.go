@@ -128,6 +128,9 @@ func checkPutRequest(r *pb.PutRequest) error {
 	if r.IgnoreLease && r.Lease != 0 {
 		return rpctypes.ErrGRPCLeaseProvided
 	}
+	if r.AutoLease && r.Ttl == 0 {
+		return rpctypes.ErrGRPCTTLZero
+	}
 	return nil
 }
 

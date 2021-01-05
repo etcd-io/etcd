@@ -256,6 +256,11 @@ func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.Put
 				return nil, nil, lease.ErrLeaseNotFound
 			}
 		}
+		if p.AutoLease {
+			if leaseID, err = a.autoLease(trace, p, resp); err != nil {
+				return nil, nil, err
+			}
+		}
 		txn = a.s.KV().Write(trace)
 		defer txn.End()
 	}
@@ -291,6 +296,36 @@ func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.Put
 	resp.Header.Revision = txn.Put(p.Key, val, leaseID)
 	trace.AddField(traceutil.Field{Key: "response_revision", Value: resp.Header.Revision})
 	return resp, trace, nil
+}
+func (a *applierV3backend) autoLease(trace *traceutil.Trace, p *pb.PutRequest, resp *pb.PutResponse) (leaseID lease.LeaseID, err error) {
+	var rr *mvcc.RangeResult
+	leaseID = lease.LeaseID(p.Lease)
+	txn := a.s.KV().Read(trace)
+	trace.StepWithFunction(func() {
+		rr, err = txn.Range(context.TODO(), p.Key, nil, mvcc.RangeOptions{})
+	}, "get previous kv pair")
+	txn.End()
+	newLeaseID := int64(a.s.reqIDGen.Next() & ((1 << 63) - 1))
+	if rr != nil && len(rr.KVs) > 0 {
+		prevKV := rr.KVs[0]
+		leaseID = lease.LeaseID(prevKV.Lease)
+		// lease exist, renew
+		if leaseID != lease.NoLease {
+			if _, err = a.s.lessor.Renew(leaseID); err != nil {
+				return 0, err
+			}
+			return leaseID, nil
+		}
+		// lease not exist,grant one
+		if _, err = a.s.lessor.Grant(lease.LeaseID(newLeaseID), p.Ttl); err != nil {
+			return 0, err
+		}
+		return lease.LeaseID(newLeaseID), nil
+	}
+	if _, err = a.s.lessor.Grant(lease.LeaseID(newLeaseID), p.Ttl); err != nil {
+		return 0, err
+	}
+	return lease.LeaseID(newLeaseID), nil
 }
 
 func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {

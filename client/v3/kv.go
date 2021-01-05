@@ -152,7 +152,7 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 		}
 	case tPut:
 		var resp *pb.PutResponse
-		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV, IgnoreValue: op.ignoreValue, IgnoreLease: op.ignoreLease}
+		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV, IgnoreValue: op.ignoreValue, IgnoreLease: op.ignoreLease, AutoLease: op.autoLease, Ttl: op.ttl}
 		resp, err = kv.remote.Put(ctx, r, kv.callOpts...)
 		if err == nil {
 			return OpResponse{put: (*PutResponse)(resp)}, nil

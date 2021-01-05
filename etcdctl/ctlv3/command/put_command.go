@@ -24,10 +24,12 @@ import (
 )
 
 var (
-	leaseStr       string
-	putPrevKV      bool
-	putIgnoreVal   bool
-	putIgnoreLease bool
+	leaseStr        string
+	putPrevKV       bool
+	putIgnoreVal    bool
+	putIgnoreLease  bool
+	putAutoLease    bool
+	putAutoLeaseTTL int64
 )
 
 // NewPutCommand returns the cobra command for "put".
@@ -60,6 +62,8 @@ will store the content of the file to <key>.
 	cmd.Flags().BoolVar(&putPrevKV, "prev-kv", false, "return the previous key-value pair before modification")
 	cmd.Flags().BoolVar(&putIgnoreVal, "ignore-value", false, "updates the key using its current value")
 	cmd.Flags().BoolVar(&putIgnoreLease, "ignore-lease", false, "updates the key using its current lease")
+	cmd.Flags().BoolVar(&putAutoLease, "auto-lease", false, "updates the key and auto lease with auto-lease-ttl")
+	cmd.Flags().Int64Var(&putAutoLeaseTTL, "auto-lease-ttl", 0, "auto-lease-ttl")
 	return cmd
 }
 
@@ -112,6 +116,9 @@ func getPutOp(args []string) (string, string, []clientv3.OpOption) {
 	}
 	if putIgnoreLease {
 		opts = append(opts, clientv3.WithIgnoreLease())
+	}
+	if putAutoLease {
+		opts = append(opts, clientv3.WithAutoLease(putAutoLeaseTTL))
 	}
 
 	return key, value, opts

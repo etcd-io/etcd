@@ -14,9 +14,9 @@ option (gogoproto.unmarshaler_all) = true;
 service KV {
   // Range gets the keys in the range from the key-value store.
   rpc Range(RangeRequest) returns (RangeResponse) {
-      option (google.api.http) = {
-        post: "/v3/kv/range"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/kv/range"
+      body: "*"
     };
   }
 
@@ -24,9 +24,9 @@ service KV {
   // A put request increments the revision of the key-value store
   // and generates one event in the event history.
   rpc Put(PutRequest) returns (PutResponse) {
-      option (google.api.http) = {
-        post: "/v3/kv/put"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/kv/put"
+      body: "*"
     };
   }
 
@@ -34,9 +34,9 @@ service KV {
   // A delete request increments the revision of the key-value store
   // and generates a delete event in the event history for every deleted key.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {
-      option (google.api.http) = {
-        post: "/v3/kv/deleterange"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/kv/deleterange"
+      body: "*"
     };
   }
 
@@ -45,9 +45,9 @@ service KV {
   // and generates events with the same revision for every completed request.
   // It is not allowed to modify the same key several times within one txn.
   rpc Txn(TxnRequest) returns (TxnResponse) {
-      option (google.api.http) = {
-        post: "/v3/kv/txn"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/kv/txn"
+      body: "*"
     };
   }
 
@@ -55,9 +55,9 @@ service KV {
   // store should be periodically compacted or the event history will continue to grow
   // indefinitely.
   rpc Compact(CompactionRequest) returns (CompactionResponse) {
-      option (google.api.http) = {
-        post: "/v3/kv/compaction"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/kv/compaction"
+      body: "*"
     };
   }
 }
@@ -69,9 +69,9 @@ service Watch {
   // for several watches at once. The entire event history can be watched starting from the
   // last compaction revision.
   rpc Watch(stream WatchRequest) returns (stream WatchResponse) {
-      option (google.api.http) = {
-        post: "/v3/watch"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/watch"
+      body: "*"
     };
   }
 }
@@ -81,54 +81,54 @@ service Lease {
   // within a given time to live period. All keys attached to the lease will be expired and
   // deleted if the lease expires. Each expired key generates a delete event in the event history.
   rpc LeaseGrant(LeaseGrantRequest) returns (LeaseGrantResponse) {
-      option (google.api.http) = {
-        post: "/v3/lease/grant"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/lease/grant"
+      body: "*"
     };
   }
 
   // LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.
   rpc LeaseRevoke(LeaseRevokeRequest) returns (LeaseRevokeResponse) {
-      option (google.api.http) = {
-        post: "/v3/lease/revoke"
+    option (google.api.http) = {
+      post: "/v3/lease/revoke"
+      body: "*"
+      additional_bindings {
+        post: "/v3/kv/lease/revoke"
         body: "*"
-        additional_bindings {
-            post: "/v3/kv/lease/revoke"
-            body: "*"
-        }
+      }
     };
   }
 
   // LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client
   // to the server and streaming keep alive responses from the server to the client.
   rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse) {
-      option (google.api.http) = {
-        post: "/v3/lease/keepalive"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/lease/keepalive"
+      body: "*"
     };
   }
 
   // LeaseTimeToLive retrieves lease information.
   rpc LeaseTimeToLive(LeaseTimeToLiveRequest) returns (LeaseTimeToLiveResponse) {
-      option (google.api.http) = {
-        post: "/v3/lease/timetolive"
+    option (google.api.http) = {
+      post: "/v3/lease/timetolive"
+      body: "*"
+      additional_bindings {
+        post: "/v3/kv/lease/timetolive"
         body: "*"
-        additional_bindings {
-            post: "/v3/kv/lease/timetolive"
-            body: "*"
-        }
+      }
     };
   }
 
   // LeaseLeases lists all existing leases.
   rpc LeaseLeases(LeaseLeasesRequest) returns (LeaseLeasesResponse) {
-      option (google.api.http) = {
-        post: "/v3/lease/leases"
+    option (google.api.http) = {
+      post: "/v3/lease/leases"
+      body: "*"
+      additional_bindings {
+        post: "/v3/kv/lease/leases"
         body: "*"
-        additional_bindings {
-            post: "/v3/kv/lease/leases"
-            body: "*"
-        }
+      }
     };
   }
 }
@@ -136,41 +136,41 @@ service Lease {
 service Cluster {
   // MemberAdd adds a member into the cluster.
   rpc MemberAdd(MemberAddRequest) returns (MemberAddResponse) {
-      option (google.api.http) = {
-        post: "/v3/cluster/member/add"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/cluster/member/add"
+      body: "*"
     };
   }
 
   // MemberRemove removes an existing member from the cluster.
   rpc MemberRemove(MemberRemoveRequest) returns (MemberRemoveResponse) {
-      option (google.api.http) = {
-        post: "/v3/cluster/member/remove"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/cluster/member/remove"
+      body: "*"
     };
   }
 
   // MemberUpdate updates the member configuration.
   rpc MemberUpdate(MemberUpdateRequest) returns (MemberUpdateResponse) {
-      option (google.api.http) = {
-        post: "/v3/cluster/member/update"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/cluster/member/update"
+      body: "*"
     };
   }
 
   // MemberList lists all the members in the cluster.
   rpc MemberList(MemberListRequest) returns (MemberListResponse) {
-      option (google.api.http) = {
-        post: "/v3/cluster/member/list"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/cluster/member/list"
+      body: "*"
     };
   }
 
   // MemberPromote promotes a member from raft learner (non-voting) to raft voting member.
   rpc MemberPromote(MemberPromoteRequest) returns (MemberPromoteResponse) {
-      option (google.api.http) = {
-        post: "/v3/cluster/member/promote"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/cluster/member/promote"
+      body: "*"
     };
   }
 }
@@ -178,25 +178,25 @@ service Cluster {
 service Maintenance {
   // Alarm activates, deactivates, and queries alarms regarding cluster health.
   rpc Alarm(AlarmRequest) returns (AlarmResponse) {
-      option (google.api.http) = {
-        post: "/v3/maintenance/alarm"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/maintenance/alarm"
+      body: "*"
     };
   }
 
   // Status gets the status of the member.
   rpc Status(StatusRequest) returns (StatusResponse) {
-      option (google.api.http) = {
-        post: "/v3/maintenance/status"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/maintenance/status"
+      body: "*"
     };
   }
 
   // Defragment defragments a member's backend database to recover storage space.
   rpc Defragment(DefragmentRequest) returns (DefragmentResponse) {
-      option (google.api.http) = {
-        post: "/v3/maintenance/defragment"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/maintenance/defragment"
+      body: "*"
     };
   }
 
@@ -207,34 +207,34 @@ service Maintenance {
   // since Hash operation does not hold MVCC locks.
   // Use "HashKV" API instead for "key" bucket consistency checks.
   rpc Hash(HashRequest) returns (HashResponse) {
-      option (google.api.http) = {
-        post: "/v3/maintenance/hash"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/maintenance/hash"
+      body: "*"
     };
   }
 
   // HashKV computes the hash of all MVCC keys up to a given revision.
   // It only iterates "key" bucket in backend storage.
   rpc HashKV(HashKVRequest) returns (HashKVResponse) {
-      option (google.api.http) = {
-        post: "/v3/maintenance/hash"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/maintenance/hash"
+      body: "*"
     };
   }
 
   // Snapshot sends a snapshot of the entire backend from a member over a stream to a client.
   rpc Snapshot(SnapshotRequest) returns (stream SnapshotResponse) {
-      option (google.api.http) = {
-        post: "/v3/maintenance/snapshot"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/maintenance/snapshot"
+      body: "*"
     };
   }
 
   // MoveLeader requests current leader node to transfer its leadership to transferee.
   rpc MoveLeader(MoveLeaderRequest) returns (MoveLeaderResponse) {
-      option (google.api.http) = {
-        post: "/v3/maintenance/transfer-leadership"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/maintenance/transfer-leadership"
+      body: "*"
     };
   }
 
@@ -250,137 +250,137 @@ service Maintenance {
 service Auth {
   // AuthEnable enables authentication.
   rpc AuthEnable(AuthEnableRequest) returns (AuthEnableResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/enable"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/enable"
+      body: "*"
     };
   }
 
   // AuthDisable disables authentication.
   rpc AuthDisable(AuthDisableRequest) returns (AuthDisableResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/disable"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/disable"
+      body: "*"
     };
   }
 
   // AuthStatus displays authentication status.
   rpc AuthStatus(AuthStatusRequest) returns (AuthStatusResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/status"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/status"
+      body: "*"
     };
   }
 
   // Authenticate processes an authenticate request.
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/authenticate"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/authenticate"
+      body: "*"
     };
   }
 
   // UserAdd adds a new user. User name cannot be empty.
   rpc UserAdd(AuthUserAddRequest) returns (AuthUserAddResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/user/add"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/user/add"
+      body: "*"
     };
   }
 
   // UserGet gets detailed user information.
   rpc UserGet(AuthUserGetRequest) returns (AuthUserGetResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/user/get"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/user/get"
+      body: "*"
     };
   }
 
   // UserList gets a list of all users.
   rpc UserList(AuthUserListRequest) returns (AuthUserListResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/user/list"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/user/list"
+      body: "*"
     };
   }
 
   // UserDelete deletes a specified user.
   rpc UserDelete(AuthUserDeleteRequest) returns (AuthUserDeleteResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/user/delete"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/user/delete"
+      body: "*"
     };
   }
 
   // UserChangePassword changes the password of a specified user.
   rpc UserChangePassword(AuthUserChangePasswordRequest) returns (AuthUserChangePasswordResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/user/changepw"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/user/changepw"
+      body: "*"
     };
   }
 
   // UserGrant grants a role to a specified user.
   rpc UserGrantRole(AuthUserGrantRoleRequest) returns (AuthUserGrantRoleResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/user/grant"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/user/grant"
+      body: "*"
     };
   }
 
   // UserRevokeRole revokes a role of specified user.
   rpc UserRevokeRole(AuthUserRevokeRoleRequest) returns (AuthUserRevokeRoleResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/user/revoke"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/user/revoke"
+      body: "*"
     };
   }
 
   // RoleAdd adds a new role. Role name cannot be empty.
   rpc RoleAdd(AuthRoleAddRequest) returns (AuthRoleAddResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/role/add"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/role/add"
+      body: "*"
     };
   }
 
   // RoleGet gets detailed role information.
   rpc RoleGet(AuthRoleGetRequest) returns (AuthRoleGetResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/role/get"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/role/get"
+      body: "*"
     };
   }
 
   // RoleList gets lists of all roles.
   rpc RoleList(AuthRoleListRequest) returns (AuthRoleListResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/role/list"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/role/list"
+      body: "*"
     };
   }
 
   // RoleDelete deletes a specified role.
   rpc RoleDelete(AuthRoleDeleteRequest) returns (AuthRoleDeleteResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/role/delete"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/role/delete"
+      body: "*"
     };
   }
 
   // RoleGrantPermission grants a permission of a specified key or range to a specified role.
   rpc RoleGrantPermission(AuthRoleGrantPermissionRequest) returns (AuthRoleGrantPermissionResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/role/grant"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/role/grant"
+      body: "*"
     };
   }
 
   // RoleRevokePermission revokes a key or range permission of a specified role.
   rpc RoleRevokePermission(AuthRoleRevokePermissionRequest) returns (AuthRoleRevokePermissionResponse) {
-      option (google.api.http) = {
-        post: "/v3/auth/role/revoke"
-        body: "*"
+    option (google.api.http) = {
+      post: "/v3/auth/role/revoke"
+      body: "*"
     };
   }
 }
@@ -401,16 +401,16 @@ message ResponseHeader {
 
 message RangeRequest {
   enum SortOrder {
-	NONE = 0; // default, no sorting
-	ASCEND = 1; // lowest target value first
-	DESCEND = 2; // highest target value first
+    NONE = 0; // default, no sorting
+    ASCEND = 1; // lowest target value first
+    DESCEND = 2; // highest target value first
   }
   enum SortTarget {
-	KEY = 0;
-	VERSION = 1;
-	CREATE = 2;
-	MOD = 3;
-	VALUE = 4;
+    KEY = 0;
+    VERSION = 1;
+    CREATE = 2;
+    MOD = 3;
+    VALUE = 4;
   }
 
   // key is the first key for the range. If range_end is not given, the request only looks up key.
@@ -497,6 +497,11 @@ message PutRequest {
   // If ignore_lease is set, etcd updates the key using its current lease.
   // Returns an error if the key does not exist.
   bool ignore_lease = 6;
+  // if auto_lease is set,etcd renew the lease with given ttl if the key has lease before.or create a lease for key
+  // not functional in txn
+  bool auto_lease = 7;
+  // ttl for auto_lease
+  int64 ttl = 8;
 }
 
 message PutResponse {
@@ -801,7 +806,7 @@ message LeaseRevokeResponse {
 }
 
 message LeaseCheckpoint {
-    // ID is the lease ID to checkpoint.
+  // ID is the lease ID to checkpoint.
   int64 ID = 1;
 
   // Remaining_TTL is the remaining time until expiry of the lease.
@@ -951,16 +956,16 @@ message MoveLeaderResponse {
 }
 
 enum AlarmType {
-	NONE = 0; // default, used to query if any alarm is active
-	NOSPACE = 1; // space quota is exhausted
-	CORRUPT = 2; // kv store corruption detected
+  NONE = 0; // default, used to query if any alarm is active
+  NOSPACE = 1; // space quota is exhausted
+  CORRUPT = 2; // kv store corruption detected
 }
 
 message AlarmRequest {
   enum AlarmAction {
-	GET = 0;
-	ACTIVATE = 1;
-	DEACTIVATE = 2;
+    GET = 0;
+    ACTIVATE = 1;
+    DEACTIVATE = 2;
   }
   // action is the kind of alarm request to issue. The action
   // may GET alarm statuses, ACTIVATE an alarm, or DEACTIVATE a

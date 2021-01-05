@@ -2498,6 +2498,11 @@
     "etcdserverpbPutRequest": {
       "type": "object",
       "properties": {
+        "auto_lease": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "if auto_lease is set,etcd renew the lease with given ttl if the key has lease before.or create a lease for key\nnot functional in txn"
+        },
         "ignore_lease": {
           "description": "If ignore_lease is set, etcd updates the key using its current lease.\nReturns an error if the key does not exist.",
           "type": "boolean",
@@ -2522,6 +2527,11 @@
           "description": "If prev_kv is set, etcd gets the previous key-value pair before changing it.\nThe previous key-value pair will be returned in the put response.",
           "type": "boolean",
           "format": "boolean"
+        },
+        "ttl": {
+          "type": "string",
+          "format": "int64",
+          "title": "ttl for auto_lease"
         },
         "value": {
           "description": "value is the value, in bytes, to associate with the key in the key-value store.",

@@ -60,6 +60,8 @@ type Op struct {
 	// for put
 	ignoreValue bool
 	ignoreLease bool
+	autoLease   bool
+	ttl         int64
 
 	// progressNotify is for progress updates.
 	progressNotify bool
@@ -522,6 +524,16 @@ func WithIgnoreValue() OpOption {
 func WithIgnoreLease() OpOption {
 	return func(op *Op) {
 		op.ignoreLease = true
+	}
+}
+
+// WithAutoLease update the key and renew lease for it.
+// if key not existed before,grant a lease with ttl for it.
+// if value not change,only renew lease.
+func WithAutoLease(ttl int64) OpOption {
+	return func(op *Op) {
+		op.autoLease = true
+		op.ttl = ttl
 	}
 }
 

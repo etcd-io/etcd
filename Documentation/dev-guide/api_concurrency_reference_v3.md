@@ -4,7 +4,7 @@
 This is a generated documentation. Please read the proto files for more.
 
 
-##### service `Lock` (etcdserver/api/v3lock/v3lockpb/v3lock.proto)
+##### service `Lock` (server/etcdserver/api/v3lock/v3lockpb/v3lock.proto)
 
 The lock service exposes client-side locking facilities as a gRPC interface.
 
@@ -15,7 +15,7 @@ The lock service exposes client-side locking facilities as a gRPC interface.
 
 
 
-##### message `LockRequest` (etcdserver/api/v3lock/v3lockpb/v3lock.proto)
+##### message `LockRequest` (server/etcdserver/api/v3lock/v3lockpb/v3lock.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -24,7 +24,7 @@ The lock service exposes client-side locking facilities as a gRPC interface.
 
 
 
-##### message `LockResponse` (etcdserver/api/v3lock/v3lockpb/v3lock.proto)
+##### message `LockResponse` (server/etcdserver/api/v3lock/v3lockpb/v3lock.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -33,7 +33,7 @@ The lock service exposes client-side locking facilities as a gRPC interface.
 
 
 
-##### message `UnlockRequest` (etcdserver/api/v3lock/v3lockpb/v3lock.proto)
+##### message `UnlockRequest` (server/etcdserver/api/v3lock/v3lockpb/v3lock.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -41,7 +41,7 @@ The lock service exposes client-side locking facilities as a gRPC interface.
 
 
 
-##### message `UnlockResponse` (etcdserver/api/v3lock/v3lockpb/v3lock.proto)
+##### message `UnlockResponse` (server/etcdserver/api/v3lock/v3lockpb/v3lock.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -49,7 +49,7 @@ The lock service exposes client-side locking facilities as a gRPC interface.
 
 
 
-##### service `Election` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### service `Election` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 The election service exposes client-side election facilities as a gRPC interface.
 
@@ -63,7 +63,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `CampaignRequest` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `CampaignRequest` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -73,7 +73,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `CampaignResponse` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `CampaignResponse` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -82,7 +82,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `LeaderKey` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `LeaderKey` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -93,7 +93,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `LeaderRequest` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `LeaderRequest` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -101,7 +101,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `LeaderResponse` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `LeaderResponse` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -110,7 +110,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `ProclaimRequest` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `ProclaimRequest` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -119,7 +119,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `ProclaimResponse` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `ProclaimResponse` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -127,7 +127,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `ResignRequest` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `ResignRequest` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -135,7 +135,7 @@ The election service exposes client-side election facilities as a gRPC interface
 
 
 
-##### message `ResignResponse` (etcdserver/api/v3election/v3electionpb/v3election.proto)
+##### message `ResignResponse` (server/etcdserver/api/v3election/v3electionpb/v3election.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |

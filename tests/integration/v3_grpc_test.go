@@ -938,6 +938,97 @@ func TestV3PutIgnoreLease(t *testing.T) {
 	}
 }
 
+// TestV3PutAutoLease ensures that writes with auto lease uses previous lease for the key overwrites.
+func TestV3PutAutoLease(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := toGRPC(clus.RandClient()).KV
+
+	key, val, val1 := []byte("zoo"), []byte("bar"), []byte("bar1")
+	putReq := pb.PutRequest{Key: key, Value: val, AutoLease: true, Ttl: 30}
+	_, _ = kvc.Put(context.TODO(), &putReq)
+	rr, _ := kvc.Range(context.TODO(), &pb.RangeRequest{Key: key})
+	firstLease := rr.Kvs[0].Lease
+
+	tests := []struct {
+		putFunc  func() error
+		putErr   error
+		wleaseID int64
+		wvalue   []byte
+	}{
+		{ // put failure for no ttl
+			func() error {
+				preq := putReq
+				preq.Ttl = 0
+				_, err := kvc.Put(context.TODO(), &preq)
+				return err
+			},
+			rpctypes.ErrGRPCTTLZero,
+			0,
+			nil,
+		},
+		{ // put success again , still old lease
+			func() error {
+				preq := putReq
+				preq.Value = val1
+				_, err := kvc.Put(context.TODO(), &preq)
+				return err
+			},
+			nil,
+			firstLease,
+			val1,
+		}, { // put without auto-lease,unbind lease
+			func() error {
+				preq := putReq
+				preq.Value = val1
+				preq.AutoLease = false
+				_, err := kvc.Put(context.TODO(), &preq)
+				return err
+			},
+			nil,
+			0,
+			val1,
+		}, { // txn put, auto lease skip
+			func() error {
+				preq := putReq
+				txn := &pb.TxnRequest{}
+				txn.Success = append(txn.Success, &pb.RequestOp{
+					Request: &pb.RequestOp_RequestPut{RequestPut: &preq}})
+				_, err := kvc.Txn(context.TODO(), txn)
+				return err
+			},
+			nil,
+			0,
+			val,
+		},
+	}
+
+	for i, tt := range tests {
+		if err := tt.putFunc(); !eqErrGRPC(err, tt.putErr) {
+			t.Fatalf("#%d: err expected %v, got %v", i, tt.putErr, err)
+		}
+		if tt.putErr != nil {
+			continue
+		}
+		rr, err := kvc.Range(context.TODO(), &pb.RangeRequest{Key: key})
+		if err != nil {
+			t.Fatalf("#%d: %v", i, err)
+		}
+		if len(rr.Kvs) != 1 {
+			t.Fatalf("#%d: len(rr.KVs) expected 1, got %d", i, len(rr.Kvs))
+		}
+		if !bytes.Equal(rr.Kvs[0].Value, tt.wvalue) {
+			t.Fatalf("#%d: value expected %q, got %q", i, val, rr.Kvs[0].Value)
+		}
+		if rr.Kvs[0].Lease != tt.wleaseID {
+			t.Fatalf("#%d: lease ID expected %d, got %d", i, tt.wleaseID, rr.Kvs[0].Lease)
+		}
+	}
+}
+
 // TestV3PutMissingLease ensures that a Put on a key with a bogus lease fails.
 func TestV3PutMissingLease(t *testing.T) {
 	defer testutil.AfterTest(t)
