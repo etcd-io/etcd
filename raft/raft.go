@@ -397,7 +397,8 @@ func (r *raft) hardState() pb.HardState {
 	}
 }
 
-// send persists state to stable storage and then sends to its mailbox.
+// send schedules persisting state to a stable storage and AFTER that
+// sending the message (as part of next Ready message processing).
 func (r *raft) send(m pb.Message) {
 	if m.From == None {
 		m.From = r.id
