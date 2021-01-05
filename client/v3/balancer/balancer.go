@@ -295,7 +295,6 @@ func (bb *baseBalancer) updatePicker() {
 // Close is a nop because base balancer doesn't have internal state to clean up,
 // and it doesn't need to call RemoveSubConn for the SubConns.
 func (bb *baseBalancer) Close() {
-	defer bb.Close()
 	bb.currentConn.UpdateState(balancer.State{
 		ConnectivityState: grpcconnectivity.Shutdown,
 		Picker:            bb.picker,
