@@ -16,7 +16,6 @@ replace (
 require (
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/dustin/go-humanize v1.0.0
-	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/spf13/cobra v1.1.1
 	go.etcd.io/bbolt v1.3.5
@@ -26,14 +25,9 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.5.0-pre
 	go.etcd.io/etcd/raft/v3 v3.5.0-pre
 	go.etcd.io/etcd/server/v3 v3.5.0-pre
-	go.etcd.io/etcd/tests/v3 v3.5.0-pre
+	go.etcd.io/etcd/tests/v3 v3.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.16.0
-	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
-	golang.org/x/sys v0.0.0-20201231184435-2d18734c6014 // indirect
-	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d // indirect
-	google.golang.org/grpc v1.34.0
-	google.golang.org/grpc/examples v0.0.0-20201226181154-53788aa5dcb4 // indirect
+	google.golang.org/grpc v1.33.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 )

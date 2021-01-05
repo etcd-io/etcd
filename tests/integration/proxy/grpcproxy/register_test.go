@@ -25,7 +25,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/integration"
 
 	"go.uber.org/zap"
-	gnaming "google.golang.org/grpc/naming"
 )
 
 func TestRegister(t *testing.T) {
@@ -68,7 +67,7 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-func createWatcher(t *testing.T, c *clientv3.Client, prefix string) gnaming.Watcher {
+func createWatcher(t *testing.T, c *clientv3.Client, prefix string) naming.Watcher {
 	gr := &naming.GRPCResolver{Client: c}
 	watcher, err := gr.Resolve(prefix)
 	if err != nil {
