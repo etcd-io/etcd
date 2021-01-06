@@ -38,9 +38,9 @@ require (
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	golang.org/x/tools v0.0.0-20201014170642-d1624618ad65 // indirect
-	google.golang.org/genproto v0.0.0-20201214200347-8c77b98c765d
+	google.golang.org/genproto v0.0.0-20200806141610-86f49bd18e98
 	google.golang.org/grpc v1.33.0
-	google.golang.org/grpc/examples v0.0.0-20201226181154-53788aa5dcb4 // indirect
+	google.golang.org/grpc/examples v0.0.0-20210105215357-f4a20d2f414f // indirect
 	sigs.k8s.io/yaml v1.2.0
 )
 
