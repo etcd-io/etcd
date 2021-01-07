@@ -36,5 +36,6 @@ replace (
 // This makes the error more explicit.
 replace (
 	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/v3 => ./FORBIDDEN_DEPENDENCY
 	go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
 )
