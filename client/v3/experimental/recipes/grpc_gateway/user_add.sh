@@ -72,3 +72,4 @@ token=$(tokengen $user $pass)
 response=$(add_user $newuser $newpass $token)
 
 echo -e "\\n$response"
+
