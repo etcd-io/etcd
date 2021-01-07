@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "etcdserver/api/v3lock/v3lockpb/v3lock.proto",
+    "title": "server/etcdserver/api/v3lock/v3lockpb/v3lock.proto",
     "version": "version not set"
   },
   "consumes": [

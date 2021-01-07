@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "etcdserver/api/v3election/v3electionpb/v3election.proto",
+    "title": "server/etcdserver/api/v3election/v3electionpb/v3election.proto",
     "version": "version not set"
   },
   "consumes": [

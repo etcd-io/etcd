@@ -984,7 +984,7 @@ Empty field.
 
 
 
-##### message `Lease` (lease/leasepb/lease.proto)
+##### message `Lease` (server/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -994,7 +994,7 @@ Empty field.
 
 
 
-##### message `LeaseInternalRequest` (lease/leasepb/lease.proto)
+##### message `LeaseInternalRequest` (server/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -1002,7 +1002,7 @@ Empty field.
 
 
 
-##### message `LeaseInternalResponse` (lease/leasepb/lease.proto)
+##### message `LeaseInternalResponse` (server/lease/leasepb/lease.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
