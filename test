@@ -554,7 +554,7 @@ function release_pass {
 function mod_tidy_for_module {
   # Watch for upstream solution: https://github.com/golang/go/issues/27005
   local tmpModDir
-  tmpModDir=$(mktemp -d --suffix "etcd-mod")
+  tmpModDir=$(mktemp -d --suffix "etcd-mod" 2>/dev/null || mktemp -d -t 'tmpModDir')
   run cp "./go.mod" "./go.sum" "${tmpModDir}" || return 2
 
   # Guarantees keeping go.sum minimal

@@ -11,6 +11,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/golang/protobuf v1.3.5
 	github.com/google/btree v1.0.0
+	github.com/google/go-cmp v0.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
@@ -39,7 +40,7 @@ require (
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	golang.org/x/tools v0.0.0-20201014170642-d1624618ad65 // indirect
 	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884
-	google.golang.org/grpc v1.33.0
+	google.golang.org/grpc v1.32.0
 	sigs.k8s.io/yaml v1.2.0
 )
 
