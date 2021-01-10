@@ -21,10 +21,10 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/naming"
+	gnaming "go.etcd.io/etcd/client/v3/naming/grpcnaming"
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-	gnaming "google.golang.org/grpc/naming"
 )
 
 // allow maximum 1 retry per second

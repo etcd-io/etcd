@@ -19,16 +19,16 @@
 //	import (
 //		"go.etcd.io/etcd/client/v3"
 //		etcdnaming "go.etcd.io/etcd/client/v3/naming"
+//		gnaming "go.etcd.io/etcd/client/v3/naming/grpcnaming"
 //
 //		"google.golang.org/grpc"
-//		"google.golang.org/grpc/naming"
 //	)
 //
 // First, register new endpoint addresses for a service:
 //
 //	func etcdAdd(c *clientv3.Client, service, addr string) error {
 //		r := &etcdnaming.GRPCResolver{Client: c}
-//		return r.Update(c.Ctx(), service, naming.Update{Op: naming.Add, Addr: addr})
+//		return r.Update(c.Ctx(), service, gnaming.Update{Op: gnaming.Add, Addr: addr})
 //	}
 //
 // Dial an RPC service using the etcd gRPC resolver and a gRPC Balancer:
@@ -43,14 +43,15 @@
 //
 //	func etcdDelete(c *clientv3, service, addr string) error {
 //		r := &etcdnaming.GRPCResolver{Client: c}
-//		return r.Update(c.Ctx(), service, naming.Update{Op: naming.Delete, Addr: "1.2.3.4"})
+//		return r.Update(c.Ctx(), service, gnaming.Update{Op: gnaming.Delete, Addr: "1.2.3.4"})
 //	}
 //
 // Or register an expiring endpoint with a lease:
 //
 //	func etcdLeaseAdd(c *clientv3.Client, lid clientv3.LeaseID, service, addr string) error {
 //		r := &etcdnaming.GRPCResolver{Client: c}
-//		return r.Update(c.Ctx(), service, naming.Update{Op: naming.Add, Addr: addr}, clientv3.WithLease(lid))
+//		return r.Update(c.Ctx(), service, gnaming.Update{Op: gnaming.Add, Addr: addr}, clientv3.WithLease(lid))
 //	}
 //
+// This package is deprecated: grpc naming package is removed in grpc version v1.30.0
 package naming
