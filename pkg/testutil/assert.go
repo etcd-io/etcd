@@ -21,6 +21,7 @@ import (
 )
 
 func AssertEqual(t *testing.T, e, a interface{}, msg ...string) {
+	t.Helper()
 	if (e == nil || a == nil) && (isNil(e) && isNil(a)) {
 		return
 	}
@@ -36,20 +37,24 @@ func AssertEqual(t *testing.T, e, a interface{}, msg ...string) {
 }
 
 func AssertNil(t *testing.T, v interface{}) {
+	t.Helper()
 	AssertEqual(t, nil, v)
 }
 
 func AssertNotNil(t *testing.T, v interface{}) {
+	t.Helper()
 	if v == nil {
 		t.Fatalf("expected non-nil, got %+v", v)
 	}
 }
 
 func AssertTrue(t *testing.T, v bool, msg ...string) {
+	t.Helper()
 	AssertEqual(t, true, v, msg...)
 }
 
 func AssertFalse(t *testing.T, v bool, msg ...string) {
+	t.Helper()
 	AssertEqual(t, false, v, msg...)
 }
 

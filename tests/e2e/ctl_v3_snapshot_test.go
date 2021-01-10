@@ -154,6 +154,14 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 // TestIssue6361 ensures new member that starts with snapshot correctly
 // syncs up with other members and serve correct data.
 func TestIssue6361(t *testing.T) {
+	{
+		// This tests is pretty flaky on semaphoreci as of 2021-01-10.
+		// TODO: Remove when the flakiness source is identified.
+		oldenv := os.Getenv("EXPECT_DEBUG")
+		defer os.Setenv("EXPECT_DEBUG", oldenv)
+		os.Setenv("EXPECT_DEBUG", "1")
+	}
+
 	defer testutil.AfterTest(t)
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
