@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,13 +31,6 @@ import (
 
 func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
 
-// TODO: Replace with testing.T.TestDir() in golang-1.15.
-func tempDir(tb testing.TB) string {
-	dir := filepath.Join(os.TempDir(), tb.Name(), fmt.Sprint(rand.Int()))
-	os.MkdirAll(dir, 0700)
-	return dir
-}
-
 func snapshotTest(cx ctlCtx) {
 	maintenanceInitKeys(cx)
 
@@ -50,7 +42,7 @@ func snapshotTest(cx ctlCtx) {
 		cx.t.Fatalf("snapshot: ctlV3Put error (%v)", err)
 	}
 
-	fpath := filepath.Join(tempDir(cx.t), "snapshot")
+	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
 	defer os.RemoveAll(fpath)
 
 	if err = ctlV3SnapshotSave(cx, fpath); err != nil {
@@ -72,7 +64,7 @@ func snapshotTest(cx ctlCtx) {
 func TestCtlV3SnapshotCorrupt(t *testing.T) { testCtl(t, snapshotCorruptTest) }
 
 func snapshotCorruptTest(cx ctlCtx) {
-	fpath := filepath.Join(tempDir(cx.t), "snapshot")
+	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
 	defer os.RemoveAll(fpath)
 
 	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
@@ -89,7 +81,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 	}
 	f.Close()
 
-	datadir := filepath.Join(tempDir(cx.t), "data")
+	datadir := cx.t.TempDir()
 	defer os.RemoveAll(datadir)
 
 	serr := spawnWithExpect(
@@ -107,7 +99,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) { testCtl(t, snapshotStatusBeforeRestoreTest) }
 
 func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
-	fpath := filepath.Join(tempDir(cx.t), "snapshot")
+	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
 	defer os.RemoveAll(fpath)
 
 	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
@@ -120,7 +112,7 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
 	}
 
-	dataDir := filepath.Join(tempDir(cx.t), "data")
+	dataDir := cx.t.TempDir()
 	defer os.RemoveAll(dataDir)
 	serr := spawnWithExpect(
 		append(cx.PrefixArgs(), "snapshot", "restore",
@@ -201,7 +193,7 @@ func TestIssue6361(t *testing.T) {
 		}
 	}
 
-	fpath := filepath.Join(tempDir(t), "snapshot")
+	fpath := filepath.Join(t.TempDir(), "test.snapshot")
 	defer os.RemoveAll(fpath)
 
 	t.Log("etcdctl saving snapshot...")
@@ -214,7 +206,7 @@ func TestIssue6361(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newDataDir := tempDir(t)
+	newDataDir := filepath.Join(t.TempDir(), "test.data")
 	defer os.RemoveAll(newDataDir)
 
 	t.Log("etcdctl restoring the snapshot...")
@@ -249,7 +241,7 @@ func TestIssue6361(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newDataDir2 := filepath.Join(tempDir(t), "newdata")
+	newDataDir2 := t.TempDir()
 	defer os.RemoveAll(newDataDir2)
 
 	name2 := "infra2"

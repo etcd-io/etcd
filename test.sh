@@ -67,7 +67,7 @@ fi
 
 # This options make sense for cases where SUT (System Under Test) is compiled by test.
 COMMON_TEST_FLAGS=("${RACE}")
-if [[ ! -z "${CPU}" ]]; then
+if [[ -n "${CPU}" ]]; then
   COMMON_TEST_FLAGS+=("--cpu=${CPU}")
 fi 
 
