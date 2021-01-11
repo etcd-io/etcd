@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"testing"
 	"time"
-	"unsafe"
 
 	"go.etcd.io/etcd/pkg/v3/testutil"
 )
@@ -102,13 +101,7 @@ func TestNodeExternClone(t *testing.T) {
 }
 
 func sameSlice(a, b []*NodeExtern) bool {
-<<<<<<< HEAD
-	ah := (*reflect.SliceHeader)(unsafe.Pointer(&a))
-	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	return *ah == *bh
-=======
 	va := reflect.ValueOf(a)
 	vb := reflect.ValueOf(b)
 	return va.Len() == vb.Len() && va.Pointer() == vb.Pointer()
->>>>>>> 6f8273a2a (fixup! e2e: Adding better diagnostic and location for temporary files to Snapshot tests.)
 }
