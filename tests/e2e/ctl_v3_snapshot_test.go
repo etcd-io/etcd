@@ -223,7 +223,7 @@ func TestIssue6361(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Log("Start the etcd member using the restored snapshot...")
+	t.Log("(Re)starting the etcd member using the restored snapshot...")
 	epc.procs[0].Config().dataDirPath = newDataDir
 	for i := range epc.procs[0].Config().args {
 		if epc.procs[0].Config().args[i] == "--data-dir" {
@@ -255,7 +255,7 @@ func TestIssue6361(t *testing.T) {
 	name2 := "infra2"
 	initialCluster2 := epc.procs[0].Config().initialCluster + fmt.Sprintf(",%s=%s", name2, peerURL)
 
-	t.Log("Starting new member")
+	t.Log("Starting the new member")
 	// start the new member
 	var nepc *expect.ExpectProcess
 	nepc, err = spawnCmd([]string{epc.procs[0].Config().execPath, "--name", name2,
@@ -265,7 +265,7 @@ func TestIssue6361(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = nepc.Expect("enabled capabilities for version"); err != nil {
+	if _, err = nepc.Expect("ready to serve client requests"); err != nil {
 		t.Fatal(err)
 	}
 
