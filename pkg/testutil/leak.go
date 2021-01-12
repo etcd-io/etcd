@@ -111,10 +111,12 @@ func interestingGoroutines() (gs []string) {
 		if stack == "" ||
 			strings.Contains(stack, "sync.(*WaitGroup).Done") ||
 			strings.Contains(stack, "os.(*file).close") ||
+			strings.Contains(stack, "os.(*Process).Release") ||
 			strings.Contains(stack, "created by os/signal.init") ||
 			strings.Contains(stack, "runtime/panic.go") ||
 			strings.Contains(stack, "created by testing.RunTests") ||
 			strings.Contains(stack, "created by testing.runTests") ||
+			strings.Contains(stack, "created by testing.(*T).Run") ||
 			strings.Contains(stack, "testing.Main(") ||
 			strings.Contains(stack, "runtime.goexit") ||
 			strings.Contains(stack, "go.etcd.io/etcd/pkg/v3/testutil.interestingGoroutines") ||
