@@ -438,7 +438,7 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 	if info.EmptyCN {
 		hasNonEmptyCN := false
 		cn := ""
-		tlsutil.NewCert(info.CertFile, info.KeyFile, func(certPEMBlock []byte, keyPEMBlock []byte) (tls.Certificate, error) {
+		_, err := tlsutil.NewCert(info.CertFile, info.KeyFile, func(certPEMBlock []byte, keyPEMBlock []byte) (tls.Certificate, error) {
 			var block *pem.Block
 			block, _ = pem.Decode(certPEMBlock)
 			cert, err := x509.ParseCertificate(block.Bytes)
@@ -451,6 +451,9 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 			}
 			return tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 		})
+		if err != nil {
+			return nil, err
+		}
 		if hasNonEmptyCN {
 			return nil, fmt.Errorf("cert has non empty Common Name (%s): %s", cn, info.CertFile)
 		}
