@@ -13,7 +13,8 @@
 // limitations under the License.
 
 // Package v2error describes errors in etcd project. When any change happens,
-// Documentation/v2/errorcode.md needs to be updated correspondingly.
+// https://github.com/etcd-io/website/blob/master/content/docs/v2/errorcode.md
+// needs to be updated correspondingly.
 // To be deprecated in favor of v3 APIs.
 package v2error
 
