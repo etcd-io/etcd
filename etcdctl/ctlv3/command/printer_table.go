@@ -75,3 +75,23 @@ func (tp *tablePrinter) DBStatus(r snapshot.Status) {
 	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }
+
+func (tp *tablePrinter) Leases(r v3.LeaseLeasesResponse) {
+	hdr, rows := makeHeaderTable(r.ResponseHeader)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
+	table.Render()
+
+	hdr, rows = makeLeaseListTable(r)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
+	table.Render()
+}

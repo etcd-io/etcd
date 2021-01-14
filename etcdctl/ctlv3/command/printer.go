@@ -17,6 +17,7 @@ package command
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -238,5 +239,28 @@ func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
 		fmt.Sprint(ds.TotalKey),
 		humanize.Bytes(uint64(ds.TotalSize)),
 	})
+	return hdr, rows
+}
+
+func makeHeaderTable(h *pb.ResponseHeader) (hdr []string, rows [][]string) {
+	hdr = []string{"ClusterID", "MemberID", "Revision", "RaftTerm"}
+	rows = append(rows, []string{
+		strconv.FormatUint(h.ClusterId, 10),
+		strconv.FormatUint(h.MemberId, 10),
+		strconv.FormatInt(h.Revision, 10),
+		strconv.FormatUint(h.RaftTerm, 10),
+	})
+
+	return hdr, rows
+}
+
+func makeLeaseListTable(r v3.LeaseLeasesResponse) (hdr []string, [][]string) {
+	hdr = []string{"ID"}
+	for _, lease := range r.Leases {
+		rows = append(rows, []string{
+			strconv.FormatInt(lease.ID, 10),
+		})
+	}
+
 	return hdr, rows
 }
