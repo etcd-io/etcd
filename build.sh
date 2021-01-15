@@ -7,7 +7,7 @@ if [[ -n "$FAILPOINTS" ]]; then
   GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
 
-VERSION_SYMBOL="go.etcd.io/etcd/api/v3/version.GitSHA"
+VERSION_SYMBOL="${ROOT_MODULE}/api/v3/version.GitSHA"
 
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
 # shellcheck disable=SC2206
@@ -117,9 +117,9 @@ toggle_failpoints_default
 # only build when called directly, not sourced
 if echo "$0" | grep -E "build(.sh)?$" >/dev/null; then
   if etcd_build; then
-    log_success "SUCCESS: etcd_build"
+    log_success "SUCCESS: etcd_build (GOARCH=${GOARCH})"
   else
-    log_error "FAIL: etcd_build"
+    log_error "FAIL: etcd_build (GOARCH=${GOARCH})"
     exit 2
   fi
 fi

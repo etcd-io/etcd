@@ -4,6 +4,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+source ./scripts/test_lib.sh
+
 help() {
   echo "$(basename "$0") [version]"
   echo "Release etcd using the same approach as the etcd-release-runbook (https://goo.gl/Gxwysq)"
@@ -30,7 +32,8 @@ main() {
   fi
   RELEASE_VERSION="v${VERSION}"
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
-  BRANCH="release-${MINOR_VERSION}"
+  BRANCH=${BRANCH:-"release-${MINOR_VERSION}"}
+  REPOSITORY=${REPOSITORY:-"https://github.com/etcd-io/etcd"}
 
   if ! command -v docker >/dev/null; then
     echo "cannot find docker"
@@ -42,28 +45,32 @@ main() {
 
   # Set up release directory.
   local reldir="/tmp/etcd-release-${VERSION}"
+  log_callout "Preparing temporary directory: ${reldir}"
   if [ ! -d "${reldir}/etcd" ]; then
     mkdir -p "${reldir}"
     cd "${reldir}"
-    git clone https://github.com/etcd-io/etcd.git --branch "${BRANCH}"
+    run git clone "${REPOSITORY}" --branch "${BRANCH}"
   fi
-  cd "${reldir}/etcd"
+  run cd "${reldir}/etcd" || exit 2
+  run git checkout "${BRANCH}" || exit 2
+  run git pull origin
+  git_assert_branch_in_sync || exit 2
 
   # If a release version tag already exists, use it.
   local remote_tag_exists
-  remote_tag_exists=$(git ls-remote origin "refs/tags/${RELEASE_VERSION}" | grep -c "${RELEASE_VERSION}")
+  remote_tag_exists=$(run git ls-remote origin "refs/tags/${RELEASE_VERSION}" | grep -c "${RELEASE_VERSION}" || true)
+
   if [ "${remote_tag_exists}" -gt 0 ]; then
-    echo "Release version tag exists on remote. Checking out refs/tags/${RELEASE_VERSION}"
+    log_callout "Release version tag exists on remote. Checking out refs/tags/${RELEASE_VERSION}"
     git checkout -q "tags/${RELEASE_VERSION}"
   fi
 
   # Check go version.
-  # download "yq" from https://github.com/mikefarah/yq
   local go_version current_go_version
-  go_version="go$(yq read .travis.yml "go[0]")"
+  go_version="go$(run_go_tool "github.com/mikefarah/yq/v3" read .travis.yml "go[0]")"
   current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
-    echo "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
+    log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
     exit 1
   fi
 
@@ -71,19 +78,23 @@ main() {
   if [ "${remote_tag_exists}" -eq 0 ]; then
     # Bump version/version.go to release version.
     local source_version
-    source_version=$(grep -E "\s+Version\s*=" version/version.go | sed -e "s/.*\"\(.*\)\".*/\1/g")
+    source_version=$(grep -E "\s+Version\s*=" api/version/version.go | sed -e "s/.*\"\(.*\)\".*/\1/g")
     if [[ "${source_version}" != "${VERSION}" ]]; then
       source_minor_version=$(echo "${source_version}" | cut -d. -f 1-2)
       if [[ "${source_minor_version}" != "${MINOR_VERSION}" ]]; then
-        echo "Wrong etcd minor version in version/version.go. Expected ${MINOR_VERSION} but got ${source_minor_version}. Aborting."
+        log_error "Wrong etcd minor version in api/version/version.go. Expected ${MINOR_VERSION} but got ${source_minor_version}. Aborting."
         exit 1
       fi
-      echo "Updating version from ${source_version} to ${VERSION} in version/version.go"
-      sed -i "s/${source_version}/${VERSION}/g" version/version.go
+      log_callout "Updating modules definitions"
+      TARGET_VERSION="v${VERSION}" DRY_RUN=false ./scripts/release_mod.sh update_versions
+
+      log_callout "Updating version from ${source_version} to ${VERSION} in api/version/version.go"
+      sed -i "s/${source_version}/${VERSION}/g" api/version/version.go
     fi
 
-    echo "Building etcd and checking --version output"
-    ./build
+
+    log_callout "Building etcd and checking --version output"
+    run ./build
     local etcd_version
     etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
     if [[ "${etcd_version}" != "${VERSION}" ]]; then
@@ -92,30 +103,27 @@ main() {
     fi
 
     if [[ -n $(git status -s) ]]; then
-      echo "Committing version/version.go update."
-      git add version/version.go
-      git commit -m "version: bump up to ${VERSION}"
-      git diff --staged
+      log_callout "Committing mods & api/version/version.go update."
+      run git add api/version/version.go
+      run git add $(find -name go.mod | xargs)
+      run git diff --staged | cat
+      run git commit -m "version: bump up to ${VERSION}"
+      run git diff --staged | cat
     fi
 
     # Push the version change if it's not already been pushed.
     if [ "$(git rev-list --count "origin/${BRANCH}..${BRANCH}")" -gt 0 ]; then
-      read -p "Push version bump up to ${VERSION} to github.com/etcd-io/etcd [y/N]? " -r confirm
+      read -p "Push version bump up to ${VERSION} to '$(git remote get-url origin)' [y/N]? " -r confirm
       [[ "${confirm,,}" == "y" ]] || exit 1
       git push
     fi
 
     # Tag release.
     if [ "$(git tag --list | grep -c "${RELEASE_VERSION}")" -gt 0 ]; then
-      echo "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
+      log_callout "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
     else
-      echo "Tagging release..."
-      KEYID=$(gpg --list-keys --with-colons| awk -F: '/^pub:/ { print $5 }')
-      if [[ -z "${KEYID}" ]]; then
-        echo "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
-        exit 1
-      fi
-      git tag --local-user "${KEYID}" --sign "${RELEASE_VERSION}" --message "${RELEASE_VERSION}"
+      log_callout "Tagging release..."
+      REMOTE_REPO="origin" DRY_RUN=false ./scripts/release_mod.sh push_mod_tags
     fi
 
     # Verify the latest commit has the version tag
@@ -126,31 +134,20 @@ main() {
     fi
 
     # Verify the version tag is on the right branch
-    local branch=$(git branch --contains "${RELEASE_VERSION}")
-    if [ "${branch}" != "release-${MINOR_VERSION}" ]; then
-      echo "Error: Git tag ${RELEASE_VERSION} should be on branch release-${MINOR_VERSION} but is on ${branch}"
+    local branch=$(git for-each-ref --contains "${RELEASE_VERSION}" --format="%(refname)" 'refs/heads' | cut -d '/' -f 3)
+    if [ "${branch}" != "${BRANCH}" ]; then
+      echo "Error: Git tag ${RELEASE_VERSION} should be on branch '${BRANCH}' but is on '${branch}'"
       exit 1
     fi
-
-    # Push the tag change if it's not already been pushed.
-    read -p "Push etcd ${RELEASE_VERSION} tag [y/N]? " -r confirm
-    [[ "${confirm,,}" == "y" ]] || exit 1
-    git push origin "tags/${RELEASE_VERSION}"
   fi
 
   # Build release.
   # TODO: check the release directory for all required build artifacts.
   if [ -d release ]; then
-    echo "Skpping release build step. /release directory already exists."
+    log_warning "Skipping release build step. /release directory already exists."
   else
-    echo "Building release..."
-    # Check for old and new names of the release build script.
-    # TODO: Move the release script into this on as a function?
-    if [ -f ./scripts/release.sh ]; then
-      ./scripts/release.sh "${RELEASE_VERSION}"
-    else
-      ./scripts/build-release.sh "${RELEASE_VERSION}"
-    fi
+    log_callout "Building release..."
+    REPOSITORY=${REPOSITORY} ./scripts/build-release.sh "${RELEASE_VERSION}"
   fi
 
   # Sanity checks.
