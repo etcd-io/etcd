@@ -99,15 +99,6 @@
 		]
 	},
 	{
-		"project": "github.com/dgrijalva/jwt-go",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
 		"project": "github.com/dustin/go-humanize",
 		"licenses": [
 			{
@@ -122,6 +113,15 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/form3tech-oss/jwt-go",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
 			}
 		]
 	},
