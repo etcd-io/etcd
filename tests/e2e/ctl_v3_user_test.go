@@ -183,6 +183,7 @@ func ctlV3User(cx ctlCtx, args []string, expStr string, stdIn []string) error {
 	if err != nil {
 		return err
 	}
+	defer proc.Close()
 
 	// Send 'stdIn' strings as input.
 	for _, s := range stdIn {

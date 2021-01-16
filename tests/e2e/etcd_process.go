@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	etcdServerReadyLines = []string{"enabled capabilities for version", "published"}
+	etcdServerReadyLines = []string{"enabled capabilities for version", "published", "ready to serve client requests"}
 	binPath              string
 	ctlBinPath           string
 )

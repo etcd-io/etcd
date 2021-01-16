@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-REPO="go.etcd.io/etcd"
+ROOT_MODULE="go.etcd.io/etcd"
 
-if [[ "$(go list)" != "${REPO}/v3" ]]; then
-  echo "must be run from '${REPO}/v3' module directory"
+if [[ "$(go list)" != "${ROOT_MODULE}/v3" ]]; then
+  echo "must be run from '${ROOT_MODULE}/v3' module directory"
   exit 255
 fi
 
-ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "${REPO}/v3")
+ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "${ROOT_MODULE}/v3")
 
 ####   Convenient IO methods #####
 
@@ -160,15 +160,15 @@ function run_for_module {
 
 function modules() {
   modules=(
-    "${REPO}/api/v3"
-    "${REPO}/pkg/v3"
-    "${REPO}/raft/v3"
-    "${REPO}/client/v2"
-    "${REPO}/client/v3"
-    "${REPO}/server/v3"
-    "${REPO}/etcdctl/v3"
-    "${REPO}/tests/v3"
-    "${REPO}/v3")
+    "${ROOT_MODULE}/api/v3"
+    "${ROOT_MODULE}/pkg/v3"
+    "${ROOT_MODULE}/raft/v3"
+    "${ROOT_MODULE}/client/v2"
+    "${ROOT_MODULE}/client/v3"
+    "${ROOT_MODULE}/server/v3"
+    "${ROOT_MODULE}/etcdctl/v3"
+    "${ROOT_MODULE}/tests/v3"
+    "${ROOT_MODULE}/v3")
   echo "${modules[@]}"
 }
 
@@ -303,10 +303,10 @@ function tool_get_bin {
   local tool="$1"
   if [[ "$tool" == *"@"* ]]; then
     # shellcheck disable=SC2086
-    run gobin ${GOBINARGS} -p "${tool}" || return 2
+    run gobin ${GOBINARGS:-} -p "${tool}" || return 2
   else
     # shellcheck disable=SC2086
-    run_for_module ./tools/mod run gobin ${GOBINARGS} -p -m --mod=readonly "${tool}" || return 2
+    run_for_module ./tools/mod run gobin ${GOBINARGS:-} -p -m --mod=readonly "${tool}" || return 2
   fi
 }
 
@@ -339,3 +339,22 @@ function assert_no_git_modifications {
   fi
 }
 
+# makes sure that the current branch is in sync with the origin branch:
+#  - no uncommitted nor unstaged changes
+#  - no differencing commits in relation to the origin/$branch
+function git_assert_branch_in_sync {
+  local branch
+  branch=$(git branch --show-current)
+  if [[ $(run git status --porcelain --untracked-files=no) ]]; then
+    log_error "The workspace in '$(pwd)' for branch: ${branch} has uncommitted changes"
+    log_error "Consider cleaning up / renaming this directory."
+    return 2
+  fi
+  ref_local=$(run git rev-parse "${branch}")
+  ref_origin=$(run git rev-parse "origin/${branch}")
+  if [ "x${ref_local}" != "x${ref_origin}" ]; then
+    log_error "In workspace '$(pwd)' the branch: ${branch} diverges from the origin."
+    log_error "Consider cleaning up / renaming this directory."
+    return 2
+  fi
+}

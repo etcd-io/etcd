@@ -98,6 +98,7 @@ func TestConfigFromFile(t *testing.T) {
 			continue
 		}
 		if cerr != nil {
+			os.Remove(tmpfile.Name())
 			continue
 		}
 

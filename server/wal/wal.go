@@ -419,6 +419,13 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 // TODO: detect not-last-snap error.
 // TODO: maybe loose the checking of match.
 // After ReadAll, the WAL will be ready for appending new records.
+//
+// ReadAll suppresses WAL entries that got overridden (i.e. a newer entry with the same index
+// exists in the log). Such a situation can happen in cases described in figure 7. of the
+// RAFT paper (http://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14.pdf).
+//
+// ReadAll may return uncommitted yet entries, that are subject to be overriden.
+// Do not apply entries that have index > state.commit, as they are subject to change.
 func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -443,6 +450,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 					// return error before append call causes runtime panic
 					return nil, state, nil, ErrSliceOutOfRange
 				}
+				// The line below is potentially overriding some 'uncommitted' entries.
 				ents = append(ents[:up], e)
 			}
 			w.enti = e.Index

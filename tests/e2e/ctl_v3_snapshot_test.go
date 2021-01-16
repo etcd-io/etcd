@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +32,13 @@ import (
 
 func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
 
+// TODO: Replace with testing.T.TestDir() in golang-1.15.
+func tempDir(tb testing.TB) string {
+	dir := filepath.Join(os.TempDir(), tb.Name(), fmt.Sprint(rand.Int()))
+	os.MkdirAll(dir, 0700)
+	return dir
+}
+
 func snapshotTest(cx ctlCtx) {
 	maintenanceInitKeys(cx)
 
@@ -43,7 +50,7 @@ func snapshotTest(cx ctlCtx) {
 		cx.t.Fatalf("snapshot: ctlV3Put error (%v)", err)
 	}
 
-	fpath := "test1.snapshot"
+	fpath := filepath.Join(tempDir(cx.t), "snapshot")
 	defer os.RemoveAll(fpath)
 
 	if err = ctlV3SnapshotSave(cx, fpath); err != nil {
@@ -65,7 +72,7 @@ func snapshotTest(cx ctlCtx) {
 func TestCtlV3SnapshotCorrupt(t *testing.T) { testCtl(t, snapshotCorruptTest) }
 
 func snapshotCorruptTest(cx ctlCtx) {
-	fpath := "test2.snapshot"
+	fpath := filepath.Join(tempDir(cx.t), "snapshot")
 	defer os.RemoveAll(fpath)
 
 	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
@@ -82,10 +89,12 @@ func snapshotCorruptTest(cx ctlCtx) {
 	}
 	f.Close()
 
-	defer os.RemoveAll("snap.etcd")
+	datadir := filepath.Join(tempDir(cx.t), "data")
+	defer os.RemoveAll(datadir)
+
 	serr := spawnWithExpect(
 		append(cx.PrefixArgs(), "snapshot", "restore",
-			"--data-dir", "snap.etcd",
+			"--data-dir", datadir,
 			fpath),
 		"expected sha256")
 
@@ -98,7 +107,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) { testCtl(t, snapshotStatusBeforeRestoreTest) }
 
 func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
-	fpath := "test3.snapshot"
+	fpath := filepath.Join(tempDir(cx.t), "snapshot")
 	defer os.RemoveAll(fpath)
 
 	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
@@ -111,10 +120,11 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
 	}
 
-	defer os.RemoveAll("snap.etcd")
+	dataDir := filepath.Join(tempDir(cx.t), "data")
+	defer os.RemoveAll(dataDir)
 	serr := spawnWithExpect(
 		append(cx.PrefixArgs(), "snapshot", "restore",
-			"--data-dir", "snap.etcd",
+			"--data-dir", dataDir,
 			fpath),
 		"added member")
 	if serr != nil {
@@ -154,6 +164,14 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 // TestIssue6361 ensures new member that starts with snapshot correctly
 // syncs up with other members and serve correct data.
 func TestIssue6361(t *testing.T) {
+	{
+		// This tests is pretty flaky on semaphoreci as of 2021-01-10.
+		// TODO: Remove when the flakiness source is identified.
+		oldenv := os.Getenv("EXPECT_DEBUG")
+		defer os.Setenv("EXPECT_DEBUG", oldenv)
+		os.Setenv("EXPECT_DEBUG", "1")
+	}
+
 	defer testutil.AfterTest(t)
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
@@ -175,7 +193,7 @@ func TestIssue6361(t *testing.T) {
 	dialTimeout := 10 * time.Second
 	prefixArgs := []string{ctlBinPath, "--endpoints", strings.Join(epc.EndpointsV3(), ","), "--dial-timeout", dialTimeout.String()}
 
-	// write some keys
+	t.Log("Writing some keys...")
 	kvs := []kv{{"foo1", "val1"}, {"foo2", "val2"}, {"foo3", "val3"}}
 	for i := range kvs {
 		if err = spawnWithExpect(append(prefixArgs, "put", kvs[i].key, kvs[i].val), "OK"); err != nil {
@@ -183,28 +201,29 @@ func TestIssue6361(t *testing.T) {
 		}
 	}
 
-	fpath := filepath.Join(os.TempDir(), "test.snapshot")
+	fpath := filepath.Join(tempDir(t), "snapshot")
 	defer os.RemoveAll(fpath)
 
-	// etcdctl save snapshot
+	t.Log("etcdctl saving snapshot...")
 	if err = spawnWithExpect(append(prefixArgs, "snapshot", "save", fpath), fmt.Sprintf("Snapshot saved at %s", fpath)); err != nil {
 		t.Fatal(err)
 	}
 
+	t.Log("Stopping the original server...")
 	if err = epc.procs[0].Stop(); err != nil {
 		t.Fatal(err)
 	}
 
-	newDataDir := filepath.Join(os.TempDir(), "test.data")
+	newDataDir := tempDir(t)
 	defer os.RemoveAll(newDataDir)
 
-	// etcdctl restore the snapshot
+	t.Log("etcdctl restoring the snapshot...")
 	err = spawnWithExpect([]string{ctlBinPath, "snapshot", "restore", fpath, "--name", epc.procs[0].Config().name, "--initial-cluster", epc.procs[0].Config().initialCluster, "--initial-cluster-token", epc.procs[0].Config().initialToken, "--initial-advertise-peer-urls", epc.procs[0].Config().purl.String(), "--data-dir", newDataDir}, "added member")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// start the etcd member using the restored snapshot
+	t.Log("(Re)starting the etcd member using the restored snapshot...")
 	epc.procs[0].Config().dataDirPath = newDataDir
 	for i := range epc.procs[0].Config().args {
 		if epc.procs[0].Config().args[i] == "--data-dir" {
@@ -215,14 +234,14 @@ func TestIssue6361(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// ensure the restored member has the correct data
+	t.Log("Ensuring the restored member has the correct data...")
 	for i := range kvs {
 		if err = spawnWithExpect(append(prefixArgs, "get", kvs[i].key), kvs[i].val); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	// add a new member into the cluster
+	t.Log("Adding new member into the cluster")
 	clientURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+30)
 	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+31)
 	err = spawnWithExpect(append(prefixArgs, "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL)), " added to cluster ")
@@ -230,16 +249,13 @@ func TestIssue6361(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var newDataDir2 string
-	newDataDir2, err = ioutil.TempDir("", "newdata2")
-	if err != nil {
-		t.Fatal(err)
-	}
+	newDataDir2 := filepath.Join(tempDir(t), "newdata")
 	defer os.RemoveAll(newDataDir2)
 
 	name2 := "infra2"
 	initialCluster2 := epc.procs[0].Config().initialCluster + fmt.Sprintf(",%s=%s", name2, peerURL)
 
+	t.Log("Starting the new member")
 	// start the new member
 	var nepc *expect.ExpectProcess
 	nepc, err = spawnCmd([]string{epc.procs[0].Config().execPath, "--name", name2,
@@ -249,19 +265,20 @@ func TestIssue6361(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = nepc.Expect("enabled capabilities for version"); err != nil {
+	if _, err = nepc.Expect("ready to serve client requests"); err != nil {
 		t.Fatal(err)
 	}
 
 	prefixArgs = []string{ctlBinPath, "--endpoints", clientURL, "--dial-timeout", dialTimeout.String()}
 
-	// ensure added member has data from incoming snapshot
+	t.Log("Ensuring added member has data from incoming snapshot...")
 	for i := range kvs {
 		if err = spawnWithExpect(append(prefixArgs, "get", kvs[i].key), kvs[i].val); err != nil {
 			t.Fatal(err)
 		}
 	}
 
+	t.Log("Stopping the second member")
 	if err = nepc.Stop(); err != nil {
 		t.Fatal(err)
 	}

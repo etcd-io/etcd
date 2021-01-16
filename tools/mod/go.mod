@@ -16,6 +16,7 @@ require (
 	github.com/hexfusion/schwag v0.0.0-20170606222847-b7d0fc9aadaa
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
 	github.com/mgechev/revive v1.0.2
+	github.com/mikefarah/yq/v3 v3.0.0-20201125113350-f42728eef735
 	github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f // indirect
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	google.golang.org/genproto v0.0.0-20201008135153-289734e2e40c // indirect

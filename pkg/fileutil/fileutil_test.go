@@ -135,6 +135,7 @@ func TestZeroToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.Remove(f.Name())
 	defer f.Close()
 
 	// Ensure 0 size is a nop so zero-to-end on an empty file won't give EINVAL.
