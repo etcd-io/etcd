@@ -35,6 +35,9 @@ main() {
   BRANCH=${BRANCH:-"release-${MINOR_VERSION}"}
   REPOSITORY=${REPOSITORY:-"https://github.com/etcd-io/etcd"}
 
+  # Required to enable 'docker manifest ...'
+  export DOCKER_CLI_EXPERIMENTAL=enabled
+
   if ! command -v docker >/dev/null; then
     echo "cannot find docker"
     exit 1
@@ -191,19 +194,28 @@ main() {
     done
     gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
 
-    echo "Pushing container images to quay.io ${RELEASE_VERSION}"
-    docker push "quay.io/coreos/etcd:${RELEASE_VERSION}"
+    # NB: `docker manifest create` insists on at least one manifest.
+    # We overwrite it later with --amend anyway.
+    docker manifest create "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-amd64"
+    docker manifest create "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-amd64"
 
-    echo "Pushing container images to gcr.io ${RELEASE_VERSION}"
-    gcloud docker -- push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
+    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
+      echo "Pushing container images to quay.io ${RELEASE_VERSION}-${TARGET_ARCH}"
+      docker push "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      docker manifest create --amend "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      docker manifest annotate "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
 
-    for TARGET_ARCH in "-arm64" "-ppc64le" "-s390x"; do
-      echo "Pushing container images to quay.io ${RELEASE_VERSION}${TARGET_ARCH}"
-      docker push "quay.io/coreos/etcd:${RELEASE_VERSION}${TARGET_ARCH}"
-
-      echo "Pushing container images to gcr.io ${RELEASE_VERSION}${TARGET_ARCH}"
-      gcloud docker -- push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}"
+      echo "Pushing container images to gcr.io ${RELEASE_VERSION}-${TARGET_ARCH}"
+      gcloud docker -- push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      docker manifest create --amend "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      docker manifest annotate "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
     done
+
+    echo "Pushing container manifest list to quay.io ${RELEASE_VERSION}"
+    docker manifest push "quay.io/coreos/etcd:${RELEASE_VERSION}"
+
+    echo "Pushing container manifest list to gcr.io ${RELEASE_VERSION}"
+    gcloud docker -- manifest push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
 
     echo "Setting permissions using gsutil..."
     gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
