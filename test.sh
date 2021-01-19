@@ -197,9 +197,8 @@ function grpcproxy_pass {
 
 # Builds artifacts used by tests/e2e in coverage mode.
 function build_cov_pass {
-  local out="${BINDIR:-./bin}"
-  run go test -tags cov -c -covermode=set -coverpkg="./..." -o "${out}/etcd_test"
-  run go test -tags cov -c -covermode=set -coverpkg="./..." -o "${out}/etcdctl_test" "./etcdctl"
+  run_for_module "server" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcd_test"
+  run_for_module "etcdctl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdctl_test"
 }
 
 # pkg_to_coverflag [prefix] [pkgs]
@@ -210,6 +209,10 @@ function pkg_to_coverprofileflag {
   local pkgs_normalized
   pkgs_normalized=$(echo "${pkgs}" | tr "./ " "__+")
   echo -n "-coverprofile=${coverdir}/${prefix}_${pkgs_normalized}.coverprofile"
+}
+
+function not_test_packages {
+  run_for_modules pkgs_in_module "./..." | grep -v /etcd/tests/v3/
 }
 
 function cov_pass {
@@ -230,7 +233,7 @@ function cov_pass {
   rm -f "${coverdir}/*.coverprofile" "${coverdir}/cover.*"
 
   local covpkgs
-  covpkgs=$(pkgs_in_module "./...")
+  covpkgs=$(not_test_packages)
   local coverpkg_comma
   coverpkg_comma=$(echo "${covpkgs[@]}" | xargs | tr ' ' ',')
   local gocov_build_flags=("-covermode=set" "-coverpkg=$coverpkg_comma")
@@ -238,8 +241,10 @@ function cov_pass {
   local failed=""
 
   log_callout "Collecting coverage from unit tests ..."
-  go_test "./..." "keep_going" "pkg_to_coverprofileflag unit" -short -timeout=30m \
-      "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
+  for m in $(module_dirs); do
+    run_for_module "${m}" go_test "./..." "keep_going" "pkg_to_coverprofileflag unit" -short -timeout=30m \
+       "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
+  done
 
   log_callout "Collecting coverage from integration tests ..."
   run_for_module "tests" go_test "./integration/..." "keep_going" "pkg_to_coverprofileflag integration" \

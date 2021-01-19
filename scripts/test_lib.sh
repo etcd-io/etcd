@@ -158,6 +158,10 @@ function run_for_module {
   )
 }
 
+function module_dirs() {
+  echo "api pkg raft client/v2 client/v3 server etcdctl tests ."
+}
+
 function modules() {
   modules=(
     "${ROOT_MODULE}/api/v3"
@@ -184,15 +188,9 @@ function modules_exp() {
 function run_for_modules {
   local pkg="${PKG:-./...}"
   if [ -z "${USERMOD}" ]; then
-    run_for_module "api" "$@" "${pkg}" || return "$?"
-    run_for_module "pkg" "$@" "${pkg}" || return "$?"
-    run_for_module "raft" "$@" "${pkg}" || return "$?"
-    run_for_module "client/v2" "$@" "${pkg}" || return "$?"
-    run_for_module "client/v3" "$@" "${pkg}" || return "$?"
-    run_for_module "server" "$@" "${pkg}" || return "$?"
-    run_for_module "etcdctl" "$@" "${pkg}" || return "$?"
-    run_for_module "tests" "$@" "${pkg}" || return "$?"
-    run_for_module "." "$@" "${pkg}" || return "$?"
+    for m in $(module_dirs); do
+      run_for_module "${m}" "$@" "${pkg}" || return "$?"
+    done
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
@@ -265,7 +263,6 @@ function go_test {
         failures=("${failures[@]}" "${pkg}")
       fi
     fi
-    echo
   done
 
   if [ -n "${failures[*]}" ] ; then
