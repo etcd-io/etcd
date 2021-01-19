@@ -30,12 +30,12 @@ replace (
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/raft/v3 => ../raft
 	go.etcd.io/etcd/server/v3 => ../server
-//	go.etcd.io/etcd/v3 => ../
 )
 
 // Bad imports are sometimes causing attempts to pull that code.
 // This makes the error more explicit.
 replace (
 	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/v3 => ./FORBIDDEN_DEPENDENCY
 	go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
 )
