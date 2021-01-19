@@ -24,8 +24,8 @@ func BenchmarkOneNode(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := NewMemoryStorage()
-	rn := newTestRawNode(1, []uint64{1}, 10, 1, s)
+	s := newTestMemoryStorage(withPeers(1))
+	rn := newTestRawNode(1, 10, 1, s)
 	n := newNode(rn)
 	go n.run()
 

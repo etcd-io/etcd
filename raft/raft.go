@@ -117,17 +117,6 @@ type Config struct {
 	// ID is the identity of the local raft. ID cannot be 0.
 	ID uint64
 
-	// peers contains the IDs of all nodes (including self) in the raft cluster. It
-	// should only be set when starting a new raft cluster. Restarting raft from
-	// previous configuration will panic if peers is set. peer is private and only
-	// used for testing right now.
-	peers []uint64
-
-	// learners contains the IDs of all learner nodes (including self if the
-	// local node is a learner) in the raft cluster. learners only receives
-	// entries from the leader node. It does not vote or promote itself.
-	learners []uint64
-
 	// ElectionTick is the number of Node.Tick invocations that must pass between
 	// elections. That is, if a follower does not receive any message from the
 	// leader of current term before ElectionTick has elapsed, it will become
@@ -328,17 +317,6 @@ func newRaft(c *Config) *raft {
 	hs, cs, err := c.Storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
-	}
-
-	if len(c.peers) > 0 || len(c.learners) > 0 {
-		if len(cs.Voters) > 0 || len(cs.Learners) > 0 {
-			// TODO(bdarnell): the peers argument is always nil except in
-			// tests; the argument should be removed and these tests should be
-			// updated to specify their nodes through a snapshot.
-			panic("cannot specify both newRaft(peers, learners) and ConfState.(Voters, Learners)")
-		}
-		cs.Voters = c.peers
-		cs.Learners = c.learners
 	}
 
 	r := &raft{
