@@ -124,7 +124,8 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "github.com/golang/glog.(*loggingT).flushDaemon") ||
 			strings.Contains(stack, "created by runtime.gc") ||
 			strings.Contains(stack, "created by text/template/parse.lex") ||
-			strings.Contains(stack, "runtime.MHeap_Scavenger") {
+			strings.Contains(stack, "runtime.MHeap_Scavenger") ||
+			strings.Contains(stack, "rcrypto/internal/boring.(*PublicKeyRSA).finalize") {
 			continue
 		}
 		gs = append(gs, stack)

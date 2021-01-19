@@ -66,11 +66,10 @@ before_install:
   - if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
 
 install:
-  - go get -t -v -d ./...
-  - (cd tests && go get -t -v -d ./...)
-  - (cd pkg && go get -t -v -d ./...)
+  - date
 
 script:
+  - date
   - echo "TRAVIS_GO_VERSION=${TRAVIS_GO_VERSION}"
   - >
     case "${TARGET}" in
