@@ -7,9 +7,9 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-VERSION=${1}
 ARCH=$(go env GOARCH)
-DOCKERFILE="Dockerfile-release"
+VERSION="${1}-${ARCH}"
+DOCKERFILE="Dockerfile-release.${ARCH}"
 
 if [ -z "${BINARYDIR}" ]; then
   RELEASE="etcd-${1}"-$(go env GOOS)-$(go env GOARCH)
@@ -21,11 +21,6 @@ if [ -z "${BINARYDIR}" ]; then
     exit 1
   fi
   tar -zvxf "${TARFILE}"
-fi
-
-if [ "${ARCH}" != "amd64" ]; then
-  DOCKERFILE+=".${ARCH}"
-  VERSION+="-${ARCH}"
 fi
 
 BINARYDIR=${BINARYDIR:-.}
