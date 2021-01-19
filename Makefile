@@ -177,7 +177,7 @@ docker-test-coverage:
 	  $(TMP_DIR_MOUNT_FLAG) \
 	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "COVERDIR=covdir PASSES='build build_cov cov' ./test.sh 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
+	  /bin/bash -c "set -o pipefail; (COVERDIR=covdir PASSES='build build_cov cov' ./test.sh 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log) && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log
 
 
