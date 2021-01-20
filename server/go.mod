@@ -32,7 +32,7 @@ require (
 	golang.org/x/net v0.0.0-20201006153459-a7d1128ccaa0
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884
-	google.golang.org/grpc v1.29.1
+	google.golang.org/grpc v1.35.0
 	sigs.k8s.io/yaml v1.2.0
 )
 
