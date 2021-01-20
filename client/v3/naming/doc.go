@@ -18,10 +18,10 @@
 //
 //	import (
 //		"go.etcd.io/etcd/client/v3"
+//		naming "go.etcd.io/etcd/client/v3/grpcnaming"
 //		etcdnaming "go.etcd.io/etcd/client/v3/naming"
 //
 //		"google.golang.org/grpc"
-//		"google.golang.org/grpc/naming"
 //	)
 //
 // First, register new endpoint addresses for a service:
