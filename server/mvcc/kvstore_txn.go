@@ -24,8 +24,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const BigValueSize int = 1 * 1024 * 1024
-
 type storeTxnRead struct {
 	s  *store
 	tx backend.ReadTx
@@ -216,8 +214,16 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	// big value metrics
 	valueSize := len(value)
-	if valueSize > BigValueSize {
+	if uint64(valueSize) > tw.s.cfg.BigValueSize {
+		tw.storeTxnRead.s.lg.Warn("Catch big value",
+			zap.String("Big value key", string(key)),
+			zap.Float64("Big value size", float64(valueSize)))
 		putBigValue.WithLabelValues(string(key)).Set(float64(valueSize))
+	}
+
+	// hot key metrics
+	if uint64(valueSize) > tw.s.cfg.HotKeySize {
+		putHotKey.WithLabelValues(string(key)).Set(float64(valueSize))
 	}
 
 	if oldLease != lease.NoLease {
