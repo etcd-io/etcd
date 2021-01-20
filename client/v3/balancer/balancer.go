@@ -138,6 +138,18 @@ type baseBalancer struct {
 	picker picker.Picker
 }
 
+// UpdateClientConnState implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) UpdateClientConnState(ccs balancer.ClientConnState) error {
+	bb.HandleResolvedAddrs(ccs.ResolverState.Addresses, nil)
+	// TODO: This **should** incorporate the lines that warn in `HandleResolvedAddrs`.
+	return nil
+}
+
+// ResolverError implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) ResolverError(err error) {
+	bb.HandleResolvedAddrs(nil, err)
+}
+
 // HandleResolvedAddrs implements "grpc/balancer.Balancer" interface.
 // gRPC sends initial or updated resolved addresses from "Build".
 func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) {
@@ -191,6 +203,11 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 			// (DO NOT) delete(bb.scToSt, sc)
 		}
 	}
+}
+
+// UpdateSubConnState implements "grpc/balancer.Balancer" interface.
+func (bb *baseBalancer) UpdateSubConnState(sc balancer.SubConn, s balancer.SubConnState) {
+	bb.HandleSubConnStateChange(sc, s.ConnectivityState)
 }
 
 // HandleSubConnStateChange implements "grpc/balancer.Balancer" interface.
@@ -247,7 +264,11 @@ func (bb *baseBalancer) HandleSubConnStateChange(sc balancer.SubConn, s grpcconn
 		bb.updatePicker()
 	}
 
-	bb.currentConn.UpdateBalancerState(bb.connectivityRecorder.GetCurrentState(), bb.picker)
+	state := balancer.State{
+		ConnectivityState: bb.connectivityRecorder.GetCurrentState(),
+		Picker:            bb.picker,
+	}
+	bb.currentConn.UpdateState(state)
 }
 
 func (bb *baseBalancer) updatePicker() {
