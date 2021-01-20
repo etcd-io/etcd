@@ -9,7 +9,7 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
-	github.com/golang/protobuf v1.3.5
+	github.com/golang/protobuf v1.4.2
 	github.com/google/btree v1.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -31,8 +31,9 @@ require (
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/net v0.0.0-20201006153459-a7d1128ccaa0
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884
+	google.golang.org/genproto v0.0.0-20200806141610-86f49bd18e98
 	google.golang.org/grpc v1.35.0
+	google.golang.org/grpc/examples v0.0.0-20210120020032-f579b61a694c // indirect
 	sigs.k8s.io/yaml v1.2.0
 )
 
