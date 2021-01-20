@@ -2,6 +2,8 @@ module go.etcd.io/etcd/v3
 
 go 1.15
 
+replace google.golang.org/grpc => google.golang.org/grpc v1.30.0
+
 replace (
 	go.etcd.io/etcd/api/v3 => ./api
 	go.etcd.io/etcd/client/v2 => ./client/v2
@@ -27,6 +29,6 @@ require (
 	go.etcd.io/etcd/tests/v3 v3.5.0-pre
 	go.uber.org/zap v1.16.0
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	google.golang.org/grpc v1.30.0
+	google.golang.org/grpc v1.31.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 )
