@@ -24,8 +24,7 @@ pushd "${ETCD_ROOT}" >/dev/null
   log_callout "Building etcd binary..."
   ./scripts/build-binary "${VERSION}"
 
-#  TODO: Add "s390x" when https://github.com/etcd-io/etcd/issues/12496 is fixed.
-  for TARGET_ARCH in "amd64" "arm64" "ppc64le"; do
+  for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
     log_callout "Building ${TARGET_ARCH} docker image..."
     GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker "${VERSION}"
   done
