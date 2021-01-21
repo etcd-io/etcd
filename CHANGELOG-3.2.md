@@ -8,6 +8,16 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 <hr>
 
+## [v3.2.32](https://github.com/etcd-io/etcd/releases/tag/v3.2.32) (2021 TBD)
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.31...v3.2.32) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_2.md) for any breaking changes.
+
+### Package `wal`
+- add wal slice bound check to make sure entry index is not greater than the number of entries
+- check slice size in decodeRecord
+- fix panic when decoder not set
+
+### Package `fileutil`
+- fix constant for linux locking
 
 ## [v3.2.31](https://github.com/etcd-io/etcd/releases/tag/v3.2.31) (2020-08-18)
 
