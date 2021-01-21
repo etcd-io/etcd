@@ -2806,8 +2806,7 @@ func TestRestoreWithLearner(t *testing.T) {
 	}
 }
 
-/// Tests if incoming voter and outgoing voter can receive and apply snapshot
-/// correctly.
+/// Tests if outgoing voter can receive and apply snapshot correctly.
 func TestRestoreWithVotersOutgoing(t *testing.T) {
 	s := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
