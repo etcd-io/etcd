@@ -39,7 +39,7 @@ Proxy layer that simulates various network conditions.
 Test locally
 
 ```bash
-$ ./build
+$ ./build.sh
 $ ./bin/etcd
 
 $ make build-functional
@@ -201,7 +201,7 @@ $ curl -L http://localhost:2378/blackhole-tx -X DELETE
 Trigger leader election
 
 ```bash
-$ ./build
+$ ./build.sh
 $ make build-functional
 
 $ rm -rf /tmp/etcd-proxy-data.s*

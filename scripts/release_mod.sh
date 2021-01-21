@@ -12,14 +12,9 @@
 
 set -e
 
-DRY_RUN=${DRY_RUN:-true}
-
-if ! [[ "$0" =~ scripts/release_mod.sh ]]; then
-  echo "must be run from repository root"
-  exit 255
-fi
-
 source ./scripts/test_lib.sh
+
+DRY_RUN=${DRY_RUN:-true}
 
 # _cmd prints help message
 function _cmd() {
@@ -27,15 +22,6 @@ function _cmd() {
   log_info "Available commands:"
   log_info "  - update_versions  - Updates all cross-module versions to \${TARGET_VERSION} in the local client."
   log_info "  - push_mod_tags    - Tags HEAD with all modules versions tags and pushes it to \${REMOTE_REPO}."
-}
-
-# maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
-function maybe_run() {
-  if ${DRY_RUN}; then
-    log_warning -e "# DRY_RUN:\n  % ${*}"
-  else
-    run "${@}"
-  fi
 }
 
 # update_module_version [v2version] [v3version]
@@ -48,12 +34,12 @@ function update_module_version() {
 
   v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
   for dep in ${v3deps}; do
-    maybe_run go mod edit -require "${dep}@${v3version}"
+    run go mod edit -require "${dep}@${v3version}"
   done
 
   v2deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v2")
   for dep in ${v2deps}; do
-    maybe_run go mod edit -require "${dep}@${v2version}"
+    run go mod edit -require "${dep}@${v2version}"
   done
 }
 
@@ -124,15 +110,18 @@ function push_mod_tags_cmd {
     # The sleep is ugly hack that guarantees that 'git describe' will
     # consider main-module's tag as the latest.
     run sleep 2
-    maybe_run git tag --local-user "${keyid}" --sign "${tag}" --message "${version}"
+    run git tag --local-user "${keyid}" --sign "${tag}" --message "${version}"
     tags=("${tags[@]}" "${tag}")
   done
   maybe_run git push -f "${REMOTE_REPO}" "${tags[@]}"
 }
 
-"${1}_cmd"
+# only release_mod when called directly, not sourced
+if echo "$0" | grep -E "release_mod.sh$" >/dev/null; then
+  "${1}_cmd"
 
-if "${DRY_RUN}"; then
-  log_info
-  log_warning "WARNING: It was a DRY_RUN. No files were modified."
+  if "${DRY_RUN}"; then
+    log_info
+    log_warning "WARNING: It was a DRY_RUN. No files were modified."
+  fi
 fi

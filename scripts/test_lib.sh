@@ -7,7 +7,11 @@ if [[ "$(go list)" != "${ROOT_MODULE}/v3" ]]; then
   exit 255
 fi
 
-ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "${ROOT_MODULE}/v3")
+function set_root_dir {
+  ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "${ROOT_MODULE}/v3")
+}
+
+set_root_dir
 
 ####   Convenient IO methods #####
 
@@ -19,6 +23,7 @@ COLOR_BLUE='\033[0;94m'
 COLOR_MAGENTA='\033[95m'
 COLOR_BOLD='\033[1m'
 COLOR_NONE='\033[0m' # No Color
+
 
 function log_error {
   >&2 echo -n -e "${COLOR_BOLD}${COLOR_RED}"
@@ -160,6 +165,15 @@ function run_for_module {
 
 function module_dirs() {
   echo "api pkg raft client/v2 client/v3 server etcdctl tests ."
+}
+
+# maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
+function maybe_run() {
+  if ${DRY_RUN}; then
+    log_warning -e "# DRY_RUN:\n  % ${*}"
+  else
+    run "${@}"
+  fi
 }
 
 function modules() {
@@ -344,14 +358,18 @@ function git_assert_branch_in_sync {
   branch=$(git branch --show-current)
   if [[ $(run git status --porcelain --untracked-files=no) ]]; then
     log_error "The workspace in '$(pwd)' for branch: ${branch} has uncommitted changes"
-    log_error "Consider cleaning up / renaming this directory."
+    log_error "Consider cleaning up / renaming this directory or (cd $(pwd) && git reset --hard)"
     return 2
   fi
-  ref_local=$(run git rev-parse "${branch}")
-  ref_origin=$(run git rev-parse "origin/${branch}")
-  if [ "x${ref_local}" != "x${ref_origin}" ]; then
-    log_error "In workspace '$(pwd)' the branch: ${branch} diverges from the origin."
-    log_error "Consider cleaning up / renaming this directory."
-    return 2
+  if [ -n "${branch}" ]; then
+    ref_local=$(run git rev-parse "${branch}")
+    ref_origin=$(run git rev-parse "origin/${branch}")
+    if [ "x${ref_local}" != "x${ref_origin}" ]; then
+      log_error "In workspace '$(pwd)' the branch: ${branch} diverges from the origin."
+      log_error "Consider cleaning up / renaming this directory or (cd $(pwd) && git reset --hard origin/${branch})"
+      return 2
+    fi
+  else
+    log_warning "Cannot verify consistency with the origin, as git is on detached branch."
   fi
 }

@@ -24,7 +24,6 @@ function setup_env {
   fi
 
   pushd "${proj}" >/dev/null
-    run git checkout master
     run git fetch --all
     git_assert_branch_in_sync || exit 2
     run git checkout "${ver}"
@@ -76,8 +75,7 @@ function main {
     if [ ${GOOS} == "linux" ]; then
       TARGET_ARCHS+=("arm64")
       TARGET_ARCHS+=("ppc64le")
-#  TODO: Reenable when https://github.com/etcd-io/etcd/issues/12496 is fixed.
-#      TARGET_ARCHS+=("s390x")
+      TARGET_ARCHS+=("s390x")
     fi
 
     for TARGET_ARCH in "${TARGET_ARCHS[@]}"; do
