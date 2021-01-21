@@ -19,13 +19,12 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/naming"
+	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/tests/v3/integration"
 
 	"go.uber.org/zap"
-	gnaming "google.golang.org/grpc/naming"
 )
 
 func TestRegister(t *testing.T) {
@@ -37,26 +36,16 @@ func TestRegister(t *testing.T) {
 	paddr := clus.Members[0].GRPCAddr()
 
 	testPrefix := "test-name"
-	wa := createWatcher(t, cli, testPrefix)
-	ups, err := wa.Next()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(ups) != 0 {
-		t.Fatalf("len(ups) expected 0, got %d (%v)", len(ups), ups)
-	}
+	wa := mustCreateWatcher(t, cli, testPrefix)
 
 	donec := grpcproxy.Register(zap.NewExample(), cli, testPrefix, paddr, 5)
 
-	ups, err = wa.Next()
-	if err != nil {
-		t.Fatal(err)
-	}
+	ups := <-wa
 	if len(ups) != 1 {
 		t.Fatalf("len(ups) expected 1, got %d (%v)", len(ups), ups)
 	}
-	if ups[0].Addr != paddr {
-		t.Fatalf("ups[0].Addr expected %q, got %q", paddr, ups[0].Addr)
+	if ups[0].Endpoint.Addr != paddr {
+		t.Fatalf("ups[0].Addr expected %q, got %q", paddr, ups[0].Endpoint.Addr)
 	}
 
 	cli.Close()
@@ -68,11 +57,14 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-func createWatcher(t *testing.T, c *clientv3.Client, prefix string) gnaming.Watcher {
-	gr := &naming.GRPCResolver{Client: c}
-	watcher, err := gr.Resolve(prefix)
+func mustCreateWatcher(t *testing.T, c *clientv3.Client, prefix string) endpoints.WatchChannel {
+	em, err := endpoints.NewManager(c, prefix)
+	if err != nil {
+		t.Fatalf("failed to create endpoints.Manager: %v", err)
+	}
+	wc, err := em.NewWatchChannel(c.Ctx())
 	if err != nil {
 		t.Fatalf("failed to resolve %q (%v)", prefix, err)
 	}
-	return watcher
+	return wc
 }
