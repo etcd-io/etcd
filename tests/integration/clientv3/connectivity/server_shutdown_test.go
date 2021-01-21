@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3test
+package connectivity_test
 
 import (
 	"bytes"
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,9 +24,7 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
 // TestBalancerUnderServerShutdownWatch expects that watch client
@@ -53,7 +50,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	defer watchCli.Close()
 
 	// wait for eps[lead] to be pinned
-	mustWaitPinReady(t, watchCli)
+	clientv3test.MustWaitPinReady(t, watchCli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -104,7 +101,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 		if err == nil {
 			break
 		}
-		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
 			continue
 		}
 		t.Fatal(err)
@@ -163,7 +160,7 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
-	mustWaitPinReady(t, cli)
+	clientv3test.MustWaitPinReady(t, cli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -221,7 +218,7 @@ func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Cl
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
-	mustWaitPinReady(t, cli)
+	clientv3test.MustWaitPinReady(t, cli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -304,7 +301,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	defer cli.Close()
 
 	// wait for eps[target] to be pinned
-	mustWaitPinReady(t, cli)
+	clientv3test.MustWaitPinReady(t, cli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -362,66 +359,4 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 		t.Fatalf("timed out waiting for Get [linearizable: %v, opt: %+v]", linearizable, opt)
 	case <-donec:
 	}
-}
-
-// e.g. due to clock drifts in server-side,
-// client context times out first in server-side
-// while original client-side context is not timed out yet
-func isServerCtxTimeout(err error) bool {
-	if err == nil {
-		return false
-	}
-	ev, ok := status.FromError(err)
-	if !ok {
-		return false
-	}
-	code := ev.Code()
-	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
-}
-
-// In grpc v1.11.3+ dial timeouts can error out with transport.ErrConnClosing. Previously dial timeouts
-// would always error out with context.DeadlineExceeded.
-func isClientTimeout(err error) bool {
-	if err == nil {
-		return false
-	}
-	if err == context.DeadlineExceeded {
-		return true
-	}
-	ev, ok := status.FromError(err)
-	if !ok {
-		return false
-	}
-	code := ev.Code()
-	return code == codes.DeadlineExceeded
-}
-
-func isCanceled(err error) bool {
-	if err == nil {
-		return false
-	}
-	if err == context.Canceled {
-		return true
-	}
-	ev, ok := status.FromError(err)
-	if !ok {
-		return false
-	}
-	code := ev.Code()
-	return code == codes.Canceled
-}
-
-func isUnavailable(err error) bool {
-	if err == nil {
-		return false
-	}
-	if err == context.Canceled {
-		return true
-	}
-	ev, ok := status.FromError(err)
-	if !ok {
-		return false
-	}
-	code := ev.Code()
-	return code == codes.Unavailable
 }

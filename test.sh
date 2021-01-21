@@ -91,7 +91,7 @@ function run_unit_tests {
   local pkgs="${1:-./...}"
   shift 1
   # shellcheck disable=SC2086
-  go_test "${pkgs}" "parallel" : -short -timeout="${TIMEOUT:-3m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@"
+  GOLANG_TEST_SHORT=true go_test "${pkgs}" "parallel" : -short -timeout="${TIMEOUT:-3m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@"
 }
 
 function unit_pass {
@@ -109,7 +109,7 @@ function integration_extra {
 
 function integration_pass {
   local pkgs=${USERPKG:-"./integration/..."}
-  run_for_module "tests" go_test "${pkgs}" "keep_going" : -timeout="${TIMEOUT:-30m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@" || return $?
+  run_for_module "tests" go_test "${pkgs}" "parallel" : -timeout="${TIMEOUT:-30m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@" || return $?
   integration_extra "$@"
 }
 
@@ -307,7 +307,7 @@ function cov_pass {
 
   log_callout "[$(date)] Collecting coverage from unit tests ..."
   for m in $(module_dirs); do
-    run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
+    GOLANG_TEST_SHORT=true run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
        "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
   done
 

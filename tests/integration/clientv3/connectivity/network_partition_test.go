@@ -14,7 +14,7 @@
 
 // +build !cluster_proxy
 
-package clientv3test
+package connectivity_test
 
 import (
 	"context"
@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
+	"go.etcd.io/etcd/tests/v3/integration/clientv3"
 	"google.golang.org/grpc"
 )
 
@@ -38,7 +39,7 @@ var errExpected = errors.New("expected error")
 func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "a", "b")
-		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -48,7 +49,7 @@ func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 func TestBalancerUnderNetworkPartitionDelete(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "a")
-		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -61,7 +62,7 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 			Then(clientv3.OpPut("foo", "bar")).
 			Else(clientv3.OpPut("foo", "baz")).Commit()
-		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -74,7 +75,7 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
-		if isClientTimeout(err) || isServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -87,7 +88,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.
 func TestBalancerUnderNetworkPartitionLinearizableGetWithShortTimeout(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
-		if isClientTimeout(err) || isServerCtxTimeout(err) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) {
 			return errExpected
 		}
 		return err
@@ -125,7 +126,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
-	mustWaitPinReady(t, cli)
+	clientv3test.MustWaitPinReady(t, cli)
 
 	// add other endpoints for later endpoint switch
 	cli.SetEndpoints(eps...)
@@ -235,7 +236,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	defer watchCli.Close()
 
 	// wait for eps[target] to be pinned
-	mustWaitPinReady(t, watchCli)
+	clientv3test.MustWaitPinReady(t, watchCli)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -290,7 +291,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
-	mustWaitPinReady(t, cli)
+	clientv3test.MustWaitPinReady(t, cli)
 
 	// add other endpoints for later endpoint switch
 	cli.SetEndpoints(eps...)
