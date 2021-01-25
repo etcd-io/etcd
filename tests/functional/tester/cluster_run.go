@@ -47,7 +47,7 @@ func (clus *Cluster) Run() {
 		clus.rd = round
 
 		if err := clus.doRound(); err != nil {
-			clus.lg.Warn(
+			clus.lg.Error(
 				"round FAIL",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
@@ -316,7 +316,7 @@ func (clus *Cluster) compact(rev int64, timeout time.Duration) (err error) {
 }
 
 func (clus *Cluster) failed() {
-	clus.lg.Info(
+	clus.lg.Error(
 		"functional-tester FAIL",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),

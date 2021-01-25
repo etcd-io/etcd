@@ -133,7 +133,7 @@ func TestMaintenanceSnapshotError(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	_, err = io.Copy(ioutil.Discard, rc2)
-	if err != nil && !isClientTimeout(err) {
+	if err != nil && !IsClientTimeout(err) {
 		t.Errorf("expected client timeout, got %v", err)
 	}
 }
@@ -192,7 +192,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	// 300ms left and expect timeout while snapshot reading is in progress
 	time.Sleep(700 * time.Millisecond)
 	_, err = io.Copy(ioutil.Discard, rc2)
-	if err != nil && !isClientTimeout(err) {
+	if err != nil && !IsClientTimeout(err) {
 		t.Errorf("expected client timeout, got %v", err)
 	}
 }

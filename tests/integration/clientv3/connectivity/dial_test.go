@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3test
+package connectivity_test
 
 import (
 	"context"
@@ -26,21 +26,22 @@ import (
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/tests/v3/integration"
+	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 	"google.golang.org/grpc"
 )
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "../../fixtures/server.key.insecure",
-		CertFile:       "../../fixtures/server.crt",
-		TrustedCAFile:  "../../fixtures/ca.crt",
+		KeyFile:        "../../../fixtures/server.key.insecure",
+		CertFile:       "../../../fixtures/server.crt",
+		TrustedCAFile:  "../../../fixtures/ca.crt",
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoExpired = transport.TLSInfo{
-		KeyFile:        "../fixtures-expired/server.key.insecure",
-		CertFile:       "../fixtures-expired/server.crt",
-		TrustedCAFile:  "../fixtures-expired/ca.crt",
+		KeyFile:        "../../fixtures-expired/server.key.insecure",
+		CertFile:       "../../fixtures-expired/server.crt",
+		TrustedCAFile:  "../../fixtures-expired/ca.crt",
 		ClientCertAuth: true,
 	}
 )
@@ -62,7 +63,7 @@ func TestDialTLSExpired(t *testing.T) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tls,
 	})
-	if !isClientTimeout(err) {
+	if !clientv3test.IsClientTimeout(err) {
 		t.Fatalf("expected dial timeout error, got %v", err)
 	}
 }
@@ -84,7 +85,7 @@ func TestDialTLSNoConfig(t *testing.T) {
 			c.Close()
 		}
 	}()
-	if !isClientTimeout(err) {
+	if !clientv3test.IsClientTimeout(err) {
 		t.Fatalf("expected dial timeout error, got %v", err)
 	}
 }
