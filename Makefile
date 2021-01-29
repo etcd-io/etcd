@@ -53,18 +53,19 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.14.3
+GO_VERSION ?= 1.15.7
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
 TEST_OPTS ?= PASSES='unit'
 
-TMP_DIR_MOUNT_FLAG = --mount type=tmpfs,destination=/tmp
+TMP_DIR_MOUNT_FLAG = --tmpfs=/tmp:exec
 ifdef HOST_TMP_DIR
 	TMP_DIR_MOUNT_FLAG = --mount type=bind,source=$(HOST_TMP_DIR),destination=/tmp
 endif
 
 
+TMP_DOCKERFILE:=$(shell mktemp)
 
 # Example:
 #   GO_VERSION=1.14.3 make build-docker-test
@@ -79,12 +80,11 @@ endif
 
 build-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/Dockerfile > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  --file ./tests/Dockerfile .
-	@mv ./tests/Dockerfile.bak ./tests/Dockerfile
+	  --file $(TMP_DOCKERFILE) .
 
 push-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -225,13 +225,12 @@ push-docker-release-master:
 
 build-docker-static-ip-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-static-ip/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-static-ip/Dockerfile > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-static-ip-test:go$(GO_VERSION) \
 	  --file ./tests/docker-static-ip/Dockerfile \
-	  ./tests/docker-static-ip
-	@mv ./tests/docker-static-ip/Dockerfile.bak ./tests/docker-static-ip/Dockerfile
+	  $(TMP_DOCKERFILE)
 
 push-docker-static-ip-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -290,13 +289,12 @@ docker-static-ip-test-certs-metrics-proxy-run:
 
 build-docker-dns-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-dns/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-dns/Dockerfile > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION) \
 	  --file ./tests/docker-dns/Dockerfile \
-	  ./tests/docker-dns
-	@mv ./tests/docker-dns/Dockerfile.bak ./tests/docker-dns/Dockerfile
+	  $(TMP_DOCKERFILE)
 
 	docker run \
 	  --rm \
@@ -425,13 +423,12 @@ docker-dns-test-certs-san-dns-run:
 
 build-docker-dns-srv-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-dns-srv/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-dns-srv-test:go$(GO_VERSION) \
 	  --file ./tests/docker-dns-srv/Dockerfile \
-	  ./tests/docker-dns-srv
-	@mv ./tests/docker-dns-srv/Dockerfile.bak ./tests/docker-dns-srv/Dockerfile
+	  $(TMP_DOCKERFILE)
 
 	docker run \
 	  --rm \
@@ -509,7 +506,7 @@ build-functional:
 build-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/functional/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \
