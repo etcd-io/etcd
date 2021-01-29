@@ -68,7 +68,7 @@ fi
 # This options make sense for cases where SUT (System Under Test) is compiled by test.
 COMMON_TEST_FLAGS=("${RACE}")
 if [[ ! -z "${CPU}" ]]; then
-  COMMON_TEST_FLAGS+=(--cpu ${CPU})
+  COMMON_TEST_FLAGS+=("--cpu=${CPU}")
 fi 
 
 log_callout "Running with ${COMMON_TEST_FLAGS[*]}"
@@ -174,13 +174,13 @@ function functional_pass {
   kill -s TERM "${agent_pids[@]}" || true
 
   if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
-    log_error -e "\nFAILED! 'tail -1000 /tmp/etcd-functional-1/etcd.log'"
+    log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-1/etcd.log'"
     tail -1000 /tmp/etcd-functional-1/etcd.log
 
-    log_error -e "\nFAILED! 'tail -1000 /tmp/etcd-functional-2/etcd.log'"
+    log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-2/etcd.log'"
     tail -1000 /tmp/etcd-functional-2/etcd.log
 
-    log_error -e "\nFAILED! 'tail -1000 /tmp/etcd-functional-3/etcd.log'"
+    log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-3/etcd.log'"
     tail -1000 /tmp/etcd-functional-3/etcd.log
 
     log_error "--- FAIL: exit code" ${etcd_tester_exit_code}
@@ -392,18 +392,19 @@ function shellcheck_pass {
 }
 
 function shellws_pass {
+  TAB=$'\t'
   log_callout "Ensuring no tab-based indention in shell scripts"
   local files
   files=$(find ./ -name '*.sh' -print0 | xargs -0 )
   # shellcheck disable=SC2206
   files=( ${files[@]} "./scripts/build-binary" "./scripts/build-docker" "./scripts/release" )
-  log_cmd "grep -E -n $'^ *\t' ${files[*]}"
+  log_cmd "grep -E -n $'^ *${TAB}' ${files[*]}"
   # shellcheck disable=SC2086
-  if grep -E -n $'^ *\t' "${files[@]}" | sed $'s|\t|[\\\\tab]|g'; then
+  if grep -E -n $'^ *${TAB}' "${files[@]}" | sed $'s|${TAB}|[\\\\tab]|g'; then
     log_error "FAIL: found tab-based indention in bash scripts. Use '  ' (double space)."
     local files_with_tabs
-    files_with_tabs=$(grep -E -l $'^ *\t' "${files[@]}")
-    log_warning "Try: sed -i 's|\t|  |g' $files_with_tabs"
+    files_with_tabs=$(grep -E -l $'^ *\\t' "${files[@]}")
+    log_warning "Try: sed -i 's|\\t|  |g' $files_with_tabs"
     return 1
   else
     log_success "SUCCESS: no tabulators found."
@@ -412,7 +413,7 @@ function shellws_pass {
 }
 
 function markdown_you_find_eschew_you {
-  local find_you_cmd="find . -name \*.md ! -path '*/vendor/*' ! -path './Documentation/*' ! -path './gopath.proto/*' ! -path './release/*' -exec grep -E --color '[Yy]ou[r]?[ '\''.,;]' {} + || true"
+  local find_you_cmd="find . -name \\*.md ! -path '*/vendor/*' ! -path './Documentation/*' ! -path './gopath.proto/*' ! -path './release/*' -exec grep -E --color '[Yy]ou[r]?[ '\\''.,;]' {} + || true"
   run eval "${find_you_cmd}"
 }
 
@@ -490,7 +491,7 @@ function receiver_name_for_package {
   while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
 
   recvs=$(grep 'func ([^*]' "${gofiles[@]}"  | tr  ':' ' ' |  \
-    awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\.]*go//g" |  sort  | uniq  | \
+    awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\\.]*go//g" |  sort  | uniq  | \
     grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ')
   if [ -n "${recvs}" ]; then
     # shellcheck disable=SC2206
@@ -566,7 +567,7 @@ function bom_pass {
   run cp go.mod.tmp go.mod || return 2
 
   if [ "${code}" -ne 0 ] ; then
-    log_error -e "license-bill-of-materials (code: ${code}) failed with:\n${output}"
+    log_error -e "license-bill-of-materials (code: ${code}) failed with:\\n${output}"
     return 255
   else
     echo "${output}" > "bom-now.json.tmp"
@@ -598,7 +599,7 @@ function dep_pass {
 
   for dup in ${duplicates}; do
     log_error "FAIL: inconsistent versions for depencency: ${dup}"
-    echo "${all_dependencies}" | grep "${dup}" | sed "s|\([^,]*\),\([^,]*\),\([^,]*\)|  - \1@\2 from: \3|g"
+    echo "${all_dependencies}" | grep "${dup}" | sed "s|\\([^,]*\\),\\([^,]*\\),\\([^,]*\\)|  - \\1@\\2 from: \\3|g"
   done
   if [[ -n "${duplicates}" ]]; then
     log_error "FAIL: inconsistent dependencies"
@@ -685,7 +686,7 @@ function mod_tidy_pass {
 function run_pass {
   local pass="${1}"
   shift 1
-  log_callout -e "\n'${pass}' started at $(date)"
+  log_callout -e "\\n'${pass}' started at $(date)"
   if "${pass}_pass" "$@" ; then
     log_success "'${pass}' completed at $(date)"
   else

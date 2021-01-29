@@ -35,7 +35,7 @@ GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 # directories containing protos to be built
 DIRS="./server/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./raft/raftpb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb"
 
-log_callout -e "\nRunning gofast (gogo) proto generation..."
+log_callout -e "\\nRunning gofast (gogo) proto generation..."
 
 for dir in ${DIRS}; do
   run pushd "${dir}"
@@ -50,7 +50,7 @@ for dir in ${DIRS}; do
   run popd
 done
 
-log_callout -e "\nRunning swagger & grpc_gateway proto generation..."
+log_callout -e "\\nRunning swagger & grpc_gateway proto generation..."
 
 # remove old swagger files so it's obvious whether the files fail to generate
 rm -rf Documentation/dev-guide/apispec/swagger/*json
@@ -70,9 +70,9 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
   gwfile="${pb}.pb.gw.go"
 
   sed -i -E "s#package $pkg#package gw#g" "${gwfile}"
-  sed -i -E "s#import \(#import \(\"go.etcd.io/etcd/${pkgpath}\"#g" "${gwfile}"
-  sed -i -E "s#([ (])([a-zA-Z0-9_]*(Client|Server|Request)([^(]|$))#\1${pkg}.\2#g" "${gwfile}"
-  sed -i -E "s# (New[a-zA-Z0-9_]*Client\()# ${pkg}.\1#g" "${gwfile}"
+  sed -i -E "s#import \\(#import \\(\"go.etcd.io/etcd/${pkgpath}\"#g" "${gwfile}"
+  sed -i -E "s#([ (])([a-zA-Z0-9_]*(Client|Server|Request)([^(]|$))#\\1${pkg}.\\2#g" "${gwfile}"
+  sed -i -E "s# (New[a-zA-Z0-9_]*Client\\()# ${pkg}.\\1#g" "${gwfile}"
   sed -i -E "s|go.etcd.io/etcd|go.etcd.io/etcd/v3|g" "${gwfile}"
   sed -i -E "s|go.etcd.io/etcd/v3/api|go.etcd.io/etcd/api/v3|g" "${gwfile}"
   sed -i -E "s|go.etcd.io/etcd/v3/server|go.etcd.io/etcd/server/v3|g" "${gwfile}"
@@ -88,7 +88,7 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
     Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
 
-log_callout -e "\nRunning swagger ..."
+log_callout -e "\\nRunning swagger ..."
 run_go_tool github.com/hexfusion/schwag -input=Documentation/dev-guide/apispec/swagger/rpc.swagger.json
 
 if [ "$1" != "--skip-protodoc" ]; then
@@ -112,4 +112,4 @@ else
   log_warning "skipping grpc API reference document auto-generation..."
 fi
 
-log_success -e "\n./genproto SUCCESS"
+log_success -e "\\n./genproto SUCCESS"

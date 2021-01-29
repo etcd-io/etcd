@@ -146,7 +146,7 @@ function run {
   "${@}" 2> >(while read -r line; do echo -e "${COLOR_NONE}stderr: ${COLOR_MAGENTA}${line}${COLOR_NONE}">&2; done)
   local error_code=$?
   if [ ${error_code} -ne 0 ]; then
-    log_error -e "FAIL: (code:${error_code}):\n  % ${repro}"
+    log_error -e "FAIL: (code:${error_code}):\\n  % ${repro}"
     return ${error_code}
   fi
 }
@@ -170,7 +170,7 @@ function module_dirs() {
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
 function maybe_run() {
   if ${DRY_RUN}; then
-    log_warning -e "# DRY_RUN:\n  % ${*}"
+    log_warning -e "# DRY_RUN:\\n  % ${*}"
   else
     run "${@}"
   fi
@@ -280,7 +280,7 @@ function go_test {
   done
 
   if [ -n "${failures[*]}" ] ; then
-    log_error -e "ERROR: Tests for following packages failed:\n  ${failures[*]}"
+    log_error -e "ERROR: Tests for following packages failed:\\n  ${failures[*]}"
     return 2
   fi
 }
