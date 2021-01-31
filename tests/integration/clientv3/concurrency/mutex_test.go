@@ -54,7 +54,7 @@ func TestMutexLockSessionExpired(t *testing.T) {
 		defer close(m2Locked)
 		// m2 blocks since m1 already acquired lock /my-lock/
 		if err2 = m2.Lock(context.TODO()); err2 == nil {
-			t.Fatal("expect session expired error")
+			t.Error("expect session expired error")
 		}
 	}()
 
