@@ -202,51 +202,6 @@
               summary: 'etcd cluster 99th percentile commit durations are too high.',
             },
           },
-          {
-            alert: 'etcdHighNumberOfFailedHTTPRequests',
-            expr: |||
-              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) without (code) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
-              without (code) > 0.01
-            ||| % $._config,
-            'for': '10m',
-            labels: {
-              severity: 'warning',
-            },
-            annotations: {
-              description: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}',
-              summary: 'etcd has high number of failed HTTP requests.',
-            },
-          },
-          {
-            alert: 'etcdHighNumberOfFailedHTTPRequests',
-            expr: |||
-              sum(rate(etcd_http_failed_total{%(etcd_selector)s, code!="404"}[5m])) without (code) / sum(rate(etcd_http_received_total{%(etcd_selector)s}[5m]))
-              without (code) > 0.05
-            ||| % $._config,
-            'for': '10m',
-            labels: {
-              severity: 'critical',
-            },
-            annotations: {
-              description: '{{ $value }}% of requests for {{ $labels.method }} failed on etcd instance {{ $labels.instance }}.',
-              summary: 'etcd has high number of failed HTTP requests.',
-            },
-          },
-          {
-            alert: 'etcdHTTPRequestsSlow',
-            expr: |||
-              histogram_quantile(0.99, rate(etcd_http_successful_duration_seconds_bucket[5m]))
-              > 0.15
-            ||| % $._config,
-            'for': '10m',
-            labels: {
-              severity: 'warning',
-            },
-            annotations: {
-              description: 'etcd instance {{ $labels.instance }} HTTP requests to {{ $labels.method }} are slow.',
-              summary: 'etcd instance HTTP requests are slow.',
-            },
-          },
          {
             alert: 'etcdBackendQuotaLowSpace',
             expr: |||
