@@ -1073,10 +1073,10 @@ func TestProposal(t *testing.T) {
 			if sm, ok := p.(*raft); ok {
 				l := ltoa(sm.raftLog)
 				if g := diffu(base, l); g != "" {
-					t.Errorf("#%d: diff:\n%s", i, g)
+					t.Errorf("#%d: peer %d diff:\n%s", j, i, g)
 				}
 			} else {
-				t.Logf("#%d: empty log", i)
+				t.Logf("#%d: peer %d empty log", j, i)
 			}
 		}
 		sm := tt.network.peers[1].(*raft)
@@ -1111,10 +1111,10 @@ func TestProposalByProxy(t *testing.T) {
 			if sm, ok := p.(*raft); ok {
 				l := ltoa(sm.raftLog)
 				if g := diffu(base, l); g != "" {
-					t.Errorf("#%d: diff:\n%s", i, g)
+					t.Errorf("#%d: peer %d diff:\n%s", j, i, g)
 				}
 			} else {
-				t.Logf("#%d: empty log", i)
+				t.Logf("#%d: peer %d empty log", j, i)
 			}
 		}
 		sm := tt.peers[1].(*raft)
