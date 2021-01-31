@@ -238,7 +238,7 @@
       uid: std.md5('etcd.json'),
       title: 'etcd',
       description: 'etcd sample Grafana dashboard with Prometheus',
-      tags: [],
+      tags: [ 'etcd-mixin' ],
       style: 'dark',
       timezone: 'browser',
       editable: true,
