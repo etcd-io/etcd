@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Generate all etcd protobuf bindings.
-# Run from repository root.
+# Run from repository root directory named etcd.
 #
 set -e
 
