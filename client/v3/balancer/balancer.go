@@ -23,12 +23,19 @@ import (
 	"go.etcd.io/etcd/client/v3/balancer/connectivity"
 	"go.etcd.io/etcd/client/v3/balancer/picker"
 
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/balancer"
 	grpcconnectivity "google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/resolver"
 	_ "google.golang.org/grpc/resolver/dns"         // register DNS resolver
 	_ "google.golang.org/grpc/resolver/passthrough" // register passthrough resolver
+)
+
+// NOTE: Ensure
+//       - `baseBalancer` satisfies `balancer.V2Balancer`.
+var (
+	_ balancer.V2Balancer = (*baseBalancer)(nil)
 )
 
 // Config defines balancer configurations.
@@ -138,12 +145,29 @@ type baseBalancer struct {
 	picker picker.Picker
 }
 
+// UpdateClientConnState implements "grpc/balancer.V2Balancer" interface.
+func (bb *baseBalancer) UpdateClientConnState(ccs balancer.ClientConnState) error {
+	return bb.handleResolvedWithError(ccs.ResolverState.Addresses, nil)
+}
+
+// ResolverError implements "grpc/balancer.V2Balancer" interface.
+func (bb *baseBalancer) ResolverError(err error) {
+	bb.HandleResolvedAddrs(nil, err)
+}
+
 // HandleResolvedAddrs implements "grpc/balancer.Balancer" interface.
 // gRPC sends initial or updated resolved addresses from "Build".
 func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error) {
+	_ = bb.handleResolvedWithError(addrs, err)
+}
+
+// handleResolvedWithError is an implementation shared both by `HandleResolvedAddrs()`,
+// which is part of the `Balancer` interface as well as `UpdateClientConnState()`,
+// which is part of the `V2Balancer` interface.
+func (bb *baseBalancer) handleResolvedWithError(addrs []resolver.Address, err error) error {
 	if err != nil {
 		bb.lg.Warn("HandleResolvedAddrs called with error", zap.String("balancer-id", bb.id), zap.Error(err))
-		return
+		return err
 	}
 	bb.lg.Info("resolved",
 		zap.String("picker", bb.picker.String()),
@@ -155,12 +179,14 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 	defer bb.mu.Unlock()
 
 	resolved := make(map[resolver.Address]struct{})
+	warnedErrors := []error{}
 	for _, addr := range addrs {
 		resolved[addr] = struct{}{}
 		if _, ok := bb.addrToSc[addr]; !ok {
 			sc, err := bb.currentConn.NewSubConn([]resolver.Address{addr}, balancer.NewSubConnOptions{})
 			if err != nil {
 				bb.lg.Warn("NewSubConn failed", zap.String("picker", bb.picker.String()), zap.String("balancer-id", bb.id), zap.Error(err), zap.String("address", addr.Addr))
+				warnedErrors = append(warnedErrors, err)
 				continue
 			}
 			bb.lg.Info("created subconn", zap.String("address", addr.Addr))
@@ -191,6 +217,15 @@ func (bb *baseBalancer) HandleResolvedAddrs(addrs []resolver.Address, err error)
 			// (DO NOT) delete(bb.scToSt, sc)
 		}
 	}
+
+	// TODO: Consider just returning `ErrBadResolverState` if `warnedErrors` is
+	//       not empty.
+	return multierr.Combine(warnedErrors...)
+}
+
+// UpdateSubConnState implements "grpc/balancer.V2Balancer" interface.
+func (bb *baseBalancer) UpdateSubConnState(sc balancer.SubConn, s balancer.SubConnState) {
+	bb.HandleSubConnStateChange(sc, s.ConnectivityState)
 }
 
 // HandleSubConnStateChange implements "grpc/balancer.Balancer" interface.
