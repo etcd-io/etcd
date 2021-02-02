@@ -24,6 +24,12 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
+// NOTE: Ensure
+//       - `rrBalancedV2` satisfies `balancer.V2Picker`.
+var (
+	_ balancer.V2Picker = (*rrBalancedV2)(nil)
+)
+
 // newRoundrobinBalanced returns a new roundrobin balanced picker.
 func newRoundrobinBalanced(cfg Config) Picker {
 	scs := make([]balancer.SubConn, 0, len(cfg.SubConnToResolverAddress))
@@ -52,7 +58,7 @@ type rrBalanced struct {
 func (rb *rrBalanced) String() string { return rb.p.String() }
 
 // Pick is called for every client request.
-func (rb *rrBalanced) Pick(ctx context.Context, opts balancer.PickInfo) (balancer.SubConn, func(balancer.DoneInfo), error) {
+func (rb *rrBalanced) Pick(_ context.Context, opts balancer.PickInfo) (balancer.SubConn, func(balancer.DoneInfo), error) {
 	rb.mu.RLock()
 	n := len(rb.scs)
 	rb.mu.RUnlock()
@@ -92,4 +98,14 @@ func (rb *rrBalanced) Pick(ctx context.Context, opts balancer.PickInfo) (balance
 		}
 	}
 	return sc, doneFunc, nil
+}
+
+type rrBalancedV2 struct {
+	rrBalanced
+}
+
+func (rb2 *rrBalancedV2) Pick(opts balancer.PickInfo) (balancer.PickResult, error) {
+	sc, doneFunc, err := rb2.rrBalanced.Pick(context.TODO(), opts)
+	pr := balancer.PickResult{SubConn: sc, Done: doneFunc}
+	return pr, err
 }

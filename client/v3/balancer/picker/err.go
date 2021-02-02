@@ -20,6 +20,12 @@ import (
 	"google.golang.org/grpc/balancer"
 )
 
+// NOTE: Ensure
+//       - `errPickerV2` satisfies `balancer.V2Picker`.
+var (
+	_ balancer.V2Picker = (*errPickerV2)(nil)
+)
+
 // NewErr returns a picker that always returns err on "Pick".
 func NewErr(err error) Picker {
 	return &errPicker{p: Error, err: err}
@@ -36,4 +42,12 @@ func (ep *errPicker) String() string {
 
 func (ep *errPicker) Pick(context.Context, balancer.PickInfo) (balancer.SubConn, func(balancer.DoneInfo), error) {
 	return nil, nil, ep.err
+}
+
+type errPickerV2 struct {
+	errPicker
+}
+
+func (ep2 *errPickerV2) Pick(opts balancer.PickInfo) (balancer.PickResult, error) {
+	return balancer.PickResult{}, ep2.errPicker.err
 }
