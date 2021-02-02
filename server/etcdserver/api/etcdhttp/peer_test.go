@@ -72,9 +72,10 @@ func (s *fakeServer) UpdateMember(ctx context.Context, updateMemb membership.Mem
 func (s *fakeServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
 	return nil, fmt.Errorf("PromoteMember not implemented in fakeServer")
 }
-func (s *fakeServer) ClusterVersion() *semver.Version { return nil }
-func (s *fakeServer) Cluster() api.Cluster            { return s.cluster }
-func (s *fakeServer) Alarms() []*pb.AlarmMember       { return nil }
+func (s *fakeServer) ClusterVersion() *semver.Version      { return nil }
+func (s *fakeServer) Cluster() api.Cluster                 { return s.cluster }
+func (s *fakeServer) Alarms() []*pb.AlarmMember            { return nil }
+func (s *fakeServer) LeaderChangedNotify() <-chan struct{} { return nil }
 
 var fakeRaftHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("test data"))
