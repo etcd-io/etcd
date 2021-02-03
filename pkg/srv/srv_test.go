@@ -16,6 +16,7 @@ package srv
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -24,11 +25,20 @@ import (
 	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
+func notFoundErr(service, proto, domain string) error {
+	name := fmt.Sprintf("_%s._%s.%s", service, proto, domain)
+	return &net.DNSError{Err: "no such host", Name: name, Server: "10.0.0.53:53", IsTimeout: false, IsTemporary: false, IsNotFound: true}
+}
+
 func TestSRVGetCluster(t *testing.T) {
 	defer func() {
 		lookupSRV = net.LookupSRV
 		resolveTCPAddr = net.ResolveTCPAddr
 	}()
+
+	hasErr := func(err error) bool {
+		return err != nil
+	}
 
 	name := "dnsClusterTest"
 	dns := map[string]string{
@@ -42,57 +52,72 @@ func TestSRVGetCluster(t *testing.T) {
 		{Target: "2.example.com.", Port: 2480},
 		{Target: "3.example.com.", Port: 2480},
 	}
+	srvNone := []*net.SRV{}
 
 	tests := []struct {
-		scheme  string
-		records []*net.SRV
-		urls    []string
-
-		expected string
+		service    string
+		scheme     string
+		withSSL    []*net.SRV
+		withoutSSL []*net.SRV
+		urls       []string
+		expected   string
+		werr       bool
 	}{
 		{
+			"etcd-server-ssl",
 			"https",
-			[]*net.SRV{},
+			srvNone,
+			srvNone,
 			nil,
-
 			"",
+			true,
 		},
 		{
+			"etcd-server-ssl",
 			"https",
 			srvAll,
+			srvNone,
 			nil,
-
 			"0=https://1.example.com:2480,1=https://2.example.com:2480,2=https://3.example.com:2480",
+			false,
 		},
 		{
+			"etcd-server",
 			"http",
+			srvNone,
 			srvAll,
 			nil,
-
 			"0=http://1.example.com:2480,1=http://2.example.com:2480,2=http://3.example.com:2480",
+			false,
 		},
 		{
+			"etcd-server-ssl",
 			"https",
 			srvAll,
+			srvNone,
 			[]string{"https://10.0.0.1:2480"},
-
 			"dnsClusterTest=https://1.example.com:2480,0=https://2.example.com:2480,1=https://3.example.com:2480",
+			false,
 		},
 		// matching local member with resolved addr and return unresolved hostnames
 		{
+			"etcd-server-ssl",
 			"https",
 			srvAll,
+			srvNone,
 			[]string{"https://10.0.0.1:2480"},
-
 			"dnsClusterTest=https://1.example.com:2480,0=https://2.example.com:2480,1=https://3.example.com:2480",
+			false,
 		},
 		// reject if apurls are TLS but SRV is only http
 		{
+			"etcd-server",
 			"http",
+			srvNone,
 			srvAll,
 			[]string{"https://10.0.0.1:2480"},
-
 			"0=http://2.example.com:2480,1=http://3.example.com:2480",
+			false,
 		},
 	}
 
@@ -109,12 +134,26 @@ func TestSRVGetCluster(t *testing.T) {
 
 	for i, tt := range tests {
 		lookupSRV = func(service string, proto string, domain string) (string, []*net.SRV, error) {
-			return "", tt.records, nil
+			if service == "etcd-server-ssl" {
+				if len(tt.withSSL) > 0 {
+					return "", tt.withSSL, nil
+				}
+				return "", nil, notFoundErr(service, proto, domain)
+			}
+			if service == "etcd-server" {
+				if len(tt.withoutSSL) > 0 {
+					return "", tt.withoutSSL, nil
+				}
+				return "", nil, notFoundErr(service, proto, domain)
+			}
+			return "", nil, errors.New("unknown service in mock")
 		}
+
 		urls := testutil.MustNewURLs(t, tt.urls)
-		str, err := GetCluster(tt.scheme, "etcd-server", name, "example.com", urls)
-		if err != nil {
-			t.Fatalf("%d: err: %#v", i, err)
+		str, err := GetCluster(tt.scheme, tt.service, name, "example.com", urls)
+
+		if hasErr(err) != tt.werr {
+			t.Fatalf("%d: err = %#v, want = %#v", i, err, tt.werr)
 		}
 		if strings.Join(str, ",") != tt.expected {
 			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.expected)
@@ -125,15 +164,31 @@ func TestSRVGetCluster(t *testing.T) {
 func TestSRVDiscover(t *testing.T) {
 	defer func() { lookupSRV = net.LookupSRV }()
 
+	hasErr := func(err error) bool {
+		return err != nil
+	}
+
 	tests := []struct {
 		withSSL    []*net.SRV
 		withoutSSL []*net.SRV
 		expected   []string
+		werr       bool
 	}{
 		{
 			[]*net.SRV{},
 			[]*net.SRV{},
 			[]string{},
+			true,
+		},
+		{
+			[]*net.SRV{},
+			[]*net.SRV{
+				{Target: "10.0.0.1", Port: 2480},
+				{Target: "10.0.0.2", Port: 2480},
+				{Target: "10.0.0.3", Port: 2480},
+			},
+			[]string{"http://10.0.0.1:2480", "http://10.0.0.2:2480", "http://10.0.0.3:2480"},
+			false,
 		},
 		{
 			[]*net.SRV{
@@ -143,6 +198,7 @@ func TestSRVDiscover(t *testing.T) {
 			},
 			[]*net.SRV{},
 			[]string{"https://10.0.0.1:2480", "https://10.0.0.2:2480", "https://10.0.0.3:2480"},
+			false,
 		},
 		{
 			[]*net.SRV{
@@ -154,6 +210,7 @@ func TestSRVDiscover(t *testing.T) {
 				{Target: "10.0.0.1", Port: 7001},
 			},
 			[]string{"https://10.0.0.1:2480", "https://10.0.0.2:2480", "https://10.0.0.3:2480", "http://10.0.0.1:7001"},
+			false,
 		},
 		{
 			[]*net.SRV{
@@ -165,6 +222,7 @@ func TestSRVDiscover(t *testing.T) {
 				{Target: "10.0.0.1", Port: 7001},
 			},
 			[]string{"https://10.0.0.1:2480", "https://10.0.0.2:2480", "https://10.0.0.3:2480", "http://10.0.0.1:7001"},
+			false,
 		},
 		{
 			[]*net.SRV{
@@ -174,29 +232,41 @@ func TestSRVDiscover(t *testing.T) {
 			},
 			[]*net.SRV{},
 			[]string{"https://a.example.com:2480", "https://b.example.com:2480", "https://c.example.com:2480"},
+			false,
 		},
 	}
 
 	for i, tt := range tests {
 		lookupSRV = func(service string, proto string, domain string) (string, []*net.SRV, error) {
 			if service == "etcd-client-ssl" {
-				return "", tt.withSSL, nil
+				if len(tt.withSSL) > 0 {
+					return "", tt.withSSL, nil
+				}
+				return "", nil, notFoundErr(service, proto, domain)
 			}
 			if service == "etcd-client" {
-				return "", tt.withoutSSL, nil
+				if len(tt.withoutSSL) > 0 {
+					return "", tt.withoutSSL, nil
+				}
+				return "", nil, notFoundErr(service, proto, domain)
 			}
 			return "", nil, errors.New("unknown service in mock")
 		}
 
 		srvs, err := GetClient("etcd-client", "example.com", "")
-		if err != nil {
-			t.Fatalf("%d: err: %#v", i, err)
-		}
 
-		if !reflect.DeepEqual(srvs.Endpoints, tt.expected) {
-			t.Errorf("#%d: endpoints = %v, want %v", i, srvs.Endpoints, tt.expected)
+		if hasErr(err) != tt.werr {
+			t.Fatalf("%d: err = %#v, want = %#v", i, err, tt.werr)
 		}
-
+		if srvs == nil {
+			if len(tt.expected) > 0 {
+				t.Errorf("#%d: srvs = nil, want non-nil", i)
+			}
+		} else {
+			if !reflect.DeepEqual(srvs.Endpoints, tt.expected) {
+				t.Errorf("#%d: endpoints = %v, want = %v", i, srvs.Endpoints, tt.expected)
+			}
+		}
 	}
 }
 

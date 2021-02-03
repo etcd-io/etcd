@@ -32,6 +32,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.0-pre
 	go.etcd.io/etcd/pkg/v3 v3.5.0-pre
 	go.etcd.io/etcd/raft/v3 v3.5.0-pre
+	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect

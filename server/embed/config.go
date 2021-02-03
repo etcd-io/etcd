@@ -37,6 +37,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 
 	bolt "go.etcd.io/bbolt"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
@@ -91,6 +92,9 @@ var (
 
 	defaultHostname   string
 	defaultHostStatus error
+
+	// indirection for testing
+	getCluster = srv.GetCluster
 )
 
 var (
@@ -630,6 +634,8 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 		lg := cfg.logger
 		if cerr != nil {
 			lg.Warn("failed to resolve during SRV discovery", zap.Error(cerr))
+		}
+		if len(clusterStrs) == 0 {
 			return nil, "", cerr
 		}
 		for _, s := range clusterStrs {
@@ -656,6 +662,10 @@ func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, tok
 }
 
 // GetDNSClusterNames uses DNS SRV records to get a list of initial nodes for cluster bootstrapping.
+// This function will return a list of one or more nodes, as well as any errors encountered while
+// performing service discovery.
+// Note: Because this checks multiple sets of SRV records, discovery should only be considered to have
+// failed if the returned node list is empty.
 func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 	var (
 		clusterStrs       []string
@@ -670,7 +680,7 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 
 	// Use both etcd-server-ssl and etcd-server for discovery.
 	// Combine the results if both are available.
-	clusterStrs, cerr = srv.GetCluster("https", "etcd-server-ssl"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
+	clusterStrs, cerr = getCluster("https", "etcd-server-ssl"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
 	if cerr != nil {
 		clusterStrs = make([]string, 0)
 	}
@@ -685,8 +695,8 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 		zap.Error(cerr),
 	)
 
-	defaultHTTPClusterStrs, httpCerr := srv.GetCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
-	if httpCerr != nil {
+	defaultHTTPClusterStrs, httpCerr := getCluster("http", "etcd-server"+serviceNameSuffix, cfg.Name, cfg.DNSCluster, cfg.APUrls)
+	if httpCerr == nil {
 		clusterStrs = append(clusterStrs, defaultHTTPClusterStrs...)
 	}
 	lg.Info(
@@ -700,7 +710,7 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 		zap.Error(httpCerr),
 	)
 
-	return clusterStrs, cerr
+	return clusterStrs, multierr.Combine(cerr, httpCerr)
 }
 
 func (cfg Config) InitialClusterFromName(name string) (ret string) {
