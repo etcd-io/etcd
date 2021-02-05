@@ -340,6 +340,15 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 		return
 	}
 
+	// wait until all committed entries are applied
+	// commitC is synchronous channel, so consumption of the message signals
+	// full application of previous messages
+	select {
+	case rc.commitC <- nil:
+	case <-rc.stopc:
+		return
+	}
+
 	log.Printf("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
 	data, err := rc.getSnapshot()
 	if err != nil {
