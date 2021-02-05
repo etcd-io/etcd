@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	etcdnaming "go.etcd.io/etcd/client/v3/naming"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
+	"go.etcd.io/etcd/client/v3/naming/resolver"
 	grpctest "go.etcd.io/etcd/pkg/v3/grpc_testing"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
@@ -65,10 +65,12 @@ func TestEtcdGrpcResolver(t *testing.T) {
 		t.Fatal("failed to add foo", err)
 	}
 
-	r := &etcdnaming.GRPCResolver{Client: clus.Client(1)}
-	b := grpc.RoundRobin(r)
+	b, err := resolver.NewBuilder(clus.Client(1))
+	if err != nil {
+		t.Fatal("failed to new resolver builder", err)
+	}
 
-	conn, err := grpc.Dial("foo", grpc.WithInsecure(), grpc.WithBalancer(b))
+	conn, err := grpc.Dial("etcd:///foo", grpc.WithInsecure(), grpc.WithResolvers(b))
 	if err != nil {
 		t.Fatal("failed to connect to foo", err)
 	}
@@ -108,7 +110,6 @@ func TestEtcdGrpcResolver(t *testing.T) {
 			}
 			t.Fatalf("unexpected response from foo (e2): %s", resp.GetPayload().GetBody())
 		}
-
 		break
 	}
 }
