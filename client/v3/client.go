@@ -95,7 +95,8 @@ type Client struct {
 
 	callOpts []grpc.CallOption
 
-	lg *zap.Logger
+	lgMu *sync.RWMutex
+	lg   *zap.Logger
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -112,7 +113,7 @@ func New(cfg Config) (*Client, error) {
 // service interface implementations and do not need connection management.
 func NewCtxClient(ctx context.Context) *Client {
 	cctx, cancel := context.WithCancel(ctx)
-	return &Client{ctx: cctx, cancel: cancel, lg: zap.NewNop()}
+	return &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex), lg: zap.NewNop()}
 }
 
 // NewFromURL creates a new etcdv3 client from a URL.
@@ -127,8 +128,19 @@ func NewFromURLs(urls []string) (*Client, error) {
 
 // WithLogger sets a logger
 func (c *Client) WithLogger(lg *zap.Logger) *Client {
+	c.lgMu.Lock()
 	c.lg = lg
+	c.lgMu.Unlock()
 	return c
+}
+
+// GetLogger gets the logger.
+// NOTE: This method is for internal use of etcd-client library and should not be used as general-purpose logger.
+func (c *Client) GetLogger() *zap.Logger {
+	c.lgMu.RLock()
+	l := c.lg
+	c.lgMu.RUnlock()
+	return l
 }
 
 // Close shuts down the client's etcd connections.
@@ -382,6 +394,7 @@ func newClient(cfg *Config) (*Client, error) {
 		cancel:   cancel,
 		mu:       new(sync.RWMutex),
 		callOpts: defaultCallOpts,
+		lgMu:     new(sync.RWMutex),
 	}
 
 	lcfg := logutil.DefaultZapLoggerConfig
