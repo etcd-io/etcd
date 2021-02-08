@@ -85,10 +85,6 @@ const (
 	HealthInterval = 5 * time.Second
 
 	purgeFileInterval = 30 * time.Second
-	// monitorVersionInterval should be smaller than the timeout
-	// on the connection. Or we will not be able to reuse the connection
-	// (since it will timeout).
-	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
 	// max number of in-flight snapshot messages etcdserver allows to have
 	// This number is more than enough for most clusters with 5 machines.
@@ -107,6 +103,11 @@ const (
 )
 
 var (
+	// monitorVersionInterval should be smaller than the timeout
+	// on the connection. Or we will not be able to reuse the connection
+	// (since it will timeout).
+	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
+
 	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
 	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
 )
