@@ -31,13 +31,9 @@ matrix:
   fast_finish: true
   allow_failures:
     - go: 1.15.7
-      env: TARGET=linux-amd64-grpcproxy
-    - go: 1.15.7
       env: TARGET=linux-amd64-coverage
     - go: tip
       env: TARGET=linux-amd64-fmt-unit-go-tip-2-cpu
-    - go: 1.15.7
-      env: TARGET=linux-386-unit-1-cpu
   exclude:
     - go: tip
       env: TARGET=linux-amd64-fmt
