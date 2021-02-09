@@ -122,7 +122,7 @@ func checkHealth(srv etcdserver.ServerV2) Health {
 
 	if h.Health == "true" {
 		healthSuccess.Inc()
-		plog.Infof("/health OK (status code %d)", http.StatusOK)
+		plog.Debugf("/health OK (status code %d)", http.StatusOK)
 	} else {
 		healthFailed.Inc()
 	}
