@@ -50,7 +50,6 @@ type raftNode struct {
 	waldir      string   // path to WAL directory
 	snapdir     string   // path to snapshot directory
 	getSnapshot func() ([]byte, error)
-	lastIndex   uint64 // index of log at start
 
 	confState     raftpb.ConfState
 	snapshotIndex uint64
@@ -175,15 +174,6 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 
 		// after commit, update appliedIndex
 		rc.appliedIndex = ents[i].Index
-
-		// special nil commit to signal replay has finished
-		if ents[i].Index == rc.lastIndex {
-			select {
-			case rc.commitC <- nil:
-			case <-rc.stopc:
-				return false
-			}
-		}
 	}
 	return true
 }
@@ -240,12 +230,7 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 
 	// append to storage so raft starts at the right place in log
 	rc.raftStorage.Append(ents)
-	// send nil once lastIndex is published so client knows commit channel is current
-	if len(ents) > 0 {
-		rc.lastIndex = ents[len(ents)-1].Index
-	} else {
-		rc.commitC <- nil
-	}
+
 	return w
 }
 
@@ -264,10 +249,12 @@ func (rc *raftNode) startRaft() {
 		}
 	}
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
-	rc.snapshotterReady <- rc.snapshotter
 
 	oldwal := wal.Exist(rc.waldir)
 	rc.wal = rc.replayWAL()
+
+	// signal replay has finished
+	rc.snapshotterReady <- rc.snapshotter
 
 	rpeers := make([]raft.Peer, len(rc.peers))
 	for i := range rpeers {
@@ -350,6 +337,15 @@ var snapshotCatchUpEntriesN uint64 = 10000
 
 func (rc *raftNode) maybeTriggerSnapshot() {
 	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
+		return
+	}
+
+	// wait until all committed entries are applied
+	// commitC is synchronous channel, so consumption of the message signals
+	// full application of previous messages
+	select {
+	case rc.commitC <- nil:
+	case <-rc.stopc:
 		return
 	}
 

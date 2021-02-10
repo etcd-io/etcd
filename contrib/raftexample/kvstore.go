@@ -21,6 +21,7 @@ import (
 	"log"
 	"sync"
 
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 )
 
@@ -39,8 +40,16 @@ type kv struct {
 
 func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
-	// replay log into key-value map
-	s.readCommits(commitC, errorC)
+	snapshot, err := s.loadSnapshot()
+	if err != nil {
+		log.Panic(err)
+	}
+	if snapshot != nil {
+		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+		if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+			log.Panic(err)
+		}
+	}
 	// read commits from raft into kvStore map until error
 	go s.readCommits(commitC, errorC)
 	return s
@@ -64,18 +73,16 @@ func (s *kvstore) Propose(k string, v string) {
 func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 	for data := range commitC {
 		if data == nil {
-			// done replaying log; new data incoming
-			// OR signaled to load snapshot
-			snapshot, err := s.snapshotter.Load()
-			if err == snap.ErrNoSnapshot {
-				return
-			}
+			// signaled to load snapshot
+			snapshot, err := s.loadSnapshot()
 			if err != nil {
 				log.Panic(err)
 			}
-			log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-			if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
-				log.Panic(err)
+			if snapshot != nil {
+				log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+				if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+					log.Panic(err)
+				}
 			}
 			continue
 		}
@@ -98,6 +105,17 @@ func (s *kvstore) getSnapshot() ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return json.Marshal(s.kvStore)
+}
+
+func (s *kvstore) loadSnapshot() (*raftpb.Snapshot, error) {
+	snapshot, err := s.snapshotter.Load()
+	if err == snap.ErrNoSnapshot {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return snapshot, nil
 }
 
 func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
