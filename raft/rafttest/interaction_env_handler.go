@@ -160,7 +160,7 @@ func firstAsNodeIdx(t *testing.T, d datadriven.TestData) int {
 	return n - 1
 }
 
-func ints(t *testing.T, d datadriven.TestData) []int {
+func nodeIdxs(t *testing.T, d datadriven.TestData) []int {
 	var ints []int
 	for i := 0; i < len(d.CmdArgs); i++ {
 		if len(d.CmdArgs[i].Vals) != 0 {
@@ -170,7 +170,7 @@ func ints(t *testing.T, d datadriven.TestData) []int {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ints = append(ints, n)
+		ints = append(ints, n-1)
 	}
 	return ints
 }
