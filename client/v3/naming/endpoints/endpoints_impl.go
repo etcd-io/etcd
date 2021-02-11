@@ -43,7 +43,7 @@ func (m *endpointManager) Update(ctx context.Context, updates []*UpdateWithOpts)
 	ops := make([]clientv3.Op, 0, len(updates))
 	for _, update := range updates {
 		if !strings.HasPrefix(update.Key, m.target+"/") {
-			return status.Errorf(codes.InvalidArgument, "endpoints: endpoint key should be prefixed with %s/", m.target)
+			return status.Errorf(codes.InvalidArgument, "endpoints: endpoint key should be prefixed with '%s/' got: '%s'", m.target, update.Key)
 		}
 
 		switch update.Op {
