@@ -1,0 +1,135 @@
+rule_files:
+  - mixin.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="etcd",instance="10.10.10.0"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.1"}'
+        values: '1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.2"}'
+        values: '1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: etcdInsufficientMembers
+      - eval_time: 5m
+        alertname: etcdInsufficientMembers
+      - eval_time: 12m
+        alertname: etcdMembersDown
+      - eval_time: 14m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              description: 'etcd cluster "etcd": members are down (3).'
+              summary: 'etcd cluster members are down.'
+      - eval_time: 7m
+        alertname: etcdInsufficientMembers
+      - eval_time: 11m
+        alertname: etcdInsufficientMembers
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              description: 'etcd cluster "etcd": insufficient members (1).'
+              summary: 'etcd cluster has insufficient number of members.'
+      - eval_time: 15m
+        alertname: etcdInsufficientMembers
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              description: 'etcd cluster "etcd": insufficient members (0).'
+              summary: 'etcd cluster has insufficient number of members.'
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="etcd",instance="10.10.10.0"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.1"}'
+        values: '1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.2"}'
+        values: '1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              description: 'etcd cluster "etcd": members are down (3).'
+              summary: 'etcd cluster members are down.'
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="etcd",instance="10.10.10.0"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0'
+      - series: 'up{job="etcd",instance="10.10.10.1"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0'
+      - series: 'etcd_network_peer_sent_failures_total{To="member-1",job="etcd",endpoint="test"}'
+        values: '0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18'
+    alert_rule_test:
+      - eval_time: 13m
+        alertname: etcdMembersDown
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: critical
+            exp_annotations:
+              description: 'etcd cluster "etcd": members are down (1).'
+              summary: 'etcd cluster members are down.'
+  - interval: 1m
+    input_series:
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}'
+        values: '0 0 2 0 0 1 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}'
+        values: '0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}'
+        values: '0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: etcdHighNumberOfLeaderChanges
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: warning
+            exp_annotations:
+              description: 'etcd cluster "etcd": 4 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
+              summary: 'etcd cluster has high number of leader changes.'
+  - interval: 1m
+    input_series:
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}'
+        values: '0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}'
+        values: '0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}'
+        values: '0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: etcdHighNumberOfLeaderChanges
+        exp_alerts:
+  - interval: 1m
+    input_series:
+      - series: '((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100){job="etcd",instance="10.10.10.0"}'
+        values: '0 10 20 0 0 10 0 0 30 0 0 0 0 0 0 0'
+      - series: '((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100){job="etcd",instance="10.10.10.1"}'
+        values: '0 0 10 0 20 0 0 0 0 0 0 0 0 0 0 0'
+      - series: '((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100){job="etcd",instance="10.10.10.2"}'
+        values: '0 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: etcdExcessiveDatabaseGrowth
+        exp_alerts:
+          - exp_labels:
+              job: etcd
+              severity: warning
+            exp_annotations:
+              message: 'etcd cluster "etcd": Observed surge in etcd writes leading to 50% increase in database size over the past four hours, please check as it might be disruptive.'
