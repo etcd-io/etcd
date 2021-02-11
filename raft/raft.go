@@ -1106,32 +1106,127 @@ func stepLeader(r *raft, m pb.Message) error {
 		pr.RecentActive = true
 
 		if m.Reject {
-			r.logger.Debugf("%x received MsgAppResp(MsgApp was rejected, hint: %d) from %x for index %d, log term %d",
-				r.id, m.RejectHint, m.From, m.Index, m.LogTerm)
-			// The reject hint is the suggested next base entry for appending,
-			// i.e. hint+1 would be sent as the next append. 'hint' is usually the
-			// last index of the follower, or the base index (m.Index) from the
-			// append being responsed to.
-			hint := m.RejectHint
+			// RejectHint is the suggested next base entry for appending (i.e.
+			// we try to append entry RejectHint+1 next), and LogTerm is the
+			// term that the follower has at index RejectHint. Older versions
+			// of this library did not populate LogTerm for rejections and it
+			// is zero for followers with an empty log.
+			//
+			// Under normal circumstances, the leader's log is longer than the
+			// follower's and the follower's log is a prefix of the leader's
+			// (i.e. there is no divergent uncommitted suffix of the log on the
+			// follower). In that case, the first probe reveals where the
+			// follower's log ends (RejectHint=follower's last index) and the
+			// subsequent probe succeeds.
+			//
+			// However, when networks are partitioned or systems overloaded,
+			// large divergent log tails can occur. The naive attempt, probing
+			// entry by entry in decreasing order, will be the product of the
+			// length of the diverging tails and the network round-trip latency,
+			// which can easily result in hours of time spent probing and can
+			// even cause outright outages. The probes are thus optimized as
+			// described below.
+			r.logger.Debugf("%x received MsgAppResp(rejected, hint: (index %d, term %d)) from %x for index %d",
+				r.id, m.RejectHint, m.LogTerm, m.From, m.Index)
+			nextProbeIdx := m.RejectHint
 			if m.LogTerm > 0 {
-				// LogTerm is the term that the follower has at index RejectHint. If the
-				// follower has an uncommitted log tail, we would end up probing one by
-				// one until we hit the common prefix.
+				// If the follower has an uncommitted log tail, we would end up
+				// probing one by one until we hit the common prefix.
 				//
 				// For example, if the leader has:
-				//   [...] (idx=1,term=2) (idx=2,term=5)[...](idx=9,term=5)
-				// and the follower has:
-				//   [...] (idx=1,term=2) (idx=2,term=4)[...](idx=6,term=4)
 				//
-				// Then, after sending (idx=9,term=5) we would receive a RejectHint of 6
-				// and LogTerm of 4. Without the code below, we would try an append at
-				// 6, 5, 4 ... until hitting idx=1 which succeeds (as 1 matches).
-				// Instead, the code below skips all indexes at terms >4, and reduces
-				// 'hint' to 1 in one term (meaning we'll successfully append 2 next
-				// time).
-				hint = r.raftLog.findConflictByTerm(hint, m.LogTerm)
+				//   idx        1 2 3 4 5 6 7 8 9
+				//              -----------------
+				//   term (L)   1 3 3 3 5 5 5 5 5
+				//   term (F)   1 1 1 1 2 2
+				//
+				// Then, after sending an append anchored at (idx=9,term=5) we
+				// would receive a RejectHint of 6 and LogTerm of 2. Without the
+				// code below, we would try an append at index 6, which would
+				// fail again.
+				//
+				// However, looking only at what the leader knows about its own
+				// log and the rejection hint, it is clear that a probe at index
+				// 6, 5, 4, 3, and 2 must fail as well:
+				//
+				// For all of these indexes, the leader's log term is larger than
+				// the rejection's log term. If a probe at one of these indexes
+				// succeeded, its log term at that index would match the leader's,
+				// i.e. 3 or 5 in this example. But the follower already told the
+				// leader that it is still at term 2 at index 9, and since the
+				// log term only ever goes up (within a log), this is a contradiction.
+				//
+				// At index 1, however, the leader can draw no such conclusion,
+				// as its term 1 is not larger than the term 2 from the
+				// follower's rejection. We thus probe at 1, which will succeed
+				// in this example. In general, with this approach we probe at
+				// most once per term found in the leader's log.
+				//
+				// There is a similar mechanism on the follower (implemented in
+				// handleAppendEntries via a call to findConflictByTerm) that is
+				// useful if the follower has a large divergent uncommitted log
+				// tail[1], as in this example:
+				//
+				//   idx        1 2 3 4 5 6 7 8 9
+				//              -----------------
+				//   term (L)   1 3 3 3 3 3 3 3 7
+				//   term (F)   1 3 3 4 4 5 5 5 6
+				//
+				// Naively, the leader would probe at idx=9, receive a rejection
+				// revealing the log term of 6 at the follower. Since the leader's
+				// term at the previous index is already smaller than 6, the leader-
+				// side optimization discussed above is ineffective. The leader thus
+				// probes at index 8 and, naively, receives a rejection for the same
+				// index and log term 5. Again, the leader optimization does not improve
+				// over linear probing as term 5 is above the leader's term 3 for that
+				// and many preceding indexes; the leader would have to probe linearly
+				// until it would finally hit index 3, where the probe would succeed.
+				//
+				// Instead, we apply a similar optimization on the follower. When the
+				// follower receives the probe at index 8 (log term 3), it concludes
+				// that all of the leader's log preceding that index has log terms of
+				// 3 or below. The largest index in the follower's log with a log term
+				// of 3 or below is index 3. The follower will thus return a rejection
+				// for index=3, log term=3 instead. The leader's next probe will then
+				// succeed at that index.
+				//
+				// [1]: more precisely, if the log terms in the large uncommitted
+				// tail on the follower are larger than the leader's. At first,
+				// it may seem unintuitive that a follower could even have such
+				// a large tail, but it can happen:
+				//
+				// 1. Leader appends (but does not commit) entries 2 and 3, crashes.
+				//   idx        1 2 3 4 5 6 7 8 9
+				//              -----------------
+				//   term (L)   1 2 2     [crashes]
+				//   term (F)   1
+				//   term (F)   1
+				//
+				// 2. a follower becomes leader and appends entries at term 3.
+				//              -----------------
+				//   term (x)   1 2 2     [down]
+				//   term (F)   1 3 3 3 3
+				//   term (F)   1
+				//
+				// 3. term 3 leader goes down, term 2 leader returns as term 4
+				//    leader. It commits the log & entries at term 4.
+				//
+				//              -----------------
+				//   term (L)   1 2 2 2
+				//   term (x)   1 3 3 3 3 [down]
+				//   term (F)   1
+				//              -----------------
+				//   term (L)   1 2 2 2 4 4 4
+				//   term (F)   1 3 3 3 3 [gets probed]
+				//   term (F)   1 2 2 2 4 4 4
+				//
+				// 4. the leader will now probe the returning follower at index
+				//    7, the rejection points it at the end of the follower's log
+				//    which is at a higher log term than the actually committed
+				//    log.
+				nextProbeIdx = r.raftLog.findConflictByTerm(m.RejectHint, m.LogTerm)
 			}
-			if pr.MaybeDecrTo(m.Index, hint) {
+			if pr.MaybeDecrTo(m.Index, nextProbeIdx) {
 				r.logger.Debugf("%x decreased progress of %x to [%s]", r.id, m.From, pr)
 				if pr.State == tracker.StateReplicate {
 					pr.BecomeProbe()
@@ -1392,15 +1487,8 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 		// skip all indexes in the follower's uncommitted tail with terms
 		// greater than the MsgApp's LogTerm.
 		//
-		// For example, if the leader has:
-		//   [...] (idx=1,term=2)[...](idx=5,term=2)
-		// and the follower has:
-		//   [...] (idx=1,term=2) (idx=2,term=4)[...](idx=8,term=4)
-		//
-		// Then, after receiving a MsgApp (idx=5,term=2), the follower would
-		// send a rejected MsgAppRsp with a RejectHint of 1 and a LogTerm of 2.
-		//
-		// There is similar logic on the leader.
+		// See the other caller for findConflictByTerm (in stepLeader) for a much
+		// more detailed explanation of this mechanism.
 		hintIndex := min(m.Index, r.raftLog.lastIndex())
 		hintIndex = r.raftLog.findConflictByTerm(hintIndex, m.LogTerm)
 		hintTerm, err := r.raftLog.term(hintIndex)

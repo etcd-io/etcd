@@ -4481,70 +4481,72 @@ func TestFastLogRejection(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		s1 := NewMemoryStorage()
-		s1.snapshot.Metadata.ConfState = pb.ConfState{Voters: []uint64{1, 2, 3}}
-		s1.Append(test.leaderLog)
-		s2 := NewMemoryStorage()
-		s2.snapshot.Metadata.ConfState = pb.ConfState{Voters: []uint64{1, 2, 3}}
-		s2.Append(test.followerLog)
+		t.Run("", func(t *testing.T) {
+			s1 := NewMemoryStorage()
+			s1.snapshot.Metadata.ConfState = pb.ConfState{Voters: []uint64{1, 2, 3}}
+			s1.Append(test.leaderLog)
+			s2 := NewMemoryStorage()
+			s2.snapshot.Metadata.ConfState = pb.ConfState{Voters: []uint64{1, 2, 3}}
+			s2.Append(test.followerLog)
 
-		n1 := newTestRaft(1, 10, 1, s1)
-		n2 := newTestRaft(2, 10, 1, s2)
+			n1 := newTestRaft(1, 10, 1, s1)
+			n2 := newTestRaft(2, 10, 1, s2)
 
-		n1.becomeCandidate()
-		n1.becomeLeader()
+			n1.becomeCandidate()
+			n1.becomeLeader()
 
-		n2.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHeartbeat})
+			n2.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHeartbeat})
 
-		msgs := n2.readMessages()
-		if len(msgs) != 1 {
-			t.Errorf("can't read 1 message from peer 2")
-		}
-		if msgs[0].Type != pb.MsgHeartbeatResp {
-			t.Errorf("can't read heartbeat response from peer 2")
-		}
-		if n1.Step(msgs[0]) != nil {
-			t.Errorf("peer 1 step heartbeat response fail")
-		}
+			msgs := n2.readMessages()
+			if len(msgs) != 1 {
+				t.Errorf("can't read 1 message from peer 2")
+			}
+			if msgs[0].Type != pb.MsgHeartbeatResp {
+				t.Errorf("can't read heartbeat response from peer 2")
+			}
+			if n1.Step(msgs[0]) != nil {
+				t.Errorf("peer 1 step heartbeat response fail")
+			}
 
-		msgs = n1.readMessages()
-		if len(msgs) != 1 {
-			t.Errorf("can't read 1 message from peer 1")
-		}
-		if msgs[0].Type != pb.MsgApp {
-			t.Errorf("can't read append from peer 1")
-		}
+			msgs = n1.readMessages()
+			if len(msgs) != 1 {
+				t.Errorf("can't read 1 message from peer 1")
+			}
+			if msgs[0].Type != pb.MsgApp {
+				t.Errorf("can't read append from peer 1")
+			}
 
-		if n2.Step(msgs[0]) != nil {
-			t.Errorf("peer 2 step append fail")
-		}
-		msgs = n2.readMessages()
-		if len(msgs) != 1 {
-			t.Errorf("can't read 1 message from peer 2")
-		}
-		if msgs[0].Type != pb.MsgAppResp {
-			t.Errorf("can't read append response from peer 2")
-		}
-		if !msgs[0].Reject {
-			t.Errorf("expected rejected append response from peer 2")
-		}
-		if msgs[0].LogTerm != test.rejectHintTerm {
-			t.Fatalf("#%d expected hint log term = %d, but got %d", i, test.rejectHintTerm, msgs[0].LogTerm)
-		}
-		if msgs[0].RejectHint != test.rejectHintIndex {
-			t.Fatalf("#%d expected hint index = %d, but got %d", i, test.rejectHintIndex, msgs[0].RejectHint)
-		}
+			if n2.Step(msgs[0]) != nil {
+				t.Errorf("peer 2 step append fail")
+			}
+			msgs = n2.readMessages()
+			if len(msgs) != 1 {
+				t.Errorf("can't read 1 message from peer 2")
+			}
+			if msgs[0].Type != pb.MsgAppResp {
+				t.Errorf("can't read append response from peer 2")
+			}
+			if !msgs[0].Reject {
+				t.Errorf("expected rejected append response from peer 2")
+			}
+			if msgs[0].LogTerm != test.rejectHintTerm {
+				t.Fatalf("#%d expected hint log term = %d, but got %d", i, test.rejectHintTerm, msgs[0].LogTerm)
+			}
+			if msgs[0].RejectHint != test.rejectHintIndex {
+				t.Fatalf("#%d expected hint index = %d, but got %d", i, test.rejectHintIndex, msgs[0].RejectHint)
+			}
 
-		if n1.Step(msgs[0]) != nil {
-			t.Errorf("peer 1 step append fail")
-		}
-		msgs = n1.readMessages()
-		if msgs[0].LogTerm != test.nextAppendTerm {
-			t.Fatalf("#%d expected log term = %d, but got %d", i, test.nextAppendTerm, msgs[0].LogTerm)
-		}
-		if msgs[0].Index != test.nextAppendIndex {
-			t.Fatalf("#%d expected index = %d, but got %d", i, test.nextAppendIndex, msgs[0].Index)
-		}
+			if n1.Step(msgs[0]) != nil {
+				t.Errorf("peer 1 step append fail")
+			}
+			msgs = n1.readMessages()
+			if msgs[0].LogTerm != test.nextAppendTerm {
+				t.Fatalf("#%d expected log term = %d, but got %d", i, test.nextAppendTerm, msgs[0].LogTerm)
+			}
+			if msgs[0].Index != test.nextAppendIndex {
+				t.Fatalf("#%d expected index = %d, but got %d", i, test.nextAppendIndex, msgs[0].Index)
+			}
+		})
 	}
 }
 

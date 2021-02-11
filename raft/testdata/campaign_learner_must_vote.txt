@@ -111,7 +111,7 @@ stabilize 2 3
   3->2 MsgAppResp Term:2 Log:1/4 Rejected (Hint: 3)
 > 2 receiving messages
   3->2 MsgAppResp Term:2 Log:1/4 Rejected (Hint: 3)
-  DEBUG 2 received MsgAppResp(MsgApp was rejected, hint: 3) from 3 for index 4, log term 1
+  DEBUG 2 received MsgAppResp(rejected, hint: (index 3, term 1)) from 3 for index 4
   DEBUG 2 decreased progress of 3 to [StateProbe match=0 next=4]
 > 2 handling Ready
   Ready MustSync=false:
