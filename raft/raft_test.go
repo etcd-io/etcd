@@ -4265,6 +4265,291 @@ func TestConfChangeV2CheckBeforeCampaign(t *testing.T) {
 	testConfChangeCheckBeforeCampaign(t, true)
 }
 
+func TestFastLogRejection(t *testing.T) {
+	tests := []struct {
+		leaderLog       []pb.Entry // Logs on the leader
+		followerLog     []pb.Entry // Logs on the follower
+		rejectHintTerm  uint64     // Expected term included in rejected MsgAppResp.
+		rejectHintIndex uint64     // Expected index included in rejected MsgAppResp.
+		nextAppendTerm  uint64     // Expected term when leader appends after rejected.
+		nextAppendIndex uint64     // Expected index when leader appends after rejected.
+	}{
+		// This case tests that leader can find the conflict index quickly.
+		// Firstly leader appends (type=MsgApp,index=7,logTerm=4, entries=...);
+		// After rejected leader appends (type=MsgApp,index=3,logTerm=2).
+		{
+			leaderLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 2, Index: 2},
+				{Term: 2, Index: 3},
+				{Term: 4, Index: 4},
+				{Term: 4, Index: 5},
+				{Term: 4, Index: 6},
+				{Term: 4, Index: 7},
+			},
+			followerLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 2, Index: 2},
+				{Term: 2, Index: 3},
+				{Term: 3, Index: 4},
+				{Term: 3, Index: 5},
+				{Term: 3, Index: 6},
+				{Term: 3, Index: 7},
+				{Term: 3, Index: 8},
+				{Term: 3, Index: 9},
+				{Term: 3, Index: 10},
+				{Term: 3, Index: 11},
+			},
+			rejectHintTerm:  3,
+			rejectHintIndex: 7,
+			nextAppendTerm:  2,
+			nextAppendIndex: 3,
+		},
+		// This case tests that leader can find the conflict index quickly.
+		// Firstly leader appends (type=MsgApp,index=8,logTerm=5, entries=...);
+		// After rejected leader appends (type=MsgApp,index=4,logTerm=3).
+		{
+			leaderLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 2, Index: 2},
+				{Term: 2, Index: 3},
+				{Term: 3, Index: 4},
+				{Term: 4, Index: 5},
+				{Term: 4, Index: 6},
+				{Term: 4, Index: 7},
+				{Term: 5, Index: 8},
+			},
+			followerLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 2, Index: 2},
+				{Term: 2, Index: 3},
+				{Term: 3, Index: 4},
+				{Term: 3, Index: 5},
+				{Term: 3, Index: 6},
+				{Term: 3, Index: 7},
+				{Term: 3, Index: 8},
+				{Term: 3, Index: 9},
+				{Term: 3, Index: 10},
+				{Term: 3, Index: 11},
+			},
+			rejectHintTerm:  3,
+			rejectHintIndex: 8,
+			nextAppendTerm:  3,
+			nextAppendIndex: 4,
+		},
+		// This case tests that follower can find the conflict index quickly.
+		// Firstly leader appends (type=MsgApp,index=4,logTerm=1, entries=...);
+		// After rejected leader appends (type=MsgApp,index=1,logTerm=1).
+		{
+			leaderLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 1, Index: 2},
+				{Term: 1, Index: 3},
+				{Term: 1, Index: 4},
+			},
+			followerLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 2, Index: 2},
+				{Term: 2, Index: 3},
+				{Term: 4, Index: 4},
+			},
+			rejectHintTerm:  1,
+			rejectHintIndex: 1,
+			nextAppendTerm:  1,
+			nextAppendIndex: 1,
+		},
+		// This case is similar to the previous case. However, this time, the
+		// leader has a longer uncommitted log tail than the follower.
+		// Firstly leader appends (type=MsgApp,index=6,logTerm=1, entries=...);
+		// After rejected leader appends (type=MsgApp,index=1,logTerm=1).
+		{
+			leaderLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 1, Index: 2},
+				{Term: 1, Index: 3},
+				{Term: 1, Index: 4},
+				{Term: 1, Index: 5},
+				{Term: 1, Index: 6},
+			},
+			followerLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 2, Index: 2},
+				{Term: 2, Index: 3},
+				{Term: 4, Index: 4},
+			},
+			rejectHintTerm:  1,
+			rejectHintIndex: 1,
+			nextAppendTerm:  1,
+			nextAppendIndex: 1,
+		},
+		// This case is similar to the previous case. However, this time, the
+		// follower has a longer uncommitted log tail than the leader.
+		// Firstly leader appends (type=MsgApp,index=4,logTerm=1, entries=...);
+		// After rejected leader appends (type=MsgApp,index=1,logTerm=1).
+		{
+			leaderLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 1, Index: 2},
+				{Term: 1, Index: 3},
+				{Term: 1, Index: 4},
+			},
+			followerLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 2, Index: 2},
+				{Term: 2, Index: 3},
+				{Term: 4, Index: 4},
+				{Term: 4, Index: 5},
+				{Term: 4, Index: 6},
+			},
+			rejectHintTerm:  1,
+			rejectHintIndex: 1,
+			nextAppendTerm:  1,
+			nextAppendIndex: 1,
+		},
+		// An normal case that there are no log conflicts.
+		// Firstly leader appends (type=MsgApp,index=5,logTerm=5, entries=...);
+		// After rejected leader appends (type=MsgApp,index=4,logTerm=4).
+		{
+			leaderLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 1, Index: 2},
+				{Term: 1, Index: 3},
+				{Term: 4, Index: 4},
+				{Term: 5, Index: 5},
+			},
+			followerLog: []pb.Entry{
+				{Term: 1, Index: 1},
+				{Term: 1, Index: 2},
+				{Term: 1, Index: 3},
+				{Term: 4, Index: 4},
+			},
+			rejectHintTerm:  4,
+			rejectHintIndex: 4,
+			nextAppendTerm:  4,
+			nextAppendIndex: 4,
+		},
+		// Test case from example comment in stepLeader (on leader).
+		{
+			leaderLog: []pb.Entry{
+				{Term: 2, Index: 1},
+				{Term: 5, Index: 2},
+				{Term: 5, Index: 3},
+				{Term: 5, Index: 4},
+				{Term: 5, Index: 5},
+				{Term: 5, Index: 6},
+				{Term: 5, Index: 7},
+				{Term: 5, Index: 8},
+				{Term: 5, Index: 9},
+			},
+			followerLog: []pb.Entry{
+				{Term: 2, Index: 1},
+				{Term: 4, Index: 2},
+				{Term: 4, Index: 3},
+				{Term: 4, Index: 4},
+				{Term: 4, Index: 5},
+				{Term: 4, Index: 6},
+			},
+			rejectHintTerm:  4,
+			rejectHintIndex: 6,
+			nextAppendTerm:  2,
+			nextAppendIndex: 1,
+		},
+		// Test case from example comment in handleAppendEntries (on follower).
+		{
+			leaderLog: []pb.Entry{
+				{Term: 2, Index: 1},
+				{Term: 2, Index: 2},
+				{Term: 2, Index: 3},
+				{Term: 2, Index: 4},
+				{Term: 2, Index: 5},
+			},
+			followerLog: []pb.Entry{
+				{Term: 2, Index: 1},
+				{Term: 4, Index: 2},
+				{Term: 4, Index: 3},
+				{Term: 4, Index: 4},
+				{Term: 4, Index: 5},
+				{Term: 4, Index: 6},
+				{Term: 4, Index: 7},
+				{Term: 4, Index: 8},
+			},
+			nextAppendTerm:  2,
+			nextAppendIndex: 1,
+			rejectHintTerm:  2,
+			rejectHintIndex: 1,
+		},
+	}
+
+	for i, test := range tests {
+		t.Run("", func(t *testing.T) {
+			s1 := NewMemoryStorage()
+			s1.snapshot.Metadata.ConfState = pb.ConfState{Voters: []uint64{1, 2, 3}}
+			s1.Append(test.leaderLog)
+			s2 := NewMemoryStorage()
+			s2.snapshot.Metadata.ConfState = pb.ConfState{Voters: []uint64{1, 2, 3}}
+			s2.Append(test.followerLog)
+
+			n1 := newTestRaft(1, 10, 1, s1)
+			n2 := newTestRaft(2, 10, 1, s2)
+
+			n1.becomeCandidate()
+			n1.becomeLeader()
+
+			n2.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHeartbeat})
+
+			msgs := n2.readMessages()
+			if len(msgs) != 1 {
+				t.Errorf("can't read 1 message from peer 2")
+			}
+			if msgs[0].Type != pb.MsgHeartbeatResp {
+				t.Errorf("can't read heartbeat response from peer 2")
+			}
+			if n1.Step(msgs[0]) != nil {
+				t.Errorf("peer 1 step heartbeat response fail")
+			}
+
+			msgs = n1.readMessages()
+			if len(msgs) != 1 {
+				t.Errorf("can't read 1 message from peer 1")
+			}
+			if msgs[0].Type != pb.MsgApp {
+				t.Errorf("can't read append from peer 1")
+			}
+
+			if n2.Step(msgs[0]) != nil {
+				t.Errorf("peer 2 step append fail")
+			}
+			msgs = n2.readMessages()
+			if len(msgs) != 1 {
+				t.Errorf("can't read 1 message from peer 2")
+			}
+			if msgs[0].Type != pb.MsgAppResp {
+				t.Errorf("can't read append response from peer 2")
+			}
+			if !msgs[0].Reject {
+				t.Errorf("expected rejected append response from peer 2")
+			}
+			if msgs[0].LogTerm != test.rejectHintTerm {
+				t.Fatalf("#%d expected hint log term = %d, but got %d", i, test.rejectHintTerm, msgs[0].LogTerm)
+			}
+			if msgs[0].RejectHint != test.rejectHintIndex {
+				t.Fatalf("#%d expected hint index = %d, but got %d", i, test.rejectHintIndex, msgs[0].RejectHint)
+			}
+
+			if n1.Step(msgs[0]) != nil {
+				t.Errorf("peer 1 step append fail")
+			}
+			msgs = n1.readMessages()
+			if msgs[0].LogTerm != test.nextAppendTerm {
+				t.Fatalf("#%d expected log term = %d, but got %d", i, test.nextAppendTerm, msgs[0].LogTerm)
+			}
+			if msgs[0].Index != test.nextAppendIndex {
+				t.Fatalf("#%d expected index = %d, but got %d", i, test.nextAppendIndex, msgs[0].Index)
+			}
+		})
+	}
+}
+
 func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
