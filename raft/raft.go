@@ -1553,6 +1553,9 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	for _, set := range [][]uint64{
 		cs.Voters,
 		cs.Learners,
+		cs.VotersOutgoing,
+		// `LearnersNext` doesn't need to be checked. According to the rules, if a peer in
+		// `LearnersNext`, it has to be in `VotersOutgoing`.
 	} {
 		for _, id := range set {
 			if id == r.id {

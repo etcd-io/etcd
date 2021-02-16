@@ -2806,6 +2806,45 @@ func TestRestoreWithLearner(t *testing.T) {
 	}
 }
 
+/// Tests if outgoing voter can receive and apply snapshot correctly.
+func TestRestoreWithVotersOutgoing(t *testing.T) {
+	s := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: pb.ConfState{Voters: []uint64{2, 3, 4}, VotersOutgoing: []uint64{1, 2, 3}},
+		},
+	}
+
+	storage := newTestMemoryStorage(withPeers(1, 2))
+	sm := newTestRaft(1, 10, 1, storage)
+	if ok := sm.restore(s); !ok {
+		t.Fatal("restore fail, want succeed")
+	}
+
+	if sm.raftLog.lastIndex() != s.Metadata.Index {
+		t.Errorf("log.lastIndex = %d, want %d", sm.raftLog.lastIndex(), s.Metadata.Index)
+	}
+	if mustTerm(sm.raftLog.term(s.Metadata.Index)) != s.Metadata.Term {
+		t.Errorf("log.lastTerm = %d, want %d", mustTerm(sm.raftLog.term(s.Metadata.Index)), s.Metadata.Term)
+	}
+	sg := sm.prs.VoterNodes()
+	if !reflect.DeepEqual(sg, []uint64{1, 2, 3, 4}) {
+		t.Errorf("sm.Voters = %+v, want %+v", sg, s.Metadata.ConfState.Voters)
+	}
+
+	if ok := sm.restore(s); ok {
+		t.Fatal("restore succeed, want fail")
+	}
+	// It should not campaign before actually applying data.
+	for i := 0; i < sm.randomizedElectionTimeout; i++ {
+		sm.tick()
+	}
+	if sm.state != StateFollower {
+		t.Errorf("state = %d, want %d", sm.state, StateFollower)
+	}
+}
+
 // TestRestoreVoterToLearner verifies that a normal peer can be downgraded to a
 // learner through a snapshot. At the time of writing, we don't allow
 // configuration changes to do this directly, but note that the snapshot may
