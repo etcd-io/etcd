@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/logutil"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 
 	"go.uber.org/zap"
 	"sigs.k8s.io/yaml"
@@ -160,6 +161,10 @@ func newConfig() *config {
 	fs.DurationVar(&cfg.ec.GRPCKeepAliveMinTime, "grpc-keepalive-min-time", cfg.ec.GRPCKeepAliveMinTime, "Minimum interval duration that a client should wait before pinging server.")
 	fs.DurationVar(&cfg.ec.GRPCKeepAliveInterval, "grpc-keepalive-interval", cfg.ec.GRPCKeepAliveInterval, "Frequency duration of server-to-client ping to check if a connection is alive (0 to disable).")
 	fs.DurationVar(&cfg.ec.GRPCKeepAliveTimeout, "grpc-keepalive-timeout", cfg.ec.GRPCKeepAliveTimeout, "Additional duration of wait before closing a non-responsive connection (0 to disable).")
+
+	// raft connection timeouts
+	fs.DurationVar(&rafthttp.ConnReadTimeout, "raft-read-timeout", rafthttp.DefaultConnReadTimeout, "Read timeout set on each rafthttp connection")
+	fs.DurationVar(&rafthttp.ConnWriteTimeout, "raft-write-timeout", rafthttp.DefaultConnWriteTimeout, "Write timeout set on each rafthttp connection")
 
 	// clustering
 	fs.Var(
@@ -335,6 +340,15 @@ func (cfg *config) configFromCmdLine() error {
 	err = flags.SetFlagsFromEnv(lg, "ETCD", cfg.cf.flagSet)
 	if err != nil {
 		return err
+	}
+
+	if rafthttp.ConnReadTimeout < rafthttp.DefaultConnReadTimeout {
+		rafthttp.ConnReadTimeout = rafthttp.DefaultConnReadTimeout
+		lg.Info(fmt.Sprintf("raft-read-timeout increased to minimum value: %v", rafthttp.DefaultConnReadTimeout))
+	}
+	if rafthttp.ConnWriteTimeout < rafthttp.DefaultConnWriteTimeout {
+		rafthttp.ConnWriteTimeout = rafthttp.DefaultConnWriteTimeout
+		lg.Info(fmt.Sprintf("raft-write-timeout increased to minimum value: %v", rafthttp.DefaultConnWriteTimeout))
 	}
 
 	cfg.ec.LPUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-peer-urls")
