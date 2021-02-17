@@ -37,7 +37,7 @@ func NewTimeoutListerWithSocketOpts(addr string, scheme string, tlsinfo *TLSInfo
 	if err != nil {
 		return nil, err
 	}
-	ln, err := config.Listen(context.TODO(), "tcp", addr)
+	ln, err := config.Listen(context.TODO(), scheme, addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen on %v: %v", addr, err)
 	}

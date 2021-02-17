@@ -64,7 +64,7 @@ func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, err
 	return newTLSListener(l, tlsinfo, checkSAN)
 }
 
-// NewListenerWithSocketOpts
+// NewListenerWithSocketOpts creates new listener with predefined SocketOpts
 func NewListenerWithSocketOpts(addr, scheme string, tlsinfo *TLSInfo, sopts SocketOpts) (net.Listener, error) {
 	if scheme == "unix" || scheme == "unixs" {
 		// unix sockets via unix://laddr
@@ -74,7 +74,7 @@ func NewListenerWithSocketOpts(addr, scheme string, tlsinfo *TLSInfo, sopts Sock
 	if err != nil {
 		return nil, err
 	}
-	lc, err := config.Listen(context.TODO(), "tcp", addr)
+	lc, err := config.Listen(context.TODO(), scheme, addr)
 	if err != nil {
 		return nil, err
 	}
