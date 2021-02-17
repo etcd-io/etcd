@@ -425,7 +425,7 @@ func NewConfig() *Config {
 
 		CORS:          map[string]struct{}{"*": {}},
 		HostWhitelist: map[string]struct{}{"*": {}},
-		ReuseAddress: false,
+		ReuseAddress:  false,
 
 		AuthToken:    "simple",
 		BcryptCost:   uint(bcrypt.DefaultCost),

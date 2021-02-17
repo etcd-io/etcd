@@ -32,7 +32,7 @@ func NewTimeoutListener(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd
 	return newTimeoutListener(ln, addr, scheme, rdtimeoutd, wtimeoutd, tlsinfo)
 }
 
-func NewTimeoutListerWithSocketOpts(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd, wtimeoutd time.Duration, sopts SocketOpts ) (net.Listener, error) {
+func NewTimeoutListerWithSocketOpts(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd, wtimeoutd time.Duration, sopts SocketOpts) (net.Listener, error) {
 	config, err := newListenConfig(addr, scheme, sopts)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func NewTimeoutListerWithSocketOpts(addr string, scheme string, tlsinfo *TLSInfo
 	return newTimeoutListener(ln, addr, scheme, rdtimeoutd, wtimeoutd, tlsinfo)
 }
 
-func newTimeoutListener(ln net.Listener, addr string, scheme string, rdtimeoutd, wtimeoutd time.Duration, tlsinfo *TLSInfo,) (net.Listener, error) {
+func newTimeoutListener(ln net.Listener, addr string, scheme string, rdtimeoutd, wtimeoutd time.Duration, tlsinfo *TLSInfo) (net.Listener, error) {
 	timeoutListener := &rwTimeoutListener{
 		Listener:   ln,
 		rdtimeoutd: rdtimeoutd,

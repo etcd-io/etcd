@@ -70,7 +70,7 @@ func NewListenerWithSocketOpts(addr, scheme string, tlsinfo *TLSInfo, sopts Sock
 		// unix sockets via unix://laddr
 		return NewUnixListener(addr)
 	}
-	config, err := newListenConfig(addr, scheme, sopts);
+	config, err := newListenConfig(addr, scheme, sopts)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewListenerWithSocketOpts(addr, scheme string, tlsinfo *TLSInfo, sopts Sock
 	return wrapTLS(scheme, tlsinfo, lc)
 }
 
-func newListenConfig(addr, scheme string, sopts SocketOpts)  (net.ListenConfig, error) {
+func newListenConfig(addr, scheme string, sopts SocketOpts) (net.ListenConfig, error) {
 	lc := net.ListenConfig{}
 	if len(sopts) > 0 {
 		lc.Control = sopts.Control
