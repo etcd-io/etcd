@@ -74,14 +74,14 @@ func NewListenerWithSocketOpts(addr, scheme string, tlsinfo *TLSInfo, sopts Sock
 	if err != nil {
 		return nil, err
 	}
-	lc, err := config.Listen(context.TODO(), scheme, addr)
+	lc, err := config.Listen(context.TODO(), "tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	return wrapTLS("tcp", tlsinfo, lc)
+	return wrapTLS(scheme, tlsinfo, lc)
 }
 
-func newListenConfig(addr, scheme string, sopts SocketOpts) (net.ListenConfig, error) {
+func newListenConfig(sopts SocketOpts) (net.ListenConfig, error) {
 	lc := net.ListenConfig{}
 	if len(sopts) > 0 {
 		lc.Control = sopts.Control
