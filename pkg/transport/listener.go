@@ -70,7 +70,7 @@ func NewListenerWithSocketOpts(addr, scheme string, tlsinfo *TLSInfo, sopts Sock
 		// unix sockets via unix://laddr
 		return NewUnixListener(addr)
 	}
-	config, err := newListenConfig(addr, scheme, sopts)
+	config, err := newListenConfig(sopts)
 	if err != nil {
 		return nil, err
 	}

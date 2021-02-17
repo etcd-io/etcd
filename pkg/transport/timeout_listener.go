@@ -33,7 +33,7 @@ func NewTimeoutListener(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd
 }
 
 func NewTimeoutListerWithSocketOpts(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd, wtimeoutd time.Duration, sopts SocketOpts) (net.Listener, error) {
-	config, err := newListenConfig(addr, scheme, sopts)
+	config, err := newListenConfig(sopts)
 	if err != nil {
 		return nil, err
 	}
