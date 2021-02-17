@@ -78,7 +78,7 @@ func NewListenerWithSocketOpts(addr, scheme string, tlsinfo *TLSInfo, sopts Sock
 	if err != nil {
 		return nil, err
 	}
-	return wrapTLS(scheme, tlsinfo, lc)
+	return wrapTLS("tcp", tlsinfo, lc)
 }
 
 func newListenConfig(addr, scheme string, sopts SocketOpts) (net.ListenConfig, error) {
