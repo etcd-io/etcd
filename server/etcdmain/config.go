@@ -190,6 +190,7 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.ec.StrictReconfigCheck, "strict-reconfig-check", cfg.ec.StrictReconfigCheck, "Reject reconfiguration requests that would cause quorum loss.")
 	fs.BoolVar(&cfg.ec.EnableV2, "enable-v2", cfg.ec.EnableV2, "Accept etcd V2 client requests.")
 	fs.BoolVar(&cfg.ec.PreVote, "pre-vote", cfg.ec.PreVote, "Enable to run an additional Raft election phase.")
+	fs.BoolVar(&cfg.ec.ReuseAddress, "address-sharing", cfg.ec.ReuseAddress, "Enable to allow binding of multiple address and ports without waiting for kernel to release sockets.")
 
 	// proxy
 	fs.Var(cfg.cf.proxy, "proxy", fmt.Sprintf("Valid values include %q", cfg.cf.proxy.Valids()))

@@ -241,6 +241,8 @@ type Config struct {
 
 	CORS map[string]struct{}
 
+
+
 	// HostWhitelist lists acceptable hostnames from HTTP client requests.
 	// Client origin policy protects against "DNS Rebinding" attacks
 	// to insecure etcd servers. That is, any website can simply create
@@ -305,6 +307,15 @@ type Config struct {
 	Metrics               string `json:"metrics"`
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
+
+	// ReuseAddress enables a socket option SO_REUSEADDR[1] which informs the
+	// kernel to tolerate a busy port in `TIME_WAIT` state. This allows resuse
+	// of local addresses. Useful in cases where etcd process has been
+	// restarted, without this option active sockets on that port will block
+	// the new process from listening. Depending on the situtation this wait
+	// time can be considerable (many seconds) and degrade MTTR.
+	// [1] https://man7.org/linux/man-pages/man7/socket.7.html
+	ReuseAddress bool `json:"reuse-address"`
 
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
@@ -416,6 +427,7 @@ func NewConfig() *Config {
 
 		CORS:          map[string]struct{}{"*": {}},
 		HostWhitelist: map[string]struct{}{"*": {}},
+		ReuseAddress: false,
 
 		AuthToken:    "simple",
 		BcryptCost:   uint(bcrypt.DefaultCost),
@@ -551,7 +563,7 @@ func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 	}
 	return nil
 }
-
+re
 // Validate ensures that '*embed.Config' fields are properly configured.
 func (cfg *Config) Validate() error {
 	if err := cfg.setupLogging(); err != nil {

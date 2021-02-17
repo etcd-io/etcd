@@ -191,6 +191,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		InitialCorruptCheck:         cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:            cfg.ExperimentalCorruptCheckTime,
 		PreVote:                     cfg.PreVote,
+		ReuseAddress:                cfg.ReuseAddress,
 		Logger:                      cfg.logger,
 		LoggerConfig:                cfg.loggerConfig,
 		LoggerCore:                  cfg.loggerCore,
@@ -458,7 +459,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			}
 		}
 		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
-		peers[i].Listener, err = rafthttp.NewListener(u, &cfg.PeerTLSInfo)
+		peers[i].Listener, err = rafthttp.NewListenerWithSocketOptions(u, &cfg.PeerTLSInfo, getSocketOptions(cfg))
 		if err != nil {
 			return nil, err
 		}
@@ -523,6 +524,14 @@ func (e *Etcd) servePeers() (err error) {
 	return nil
 }
 
+func getSocketOptions(cfg *Config) transport.SocketOpts {
+	ctls := transport.SocketOpts{}
+	if cfg.ReuseAddress {
+		ctls = append(ctls, transport.SetReuseAddress)
+	}
+	return ctls
+}
+
 func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 	if err = updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
 		return nil, err
@@ -565,7 +574,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			continue
 		}
 
-		if sctx.l, err = net.Listen(network, addr); err != nil {
+		if sctx.l, err = transport.NewListenerWithConfig(addr, u.Scheme, &cfg.ClientTLSInfo, getSocketOptions(cfg)); err != nil {
 			return nil, err
 		}
 		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
@@ -658,6 +667,7 @@ func (e *Etcd) serveClients() (err error) {
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
+			// here
 			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, h, e.errHandler, gopts...))
 		}(sctx)
 	}

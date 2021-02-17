@@ -15,6 +15,7 @@
 package transport
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -29,7 +30,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
+	"golang.org/x/sys/unix"
 
 	"go.etcd.io/etcd/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/tlsutil"
@@ -61,6 +64,48 @@ func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, err
 		return NewTLSListener(l, tlsinfo)
 	}
 	return newTLSListener(l, tlsinfo, checkSAN)
+}
+
+// NewListenerWithConfig
+func NewListenerWithConfig(addr, scheme string, tlsinfo *TLSInfo, sopts SocketOpts) (net.Listener, error) {
+	if scheme == "unix" || scheme == "unixs" {
+		// unix sockets via unix://laddr
+		return NewUnixListener(addr)
+	}
+	config, err := newListenConfig(addr, scheme, sopts);
+	if err != nil {
+		return nil, err
+	}
+	lc, err := config.Listen(context.TODO(), "tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return wrapTLS(scheme, tlsinfo, lc)
+}
+
+func newListenConfig(addr, scheme string, sopts SocketOpts)  (net.ListenConfig, error) {
+	lc := net.ListenConfig{}
+	if len(sopts) > 0 {
+		lc.Control = sopts.Control
+	}
+	return lc, nil
+}
+
+type SocketOpts []func(network, addr string, conn syscall.RawConn) error
+
+func (sopts SocketOpts) Control(network, addr string, conn syscall.RawConn) error {
+	for _, s := range sopts {
+		if err := s(network, addr, conn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func SetReuseAddress(network, address string, conn syscall.RawConn) error {
+	return conn.Control(func(fd uintptr) {
+		syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+	})
 }
 
 type TLSInfo struct {

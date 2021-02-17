@@ -15,6 +15,8 @@
 package transport
 
 import (
+	"context"
+	"fmt"
 	"net"
 	"time"
 )
@@ -27,15 +29,28 @@ func NewTimeoutListener(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd
 	if err != nil {
 		return nil, err
 	}
-	ln = &rwTimeoutListener{
+	return newTimeoutListener(ln, addr, scheme, rdtimeoutd, wtimeoutd, tlsinfo)
+}
+
+func NewTimeoutListerWithConfig(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd, wtimeoutd time.Duration, sopts SocketOpts ) (net.Listener, error) {
+	config, err := newListenConfig(addr, scheme, sopts)
+	if err != nil {
+		return nil, err
+	}
+	ln, err := config.Listen(context.TODO(), "tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on %v: %v", addr, err)
+	}
+	return newTimeoutListener(ln, addr, scheme, rdtimeoutd, wtimeoutd, tlsinfo)
+}
+
+func newTimeoutListener(ln net.Listener, addr string, scheme string, rdtimeoutd, wtimeoutd time.Duration, tlsinfo *TLSInfo,) (net.Listener, error) {
+	timeoutListener := &rwTimeoutListener{
 		Listener:   ln,
 		rdtimeoutd: rdtimeoutd,
 		wtimeoutd:  wtimeoutd,
 	}
-	if ln, err = wrapTLS(scheme, tlsinfo, ln); err != nil {
-		return nil, err
-	}
-	return ln, nil
+	return wrapTLS(scheme, tlsinfo, timeoutListener)
 }
 
 type rwTimeoutListener struct {
