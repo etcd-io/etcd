@@ -680,7 +680,7 @@ func (e *Etcd) serveMetrics() (err error) {
 			if murl.Scheme == "http" {
 				tlsInfo = nil
 			}
-			ml, err := transport.NewListener(murl.Host, murl.Scheme, tlsInfo)
+			ml, err := transport.NewListenerWithSocketOpts(murl.Host, murl.Scheme, tlsInfo, e.cfg.GetSocketOptions())
 			if err != nil {
 				return err
 			}
