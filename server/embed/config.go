@@ -241,8 +241,6 @@ type Config struct {
 
 	CORS map[string]struct{}
 
-
-
 	// HostWhitelist lists acceptable hostnames from HTTP client requests.
 	// Client origin policy protects against "DNS Rebinding" attacks
 	// to insecure etcd servers. That is, any website can simply create
@@ -563,7 +561,15 @@ func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 	}
 	return nil
 }
-re
+
+func (cfg *Config) GetSocketOptions() transport.SocketOpts {
+	sopts := transport.SocketOpts{}
+	if cfg.ReuseAddress {
+		sopts = append(sopts, transport.SetReuseAddress)
+	}
+	return sopts
+}
+
 // Validate ensures that '*embed.Config' fields are properly configured.
 func (cfg *Config) Validate() error {
 	if err := cfg.setupLogging(); err != nil {

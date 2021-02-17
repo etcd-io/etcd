@@ -42,8 +42,8 @@ func NewListener(u url.URL, tlsinfo *transport.TLSInfo) (net.Listener, error) {
 	return transport.NewTimeoutListener(u.Host, u.Scheme, tlsinfo, ConnReadTimeout, ConnWriteTimeout)
 }
 
-func NewListenerWithSocketOptions(u url.URL, tlsinfo *transport.TLSInfo, ctls transport.SocketOpts ) (net.Listener, error) {
-	return transport.NewTimeoutListerWithConfig(u.Host, u.Scheme, tlsinfo, ConnReadTimeout, ConnWriteTimeout, ctls)
+func NewListenerWithSocketOpts(u url.URL, tlsinfo *transport.TLSInfo, sopts transport.SocketOpts ) (net.Listener, error) {
+	return transport.NewTimeoutListerWithSocketOpts(u.Host, u.Scheme, tlsinfo, ConnReadTimeout, ConnWriteTimeout, sopts)
 }
 
 // NewRoundTripper returns a roundTripper used to send requests
