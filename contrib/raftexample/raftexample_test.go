@@ -29,7 +29,7 @@ import (
 
 type cluster struct {
 	peers       []string
-	commitC     []<-chan *string
+	commitC     []<-chan *commit
 	errorC      []<-chan error
 	proposeC    []chan string
 	confChangeC []chan raftpb.ConfChange
@@ -44,7 +44,7 @@ func newCluster(n int) *cluster {
 
 	clus := &cluster{
 		peers:       peers,
-		commitC:     make([]<-chan *string, len(peers)),
+		commitC:     make([]<-chan *commit, len(peers)),
 		errorC:      make([]<-chan error, len(peers)),
 		proposeC:    make([]chan string, len(peers)),
 		confChangeC: make([]chan raftpb.ConfChange, len(peers)),
@@ -94,14 +94,14 @@ func TestProposeOnCommit(t *testing.T) {
 	donec := make(chan struct{})
 	for i := range clus.peers {
 		// feedback for "n" committed entries, then update donec
-		go func(pC chan<- string, cC <-chan *string, eC <-chan error) {
+		go func(pC chan<- string, cC <-chan *commit, eC <-chan error) {
 			for n := 0; n < 100; n++ {
-				s, ok := <-cC
+				c, ok := <-cC
 				if !ok {
 					pC = nil
 				}
 				select {
-				case pC <- *s:
+				case pC <- c.data[0]:
 					continue
 				case err := <-eC:
 					t.Errorf("eC message (%v)", err)
@@ -143,7 +143,7 @@ func TestCloseProposerInflight(t *testing.T) {
 	}()
 
 	// wait for one message
-	if c, ok := <-clus.commitC[0]; *c != "foo" || !ok {
+	if c, ok := <-clus.commitC[0]; !ok || c.data[0] != "foo" {
 		t.Fatalf("Commit failed")
 	}
 }
