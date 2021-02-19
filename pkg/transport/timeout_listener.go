@@ -23,19 +23,32 @@ import (
 // If read/write on the accepted connection blocks longer than its time limit,
 // it will return timeout error.
 func NewTimeoutListener(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd, wtimeoutd time.Duration) (net.Listener, error) {
-	ln, err := newListener(addr, scheme)
+	ln, err := newListener(addr, scheme, nil)
 	if err != nil {
 		return nil, err
 	}
-	ln = &rwTimeoutListener{
+	return newTimeoutListener(ln, scheme, rdtimeoutd, wtimeoutd, tlsinfo)
+}
+
+// NewTimeoutListerWithSocketOpts returns a listener that listens on the given address.
+// If read/write on the accepted connection blocks longer than its time limit,
+// it will return timeout error. Socket options can be passed and will be applied to the
+// ListenConfig.
+func NewTimeoutListerWithSocketOpts(addr string, scheme string, tlsinfo *TLSInfo, rdtimeoutd, wtimeoutd time.Duration, sopts *SocketOpts) (net.Listener, error) {
+	ln, err := newListener(addr, scheme, sopts)
+	if err != nil {
+		return nil, err
+	}
+	return newTimeoutListener(ln, scheme, rdtimeoutd, wtimeoutd, tlsinfo)
+}
+
+func newTimeoutListener(ln net.Listener, scheme string, rdtimeoutd, wtimeoutd time.Duration, tlsinfo *TLSInfo) (net.Listener, error) {
+	timeoutListener := &rwTimeoutListener{
 		Listener:   ln,
 		rdtimeoutd: rdtimeoutd,
 		wtimeoutd:  wtimeoutd,
 	}
-	if ln, err = wrapTLS(scheme, tlsinfo, ln); err != nil {
-		return nil, err
-	}
-	return ln, nil
+	return wrapTLS(scheme, tlsinfo, timeoutListener)
 }
 
 type rwTimeoutListener struct {

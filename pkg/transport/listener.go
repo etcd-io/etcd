@@ -15,6 +15,7 @@
 package transport
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -39,18 +40,34 @@ import (
 
 // NewListener creates a new listner.
 func NewListener(addr, scheme string, tlsinfo *TLSInfo) (l net.Listener, err error) {
-	if l, err = newListener(addr, scheme); err != nil {
+	if l, err = newListener(addr, scheme, nil); err != nil {
 		return nil, err
 	}
 	return wrapTLS(scheme, tlsinfo, l)
 }
 
-func newListener(addr string, scheme string) (net.Listener, error) {
+// NewListenerWithSocketOpts creates new listener with support for socket options.
+func NewListenerWithSocketOpts(addr, scheme string, tlsinfo *TLSInfo, sopts *SocketOpts) (net.Listener, error) {
+	ln, err := newListener(addr, scheme, sopts)
+	if err != nil {
+		return nil, err
+	}
+	if tlsinfo != nil {
+		wrapTLS(scheme, tlsinfo, ln)
+	}
+	return ln, nil
+}
+
+func newListener(addr string, scheme string, sopts *SocketOpts) (net.Listener, error) {
 	if scheme == "unix" || scheme == "unixs" {
 		// unix sockets via unix://laddr
 		return NewUnixListener(addr)
 	}
-	return net.Listen("tcp", addr)
+	config, err := newListenConfig(sopts)
+	if err != nil {
+		return nil, err
+	}
+	return config.Listen(context.TODO(), "tcp", addr)
 }
 
 func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, error) {
@@ -61,6 +78,17 @@ func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, err
 		return NewTLSListener(l, tlsinfo)
 	}
 	return newTLSListener(l, tlsinfo, checkSAN)
+}
+
+func newListenConfig(sopts *SocketOpts) (net.ListenConfig, error) {
+	lc := net.ListenConfig{}
+	if sopts != nil {
+		ctls := getControls(sopts)
+		if len(ctls) > 0 {
+			lc.Control = ctls.Control
+		}
+	}
+	return lc, nil
 }
 
 type TLSInfo struct {
