@@ -38,7 +38,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
@@ -583,8 +583,9 @@ type member struct {
 	clientMaxCallRecvMsgSize int
 	useIP                    bool
 
-	isLearner bool
-	closed    bool
+	isLearner    bool
+	promoteRules []*pb.MemberPromoteRule
+	closed       bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -1422,6 +1423,19 @@ func (c *ClusterV3) GetLearnerMembers() ([]*pb.Member, error) {
 func (c *ClusterV3) AddAndLaunchLearnerMember(t testutil.TB) {
 	m := c.mustNewMember(t)
 	m.isLearner = true
+	m.promoteRules = []*pb.MemberPromoteRule{
+		{
+			Auto: false,
+			Monitors: []*pb.MemberMonitor{
+				{
+					Op:        pb.MemberMonitor_GREATER_EQUAL,
+					Type:      pb.MemberMonitor_PROGRESS,
+					Threshold: 90,
+					Delay:     0,
+				},
+			},
+		},
+	}
 
 	scheme := schemeFromTLSInfo(c.cfg.PeerTLS)
 	peerURLs := []string{scheme + "://" + m.PeerListeners[0].Addr().String()}
@@ -1453,10 +1467,11 @@ func (c *ClusterV3) getMembers() []*pb.Member {
 	var mems []*pb.Member
 	for _, m := range c.Members {
 		mem := &pb.Member{
-			Name:       m.Name,
-			PeerURLs:   m.PeerURLs.StringSlice(),
-			ClientURLs: m.ClientURLs.StringSlice(),
-			IsLearner:  m.isLearner,
+			Name:         m.Name,
+			PeerURLs:     m.PeerURLs.StringSlice(),
+			ClientURLs:   m.ClientURLs.StringSlice(),
+			IsLearner:    m.isLearner,
+			PromoteRules: m.promoteRules,
 		}
 		mems = append(mems, mem)
 	}
@@ -1523,6 +1538,7 @@ func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], 
 func (c *ClusterV3) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse) *member {
 	m := c.mustNewMember(t)
 	m.isLearner = resp.Member.IsLearner
+	m.promoteRules = resp.Member.PromoteRules
 	m.NewCluster = false
 
 	m.InitialPeerURLsMap = types.URLsMap{}

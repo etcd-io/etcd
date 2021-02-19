@@ -32,6 +32,7 @@ require (
 	go.etcd.io/etcd/tests/v3 v3.5.0
 	go.uber.org/zap v1.17.0
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
+	golang.org/x/tools v0.1.5 // indirect
 	google.golang.org/grpc v1.38.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 )

@@ -531,6 +531,30 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 	}
 }
 
+func TestClusterAddMemberAsLearnerWithPromoteRules(t *testing.T) {
+	st := mockstore.NewRecorder()
+	c := newTestCluster(t, nil)
+	c.SetStore(st)
+
+	c.AddMember(newTestMemberAsLearnerWithPromoteRules(1, nil, "node1", nil, nil), true)
+
+	wactions := []testutil.Action{
+		{
+			Name: "Create",
+			Params: []interface{}{
+				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
+				false,
+				`{"peerURLs":null,"isLearner":true}`,
+				false,
+				v2store.TTLOptionSet{ExpireTime: v2store.Permanent},
+			},
+		},
+	}
+	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
+		t.Errorf("actions = %v, want %v", g, wactions)
+	}
+}
+
 func TestClusterMembers(t *testing.T) {
 	cls := newTestCluster(t, []*Member{
 		{ID: 1},
@@ -710,6 +734,15 @@ func TestIsReadyToAddVotingMember(t *testing.T) {
 			true,
 		},
 		{
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMemberAsLearner(3, nil, "", nil),
+				newTestMemberAsLearnerWithPromoteRules(4, nil, "", nil, nil),
+			},
+			true,
+		},
+		{
 			// 1 voting member ready in cluster with 2 voting members and 2 ready learner member, should fail
 			// (the status of learner members does not affect the readiness of adding voting member)
 			[]*Member{
@@ -717,6 +750,15 @@ func TestIsReadyToAddVotingMember(t *testing.T) {
 				newTestMember(2, nil, "", nil),
 				newTestMemberAsLearner(3, nil, "3", nil),
 				newTestMemberAsLearner(4, nil, "4", nil),
+			},
+			false,
+		},
+		{
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearner(3, nil, "3", nil),
+				newTestMemberAsLearnerWithPromoteRules(4, nil, "4", nil, nil),
 			},
 			false,
 		},
@@ -817,6 +859,14 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 			false,
 		},
 		{
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMemberAsLearnerWithPromoteRules(2, nil, "2", nil, nil),
+			},
+			1,
+			false,
+		},
+		{
 			// 1 voting members ready in cluster with 2 voting member and 1 ready learner,
 			// removing ready voting member should fail
 			// (the status of learner members does not affect the readiness of removing voting member)
@@ -824,6 +874,15 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 				newTestMember(1, nil, "1", nil),
 				newTestMember(2, nil, "", nil),
 				newTestMemberAsLearner(3, nil, "3", nil),
+			},
+			1,
+			false,
+		},
+		{
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearnerWithPromoteRules(3, nil, "3", nil, nil),
 			},
 			1,
 			false,
@@ -841,6 +900,15 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 			true,
 		},
 		{
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearnerWithPromoteRules(3, nil, "3", nil, nil),
+			},
+			2,
+			true,
+		},
+		{
 			// 1 voting members ready in cluster with 2 voting member and 1 unstarted learner,
 			// removing not-ready voting member should be fine. (Actual operation will fail)
 			// (the status of learner members does not affect the readiness of removing voting member)
@@ -852,11 +920,20 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 			2,
 			true,
 		},
+		{
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMemberAsLearnerWithPromoteRules(3, nil, "", nil, nil),
+			},
+			2,
+			true,
+		},
 	}
 	for i, tt := range tests {
 		c := newTestCluster(t, tt.members)
 		if got := c.IsReadyToRemoveVotingMember(tt.removeID); got != tt.want {
-			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
+			t.Errorf("%d: isReadyToRemoveVotingMember returned %t, want %t", i, got, tt.want)
 		}
 	}
 }

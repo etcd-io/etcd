@@ -336,6 +336,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": b.raft.wal.id.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
+
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = b.be
@@ -429,6 +430,87 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.r.transport = tr
 
 	return srv, nil
+}
+
+// Evaluate promote rules of all members.
+func (s *EtcdServer) evaluateAllMembersPromoteRules() error {
+	if !s.IsLeader() {
+		return ErrNotLeader
+	}
+	for _, id := range s.cluster.MemberIDs() {
+		// Ignore this member.
+		if s.id == id {
+			continue
+		}
+		// Evaluate member.
+		s.evaluateMemberPromoteRules(id)
+	}
+	return nil
+}
+
+// Evaluate promote rules of a single member.
+func (s *EtcdServer) evaluateMemberPromoteRules(id types.ID) error {
+	if !s.IsLeader() {
+		return ErrNotLeader
+	}
+	memberID := types.ID(id)
+	if !s.cluster.IsMemberExist(memberID) {
+		return membership.ErrIDNotFound
+	}
+	m := s.cluster.Member(id)
+	if len(m.PromoteRules) == 0 {
+		return nil
+	}
+
+	// If a single promotion rule is satisifed, the member is eligible for
+	// promotion.
+	for ridx := range m.PromoteRules {
+		// Update monitor values.
+		for midx := range m.PromoteRules[ridx].Monitors {
+			switch m.PromoteRules[ridx].Monitors[midx].Type {
+			case membership.Progress:
+				matchPercent, err := s.getLearnerMatchPercent(uint64(memberID))
+				if err == nil {
+					m.PromoteRules[ridx].Monitors[midx].AddValue(uint64(matchPercent * 100.0))
+				}
+				break
+			}
+		}
+	}
+	s.cluster.UpdatePromoteRules(memberID, m.PromoteRules)
+	return nil
+}
+
+// Get members that may be automatically promoted according to their promotion
+// rules.
+func (s *EtcdServer) getAutoPromotableMembers() ([]uint64, error) {
+	// leader's raftStatus.Progress is not nil
+	rs := s.raftStatus()
+	if rs.Progress == nil {
+		return nil, ErrNotLeader
+	}
+	// Build a list of promotable member IDs.
+	var promotable []uint64
+	for _, member := range s.cluster.Members() {
+		// Ignore this member.
+		if s.id == member.ID {
+			continue
+		}
+		memberID := uint64(member.ID)
+		// If a single promotion rule is satisifed, the member is eligible for
+		// promotion.
+		for _, rule := range member.PromoteRules {
+			if !rule.Auto {
+				continue
+			}
+			satisfied, _ := rule.IsSatisfied()
+			if satisfied {
+				promotable = append(promotable, memberID)
+				break
+			}
+		}
+	}
+	return promotable, nil
 }
 
 func (s *EtcdServer) Logger() *zap.Logger {
@@ -734,7 +816,12 @@ func (s *EtcdServer) run() {
 	}
 
 	// asynchronously accept apply packets, dispatch progress in-order
-	sched := schedule.NewFIFOScheduler()
+	apSched := schedule.NewFIFOScheduler()
+
+	// asynchronously promote learners to voters, dispatch progress in-order
+	pmSched := schedule.NewFIFOScheduler()
+
+	pmTimer := time.Tick(time.Second)
 
 	var (
 		smu   sync.RWMutex
@@ -805,7 +892,9 @@ func (s *EtcdServer) run() {
 		close(s.stopping)
 		s.wgMu.Unlock()
 		s.cancel()
-		sched.Stop()
+
+		apSched.Stop()
+		pmSched.Stop()
 
 		// wait for gouroutines before closing raft so wal stays open
 		s.wg.Wait()
@@ -830,7 +919,7 @@ func (s *EtcdServer) run() {
 		select {
 		case ap := <-s.r.apply():
 			f := func(context.Context) { s.applyAll(&ep, &ap) }
-			sched.Schedule(f)
+			apSched.Schedule(f)
 		case leases := <-expiredLeaseC:
 			s.GoAttach(func() {
 				// Increases throughput of expired leases deletion process through parallelization
@@ -869,6 +958,16 @@ func (s *EtcdServer) run() {
 			}
 		case <-s.stop:
 			return
+		case <-pmTimer:
+			s.evaluateAllMembersPromoteRules()
+			if promotable, err := s.getAutoPromotableMembers(); err == nil {
+				if len(promotable) > 0 {
+					f := func(c context.Context) {
+						s.PromoteMember(c, promotable[0])
+					}
+					pmSched.Schedule(f)
+				}
+			}
 		}
 	}
 }
@@ -1332,16 +1431,18 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) ([]*membership
 	return s.configure(ctx, cc)
 }
 
-// PromoteMember promotes a learner node to a voting node.
+// PromoteMember promotes a non-voting member to a voting node.
 func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
-	// only raft leader has information on whether the to-be-promoted learner node is ready. If promoteMember call
+	// only raft leader has information on whether the to-be-promoted member node is ready. If promoteMember call
 	// fails with ErrNotLeader, forward the request to leader node via HTTP. If promoteMember call fails with error
 	// other than ErrNotLeader, return the error.
 	resp, err := s.promoteMember(ctx, id)
+
 	if err == nil {
 		learnerPromoteSucceed.Inc()
 		return resp, nil
 	}
+
 	if err != ErrNotLeader {
 		learnerPromoteFailed.WithLabelValues(err.Error()).Inc()
 		return resp, err
@@ -1361,7 +1462,7 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 				return resp, nil
 			}
 			// If member promotion failed, return early. Otherwise keep retry.
-			if err == ErrLearnerNotReady || err == membership.ErrIDNotFound || err == membership.ErrMemberNotLearner {
+			if err == ErrCannotPromote || err == ErrLearnerNotReady || err == membership.ErrIDNotFound || err == membership.ErrMemberNotLearner {
 				return nil, err
 			}
 		}
@@ -1373,8 +1474,9 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 	return nil, ErrCanceled
 }
 
-// promoteMember checks whether the to-be-promoted learner node is ready before sending the promote
+// promoteMember checks whether the to-be-promoted member node is ready before sending the promote
 // request to raft.
+//
 // The function returns ErrNotLeader if the local node is not raft leader (therefore does not have
 // enough information to determine if the learner node is ready), returns ErrLearnerNotReady if the
 // local node is leader (therefore has enough information) but decided the learner node is not ready
@@ -1384,12 +1486,12 @@ func (s *EtcdServer) promoteMember(ctx context.Context, id uint64) ([]*membershi
 		return nil, err
 	}
 
-	// check if we can promote this learner.
+	// check if we can promote this member.
 	if err := s.mayPromoteMember(types.ID(id)); err != nil {
 		return nil, err
 	}
 
-	// build the context for the promote confChange. mark IsLearner to false and IsPromote to true.
+	// build the context for the promote confChange. mark IsPromote to true.
 	promoteChangeContext := membership.ConfigChangeContext{
 		Member: membership.Member{
 			ID: types.ID(id),
@@ -1413,9 +1515,22 @@ func (s *EtcdServer) promoteMember(ctx context.Context, id uint64) ([]*membershi
 
 func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 	lg := s.Logger()
-	err := s.isLearnerReady(uint64(id))
-	if err != nil {
-		return err
+
+	memberID := types.ID(id)
+	if !s.IsLeader() {
+		return ErrNotLeader
+	}
+	if !s.cluster.IsMemberExist(memberID) {
+		return membership.ErrIDNotFound
+	}
+
+	member := s.cluster.Member(memberID)
+
+	if canPromote, reason := member.CanPromote(); !canPromote {
+		if reason == membership.ErrLearnerNotReady {
+			return ErrLearnerNotReady
+		}
+		return reason
 	}
 
 	if !s.Cfg.StrictReconfigCheck {
@@ -1434,15 +1549,15 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 	return nil
 }
 
-// check whether the learner catches up with leader or not.
+// Get learner progress.
 // Note: it will return nil if member is not found in cluster or if member is not learner.
 // These two conditions will be checked before apply phase later.
-func (s *EtcdServer) isLearnerReady(id uint64) error {
+func (s *EtcdServer) getLearnerMatchPercent(id uint64) (float64, error) {
 	rs := s.raftStatus()
 
 	// leader's raftStatus.Progress is not nil
 	if rs.Progress == nil {
-		return ErrNotLeader
+		return 0, ErrNotLeader
 	}
 
 	var learnerMatch uint64
@@ -1457,15 +1572,16 @@ func (s *EtcdServer) isLearnerReady(id uint64) error {
 		}
 	}
 
-	if isFound {
-		leaderMatch := rs.Progress[leaderID].Match
-		// the learner's Match not caught up with leader yet
-		if float64(learnerMatch) < float64(leaderMatch)*readyPercent {
-			return ErrLearnerNotReady
-		}
+	if !isFound {
+		return 0, membership.ErrIDNotFound
 	}
 
-	return nil
+	leaderMatch := rs.Progress[leaderID].Match
+	return float64(learnerMatch) / float64(leaderMatch), nil
+}
+
+func (s *EtcdServer) isLearner(id types.ID) bool {
+	return s.cluster.IsMemberExist(id) && s.cluster.Member(id).IsLearner
 }
 
 func (s *EtcdServer) mayRemoveMember(id types.ID) error {
@@ -1474,9 +1590,9 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	}
 
 	lg := s.Logger()
-	isLearner := s.cluster.IsMemberExist(id) && s.cluster.Member(id).IsLearner
+
 	// no need to check quorum when removing non-voting member
-	if isLearner {
+	if s.isLearner(id) {
 		return nil
 	}
 
@@ -1583,6 +1699,8 @@ type RaftStatusGetter interface {
 }
 
 func (s *EtcdServer) ID() types.ID { return s.id }
+
+func (s *EtcdServer) IsLeader() bool { return s.ID() == s.Leader() }
 
 func (s *EtcdServer) Leader() types.ID { return types.ID(s.getLead()) }
 
@@ -1985,7 +2103,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 			s.cluster.PromoteMember(confChangeContext.Member.ID, shouldApplyV3)
 		} else {
 			s.cluster.AddMember(&confChangeContext.Member, shouldApplyV3)
-
 			if confChangeContext.Member.ID != s.id {
 				s.r.transport.AddPeer(confChangeContext.Member.ID, confChangeContext.PeerURLs)
 			}

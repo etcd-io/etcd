@@ -45,20 +45,83 @@ type Member struct {
 	ID types.ID `json:"id"`
 	RaftAttributes
 	Attributes
+	// PromoteRules govern if and when a raft member
+	// may be automatically promoted.
+	PromoteRules []PromoteRule `json:"promoteRules"`
 }
 
-// NewMember creates a Member without an ID and generates one based on the
+type MonitorType string
+
+const (
+	Progress MonitorType = "progress"
+)
+
+type MonitorOp string
+
+const (
+	GreaterEqual MonitorOp = "greater-equal"
+)
+
+type monitorStatus uint8
+
+const (
+	// Monitor value meets the threshold for at least as long as the delay.
+	inactive monitorStatus = iota
+	// Monitor value meets the threshold, but delay has not yet elapsed.
+	activeWait
+	// Monitor value does not meet the threshold.
+	active
+)
+
+type Monitor struct {
+	Type            MonitorType `json:"type"`
+	Op              MonitorOp   `json:"op"`
+	Threshold       uint64      `json:"threshold"`
+	Delay           uint32      `json:"delay"`
+	status          monitorStatus
+	statusChangedAt time.Time
+	value           uint64
+}
+
+type PromoteRule struct {
+	Auto     bool      `json:"auto"`
+	Monitors []Monitor `json:"monitors"`
+}
+
+// NewMember creates a node Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
 	memberId := computeMemberId(peerURLs, clusterName, now)
-	return newMember(name, peerURLs, memberId, false)
+	return newMember(name, peerURLs, memberId, false /* isLearner */, nil /* promoteRules */)
+}
+
+// NewMemberAsLearnerWithPromoteRules creates a learner Member without an ID and generates
+// one based on the cluster name, peer URLs, and time. This is used for bootstrapping/adding
+// new member. Promote rules govern whether a learner may be manually or
+// automatically promoted.
+func NewMemberAsLearnerWithPromoteRules(name string, peerURLs types.URLs, clusterName string, now *time.Time, promoteRules []PromoteRule) *Member {
+	memberId := computeMemberId(peerURLs, clusterName, now)
+	return newMember(name, peerURLs, memberId, true /* isLearner */, promoteRules)
 }
 
 // NewMemberAsLearner creates a learner Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for adding new learner member.
 func NewMemberAsLearner(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
 	memberId := computeMemberId(peerURLs, clusterName, now)
-	return newMember(name, peerURLs, memberId, true)
+
+	rule := PromoteRule{
+		Auto: false,
+		Monitors: []Monitor{
+			{
+				Delay:     0,
+				Op:        GreaterEqual,
+				Type:      Progress,
+				Threshold: 90,
+			},
+		},
+	}
+
+	return newMember(name, peerURLs, memberId, true /* isLearner */, []PromoteRule{rule})
 }
 
 func computeMemberId(peerURLs types.URLs, clusterName string, now *time.Time) types.ID {
@@ -66,7 +129,6 @@ func computeMemberId(peerURLs types.URLs, clusterName string, now *time.Time) ty
 	sort.Strings(peerURLstrs)
 	joinedPeerUrls := strings.Join(peerURLstrs, "")
 	b := []byte(joinedPeerUrls)
-
 	b = append(b, []byte(clusterName)...)
 	if now != nil {
 		b = append(b, []byte(fmt.Sprintf("%d", now.Unix()))...)
@@ -74,16 +136,18 @@ func computeMemberId(peerURLs types.URLs, clusterName string, now *time.Time) ty
 
 	hash := sha1.Sum(b)
 	return types.ID(binary.BigEndian.Uint64(hash[:8]))
+
 }
 
-func newMember(name string, peerURLs types.URLs, memberId types.ID, isLearner bool) *Member {
+func newMember(name string, peerURLs types.URLs, memberId types.ID, isLearner bool, promoteRules []PromoteRule) *Member {
 	m := &Member{
 		RaftAttributes: RaftAttributes{
 			PeerURLs:  peerURLs.StringSlice(),
 			IsLearner: isLearner,
 		},
-		Attributes: Attributes{Name: name},
-		ID:         memberId,
+		Attributes:   Attributes{Name: name},
+		ID:           memberId,
+		PromoteRules: promoteRules,
 	}
 	return m
 }
@@ -118,11 +182,115 @@ func (m *Member) Clone() *Member {
 		mm.ClientURLs = make([]string, len(m.ClientURLs))
 		copy(mm.ClientURLs, m.ClientURLs)
 	}
+	if m.PromoteRules != nil {
+		mm.PromoteRules = make([]PromoteRule, len(m.PromoteRules))
+		for ridx := range m.PromoteRules {
+			mm.PromoteRules[ridx] = PromoteRule{
+				Auto:     m.PromoteRules[ridx].Auto,
+				Monitors: make([]Monitor, len(m.PromoteRules[ridx].Monitors)),
+			}
+			for midx := range m.PromoteRules[ridx].Monitors {
+				mm.PromoteRules[ridx].Monitors[midx] = Monitor{
+					Op:              m.PromoteRules[ridx].Monitors[midx].Op,
+					Type:            m.PromoteRules[ridx].Monitors[midx].Type,
+					Threshold:       m.PromoteRules[ridx].Monitors[midx].Threshold,
+					Delay:           m.PromoteRules[ridx].Monitors[midx].Delay,
+					status:          m.PromoteRules[ridx].Monitors[midx].status,
+					statusChangedAt: m.PromoteRules[ridx].Monitors[midx].statusChangedAt,
+					value:           m.PromoteRules[ridx].Monitors[midx].value,
+				}
+			}
+		}
+	}
 	return mm
+}
+
+func (m *Member) CanPromote() (bool, error) {
+	if !m.IsLearner {
+		return false, ErrMemberNotLearner
+	}
+	if len(m.PromoteRules) == 0 {
+		return false, ErrNoPromoteRules
+	}
+	var errors []error
+	for idx := range m.PromoteRules {
+		if satisfied, reason := m.PromoteRules[idx].IsSatisfied(); !satisfied {
+			errors = append(errors, reason)
+		} else {
+			return true, nil
+		}
+	}
+	// TODO: combine errors
+	return false, errors[0]
 }
 
 func (m *Member) IsStarted() bool {
 	return len(m.Name) != 0
+}
+
+// AddValue adds a value to the monitor's history of values. Update monitor status.
+func (m *Monitor) AddValue(value uint64) {
+	// Set some values that will be used to calculate new monitor status.
+	meetsThreshold := false
+	now := time.Now()
+	var elapsed uint64
+	if !m.statusChangedAt.IsZero() {
+		elapsed = uint64(now.Sub(m.statusChangedAt).Seconds() * 1e3)
+	}
+
+	// Determine whether the value meets the threshold.
+	switch m.Op {
+	case GreaterEqual:
+		meetsThreshold = value >= m.Threshold
+		break
+	}
+
+	newStatus := m.status
+	// Update monitor status according to the following truth table
+	//
+	// meetsThreshold && m.status && m.delay && elapsed => newStatus
+	// ============================================================
+	// true            | *         | 0        | *        | active
+	// true            | !inactive | > 0      | >= delay | active
+	// true            | inactive  | > 0      | *        | activeWait
+	// false           | *         | *        | *        | inactive
+	//
+	// For all other possibilities, keep current status.
+	if meetsThreshold && m.Delay == 0 {
+		newStatus = active
+	} else if meetsThreshold && m.status != inactive && m.Delay > 0 && elapsed >= uint64(m.Delay) {
+		newStatus = active
+	} else if meetsThreshold && m.status == inactive && m.Delay > 0 {
+		newStatus = activeWait
+	} else if !meetsThreshold {
+		newStatus = inactive
+	}
+
+	// If status has changed, record the change and update time of last change.
+	if newStatus != m.status {
+		m.status = newStatus
+		m.statusChangedAt = now
+	}
+}
+
+func (m *Monitor) IsActive() bool {
+	return m.status == active
+}
+
+func (r *PromoteRule) IsSatisfied() (bool, error) {
+	if len(r.Monitors) == 0 {
+		return false, ErrNoMonitors
+	}
+	for idx := range r.Monitors {
+		if !r.Monitors[idx].IsActive() {
+			switch r.Monitors[idx].Type {
+			case Progress:
+				return false, ErrLearnerNotReady
+			}
+			return false, ErrInactiveMonitor
+		}
+	}
+	return true, nil
 }
 
 // MembersByID implements sort by ID interface
