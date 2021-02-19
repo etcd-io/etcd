@@ -231,8 +231,8 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 					return rpctypes.ErrGRPCNoLeader
 				}
 
-				cctx, cancel := context.WithCancel(ss.Context())
-				ss = serverStreamWithCtx{ctx: cctx, cancel: &cancel, ServerStream: ss}
+				ctx := newCancellableContext(ss.Context())
+				ss = serverStreamWithCtx{ctx: ctx, ServerStream: ss}
 
 				smap.mu.Lock()
 				smap.streams[ss] = struct{}{}
@@ -242,7 +242,8 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 					smap.mu.Lock()
 					delete(smap.streams, ss)
 					smap.mu.Unlock()
-					cancel()
+					// TODO: investigate whether the reason for cancellation here is useful to know
+					ctx.Cancel(nil)
 				}()
 			}
 		}
@@ -251,10 +252,52 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 	}
 }
 
+// cancellableContext wraps a context with new cancellable context that allows a
+// specific cancellation error to be preserved and later retrieved using the
+// Context.Err() function. This is so downstream context users can disambiguate
+// the reason for the cancellation which could be from the client (for example)
+// or from this interceptor code.
+type cancellableContext struct {
+	context.Context
+
+	lock         sync.RWMutex
+	cancel       context.CancelFunc
+	cancelReason error
+}
+
+func newCancellableContext(parent context.Context) *cancellableContext {
+	ctx, cancel := context.WithCancel(parent)
+	return &cancellableContext{
+		Context: ctx,
+		cancel:  cancel,
+	}
+}
+
+// Cancel stores the cancellation reason and then delegates to context.WithCancel
+// against the parent context.
+func (c *cancellableContext) Cancel(reason error) {
+	c.lock.Lock()
+	c.cancelReason = reason
+	c.lock.Unlock()
+	c.cancel()
+}
+
+// Err will return the preserved cancel reason error if present, and will
+// otherwise return the underlying error from the parent context.
+func (c *cancellableContext) Err() error {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	if c.cancelReason != nil {
+		return c.cancelReason
+	}
+	return c.Context.Err()
+}
+
 type serverStreamWithCtx struct {
 	grpc.ServerStream
-	ctx    context.Context
-	cancel *context.CancelFunc
+
+	// ctx is used so that we can preserve a reason for cancellation.
+	ctx *cancellableContext
 }
 
 func (ssc serverStreamWithCtx) Context() context.Context { return ssc.ctx }
@@ -286,7 +329,7 @@ func monitorLeader(s *etcdserver.EtcdServer) *streamsMap {
 					smap.mu.Lock()
 					for ss := range smap.streams {
 						if ssWithCtx, ok := ss.(serverStreamWithCtx); ok {
-							(*ssWithCtx.cancel)()
+							ssWithCtx.ctx.Cancel(rpctypes.ErrGRPCNoLeader)
 							<-ss.Context().Done()
 						}
 					}
