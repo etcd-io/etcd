@@ -37,11 +37,16 @@ import (
 	"go.uber.org/zap"
 )
 
+type commit struct {
+	data       []string
+	applyDoneC chan<- struct{}
+}
+
 // A key-value stream backed by raft
 type raftNode struct {
 	proposeC    <-chan string            // proposed messages (k,v)
 	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
-	commitC     chan<- *string           // entries committed to log (k,v)
+	commitC     chan<- *commit           // entries committed to log (k,v)
 	errorC      chan<- error             // errors from raft session
 
 	id          int      // client ID for raft session
@@ -80,9 +85,9 @@ var defaultSnapshotCount uint64 = 10000
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
 func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
-	confChangeC <-chan raftpb.ConfChange) (<-chan *string, <-chan error, <-chan *snap.Snapshotter) {
+	confChangeC <-chan raftpb.ConfChange) (<-chan *commit, <-chan error, <-chan *snap.Snapshotter) {
 
-	commitC := make(chan *string)
+	commitC := make(chan *commit)
 	errorC := make(chan error)
 
 	rc := &raftNode{
@@ -143,7 +148,12 @@ func (rc *raftNode) entriesToApply(ents []raftpb.Entry) (nents []raftpb.Entry) {
 
 // publishEntries writes committed log entries to commit channel and returns
 // whether all entries could be published.
-func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
+func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) {
+	if len(ents) == 0 {
+		return nil, true
+	}
+
+	data := make([]string, 0, len(ents))
 	for i := range ents {
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
@@ -152,12 +162,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 				break
 			}
 			s := string(ents[i].Data)
-			select {
-			case rc.commitC <- &s:
-			case <-rc.stopc:
-				return false
-			}
-
+			data = append(data, s)
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			cc.Unmarshal(ents[i].Data)
@@ -170,16 +175,28 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 			case raftpb.ConfChangeRemoveNode:
 				if cc.NodeID == uint64(rc.id) {
 					log.Println("I've been removed from the cluster! Shutting down.")
-					return false
+					return nil, false
 				}
 				rc.transport.RemovePeer(types.ID(cc.NodeID))
 			}
 		}
-
-		// after commit, update appliedIndex
-		rc.appliedIndex = ents[i].Index
 	}
-	return true
+
+	var applyDoneC chan struct{}
+
+	if len(data) > 0 {
+		applyDoneC := make(chan struct{}, 1)
+		select {
+		case rc.commitC <- &commit{data, applyDoneC}:
+		case <-rc.stopc:
+			return nil, false
+		}
+	}
+
+	// after commit, update appliedIndex
+	rc.appliedIndex = ents[len(ents)-1].Index
+
+	return applyDoneC, true
 }
 
 func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
@@ -346,18 +363,14 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 
 var snapshotCatchUpEntriesN uint64 = 10000
 
-func (rc *raftNode) maybeTriggerSnapshot() {
+func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
 		return
 	}
 
 	// wait until all committed entries are applied
-	// commitC is synchronous channel, so consumption of the message signals
-	// full application of previous messages
-	select {
-	case rc.commitC <- nil:
-	case <-rc.stopc:
-		return
+	if applyDoneC != nil {
+		<-applyDoneC
 	}
 
 	log.Printf("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
@@ -443,11 +456,12 @@ func (rc *raftNode) serveChannels() {
 			}
 			rc.raftStorage.Append(rd.Entries)
 			rc.transport.Send(rd.Messages)
-			if ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries)); !ok {
+			applyDoneC, ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
+			if !ok {
 				rc.stop()
 				return
 			}
-			rc.maybeTriggerSnapshot()
+			rc.maybeTriggerSnapshot(applyDoneC)
 			rc.node.Advance()
 
 		case err := <-rc.transport.ErrorC:

@@ -38,7 +38,7 @@ type kv struct {
 	Val string
 }
 
-func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
+func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *commit, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
 	snapshot, err := s.loadSnapshot()
 	if err != nil {
@@ -70,9 +70,9 @@ func (s *kvstore) Propose(k string, v string) {
 	s.proposeC <- buf.String()
 }
 
-func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
-	for data := range commitC {
-		if data == nil {
+func (s *kvstore) readCommits(commitC <-chan *commit, errorC <-chan error) {
+	for commit := range commitC {
+		if commit == nil {
 			// signaled to load snapshot
 			snapshot, err := s.loadSnapshot()
 			if err != nil {
@@ -87,14 +87,17 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 			continue
 		}
 
-		var dataKv kv
-		dec := gob.NewDecoder(bytes.NewBufferString(*data))
-		if err := dec.Decode(&dataKv); err != nil {
-			log.Fatalf("raftexample: could not decode message (%v)", err)
+		for _, data := range commit.data {
+			var dataKv kv
+			dec := gob.NewDecoder(bytes.NewBufferString(data))
+			if err := dec.Decode(&dataKv); err != nil {
+				log.Fatalf("raftexample: could not decode message (%v)", err)
+			}
+			s.mu.Lock()
+			s.kvStore[dataKv.Key] = dataKv.Val
+			s.mu.Unlock()
 		}
-		s.mu.Lock()
-		s.kvStore[dataKv.Key] = dataKv.Val
-		s.mu.Unlock()
+		close(commit.applyDoneC)
 	}
 	if err, ok := <-errorC; ok {
 		log.Fatal(err)
