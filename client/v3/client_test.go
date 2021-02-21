@@ -82,6 +82,8 @@ func TestDialCancel(t *testing.T) {
 func TestDialTimeout(t *testing.T) {
 	defer testutil.AfterTest(t)
 
+	wantError := context.DeadlineExceeded
+
 	// grpc.WithBlock to block until connection up or timeout
 	testCfgs := []Config{
 		{
@@ -121,8 +123,8 @@ func TestDialTimeout(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Errorf("#%d: failed to timeout dial on time", i)
 		case err := <-donec:
-			if err != context.DeadlineExceeded {
-				t.Errorf("#%d: unexpected error %v, want %v", i, err, context.DeadlineExceeded)
+			if err.Error() != wantError.Error() {
+				t.Errorf("#%d: unexpected error '%v', want '%v'", i, err, wantError)
 			}
 		}
 	}

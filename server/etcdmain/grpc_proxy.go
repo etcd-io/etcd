@@ -208,7 +208,13 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}()
 
 	client := mustNewClient(lg)
-	proxyClient := mustNewProxyClient(lg, tlsinfo)
+
+	// The proxy client is used for self-healthchecking.
+	// TODO: The mechanism should be refactored to use internal connection.
+	var proxyClient *clientv3.Client
+	if grpcProxyAdvertiseClientURL != "" {
+		proxyClient = mustNewProxyClient(lg, tlsinfo)
+	}
 	httpClient := mustNewHTTPClient(lg)
 
 	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client, proxyClient)

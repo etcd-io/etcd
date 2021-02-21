@@ -151,6 +151,14 @@ test:
 	$(TEST_OPTS) ./test.sh 2>&1 | tee test-$(TEST_SUFFIX).log
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
 
+test-small:
+	$(info log-file: test-$(TEST_SUFFIX).log)
+	PASSES="fmt build unit" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
+
+test-full:
+	$(info log-file: test-$(TEST_SUFFIX).log)
+	PASSES="fmt build unit integration functional e2e grpcproxy" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
+
 docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
