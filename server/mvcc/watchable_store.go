@@ -131,8 +131,6 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 		if startRev > wa.minRev {
 			wa.minRev = startRev
 		}
-	}
-	if synced {
 		s.synced.add(wa)
 	} else {
 		slowWatcherGauge.Inc()
