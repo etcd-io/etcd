@@ -789,14 +789,16 @@ func (w *WAL) cut() error {
 }
 
 func (w *WAL) sync() error {
-	if w.unsafeNoSync {
-		return nil
-	}
 	if w.encoder != nil {
 		if err := w.encoder.flush(); err != nil {
 			return err
 		}
 	}
+
+	if w.unsafeNoSync {
+		return nil
+	}
+
 	start := time.Now()
 	err := fileutil.Fdatasync(w.tail().File)
 
