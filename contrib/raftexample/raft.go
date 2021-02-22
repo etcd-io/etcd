@@ -298,14 +298,10 @@ func (rc *raftNode) startRaft() {
 		MaxUncommittedEntriesSize: 1 << 30,
 	}
 
-	if oldwal {
+	if oldwal || rc.join {
 		rc.node = raft.RestartNode(c)
 	} else {
-		startPeers := rpeers
-		if rc.join {
-			startPeers = nil
-		}
-		rc.node = raft.StartNode(c, startPeers)
+		rc.node = raft.StartNode(c, rpeers)
 	}
 
 	rc.transport = &rafthttp.Transport{

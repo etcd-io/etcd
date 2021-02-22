@@ -205,3 +205,39 @@ func TestPutAndGetKeyValue(t *testing.T) {
 		t.Fatalf("expect %s, got %s", wantValue, gotValue)
 	}
 }
+
+// TestAddNewNode tests adding new node to the existing cluster.
+func TestAddNewNode(t *testing.T) {
+	clus := newCluster(3)
+	defer clus.closeNoErrors(t)
+
+	os.RemoveAll("raftexample-4")
+	os.RemoveAll("raftexample-4-snap")
+	defer func() {
+		os.RemoveAll("raftexample-4")
+		os.RemoveAll("raftexample-4-snap")
+	}()
+
+	newNodeURL := "http://127.0.0.1:10004"
+	clus.confChangeC[0] <- raftpb.ConfChange{
+		Type:    raftpb.ConfChangeAddNode,
+		NodeID:  4,
+		Context: []byte(newNodeURL),
+	}
+
+	proposeC := make(chan string)
+	defer close(proposeC)
+
+	confChangeC := make(chan raftpb.ConfChange)
+	defer close(confChangeC)
+
+	newRaftNode(4, append(clus.peers, newNodeURL), true, nil, proposeC, confChangeC)
+
+	go func() {
+		proposeC <- "foo"
+	}()
+
+	if c, ok := <-clus.commitC[0]; !ok || c.data[0] != "foo" {
+		t.Fatalf("Commit failed")
+	}
+}
