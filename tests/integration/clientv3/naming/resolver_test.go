@@ -115,8 +115,8 @@ func TestEtcdGrpcResolver(t *testing.T) {
 }
 
 func newDummyStubServer(body []byte) *grpctest.StubServer {
-	return &grpctest.StubServer{
-		UnaryCallF: func(ctx context.Context, in *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
+	testService := &testpb.TestServiceService{
+		UnaryCall: func(ctx context.Context, in *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
 			return &testpb.SimpleResponse{
 				Payload: &testpb.Payload{
 					Type: testpb.PayloadType_COMPRESSABLE,
@@ -125,4 +125,5 @@ func newDummyStubServer(body []byte) *grpctest.StubServer {
 			}, nil
 		},
 	}
+	return grpctest.New(testService)
 }

@@ -1,7 +1,6 @@
 package grpc_testing
 
 import (
-	"context"
 	"fmt"
 	"net"
 
@@ -17,35 +16,19 @@ import (
 // StubServer is a server that is easy to customize within individual test
 // cases.
 type StubServer struct {
-	// Guarantees we satisfy this interface; panics if unimplemented methods are called.
-	testpb.TestServiceServer
-
-	EmptyCallF      func(ctx context.Context, in *testpb.Empty) (*testpb.Empty, error)
-	UnaryCallF      func(ctx context.Context, in *testpb.SimpleRequest) (*testpb.SimpleResponse, error)
-	FullDuplexCallF func(stream testpb.TestService_FullDuplexCallServer) error
-
-	s *grpc.Server
+	testService *testpb.TestServiceService
 
 	// Network and Address are parameters for Listen. Defaults will be used if these are empty before Start.
 	Network string
 	Address string
 
+	s *grpc.Server
+
 	cleanups []func() // Lambdas executed in Stop(); populated by Start().
 }
 
-// EmptyCall is the handler for testpb.EmptyCall.
-func (ss *StubServer) EmptyCall(ctx context.Context, in *testpb.Empty) (*testpb.Empty, error) {
-	return ss.EmptyCallF(ctx, in)
-}
-
-// UnaryCall is the handler for testpb.UnaryCall.
-func (ss *StubServer) UnaryCall(ctx context.Context, in *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
-	return ss.UnaryCallF(ctx, in)
-}
-
-// FullDuplexCall is the handler for testpb.FullDuplexCall.
-func (ss *StubServer) FullDuplexCall(stream testpb.TestService_FullDuplexCallServer) error {
-	return ss.FullDuplexCallF(stream)
+func New(testService *testpb.TestServiceService) *StubServer {
+	return &StubServer{testService: testService}
 }
 
 // Start starts the server and creates a client connected to it.
@@ -65,7 +48,7 @@ func (ss *StubServer) Start(sopts []grpc.ServerOption, dopts ...grpc.DialOption)
 	ss.cleanups = append(ss.cleanups, func() { lis.Close() })
 
 	s := grpc.NewServer(sopts...)
-	testpb.RegisterTestServiceServer(s, ss)
+	testpb.RegisterTestServiceService(s, ss.testService)
 	go s.Serve(lis)
 	ss.cleanups = append(ss.cleanups, s.Stop)
 	ss.s = s

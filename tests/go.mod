@@ -21,7 +21,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/prometheus/client_golang v1.5.1
-	github.com/soheilhy/cmux v0.1.4
+	github.com/soheilhy/cmux v0.1.5-0.20210205191134-5ec6847320e5
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/bbolt v1.3.5
@@ -35,6 +35,6 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
-	google.golang.org/grpc v1.29.1
+	google.golang.org/grpc v1.32.0
 	gopkg.in/yaml.v2 v2.3.0
 )
