@@ -56,6 +56,9 @@ func checkHealth(c *clientv3.Client) etcdhttp.Health {
 }
 
 func checkProxyHealth(c *clientv3.Client) etcdhttp.Health {
+	if c == nil {
+		return etcdhttp.Health{Health: "false", Reason: "no connection to proxy"}
+	}
 	h := checkHealth(c)
 	if h.Health != "true" {
 		return h

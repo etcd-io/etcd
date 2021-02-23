@@ -63,7 +63,7 @@ import (
 
 const (
 	// RequestWaitTimeout is the time duration to wait for a request to go through or detect leader loss.
-	RequestWaitTimeout = 3 * time.Second
+	RequestWaitTimeout = 5 * time.Second
 	tickDuration       = 10 * time.Millisecond
 	requestTimeout     = 20 * time.Second
 
@@ -1257,6 +1257,7 @@ type ClusterV3 struct {
 // NewClusterV3 returns a launched cluster with a grpc client connection
 // for each cluster member.
 func NewClusterV3(t testing.TB, cfg *ClusterConfig) *ClusterV3 {
+	// t might be nil in case of Examples and clusters created per test-suite.
 	if t != nil {
 		t.Helper()
 		testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
@@ -1275,7 +1276,11 @@ func NewClusterV3(t testing.TB, cfg *ClusterConfig) *ClusterV3 {
 		for _, m := range clus.Members {
 			client, err := NewClientV3(m)
 			if err != nil {
-				t.Fatalf("cannot create client: %v", err)
+				if t != nil {
+					t.Fatalf("cannot create client: %v", err)
+				} else {
+					log.Fatalf("cannot create client: %v", err)
+				}
 			}
 			clus.clients = append(clus.clients, client)
 		}

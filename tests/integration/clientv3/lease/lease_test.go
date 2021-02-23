@@ -728,6 +728,7 @@ func TestLeaseKeepAliveLoopExit(t *testing.T) {
 // before, during, and after quorum loss to confirm Grant/KeepAlive tolerates
 // transient cluster failure.
 func TestV3LeaseFailureOverlap(t *testing.T) {
+	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
