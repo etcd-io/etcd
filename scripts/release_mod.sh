@@ -68,7 +68,8 @@ function update_versions_cmd() {
 }
 
 function get_gpg_key {
-  keyid=$(gpg --list-keys --with-colons| awk -F: '/^pub:/ { print $5 }')
+  gitemail=$(git config --get user.email)
+  keyid=$(run gpg --list-keys --with-colons "${gitemail}" | awk -F: '/^pub:/ { print $5 }')
   if [[ -z "${keyid}" ]]; then
     log_error "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
     return 2
