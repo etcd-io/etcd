@@ -27,11 +27,11 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20200427203606-3cfed13b9966
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.5
-	go.etcd.io/etcd/api/v3 v3.5.0-pre
-	go.etcd.io/etcd/client/v2 v2.305.0-pre
-	go.etcd.io/etcd/client/v3 v3.5.0-pre
-	go.etcd.io/etcd/pkg/v3 v3.5.0-pre
-	go.etcd.io/etcd/raft/v3 v3.5.0-pre
+	go.etcd.io/etcd/api/v3 v3.5.0-alpha.0
+	go.etcd.io/etcd/client/v2 v2.305.0-alpha.0
+	go.etcd.io/etcd/client/v3 v3.5.0-alpha.0
+	go.etcd.io/etcd/pkg/v3 v3.5.0-alpha.0
+	go.etcd.io/etcd/raft/v3 v3.5.0-alpha.0
 	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0

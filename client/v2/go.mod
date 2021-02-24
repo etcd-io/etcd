@@ -5,8 +5,8 @@ go 1.15
 require (
 	github.com/json-iterator/go v1.1.10
 	github.com/modern-go/reflect2 v1.0.1
-	go.etcd.io/etcd/api/v3 v3.5.0-pre
-	go.etcd.io/etcd/pkg/v3 v3.5.0-pre
+	go.etcd.io/etcd/api/v3 v3.5.0-alpha.0
+	go.etcd.io/etcd/pkg/v3 v3.5.0-alpha.0
 )
 
 replace (
