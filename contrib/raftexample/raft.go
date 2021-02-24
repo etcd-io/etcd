@@ -185,7 +185,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 	var applyDoneC chan struct{}
 
 	if len(data) > 0 {
-		applyDoneC := make(chan struct{}, 1)
+		applyDoneC = make(chan struct{}, 1)
 		select {
 		case rc.commitC <- &commit{data, applyDoneC}:
 		case <-rc.stopc:
