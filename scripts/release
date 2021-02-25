@@ -9,6 +9,23 @@ source ./scripts/release_mod.sh
 
 DRY_RUN=${DRY_RUN:-true}
 
+# Following preparation steps help with the release process: 
+
+# If you use password-protected gpg key, make sure the password is managed
+# by agent: 
+#
+# % gpg-connect-agent reloadagent /bye
+# % gpg -s --default-key [git-email]@google.com -o /dev/null -s /dev/null
+#
+# Refresh your google credentials: 
+#  % gcloud auth login
+# or
+#  % gcloud auth activate-service-account --key-file=gcp-key-etcd-development.json
+#
+# Make sure gcloud-docker plugin is configured: 
+#  % gcloud auth configure-docker
+
+
 help() {
   echo "$(basename "$0") [version]"
   echo "Release etcd using the same approach as the etcd-release-runbook (https://goo.gl/Gxwysq)"
@@ -20,7 +37,7 @@ help() {
   echo "         emails. These steps must be performed manually AFTER running this tool."
   echo ""
   echo "  args:"
-  echo "    version: version of etcd to release, e.g. '3.2.18'"
+  echo "    version: version of etcd to release, e.g. 'v3.2.18'"
   echo "  flags:"
   echo "    --no-upload: skip gs://etcd binary artifact uploads."
   echo "    --no-docker-push: skip docker image pushes."
@@ -36,7 +53,7 @@ main() {
   RELEASE_VERSION="v${VERSION}"
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
   BRANCH=${BRANCH:-"release-${MINOR_VERSION}"}
-  REPOSITORY=${REPOSITORY:-"https://github.com/etcd-io/etcd"}
+  REPOSITORY=${REPOSITORY:-"git@github.com:etcd-io/etcd.git"}
 
   log_warning "DRY_RUN=${DRY_RUN}"
   log_callout "RELEASE_VERSION=${RELEASE_VERSION}"
@@ -121,7 +138,7 @@ main() {
     if [[ -n $(git status -s) ]]; then
       log_callout "Committing mods & api/version/version.go update."
       run git add api/version/version.go
-      run git add $(find -name go.mod | xargs)
+      run git add $(find -name go.mod ! -path './release/*'| xargs)
       run git diff --staged | cat
       run git commit -m "version: bump up to ${VERSION}"
       run git diff --staged | cat
@@ -210,21 +227,20 @@ main() {
       docker login quay.io && break
       log_warning "login failed, retrying"
     done
-    maybe_run gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
-
-    # NB: `docker manifest create` insists on at least one manifest.
-    # We overwrite it later with --amend anyway.
-    maybe_run docker manifest create "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-amd64"
-    maybe_run docker manifest create "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-amd64"
 
     for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
       log_callout "Pushing container images to quay.io ${RELEASE_VERSION}-${TARGET_ARCH}"
-      docker push "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      docker manifest create --amend "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      docker manifest annotate "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
-
+      maybe_run docker push "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
       log_callout "Pushing container images to gcr.io ${RELEASE_VERSION}-${TARGET_ARCH}"
-      maybe_run gcloud docker -- push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      maybe_run docker push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+    done
+
+    log_callout "Creating manifest-list (multi-image)..."
+
+    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
+      maybe_run docker manifest create --amend "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      maybe_run docker manifest annotate "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
+
       maybe_run docker manifest create --amend "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
       maybe_run docker manifest annotate "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
     done
@@ -233,7 +249,7 @@ main() {
     maybe_run docker manifest push "quay.io/coreos/etcd:${RELEASE_VERSION}"
 
     log_callout "Pushing container manifest list to gcr.io ${RELEASE_VERSION}"
-    maybe_run gcloud docker -- manifest push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
+    maybe_run docker manifest push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
 
     log_callout "Setting permissions using gsutil..."
     maybe_run gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
@@ -244,7 +260,7 @@ main() {
 
   # Check image versions
   for IMAGE in "quay.io/coreos/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"; do
-    local image_version=$(docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
+    local image_version=$(dry_run docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
     if [ "${image_version}" != "${VERSION}" ]; then
       log_error "Check failed: etcd --version output for ${IMAGE} is incorrect: ${image_version}"
       exit 1
