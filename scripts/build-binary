@@ -5,7 +5,7 @@ set -e
 source ./scripts/test_lib.sh
 
 VER=$1
-REPOSITORY="${REPOSITORY:-https://github.com/etcd-io/etcd}"
+REPOSITORY="${REPOSITORY:-git@github.com:etcd-io/etcd.git}"
 
 
 if [ -z "$1" ]; then
@@ -56,7 +56,7 @@ function package {
 }
 
 function main {
-  local proj=$(echo "${REPOSITORY}" | sed 's|^.*/\([^/]*\)$|\1|g')
+  local proj="etcd"
 
   mkdir -p release
   cd release
