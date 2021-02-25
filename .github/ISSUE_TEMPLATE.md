@@ -1,2 +1,2 @@
 
-Please read https://etcd.io/docs/current/reporting_bugs/
+Please read https://etcd.io/docs/latest/reporting_bugs/

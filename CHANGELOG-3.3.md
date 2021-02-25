@@ -11,7 +11,7 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 ## v3.3.25 (2020 TBD)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.25) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.25) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 ### Security
 
@@ -20,7 +20,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.25) an
 
 ## [v3.3.24](https://github.com/etcd-io/etcd/releases/tag/v3.3.24) (2020-08-18)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.24) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.24) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 ### Package `etcd server`
 
@@ -47,7 +47,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.24) an
 
 ## [v3.3.23](https://github.com/etcd-io/etcd/releases/tag/v3.3.23) (2020-07-16)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.22...v3.3.23) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.22...v3.3.23) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 ### Breaking Changes
 
@@ -74,7 +74,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.22...v3.3.23) an
 
 ## [v3.3.22](https://github.com/etcd-io/etcd/releases/tag/v3.3.22) (2020-05-20)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.21...v3.3.22) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.21...v3.3.22) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 ### Package `wal`
 
@@ -91,7 +91,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.21...v3.3.22) an
 
 ## [v3.3.21](https://github.com/etcd-io/etcd/releases/tag/v3.3.21) (2020-05-18)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.20...v3.3.21) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.20...v3.3.21) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 ### `etcdctl`
 
@@ -128,7 +128,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.20...v3.3.21) an
 
 ## [v3.3.20](https://github.com/etcd-io/etcd/releases/tag/v3.3.20) (2020-04-01)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.19...v3.3.20) and [v3.2 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.19...v3.3.20) and [v3.2 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 ### Package `wal`
 
@@ -148,7 +148,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.19...v3.3.20) an
 
 ## [v3.3.19](https://github.com/etcd-io/etcd/releases/tag/v3.3.19) (2020-03-18)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.18...v3.3.19) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.18...v3.3.19) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 ### client v3
 
@@ -205,7 +205,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ## [v3.3.17](https://github.com/etcd-io/etcd/releases/tag/v3.3.17) (2019-10-11)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.16...v3.3.17) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.16...v3.3.17) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 ### Release details
 
@@ -226,9 +226,9 @@ Due to the etcd 3.3.16 release being incorrectly released (see details below), p
 - go mod for 'v3.3.16' may return a different hash if retrieved from a go mod proxy than if retrieved directly from github. Depending on this version is unsafe. See https://github.com/etcd-io/etcd/issues/11241 for details.
 - The binaries and docker image for this release have been published and will be left as-is, but will not be signed since this is a bad release.
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.15...v3.3.16) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.15...v3.3.16) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Improved
 
@@ -268,9 +268,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ## [v3.3.15](https://github.com/etcd-io/etcd/releases/tag/v3.3.15) (2019-08-19)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.14...v3.3.15) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.14...v3.3.15) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 NOTE: This patch release had to include some new features from 3.4, while trying to minimize the difference between client balancer implementation. This release fixes ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
 
@@ -291,12 +291,12 @@ NOTE: This patch release had to include some new features from 3.4, while trying
 
 ## [v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) (2019-08-16)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 - [v3.3.14-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.14-rc.0) (2019-08-15), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.14-beta.0...v3.3.14-rc.0).
 - [v3.3.14-beta.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.14-beta.0) (2019-08-14), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.13...v3.3.14-beta.0).
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 NOTE: This patch release had to include some new features from 3.4, while trying to minimize the difference between client balancer implementation. This release fixes ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
 
@@ -306,7 +306,7 @@ NOTE: This patch release had to include some new features from 3.4, while trying
   - Upgrade [gRPC to v1.23.0](https://github.com/etcd-io/etcd/pull/10911).
   - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
     - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
-  - [The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. to block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
+  - [The new client balancer](https://etcd.io/docs/latest/learning/design-client/) uses an asynchronous resolver to pass endpoints to the gRPC dial function. to block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
 - Require [*Go 1.12+*](https://github.com/etcd-io/etcd/pull/10045).
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
 - Migrate dependency management tool from `glide` to [Go module](https://github.com/etcd-io/etcd/pull/10063).
@@ -363,7 +363,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Upgrade [gRPC to v1.23.0](https://github.com/etcd-io/etcd/pull/10911).
   - Improve [client balancer failover against secure endpoints](https://github.com/etcd-io/etcd/pull/10911).
     - Fix ["kube-apiserver 1.13.x refuses to work when first etcd-server is not available" (kubernetes#72102)](https://github.com/kubernetes/kubernetes/issues/72102).
-  - [The new client balancer](https://github.com/etcd-io/etcd/blob/master/Documentation/learning/design-client.md) uses an asynchronous resolver to pass endpoints to the gRPC dial function. to block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
+  - [The new client balancer](https://etcd.io/docs/latest/learning/design-client/) uses an asynchronous resolver to pass endpoints to the gRPC dial function. to block until the underlying connection is up, pass `grpc.WithBlock()` to `clientv3.Config.DialOptions`.
 
 ### etcdctl v3
 
@@ -394,9 +394,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ## [v3.3.13](https://github.com/etcd-io/etcd/releases/tag/v3.3.13) (2019-05-02)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.12...v3.3.13) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.12...v3.3.13) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Improved
 
@@ -434,9 +434,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ## [v3.3.12](https://github.com/etcd-io/etcd/releases/tag/v3.3.12) (2019-02-07)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### etcdctl v3
 
@@ -452,9 +452,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) an
 
 ## [v3.3.11](https://github.com/etcd-io/etcd/releases/tag/v3.3.11) (2019-01-11)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.10...v3.3.11) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.10...v3.3.11) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### gRPC Proxy
 
@@ -474,9 +474,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.10...v3.3.11) an
 
 ## [v3.3.10](https://github.com/etcd-io/etcd/releases/tag/v3.3.10) (2018-10-10)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.9...v3.3.10) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.9...v3.3.10) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Improved
 
@@ -520,9 +520,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ## [v3.3.9](https://github.com/etcd-io/etcd/releases/tag/v3.3.9) (2018-07-24)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.8...v3.3.9) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.8...v3.3.9) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Improved
 
@@ -575,9 +575,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ## [v3.3.8](https://github.com/etcd-io/etcd/releases/tag/v3.3.8) (2018-06-15)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.7...v3.3.8) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.7...v3.3.8) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Improved
 
@@ -597,9 +597,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.7...v3.3.8) and 
 
 ## [v3.3.7](https://github.com/etcd-io/etcd/releases/tag/v3.3.7) (2018-06-06)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.6...v3.3.7) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.6...v3.3.7) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Security, Authentication
 
@@ -623,9 +623,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.6...v3.3.7) and 
 
 ## [v3.3.6](https://github.com/etcd-io/etcd/releases/tag/v3.3.6) (2018-05-31)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.5...v3.3.6) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.5...v3.3.6) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### etcd server
 
@@ -646,9 +646,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.5...v3.3.6) and 
 
 ## [v3.3.5](https://github.com/etcd-io/etcd/releases/tag/v3.3.5) (2018-05-09)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.4...v3.3.5) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.4...v3.3.5) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### etcdctl v3
 
@@ -665,9 +665,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.4...v3.3.5) and 
 
 ## [v3.3.4](https://github.com/etcd-io/etcd/releases/tag/v3.3.4) (2018-04-24)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.3...v3.3.4) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.3...v3.3.4) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Metrics, Monitoring
 
@@ -713,9 +713,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ## [v3.3.3](https://github.com/etcd-io/etcd/releases/tag/v3.3.3) (2018-03-29)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.2...v3.3.3) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.2...v3.3.3) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Improved
 
@@ -750,9 +750,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ## [v3.3.2](https://github.com/etcd-io/etcd/releases/tag/v3.3.2) (2018-03-08)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.1...v3.3.2) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.1...v3.3.2) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### etcd server
 
@@ -783,9 +783,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.1...v3.3.2) and 
 
 ## [v3.3.1](https://github.com/etcd-io/etcd/releases/tag/v3.3.1) (2018-02-12)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.3.1) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.3.1) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Improved
 
@@ -811,7 +811,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.3.1) and 
 
 ## [v3.3.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.0) (2018-02-01)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.3.0) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
 - [v3.3.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.0) (2018-02-01), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0-rc.4...v3.3.0).
 - [v3.3.0-rc.4](https://github.com/etcd-io/etcd/releases/tag/v3.3.0-rc.4) (2018-01-22), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0-rc.3...v3.3.0-rc.4).
@@ -820,7 +820,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.3.0) and 
 - [v3.3.0-rc.1](https://github.com/etcd-io/etcd/releases/tag/v3.3.0-rc.1) (2018-01-02), see [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0-rc.0...v3.3.0-rc.1).
 - [v3.3.0-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.0-rc.0) (2017-12-20), see [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.3.0-rc.0).
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_3.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/).**
 
 ### Improved
 
@@ -890,7 +890,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Security, Authentication
 
-See [security doc](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/security.md) for more details.
+See [security doc](https://etcd.io/docs/latest/op-guide/security/) for more details.
 
 - Add [CRL based connection rejection](https://github.com/etcd-io/etcd/pull/8124) to manage [revoked certs](https://github.com/etcd-io/etcd/issues/4034).
 - Document [TLS authentication changes](https://github.com/etcd-io/etcd/pull/8895).
