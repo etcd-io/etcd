@@ -364,9 +364,13 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 		return
 	}
 
-	// wait until all committed entries are applied
+	// wait until all committed entries are applied (or server is closed)
 	if applyDoneC != nil {
-		<-applyDoneC
+		select {
+		case <-applyDoneC:
+		case <-rc.stopc:
+			return
+		}
 	}
 
 	log.Printf("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)

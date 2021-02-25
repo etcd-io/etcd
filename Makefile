@@ -151,7 +151,7 @@ test:
 	$(TEST_OPTS) ./test.sh 2>&1 | tee test-$(TEST_SUFFIX).log
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
 
-test-small:
+test-smoke:
 	$(info log-file: test-$(TEST_SUFFIX).log)
 	PASSES="fmt build unit" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
 

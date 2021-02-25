@@ -94,9 +94,11 @@ func (clus *cluster) Close() (err error) {
 }
 
 func (clus *cluster) closeNoErrors(t *testing.T) {
+	t.Log("closing cluster...")
 	if err := clus.Close(); err != nil {
 		t.Fatal(err)
 	}
+	t.Log("closing cluster [done]")
 }
 
 // TestProposeOnCommit starts three nodes and feeds commits back into the proposal
