@@ -67,7 +67,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
   - Endpoints can be managed using [endpoints.Manager](https://github.com/etcd-io/etcd/blob/master/client/v3/naming/endpoints/endpoints.go)
   - Previously supported [GRPCResolver was decomissioned](https://github.com/etcd-io/etcd/pull/12675). Use [resolver](https://github.com/etcd-io/etcd/blob/master/client/v3/naming/resolver/resolver.go) instead.
 
-
 ### `etcdctl`
 
 - Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
@@ -250,8 +249,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Go
 
 - Require [*Go 1.15+*](https://github.com/etcd-io/etcd/pull/11110).
-- Compile with [*Go 1.15*](https://golang.org/doc/devel/release.html#go1.15)
-- etcd uses go [modules](https://github.com/etcd-io/etcd/pull/12279) (instead of vendor dir) to track dependencies.
+- Compile with [*Go 1.16*](https://golang.org/doc/devel/release.html#go1.16)
+- etcd uses [go modules](https://github.com/etcd-io/etcd/pull/12279) (instead of vendor dir) to track dependencies.
 
 ### Project Governance
 
