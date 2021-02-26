@@ -192,9 +192,9 @@ See [security disclosure and release process](security/README.md) for details on
 
 ## Issue and PR management
 
-See [issue triage guidelines](Documentation/triage/issues.md) for details on how issues are managed.
+See [issue triage guidelines](https://etcd.io/docs/current/triage/issues/) for details on how issues are managed.
 
-See [PR management](Documentation/triage/PRs.md) for guidelines on how pull requests are managed.
+See [PR management](https://etcd.io/docs/current/triage/prs/) for guidelines on how pull requests are managed.
 
 ## etcd Emeritus Maintainers
 

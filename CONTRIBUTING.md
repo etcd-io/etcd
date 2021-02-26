@@ -15,7 +15,7 @@ etcd is Apache 2.0 licensed and accepts contributions via GitHub pull requests. 
 
 ## Reporting bugs and creating issues
 
-Reporting bugs is one of the best ways to contribute. However, a good bug report has some very specific qualities, so please read over our short document on [reporting bugs](https://github.com/etcd-io/etcd/blob/master/Documentation/reporting-bugs.md) before submitting a bug report. This document might contain links to known issues, another good reason to take a look there before reporting a bug.
+Reporting bugs is one of the best ways to contribute. However, a good bug report has some very specific qualities, so please read over our short document on [reporting bugs](https://etcd.io/docs/latest/reporting-bugs) before submitting a bug report. This document might contain links to known issues, another good reason to take a look there before reporting a bug.
 
 ## Contribution flow
 
