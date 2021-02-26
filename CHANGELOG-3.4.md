@@ -5,6 +5,29 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
 
+<hr>
+
+## v3.4.15 (2021-02-26)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.14...v3.4.15) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+### etcd server
+
+- Log [successful etcd server-side health check in debug level](https://github.com/etcd-io/etcd/pull/12677).
+- Fix [64 KB websocket notification message limit](https://github.com/etcd-io/etcd/pull/12402).
+
+### Package `fileutil`
+
+- Fix [`F_OFD_` constants](https://github.com/etcd-io/etcd/pull/12444).
+
+### Dependency
+
+- Bump up [`gorilla/websocket` to v1.4.2](https://github.com/etcd-io/etcd/pull/12645).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
 
 <hr>
 
