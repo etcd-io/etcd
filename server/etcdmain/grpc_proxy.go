@@ -386,7 +386,7 @@ func mustListenCMux(lg *zap.Logger, tlsinfo *transport.TLSInfo) cmux.CMux {
 
 func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	if grpcProxyEnableOrdering {
-		vf := ordering.NewOrderViolationSwitchEndpointClosure(*client)
+		vf := ordering.NewOrderViolationSwitchEndpointClosure(client)
 		client.KV = ordering.NewKV(client.KV, vf)
 		lg.Info("waiting for linearized read from cluster to recover ordering")
 		for {
