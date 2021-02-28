@@ -2,6 +2,7 @@ syntax = "proto2";
 package walpb;
 
 import "gogoproto/gogo.proto";
+import "raft/raftpb/raft.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
@@ -14,7 +15,10 @@ message Record {
 	optional bytes data  = 3;
 }
 
+// Keep in sync with raftpb.SnapshotMetadata.
 message Snapshot {
 	optional uint64 index = 1 [(gogoproto.nullable) = false];
 	optional uint64 term  = 2 [(gogoproto.nullable) = false];
+	// Field populated since >=etcd-3.5.0.
+	optional raftpb.ConfState conf_state = 3;
 }
