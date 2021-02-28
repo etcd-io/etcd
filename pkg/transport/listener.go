@@ -64,8 +64,16 @@ func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, err
 }
 
 type TLSInfo struct {
-	CertFile            string
-	KeyFile             string
+	// CertFile is the _server_ cert, it will also be used as a _client_ certificate if ClientCertFile is empty
+	CertFile string
+	// KeyFile is the key for the CertFile
+	KeyFile string
+	// ClientCertFile is a _client_ cert for initiating connections when ClientCertAuth is defined. If ClientCertAuth
+	// is true but this value is empty, the CertFile will be used instead.
+	ClientCertFile string
+	// ClientKeyFile is the key for the ClientCertFile
+	ClientKeyFile string
+
 	TrustedCAFile       string
 	ClientCertAuth      bool
 	CRLFile             string
@@ -107,7 +115,7 @@ type TLSInfo struct {
 }
 
 func (info TLSInfo) String() string {
-	return fmt.Sprintf("cert = %s, key = %s, trusted-ca = %s, client-cert-auth = %v, crl-file = %s", info.CertFile, info.KeyFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile)
+	return fmt.Sprintf("cert = %s, key = %s, client-cert=%s, client-key=%s, trusted-ca = %s, client-cert-auth = %v, crl-file = %s", info.CertFile, info.KeyFile, info.ClientCertFile, info.ClientKeyFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile)
 }
 
 func (info TLSInfo) Empty() bool {
@@ -142,6 +150,8 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	if errcert == nil && errkey == nil {
 		info.CertFile = certPath
 		info.KeyFile = keyPath
+		info.ClientCertFile = certPath
+		info.ClientKeyFile = keyPath
 		info.selfCert = true
 		return
 	}
@@ -278,6 +288,17 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		return nil, err
 	}
 
+	// Perform prevalidation of client cert and key if either are provided. This makes sure we crash before accepting any connections.
+	if (info.ClientKeyFile == "") != (info.ClientCertFile == "") {
+		return nil, fmt.Errorf("ClientKeyFile and ClientCertFile must both be present or both absent: key: %v, cert: %v]", info.ClientKeyFile, info.ClientCertFile)
+	}
+	if info.ClientCertFile != "" {
+		_, err := tlsutil.NewCert(info.ClientCertFile, info.ClientKeyFile, info.parseFunc)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	cfg := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		ServerName: info.ServerName,
@@ -342,13 +363,17 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		return cert, err
 	}
 	cfg.GetClientCertificate = func(unused *tls.CertificateRequestInfo) (cert *tls.Certificate, err error) {
-		cert, err = tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+		certfile, keyfile := info.CertFile, info.KeyFile
+		if info.ClientCertFile != "" {
+			certfile, keyfile = info.ClientCertFile, info.ClientKeyFile
+		}
+		cert, err = tlsutil.NewCert(certfile, keyfile, info.parseFunc)
 		if os.IsNotExist(err) {
 			if info.Logger != nil {
 				info.Logger.Warn(
 					"failed to find client cert files",
-					zap.String("cert-file", info.CertFile),
-					zap.String("key-file", info.KeyFile),
+					zap.String("cert-file", certfile),
+					zap.String("key-file", keyfile),
 					zap.Error(err),
 				)
 			}
@@ -356,8 +381,8 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 			if info.Logger != nil {
 				info.Logger.Warn(
 					"failed to create client certificate",
-					zap.String("cert-file", info.CertFile),
-					zap.String("key-file", info.KeyFile),
+					zap.String("cert-file", certfile),
+					zap.String("key-file", keyfile),
 					zap.Error(err),
 				)
 			}

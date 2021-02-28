@@ -59,6 +59,16 @@ func TestTLSClusterOf3(t *testing.T) {
 	clusterMustProgress(t, c.Members)
 }
 
+// Test that a cluster can progress when using separate client and server certs when peering. This supports certificate
+// authorities that don't issue dual-usage certificates.
+func TestTLSClusterOf3WithSpecificUsage(t *testing.T) {
+	defer testutil.AfterTest(t)
+	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfoWithSpecificUsage})
+	c.Launch(t)
+	defer c.Terminate(t)
+	clusterMustProgress(t, c.Members)
+}
+
 func TestClusterOf1UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t, 1) }
 func TestClusterOf3UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t, 3) }
 
