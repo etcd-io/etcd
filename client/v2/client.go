@@ -521,14 +521,14 @@ type simpleHTTPClient struct {
 	headerTimeout time.Duration
 }
 
-// NoRequestError indicates that the HTTPRequest object could not be found
+// ErrNoRequest indicates that the HTTPRequest object could not be found
 // or was nil.  No processing could continue.
-var NoRequestError = errors.New("No HTTPRequest was available")
+var ErrNoRequest = errors.New("No HTTPRequest was available")
 
 func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	req := act.HTTPRequest(c.endpoint)
 	if req == nil {
-		return nil, nil, NoRequestError
+		return nil, nil, ErrNoRequest
 	}
 
 	if err := printcURL(req); err != nil {

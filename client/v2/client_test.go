@@ -171,7 +171,7 @@ func TestSimpleHTTPClientDoNilRequest(t *testing.T) {
 	tr.errchan <- errors.New("fixture")
 
 	_, _, err := c.Do(context.Background(), &nilAction{})
-	if err != NoRequestError {
+	if err != ErrNoRequest {
 		t.Fatalf("expected non-nil error, got nil")
 	}
 }
