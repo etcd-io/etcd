@@ -234,10 +234,12 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("watchCli created to: %v", target)
 	defer watchCli.Close()
 
-	// wait for eps[target] to be pinned
+	// wait for eps[target] to be connected
 	clientv3test.MustWaitPinReady(t, watchCli)
+	t.Logf("successful connection with server: %v", target)
 
 	// add all eps to list, so that when the original pined one fails
 	// the client can switch to other available eps
@@ -249,6 +251,8 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("took too long to create watch")
 	}
+
+	t.Logf("watch established")
 
 	// isolate eps[target]
 	clus.Members[target].InjectPartition(t,

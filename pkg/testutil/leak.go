@@ -125,7 +125,8 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "created by runtime.gc") ||
 			strings.Contains(stack, "created by text/template/parse.lex") ||
 			strings.Contains(stack, "runtime.MHeap_Scavenger") ||
-			strings.Contains(stack, "rcrypto/internal/boring.(*PublicKeyRSA).finalize") {
+			strings.Contains(stack, "rcrypto/internal/boring.(*PublicKeyRSA).finalize") ||
+			strings.Contains(stack, "net.(*netFD).Close(...)") {
 			continue
 		}
 		gs = append(gs, stack)

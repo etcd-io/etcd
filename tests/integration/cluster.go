@@ -110,6 +110,7 @@ var (
 
 	defaultTokenJWT = "jwt,pub-key=../fixtures/server.crt,priv-key=../fixtures/server.key.insecure,sign-method=RS256,ttl=1s"
 
+	// Replace with just usage of testing.TB instead of zap
 	lg = zap.NewNop()
 )
 
@@ -1202,6 +1203,7 @@ func (m *member) InjectPartition(t testing.TB, others ...*member) {
 	for _, other := range others {
 		m.s.CutPeer(other.s.ID())
 		other.s.CutPeer(m.s.ID())
+		t.Logf("network partition injected between: %v <-> %v", m.s.ID(), other.s.ID())
 	}
 }
 
@@ -1210,6 +1212,7 @@ func (m *member) RecoverPartition(t testing.TB, others ...*member) {
 	for _, other := range others {
 		m.s.MendPeer(other.s.ID())
 		other.s.MendPeer(m.s.ID())
+		t.Logf("network partition between: %v <-> %v", m.s.ID(), other.s.ID())
 	}
 }
 
