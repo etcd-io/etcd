@@ -391,7 +391,7 @@ func (sws *serverWatchStream) sendLoop() {
 			sws.mu.RUnlock()
 			for i := range evs {
 				events[i] = &evs[i]
-				if needPrevKV {
+				if needPrevKV && !IsCreateEvent(evs[i]) {
 					opt := mvcc.RangeOptions{Rev: evs[i].Kv.ModRevision - 1}
 					r, err := sws.watchable.Range(context.TODO(), evs[i].Kv.Key, nil, opt)
 					if err == nil && len(r.KVs) != 0 {
@@ -499,6 +499,10 @@ func (sws *serverWatchStream) sendLoop() {
 			return
 		}
 	}
+}
+
+func IsCreateEvent(e mvccpb.Event) bool {
+	return e.Type == mvccpb.PUT && e.Kv.CreateRevision == e.Kv.ModRevision
 }
 
 func sendFragments(
