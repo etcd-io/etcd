@@ -87,6 +87,15 @@ var (
 		ClientCertAuth: true,
 	}
 
+	testTLSInfoWithSpecificUsage = transport.TLSInfo{
+		KeyFile:        "../fixtures/server-serverusage.key.insecure",
+		CertFile:       "../fixtures/server-serverusage.crt",
+		ClientKeyFile:  "../fixtures/client-clientusage.key.insecure",
+		ClientCertFile: "../fixtures/client-clientusage.crt",
+		TrustedCAFile:  "../fixtures/ca.crt",
+		ClientCertAuth: true,
+	}
+
 	testTLSInfoIP = transport.TLSInfo{
 		KeyFile:        "../fixtures/server-ip.key.insecure",
 		CertFile:       "../fixtures/server-ip.crt",
