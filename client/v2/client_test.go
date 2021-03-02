@@ -158,6 +158,24 @@ func TestSimpleHTTPClientDoError(t *testing.T) {
 	}
 }
 
+type nilAction struct{}
+
+func (a *nilAction) HTTPRequest(url.URL) *http.Request {
+	return nil
+}
+
+func TestSimpleHTTPClientDoNilRequest(t *testing.T) {
+	tr := newFakeTransport()
+	c := &simpleHTTPClient{transport: tr}
+
+	tr.errchan <- errors.New("fixture")
+
+	_, _, err := c.Do(context.Background(), &nilAction{})
+	if err != ErrNoRequest {
+		t.Fatalf("expected non-nil error, got nil")
+	}
+}
+
 func TestSimpleHTTPClientDoCancelContext(t *testing.T) {
 	tr := newFakeTransport()
 	c := &simpleHTTPClient{transport: tr}
