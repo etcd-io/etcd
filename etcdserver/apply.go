@@ -33,10 +33,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	warnApplyDuration = 100 * time.Millisecond
-)
-
 type applyResult struct {
 	resp proto.Message
 	err  error
@@ -115,7 +111,7 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	ar := &applyResult{}
 	defer func(start time.Time) {
-		warnOfExpensiveRequest(a.s.getLogger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
+		warnOfExpensiveRequest(a.s.getLogger(), a.s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		if ar.err != nil {
 			warnOfFailedRequest(a.s.getLogger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		}
