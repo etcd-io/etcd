@@ -209,6 +209,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		EnableLeaseCheckpoint:       cfg.ExperimentalEnableLeaseCheckpoint,
 		CompactionBatchLimit:        cfg.ExperimentalCompactionBatchLimit,
 		WatchProgressNotifyInterval: cfg.ExperimentalWatchProgressNotifyInterval,
+		WarningApplyDuration:        cfg.ExperimentalWarningApplyDuration,
 	}
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {

@@ -119,7 +119,7 @@ func (s *EtcdServer) applyV2Request(r *RequestV2) Response {
 		stringer:    r,
 		alternative: func() string { return fmt.Sprintf("id:%d,method:%s,path:%s", r.ID, r.Method, r.Path) },
 	}
-	defer warnOfExpensiveRequest(s.getLogger(), time.Now(), stringer, nil, nil)
+	defer warnOfExpensiveRequest(s.getLogger(), s.Cfg.WarningApplyDuration, time.Now(), stringer, nil, nil)
 
 	switch r.Method {
 	case "POST":
