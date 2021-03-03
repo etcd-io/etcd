@@ -7,6 +7,15 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 <hr>
 
+## v3.4.16 (TBD 2021)
+
+### etcd server
+- Add [`--experimental-warning-apply-duration`](https://github.com/etcd-io/etcd/pull/12448) flag which allows apply duration threshold to be configurable.
+
+
+<hr>
+
+
 ## [v3.4.15](https://github.com/etcd-io/etcd/releases/tag/v3.4.15) (2021-02-26)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.14...v3.4.15) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
