@@ -31,7 +31,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/tests/v3/integration"
-
 	"google.golang.org/grpc/metadata"
 )
 
@@ -768,7 +767,7 @@ func TestWatchErrConnClosed(t *testing.T) {
 		defer close(donec)
 		ch := cli.Watch(context.TODO(), "foo")
 
-		if wr := <-ch; !isCanceled(wr.Err()) {
+		if wr := <-ch; !IsCanceled(wr.Err()) {
 			t.Errorf("expected context canceled, got %v", wr.Err())
 		}
 	}()

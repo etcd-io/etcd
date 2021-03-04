@@ -556,7 +556,7 @@ func (c *RaftCluster) IsReadyToAddVotingMember() bool {
 
 	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
-		// https://github.com/etcd-io/etcd/blob/master/Documentation/v2/admin_guide.md#restoring-the-cluster
+		// https://github.com/etcd-io/website/blob/master/content/docs/v2/admin_guide.md#restoring-the-cluster
 		c.lg.Debug("number of started member is 1; can accept add member request")
 		return true
 	}

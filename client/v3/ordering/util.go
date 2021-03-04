@@ -16,8 +16,7 @@ package ordering
 
 import (
 	"errors"
-	"sync"
-	"time"
+	"sync/atomic"
 
 	"go.etcd.io/etcd/client/v3"
 )
@@ -26,26 +25,18 @@ type OrderViolationFunc func(op clientv3.Op, resp clientv3.OpResponse, prevRev i
 
 var ErrNoGreaterRev = errors.New("etcdclient: no cluster members have a revision higher than the previously received revision")
 
-func NewOrderViolationSwitchEndpointClosure(c clientv3.Client) OrderViolationFunc {
-	var mu sync.Mutex
-	violationCount := 0
-	return func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error {
-		if violationCount > len(c.Endpoints()) {
+func NewOrderViolationSwitchEndpointClosure(c *clientv3.Client) OrderViolationFunc {
+	violationCount := int32(0)
+	return func(_ clientv3.Op, _ clientv3.OpResponse, _ int64) error {
+		// Each request is assigned by round-robin load-balancer's picker to a different
+		// endpoints. If we cycled them 5 times (even with some level of concurrency),
+		// with high probability no endpoint points on a member with fresh data.
+		// TODO: Ideally we should track members (resp.opp.Header) that returned
+		// stale result and explicitly temporarily disable them in 'picker'.
+		if atomic.LoadInt32(&violationCount) > int32(5*len(c.Endpoints())) {
 			return ErrNoGreaterRev
 		}
-		mu.Lock()
-		defer mu.Unlock()
-		eps := c.Endpoints()
-		// force client to connect to given endpoint by limiting to a single endpoint
-		c.SetEndpoints(eps[violationCount%len(eps)])
-		// give enough time for operation
-		time.Sleep(1 * time.Second)
-		// set available endpoints back to all endpoints in to ensure
-		// the client has access to all the endpoints.
-		c.SetEndpoints(eps...)
-		// give enough time for operation
-		time.Sleep(1 * time.Second)
-		violationCount++
+		atomic.AddInt32(&violationCount, 1)
 		return nil
 	}
 }

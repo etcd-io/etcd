@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-  - 1.14.3
+  - 1.15.7
   - tip
 
 notifications:
@@ -30,14 +30,10 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-    - go: 1.14.3
-      env: TARGET=linux-amd64-grpcproxy
-    - go: 1.14.3
+    - go: 1.15.7
       env: TARGET=linux-amd64-coverage
     - go: tip
       env: TARGET=linux-amd64-fmt-unit-go-tip-2-cpu
-    - go: 1.14.3
-      env: TARGET=linux-386-unit-1-cpu
   exclude:
     - go: tip
       env: TARGET=linux-amd64-fmt
@@ -66,11 +62,10 @@ before_install:
   - if [[ $TRAVIS_GO_VERSION == 1.* ]]; then docker pull gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION}; fi
 
 install:
-  - go get -t -v -d ./...
-  - (cd tests && go get -t -v -d ./...)
-  - (cd pkg && go get -t -v -d ./...)
+  - date
 
 script:
+  - date
   - echo "TRAVIS_GO_VERSION=${TRAVIS_GO_VERSION}"
   - >
     case "${TARGET}" in

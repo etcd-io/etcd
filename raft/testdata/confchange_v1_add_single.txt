@@ -60,7 +60,7 @@ stabilize
   2->1 MsgAppResp Term:1 Log:0/3 Rejected (Hint: 0)
 > 1 receiving messages
   2->1 MsgAppResp Term:1 Log:0/3 Rejected (Hint: 0)
-  DEBUG 1 received MsgAppResp(MsgApp was rejected, lastindex: 0) from 2 for index 3
+  DEBUG 1 received MsgAppResp(rejected, hint: (index 0, term 0)) from 2 for index 3
   DEBUG 1 decreased progress of 2 to [StateProbe match=0 next=1]
   DEBUG 1 [firstindex: 3, commit: 4] sent snapshot[index: 4, term: 1] to 2 [StateProbe match=0 next=1]
   DEBUG 1 paused sending replication messages to 2 [StateSnapshot match=0 next=1 paused pendingSnap=4]

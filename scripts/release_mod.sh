@@ -12,14 +12,9 @@
 
 set -e
 
-DRY_RUN=${DRY_RUN:-true}
-
-if ! [[ "$0" =~ scripts/release_mod.sh ]]; then
-  echo "must be run from repository root"
-  exit 255
-fi
-
 source ./scripts/test_lib.sh
+
+DRY_RUN=${DRY_RUN:-true}
 
 # _cmd prints help message
 function _cmd() {
@@ -27,15 +22,6 @@ function _cmd() {
   log_info "Available commands:"
   log_info "  - update_versions  - Updates all cross-module versions to \${TARGET_VERSION} in the local client."
   log_info "  - push_mod_tags    - Tags HEAD with all modules versions tags and pushes it to \${REMOTE_REPO}."
-}
-
-# maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
-function maybe_run() {
-  if ${DRY_RUN}; then
-    log_warning -e "# DRY_RUN:\n  % ${*}"
-  else
-    run "${@}"
-  fi
 }
 
 # update_module_version [v2version] [v3version]
@@ -46,14 +32,14 @@ function update_module_version() {
   local modules
   modules=$(run go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
 
-  v3deps=$(echo "${modules}" | grep -E "${REPO}/.*/v3")
+  v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
   for dep in ${v3deps}; do
-    maybe_run go mod edit -require "${dep}@${v3version}"
+    run go mod edit -require "${dep}@${v3version}"
   done
 
-  v2deps=$(echo "${modules}" | grep -E "${REPO}/.*/v2")
+  v2deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v2")
   for dep in ${v2deps}; do
-    maybe_run go mod edit -require "${dep}@${v2version}"
+    run go mod edit -require "${dep}@${v2version}"
   done
 }
 
@@ -81,6 +67,16 @@ function update_versions_cmd() {
   run_for_modules update_module_version "${v3version}" "${v2version}"
 }
 
+function get_gpg_key {
+  gitemail=$(git config --get user.email)
+  keyid=$(run gpg --list-keys --with-colons "${gitemail}" | awk -F: '/^pub:/ { print $5 }')
+  if [[ -z "${keyid}" ]]; then
+    log_error "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
+    return 2
+  fi
+  echo "$keyid"
+}
+
 function push_mod_tags_cmd {
   assert_no_git_modifications || return 2
 
@@ -92,15 +88,17 @@ function push_mod_tags_cmd {
 
   # Any module ccan be used for this
   local master_version
-  master_version=$(go list -f '{{.Version}}' -m "${REPO}/api/v3")
+  master_version=$(go list -f '{{.Version}}' -m "${ROOT_MODULE}/api/v3")
   local tags=()
+
+  keyid=$(get_gpg_key) || return 2
 
   for module in $(modules); do
     local version
     version=$(go list -f '{{.Version}}' -m "${module}")
     local path
     path=$(go list -f '{{.Path}}' -m "${module}")
-    local subdir="${path//${REPO}\//}"
+    local subdir="${path//${ROOT_MODULE}\//}"
     local tag
     if [ -z "${version}" ]; then
       tag="${master_version}"
@@ -110,15 +108,21 @@ function push_mod_tags_cmd {
     fi
 
     log_info "Tags for: ${module} version:${version} tag:${tag}"
-    maybe_run git tag -f "${tag}"
+    # The sleep is ugly hack that guarantees that 'git describe' will
+    # consider main-module's tag as the latest.
+    run sleep 2
+    run git tag --local-user "${keyid}" --sign "${tag}" --message "${version}"
     tags=("${tags[@]}" "${tag}")
   done
   maybe_run git push -f "${REMOTE_REPO}" "${tags[@]}"
 }
 
-"${1}_cmd"
+# only release_mod when called directly, not sourced
+if echo "$0" | grep -E "release_mod.sh$" >/dev/null; then
+  "${1}_cmd"
 
-if "${DRY_RUN}"; then
-  log_info
-  log_warning "WARNING: It was a DRY_RUN. No files were modified."
+  if "${DRY_RUN}"; then
+    log_info
+    log_warning "WARNING: It was a DRY_RUN. No files were modified."
+  fi
 fi

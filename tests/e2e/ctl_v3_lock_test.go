@@ -24,10 +24,6 @@ import (
 )
 
 func TestCtlV3Lock(t *testing.T) {
-	oldenv := os.Getenv("EXPECT_DEBUG")
-	defer os.Setenv("EXPECT_DEBUG", oldenv)
-	os.Setenv("EXPECT_DEBUG", "1")
-
 	testCtl(t, testLock)
 }
 

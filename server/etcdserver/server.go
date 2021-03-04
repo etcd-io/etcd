@@ -85,10 +85,6 @@ const (
 	HealthInterval = 5 * time.Second
 
 	purgeFileInterval = 30 * time.Second
-	// monitorVersionInterval should be smaller than the timeout
-	// on the connection. Or we will not be able to reuse the connection
-	// (since it will timeout).
-	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
 	// max number of in-flight snapshot messages etcdserver allows to have
 	// This number is more than enough for most clusters with 5 machines.
@@ -107,6 +103,11 @@ const (
 )
 
 var (
+	// monitorVersionInterval should be smaller than the timeout
+	// on the connection. Or we will not be able to reuse the connection
+	// (since it will timeout).
+	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
+
 	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
 	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
 )
@@ -185,6 +186,15 @@ type Server interface {
 	ClusterVersion() *semver.Version
 	Cluster() api.Cluster
 	Alarms() []*pb.AlarmMember
+
+	// LeaderChangedNotify returns a channel for application level code to be notified
+	// when etcd leader changes, this function is intend to be used only in application
+	// which embed etcd.
+	// Caution:
+	// 1. the returned channel is being closed when the leadership changes.
+	// 2. so the new channel needs to be obtained for each raft term.
+	// 3. user can loose some consecutive channel changes using this API.
+	LeaderChangedNotify() <-chan struct{}
 }
 
 // EtcdServer is the production implementation of the Server interface
@@ -1743,7 +1753,7 @@ func (s *EtcdServer) getLead() uint64 {
 	return atomic.LoadUint64(&s.lead)
 }
 
-func (s *EtcdServer) leaderChangedNotify() <-chan struct{} {
+func (s *EtcdServer) LeaderChangedNotify() <-chan struct{} {
 	s.leaderChangedMu.RLock()
 	defer s.leaderChangedMu.RUnlock()
 	return s.leaderChanged

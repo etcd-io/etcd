@@ -25,7 +25,9 @@ import (
 	"go.etcd.io/etcd/client/v3"
 )
 
-func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }
+func TestCtlV3AuthEnable(t *testing.T) {
+	testCtl(t, authEnableTest)
+}
 func TestCtlV3AuthDisable(t *testing.T)             { testCtl(t, authDisableTest) }
 func TestCtlV3AuthStatus(t *testing.T)              { testCtl(t, authStatusTest) }
 func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKeyTest) }

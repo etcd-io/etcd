@@ -292,14 +292,28 @@ func TestTLSInfoParseFuncError(t *testing.T) {
 	}
 	defer del()
 
-	tlsinfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, errors.New("fake"))
+	tests := []struct {
+		info TLSInfo
+	}{
+		{
+			info: *tlsinfo,
+		},
 
-	if _, err = tlsinfo.ServerConfig(); err == nil {
-		t.Errorf("expected non-nil error from ServerConfig()")
+		{
+			info: TLSInfo{CertFile: "", KeyFile: "", TrustedCAFile: tlsinfo.CertFile, EmptyCN: true},
+		},
 	}
 
-	if _, err = tlsinfo.ClientConfig(); err == nil {
-		t.Errorf("expected non-nil error from ClientConfig()")
+	for i, tt := range tests {
+		tt.info.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, errors.New("fake"))
+
+		if _, err = tt.info.ServerConfig(); err == nil {
+			t.Errorf("#%d: expected non-nil error from ServerConfig()", i)
+		}
+
+		if _, err = tt.info.ClientConfig(); err == nil {
+			t.Errorf("#%d: expected non-nil error from ClientConfig()", i)
+		}
 	}
 }
 

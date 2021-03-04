@@ -21,8 +21,8 @@
 		"project": "github.com/certifi/gocertifi",
 		"licenses": [
 			{
-				"type": "\"Do What The F*ck You Want To Public License\"",
-				"confidence": 0.3287671232876712
+				"type": "Mozilla Public License 2.0",
+				"confidence": 1
 			}
 		]
 	},
@@ -99,15 +99,6 @@
 		]
 	},
 	{
-		"project": "github.com/dgrijalva/jwt-go",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
 		"project": "github.com/dustin/go-humanize",
 		"licenses": [
 			{
@@ -122,6 +113,15 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/form3tech-oss/jwt-go",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
 			}
 		]
 	},
@@ -167,15 +167,6 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/google/uuid",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
 			}
 		]
 	},

@@ -15,9 +15,7 @@
 package rafttest
 
 import (
-	"bufio"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/cockroachdb/datadriven"
@@ -25,10 +23,7 @@ import (
 )
 
 func (env *InteractionEnv) handleStabilize(t *testing.T, d datadriven.TestData) error {
-	var idxs []int
-	for _, id := range ints(t, d) {
-		idxs = append(idxs, id-1)
-	}
+	idxs := nodeIdxs(t, d)
 	return env.Stabilize(idxs...)
 }
 
@@ -43,18 +38,6 @@ func (env *InteractionEnv) Stabilize(idxs ...int) error {
 		nodes = env.Nodes
 	}
 
-	withIndent := func(f func()) {
-		orig := env.Output.Builder
-		env.Output.Builder = &strings.Builder{}
-		f()
-
-		scanner := bufio.NewScanner(strings.NewReader(env.Output.Builder.String()))
-		for scanner.Scan() {
-			orig.WriteString("  " + scanner.Text() + "\n")
-		}
-		env.Output.Builder = orig
-	}
-
 	for {
 		done := true
 		for _, rn := range nodes {
@@ -62,7 +45,7 @@ func (env *InteractionEnv) Stabilize(idxs ...int) error {
 				done = false
 				idx := int(rn.Status().ID - 1)
 				fmt.Fprintf(env.Output, "> %d handling Ready\n", idx+1)
-				withIndent(func() { env.ProcessReady(idx) })
+				env.withIndent(func() { env.ProcessReady(idx) })
 			}
 		}
 		for _, rn := range nodes {
@@ -71,7 +54,7 @@ func (env *InteractionEnv) Stabilize(idxs ...int) error {
 			// DeliverMsgs will do it again.
 			if msgs, _ := splitMsgs(env.Messages, id); len(msgs) > 0 {
 				fmt.Fprintf(env.Output, "> %d receiving messages\n", id)
-				withIndent(func() { env.DeliverMsgs(Recipient{ID: id}) })
+				env.withIndent(func() { env.DeliverMsgs(Recipient{ID: id}) })
 				done = false
 			}
 		}

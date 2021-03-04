@@ -5,9 +5,9 @@
 
 ## [v3.0.16](https://github.com/etcd-io/etcd/releases/tag/v3.0.16) (2016-11-13)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.15...v3.0.16) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.15...v3.0.16) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Go
 
@@ -19,9 +19,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.15...v3.0.16) an
 
 ## [v3.0.15](https://github.com/etcd-io/etcd/releases/tag/v3.0.15) (2016-11-11)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.14...v3.0.15) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.14...v3.0.15) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Fixed
 
@@ -37,9 +37,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.14...v3.0.15) an
 
 ## [v3.0.14](https://github.com/etcd-io/etcd/releases/tag/v3.0.14) (2016-11-04)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.13...v3.0.14) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.13...v3.0.14) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Added
 
@@ -55,9 +55,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.13...v3.0.14) an
 
 ## [v3.0.13](https://github.com/etcd-io/etcd/releases/tag/v3.0.13) (2016-10-24)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.12...v3.0.13) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.12...v3.0.13) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Go
 
@@ -69,9 +69,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.12...v3.0.13) an
 
 ## [v3.0.12](https://github.com/etcd-io/etcd/releases/tag/v3.0.12) (2016-10-07)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.11...v3.0.12) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.11...v3.0.12) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Go
 
@@ -83,9 +83,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.11...v3.0.12) an
 
 ## [v3.0.11](https://github.com/etcd-io/etcd/releases/tag/v3.0.11) (2016-10-07)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.10...v3.0.11) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.10...v3.0.11) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Added
 
@@ -103,9 +103,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.10...v3.0.11) an
 
 ## [v3.0.10](https://github.com/etcd-io/etcd/releases/tag/v3.0.10) (2016-09-23)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.9...v3.0.10) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.9...v3.0.10) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Go
 
@@ -117,9 +117,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.9...v3.0.10) and
 
 ## [v3.0.9](https://github.com/etcd-io/etcd/releases/tag/v3.0.9) (2016-09-15)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.8...v3.0.9) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.8...v3.0.9) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Added
 
@@ -135,9 +135,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.8...v3.0.9) and 
 
 ## [v3.0.8](https://github.com/etcd-io/etcd/releases/tag/v3.0.8) (2016-09-09)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.7...v3.0.8) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.7...v3.0.8) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Other
 
@@ -153,9 +153,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.7...v3.0.8) and 
 
 ## [v3.0.7](https://github.com/etcd-io/etcd/releases/tag/v3.0.7) (2016-08-31)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.6...v3.0.7) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.6...v3.0.7) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Other
 
@@ -171,9 +171,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.6...v3.0.7) and 
 
 ## [v3.0.6](https://github.com/etcd-io/etcd/releases/tag/v3.0.6) (2016-08-19)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.5...v3.0.6) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.5...v3.0.6) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Go
 
@@ -185,9 +185,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.5...v3.0.6) and 
 
 ## [v3.0.5](https://github.com/etcd-io/etcd/releases/tag/v3.0.5) (2016-08-19)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.4...v3.0.5) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.4...v3.0.5) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Other
 
@@ -203,9 +203,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.4...v3.0.5) and 
 
 ## [v3.0.4](https://github.com/etcd-io/etcd/releases/tag/v3.0.4) (2016-07-27)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.3...v3.0.4) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.3...v3.0.4) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Added
 
@@ -226,9 +226,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.3...v3.0.4) and 
 
 ## [v3.0.3](https://github.com/etcd-io/etcd/releases/tag/v3.0.3) (2016-07-15)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.2...v3.0.3) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.2...v3.0.3) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Other
 
@@ -246,9 +246,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.2...v3.0.3) and 
 
 ## [v3.0.2](https://github.com/etcd-io/etcd/releases/tag/v3.0.2) (2016-07-08)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.1...v3.0.2) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.1...v3.0.2) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Other
 
@@ -264,9 +264,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.1...v3.0.2) and 
 
 ## [v3.0.1](https://github.com/etcd-io/etcd/releases/tag/v3.0.1) (2016-07-01)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.0...v3.0.1) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.0...v3.0.1) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Go
 
@@ -278,9 +278,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.0.0...v3.0.1) and 
 
 ## [v3.0.0](https://github.com/etcd-io/etcd/releases/tag/v3.0.0) (2016-06-30)
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v2.3.0...v3.0.0) and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md) for any breaking changes.
+See [code changes](https://github.com/etcd-io/etcd/compare/v2.3.0...v3.0.0) and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/) for any breaking changes.
 
-**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://github.com/etcd-io/etcd/blob/master/Documentation/upgrades/upgrade_3_0.md).**
+**Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.0 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_0/).**
 
 ### Go
 

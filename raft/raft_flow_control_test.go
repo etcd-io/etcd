@@ -25,7 +25,7 @@ import (
 // 2. when the window is full, no more msgApp can be sent.
 
 func TestMsgAppFlowControlFull(t *testing.T) {
-	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	r := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2)))
 	r.becomeCandidate()
 	r.becomeLeader()
 
@@ -61,7 +61,7 @@ func TestMsgAppFlowControlFull(t *testing.T) {
 // 1. valid msgAppResp.index moves the windows to pass all smaller or equal index.
 // 2. out-of-dated msgAppResp has no effect on the sliding window.
 func TestMsgAppFlowControlMoveForward(t *testing.T) {
-	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	r := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2)))
 	r.becomeCandidate()
 	r.becomeLeader()
 
@@ -106,7 +106,7 @@ func TestMsgAppFlowControlMoveForward(t *testing.T) {
 // TestMsgAppFlowControlRecvHeartbeat ensures a heartbeat response
 // frees one slot if the window is full.
 func TestMsgAppFlowControlRecvHeartbeat(t *testing.T) {
-	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
+	r := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2)))
 	r.becomeCandidate()
 	r.becomeLeader()
 

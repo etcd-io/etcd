@@ -88,7 +88,7 @@ func TestRawNodeStep(t *testing.T) {
 			}
 			// Append an empty entry to make sure the non-local messages (like
 			// vote requests) are ignored and don't trigger assertions.
-			rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, s))
+			rawNode, err := NewRawNode(newTestConfig(1, 10, 1, s))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -223,8 +223,8 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
-			s := NewMemoryStorage()
-			rawNode, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s))
+			s := newTestMemoryStorage(withPeers(1))
+			rawNode, err := NewRawNode(newTestConfig(1, 10, 1, s))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -389,8 +389,8 @@ func TestRawNodeJointAutoLeave(t *testing.T) {
 	exp2Cs := pb.ConfState{Voters: []uint64{1}, Learners: []uint64{2}}
 
 	t.Run("", func(t *testing.T) {
-		s := NewMemoryStorage()
-		rawNode, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s))
+		s := newTestMemoryStorage(withPeers(1))
+		rawNode, err := NewRawNode(newTestConfig(1, 10, 1, s))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -509,8 +509,8 @@ func TestRawNodeJointAutoLeave(t *testing.T) {
 // TestRawNodeProposeAddDuplicateNode ensures that two proposes to add the same node should
 // not affect the later propose to add new node.
 func TestRawNodeProposeAddDuplicateNode(t *testing.T) {
-	s := NewMemoryStorage()
-	rawNode, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s))
+	s := newTestMemoryStorage(withPeers(1))
+	rawNode, err := NewRawNode(newTestConfig(1, 10, 1, s))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -592,8 +592,8 @@ func TestRawNodeReadIndex(t *testing.T) {
 	}
 	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
 
-	s := NewMemoryStorage()
-	c := newTestConfig(1, []uint64{1}, 10, 1, s)
+	s := newTestMemoryStorage(withPeers(1))
+	c := newTestConfig(1, 10, 1, s)
 	rawNode, err := NewRawNode(c)
 	if err != nil {
 		t.Fatal(err)
@@ -734,7 +734,7 @@ func TestRawNodeStart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, storage))
+	rawNode, err := NewRawNode(newTestConfig(1, 10, 1, storage))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -775,10 +775,10 @@ func TestRawNodeRestart(t *testing.T) {
 		MustSync:         false,
 	}
 
-	storage := NewMemoryStorage()
+	storage := newTestMemoryStorage(withPeers(1))
 	storage.SetHardState(st)
 	storage.Append(entries)
-	rawNode, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, storage))
+	rawNode, err := NewRawNode(newTestConfig(1, 10, 1, storage))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -816,7 +816,7 @@ func TestRawNodeRestartFromSnapshot(t *testing.T) {
 	s.SetHardState(st)
 	s.ApplySnapshot(snap)
 	s.Append(entries)
-	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, s))
+	rawNode, err := NewRawNode(newTestConfig(1, 10, 1, s))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -834,8 +834,8 @@ func TestRawNodeRestartFromSnapshot(t *testing.T) {
 // no dependency check between Ready() and Advance()
 
 func TestRawNodeStatus(t *testing.T) {
-	s := NewMemoryStorage()
-	rn, err := NewRawNode(newTestConfig(1, []uint64{1}, 10, 1, s))
+	s := newTestMemoryStorage(withPeers(1))
+	rn, err := NewRawNode(newTestConfig(1, 10, 1, s))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -881,7 +881,7 @@ func TestRawNodeStatus(t *testing.T) {
 //    write.
 func TestRawNodeCommitPaginationAfterRestart(t *testing.T) {
 	s := &ignoreSizeHintMemStorage{
-		MemoryStorage: NewMemoryStorage(),
+		MemoryStorage: newTestMemoryStorage(withPeers(1)),
 	}
 	persistedHardState := pb.HardState{
 		Term:   1,
@@ -904,7 +904,7 @@ func TestRawNodeCommitPaginationAfterRestart(t *testing.T) {
 		size += uint64(ent.Size())
 	}
 
-	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
+	cfg := newTestConfig(1, 10, 1, s)
 	// Set a MaxSizePerMsg that would suggest to Raft that the last committed entry should
 	// not be included in the initial rd.CommittedEntries. However, our storage will ignore
 	// this and *will* return it (which is how the Commit index ended up being 10 initially).
@@ -953,8 +953,8 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	testEntry := pb.Entry{Data: data}
 	maxEntrySize := uint64(maxEntries * PayloadSize(testEntry))
 
-	s := NewMemoryStorage()
-	cfg := newTestConfig(1, []uint64{1}, 10, 1, s)
+	s := newTestMemoryStorage(withPeers(1))
+	cfg := newTestConfig(1, 10, 1, s)
 	cfg.MaxUncommittedEntriesSize = maxEntrySize
 	rawNode, err := NewRawNode(cfg)
 	if err != nil {
@@ -1010,7 +1010,7 @@ func BenchmarkStatus(b *testing.B) {
 		for i := range peers {
 			peers[i] = uint64(i + 1)
 		}
-		cfg := newTestConfig(1, peers, 3, 1, NewMemoryStorage())
+		cfg := newTestConfig(1, 3, 1, newTestMemoryStorage(withPeers(peers...)))
 		cfg.Logger = discardLogger
 		r := newRaft(cfg)
 		r.becomeFollower(1, 1)
@@ -1075,8 +1075,8 @@ func BenchmarkStatus(b *testing.B) {
 func TestRawNodeConsumeReady(t *testing.T) {
 	// Check that readyWithoutAccept() does not call acceptReady (which resets
 	// the messages) but Ready() does.
-	s := NewMemoryStorage()
-	rn := newTestRawNode(1, []uint64{1}, 3, 1, s)
+	s := newTestMemoryStorage(withPeers(1))
+	rn := newTestRawNode(1, 3, 1, s)
 	m1 := pb.Message{Context: []byte("foo")}
 	m2 := pb.Message{Context: []byte("bar")}
 

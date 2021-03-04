@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build cluster_proxy
 // +build cluster_proxy
 
 // The purpose of this (empty) package is too keep following test working:

@@ -57,11 +57,11 @@
 // The Client has internal state (watchers and leases), so Clients should be reused instead of created as needed.
 // Clients are safe for concurrent use by multiple goroutines.
 //
-// etcd client returns 3 types of errors:
+// etcd client returns 2 types of errors:
 //
 //  1. context error: canceled or deadline exceeded.
-//  2. gRPC status error: e.g. when clock drifts in server-side before client's context deadline exceeded.
-//  3. gRPC error: see https://github.com/etcd-io/etcd/blob/master/etcdserver/api/v3rpc/rpctypes/error.go
+//  2. gRPC error: e.g. when clock drifts in server-side before client's context deadline exceeded.
+//  See https://github.com/etcd-io/etcd/blob/master/api/v3rpc/rpctypes/error.go
 //
 // Here is the example code to handle client errors:
 //

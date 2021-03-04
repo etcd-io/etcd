@@ -1,4 +1,4 @@
-FROM us.gcr.io/k8s-artifacts-prod/build-image/debian-base-ppc64le:v2.1.0
+FROM k8s.gcr.io/build-image/debian-base-ppc64le:buster-v1.4.0
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/

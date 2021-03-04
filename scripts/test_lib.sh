@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 
-REPO="go.etcd.io/etcd"
+ROOT_MODULE="go.etcd.io/etcd"
 
-if [[ "$(go list)" != "${REPO}/v3" ]]; then
-  echo "must be run from '${REPO}/v3' module directory"
+if [[ "$(go list)" != "${ROOT_MODULE}/v3" ]]; then
+  echo "must be run from '${ROOT_MODULE}/v3' module directory"
   exit 255
 fi
 
-ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "${REPO}/v3")
+function set_root_dir {
+  ETCD_ROOT_DIR=$(go list -f '{{.Dir}}' "${ROOT_MODULE}/v3")
+}
+
+set_root_dir
 
 ####   Convenient IO methods #####
 
@@ -19,6 +23,7 @@ COLOR_BLUE='\033[0;94m'
 COLOR_MAGENTA='\033[95m'
 COLOR_BOLD='\033[1m'
 COLOR_NONE='\033[0m' # No Color
+
 
 function log_error {
   >&2 echo -n -e "${COLOR_BOLD}${COLOR_RED}"
@@ -138,10 +143,10 @@ function run {
   fi
 
   log_cmd "% ${repro}"
-  "${@}" 2> >(while read -r line; do echo -e "stderr: ${COLOR_MAGENTA}${line}${COLOR_NONE}" >&2; done)
+  "${@}" 2> >(while read -r line; do echo -e "${COLOR_NONE}stderr: ${COLOR_MAGENTA}${line}${COLOR_NONE}">&2; done)
   local error_code=$?
   if [ ${error_code} -ne 0 ]; then
-    log_error -e "FAIL: (code:${error_code}):\n  % ${repro}"
+    log_error -e "FAIL: (code:${error_code}):\\n  % ${repro}"
     return ${error_code}
   fi
 }
@@ -158,17 +163,30 @@ function run_for_module {
   )
 }
 
+function module_dirs() {
+  echo "api pkg raft client/v2 client/v3 server etcdctl tests ."
+}
+
+# maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
+function maybe_run() {
+  if ${DRY_RUN}; then
+    log_warning -e "# DRY_RUN:\\n  % ${*}"
+  else
+    run "${@}"
+  fi
+}
+
 function modules() {
   modules=(
-    "${REPO}/api/v3"
-    "${REPO}/pkg/v3"
-    "${REPO}/raft/v3"
-    "${REPO}/client/v2"
-    "${REPO}/client/v3"
-    "${REPO}/server/v3"
-    "${REPO}/etcdctl/v3"
-    "${REPO}/tests/v3"
-    "${REPO}/v3")
+    "${ROOT_MODULE}/api/v3"
+    "${ROOT_MODULE}/pkg/v3"
+    "${ROOT_MODULE}/raft/v3"
+    "${ROOT_MODULE}/client/v2"
+    "${ROOT_MODULE}/client/v3"
+    "${ROOT_MODULE}/server/v3"
+    "${ROOT_MODULE}/etcdctl/v3"
+    "${ROOT_MODULE}/tests/v3"
+    "${ROOT_MODULE}/v3")
   echo "${modules[@]}"
 }
 
@@ -183,16 +201,10 @@ function modules_exp() {
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
 function run_for_modules {
   local pkg="${PKG:-./...}"
-  if [ -z "${USERMOD}" ]; then
-    run_for_module "api" "$@" "${pkg}" || return "$?"
-    run_for_module "pkg" "$@" "${pkg}" || return "$?"
-    run_for_module "raft" "$@" "${pkg}" || return "$?"
-    run_for_module "client/v2" "$@" "${pkg}" || return "$?"
-    run_for_module "client/v3" "$@" "${pkg}" || return "$?"
-    run_for_module "server" "$@" "${pkg}" || return "$?"
-    run_for_module "etcdctl" "$@" "${pkg}" || return "$?"
-    run_for_module "tests" "$@" "${pkg}" || return "$?"
-    run_for_module "." "$@" "${pkg}" || return "$?"
+  if [ -z "${USERMOD:-}" ]; then
+    for m in $(module_dirs); do
+      run_for_module "${m}" "$@" "${pkg}" || return "$?"
+    done
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
@@ -265,11 +277,10 @@ function go_test {
         failures=("${failures[@]}" "${pkg}")
       fi
     fi
-    echo
   done
 
   if [ -n "${failures[*]}" ] ; then
-    log_error -e "ERROR: Tests for following packages failed:\n  ${failures[*]}"
+    log_error -e "ERROR: Tests for following packages failed:\\n  ${failures[*]}"
     return 2
   fi
 }
@@ -303,10 +314,10 @@ function tool_get_bin {
   local tool="$1"
   if [[ "$tool" == *"@"* ]]; then
     # shellcheck disable=SC2086
-    run gobin ${GOBINARGS} -p "${tool}" || return 2
+    run gobin ${GOBINARGS:-} -p "${tool}" || return 2
   else
     # shellcheck disable=SC2086
-    run_for_module ./tools/mod run gobin ${GOBINARGS} -p -m --mod=readonly "${tool}" || return 2
+    run_for_module ./tools/mod run gobin ${GOBINARGS:-} -p -m --mod=readonly "${tool}" || return 2
   fi
 }
 
@@ -339,3 +350,28 @@ function assert_no_git_modifications {
   fi
 }
 
+# makes sure that the current branch is in sync with the origin branch:
+#  - no uncommitted nor unstaged changes
+#  - no differencing commits in relation to the origin/$branch
+function git_assert_branch_in_sync {
+  local branch
+  branch=$(run git rev-parse --abbrev-ref HEAD)
+  # TODO: When git 2.22 popular, change to:
+  # branch=$(git branch --show-current)
+  if [[ $(run git status --porcelain --untracked-files=no) ]]; then
+    log_error "The workspace in '$(pwd)' for branch: ${branch} has uncommitted changes"
+    log_error "Consider cleaning up / renaming this directory or (cd $(pwd) && git reset --hard)"
+    return 2
+  fi
+  if [ -n "${branch}" ]; then
+    ref_local=$(run git rev-parse "${branch}")
+    ref_origin=$(run git rev-parse "origin/${branch}")
+    if [ "x${ref_local}" != "x${ref_origin}" ]; then
+      log_error "In workspace '$(pwd)' the branch: ${branch} diverges from the origin."
+      log_error "Consider cleaning up / renaming this directory or (cd $(pwd) && git reset --hard origin/${branch})"
+      return 2
+    fi
+  else
+    log_warning "Cannot verify consistency with the origin, as git is on detached branch."
+  fi
+}

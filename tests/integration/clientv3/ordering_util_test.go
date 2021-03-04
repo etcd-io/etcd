@@ -62,23 +62,20 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// reset client endpoints to all members such that the copy of cli sent to
-	// NewOrderViolationSwitchEndpointClosure will be able to
-	// access the full list of endpoints.
 	cli.SetEndpoints(eps...)
-	OrderingKv := ordering.NewKV(cli.KV, ordering.NewOrderViolationSwitchEndpointClosure(*cli))
+	orderingKv := ordering.NewKV(cli.KV, ordering.NewOrderViolationSwitchEndpointClosure(cli))
 	// set prevRev to the second member's revision of "foo" such that
 	// the revision is higher than the third member's revision of "foo"
-	_, err = OrderingKv.Get(ctx, "foo")
+	_, err = orderingKv.Get(ctx, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	t.Logf("Reconfigure client to speak only to the 'partitioned' member")
 	cli.SetEndpoints(clus.Members[2].GRPCAddr())
-	time.Sleep(1 * time.Second) // give enough time for operation
-	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if err != nil {
-		t.Fatalf("failed to resolve order violation %v", err)
+	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
+	if err != ordering.ErrNoGreaterRev {
+		t.Fatal("While speaking to partitioned leader, we should get ErrNoGreaterRev error")
 	}
 }
 
@@ -121,12 +118,9 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// reset client endpoints to all members such that the copy of cli sent to
-	// NewOrderViolationSwitchEndpointClosure will be able to
-	// access the full list of endpoints.
 	cli.SetEndpoints(eps...)
 	time.Sleep(1 * time.Second) // give enough time for operation
-	OrderingKv := ordering.NewKV(cli.KV, ordering.NewOrderViolationSwitchEndpointClosure(*cli))
+	OrderingKv := ordering.NewKV(cli.KV, ordering.NewOrderViolationSwitchEndpointClosure(cli))
 	// set prevRev to the first member's revision of "foo" such that
 	// the revision is higher than the fourth and fifth members' revision of "foo"
 	_, err = OrderingKv.Get(ctx, "foo")
@@ -147,7 +141,6 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	}
 	clus.Members[3].WaitStarted(t)
 	cli.SetEndpoints(clus.Members[3].GRPCAddr())
-	time.Sleep(5 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != ordering.ErrNoGreaterRev {

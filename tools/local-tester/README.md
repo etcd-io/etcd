@@ -11,7 +11,7 @@ local-tester depends on `goreman` to manage its processes and `bash` to run faul
 local-tester needs `etcd`, `benchmark`, and `bridge` binaries. To build these binaries, run the following from the etcd repository root:
 
 ```sh
-./build
+./build.sh
 pushd tools/benchmark/ && go build && popd
 pushd tools/local-tester/bridge && go build && popd
 ```

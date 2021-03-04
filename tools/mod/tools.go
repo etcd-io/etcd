@@ -34,4 +34,5 @@ import (
 	_ "go.etcd.io/protodoc"
 	_ "honnef.co/go/tools/cmd/staticcheck"
 	_ "mvdan.cc/unparam"
+	_ "github.com/mikefarah/yq/v3"
 )

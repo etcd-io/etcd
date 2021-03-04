@@ -712,7 +712,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 		ctxToSend := make([]byte, 8)
 		id1 := s.reqIDGen.Next()
 		binary.BigEndian.PutUint64(ctxToSend, id1)
-		leaderChangedNotifier := s.leaderChangedNotify()
+		leaderChangedNotifier := s.LeaderChangedNotify()
 		select {
 		case <-leaderChangedNotifier:
 			continue

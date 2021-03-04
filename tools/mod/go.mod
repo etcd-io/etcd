@@ -7,7 +7,6 @@ require (
 	github.com/alexkohler/nakedret v1.0.0
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e
-	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-openapi/loads v0.19.5 // indirect
 	github.com/go-openapi/spec v0.19.9 // indirect
 	github.com/gogo/protobuf v1.3.1
@@ -17,6 +16,7 @@ require (
 	github.com/hexfusion/schwag v0.0.0-20170606222847-b7d0fc9aadaa
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
 	github.com/mgechev/revive v1.0.2
+	github.com/mikefarah/yq/v3 v3.0.0-20201125113350-f42728eef735
 	github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f // indirect
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	google.golang.org/genproto v0.0.0-20201008135153-289734e2e40c // indirect

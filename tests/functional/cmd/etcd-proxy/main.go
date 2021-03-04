@@ -54,7 +54,7 @@ See README.md for more examples.
 Example:
 
 # build etcd
-$ ./build
+$ ./build.sh
 $ ./bin/etcd
 
 # build etcd-proxy
