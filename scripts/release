@@ -52,7 +52,7 @@ main() {
   fi
   RELEASE_VERSION="v${VERSION}"
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
-  #STABLE_VERSION="3.3"
+  STABLE_VERSION="3.3"
   BRANCH=${BRANCH:-"release-${MINOR_VERSION}"}
   REPOSITORY=${REPOSITORY:-"git@github.com:etcd-io/etcd.git"}
 
