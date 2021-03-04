@@ -21,7 +21,7 @@ XARGS += rm -r
 
 .PHONY: build
 build:
-	GO_BUILD_FLAGS="-v" ./build
+	GO_BUILD_FLAGS="-v" ./build.sh
 	./bin/etcd --version
 	./bin/etcdctl version
 
@@ -53,18 +53,19 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.14.3
+GO_VERSION ?= 1.15.7
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
 TEST_OPTS ?= PASSES='unit'
 
-TMP_DIR_MOUNT_FLAG = --mount type=tmpfs,destination=/tmp
+TMP_DIR_MOUNT_FLAG = --tmpfs=/tmp:exec
 ifdef HOST_TMP_DIR
 	TMP_DIR_MOUNT_FLAG = --mount type=bind,source=$(HOST_TMP_DIR),destination=/tmp
 endif
 
 
+TMP_DOCKERFILE:=$(shell mktemp)
 
 # Example:
 #   GO_VERSION=1.14.3 make build-docker-test
@@ -79,12 +80,11 @@ endif
 
 build-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/Dockerfile > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  --file ./tests/Dockerfile .
-	@mv ./tests/Dockerfile.bak ./tests/Dockerfile
+	  --file $(TMP_DOCKERFILE) .
 
 push-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -107,7 +107,7 @@ compile-with-docker-test:
 	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build && ./bin/etcd --version"
+	  /bin/bash -c "GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build.sh && ./bin/etcd --version"
 
 compile-setup-gopath-with-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -115,7 +115,7 @@ compile-setup-gopath-with-docker-test:
 	  --rm \
 	  --mount type=bind,source=`pwd`,destination=/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build && ./bin/etcd --version && rm -rf ./gopath"
+	  /bin/bash -c "cd /etcd && ETCD_SETUP_GOPATH=1 GO_BUILD_FLAGS=-v GOOS=linux GOARCH=amd64 ./build.sh && ./bin/etcd --version && rm -rf ./gopath"
 
 
 
@@ -148,8 +148,16 @@ compile-setup-gopath-with-docker-test:
 test:
 	$(info TEST_OPTS: $(TEST_OPTS))
 	$(info log-file: test-$(TEST_SUFFIX).log)
-	$(TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log
+	$(TEST_OPTS) ./test.sh 2>&1 | tee test-$(TEST_SUFFIX).log
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
+
+test-smoke:
+	$(info log-file: test-$(TEST_SUFFIX).log)
+	PASSES="fmt build unit" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
+
+test-full:
+	$(info log-file: test-$(TEST_SUFFIX).log)
+	PASSES="fmt build unit integration functional e2e grpcproxy" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
 
 docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -163,7 +171,7 @@ docker-test:
 	  $(TMP_DIR_MOUNT_FLAG) \
 	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "$(TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log"
+	  /bin/bash -c "$(TEST_OPTS) ./test.sh 2>&1 | tee test-$(TEST_SUFFIX).log"
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
 
 docker-test-coverage:
@@ -177,7 +185,7 @@ docker-test-coverage:
 	  $(TMP_DIR_MOUNT_FLAG) \
 	  --mount type=bind,source=`pwd`,destination=/go/src/go.etcd.io/etcd \
 	  gcr.io/etcd-development/etcd-test:go$(GO_VERSION) \
-	  /bin/bash -c "COVERDIR=covdir PASSES='build build_cov cov' ./test 2>&1 | tee docker-test-coverage-$(TEST_SUFFIX).log && /codecov -t 6040de41-c073-4d6f-bbf8-d89256ef31e1"
+	  /bin/bash ./scripts/codecov_upload.sh docker-test-coverage-$(TEST_SUFFIX).log \
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 docker-test-coverage-$(TEST_SUFFIX).log
 
 
@@ -225,13 +233,12 @@ push-docker-release-master:
 
 build-docker-static-ip-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-static-ip/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-static-ip/Dockerfile > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-static-ip-test:go$(GO_VERSION) \
 	  --file ./tests/docker-static-ip/Dockerfile \
-	  ./tests/docker-static-ip
-	@mv ./tests/docker-static-ip/Dockerfile.bak ./tests/docker-static-ip/Dockerfile
+	  $(TMP_DOCKERFILE)
 
 push-docker-static-ip-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -290,13 +297,12 @@ docker-static-ip-test-certs-metrics-proxy-run:
 
 build-docker-dns-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-dns/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-dns/Dockerfile > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION) \
 	  --file ./tests/docker-dns/Dockerfile \
-	  ./tests/docker-dns
-	@mv ./tests/docker-dns/Dockerfile.bak ./tests/docker-dns/Dockerfile
+	  $(TMP_DOCKERFILE)
 
 	docker run \
 	  --rm \
@@ -425,13 +431,12 @@ docker-dns-test-certs-san-dns-run:
 
 build-docker-dns-srv-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/docker-dns-srv/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-dns-srv-test:go$(GO_VERSION) \
 	  --file ./tests/docker-dns-srv/Dockerfile \
-	  ./tests/docker-dns-srv
-	@mv ./tests/docker-dns-srv/Dockerfile.bak ./tests/docker-dns-srv/Dockerfile
+	  $(TMP_DOCKERFILE)
 
 	docker run \
 	  --rm \
@@ -509,7 +514,7 @@ build-functional:
 build-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	@sed -i.bak 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' ./tests/functional/Dockerfile
+	@sed 's|REPLACE_ME_GO_VERSION|$(GO_VERSION)|g' > $(TMP_DOCKERFILE)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd-functional:go$(GO_VERSION) \

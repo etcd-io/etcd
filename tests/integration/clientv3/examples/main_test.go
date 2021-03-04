@@ -42,6 +42,7 @@ func forUnitTestsRunInMockedContext(mocking func(), example func()) {
 
 // TestMain sets up an etcd cluster if running the examples.
 func TestMain(m *testing.M) {
+	testutil.ExitInShortMode("Skipping: the tests require real cluster")
 	v := m.Run()
 	lazyCluster.Terminate()
 

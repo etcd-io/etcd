@@ -1,0 +1,18 @@
+codecov:
+  token: "6040de41-c073-4d6f-bbf8-d89256ef31e1"
+  disable_default_path_fixes: true
+
+fixes:
+  - "go.etcd.io/etcd/api/v3/::api/"
+  - "go.etcd.io/etcd/client/v3/::client/v3/"
+  - "go.etcd.io/etcd/client/v2/::client/v2/"
+  - "go.etcd.io/etcd/etcdctl/v3/::etcdctl/"
+  - "go.etcd.io/etcd/pkg/v3/::pkg/"
+  - "go.etcd.io/etcd/raft/v3/::raft/"
+  - "go.etcd.io/etcd/server/v3/::server/"
+
+ignore:
+  - "**/*.pb.go"
+  - "**/*.pb.gw.go"
+  - "tests/**/*"
+  - "go.etcd.io/etcd/tests/**/*"

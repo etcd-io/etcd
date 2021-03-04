@@ -26,11 +26,11 @@ ADD ./tests/functional/functional.yaml /functional.yaml
 
 RUN go get -v go.etcd.io/gofail \
   && pushd ${GOPATH}/src/go.etcd.io/etcd \
-  && GO_BUILD_FLAGS="-v" ./build \
+  && GO_BUILD_FLAGS="-v" ./build.sh \
   && mkdir -p /bin \
   && cp ./bin/etcd /bin/etcd \
   && cp ./bin/etcdctl /bin/etcdctl \
-  && GO_BUILD_FLAGS="-v" FAILPOINTS=1 ./build \
+  && GO_BUILD_FLAGS="-v" FAILPOINTS=1 ./build.sh \
   && cp ./bin/etcd /bin/etcd-failpoints \
   && ./tests/functional/build \
   && cp ./bin/etcd-agent /bin/etcd-agent \

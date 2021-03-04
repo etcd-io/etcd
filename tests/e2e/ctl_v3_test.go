@@ -88,10 +88,10 @@ func versionTest(cx ctlCtx) {
 
 func clusterVersionTest(cx ctlCtx, expected string) {
 	var err error
-	for i := 0; i < 7; i++ {
+	for i := 0; i < 35; i++ {
 		if err = cURLGet(cx.epc, cURLReq{endpoint: "/version", expected: expected}); err != nil {
 			cx.t.Logf("#%d: v3 is not ready yet (%v)", i, err)
-			time.Sleep(time.Second)
+			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		break

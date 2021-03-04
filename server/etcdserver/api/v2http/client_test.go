@@ -95,11 +95,12 @@ type fakeServer struct {
 	dummyStats
 }
 
-func (s *fakeServer) Leader() types.ID                    { return types.ID(1) }
-func (s *fakeServer) Alarms() []*etcdserverpb.AlarmMember { return nil }
-func (s *fakeServer) Cluster() api.Cluster                { return nil }
-func (s *fakeServer) ClusterVersion() *semver.Version     { return nil }
-func (s *fakeServer) RaftHandler() http.Handler           { return nil }
+func (s *fakeServer) Leader() types.ID                     { return types.ID(1) }
+func (s *fakeServer) Alarms() []*etcdserverpb.AlarmMember  { return nil }
+func (s *fakeServer) LeaderChangedNotify() <-chan struct{} { return nil }
+func (s *fakeServer) Cluster() api.Cluster                 { return nil }
+func (s *fakeServer) ClusterVersion() *semver.Version      { return nil }
+func (s *fakeServer) RaftHandler() http.Handler            { return nil }
 func (s *fakeServer) Do(ctx context.Context, r etcdserverpb.Request) (rr etcdserver.Response, err error) {
 	return
 }

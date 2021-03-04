@@ -79,7 +79,7 @@ func NewHealthHandler(lg *zap.Logger, hfunc func() Health) http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(d)
-		lg.Info("/health OK", zap.Int("status-code", http.StatusOK))
+		lg.Debug("/health OK", zap.Int("status-code", http.StatusOK))
 	}
 }
 
@@ -154,7 +154,7 @@ func checkV2Health(lg *zap.Logger, srv etcdserver.ServerV2) (h Health) {
 		lg.Warn("serving /health false; QGET fails", zap.Error(err))
 		return
 	}
-	lg.Info("serving /health true")
+	lg.Debug("serving /health true")
 	return
 }
 
@@ -171,6 +171,6 @@ func checkV3Health(lg *zap.Logger, srv *etcdserver.EtcdServer) (h Health) {
 		lg.Warn("serving /health false; Range fails", zap.Error(err))
 		return
 	}
-	lg.Info("serving /health true")
+	lg.Debug("serving /health true")
 	return
 }

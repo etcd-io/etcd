@@ -48,10 +48,10 @@ var DefaultRequestTimeout = 5 * time.Second
 
 var DefaultTransport CancelableTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
-	Dial: (&net.Dialer{
+	DialContext: (&net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
-	}).Dial,
+	}).DialContext,
 	TLSHandshakeTimeout: 10 * time.Second,
 }
 
@@ -521,15 +521,22 @@ type simpleHTTPClient struct {
 	headerTimeout time.Duration
 }
 
+// ErrNoRequest indicates that the HTTPRequest object could not be found
+// or was nil.  No processing could continue.
+var ErrNoRequest = errors.New("No HTTPRequest was available")
+
 func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
 	req := act.HTTPRequest(c.endpoint)
+	if req == nil {
+		return nil, nil, ErrNoRequest
+	}
 
 	if err := printcURL(req); err != nil {
 		return nil, nil, err
 	}
 
 	isWait := false
-	if req != nil && req.URL != nil {
+	if req.URL != nil {
 		ws := req.URL.Query().Get("wait")
 		if len(ws) != 0 {
 			var err error

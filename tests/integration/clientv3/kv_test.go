@@ -31,7 +31,6 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -779,7 +778,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 		t.Fatalf("got success on disconnected put, wanted error")
 	}
 
-	donec := make(chan struct{})
+	donec := make(chan struct{}, 1)
 	go func() {
 		// Get will fail, but reconnect will trigger
 		gresp, gerr := kv.Get(context.TODO(), "foo")
@@ -838,7 +837,7 @@ func TestKVGetStoppedServerAndClose(t *testing.T) {
 	// this Get fails and triggers an asynchronous connection retry
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && !(isCanceled(err) || isClientTimeout(err)) {
+	if err != nil && !(IsCanceled(err) || IsClientTimeout(err)) {
 		t.Fatal(err)
 	}
 }
@@ -860,7 +859,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	// grpc finds out the original connection is down due to the member shutdown.
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && !(isCanceled(err) || isClientTimeout(err)) {
+	if err != nil && !(IsCanceled(err) || IsClientTimeout(err)) {
 		t.Fatal(err)
 	}
 
@@ -868,7 +867,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	// this Put fails and triggers an asynchronous connection retry
 	_, err = cli.Put(ctx, "abc", "123")
 	cancel()
-	if err != nil && !(isCanceled(err) || isClientTimeout(err) || isUnavailable(err)) {
+	if err != nil && !(IsCanceled(err) || IsClientTimeout(err) || IsUnavailable(err)) {
 		t.Fatal(err)
 	}
 }
