@@ -110,7 +110,7 @@ function integration_extra {
 
 function integration_pass {
   local pkgs=${USERPKG:-"./integration/..."}
-  run_for_module "tests" go_test "${pkgs}" "parallel" : -timeout="${TIMEOUT:-30m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@" || return $?
+  run_for_module "tests" go_test "${pkgs}" "parallel" : -timeout="${TIMEOUT:-15m}" "-v" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@" || return $?
   integration_extra "$@"
 }
 
