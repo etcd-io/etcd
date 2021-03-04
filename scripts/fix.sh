@@ -28,6 +28,7 @@ function bash_ws_fix {
 
 log_callout -e "\\nFixing etcd code for you...\\n"
 
+go mod tidy
 run_for_modules mod_tidy_fix || exit 2
 run_for_modules run ${GO_CMD} fmt || exit 2
 run_for_module tests bom_fix || exit 2
