@@ -21,8 +21,8 @@
 		"project": "github.com/certifi/gocertifi",
 		"licenses": [
 			{
-				"type": "\"Do What The F*ck You Want To Public License\"",
-				"confidence": 0.3287671232876712
+				"type": "Mozilla Public License 2.0",
+				"confidence": 1
 			}
 		]
 	},
