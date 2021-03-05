@@ -59,6 +59,7 @@ func CheckLeakedGoroutine() bool {
 func CheckAfterTest(d time.Duration) error {
 	http.DefaultTransport.(*http.Transport).CloseIdleConnections()
 	var bad string
+	// Presence of these goroutines causes immediate test failure.
 	badSubstring := map[string]string{
 		").writeLoop(": "a Transport",
 		"created by net/http/httptest.(*Server).Start": "an httptest.Server",
@@ -74,17 +75,20 @@ func CheckAfterTest(d time.Duration) error {
 	begin := time.Now()
 	for time.Since(begin) < d {
 		bad = ""
-		stacks = strings.Join(interestingGoroutines(), "\n\n")
+		goroutines := interestingGoroutines()
+		if len(goroutines) == 0 {
+			return nil
+		}
+		stacks = strings.Join(goroutines, "\n\n")
+
 		for substr, what := range badSubstring {
 			if strings.Contains(stacks, substr) {
 				bad = what
 			}
 		}
-		if bad == "" {
-			return nil
-		}
-		// Bad stuff found, but goroutines might just still be
+		// Undesired goroutines found, but goroutines might just still be
 		// shutting down, so give it some time.
+		runtime.Gosched()
 		time.Sleep(50 * time.Millisecond)
 	}
 	return fmt.Errorf("appears to have leaked %s:\n%s", bad, stacks)
@@ -94,7 +98,7 @@ func CheckAfterTest(d time.Duration) error {
 // It will detect common goroutine leaks, retrying in case there are goroutines
 // not synchronously torn down, and fail the test if any goroutines are stuck.
 func AfterTest(t *testing.T) {
-	if err := CheckAfterTest(300 * time.Millisecond); err != nil {
+	if err := CheckAfterTest(1 * time.Second); err != nil {
 		t.Errorf("Test %v", err)
 	}
 }
@@ -126,7 +130,8 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "created by text/template/parse.lex") ||
 			strings.Contains(stack, "runtime.MHeap_Scavenger") ||
 			strings.Contains(stack, "rcrypto/internal/boring.(*PublicKeyRSA).finalize") ||
-			strings.Contains(stack, "net.(*netFD).Close(") {
+			strings.Contains(stack, "net.(*netFD).Close(") ||
+			strings.Contains(stack, "testing.(*T).Run") {
 			continue
 		}
 		gs = append(gs, stack)
