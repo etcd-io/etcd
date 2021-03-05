@@ -48,6 +48,16 @@ func SetLogger(l Logger) {
 	raftLoggerMu.Unlock()
 }
 
+func ResetDefaultLogger() {
+	SetLogger(defaultLogger)
+}
+
+func getLogger() Logger {
+	raftLoggerMu.Lock()
+	defer raftLoggerMu.Unlock()
+	return raftLogger
+}
+
 var (
 	defaultLogger = &DefaultLogger{Logger: log.New(os.Stderr, "raft", log.LstdFlags)}
 	discardLogger = &DefaultLogger{Logger: log.New(ioutil.Discard, "", 0)}

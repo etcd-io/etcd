@@ -36,11 +36,11 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
@@ -52,6 +52,8 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock"
 	lockpb "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
@@ -167,8 +169,14 @@ type ClusterConfig struct {
 }
 
 type cluster struct {
-	cfg     *ClusterConfig
-	Members []*member
+	cfg           *ClusterConfig
+	Members       []*member
+	lastMemberNum int
+}
+
+func (c *cluster) generateMemberName() string {
+	c.lastMemberNum++
+	return fmt.Sprintf("m%v", c.lastMemberNum)
 }
 
 func schemeFromTLSInfo(tls *transport.TLSInfo) string {
@@ -294,7 +302,7 @@ func (c *cluster) HTTPMembers() []client.Member {
 func (c *cluster) mustNewMember(t testing.TB) *member {
 	m := mustNewMember(t,
 		memberConfig{
-			name:                        c.name(rand.Int()),
+			name:                        c.generateMemberName(),
 			authToken:                   c.cfg.AuthToken,
 			peerTLS:                     c.cfg.PeerTLS,
 			clientTLS:                   c.cfg.ClientTLS,
@@ -707,18 +715,28 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
 	m.InitialCorruptCheck = true
+	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 
-	lcfg := logutil.DefaultZapLoggerConfig
-	m.LoggerConfig = &lcfg
-	m.LoggerConfig.OutputPaths = []string{"/dev/null"}
-	m.LoggerConfig.ErrorOutputPaths = []string{"/dev/null"}
+	level := zapcore.InfoLevel
 	if os.Getenv("CLUSTER_DEBUG") != "" {
-		m.LoggerConfig.OutputPaths = []string{"stderr"}
-		m.LoggerConfig.ErrorOutputPaths = []string{"stderr"}
+		level = zapcore.DebugLevel
 	}
-	m.Logger, err = m.LoggerConfig.Build()
-	if err != nil {
-		t.Fatal(err)
+
+	if t != nil {
+		options := zaptest.WrapOptions(zap.Fields(zap.String("member", mcfg.name)))
+		m.Logger = zaptest.NewLogger(t, zaptest.Level(level), options)
+		if t != nil {
+			t.Cleanup(func() {
+				// if we didn't cleanup the logger, the consecutive test
+				// might reuse this (t).
+				raft.ResetDefaultLogger()
+			})
+		}
+	} else {
+		m.Logger, err = zap.NewDevelopment(zap.IncreaseLevel(level))
+		if err != nil {
+			log.Panic(err)
+		}
 	}
 	return m
 }
@@ -1518,6 +1536,6 @@ func (c *ClusterV3) MustNewMember(t testing.TB, resp *clientv3.MemberAddResponse
 		m.InitialPeerURLsMap[mm.Name] = mm.PeerURLs
 	}
 	m.InitialPeerURLsMap[m.Name] = types.MustNewURLs(resp.Member.PeerURLs)
-
+	c.Members = append(c.Members, m)
 	return m
 }
