@@ -52,9 +52,14 @@ main() {
   fi
   RELEASE_VERSION="v${VERSION}"
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
-  STABLE_VERSION="3.3"
   BRANCH=${BRANCH:-"release-${MINOR_VERSION}"}
   REPOSITORY=${REPOSITORY:-"git@github.com:etcd-io/etcd.git"}
+  # Stable tags don't exist, but docker image store users would benefit from
+  # having a "latest" image that isn't too new. STABLE_VERSION_MINOR creates
+  # a manual process for deciding which MINOR release version takes over the
+  # latest tags in docker image stores, and must be manually adjusted.
+  STABLE_VERSION="3.3"
+  #TODO: verify format of "$STABLE_VERSION", somehow verify that $STABLE_VERSION.N > $VERSION-latest
 
   log_warning "DRY_RUN=${DRY_RUN}"
   log_callout "RELEASE_VERSION=${RELEASE_VERSION}"
@@ -232,10 +237,12 @@ main() {
     for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
       log_callout "Pushing container images to quay.io ${RELEASE_VERSION}-${TARGET_ARCH}"
       maybe_run docker push "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      [[ "${MINOR_VERSION}" == "${STABLE_VERSION}" ]] && maybe_run docker push "quay.io/coreos/etcd:latest-${TARGET_ARCH}"
+      [[ "${MINOR_VERSION}" == "${STABLE_VERSION_MINOR}" ]] && maybe_run docker push "quay.io/coreos/etcd:latest-${TARGET_ARCH}"
+      [[ "${TARGET_ARCH}" == "amd64" ]] && [[ "${MINOR_VERSION}" == "${STABLE_VERSION}" ]] && maybe_run docker push "quay.io/coreos/etcd:latest"
       log_callout "Pushing container images to gcr.io ${RELEASE_VERSION}-${TARGET_ARCH}"
       maybe_run docker push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      [[ "${MINOR_VERSION}" == "${STABLE_VERSION}" ]] && maybe_run docker push "quay.io/coreos/etcd:latest-${TARGET_ARCH}"
+      [[ "${MINOR_VERSION}" == "${STABLE_VERSION}" ]] && maybe_run docker push "gcr.io/etcd-development/etcd:latest-${TARGET_ARCH}"
+      [[ "${TARGET_ARCH}" == "amd64" ]] && [[ "${MINOR_VERSION}" == "${STABLE_VERSION}" ]] && maybe_run docker push "gcr.io/etcd-development/etcd::latest"
     done
 
     log_callout "Creating manifest-list (multi-image)..."
