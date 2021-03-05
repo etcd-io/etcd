@@ -316,6 +316,14 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		)
 	}
 
+	if cfg.ExperimentalMemoryMlock {
+		cfg.Logger.Info("mlocking memory")
+		err := MlockAll()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if terr := fileutil.TouchDirAll(cfg.DataDir); terr != nil {
 		return nil, fmt.Errorf("cannot access data directory: %v", terr)
 	}
