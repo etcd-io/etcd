@@ -25,6 +25,26 @@ cfssl gencert \
 mv server.pem server.crt
 mv server-key.pem server.key.insecure
 
+#generates certificate that only has the 'server auth' usage
+cfssl gencert \
+  --ca ./ca.crt \
+  --ca-key ./ca-key.pem \
+  --config ./gencert.json \
+  --profile=server-only \
+  ./server-ca-csr.json | cfssljson --bare ./server-serverusage
+mv server-serverusage.pem server-serverusage.crt
+mv server-serverusage-key.pem server-serverusage.key.insecure
+
+#generates certificate that only has the 'client auth' usage
+cfssl gencert \
+  --ca ./ca.crt \
+  --ca-key ./ca-key.pem \
+  --config ./gencert.json \
+  --profile=client-only \
+  ./server-ca-csr.json | cfssljson --bare ./client-clientusage
+mv client-clientusage.pem client-clientusage.crt
+mv client-clientusage-key.pem client-clientusage.key.insecure
+
 # generate DNS: localhost, IP: 127.0.0.1, CN: example.com certificates (ECDSA)
 cfssl gencert \
   --ca ./ca.crt \
