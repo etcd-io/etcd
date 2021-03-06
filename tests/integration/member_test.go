@@ -23,11 +23,10 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 func TestPauseMember(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	c := NewCluster(t, 5)
 	c.Launch(t)
@@ -46,7 +45,7 @@ func TestPauseMember(t *testing.T) {
 }
 
 func TestRestartMember(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, 3)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -84,7 +83,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 }
 
 func TestSnapshotAndRestartMember(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	m := mustNewMember(t, memberConfig{name: "snapAndRestartTest"})
 	m.SnapshotCount = 100
 	m.Launch()

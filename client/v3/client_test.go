@@ -28,7 +28,7 @@ import (
 )
 
 func TestDialCancel(t *testing.T) {
-	defer testutil.AfterTest(t)
+	testutil.BeforeTest(t)
 
 	// accept first connection so client is created with dial timeout
 	ln, err := net.Listen("unix", "dialcancel:12345")

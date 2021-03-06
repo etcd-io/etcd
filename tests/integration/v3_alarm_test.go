@@ -147,7 +147,7 @@ func TestV3AlarmDeactivate(t *testing.T) {
 }
 
 func TestV3CorruptAlarm(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 

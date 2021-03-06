@@ -21,8 +21,6 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
-
 	"google.golang.org/grpc"
 )
 
@@ -32,7 +30,7 @@ func TestTLSClientCipherSuitesMismatch(t *testing.T) { testTLSCipherSuites(t, fa
 // testTLSCipherSuites ensures mismatching client-side cipher suite
 // fail TLS handshake with the server.
 func testTLSCipherSuites(t *testing.T, valid bool) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	cipherSuites := []uint16{
 		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,

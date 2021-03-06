@@ -52,7 +52,7 @@ func TestClusterVersion(t *testing.T) {
 			if !fileutil.Exist(binary) {
 				t.Skipf("%q does not exist", binary)
 			}
-			defer testutil.AfterTest(t)
+			BeforeTest(t)
 			cfg := newConfigNoTLS()
 			cfg.execPath = binary
 			cfg.snapshotCount = 3
@@ -198,7 +198,7 @@ func withFlagByEnv() ctlOption {
 }
 
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	ret := ctlCtx{
 		t:           t,

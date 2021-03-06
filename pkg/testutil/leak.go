@@ -28,7 +28,7 @@ running(leaking) after all tests.
 	}
 
 	func TestSample(t *testing.T) {
-		defer testutil.AfterTest(t)
+		BeforeTest(t)
 		...
 	}
 
@@ -94,10 +94,18 @@ func CheckAfterTest(d time.Duration) error {
 	return fmt.Errorf("appears to have leaked %s:\n%s", bad, stacks)
 }
 
+// BeforeTest is a convenient way to register before-and-after code to a test.
+// If you execute BeforeTest, you don't need to explicitly register AfterTest.
+func BeforeTest(t testing.TB) {
+	t.Cleanup(func() {
+		AfterTest(t)
+	})
+}
+
 // AfterTest is meant to run in a defer that executes after a test completes.
 // It will detect common goroutine leaks, retrying in case there are goroutines
 // not synchronously torn down, and fail the test if any goroutines are stuck.
-func AfterTest(t *testing.T) {
+func AfterTest(t testing.TB) {
 	if err := CheckAfterTest(1 * time.Second); err != nil {
 		t.Errorf("Test %v", err)
 	}

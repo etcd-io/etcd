@@ -26,7 +26,6 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/tests/v3/integration/clientv3"
 	"google.golang.org/grpc"
@@ -104,7 +103,7 @@ func TestBalancerUnderNetworkPartitionSerializableGet(t *testing.T) {
 }
 
 func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               3,
@@ -159,7 +158,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 // switches endpoint when leader fails and linearizable get requests returns
 // "etcdserver: request timed out".
 func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               3,
@@ -214,7 +213,7 @@ func TestBalancerUnderNetworkPartitionWatchFollower(t *testing.T) {
 // testBalancerUnderNetworkPartitionWatch ensures watch stream
 // to a partitioned node be closed when context requires leader.
 func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               3,
@@ -274,7 +273,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 }
 
 func TestDropReadUnderNetworkPartition(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               3,

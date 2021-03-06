@@ -2,19 +2,19 @@ package integration
 
 import (
 	"context"
-	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/namespace"
-	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/server/v3/embed"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/namespace"
+	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 )
 
 // TestKVWithEmptyValue ensures that a get/delete with an empty value, and with WithFromKey/WithPrefix function will return an empty error.
 func TestKVWithEmptyValue(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	cfg := embed.NewConfig()
 

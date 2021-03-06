@@ -23,7 +23,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/fileutil"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 // TestReleaseUpgrade ensures that changes to master branch does not affect
@@ -34,7 +33,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	copiedCfg := newConfigNoTLS()
 	copiedCfg.execPath = lastReleaseBinary
@@ -125,7 +124,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	copiedCfg := newConfigNoTLS()
 	copiedCfg.execPath = lastReleaseBinary

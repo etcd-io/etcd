@@ -24,7 +24,6 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
@@ -178,7 +177,7 @@ func TestMutexSessionRelock(t *testing.T) {
 // waiters older than the new owner are gone by testing the case where
 // the waiter prior to the acquirer expires before the current holder.
 func TestMutexWaitsOnCurrentHolder(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

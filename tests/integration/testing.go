@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Authors
+// Copyright 2021 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,24 +15,11 @@
 package integration
 
 import (
-	"context"
 	"testing"
 
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
-func TestHealthCheck(t *testing.T) {
-	BeforeTest(t)
-
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
-	defer clus.Terminate(t)
-
-	cli := healthpb.NewHealthClient(clus.RandClient().ActiveConnection())
-	resp, err := cli.Check(context.TODO(), &healthpb.HealthCheckRequest{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resp.Status != healthpb.HealthCheckResponse_SERVING {
-		t.Fatalf("status expected %s, got %s", healthpb.HealthCheckResponse_SERVING, resp.Status)
-	}
+func BeforeTest(t testing.TB) {
+	testutil.BeforeTest(t)
 }

@@ -21,13 +21,12 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"google.golang.org/grpc"
 )
 
 func TestUserError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -56,7 +55,7 @@ func TestUserError(t *testing.T) {
 }
 
 func TestUserErrorAuth(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -113,7 +112,7 @@ func authSetupRoot(t *testing.T, auth clientv3.Auth) {
 
 // Client can connect to etcd even if they supply credentials and the server is in AuthDisable mode.
 func TestGetTokenWithoutAuth(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)

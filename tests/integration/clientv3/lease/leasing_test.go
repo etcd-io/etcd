@@ -31,7 +31,7 @@ import (
 )
 
 func TestLeasingPutGet(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -90,7 +90,7 @@ func TestLeasingPutGet(t *testing.T) {
 
 // TestLeasingInterval checks the leasing KV fetches key intervals.
 func TestLeasingInterval(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -129,7 +129,7 @@ func TestLeasingInterval(t *testing.T) {
 
 // TestLeasingPutInvalidateNew checks the leasing KV updates its cache on a Put to a new key.
 func TestLeasingPutInvalidateNew(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -159,7 +159,7 @@ func TestLeasingPutInvalidateNew(t *testing.T) {
 
 // TestLeasingPutInvalidateExisting checks the leasing KV updates its cache on a Put to an existing key.
 func TestLeasingPutInvalidateExisting(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -193,7 +193,7 @@ func TestLeasingPutInvalidateExisting(t *testing.T) {
 
 // TestLeasingGetNoLeaseTTL checks a key with a TTL is not leased.
 func TestLeasingGetNoLeaseTTL(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -222,7 +222,7 @@ func TestLeasingGetNoLeaseTTL(t *testing.T) {
 // TestLeasingGetSerializable checks the leasing KV can make serialized requests
 // when the etcd cluster is partitioned.
 func TestLeasingGetSerializable(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
@@ -262,7 +262,7 @@ func TestLeasingGetSerializable(t *testing.T) {
 
 // TestLeasingPrevKey checks the cache respects WithPrevKV on puts.
 func TestLeasingPrevKey(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
@@ -288,7 +288,7 @@ func TestLeasingPrevKey(t *testing.T) {
 
 // TestLeasingRevGet checks the cache respects Get by Revision.
 func TestLeasingRevGet(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -324,7 +324,7 @@ func TestLeasingRevGet(t *testing.T) {
 
 // TestLeasingGetWithOpts checks options that can be served through the cache do not depend on the server.
 func TestLeasingGetWithOpts(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -369,7 +369,7 @@ func TestLeasingGetWithOpts(t *testing.T) {
 // TestLeasingConcurrentPut ensures that a get after concurrent puts returns
 // the recently put data.
 func TestLeasingConcurrentPut(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -416,7 +416,7 @@ func TestLeasingConcurrentPut(t *testing.T) {
 }
 
 func TestLeasingDisconnectedGet(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -445,7 +445,7 @@ func TestLeasingDisconnectedGet(t *testing.T) {
 }
 
 func TestLeasingDeleteOwner(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -479,7 +479,7 @@ func TestLeasingDeleteOwner(t *testing.T) {
 }
 
 func TestLeasingDeleteNonOwner(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -514,7 +514,7 @@ func TestLeasingDeleteNonOwner(t *testing.T) {
 }
 
 func TestLeasingOverwriteResponse(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -548,7 +548,7 @@ func TestLeasingOverwriteResponse(t *testing.T) {
 }
 
 func TestLeasingOwnerPutResponse(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -586,7 +586,7 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerGetRange(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -615,7 +615,7 @@ func TestLeasingTxnOwnerGetRange(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerGet(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -701,7 +701,7 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -740,7 +740,7 @@ func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerDelete(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -771,7 +771,7 @@ func TestLeasingTxnOwnerDelete(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerIf(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -865,7 +865,7 @@ func TestLeasingTxnOwnerIf(t *testing.T) {
 }
 
 func TestLeasingTxnCancel(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -899,7 +899,7 @@ func TestLeasingTxnCancel(t *testing.T) {
 }
 
 func TestLeasingTxnNonOwnerPut(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -977,7 +977,7 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 // TestLeasingTxnRandIfThenOrElse randomly leases keys two separate clients, then
 // issues a random If/{Then,Else} transaction on those keys to one client.
 func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1083,7 +1083,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 }
 
 func TestLeasingOwnerPutError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1104,7 +1104,7 @@ func TestLeasingOwnerPutError(t *testing.T) {
 }
 
 func TestLeasingOwnerDeleteError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1125,7 +1125,7 @@ func TestLeasingOwnerDeleteError(t *testing.T) {
 }
 
 func TestLeasingNonOwnerPutError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1150,7 +1150,7 @@ func TestLeasingOwnerDeleteFrom(t *testing.T) {
 }
 
 func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1199,7 +1199,7 @@ func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
 }
 
 func TestLeasingDeleteRangeBounds(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1257,7 +1257,7 @@ func TestLeaseDeleteRangeContendDel(t *testing.T) {
 }
 
 func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1315,7 +1315,7 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 }
 
 func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1374,7 +1374,7 @@ func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
 // TestLeasingReconnectOwnerRevoke checks that revocation works if
 // disconnected when trying to submit revoke txn.
 func TestLeasingReconnectOwnerRevoke(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -1435,7 +1435,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 // TestLeasingReconnectOwnerRevokeCompact checks that revocation works if
 // disconnected and the watch is compacted.
 func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -1488,7 +1488,7 @@ func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
 // TestLeasingReconnectOwnerConsistency checks a write error on an owner will
 // not cause inconsistency between the server and the client.
 func TestLeasingReconnectOwnerConsistency(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1562,7 +1562,7 @@ func TestLeasingReconnectOwnerConsistency(t *testing.T) {
 }
 
 func TestLeasingTxnAtomicCache(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1648,7 +1648,7 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 
 // TestLeasingReconnectTxn checks that Txn is resilient to disconnects.
 func TestLeasingReconnectTxn(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1684,7 +1684,7 @@ func TestLeasingReconnectTxn(t *testing.T) {
 // TestLeasingReconnectNonOwnerGet checks a get error on an owner will
 // not cause inconsistency between the server and the client.
 func TestLeasingReconnectNonOwnerGet(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1735,7 +1735,7 @@ func TestLeasingReconnectNonOwnerGet(t *testing.T) {
 }
 
 func TestLeasingTxnRangeCmp(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1770,7 +1770,7 @@ func TestLeasingTxnRangeCmp(t *testing.T) {
 }
 
 func TestLeasingDo(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1812,7 +1812,7 @@ func TestLeasingDo(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerPutBranch(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -1906,7 +1906,7 @@ func randCmps(pfx string, dat []*clientv3.PutResponse) (cmps []clientv3.Cmp, the
 }
 
 func TestLeasingSessionExpire(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -1982,7 +1982,7 @@ func TestLeasingSessionExpireCancel(t *testing.T) {
 	}
 	for i := range tests {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
-			defer testutil.AfterTest(t)
+			integration.BeforeTest(t)
 			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 			defer clus.Terminate(t)
 

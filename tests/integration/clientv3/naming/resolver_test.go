@@ -23,7 +23,6 @@ import (
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
 	grpctest "go.etcd.io/etcd/pkg/v3/grpc_testing"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 
 	"google.golang.org/grpc"
@@ -33,7 +32,7 @@ import (
 // This test mimics scenario described in grpc_naming.md doc.
 
 func TestEtcdGrpcResolver(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	s1PayloadBody := []byte{'1'}
 	s1 := newDummyStubServer(s1PayloadBody)

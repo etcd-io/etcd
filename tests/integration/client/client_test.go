@@ -25,13 +25,12 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 // TestV2NoRetryEOF tests destructive api calls won't retry on a disconnection.
 func TestV2NoRetryEOF(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	// generate an EOF response; specify address so appears first in sorted ep list
 	lEOF := integration.NewListenerWithAddr(t, fmt.Sprintf("127.0.0.1:%05d", os.Getpid()))
 	defer lEOF.Close()
@@ -63,7 +62,7 @@ func TestV2NoRetryEOF(t *testing.T) {
 
 // TestV2NoRetryNoLeader tests destructive api calls won't retry if given an error code.
 func TestV2NoRetryNoLeader(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	lHTTP := integration.NewListenerWithAddr(t, fmt.Sprintf("127.0.0.1:%05d", os.Getpid()))
 	eh := &errHandler{errCode: http.StatusServiceUnavailable}
 	srv := httptest.NewUnstartedServer(eh)
@@ -89,7 +88,7 @@ func TestV2NoRetryNoLeader(t *testing.T) {
 
 // TestV2RetryRefuse tests destructive api calls will retry if a connection is refused.
 func TestV2RetryRefuse(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)

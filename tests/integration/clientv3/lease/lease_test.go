@@ -26,12 +26,11 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestLeaseNotFoundError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -45,7 +44,7 @@ func TestLeaseNotFoundError(t *testing.T) {
 }
 
 func TestLeaseGrant(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -71,7 +70,7 @@ func TestLeaseGrant(t *testing.T) {
 }
 
 func TestLeaseRevoke(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -97,7 +96,7 @@ func TestLeaseRevoke(t *testing.T) {
 }
 
 func TestLeaseKeepAliveOnce(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -121,7 +120,7 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 }
 
 func TestLeaseKeepAlive(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -161,7 +160,7 @@ func TestLeaseKeepAlive(t *testing.T) {
 }
 
 func TestLeaseKeepAliveOneSecond(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -189,7 +188,7 @@ func TestLeaseKeepAliveOneSecond(t *testing.T) {
 func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 	t.Skip("test it when we have a cluster client")
 
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -244,7 +243,7 @@ type leaseCh struct {
 
 // TestLeaseKeepAliveNotFound ensures a revoked lease won't halt other leases.
 func TestLeaseKeepAliveNotFound(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -277,7 +276,7 @@ func TestLeaseKeepAliveNotFound(t *testing.T) {
 }
 
 func TestLeaseGrantErrConnClosed(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -309,7 +308,7 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 // queue is full thus dropping keepalive response sends,
 // keepalive request is sent with the same rate of TTL / 3.
 func TestLeaseKeepAliveFullResponseQueue(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -349,7 +348,7 @@ func TestLeaseKeepAliveFullResponseQueue(t *testing.T) {
 }
 
 func TestLeaseGrantNewAfterClose(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -376,7 +375,7 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 }
 
 func TestLeaseRevokeNewAfterClose(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -415,7 +414,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 // TestLeaseKeepAliveCloseAfterDisconnectRevoke ensures the keep alive channel is closed
 // following a disconnection, lease revoke, then reconnect.
 func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -461,7 +460,7 @@ func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
 // TestLeaseKeepAliveInitTimeout ensures the keep alive channel closes if
 // the initial keep alive request never gets a response.
 func TestLeaseKeepAliveInitTimeout(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -494,7 +493,7 @@ func TestLeaseKeepAliveInitTimeout(t *testing.T) {
 // TestLeaseKeepAliveInitTimeout ensures the keep alive channel closes if
 // a keep alive request after the first never gets a response.
 func TestLeaseKeepAliveTTLTimeout(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -529,7 +528,7 @@ func TestLeaseKeepAliveTTLTimeout(t *testing.T) {
 }
 
 func TestLeaseTimeToLive(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -587,7 +586,7 @@ func TestLeaseTimeToLive(t *testing.T) {
 }
 
 func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -622,7 +621,7 @@ func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
 }
 
 func TestLeaseLeases(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -655,7 +654,7 @@ func TestLeaseLeases(t *testing.T) {
 // TestLeaseRenewLostQuorum ensures keepalives work after losing quorum
 // for a while.
 func TestLeaseRenewLostQuorum(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -703,7 +702,7 @@ func TestLeaseRenewLostQuorum(t *testing.T) {
 }
 
 func TestLeaseKeepAliveLoopExit(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -728,7 +727,7 @@ func TestLeaseKeepAliveLoopExit(t *testing.T) {
 // before, during, and after quorum loss to confirm Grant/KeepAlive tolerates
 // transient cluster failure.
 func TestV3LeaseFailureOverlap(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
@@ -781,7 +780,7 @@ func TestV3LeaseFailureOverlap(t *testing.T) {
 
 // TestLeaseWithRequireLeader checks keep-alive channel close when no leader.
 func TestLeaseWithRequireLeader(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
