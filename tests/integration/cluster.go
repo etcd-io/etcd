@@ -120,16 +120,7 @@ var (
 	}
 
 	defaultTokenJWT = "jwt,pub-key=../fixtures/server.crt,priv-key=../fixtures/server.key.insecure,sign-method=RS256,ttl=1s"
-
-	// Replace with just usage of testing.TB instead of zap
-	lg = zap.NewNop()
 )
-
-func init() {
-	if os.Getenv("CLUSTER_DEBUG") != "" {
-		lg, _ = zap.NewProduction()
-	}
-}
 
 type ClusterConfig struct {
 	Size      int
@@ -249,6 +240,7 @@ func (c *cluster) Launch(t testing.TB) {
 	}
 	for range c.Members {
 		if err := <-errc; err != nil {
+			c.Terminate(t)
 			t.Fatalf("error setting up member: %v", err)
 		}
 	}
@@ -648,7 +640,7 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 
 	m.Name = mcfg.name
 
-	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
+	m.DataDir, err = ioutil.TempDir(t.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -836,7 +828,7 @@ func (m *member) Clone(t testing.TB) *member {
 // Launch starts a member based on ServerConfig, PeerListeners
 // and ClientListeners.
 func (m *member) Launch() error {
-	lg.Info(
+	m.Logger.Info(
 		"launching a member",
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
@@ -993,7 +985,7 @@ func (m *member) Launch() error {
 		m.serverClosers = append(m.serverClosers, closer)
 	}
 
-	lg.Info(
+	m.Logger.Info(
 		"launched a member",
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
@@ -1086,7 +1078,9 @@ func (m *member) Close() {
 		m.grpcServerPeer.Stop()
 		m.grpcServerPeer = nil
 	}
-	m.s.HardStop()
+	if m.s != nil {
+		m.s.HardStop()
+	}
 	for _, f := range m.serverClosers {
 		f()
 	}
@@ -1094,7 +1088,7 @@ func (m *member) Close() {
 
 // Stop stops the member, but the data dir of the member is preserved.
 func (m *member) Stop(t testing.TB) {
-	lg.Info(
+	m.Logger.Info(
 		"stopping a member",
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
@@ -1103,7 +1097,7 @@ func (m *member) Stop(t testing.TB) {
 	)
 	m.Close()
 	m.serverClosers = nil
-	lg.Info(
+	m.Logger.Info(
 		"stopped a member",
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
@@ -1128,7 +1122,7 @@ func (m *member) StopNotify() <-chan struct{} {
 
 // Restart starts the member using the preserved data dir.
 func (m *member) Restart(t testing.TB) error {
-	lg.Info(
+	m.Logger.Info(
 		"restarting a member",
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
@@ -1153,7 +1147,7 @@ func (m *member) Restart(t testing.TB) error {
 	}
 
 	err := m.Launch()
-	lg.Info(
+	m.Logger.Info(
 		"restarted a member",
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
@@ -1166,7 +1160,7 @@ func (m *member) Restart(t testing.TB) error {
 
 // Terminate stops the member and removes the data dir.
 func (m *member) Terminate(t testing.TB) {
-	lg.Info(
+	m.Logger.Info(
 		"terminating a member",
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
@@ -1179,7 +1173,7 @@ func (m *member) Terminate(t testing.TB) {
 			t.Fatal(err)
 		}
 	}
-	lg.Info(
+	m.Logger.Info(
 		"terminated a member",
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
