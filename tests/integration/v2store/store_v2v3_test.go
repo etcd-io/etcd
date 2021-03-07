@@ -30,7 +30,7 @@ import (
 func runWithCluster(t testing.TB, runner func(testing.TB, []string)) {
 	testutil.BeforeTest(t)
 	cfg := integration.ClusterConfig{Size: 1}
-	clus := integration.NewClusterV3(nil, &cfg)
+	clus := integration.NewClusterV3(t, &cfg)
 	defer clus.Terminate(t)
 	endpoints := []string{clus.Client(0).Endpoints()[0]}
 	runner(t, endpoints)

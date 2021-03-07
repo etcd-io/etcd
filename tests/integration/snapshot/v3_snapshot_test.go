@@ -29,8 +29,7 @@ import (
 	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/embed"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 // TestSnapshotV3RestoreSingle tests single node cluster restoring
@@ -53,9 +52,9 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
 	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
-	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
+	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 
-	sp := snapshot.NewV3(zap.NewExample())
+	sp := snapshot.NewV3(zaptest.NewLogger(t))
 	pss := make([]string, 0, len(pURLs))
 	for _, p := range pURLs {
 		pss = append(pss, p.String())
@@ -149,7 +148,7 @@ func TestCorruptedBackupFileCheck(t *testing.T) {
 		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)
 	}
 
-	sp := snapshot.NewV3(zap.NewExample())
+	sp := snapshot.NewV3(zaptest.NewLogger(t))
 	_, err := sp.Status(dbPath)
 	expectedErrKeywords := "snapshot file integrity check failed"
 	/* example error message:
@@ -187,7 +186,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
 	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
-	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
+	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -217,8 +216,8 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		}
 	}
 
-	sp := snapshot.NewV3(zap.NewExample())
-	dpPath := filepath.Join(os.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
+	sp := snapshot.NewV3(zaptest.NewLogger(t))
+	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
 	if err = sp.Save(context.Background(), ccfg, dpPath); err != nil {
 		t.Fatal(err)
 	}
@@ -254,9 +253,9 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		cfg.LCUrls, cfg.ACUrls = []url.URL{cURLs[i]}, []url.URL{cURLs[i]}
 		cfg.LPUrls, cfg.APUrls = []url.URL{pURLs[i]}, []url.URL{pURLs[i]}
 		cfg.InitialCluster = ics
-		cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()+i))
+		cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprint(time.Now().Nanosecond()+i))
 
-		sp := snapshot.NewV3(zap.NewExample())
+		sp := snapshot.NewV3(zaptest.NewLogger(t))
 		if err := sp.Restore(snapshot.RestoreConfig{
 			SnapshotPath:        dbPath,
 			Name:                cfg.Name,

@@ -2,45 +2,22 @@ package integration
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/namespace"
-	"go.etcd.io/etcd/server/v3/embed"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 )
 
 // TestKVWithEmptyValue ensures that a get/delete with an empty value, and with WithFromKey/WithPrefix function will return an empty error.
 func TestKVWithEmptyValue(t *testing.T) {
 	BeforeTest(t)
 
-	cfg := embed.NewConfig()
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
 
-	// Use temporary data directory.
-	dir, err := ioutil.TempDir("", "etcd-")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(dir)
-	cfg.Dir = dir
+	client := clus.RandClient()
 
-	// Suppress server log to keep output clean.
-	//cfg.Logger = "zap"
-	//cfg.LogLevel = "error"
-
-	etcd, err := embed.StartEtcd(cfg)
-	if err != nil {
-		panic(err)
-	}
-	defer etcd.Close()
-	<-etcd.Server.ReadyNotify()
-
-	client := v3client.New(etcd.Server)
-	defer client.Close()
-
-	_, err = client.Put(context.Background(), "my-namespace/foobar", "data")
+	_, err := client.Put(context.Background(), "my-namespace/foobar", "data")
 	if err != nil {
 		t.Fatal(err)
 	}

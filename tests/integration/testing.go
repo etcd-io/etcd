@@ -15,6 +15,8 @@
 package integration
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"go.etcd.io/etcd/pkg/v3/testutil"
@@ -22,4 +24,22 @@ import (
 
 func BeforeTest(t testing.TB) {
 	testutil.BeforeTest(t)
+
+	previousWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Chdir(t.TempDir())
+	t.Cleanup(func() {
+		os.Chdir(previousWD)
+	})
+
+}
+
+func MustAbsPath(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		panic(err)
+	}
+	return abs
 }

@@ -31,16 +31,16 @@ import (
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "../../../fixtures/server.key.insecure",
-		CertFile:       "../../../fixtures/server.crt",
-		TrustedCAFile:  "../../../fixtures/ca.crt",
+		KeyFile:        integration.MustAbsPath("../../../fixtures/server.key.insecure"),
+		CertFile:       integration.MustAbsPath("../../../fixtures/server.crt"),
+		TrustedCAFile:  integration.MustAbsPath("../../../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoExpired = transport.TLSInfo{
-		KeyFile:        "../../fixtures-expired/server.key.insecure",
-		CertFile:       "../../fixtures-expired/server.crt",
-		TrustedCAFile:  "../../fixtures-expired/ca.crt",
+		KeyFile:        integration.MustAbsPath("../../fixtures-expired/server.key.insecure"),
+		CertFile:       integration.MustAbsPath("../../fixtures-expired/server.crt"),
+		TrustedCAFile:  integration.MustAbsPath("../../fixtures-expired/ca.crt"),
 		ClientCertAuth: true,
 	}
 )

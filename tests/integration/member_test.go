@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 
@@ -70,7 +69,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	c := NewCluster(t, size)
 	m := c.Members[0].Clone(t)
 	var err error
-	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
+	m.DataDir, err = ioutil.TempDir(t.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
 	}

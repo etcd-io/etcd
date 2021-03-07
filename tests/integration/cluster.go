@@ -83,43 +83,44 @@ var (
 	localListenCount = int64(0)
 
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "../fixtures/server.key.insecure",
-		CertFile:       "../fixtures/server.crt",
-		TrustedCAFile:  "../fixtures/ca.crt",
+		KeyFile:        MustAbsPath("../fixtures/server.key.insecure"),
+		CertFile:       MustAbsPath("../fixtures/server.crt"),
+		TrustedCAFile:  MustAbsPath("../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoWithSpecificUsage = transport.TLSInfo{
-		KeyFile:        "../fixtures/server-serverusage.key.insecure",
-		CertFile:       "../fixtures/server-serverusage.crt",
-		ClientKeyFile:  "../fixtures/client-clientusage.key.insecure",
-		ClientCertFile: "../fixtures/client-clientusage.crt",
-		TrustedCAFile:  "../fixtures/ca.crt",
+		KeyFile:        MustAbsPath("../fixtures/server-serverusage.key.insecure"),
+		CertFile:       MustAbsPath("../fixtures/server-serverusage.crt"),
+		ClientKeyFile:  MustAbsPath("../fixtures/client-clientusage.key.insecure"),
+		ClientCertFile: MustAbsPath("../fixtures/client-clientusage.crt"),
+		TrustedCAFile:  MustAbsPath("../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoIP = transport.TLSInfo{
-		KeyFile:        "../fixtures/server-ip.key.insecure",
-		CertFile:       "../fixtures/server-ip.crt",
-		TrustedCAFile:  "../fixtures/ca.crt",
+		KeyFile:        MustAbsPath("../fixtures/server-ip.key.insecure"),
+		CertFile:       MustAbsPath("../fixtures/server-ip.crt"),
+		TrustedCAFile:  MustAbsPath("../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoExpired = transport.TLSInfo{
-		KeyFile:        "./fixtures-expired/server.key.insecure",
-		CertFile:       "./fixtures-expired/server.crt",
-		TrustedCAFile:  "./fixtures-expired/ca.crt",
+		KeyFile:        MustAbsPath("./fixtures-expired/server.key.insecure"),
+		CertFile:       MustAbsPath("./fixtures-expired/server.crt"),
+		TrustedCAFile:  MustAbsPath("./fixtures-expired/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoExpiredIP = transport.TLSInfo{
-		KeyFile:        "./fixtures-expired/server-ip.key.insecure",
-		CertFile:       "./fixtures-expired/server-ip.crt",
-		TrustedCAFile:  "./fixtures-expired/ca.crt",
+		KeyFile:        MustAbsPath("./fixtures-expired/server-ip.key.insecure"),
+		CertFile:       MustAbsPath("./fixtures-expired/server-ip.crt"),
+		TrustedCAFile:  MustAbsPath("./fixtures-expired/ca.crt"),
 		ClientCertAuth: true,
 	}
 
-	defaultTokenJWT = "jwt,pub-key=../fixtures/server.crt,priv-key=../fixtures/server.key.insecure,sign-method=RS256,ttl=1s"
+	defaultTokenJWT = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=1s",
+		MustAbsPath("../fixtures/server.crt"), MustAbsPath("../fixtures/server.key.insecure"))
 )
 
 type ClusterConfig struct {

@@ -34,13 +34,14 @@ import (
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "../../fixtures/server.key.insecure",
-		CertFile:       "../../fixtures/server.crt",
-		TrustedCAFile:  "../../fixtures/ca.crt",
+		KeyFile:        integration.MustAbsPath("../../fixtures/server.key.insecure"),
+		CertFile:       integration.MustAbsPath("../../fixtures/server.crt"),
+		TrustedCAFile:  integration.MustAbsPath("../../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 )
@@ -88,9 +89,7 @@ func TestEmbedEtcd(t *testing.T) {
 	tests[7].cfg.LCUrls = []url.URL{*dnsURL}
 	tests[8].cfg.LPUrls = []url.URL{*dnsURL}
 
-	dir := filepath.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
-	os.RemoveAll(dir)
-	defer os.RemoveAll(dir)
+	dir := filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd"))
 
 	for i, tt := range tests {
 		tests[i].cfg.Dir = dir
@@ -143,9 +142,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	urls := newEmbedURLs(secure, 2)
 	setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
 
-	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
-	os.RemoveAll(cfg.Dir)
-	defer os.RemoveAll(cfg.Dir)
+	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd"))
 
 	e, err := embed.StartEtcd(cfg)
 	if err != nil {

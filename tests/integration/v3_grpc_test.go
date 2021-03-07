@@ -1609,20 +1609,20 @@ func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 // when all certs are atomically replaced by directory renaming.
 // And expects server to reject client requests, and vice versa.
 func TestTLSReloadAtomicReplace(t *testing.T) {
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "fixtures-tmp")
+	tmpDir, err := ioutil.TempDir(t.TempDir(), "fixtures-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
 	os.RemoveAll(tmpDir)
 	defer os.RemoveAll(tmpDir)
 
-	certsDir, err := ioutil.TempDir(os.TempDir(), "fixtures-to-load")
+	certsDir, err := ioutil.TempDir(t.TempDir(), "fixtures-to-load")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(certsDir)
 
-	certsDirExp, err := ioutil.TempDir(os.TempDir(), "fixtures-expired")
+	certsDirExp, err := ioutil.TempDir(t.TempDir(), "fixtures-expired")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1668,7 +1668,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 // when new certs are copied over, one by one. And expects server
 // to reject client requests, and vice versa.
 func TestTLSReloadCopy(t *testing.T) {
-	certsDir, err := ioutil.TempDir(os.TempDir(), "fixtures-to-load")
+	certsDir, err := ioutil.TempDir(t.TempDir(), "fixtures-to-load")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1698,7 +1698,7 @@ func TestTLSReloadCopy(t *testing.T) {
 // when new certs are copied over, one by one. And expects server
 // to reject client requests, and vice versa.
 func TestTLSReloadCopyIPOnly(t *testing.T) {
-	certsDir, err := ioutil.TempDir(os.TempDir(), "fixtures-to-load")
+	certsDir, err := ioutil.TempDir(t.TempDir(), "fixtures-to-load")
 	if err != nil {
 		t.Fatal(err)
 	}

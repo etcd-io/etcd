@@ -76,7 +76,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	}
 	cfg.InitialCluster = cfg.InitialCluster[1:]
 	cfg.InitialCluster += fmt.Sprintf(",%s=%s", cfg.Name, newPURLs[0].String())
-	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
+	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
