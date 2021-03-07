@@ -17,12 +17,11 @@ package integration
 import (
 	"os"
 	"path/filepath"
-	"testing"
 
 	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
-func BeforeTest(t testing.TB) {
+func BeforeTest(t testutil.TB) {
 	testutil.BeforeTest(t)
 
 	previousWD, err := os.Getwd()

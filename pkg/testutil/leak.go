@@ -96,9 +96,9 @@ func CheckAfterTest(d time.Duration) error {
 
 // BeforeTest is a convenient way to register before-and-after code to a test.
 // If you execute BeforeTest, you don't need to explicitly register AfterTest.
-func BeforeTest(t testing.TB) {
+func BeforeTest(t TB) {
 	if err := CheckAfterTest(10 * time.Millisecond); err != nil {
-		t.Skipf("Found leaked goroutined BEFORE test", err)
+		t.Skip("Found leaked goroutined BEFORE test", err)
 		return
 	}
 	t.Cleanup(func() {
@@ -109,7 +109,7 @@ func BeforeTest(t testing.TB) {
 // AfterTest is meant to run in a defer that executes after a test completes.
 // It will detect common goroutine leaks, retrying in case there are goroutines
 // not synchronously torn down, and fail the test if any goroutines are stuck.
-func AfterTest(t testing.TB) {
+func AfterTest(t TB) {
 	if err := CheckAfterTest(1 * time.Second); err != nil {
 		t.Errorf("Test %v", err)
 	}
