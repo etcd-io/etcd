@@ -466,7 +466,11 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			}
 		}
 		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
-		peers[i].Listener, err = rafthttp.NewListenerWithSocketOpts(u, &cfg.PeerTLSInfo, &cfg.SocketOpts)
+		peers[i].Listener, err = transport.NewListenerWithOpts(u.Host, u.Scheme,
+			transport.WithTLSInfo(&cfg.PeerTLSInfo),
+			transport.WithSocketOpts(&cfg.SocketOpts),
+			transport.WithTimeout(rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -573,7 +577,10 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			continue
 		}
 
-		if sctx.l, err = transport.NewListenerWithSocketOpts(addr, u.Scheme, nil, &cfg.SocketOpts); err != nil {
+		if sctx.l, err = transport.NewListenerWithOpts(addr, u.Scheme,
+			transport.WithSocketOpts(&cfg.SocketOpts),
+			transport.WithSkipTLSInfoCheck(true),
+		); err != nil {
 			return nil, err
 		}
 		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
@@ -686,7 +693,10 @@ func (e *Etcd) serveMetrics() (err error) {
 			if murl.Scheme == "http" {
 				tlsInfo = nil
 			}
-			ml, err := transport.NewListenerWithSocketOpts(murl.Host, murl.Scheme, tlsInfo, &e.cfg.SocketOpts)
+			ml, err := transport.NewListenerWithOpts(murl.Host, murl.Scheme,
+				transport.WithTLSInfo(tlsInfo),
+				transport.WithSocketOpts(&e.cfg.SocketOpts),
+			)
 			if err != nil {
 				return err
 			}

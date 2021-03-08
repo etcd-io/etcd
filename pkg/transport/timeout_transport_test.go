@@ -47,11 +47,11 @@ func TestNewTimeoutTransport(t *testing.T) {
 	if !ok {
 		t.Fatalf("failed to dial out *timeoutConn")
 	}
-	if tconn.rdtimeoutd != time.Hour {
-		t.Errorf("read timeout = %s, want %s", tconn.rdtimeoutd, time.Hour)
+	if tconn.readTimeout != time.Hour {
+		t.Errorf("read timeout = %s, want %s", tconn.readTimeout, time.Hour)
 	}
-	if tconn.wtimeoutd != time.Hour {
-		t.Errorf("write timeout = %s, want %s", tconn.wtimeoutd, time.Hour)
+	if tconn.writeTimeout != time.Hour {
+		t.Errorf("write timeout = %s, want %s", tconn.writeTimeout, time.Hour)
 	}
 
 	// ensure not reuse timeout connection

@@ -61,53 +61,156 @@ func TestNewListenerTLSInfo(t *testing.T) {
 	testNewListenerTLSInfoAccept(t, *tlsInfo)
 }
 
+func TestNewListenerWithOpts(t *testing.T) {
+	tlsInfo, del, err := createSelfCert()
+	if err != nil {
+		t.Fatalf("unable to create cert: %v", err)
+	}
+	defer del()
+
+	tests := map[string]struct {
+		opts        []ListenerOption
+		scheme      string
+		expectedErr bool
+	}{
+		"https scheme no TLSInfo": {
+			opts:        []ListenerOption{},
+			expectedErr: true,
+			scheme:      "https",
+		},
+		"https scheme no TLSInfo with skip check": {
+			opts:        []ListenerOption{WithSkipTLSInfoCheck(true)},
+			expectedErr: false,
+			scheme:      "https",
+		},
+		"https scheme empty TLSInfo with skip check": {
+			opts: []ListenerOption{
+				WithSkipTLSInfoCheck(true),
+				WithTLSInfo(&TLSInfo{}),
+			},
+			expectedErr: false,
+			scheme:      "https",
+		},
+		"https scheme empty TLSInfo no skip check": {
+			opts: []ListenerOption{
+				WithTLSInfo(&TLSInfo{}),
+			},
+			expectedErr: true,
+			scheme:      "https",
+		},
+		"https scheme with TLSInfo and skip check": {
+			opts: []ListenerOption{
+				WithSkipTLSInfoCheck(true),
+				WithTLSInfo(tlsInfo),
+			},
+			expectedErr: false,
+			scheme:      "https",
+		},
+	}
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			ln, err := NewListenerWithOpts("127.0.0.1:0", test.scheme, test.opts...)
+			if ln != nil {
+				defer ln.Close()
+			}
+			if test.expectedErr && err == nil {
+				t.Fatalf("expected error")
+			}
+			if !test.expectedErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
 func TestNewListenerWithSocketOpts(t *testing.T) {
 	tlsInfo, del, err := createSelfCert()
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
 	defer del()
+
 	tests := map[string]struct {
-		socketOpts  *SocketOpts
+		opts        []ListenerOption
+		scheme      string
 		expectedErr bool
 	}{
-		"nil": {
-			socketOpts:  nil,
+		"nil socketopts": {
+			opts:        []ListenerOption{WithSocketOpts(nil)},
 			expectedErr: true,
+			scheme:      "http",
 		},
-		"empty": {
-			socketOpts:  &SocketOpts{},
+		"empty socketopts": {
+			opts:        []ListenerOption{WithSocketOpts(&SocketOpts{})},
 			expectedErr: true,
+			scheme:      "http",
 		},
+
 		"reuse address": {
-			socketOpts:  &SocketOpts{ReuseAddress: true},
+			opts:        []ListenerOption{WithSocketOpts(&SocketOpts{ReuseAddress: true})},
+			scheme:      "http",
 			expectedErr: true,
 		},
-		"reuse address and reuse port": {
-			socketOpts:  &SocketOpts{ReuseAddress: true, ReusePort: true},
+		"reuse address with TLS": {
+			opts: []ListenerOption{
+				WithSocketOpts(&SocketOpts{ReuseAddress: true}),
+				WithTLSInfo(tlsInfo),
+			},
+			scheme:      "https",
+			expectedErr: true,
+		},
+		"reuse address and port": {
+			opts:        []ListenerOption{WithSocketOpts(&SocketOpts{ReuseAddress: true, ReusePort: true})},
+			scheme:      "http",
+			expectedErr: false,
+		},
+		"reuse address and port with TLS": {
+			opts: []ListenerOption{
+				WithSocketOpts(&SocketOpts{ReuseAddress: true, ReusePort: true}),
+				WithTLSInfo(tlsInfo),
+			},
+			scheme:      "https",
+			expectedErr: false,
+		},
+		"reuse port with TLS and timeout": {
+			opts: []ListenerOption{
+				WithSocketOpts(&SocketOpts{ReusePort: true}),
+				WithTLSInfo(tlsInfo),
+				WithTimeout(5*time.Second, 5*time.Second),
+			},
+			scheme:      "https",
+			expectedErr: false,
+		},
+		"reuse port with https scheme and no TLSInfo skip check": {
+			opts: []ListenerOption{
+				WithSocketOpts(&SocketOpts{ReusePort: true}),
+				WithSkipTLSInfoCheck(true),
+			},
+			scheme:      "https",
 			expectedErr: false,
 		},
 		"reuse port": {
-			socketOpts:  &SocketOpts{ReusePort: true},
+			opts:        []ListenerOption{WithSocketOpts(&SocketOpts{ReusePort: true})},
+			scheme:      "http",
 			expectedErr: false,
 		},
 	}
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
-			ln, err := NewListenerWithSocketOpts("127.0.0.1:0", "https", tlsInfo, test.socketOpts)
+			ln, err := NewListenerWithOpts("127.0.0.1:0", test.scheme, test.opts...)
 			if err != nil {
 				t.Fatalf("unexpected NewListenerWithSocketOpts error: %v", err)
 			}
 			defer ln.Close()
-			ln2, err := NewListenerWithSocketOpts(ln.Addr().String(), "https", tlsInfo, test.socketOpts)
+			ln2, err := NewListenerWithOpts(ln.Addr().String(), test.scheme, test.opts...)
+			if ln2 != nil {
+				ln2.Close()
+			}
 			if test.expectedErr && err == nil {
 				t.Fatalf("expected error")
 			}
 			if !test.expectedErr && err != nil {
-				t.Fatalf("unexpected NewListenerWithSocketOpts error: %v", err)
-			}
-			if ln2 != nil {
-				ln2.Close()
+				t.Fatalf("unexpected error: %v", err)
 			}
 		})
 	}

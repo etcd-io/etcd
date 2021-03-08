@@ -29,11 +29,11 @@ func TestNewTimeoutListener(t *testing.T) {
 	}
 	defer l.Close()
 	tln := l.(*rwTimeoutListener)
-	if tln.rdtimeoutd != time.Hour {
-		t.Errorf("read timeout = %s, want %s", tln.rdtimeoutd, time.Hour)
+	if tln.readTimeout != time.Hour {
+		t.Errorf("read timeout = %s, want %s", tln.readTimeout, time.Hour)
 	}
-	if tln.wtimeoutd != time.Hour {
-		t.Errorf("write timeout = %s, want %s", tln.wtimeoutd, time.Hour)
+	if tln.writeTimeout != time.Hour {
+		t.Errorf("write timeout = %s, want %s", tln.writeTimeout, time.Hour)
 	}
 }
 
@@ -43,9 +43,9 @@ func TestWriteReadTimeoutListener(t *testing.T) {
 		t.Fatalf("unexpected listen error: %v", err)
 	}
 	wln := rwTimeoutListener{
-		Listener:   ln,
-		wtimeoutd:  10 * time.Millisecond,
-		rdtimeoutd: 10 * time.Millisecond,
+		Listener:     ln,
+		writeTimeout: 10 * time.Millisecond,
+		readTimeout:  10 * time.Millisecond,
 	}
 	stop := make(chan struct{}, 1)
 
@@ -78,7 +78,7 @@ func TestWriteReadTimeoutListener(t *testing.T) {
 	select {
 	case <-done:
 	// It waits 1s more to avoid delay in low-end system.
-	case <-time.After(wln.wtimeoutd*10 + time.Second):
+	case <-time.After(wln.writeTimeout*10 + time.Second):
 		stop <- struct{}{}
 		t.Fatal("wait timeout")
 	}
@@ -104,7 +104,7 @@ func TestWriteReadTimeoutListener(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(wln.rdtimeoutd * 10):
+	case <-time.After(wln.readTimeout * 10):
 		stop <- struct{}{}
 		t.Fatal("wait timeout")
 	}
