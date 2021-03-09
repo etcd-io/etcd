@@ -169,6 +169,14 @@ type ServerConfig struct {
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 
 	DowngradeCheckTime time.Duration
+
+	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
+	// The setting improves etcd tail latency in environments were:
+	//   - memory pressure might lead to swapping pages to disk
+	//   - disk latency might be unstable
+	// Currently all etcd memory gets mlocked, but in future the flag can
+	// be refined to mlock in-use area of bbolt only.
+	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

@@ -348,6 +348,14 @@ type Config struct {
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 
 	ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time"`
+
+	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
+	// The setting improves etcd tail latency in environments were:
+	//   - memory pressure might lead to swapping pages to disk
+	//   - disk latency might be unstable
+	// Currently all etcd memory gets mlocked, but in future the flag can
+	// be refined to mlock in-use area of bbolt only.
+	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -438,6 +446,7 @@ func NewConfig() *Config {
 		EnableGRPCGateway: true,
 
 		ExperimentalDowngradeCheckTime: DefaultDowngradeCheckTime,
+		ExperimentalMemoryMlock:        false,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
