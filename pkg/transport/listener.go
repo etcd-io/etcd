@@ -15,6 +15,7 @@
 package transport
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -39,18 +40,66 @@ import (
 
 // NewListener creates a new listner.
 func NewListener(addr, scheme string, tlsinfo *TLSInfo) (l net.Listener, err error) {
-	if l, err = newListener(addr, scheme); err != nil {
-		return nil, err
-	}
-	return wrapTLS(scheme, tlsinfo, l)
+	return newListener(addr, scheme, WithTLSInfo(tlsinfo))
 }
 
-func newListener(addr string, scheme string) (net.Listener, error) {
+// NewListenerWithOpts creates a new listener which accpets listener options.
+func NewListenerWithOpts(addr, scheme string, opts ...ListenerOption) (net.Listener, error) {
+	return newListener(addr, scheme, opts...)
+}
+
+func newListener(addr, scheme string, opts ...ListenerOption) (net.Listener, error) {
 	if scheme == "unix" || scheme == "unixs" {
 		// unix sockets via unix://laddr
 		return NewUnixListener(addr)
 	}
-	return net.Listen("tcp", addr)
+
+	lnOpts := newListenOpts(opts...)
+
+	switch {
+	case lnOpts.IsSocketOpts():
+		// new ListenConfig with socket options.
+		config, err := newListenConfig(lnOpts.socketOpts)
+		if err != nil {
+			return nil, err
+		}
+		lnOpts.ListenConfig = config
+		// check for timeout
+		fallthrough
+	case lnOpts.IsTimeout(), lnOpts.IsSocketOpts():
+		// timeout listener with socket options.
+		ln, err := lnOpts.ListenConfig.Listen(context.TODO(), "tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		lnOpts.Listener = &rwTimeoutListener{
+			Listener:     ln,
+			readTimeout:  lnOpts.readTimeout,
+			writeTimeout: lnOpts.writeTimeout,
+		}
+	case lnOpts.IsTimeout():
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		lnOpts.Listener = &rwTimeoutListener{
+			Listener:     ln,
+			readTimeout:  lnOpts.readTimeout,
+			writeTimeout: lnOpts.writeTimeout,
+		}
+	default:
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		lnOpts.Listener = ln
+	}
+
+	//  only skip if not passing TLSInfo
+	if lnOpts.skipTLSInfoCheck && !lnOpts.IsTLS() {
+		return lnOpts.Listener, nil
+	}
+	return wrapTLS(scheme, lnOpts.tlsInfo, lnOpts.Listener)
 }
 
 func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, error) {
@@ -61,6 +110,17 @@ func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, err
 		return NewTLSListener(l, tlsinfo)
 	}
 	return newTLSListener(l, tlsinfo, checkSAN)
+}
+
+func newListenConfig(sopts *SocketOpts) (net.ListenConfig, error) {
+	lc := net.ListenConfig{}
+	if sopts != nil {
+		ctls := getControls(sopts)
+		if len(ctls) > 0 {
+			lc.Control = ctls.Control
+		}
+	}
+	return lc, nil
 }
 
 type TLSInfo struct {

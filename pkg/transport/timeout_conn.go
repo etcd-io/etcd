@@ -21,13 +21,13 @@ import (
 
 type timeoutConn struct {
 	net.Conn
-	wtimeoutd  time.Duration
-	rdtimeoutd time.Duration
+	writeTimeout time.Duration
+	readTimeout  time.Duration
 }
 
 func (c timeoutConn) Write(b []byte) (n int, err error) {
-	if c.wtimeoutd > 0 {
-		if err := c.SetWriteDeadline(time.Now().Add(c.wtimeoutd)); err != nil {
+	if c.writeTimeout > 0 {
+		if err := c.SetWriteDeadline(time.Now().Add(c.writeTimeout)); err != nil {
 			return 0, err
 		}
 	}
@@ -35,8 +35,8 @@ func (c timeoutConn) Write(b []byte) (n int, err error) {
 }
 
 func (c timeoutConn) Read(b []byte) (n int, err error) {
-	if c.rdtimeoutd > 0 {
-		if err := c.SetReadDeadline(time.Now().Add(c.rdtimeoutd)); err != nil {
+	if c.readTimeout > 0 {
+		if err := c.SetReadDeadline(time.Now().Add(c.readTimeout)); err != nil {
 			return 0, err
 		}
 	}

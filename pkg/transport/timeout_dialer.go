@@ -28,9 +28,9 @@ type rwTimeoutDialer struct {
 func (d *rwTimeoutDialer) Dial(network, address string) (net.Conn, error) {
 	conn, err := d.Dialer.Dial(network, address)
 	tconn := &timeoutConn{
-		rdtimeoutd: d.rdtimeoutd,
-		wtimeoutd:  d.wtimeoutd,
-		Conn:       conn,
+		readTimeout:  d.rdtimeoutd,
+		writeTimeout: d.wtimeoutd,
+		Conn:         conn,
 	}
 	return tconn, err
 }
