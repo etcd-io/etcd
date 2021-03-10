@@ -22,14 +22,13 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 func TestMoveLeader(t *testing.T)        { testMoveLeader(t, true) }
 func TestMoveLeaderService(t *testing.T) { testMoveLeader(t, false) }
 
 func testMoveLeader(t *testing.T, auto bool) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -97,7 +96,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 
 // TestMoveLeaderError ensures that request to non-leader fail.
 func TestMoveLeaderError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -116,7 +115,7 @@ func TestMoveLeaderError(t *testing.T) {
 
 // TestMoveLeaderToLearnerError ensures that leader transfer to learner member will fail.
 func TestMoveLeaderToLearnerError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -149,7 +148,7 @@ func TestMoveLeaderToLearnerError(t *testing.T) {
 // TestTransferLeadershipWithLearner ensures TransferLeadership does not timeout due to learner is
 // automatically picked by leader as transferee.
 func TestTransferLeadershipWithLearner(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

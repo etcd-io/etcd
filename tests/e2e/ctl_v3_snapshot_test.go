@@ -26,7 +26,6 @@ import (
 
 	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/expect"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
@@ -164,7 +163,7 @@ func TestIssue6361(t *testing.T) {
 		os.Setenv("EXPECT_DEBUG", "1")
 	}
 
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
 

@@ -17,11 +17,8 @@ package e2e
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
 	"testing"
-
-	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 func TestV2CurlNoTLS(t *testing.T)      { testCurlPutGet(t, newConfigNoTLS()) }
@@ -31,7 +28,7 @@ func TestV2CurlPeerTLS(t *testing.T)    { testCurlPutGet(t, newConfigPeerTLS()) 
 func TestV2CurlClientTLS(t *testing.T)  { testCurlPutGet(t, newConfigClientTLS()) }
 func TestV2CurlClientBoth(t *testing.T) { testCurlPutGet(t, newConfigClientBoth()) }
 func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
-	defer testutil.AfterTest(t)
+	BeforeTestV2(t)
 
 	// test doesn't use quorum gets, so ensure there are no followers to avoid
 	// stale reads that will break the test
@@ -66,9 +63,7 @@ func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 }
 
 func TestV2CurlIssue5182(t *testing.T) {
-	os.Setenv("ETCDCTL_API", "2")
-	defer os.Unsetenv("ETCDCTL_API")
-	defer testutil.AfterTest(t)
+	BeforeTestV2(t)
 
 	copied := newConfigNoTLS()
 	copied.enableV2 = true

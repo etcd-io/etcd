@@ -1,4 +1,4 @@
-// Copyright 2019 The etcd Authors
+// Copyright 2021 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,29 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v2store_test
+package integration
 
 import (
-	"testing"
+	"os"
+	"path/filepath"
 
 	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
-//var endpoints []string
+func BeforeTest(t testutil.TB) {
+	testutil.BeforeTest(t)
 
-func TestMain(m *testing.M) {
-	//cfg := integration.ClusterConfig{Size: 1}
-	//clus := integration.NewClusterV3(nil, &cfg)
-	//endpoints = []string{clus.Client(0).Endpoints()[0]}
-	//	v := m.Run()
-	//clus.Terminate(nil)
-	//if err := testutil.CheckAfterTest(time.Second); err != nil {
-	//	fmt.Fprintf(os.Stderr, "%v", err)
-	//	os.Exit(1)
-	//}
-	testutil.MustTestMainWithLeakDetection(m)
-	//if v == 0 && testutil.CheckLeakedGoroutine() {
-	//	os.Exit(1)
-	//}
-	//os.Exit(v)
+	previousWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Chdir(t.TempDir())
+	t.Cleanup(func() {
+		os.Chdir(previousWD)
+	})
+
+}
+
+func MustAbsPath(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		panic(err)
+	}
+	return abs
 }

@@ -22,7 +22,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
@@ -30,7 +29,7 @@ import (
 // TestBalancerUnderServerShutdownWatch expects that watch client
 // switch its endpoints when the member of the pinned endpoint fails.
 func TestBalancerUnderServerShutdownWatch(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               3,
@@ -142,7 +141,7 @@ func TestBalancerUnderServerShutdownTxn(t *testing.T) {
 // the pinned endpoint is shut down, the balancer switches its endpoints
 // and all subsequent put/delete/txn requests succeed with new endpoints.
 func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Client, context.Context) error) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               3,
@@ -200,7 +199,7 @@ func TestBalancerUnderServerShutdownGetSerializable(t *testing.T) {
 // the pinned endpoint is shut down, the balancer switches its endpoints
 // and all subsequent range requests succeed with new endpoints.
 func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               3,
@@ -269,7 +268,7 @@ type pinTestOpt struct {
 // testBalancerUnderServerStopInflightRangeOnRestart expects
 // inflight range request reconnects on server restart.
 func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizable bool, opt pinTestOpt) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	cfg := &integration.ClusterConfig{
 		Size:               2,

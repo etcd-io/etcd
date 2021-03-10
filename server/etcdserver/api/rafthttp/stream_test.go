@@ -187,7 +187,7 @@ func TestStreamReaderDialResult(t *testing.T) {
 
 // TestStreamReaderStopOnDial tests a stream reader closes the connection on stop.
 func TestStreamReaderStopOnDial(t *testing.T) {
-	defer testutil.AfterTest(t)
+	testutil.BeforeTest(t)
 	h := http.Header{}
 	h.Add("X-Server-Version", version.Version)
 	tr := &respWaitRoundTripper{rrt: &respRoundTripper{code: http.StatusOK, header: h}}

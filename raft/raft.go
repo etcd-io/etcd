@@ -230,7 +230,7 @@ func (c *Config) validate() error {
 	}
 
 	if c.Logger == nil {
-		c.Logger = raftLogger
+		c.Logger = getLogger()
 	}
 
 	if c.ReadOnlyOption == ReadOnlyLeaseBased && !c.CheckQuorum {

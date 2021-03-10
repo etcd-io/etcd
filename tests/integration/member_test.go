@@ -18,16 +18,14 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 func TestPauseMember(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	c := NewCluster(t, 5)
 	c.Launch(t)
@@ -46,7 +44,7 @@ func TestPauseMember(t *testing.T) {
 }
 
 func TestRestartMember(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, 3)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -71,7 +69,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	c := NewCluster(t, size)
 	m := c.Members[0].Clone(t)
 	var err error
-	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
+	m.DataDir, err = ioutil.TempDir(t.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +82,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 }
 
 func TestSnapshotAndRestartMember(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	m := mustNewMember(t, memberConfig{name: "snapAndRestartTest"})
 	m.SnapshotCount = 100
 	m.Launch()

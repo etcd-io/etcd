@@ -22,7 +22,7 @@ import (
 )
 
 func TestTxnPanics(t *testing.T) {
-	defer testutil.AfterTest(t)
+	testutil.BeforeTest(t)
 
 	kv := &kv{}
 

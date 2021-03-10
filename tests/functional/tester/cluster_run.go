@@ -54,7 +54,7 @@ func (clus *Cluster) Run() {
 				zap.Int("case-total", len(clus.cases)),
 				zap.Error(err),
 			)
-			if clus.cleanup() != nil {
+			if clus.cleanup(err) != nil {
 				return
 			}
 			// reset preModifiedKey after clean up
@@ -86,7 +86,7 @@ func (clus *Cluster) Run() {
 				zap.Int("case-total", len(clus.cases)),
 				zap.Error(err),
 			)
-			if err = clus.cleanup(); err != nil {
+			if err = clus.cleanup(err); err != nil {
 				clus.lg.Warn(
 					"cleanup FAIL",
 					zap.Int("round", clus.rd),
@@ -101,7 +101,7 @@ func (clus *Cluster) Run() {
 		}
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			if err := clus.defrag(); err != nil {
-				clus.failed()
+				clus.failed(err)
 				return
 			}
 		}
@@ -315,21 +315,22 @@ func (clus *Cluster) compact(rev int64, timeout time.Duration) (err error) {
 	return nil
 }
 
-func (clus *Cluster) failed() {
+func (clus *Cluster) failed(err error) {
 	clus.lg.Error(
 		"functional-tester FAIL",
 		zap.Int("round", clus.rd),
 		zap.Int("case", clus.cs),
 		zap.Int("case-total", len(clus.cases)),
+		zap.Error(err),
 	)
 	clus.Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
 	os.Exit(2)
 }
 
-func (clus *Cluster) cleanup() error {
+func (clus *Cluster) cleanup(err error) error {
 	if clus.Tester.ExitOnCaseFail {
-		defer clus.failed()
+		defer clus.failed(err)
 	}
 
 	roundFailedTotalCounter.Inc()

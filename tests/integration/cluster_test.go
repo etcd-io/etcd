@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 )
 
@@ -44,7 +43,7 @@ func TestClusterOf1(t *testing.T) { testCluster(t, 1) }
 func TestClusterOf3(t *testing.T) { testCluster(t, 3) }
 
 func testCluster(t *testing.T, size int) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, size)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -52,7 +51,7 @@ func testCluster(t *testing.T, size int) {
 }
 
 func TestTLSClusterOf3(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfo})
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -62,7 +61,7 @@ func TestTLSClusterOf3(t *testing.T) {
 // Test that a cluster can progress when using separate client and server certs when peering. This supports certificate
 // authorities that don't issue dual-usage certificates.
 func TestTLSClusterOf3WithSpecificUsage(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfoWithSpecificUsage})
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -73,7 +72,7 @@ func TestClusterOf1UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t, 1
 func TestClusterOf3UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t, 3) }
 
 func testClusterUsingDiscovery(t *testing.T, size int) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	dc := NewCluster(t, 1)
 	dc.Launch(t)
 	defer dc.Terminate(t)
@@ -96,7 +95,7 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 }
 
 func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	dc := NewCluster(t, 1)
 	dc.Launch(t)
 	defer dc.Terminate(t)
@@ -124,7 +123,7 @@ func TestDoubleClusterSizeOf1(t *testing.T) { testDoubleClusterSize(t, 1) }
 func TestDoubleClusterSizeOf3(t *testing.T) { testDoubleClusterSize(t, 3) }
 
 func testDoubleClusterSize(t *testing.T, size int) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, size)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -136,7 +135,7 @@ func testDoubleClusterSize(t *testing.T, size int) {
 }
 
 func TestDoubleTLSClusterSizeOf3(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfo})
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -151,7 +150,7 @@ func TestDecreaseClusterSizeOf3(t *testing.T) { testDecreaseClusterSize(t, 3) }
 func TestDecreaseClusterSizeOf5(t *testing.T) { testDecreaseClusterSize(t, 5) }
 
 func testDecreaseClusterSize(t *testing.T, size int) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, size)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -215,7 +214,7 @@ func TestForceNewCluster(t *testing.T) {
 }
 
 func TestAddMemberAfterClusterFullRotation(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, 3)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -237,7 +236,7 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 
 // Ensure we can remove a member then add a new one back immediately.
 func TestIssue2681(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, 5)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -257,7 +256,7 @@ func TestIssue2746(t *testing.T) { testIssue2746(t, 5) }
 func TestIssue2746WithThree(t *testing.T) { testIssue2746(t, 3) }
 
 func testIssue2746(t *testing.T, members int) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, members)
 
 	for _, m := range c.Members {
@@ -282,7 +281,7 @@ func testIssue2746(t *testing.T, members int) {
 
 // Ensure etcd will not panic when removing a just started member.
 func TestIssue2904(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	// start 1-member cluster to ensure member 0 is the leader of the cluster.
 	c := NewCluster(t, 1)
 	c.Launch(t)
@@ -319,7 +318,7 @@ func TestIssue2904(t *testing.T) {
 // deadlocking.
 func TestIssue3699(t *testing.T) {
 	// start a cluster of 3 nodes a, b, c
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, 3)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -371,7 +370,7 @@ func TestIssue3699(t *testing.T) {
 
 // TestRejectUnhealthyAdd ensures an unhealthy cluster rejects adding members.
 func TestRejectUnhealthyAdd(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, 3)
 	for _, m := range c.Members {
 		m.ServerConfig.StrictReconfigCheck = true
@@ -415,7 +414,7 @@ func TestRejectUnhealthyAdd(t *testing.T) {
 // TestRejectUnhealthyRemove ensures an unhealthy cluster rejects removing members
 // if quorum will be lost.
 func TestRejectUnhealthyRemove(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	c := NewCluster(t, 5)
 	for _, m := range c.Members {
 		m.ServerConfig.StrictReconfigCheck = true
@@ -462,7 +461,7 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 // if 'initial-cluster-state' is set 'new' and old data directory still exists
 // (see https://github.com/etcd-io/etcd/issues/7512 for more).
 func TestRestartRemoved(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	// 1. start single-member cluster
 	c := NewCluster(t, 1)
@@ -540,7 +539,7 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 }
 
 func TestSpeedyTerminate(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	// Stop/Restart so requests will time out on lost leaders
 	for i := 0; i < 3; i++ {

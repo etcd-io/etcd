@@ -23,14 +23,13 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 )
 
 // TestMetricDbSizeBoot checks that the db size metric is set on boot.
 func TestMetricDbSizeBoot(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -54,7 +53,7 @@ func TestMetricDbSizeDefragDebugging(t *testing.T) {
 
 // testMetricDbSizeDefrag checks that the db size metric is set after defrag.
 func testMetricDbSizeDefrag(t *testing.T, name string) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -168,7 +167,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 }
 
 func TestMetricQuotaBackendBytes(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -186,7 +185,7 @@ func TestMetricQuotaBackendBytes(t *testing.T) {
 }
 
 func TestMetricsHealth(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 

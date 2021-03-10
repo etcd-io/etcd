@@ -18,13 +18,11 @@ import (
 	"context"
 	"testing"
 
-	"go.etcd.io/etcd/pkg/v3/testutil"
-
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func TestHealthCheck(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

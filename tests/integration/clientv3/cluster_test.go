@@ -22,13 +22,12 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestMemberList(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -46,7 +45,7 @@ func TestMemberList(t *testing.T) {
 }
 
 func TestMemberAdd(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -65,7 +64,7 @@ func TestMemberAdd(t *testing.T) {
 }
 
 func TestMemberAddWithExistingURLs(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -89,7 +88,7 @@ func TestMemberAddWithExistingURLs(t *testing.T) {
 }
 
 func TestMemberRemove(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -127,7 +126,7 @@ func TestMemberRemove(t *testing.T) {
 }
 
 func TestMemberUpdate(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -155,7 +154,7 @@ func TestMemberUpdate(t *testing.T) {
 }
 
 func TestMemberAddUpdateWrongURLs(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -188,7 +187,7 @@ func TestMemberAddUpdateWrongURLs(t *testing.T) {
 }
 
 func TestMemberAddForLearner(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -217,7 +216,7 @@ func TestMemberAddForLearner(t *testing.T) {
 }
 
 func TestMemberPromote(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -265,7 +264,7 @@ func TestMemberPromote(t *testing.T) {
 	// create and launch learner member based on the response of V3 Member Add API.
 	// (the response has information on peer urls of the existing members in cluster)
 	learnerMember := clus.MustNewMember(t, memberAddResp)
-	clus.Members = append(clus.Members, learnerMember)
+
 	if err := learnerMember.Launch(); err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +293,7 @@ func TestMemberPromote(t *testing.T) {
 
 // TestMemberPromoteMemberNotLearner ensures that promoting a voting member fails.
 func TestMemberPromoteMemberNotLearner(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -330,7 +329,7 @@ func TestMemberPromoteMemberNotLearner(t *testing.T) {
 
 // TestMemberPromoteMemberNotExist ensures that promoting a member that does not exist in cluster fails.
 func TestMemberPromoteMemberNotExist(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -379,7 +378,7 @@ func TestMemberPromoteMemberNotExist(t *testing.T) {
 
 // TestMaxLearnerInCluster verifies that the maximum number of learners allowed in a cluster is 1
 func TestMaxLearnerInCluster(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	// 1. start with a cluster with 3 voting member and 0 learner member
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})

@@ -26,6 +26,7 @@ import (
 
 // TestElectionWait tests if followers can correctly wait for elections.
 func TestElectionWait(t *testing.T) {
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -107,6 +108,7 @@ func TestElectionWait(t *testing.T) {
 
 // TestElectionFailover tests that an election will
 func TestElectionFailover(t *testing.T) {
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -174,6 +176,7 @@ func TestElectionFailover(t *testing.T) {
 // TestElectionSessionRelock ensures that campaigning twice on the same election
 // with the same lock will Proclaim instead of deadlocking.
 func TestElectionSessionRecampaign(t *testing.T) {
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.RandClient()
@@ -206,6 +209,7 @@ func TestElectionSessionRecampaign(t *testing.T) {
 // of bug #6278. https://github.com/etcd-io/etcd/issues/6278
 //
 func TestElectionOnPrefixOfExistingKey(t *testing.T) {
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -232,6 +236,7 @@ func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 // in a new session with the same lease id) does not result in loss of
 // leadership.
 func TestElectionOnSessionRestart(t *testing.T) {
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.RandClient()
@@ -278,6 +283,7 @@ func TestElectionOnSessionRestart(t *testing.T) {
 // TestElectionObserveCompacted checks that observe can tolerate
 // a leader key with a modrev less than the compaction revision.
 func TestElectionObserveCompacted(t *testing.T) {
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 

@@ -72,13 +72,12 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
 	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
-	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
+	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		os.RemoveAll(cfg.Dir)
 		srv.Close()
 	}()
 	select {
@@ -102,12 +101,11 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		}
 	}
 
-	dpPath := filepath.Join(os.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
+	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
 	if err = snapshot.Save(context.Background(), zap.NewExample(), ccfg, dpPath); err != nil {
 		t.Fatal(err)
 	}
 
-	os.RemoveAll(cfg.Dir)
 	srv.Close()
 	return dpPath
 }

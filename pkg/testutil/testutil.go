@@ -84,7 +84,7 @@ func Poll(interval time.Duration, timeout time.Duration, condition ConditionFunc
 	}
 }
 
-func SkipTestIfShortMode(t testing.TB, reason string) {
+func SkipTestIfShortMode(t TB, reason string) {
 	if t != nil {
 		t.Helper()
 		if testing.Short() {
