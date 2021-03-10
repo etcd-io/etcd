@@ -29,6 +29,8 @@ import (
 	"github.com/creack/pty"
 )
 
+const DEBUG_LINES_TAIL=40
+
 type ExpectProcess struct {
 	cmd  *exec.Cmd
 	fpty *os.File
@@ -96,6 +98,8 @@ func (ep *ExpectProcess) read() {
 
 // ExpectFunc returns the first line satisfying the function f.
 func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
+	lastLinesBuffer := make([]string, 0)
+
 	ep.mu.Lock()
 	for {
 		for len(ep.lines) == 0 && ep.err == nil {
@@ -106,13 +110,19 @@ func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 		}
 		l := ep.lines[0]
 		ep.lines = ep.lines[1:]
+		lastLinesBuffer = append(lastLinesBuffer, l)
+		if l:=len(lastLinesBuffer); l>DEBUG_LINES_TAIL {
+			lastLinesBuffer = lastLinesBuffer[l-DEBUG_LINES_TAIL:l-1]
+		}
 		if f(l) {
 			ep.mu.Unlock()
 			return l, nil
 		}
 	}
 	ep.mu.Unlock()
-	return "", ep.err
+	return "", fmt.Errorf("Match not found." +
+		" Set EXPECT_DEBUG for more info Err: %v, last lines:\n%s\n\n",
+		ep.err, strings.Join(lastLinesBuffer, ""))
 }
 
 // Expect returns the first line containing the given string.
