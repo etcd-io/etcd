@@ -80,7 +80,7 @@ func TestDialCancel(t *testing.T) {
 }
 
 func TestDialTimeout(t *testing.T) {
-	defer testutil.AfterTest(t)
+	testutil.BeforeTest(t)
 
 	wantError := context.DeadlineExceeded
 
