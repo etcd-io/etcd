@@ -133,7 +133,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 				eh.Error = err.Error()
 			}
 
-			if eh.Health == true {
+			if eh.Health {
 				resp, err := cli.AlarmList(ctx)
 				if err == nil && len(resp.Alarms) > 0 {
 					eh.Health = false

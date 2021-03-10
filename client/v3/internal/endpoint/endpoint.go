@@ -50,7 +50,7 @@ func extractHostFromPath(pathStr string) string {
 func mustSplit2(s, sep string) (string, string) {
 	spl := strings.SplitN(s, sep, 2)
 	if len(spl) < 2 {
-		panic(fmt.Errorf("Token '%v' expected to have separator sep: `%v`", s, sep))
+		panic(fmt.Errorf("token '%v' expected to have separator sep: `%v`", s, sep))
 	}
 	return spl[0], spl[1]
 }

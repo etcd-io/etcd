@@ -99,9 +99,9 @@ func (env *InteractionEnv) ProcessReady(idx int) error {
 		snap.Metadata.ConfState = *cs
 		env.Nodes[idx].History = append(env.Nodes[idx].History, snap)
 	}
-	for _, msg := range rd.Messages {
-		env.Messages = append(env.Messages, msg)
-	}
+
+	env.Messages = append(env.Messages, rd.Messages...)
+
 	rn.Advance(rd)
 	return nil
 }

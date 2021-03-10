@@ -44,10 +44,10 @@ func TestQuick(t *testing.T) {
 }
 
 // smallRandIdxMap returns a reasonably sized map of ids to commit indexes.
-func smallRandIdxMap(rand *rand.Rand, size int) map[uint64]Index {
+func smallRandIdxMap(rand *rand.Rand, _ int) map[uint64]Index {
 	// Hard-code a reasonably small size here (quick will hard-code 50, which
 	// is not useful here).
-	size = 10
+	size := 10
 
 	n := rand.Intn(size)
 	ids := rand.Perm(2 * n)[:n]

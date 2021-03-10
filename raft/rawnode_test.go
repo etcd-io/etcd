@@ -467,7 +467,7 @@ func TestRawNodeJointAutoLeave(t *testing.T) {
 			t.Fatalf("exp:\n%+v\nact:\n%+v", expCs, cs)
 		}
 
-		if 0 != rawNode.raft.pendingConfIndex {
+		if rawNode.raft.pendingConfIndex != 0 {
 			t.Fatalf("pendingConfIndex: expected %d, got %d", 0, rawNode.raft.pendingConfIndex)
 		}
 

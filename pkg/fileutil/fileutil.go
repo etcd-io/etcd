@@ -121,7 +121,7 @@ func ZeroToEnd(f *os.File) error {
 // Returns error if dir is empty or exist with a different permission than specified.
 func CheckDirPermission(dir string, perm os.FileMode) error {
 	if !Exist(dir) {
-		return fmt.Errorf("directory %q empty, cannot check permission.", dir)
+		return fmt.Errorf("directory %q empty, cannot check permission", dir)
 	}
 	//check the existing permission on the directory
 	dirInfo, err := os.Stat(dir)
@@ -130,7 +130,7 @@ func CheckDirPermission(dir string, perm os.FileMode) error {
 	}
 	dirMode := dirInfo.Mode().Perm()
 	if dirMode != perm {
-		err = fmt.Errorf("directory %q exist, but the permission is %q. The recommended permission is %q to prevent possible unprivileged access to the data.", dir, dirInfo.Mode(), os.FileMode(PrivateDirMode))
+		err = fmt.Errorf("directory %q exist, but the permission is %q. The recommended permission is %q to prevent possible unprivileged access to the data", dir, dirInfo.Mode(), os.FileMode(PrivateDirMode))
 		return err
 	}
 	return nil
