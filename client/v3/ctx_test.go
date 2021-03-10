@@ -26,13 +26,13 @@ import (
 
 func TestMetadataWithRequireLeader(t *testing.T) {
 	ctx := context.TODO()
-	md, ok := metadata.FromOutgoingContext(ctx)
+	_, ok := metadata.FromOutgoingContext(ctx)
 	if ok {
 		t.Fatal("expected no outgoing metadata ctx key")
 	}
 
 	// add a conflicting key with some other value
-	md = metadata.Pairs(rpctypes.MetadataRequireLeaderKey, "invalid")
+	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, "invalid")
 	// add a key, and expect not be overwritten
 	md.Set("hello", "1", "2")
 	ctx = metadata.NewOutgoingContext(ctx, md)

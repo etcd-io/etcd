@@ -194,7 +194,7 @@ func (p *ProgressTracker) Visit(f func(id uint64, pr *Progress)) {
 	// The optimization here mirrors that in `(MajorityConfig).CommittedIndex`,
 	// see there for details.
 	var sl [7]uint64
-	ids := sl[:]
+	var ids []uint64
 	if len(sl) >= n {
 		ids = sl[:n]
 	} else {

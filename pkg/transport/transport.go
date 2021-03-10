@@ -41,10 +41,10 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 		TLSClientConfig:     cfg,
 	}
 
-	dialer := (&net.Dialer{
+	dialer := &net.Dialer{
 		Timeout:   dialtimeoutd,
 		KeepAlive: 30 * time.Second,
-	})
+	}
 	dial := func(net, addr string) (net.Conn, error) {
 		return dialer.Dial("unix", addr)
 	}

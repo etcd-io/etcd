@@ -313,7 +313,7 @@ func isSafeRetry(lg *zap.Logger, err error, callOpts *options) bool {
 }
 
 func isContextError(err error) bool {
-	return grpc.Code(err) == codes.DeadlineExceeded || grpc.Code(err) == codes.Canceled
+	return status.Code(err) == codes.DeadlineExceeded || status.Code(err) == codes.Canceled
 }
 
 func contextErrToGrpcErr(err error) error {

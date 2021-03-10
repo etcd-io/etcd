@@ -298,7 +298,7 @@ func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCred
 		}
 		return credentials.NewBundle(credentials.Config{}).TransportCredentials()
 	default:
-		panic(fmt.Errorf("Unsupported CredsRequirement: %v", r))
+		panic(fmt.Errorf("unsupported CredsRequirement: %v", r))
 	}
 }
 

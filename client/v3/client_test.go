@@ -140,13 +140,13 @@ func TestDialNoTimeout(t *testing.T) {
 }
 
 func TestIsHaltErr(t *testing.T) {
-	if !isHaltErr(nil, fmt.Errorf("etcdserver: some etcdserver error")) {
+	if !isHaltErr(context.TODO(), fmt.Errorf("etcdserver: some etcdserver error")) {
 		t.Errorf(`error prefixed with "etcdserver: " should be Halted by default`)
 	}
-	if isHaltErr(nil, rpctypes.ErrGRPCStopped) {
+	if isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped) {
 		t.Errorf("error %v should not halt", rpctypes.ErrGRPCStopped)
 	}
-	if isHaltErr(nil, rpctypes.ErrGRPCNoLeader) {
+	if isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader) {
 		t.Errorf("error %v should not halt", rpctypes.ErrGRPCNoLeader)
 	}
 	ctx, cancel := context.WithCancel(context.TODO())

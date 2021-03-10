@@ -169,7 +169,7 @@ func TestDataDriven(t *testing.T) {
 				// test case.
 				if !joint {
 					idx := c.CommittedIndex(l)
-					fmt.Fprintf(&buf, c.Describe(l))
+					fmt.Fprint(&buf, c.Describe(l))
 					// These alternative computations should return the same
 					// result. If not, print to the output.
 					if aIdx := alternativeMajorityCommittedIndex(c, l); aIdx != idx {
@@ -213,7 +213,7 @@ func TestDataDriven(t *testing.T) {
 					fmt.Fprintf(&buf, "%s\n", idx)
 				} else {
 					cc := JointConfig([2]MajorityConfig{c, cj})
-					fmt.Fprintf(&buf, cc.Describe(l))
+					fmt.Fprint(&buf, cc.Describe(l))
 					idx := cc.CommittedIndex(l)
 					// Interchanging the majorities shouldn't make a difference. If it does, print.
 					if aIdx := JointConfig([2]MajorityConfig{cj, c}).CommittedIndex(l); aIdx != idx {
