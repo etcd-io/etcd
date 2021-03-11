@@ -7295,7 +7295,9 @@ type MaintenanceClient interface {
 	Snapshot(ctx context.Context, in *SnapshotRequest, opts ...grpc.CallOption) (Maintenance_SnapshotClient, error)
 	// MoveLeader requests current leader node to transfer its leadership to transferee.
 	MoveLeader(ctx context.Context, in *MoveLeaderRequest, opts ...grpc.CallOption) (*MoveLeaderResponse, error)
-	// Downgrade requests downgrade, cancel downgrade on the cluster version.
+	// Downgrade requests downgrades, verifies feasibility or cancels downgrade
+	// on the cluster version.
+	// Supported since etcd 3.5.
 	Downgrade(ctx context.Context, in *DowngradeRequest, opts ...grpc.CallOption) (*DowngradeResponse, error)
 }
 
@@ -7424,7 +7426,9 @@ type MaintenanceServer interface {
 	Snapshot(*SnapshotRequest, Maintenance_SnapshotServer) error
 	// MoveLeader requests current leader node to transfer its leadership to transferee.
 	MoveLeader(context.Context, *MoveLeaderRequest) (*MoveLeaderResponse, error)
-	// Downgrade requests downgrade, cancel downgrade on the cluster version.
+	// Downgrade requests downgrades, verifies feasibility or cancels downgrade
+	// on the cluster version.
+	// Supported since etcd 3.5.
 	Downgrade(context.Context, *DowngradeRequest) (*DowngradeResponse, error)
 }
 
