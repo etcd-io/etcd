@@ -40,6 +40,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
@@ -556,7 +557,7 @@ func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
 }
 
 type member struct {
-	etcdserver.ServerConfig
+	config.ServerConfig
 	PeerListeners, ClientListeners []net.Listener
 	grpcListener                   net.Listener
 	// PeerTLSInfo enables peer TLS when set

@@ -36,6 +36,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -738,7 +739,7 @@ func TestDoProposal(t *testing.T) {
 		srv := &EtcdServer{
 			lgMu:         new(sync.RWMutex),
 			lg:           zap.NewExample(),
-			Cfg:          ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+			Cfg:          config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 			r:            *r,
 			v2store:      st,
 			reqIDGen:     idutil.NewGenerator(0, time.Time{}),
@@ -770,7 +771,7 @@ func TestDoProposalCancelled(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       zap.NewExample(),
-		Cfg:      ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:      config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
 		w:        wt,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -794,7 +795,7 @@ func TestDoProposalTimeout(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       zap.NewExample(),
-		Cfg:      ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:      config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -813,7 +814,7 @@ func TestDoProposalStopped(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       zap.NewExample(),
-		Cfg:      ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:      config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:        *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: newNodeNop()}),
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -924,7 +925,7 @@ func TestSyncTrigger(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zap.NewExample(),
-		Cfg:        ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:        config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:          *r,
 		v2store:    mockstore.NewNop(),
 		SyncTicker: tk,
@@ -1066,7 +1067,7 @@ func TestSnapshotOrdering(t *testing.T) {
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zap.NewExample(),
-		Cfg:          ServerConfig{Logger: zap.NewExample(), DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:          config.ServerConfig{Logger: zap.NewExample(), DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:            *r,
 		v2store:      st,
 		snapshotter:  snap.New(zap.NewExample(), snapdir),
@@ -1141,7 +1142,7 @@ func TestTriggerSnap(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zap.NewExample(),
-		Cfg:          ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCount: uint64(snapc), SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:          config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCount: uint64(snapc), SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:            *r,
 		v2store:      st,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
@@ -1219,7 +1220,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zap.NewExample(),
-		Cfg:          ServerConfig{Logger: zap.NewExample(), DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:          config.ServerConfig{Logger: zap.NewExample(), DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:            *r,
 		v2store:      st,
 		snapshotter:  snap.New(zap.NewExample(), testdir),
@@ -1430,7 +1431,7 @@ func TestPublish(t *testing.T) {
 		lgMu:       new(sync.RWMutex),
 		lg:         zap.NewExample(),
 		readych:    make(chan struct{}),
-		Cfg:        ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:        config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		id:         1,
 		r:          *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
@@ -1483,7 +1484,7 @@ func TestPublishStopped(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zap.NewExample(),
-		Cfg:        ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:        config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:          *r,
 		cluster:    &membership.RaftCluster{},
 		w:          mockwait.NewNop(),
@@ -1507,7 +1508,7 @@ func TestPublishRetry(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zap.NewExample(),
-		Cfg:        ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:        config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:          *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
 		w:          mockwait.NewNop(),
 		stopping:   make(chan struct{}),

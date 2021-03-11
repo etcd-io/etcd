@@ -34,6 +34,7 @@ import (
 	runtimeutil "go.etcd.io/etcd/pkg/v3/runtime"
 	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -161,7 +162,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	backendFreelistType := parseBackendFreelistType(cfg.BackendFreelistType)
 
-	srvcfg := etcdserver.ServerConfig{
+	srvcfg := config.ServerConfig{
 		Name:                        cfg.Name,
 		ClientURLs:                  cfg.ACUrls,
 		PeerURLs:                    cfg.APUrls,
@@ -256,7 +257,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	return e, nil
 }
 
-func print(lg *zap.Logger, ec Config, sc etcdserver.ServerConfig, memberInitialized bool) {
+func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized bool) {
 	cors := make([]string, 0, len(ec.CORS))
 	for v := range ec.CORS {
 		cors = append(cors, v)

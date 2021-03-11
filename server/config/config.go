@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package config
 
 import (
 	"context"
@@ -188,7 +188,7 @@ func (c *ServerConfig) VerifyBootstrap() error {
 	if err := c.advertiseMatchesCluster(); err != nil {
 		return err
 	}
-	if checkDuplicateURL(c.InitialPeerURLsMap) {
+	if CheckDuplicateURL(c.InitialPeerURLsMap) {
 		return fmt.Errorf("initial cluster %s has duplicate url", c.InitialPeerURLsMap)
 	}
 	if c.InitialPeerURLsMap.String() == "" && c.DiscoveryURL == "" {
@@ -205,7 +205,7 @@ func (c *ServerConfig) VerifyJoinExisting() error {
 	if err := c.hasLocalMember(); err != nil {
 		return err
 	}
-	if checkDuplicateURL(c.InitialPeerURLsMap) {
+	if CheckDuplicateURL(c.InitialPeerURLsMap) {
 		return fmt.Errorf("initial cluster %s has duplicate url", c.InitialPeerURLsMap)
 	}
 	if c.DiscoveryURL != "" {
@@ -294,16 +294,16 @@ func (c *ServerConfig) ReqTimeout() time.Duration {
 	return 5*time.Second + 2*time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond
 }
 
-func (c *ServerConfig) electionTimeout() time.Duration {
+func (c *ServerConfig) ElectionTimeout() time.Duration {
 	return time.Duration(c.ElectionTicks*int(c.TickMs)) * time.Millisecond
 }
 
-func (c *ServerConfig) peerDialTimeout() time.Duration {
+func (c *ServerConfig) PeerDialTimeout() time.Duration {
 	// 1s for queue wait and election timeout
 	return time.Second + time.Duration(c.ElectionTicks*int(c.TickMs))*time.Millisecond
 }
 
-func checkDuplicateURL(urlsmap types.URLsMap) bool {
+func CheckDuplicateURL(urlsmap types.URLsMap) bool {
 	um := make(map[string]bool)
 	for _, urls := range urlsmap {
 		for _, url := range urls {
@@ -317,11 +317,11 @@ func checkDuplicateURL(urlsmap types.URLsMap) bool {
 	return false
 }
 
-func (c *ServerConfig) bootstrapTimeout() time.Duration {
+func (c *ServerConfig) BootstrapTimeoutEffective() time.Duration {
 	if c.BootstrapTimeout != 0 {
 		return c.BootstrapTimeout
 	}
 	return time.Second
 }
 
-func (c *ServerConfig) backendPath() string { return filepath.Join(c.SnapDir(), "db") }
+func (c *ServerConfig) BackendPath() string { return filepath.Join(c.SnapDir(), "db") }
