@@ -229,6 +229,10 @@ type decoder struct {
 	mapType reflect.Type
 	terrors []string
 	strict  bool
+
+	decodeCount int
+	aliasCount  int
+	aliasDepth  int
 }
 
 var (
@@ -315,6 +319,13 @@ func (d *decoder) prepare(n *node, out reflect.Value) (newout reflect.Value, unm
 }
 
 func (d *decoder) unmarshal(n *node, out reflect.Value) (good bool) {
+	d.decodeCount++
+	if d.aliasDepth > 0 {
+		d.aliasCount++
+	}
+	if d.aliasCount > 100 && d.decodeCount > 1000 && float64(d.aliasCount)/float64(d.decodeCount) > 0.99 {
+		failf("document contains excessive aliasing")
+	}
 	switch n.kind {
 	case documentNode:
 		return d.document(n, out)
@@ -353,7 +364,9 @@ func (d *decoder) alias(n *node, out reflect.Value) (good bool) {
 		failf("anchor '%s' value contains itself", n.value)
 	}
 	d.aliases[n] = true
+	d.aliasDepth++
 	good = d.unmarshal(n.alias, out)
+	d.aliasDepth--
 	delete(d.aliases, n)
 	return good
 }
