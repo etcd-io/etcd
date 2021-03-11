@@ -33,6 +33,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -210,7 +211,7 @@ type EtcdServer struct {
 	r            raftNode                 // uses 64-bit atomics; keep 64-bit aligned.
 
 	readych chan struct{}
-	Cfg     ServerConfig
+	Cfg     config.ServerConfig
 
 	lgMu *sync.RWMutex
 	lg   *zap.Logger
@@ -295,7 +296,7 @@ type EtcdServer struct {
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
-func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
+func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 
 	var (
@@ -339,7 +340,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	}
 	ss := snap.New(cfg.Logger, cfg.SnapDir())
 
-	bepath := cfg.backendPath()
+	bepath := cfg.BackendPath()
 	beExist := fileutil.Exist(bepath)
 	be := openBackend(cfg)
 
@@ -349,7 +350,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 
-	prt, err := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.peerDialTimeout())
+	prt, err := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.PeerDialTimeout())
 	if err != nil {
 		return nil, err
 	}
@@ -394,7 +395,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			return nil, err
 		}
 		m := cl.MemberByName(cfg.Name)
-		if isMemberBootstrapped(cfg.Logger, cl, cfg.Name, prt, cfg.bootstrapTimeout()) {
+		if isMemberBootstrapped(cfg.Logger, cl, cfg.Name, prt, cfg.BootstrapTimeoutEffective()) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
@@ -408,7 +409,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			if err != nil {
 				return nil, err
 			}
-			if checkDuplicateURL(urlsmap) {
+			if config.CheckDuplicateURL(urlsmap) {
 				return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
 			}
 			if cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, urlsmap); err != nil {
@@ -611,7 +612,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	tr := &rafthttp.Transport{
 		Logger:      cfg.Logger,
 		TLSInfo:     cfg.PeerTLSInfo,
-		DialTimeout: cfg.peerDialTimeout(),
+		DialTimeout: cfg.PeerDialTimeout(),
 		ID:          id,
 		URLs:        cfg.PeerURLs,
 		ClusterID:   cl.ID(),
@@ -2073,7 +2074,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		// promote lessor when the local member is leader and finished
 		// applying all entries from the last term.
 		if s.isLeader() {
-			s.lessor.Promote(s.Cfg.electionTimeout())
+			s.lessor.Promote(s.Cfg.ElectionTimeout())
 		}
 		return
 	}

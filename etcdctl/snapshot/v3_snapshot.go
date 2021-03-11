@@ -36,6 +36,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -213,7 +214,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		return err
 	}
 
-	srv := etcdserver.ServerConfig{
+	srv := config.ServerConfig{
 		Logger:              s.lg,
 		Name:                cfg.Name,
 		PeerURLs:            pURLs,
