@@ -2397,12 +2397,24 @@ func TestReadOnlyForNewLeader(t *testing.T) {
 		t.Fatalf("last log term = %d, want %d", lastLogTerm, sm.Term)
 	}
 
-	// Ensure peer a accepts read only request after it commits a entry at its term.
-	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: wctx}}})
+	// Ensure peer a processed postponed read only request after it committed an entry at its term.
 	if len(sm.readStates) != 1 {
 		t.Fatalf("len(readStates) = %d, want 1", len(sm.readStates))
 	}
 	rs := sm.readStates[0]
+	if rs.Index != windex {
+		t.Fatalf("readIndex = %d, want %d", rs.Index, windex)
+	}
+	if !bytes.Equal(rs.RequestCtx, wctx) {
+		t.Fatalf("requestCtx = %v, want %v", rs.RequestCtx, wctx)
+	}
+
+	// Ensure peer a accepts read only request after it committed an entry at its term.
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: wctx}}})
+	if len(sm.readStates) != 2 {
+		t.Fatalf("len(readStates) = %d, want 2", len(sm.readStates))
+	}
+	rs = sm.readStates[1]
 	if rs.Index != windex {
 		t.Fatalf("readIndex = %d, want %d", rs.Index, windex)
 	}
