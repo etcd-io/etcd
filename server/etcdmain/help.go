@@ -116,7 +116,7 @@ Clustering:
     Suffix to the dns srv name queried when bootstrapping.
   --strict-reconfig-check '` + strconv.FormatBool(embed.DefaultStrictReconfigCheck) + `'
     Reject reconfiguration requests that would cause quorum loss.
-  --pre-vote 'false'
+  --pre-vote 'true'
     Enable to run an additional Raft election phase.
   --auto-compaction-retention '0'
     Auto compaction retention length. 0 means disable auto compaction.

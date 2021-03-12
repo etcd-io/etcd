@@ -239,7 +239,6 @@ type Config struct {
 	// If enabled, Raft runs an additional election phase
 	// to check whether it would get enough votes to win
 	// an election, thus minimizing disruptions.
-	// TODO: enable by default in 3.5.
 	PreVote bool `json:"pre-vote"`
 
 	CORS map[string]struct{}
@@ -436,7 +435,7 @@ func NewConfig() *Config {
 		BcryptCost:   uint(bcrypt.DefaultCost),
 		AuthTokenTTL: 300,
 
-		PreVote: false, // TODO: enable by default in v3.5
+		PreVote: true,
 
 		loggerMu:          new(sync.RWMutex),
 		logger:            nil,
