@@ -1,32 +1,27 @@
 {
-  "swagger": "2.0",
-  "info": {
-    "title": "etcdserver/api/v3election/v3electionpb/v3election.proto",
-    "version": "version not set"
-  },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
   "produces": [
     "application/json"
   ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "title": "etcdserver/api/v3election/v3electionpb/v3election.proto",
+    "version": "version not set"
+  },
   "paths": {
     "/v3/election/campaign": {
       "post": {
+        "tags": [
+          "Election"
+        ],
         "summary": "Campaign waits to acquire leadership in an election, returning a LeaderKey\nrepresenting the leadership if successful. The LeaderKey can then be used\nto issue new values on the election, transactionally guard API requests on\nleadership still being held, and resign from the election.",
         "operationId": "Campaign",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v3electionpbCampaignResponse"
-            }
-          }
-        },
         "parameters": [
           {
             "name": "body",
@@ -37,15 +32,33 @@
             }
           }
         ],
-        "tags": [
-          "Election"
-        ]
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3electionpbCampaignResponse"
+            }
+          }
+        }
       }
     },
     "/v3/election/leader": {
       "post": {
+        "tags": [
+          "Election"
+        ],
         "summary": "Leader returns the current election proclamation, if any.",
         "operationId": "Leader",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3electionpbLeaderRequest"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -53,34 +66,16 @@
               "$ref": "#/definitions/v3electionpbLeaderResponse"
             }
           }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v3electionpbLeaderRequest"
-            }
-          }
-        ],
-        "tags": [
-          "Election"
-        ]
+        }
       }
     },
     "/v3/election/observe": {
       "post": {
+        "tags": [
+          "Election"
+        ],
         "summary": "Observe streams election proclamations in-order as made by the election's\nelected leaders.",
         "operationId": "Observe",
-        "responses": {
-          "200": {
-            "description": "A successful response.(streaming responses)",
-            "schema": {
-              "$ref": "#/x-stream-definitions/v3electionpbLeaderResponse"
-            }
-          }
-        },
         "parameters": [
           {
             "name": "body",
@@ -91,23 +86,23 @@
             }
           }
         ],
-        "tags": [
-          "Election"
-        ]
+        "responses": {
+          "200": {
+            "description": "(streaming responses)",
+            "schema": {
+              "$ref": "#/definitions/v3electionpbLeaderResponse"
+            }
+          }
+        }
       }
     },
     "/v3/election/proclaim": {
       "post": {
+        "tags": [
+          "Election"
+        ],
         "summary": "Proclaim updates the leader's posted value with a new value.",
         "operationId": "Proclaim",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v3electionpbProclaimResponse"
-            }
-          }
-        },
         "parameters": [
           {
             "name": "body",
@@ -118,23 +113,23 @@
             }
           }
         ],
-        "tags": [
-          "Election"
-        ]
-      }
-    },
-    "/v3/election/resign": {
-      "post": {
-        "summary": "Resign releases election leadership so other campaigners may acquire\nleadership on the election.",
-        "operationId": "Resign",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v3electionpbResignResponse"
+              "$ref": "#/definitions/v3electionpbProclaimResponse"
             }
           }
-        },
+        }
+      }
+    },
+    "/v3/election/resign": {
+      "post": {
+        "tags": [
+          "Election"
+        ],
+        "summary": "Resign releases election leadership so other campaigners may acquire\nleadership on the election.",
+        "operationId": "Resign",
         "parameters": [
           {
             "name": "body",
@@ -145,9 +140,14 @@
             }
           }
         ],
-        "tags": [
-          "Election"
-        ]
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3electionpbResignResponse"
+            }
+          }
+        }
       }
     }
   },
@@ -156,116 +156,79 @@
       "type": "object",
       "properties": {
         "cluster_id": {
+          "description": "cluster_id is the ID of the cluster which sent the response.",
           "type": "string",
-          "format": "uint64",
-          "description": "cluster_id is the ID of the cluster which sent the response."
+          "format": "uint64"
         },
         "member_id": {
+          "description": "member_id is the ID of the member which sent the response.",
           "type": "string",
-          "format": "uint64",
-          "description": "member_id is the ID of the member which sent the response."
-        },
-        "revision": {
-          "type": "string",
-          "format": "int64",
-          "description": "revision is the key-value store revision when the request was applied.\nFor watch progress responses, the header.revision indicates progress. All future events\nrecieved in this stream are guaranteed to have a higher revision number than the\nheader.revision number."
+          "format": "uint64"
         },
         "raft_term": {
+          "description": "raft_term is the raft term when the request was applied.",
           "type": "string",
-          "format": "uint64",
-          "description": "raft_term is the raft term when the request was applied."
+          "format": "uint64"
+        },
+        "revision": {
+          "description": "revision is the key-value store revision when the request was applied.\nFor watch progress responses, the header.revision indicates progress. All future events\nrecieved in this stream are guaranteed to have a higher revision number than the\nheader.revision number.",
+          "type": "string",
+          "format": "int64"
         }
       }
     },
     "mvccpbKeyValue": {
       "type": "object",
       "properties": {
-        "key": {
-          "type": "string",
-          "format": "byte",
-          "description": "key is the key in bytes. An empty key is not allowed."
-        },
         "create_revision": {
+          "description": "create_revision is the revision of last creation on this key.",
           "type": "string",
-          "format": "int64",
-          "description": "create_revision is the revision of last creation on this key."
+          "format": "int64"
         },
-        "mod_revision": {
-          "type": "string",
-          "format": "int64",
-          "description": "mod_revision is the revision of last modification on this key."
-        },
-        "version": {
-          "type": "string",
-          "format": "int64",
-          "description": "version is the version of the key. A deletion resets\nthe version to zero and any modification of the key\nincreases its version."
-        },
-        "value": {
-          "type": "string",
-          "format": "byte",
-          "description": "value is the value held by the key, in bytes."
-        },
-        "lease": {
-          "type": "string",
-          "format": "int64",
-          "description": "lease is the ID of the lease that attached to key.\nWhen the attached lease expires, the key will be deleted.\nIf lease is 0, then no lease is attached to the key."
-        }
-      }
-    },
-    "protobufAny": {
-      "type": "object",
-      "properties": {
-        "type_url": {
-          "type": "string"
-        },
-        "value": {
+        "key": {
+          "description": "key is the key in bytes. An empty key is not allowed.",
           "type": "string",
           "format": "byte"
-        }
-      }
-    },
-    "runtimeStreamError": {
-      "type": "object",
-      "properties": {
-        "grpc_code": {
-          "type": "integer",
-          "format": "int32"
         },
-        "http_code": {
-          "type": "integer",
-          "format": "int32"
+        "lease": {
+          "description": "lease is the ID of the lease that attached to key.\nWhen the attached lease expires, the key will be deleted.\nIf lease is 0, then no lease is attached to the key.",
+          "type": "string",
+          "format": "int64"
         },
-        "message": {
-          "type": "string"
+        "mod_revision": {
+          "description": "mod_revision is the revision of last modification on this key.",
+          "type": "string",
+          "format": "int64"
         },
-        "http_status": {
-          "type": "string"
+        "value": {
+          "description": "value is the value held by the key, in bytes.",
+          "type": "string",
+          "format": "byte"
         },
-        "details": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/protobufAny"
-          }
+        "version": {
+          "description": "version is the version of the key. A deletion resets\nthe version to zero and any modification of the key\nincreases its version.",
+          "type": "string",
+          "format": "int64"
         }
       }
     },
     "v3electionpbCampaignRequest": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "format": "byte",
-          "description": "name is the election's identifier for the campaign."
-        },
         "lease": {
+          "description": "lease is the ID of the lease attached to leadership of the election. If the\nlease expires or is revoked before resigning leadership, then the\nleadership is transferred to the next campaigner, if any.",
           "type": "string",
-          "format": "int64",
-          "description": "lease is the ID of the lease attached to leadership of the election. If the\nlease expires or is revoked before resigning leadership, then the\nleadership is transferred to the next campaigner, if any."
+          "format": "int64"
+        },
+        "name": {
+          "description": "name is the election's identifier for the campaign.",
+          "type": "string",
+          "format": "byte"
         },
         "value": {
+          "description": "value is the initial proclaimed value set when the campaigner wins the\nelection.",
           "type": "string",
-          "format": "byte",
-          "description": "value is the initial proclaimed value set when the campaigner wins the\nelection."
+          "format": "byte"
         }
       }
     },
@@ -276,33 +239,33 @@
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
         "leader": {
-          "$ref": "#/definitions/v3electionpbLeaderKey",
-          "description": "leader describes the resources used for holding leadereship of the election."
+          "description": "leader describes the resources used for holding leadereship of the election.",
+          "$ref": "#/definitions/v3electionpbLeaderKey"
         }
       }
     },
     "v3electionpbLeaderKey": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "format": "byte",
-          "description": "name is the election identifier that correponds to the leadership key."
-        },
         "key": {
+          "description": "key is an opaque key representing the ownership of the election. If the key\nis deleted, then leadership is lost.",
           "type": "string",
-          "format": "byte",
-          "description": "key is an opaque key representing the ownership of the election. If the key\nis deleted, then leadership is lost."
-        },
-        "rev": {
-          "type": "string",
-          "format": "int64",
-          "description": "rev is the creation revision of the key. It can be used to test for ownership\nof an election during transactions by testing the key's creation revision\nmatches rev."
+          "format": "byte"
         },
         "lease": {
+          "description": "lease is the lease ID of the election leader.",
           "type": "string",
-          "format": "int64",
-          "description": "lease is the lease ID of the election leader."
+          "format": "int64"
+        },
+        "name": {
+          "description": "name is the election identifier that correponds to the leadership key.",
+          "type": "string",
+          "format": "byte"
+        },
+        "rev": {
+          "description": "rev is the creation revision of the key. It can be used to test for ownership\nof an election during transactions by testing the key's creation revision\nmatches rev.",
+          "type": "string",
+          "format": "int64"
         }
       }
     },
@@ -310,9 +273,9 @@
       "type": "object",
       "properties": {
         "name": {
+          "description": "name is the election identifier for the leadership information.",
           "type": "string",
-          "format": "byte",
-          "description": "name is the election identifier for the leadership information."
+          "format": "byte"
         }
       }
     },
@@ -323,8 +286,8 @@
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
         "kv": {
-          "$ref": "#/definitions/mvccpbKeyValue",
-          "description": "kv is the key-value pair representing the latest leader update."
+          "description": "kv is the key-value pair representing the latest leader update.",
+          "$ref": "#/definitions/mvccpbKeyValue"
         }
       }
     },
@@ -332,13 +295,13 @@
       "type": "object",
       "properties": {
         "leader": {
-          "$ref": "#/definitions/v3electionpbLeaderKey",
-          "description": "leader is the leadership hold on the election."
+          "description": "leader is the leadership hold on the election.",
+          "$ref": "#/definitions/v3electionpbLeaderKey"
         },
         "value": {
+          "description": "value is an update meant to overwrite the leader's current value.",
           "type": "string",
-          "format": "byte",
-          "description": "value is an update meant to overwrite the leader's current value."
+          "format": "byte"
         }
       }
     },
@@ -354,8 +317,8 @@
       "type": "object",
       "properties": {
         "leader": {
-          "$ref": "#/definitions/v3electionpbLeaderKey",
-          "description": "leader is the leadership to relinquish by resignation."
+          "description": "leader is the leadership to relinquish by resignation.",
+          "$ref": "#/definitions/v3electionpbLeaderKey"
         }
       }
     },
@@ -368,18 +331,16 @@
       }
     }
   },
-  "x-stream-definitions": {
-    "v3electionpbLeaderResponse": {
-      "type": "object",
-      "properties": {
-        "result": {
-          "$ref": "#/definitions/v3electionpbLeaderResponse"
-        },
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        }
-      },
-      "title": "Stream result of v3electionpbLeaderResponse"
+  "securityDefinitions": {
+    "ApiKey": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
     }
-  }
+  },
+  "security": [
+    {
+      "ApiKey": []
+    }
+  ]
 }
