@@ -117,6 +117,15 @@
 		]
 	},
 	{
+		"project": "github.com/felixge/fgprof",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/form3tech-oss/jwt-go",
 		"licenses": [
 			{
@@ -163,6 +172,15 @@
 	},
 	{
 		"project": "github.com/google/btree",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/google/pprof/profile",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",

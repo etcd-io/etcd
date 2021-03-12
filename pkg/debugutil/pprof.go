@@ -15,12 +15,14 @@
 package debugutil
 
 import (
+	"github.com/felixge/fgprof"
 	"net/http"
 	"net/http/pprof"
 	"runtime"
 )
 
 const HTTPPrefixPProf = "/debug/pprof"
+const HTTPPrefixFGProf = "/debug/fgprof"
 
 // PProfHandlers returns a map of pprof handlers keyed by the HTTP path.
 func PProfHandlers() map[string]http.Handler {
@@ -42,6 +44,8 @@ func PProfHandlers() map[string]http.Handler {
 	m[HTTPPrefixPProf+"/threadcreate"] = pprof.Handler("threadcreate")
 	m[HTTPPrefixPProf+"/block"] = pprof.Handler("block")
 	m[HTTPPrefixPProf+"/mutex"] = pprof.Handler("mutex")
+
+	m[HTTPPrefixFGProf] = fgprof.Handler()
 
 	return m
 }
