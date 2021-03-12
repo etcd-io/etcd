@@ -21,10 +21,10 @@ DIRS="./wal/walpb ./etcdserver/etcdserverpb ./etcdserver/api/snap/snappb ./raft/
 # disable go mod
 export GO111MODULE=off
 
-# exact version of packages to build
-GOGO_PROTO_SHA="1adfc126b41513cc696b209667c8656ea7aac67c"
+# exact version of packages to build, verify against go.mod
+GOGO_PROTO_SHA="b03c65ea87cdc3521ede29f62fe3ce239267c1bc" #v1.3.2
 GRPC_GATEWAY_SHA="92583770e3f01b09a0d3e9bdf64321d8bebd48f2"
-SCHWAG_SHA="b7d0fc9aadaaae3d61aaadfc12e4a2f945514912"
+SCHWAG_SHA="5c539c3a96df8a8ea1b36c1f5527c234cce60be4"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath.proto
@@ -60,19 +60,21 @@ popd
 
 # generate gateway code
 go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
-go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 pushd "${GRPC_GATEWAY_ROOT}"
 	git reset --hard "${GRPC_GATEWAY_SHA}"
 	go install ./protoc-gen-grpc-gateway
+	go install ./protoc-gen-swagger
 popd
 
 for dir in ${DIRS}; do
 	pushd "${dir}"
-		protoc --gofast_out=plugins=grpc,import_prefix=go.etcd.io/:. -I=".:${GOGOPROTO_PATH}:${ETCD_IO_ROOT}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" ./*.proto
+	        protoc --gofast_out=plugins=grpc,import_prefix=go.etcd.io/:. -I=".:${GOGOPROTO_PATH}:${ETCD_IO_ROOT}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" ./*.proto
 		# shellcheck disable=SC1117
 		sed -i.bak -E 's/go\.etcd\.io\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/\1/g' ./*.pb.go
 		# shellcheck disable=SC1117
-		sed -i.bak -E 's/go\.etcd\.io\/(errors|fmt|io)/\1/g' ./*.pb.go
+		sed -i.bak -E 's/go\.etcd\.io\/(errors|fmt|io|context)/\1/g' ./*.pb.go
+		# shellcheck disable=SC1117
+		sed -i.bak -E 's/go\.etcd\.io\/(math\/bits)/\1/g' ./*.pb.go
 		# shellcheck disable=SC1117
 		sed -i.bak -E 's/import _ \"gogoproto\"//g' ./*.pb.go
 		# shellcheck disable=SC1117
@@ -127,7 +129,9 @@ pushd "${SCHWAG_ROOT}"
 	git reset --hard "${SCHWAG_SHA}"
 	go install .
 popd
-schwag -input=Documentation/dev-guide/apispec/swagger/rpc.swagger.json
+for spec in rpc.swagger.json v3election.swagger.json v3lock.swagger.json; do 
+	schwag -input=Documentation/dev-guide/apispec/swagger/${spec}
+done
 
 # install protodoc
 # go get -v -u go.etcd.io/protodoc
