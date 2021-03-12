@@ -47,10 +47,6 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	testMetricDbSizeDefrag(t, "etcd")
 }
 
-func TestMetricDbSizeDefragDebugging(t *testing.T) {
-	testMetricDbSizeDefrag(t, "etcd_debugging")
-}
-
 // testMetricDbSizeDefrag checks that the db size metric is set after defrag.
 func testMetricDbSizeDefrag(t *testing.T, name string) {
 	BeforeTest(t)
