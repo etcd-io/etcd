@@ -57,7 +57,6 @@ func (tw *metricsTxnWrite) End() {
 	defer tw.TxnWrite.End()
 	if sum := tw.ranges + tw.puts + tw.deletes; sum > 1 {
 		txnCounter.Inc()
-		txnCounterDebug.Inc() // TODO: remove in 3.5 release
 	}
 
 	ranges := float64(tw.ranges)
@@ -66,10 +65,8 @@ func (tw *metricsTxnWrite) End() {
 
 	puts := float64(tw.puts)
 	putCounter.Add(puts)
-	putCounterDebug.Add(puts) // TODO: remove in 3.5 release
 	totalPutSizeGauge.Add(float64(tw.putSize))
 
 	deletes := float64(tw.deletes)
 	deleteCounter.Add(deletes)
-	deleteCounterDebug.Add(deletes) // TODO: remove in 3.5 release
 }
