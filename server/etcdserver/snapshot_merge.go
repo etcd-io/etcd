@@ -29,7 +29,7 @@ import (
 // a snapshot of v2 store inside raft.Snapshot as []byte, a snapshot of v3 KV in the top level message
 // as ReadCloser.
 func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi uint64, confState raftpb.ConfState) snap.Message {
-	lg := s.getLogger()
+	lg := s.Logger()
 	// get a snapshot of v2 store as []byte
 	clone := s.v2store.Clone()
 	d, err := clone.SaveNoCopy()
