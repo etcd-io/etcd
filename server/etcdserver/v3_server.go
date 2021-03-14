@@ -93,7 +93,7 @@ type Authenticator interface {
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	trace := traceutil.New("range",
-		s.getLogger(),
+		s.Logger(),
 		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
 		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
 	)
@@ -102,7 +102,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	var resp *pb.RangeResponse
 	var err error
 	defer func(start time.Time) {
-		warnOfExpensiveReadOnlyRangeRequest(s.getLogger(), s.Cfg.WarningApplyDuration, start, r, resp, err)
+		warnOfExpensiveReadOnlyRangeRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, r, resp, err)
 		if resp != nil {
 			trace.AddField(
 				traceutil.Field{Key: "response_count", Value: len(resp.Kvs)},
@@ -151,7 +151,7 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	if isTxnReadonly(r) {
 		trace := traceutil.New("transaction",
-			s.getLogger(),
+			s.Logger(),
 			traceutil.Field{Key: "read_only", Value: true},
 		)
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
@@ -169,7 +169,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		}
 
 		defer func(start time.Time) {
-			warnOfExpensiveReadOnlyTxnRequest(s.getLogger(), s.Cfg.WarningApplyDuration, start, r, resp, err)
+			warnOfExpensiveReadOnlyTxnRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, r, resp, err)
 			trace.LogIfLong(traceThreshold)
 		}(time.Now())
 
@@ -426,7 +426,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		return nil, err
 	}
 
-	lg := s.getLogger()
+	lg := s.Logger()
 
 	var resp proto.Message
 	for {
@@ -723,7 +723,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 
 		// as a single loop is can unlock multiple reads, it is not very useful
 		// to propagate the trace from Txn or Range.
-		trace := traceutil.New("linearizableReadLoop", s.getLogger())
+		trace := traceutil.New("linearizableReadLoop", s.Logger())
 		nextnr := newNotifier()
 
 		s.readMu.Lock()
@@ -731,7 +731,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 		s.readNotifier = nextnr
 		s.readMu.Unlock()
 
-		lg := s.getLogger()
+		lg := s.Logger()
 		cctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
 		if err := s.r.ReadIndex(cctx, ctxToSend); err != nil {
 			cancel()
@@ -895,7 +895,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
 	// validate downgrade capability before starting downgrade
 	v := r.Version
-	lg := s.getLogger()
+	lg := s.Logger()
 	if resp, err := s.downgradeValidate(ctx, v); err != nil {
 		lg.Warn("reject downgrade request", zap.Error(err))
 		return resp, err

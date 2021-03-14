@@ -136,9 +136,9 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	defer func(start time.Time) {
 		success := ar.err == nil || ar.err == mvcc.ErrCompacted
 		applySec.WithLabelValues(v3Version, op, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		warnOfExpensiveRequest(a.s.getLogger(), a.s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
+		warnOfExpensiveRequest(a.s.Logger(), a.s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		if !success {
-			warnOfFailedRequest(a.s.getLogger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
+			warnOfFailedRequest(a.s.Logger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		}
 	}(time.Now())
 
@@ -243,7 +243,7 @@ func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.Put
 	// create put tracing if the trace in context is empty
 	if trace.IsEmpty() {
 		trace = traceutil.New("put",
-			a.s.getLogger(),
+			a.s.Logger(),
 			traceutil.Field{Key: "key", Value: string(p.Key)},
 			traceutil.Field{Key: "req_size", Value: proto.Size(p)},
 		)
@@ -420,7 +420,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
 	trace := traceutil.Get(ctx)
 	if trace.IsEmpty() {
-		trace = traceutil.New("transaction", a.s.getLogger())
+		trace = traceutil.New("transaction", a.s.Logger())
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 	}
 	isWrite := !isTxnReadonly(rt)
@@ -606,7 +606,7 @@ func (a *applierV3backend) applyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *
 		reqs = rt.Failure
 	}
 
-	lg := a.s.getLogger()
+	lg := a.s.Logger()
 	for i, req := range reqs {
 		respi := tresp.Responses[i].Response
 		switch tv := req.Request.(type) {
@@ -654,7 +654,7 @@ func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.Com
 	resp := &pb.CompactionResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	trace := traceutil.New("compact",
-		a.s.getLogger(),
+		a.s.Logger(),
 		traceutil.Field{Key: "revision", Value: compaction.Revision},
 	)
 
@@ -698,7 +698,7 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 	resp := &pb.AlarmResponse{}
 	oldCount := len(a.s.alarmStore.Get(ar.Alarm))
 
-	lg := a.s.getLogger()
+	lg := a.s.Logger()
 	switch ar.Action {
 	case pb.AlarmRequest_GET:
 		resp.Alarms = a.s.alarmStore.Get(ar.Alarm)
