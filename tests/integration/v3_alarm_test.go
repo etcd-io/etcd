@@ -35,7 +35,7 @@ import (
 
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply
 func TestV3StorageQuotaApply(t *testing.T) {
-	testutil.AfterTest(t)
+	testutil.BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 2})
