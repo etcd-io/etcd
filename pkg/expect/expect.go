@@ -29,7 +29,7 @@ import (
 	"github.com/creack/pty"
 )
 
-const DEBUG_LINES_TAIL=40
+const DEBUG_LINES_TAIL = 40
 
 type ExpectProcess struct {
 	cmd  *exec.Cmd
@@ -111,8 +111,8 @@ func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 		l := ep.lines[0]
 		ep.lines = ep.lines[1:]
 		lastLinesBuffer = append(lastLinesBuffer, l)
-		if l:=len(lastLinesBuffer); l>DEBUG_LINES_TAIL {
-			lastLinesBuffer = lastLinesBuffer[l-DEBUG_LINES_TAIL:l-1]
+		if l := len(lastLinesBuffer); l > DEBUG_LINES_TAIL {
+			lastLinesBuffer = lastLinesBuffer[l-DEBUG_LINES_TAIL : l-1]
 		}
 		if f(l) {
 			ep.mu.Unlock()
@@ -120,7 +120,7 @@ func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 		}
 	}
 	ep.mu.Unlock()
-	return "", fmt.Errorf("Match not found." +
+	return "", fmt.Errorf("Match not found."+
 		" Set EXPECT_DEBUG for more info Err: %v, last lines:\n%s\n\n",
 		ep.err, strings.Join(lastLinesBuffer, ""))
 }
