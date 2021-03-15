@@ -59,7 +59,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -168,7 +167,7 @@ type cluster struct {
 
 func (c *cluster) generateMemberName() string {
 	c.lastMemberNum++
-	return fmt.Sprintf("m%v", c.lastMemberNum)
+	return fmt.Sprintf("m%v", c.lastMemberNum-1)
 }
 
 func schemeFromTLSInfo(tls *transport.TLSInfo) string {
@@ -248,6 +247,9 @@ func (c *cluster) Launch(t testutil.TB) {
 	// wait cluster to be stable to receive future client requests
 	c.waitMembersMatch(t, c.HTTPMembers())
 	c.waitVersion()
+	for _, m := range c.Members {
+		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCAddr())
+	}
 }
 
 func (c *cluster) URL(i int) string {
@@ -712,7 +714,7 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	}
 
 	options := zaptest.WrapOptions(zap.Fields(zap.String("member", mcfg.name)))
-	m.Logger = zaptest.NewLogger(t, zaptest.Level(level), options)
+	m.Logger = zaptest.NewLogger(t, zaptest.Level(level), options).Named(mcfg.name)
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
 		// might reuse this (t).
@@ -725,6 +727,7 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 func (m *member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
 	m.grpcAddr = "localhost:" + m.Name
+	m.Logger.Info("LISTEN GRPC", zap.String("m.grpcAddr", m.grpcAddr), zap.String("m.Name", m.Name))
 	if m.useIP { // for IP-only TLS certs
 		m.grpcAddr = "127.0.0.1:" + m.Name
 	}
@@ -1273,9 +1276,7 @@ func NewClusterV3(t testutil.TB, cfg *ClusterConfig) *ClusterV3 {
 	testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
 
 	cfg.UseGRPC = true
-	if os.Getenv("CLIENT_DEBUG") != "" {
-		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
-	}
+
 	clus := &ClusterV3{
 		cluster: NewClusterByConfig(t, cfg),
 	}

@@ -602,7 +602,7 @@ func getRaftLogger(cfg config.ServerConfig) (raft.Logger, error) {
 		} else if cfg.LoggerCore != nil && cfg.LoggerWriteSyncer != nil {
 			return NewRaftLoggerFromZapCore(cfg.LoggerCore, cfg.LoggerWriteSyncer), nil
 		} else {
-			return NewRaftLoggerZap(cfg.Logger), nil
+			return NewRaftLoggerZap(cfg.Logger.Named("raft")), nil
 		}
 	}
 	return nil, nil
