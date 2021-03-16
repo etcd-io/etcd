@@ -64,6 +64,8 @@ func TestWatchFragmentEnableWithGRPCLimit(t *testing.T) {
 // testWatchFragment triggers watch response that spans over multiple
 // revisions exceeding server request limits when combined.
 func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
+	integration.BeforeTest(t)
+
 	cfg := &integration.ClusterConfig{
 		Size:            1,
 		MaxRequestBytes: 1.5 * 1024 * 1024,

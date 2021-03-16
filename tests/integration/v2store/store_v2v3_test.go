@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2v3"
 	"go.etcd.io/etcd/tests/v3/integration"
@@ -28,18 +27,18 @@ import (
 // TODO: fix tests
 
 func runWithCluster(t testing.TB, runner func(testing.TB, []string)) {
-	testutil.BeforeTest(t)
+	integration.BeforeTest(t)
 	cfg := integration.ClusterConfig{Size: 1}
 	clus := integration.NewClusterV3(t, &cfg)
 	defer clus.Terminate(t)
 	endpoints := []string{clus.Client(0).Endpoints()[0]}
 	runner(t, endpoints)
-
 }
 
 func TestCreateKV(t *testing.T) { runWithCluster(t, testCreateKV) }
 
 func testCreateKV(t testing.TB, endpoints []string) {
+	integration.BeforeTest(t)
 	testCases := []struct {
 		key          string
 		value        string
@@ -132,6 +131,7 @@ func testSetKV(t testing.TB, endpoints []string) {
 func TestCreateSetDir(t *testing.T) { runWithCluster(t, testCreateSetDir) }
 
 func testCreateSetDir(t testing.TB, endpoints []string) {
+	integration.BeforeTest(t)
 	testCases := []struct {
 		dir string
 	}{

@@ -50,6 +50,8 @@ func MustFetchNotEmptyMetric(tb testing.TB, member *member, metric string, timeo
 // that were created in synced watcher group in the first place.
 // TODO: fix panic with gRPC proxy "panic: watcher current revision should not exceed current revision"
 func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{
 		Size:                   3,
 		SnapshotCount:          10,

@@ -34,6 +34,8 @@ import (
 // to the primary lessor, refresh the leases and start to manage leases.
 // TODO: use customized clock to make this test go faster?
 func TestV3LeasePromote(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -227,6 +229,8 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 // TestV3LeaseCheckpoint ensures a lease checkpoint results in a remaining TTL being persisted
 // across leader elections.
 func TestV3LeaseCheckpoint(t *testing.T) {
+	BeforeTest(t)
+
 	var ttl int64 = 300
 	leaseInterval := 2 * time.Second
 	BeforeTest(t)
@@ -644,6 +648,8 @@ const fiveMinTTL int64 = 300
 
 // TestV3LeaseRecoverAndRevoke ensures that revoking a lease after restart deletes the attached key.
 func TestV3LeaseRecoverAndRevoke(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -693,6 +699,8 @@ func TestV3LeaseRecoverAndRevoke(t *testing.T) {
 
 // TestV3LeaseRevokeAndRecover ensures that revoked key stays deleted after restart.
 func TestV3LeaseRevokeAndRecover(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -743,6 +751,8 @@ func TestV3LeaseRevokeAndRecover(t *testing.T) {
 // TestV3LeaseRecoverKeyWithDetachedLease ensures that revoking a detached lease after restart
 // does not delete the key.
 func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -797,6 +807,8 @@ func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 }
 
 func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 

@@ -146,8 +146,8 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 
 // TestCorruptedBackupFileCheck tests if we can correctly identify a corrupted backup file.
 func TestCorruptedBackupFileCheck(t *testing.T) {
+	dbPath := integration.MustAbsPath("testdata/corrupted_backup.db")
 	integration.BeforeTest(t)
-	dbPath := "testdata/corrupted_backup.db"
 	if _, err := os.Stat(dbPath); err != nil {
 		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)
 	}

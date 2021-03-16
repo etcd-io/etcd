@@ -42,6 +42,7 @@ type v2v3TestStore struct {
 func (s *v2v3TestStore) Close() { s.clus.Terminate(s.t) }
 
 func newTestStore(t *testing.T, ns ...string) StoreCloser {
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	return &v2v3TestStore{
 		v2v3.NewStore(clus.Client(0), "/v2/"),

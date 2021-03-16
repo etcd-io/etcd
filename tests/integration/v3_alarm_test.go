@@ -24,7 +24,6 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc"
@@ -35,7 +34,7 @@ import (
 
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply
 func TestV3StorageQuotaApply(t *testing.T) {
-	testutil.BeforeTest(t)
+	BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 2})
@@ -115,6 +114,8 @@ func TestV3StorageQuotaApply(t *testing.T) {
 
 // TestV3AlarmDeactivate ensures that space alarms can be deactivated so puts go through.
 func TestV3AlarmDeactivate(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	kvc := toGRPC(clus.RandClient()).KV
