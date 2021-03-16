@@ -355,14 +355,17 @@ func (s *v3Manager) saveDB() error {
 	// update consistentIndex so applies go through on etcdserver despite
 	// having a new raft instance
 	be := backend.NewDefaultBackend(dbpath)
+	defer be.Close()
 
 	ci := cindex.NewConsistentIndex(be.BatchTx())
 	ci.SetConsistentIndex(uint64(commit))
 
 	// a lessor never timeouts leases
 	lessor := lease.NewLessor(s.lg, be, lease.LessorConfig{MinLeaseTTL: math.MaxInt64}, ci)
+	defer lessor.Stop()
 
 	mvs := mvcc.NewStore(s.lg, be, lessor, ci, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
+	defer mvs.Close()
 	txn := mvs.Write(traceutil.TODO())
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {
@@ -380,9 +383,6 @@ func (s *v3Manager) saveDB() error {
 	txn.End()
 
 	mvs.Commit()
-	mvs.Close()
-	be.Close()
-
 	return nil
 }
 
