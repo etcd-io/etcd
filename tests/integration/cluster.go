@@ -1272,6 +1272,15 @@ func NewClusterV3(t testutil.TB, cfg *ClusterConfig) *ClusterV3 {
 	t.Helper()
 	testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
 
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(wd, os.TempDir()) {
+		t.Errorf("Working directory '%s' expected to be in temp-dir ('%s')."+
+			"Have you executed integration.BeforeTest(t) ?", wd, os.TempDir())
+	}
+
 	cfg.UseGRPC = true
 	if os.Getenv("CLIENT_DEBUG") != "" {
 		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
