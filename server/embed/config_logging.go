@@ -21,6 +21,7 @@ import (
 	"os"
 	"sync"
 
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"go.etcd.io/etcd/pkg/v3/logutil"
 
 	"go.uber.org/zap"
@@ -232,7 +233,11 @@ func NewZapCoreLoggerBuilder(lg *zap.Logger, cr zapcore.Core, syncer zapcore.Wri
 		cfg.loggerWriteSyncer = syncer
 
 		grpcLogOnce.Do(func() {
-			grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
+			if cr != nil && syncer != nil {
+				grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
+			} else {
+				grpc_zap.ReplaceGrpcLoggerV2(cfg.logger.Named("grpc"))
+			}
 		})
 		return nil
 	}

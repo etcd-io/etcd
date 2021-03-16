@@ -17,10 +17,12 @@ package integration
 import (
 	"os"
 	"path/filepath"
+	"testing"
 
 	grpc_logsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/server/v3/embed"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -53,4 +55,12 @@ func MustAbsPath(path string) string {
 		panic(err)
 	}
 	return abs
+}
+
+func NewEmbedConfig(t testing.TB, name string) *embed.Config {
+	cfg := embed.NewConfig()
+	cfg.Name = name
+	cfg.ZapLoggerBuilder = embed.NewZapCoreLoggerBuilder(zaptest.NewLogger(t).Named(cfg.Name), nil, nil)
+	cfg.Dir = t.TempDir()
+	return cfg
 }
