@@ -18,20 +18,12 @@
 package v2store_test
 
 import (
-	"io/ioutil"
 	"testing"
 
-	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2v3"
 	"go.etcd.io/etcd/tests/v3/integration"
-
-	"google.golang.org/grpc/grpclog"
 )
-
-func init() {
-	clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
-}
 
 type v2v3TestStore struct {
 	v2store.Store

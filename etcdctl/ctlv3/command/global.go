@@ -131,7 +131,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		ExitWithError(ExitError, err)
 	}
 	if debug {
-		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
 		fs.VisitAll(func(f *pflag.Flag) {
 			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
 		})
@@ -140,7 +140,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		// too many routine connection disconnects to turn on by default.
 		//
 		// See https://github.com/etcd-io/etcd/pull/9623 for background
-		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	}
 
 	cfg := &clientConfig{}
