@@ -17,12 +17,25 @@ package integration
 import (
 	"os"
 	"path/filepath"
+	"testing"
 
+	grpc_logsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/server/v3/embed"
+	"go.uber.org/zap/zaptest"
 )
+
+var grpc_logger grpc_logsettable.SettableLoggerV2
+
+func init() {
+	grpc_logger = grpc_logsettable.ReplaceGrpcLoggerV2()
+}
 
 func BeforeTest(t testutil.TB) {
 	testutil.BeforeTest(t)
+
+	grpc_zap.SetGrpcLoggerV2(grpc_logger, zaptest.NewLogger(t).Named("grpc"))
 
 	previousWD, err := os.Getwd()
 	if err != nil {
@@ -30,6 +43,7 @@ func BeforeTest(t testutil.TB) {
 	}
 	os.Chdir(t.TempDir())
 	t.Cleanup(func() {
+		grpc_logger.Reset()
 		os.Chdir(previousWD)
 	})
 
@@ -41,4 +55,12 @@ func MustAbsPath(path string) string {
 		panic(err)
 	}
 	return abs
+}
+
+func NewEmbedConfig(t testing.TB, name string) *embed.Config {
+	cfg := embed.NewConfig()
+	cfg.Name = name
+	cfg.ZapLoggerBuilder = embed.NewZapCoreLoggerBuilder(zaptest.NewLogger(t).Named(cfg.Name), nil, nil)
+	cfg.Dir = t.TempDir()
+	return cfg
 }

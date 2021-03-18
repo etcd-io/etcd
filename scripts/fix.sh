@@ -2,6 +2,9 @@
 
 set -e
 
+# Top level problems with modules can lead to test_lib being not functional
+go mod tidy
+
 source ./scripts/test_lib.sh
 source ./scripts/updatebom.sh
 
@@ -28,7 +31,6 @@ function bash_ws_fix {
 
 log_callout -e "\\nFixing etcd code for you...\\n"
 
-go mod tidy
 run_for_modules mod_tidy_fix || exit 2
 run_for_modules run ${GO_CMD} fmt || exit 2
 run_for_module tests bom_fix || exit 2

@@ -242,10 +242,6 @@ function go_test {
   if [ "${VERBOSE}" == "1" ]; then
     goTestFlags="-v"
   fi
-  if [ "${VERBOSE}" == "2" ]; then
-    goTestFlags="-v"
-    goTestEnv="CLIENT_DEBUG=1"
-  fi
 
   # Expanding patterns (like ./...) into list of packages
 
@@ -270,6 +266,7 @@ function go_test {
     # shellcheck disable=SC2206
     local cmd=( go test ${goTestFlags} ${additional_flags} "$@" ${pkg} )
 
+    # shellcheck disable=SC2086
     if ! run env ${goTestEnv} "${cmd[@]}" ; then
       if [ "${mode}" != "keep_going" ]; then
         return 2

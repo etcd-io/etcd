@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/tests/v3/integration"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -43,16 +44,12 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	urls := newEmbedURLs(clusterN * 2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
-	cfg := embed.NewConfig()
-	cfg.Logger = "zap"
-	cfg.LogOutputs = []string{"/dev/null"}
-	cfg.Name = "s1"
+	cfg := integration.NewEmbedConfig(t, "s1")
 	cfg.InitialClusterToken = testClusterTkn
 	cfg.ClusterState = "existing"
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
 	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
-	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 
 	sp := snapshot.NewV3(zaptest.NewLogger(t))
 	pss := make([]string, 0, len(pURLs))
@@ -108,13 +105,11 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 func TestSnapshotV3RestoreMulti(t *testing.T) {
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
-	defer os.RemoveAll(dbPath)
 
 	clusterN := 3
 	cURLs, _, srvs := restoreCluster(t, clusterN, dbPath)
 	defer func() {
 		for i := 0; i < clusterN; i++ {
-			os.RemoveAll(srvs[i].Config().Dir)
 			srvs[i].Close()
 		}
 	}()
@@ -143,7 +138,8 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 
 // TestCorruptedBackupFileCheck tests if we can correctly identify a corrupted backup file.
 func TestCorruptedBackupFileCheck(t *testing.T) {
-	dbPath := "testdata/corrupted_backup.db"
+	dbPath := integration.MustAbsPath("testdata/corrupted_backup.db")
+	integration.BeforeTest(t)
 	if _, err := os.Stat(dbPath); err != nil {
 		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)
 	}
@@ -178,21 +174,16 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	urls := newEmbedURLs(clusterN * 2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
-	cfg := embed.NewConfig()
-	cfg.Logger = "zap"
-	cfg.LogOutputs = []string{"/dev/null"}
-	cfg.Name = "default"
+	cfg := integration.NewEmbedConfig(t, "default")
 	cfg.ClusterState = "new"
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
 	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
-	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		os.RemoveAll(cfg.Dir)
 		srv.Close()
 	}()
 	select {
@@ -244,18 +235,15 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 
 	cfgs := make([]*embed.Config, clusterN)
 	for i := 0; i < clusterN; i++ {
-		cfg := embed.NewConfig()
-		cfg.Logger = "zap"
-		cfg.LogOutputs = []string{"/dev/null"}
-		cfg.Name = fmt.Sprintf("%d", i)
+		cfg := integration.NewEmbedConfig(t, fmt.Sprintf("%d", i))
 		cfg.InitialClusterToken = testClusterTkn
 		cfg.ClusterState = "existing"
 		cfg.LCUrls, cfg.ACUrls = []url.URL{cURLs[i]}, []url.URL{cURLs[i]}
 		cfg.LPUrls, cfg.APUrls = []url.URL{pURLs[i]}, []url.URL{pURLs[i]}
 		cfg.InitialCluster = ics
-		cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprint(time.Now().Nanosecond()+i))
 
 		sp := snapshot.NewV3(zaptest.NewLogger(t))
+
 		if err := sp.Restore(snapshot.RestoreConfig{
 			SnapshotPath:        dbPath,
 			Name:                cfg.Name,
@@ -266,6 +254,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		}); err != nil {
 			t.Fatal(err)
 		}
+
 		cfgs[i] = cfg
 	}
 
