@@ -189,7 +189,7 @@ func (lc *leaseExpireChecker) check(expired bool, leases map[int64]time.Time) er
 	return nil
 }
 
-// TODO: handle failures from "grpc.FailFast(false)"
+// TODO: handle failures from "grpc.WaitForReady(true)"
 func (lc *leaseExpireChecker) getLeaseByID(ctx context.Context, leaseID int64) (*clientv3.LeaseTimeToLiveResponse, error) {
 	return lc.cli.TimeToLive(
 		ctx,

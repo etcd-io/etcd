@@ -238,17 +238,17 @@ func (l *lessor) Revoke(ctx context.Context, id LeaseID) (*LeaseRevokeResponse, 
 func (l *lessor) TimeToLive(ctx context.Context, id LeaseID, opts ...LeaseOption) (*LeaseTimeToLiveResponse, error) {
 	r := toLeaseTimeToLiveRequest(id, opts...)
 	resp, err := l.remote.LeaseTimeToLive(ctx, r, l.callOpts...)
-	if err == nil {
-		gresp := &LeaseTimeToLiveResponse{
-			ResponseHeader: resp.GetHeader(),
-			ID:             LeaseID(resp.ID),
-			TTL:            resp.TTL,
-			GrantedTTL:     resp.GrantedTTL,
-			Keys:           resp.Keys,
-		}
-		return gresp, nil
+	if err != nil {
+		return nil, toErr(ctx, err)
 	}
-	return nil, toErr(ctx, err)
+	gresp := &LeaseTimeToLiveResponse{
+		ResponseHeader: resp.GetHeader(),
+		ID:             LeaseID(resp.ID),
+		TTL:            resp.TTL,
+		GrantedTTL:     resp.GrantedTTL,
+		Keys:           resp.Keys,
+	}
+	return gresp, nil
 }
 
 func (l *lessor) Leases(ctx context.Context) (*LeaseLeasesResponse, error) {

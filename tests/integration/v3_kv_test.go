@@ -50,13 +50,13 @@ func TestKVWithEmptyValue(t *testing.T) {
 	}
 
 	//Remove all keys without WithFromKey/WithPrefix func
-	respDel, err := client.Delete(context.Background(), "")
+	_, err = client.Delete(context.Background(), "")
 	if err == nil {
 		// fatal error duo to without WithFromKey/WithPrefix func called.
 		t.Fatal(err)
 	}
 
-	respDel, err = client.Delete(context.Background(), "", clientv3.WithFromKey())
+	respDel, err := client.Delete(context.Background(), "", clientv3.WithFromKey())
 	if err != nil {
 		// fatal error duo to with WithFromKey/WithPrefix func called.
 		t.Fatal(err)

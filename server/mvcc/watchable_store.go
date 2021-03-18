@@ -356,8 +356,7 @@ func (s *watchableStore) syncWatchers() int {
 	tx.RLock()
 	revs, vs := tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
 	tx.RUnlock()
-	var evs []mvccpb.Event
-	evs = kvsToEvents(s.store.lg, wg, revs, vs)
+	evs := kvsToEvents(s.store.lg, wg, revs, vs)
 
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)

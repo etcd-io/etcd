@@ -79,7 +79,7 @@ func TestV3KVInflightRangeRequests(t *testing.T) {
 	for i := 0; i < reqN; i++ {
 		go func() {
 			defer wg.Done()
-			_, err := kvc.Range(ctx, &pb.RangeRequest{Key: []byte("foo"), Serializable: true}, grpc.FailFast(false))
+			_, err := kvc.Range(ctx, &pb.RangeRequest{Key: []byte("foo"), Serializable: true}, grpc.WaitForReady(true))
 			if err != nil {
 				errCode := status.Convert(err).Code()
 				errDesc := rpctypes.ErrorDesc(err)
