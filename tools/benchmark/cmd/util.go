@@ -123,7 +123,7 @@ func mustCreateConn() *clientv3.Client {
 		return mustCreateConn()
 	}
 
-	clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dial error: %v\n", err)

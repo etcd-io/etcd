@@ -781,7 +781,11 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	if m.DialOptions != nil {
 		cfg.DialOptions = append(cfg.DialOptions, m.DialOptions...)
 	}
-	return newClientV3(cfg)
+	c, err := newClientV3(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return c.WithLogger(m.Logger.Named("client")), nil
 }
 
 // Clone returns a member with the same server configuration. The returned

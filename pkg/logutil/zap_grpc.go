@@ -36,7 +36,7 @@ func NewGRPCLoggerV2(lcfg zap.Config) (grpclog.LoggerV2, error) {
 // if debug level is not enabled in "*zap.Logger".
 func NewGRPCLoggerV2FromZapCore(cr zapcore.Core, syncer zapcore.WriteSyncer) grpclog.LoggerV2 {
 	// "AddCallerSkip" to annotate caller outside of "logutil"
-	lg := zap.New(cr, zap.AddCaller(), zap.AddCallerSkip(1), zap.ErrorOutput(syncer))
+	lg := zap.New(cr, zap.AddCaller(), zap.AddCallerSkip(1), zap.ErrorOutput(syncer)).Named("grpc")
 	return &zapGRPCLogger{lg: lg, sugar: lg.Sugar()}
 }
 
