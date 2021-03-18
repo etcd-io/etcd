@@ -103,7 +103,6 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 		},
 	}
 	cli, err := clientv3.New(cfg)
-	defer cli.Close()
 	if err != nil {
 		t.Fatal(err)
 	}

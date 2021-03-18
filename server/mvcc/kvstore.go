@@ -268,7 +268,7 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 		keep := s.kvindex.Compact(rev)
 		indexCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 		if !s.scheduleCompaction(rev, keep) {
-			s.compactBarrier(nil, ch)
+			s.compactBarrier(context.TODO(), ch)
 			return
 		}
 		close(ch)

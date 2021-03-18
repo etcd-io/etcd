@@ -1943,7 +1943,7 @@ func waitForRestart(t *testing.T, kvc pb.KVClient) {
 	// TODO: Remove retry loop once the new grpc load balancer provides retry.
 	var err error
 	for i := 0; i < 10; i++ {
-		if _, err = kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
+		if _, err = kvc.Range(context.TODO(), req, grpc.WaitForReady(true)); err != nil {
 			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
 				time.Sleep(time.Millisecond * 250)
 			} else {

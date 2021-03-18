@@ -122,7 +122,7 @@ func (s *keyStresser) run() {
 		// and immediate leader election. Find out what other cases this
 		// could be timed out.
 		sctx, scancel := context.WithTimeout(s.ctx, 10*time.Second)
-		err, modifiedKeys := s.stressTable.choose()(sctx)
+		modifiedKeys, err := s.stressTable.choose()(sctx)
 		scancel()
 		if err == nil {
 			atomic.AddInt64(&s.atomicModifiedKeys, modifiedKeys)
@@ -221,7 +221,7 @@ func (s *keyStresser) ModifiedKeys() int64 {
 	return atomic.LoadInt64(&s.atomicModifiedKeys)
 }
 
-type stressFunc func(ctx context.Context) (err error, modifiedKeys int64)
+type stressFunc func(ctx context.Context) (modifiedKeys int64, err error)
 
 type stressEntry struct {
 	weight float64
@@ -256,13 +256,13 @@ func (st *stressTable) choose() stressFunc {
 }
 
 func newStressPut(cli *clientv3.Client, keySuffixRange, keySize int) stressFunc {
-	return func(ctx context.Context) (error, int64) {
+	return func(ctx context.Context) (int64, error) {
 		_, err := cli.Put(
 			ctx,
 			fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange)),
 			string(randBytes(keySize)),
 		)
-		return err, 1
+		return 1, err
 	}
 }
 
@@ -275,7 +275,7 @@ func newStressTxn(cli *clientv3.Client, keyTxnSuffixRange, txnOps int) stressFun
 }
 
 func writeTxn(cli *clientv3.Client, keys []string, txnOps int) stressFunc {
-	return func(ctx context.Context) (error, int64) {
+	return func(ctx context.Context) (int64, error) {
 		ks := make(map[string]struct{}, txnOps)
 		for len(ks) != txnOps {
 			ks[keys[rand.Intn(len(keys))]] = struct{}{}
@@ -303,7 +303,7 @@ func writeTxn(cli *clientv3.Client, keys []string, txnOps int) stressFunc {
 			Then(thenOps...).
 			Else(elseOps...).
 			Commit()
-		return err, int64(txnOps)
+		return int64(txnOps), err
 	}
 }
 
@@ -319,14 +319,14 @@ func getTxnOps(k, v string) (
 }
 
 func newStressRange(cli *clientv3.Client, keySuffixRange int) stressFunc {
-	return func(ctx context.Context) (error, int64) {
+	return func(ctx context.Context) (int64, error) {
 		_, err := cli.Get(ctx, fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange)))
-		return err, 0
+		return 0, err
 	}
 }
 
 func newStressRangeInterval(cli *clientv3.Client, keySuffixRange int) stressFunc {
-	return func(ctx context.Context) (error, int64) {
+	return func(ctx context.Context) (int64, error) {
 		start := rand.Intn(keySuffixRange)
 		end := start + 500
 		_, err := cli.Get(
@@ -334,19 +334,19 @@ func newStressRangeInterval(cli *clientv3.Client, keySuffixRange int) stressFunc
 			fmt.Sprintf("foo%016x", start),
 			clientv3.WithRange(fmt.Sprintf("foo%016x", end)),
 		)
-		return err, 0
+		return 0, err
 	}
 }
 
 func newStressDelete(cli *clientv3.Client, keySuffixRange int) stressFunc {
-	return func(ctx context.Context) (error, int64) {
+	return func(ctx context.Context) (int64, error) {
 		_, err := cli.Delete(ctx, fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange)))
-		return err, 1
+		return 1, err
 	}
 }
 
 func newStressDeleteInterval(cli *clientv3.Client, keySuffixRange int) stressFunc {
-	return func(ctx context.Context) (error, int64) {
+	return func(ctx context.Context) (int64, error) {
 		start := rand.Intn(keySuffixRange)
 		end := start + 500
 		resp, err := cli.Delete(ctx,
@@ -354,8 +354,8 @@ func newStressDeleteInterval(cli *clientv3.Client, keySuffixRange int) stressFun
 			clientv3.WithRange(fmt.Sprintf("foo%016x", end)),
 		)
 		if err == nil {
-			return nil, resp.Deleted
+			return resp.Deleted, nil
 		}
-		return err, 0
+		return 0, err
 	}
 }

@@ -97,7 +97,6 @@ func testSetKV(t testing.TB, endpoints []string) {
 	testCases := []struct {
 		key            string
 		value          string
-		dir            bool
 		wantIndexMatch bool
 	}{
 		{key: "/sdir/set", value: "1", wantIndexMatch: true},
@@ -147,7 +146,7 @@ func testCreateSetDir(t testing.TB, endpoints []string) {
 	v2 := v2v3.NewStore(cli, "")
 
 	for ti, tc := range testCases {
-		ev, err := v2.Create(tc.dir, true, "", false, v2store.TTLOptionSet{})
+		_, err := v2.Create(tc.dir, true, "", false, v2store.TTLOptionSet{})
 		if err != nil {
 			t.Skipf("%d: got err %v", ti, err)
 		}
@@ -156,7 +155,7 @@ func testCreateSetDir(t testing.TB, endpoints []string) {
 			t.Skipf("%d: expected err got nil", ti)
 		}
 
-		ev, err = v2.Delete("ddir", true, true)
+		ev, err := v2.Delete("ddir", true, true)
 		if err != nil {
 			t.Skipf("%d: got err %v", ti, err)
 		}

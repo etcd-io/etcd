@@ -36,7 +36,7 @@ func (lo *ListenerOptions) IsSocketOpts() bool {
 	if lo.socketOpts == nil {
 		return false
 	}
-	return lo.socketOpts.ReusePort == true || lo.socketOpts.ReuseAddress == true
+	return lo.socketOpts.ReusePort || lo.socketOpts.ReuseAddress
 }
 
 // IsTLS returns true if listner options includes TLSInfo.
@@ -44,7 +44,7 @@ func (lo *ListenerOptions) IsTLS() bool {
 	if lo.tlsInfo == nil {
 		return false
 	}
-	return lo.tlsInfo.Empty() == false
+	return !lo.tlsInfo.Empty()
 }
 
 // ListenerOption are options which can be applied to the listener.

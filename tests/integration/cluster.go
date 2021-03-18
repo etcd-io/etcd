@@ -528,10 +528,6 @@ func (c *cluster) waitVersion() {
 	}
 }
 
-func (c *cluster) name(i int) string {
-	return fmt.Sprint(i)
-}
-
 // isMembersEqual checks whether two members equal except ID field.
 // The given wmembs should always set ID field to empty string.
 func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {

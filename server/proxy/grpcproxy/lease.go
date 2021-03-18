@@ -74,7 +74,7 @@ func NewLeaseProxy(ctx context.Context, c *clientv3.Client) (pb.LeaseServer, <-c
 }
 
 func (lp *leaseProxy) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	rp, err := lp.leaseClient.LeaseGrant(ctx, cr, grpc.FailFast(false))
+	rp, err := lp.leaseClient.LeaseGrant(ctx, cr, grpc.WaitForReady(true))
 	if err != nil {
 		return nil, err
 	}

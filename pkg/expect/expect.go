@@ -120,8 +120,8 @@ func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 		}
 	}
 	ep.mu.Unlock()
-	return "", fmt.Errorf("Match not found."+
-		" Set EXPECT_DEBUG for more info Err: %v, last lines:\n%s\n\n",
+	return "", fmt.Errorf("match not found."+
+		" Set EXPECT_DEBUG for more info Err: %v, last lines:\n%s",
 		ep.err, strings.Join(lastLinesBuffer, ""))
 }
 

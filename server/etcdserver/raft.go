@@ -461,7 +461,7 @@ func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
 	}
-	c.Logger, err = getRaftLogger(cfg)
+	c.Logger, _ = getRaftLogger(cfg)
 
 	if len(peers) == 0 {
 		n = raft.RestartNode(c)

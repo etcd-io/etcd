@@ -41,5 +41,5 @@ func getControls(sopts *SocketOpts) Controls {
 }
 
 func (sopts *SocketOpts) Empty() bool {
-	return sopts.ReuseAddress == false && sopts.ReusePort == false
+	return !sopts.ReuseAddress && !sopts.ReusePort
 }

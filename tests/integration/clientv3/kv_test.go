@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/integration"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestKVPutError(t *testing.T) {
@@ -951,7 +952,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10 * 1024 * 1024,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
+			expectError:            status.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
 		},
 		{
 			maxRequestBytesServer:  10 * 1024 * 1024,
@@ -965,7 +966,7 @@ func TestKVLargeRequests(t *testing.T) {
 			maxCallSendBytesClient: 10 * 1024 * 1024,
 			maxCallRecvBytesClient: 0,
 			valueSize:              10*1024*1024 + 5,
-			expectError:            grpc.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
+			expectError:            status.Errorf(codes.ResourceExhausted, "trying to send message larger than max "),
 		},
 	}
 	for i, test := range tests {

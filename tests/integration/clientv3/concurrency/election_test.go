@@ -68,20 +68,15 @@ func TestResumeElection(t *testing.T) {
 		defer close(respChan)
 		o := e.Observe(ctx)
 		respChan <- nil
-		for {
-			select {
-			case resp, ok := <-o:
-				if !ok {
-					t.Error("Observe() channel closed prematurely")
-				}
-				// Ignore any observations that candidate1 was elected
-				if string(resp.Kvs[0].Value) == "candidate1" {
-					continue
-				}
-				respChan <- &resp
-				return
+		for resp := range o {
+			// Ignore any observations that candidate1 was elected
+			if string(resp.Kvs[0].Value) == "candidate1" {
+				continue
 			}
+			respChan <- &resp
+			return
 		}
+		t.Error("Observe() channel closed prematurely")
 	}()
 
 	// wait until observe goroutine is running
