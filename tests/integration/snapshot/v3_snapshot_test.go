@@ -36,6 +36,7 @@ import (
 // TestSnapshotV3RestoreSingle tests single node cluster restoring
 // from a snapshot file.
 func TestSnapshotV3RestoreSingle(t *testing.T) {
+	integration.BeforeTest(t)
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
 	defer os.RemoveAll(dbPath)
@@ -103,6 +104,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 // can boot into the same cluster after being restored from a same
 // snapshot file.
 func TestSnapshotV3RestoreMulti(t *testing.T) {
+	integration.BeforeTest(t)
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
 

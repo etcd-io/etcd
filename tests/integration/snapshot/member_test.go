@@ -32,6 +32,8 @@ import (
 // can boot into the same cluster after being restored from a same
 // snapshot file, and also be able to add another member to the cluster.
 func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
+	integration.BeforeTest(t)
+
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
 

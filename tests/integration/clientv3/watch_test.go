@@ -299,6 +299,8 @@ func TestWatchCancelRunning(t *testing.T) {
 }
 
 func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
+	integration.BeforeTest(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	if wctx.ch = wctx.w.Watch(ctx, "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil watcher channel")
@@ -583,6 +585,8 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 }
 
 func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
+	integration.BeforeTest(t)
+
 	progressInterval := 200 * time.Millisecond
 	clus := integration.NewClusterV3(t,
 		&integration.ClusterConfig{
@@ -607,6 +611,8 @@ func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
 }
 
 func TestWatchRequestProgress(t *testing.T) {
+	integration.BeforeTest(t)
+
 	if integration.ThroughProxy {
 		t.Skipf("grpc-proxy does not support WatchProgress yet")
 	}
@@ -682,6 +688,8 @@ func TestWatchRequestProgress(t *testing.T) {
 }
 
 func TestWatchEventType(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -886,6 +894,8 @@ func TestWatchWithRequireLeader(t *testing.T) {
 
 // TestWatchWithFilter checks that watch filtering works.
 func TestWatchWithFilter(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -923,6 +933,8 @@ func TestWatchWithFilter(t *testing.T) {
 // TestWatchWithCreatedNotification checks that WithCreatedNotify returns a
 // Created watch response.
 func TestWatchWithCreatedNotification(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -943,6 +955,8 @@ func TestWatchWithCreatedNotification(t *testing.T) {
 // a watcher with created notify does not post duplicate
 // created events from disconnect.
 func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -970,6 +984,8 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 
 // TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
 func TestWatchCancelOnServer(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 

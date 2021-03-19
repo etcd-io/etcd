@@ -1074,6 +1074,8 @@ func TestV3WatchClose(t *testing.T) {
 
 // TestV3WatchWithFilter ensures watcher filters out the events correctly.
 func TestV3WatchWithFilter(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1215,6 +1217,8 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 
 // TestV3WatchCancellation ensures that watch cancellation frees up server resources.
 func TestV3WatchCancellation(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1255,6 +1259,8 @@ func TestV3WatchCancellation(t *testing.T) {
 
 // TestV3WatchCloseCancelRace ensures that watch close doesn't decrement the watcher total too far.
 func TestV3WatchCloseCancelRace(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 

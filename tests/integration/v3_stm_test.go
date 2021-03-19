@@ -28,6 +28,8 @@ import (
 
 // TestSTMConflict tests that conflicts are retried.
 func TestSTMConflict(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -94,6 +96,8 @@ func TestSTMConflict(t *testing.T) {
 
 // TestSTMPutNewKey confirms a STM put on a new key is visible after commit.
 func TestSTMPutNewKey(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -119,6 +123,8 @@ func TestSTMPutNewKey(t *testing.T) {
 
 // TestSTMAbort tests that an aborted txn does not modify any keys.
 func TestSTMAbort(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -148,6 +154,8 @@ func TestSTMAbort(t *testing.T) {
 
 // TestSTMSerialize tests that serialization is honored when serializable.
 func TestSTMSerialize(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -209,6 +217,8 @@ func TestSTMSerialize(t *testing.T) {
 // TestSTMApplyOnConcurrentDeletion ensures that concurrent key deletion
 // fails the first GET revision comparison within STM; trigger retry.
 func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -256,6 +266,8 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 }
 
 func TestSTMSerializableSnapshotPut(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 

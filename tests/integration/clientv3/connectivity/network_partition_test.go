@@ -240,9 +240,9 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	clientv3test.MustWaitPinReady(t, watchCli)
 	t.Logf("successful connection with server: %v", target)
 
-	// add all eps to list, so that when the original pined one fails
-	// the client can switch to other available eps
-	watchCli.SetEndpoints(eps...)
+	// We stick to the original endpoint, so when the one fails we don't switch
+	// under the cover to other available eps, but expose the failure to the
+	// caller (test assertion).
 
 	wch := watchCli.Watch(clientv3.WithRequireLeader(context.Background()), "foo", clientv3.WithCreatedNotify())
 	select {
