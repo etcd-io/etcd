@@ -36,29 +36,29 @@ func TestProtoMemorySizes(t *testing.T) {
 	}
 
 	var e Entry
-	assert(unsafe.Sizeof(e), if64Bit(80, 48), "Entry")
+	assert(unsafe.Sizeof(e), if64Bit(48, 32), "Entry")
 
 	var sm SnapshotMetadata
-	assert(unsafe.Sizeof(sm), if64Bit(184, 100), "SnapshotMetadata")
+	assert(unsafe.Sizeof(sm), if64Bit(120, 68), "SnapshotMetadata")
 
 	var s Snapshot
-	assert(unsafe.Sizeof(s), if64Bit(240, 128), "Snapshot")
+	assert(unsafe.Sizeof(s), if64Bit(144, 80), "Snapshot")
 
 	var m Message
-	assert(unsafe.Sizeof(m), if64Bit(392, 232), "Message")
+	assert(unsafe.Sizeof(m), if64Bit(264, 168), "Message")
 
 	var hs HardState
-	assert(unsafe.Sizeof(hs), if64Bit(56, 40), "HardState")
+	assert(unsafe.Sizeof(hs), 24, "HardState")
 
 	var cs ConfState
-	assert(unsafe.Sizeof(cs), if64Bit(136, 68), "ConfState")
+	assert(unsafe.Sizeof(cs), if64Bit(104, 52), "ConfState")
 
 	var cc ConfChange
-	assert(unsafe.Sizeof(cc), if64Bit(80, 48), "ConfChange")
+	assert(unsafe.Sizeof(cc), if64Bit(48, 32), "ConfChange")
 
 	var ccs ConfChangeSingle
-	assert(unsafe.Sizeof(ccs), if64Bit(48, 28), "ConfChangeSingle")
+	assert(unsafe.Sizeof(ccs), if64Bit(16, 12), "ConfChangeSingle")
 
 	var ccv2 ConfChangeV2
-	assert(unsafe.Sizeof(ccv2), if64Bit(88, 44), "ConfChangeV2")
+	assert(unsafe.Sizeof(ccv2), if64Bit(56, 28), "ConfChangeV2")
 }
