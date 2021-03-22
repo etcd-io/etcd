@@ -114,7 +114,6 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketName, key, endKey []byte, limit 
 	}
 	if !lockHeld {
 		baseReadTx.txMu.Lock()
-		lockHeld = true
 	}
 	c := bucket.Cursor()
 	baseReadTx.txMu.Unlock()
