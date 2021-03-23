@@ -218,7 +218,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	httpClient := mustNewHTTPClient(lg)
 
 	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client, proxyClient)
-	errc := make(chan error)
+	errc := make(chan error, 3)
 	go func() { errc <- newGRPCProxyServer(lg, client).Serve(grpcl) }()
 	go func() { errc <- srvhttp.Serve(httpl) }()
 	go func() { errc <- m.Serve() }()
