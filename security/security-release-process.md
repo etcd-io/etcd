@@ -11,7 +11,11 @@ The PSC is responsible for organizing the entire response including internal com
 The initial PSC will consist of volunteers who have been involved in the initial discussion:
 
 - Brandon Philips (**[@philips](https://github.com/philips)**) [4096R/154343260542DF34]
+- Gyuho Lee (**[@gyuho](https://github.com/gyuho)**)
+- Joe Betz (**[@jpbetz](https://github.com/jpbetz)**)
 - Sahdev Zala (**[@spzala](https://github.com/spzala)**)
+- Sam Batschelet (**[@hexfusion](https://github.com/hexfusion)**)
+- Xiang Li (**[@xiang90](https://github.com/xiang90)**)
 
 The PSC members will share various tasks as listed below:
 
