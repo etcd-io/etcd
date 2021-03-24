@@ -10,7 +10,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.16.0
 	golang.org/x/sys v0.0.0-20210305215415-5cdee2b1b5a0
-	google.golang.org/grpc v1.32.0
+	google.golang.org/grpc v1.36.0
 )
 
 replace (
