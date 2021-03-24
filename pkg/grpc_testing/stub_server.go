@@ -1,6 +1,7 @@
 package grpc_testing
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -16,7 +17,7 @@ import (
 // StubServer is a server that is easy to customize within individual test
 // cases.
 type StubServer struct {
-	testService *testpb.TestServiceService
+	testService testpb.TestServiceServer
 
 	// Network and Address are parameters for Listen. Defaults will be used if these are empty before Start.
 	Network string
@@ -27,7 +28,7 @@ type StubServer struct {
 	cleanups []func() // Lambdas executed in Stop(); populated by Start().
 }
 
-func New(testService *testpb.TestServiceService) *StubServer {
+func New(testService testpb.TestServiceServer) *StubServer {
 	return &StubServer{testService: testService}
 }
 
@@ -48,7 +49,7 @@ func (ss *StubServer) Start(sopts []grpc.ServerOption, dopts ...grpc.DialOption)
 	ss.cleanups = append(ss.cleanups, func() { lis.Close() })
 
 	s := grpc.NewServer(sopts...)
-	testpb.RegisterTestServiceService(s, ss.testService)
+	testpb.RegisterTestServiceServer(s, ss.testService)
 	go s.Serve(lis)
 	ss.cleanups = append(ss.cleanups, s.Stop)
 	ss.s = s
@@ -66,4 +67,24 @@ func (ss *StubServer) Stop() {
 // Addr gets the address the server listening on.
 func (ss *StubServer) Addr() string {
 	return ss.Address
+}
+
+type dummyStubServer struct {
+	testpb.UnimplementedTestServiceServer
+	body []byte
+}
+
+func (d dummyStubServer) UnaryCall(context.Context, *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
+	return &testpb.SimpleResponse{
+		Payload: &testpb.Payload{
+			Type: testpb.PayloadType_COMPRESSABLE,
+			Body: d.body,
+		},
+	}, nil
+}
+
+// NewDummyStubServer creates a simple test server that serves Unary calls with
+// responses with the given payload.
+func NewDummyStubServer(body []byte) *StubServer {
+	return New(dummyStubServer{body: body})
 }
