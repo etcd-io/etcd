@@ -387,6 +387,8 @@ func (s *v3Manager) saveDB() error {
 }
 
 // saveWALAndSnap creates a WAL for the initial cluster
+//
+// TODO: This code ignores learners !!!
 func (s *v3Manager) saveWALAndSnap() error {
 	if err := fileutil.CreateDirAll(s.walDir); err != nil {
 		return err
@@ -454,19 +456,20 @@ func (s *v3Manager) saveWALAndSnap() error {
 	if berr != nil {
 		return berr
 	}
+	confState := raftpb.ConfState{
+		Voters: nodeIDs,
+	}
 	raftSnap := raftpb.Snapshot{
 		Data: b,
 		Metadata: raftpb.SnapshotMetadata{
-			Index: commit,
-			Term:  term,
-			ConfState: raftpb.ConfState{
-				Voters: nodeIDs,
-			},
+			Index:     commit,
+			Term:      term,
+			ConfState: confState,
 		},
 	}
 	sn := snap.New(s.lg, s.snapDir)
 	if err := sn.SaveSnap(raftSnap); err != nil {
 		return err
 	}
-	return w.SaveSnapshot(walpb.Snapshot{Index: commit, Term: term})
+	return w.SaveSnapshot(walpb.Snapshot{Index: commit, Term: term, ConfState: &confState})
 }

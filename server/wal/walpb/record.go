@@ -27,3 +27,15 @@ func (rec *Record) Validate(crc uint32) error {
 	rec.Reset()
 	return ErrCRCMismatch
 }
+
+// ValidateSnapshotForWrite ensures the Snapshot the newly written snapshot is valid.
+//
+// There might exist log-entries written by old etcd versions that does not conform
+// to the requirements.
+func ValidateSnapshotForWrite(e *Snapshot) error {
+	// Since etcd>=3.5.0
+	if e.ConfState == nil && e.Index > 0 {
+		return errors.New("Saved (not-initial) snapshot is missing ConfState: " + e.String())
+	}
+	return nil
+}

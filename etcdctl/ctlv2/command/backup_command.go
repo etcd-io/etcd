@@ -109,7 +109,7 @@ func saveSnap(destSnap, srcSnap string) (walsnap walpb.Snapshot) {
 		log.Fatal(err)
 	}
 	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		walsnap.Index, walsnap.Term, walsnap.ConfState = snapshot.Metadata.Index, snapshot.Metadata.Term, &snapshot.Metadata.ConfState
 		newss := snap.New(zap.NewExample(), destSnap)
 		if err = newss.SaveSnap(*snapshot); err != nil {
 			log.Fatal(err)

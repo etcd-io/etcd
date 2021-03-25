@@ -608,7 +608,6 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]walpb.Snapshot, erro
 		}
 	}
 	snaps = snaps[:n:n]
-
 	return snaps, nil
 }
 
@@ -944,6 +943,10 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 }
 
 func (w *WAL) SaveSnapshot(e walpb.Snapshot) error {
+	if err := walpb.ValidateSnapshotForWrite(&e); err != nil {
+		return err
+	}
+
 	b := pbutil.MustMarshal(&e)
 
 	w.mu.Lock()
