@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/types"
@@ -46,7 +47,7 @@ func TestClusterMember(t *testing.T) {
 		{3, false},
 	}
 	for i, tt := range tests {
-		c := newTestCluster(membs)
+		c := newTestCluster(t, membs)
 		m := c.Member(tt.id)
 		if g := m != nil; g != tt.match {
 			t.Errorf("#%d: find member = %v, want %v", i, g, tt.match)
@@ -71,7 +72,7 @@ func TestClusterMemberByName(t *testing.T) {
 		{"node3", false},
 	}
 	for i, tt := range tests {
-		c := newTestCluster(membs)
+		c := newTestCluster(t, membs)
 		m := c.MemberByName(tt.name)
 		if g := m != nil; g != tt.match {
 			t.Errorf("#%d: find member = %v, want %v", i, g, tt.match)
@@ -83,7 +84,7 @@ func TestClusterMemberByName(t *testing.T) {
 }
 
 func TestClusterMemberIDs(t *testing.T) {
-	c := newTestCluster([]*Member{
+	c := newTestCluster(t, []*Member{
 		newTestMember(1, nil, "", nil),
 		newTestMember(4, nil, "", nil),
 		newTestMember(100, nil, "", nil),
@@ -142,7 +143,7 @@ func TestClusterPeerURLs(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		c := newTestCluster(tt.mems)
+		c := newTestCluster(t, tt.mems)
 		urls := c.PeerURLs()
 		if !reflect.DeepEqual(urls, tt.wurls) {
 			t.Errorf("#%d: PeerURLs = %v, want %v", i, urls, tt.wurls)
@@ -197,7 +198,7 @@ func TestClusterClientURLs(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		c := newTestCluster(tt.mems)
+		c := newTestCluster(t, tt.mems)
 		urls := c.ClientURLs()
 		if !reflect.DeepEqual(urls, tt.wurls) {
 			t.Errorf("#%d: ClientURLs = %v, want %v", i, urls, tt.wurls)
@@ -239,8 +240,8 @@ func TestClusterValidateAndAssignIDsBad(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		ecl := newTestCluster(tt.clmembs)
-		lcl := newTestCluster(tt.membs)
+		ecl := newTestCluster(t, tt.clmembs)
+		lcl := newTestCluster(t, tt.membs)
 		if err := ValidateClusterAndAssignIDs(zap.NewExample(), lcl, ecl); err == nil {
 			t.Errorf("#%d: unexpected update success", i)
 		}
@@ -266,8 +267,8 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		lcl := newTestCluster(tt.clmembs)
-		ecl := newTestCluster(tt.membs)
+		lcl := newTestCluster(t, tt.clmembs)
+		ecl := newTestCluster(t, tt.membs)
 		if err := ValidateClusterAndAssignIDs(zap.NewExample(), lcl, ecl); err != nil {
 			t.Errorf("#%d: unexpect update error: %v", i, err)
 		}
@@ -433,7 +434,7 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 }
 
 func TestClusterGenID(t *testing.T) {
-	cs := newTestCluster([]*Member{
+	cs := newTestCluster(t, []*Member{
 		newTestMember(1, nil, "", nil),
 		newTestMember(2, nil, "", nil),
 	})
@@ -486,7 +487,7 @@ func TestNodeToMemberBad(t *testing.T) {
 
 func TestClusterAddMember(t *testing.T) {
 	st := mockstore.NewRecorder()
-	c := newTestCluster(nil)
+	c := newTestCluster(t, nil)
 	c.SetStore(st)
 	c.AddMember(newTestMember(1, nil, "node1", nil))
 
@@ -509,7 +510,7 @@ func TestClusterAddMember(t *testing.T) {
 
 func TestClusterAddMemberAsLearner(t *testing.T) {
 	st := mockstore.NewRecorder()
-	c := newTestCluster(nil)
+	c := newTestCluster(t, nil)
 	c.SetStore(st)
 	c.AddMember(newTestMemberAsLearner(1, nil, "node1", nil))
 
@@ -531,7 +532,7 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 }
 
 func TestClusterMembers(t *testing.T) {
-	cls := newTestCluster([]*Member{
+	cls := newTestCluster(t, []*Member{
 		{ID: 1},
 		{ID: 20},
 		{ID: 100},
@@ -552,7 +553,7 @@ func TestClusterMembers(t *testing.T) {
 
 func TestClusterRemoveMember(t *testing.T) {
 	st := mockstore.NewRecorder()
-	c := newTestCluster(nil)
+	c := newTestCluster(t, nil)
 	c.SetStore(st)
 	c.RemoveMember(1)
 
@@ -591,7 +592,7 @@ func TestClusterUpdateAttributes(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		c := newTestCluster(tt.mems)
+		c := newTestCluster(t, tt.mems)
 		c.removed = tt.removed
 
 		c.UpdateAttributes(types.ID(1), Attributes{Name: name, ClientURLs: clientURLs})
@@ -616,8 +617,8 @@ func TestNodeToMember(t *testing.T) {
 	}
 }
 
-func newTestCluster(membs []*Member) *RaftCluster {
-	c := &RaftCluster{lg: zap.NewExample(), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+func newTestCluster(t testing.TB, membs []*Member) *RaftCluster {
+	c := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
 	for _, m := range membs {
 		c.members[m.ID] = m
 	}
@@ -721,7 +722,7 @@ func TestIsReadyToAddVotingMember(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		c := newTestCluster(tt.members)
+		c := newTestCluster(t, tt.members)
 		if got := c.IsReadyToAddVotingMember(); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 		}
@@ -853,7 +854,7 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		c := newTestCluster(tt.members)
+		c := newTestCluster(t, tt.members)
 		if got := c.IsReadyToRemoveVotingMember(tt.removeID); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 		}
@@ -940,7 +941,7 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		c := newTestCluster(tt.members)
+		c := newTestCluster(t, tt.members)
 		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
 			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 		}
