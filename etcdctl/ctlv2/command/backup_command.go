@@ -239,6 +239,8 @@ func saveDB(destDB, srcDB string, idx uint64, v3 bool) {
 	}
 
 	// remove membership information; should be clobbered by --force-new-cluster
+	// TODO: Consider refactoring to use backend.Backend instead of bolt
+	// and membership.TrimMembershipFromBackend.
 	for _, bucket := range []string{"members", "members_removed", "cluster"} {
 		tx.DeleteBucket([]byte(bucket))
 	}

@@ -676,6 +676,10 @@ func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, m
 	return members, removed
 }
 
+func membersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool) {
+	return mustReadMembersFromBackend(lg, be)
+}
+
 func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
 	if err != nil {

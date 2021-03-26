@@ -67,6 +67,66 @@ func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
 	tx.UnsafePut(membersRemovedBucketName, mkey, []byte("removed"))
 }
 
+func readMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool, error) {
+	members := make(map[types.ID]*Member)
+	removed := make(map[types.ID]bool)
+
+	tx := be.ReadTx()
+	tx.RLock()
+	defer tx.RUnlock()
+	err := tx.UnsafeForEach(membersBucketName, func(k, v []byte) error {
+		memberId := MustParseMemberIDFromBytes(lg, k)
+		m := &Member{ID: memberId}
+		if err := json.Unmarshal(v, &m); err != nil {
+			return err
+		}
+		members[memberId] = m
+		return nil
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't read members from backend: %w", err)
+	}
+
+	err = tx.UnsafeForEach(membersRemovedBucketName, func(k, v []byte) error {
+		memberId := MustParseMemberIDFromBytes(lg, k)
+		removed[memberId] = true
+		return nil
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't read members_removed from backend: %w", err)
+	}
+	return members, removed, nil
+}
+
+func mustReadMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool) {
+	members, removed, err := readMembersFromBackend(lg, be)
+	if err != nil {
+		lg.Panic("couldn't read members from backend", zap.Error(err))
+	}
+	return members, removed
+}
+
+func TrimMembershipFromBackend(lg *zap.Logger, be backend.Backend) error {
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	err := tx.UnsafeForEach(membersBucketName, func(k, v []byte) error {
+		tx.UnsafeDelete(membersBucketName, k)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	err = tx.UnsafeForEach(membersRemovedBucketName, func(k, v []byte) error {
+		tx.UnsafeDelete(membersRemovedBucketName, k)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 	ckey := backendClusterVersionKey()
 
@@ -221,10 +281,18 @@ func MemberAttributesStorePath(id types.ID) string {
 	return path.Join(MemberStoreKey(id), attributesSuffix)
 }
 
+func MustParseMemberIDFromBytes(lg *zap.Logger, key []byte) types.ID {
+	id, err := types.IDFromString(string(key))
+	if err != nil {
+		lg.Panic("failed to parse member id from key", zap.Error(err))
+	}
+	return id
+}
+
 func MustParseMemberIDFromKey(lg *zap.Logger, key string) types.ID {
 	id, err := types.IDFromString(path.Base(key))
 	if err != nil {
-		lg.Panic("failed to parse memver id from key", zap.Error(err))
+		lg.Panic("failed to parse member id from key", zap.Error(err))
 	}
 	return id
 }
