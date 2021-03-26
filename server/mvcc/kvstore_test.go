@@ -41,7 +41,7 @@ import (
 )
 
 func TestStoreRev(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer s.Close()
 	defer os.Remove(tmpPath)
@@ -425,7 +425,7 @@ func TestRestoreDelete(t *testing.T) {
 	restoreChunkKeys = mrand.Intn(3) + 2
 	defer func() { restoreChunkKeys = oldChunk }()
 
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
@@ -473,7 +473,7 @@ func TestRestoreDelete(t *testing.T) {
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	tests := []string{"recreate", "restore"}
 	for _, test := range tests {
-		b, tmpPath := backend.NewDefaultTmpBackend()
+		b, tmpPath := backend.NewDefaultTmpBackend(t)
 		s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 		defer os.Remove(tmpPath)
 
@@ -535,7 +535,7 @@ type hashKVResult struct {
 
 // TestHashKVWhenCompacting ensures that HashKV returns correct hash when compacting.
 func TestHashKVWhenCompacting(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
@@ -603,7 +603,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 // TestHashKVZeroRevision ensures that "HashByRev(0)" computes
 // correct hash value with latest revision.
 func TestHashKVZeroRevision(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
@@ -636,7 +636,7 @@ func TestTxnPut(t *testing.T) {
 	keys := createBytesSlice(bytesN, sliceN)
 	vals := createBytesSlice(bytesN, sliceN)
 
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
@@ -652,7 +652,7 @@ func TestTxnPut(t *testing.T) {
 
 // TestConcurrentReadNotBlockingWrite ensures Read does not blocking Write after its creation
 func TestConcurrentReadNotBlockingWrite(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
@@ -721,7 +721,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		committedKVs         kvs        // committedKVs records the key-value pairs written by the finished Write Txns
 		mu                   sync.Mutex // mu protects committedKVs
 	)
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 

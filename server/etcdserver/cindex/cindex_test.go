@@ -26,7 +26,7 @@ import (
 // TestConsistentIndex ensures that LoadConsistentIndex/Save/ConsistentIndex and backend.BatchTx can work well together.
 func TestConsistentIndex(t *testing.T) {
 
-	be, tmpPath := backend.NewTmpBackend(time.Microsecond, 10)
+	be, tmpPath := backend.NewTmpBackend(t, time.Microsecond, 10)
 	defer os.Remove(tmpPath)
 	ci := NewConsistentIndex(be.BatchTx())
 

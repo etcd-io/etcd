@@ -181,18 +181,18 @@ func newEtcdProcessCluster(t testing.TB, cfg *etcdProcessClusterConfig) (*etcdPr
 		proc, err := newEtcdProcess(etcdCfgs[i])
 		if err != nil {
 			epc.Close()
-			return nil, err
+			return nil, fmt.Errorf("Cannot configure: %v", err)
 		}
 		epc.procs[i] = proc
 	}
 
 	if cfg.rollingStart {
 		if err := epc.RollingStart(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Cannot rolling-start: %v", err)
 		}
 	} else {
 		if err := epc.Start(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Cannot start: %v", err)
 		}
 	}
 	return epc, nil

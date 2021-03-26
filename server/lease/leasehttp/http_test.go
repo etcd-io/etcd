@@ -29,7 +29,7 @@ import (
 
 func TestRenewHTTP(t *testing.T) {
 	lg := zap.NewNop()
-	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
+	be, tmpPath := backend.NewTmpBackend(t, time.Hour, 10000)
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
@@ -54,7 +54,7 @@ func TestRenewHTTP(t *testing.T) {
 
 func TestTimeToLiveHTTP(t *testing.T) {
 	lg := zap.NewNop()
-	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
+	be, tmpPath := backend.NewTmpBackend(t, time.Hour, 10000)
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
@@ -96,7 +96,7 @@ func TestTimeToLiveHTTPTimeout(t *testing.T) {
 
 func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
 	lg := zap.NewNop()
-	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
+	be, tmpPath := backend.NewTmpBackend(t, time.Hour, 10000)
 	defer os.Remove(tmpPath)
 	defer be.Close()
 

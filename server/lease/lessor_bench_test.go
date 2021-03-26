@@ -16,7 +16,6 @@ package lease
 
 import (
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
@@ -64,9 +63,9 @@ func demote(le *lessor) {
 }
 
 // return new lessor and tearDown to release resource
-func setUp() (le *lessor, tearDown func()) {
+func setUp(t testing.TB) (le *lessor, tearDown func()) {
 	lg := zap.NewNop()
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, _ := backend.NewDefaultTmpBackend(t)
 	// MinLeaseTTL is negative, so we can grant expired lease in benchmark.
 	// ExpiredLeasesRetryInterval should small, so benchmark of findExpired will recheck expired lease.
 	le = newLessor(lg, be, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond}, nil)
@@ -80,7 +79,6 @@ func setUp() (le *lessor, tearDown func()) {
 	return le, func() {
 		le.Stop()
 		be.Close()
-		os.Remove(tmpPath)
 	}
 }
 
@@ -97,7 +95,7 @@ func benchmarkLessorGrant(benchSize int, b *testing.B) {
 			tearDown()
 			tearDown = nil
 		}
-		le, tearDown = setUp()
+		le, tearDown = setUp(b)
 		b.StartTimer()
 
 		for j := 1; j <= benchSize; j++ {
@@ -124,7 +122,7 @@ func benchmarkLessorRevoke(benchSize int, b *testing.B) {
 			tearDown()
 			tearDown = nil
 		}
-		le, tearDown = setUp()
+		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
 			le.Grant(LeaseID(j), ttls[j-1])
 		}
@@ -155,7 +153,7 @@ func benchmarkLessorRenew(benchSize int, b *testing.B) {
 			tearDown()
 			tearDown = nil
 		}
-		le, tearDown = setUp()
+		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
 			le.Grant(LeaseID(j), ttls[j-1])
 		}
@@ -188,7 +186,7 @@ func benchmarkLessorFindExpired(benchSize int, b *testing.B) {
 			tearDown()
 			tearDown = nil
 		}
-		le, tearDown = setUp()
+		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
 			le.Grant(LeaseID(j), ttls[j-1])
 		}

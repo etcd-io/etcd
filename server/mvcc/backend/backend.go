@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
@@ -544,8 +545,8 @@ func (b *backend) OpenReadTxN() int64 {
 }
 
 // NewTmpBackend creates a backend implementation for testing.
-func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
-	dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
+func NewTmpBackend(t testing.TB, batchInterval time.Duration, batchLimit int) (*backend, string) {
+	dir, err := ioutil.TempDir(t.TempDir(), "etcd_backend_test")
 	if err != nil {
 		panic(err)
 	}
@@ -555,8 +556,8 @@ func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, strin
 	return newBackend(bcfg), tmpPath
 }
 
-func NewDefaultTmpBackend() (*backend, string) {
-	return NewTmpBackend(defaultBatchInterval, defaultBatchLimit)
+func NewDefaultTmpBackend(t testing.TB) (*backend, string) {
+	return NewTmpBackend(t, defaultBatchInterval, defaultBatchLimit)
 }
 
 type snapshot struct {

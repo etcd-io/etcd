@@ -66,7 +66,7 @@ func TestScheduleCompaction(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		b, tmpPath := backend.NewDefaultTmpBackend()
+		b, tmpPath := backend.NewDefaultTmpBackend(t)
 		s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 		tx := s.b.BatchTx()
 
@@ -100,7 +100,7 @@ func TestScheduleCompaction(t *testing.T) {
 }
 
 func TestCompactAllAndRestore(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 

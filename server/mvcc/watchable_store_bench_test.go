@@ -28,7 +28,7 @@ import (
 )
 
 func BenchmarkWatchableStorePut(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(b)
 	s := New(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
@@ -48,7 +48,7 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkWatchableStoreTxnPut(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(b)
 	s := New(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
@@ -79,7 +79,7 @@ func BenchmarkWatchableStoreWatchPutUnsync(b *testing.B) {
 }
 
 func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(b)
 	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
@@ -122,7 +122,7 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 // TODO: k is an arbitrary constant. We need to figure out what factor
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(b)
 	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
 
 	// manually create watchableStore instead of newWatchableStore
@@ -179,7 +179,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 }
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(b)
 	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
 
 	defer func() {

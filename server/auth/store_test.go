@@ -46,7 +46,7 @@ func dummyIndexWaiter(index uint64) <-chan struct{} {
 // TestNewAuthStoreRevision ensures newly auth store
 // keeps the old revision when there are no changes.
 func TestNewAuthStoreRevision(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
+	b, tPath := backend.NewDefaultTmpBackend(t)
 	defer os.Remove(tPath)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
@@ -76,7 +76,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 
 // TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
 func TestNewAuthStoreBcryptCost(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
+	b, tPath := backend.NewDefaultTmpBackend(t)
 	defer b.Close()
 	defer os.Remove(tPath)
 
@@ -101,7 +101,7 @@ func encodePassword(s string) string {
 }
 
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
-	b, tPath := backend.NewDefaultTmpBackend()
+	b, tPath := backend.NewDefaultTmpBackend(t)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
@@ -653,7 +653,7 @@ func TestIsAuthEnabled(t *testing.T) {
 
 // TestAuthRevisionRace ensures that access to authStore.revision is thread-safe.
 func TestAuthInfoFromCtxRace(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
+	b, tPath := backend.NewDefaultTmpBackend(t)
 	defer b.Close()
 	defer os.Remove(tPath)
 
@@ -807,7 +807,7 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 
 // TestRolesOrder tests authpb.User.Roles is sorted
 func TestRolesOrder(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
+	b, tPath := backend.NewDefaultTmpBackend(t)
 	defer b.Close()
 	defer os.Remove(tPath)
 
@@ -865,7 +865,7 @@ func TestAuthInfoFromCtxWithRootJWT(t *testing.T) {
 
 // testAuthInfoFromCtxWithRoot ensures "WithRoot" properly embeds token in the context.
 func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
-	b, tPath := backend.NewDefaultTmpBackend()
+	b, tPath := backend.NewDefaultTmpBackend(t)
 	defer b.Close()
 	defer os.Remove(tPath)
 
