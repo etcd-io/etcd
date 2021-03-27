@@ -18,7 +18,7 @@ require (
 	go.etcd.io/etcd/raft/v3 v3.5.0-alpha.0
 	go.etcd.io/etcd/server/v3 v3.5.0-alpha.0
 	go.uber.org/zap v1.16.0
-	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
+	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
 	google.golang.org/grpc v1.36.0
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 )

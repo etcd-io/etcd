@@ -20,7 +20,7 @@ function maybe_update_module {
 
   deps=$(go list -f '{{if not .Indirect}}{{if .Version}}{{.Path}},{{.Version}}{{end}}{{end}}' -m all)
   if [[ "$deps" == *"${mod}"* ]]; then
-    if [ -z "${version}" ]; then
+    if [ -z "${ver}" ]; then
       run go get "${mod}"
     else
       run go get "${mod}@${ver}"
