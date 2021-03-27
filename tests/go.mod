@@ -22,7 +22,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/prometheus/client_golang v1.5.1
-	github.com/soheilhy/cmux v0.1.5-0.20210205191134-5ec6847320e5
+	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/bbolt v1.3.5
