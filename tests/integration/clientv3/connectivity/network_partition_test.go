@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/tests/v3/integration/clientv3"
+	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 )
 
@@ -124,7 +125,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 		t.Fatal(err)
 	}
 	defer cli.Close()
-
+	cli = cli.WithLogger(zaptest.NewLogger(t).Named("client"))
 	// wait for eps[0] to be pinned
 	clientv3test.MustWaitPinReady(t, cli)
 
@@ -136,6 +137,8 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	for i := 0; i < 5; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		err = op(cli, ctx)
+		t.Logf("Op returned error: %v", err)
+		t.Log("Cancelling...")
 		cancel()
 		if err == nil {
 			break
