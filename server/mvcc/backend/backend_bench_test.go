@@ -22,7 +22,7 @@ import (
 )
 
 func BenchmarkBackendPut(b *testing.B) {
-	backend, tmppath := NewTmpBackend(100*time.Millisecond, 10000)
+	backend, tmppath := NewTmpBackend(b, 100*time.Millisecond, 10000)
 	defer backend.Close()
 	defer os.Remove(tmppath)
 

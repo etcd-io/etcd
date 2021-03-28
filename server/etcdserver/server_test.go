@@ -968,7 +968,7 @@ func TestSyncTrigger(t *testing.T) {
 
 // snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(t)
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
@@ -1062,7 +1062,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		storage:     p,
 		raftStorage: rs,
 	})
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(t)
 	defer os.RemoveAll(tmpPath)
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1124,7 +1124,7 @@ func TestSnapshotOrdering(t *testing.T) {
 
 // Applied > SnapshotCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(t)
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
@@ -1213,7 +1213,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		storage:     mockstorage.NewStorageRecorder(testdir),
 		raftStorage: rs,
 	})
-	be, tmpPath := backend.NewDefaultTmpBackend()
+	be, tmpPath := backend.NewDefaultTmpBackend(t)
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()

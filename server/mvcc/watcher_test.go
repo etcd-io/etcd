@@ -31,7 +31,7 @@ import (
 // TestWatcherWatchID tests that each watcher provides unique watchID,
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
@@ -81,7 +81,7 @@ func TestWatcherWatchID(t *testing.T) {
 }
 
 func TestWatcherRequestsCustomID(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
@@ -118,7 +118,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 // TestWatcherWatchPrefix tests if Watch operation correctly watches
 // and returns events with matching prefixes.
 func TestWatcherWatchPrefix(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
@@ -192,7 +192,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 // TestWatcherWatchWrongRange ensures that watcher with wrong 'end' range
 // does not create watcher, which panics when canceling in range tree.
 func TestWatcherWatchWrongRange(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
@@ -212,7 +212,7 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 }
 
 func TestWatchDeleteRange(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 
 	defer func() {
@@ -251,7 +251,7 @@ func TestWatchDeleteRange(t *testing.T) {
 // TestWatchStreamCancelWatcherByID ensures cancel calls the cancel func of the watcher
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
@@ -288,7 +288,7 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 // TestWatcherRequestProgress ensures synced watcher can correctly
 // report its correct progress.
 func TestWatcherRequestProgress(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore automatically calls syncWatchers
@@ -343,7 +343,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 }
 
 func TestWatcherWatchWithFilter(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := backend.NewDefaultTmpBackend(t)
 	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 

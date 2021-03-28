@@ -26,7 +26,7 @@ import (
 )
 
 func TestBackendClose(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
 	defer os.Remove(tmpPath)
 
 	// check close could work
@@ -46,7 +46,7 @@ func TestBackendClose(t *testing.T) {
 }
 
 func TestBackendSnapshot(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
 	defer cleanup(b, tmpPath)
 
 	tx := b.BatchTx()
@@ -86,7 +86,7 @@ func TestBackendSnapshot(t *testing.T) {
 func TestBackendBatchIntervalCommit(t *testing.T) {
 	// start backend with super short batch interval so
 	// we do not need to wait long before commit to happen.
-	b, tmpPath := NewTmpBackend(time.Nanosecond, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Nanosecond, 10000)
 	defer cleanup(b, tmpPath)
 
 	pc := b.Commits()
@@ -120,7 +120,7 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 }
 
 func TestBackendDefrag(t *testing.T) {
-	b, tmpPath := NewDefaultTmpBackend()
+	b, tmpPath := NewDefaultTmpBackend(t)
 	defer cleanup(b, tmpPath)
 
 	tx := b.BatchTx()
@@ -178,7 +178,7 @@ func TestBackendDefrag(t *testing.T) {
 
 // TestBackendWriteback ensures writes are stored to the read txn on write txn unlock.
 func TestBackendWriteback(t *testing.T) {
-	b, tmpPath := NewDefaultTmpBackend()
+	b, tmpPath := NewDefaultTmpBackend(t)
 	defer cleanup(b, tmpPath)
 
 	tx := b.BatchTx()
@@ -252,7 +252,7 @@ func TestBackendWriteback(t *testing.T) {
 
 // TestConcurrentReadTx ensures that current read transaction can see all prior writes stored in read buffer
 func TestConcurrentReadTx(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
 	defer cleanup(b, tmpPath)
 
 	wtx1 := b.BatchTx()
@@ -282,7 +282,7 @@ func TestConcurrentReadTx(t *testing.T) {
 // TestBackendWritebackForEach checks that partially written / buffered
 // data is visited in the same order as fully committed data.
 func TestBackendWritebackForEach(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
 	defer cleanup(b, tmpPath)
 
 	tx := b.BatchTx()

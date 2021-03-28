@@ -23,7 +23,7 @@ import (
 )
 
 func TestBatchTxPut(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
 	defer cleanup(b, tmpPath)
 
 	tx := b.batchTx
@@ -48,7 +48,7 @@ func TestBatchTxPut(t *testing.T) {
 }
 
 func TestBatchTxRange(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
 	defer cleanup(b, tmpPath)
 
 	tx := b.batchTx
@@ -119,7 +119,7 @@ func TestBatchTxRange(t *testing.T) {
 }
 
 func TestBatchTxDelete(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
 	defer cleanup(b, tmpPath)
 
 	tx := b.batchTx
@@ -142,7 +142,7 @@ func TestBatchTxDelete(t *testing.T) {
 }
 
 func TestBatchTxCommit(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
 	defer cleanup(b, tmpPath)
 
 	tx := b.batchTx
@@ -171,7 +171,7 @@ func TestBatchTxCommit(t *testing.T) {
 func TestBatchTxBatchLimitCommit(t *testing.T) {
 	// start backend with batch limit 1 so one write can
 	// trigger a commit
-	b, tmpPath := NewTmpBackend(time.Hour, 1)
+	b, tmpPath := NewTmpBackend(t, time.Hour, 1)
 	defer cleanup(b, tmpPath)
 
 	tx := b.batchTx
