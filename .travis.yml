@@ -6,11 +6,14 @@ sudo: required
 services: docker
 
 go:
-- 1.8.7
+- 1.12.17
 
 notifications:
   on_success: never
   on_failure: never
+
+env:
+- GO111MODULE=off
 
 env:
   matrix:
@@ -23,7 +26,7 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-  - go: 1.8.7
+  - go: 1.12.17
     env: TARGET=linux-386-unit
   exclude:
   - go: tip
