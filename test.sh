@@ -613,7 +613,7 @@ function dep_pass {
 function release_pass {
   rm -f ./bin/etcd-last-release
   # to grab latest patch release; bump this up for every minor release
-  UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.3.*" | head -1)
+  UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.4.*" | head -1)
   if [ -n "$MANUAL_VER" ]; then
     # in case, we need to test against different version
     UPGRADE_VER=$MANUAL_VER

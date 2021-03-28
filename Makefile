@@ -157,7 +157,7 @@ test-smoke:
 
 test-full:
 	$(info log-file: test-$(TEST_SUFFIX).log)
-	PASSES="fmt build unit integration functional e2e grpcproxy" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
+	PASSES="fmt build release unit integration functional e2e grpcproxy" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
 
 docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
