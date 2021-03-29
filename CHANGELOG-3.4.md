@@ -11,7 +11,11 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 ### etcd server
 - Add [`--experimental-warning-apply-duration`](https://github.com/etcd-io/etcd/pull/12448) flag which allows apply duration threshold to be configurable.
+- Fix [`--unsafe-no-fsync`](https://github.com/etcd-io/etcd/pull/12751) to still write-out data avoiding corruption (most of the time).
 
+### Metrics
+
+- Fix [incorrect metrics generated when clients cancel watches](https://github.com/etcd-io/etcd/pull/12803) back-ported from (https://github.com/etcd-io/etcd/pull/12196).
 
 <hr>
 
