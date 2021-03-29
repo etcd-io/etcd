@@ -5,10 +5,11 @@ Previous change logs can be found at [CHANGELOG-3.1](https://github.com/etcd-io/
 
 The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
 
+## v3.2.33 (TBD)
 
 <hr>
 
-## [v3.2.32](https://github.com/etcd-io/etcd/releases/tag/v3.2.32) (2021 TBD)
+## [v3.2.32](https://github.com/etcd-io/etcd/releases/tag/v3.2.32) (2021-03-28)
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.31...v3.2.32) and [v3.2 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_2/) for any breaking changes.
 
 ### Package `wal`
@@ -18,6 +19,14 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.31...v3.2.32) an
 
 ### Package `fileutil`
 - fix constant for linux locking
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+
+<hr>
+
 
 ## [v3.2.31](https://github.com/etcd-io/etcd/releases/tag/v3.2.31) (2020-08-18)
 
