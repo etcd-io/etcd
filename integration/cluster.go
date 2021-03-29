@@ -63,7 +63,7 @@ import (
 
 const (
 	// RequestWaitTimeout is the time duration to wait for a request to go through or detect leader loss.
-	RequestWaitTimeout = 3 * time.Second
+	RequestWaitTimeout = 4 * time.Second
 	tickDuration       = 10 * time.Millisecond
 	requestTimeout     = 20 * time.Second
 
