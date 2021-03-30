@@ -28,4 +28,10 @@ Example:
   ]
 }
 ```
-3. Run `make` to generate the certs
+3. Set the following environment variables subsituting your IP address:
+```bash
+export infra0={IP-0}
+export infra1={IP-1}
+export infra2={IP-2}
+```
+4. Run `make` to generate the certs
