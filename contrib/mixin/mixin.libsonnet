@@ -1287,7 +1287,7 @@
             name: 'cluster',
             options: [],
             query: 'label_values(etcd_server_has_leader, job)',
-            refresh: 1,
+            refresh: 2,
             regex: '',
             sort: 2,
             tagValuesQuery: '',
