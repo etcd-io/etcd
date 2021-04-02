@@ -27,15 +27,13 @@ import (
 )
 
 func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
-	c := 0
 	matchSet := func(l string) bool {
 		for _, s := range readyStrs {
 			if strings.Contains(l, s) {
-				c++
-				break
+				return true
 			}
 		}
-		return c == len(readyStrs)
+		return false
 	}
 	_, err := exproc.ExpectFunc(matchSet)
 	return err
