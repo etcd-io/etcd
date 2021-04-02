@@ -48,7 +48,6 @@ type RaftCluster struct {
 
 	localID types.ID
 	cid     types.ID
-	token   string
 
 	v2store v2store.Store
 	be      backend.Backend
@@ -82,7 +81,7 @@ const (
 // NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
 // cluster with raft learner member.
 func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
-	c := NewCluster(lg, token)
+	c := NewCluster(lg)
 	for name, urls := range urlsmap {
 		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
@@ -97,8 +96,8 @@ func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) 
 	return c, nil
 }
 
-func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*Member) *RaftCluster {
-	c := NewCluster(lg, token)
+func NewClusterFromMembers(lg *zap.Logger, id types.ID, membs []*Member) *RaftCluster {
+	c := NewCluster(lg)
 	c.cid = id
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -106,13 +105,12 @@ func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*M
 	return c
 }
 
-func NewCluster(lg *zap.Logger, token string) *RaftCluster {
+func NewCluster(lg *zap.Logger) *RaftCluster {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	return &RaftCluster{
 		lg:            lg,
-		token:         token,
 		members:       make(map[types.ID]*Member),
 		removed:       make(map[types.ID]bool),
 		downgradeInfo: &DowngradeInfo{Enabled: false},
