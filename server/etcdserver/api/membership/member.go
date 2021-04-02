@@ -49,27 +49,22 @@ type Member struct {
 // NewMember creates a Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
-	return newMember(name, peerURLs, clusterName, now, false)
+	memberId := computeMemberId(peerURLs, clusterName, now)
+	return newMember(name, peerURLs, memberId, false)
 }
 
 // NewMemberAsLearner creates a learner Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for adding new learner member.
 func NewMemberAsLearner(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
-	return newMember(name, peerURLs, clusterName, now, true)
+	memberId := computeMemberId(peerURLs, clusterName, now)
+	return newMember(name, peerURLs, memberId, true)
 }
 
-func newMember(name string, peerURLs types.URLs, clusterName string, now *time.Time, isLearner bool) *Member {
-	m := &Member{
-		RaftAttributes: RaftAttributes{
-			PeerURLs:  peerURLs.StringSlice(),
-			IsLearner: isLearner,
-		},
-		Attributes: Attributes{Name: name},
-	}
-
+func computeMemberId(peerURLs types.URLs, clusterName string, now *time.Time) types.ID {
 	var b []byte
-	sort.Strings(m.PeerURLs)
-	for _, p := range m.PeerURLs {
+	peerURLstrs := peerURLs.StringSlice()
+	sort.Strings(peerURLstrs)
+	for _, p := range peerURLstrs {
 		b = append(b, []byte(p)...)
 	}
 
@@ -79,7 +74,18 @@ func newMember(name string, peerURLs types.URLs, clusterName string, now *time.T
 	}
 
 	hash := sha1.Sum(b)
-	m.ID = types.ID(binary.BigEndian.Uint64(hash[:8]))
+	return types.ID(binary.BigEndian.Uint64(hash[:8]))
+}
+
+func newMember(name string, peerURLs types.URLs, memberId types.ID, isLearner bool) *Member {
+	m := &Member{
+		RaftAttributes: RaftAttributes{
+			PeerURLs:  peerURLs.StringSlice(),
+			IsLearner: isLearner,
+		},
+		Attributes: Attributes{Name: name},
+		ID:         memberId,
+	}
 	return m
 }
 

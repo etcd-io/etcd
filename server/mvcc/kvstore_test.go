@@ -875,6 +875,7 @@ func (b *fakeBatchTx) Unlock()                        {}
 func (b *fakeBatchTx) RLock()                         {}
 func (b *fakeBatchTx) RUnlock()                       {}
 func (b *fakeBatchTx) UnsafeCreateBucket(name []byte) {}
+func (b *fakeBatchTx) UnsafeDeleteBucket(name []byte) {}
 func (b *fakeBatchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	b.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{bucketName, key, value}})
 }

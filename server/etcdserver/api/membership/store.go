@@ -57,6 +57,14 @@ func mustSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) {
 	tx.UnsafePut(membersBucketName, mkey, mvalue)
 }
 
+func TrimClusterFromBackend(be backend.Backend) error {
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafeDeleteBucket(clusterBucketName)
+	return nil
+}
+
 func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
 	mkey := backendMemberKey(id)
 

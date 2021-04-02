@@ -28,6 +28,7 @@ import (
 type BatchTx interface {
 	ReadTx
 	UnsafeCreateBucket(name []byte)
+	UnsafeDeleteBucket(name []byte)
 	UnsafePut(bucketName []byte, key []byte, value []byte)
 	UnsafeSeqPut(bucketName []byte, key []byte, value []byte)
 	UnsafeDelete(bucketName []byte, key []byte)
@@ -73,6 +74,18 @@ func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	if err != nil && err != bolt.ErrBucketExists {
 		t.backend.lg.Fatal(
 			"failed to create a bucket",
+			zap.String("bucket-name", string(name)),
+			zap.Error(err),
+		)
+	}
+	t.pending++
+}
+
+func (t *batchTx) UnsafeDeleteBucket(name []byte) {
+	err := t.tx.DeleteBucket(name)
+	if err != nil && err != bolt.ErrBucketNotFound {
+		t.backend.lg.Fatal(
+			"failed to delete a bucket",
 			zap.String("bucket-name", string(name)),
 			zap.Error(err),
 		)
