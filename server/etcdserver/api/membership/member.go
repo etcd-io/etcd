@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strings"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -61,12 +62,10 @@ func NewMemberAsLearner(name string, peerURLs types.URLs, clusterName string, no
 }
 
 func computeMemberId(peerURLs types.URLs, clusterName string, now *time.Time) types.ID {
-	var b []byte
 	peerURLstrs := peerURLs.StringSlice()
 	sort.Strings(peerURLstrs)
-	for _, p := range peerURLstrs {
-		b = append(b, []byte(p)...)
-	}
+	joinedPeerUrls := strings.Join(peerURLstrs, "")
+	b := []byte(joinedPeerUrls)
 
 	b = append(b, []byte(clusterName)...)
 	if now != nil {

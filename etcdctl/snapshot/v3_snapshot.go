@@ -32,7 +32,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
-	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/config"
@@ -40,6 +39,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
@@ -255,12 +255,19 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("snap-dir", s.snapDir),
 		zap.Stack("stack"),
 	)
+
 	if err = s.saveDB(); err != nil {
 		return err
 	}
-	if err = s.saveWALAndSnap(); err != nil {
+	hardstate, err := s.saveWALAndSnap()
+	if err != nil {
 		return err
 	}
+
+	if err := s.updateCIndex(hardstate.Commit); err != nil {
+		return err
+	}
+
 	s.lg.Info(
 		"restored snapshot",
 		zap.String("path", s.srcDbPath),
@@ -295,7 +302,7 @@ func (s *v3Manager) saveDB() error {
 }
 
 func (s *v3Manager) copyAndVerifyDB() error {
-	srcf, ferr := os.OpenFile(s.srcDbPath, os.O_RDONLY, 0600)
+	srcf, ferr := os.Open(s.srcDbPath)
 	if ferr != nil {
 		return ferr
 	}
@@ -373,9 +380,9 @@ func (s *v3Manager) copyAndVerifyDB() error {
 // saveWALAndSnap creates a WAL for the initial cluster
 //
 // TODO: This code ignores learners !!!
-func (s *v3Manager) saveWALAndSnap() error {
+func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	if err := fileutil.CreateDirAll(s.walDir); err != nil {
-		return err
+		return nil, err
 	}
 
 	// add members again to persist them to the store we create.
@@ -392,11 +399,11 @@ func (s *v3Manager) saveWALAndSnap() error {
 	md := &etcdserverpb.Metadata{NodeID: uint64(m.ID), ClusterID: uint64(s.cl.ID())}
 	metadata, merr := md.Marshal()
 	if merr != nil {
-		return merr
+		return nil, merr
 	}
 	w, walerr := wal.Create(s.lg, s.walDir, metadata)
 	if walerr != nil {
-		return walerr
+		return nil, walerr
 	}
 	defer w.Close()
 
@@ -404,7 +411,7 @@ func (s *v3Manager) saveWALAndSnap() error {
 	for i, id := range s.cl.MemberIDs() {
 		ctx, err := json.Marshal((*s.cl).Member(id))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
@@ -420,7 +427,7 @@ func (s *v3Manager) saveWALAndSnap() error {
 		}
 		d, err := cc.Marshal()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		ents[i] = raftpb.Entry{
 			Type:  raftpb.EntryConfChange,
@@ -431,17 +438,18 @@ func (s *v3Manager) saveWALAndSnap() error {
 	}
 
 	commit, term := uint64(len(ents)), uint64(1)
-	if err := w.Save(raftpb.HardState{
+	hardState := raftpb.HardState{
 		Term:   term,
 		Vote:   peers[0].ID,
 		Commit: commit,
-	}, ents); err != nil {
-		return err
+	}
+	if err := w.Save(hardState, ents); err != nil {
+		return nil, err
 	}
 
 	b, berr := st.Save()
 	if berr != nil {
-		return berr
+		return nil, berr
 	}
 	confState := raftpb.ConfState{
 		Voters: nodeIDs,
@@ -456,7 +464,17 @@ func (s *v3Manager) saveWALAndSnap() error {
 	}
 	sn := snap.New(s.lg, s.snapDir)
 	if err := sn.SaveSnap(raftSnap); err != nil {
-		return err
+		return nil, err
 	}
-	return w.SaveSnapshot(walpb.Snapshot{Index: commit, Term: term, ConfState: &confState})
+	snapshot := walpb.Snapshot{Index: commit, Term: term, ConfState: &confState}
+	return &hardState, w.SaveSnapshot(snapshot)
+}
+
+func (s *v3Manager) updateCIndex(commit uint64) error {
+	be := backend.NewDefaultBackend(s.outDbPath())
+	defer be.Close()
+	ci := cindex.NewConsistentIndex(be.BatchTx())
+	ci.SetConsistentIndex(commit)
+	ci.UnsafeSave(be.BatchTx())
+	return nil
 }
