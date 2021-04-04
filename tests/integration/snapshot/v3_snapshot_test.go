@@ -216,7 +216,6 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	}
 
 	os.RemoveAll(cfg.Dir)
-	srv.Close()
 	return dpPath
 }
 
