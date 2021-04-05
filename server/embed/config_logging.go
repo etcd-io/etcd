@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	"go.etcd.io/etcd/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
