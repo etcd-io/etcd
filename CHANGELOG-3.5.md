@@ -205,6 +205,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcdctl auth status`](https://github.com/etcd-io/etcd/pull/11536) command to check if authentication is enabled
 - Add [`etcdctl get --count-only`](https://github.com/etcd-io/etcd/pull/11743) flag for output type `fields`.
 - Add [`etcdctl member list -w=json --hex`](https://github.com/etcd-io/etcd/pull/11812) flag to print memberListResponse in hex format json.
+- Changed [`etcdctl lock <lockname> exec-command`](https://github.com/etcd-io/etcd/pull/12829) to return exit code of exec-command.
 
 ### gRPC gateway
 

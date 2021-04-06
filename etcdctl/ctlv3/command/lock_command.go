@@ -48,8 +48,23 @@ func lockCommandFunc(cmd *cobra.Command, args []string) {
 	}
 	c := mustClientFromCmd(cmd)
 	if err := lockUntilSignal(c, args[0], args[1:]); err != nil {
-		ExitWithError(ExitError, err)
+		code := getExitCodeFromError(err)
+		ExitWithError(code, err)
 	}
+}
+
+func getExitCodeFromError(err error) int {
+	if err == nil {
+		return ExitSuccess
+	}
+
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+			return status.ExitStatus()
+		}
+	}
+
+	return ExitError
 }
 
 func lockUntilSignal(c *clientv3.Client, lockname string, cmdArgs []string) error {
