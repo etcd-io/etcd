@@ -39,13 +39,13 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/pkg/v3/runtime"
 	"go.etcd.io/etcd/pkg/v3/schedule"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -721,6 +721,8 @@ func (s *EtcdServer) adjustTicks() {
 func (s *EtcdServer) Start() {
 	s.start()
 	s.GoAttach(func() { s.adjustTicks() })
+	// TODO: Switch to publishV3 in 3.6.
+	// Support for cluster_member_set_attr was added in 3.5.
 	s.GoAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
 	s.GoAttach(s.purgeFile)
 	s.GoAttach(func() { monitorFileDescriptor(s.Logger(), s.stopping) })
@@ -1855,7 +1857,6 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // with the static clientURLs of the server.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
-// TODO: replace publish() in 3.6
 func (s *EtcdServer) publishV3(timeout time.Duration) {
 	req := &membershippb.ClusterMemberAttrSetRequest{
 		Member_ID: uint64(s.id),
@@ -1916,7 +1917,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 // but does not go through v2 API endpoint, which means even with v2
 // client handler disabled (e.g. --enable-v2=false), cluster can still
 // process publish requests through rafthttp
-// TODO: Deprecate v2 store in 3.6
+// TODO: Remove in 3.6 (start using publishV3)
 func (s *EtcdServer) publish(timeout time.Duration) {
 	lg := s.Logger()
 	b, err := json.Marshal(s.attributes)

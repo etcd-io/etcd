@@ -18,7 +18,7 @@ import (
 	"context"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 
 	"google.golang.org/grpc"
 )

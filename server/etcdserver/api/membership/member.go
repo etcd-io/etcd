@@ -22,7 +22,7 @@ import (
 	"sort"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
 // RaftAttributes represents the raft related attributes of an etcd member.

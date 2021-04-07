@@ -26,8 +26,8 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -221,17 +221,17 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	case r.AuthRoleList != nil:
 		op = "AuthRoleList"
 		ar.resp, ar.err = a.s.applyV3.RoleList(r.AuthRoleList)
-	case r.ClusterVersionSet != nil:
+	case r.ClusterVersionSet != nil: // Implemented in 3.5.x
 		op = "ClusterVersionSet"
 		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet)
 	case r.ClusterMemberAttrSet != nil:
-		op = "ClusterMemberAttrSet"
+		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
 		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet)
 	case r.DowngradeInfoSet != nil:
-		op = "DowngradeInfoSet"
+		op = "DowngradeInfoSet" // Implemented in 3.5.x
 		a.s.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet)
 	default:
-		panic("not implemented")
+		a.s.lg.Panic("not implemented apply", zap.Stringer("raft-request", r))
 	}
 	return ar
 }

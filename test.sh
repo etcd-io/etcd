@@ -343,6 +343,7 @@ function cov_pass {
   sed --in-place -E "s|go.etcd.io/etcd/api/v3/|api/|g" "${cover_out_file}" || true
   sed --in-place -E "s|go.etcd.io/etcd/client/v3/|client/v3/|g" "${cover_out_file}" || true
   sed --in-place -E "s|go.etcd.io/etcd/client/v2/|client/v2/|g" "${cover_out_file}" || true
+  sed --in-place -E "s|go.etcd.io/etcd/client/pkg/v3|client/pkg/v3/|g" "${cover_out_file}" || true
   sed --in-place -E "s|go.etcd.io/etcd/etcdctl/v3/|etcdctl/|g" "${cover_out_file}" || true
   sed --in-place -E "s|go.etcd.io/etcd/pkg/v3/|pkg/|g" "${cover_out_file}" || true
   sed --in-place -E "s|go.etcd.io/etcd/raft/v3/|raft/|g" "${cover_out_file}" || true
@@ -645,7 +646,7 @@ function mod_tidy_for_module {
   # Watch for upstream solution: https://github.com/golang/go/issues/27005
   local tmpModDir
   tmpModDir=$(mktemp -d -t 'tmpModDir.XXXXXX')
-  run cp "./go.mod" "./go.sum" "${tmpModDir}" || return 2
+  run cp "./go.mod" "${tmpModDir}" || return 2
 
   # Guarantees keeping go.sum minimal
   # If this is causing too much problems, we should
@@ -658,21 +659,11 @@ function mod_tidy_for_module {
   diff -C 5 "${tmpModDir}/go.mod" "./go.mod"
   tmpFileGoModInSync="$?"
 
-  local tmpFileGoSumInSync
-  diff -C 5 "${tmpModDir}/go.sum" "./go.sum"
-  tmpFileGoSumInSync="$?"
-  set -e
-
   # Bring back initial state
   mv "${tmpModDir}/go.mod" "./go.mod"
-  mv "${tmpModDir}/go.sum" "./go.sum"
 
   if [ "${tmpFileGoModInSync}" -ne 0 ]; then
     log_error "${PWD}/go.mod is not in sync with 'go mod tidy'"
-    return 255
-  fi
-  if [ "${tmpFileGoSumInSync}" -ne 0 ]; then
-    log_error "${PWD}/go.sum is not in sync with 'rm go.sum; go mod tidy'"
     return 255
   fi
 }

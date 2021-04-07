@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -168,6 +168,12 @@ func loadWAL(srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metad
 		}
 
 		if v2Req != nil {
+			continue
+		}
+
+		if raftReq.ClusterMemberAttrSet != nil {
+			log.Println("ignoring cluster_member_attr_set")
+			remove()
 			continue
 		}
 

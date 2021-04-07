@@ -29,8 +29,8 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
-	"go.etcd.io/etcd/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
