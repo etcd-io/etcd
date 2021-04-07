@@ -15,7 +15,7 @@
 package v2v3
 
 import (
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 
 	"github.com/coreos/go-semver/semver"

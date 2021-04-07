@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.1
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
-	google.golang.org/grpc v1.36.0
+	google.golang.org/grpc v1.36.1
 )
 
 // Bad imports are sometimes causing attempts to pull that code.

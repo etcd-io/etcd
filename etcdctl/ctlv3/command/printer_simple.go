@@ -20,9 +20,9 @@ import (
 	"strings"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdctl/v3/snapshot"
-	"go.etcd.io/etcd/pkg/v3/types"
 )
 
 type simplePrinter struct {
