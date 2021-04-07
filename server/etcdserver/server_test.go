@@ -102,7 +102,7 @@ func TestDoLocalAction(t *testing.T) {
 			v2store:  st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
-		resp, err := srv.Do(context.TODO(), tt.req)
+		resp, err := srv.Do(context.Background(), tt.req)
 
 		if err != tt.werr {
 			t.Fatalf("#%d: err = %+v, want %+v", i, err, tt.werr)
@@ -836,7 +836,7 @@ func TestDoProposalStopped(t *testing.T) {
 // TestSync tests sync 1. is nonblocking 2. proposes SYNC request.
 func TestSync(t *testing.T) {
 	n := newNodeRecorder()
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       zap.NewExample(),
@@ -881,7 +881,7 @@ func TestSync(t *testing.T) {
 // after timeout
 func TestSyncTimeout(t *testing.T) {
 	n := newProposalBlockerRecorder()
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       zap.NewExample(),
@@ -1317,7 +1317,7 @@ func TestAddMember(t *testing.T) {
 	}
 	s.start()
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
-	_, err := s.AddMember(context.TODO(), m)
+	_, err := s.AddMember(context.Background(), m)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1361,7 +1361,7 @@ func TestRemoveMember(t *testing.T) {
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 	}
 	s.start()
-	_, err := s.RemoveMember(context.TODO(), 1234)
+	_, err := s.RemoveMember(context.Background(), 1234)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1406,7 +1406,7 @@ func TestUpdateMember(t *testing.T) {
 	}
 	s.start()
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
-	_, err := s.UpdateMember(context.TODO(), wm)
+	_, err := s.UpdateMember(context.Background(), wm)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1430,7 +1430,7 @@ func TestPublish(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- Response{}
 	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zap.NewExample(),
@@ -1479,7 +1479,7 @@ func TestPublish(t *testing.T) {
 
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishStopped(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
 		Node:      newNodeNop(),
@@ -1507,7 +1507,7 @@ func TestPublishStopped(t *testing.T) {
 
 // TestPublishRetry tests that publish will keep retry until success.
 func TestPublishRetry(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	n := newNodeRecorderStream()
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
@@ -1550,7 +1550,7 @@ func TestPublishV3(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- &applyResult{}
 	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	lg := zaptest.NewLogger(t)
 	be, _ := backend.NewDefaultTmpBackend(t)
 	srv := &EtcdServer{
@@ -1590,7 +1590,7 @@ func TestPublishV3(t *testing.T) {
 
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishV3Stopped(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
 		Node:      newNodeNop(),
@@ -1618,7 +1618,7 @@ func TestPublishV3Stopped(t *testing.T) {
 
 // TestPublishRetry tests that publish will keep retry until success.
 func TestPublishV3Retry(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	n := newNodeRecorderStream()
 
 	lg := zaptest.NewLogger(t)
