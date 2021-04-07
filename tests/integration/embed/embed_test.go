@@ -119,8 +119,9 @@ func TestEmbedEtcd(t *testing.T) {
 		e.Close()
 		select {
 		case err := <-e.Err():
-			t.Errorf("#%d: unexpected error on close (%v)", i, err)
-		default:
+			if err != nil {
+				t.Errorf("#%d: unexpected error on close (%v)", i, err)
+			}
 		}
 	}
 }
@@ -174,11 +175,13 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 		close(donec)
 	}()
 	select {
-	case err := <-e.Err():
-		t.Fatal(err)
 	case <-donec:
 	case <-time.After(2*time.Second + e.Server.Cfg.ReqTimeout()):
 		t.Fatalf("took too long to close server")
+	}
+	err = <-e.Err()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

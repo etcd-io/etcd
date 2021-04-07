@@ -341,7 +341,9 @@ func (e *Etcd) Close() {
 		lg.Sync()
 	}()
 
-	e.closeOnce.Do(func() { close(e.stopc) })
+	e.closeOnce.Do(func() {
+		close(e.stopc)
+	})
 
 	// close client requests with request timeout
 	timeout := 2 * time.Second
@@ -383,12 +385,14 @@ func (e *Etcd) Close() {
 			cancel()
 		}
 	}
+	if e.errc != nil {
+		close(e.errc)
+	}
 }
 
 func stopServers(ctx context.Context, ss *servers) {
 	// first, close the http.Server
 	ss.http.Shutdown(ctx)
-
 	// do not grpc.Server.GracefulStop with TLS enabled etcd server
 	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
 	// and https://github.com/etcd-io/etcd/issues/8916
@@ -418,7 +422,11 @@ func stopServers(ctx context.Context, ss *servers) {
 	}
 }
 
-func (e *Etcd) Err() <-chan error { return e.errc }
+// Err - return channel used to report errors during etcd run/shutdown.
+// Since etcd 3.5 the channel is being closed when the etcd is over.
+func (e *Etcd) Err() <-chan error {
+	return e.errc
+}
 
 func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 	if err = updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {

@@ -30,8 +30,7 @@ import (
 	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/integration"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 // TestSaveSnapshotFilePermissions ensures that the snapshot is saved with
@@ -99,11 +98,10 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	}
 
 	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
-	if err = snapshot.Save(context.Background(), zap.NewExample(), ccfg, dpPath); err != nil {
+	if err = snapshot.Save(context.Background(), zaptest.NewLogger(t), ccfg, dpPath); err != nil {
 		t.Fatal(err)
 	}
 
-	srv.Close()
 	return dpPath
 }
 
