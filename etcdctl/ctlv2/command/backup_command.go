@@ -171,6 +171,12 @@ func loadWAL(srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metad
 			continue
 		}
 
+		if raftReq.ClusterMemberAttrSet != nil {
+			log.Println("ignoring cluster_member_attr_set")
+			remove()
+			continue
+		}
+
 		if v3 || raftReq.Header == nil {
 			continue
 		}

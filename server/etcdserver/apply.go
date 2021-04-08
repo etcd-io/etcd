@@ -221,17 +221,17 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	case r.AuthRoleList != nil:
 		op = "AuthRoleList"
 		ar.resp, ar.err = a.s.applyV3.RoleList(r.AuthRoleList)
-	case r.ClusterVersionSet != nil:
+	case r.ClusterVersionSet != nil: // Implemented in 3.5.x
 		op = "ClusterVersionSet"
 		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet)
 	case r.ClusterMemberAttrSet != nil:
-		op = "ClusterMemberAttrSet"
+		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
 		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet)
 	case r.DowngradeInfoSet != nil:
-		op = "DowngradeInfoSet"
+		op = "DowngradeInfoSet" // Implemented in 3.5.x
 		a.s.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet)
 	default:
-		panic("not implemented")
+		a.s.lg.Panic("not implemented apply", zap.Stringer("raft-request", r))
 	}
 	return ar
 }

@@ -6,7 +6,9 @@ package e2e
 
 import (
 	"flag"
+	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -36,8 +38,18 @@ func TestMain(m *testing.M) {
 	os.Setenv("ETCD_UNSUPPORTED_ARCH", runtime.GOARCH)
 	os.Unsetenv("ETCDCTL_API")
 
-	flag.StringVar(&binDir, "bin-dir", "../../bin", "The directory for store etcd and etcdctl binaries.")
-	flag.StringVar(&certDir, "cert-dir", "../fixtures", "The directory for store certificate files.")
+	binDirDef, err := filepath.Abs("../../bin")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	certDirDef, err := filepath.Abs("../fixtures")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	flag.StringVar(&binDir, "bin-dir", binDirDef, "The directory for store etcd and etcdctl binaries.")
+	flag.StringVar(&certDir, "cert-dir", certDirDef, "The directory for store certificate files.")
 	flag.Parse()
 
 	binPath = binDir + "/etcd"

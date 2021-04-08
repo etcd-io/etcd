@@ -27,7 +27,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -36,6 +38,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -49,6 +52,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
@@ -98,7 +102,7 @@ func TestDoLocalAction(t *testing.T) {
 			v2store:  st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
-		resp, err := srv.Do(context.TODO(), tt.req)
+		resp, err := srv.Do(context.Background(), tt.req)
 
 		if err != tt.werr {
 			t.Fatalf("#%d: err = %+v, want %+v", i, err, tt.werr)
@@ -832,7 +836,7 @@ func TestDoProposalStopped(t *testing.T) {
 // TestSync tests sync 1. is nonblocking 2. proposes SYNC request.
 func TestSync(t *testing.T) {
 	n := newNodeRecorder()
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       zap.NewExample(),
@@ -877,7 +881,7 @@ func TestSync(t *testing.T) {
 // after timeout
 func TestSyncTimeout(t *testing.T) {
 	n := newProposalBlockerRecorder()
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       zap.NewExample(),
@@ -1313,7 +1317,7 @@ func TestAddMember(t *testing.T) {
 	}
 	s.start()
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
-	_, err := s.AddMember(context.TODO(), m)
+	_, err := s.AddMember(context.Background(), m)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1357,7 +1361,7 @@ func TestRemoveMember(t *testing.T) {
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 	}
 	s.start()
-	_, err := s.RemoveMember(context.TODO(), 1234)
+	_, err := s.RemoveMember(context.Background(), 1234)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1402,7 +1406,7 @@ func TestUpdateMember(t *testing.T) {
 	}
 	s.start()
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
-	_, err := s.UpdateMember(context.TODO(), wm)
+	_, err := s.UpdateMember(context.Background(), wm)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1426,7 +1430,7 @@ func TestPublish(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- Response{}
 	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zap.NewExample(),
@@ -1475,7 +1479,7 @@ func TestPublish(t *testing.T) {
 
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishStopped(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
 		Node:      newNodeNop(),
@@ -1503,7 +1507,7 @@ func TestPublishStopped(t *testing.T) {
 
 // TestPublishRetry tests that publish will keep retry until success.
 func TestPublishRetry(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	n := newNodeRecorderStream()
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
@@ -1536,6 +1540,127 @@ func TestPublishRetry(t *testing.T) {
 		}
 	}()
 	srv.publish(10 * time.Nanosecond)
+	ch <- struct{}{}
+	<-ch
+}
+
+func TestPublishV3(t *testing.T) {
+	n := newNodeRecorder()
+	ch := make(chan interface{}, 1)
+	// simulate that request has gone through consensus
+	ch <- &applyResult{}
+	w := wait.NewWithResponse(ch)
+	ctx, cancel := context.WithCancel(context.Background())
+	lg := zaptest.NewLogger(t)
+	be, _ := backend.NewDefaultTmpBackend(t)
+	srv := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         lg,
+		readych:    make(chan struct{}),
+		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
+		id:         1,
+		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
+		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
+		cluster:    &membership.RaftCluster{},
+		w:          w,
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+		authStore:  auth.NewAuthStore(lg, be, nil, nil, 0),
+		be:         be,
+		ctx:        ctx,
+		cancel:     cancel,
+	}
+	srv.publishV3(time.Hour)
+
+	action := n.Action()
+	if len(action) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(action))
+	}
+	if action[0].Name != "Propose" {
+		t.Fatalf("action = %s, want Propose", action[0].Name)
+	}
+	data := action[0].Params[0].([]byte)
+	var r pb.InternalRaftRequest
+	if err := r.Unmarshal(data); err != nil {
+		t.Fatalf("unmarshal request error: %v", err)
+	}
+	assert.Equal(t, &membershippb.ClusterMemberAttrSetRequest{Member_ID: 0x1, MemberAttributes: &membershippb.Attributes{
+		Name: "node1", ClientUrls: []string{"http://a", "http://b"}}}, r.ClusterMemberAttrSet)
+}
+
+// TestPublishStopped tests that publish will be stopped if server is stopped.
+func TestPublishV3Stopped(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	r := newRaftNode(raftNodeConfig{
+		lg:        zap.NewExample(),
+		Node:      newNodeNop(),
+		transport: newNopTransporter(),
+	})
+	srv := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zap.NewExample(),
+		Cfg:        config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		r:          *r,
+		cluster:    &membership.RaftCluster{},
+		w:          mockwait.NewNop(),
+		done:       make(chan struct{}),
+		stopping:   make(chan struct{}),
+		stop:       make(chan struct{}),
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	close(srv.stopping)
+	srv.publishV3(time.Hour)
+}
+
+// TestPublishRetry tests that publish will keep retry until success.
+func TestPublishV3Retry(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	n := newNodeRecorderStream()
+
+	lg := zaptest.NewLogger(t)
+	be, _ := backend.NewDefaultTmpBackend(t)
+	srv := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         lg,
+		readych:    make(chan struct{}),
+		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
+		id:         1,
+		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
+		w:          mockwait.NewNop(),
+		stopping:   make(chan struct{}),
+		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
+		cluster:    &membership.RaftCluster{},
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+		authStore:  auth.NewAuthStore(lg, be, nil, nil, 0),
+		be:         be,
+		ctx:        ctx,
+		cancel:     cancel,
+	}
+
+	// expect multiple proposals from retrying
+	ch := make(chan struct{})
+	go func() {
+		defer close(ch)
+		if action, err := n.Wait(2); err != nil {
+			t.Errorf("len(action) = %d, want >= 2 (%v)", len(action), err)
+		}
+		close(srv.stopping)
+		// drain remaining actions, if any, so publish can terminate
+		for {
+			select {
+			case <-ch:
+				return
+			default:
+				n.Action()
+			}
+		}
+	}()
+	srv.publishV3(10 * time.Nanosecond)
 	ch <- struct{}{}
 	<-ch
 }
