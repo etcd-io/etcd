@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
-	"testing"
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
@@ -542,22 +541,6 @@ func (b *backend) unsafeBegin(write bool) *bolt.Tx {
 
 func (b *backend) OpenReadTxN() int64 {
 	return atomic.LoadInt64(&b.openReadTxN)
-}
-
-// NewTmpBackend creates a backend implementation for testing.
-func NewTmpBackend(t testing.TB, batchInterval time.Duration, batchLimit int) (*backend, string) {
-	dir, err := ioutil.TempDir(t.TempDir(), "etcd_backend_test")
-	if err != nil {
-		panic(err)
-	}
-	tmpPath := filepath.Join(dir, "database")
-	bcfg := DefaultBackendConfig()
-	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = tmpPath, batchInterval, batchLimit
-	return newBackend(bcfg), tmpPath
-}
-
-func NewDefaultTmpBackend(t testing.TB) (*backend, string) {
-	return NewTmpBackend(t, defaultBatchInterval, defaultBatchLimit)
 }
 
 type snapshot struct {
