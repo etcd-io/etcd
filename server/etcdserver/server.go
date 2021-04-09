@@ -26,6 +26,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -338,6 +339,17 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			zap.Error(err),
 		)
 	}
+
+	if err = fileutil.RemoveMatchFile(cfg.Logger, cfg.SnapDir(), func(fileName string) bool {
+		return strings.HasPrefix(fileName, "tmp")
+	}); err != nil {
+		cfg.Logger.Error(
+			"failed to remove temp file(s) in snapshot directory",
+			zap.String("path", cfg.SnapDir()),
+			zap.Error(err),
+		)
+	}
+
 	ss := snap.New(cfg.Logger, cfg.SnapDir())
 
 	bepath := cfg.BackendPath()
