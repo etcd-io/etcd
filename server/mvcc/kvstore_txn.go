@@ -68,10 +68,13 @@ type storeTxnWrite struct {
 
 func (s *store) Write(trace *traceutil.Trace) TxnWrite {
 	s.mu.RLock()
+	s.revMu.RLock()
+	firstRev, rev := s.compactMainRev, s.currentRev
+	s.revMu.RUnlock()
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0, trace},
+		storeTxnRead: storeTxnRead{s, tx, firstRev, rev, trace},
 		tx:           tx,
 		beginRev:     s.currentRev,
 		changes:      make([]mvccpb.KeyValue, 0, 4),

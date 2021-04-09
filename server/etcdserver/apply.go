@@ -418,13 +418,30 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 }
 
 func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+	var txn mvcc.TxnWrite
+
 	trace := traceutil.Get(ctx)
 	if trace.IsEmpty() {
 		trace = traceutil.New("transaction", a.s.Logger())
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 	}
 	isWrite := !isTxnReadonly(rt)
-	txn := mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(trace))
+
+	// Check if we have at most one operation in each one of the compare/success/failure fields
+	isTxnShort := len(rt.Success) <= 1 && len(rt.Failure) <= 1 && len(rt.Compare) <= 1
+	isUsingReadTxn := false
+
+	// If it is a short txn, we will not allocate a costly read txn.
+	if isWrite && isTxnShort {
+		// When executing mutable txn ops, etcd must hold the txn lock so
+		// readers do not see any intermediate results. Since writes are
+		// serialized on the raft loop, the revision in the read view will
+		// be the revision of the write txn.
+		txn = a.s.KV().Write(trace)
+	} else {
+		txn = mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(trace))
+		isUsingReadTxn = true
+	}
 
 	var txnPath []bool
 	trace.StepWithFunction(
@@ -452,7 +469,7 @@ func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnR
 	// readers do not see any intermediate results. Since writes are
 	// serialized on the raft loop, the revision in the read view will
 	// be the revision of the write txn.
-	if isWrite {
+	if isWrite && isUsingReadTxn {
 		txn.End()
 		txn = a.s.KV().Write(trace)
 	}
