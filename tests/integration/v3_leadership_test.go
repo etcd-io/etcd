@@ -16,12 +16,14 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestMoveLeader(t *testing.T)        { testMoveLeader(t, true) }
@@ -36,7 +38,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 	oldLeadIdx := clus.WaitLeader(t)
 	oldLeadID := uint64(clus.Members[oldLeadIdx].s.ID())
 
-	// ensure followers go through leader transition while learship transfer
+	// ensure followers go through leader transition while leadership transfer
 	idc := make(chan uint64)
 	stopc := make(chan struct{})
 	defer close(stopc)
@@ -178,4 +180,82 @@ func TestTransferLeadershipWithLearner(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Error("timed out waiting for leader transition")
 	}
+}
+
+func TestFirstCommitNotification(t *testing.T) {
+	BeforeTest(t)
+	clusterSize := 3
+	cluster := NewClusterV3(t, &ClusterConfig{Size: clusterSize})
+	defer cluster.Terminate(t)
+
+	oldLeaderIdx := cluster.WaitLeader(t)
+	oldLeaderClient := cluster.Client(oldLeaderIdx)
+
+	newLeaderIdx := (oldLeaderIdx + 1) % clusterSize
+	newLeaderId := uint64(cluster.Members[newLeaderIdx].ID())
+
+	notifiers := make(map[int]<-chan struct{}, clusterSize)
+	for i, clusterMember := range cluster.Members {
+		notifiers[i] = clusterMember.s.FirstCommitInTermNotify()
+	}
+
+	_, err := oldLeaderClient.MoveLeader(context.Background(), newLeaderId)
+
+	if err != nil {
+		t.Errorf("got error during leadership transfer: %v", err)
+	}
+
+	leaderAppliedIndex := cluster.Members[newLeaderIdx].s.AppliedIndex()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	group, groupContext := errgroup.WithContext(ctx)
+
+	for i, notifier := range notifiers {
+		member, notifier := cluster.Members[i], notifier
+		group.Go(func() error {
+			return checkFirstCommitNotification(groupContext, member, leaderAppliedIndex, notifier)
+		})
+	}
+
+	err = group.Wait()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func checkFirstCommitNotification(
+	ctx context.Context,
+	member *member,
+	leaderAppliedIndex uint64,
+	notifier <-chan struct{},
+) error {
+	// wait until server applies all the changes of leader
+	for member.s.AppliedIndex() < leaderAppliedIndex {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	select {
+	case msg, ok := <-notifier:
+		if ok {
+			return fmt.Errorf(
+				"member with ID %d got message via notifier, msg: %v",
+				member.ID(),
+				msg,
+			)
+		}
+	default:
+		return fmt.Errorf(
+			"notification was not triggered, member ID: %d",
+			member.ID(),
+		)
+	}
+
+	return nil
 }

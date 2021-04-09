@@ -775,6 +775,8 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 	retryTimer := time.NewTimer(readIndexRetryTime)
 	defer retryTimer.Stop()
 
+	firstCommitInTermNotifier := s.FirstCommitInTermNotify()
+
 	for {
 		select {
 		case rs := <-s.r.readStateC:
@@ -800,6 +802,15 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 			readIndexFailed.Inc()
 			// return a retryable error.
 			return 0, ErrLeaderChanged
+		case <-firstCommitInTermNotifier:
+			firstCommitInTermNotifier = s.FirstCommitInTermNotify()
+			lg.Info("first commit in current term: resending ReadIndex request")
+			err := s.sendReadIndex(requestId)
+			if err != nil {
+				return 0, err
+			}
+			retryTimer.Reset(readIndexRetryTime)
+			continue
 		case <-retryTimer.C:
 			lg.Warn(
 				"waiting for ReadIndex response took too long, retrying",
