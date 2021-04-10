@@ -283,9 +283,9 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
-		cl.AddMember(&Member{ID: types.ID(i), RaftAttributes: attr})
+		cl.AddMember(&Member{ID: types.ID(i), RaftAttributes: attr}, true)
 	}
-	cl.RemoveMember(4)
+	cl.RemoveMember(4, true)
 
 	attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
 	ctx, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
@@ -446,7 +446,7 @@ func TestClusterGenID(t *testing.T) {
 	previd := cs.ID()
 
 	cs.SetStore(mockstore.NewNop())
-	cs.AddMember(newTestMember(3, nil, "", nil))
+	cs.AddMember(newTestMember(3, nil, "", nil), true)
 	cs.genID()
 	if cs.ID() == previd {
 		t.Fatalf("cluster.ID = %v, want not %v", cs.ID(), previd)
@@ -489,7 +489,7 @@ func TestClusterAddMember(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
 	c.SetStore(st)
-	c.AddMember(newTestMember(1, nil, "node1", nil))
+	c.AddMember(newTestMember(1, nil, "node1", nil), true)
 
 	wactions := []testutil.Action{
 		{
@@ -512,7 +512,7 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
 	c.SetStore(st)
-	c.AddMember(newTestMemberAsLearner(1, nil, "node1", nil))
+	c.AddMember(newTestMemberAsLearner(1, nil, "node1", nil), true)
 
 	wactions := []testutil.Action{
 		{
@@ -555,7 +555,7 @@ func TestClusterRemoveMember(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
 	c.SetStore(st)
-	c.RemoveMember(1)
+	c.RemoveMember(1, true)
 
 	wactions := []testutil.Action{
 		{Name: "Delete", Params: []interface{}{MemberStoreKey(1), true, true}},
@@ -595,7 +595,7 @@ func TestClusterUpdateAttributes(t *testing.T) {
 		c := newTestCluster(t, tt.mems)
 		c.removed = tt.removed
 
-		c.UpdateAttributes(types.ID(1), Attributes{Name: name, ClientURLs: clientURLs})
+		c.UpdateAttributes(types.ID(1), Attributes{Name: name, ClientURLs: clientURLs}, true)
 		if g := c.Members(); !reflect.DeepEqual(g, tt.wmems) {
 			t.Errorf("#%d: members = %+v, want %+v", i, g, tt.wmems)
 		}

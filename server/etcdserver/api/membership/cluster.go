@@ -285,6 +285,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+	// TODO: this must be switched to backend as well.
 	members, removed := membersFromStore(c.lg, c.v2store)
 	id := types.ID(cc.NodeID)
 	if removed[id] {
@@ -370,13 +371,13 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 // AddMember adds a new Member into the cluster, and saves the given member's
 // raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
-func (c *RaftCluster) AddMember(m *Member) {
+func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 bool) {
 	c.Lock()
 	defer c.Unlock()
 	if c.v2store != nil {
 		mustSaveMemberToStore(c.lg, c.v2store, m)
 	}
-	if c.be != nil {
+	if c.be != nil && shouldApplyV3 {
 		mustSaveMemberToBackend(c.lg, c.be, m)
 	}
 
@@ -393,13 +394,13 @@ func (c *RaftCluster) AddMember(m *Member) {
 
 // RemoveMember removes a member from the store.
 // The given id MUST exist, or the function panics.
-func (c *RaftCluster) RemoveMember(id types.ID) {
+func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 bool) {
 	c.Lock()
 	defer c.Unlock()
 	if c.v2store != nil {
 		mustDeleteMemberFromStore(c.lg, c.v2store, id)
 	}
-	if c.be != nil {
+	if c.be != nil && shouldApplyV3 {
 		mustDeleteMemberFromBackend(c.be, id)
 	}
 
@@ -425,7 +426,7 @@ func (c *RaftCluster) RemoveMember(id types.ID) {
 	}
 }
 
-func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
+func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApplyV3 bool) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -434,7 +435,7 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 		if c.v2store != nil {
 			mustUpdateMemberAttrInStore(c.lg, c.v2store, m)
 		}
-		if c.be != nil {
+		if c.be != nil && shouldApplyV3 {
 			mustSaveMemberToBackend(c.lg, c.be, m)
 		}
 		return
@@ -459,7 +460,7 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 }
 
 // PromoteMember marks the member's IsLearner RaftAttributes to false.
-func (c *RaftCluster) PromoteMember(id types.ID) {
+func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 bool) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -467,7 +468,7 @@ func (c *RaftCluster) PromoteMember(id types.ID) {
 	if c.v2store != nil {
 		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
 	}
-	if c.be != nil {
+	if c.be != nil && shouldApplyV3 {
 		mustSaveMemberToBackend(c.lg, c.be, c.members[id])
 	}
 
@@ -478,7 +479,7 @@ func (c *RaftCluster) PromoteMember(id types.ID) {
 	)
 }
 
-func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
+func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes, shouldApplyV3 bool) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -486,7 +487,7 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes)
 	if c.v2store != nil {
 		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
 	}
-	if c.be != nil {
+	if c.be != nil && shouldApplyV3 {
 		mustSaveMemberToBackend(c.lg, c.be, c.members[id])
 	}
 
@@ -508,7 +509,7 @@ func (c *RaftCluster) Version() *semver.Version {
 	return semver.Must(semver.NewVersion(c.version.String()))
 }
 
-func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *semver.Version)) {
+func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *semver.Version), shouldApplyV3 bool) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
@@ -533,7 +534,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}
-	if c.be != nil {
+	if c.be != nil && shouldApplyV3 {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
 	if oldVer != nil {
@@ -809,11 +810,11 @@ func (c *RaftCluster) DowngradeInfo() *DowngradeInfo {
 	return d
 }
 
-func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo) {
+func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo, shouldApplyV3 bool) {
 	c.Lock()
 	defer c.Unlock()
 
-	if c.be != nil {
+	if c.be != nil && shouldApplyV3 {
 		mustSaveDowngradeToBackend(c.lg, c.be, d)
 	}
 

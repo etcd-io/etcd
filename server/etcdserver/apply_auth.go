@@ -41,7 +41,7 @@ func newAuthApplierV3(as auth.AuthStore, base applierV3, lessor lease.Lessor) *a
 	return &authApplierV3{applierV3: base, as: as, lessor: lessor}
 }
 
-func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
+func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest, shouldApplyV3 bool) *applyResult {
 	aa.mu.Lock()
 	defer aa.mu.Unlock()
 	if r.Header != nil {
@@ -57,7 +57,7 @@ func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
 			return &applyResult{err: err}
 		}
 	}
-	ret := aa.applierV3.Apply(r)
+	ret := aa.applierV3.Apply(r, shouldApplyV3)
 	aa.authInfo.Username = ""
 	aa.authInfo.Revision = 0
 	return ret

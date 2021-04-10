@@ -54,14 +54,14 @@ type applyResult struct {
 
 // applierV3Internal is the interface for processing internal V3 raft request
 type applierV3Internal interface {
-	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest)
-	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest)
-	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest)
+	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 bool)
+	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 bool)
+	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 bool)
 }
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
-	Apply(r *pb.InternalRaftRequest) *applyResult
+	Apply(r *pb.InternalRaftRequest, shouldApplyV3 bool) *applyResult
 
 	Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
@@ -130,7 +130,7 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 	)
 }
 
-func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
+func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 bool) *applyResult {
 	op := "unknown"
 	ar := &applyResult{}
 	defer func(start time.Time) {
@@ -141,6 +141,25 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 			warnOfFailedRequest(a.s.Logger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		}
 	}(time.Now())
+
+	switch {
+	case r.ClusterVersionSet != nil: // Implemented in 3.5.x
+		op = "ClusterVersionSet"
+		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
+		return nil
+	case r.ClusterMemberAttrSet != nil:
+		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
+		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
+		return nil
+	case r.DowngradeInfoSet != nil:
+		op = "DowngradeInfoSet" // Implemented in 3.5.x
+		a.s.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
+		return nil
+	}
+
+	if !shouldApplyV3 {
+		return nil
+	}
 
 	// call into a.s.applyV3.F instead of a.F so upper appliers can check individual calls
 	switch {
@@ -221,15 +240,6 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	case r.AuthRoleList != nil:
 		op = "AuthRoleList"
 		ar.resp, ar.err = a.s.applyV3.RoleList(r.AuthRoleList)
-	case r.ClusterVersionSet != nil: // Implemented in 3.5.x
-		op = "ClusterVersionSet"
-		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet)
-	case r.ClusterMemberAttrSet != nil:
-		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
-		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet)
-	case r.DowngradeInfoSet != nil:
-		op = "DowngradeInfoSet" // Implemented in 3.5.x
-		a.s.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet)
 	default:
 		a.s.lg.Panic("not implemented apply", zap.Stringer("raft-request", r))
 	}
@@ -903,26 +913,27 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 	return resp, err
 }
 
-func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest) {
-	a.s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Ver)), api.UpdateCapability)
+func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 bool) {
+	a.s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Ver)), api.UpdateCapability, shouldApplyV3)
 }
 
-func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest) {
+func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 bool) {
 	a.s.cluster.UpdateAttributes(
 		types.ID(r.Member_ID),
 		membership.Attributes{
 			Name:       r.MemberAttributes.Name,
 			ClientURLs: r.MemberAttributes.ClientUrls,
 		},
+		shouldApplyV3,
 	)
 }
 
-func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest) {
+func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 bool) {
 	d := membership.DowngradeInfo{Enabled: false}
 	if r.Enabled {
 		d = membership.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
 	}
-	a.s.cluster.SetDowngradeInfo(&d)
+	a.s.cluster.SetDowngradeInfo(&d, shouldApplyV3)
 }
 
 type quotaApplierV3 struct {

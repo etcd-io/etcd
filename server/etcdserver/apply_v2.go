@@ -87,7 +87,7 @@ func (a *applierV2store) Put(r *RequestV2) Response {
 				a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
 			}
 			if a.cluster != nil {
-				a.cluster.UpdateAttributes(id, attr)
+				a.cluster.UpdateAttributes(id, attr, true)
 			}
 			// return an empty response since there is no consumer.
 			return Response{}
