@@ -294,7 +294,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	}
 
 	le.leaseMap[id] = l
-	l.persistTo(le.b, le.ci)
+	l.persistTo(le.b)
 
 	leaseTotalTTLs.Observe(float64(l.ttl))
 	leaseGranted.Inc()
@@ -341,10 +341,6 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// kv deletion. Or we might end up with not executing the revoke or not
 	// deleting the keys if etcdserver fails in between.
 	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
-	// if len(keys) > 0, txn.End() will call ci.UnsafeSave function.
-	if le.ci != nil && len(keys) == 0 {
-		le.ci.UnsafeSave(le.b.BatchTx())
-	}
 
 	txn.End()
 
@@ -828,7 +824,7 @@ func (l *Lease) expired() bool {
 	return l.Remaining() <= 0
 }
 
-func (l *Lease) persistTo(b backend.Backend, ci cindex.ConsistentIndexer) {
+func (l *Lease) persistTo(b backend.Backend) {
 	key := int64ToBytes(int64(l.ID))
 
 	lpb := leasepb.Lease{ID: int64(l.ID), TTL: l.ttl, RemainingTTL: l.remainingTTL}
@@ -839,9 +835,6 @@ func (l *Lease) persistTo(b backend.Backend, ci cindex.ConsistentIndexer) {
 
 	b.BatchTx().Lock()
 	b.BatchTx().UnsafePut(leaseBucketName, key, val)
-	if ci != nil {
-		ci.UnsafeSave(b.BatchTx())
-	}
 	b.BatchTx().Unlock()
 }
 
