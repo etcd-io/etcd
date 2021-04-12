@@ -62,8 +62,10 @@ func (a *rawNodeAdapter) ReadIndex(_ context.Context, rctx []byte) error {
 	// RawNode swallowed the error in ReadIndex, it probably should not do that.
 	return nil
 }
-func (a *rawNodeAdapter) Step(_ context.Context, m pb.Message) error   { return a.RawNode.Step(m) }
-func (a *rawNodeAdapter) Propose(_ context.Context, data []byte) error { return a.RawNode.Propose(data) }
+func (a *rawNodeAdapter) Step(_ context.Context, m pb.Message) error { return a.RawNode.Step(m) }
+func (a *rawNodeAdapter) Propose(_ context.Context, data []byte) error {
+	return a.RawNode.Propose(data)
+}
 func (a *rawNodeAdapter) ProposeConfChange(_ context.Context, cc pb.ConfChangeI) error {
 	return a.RawNode.ProposeConfChange(cc)
 }
