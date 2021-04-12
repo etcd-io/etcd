@@ -260,6 +260,7 @@ type EtcdServer struct {
 	lessor     lease.Lessor
 	bemu       sync.Mutex
 	be         backend.Backend
+	beHooks    backend.Hooks
 	authStore  auth.AuthStore
 	alarmStore *v3alarm.AlarmStore
 
@@ -292,6 +293,17 @@ type EtcdServer struct {
 	firstCommitInTermC  chan struct{}
 
 	*AccessController
+}
+
+type backendHooks struct {
+	indexer cindex.ConsistentIndexer
+	lg      *zap.Logger
+}
+
+func (bh *backendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
+	if bh.indexer != nil {
+		bh.indexer.UnsafeSave(tx)
+	}
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -345,7 +357,9 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	bepath := cfg.BackendPath()
 	beExist := fileutil.Exist(bepath)
-	be := openBackend(cfg)
+
+	beHooks := &backendHooks{lg: cfg.Logger}
+	be := openBackend(cfg, beHooks)
 
 	defer func() {
 		if err != nil {
@@ -463,7 +477,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 				zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
 			)
 
-			if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist); err != nil {
+			if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 				cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 			}
 			s1, s2 := be.Size(), be.SizeInUse()
@@ -537,6 +551,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = be
+	srv.beHooks = beHooks
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
@@ -563,6 +578,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		return nil, err
 	}
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, srv.consistIndex, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
+
+	// Backend should contain 'meta' bucket going forward.
+	beHooks.indexer = srv.consistIndex
+
 	kvindex := srv.consistIndex.ConsistentIndex()
 	srv.lg.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
 	if beExist {
@@ -1170,7 +1189,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// wait for raftNode to persist snapshot onto the disk
 	<-apply.notifyc
 
-	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot)
+	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot, s.beHooks)
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
@@ -2117,6 +2136,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
+
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
 		s.w.Trigger(req.ID, s.applyV2Request(req))

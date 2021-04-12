@@ -76,6 +76,7 @@ func (ci *consistentIndex) SetConsistentIndex(v uint64) {
 
 func (ci *consistentIndex) UnsafeSave(tx backend.BatchTx) {
 	index := atomic.LoadUint64(&ci.consistentIndex)
+
 	if index == 0 {
 		// Never save 0 as it means that we didn't loaded the real index yet.
 		return
