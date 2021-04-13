@@ -54,14 +54,14 @@ type applyResult struct {
 
 // applierV3Internal is the interface for processing internal V3 raft request
 type applierV3Internal interface {
-	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 bool)
-	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 bool)
-	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 bool)
+	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3)
+	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3)
+	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
 }
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
-	Apply(r *pb.InternalRaftRequest, shouldApplyV3 bool) *applyResult
+	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult
 
 	Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
@@ -130,7 +130,7 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 	)
 }
 
-func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 bool) *applyResult {
+func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult {
 	op := "unknown"
 	ar := &applyResult{}
 	defer func(start time.Time) {
@@ -913,11 +913,11 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 	return resp, err
 }
 
-func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 bool) {
+func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	a.s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Ver)), api.UpdateCapability, shouldApplyV3)
 }
 
-func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 bool) {
+func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	a.s.cluster.UpdateAttributes(
 		types.ID(r.Member_ID),
 		membership.Attributes{
@@ -928,7 +928,7 @@ func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAtt
 	)
 }
 
-func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 bool) {
+func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	d := membership.DowngradeInfo{Enabled: false}
 	if r.Enabled {
 		d = membership.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}

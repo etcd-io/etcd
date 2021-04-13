@@ -72,6 +72,13 @@ type ConfigChangeContext struct {
 	IsPromote bool `json:"isPromote"`
 }
 
+type ShouldApplyV3 bool
+
+const (
+	ApplyBoth        = ShouldApplyV3(true)
+	ApplyV2storeOnly = ShouldApplyV3(false)
+)
+
 // NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
 // cluster with raft learner member.
 func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
@@ -371,7 +378,7 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 // AddMember adds a new Member into the cluster, and saves the given member's
 // raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
-func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 bool) {
+func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 	if c.v2store != nil {
@@ -394,7 +401,7 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 bool) {
 
 // RemoveMember removes a member from the store.
 // The given id MUST exist, or the function panics.
-func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 bool) {
+func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 	if c.v2store != nil {
@@ -426,7 +433,7 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 bool) {
 	}
 }
 
-func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApplyV3 bool) {
+func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -460,7 +467,7 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApply
 }
 
 // PromoteMember marks the member's IsLearner RaftAttributes to false.
-func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 bool) {
+func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -479,7 +486,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 bool) {
 	)
 }
 
-func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes, shouldApplyV3 bool) {
+func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -509,7 +516,7 @@ func (c *RaftCluster) Version() *semver.Version {
 	return semver.Must(semver.NewVersion(c.version.String()))
 }
 
-func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *semver.Version), shouldApplyV3 bool) {
+func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *semver.Version), shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
@@ -810,7 +817,7 @@ func (c *RaftCluster) DowngradeInfo() *DowngradeInfo {
 	return d
 }
 
-func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo, shouldApplyV3 bool) {
+func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 

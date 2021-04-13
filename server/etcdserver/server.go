@@ -2031,12 +2031,16 @@ func (s *EtcdServer) apply(
 			s.setTerm(e.Term)
 
 		case raftpb.EntryConfChange:
+			// We need to apply all WAL entries on top of v2store
+			// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
+			shouldApplyV3 := membership.ApplyV2storeOnly
+
 			// set the consistent index of current executing entry
-			shouldApplyV3 := false
 			if e.Index > s.consistIndex.ConsistentIndex() {
 				s.consistIndex.SetConsistentIndex(e.Index)
-				shouldApplyV3 = true
+				shouldApplyV3 = membership.ApplyBoth
 			}
+
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
@@ -2059,17 +2063,17 @@ func (s *EtcdServer) apply(
 
 // applyEntryNormal apples an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
-	shouldApplyV3 := false
+	shouldApplyV3 := membership.ApplyV2storeOnly
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
 		s.consistIndex.SetConsistentIndex(e.Index)
-		shouldApplyV3 = true
+		shouldApplyV3 = membership.ApplyBoth
 	}
 	s.lg.Debug("apply entry normal",
 		zap.Uint64("consistent-index", index),
 		zap.Uint64("entry-index", e.Index),
-		zap.Bool("should-applyV3", shouldApplyV3))
+		zap.Bool("should-applyV3", bool(shouldApplyV3)))
 
 	// raft state machine may generate noop entry when leader confirmation.
 	// skip it in advance to avoid some potential bug in the future
@@ -2151,7 +2155,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
-func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 bool) (bool, error) {
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
 	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
