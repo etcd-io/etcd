@@ -1292,7 +1292,7 @@
             name: 'cluster',
             options: [],
             query: 'label_values(etcd_server_has_leader, job)',
-            refresh: %(dashboard_var_refresh),
+            refresh: $._config.dashboard_var_refresh,
             regex: '',
             sort: 2,
             tagValuesQuery: '',
