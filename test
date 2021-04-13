@@ -120,8 +120,14 @@ fi
 echo "Running with TEST_CPUS:" "${TEST_CPUS}"
 
 # determine whether target supports race detection
-if [ "$GOARCH" == "amd64" ]; then
-	RACE="--race"
+if [ -z "${RACE}" ] ; then
+  if [ "$GOARCH" == "amd64" ]; then
+    RACE="--race"
+  else
+    RACE="--race=false"
+  fi
+else
+  RACE="--race=${RACE:-true}"
 fi
 
 RUN_ARG=""
