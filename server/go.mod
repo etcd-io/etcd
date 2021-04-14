@@ -33,10 +33,9 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.0-alpha.0
 	go.etcd.io/etcd/pkg/v3 v3.5.0-alpha.0
 	go.etcd.io/etcd/raft/v3 v3.5.0-alpha.0
-	go.uber.org/multierr v1.5.0
-	go.uber.org/zap v1.16.0
+	go.uber.org/multierr v1.6.0
+	go.uber.org/zap v1.16.1-0.20210329175301-c23abee72d19
 	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
 	golang.org/x/sys v0.0.0-20210403161142-5e06dd20ab57
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
