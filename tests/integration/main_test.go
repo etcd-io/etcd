@@ -8,10 +8,8 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.etcd.io/etcd/server/v3/embed"
 )
 
 func TestMain(m *testing.M) {
-	embed.SetupGrpcLoggingForTest(true)
 	testutil.MustTestMainWithLeakDetection(m)
 }

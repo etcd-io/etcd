@@ -57,6 +57,8 @@ func startEtcdOrProxyV2(args []string) {
 
 	err := cfg.parse(args[1:])
 	lg := cfg.ec.GetLogger()
+	cfg.ec.SetupGlobalLoggers()
+
 	if lg == nil {
 		var zapError error
 		// use this logger
