@@ -311,6 +311,8 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, errEndpoints)
 	}
 
+	sec := secureCfgFromCmd(cmd)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	resp, err := clients[0].Get(ctx, checkDatascalePrefix, v3.WithPrefix(), v3.WithLimit(1))
 	cancel()
@@ -329,7 +331,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	wg.Add(len(clients))
 
 	// get the process_resident_memory_bytes and process_virtual_memory_bytes before the put operations
-	bytesBefore := endpointMemoryMetrics(eps[0])
+	bytesBefore := endpointMemoryMetrics(eps[0], sec)
 	if bytesBefore == 0 {
 		fmt.Println("FAIL: Could not read process_resident_memory_bytes before the put operations.")
 		os.Exit(ExitError)
@@ -367,7 +369,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	s := <-sc
 
 	// get the process_resident_memory_bytes after the put operations
-	bytesAfter := endpointMemoryMetrics(eps[0])
+	bytesAfter := endpointMemoryMetrics(eps[0], sec)
 	if bytesAfter == 0 {
 		fmt.Println("FAIL: Could not read process_resident_memory_bytes after the put operations.")
 		os.Exit(ExitError)
