@@ -18,10 +18,10 @@ import (
 	"context"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/proxy/grpcproxy/adapter"
+	"github.com/cyralinc/etcd/clientv3"
+	"github.com/cyralinc/etcd/etcdserver"
+	"github.com/cyralinc/etcd/etcdserver/api/v3rpc"
+	"github.com/cyralinc/etcd/proxy/grpcproxy/adapter"
 )
 
 // New creates a clientv3 client that wraps an in-process EtcdServer. Instead

@@ -18,7 +18,7 @@ package mirror
 import (
 	"context"
 
-	"go.etcd.io/etcd/clientv3"
+	"github.com/cyralinc/etcd/clientv3"
 )
 
 const (

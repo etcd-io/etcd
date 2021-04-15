@@ -20,7 +20,7 @@ import (
 	"log"
 	"sort"
 
-	"go.etcd.io/etcd/client"
+	"github.com/cyralinc/etcd/client"
 )
 
 func ExampleKeysAPI_directory() {

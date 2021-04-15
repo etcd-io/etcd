@@ -17,10 +17,10 @@ package v3rpc
 import (
 	"context"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/types"
+	"github.com/cyralinc/etcd/etcdserver"
+	"github.com/cyralinc/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "github.com/cyralinc/etcd/etcdserver/etcdserverpb"
+	"github.com/cyralinc/etcd/pkg/types"
 )
 
 type quotaKVServer struct {

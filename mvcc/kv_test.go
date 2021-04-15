@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"github.com/cyralinc/etcd/lease"
+	"github.com/cyralinc/etcd/mvcc/backend"
+	"github.com/cyralinc/etcd/mvcc/mvccpb"
+	"github.com/cyralinc/etcd/pkg/testutil"
+	"github.com/cyralinc/etcd/pkg/traceutil"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"

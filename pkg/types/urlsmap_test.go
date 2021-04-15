@@ -15,7 +15,7 @@
 package types
 
 import (
-	"go.etcd.io/etcd/pkg/testutil"
+	"github.com/cyralinc/etcd/pkg/testutil"
 	"reflect"
 	"testing"
 )

@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/integration"
-	"go.etcd.io/etcd/pkg/testutil"
+	"github.com/cyralinc/etcd/clientv3"
+	pb "github.com/cyralinc/etcd/etcdserver/etcdserverpb"
+	"github.com/cyralinc/etcd/integration"
+	"github.com/cyralinc/etcd/pkg/testutil"
 )
 
 func TestDetectKvOrderViolation(t *testing.T) {

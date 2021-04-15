@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/pkg/transport"
+	"github.com/cyralinc/etcd/pkg/transport"
 
 	"sigs.k8s.io/yaml"
 )

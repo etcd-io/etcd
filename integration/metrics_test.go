@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/etcdserver"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/testutil"
-	"go.etcd.io/etcd/pkg/transport"
+	"github.com/cyralinc/etcd/etcdserver"
+	pb "github.com/cyralinc/etcd/etcdserver/etcdserverpb"
+	"github.com/cyralinc/etcd/pkg/testutil"
+	"github.com/cyralinc/etcd/pkg/transport"
 )
 
 // TestMetricDbSizeBoot checks that the db size metric is set on boot.

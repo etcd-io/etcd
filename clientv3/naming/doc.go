@@ -17,8 +17,8 @@
 // To use, first import the packages:
 //
 //	import (
-//		"go.etcd.io/etcd/clientv3"
-//		etcdnaming "go.etcd.io/etcd/clientv3/naming"
+//		"github.com/cyralinc/etcd/clientv3"
+//		etcdnaming "github.com/cyralinc/etcd/clientv3/naming"
 //
 //		"google.golang.org/grpc"
 //		"google.golang.org/grpc/naming"

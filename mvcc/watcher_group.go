@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"math"
 
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/adt"
+	"github.com/cyralinc/etcd/mvcc/mvccpb"
+	"github.com/cyralinc/etcd/pkg/adt"
 )
 
 var (

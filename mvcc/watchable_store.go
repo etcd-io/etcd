@@ -15,14 +15,14 @@
 package mvcc
 
 import (
-	"go.etcd.io/etcd/auth"
+	"github.com/cyralinc/etcd/auth"
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/lease"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/mvcc/mvccpb"
-	"go.etcd.io/etcd/pkg/traceutil"
+	"github.com/cyralinc/etcd/lease"
+	"github.com/cyralinc/etcd/mvcc/backend"
+	"github.com/cyralinc/etcd/mvcc/mvccpb"
+	"github.com/cyralinc/etcd/pkg/traceutil"
 	"go.uber.org/zap"
 )
 

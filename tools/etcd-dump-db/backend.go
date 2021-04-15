@@ -17,13 +17,13 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"go.etcd.io/etcd/auth/authpb"
+	"github.com/cyralinc/etcd/auth/authpb"
 	"path/filepath"
 
-	"go.etcd.io/etcd/lease/leasepb"
-	"go.etcd.io/etcd/mvcc"
-	"go.etcd.io/etcd/mvcc/backend"
-	"go.etcd.io/etcd/mvcc/mvccpb"
+	"github.com/cyralinc/etcd/lease/leasepb"
+	"github.com/cyralinc/etcd/mvcc"
+	"github.com/cyralinc/etcd/mvcc/backend"
+	"github.com/cyralinc/etcd/mvcc/mvccpb"
 
 	bolt "go.etcd.io/bbolt"
 )

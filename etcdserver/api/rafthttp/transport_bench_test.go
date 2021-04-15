@@ -21,10 +21,10 @@ import (
 	"testing"
 	"time"
 
-	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
-	"go.etcd.io/etcd/pkg/types"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	stats "github.com/cyralinc/etcd/etcdserver/api/v2stats"
+	"github.com/cyralinc/etcd/pkg/types"
+	"github.com/cyralinc/etcd/raft"
+	"github.com/cyralinc/etcd/raft/raftpb"
 )
 
 func BenchmarkSendingMsgApp(b *testing.B) {

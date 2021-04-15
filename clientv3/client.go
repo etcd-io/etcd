@@ -26,12 +26,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"go.etcd.io/etcd/clientv3/balancer"
-	"go.etcd.io/etcd/clientv3/balancer/picker"
-	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
-	"go.etcd.io/etcd/clientv3/credentials"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/logutil"
+	"github.com/cyralinc/etcd/clientv3/balancer"
+	"github.com/cyralinc/etcd/clientv3/balancer/picker"
+	"github.com/cyralinc/etcd/clientv3/balancer/resolver/endpoint"
+	"github.com/cyralinc/etcd/clientv3/credentials"
+	"github.com/cyralinc/etcd/etcdserver/api/v3rpc/rpctypes"
+	"github.com/cyralinc/etcd/pkg/logutil"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -277,8 +277,8 @@ func (c *Client) getToken(ctx context.Context) error {
 	for _, ep := range eps {
 		// use dial options without dopts to avoid reusing the client balancer
 		var dOpts []grpc.DialOption
-		_, host, _ := endpoint.ParseEndpoint(ep)
-		target := c.resolverGroup.Target(host)
+		_, host, scheme := endpoint.ParseEndpoint(ep)
+		target := c.resolverGroup.Target(scheme, host)
 		creds := c.dialWithBalancerCreds(ep)
 		dOpts, err = c.dialSetupOpts(creds, c.cfg.DialOptions...)
 		if err != nil {
@@ -312,8 +312,8 @@ func (c *Client) getToken(ctx context.Context) error {
 // dialWithBalancer dials the client's current load balanced resolver group.  The scheme of the host
 // of the provided endpoint determines the scheme used for all endpoints of the client connection.
 func (c *Client) dialWithBalancer(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	_, host, _ := endpoint.ParseEndpoint(ep)
-	target := c.resolverGroup.Target(host)
+	_, host, scheme := endpoint.ParseEndpoint(ep)
+	target := c.resolverGroup.Target(scheme, host)
 	creds := c.dialWithBalancerCreds(ep)
 	return c.dial(target, creds, dopts...)
 }

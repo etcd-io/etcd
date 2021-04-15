@@ -92,13 +92,17 @@ func (e *ResolverGroup) SetEndpoints(endpoints []string) {
 }
 
 // Target constructs a endpoint target using the endpoint id of the ResolverGroup.
-func (e *ResolverGroup) Target(endpoint string) string {
-	return Target(e.id, endpoint)
+func (e *ResolverGroup) Target(scheme, endpoint string) string {
+	return Target(scheme, e.id, endpoint)
 }
 
 // Target constructs a endpoint resolver target.
-func Target(id, endpoint string) string {
-	return fmt.Sprintf("%s://%s/%s", scheme, id, endpoint)
+func Target(s, id, endpoint string) string {
+	newScheme := scheme
+	if s != "" {
+		newScheme = s
+	}
+	return fmt.Sprintf("%s://%s/%s", newScheme, id, endpoint)
 }
 
 // IsTarget checks if a given target string in an endpoint resolver target.
@@ -210,6 +214,7 @@ func ParseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	case "unix", "unixs":
 		proto = "unix"
 		host = url.Host + url.Path
+	case "dns":
 	default:
 		proto, host = "", ""
 	}

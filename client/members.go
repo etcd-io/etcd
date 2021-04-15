@@ -23,7 +23,7 @@ import (
 	"net/url"
 	"path"
 
-	"go.etcd.io/etcd/pkg/types"
+	"github.com/cyralinc/etcd/pkg/types"
 )
 
 var (

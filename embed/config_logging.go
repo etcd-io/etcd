@@ -23,7 +23,7 @@ import (
 	"reflect"
 	"sync"
 
-	"go.etcd.io/etcd/pkg/logutil"
+	"github.com/cyralinc/etcd/pkg/logutil"
 
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"

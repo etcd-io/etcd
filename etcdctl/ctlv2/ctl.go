@@ -20,8 +20,8 @@ import (
 	"os"
 	"time"
 
-	"go.etcd.io/etcd/etcdctl/ctlv2/command"
-	"go.etcd.io/etcd/version"
+	"github.com/cyralinc/etcd/etcdctl/ctlv2/command"
+	"github.com/cyralinc/etcd/version"
 
 	"github.com/urfave/cli"
 )

@@ -25,10 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/raft/confchange"
-	"go.etcd.io/etcd/raft/quorum"
-	pb "go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/raft/tracker"
+	"github.com/cyralinc/etcd/raft/confchange"
+	"github.com/cyralinc/etcd/raft/quorum"
+	pb "github.com/cyralinc/etcd/raft/raftpb"
+	"github.com/cyralinc/etcd/raft/tracker"
 )
 
 // None is a placeholder node ID used when there is no leader.

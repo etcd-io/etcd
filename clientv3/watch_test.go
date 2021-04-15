@@ -17,7 +17,7 @@ package clientv3
 import (
 	"testing"
 
-	"go.etcd.io/etcd/mvcc/mvccpb"
+	"github.com/cyralinc/etcd/mvcc/mvccpb"
 )
 
 func TestEvent(t *testing.T) {

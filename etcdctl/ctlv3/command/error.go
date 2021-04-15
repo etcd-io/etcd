@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"go.etcd.io/etcd/client"
+	"github.com/cyralinc/etcd/client"
 )
 
 const (

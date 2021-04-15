@@ -21,12 +21,12 @@ import (
 	"net/http"
 	"strings"
 
-	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/api"
-	"go.etcd.io/etcd/etcdserver/api/v2error"
-	"go.etcd.io/etcd/etcdserver/api/v2http/httptypes"
-	"go.etcd.io/etcd/pkg/logutil"
-	"go.etcd.io/etcd/version"
+	"github.com/cyralinc/etcd/etcdserver"
+	"github.com/cyralinc/etcd/etcdserver/api"
+	"github.com/cyralinc/etcd/etcdserver/api/v2error"
+	"github.com/cyralinc/etcd/etcdserver/api/v2http/httptypes"
+	"github.com/cyralinc/etcd/pkg/logutil"
+	"github.com/cyralinc/etcd/version"
 
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"

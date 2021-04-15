@@ -22,11 +22,11 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
-	"go.etcd.io/etcd/etcdserver/api/v2error"
-	"go.etcd.io/etcd/etcdserver/api/v2store"
-	"go.etcd.io/etcd/mvcc/mvccpb"
+	"github.com/cyralinc/etcd/clientv3"
+	"github.com/cyralinc/etcd/clientv3/concurrency"
+	"github.com/cyralinc/etcd/etcdserver/api/v2error"
+	"github.com/cyralinc/etcd/etcdserver/api/v2store"
+	"github.com/cyralinc/etcd/mvcc/mvccpb"
 )
 
 // store implements the Store interface for V2 using

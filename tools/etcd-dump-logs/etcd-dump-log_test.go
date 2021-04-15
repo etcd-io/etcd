@@ -24,12 +24,12 @@ import (
 	"strings"
 	"testing"
 
-	"go.etcd.io/etcd/auth/authpb"
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/pkg/pbutil"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal"
+	"github.com/cyralinc/etcd/auth/authpb"
+	"github.com/cyralinc/etcd/etcdserver/etcdserverpb"
+	"github.com/cyralinc/etcd/pkg/fileutil"
+	"github.com/cyralinc/etcd/pkg/pbutil"
+	"github.com/cyralinc/etcd/raft/raftpb"
+	"github.com/cyralinc/etcd/wal"
 	"go.uber.org/zap"
 )
 

@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/version"
+	"github.com/cyralinc/etcd/version"
 )
 
 var (

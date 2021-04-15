@@ -14,7 +14,7 @@
 
 package rafthttp
 
-import "go.etcd.io/etcd/raft/raftpb"
+import "github.com/cyralinc/etcd/raft/raftpb"
 
 type encoder interface {
 	// encode encodes the given message to an output stream.

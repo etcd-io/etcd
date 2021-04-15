@@ -15,8 +15,8 @@
 package api
 
 import (
-	"go.etcd.io/etcd/etcdserver/api/membership"
-	"go.etcd.io/etcd/pkg/types"
+	"github.com/cyralinc/etcd/etcdserver/api/membership"
+	"github.com/cyralinc/etcd/pkg/types"
 
 	"github.com/coreos/go-semver/semver"
 )

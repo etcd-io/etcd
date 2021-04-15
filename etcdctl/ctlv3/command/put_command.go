@@ -20,7 +20,7 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"go.etcd.io/etcd/clientv3"
+	"github.com/cyralinc/etcd/clientv3"
 )
 
 var (

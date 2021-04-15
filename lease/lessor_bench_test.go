@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/mvcc/backend"
+	"github.com/cyralinc/etcd/mvcc/backend"
 	"go.uber.org/zap"
 )
 

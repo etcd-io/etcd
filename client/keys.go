@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go.etcd.io/etcd/pkg/pathutil"
+	"github.com/cyralinc/etcd/pkg/pathutil"
 	"net/http"
 	"net/url"
 	"strconv"

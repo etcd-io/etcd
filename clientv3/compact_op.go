@@ -15,7 +15,7 @@
 package clientv3
 
 import (
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	pb "github.com/cyralinc/etcd/etcdserver/etcdserverpb"
 )
 
 // CompactOp represents a compact operation.

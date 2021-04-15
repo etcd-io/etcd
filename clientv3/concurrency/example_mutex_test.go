@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"log"
 
-	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/clientv3/concurrency"
+	"github.com/cyralinc/etcd/clientv3"
+	"github.com/cyralinc/etcd/clientv3/concurrency"
 )
 
 func ExampleMutex_Lock() {

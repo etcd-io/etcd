@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"sync"
 
-	v3 "go.etcd.io/etcd/clientv3"
-	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	v3 "github.com/cyralinc/etcd/clientv3"
+	pb "github.com/cyralinc/etcd/etcdserver/etcdserverpb"
 )
 
 // Mutex implements the sync Locker interface with etcd

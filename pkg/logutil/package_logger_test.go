@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.etcd.io/etcd/pkg/logutil"
+	"github.com/cyralinc/etcd/pkg/logutil"
 
 	"github.com/coreos/pkg/capnslog"
 )

@@ -16,7 +16,7 @@
 
 package ctlv3
 
-import "go.etcd.io/etcd/etcdctl/ctlv3/command"
+import "github.com/cyralinc/etcd/etcdctl/ctlv3/command"
 
 func Start() {
 	rootCmd.SetUsageFunc(usageFunc)
