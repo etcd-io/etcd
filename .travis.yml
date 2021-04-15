@@ -75,22 +75,19 @@ script:
           /bin/bash -c "GOARCH=amd64 PASSES='fmt bom dep' ./test.sh"
         ;;
       linux-amd64-integration-1-cpu)
-        # TODO: Reenable 'race' when https://github.com/etcd-io/etcd/issues/12336 fixed.
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 CPU=1 PASSES='integration' RACE='false' ./test.sh"
         ;;
       linux-amd64-integration-2-cpu)
-        # TODO: Reenable 'race' when https://github.com/etcd-io/etcd/issues/12336 fixed.
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
           /bin/bash -c "GOARCH=amd64 CPU=2 PASSES='integration' RACE='false' ./test.sh"
         ;;
       linux-amd64-integration-4-cpu)
-        # TODO: Reenable 'race' when https://github.com/etcd-io/etcd/issues/12336 fixed.
         docker run --rm \
           --volume=`pwd`:/go/src/go.etcd.io/etcd gcr.io/etcd-development/etcd-test:go${TRAVIS_GO_VERSION} \
-          /bin/bash -c "GOARCH=amd64 CPU=4 PASSES='integration' RACE='false' ./test.sh"
+          /bin/bash -c "GOARCH=amd64 CPU=4 PASSES='integration' RACE='true' ./test.sh"
         ;;
       linux-amd64-functional)
         docker run --rm \
@@ -115,8 +112,7 @@ script:
             && GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=s390x ./build.sh"
         ;;
       linux-amd64-grpcproxy)
-        # TODO: Reenable race when https://github.com/etcd-io/etcd/issues/12336 fixed.
-        sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'  CPU='4' COVER='false' RACE='false'" make docker-test
+        sudo HOST_TMP_DIR=/tmp TEST_OPTS="PASSES='build grpcproxy'  CPU='4' COVER='false' RACE='true'" make docker-test
         ;;
       linux-amd64-coverage)
         sudo HOST_TMP_DIR=/tmp TEST_OPTS="VERBOSE='1'" make docker-test-coverage
