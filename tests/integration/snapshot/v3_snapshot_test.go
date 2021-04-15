@@ -230,13 +230,13 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 
 	ics := ""
 	for i := 0; i < clusterN; i++ {
-		ics += fmt.Sprintf(",%d=%s", i, pURLs[i].String())
+		ics += fmt.Sprintf(",m%d=%s", i, pURLs[i].String())
 	}
 	ics = ics[1:]
 
 	cfgs := make([]*embed.Config, clusterN)
 	for i := 0; i < clusterN; i++ {
-		cfg := integration.NewEmbedConfig(t, fmt.Sprintf("%d", i))
+		cfg := integration.NewEmbedConfig(t, fmt.Sprintf("m%d", i))
 		cfg.InitialClusterToken = testClusterTkn
 		cfg.ClusterState = "existing"
 		cfg.LCUrls, cfg.ACUrls = []url.URL{cURLs[i]}, []url.URL{cURLs[i]}

@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
+	"go.uber.org/zap"
 )
 
 const ThroughProxy = false
@@ -39,6 +40,10 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 	}
 }
 
-func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
-	return clientv3.New(cfg)
+func newClientV3(cfg clientv3.Config, lg *zap.Logger) (*clientv3.Client, error) {
+	c, err := clientv3.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return c.WithLogger(lg), nil
 }

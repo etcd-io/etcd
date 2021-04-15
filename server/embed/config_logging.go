@@ -19,13 +19,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sync"
 
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 )
@@ -36,29 +34,6 @@ func (cfg Config) GetLogger() *zap.Logger {
 	l := cfg.logger
 	cfg.loggerMu.RUnlock()
 	return l
-}
-
-// for testing
-var grpcLogOnce = new(sync.Once)
-
-func setupGrpcLogging(debug bool, config zap.Config) {
-	grpcLogOnce.Do(func() {
-		// debug true, enable info, warning, error
-		// debug false, only discard info
-		if debug {
-			var gl grpclog.LoggerV2
-			gl, err := logutil.NewGRPCLoggerV2(config)
-			if err == nil {
-				grpclog.SetLoggerV2(gl)
-			}
-		} else {
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
-		}
-	})
-}
-
-func SetupGrpcLoggingForTest(debug bool) {
-	setupGrpcLogging(debug, zap.NewDevelopmentConfig())
 }
 
 // setupLogging initializes etcd logging.
@@ -111,9 +86,6 @@ func (cfg *Config) setupLogging() error {
 			copied.ErrorOutputPaths = errOutputPaths
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
-			if cfg.LogLevel == "debug" {
-				grpc.EnableTracing = true
-			}
 			if cfg.ZapLoggerBuilder == nil {
 				cfg.ZapLoggerBuilder = func(c *Config) error {
 					var err error
@@ -121,13 +93,11 @@ func (cfg *Config) setupLogging() error {
 					if err != nil {
 						return err
 					}
-					zap.ReplaceGlobals(c.logger)
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
 					c.loggerConfig = &copied
 					c.loggerCore = nil
 					c.loggerWriteSyncer = nil
-					setupGrpcLogging(cfg.LogLevel == "debug", copied)
 					return nil
 				}
 			}
@@ -147,9 +117,6 @@ func (cfg *Config) setupLogging() error {
 			}
 
 			lvl := zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
-			if cfg.LogLevel == "debug" {
-				grpc.EnableTracing = true
-			}
 
 			// WARN: do not change field names in encoder config
 			// journald logging writer assumes field names of "level" and "caller"
@@ -161,20 +128,12 @@ func (cfg *Config) setupLogging() error {
 			if cfg.ZapLoggerBuilder == nil {
 				cfg.ZapLoggerBuilder = func(c *Config) error {
 					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
-					zap.ReplaceGlobals(c.logger)
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
 					c.loggerConfig = nil
 					c.loggerCore = cr
 					c.loggerWriteSyncer = syncer
 
-					grpcLogOnce.Do(func() {
-						if cfg.LogLevel == "debug" {
-							grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
-						} else {
-							grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
-						}
-					})
 					return nil
 				}
 			}
@@ -223,22 +182,32 @@ func (cfg *Config) setupLogging() error {
 }
 
 // NewZapCoreLoggerBuilder generates a zap core logger builder.
-func NewZapCoreLoggerBuilder(lg *zap.Logger, cr zapcore.Core, syncer zapcore.WriteSyncer) func(*Config) error {
+func NewZapCoreLoggerBuilder(lg *zap.Logger) func(*Config) error {
 	return func(cfg *Config) error {
 		cfg.loggerMu.Lock()
 		defer cfg.loggerMu.Unlock()
 		cfg.logger = lg
 		cfg.loggerConfig = nil
-		cfg.loggerCore = cr
-		cfg.loggerWriteSyncer = syncer
-
-		grpcLogOnce.Do(func() {
-			if cr != nil && syncer != nil {
-				grpclog.SetLoggerV2(logutil.NewGRPCLoggerV2FromZapCore(cr, syncer))
-			} else {
-				grpc_zap.ReplaceGrpcLoggerV2(cfg.logger.Named("grpc"))
-			}
-		})
+		cfg.loggerCore = nil
+		cfg.loggerWriteSyncer = nil
 		return nil
+	}
+}
+
+// SetupGlobalLoggers configures 'global' loggers (grpc, zapGlobal) based on the cfg.
+//
+// The method is not executed by embed server by default (since 3.5) to
+// enable setups where grpc/zap.Global logging is configured independently
+// or spans separate lifecycle (like in tests).
+func (cfg *Config) SetupGlobalLoggers() {
+	lg := cfg.GetLogger()
+	if lg != nil {
+		if cfg.LogLevel == "debug" {
+			grpc.EnableTracing = true
+			grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
+		} else {
+			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+		}
+		zap.ReplaceGlobals(lg)
 	}
 }

@@ -57,6 +57,9 @@ func startEtcdOrProxyV2(args []string) {
 
 	err := cfg.parse(args[1:])
 	lg := cfg.ec.GetLogger()
+	// If we failed to parse the whole configuration, print the error using
+	// preferably the resolved logger from the config,
+	// but if does not exists, create a new temporary logger.
 	if lg == nil {
 		var zapError error
 		// use this logger
@@ -75,6 +78,8 @@ func startEtcdOrProxyV2(args []string) {
 		}
 		os.Exit(1)
 	}
+
+	cfg.ec.SetupGlobalLoggers()
 
 	defer func() {
 		logger := cfg.ec.GetLogger()
