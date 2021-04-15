@@ -1,4 +1,4 @@
-// +build !go1.15
+// +build go1.15
 
 // Copyright 2018 The etcd Authors
 //
@@ -16,29 +16,26 @@
 
 package tlsutil
 
-import (
-	"go/importer"
-	"reflect"
-	"strings"
-	"testing"
-)
+import "crypto/tls"
 
-func TestGetCipherSuites(t *testing.T) {
-	pkg, err := importer.For("source", nil).Import("crypto/tls")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cm := make(map[string]uint16)
-	for _, s := range pkg.Scope().Names() {
-		if strings.HasPrefix(s, "TLS_RSA_") || strings.HasPrefix(s, "TLS_ECDHE_") {
-			v, ok := GetCipherSuite(s)
-			if !ok {
-				t.Fatalf("Go implements missing cipher suite %q (%v)", s, v)
-			}
-			cm[s] = v
+// GetCipherSuite returns the corresponding cipher suite,
+// and boolean value if it is supported.
+func GetCipherSuite(s string) (uint16, bool) {
+	for _, c := range tls.CipherSuites() {
+		if s == c.Name {
+			return c.ID, true
 		}
 	}
-	if !reflect.DeepEqual(cm, cipherSuites) {
-		t.Fatalf("found unmatched cipher suites %v (Go) != %v", cm, cipherSuites)
+	for _, c := range tls.InsecureCipherSuites() {
+		if s == c.Name {
+			return c.ID, true
+		}
 	}
+	switch s {
+	case "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305":
+		return tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, true
+	case "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305":
+		return tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, true
+	}
+	return 0, false
 }
