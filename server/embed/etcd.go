@@ -509,7 +509,14 @@ func (e *Etcd) servePeers() (err error) {
 			ErrorLog:    defaultLog.New(ioutil.Discard, "", 0), // do not log user error
 		}
 		go srv.Serve(m.Match(cmux.Any()))
-		p.serve = func() error { return m.Serve() }
+		p.serve = func() error {
+			e.cfg.logger.Info(
+				"cmux::serve",
+				zap.String("address", u),
+				zap.String("cmuxp", fmt.Sprintf("%p", m)),
+			)
+			return m.Serve()
+		}
 		p.close = func(ctx context.Context) error {
 			// gracefully shutdown http.Server
 			// close open listeners, idle connections
@@ -517,12 +524,16 @@ func (e *Etcd) servePeers() (err error) {
 			e.cfg.logger.Info(
 				"stopping serving peer traffic",
 				zap.String("address", u),
+				zap.String("cmuxp", fmt.Sprintf("%p", m)),
 			)
 			stopServers(ctx, &servers{secure: peerTLScfg != nil, grpc: gs, http: srv})
 			e.cfg.logger.Info(
 				"stopped serving peer traffic",
 				zap.String("address", u),
+				zap.String("cmuxp", fmt.Sprintf("%p", m)),
 			)
+			m.Close()
+			e.cfg.logger.Info("Closed", zap.String("cmuxp", fmt.Sprintf("%p", m)))
 			return nil
 		}
 	}

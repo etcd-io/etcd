@@ -21,12 +21,11 @@ import (
 	"os"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
-	"go.uber.org/zap/zapgrpc"
-	"google.golang.org/grpc/grpclog"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 // GetLogger returns the logger.
