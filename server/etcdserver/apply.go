@@ -245,7 +245,7 @@ func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.Put
 		trace = traceutil.New("put",
 			a.s.Logger(),
 			traceutil.Field{Key: "key", Value: string(p.Key)},
-			traceutil.Field{Key: "req_size", Value: proto.Size(p)},
+			traceutil.Field{Key: "req_size", Value: p.Size()},
 		)
 	}
 	val, leaseID := p.Value, lease.LeaseID(p.Lease)
@@ -625,7 +625,7 @@ func (a *applierV3backend) applyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *
 			trace.StartSubTrace(
 				traceutil.Field{Key: "req_type", Value: "put"},
 				traceutil.Field{Key: "key", Value: string(tv.RequestPut.Key)},
-				traceutil.Field{Key: "req_size", Value: proto.Size(tv.RequestPut)})
+				traceutil.Field{Key: "req_size", Value: tv.RequestPut.Size()})
 			resp, _, err := a.Put(ctx, txn, tv.RequestPut)
 			if err != nil {
 				lg.Panic("unexpected error during txn", zap.Error(err))
