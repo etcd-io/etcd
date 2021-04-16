@@ -156,7 +156,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`--socket-reuse-port`](https://github.com/etcd-io/etcd/pull/12702) flag
   - Setting this flag enables `SO_REUSEPORT` which allows rebind of a port already in use. User should take caution when using this flag to ensure flock is properly enforced. 
 - Add [`--socket-reuse-address`](https://github.com/etcd-io/etcd/pull/12702) flag
-  - Setting this flag enables `SO_REUSEADDR` which allows binding to an address in `TIME_WAIT` state, improving etcd restart time. 
+  - Setting this flag enables `SO_REUSEADDR` which allows binding to an address in `TIME_WAIT` state, improving etcd restart time.
+- Reduce [around 30% memory allocation by logging range response size without marshal](https://github.com/etcd-io/etcd/pull/12871).
 ### Package `runtime`
 
 - Optimize [`runtime.FDUsage` by removing unnecessary sorting](https://github.com/etcd-io/etcd/pull/12214).
