@@ -1,6 +1,6 @@
 module go.etcd.io/etcd/raft/v3
 
-go 1.15
+go 1.16
 
 require (
 	github.com/certifi/gocertifi v0.0.0-20200922220541-2c3bb06c6054 // indirect
