@@ -15,8 +15,8 @@
 package command
 
 import (
-	"crypto/tls"
 	"context"
+	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -107,7 +107,7 @@ func endpointMemoryMetrics(host string, scfg *secureCfg) float64 {
 			return 0.0
 		}
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
-			Certificates: []tls.Certificate{cert},
+			Certificates:       []tls.Certificate{cert},
 			InsecureSkipVerify: scfg.insecureSkipVerify,
 		}
 	}
