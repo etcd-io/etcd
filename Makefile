@@ -71,7 +71,7 @@ TMP_DOCKERFILE:=$(shell mktemp)
 #   GO_VERSION=1.14.3 make build-docker-test
 #   make build-docker-test
 #
-#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
+#   gcloud auth configure-docker
 #   GO_VERSION=1.14.3 make push-docker-test
 #   make push-docker-test
 #
@@ -88,7 +88,7 @@ build-docker-test:
 
 push-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd-test:go$(GO_VERSION)
+	docker push gcr.io/etcd-development/etcd-test:go$(GO_VERSION)
 
 pull-docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -213,7 +213,7 @@ build-docker-release-master:
 
 push-docker-release-master:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd:$(ETCD_VERSION)
+	docker push gcr.io/etcd-development/etcd:$(ETCD_VERSION)
 
 
 
@@ -222,7 +222,7 @@ push-docker-release-master:
 #   make compile-with-docker-test
 #   make build-docker-static-ip-test
 #
-#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
+#   gcloud auth configure-docker
 #   make push-docker-static-ip-test
 #
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
@@ -242,7 +242,7 @@ build-docker-static-ip-test:
 
 push-docker-static-ip-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd-static-ip-test:go$(GO_VERSION)
+	docker push gcr.io/etcd-development/etcd-static-ip-test:go$(GO_VERSION)
 
 pull-docker-static-ip-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -281,7 +281,7 @@ docker-static-ip-test-certs-metrics-proxy-run:
 #   make compile-with-docker-test
 #   make build-docker-dns-test
 #
-#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
+#   gcloud auth configure-docker
 #   make push-docker-dns-test
 #
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
@@ -312,7 +312,7 @@ build-docker-dns-test:
 
 push-docker-dns-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION)
+	docker push gcr.io/etcd-development/etcd-dns-test:go$(GO_VERSION)
 
 pull-docker-dns-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -421,7 +421,7 @@ docker-dns-test-certs-san-dns-run:
 #   make build-docker-test
 #   make compile-with-docker-test
 #   make build-docker-dns-srv-test
-#   gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
+#   gcloud auth configure-docker
 #   make push-docker-dns-srv-test
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 #   make pull-docker-dns-srv-test
@@ -446,7 +446,7 @@ build-docker-dns-srv-test:
 
 push-docker-dns-srv-test:
 	$(info GO_VERSION: $(GO_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd-dns-srv-test:go$(GO_VERSION)
+	docker push gcr.io/etcd-development/etcd-dns-srv-test:go$(GO_VERSION)
 
 pull-docker-dns-srv-test:
 	$(info GO_VERSION: $(GO_VERSION))
@@ -537,7 +537,7 @@ build-docker-functional:
 push-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	gcloud docker -- push gcr.io/etcd-development/etcd-functional:go$(GO_VERSION)
+	docker push gcr.io/etcd-development/etcd-functional:go$(GO_VERSION)
 
 pull-docker-functional:
 	$(info GO_VERSION: $(GO_VERSION))
