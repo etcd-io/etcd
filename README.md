@@ -85,7 +85,7 @@ For more installation guides, please check out [play.etcd.io](http://play.etcd.i
 For those wanting to try the very latest version, [build the latest version of etcd][dl-build] from the `master` branch. This first needs [*Go*](https://golang.org/) installed ([version 1.15+](/go.mod#L3) is required). All development occurs on `master`, including new features and bug fixes. Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
 
 [github-release]: https://github.com/etcd-io/etcd/releases
-[branch-management]: https://etcd.io/docs/latest/branch-management
+[branch-management]: https://etcd.io/docs/latest/branch_management
 [dl-build]: https://etcd.io/docs/latest/dl-build#build-the-latest-version
 
 ### Running etcd
