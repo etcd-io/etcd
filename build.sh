@@ -51,7 +51,7 @@ etcd_build() {
   # shellcheck disable=SC2086
   (
     cd ./etcdctl
-    run env CGO_ENABLED=0 GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" go build $GO_BUILD_FLAGS \
+    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
       -o="../${out}/etcdctl" . || return 2

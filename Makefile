@@ -12,6 +12,7 @@
 
 UNAME := $(shell uname)
 XARGS = xargs
+ARCH ?= $(shell go env GOARCH)
 
 # -r is only necessary on GNU xargs.
 ifeq ($(UNAME), Linux)
@@ -28,7 +29,7 @@ build:
 clean:
 	rm -f ./codecov
 	rm -rf ./covdir
-	rm -f ./bin/Dockerfile-release
+	rm -f ./bin/Dockerfile-release*
 	rm -rf ./bin/etcd*
 	rm -rf ./default.etcd
 	rm -rf ./tests/e2e/default.etcd
@@ -198,13 +199,13 @@ docker-test-coverage:
 
 build-docker-release-master:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
-	cp ./Dockerfile-release ./bin/Dockerfile-release
+	cp ./Dockerfile-release.$(ARCH) ./bin/Dockerfile-release.$(ARCH)
 	docker build \
 	  --network=host \
 	  --tag gcr.io/etcd-development/etcd:$(ETCD_VERSION) \
-	  --file ./bin/Dockerfile-release \
+	  --file ./bin/Dockerfile-release.$(ARCH) \
 	  ./bin
-	rm -f ./bin/Dockerfile-release
+	rm -f ./bin/Dockerfile-release.$(ARCH)
 
 	docker run \
 	  --rm \
