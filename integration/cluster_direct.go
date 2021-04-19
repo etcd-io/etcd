@@ -23,6 +23,8 @@ import (
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 )
 
+const throughProxy = false
+
 func toGRPC(c *clientv3.Client) grpcAPI {
 	return grpcAPI{
 		pb.NewClusterClient(c.ActiveConnection()),

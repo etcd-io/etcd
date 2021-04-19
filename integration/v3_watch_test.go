@@ -791,9 +791,11 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 
 type eventsSortByKey []*mvccpb.Event
 
-func (evs eventsSortByKey) Len() int           { return len(evs) }
-func (evs eventsSortByKey) Swap(i, j int)      { evs[i], evs[j] = evs[j], evs[i] }
-func (evs eventsSortByKey) Less(i, j int) bool { return bytes.Compare(evs[i].Kv.Key, evs[j].Kv.Key) < 0 }
+func (evs eventsSortByKey) Len() int      { return len(evs) }
+func (evs eventsSortByKey) Swap(i, j int) { evs[i], evs[j] = evs[j], evs[i] }
+func (evs eventsSortByKey) Less(i, j int) bool {
+	return bytes.Compare(evs[i].Kv.Key, evs[j].Kv.Key) < 0
+}
 
 func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -1239,7 +1241,15 @@ func TestV3WatchCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if minWatches != "1" {
-		t.Fatalf("expected one watch, got %s", minWatches)
+	var expected string
+	if throughProxy {
+		// grpc proxy has additional 2 watches open
+		expected = "3"
+	} else {
+		expected = "1"
+	}
+
+	if minWatches != expected {
+		t.Fatalf("expected %s watch, got %s", expected, minWatches)
 	}
 }

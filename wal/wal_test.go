@@ -239,7 +239,7 @@ func TestVerify(t *testing.T) {
 
 	// make 5 separate files
 	for i := 0; i < 5; i++ {
-		es := []raftpb.Entry{{Index: uint64(i), Data: []byte("waldata" + string(i+1))}}
+		es := []raftpb.Entry{{Index: uint64(i), Data: []byte("waldata" + string(rune(i+1)))}}
 		if err = w.Save(raftpb.HardState{}, es); err != nil {
 			t.Fatal(err)
 		}
