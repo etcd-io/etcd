@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-- 1.12.12
+- 1.12.17
 - 1.15.11
 
 notifications:
@@ -28,12 +28,12 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-  - go: 1.12.12
+  - go: 1.12.17
     env: TARGET=linux-amd64-grpcproxy
-  - go: 1.12.12
+  - go: 1.12.17
     env: TARGET=linux-386-unit
   exclude:
-    - go: 1.15.7
+    - go: 1.15.11
       env: TARGET=linux-amd64-integration-1-cpu
     - go: 1.15.11
       env: TARGET=linux-amd64-integration-2-cpu
