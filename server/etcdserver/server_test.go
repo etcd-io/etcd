@@ -50,7 +50,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	"go.etcd.io/etcd/server/v3/mvcc"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
@@ -972,10 +972,7 @@ func TestSyncTrigger(t *testing.T) {
 
 // snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
-	be, tmpPath := backend.NewDefaultTmpBackend(t)
-	defer func() {
-		os.RemoveAll(tmpPath)
-	}()
+	be, _ := betesting.NewDefaultTmpBackend(t)
 
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
@@ -1066,7 +1063,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		storage:     p,
 		raftStorage: rs,
 	})
-	be, tmpPath := backend.NewDefaultTmpBackend(t)
+	be, tmpPath := betesting.NewDefaultTmpBackend(t)
 	defer os.RemoveAll(tmpPath)
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1128,7 +1125,7 @@ func TestSnapshotOrdering(t *testing.T) {
 
 // Applied > SnapshotCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
-	be, tmpPath := backend.NewDefaultTmpBackend(t)
+	be, tmpPath := betesting.NewDefaultTmpBackend(t)
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
@@ -1217,7 +1214,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		storage:     mockstorage.NewStorageRecorder(testdir),
 		raftStorage: rs,
 	})
-	be, tmpPath := backend.NewDefaultTmpBackend(t)
+	be, tmpPath := betesting.NewDefaultTmpBackend(t)
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
@@ -1552,7 +1549,7 @@ func TestPublishV3(t *testing.T) {
 	w := wait.NewWithResponse(ch)
 	ctx, cancel := context.WithCancel(context.Background())
 	lg := zaptest.NewLogger(t)
-	be, _ := backend.NewDefaultTmpBackend(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
@@ -1622,7 +1619,7 @@ func TestPublishV3Retry(t *testing.T) {
 	n := newNodeRecorderStream()
 
 	lg := zaptest.NewLogger(t)
-	be, _ := backend.NewDefaultTmpBackend(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,

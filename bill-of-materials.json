@@ -99,6 +99,15 @@
 		]
 	},
 	{
+		"project": "github.com/davecgh/go-spew/spew",
+		"licenses": [
+			{
+				"type": "ISC License",
+				"confidence": 0.9850746268656716
+			}
+		]
+	},
+	{
 		"project": "github.com/dustin/go-humanize",
 		"licenses": [
 			{
@@ -383,6 +392,15 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
+		"project": "github.com/stretchr/testify/assert",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},

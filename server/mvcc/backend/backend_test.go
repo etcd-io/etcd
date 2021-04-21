@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package backend_test
 
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 )
 
 func TestBackendClose(t *testing.T) {
-	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
-	defer os.Remove(tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 
 	// check close could work
 	done := make(chan struct{})
@@ -46,8 +47,8 @@ func TestBackendClose(t *testing.T) {
 }
 
 func TestBackendSnapshot(t *testing.T) {
-	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
@@ -57,22 +58,22 @@ func TestBackendSnapshot(t *testing.T) {
 	b.ForceCommit()
 
 	// write snapshot to a new file
-	f, err := ioutil.TempFile(os.TempDir(), "etcd_backend_test")
+	f, err := ioutil.TempFile(t.TempDir(), "etcd_backend_test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	snap := b.Snapshot()
-	defer snap.Close()
+	defer func() { assert.NoError(t, snap.Close()) }()
 	if _, err := snap.WriteTo(f); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	assert.NoError(t, f.Close())
 
 	// bootstrap new backend from the snapshot
-	bcfg := DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig()
 	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = f.Name(), time.Hour, 10000
-	nb := New(bcfg)
-	defer cleanup(nb, f.Name())
+	nb := backend.New(bcfg)
+	defer betesting.Close(t, nb)
 
 	newTx := nb.BatchTx()
 	newTx.Lock()
@@ -86,10 +87,10 @@ func TestBackendSnapshot(t *testing.T) {
 func TestBackendBatchIntervalCommit(t *testing.T) {
 	// start backend with super short batch interval so
 	// we do not need to wait long before commit to happen.
-	b, tmpPath := NewTmpBackend(t, time.Nanosecond, 10000)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Nanosecond, 10000)
+	defer betesting.Close(t, b)
 
-	pc := b.Commits()
+	pc := backend.CommitsForTest(b)
 
 	tx := b.BatchTx()
 	tx.Lock()
@@ -98,14 +99,14 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 	tx.Unlock()
 
 	for i := 0; i < 10; i++ {
-		if b.Commits() >= pc+1 {
+		if backend.CommitsForTest(b) >= pc+1 {
 			break
 		}
 		time.Sleep(time.Duration(i*100) * time.Millisecond)
 	}
 
 	// check whether put happens via db view
-	b.db.View(func(tx *bolt.Tx) error {
+	assert.NoError(t, backend.DbFromBackendForTest(b).View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte("test"))
 		if bucket == nil {
 			t.Errorf("bucket test does not exit")
@@ -116,17 +117,17 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 			t.Errorf("foo key failed to written in backend")
 		}
 		return nil
-	})
+	}))
 }
 
 func TestBackendDefrag(t *testing.T) {
-	b, tmpPath := NewDefaultTmpBackend(t)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
 	tx.UnsafeCreateBucket([]byte("test"))
-	for i := 0; i < defragLimit+100; i++ {
+	for i := 0; i < backend.DefragLimitForTest()+100; i++ {
 		tx.UnsafePut([]byte("test"), []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
 	}
 	tx.Unlock()
@@ -178,8 +179,8 @@ func TestBackendDefrag(t *testing.T) {
 
 // TestBackendWriteback ensures writes are stored to the read txn on write txn unlock.
 func TestBackendWriteback(t *testing.T) {
-	b, tmpPath := NewDefaultTmpBackend(t)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
@@ -252,8 +253,8 @@ func TestBackendWriteback(t *testing.T) {
 
 // TestConcurrentReadTx ensures that current read transaction can see all prior writes stored in read buffer
 func TestConcurrentReadTx(t *testing.T) {
-	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
 
 	wtx1 := b.BatchTx()
 	wtx1.Lock()
@@ -282,8 +283,8 @@ func TestConcurrentReadTx(t *testing.T) {
 // TestBackendWritebackForEach checks that partially written / buffered
 // data is visited in the same order as fully committed data.
 func TestBackendWritebackForEach(t *testing.T) {
-	b, tmpPath := NewTmpBackend(t, time.Hour, 10000)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
@@ -312,7 +313,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	}
 	rtx := b.ReadTx()
 	rtx.RLock()
-	rtx.UnsafeForEach([]byte("key"), getSeq)
+	assert.NoError(t, rtx.UnsafeForEach([]byte("key"), getSeq))
 	rtx.RUnlock()
 
 	partialSeq := seq
@@ -321,15 +322,10 @@ func TestBackendWritebackForEach(t *testing.T) {
 	b.ForceCommit()
 
 	tx.Lock()
-	tx.UnsafeForEach([]byte("key"), getSeq)
+	assert.NoError(t, tx.UnsafeForEach([]byte("key"), getSeq))
 	tx.Unlock()
 
 	if seq != partialSeq {
 		t.Fatalf("expected %q, got %q", seq, partialSeq)
 	}
-}
-
-func cleanup(b Backend, path string) {
-	b.Close()
-	os.Remove(path)
 }
