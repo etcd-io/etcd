@@ -26,6 +26,7 @@ require (
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.5.1
 	go.etcd.io/bbolt v1.3.5
 	go.etcd.io/etcd/api/v3 v3.5.0-alpha.0
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0-alpha.0

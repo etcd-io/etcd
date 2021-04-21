@@ -208,15 +208,15 @@ func applyConf(cc raftpb.ConfChange, cl *membership.RaftCluster) {
 		if err := json.Unmarshal(cc.Context, m); err != nil {
 			panic(err)
 		}
-		cl.AddMember(m)
+		cl.AddMember(m, true)
 	case raftpb.ConfChangeRemoveNode:
-		cl.RemoveMember(types.ID(cc.NodeID))
+		cl.RemoveMember(types.ID(cc.NodeID), true)
 	case raftpb.ConfChangeUpdateNode:
 		m := new(membership.Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
 			panic(err)
 		}
-		cl.UpdateRaftAttributes(m.ID, m.RaftAttributes)
+		cl.UpdateRaftAttributes(m.ID, m.RaftAttributes, true)
 	}
 }
 

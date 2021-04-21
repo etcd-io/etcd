@@ -181,7 +181,7 @@ func TestApplyRepeat(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
-	cl.AddMember(&membership.Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          zap.NewExample(),
 		Node:        n,
@@ -509,9 +509,9 @@ func TestApplyConfChangeError(t *testing.T) {
 	cl := membership.NewCluster(zap.NewExample(), "")
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
-		cl.AddMember(&membership.Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
-	cl.RemoveMember(4)
+	cl.RemoveMember(4, true)
 
 	attr := membership.RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
 	ctx, err := json.Marshal(&membership.Member{ID: types.ID(1), RaftAttributes: attr})
@@ -576,7 +576,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			r:       *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
 			cluster: cl,
 		}
-		_, err := srv.applyConfChange(tt.cc, nil)
+		_, err := srv.applyConfChange(tt.cc, nil, true)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -597,7 +597,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	cl := membership.NewCluster(zap.NewExample(), "")
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 3; i++ {
-		cl.AddMember(&membership.Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
@@ -616,7 +616,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		NodeID: 2,
 	}
 	// remove non-local member
-	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{})
+	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{}, true)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -626,7 +626,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	// remove local member
 	cc.NodeID = 1
-	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{})
+	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{}, true)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -640,7 +640,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	cl := membership.NewCluster(zap.NewExample(), "")
 	cl.SetStore(v2store.New())
-	cl.AddMember(&membership.Member{ID: types.ID(1)})
+	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
 		Node:      newNodeNop(),
@@ -688,7 +688,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	cl := membership.NewCluster(zap.NewExample(), "")
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 5; i++ {
-		cl.AddMember(&membership.Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
@@ -1342,7 +1342,7 @@ func TestRemoveMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
-	cl.AddMember(&membership.Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          zap.NewExample(),
 		Node:        n,
@@ -1386,7 +1386,7 @@ func TestUpdateMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := v2store.New()
 	cl.SetStore(st)
-	cl.AddMember(&membership.Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          zap.NewExample(),
 		Node:        n,
@@ -1874,7 +1874,7 @@ func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
 func newTestCluster(membs []*membership.Member) *membership.RaftCluster {
 	c := membership.NewCluster(zap.NewExample(), "")
 	for _, m := range membs {
-		c.AddMember(m)
+		c.AddMember(m, true)
 	}
 	return c
 }

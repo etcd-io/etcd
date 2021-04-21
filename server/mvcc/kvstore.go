@@ -43,7 +43,6 @@ var (
 
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
-	ErrCanceled  = errors.New("mvcc: watcher is canceled")
 )
 
 const (
@@ -437,6 +436,10 @@ func (s *store) restore() error {
 	}
 
 	tx.Unlock()
+
+	s.lg.Info("kvstore restored",
+		zap.Uint64("consistent-index", s.ConsistentIndex()),
+		zap.Int64("current-rev", s.currentRev))
 
 	if scheduledCompact != 0 {
 		if _, err := s.compactLockfree(scheduledCompact); err != nil {

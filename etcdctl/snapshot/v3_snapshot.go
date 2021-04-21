@@ -398,7 +398,7 @@ func (s *v3Manager) saveWALAndSnap() error {
 	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
 	s.cl.SetStore(st)
 	for _, m := range s.cl.Members() {
-		s.cl.AddMember(m)
+		s.cl.AddMember(m, true)
 	}
 
 	m := s.cl.MemberByName(s.name)
