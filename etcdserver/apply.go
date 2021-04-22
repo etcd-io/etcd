@@ -181,7 +181,7 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.Pu
 	trace = traceutil.New("put",
 		a.s.getLogger(),
 		traceutil.Field{Key: "key", Value: string(p.Key)},
-		traceutil.Field{Key: "req_size", Value: proto.Size(p)},
+		traceutil.Field{Key: "req_size", Value: p.Size()},
 	)
 	val, leaseID := p.Value, lease.LeaseID(p.Lease)
 	if txn == nil {
