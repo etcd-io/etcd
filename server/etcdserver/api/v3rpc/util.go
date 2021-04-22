@@ -83,6 +83,10 @@ var toGRPCErrorMap = map[error]error{
 	auth.ErrAuthNotEnabled:       rpctypes.ErrGRPCAuthNotEnabled,
 	auth.ErrInvalidAuthToken:     rpctypes.ErrGRPCInvalidAuthToken,
 	auth.ErrInvalidAuthMgmt:      rpctypes.ErrGRPCInvalidAuthMgmt,
+
+	// In sync with status.FromContextError
+	context.Canceled:         rpctypes.ErrGRPCCanceled,
+	context.DeadlineExceeded: rpctypes.ErrGRPCDeadlineExceeded,
 }
 
 func togRPCError(err error) error {
