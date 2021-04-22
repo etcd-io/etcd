@@ -131,7 +131,7 @@ func warnOfExpensiveReadOnlyTxnRequest(now time.Time, r *pb.TxnRequest, txnRespo
 				// only range responses should be in a read only txn request
 			}
 		}
-		resp = fmt.Sprintf("responses:<%s> size:%d", strings.Join(resps, " "), proto.Size(txnResponse))
+		resp = fmt.Sprintf("responses:<%s> size:%d", strings.Join(resps, " "), txnResponse.Size())
 	}
 	warnOfExpensiveGenericRequest(now, reqStringer, "read-only range ", resp, err)
 }
@@ -139,7 +139,7 @@ func warnOfExpensiveReadOnlyTxnRequest(now time.Time, r *pb.TxnRequest, txnRespo
 func warnOfExpensiveReadOnlyRangeRequest(now time.Time, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
 	var resp string
 	if !isNil(rangeResponse) {
-		resp = fmt.Sprintf("range_response_count:%d size:%d", len(rangeResponse.Kvs), proto.Size(rangeResponse))
+		resp = fmt.Sprintf("range_response_count:%d size:%d", len(rangeResponse.Kvs), rangeResponse.Size())
 	}
 	warnOfExpensiveGenericRequest(now, reqStringer, "read-only range ", resp, err)
 }
