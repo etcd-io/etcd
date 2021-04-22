@@ -70,6 +70,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - [ETCD_CLIENT_DEBUG env](https://github.com/etcd-io/etcd/pull/12786): Now supports log levels (debug, info, warn, error, dpanic, panic, fatal). Only when set, overrides application-wide grpc logging settings.
 - [Embed Etcd.Close()](https://github.com/etcd-io/etcd/pull/12828) needs to called exactly once and closes Etcd.Err() stream.
 - [Embed Etcd does not override global/grpc logger](https://github.com/etcd-io/etcd/pull/12861) be default any longer. If desired, please call `embed.Config::SetupGlobalLoggers()` explicitly. 
+- Errors: `context cancelled` or `context deadline exceeded` are exposed as codes.Canceled, codes.DeadlineExceeded instead of 'codes.Unknown'.
 ###
 
 - Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
