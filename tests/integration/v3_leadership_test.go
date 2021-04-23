@@ -184,6 +184,7 @@ func TestTransferLeadershipWithLearner(t *testing.T) {
 
 func TestFirstCommitNotification(t *testing.T) {
 	BeforeTest(t)
+	ctx := context.Background()
 	clusterSize := 3
 	cluster := NewClusterV3(t, &ClusterConfig{Size: clusterSize})
 	defer cluster.Terminate(t)
@@ -205,9 +206,18 @@ func TestFirstCommitNotification(t *testing.T) {
 		t.Errorf("got error during leadership transfer: %v", err)
 	}
 
+	t.Logf("Leadership transferred.")
+	t.Logf("Submitting write to make sure empty and 'foo' index entry was already flushed")
+	cli := cluster.RandClient()
+
+	if _, err := cli.Put(ctx, "foo", "bar"); err != nil {
+		t.Fatalf("Failed to put kv pair.")
+	}
+
+	// It's guaranteed now that leader contains the 'foo'->'bar' index entry.
 	leaderAppliedIndex := cluster.Members[newLeaderIdx].s.AppliedIndex()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	group, groupContext := errgroup.WithContext(ctx)
@@ -215,7 +225,7 @@ func TestFirstCommitNotification(t *testing.T) {
 	for i, notifier := range notifiers {
 		member, notifier := cluster.Members[i], notifier
 		group.Go(func() error {
-			return checkFirstCommitNotification(groupContext, member, leaderAppliedIndex, notifier)
+			return checkFirstCommitNotification(groupContext, t, member, leaderAppliedIndex, notifier)
 		})
 	}
 
@@ -227,12 +237,14 @@ func TestFirstCommitNotification(t *testing.T) {
 
 func checkFirstCommitNotification(
 	ctx context.Context,
+	t testing.TB,
 	member *member,
 	leaderAppliedIndex uint64,
 	notifier <-chan struct{},
 ) error {
 	// wait until server applies all the changes of leader
 	for member.s.AppliedIndex() < leaderAppliedIndex {
+		t.Logf("member.s.AppliedIndex():%v <= leaderAppliedIndex:%v", member.s.AppliedIndex(), leaderAppliedIndex)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -240,7 +252,6 @@ func checkFirstCommitNotification(
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
-
 	select {
 	case msg, ok := <-notifier:
 		if ok {
@@ -251,6 +262,7 @@ func checkFirstCommitNotification(
 			)
 		}
 	default:
+		t.Logf("member.s.AppliedIndex():%v >= leaderAppliedIndex:%v", member.s.AppliedIndex(), leaderAppliedIndex)
 		return fmt.Errorf(
 			"notification was not triggered, member ID: %d",
 			member.ID(),
