@@ -659,7 +659,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 
 	// readTx simulates a long read request
-	readTx1 := s.Read(traceutil.TODO())
+	readTx1 := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 
 	// write should not be blocked by reads
 	done := make(chan struct{})
@@ -674,7 +674,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	}
 
 	// readTx2 simulates a short read request
-	readTx2 := s.Read(traceutil.TODO())
+	readTx2 := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
 	ret, err := readTx2.Range([]byte("foo"), nil, ro)
 	if err != nil {
@@ -757,7 +757,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 			mu.Lock()
 			wKVs := make(kvs, len(committedKVs))
 			copy(wKVs, committedKVs)
-			tx := s.Read(traceutil.TODO())
+			tx := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 			mu.Unlock()
 			// get all keys in backend store, and compare with wKVs
 			ret, err := tx.Range([]byte("\x00000000"), []byte("\xffffffff"), RangeOptions{})
