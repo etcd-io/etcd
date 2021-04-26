@@ -113,8 +113,6 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	}
 	go clus.serveTesterServer()
 
-	clus.updateCases()
-
 	clus.rateLimiter = rate.NewLimiter(
 		rate.Limit(int(clus.Tester.StressQPS)),
 		int(clus.Tester.StressQPS),
