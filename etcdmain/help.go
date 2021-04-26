@@ -216,6 +216,8 @@ Experimental feature:
     Duration of periodical watch progress notification.
   --experimental-warning-apply-duration '100ms'
     Warning is generated if requests take more than this duration.
+  --experimental-txn-mode-write-with-shared-buffer 'true'
+    Enable the write transaction to use a shared buffer in its readonly check operations.
 
 Unsafe feature:
   --force-new-cluster 'false'

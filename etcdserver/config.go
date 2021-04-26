@@ -172,6 +172,10 @@ type ServerConfig struct {
 	// UnsafeNoFsync disables all uses of fsync.
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
+
+	// ExperimentalTxnModeWriteWithSharedBuffer enable write transaction to use
+	// a shared buffer in its readonly check operations.
+	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

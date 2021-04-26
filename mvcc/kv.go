@@ -98,12 +98,21 @@ func (trw *txnReadWrite) Changes() []mvccpb.KeyValue { return nil }
 
 func NewReadOnlyTxnWrite(txn TxnRead) TxnWrite { return &txnReadWrite{txn} }
 
+type ReadTxMode uint32
+
+const (
+	// Use ConcurrentReadTx and the txReadBuffer is copied
+	ConcurrentReadTxMode = ReadTxMode(1)
+	// Use backend ReadTx and txReadBuffer is not copied
+	SharedBufReadTxMode = ReadTxMode(2)
+)
+
 type KV interface {
 	ReadView
 	WriteView
 
 	// Read creates a read transaction.
-	Read(trace *traceutil.Trace) TxnRead
+	Read(mode ReadTxMode, trace *traceutil.Trace) TxnRead
 
 	// Write creates a write transaction.
 	Write(trace *traceutil.Trace) TxnWrite

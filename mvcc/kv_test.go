@@ -48,7 +48,7 @@ var (
 		return kv.Range(key, end, ro)
 	}
 	txnRangeFunc = func(kv KV, key, end []byte, ro RangeOptions) (*RangeResult, error) {
-		txn := kv.Read(traceutil.TODO())
+		txn := kv.Read(ConcurrentReadTxMode, traceutil.TODO())
 		defer txn.End()
 		return txn.Range(key, end, ro)
 	}
