@@ -363,6 +363,9 @@ type Config struct {
 	// UnsafeNoFsync disables all uses of fsync.
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
+
+	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
+	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -443,14 +446,15 @@ func NewConfig() *Config {
 
 		PreVote: false, // TODO: enable by default in v3.5
 
-		loggerMu:            new(sync.RWMutex),
-		logger:              nil,
-		Logger:              "capnslog",
-		DeprecatedLogOutput: []string{DefaultLogOutput},
-		LogOutputs:          []string{DefaultLogOutput},
-		Debug:               false,
-		LogLevel:            logutil.DefaultLogLevel,
-		LogPkgLevels:        "",
+		loggerMu:                                 new(sync.RWMutex),
+		logger:                                   nil,
+		Logger:                                   "capnslog",
+		DeprecatedLogOutput:                      []string{DefaultLogOutput},
+		LogOutputs:                               []string{DefaultLogOutput},
+		Debug:                                    false,
+		LogLevel:                                 logutil.DefaultLogLevel,
+		LogPkgLevels:                             "",
+		ExperimentalTxnModeWriteWithSharedBuffer: true,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
