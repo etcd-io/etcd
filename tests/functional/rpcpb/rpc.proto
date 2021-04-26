@@ -194,6 +194,7 @@ enum Checker {
   LEASE_EXPIRE = 1;
   RUNNER = 2;
   NO_CHECK = 3;
+  SHORT_TTL_LEASE_EXPIRE = 4;
 }
 
 message Etcd {

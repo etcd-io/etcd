@@ -327,6 +327,11 @@ func (clus *Cluster) setStresserChecker() {
 
 		case "NO_CHECK":
 			clus.checkers = append(clus.checkers, newNoChecker())
+
+		case "SHORT_TTL_LEASE_EXPIRE":
+			for _, ls := range lss {
+				clus.checkers = append(clus.checkers, newShortTTLLeaseExpireChecker(ls))
+			}
 		}
 	}
 	clus.lg.Info("updated stressers")

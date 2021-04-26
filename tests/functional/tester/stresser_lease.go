@@ -48,13 +48,13 @@ type leaseStresser struct {
 
 	rateLimiter *rate.Limiter
 	// atomicModifiedKey records the number of keys created and deleted during a test case
-	atomicModifiedKey int64
-	numLeases         int
-	keysPerLease      int
-
-	aliveLeases      *atomicLeases
-	revokedLeases    *atomicLeases
-	shortLivedLeases *atomicLeases
+	atomicModifiedKey        int64
+	numLeases                int
+	keysPerLease             int
+	aliveLeases              *atomicLeases
+	alivedLeasesWithShortTTL *atomicLeases
+	revokedLeases            *atomicLeases
+	shortLivedLeases         *atomicLeases
 
 	runWg   sync.WaitGroup
 	aliveWg sync.WaitGroup
@@ -143,6 +143,7 @@ func (ls *leaseStresser) Stress() error {
 
 	ls.revokedLeases = &atomicLeases{leases: make(map[int64]time.Time)}
 	ls.shortLivedLeases = &atomicLeases{leases: make(map[int64]time.Time)}
+	ls.alivedLeasesWithShortTTL = &atomicLeases{leases: make(map[int64]time.Time)}
 
 	ls.runWg.Add(1)
 	go ls.run()
@@ -193,9 +194,16 @@ func (ls *leaseStresser) restartKeepAlives() {
 			ls.keepLeaseAlive(id)
 		}(leaseID)
 	}
+	for leaseID := range ls.alivedLeasesWithShortTTL.getLeasesMap() {
+		ls.aliveWg.Add(1)
+		go func(id int64) {
+			ls.keepLeaseAlive(id)
+		}(leaseID)
+	}
 }
 
 func (ls *leaseStresser) createLeases() {
+	ls.createAliveLeasesWithShortTTL()
 	ls.createAliveLeases()
 	ls.createShortLivedLeases()
 }
@@ -217,6 +225,32 @@ func (ls *leaseStresser) createAliveLeases() {
 				return
 			}
 			ls.aliveLeases.add(leaseID, time.Now())
+			// keep track of all the keep lease alive goroutines
+			ls.aliveWg.Add(1)
+			go ls.keepLeaseAlive(leaseID)
+		}()
+	}
+	wg.Wait()
+}
+
+func (ls *leaseStresser) createAliveLeasesWithShortTTL() {
+	neededLeases := 2
+	var wg sync.WaitGroup
+	for i := 0; i < neededLeases; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			leaseID, err := ls.createLeaseWithKeys(defaultTTLShort)
+			if err != nil {
+				ls.lg.Debug(
+					"createLeaseWithKeys failed",
+					zap.String("endpoint", ls.m.EtcdClientEndpoint),
+					zap.Error(err),
+				)
+				return
+			}
+			ls.lg.Warn("createAliveLeasesWithShortTTL", zap.Int64("lease-id", leaseID))
+			ls.alivedLeasesWithShortTTL.add(leaseID, time.Now())
 			// keep track of all the keep lease alive goroutines
 			ls.aliveWg.Add(1)
 			go ls.keepLeaseAlive(leaseID)
