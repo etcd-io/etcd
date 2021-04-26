@@ -259,6 +259,13 @@ func (clus *Cluster) updateCases() {
 			}
 			clus.cases = append(clus.cases,
 				fpFailures...)
+		case "FAILPOINTS_WITH_DISK_IO_LATENCY":
+			fpFailures, fperr := failpointDiskIOFailures(clus)
+			if len(fpFailures) == 0 {
+				clus.lg.Info("no failpoints found!", zap.Error(fperr))
+			}
+			clus.cases = append(clus.cases,
+				fpFailures...)
 		}
 	}
 }

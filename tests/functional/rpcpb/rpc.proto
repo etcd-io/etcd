@@ -625,6 +625,9 @@ enum Case {
   // in critical code paths.
   FAILPOINTS = 400;
 
+  // FAILPOINTS_WITH_DISK_IO_LATENCY injects high disk I/O latency failure in raftAfterSave code paths.
+  FAILPOINTS_WITH_DISK_IO_LATENCY = 401;
+
   // EXTERNAL runs external failure injection scripts.
   EXTERNAL = 500;
 }
