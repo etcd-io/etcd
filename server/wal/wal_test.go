@@ -27,10 +27,12 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.uber.org/zap/zaptest"
 
 	"go.uber.org/zap"
 )
@@ -231,14 +233,14 @@ func TestOpenAtIndex(t *testing.T) {
 // The test creates a WAL directory and cuts out multiple WAL files. Then
 // it corrupts one of the files by completely truncating it.
 func TestVerify(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	walDir, err := ioutil.TempDir(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(walDir)
 
 	// create WAL
-	w, err := Create(zap.NewExample(), walDir, nil)
+	w, err := Create(lg, walDir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,11 +257,15 @@ func TestVerify(t *testing.T) {
 		}
 	}
 
+	hs := raftpb.HardState{Term: 1, Vote: 3, Commit: 5}
+	assert.NoError(t, w.Save(hs, nil))
+
 	// to verify the WAL is not corrupted at this point
-	err = Verify(zap.NewExample(), walDir, walpb.Snapshot{})
+	hardstate, err := Verify(lg, walDir, walpb.Snapshot{})
 	if err != nil {
 		t.Errorf("expected a nil error, got %v", err)
 	}
+	assert.Equal(t, hs, *hardstate)
 
 	walFiles, err := ioutil.ReadDir(walDir)
 	if err != nil {
@@ -272,7 +278,7 @@ func TestVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = Verify(zap.NewExample(), walDir, walpb.Snapshot{})
+	_, err = Verify(lg, walDir, walpb.Snapshot{})
 	if err == nil {
 		t.Error("expected a non-nil error, got nil")
 	}
