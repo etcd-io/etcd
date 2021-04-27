@@ -17,7 +17,6 @@ package snapshot_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -42,7 +41,6 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 
 	defer func() {
 		for i := 0; i < clusterN; i++ {
-			os.RemoveAll(srvs[i].Config().Dir)
 			srvs[i].Close()
 		}
 	}()
@@ -82,7 +80,6 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		os.RemoveAll(cfg.Dir)
 		srv.Close()
 	}()
 	select {

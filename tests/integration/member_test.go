@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/v2"
 )
 
@@ -65,6 +66,7 @@ func TestRestartMember(t *testing.T) {
 }
 
 func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
+	BeforeTest(t)
 	size := 3
 	c := NewCluster(t, size)
 	m := c.Members[0].Clone(t)
@@ -78,6 +80,9 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 
 	if err := m.Launch(); err == nil {
 		t.Errorf("unexpect successful launch")
+	} else {
+		t.Logf("launch failed as expected: %v", err)
+		assert.Contains(t, err.Error(), "has already been bootstrapped")
 	}
 }
 
