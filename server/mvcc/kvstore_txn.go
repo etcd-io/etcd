@@ -182,8 +182,8 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	if err == nil {
 		c = created.main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
+		tw.trace.Step("get key's previous created_revision and leaseID")
 	}
-	tw.trace.Step("get key's previous created_revision and leaseID")
 	ibytes := newRevBytes()
 	idxRev := revision{main: rev, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
