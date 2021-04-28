@@ -15,7 +15,6 @@
 package command
 
 import (
-	"log"
 	"os"
 	"path"
 	"regexp"
@@ -90,7 +89,10 @@ func handleBackup(c *cli.Context) error {
 	var srcWAL string
 	var destWAL string
 
-	lg := zap.NewExample()
+	lg, err := zap.NewProduction()
+	if err != nil {
+		return err
+	}
 
 	withV3 := c.Bool("with-v3")
 	srcDir := c.String("data-dir")
@@ -112,27 +114,33 @@ func handleBackup(c *cli.Context) error {
 	}
 
 	if err := fileutil.CreateDirAll(destSnap); err != nil {
-		log.Fatalf("failed creating backup snapshot dir %v: %v", destSnap, err)
+		lg.Fatal("failed creating backup snapshot dir", zap.String("dest-snap", destSnap), zap.Error(err))
 	}
 
 	desired := newDesiredCluster()
 
 	walsnap := saveSnap(lg, destSnap, srcSnap, &desired)
-	metadata, state, ents := loadWAL(srcWAL, walsnap, withV3)
+	metadata, state, ents := loadWAL(lg, srcWAL, walsnap, withV3)
 	destDbPath := datadir.ToBackendFileName(destDir)
 	saveDB(lg, destDbPath, datadir.ToBackendFileName(srcDir), state.Commit, &desired, withV3)
 
-	neww, err := wal.Create(zap.NewExample(), destWAL, pbutil.MustMarshal(&metadata))
+	neww, err := wal.Create(lg, destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {
-		log.Fatal(err)
+		lg.Fatal("wal.Create failed", zap.Error(err))
 	}
 	defer neww.Close()
 	if err := neww.Save(state, ents); err != nil {
-		log.Fatal(err)
+		lg.Fatal("wal.Save failed ", zap.Error(err))
 	}
 	if err := neww.SaveSnapshot(walsnap); err != nil {
-		log.Fatal(err)
+		lg.Fatal("SaveSnapshot", zap.Error(err))
 	}
+
+	verify.MustVerifyIfEnabled(verify.Config{
+		Logger:     lg,
+		DataDir:    destDir,
+		ExactIndex: false,
+	})
 
 	return nil
 }
@@ -141,7 +149,7 @@ func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster)
 	ss := snap.New(lg, srcSnap)
 	snapshot, err := ss.Load()
 	if err != nil && err != snap.ErrNoSnapshot {
-		log.Fatal(err)
+		lg.Fatal("saveSnap(Snapshoter.Load) failed", zap.Error(err))
 	}
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term, walsnap.ConfState = snapshot.Metadata.Index, snapshot.Metadata.Term, &desired.confState
@@ -149,7 +157,7 @@ func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster)
 		snapshot.Metadata.ConfState = desired.confState
 		snapshot.Data = mustTranslateV2store(lg, snapshot.Data, desired)
 		if err = newss.SaveSnap(*snapshot); err != nil {
-			log.Fatal(err)
+			lg.Fatal("saveSnap(Snapshoter.SaveSnap) failed", zap.Error(err))
 		}
 	}
 	return walsnap
@@ -175,20 +183,20 @@ func mustTranslateV2store(lg *zap.Logger, storeData []byte, desired *desiredClus
 	return outputData
 }
 
-func loadWAL(srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
-	w, err := wal.OpenForRead(zap.NewExample(), srcWAL, walsnap)
+func loadWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
+	w, err := wal.OpenForRead(lg, srcWAL, walsnap)
 	if err != nil {
-		log.Fatal(err)
+		lg.Fatal("wal.OpenForRead failed", zap.Error(err))
 	}
 	defer w.Close()
 	wmetadata, state, ents, err := w.ReadAll()
 	switch err {
 	case nil:
 	case wal.ErrSnapshotNotFound:
-		log.Printf("Failed to find the match snapshot record %+v in wal %v.", walsnap, srcWAL)
-		log.Printf("etcdctl will add it back. Start auto fixing...")
+		lg.Warn("failed to find the match snapshot record", zap.Any("walsnap", walsnap), zap.String("srcWAL", srcWAL))
+		lg.Warn("etcdctl will add it back. Start auto fixing...")
 	default:
-		log.Fatal(err)
+		lg.Fatal("unexpected error while reading WAL", zap.Error(err))
 	}
 
 	re := path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes")
@@ -204,7 +212,7 @@ func loadWAL(srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metad
 	for i = 0; i < len(ents); i++ {
 		ents[i].Index -= removed
 		if ents[i].Type == raftpb.EntryConfChange {
-			log.Println("ignoring EntryConfChange raft entry")
+			lg.Info("ignoring EntryConfChange raft entry")
 			remove()
 			continue
 		}
@@ -219,7 +227,7 @@ func loadWAL(srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metad
 		}
 
 		if v2Req != nil && v2Req.Method == "PUT" && memberAttrRE.MatchString(v2Req.Path) {
-			log.Println("ignoring member attribute update on", v2Req.Path)
+			lg.Info("ignoring member attribute update on", zap.String("v2Req.Path", v2Req.Path))
 			remove()
 			continue
 		}
@@ -229,15 +237,16 @@ func loadWAL(srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metad
 		}
 
 		if raftReq.ClusterMemberAttrSet != nil {
-			log.Println("ignoring cluster_member_attr_set")
+			lg.Info("ignoring cluster_member_attr_set")
 			remove()
 			continue
 		}
 
 		if v3 || raftReq.Header == nil {
+			lg.Debug("preserving log entry", zap.Stringer("entry", &ents[i]))
 			continue
 		}
-		log.Println("ignoring v3 raft entry")
+		lg.Info("ignoring v3 raft entry")
 		remove()
 	}
 	state.Commit -= removed
@@ -256,34 +265,34 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, desired *desiredCl
 		go func() {
 			db, err := bolt.Open(srcDB, 0444, &bolt.Options{ReadOnly: true})
 			if err != nil {
-				log.Fatal(err)
+				lg.Fatal("bolt.Open FAILED", zap.Error(err))
 			}
 			ch <- db
 		}()
 		select {
 		case src = <-ch:
 		case <-time.After(time.Second):
-			log.Println("waiting to acquire lock on", srcDB)
+			lg.Fatal("waiting to acquire lock on", zap.String("srcDB", srcDB))
 			src = <-ch
 		}
 		defer src.Close()
 
 		tx, err := src.Begin(false)
 		if err != nil {
-			log.Fatal(err)
+			lg.Fatal("bbolt.BeginTx failed", zap.Error(err))
 		}
 
 		// copy srcDB to destDB
 		dest, err := os.Create(destDB)
 		if err != nil {
-			log.Fatal(err)
+			lg.Fatal("creation of destination file failed", zap.String("dest", destDB), zap.Error(err))
 		}
 		if _, err := tx.WriteTo(dest); err != nil {
-			log.Fatal(err)
+			lg.Fatal("bbolt write to destination file failed", zap.String("dest", destDB), zap.Error(err))
 		}
 		dest.Close()
 		if err := tx.Rollback(); err != nil {
-			log.Fatal(err)
+			lg.Fatal("bbolt tx.Rollback failed", zap.String("dest", destDB), zap.Error(err))
 		}
 	}
 
@@ -291,7 +300,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, desired *desiredCl
 	defer be.Close()
 
 	if err := membership.TrimClusterFromBackend(be); err != nil {
-		log.Fatal(err)
+		lg.Fatal("bbolt tx.Membership failed", zap.Error(err))
 	}
 
 	raftCluster := membership.NewClusterFromMembers(lg, desired.clusterId, desired.members)
