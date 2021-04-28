@@ -20,17 +20,14 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func BeforeTestV2(t testing.TB) {
-	skipInShortMode(t)
+	BeforeTest(t)
 	os.Setenv("ETCDCTL_API", "2")
 	t.Cleanup(func() {
 		os.Unsetenv("ETCDCTL_API")
 	})
-	testutil.BeforeTest(t)
 }
 
 func TestCtlV2Set(t *testing.T)          { testCtlV2Set(t, newConfigNoTLS(), false) }
@@ -493,7 +490,11 @@ func etcdctlBackup(t testing.TB, clus *etcdProcessCluster, dataDir, backupDir st
 	if err != nil {
 		return err
 	}
-	return proc.Close()
+	err = proc.Close()
+	if err != nil {
+		return err
+	}
+	return proc.ProcessError()
 }
 
 func setupEtcdctlTest(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {
