@@ -120,7 +120,7 @@ func handleBackup(c *cli.Context) error {
 	walsnap := saveSnap(lg, destSnap, srcSnap, &desired)
 	metadata, state, ents := loadWAL(srcWAL, walsnap, withV3)
 	destDbPath := datadir.ToBackendFileName(destDir)
-	saveDB(lg, destDbPath,  datadir.ToBackendFileName(srcDir), state.Commit, &desired, withV3)
+	saveDB(lg, destDbPath, datadir.ToBackendFileName(srcDir), state.Commit, &desired, withV3)
 
 	neww, err := wal.Create(zap.NewExample(), destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {
