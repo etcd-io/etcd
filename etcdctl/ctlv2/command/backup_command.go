@@ -18,7 +18,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"time"
 
@@ -28,6 +27,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/datadir"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
@@ -93,19 +93,22 @@ func handleBackup(c *cli.Context) error {
 	lg := zap.NewExample()
 
 	withV3 := c.Bool("with-v3")
-	srcSnap := filepath.Join(c.String("data-dir"), "member", "snap")
-	destSnap := filepath.Join(c.String("backup-dir"), "member", "snap")
+	srcDir := c.String("data-dir")
+	destDir := c.String("backup-dir")
+
+	srcSnap := datadir.ToSnapDir(srcDir)
+	destSnap := datadir.ToSnapDir(destDir)
 
 	if c.String("wal-dir") != "" {
 		srcWAL = c.String("wal-dir")
 	} else {
-		srcWAL = filepath.Join(c.String("data-dir"), "member", "wal")
+		srcWAL = datadir.ToWalDir(srcDir)
 	}
 
 	if c.String("backup-wal-dir") != "" {
 		destWAL = c.String("backup-wal-dir")
 	} else {
-		destWAL = filepath.Join(c.String("backup-dir"), "member", "wal")
+		destWAL = datadir.ToWalDir(destDir)
 	}
 
 	if err := fileutil.CreateDirAll(destSnap); err != nil {
@@ -116,8 +119,8 @@ func handleBackup(c *cli.Context) error {
 
 	walsnap := saveSnap(lg, destSnap, srcSnap, &desired)
 	metadata, state, ents := loadWAL(srcWAL, walsnap, withV3)
-	destDbPath := filepath.Join(destSnap, "db")
-	saveDB(lg, destDbPath, filepath.Join(srcSnap, "db"), state.Commit, &desired, withV3)
+	destDbPath := datadir.ToBackendFileName(destDir)
+	saveDB(lg, destDbPath, datadir.ToBackendFileName(srcDir), state.Commit, &desired, withV3)
 
 	neww, err := wal.Create(zap.NewExample(), destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {

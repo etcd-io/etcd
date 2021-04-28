@@ -42,6 +42,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/verify"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
@@ -338,6 +339,11 @@ func (e *Etcd) Close() {
 	lg.Info("closing etcd server", fields...)
 	defer func() {
 		lg.Info("closed etcd server", fields...)
+		verify.MustVerifyIfEnabled(verify.Config{
+			Logger:     lg,
+			DataDir:    e.cfg.Dir,
+			ExactIndex: false,
+		})
 		lg.Sync()
 	}()
 
@@ -513,7 +519,6 @@ func (e *Etcd) servePeers() (err error) {
 			e.cfg.logger.Info(
 				"cmux::serve",
 				zap.String("address", u),
-				zap.String("cmuxp", fmt.Sprintf("%p", m)),
 			)
 			return m.Serve()
 		}
@@ -524,16 +529,13 @@ func (e *Etcd) servePeers() (err error) {
 			e.cfg.logger.Info(
 				"stopping serving peer traffic",
 				zap.String("address", u),
-				zap.String("cmuxp", fmt.Sprintf("%p", m)),
 			)
 			stopServers(ctx, &servers{secure: peerTLScfg != nil, grpc: gs, http: srv})
 			e.cfg.logger.Info(
 				"stopped serving peer traffic",
 				zap.String("address", u),
-				zap.String("cmuxp", fmt.Sprintf("%p", m)),
 			)
 			m.Close()
-			e.cfg.logger.Info("Closed", zap.String("cmuxp", fmt.Sprintf("%p", m)))
 			return nil
 		}
 	}

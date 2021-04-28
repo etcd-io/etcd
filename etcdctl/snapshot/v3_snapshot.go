@@ -41,6 +41,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/verify"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
@@ -276,7 +277,11 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("snap-dir", s.snapDir),
 	)
 
-	return nil
+	return verify.VerifyIfEnabled(verify.Config{
+		ExactIndex: true,
+		Logger:     s.lg,
+		DataDir:    dataDir,
+	})
 }
 
 func (s *v3Manager) outDbPath() string {
