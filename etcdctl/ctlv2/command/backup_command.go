@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/verify"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 
@@ -117,12 +118,13 @@ func handleBackup(c *cli.Context) error {
 		lg.Fatal("failed creating backup snapshot dir", zap.String("dest-snap", destSnap), zap.Error(err))
 	}
 
+	destDbPath := datadir.ToBackendFileName(destDir)
+	srcDbPath := datadir.ToBackendFileName(srcDir)
 	desired := newDesiredCluster()
 
 	walsnap := saveSnap(lg, destSnap, srcSnap, &desired)
-	metadata, state, ents := loadWAL(lg, srcWAL, walsnap, withV3)
-	destDbPath := datadir.ToBackendFileName(destDir)
-	saveDB(lg, destDbPath, datadir.ToBackendFileName(srcDir), state.Commit, &desired, withV3)
+	metadata, state, ents := translateWAL(lg, srcWAL, walsnap, withV3)
+	saveDB(lg, destDbPath, srcDbPath, state.Commit, &desired, withV3)
 
 	neww, err := wal.Create(lg, destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {
@@ -183,7 +185,7 @@ func mustTranslateV2store(lg *zap.Logger, storeData []byte, desired *desiredClus
 	return outputData
 }
 
-func loadWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
+func translateWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
 	w, err := wal.OpenForRead(lg, srcWAL, walsnap)
 	if err != nil {
 		lg.Fatal("wal.OpenForRead failed", zap.Error(err))
@@ -202,18 +204,17 @@ func loadWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool) (et
 	re := path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes")
 	memberAttrRE := regexp.MustCompile(re)
 
-	removed := uint64(0)
-	i := 0
-	remove := func() {
-		ents = append(ents[:i], ents[i+1:]...)
-		removed++
-		i--
-	}
-	for i = 0; i < len(ents); i++ {
-		ents[i].Index -= removed
+	for i := 0; i < len(ents); i++ {
+
+		// Replacing WAL entries with 'dummy' entries allows to avoid
+		// complicated entries shifting and risk of other data (like consistent_index)
+		// running out of sync.
+		// Also moving entries and computing offsets would get complicated if
+		// TERM changes (so there are superflous entries from previous term).
+
 		if ents[i].Type == raftpb.EntryConfChange {
 			lg.Info("ignoring EntryConfChange raft entry")
-			remove()
+			raftEntryToNoOp(&ents[i])
 			continue
 		}
 
@@ -227,18 +228,20 @@ func loadWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool) (et
 		}
 
 		if v2Req != nil && v2Req.Method == "PUT" && memberAttrRE.MatchString(v2Req.Path) {
-			lg.Info("ignoring member attribute update on", zap.String("v2Req.Path", v2Req.Path))
-			remove()
+			lg.Info("ignoring member attribute update on",
+				zap.Stringer("entry", &ents[i]),
+				zap.String("v2Req.Path", v2Req.Path))
+			raftEntryToNoOp(&ents[i])
 			continue
 		}
 
 		if v2Req != nil {
-			continue
+			lg.Debug("preserving log entry", zap.Stringer("entry", &ents[i]))
 		}
 
 		if raftReq.ClusterMemberAttrSet != nil {
 			lg.Info("ignoring cluster_member_attr_set")
-			remove()
+			raftEntryToNoOp(&ents[i])
 			continue
 		}
 
@@ -247,12 +250,18 @@ func loadWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool) (et
 			continue
 		}
 		lg.Info("ignoring v3 raft entry")
-		remove()
+		raftEntryToNoOp(&ents[i])
 	}
-	state.Commit -= removed
 	var metadata etcdserverpb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
 	return metadata, state, ents
+}
+
+func raftEntryToNoOp(entry *raftpb.Entry) {
+	// Empty (dummy) entries are send by RAFT when new leader is getting elected.
+	// They do not cary any change to data-model so its safe to replace entries
+	// to be ignored with them.
+	*entry = raftpb.Entry{Term: entry.Term, Index: entry.Index, Type: raftpb.EntryNormal, Data: nil}
 }
 
 // saveDB copies the v3 backend and strips cluster information.
@@ -272,7 +281,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, desired *desiredCl
 		select {
 		case src = <-ch:
 		case <-time.After(time.Second):
-			lg.Fatal("waiting to acquire lock on", zap.String("srcDB", srcDB))
+			lg.Fatal("timed out waiting to acquire lock on", zap.String("srcDB", srcDB))
 			src = <-ch
 		}
 		defer src.Close()
@@ -312,10 +321,13 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, desired *desiredCl
 		tx := be.BatchTx()
 		tx.Lock()
 		defer tx.Unlock()
-		tx.UnsafeCreateBucket([]byte("meta"))
+		cindex.UnsafeCreateMetaBucket(tx)
 		ci := cindex.NewConsistentIndex(tx)
 		ci.SetConsistentIndex(idx)
 		ci.UnsafeSave(tx)
+	} else {
+		// Thanks to translateWAL not moving entries, but just replacing them with
+		// 'empty', there is no need to update the consistency index.
 	}
 
 }

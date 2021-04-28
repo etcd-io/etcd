@@ -34,7 +34,7 @@ func TestConsistentIndex(t *testing.T) {
 		t.Fatal("batch tx is nil")
 	}
 	tx.Lock()
-	tx.UnsafeCreateBucket(metaBucketName)
+	UnsafeCreateMetaBucket(tx)
 	tx.Unlock()
 	be.ForceCommit()
 	r := rand.Uint64()
@@ -50,6 +50,7 @@ func TestConsistentIndex(t *testing.T) {
 	be.Close()
 
 	b := backend.NewDefaultBackend(tmpPath)
+	defer b.Close()
 	ci.SetConsistentIndex(0)
 	ci.SetBatchTx(b.BatchTx())
 	index = ci.ConsistentIndex()
@@ -62,8 +63,6 @@ func TestConsistentIndex(t *testing.T) {
 	if index != r {
 		t.Errorf("expected %d,got %d", r, index)
 	}
-	b.Close()
-
 }
 
 func TestFakeConsistentIndex(t *testing.T) {

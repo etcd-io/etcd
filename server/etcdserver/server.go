@@ -2256,6 +2256,9 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	clone := s.v2store.Clone()
 	// commit kv to write metadata (for example: consistent index) to disk.
+	//
+	// This guarantees that Backend's consistent_index is >= index of last snapshot.
+	//
 	// KV().commit() updates the consistent index in backend.
 	// All operations that update consistent index must be called sequentially
 	// from applyAll function.
