@@ -216,7 +216,6 @@ func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, min
 		}
 		if maxV.LessThan(*clusterv) {
 			plog.Warningf("the running cluster version(%v) is higher than the maximum cluster version(%v) supported", clusterv.String(), maxV.String())
-			return false
 		}
 		ok = true
 	}

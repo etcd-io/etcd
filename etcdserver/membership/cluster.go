@@ -513,6 +513,8 @@ func mustDetectDowngrade(cv *semver.Version) {
 	// only keep major.minor version for comparison against cluster version
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	if cv != nil && lv.LessThan(*cv) {
-		plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+		plog.Warningf("cluster downgrade (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+		// overwrite the cluster version restored from snapshot/store with local version determined by the etcd binary version
+		*cv = *lv
 	}
 }
