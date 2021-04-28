@@ -57,6 +57,16 @@ func mustSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) {
 	tx.UnsafePut(membersBucketName, mkey, mvalue)
 }
 
+// TrimClusterFromBackend removes all information about cluster (versions)
+// from the v3 backend.
+func TrimClusterFromBackend(be backend.Backend) error {
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafeDeleteBucket(clusterBucketName)
+	return nil
+}
+
 func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
 	mkey := backendMemberKey(id)
 
@@ -65,6 +75,90 @@ func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
 	defer tx.Unlock()
 	tx.UnsafeDelete(membersBucketName, mkey)
 	tx.UnsafePut(membersRemovedBucketName, mkey, []byte("removed"))
+}
+
+func readMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool, error) {
+	members := make(map[types.ID]*Member)
+	removed := make(map[types.ID]bool)
+
+	tx := be.ReadTx()
+	tx.RLock()
+	defer tx.RUnlock()
+	err := tx.UnsafeForEach(membersBucketName, func(k, v []byte) error {
+		memberId := mustParseMemberIDFromBytes(lg, k)
+		m := &Member{ID: memberId}
+		if err := json.Unmarshal(v, &m); err != nil {
+			return err
+		}
+		members[memberId] = m
+		return nil
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't read members from backend: %w", err)
+	}
+
+	err = tx.UnsafeForEach(membersRemovedBucketName, func(k, v []byte) error {
+		memberId := mustParseMemberIDFromBytes(lg, k)
+		removed[memberId] = true
+		return nil
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't read members_removed from backend: %w", err)
+	}
+	return members, removed, nil
+}
+
+func mustReadMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool) {
+	members, removed, err := readMembersFromBackend(lg, be)
+	if err != nil {
+		lg.Panic("couldn't read members from backend", zap.Error(err))
+	}
+	return members, removed
+}
+
+// TrimMembershipFromBackend removes all information about members &
+// removed_members from the v3 backend.
+func TrimMembershipFromBackend(lg *zap.Logger, be backend.Backend) error {
+	lg.Info("Trimming membership information from the backend...")
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	err := tx.UnsafeForEach(membersBucketName, func(k, v []byte) error {
+		tx.UnsafeDelete(membersBucketName, k)
+		lg.Debug("Removed member from the backend",
+			zap.Stringer("member", mustParseMemberIDFromBytes(lg, k)))
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return tx.UnsafeForEach(membersRemovedBucketName, func(k, v []byte) error {
+		tx.UnsafeDelete(membersRemovedBucketName, k)
+		lg.Debug("Removed removed_member from the backend",
+			zap.Stringer("member", mustParseMemberIDFromBytes(lg, k)))
+		return nil
+	})
+}
+
+// TrimMembershipFromV2Store removes all information about members &
+// removed_members from the v2 store.
+func TrimMembershipFromV2Store(lg *zap.Logger, s v2store.Store) error {
+	members, removed := membersFromStore(lg, s)
+
+	for mID := range members {
+		_, err := s.Delete(MemberStoreKey(mID), true, true)
+		if err != nil {
+			return err
+		}
+	}
+	for mID := range removed {
+		_, err := s.Delete(RemovedMemberStoreKey(mID), true, true)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
@@ -221,10 +315,18 @@ func MemberAttributesStorePath(id types.ID) string {
 	return path.Join(MemberStoreKey(id), attributesSuffix)
 }
 
+func mustParseMemberIDFromBytes(lg *zap.Logger, key []byte) types.ID {
+	id, err := types.IDFromString(string(key))
+	if err != nil {
+		lg.Panic("failed to parse member id from key", zap.Error(err))
+	}
+	return id
+}
+
 func MustParseMemberIDFromKey(lg *zap.Logger, key string) types.ID {
 	id, err := types.IDFromString(path.Base(key))
 	if err != nil {
-		lg.Panic("failed to parse memver id from key", zap.Error(err))
+		lg.Panic("failed to parse member id from key", zap.Error(err))
 	}
 	return id
 }

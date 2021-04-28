@@ -178,7 +178,7 @@ func TestApplyRepeat(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(nil)
+	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234}, true)
@@ -483,7 +483,7 @@ func TestApplyRequest(t *testing.T) {
 }
 
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
-	cl := newTestCluster([]*membership.Member{{ID: 1}})
+	cl := newTestCluster(t, []*membership.Member{{ID: 1}})
 	srv := &EtcdServer{
 		lgMu:    new(sync.RWMutex),
 		lg:      zap.NewExample(),
@@ -506,7 +506,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 }
 
 func TestApplyConfChangeError(t *testing.T) {
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
@@ -594,7 +594,7 @@ func TestApplyConfChangeError(t *testing.T) {
 }
 
 func TestApplyConfChangeShouldStop(t *testing.T) {
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
@@ -638,7 +638,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 // TestApplyConfigChangeUpdatesConsistIndex ensures a config change also updates the consistIndex
 // where consistIndex equals to applied index.
 func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
 	r := newRaftNode(raftNodeConfig{
@@ -685,7 +685,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 // TestApplyMultiConfChangeShouldStop ensures that apply will return shouldStop
 // if the local member is removed along with other conf updates.
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 5; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
@@ -1038,7 +1038,7 @@ func TestSnapshot(t *testing.T) {
 func TestSnapshotOrdering(t *testing.T) {
 	n := newNopReadyNode()
 	st := v2store.New()
-	cl := membership.NewCluster(zap.NewExample(), "abc")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(st)
 
 	testdir, err := ioutil.TempDir(os.TempDir(), "testsnapdir")
@@ -1192,7 +1192,7 @@ func TestTriggerSnap(t *testing.T) {
 func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	n := newNopReadyNode()
 	st := v2store.New()
-	cl := membership.NewCluster(zap.NewExample(), "abc")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(st)
 
 	testdir, err := ioutil.TempDir(os.TempDir(), "testsnapdir")
@@ -1292,7 +1292,7 @@ func TestAddMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(nil)
+	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(st)
 	r := newRaftNode(raftNodeConfig{
@@ -1336,7 +1336,7 @@ func TestRemoveMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(nil)
+	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234}, true)
@@ -1380,7 +1380,7 @@ func TestUpdateMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(nil)
+	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(st)
 	cl.AddMember(&membership.Member{ID: 1234}, true)
@@ -1689,6 +1689,7 @@ func TestStopNotify(t *testing.T) {
 }
 
 func TestGetOtherPeerURLs(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	tests := []struct {
 		membs []*membership.Member
 		wurls []string
@@ -1717,7 +1718,7 @@ func TestGetOtherPeerURLs(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		cl := membership.NewClusterFromMembers(zap.NewExample(), "", types.ID(0), tt.membs)
+		cl := membership.NewClusterFromMembers(lg, types.ID(0), tt.membs)
 		self := "1"
 		urls := getRemotePeerURLs(cl, self)
 		if !reflect.DeepEqual(urls, tt.wurls) {
@@ -1868,8 +1869,8 @@ func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
 	return nil
 }
 
-func newTestCluster(membs []*membership.Member) *membership.RaftCluster {
-	c := membership.NewCluster(zap.NewExample(), "")
+func newTestCluster(t testing.TB, membs []*membership.Member) *membership.RaftCluster {
+	c := membership.NewCluster(zaptest.NewLogger(t))
 	for _, m := range membs {
 		c.AddMember(m, true)
 	}

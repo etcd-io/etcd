@@ -279,7 +279,7 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 }
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
-	cl := NewCluster(zap.NewExample(), "")
+	cl := NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}

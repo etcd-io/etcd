@@ -128,7 +128,7 @@ func prepareBackend() backend.Backend {
 
 func rebuildStoreV2() (v2store.Store, uint64) {
 	var index uint64
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zap.NewExample())
 
 	waldir := migrateWALdir
 	if len(waldir) == 0 {
