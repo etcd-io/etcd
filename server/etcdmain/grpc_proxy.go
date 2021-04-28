@@ -18,8 +18,8 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
-	"github.com/bgentry/speakeasy"
 	"io/ioutil"
 	"log"
 	"math"
@@ -364,19 +364,17 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 	}
 
 	if grpcUser != "" {
-		var err error
 		if grpcPassword == "" {
 			splitted := strings.SplitN(grpcUser, ":", 2)
 			if len(splitted) < 2 {
-				cfg.Username = grpcUser
-				cfg.Password, err = speakeasy.Ask("Password: ")
-				if err != nil {
-					return nil, err
-				}
+				return nil, errors.New("no valid password")
 			} else {
 				cfg.Username = splitted[0]
 				cfg.Password = splitted[1]
 			}
+		} else {
+			cfg.Username = grpcUser
+			cfg.Password = grpcPassword
 		}
 	}
 
