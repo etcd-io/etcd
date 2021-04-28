@@ -25,7 +25,6 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	"go.uber.org/zap"
@@ -182,7 +181,6 @@ type lessor struct {
 	checkpointInterval time.Duration
 	// the interval to check if the expired lease is revoked
 	expiredLeaseRetryInterval time.Duration
-	ci                        cindex.ConsistentIndexer
 }
 
 type LessorConfig struct {
@@ -191,11 +189,11 @@ type LessorConfig struct {
 	ExpiredLeasesRetryInterval time.Duration
 }
 
-func NewLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig, ci cindex.ConsistentIndexer) Lessor {
-	return newLessor(lg, b, cfg, ci)
+func NewLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) Lessor {
+	return newLessor(lg, b, cfg)
 }
 
-func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig, ci cindex.ConsistentIndexer) *lessor {
+func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) *lessor {
 	checkpointInterval := cfg.CheckpointInterval
 	expiredLeaseRetryInterval := cfg.ExpiredLeasesRetryInterval
 	if checkpointInterval == 0 {
@@ -218,7 +216,6 @@ func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig, ci cindex.Co
 		stopC:    make(chan struct{}),
 		doneC:    make(chan struct{}),
 		lg:       lg,
-		ci:       ci,
 	}
 	l.initAndRecover()
 

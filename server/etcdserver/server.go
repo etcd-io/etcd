@@ -301,9 +301,7 @@ type backendHooks struct {
 }
 
 func (bh *backendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
-	if bh.indexer != nil {
-		bh.indexer.UnsafeSave(tx)
-	}
+	bh.indexer.UnsafeSave(tx)
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -358,8 +356,11 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	bepath := cfg.BackendPath()
 	beExist := fileutil.Exist(bepath)
 
-	beHooks := &backendHooks{lg: cfg.Logger}
+	ci := cindex.NewConsistentIndex(nil)
+	beHooks := &backendHooks{lg: cfg.Logger, indexer: ci}
 	be := openBackend(cfg, beHooks)
+	ci.SetBackend(be)
+	cindex.CreateMetaBucket(be.BatchTx())
 
 	defer func() {
 		if err != nil {
@@ -543,7 +544,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		peerRt:             prt,
 		reqIDGen:           idutil.NewGenerator(uint16(id), time.Now()),
 		AccessController:   &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
-		consistIndex:       cindex.NewConsistentIndex(be.BatchTx()),
+		consistIndex:       ci,
 		firstCommitInTermC: make(chan struct{}),
 	}
 	serverID.With(prometheus.Labels{"server_id": id.String()}).Set(1)
@@ -556,16 +557,11 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
-	srv.lessor = lease.NewLessor(
-		srv.Logger(),
-		srv.be,
-		lease.LessorConfig{
-			MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
-			CheckpointInterval:         cfg.LeaseCheckpointInterval,
-			ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
-		},
-		srv.consistIndex,
-	)
+	srv.lessor = lease.NewLessor(srv.Logger(), srv.be, lease.LessorConfig{
+		MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
+		CheckpointInterval:         cfg.LeaseCheckpointInterval,
+		ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
+	})
 
 	tp, err := auth.NewTokenProvider(cfg.Logger, cfg.AuthToken,
 		func(index uint64) <-chan struct{} {
@@ -577,12 +573,9 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		cfg.Logger.Warn("failed to create token provider", zap.Error(err))
 		return nil, err
 	}
-	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, srv.consistIndex, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
+	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
 
-	// Backend should contain 'meta' bucket going forward.
-	beHooks.indexer = srv.consistIndex
-
-	kvindex := srv.consistIndex.ConsistentIndex()
+	kvindex := ci.ConsistentIndex()
 	srv.lg.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
 	if beExist {
 		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
@@ -1210,6 +1203,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		lg.Panic("failed to restore mvcc store", zap.Error(err))
 	}
 
+	s.consistIndex.SetBackend(newbe)
 	lg.Info("restored mvcc store", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
 
 	// Closing old backend might block until all the txns
