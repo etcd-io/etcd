@@ -133,7 +133,7 @@ function run {
   command=("${command[@]@Q}")
   if [[ "${rpath}" != "." && "${rpath}" != "" ]]; then
     repro="(cd ${rpath} && ${command[*]})"
-  else 
+  else
     repro="${command[*]}"
   fi
 
@@ -344,7 +344,7 @@ function assert_no_git_modifications {
 #  - no differencing commits in relation to the origin/$branch
 function git_assert_branch_in_sync {
   local branch
-  branch=$(git branch --show-current)
+  branch=$(git rev-parse --abbrev-ref HEAD)
   if [[ $(run git status --porcelain --untracked-files=no) ]]; then
     log_error "The workspace in '$(pwd)' for branch: ${branch} has uncommitted changes"
     log_error "Consider cleaning up / renaming this directory."
