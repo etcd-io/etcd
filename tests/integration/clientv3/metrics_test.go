@@ -81,7 +81,7 @@ func TestV3ClientMetrics(t *testing.T) {
 			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
 		},
 	}
-	cli, cerr := clientv3.New(cfg)
+	cli, cerr := integration.NewClient(t, cfg)
 	if cerr != nil {
 		t.Fatal(cerr)
 	}

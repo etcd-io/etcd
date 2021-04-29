@@ -75,16 +75,16 @@ func TestUserErrorAuth(t *testing.T) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cfg.Username, cfg.Password = "wrong-id", "123"
-	if _, err := clientv3.New(cfg); err != rpctypes.ErrAuthFailed {
+	if _, err := integration.NewClient(t, cfg); err != rpctypes.ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
 	}
 	cfg.Username, cfg.Password = "root", "wrong-pass"
-	if _, err := clientv3.New(cfg); err != rpctypes.ErrAuthFailed {
+	if _, err := integration.NewClient(t, cfg); err != rpctypes.ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
 	}
 
 	cfg.Username, cfg.Password = "root", "123"
-	authed, err := clientv3.New(cfg)
+	authed, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 		Password:    "123",
 	}
 
-	client, err = clientv3.New(cfg)
+	client, err = integration.NewClient(t, cfg)
 	if err == nil {
 		defer client.Close()
 	}

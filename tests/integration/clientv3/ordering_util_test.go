@@ -34,7 +34,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 		clus.Members[2].GRPCAddr(),
 	}
 	cfg := clientv3.Config{Endpoints: []string{clus.Members[0].GRPCAddr()}}
-	cli, err := clientv3.New(cfg)
+	cli, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 			clus.Members[4].GRPCAddr(),
 		},
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

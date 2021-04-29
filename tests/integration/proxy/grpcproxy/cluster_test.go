@@ -42,7 +42,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 		Endpoints:   []string{cts.caddr},
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := clientv3.New(cfg)
+	client, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatalf("err %v, want nil", err)
 	}
@@ -94,7 +94,7 @@ func newClusterProxyServer(lg *zap.Logger, endpoints []string, t *testing.T) *cl
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := clientv3.New(cfg)
+	client, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

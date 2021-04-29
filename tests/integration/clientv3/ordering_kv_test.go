@@ -40,7 +40,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 			clus.Members[2].GRPCAddr(),
 		},
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 			clus.Members[2].GRPCAddr(),
 		},
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

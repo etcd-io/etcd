@@ -21,6 +21,7 @@ import (
 
 	grpc_logsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/verify"
 	"go.uber.org/zap/zapcore"
@@ -69,4 +70,12 @@ func NewEmbedConfig(t testing.TB, name string) *embed.Config {
 	cfg.ZapLoggerBuilder = embed.NewZapCoreLoggerBuilder(lg)
 	cfg.Dir = t.TempDir()
 	return cfg
+}
+
+func NewClient(t testing.TB, cfg clientv3.Config) (*clientv3.Client, error) {
+	client, err := clientv3.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return client.WithLogger(zaptest.NewLogger(t)), nil
 }

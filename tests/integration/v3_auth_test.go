@@ -55,7 +55,7 @@ func TestV3AuthTokenWithDisable(t *testing.T) {
 
 	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
 
-	c, cerr := clientv3.New(clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
+	c, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
 	if cerr != nil {
 		t.Fatal(cerr)
 	}
@@ -127,7 +127,7 @@ func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg ClusterConfig) {
 	api := toGRPC(clus.Client(0))
 	authSetupRoot(t, api.Auth)
 
-	rootc, cerr := clientv3.New(clientv3.Config{
+	rootc, cerr := NewClient(t, clientv3.Config{
 		Endpoints: clus.Client(0).Endpoints(),
 		Username:  "root",
 		Password:  "123",
@@ -194,7 +194,7 @@ func TestV3AuthWithLeaseRevoke(t *testing.T) {
 
 	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
 
-	rootc, cerr := clientv3.New(clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
+	rootc, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
 	if cerr != nil {
 		t.Fatal(cerr)
 	}
@@ -211,7 +211,7 @@ func TestV3AuthWithLeaseRevoke(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	userc, cerr := clientv3.New(clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
+	userc, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
 	if cerr != nil {
 		t.Fatal(cerr)
 	}
@@ -247,13 +247,13 @@ func TestV3AuthWithLeaseAttach(t *testing.T) {
 
 	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
 
-	user1c, cerr := clientv3.New(clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
+	user1c, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
 	if cerr != nil {
 		t.Fatal(cerr)
 	}
 	defer user1c.Close()
 
-	user2c, cerr := clientv3.New(clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user2", Password: "user2-123"})
+	user2c, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user2", Password: "user2-123"})
 	if cerr != nil {
 		t.Fatal(cerr)
 	}
@@ -364,7 +364,7 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 
 	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
 
-	c, cerr := clientv3.New(clientv3.Config{
+	c, cerr := NewClient(t, clientv3.Config{
 		Endpoints:   clus.Client(0).Endpoints(),
 		DialTimeout: 5 * time.Second,
 		Username:    "root",
