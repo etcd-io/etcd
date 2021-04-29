@@ -1028,7 +1028,6 @@ func (s *EtcdServer) run() {
 		close(s.stopping)
 		s.wgMu.Unlock()
 		s.cancel()
-
 		sched.Stop()
 
 		// wait for gouroutines before closing raft so wal stays open
@@ -1040,23 +1039,8 @@ func (s *EtcdServer) run() {
 		// by adding a peer after raft stops the transport
 		s.r.stop()
 
-		// kv, lessor and backend can be nil if running without v3 enabled
-		// or running unit tests.
-		if s.lessor != nil {
-			s.lessor.Stop()
-		}
-		if s.kv != nil {
-			s.kv.Close()
-		}
-		if s.authStore != nil {
-			s.authStore.Close()
-		}
-		if s.be != nil {
-			s.be.Close()
-		}
-		if s.compactor != nil {
-			s.compactor.Stop()
-		}
+		s.Cleanup()
+
 		close(s.done)
 	}()
 
@@ -1109,6 +1093,28 @@ func (s *EtcdServer) run() {
 		case <-s.stop:
 			return
 		}
+	}
+}
+
+// Cleanup removes allocated objects by EtcdServer.NewServer in
+// situation that EtcdServer::Start was not called (that takes care of cleanup).
+func (s *EtcdServer) Cleanup() {
+	// kv, lessor and backend can be nil if running without v3 enabled
+	// or running unit tests.
+	if s.lessor != nil {
+		s.lessor.Stop()
+	}
+	if s.kv != nil {
+		s.kv.Close()
+	}
+	if s.authStore != nil {
+		s.authStore.Close()
+	}
+	if s.be != nil {
+		s.be.Close()
+	}
+	if s.compactor != nil {
+		s.compactor.Stop()
 	}
 }
 
@@ -2256,6 +2262,9 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	clone := s.v2store.Clone()
 	// commit kv to write metadata (for example: consistent index) to disk.
+	//
+	// This guarantees that Backend's consistent_index is >= index of last snapshot.
+	//
 	// KV().commit() updates the consistent index in backend.
 	// All operations that update consistent index must be called sequentially
 	// from applyAll function.

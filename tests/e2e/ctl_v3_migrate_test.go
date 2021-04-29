@@ -23,10 +23,13 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/verify"
 )
 
 func BeforeTest(t testing.TB) {
+	skipInShortMode(t)
 	testutil.BeforeTest(t)
+	os.Setenv(verify.ENV_VERIFY, verify.ENV_VERIFY_ALL_VALUE)
 }
 
 func TestCtlV3Migrate(t *testing.T) {

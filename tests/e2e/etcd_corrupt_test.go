@@ -19,14 +19,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
+	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
-
-	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/server/v3/datadir"
 )
 
 // TODO: test with embedded etcd in integration package
@@ -49,6 +48,7 @@ func TestEtcdCorruptHash(t *testing.T) {
 }
 
 func corruptTest(cx ctlCtx) {
+	cx.t.Log("putting 10 keys...")
 	for i := 0; i < 10; i++ {
 		if err := ctlV3Put(cx, fmt.Sprintf("foo%05d", i), fmt.Sprintf("v%05d", i), ""); err != nil {
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
@@ -57,8 +57,10 @@ func corruptTest(cx ctlCtx) {
 		}
 	}
 	// enough time for all nodes sync on the same data
+	cx.t.Log("sleeping 3sec to let nodes sync...")
 	time.Sleep(3 * time.Second)
 
+	cx.t.Log("connecting clientv3...")
 	eps := cx.epc.EndpointsV3()
 	cli1, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[1]}, DialTimeout: 3 * time.Second})
 	if err != nil {
@@ -67,19 +69,23 @@ func corruptTest(cx ctlCtx) {
 	defer cli1.Close()
 
 	sresp, err := cli1.Status(context.TODO(), eps[0])
+	cx.t.Logf("checked status sresp:%v err:%v", sresp, err)
 	if err != nil {
 		cx.t.Fatal(err)
 	}
 	id0 := sresp.Header.GetMemberId()
 
+	cx.t.Log("stopping etcd[0]...")
 	cx.epc.procs[0].Stop()
 
-	// corrupt first member by modifying backend offline.
-	fp := filepath.Join(cx.epc.procs[0].Config().dataDirPath, "member", "snap", "db")
+	// corrupting first member by modifying backend offline.
+	fp := datadir.ToBackendFileName(cx.epc.procs[0].Config().dataDirPath)
+	cx.t.Logf("corrupting backend: %v", fp)
 	if err = cx.corruptFunc(fp); err != nil {
 		cx.t.Fatal(err)
 	}
 
+	cx.t.Log("restarting etcd[0]")
 	ep := cx.epc.procs[0]
 	proc, err := spawnCmd(append([]string{ep.Config().execPath}, ep.Config().args...))
 	if err != nil {
@@ -87,6 +93,7 @@ func corruptTest(cx ctlCtx) {
 	}
 	defer proc.Stop()
 
+	cx.t.Log("waiting for etcd[0] failure...")
 	// restarting corrupted member should fail
 	waitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
 }

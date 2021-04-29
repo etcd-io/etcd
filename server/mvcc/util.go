@@ -15,32 +15,11 @@
 package mvcc
 
 import (
-	"encoding/binary"
 	"fmt"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 )
-
-func UpdateConsistentIndex(be backend.Backend, index uint64) {
-	tx := be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-
-	var oldi uint64
-	_, vs := tx.UnsafeRange(metaBucketName, consistentIndexKeyName, nil, 0)
-	if len(vs) != 0 {
-		oldi = binary.BigEndian.Uint64(vs[0])
-	}
-
-	if index <= oldi {
-		return
-	}
-
-	bs := make([]byte, 8)
-	binary.BigEndian.PutUint64(bs, index)
-	tx.UnsafePut(metaBucketName, consistentIndexKeyName, bs)
-}
 
 func WriteKV(be backend.Backend, kv mvccpb.KeyValue) {
 	ibytes := newRevBytes()

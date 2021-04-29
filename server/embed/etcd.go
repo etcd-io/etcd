@@ -229,6 +229,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		if err = e.Server.CheckInitialHashKV(); err != nil {
 			// set "EtcdServer" to nil, so that it does not block on "EtcdServer.Close()"
 			// (nothing to close since rafthttp transports have not been started)
+
+			e.cfg.logger.Error("checkInitialHashKV failed", zap.Error(err))
+			e.Server.Cleanup()
 			e.Server = nil
 			return e, err
 		}
