@@ -80,11 +80,7 @@ func (ci *consistentIndex) UnsafeSave(tx backend.BatchTx) {
 		// Never save 0 as it means that we didn't loaded the real index yet.
 		return
 	}
-	bs := make([]byte, 8) // this is kept on stack (not heap) so its quick.
-	binary.BigEndian.PutUint64(bs, index)
-	// put the index into the underlying backend
-	// tx has been locked in TxnBegin, so there is no need to lock it again
-	tx.UnsafePut(MetaBucketName, ConsistentIndexKeyName, bs)
+	unsafeUpdateConsistentIndex(tx, index)
 }
 
 func (ci *consistentIndex) SetBatchTx(tx backend.BatchTx) {
@@ -129,4 +125,23 @@ func ReadConsistentIndex(tx backend.ReadTx) uint64 {
 	tx.Lock()
 	defer tx.Unlock()
 	return unsafeReadConsistentIndex(tx)
+}
+
+func unsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64) {
+	bs := make([]byte, 8) // this is kept on stack (not heap) so its quick.
+	binary.BigEndian.PutUint64(bs, index)
+	// put the index into the underlying backend
+	// tx has been locked in TxnBegin, so there is no need to lock it again
+	tx.UnsafePut(MetaBucketName, ConsistentIndexKeyName, bs)
+}
+
+func UpdateConsistentIndex(tx backend.BatchTx, index uint64) {
+	tx.Lock()
+	defer tx.Unlock()
+
+	oldi := unsafeReadConsistentIndex(tx)
+	if index <= oldi {
+		return
+	}
+	unsafeUpdateConsistentIndex(tx, index)
 }

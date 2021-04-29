@@ -35,9 +35,8 @@ import (
 
 var (
 	keyBucketName  = []byte("key")
-	metaBucketName = []byte("meta")
+	metaBucketName = cindex.MetaBucketName
 
-	consistentIndexKeyName  = []byte("consistent_index")
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
@@ -128,7 +127,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.Cons
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tx.UnsafeCreateBucket(keyBucketName)
-	tx.UnsafeCreateBucket(metaBucketName)
+	cindex.UnsafeCreateMetaBucket(tx)
 	tx.Unlock()
 	s.b.ForceCommit()
 
@@ -308,7 +307,7 @@ func init() {
 	DefaultIgnores = map[backend.IgnoreKey]struct{}{
 		// consistent index might be changed due to v2 internal sync, which
 		// is not controllable by the user.
-		{Bucket: string(metaBucketName), Key: string(consistentIndexKeyName)}: {},
+		{Bucket: string(metaBucketName), Key: string(cindex.ConsistentIndexKeyName)}: {},
 	}
 }
 
