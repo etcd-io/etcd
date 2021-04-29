@@ -288,7 +288,7 @@ func mustNewClient(lg *zap.Logger) *clientv3.Client {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	return client
+	return client.WithLogger(lg.Named("client"))
 }
 
 func mustNewProxyClient(lg *zap.Logger, tls *transport.TLSInfo) *clientv3.Client {
@@ -304,7 +304,7 @@ func mustNewProxyClient(lg *zap.Logger, tls *transport.TLSInfo) *clientv3.Client
 		os.Exit(1)
 	}
 	lg.Info("create proxy client", zap.String("grpcProxyAdvertiseClientURL", grpcProxyAdvertiseClientURL))
-	return client
+	return client.WithLogger(lg.Named("client"))
 }
 
 func newProxyClientCfg(lg *zap.Logger, eps []string, tls *transport.TLSInfo) (*clientv3.Config, error) {

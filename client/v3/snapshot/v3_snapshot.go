@@ -56,6 +56,8 @@ func Save(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath strin
 	}
 	defer cli.Close()
 
+	cli = cli.WithLogger(lg.Named("client"))
+
 	partpath := dbPath + ".part"
 	defer os.RemoveAll(partpath)
 
