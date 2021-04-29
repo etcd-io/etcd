@@ -253,11 +253,12 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	if c.be != nil {
 		c.version = clusterVersionFromBackend(c.lg, c.be)
+		c.members, c.removed = membersFromBackend(c.lg, c.be)
 	} else {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
+		c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	}
 
 	if c.be != nil {
