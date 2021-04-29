@@ -17,8 +17,9 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"go.etcd.io/etcd/api/v3/authpb"
 	"path/filepath"
+
+	"go.etcd.io/etcd/api/v3/authpb"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"

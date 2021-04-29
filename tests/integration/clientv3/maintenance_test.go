@@ -209,7 +209,7 @@ func TestMaintenanceStatus(t *testing.T) {
 		eps[i] = clus.Members[i].GRPCAddr()
 	}
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
 	if err != nil {
 		t.Fatal(err)
 	}

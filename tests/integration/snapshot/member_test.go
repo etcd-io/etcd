@@ -48,7 +48,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	// wait for health interval + leader election
 	time.Sleep(etcdserver.HealthInterval + 2*time.Second)
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{cURLs[0].String()}})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{cURLs[0].String()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 		t.Fatalf("failed to start the newly added etcd member")
 	}
 
-	cli2, err := clientv3.New(clientv3.Config{Endpoints: []string{newCURLs[0].String()}})
+	cli2, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{newCURLs[0].String()}})
 	if err != nil {
 		t.Fatal(err)
 	}

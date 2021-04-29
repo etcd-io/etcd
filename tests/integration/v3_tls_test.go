@@ -54,7 +54,7 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cli, cerr := clientv3.New(clientv3.Config{
+	cli, cerr := NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},

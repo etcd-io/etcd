@@ -4,8 +4,9 @@
 package transport
 
 import (
-	"golang.org/x/sys/unix"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 func setReusePort(network, address string, conn syscall.RawConn) error {
