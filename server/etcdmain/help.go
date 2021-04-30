@@ -193,6 +193,16 @@ Logging:
   --log-rotation-config-json '{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}'
     Configures log rotation if enabled with a JSON logger config. MaxSize(MB), MaxAge(days,0=no limit), MaxBackups(0=no limit), LocalTime(use computers local time), Compress(gzip)". 
 
+Experimental distributed tracing:
+  --experimental-enable-distributed-tracing 'false'
+    Enable experimental distributed tracing.
+  --experimental-distributed-tracing-address 'localhost:4317'
+    Distributed tracing collector address.
+  --experimental-distributed-tracing-service-name 'etcd'
+    Distributed tracing service name, must be same across all etcd instances.
+  --experimental-distributed-tracing-instance-id ''
+    Distributed tracing instance ID, must be unique per each etcd instance.
+
 v2 Proxy (to be deprecated in v4):
   --proxy 'off'
     Proxy mode setting ('off', 'readonly' or 'on').
