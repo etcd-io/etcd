@@ -91,6 +91,8 @@ type backend struct {
 	commits int64
 	// openReadTxN is the number of currently open read transactions in the backend
 	openReadTxN int64
+	// mlock prevents backend database file to be swapped
+	mlock bool
 
 	mu sync.RWMutex
 	db *bolt.DB
@@ -171,6 +173,7 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		batchInterval: bcfg.BatchInterval,
 		batchLimit:    bcfg.BatchLimit,
+		mlock:         bcfg.Mlock,
 
 		readTx: &readTx{
 			baseReadTx: baseReadTx{
@@ -381,7 +384,7 @@ func (b *backend) defrag() error {
 	if boltOpenOptions != nil {
 		options = *boltOpenOptions
 	}
-	options.OpenFile = func(path string, i int, mode os.FileMode) (file *os.File, err error) {
+	options.OpenFile = func(_ string, _ int, _ os.FileMode) (file *os.File, err error) {
 		return temp, nil
 	}
 	// Don't load tmp db into memory regardless of opening options
@@ -428,7 +431,13 @@ func (b *backend) defrag() error {
 		b.lg.Fatal("failed to rename tmp database", zap.Error(err))
 	}
 
-	b.db, err = bolt.Open(dbp, 0600, boltOpenOptions)
+	defragmentedBoltOptions := bolt.Options{}
+	if boltOpenOptions != nil {
+		defragmentedBoltOptions = *boltOpenOptions
+	}
+	defragmentedBoltOptions.Mlock = b.mlock
+
+	b.db, err = bolt.Open(dbp, 0600, &defragmentedBoltOptions)
 	if err != nil {
 		b.lg.Fatal("failed to open database", zap.String("path", dbp), zap.Error(err))
 	}
