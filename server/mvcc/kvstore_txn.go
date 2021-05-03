@@ -35,11 +35,13 @@ type storeTxnRead struct {
 }
 
 func (s *store) Read(mode ReadTxMode, trace *traceutil.Trace) TxnRead {
-	var tx backend.ReadTx
 	s.mu.RLock()
 	s.revMu.RLock()
-	// backend holds b.readTx.RLock() only when creating the concurrentReadTx. After
-	// ConcurrentReadTx is created, it will not block write transaction.
+	// For read-only workloads, we use shared buffer by copying transaction read buffer
+	// for higher concurrency with ongoing blocking writes.
+	// For write/write-read transactions, we use the shared buffer
+	// rather than duplicating transaction read buffer to avoid transaction overhead.
+	var tx backend.ReadTx
 	if mode == ConcurrentReadTxMode {
 		tx = s.b.ConcurrentReadTx()
 	} else {
