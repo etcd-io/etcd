@@ -36,7 +36,7 @@ const (
 // HandleMetricsHealth registers metrics and health handlers.
 func HandleMetricsHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
 	mux.Handle(PathMetrics, promhttp.Handler())
-	mux.Handle(PathHealth, NewHealthHandler(func() Health { return checkHealth(srv) }))
+	mux.Handle(PathHealth, NewHealthHandler(func(excludedAlarms AlarmSet) Health { return checkHealth(srv, excludedAlarms) }))
 }
 
 // HandlePrometheus registers prometheus handler on '/metrics'.
@@ -45,7 +45,7 @@ func HandlePrometheus(mux *http.ServeMux) {
 }
 
 // NewHealthHandler handles '/health' requests.
-func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
+func NewHealthHandler(hfunc func(excludedAlarms AlarmSet) Health) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
@@ -53,7 +53,8 @@ func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 			plog.Warningf("/health error (status code %d)", http.StatusMethodNotAllowed)
 			return
 		}
-		h := hfunc()
+		excludedAlarms := getExcludedAlarms(r)
+		h := hfunc(excludedAlarms)
 		d, _ := json.Marshal(h)
 		if h.Health != "true" {
 			http.Error(w, string(d), http.StatusServiceUnavailable)
@@ -90,17 +91,44 @@ type Health struct {
 	Health string `json:"health"`
 }
 
+type AlarmSet map[string]struct{}
+
+func getExcludedAlarms(r *http.Request) (alarms AlarmSet) {
+	alarms = make(map[string]struct{}, 2)
+	alms, found := r.URL.Query()["exclude"]
+	if found {
+		for _, alm := range alms {
+			if len(alms) == 0 {
+				continue
+			}
+			alarms[alm] = struct{}{}
+		}
+	}
+	return alarms
+}
+
 // TODO: server NOSPACE, etcdserver.ErrNoLeader in health API
 
-func checkHealth(srv etcdserver.ServerV2) Health {
+func checkHealth(srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
 	h := Health{Health: "true"}
 
 	as := srv.Alarms()
 	if len(as) > 0 {
-		h.Health = "false"
 		for _, v := range as {
-			plog.Warningf("/health error due to an alarm %s", v.String())
+			alarmName := v.Alarm.String()
+			if _, found := excludedAlarms[alarmName]; found {
+				plog.Debugf("/health excluded alarm %s", alarmName)
+				delete(excludedAlarms, alarmName)
+				continue
+			}
+			h.Health = "false"
+			plog.Warningf("/health error due to %s", v.String())
+			return h
 		}
+	}
+
+	if len(excludedAlarms) > 0 {
+		plog.Warningf("fail exclude alarms from health check, exclude alarms %+v", excludedAlarms)
 	}
 
 	if h.Health == "true" {
