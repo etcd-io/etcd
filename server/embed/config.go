@@ -400,6 +400,9 @@ type Config struct {
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
+
+	// V2Deprecation describes phase of API & Storage V2 support
+	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -494,6 +497,8 @@ func NewConfig() *Config {
 		ExperimentalDowngradeCheckTime:           DefaultDowngradeCheckTime,
 		ExperimentalMemoryMlock:                  false,
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
+
+		V2Deprecation: V2_DEPR_DEFAULT,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -794,6 +799,14 @@ func (cfg Config) InitialClusterFromName(name string) (ret string) {
 
 func (cfg Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
 func (cfg Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
+
+func (cfg Config) V2DeprecationEffective() V2DeprecationEnum {
+	if cfg.V2Deprecation == "" {
+		return V2_DEPR_DEFAULT
+	} else {
+		return cfg.V2Deprecation
+	}
+}
 
 func (cfg Config) defaultPeerHost() bool {
 	return len(cfg.APUrls) == 1 && cfg.APUrls[0].String() == DefaultInitialAdvertisePeerURLs
