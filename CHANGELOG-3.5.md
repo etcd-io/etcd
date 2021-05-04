@@ -239,6 +239,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
 - [Add `Linearizable` field to `etcdserverpb.MemberListRequest`](https://github.com/etcd-io/etcd/pull/11639).
+- [Learner support Snapshot RPC](https://github.com/etcd-io/etcd/pull/12890/).
 
 ### Package `netutil`
 
