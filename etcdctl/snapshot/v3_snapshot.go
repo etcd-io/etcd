@@ -478,8 +478,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 func (s *v3Manager) updateCIndex(commit uint64) error {
 	be := backend.NewDefaultBackend(s.outDbPath())
 	defer be.Close()
-	ci := cindex.NewConsistentIndex(be.BatchTx())
-	ci.SetConsistentIndex(commit)
-	ci.UnsafeSave(be.BatchTx())
+
+	cindex.UpdateConsistentIndex(be.BatchTx(), commit, false)
 	return nil
 }
