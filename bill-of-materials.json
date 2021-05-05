@@ -639,6 +639,15 @@
 		]
 	},
 	{
+		"project": "gopkg.in/natefinch/lumberjack.v2",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "gopkg.in/yaml.v2",
 		"licenses": [
 			{
