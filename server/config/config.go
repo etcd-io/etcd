@@ -178,6 +178,10 @@ type ServerConfig struct {
 	// Currently all etcd memory gets mlocked, but in future the flag can
 	// be refined to mlock in-use area of bbolt only.
 	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
+
+	// ExperimentalTxnModeWriteWithSharedBuffer enable write transaction to use
+	// a shared buffer in its readonly check operations.
+	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

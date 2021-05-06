@@ -336,7 +336,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 	resp.Header = &pb.ResponseHeader{}
 
 	if txn == nil {
-		txn = a.s.kv.Read(trace)
+		txn = a.s.kv.Read(mvcc.ConcurrentReadTxMode, trace)
 		defer txn.End()
 	}
 
@@ -434,7 +434,15 @@ func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnR
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 	}
 	isWrite := !isTxnReadonly(rt)
-	txn := mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(trace))
+
+	// When the transaction contains write operations, we use ReadTx instead of
+	// ConcurrentReadTx to avoid extra overhead of copying buffer.
+	var txn mvcc.TxnWrite
+	if isWrite && a.s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer {
+		txn = mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(mvcc.SharedBufReadTxMode, trace))
+	} else {
+		txn = mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(mvcc.ConcurrentReadTxMode, trace))
+	}
 
 	var txnPath []bool
 	trace.StepWithFunction(

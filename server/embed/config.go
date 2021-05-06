@@ -355,6 +355,9 @@ type Config struct {
 	// Currently all etcd memory gets mlocked, but in future the flag can
 	// be refined to mlock in-use area of bbolt only.
 	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
+
+	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
+	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -444,8 +447,9 @@ func NewConfig() *Config {
 		LogLevel:          logutil.DefaultLogLevel,
 		EnableGRPCGateway: true,
 
-		ExperimentalDowngradeCheckTime: DefaultDowngradeCheckTime,
-		ExperimentalMemoryMlock:        false,
+		ExperimentalDowngradeCheckTime:           DefaultDowngradeCheckTime,
+		ExperimentalMemoryMlock:                  false,
+		ExperimentalTxnModeWriteWithSharedBuffer: true,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
