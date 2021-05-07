@@ -67,6 +67,7 @@ func NewFIFOScheduler() Scheduler {
 	f := &fifo{
 		resume: make(chan struct{}, 1),
 		donec:  make(chan struct{}, 1),
+		todo:   make(chan struct{}, 1),
 	}
 	f.finishCond = sync.NewCond(&f.mu)
 	f.ctx, f.cancel = context.WithCancel(context.Background())
