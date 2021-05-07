@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -287,5 +288,79 @@ func TestPeerURLsMapAndTokenFromSRV(t *testing.T) {
 		if hasErr(err) != tt.werr {
 			t.Errorf("#%d: err = %v, want = %v", i, err, tt.werr)
 		}
+	}
+}
+
+func TestLogRotation(t *testing.T) {
+	tests := []struct {
+		name              string
+		logOutputs        []string
+		logRotationConfig string
+		wantErr           bool
+		wantErrMsg        error
+	}{
+		{
+			name:              "mixed log output targets",
+			logOutputs:        []string{"stderr", "/tmp/path"},
+			logRotationConfig: `{"maxsize": 1}`,
+		},
+		{
+			name:              "no file targets",
+			logOutputs:        []string{"stderr"},
+			logRotationConfig: `{"maxsize": 1}`,
+			wantErr:           true,
+			wantErrMsg:        ErrLogRotationInvalidLogOutput,
+		},
+		{
+			name:              "multiple file targets",
+			logOutputs:        []string{"/tmp/path1", "/tmp/path2"},
+			logRotationConfig: DefaultLogRotationConfig,
+			wantErr:           true,
+			wantErrMsg:        ErrLogRotationInvalidLogOutput,
+		},
+		{
+			name:              "default output",
+			logRotationConfig: `{"maxsize": 1}`,
+			wantErr:           true,
+			wantErrMsg:        ErrLogRotationInvalidLogOutput,
+		},
+		{
+			name:              "default log rotation config",
+			logOutputs:        []string{"/tmp/path"},
+			logRotationConfig: DefaultLogRotationConfig,
+		},
+		{
+			name:              "invalid logger config",
+			logOutputs:        []string{"/tmp/path"},
+			logRotationConfig: `{"maxsize": true}`,
+			wantErr:           true,
+			wantErrMsg:        errors.New("invalid log rotation config: json: cannot unmarshal bool into Go struct field logRotationConfig.maxsize of type int"),
+		},
+		{
+			name:              "improperly formatted logger config",
+			logOutputs:        []string{"/tmp/path"},
+			logRotationConfig: `{"maxsize": true`,
+			wantErr:           true,
+			wantErrMsg:        errors.New("improperly formatted log rotation config: unexpected end of JSON input"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := NewConfig()
+			cfg.Logger = "zap"
+			cfg.LogOutputs = tt.logOutputs
+			cfg.EnableLogRotation = true
+			cfg.LogRotationConfigJSON = tt.logRotationConfig
+			err := cfg.Validate()
+			if err != nil && !tt.wantErr {
+				t.Errorf("test %q, unexpected error %v", tt.name, err)
+			}
+			if err != nil && tt.wantErr && tt.wantErrMsg.Error() != err.Error() {
+				t.Errorf("test %q, expected error: %+v, got: %+v", tt.name, tt.wantErrMsg, err)
+			}
+			if err == nil && tt.wantErr {
+				t.Errorf("test %q, expected error, got nil", tt.name)
+			}
+		})
 	}
 }

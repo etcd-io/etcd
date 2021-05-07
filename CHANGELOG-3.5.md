@@ -161,6 +161,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Setting this flag enables `SO_REUSEADDR` which allows binding to an address in `TIME_WAIT` state, improving etcd restart time.
 - Reduce [around 30% memory allocation by logging range response size without marshal](https://github.com/etcd-io/etcd/pull/12871).
 - `ETCD_VERIFY="all"` enviroment triggers [additional verification of consistency](https://github.com/etcd-io/etcd/pull/) of etcd data-dir files. 
+- Add [`etcd --enable-log-rotation`](https://github.com/etcd-io/etcd/pull/12774) boolean flag which enables log rotation if true.
+- Add [`etcd --log-rotation-config-json`](https://github.com/etcd-io/etcd/pull/12774) flag which allows passthrough of JSON config to configure log rotation for a file output target.
 ### Package `runtime`
 
 - Optimize [`runtime.FDUsage` by removing unnecessary sorting](https://github.com/etcd-io/etcd/pull/12214).
@@ -171,6 +173,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Use `embed.Config.LogLevel` instead.
 - Add [`embed.Config.ZapLoggerBuilder`](https://github.com/etcd-io/etcd/pull/11147) to allow creating a custom zap logger.
 - Replace [global `*zap.Logger` with etcd server logger object](https://github.com/etcd-io/etcd/pull/12212).
+- Add [`embed.Config.EnableLogRotation`](https://github.com/etcd-io/etcd/pull/12774) which enables log rotation if true.
+- Add [`embed.Config.LogRotationConfigJSON`](https://github.com/etcd-io/etcd/pull/12774) to allow passthrough of JSON config to configure log rotation for a file output target.
 
 ### Package `clientv3`
 
