@@ -135,3 +135,35 @@ func CheckDirPermission(dir string, perm os.FileMode) error {
 	}
 	return nil
 }
+
+// RemoveMatchFile deletes file if matchFunc is true on an existing dir
+// Returns error if the dir does not exist or remove file fail
+func RemoveMatchFile(lg *zap.Logger, dir string, matchFunc func(fileName string) bool) error {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+	if !Exist(dir) {
+		return fmt.Errorf("directory %s does not exist", dir)
+	}
+	fileNames, err := ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	var removeFailedFiles []string
+	for _, fileName := range fileNames {
+		if matchFunc(fileName) {
+			file := filepath.Join(dir, fileName)
+			if err = os.Remove(file); err != nil {
+				removeFailedFiles = append(removeFailedFiles, fileName)
+				lg.Error("remove file failed",
+					zap.String("file", file),
+					zap.Error(err))
+				continue
+			}
+		}
+	}
+	if len(removeFailedFiles) != 0 {
+		return fmt.Errorf("remove file(s) %v error", removeFailedFiles)
+	}
+	return nil
+}

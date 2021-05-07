@@ -113,8 +113,6 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	}
 	go clus.serveTesterServer()
 
-	clus.updateCases()
-
 	clus.rateLimiter = rate.NewLimiter(
 		rate.Limit(int(clus.Tester.StressQPS)),
 		int(clus.Tester.StressQPS),
@@ -261,6 +259,13 @@ func (clus *Cluster) updateCases() {
 			}
 			clus.cases = append(clus.cases,
 				fpFailures...)
+		case "FAILPOINTS_WITH_DISK_IO_LATENCY":
+			fpFailures, fperr := failpointDiskIOFailures(clus)
+			if len(fpFailures) == 0 {
+				clus.lg.Info("no failpoints found!", zap.Error(fperr))
+			}
+			clus.cases = append(clus.cases,
+				fpFailures...)
 		}
 	}
 }
@@ -322,6 +327,11 @@ func (clus *Cluster) setStresserChecker() {
 
 		case "NO_CHECK":
 			clus.checkers = append(clus.checkers, newNoChecker())
+
+		case "SHORT_TTL_LEASE_EXPIRE":
+			for _, ls := range lss {
+				clus.checkers = append(clus.checkers, newShortTTLLeaseExpireChecker(ls))
+			}
 		}
 	}
 	clus.lg.Info("updated stressers")

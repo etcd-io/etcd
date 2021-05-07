@@ -23,7 +23,7 @@ import (
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap"
 )
 
@@ -66,7 +66,7 @@ func TestScheduleCompaction(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		b, tmpPath := backend.NewDefaultTmpBackend(t)
+		b, tmpPath := betesting.NewDefaultTmpBackend(t)
 		s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 		tx := s.b.BatchTx()
 
@@ -100,7 +100,7 @@ func TestScheduleCompaction(t *testing.T) {
 }
 
 func TestCompactAllAndRestore(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend(t)
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 

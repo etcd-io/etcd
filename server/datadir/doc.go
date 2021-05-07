@@ -12,16 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build windows
-// +build windows
+package datadir
 
-package etcdserver
-
-import (
-	"errors"
-)
-
-// MlockAll prevents current and future mmaped memory areas from being swapped out.
-func MlockAll() error {
-	return errors.New("Mlockall is supported only on UNIX systems.")
-}
+// datadir contains functions to navigate file-layout of etcd data-directory.

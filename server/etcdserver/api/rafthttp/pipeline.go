@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"io/ioutil"
+	"runtime"
 	"sync"
 	"time"
 
@@ -139,6 +140,7 @@ func (p *pipeline) post(data []byte) (err error) {
 	go func() {
 		select {
 		case <-done:
+			cancel()
 		case <-p.stopc:
 			waitSchedule()
 			cancel()
@@ -173,4 +175,4 @@ func (p *pipeline) post(data []byte) (err error) {
 }
 
 // waitSchedule waits other goroutines to be scheduled for a while
-func waitSchedule() { time.Sleep(time.Millisecond) }
+func waitSchedule() { runtime.Gosched() }

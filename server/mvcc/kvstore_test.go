@@ -36,15 +36,15 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 
 	"go.uber.org/zap"
 )
 
 func TestStoreRev(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer s.Close()
-	defer os.Remove(tmpPath)
 
 	for i := 1; i <= 3; i++ {
 		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -425,9 +425,8 @@ func TestRestoreDelete(t *testing.T) {
 	restoreChunkKeys = mrand.Intn(3) + 2
 	defer func() { restoreChunkKeys = oldChunk }()
 
-	b, tmpPath := backend.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
-	defer os.Remove(tmpPath)
 
 	keys := make(map[string]struct{})
 	for i := 0; i < 20; i++ {
@@ -473,9 +472,8 @@ func TestRestoreDelete(t *testing.T) {
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	tests := []string{"recreate", "restore"}
 	for _, test := range tests {
-		b, tmpPath := backend.NewDefaultTmpBackend(t)
+		b, _ := betesting.NewDefaultTmpBackend(t)
 		s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
-		defer os.Remove(tmpPath)
 
 		s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 		s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
@@ -535,7 +533,7 @@ type hashKVResult struct {
 
 // TestHashKVWhenCompacting ensures that HashKV returns correct hash when compacting.
 func TestHashKVWhenCompacting(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend(t)
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
@@ -603,7 +601,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 // TestHashKVZeroRevision ensures that "HashByRev(0)" computes
 // correct hash value with latest revision.
 func TestHashKVZeroRevision(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend(t)
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
@@ -636,7 +634,7 @@ func TestTxnPut(t *testing.T) {
 	keys := createBytesSlice(bytesN, sliceN)
 	vals := createBytesSlice(bytesN, sliceN)
 
-	b, tmpPath := backend.NewDefaultTmpBackend(t)
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
@@ -652,7 +650,7 @@ func TestTxnPut(t *testing.T) {
 
 // TestConcurrentReadNotBlockingWrite ensures Read does not blocking Write after its creation
 func TestConcurrentReadNotBlockingWrite(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend(t)
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
@@ -660,7 +658,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 
 	// readTx simulates a long read request
-	readTx1 := s.Read(traceutil.TODO())
+	readTx1 := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 
 	// write should not be blocked by reads
 	done := make(chan struct{}, 1)
@@ -675,7 +673,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	}
 
 	// readTx2 simulates a short read request
-	readTx2 := s.Read(traceutil.TODO())
+	readTx2 := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
 	ret, err := readTx2.Range(context.TODO(), []byte("foo"), nil, ro)
 	if err != nil {
@@ -721,7 +719,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		committedKVs         kvs        // committedKVs records the key-value pairs written by the finished Write Txns
 		mu                   sync.Mutex // mu protects committedKVs
 	)
-	b, tmpPath := backend.NewDefaultTmpBackend(t)
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
@@ -758,7 +756,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 			mu.Lock()
 			wKVs := make(kvs, len(committedKVs))
 			copy(wKVs, committedKVs)
-			tx := s.Read(traceutil.TODO())
+			tx := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 			mu.Unlock()
 			// get all keys in backend store, and compare with wKVs
 			ret, err := tx.Range(context.TODO(), []byte("\x00000000"), []byte("\xffffffff"), RangeOptions{})
@@ -877,6 +875,7 @@ func (b *fakeBatchTx) Unlock()                        {}
 func (b *fakeBatchTx) RLock()                         {}
 func (b *fakeBatchTx) RUnlock()                       {}
 func (b *fakeBatchTx) UnsafeCreateBucket(name []byte) {}
+func (b *fakeBatchTx) UnsafeDeleteBucket(name []byte) {}
 func (b *fakeBatchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	b.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{bucketName, key, value}})
 }

@@ -1,6 +1,6 @@
 module go.etcd.io/etcd/tools/v3
 
-go 1.15
+go 1.16
 
 require (
 	github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 // indirect

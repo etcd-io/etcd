@@ -16,6 +16,7 @@ package command
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -90,14 +91,26 @@ func isCommandTimeoutFlagSet(cmd *cobra.Command) bool {
 	return commandTimeoutFlag.Changed
 }
 
-// get the process_resident_memory_bytes from <server:2379>/metrics
-func endpointMemoryMetrics(host string) float64 {
+// get the process_resident_memory_bytes from <server>/metrics
+func endpointMemoryMetrics(host string, scfg *secureCfg) float64 {
 	residentMemoryKey := "process_resident_memory_bytes"
 	var residentMemoryValue string
-	if !strings.HasPrefix(host, `http://`) {
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
 		host = "http://" + host
 	}
 	url := host + "/metrics"
+	if strings.HasPrefix(host, "https://") {
+		// load client certificate
+		cert, err := tls.LoadX509KeyPair(scfg.cert, scfg.key)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("client certificate error: %v", err))
+			return 0.0
+		}
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: scfg.insecureSkipVerify,
+		}
+	}
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("fetch error: %v", err))

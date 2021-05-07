@@ -35,6 +35,7 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/integration"
+	"go.uber.org/zap/zaptest"
 )
 
 var (
@@ -160,11 +161,13 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 			t.Fatal(err)
 		}
 	}
-	cli, err := clientv3.New(clientCfg)
+	cli, err := integration.NewClient(t, clientCfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cli.Close()
+
+	cli = cli.WithLogger(zaptest.NewLogger(t))
 
 	// open watch connection
 	cli.Watch(context.Background(), "foo")

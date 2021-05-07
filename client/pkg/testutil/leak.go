@@ -110,8 +110,12 @@ func BeforeTest(t TB) {
 // It will detect common goroutine leaks, retrying in case there are goroutines
 // not synchronously torn down, and fail the test if any goroutines are stuck.
 func AfterTest(t TB) {
-	if err := CheckAfterTest(1 * time.Second); err != nil {
-		t.Errorf("Test %v", err)
+	// If test-failed the leaked goroutines list is hidding the real
+	// source of problem.
+	if !t.Failed() {
+		if err := CheckAfterTest(1 * time.Second); err != nil {
+			t.Errorf("Test %v", err)
+		}
 	}
 }
 

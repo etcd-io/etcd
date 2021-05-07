@@ -16,18 +16,17 @@ package cindex
 
 import (
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 )
 
 // TestConsistentIndex ensures that LoadConsistentIndex/Save/ConsistentIndex and backend.BatchTx can work well together.
 func TestConsistentIndex(t *testing.T) {
 
-	be, tmpPath := backend.NewTmpBackend(t, time.Microsecond, 10)
-	defer os.Remove(tmpPath)
+	be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
 	ci := NewConsistentIndex(be.BatchTx())
 
 	tx := be.BatchTx()
@@ -35,7 +34,7 @@ func TestConsistentIndex(t *testing.T) {
 		t.Fatal("batch tx is nil")
 	}
 	tx.Lock()
-	tx.UnsafeCreateBucket(metaBucketName)
+	UnsafeCreateMetaBucket(tx)
 	tx.Unlock()
 	be.ForceCommit()
 	r := rand.Uint64()
@@ -51,6 +50,7 @@ func TestConsistentIndex(t *testing.T) {
 	be.Close()
 
 	b := backend.NewDefaultBackend(tmpPath)
+	defer b.Close()
 	ci.SetConsistentIndex(0)
 	ci.SetBatchTx(b.BatchTx())
 	index = ci.ConsistentIndex()
@@ -63,8 +63,6 @@ func TestConsistentIndex(t *testing.T) {
 	if index != r {
 		t.Errorf("expected %d,got %d", r, index)
 	}
-	b.Close()
-
 }
 
 func TestFakeConsistentIndex(t *testing.T) {

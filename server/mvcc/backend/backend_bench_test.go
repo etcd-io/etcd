@@ -12,28 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package backend_test
 
 import (
 	"crypto/rand"
-	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 )
 
 func BenchmarkBackendPut(b *testing.B) {
-	backend, tmppath := NewTmpBackend(b, 100*time.Millisecond, 10000)
-	defer backend.Close()
-	defer os.Remove(tmppath)
+	backend, _ := betesting.NewTmpBackend(b, 100*time.Millisecond, 10000)
+	defer betesting.Close(b, backend)
 
 	// prepare keys
 	keys := make([][]byte, b.N)
 	for i := 0; i < b.N; i++ {
 		keys[i] = make([]byte, 64)
-		rand.Read(keys[i])
+		_, err := rand.Read(keys[i])
+		assert.NoError(b, err)
 	}
 	value := make([]byte, 128)
-	rand.Read(value)
+	_, err := rand.Read(value)
+	assert.NoError(b, err)
 
 	batchTx := backend.BatchTx()
 

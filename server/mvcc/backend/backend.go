@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
-	"testing"
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
@@ -92,6 +91,8 @@ type backend struct {
 	commits int64
 	// openReadTxN is the number of currently open read transactions in the backend
 	openReadTxN int64
+	// mlock prevents backend database file to be swapped
+	mlock bool
 
 	mu sync.RWMutex
 	db *bolt.DB
@@ -123,6 +124,8 @@ type BackendConfig struct {
 	Logger *zap.Logger
 	// UnsafeNoFsync disables all uses of fsync.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
+	// Mlock prevents backend database file to be swapped
+	Mlock bool
 }
 
 func DefaultBackendConfig() BackendConfig {
@@ -156,6 +159,7 @@ func newBackend(bcfg BackendConfig) *backend {
 	bopts.FreelistType = bcfg.BackendFreelistType
 	bopts.NoSync = bcfg.UnsafeNoFsync
 	bopts.NoGrowSync = bcfg.UnsafeNoFsync
+	bopts.Mlock = bcfg.Mlock
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {
@@ -169,6 +173,7 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		batchInterval: bcfg.BatchInterval,
 		batchLimit:    bcfg.BatchLimit,
+		mlock:         bcfg.Mlock,
 
 		readTx: &readTx{
 			baseReadTx: baseReadTx{
@@ -379,9 +384,11 @@ func (b *backend) defrag() error {
 	if boltOpenOptions != nil {
 		options = *boltOpenOptions
 	}
-	options.OpenFile = func(path string, i int, mode os.FileMode) (file *os.File, err error) {
+	options.OpenFile = func(_ string, _ int, _ os.FileMode) (file *os.File, err error) {
 		return temp, nil
 	}
+	// Don't load tmp db into memory regardless of opening options
+	options.Mlock = false
 	tdbp := temp.Name()
 	tmpdb, err := bolt.Open(tdbp, 0600, &options)
 	if err != nil {
@@ -424,7 +431,13 @@ func (b *backend) defrag() error {
 		b.lg.Fatal("failed to rename tmp database", zap.Error(err))
 	}
 
-	b.db, err = bolt.Open(dbp, 0600, boltOpenOptions)
+	defragmentedBoltOptions := bolt.Options{}
+	if boltOpenOptions != nil {
+		defragmentedBoltOptions = *boltOpenOptions
+	}
+	defragmentedBoltOptions.Mlock = b.mlock
+
+	b.db, err = bolt.Open(dbp, 0600, &defragmentedBoltOptions)
 	if err != nil {
 		b.lg.Fatal("failed to open database", zap.String("path", dbp), zap.Error(err))
 	}
@@ -542,22 +555,6 @@ func (b *backend) unsafeBegin(write bool) *bolt.Tx {
 
 func (b *backend) OpenReadTxN() int64 {
 	return atomic.LoadInt64(&b.openReadTxN)
-}
-
-// NewTmpBackend creates a backend implementation for testing.
-func NewTmpBackend(t testing.TB, batchInterval time.Duration, batchLimit int) (*backend, string) {
-	dir, err := ioutil.TempDir(t.TempDir(), "etcd_backend_test")
-	if err != nil {
-		panic(err)
-	}
-	tmpPath := filepath.Join(dir, "database")
-	bcfg := DefaultBackendConfig()
-	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = tmpPath, batchInterval, batchLimit
-	return newBackend(bcfg), tmpPath
-}
-
-func NewDefaultTmpBackend(t testing.TB) (*backend, string) {
-	return NewTmpBackend(t, defaultBatchInterval, defaultBatchLimit)
 }
 
 type snapshot struct {

@@ -56,7 +56,7 @@ func TestDialTLSExpired(t *testing.T) {
 		t.Fatal(err)
 	}
 	// expect remote errors "tls: bad certificate"
-	_, err = clientv3.New(clientv3.Config{
+	_, err = integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: 3 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
@@ -74,7 +74,7 @@ func TestDialTLSNoConfig(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientTLS: &testTLSInfo, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 	// expect "signed by unknown authority"
-	c, err := clientv3.New(clientv3.Config{
+	c, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
@@ -117,7 +117,7 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 		DialTimeout: 1 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestRejectOldCluster(t *testing.T) {
 		DialOptions:      []grpc.DialOption{grpc.WithBlock()},
 		RejectOldCluster: true,
 	}
-	cli, err := clientv3.New(cfg)
+	cli, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

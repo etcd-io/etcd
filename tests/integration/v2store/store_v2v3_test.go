@@ -54,7 +54,7 @@ func testCreateKV(t testing.TB, endpoints []string) {
 		//{key: "hello", value: "3", unique: true, wantKeyMatch: false},
 	}
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: endpoints})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func testSetKV(t testing.TB, endpoints []string) {
 		{key: "/sdir/set", value: "4", wantIndexMatch: false},
 	}
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: endpoints})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func testCreateSetDir(t testing.TB, endpoints []string) {
 		{dir: "/ddir/1/2/3"},
 	}
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: endpoints})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: endpoints})
 	if err != nil {
 		t.Fatal(err)
 	}

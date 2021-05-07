@@ -22,8 +22,7 @@ import (
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/tests/v3/integration"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestRegister(t *testing.T) {
@@ -37,7 +36,7 @@ func TestRegister(t *testing.T) {
 	testPrefix := "test-name"
 	wa := mustCreateWatcher(t, cli, testPrefix)
 
-	donec := grpcproxy.Register(zap.NewExample(), cli, testPrefix, paddr, 5)
+	donec := grpcproxy.Register(zaptest.NewLogger(t), cli, testPrefix, paddr, 5)
 
 	ups := <-wa
 	if len(ups) != 1 {

@@ -15,9 +15,10 @@
 package types
 
 import (
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"reflect"
 	"testing"
+
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func TestParseInitialCluster(t *testing.T) {

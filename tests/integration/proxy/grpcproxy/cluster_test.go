@@ -24,6 +24,7 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/tests/v3/integration"
+	"go.uber.org/zap/zaptest"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -35,14 +36,14 @@ func TestClusterProxyMemberList(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	cts := newClusterProxyServer(zap.NewExample(), []string{clus.Members[0].GRPCAddr()}, t)
+	cts := newClusterProxyServer(zaptest.NewLogger(t), []string{clus.Members[0].GRPCAddr()}, t)
 	defer cts.close(t)
 
 	cfg := clientv3.Config{
 		Endpoints:   []string{cts.caddr},
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := clientv3.New(cfg)
+	client, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatalf("err %v, want nil", err)
 	}
@@ -94,7 +95,7 @@ func newClusterProxyServer(lg *zap.Logger, endpoints []string, t *testing.T) *cl
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := clientv3.New(cfg)
+	client, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

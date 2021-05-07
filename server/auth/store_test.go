@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -29,6 +28,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -46,8 +46,7 @@ func dummyIndexWaiter(index uint64) <-chan struct{} {
 // TestNewAuthStoreRevision ensures newly auth store
 // keeps the old revision when there are no changes.
 func TestNewAuthStoreRevision(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend(t)
-	defer os.Remove(tPath)
+	b, tPath := betesting.NewDefaultTmpBackend(t)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
@@ -76,9 +75,8 @@ func TestNewAuthStoreRevision(t *testing.T) {
 
 // TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
 func TestNewAuthStoreBcryptCost(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend(t)
-	defer b.Close()
-	defer os.Remove(tPath)
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
@@ -101,7 +99,7 @@ func encodePassword(s string) string {
 }
 
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
-	b, tPath := backend.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
@@ -127,7 +125,6 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 
 	tearDown := func(_ *testing.T) {
 		b.Close()
-		os.Remove(tPath)
 		as.Close()
 	}
 	return as, tearDown
@@ -653,9 +650,8 @@ func TestIsAuthEnabled(t *testing.T) {
 
 // TestAuthRevisionRace ensures that access to authStore.revision is thread-safe.
 func TestAuthInfoFromCtxRace(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend(t)
-	defer b.Close()
-	defer os.Remove(tPath)
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
@@ -807,9 +803,8 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 
 // TestRolesOrder tests authpb.User.Roles is sorted
 func TestRolesOrder(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend(t)
-	defer b.Close()
-	defer os.Remove(tPath)
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
 
 	tp, err := NewTokenProvider(zap.NewExample(), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	defer tp.disable()
@@ -865,9 +860,8 @@ func TestAuthInfoFromCtxWithRootJWT(t *testing.T) {
 
 // testAuthInfoFromCtxWithRoot ensures "WithRoot" properly embeds token in the context.
 func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
-	b, tPath := backend.NewDefaultTmpBackend(t)
-	defer b.Close()
-	defer os.Remove(tPath)
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
 
 	tp, err := NewTokenProvider(zap.NewExample(), opts, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {

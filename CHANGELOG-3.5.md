@@ -9,7 +9,7 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 <hr>
 
 
-## v3.5.0 (2021 TBD)
+## v3.5.0 (2021-06)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/) for any breaking changes.
 
@@ -70,6 +70,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - [ETCD_CLIENT_DEBUG env](https://github.com/etcd-io/etcd/pull/12786): Now supports log levels (debug, info, warn, error, dpanic, panic, fatal). Only when set, overrides application-wide grpc logging settings.
 - [Embed Etcd.Close()](https://github.com/etcd-io/etcd/pull/12828) needs to called exactly once and closes Etcd.Err() stream.
 - [Embed Etcd does not override global/grpc logger](https://github.com/etcd-io/etcd/pull/12861) be default any longer. If desired, please call `embed.Config::SetupGlobalLoggers()` explicitly. 
+- Errors: `context cancelled` or `context deadline exceeded` are exposed as codes.Canceled, codes.DeadlineExceeded instead of 'codes.Unknown'.
 ###
 
 - Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
@@ -137,6 +138,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve logging around snapshot send and receive.
 - [Push down RangeOptions.limit argv into index tree to reduce memory overhead](https://github.com/etcd-io/etcd/pull/11990).
 - Add [reason field for /health response](https://github.com/etcd-io/etcd/pull/11983).
+- Add [exclude alarms from health check conditionally](https://github.com/etcd-io/etcd/pull/12880)
 - Add [`--unsafe-no-fsync`](https://github.com/etcd-io/etcd/pull/11946) flag.
   - Setting the flag disables all uses of fsync, which is unsafe and will cause data loss. This flag makes it possible to run an etcd node for testing and development without placing lots of load on the file system.
 - Add [etcd --auth-token-ttl](https://github.com/etcd-io/etcd/pull/11980) flag to customize `simpleTokenTTL` settings.
@@ -156,7 +158,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`--socket-reuse-port`](https://github.com/etcd-io/etcd/pull/12702) flag
   - Setting this flag enables `SO_REUSEPORT` which allows rebind of a port already in use. User should take caution when using this flag to ensure flock is properly enforced. 
 - Add [`--socket-reuse-address`](https://github.com/etcd-io/etcd/pull/12702) flag
-  - Setting this flag enables `SO_REUSEADDR` which allows binding to an address in `TIME_WAIT` state, improving etcd restart time. 
+  - Setting this flag enables `SO_REUSEADDR` which allows binding to an address in `TIME_WAIT` state, improving etcd restart time.
+- Reduce [around 30% memory allocation by logging range response size without marshal](https://github.com/etcd-io/etcd/pull/12871).
+- `ETCD_VERIFY="all"` enviroment triggers [additional verification of consistency](https://github.com/etcd-io/etcd/pull/) of etcd data-dir files. 
 ### Package `runtime`
 
 - Optimize [`runtime.FDUsage` by removing unnecessary sorting](https://github.com/etcd-io/etcd/pull/12214).
@@ -235,6 +239,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 - Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
 - [Add `Linearizable` field to `etcdserverpb.MemberListRequest`](https://github.com/etcd-io/etcd/pull/11639).
+- [Learner support Snapshot RPC](https://github.com/etcd-io/etcd/pull/12890/).
 
 ### Package `netutil`
 
@@ -257,7 +262,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Go
 
-- Require [*Go 1.15+*](https://github.com/etcd-io/etcd/pull/11110).
+- Require [*Go 1.16+*](https://github.com/etcd-io/etcd/pull/11110).
 - Compile with [*Go 1.16*](https://golang.org/doc/devel/release.html#go1.16)
 - etcd uses [go modules](https://github.com/etcd-io/etcd/pull/12279) (instead of vendor dir) to track dependencies.
 

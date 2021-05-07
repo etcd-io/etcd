@@ -50,7 +50,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	"go.etcd.io/etcd/server/v3/mvcc"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
@@ -178,10 +178,10 @@ func TestApplyRepeat(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(nil)
+	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
-	cl.AddMember(&membership.Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          zap.NewExample(),
 		Node:        n,
@@ -483,7 +483,7 @@ func TestApplyRequest(t *testing.T) {
 }
 
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
-	cl := newTestCluster([]*membership.Member{{ID: 1}})
+	cl := newTestCluster(t, []*membership.Member{{ID: 1}})
 	srv := &EtcdServer{
 		lgMu:    new(sync.RWMutex),
 		lg:      zap.NewExample(),
@@ -506,12 +506,12 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 }
 
 func TestApplyConfChangeError(t *testing.T) {
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
-		cl.AddMember(&membership.Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
-	cl.RemoveMember(4)
+	cl.RemoveMember(4, true)
 
 	attr := membership.RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
 	ctx, err := json.Marshal(&membership.Member{ID: types.ID(1), RaftAttributes: attr})
@@ -576,7 +576,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			r:       *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
 			cluster: cl,
 		}
-		_, err := srv.applyConfChange(tt.cc, nil)
+		_, err := srv.applyConfChange(tt.cc, nil, true)
 		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -594,10 +594,10 @@ func TestApplyConfChangeError(t *testing.T) {
 }
 
 func TestApplyConfChangeShouldStop(t *testing.T) {
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 3; i++ {
-		cl.AddMember(&membership.Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
@@ -616,7 +616,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		NodeID: 2,
 	}
 	// remove non-local member
-	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{})
+	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{}, true)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -626,7 +626,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	// remove local member
 	cc.NodeID = 1
-	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{})
+	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{}, true)
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
@@ -638,9 +638,9 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 // TestApplyConfigChangeUpdatesConsistIndex ensures a config change also updates the consistIndex
 // where consistIndex equals to applied index.
 func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
-	cl.AddMember(&membership.Member{ID: types.ID(1)})
+	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
 		Node:      newNodeNop(),
@@ -685,10 +685,10 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 // TestApplyMultiConfChangeShouldStop ensures that apply will return shouldStop
 // if the local member is removed along with other conf updates.
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 5; i++ {
-		cl.AddMember(&membership.Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
 	r := newRaftNode(raftNodeConfig{
 		lg:        zap.NewExample(),
@@ -972,10 +972,7 @@ func TestSyncTrigger(t *testing.T) {
 
 // snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
-	be, tmpPath := backend.NewDefaultTmpBackend(t)
-	defer func() {
-		os.RemoveAll(tmpPath)
-	}()
+	be, _ := betesting.NewDefaultTmpBackend(t)
 
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
@@ -1041,7 +1038,7 @@ func TestSnapshot(t *testing.T) {
 func TestSnapshotOrdering(t *testing.T) {
 	n := newNopReadyNode()
 	st := v2store.New()
-	cl := membership.NewCluster(zap.NewExample(), "abc")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(st)
 
 	testdir, err := ioutil.TempDir(os.TempDir(), "testsnapdir")
@@ -1066,7 +1063,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		storage:     p,
 		raftStorage: rs,
 	})
-	be, tmpPath := backend.NewDefaultTmpBackend(t)
+	be, tmpPath := betesting.NewDefaultTmpBackend(t)
 	defer os.RemoveAll(tmpPath)
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1128,7 +1125,7 @@ func TestSnapshotOrdering(t *testing.T) {
 
 // Applied > SnapshotCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
-	be, tmpPath := backend.NewDefaultTmpBackend(t)
+	be, tmpPath := betesting.NewDefaultTmpBackend(t)
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
@@ -1195,7 +1192,7 @@ func TestTriggerSnap(t *testing.T) {
 func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	n := newNopReadyNode()
 	st := v2store.New()
-	cl := membership.NewCluster(zap.NewExample(), "abc")
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(st)
 
 	testdir, err := ioutil.TempDir(os.TempDir(), "testsnapdir")
@@ -1217,7 +1214,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		storage:     mockstorage.NewStorageRecorder(testdir),
 		raftStorage: rs,
 	})
-	be, tmpPath := backend.NewDefaultTmpBackend(t)
+	be, tmpPath := betesting.NewDefaultTmpBackend(t)
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
@@ -1295,7 +1292,7 @@ func TestAddMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(nil)
+	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(st)
 	r := newRaftNode(raftNodeConfig{
@@ -1339,10 +1336,10 @@ func TestRemoveMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(nil)
+	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
-	cl.AddMember(&membership.Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          zap.NewExample(),
 		Node:        n,
@@ -1383,10 +1380,10 @@ func TestUpdateMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(nil)
+	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(st)
-	cl.AddMember(&membership.Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          zap.NewExample(),
 		Node:        n,
@@ -1552,7 +1549,7 @@ func TestPublishV3(t *testing.T) {
 	w := wait.NewWithResponse(ch)
 	ctx, cancel := context.WithCancel(context.Background())
 	lg := zaptest.NewLogger(t)
-	be, _ := backend.NewDefaultTmpBackend(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
@@ -1622,7 +1619,7 @@ func TestPublishV3Retry(t *testing.T) {
 	n := newNodeRecorderStream()
 
 	lg := zaptest.NewLogger(t)
-	be, _ := backend.NewDefaultTmpBackend(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
@@ -1692,6 +1689,7 @@ func TestStopNotify(t *testing.T) {
 }
 
 func TestGetOtherPeerURLs(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	tests := []struct {
 		membs []*membership.Member
 		wurls []string
@@ -1720,7 +1718,7 @@ func TestGetOtherPeerURLs(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		cl := membership.NewClusterFromMembers(zap.NewExample(), "", types.ID(0), tt.membs)
+		cl := membership.NewClusterFromMembers(lg, types.ID(0), tt.membs)
 		self := "1"
 		urls := getRemotePeerURLs(cl, self)
 		if !reflect.DeepEqual(urls, tt.wurls) {
@@ -1871,10 +1869,10 @@ func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
 	return nil
 }
 
-func newTestCluster(membs []*membership.Member) *membership.RaftCluster {
-	c := membership.NewCluster(zap.NewExample(), "")
+func newTestCluster(t testing.TB, membs []*membership.Member) *membership.RaftCluster {
+	c := membership.NewCluster(zaptest.NewLogger(t))
 	for _, m := range membs {
-		c.AddMember(m)
+		c.AddMember(m, true)
 	}
 	return c
 }

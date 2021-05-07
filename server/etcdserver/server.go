@@ -26,6 +26,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -316,14 +317,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		)
 	}
 
-	if cfg.ExperimentalMemoryMlock {
-		cfg.Logger.Info("mlocking memory")
-		err := MlockAll()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if terr := fileutil.TouchDirAll(cfg.DataDir); terr != nil {
 		return nil, fmt.Errorf("cannot access data directory: %v", terr)
 	}
@@ -337,6 +330,17 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			zap.Error(err),
 		)
 	}
+
+	if err = fileutil.RemoveMatchFile(cfg.Logger, cfg.SnapDir(), func(fileName string) bool {
+		return strings.HasPrefix(fileName, "tmp")
+	}); err != nil {
+		cfg.Logger.Error(
+			"failed to remove temp file(s) in snapshot directory",
+			zap.String("path", cfg.SnapDir()),
+			zap.Error(err),
+		)
+	}
+
 	ss := snap.New(cfg.Logger, cfg.SnapDir())
 
 	bepath := cfg.BackendPath()
@@ -560,8 +564,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, srv.consistIndex, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
 	kvindex := srv.consistIndex.ConsistentIndex()
-	srv.lg.Debug("restore consistentIndex",
-		zap.Uint64("index", kvindex))
+	srv.lg.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
 	if beExist {
 		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
 		// etcd from pre-3.0 release.
@@ -1017,7 +1020,6 @@ func (s *EtcdServer) run() {
 		close(s.stopping)
 		s.wgMu.Unlock()
 		s.cancel()
-
 		sched.Stop()
 
 		// wait for gouroutines before closing raft so wal stays open
@@ -1029,23 +1031,8 @@ func (s *EtcdServer) run() {
 		// by adding a peer after raft stops the transport
 		s.r.stop()
 
-		// kv, lessor and backend can be nil if running without v3 enabled
-		// or running unit tests.
-		if s.lessor != nil {
-			s.lessor.Stop()
-		}
-		if s.kv != nil {
-			s.kv.Close()
-		}
-		if s.authStore != nil {
-			s.authStore.Close()
-		}
-		if s.be != nil {
-			s.be.Close()
-		}
-		if s.compactor != nil {
-			s.compactor.Stop()
-		}
+		s.Cleanup()
+
 		close(s.done)
 	}()
 
@@ -1098,6 +1085,28 @@ func (s *EtcdServer) run() {
 		case <-s.stop:
 			return
 		}
+	}
+}
+
+// Cleanup removes allocated objects by EtcdServer.NewServer in
+// situation that EtcdServer::Start was not called (that takes care of cleanup).
+func (s *EtcdServer) Cleanup() {
+	// kv, lessor and backend can be nil if running without v3 enabled
+	// or running unit tests.
+	if s.lessor != nil {
+		s.lessor.Stop()
+	}
+	if s.kv != nil {
+		s.kv.Close()
+	}
+	if s.authStore != nil {
+		s.authStore.Close()
+	}
+	if s.be != nil {
+		s.be.Close()
+	}
+	if s.compactor != nil {
+		s.compactor.Stop()
 	}
 }
 
@@ -2027,8 +2036,13 @@ func (s *EtcdServer) apply(
 	es []raftpb.Entry,
 	confState *raftpb.ConfState,
 ) (appliedt uint64, appliedi uint64, shouldStop bool) {
+	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
 	for i := range es {
 		e := es[i]
+		s.lg.Debug("Applying entry",
+			zap.Uint64("index", e.Index),
+			zap.Uint64("term", e.Term),
+			zap.Stringer("type", e.Type))
 		switch e.Type {
 		case raftpb.EntryNormal:
 			s.applyEntryNormal(&e)
@@ -2036,13 +2050,19 @@ func (s *EtcdServer) apply(
 			s.setTerm(e.Term)
 
 		case raftpb.EntryConfChange:
+			// We need to apply all WAL entries on top of v2store
+			// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
+			shouldApplyV3 := membership.ApplyV2storeOnly
+
 			// set the consistent index of current executing entry
 			if e.Index > s.consistIndex.ConsistentIndex() {
 				s.consistIndex.SetConsistentIndex(e.Index)
+				shouldApplyV3 = membership.ApplyBoth
 			}
+
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
-			removedSelf, err := s.applyConfChange(cc, confState)
+			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 			shouldStop = shouldStop || removedSelf
@@ -2062,17 +2082,17 @@ func (s *EtcdServer) apply(
 
 // applyEntryNormal apples an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
-	shouldApplyV3 := false
+	shouldApplyV3 := membership.ApplyV2storeOnly
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
 		s.consistIndex.SetConsistentIndex(e.Index)
-		shouldApplyV3 = true
+		shouldApplyV3 = membership.ApplyBoth
 	}
 	s.lg.Debug("apply entry normal",
 		zap.Uint64("consistent-index", index),
 		zap.Uint64("entry-index", e.Index),
-		zap.Bool("should-applyV3", shouldApplyV3))
+		zap.Bool("should-applyV3", bool(shouldApplyV3)))
 
 	// raft state machine may generate noop entry when leader confirmation.
 	// skip it in advance to avoid some potential bug in the future
@@ -2092,16 +2112,14 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		var r pb.Request
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
+		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
 		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp)))
 		return
 	}
+	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
 		s.w.Trigger(req.ID, s.applyV2Request(req))
-		return
-	}
-	// do not re-apply applied entries.
-	if !shouldApplyV3 {
 		return
 	}
 
@@ -2116,7 +2134,12 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
-		ar = s.applyV3.Apply(&raftReq)
+		ar = s.applyV3.Apply(&raftReq, shouldApplyV3)
+	}
+
+	// do not re-apply applied entries.
+	if !shouldApplyV3 {
+		return
 	}
 
 	if ar == nil {
@@ -2158,7 +2181,7 @@ func (s *EtcdServer) notifyAboutFirstCommitInTerm() {
 
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
-func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState) (bool, error) {
+func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
 	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
@@ -2181,9 +2204,9 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 			)
 		}
 		if confChangeContext.IsPromote {
-			s.cluster.PromoteMember(confChangeContext.Member.ID)
+			s.cluster.PromoteMember(confChangeContext.Member.ID, shouldApplyV3)
 		} else {
-			s.cluster.AddMember(&confChangeContext.Member)
+			s.cluster.AddMember(&confChangeContext.Member, shouldApplyV3)
 
 			if confChangeContext.Member.ID != s.id {
 				s.r.transport.AddPeer(confChangeContext.Member.ID, confChangeContext.PeerURLs)
@@ -2201,7 +2224,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
-		s.cluster.RemoveMember(id)
+		s.cluster.RemoveMember(id, shouldApplyV3)
 		if id == s.id {
 			return true, nil
 		}
@@ -2219,7 +2242,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 				zap.String("member-id-from-message", m.ID.String()),
 			)
 		}
-		s.cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes)
+		s.cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes, shouldApplyV3)
 		if m.ID != s.id {
 			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
 		}
@@ -2231,6 +2254,9 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	clone := s.v2store.Clone()
 	// commit kv to write metadata (for example: consistent index) to disk.
+	//
+	// This guarantees that Backend's consistent_index is >= index of last snapshot.
+	//
 	// KV().commit() updates the consistent index in backend.
 	// All operations that update consistent index must be called sequentially
 	// from applyAll function.

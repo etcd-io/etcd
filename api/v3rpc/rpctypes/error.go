@@ -84,6 +84,9 @@ var (
 	ErrGRPCDowngradeInProcess            = status.New(codes.FailedPrecondition, "etcdserver: cluster has a downgrade job in progress").Err()
 	ErrGRPCNoInflightDowngrade           = status.New(codes.FailedPrecondition, "etcdserver: no inflight downgrade job").Err()
 
+	ErrGRPCCanceled         = status.New(codes.Canceled, "etcdserver: request canceled").Err()
+	ErrGRPCDeadlineExceeded = status.New(codes.DeadlineExceeded, "etcdserver: context deadline exceeded").Err()
+
 	errStringToError = map[string]error{
 		ErrorDesc(ErrGRPCEmptyKey):      ErrGRPCEmptyKey,
 		ErrorDesc(ErrGRPCKeyNotFound):   ErrGRPCKeyNotFound,

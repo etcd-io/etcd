@@ -120,6 +120,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 				hch <- epHealth{Ep: ep, Health: false, Error: err.Error()}
 				return
 			}
+			cli = cli.WithLogger(lg.Named("client"))
 			st := time.Now()
 			// get a random key. As long as we can get the response without an error, the
 			// endpoint is health.

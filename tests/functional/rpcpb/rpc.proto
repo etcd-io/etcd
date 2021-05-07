@@ -194,6 +194,7 @@ enum Checker {
   LEASE_EXPIRE = 1;
   RUNNER = 2;
   NO_CHECK = 3;
+  SHORT_TTL_LEASE_EXPIRE = 4;
 }
 
 message Etcd {
@@ -624,6 +625,9 @@ enum Case {
   // FAILPOINTS injects failpoints to etcd server runtime, triggering panics
   // in critical code paths.
   FAILPOINTS = 400;
+
+  // FAILPOINTS_WITH_DISK_IO_LATENCY injects high disk I/O latency failure in raftAfterSave code paths.
+  FAILPOINTS_WITH_DISK_IO_LATENCY = 401;
 
   // EXTERNAL runs external failure injection scripts.
   EXTERNAL = 500;

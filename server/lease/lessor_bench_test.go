@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap"
 )
 
@@ -65,7 +65,7 @@ func demote(le *lessor) {
 // return new lessor and tearDown to release resource
 func setUp(t testing.TB) (le *lessor, tearDown func()) {
 	lg := zap.NewNop()
-	be, _ := backend.NewDefaultTmpBackend(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
 	// MinLeaseTTL is negative, so we can grant expired lease in benchmark.
 	// ExpiredLeasesRetryInterval should small, so benchmark of findExpired will recheck expired lease.
 	le = newLessor(lg, be, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond}, nil)
