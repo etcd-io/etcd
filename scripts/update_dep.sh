@@ -15,7 +15,6 @@ mod="$1"
 ver="$2"
 
 function maybe_update_module {
-  log_callout "Processing ${module}"
   run go mod tidy
 
   deps=$(go list -f '{{if not .Indirect}}{{if .Version}}{{.Path}},{{.Version}}{{end}}{{end}}' -m all)
