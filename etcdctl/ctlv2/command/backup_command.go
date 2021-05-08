@@ -322,9 +322,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, desired *desiredCl
 		tx.Lock()
 		defer tx.Unlock()
 		cindex.UnsafeCreateMetaBucket(tx)
-		ci := cindex.NewConsistentIndex(tx)
-		ci.SetConsistentIndex(idx)
-		ci.UnsafeSave(tx)
+		cindex.UnsafeUpdateConsistentIndex(tx, idx, false)
 	} else {
 		// Thanks to translateWAL not moving entries, but just replacing them with
 		// 'empty', there is no need to update the consistency index.

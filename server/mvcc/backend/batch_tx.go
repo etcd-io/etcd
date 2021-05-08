@@ -109,6 +109,7 @@ func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq boo
 		t.backend.lg.Fatal(
 			"failed to find a bucket",
 			zap.String("bucket-name", string(bucketName)),
+			zap.Stack("stack"),
 		)
 	}
 	if seq {
@@ -133,6 +134,7 @@ func (t *batchTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]
 		t.backend.lg.Fatal(
 			"failed to find a bucket",
 			zap.String("bucket-name", string(bucketName)),
+			zap.Stack("stack"),
 		)
 	}
 	return unsafeRange(bucket.Cursor(), key, endKey, limit)
@@ -167,6 +169,7 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 		t.backend.lg.Fatal(
 			"failed to find a bucket",
 			zap.String("bucket-name", string(bucketName)),
+			zap.Stack("stack"),
 		)
 	}
 	err := bucket.Delete(key)
@@ -283,6 +286,10 @@ func (t *batchTxBuffered) CommitAndStop() {
 }
 
 func (t *batchTxBuffered) commit(stop bool) {
+	if t.backend.hooks != nil {
+		t.backend.hooks.OnPreCommitUnsafe(t)
+	}
+
 	// all read txs must be closed to acquire boltdb commit rwlock
 	t.backend.readTx.Lock()
 	t.unsafeCommit(stop)

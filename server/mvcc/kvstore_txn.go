@@ -112,7 +112,6 @@ func (tw *storeTxnWrite) Put(key, value []byte, lease lease.LeaseID) int64 {
 func (tw *storeTxnWrite) End() {
 	// only update index if the txn modifies the mvcc state.
 	if len(tw.changes) != 0 {
-		tw.s.saveIndex(tw.tx)
 		// hold revMu lock to prevent new read txns from opening until writeback.
 		tw.s.revMu.Lock()
 		tw.s.currentRev++

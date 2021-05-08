@@ -256,10 +256,11 @@ type EtcdServer struct {
 	applyV3Internal applierV3Internal
 	applyWait       wait.WaitTime
 
-	kv         mvcc.ConsistentWatchableKV
+	kv         mvcc.WatchableKV
 	lessor     lease.Lessor
 	bemu       sync.Mutex
 	be         backend.Backend
+	beHooks    backend.Hooks
 	authStore  auth.AuthStore
 	alarmStore *v3alarm.AlarmStore
 
@@ -292,6 +293,15 @@ type EtcdServer struct {
 	firstCommitInTermC  chan struct{}
 
 	*AccessController
+}
+
+type backendHooks struct {
+	indexer cindex.ConsistentIndexer
+	lg      *zap.Logger
+}
+
+func (bh *backendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
+	bh.indexer.UnsafeSave(tx)
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -345,7 +355,12 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	bepath := cfg.BackendPath()
 	beExist := fileutil.Exist(bepath)
-	be := openBackend(cfg)
+
+	ci := cindex.NewConsistentIndex(nil)
+	beHooks := &backendHooks{lg: cfg.Logger, indexer: ci}
+	be := openBackend(cfg, beHooks)
+	ci.SetBackend(be)
+	cindex.CreateMetaBucket(be.BatchTx())
 
 	defer func() {
 		if err != nil {
@@ -463,7 +478,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 				zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
 			)
 
-			if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist); err != nil {
+			if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 				cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 			}
 			s1, s2 := be.Size(), be.SizeInUse()
@@ -529,7 +544,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		peerRt:             prt,
 		reqIDGen:           idutil.NewGenerator(uint16(id), time.Now()),
 		AccessController:   &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
-		consistIndex:       cindex.NewConsistentIndex(be.BatchTx()),
+		consistIndex:       ci,
 		firstCommitInTermC: make(chan struct{}),
 	}
 	serverID.With(prometheus.Labels{"server_id": id.String()}).Set(1)
@@ -537,20 +552,16 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = be
+	srv.beHooks = beHooks
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
-	srv.lessor = lease.NewLessor(
-		srv.Logger(),
-		srv.be,
-		lease.LessorConfig{
-			MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
-			CheckpointInterval:         cfg.LeaseCheckpointInterval,
-			ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
-		},
-		srv.consistIndex,
-	)
+	srv.lessor = lease.NewLessor(srv.Logger(), srv.be, lease.LessorConfig{
+		MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
+		CheckpointInterval:         cfg.LeaseCheckpointInterval,
+		ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
+	})
 
 	tp, err := auth.NewTokenProvider(cfg.Logger, cfg.AuthToken,
 		func(index uint64) <-chan struct{} {
@@ -562,8 +573,9 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		cfg.Logger.Warn("failed to create token provider", zap.Error(err))
 		return nil, err
 	}
-	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, srv.consistIndex, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
-	kvindex := srv.consistIndex.ConsistentIndex()
+	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
+
+	kvindex := ci.ConsistentIndex()
 	srv.lg.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
 	if beExist {
 		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
@@ -579,7 +591,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}
 
-	srv.authStore = auth.NewAuthStore(srv.Logger(), srv.be, srv.consistIndex, tp, int(cfg.BcryptCost))
+	srv.authStore = auth.NewAuthStore(srv.Logger(), srv.be, tp, int(cfg.BcryptCost))
 
 	newSrv := srv // since srv == nil in defer if srv is returned as nil
 	defer func() {
@@ -1170,7 +1182,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// wait for raftNode to persist snapshot onto the disk
 	<-apply.notifyc
 
-	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot)
+	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot, s.beHooks)
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
@@ -1191,8 +1203,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		lg.Panic("failed to restore mvcc store", zap.Error(err))
 	}
 
-	s.consistIndex.SetConsistentIndex(s.kv.ConsistentIndex())
-	lg.Info("restored mvcc store")
+	s.consistIndex.SetBackend(newbe)
+	lg.Info("restored mvcc store", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
 
 	// Closing old backend might block until all the txns
 	// on the backend are finished.
@@ -2117,6 +2129,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
+
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
 		s.w.Trigger(req.ID, s.applyV2Request(req))
@@ -2502,7 +2515,7 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 	}
 }
 
-func (s *EtcdServer) KV() mvcc.ConsistentWatchableKV { return s.kv }
+func (s *EtcdServer) KV() mvcc.WatchableKV { return s.kv }
 func (s *EtcdServer) Backend() backend.Backend {
 	s.bemu.Lock()
 	defer s.bemu.Unlock()

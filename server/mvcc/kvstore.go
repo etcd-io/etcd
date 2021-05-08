@@ -69,8 +69,6 @@ type store struct {
 	// mu read locks for txns and write locks for non-txn store changes.
 	mu sync.RWMutex
 
-	ci cindex.ConsistentIndexer
-
 	b       backend.Backend
 	kvindex index
 
@@ -94,7 +92,7 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
-func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) *store {
+func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *store {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -104,7 +102,6 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.Cons
 	s := &store{
 		cfg:     cfg,
 		b:       b,
-		ci:      ci,
 		kvindex: newTreeIndex(lg),
 
 		le: le,
@@ -314,11 +311,6 @@ func init() {
 func (s *store) Commit() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	tx := s.b.BatchTx()
-	tx.Lock()
-	s.saveIndex(tx)
-	tx.Unlock()
 	s.b.ForceCommit()
 }
 
@@ -342,8 +334,6 @@ func (s *store) Restore(b backend.Backend) error {
 
 	s.fifoSched = schedule.NewFIFOScheduler()
 	s.stopc = make(chan struct{})
-	s.ci.SetBatchTx(b.BatchTx())
-	s.ci.SetConsistentIndex(0)
 
 	return s.restore()
 }
@@ -436,9 +426,7 @@ func (s *store) restore() error {
 
 	tx.Unlock()
 
-	s.lg.Info("kvstore restored",
-		zap.Uint64("consistent-index", s.ConsistentIndex()),
-		zap.Int64("current-rev", s.currentRev))
+	s.lg.Info("kvstore restored", zap.Int64("current-rev", s.currentRev))
 
 	if scheduledCompact != 0 {
 		if _, err := s.compactLockfree(scheduledCompact); err != nil {
@@ -531,19 +519,6 @@ func (s *store) Close() error {
 	close(s.stopc)
 	s.fifoSched.Stop()
 	return nil
-}
-
-func (s *store) saveIndex(tx backend.BatchTx) {
-	if s.ci != nil {
-		s.ci.UnsafeSave(tx)
-	}
-}
-
-func (s *store) ConsistentIndex() uint64 {
-	if s.ci != nil {
-		return s.ci.ConsistentIndex()
-	}
-	return 0
 }
 
 func (s *store) setupMetricsReporter() {

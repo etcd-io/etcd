@@ -92,7 +92,7 @@ func migrateCommandFunc(cmd *cobra.Command, args []string) {
 	}()
 
 	readKeys(reader, be)
-	cindex.UpdateConsistentIndex(be.BatchTx(), index)
+	cindex.UpdateConsistentIndex(be.BatchTx(), index, true)
 	err := <-errc
 	if err != nil {
 		fmt.Println("failed to transform keys")

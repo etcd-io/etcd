@@ -106,6 +106,8 @@ type backend struct {
 	stopc chan struct{}
 	donec chan struct{}
 
+	hooks Hooks
+
 	lg *zap.Logger
 }
 
@@ -126,6 +128,9 @@ type BackendConfig struct {
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 	// Mlock prevents backend database file to be swapped
 	Mlock bool
+
+	// Hooks are getting executed during lifecycle of Backend's transactions.
+	Hooks Hooks
 }
 
 func DefaultBackendConfig() BackendConfig {
@@ -192,6 +197,9 @@ func newBackend(bcfg BackendConfig) *backend {
 		lg: bcfg.Logger,
 	}
 	b.batchTx = newBatchTxBuffered(b)
+	// We set it after newBatchTxBuffered to skip the 'empty' commit.
+	b.hooks = bcfg.Hooks
+
 	go b.run()
 	return b
 }

@@ -989,9 +989,9 @@ func TestSnapshot(t *testing.T) {
 		lg:           zap.NewExample(),
 		r:            *r,
 		v2store:      st,
-		consistIndex: cindex.NewConsistentIndex(be.BatchTx()),
+		consistIndex: cindex.NewConsistentIndex(be),
 	}
-	srv.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, srv.consistIndex, mvcc.StoreConfig{})
+	srv.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
 
 	ch := make(chan struct{}, 2)
@@ -1074,11 +1074,11 @@ func TestSnapshotOrdering(t *testing.T) {
 		snapshotter:  snap.New(zap.NewExample(), snapdir),
 		cluster:      cl,
 		SyncTicker:   &time.Ticker{},
-		consistIndex: cindex.NewConsistentIndex(be.BatchTx()),
+		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
-	s.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, s.consistIndex, mvcc.StoreConfig{})
+	s.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be
 
 	s.start()
@@ -1148,11 +1148,11 @@ func TestTriggerSnap(t *testing.T) {
 		v2store:      st,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
-		consistIndex: cindex.NewConsistentIndex(be.BatchTx()),
+		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
-	srv.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, srv.consistIndex, mvcc.StoreConfig{})
+	srv.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
 
 	srv.start()
@@ -1227,11 +1227,11 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		snapshotter:  snap.New(zap.NewExample(), testdir),
 		cluster:      cl,
 		SyncTicker:   &time.Ticker{},
-		consistIndex: cindex.NewConsistentIndex(be.BatchTx()),
+		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
-	s.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, s.consistIndex, mvcc.StoreConfig{})
+	s.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be
 
 	s.start()
@@ -1562,7 +1562,7 @@ func TestPublishV3(t *testing.T) {
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
-		authStore:  auth.NewAuthStore(lg, be, nil, nil, 0),
+		authStore:  auth.NewAuthStore(lg, be, nil, 0),
 		be:         be,
 		ctx:        ctx,
 		cancel:     cancel,
@@ -1633,7 +1633,7 @@ func TestPublishV3Retry(t *testing.T) {
 		cluster:    &membership.RaftCluster{},
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
-		authStore:  auth.NewAuthStore(lg, be, nil, nil, 0),
+		authStore:  auth.NewAuthStore(lg, be, nil, 0),
 		be:         be,
 		ctx:        ctx,
 		cancel:     cancel,

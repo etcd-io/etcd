@@ -68,7 +68,7 @@ func setUp(t testing.TB) (le *lessor, tearDown func()) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	// MinLeaseTTL is negative, so we can grant expired lease in benchmark.
 	// ExpiredLeasesRetryInterval should small, so benchmark of findExpired will recheck expired lease.
-	le = newLessor(lg, be, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond}, nil)
+	le = newLessor(lg, be, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond})
 	le.SetRangeDeleter(func() TxnDelete {
 		ftd := &FakeTxnDelete{be.BatchTx()}
 		ftd.Lock()

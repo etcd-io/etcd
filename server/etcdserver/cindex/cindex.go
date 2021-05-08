@@ -28,6 +28,10 @@ var (
 	ConsistentIndexKeyName = []byte("consistent_index")
 )
 
+type Backend interface {
+	BatchTx() backend.BatchTx
+}
+
 // ConsistentIndexer is an interface that wraps the Get/Set/Save method for consistentIndex.
 type ConsistentIndexer interface {
 
@@ -41,32 +45,38 @@ type ConsistentIndexer interface {
 	// It saves consistentIndex to the underlying stable storage.
 	UnsafeSave(tx backend.BatchTx)
 
-	// SetBatchTx set the available backend.BatchTx for ConsistentIndexer.
-	SetBatchTx(tx backend.BatchTx)
+	// SetBackend set the available backend.BatchTx for ConsistentIndexer.
+	SetBackend(be Backend)
 }
 
 // consistentIndex implements the ConsistentIndexer interface.
 type consistentIndex struct {
-	tx backend.BatchTx
 	// consistentIndex represents the offset of an entry in a consistent replica log.
-	// it caches the "consistent_index" key's value. Accessed
-	// through atomics so must be 64-bit aligned.
+	// it caches the "consistent_index" key's value.
+	// Accessed through atomics so must be 64-bit aligned.
 	consistentIndex uint64
-	mutex           sync.Mutex
+
+	// be is used for initial read consistentIndex
+	be Backend
+	// mutex is protecting be.
+	mutex sync.Mutex
 }
 
-func NewConsistentIndex(tx backend.BatchTx) ConsistentIndexer {
-	return &consistentIndex{tx: tx}
+// NewConsistentIndex creates a new consistent index.
+// If `be` is nil, it must be set (SetBackend) before first access using `ConsistentIndex()`.
+func NewConsistentIndex(be Backend) ConsistentIndexer {
+	return &consistentIndex{be: be}
 }
 
 func (ci *consistentIndex) ConsistentIndex() uint64 {
-
 	if index := atomic.LoadUint64(&ci.consistentIndex); index > 0 {
 		return index
 	}
 	ci.mutex.Lock()
 	defer ci.mutex.Unlock()
-	v := ReadConsistentIndex(ci.tx)
+
+	v := ReadConsistentIndex(ci.be.BatchTx())
+	atomic.StoreUint64(&ci.consistentIndex, v)
 	return v
 }
 
@@ -76,17 +86,15 @@ func (ci *consistentIndex) SetConsistentIndex(v uint64) {
 
 func (ci *consistentIndex) UnsafeSave(tx backend.BatchTx) {
 	index := atomic.LoadUint64(&ci.consistentIndex)
-	if index == 0 {
-		// Never save 0 as it means that we didn't loaded the real index yet.
-		return
-	}
-	unsafeUpdateConsistentIndex(tx, index)
+	UnsafeUpdateConsistentIndex(tx, index, true)
 }
 
-func (ci *consistentIndex) SetBatchTx(tx backend.BatchTx) {
+func (ci *consistentIndex) SetBackend(be Backend) {
 	ci.mutex.Lock()
 	defer ci.mutex.Unlock()
-	ci.tx = tx
+	ci.be = be
+	// After the backend is changed, the first access should re-read it.
+	ci.SetConsistentIndex(0)
 }
 
 func NewFakeConsistentIndex(index uint64) ConsistentIndexer {
@@ -101,10 +109,18 @@ func (f *fakeConsistentIndex) SetConsistentIndex(index uint64) {
 	atomic.StoreUint64(&f.index, index)
 }
 
-func (f *fakeConsistentIndex) UnsafeSave(tx backend.BatchTx) {}
-func (f *fakeConsistentIndex) SetBatchTx(tx backend.BatchTx) {}
+func (f *fakeConsistentIndex) UnsafeSave(_ backend.BatchTx) {}
+func (f *fakeConsistentIndex) SetBackend(_ Backend)         {}
 
+// UnsafeCreateMetaBucket creates the `meta` bucket (if it does not exists yet).
 func UnsafeCreateMetaBucket(tx backend.BatchTx) {
+	tx.UnsafeCreateBucket(MetaBucketName)
+}
+
+// CreateMetaBucket creates the `meta` bucket (if it does not exists yet).
+func CreateMetaBucket(tx backend.BatchTx) {
+	tx.Lock()
+	defer tx.Unlock()
 	tx.UnsafeCreateBucket(MetaBucketName)
 }
 
@@ -127,7 +143,19 @@ func ReadConsistentIndex(tx backend.ReadTx) uint64 {
 	return unsafeReadConsistentIndex(tx)
 }
 
-func unsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64) {
+func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, onlyGrow bool) {
+	if index == 0 {
+		// Never save 0 as it means that we didn't loaded the real index yet.
+		return
+	}
+
+	if onlyGrow {
+		oldi := unsafeReadConsistentIndex(tx)
+		if index <= oldi {
+			return
+		}
+	}
+
 	bs := make([]byte, 8) // this is kept on stack (not heap) so its quick.
 	binary.BigEndian.PutUint64(bs, index)
 	// put the index into the underlying backend
@@ -135,13 +163,8 @@ func unsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64) {
 	tx.UnsafePut(MetaBucketName, ConsistentIndexKeyName, bs)
 }
 
-func UpdateConsistentIndex(tx backend.BatchTx, index uint64) {
+func UpdateConsistentIndex(tx backend.BatchTx, index uint64, onlyGrow bool) {
 	tx.Lock()
 	defer tx.Unlock()
-
-	oldi := unsafeReadConsistentIndex(tx)
-	if index <= oldi {
-		return
-	}
-	unsafeUpdateConsistentIndex(tx, index)
+	UnsafeUpdateConsistentIndex(tx, index, onlyGrow)
 }

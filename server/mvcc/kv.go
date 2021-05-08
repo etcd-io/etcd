@@ -148,14 +148,3 @@ type Watchable interface {
 	// watch events happened or happening on the KV.
 	NewWatchStream() WatchStream
 }
-
-// ConsistentWatchableKV is a WatchableKV that understands the consistency
-// algorithm and consistent index.
-// If the consistent index of executing entry is not larger than the
-// consistent index of ConsistentWatchableKV, all operations in
-// this entry are skipped and return empty response.
-type ConsistentWatchableKV interface {
-	WatchableKV
-	// ConsistentIndex returns the current consistent index of the KV.
-	ConsistentIndex() uint64
-}
