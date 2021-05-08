@@ -1,0 +1,15 @@
+name: Integration
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  Core:
+    runs-on: [self-hosted]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run smoke tests
+      run: make test-smoke
