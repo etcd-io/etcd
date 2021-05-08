@@ -16,11 +16,14 @@
 package ctlv3
 
 import (
+	"fmt"
 	"time"
 
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -42,10 +45,14 @@ var (
 		Use:        cliName,
 		Short:      cliDescription,
 		SuggestFor: []string{"etcdctl"},
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			HandleConfigFile(cmd)
+		},
 	}
 )
 
 func init() {
+	rootCmd.PersistentFlags().StringVarP(&globalFlags.ConfigFile, "config-file", "c", "", "Path to the configuration file for etcdctl. Note that explicitly provided command-line flags and environment variables take precedence.")
 	rootCmd.PersistentFlags().StringSliceVar(&globalFlags.Endpoints, "endpoints", []string{"127.0.0.1:2379"}, "gRPC endpoints")
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.Debug, "debug", false, "enable client-side debug logging")
 
@@ -93,6 +100,26 @@ func init() {
 		command.NewRoleCommand(),
 		command.NewCheckCommand(),
 	)
+}
+
+func HandleConfigFile(cmd *cobra.Command) {
+	v := viper.New()
+	if globalFlags.ConfigFile != "" {
+		v.SetConfigFile(globalFlags.ConfigFile)
+	} else {
+		v.SetConfigName("config")
+		v.AddConfigPath("$HOME/.etcdctl")
+	}
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			command.ExitWithError(command.ExitError, err)
+		}
+	}
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		if !flag.Changed && v.IsSet(flag.Name) {
+			cmd.Flags().Set(flag.Name, fmt.Sprintf("%v", v.Get(flag.Name)))
+		}
+	})
 }
 
 func Start() error {
