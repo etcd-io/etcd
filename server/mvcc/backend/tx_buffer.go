@@ -69,10 +69,15 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 		rb.merge(wb)
 	}
 	txw.reset()
+	// save one copy of the latest modified buffer
+	txr.unsafeGenerateNewCachedTxReadBuffer()
 }
 
 // txReadBuffer accesses buffered updates.
-type txReadBuffer struct{ txBuffer }
+type txReadBuffer struct {
+	txBuffer
+	cachedReadBuffer *txReadBuffer
+}
 
 func (txr *txReadBuffer) Range(bucketName, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
 	if b := txr.buckets[string(bucketName)]; b != nil {
@@ -88,12 +93,19 @@ func (txr *txReadBuffer) ForEach(bucketName []byte, visitor func(k, v []byte) er
 	return nil
 }
 
+// generate a new cached txReadBuffer, caller should acquire backend.readTx.RLock()
+func (txr *txReadBuffer) unsafeGenerateNewCachedTxReadBuffer() {
+	tmp := txr.unsafeCopy()
+	txr.cachedReadBuffer = &tmp
+}
+
 // unsafeCopy returns a copy of txReadBuffer, caller should acquire backend.readTx.RLock()
 func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 	txrCopy := txReadBuffer{
 		txBuffer: txBuffer{
 			buckets: make(map[string]*bucketBuffer, len(txr.txBuffer.buckets)),
 		},
+		cachedReadBuffer: nil,
 	}
 	for bucketName, bucket := range txr.txBuffer.buckets {
 		txrCopy.txBuffer.buckets[bucketName] = bucket.Copy()
