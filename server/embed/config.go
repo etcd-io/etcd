@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 
@@ -402,7 +403,7 @@ type Config struct {
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 
 	// V2Deprecation describes phase of API & Storage V2 support
-	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
+	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -498,7 +499,7 @@ func NewConfig() *Config {
 		ExperimentalMemoryMlock:                  false,
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
 
-		V2Deprecation: V2_DEPR_DEFAULT,
+		V2Deprecation: config.V2_DEPR_DEFAULT,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -800,12 +801,11 @@ func (cfg Config) InitialClusterFromName(name string) (ret string) {
 func (cfg Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
 func (cfg Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
 
-func (cfg Config) V2DeprecationEffective() V2DeprecationEnum {
+func (cfg Config) V2DeprecationEffective() config.V2DeprecationEnum {
 	if cfg.V2Deprecation == "" {
-		return V2_DEPR_DEFAULT
-	} else {
-		return cfg.V2Deprecation
+		return config.V2_DEPR_DEFAULT
 	}
+	return cfg.V2Deprecation
 }
 
 func (cfg Config) defaultPeerHost() bool {

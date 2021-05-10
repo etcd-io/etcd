@@ -706,6 +706,8 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.InitialCorruptCheck = true
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 
+	m.V2Deprecation = config.V2_DEPR_DEFAULT
+
 	m.Logger = memberLogger(t, mcfg.name)
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test

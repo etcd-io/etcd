@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package embed
+package config
 
 import "testing"
 
@@ -32,7 +32,7 @@ func TestV2DeprecationEnum_IsAtLeast(t *testing.T) {
 		{V2_DEPR_1_WRITE_ONLY_DROP, V2_DEPR_1_WRITE_ONLY, true},
 	}
 	for _, tt := range tests {
-		t.Run(string(tt.e) + " >= " + string(tt.v2d), func(t *testing.T) {
+		t.Run(string(tt.e)+" >= "+string(tt.v2d), func(t *testing.T) {
 			if got := tt.e.IsAtLeast(tt.v2d); got != tt.want {
 				t.Errorf("IsAtLeast() = %v, want %v", got, tt.want)
 			}

@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/flags"
+	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 
@@ -121,10 +122,10 @@ func newConfig() *config {
 			proxyFlagOn,
 		),
 		v2deprecation: flags.NewSelectiveStringsValue(
-			string(embed.V2_DEPR_0_NOT_YET),
-			string(embed.V2_DEPR_1_WRITE_ONLY),
-			string(embed.V2_DEPR_1_WRITE_ONLY_DROP),
-			string(embed.V2_DEPR_2_GONE)),
+			string(cconfig.V2_DEPR_0_NOT_YET),
+			string(cconfig.V2_DEPR_1_WRITE_ONLY),
+			string(cconfig.V2_DEPR_1_WRITE_ONLY_DROP),
+			string(cconfig.V2_DEPR_2_GONE)),
 	}
 
 	fs := cfg.cf.flagSet
@@ -343,7 +344,7 @@ func (cfg *config) parse(arguments []string) error {
 	}
 
 	if cfg.ec.V2Deprecation == "" {
-		cfg.ec.V2Deprecation = embed.V2_DEPR_DEFAULT
+		cfg.ec.V2Deprecation = cconfig.V2_DEPR_DEFAULT
 	}
 
 	// now logger is set up
@@ -400,7 +401,7 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.cp.Fallback = cfg.cf.fallback.String()
 	cfg.cp.Proxy = cfg.cf.proxy.String()
 
-	cfg.ec.V2Deprecation = embed.V2DeprecationEnum(cfg.cf.v2deprecation.String())
+	cfg.ec.V2Deprecation = cconfig.V2DeprecationEnum(cfg.cf.v2deprecation.String())
 
 	// disable default advertise-client-urls if lcurls is set
 	missingAC := flags.IsSet(cfg.cf.flagSet, "listen-client-urls") && !flags.IsSet(cfg.cf.flagSet, "advertise-client-urls")
