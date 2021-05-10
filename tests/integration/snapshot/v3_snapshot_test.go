@@ -258,7 +258,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		cfgs[i] = cfg
 	}
 
-	sch := make(chan *embed.Etcd)
+	sch := make(chan *embed.Etcd, len(cfgs))
 	for i := range cfgs {
 		go func(idx int) {
 			srv, err := embed.StartEtcd(cfgs[idx])
