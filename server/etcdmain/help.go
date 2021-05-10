@@ -123,7 +123,7 @@ Clustering:
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
   --enable-v2 '` + strconv.FormatBool(embed.DefaultEnableV2) + `'
-    Accept etcd V2 client requests.
+    Accept etcd V2 client requests. Deprecated and to be decommissioned in v3.6.
 
 Security:
   --cert-file ''
@@ -203,7 +203,7 @@ Experimental distributed tracing:
   --experimental-distributed-tracing-instance-id ''
     Distributed tracing instance ID, must be unique per each etcd instance.
 
-v2 Proxy (to be deprecated in v4):
+v2 Proxy (to be deprecated in v3.6):
   --proxy 'off'
     Proxy mode setting ('off', 'readonly' or 'on').
   --proxy-failure-wait 5000
@@ -223,7 +223,7 @@ Experimental feature:
   --experimental-corrupt-check-time '0s'
     Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
-    Serve v2 requests through the v3 backend under a given prefix.
+    Serve v2 requests through the v3 backend under a given prefix. Deprecated and to be decommissioned in v3.6.
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
   --experimental-compaction-batch-limit 1000

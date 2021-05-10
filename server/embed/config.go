@@ -222,7 +222,11 @@ type Config struct {
 	InitialCluster        string `json:"initial-cluster"`
 	InitialClusterToken   string `json:"initial-cluster-token"`
 	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
-	EnableV2              bool   `json:"enable-v2"`
+
+	// EnableV2 exposes the deprecated V2 API surface.
+	// TODO: Delete in 3.6 (https://github.com/etcd-io/etcd/issues/12913)
+	// Deprecated in 3.5.
+	EnableV2 bool `json:"enable-v2"`
 
 	// AutoCompactionMode is either 'periodic' or 'revision'.
 	AutoCompactionMode string `json:"auto-compaction-mode"`
@@ -306,7 +310,10 @@ type Config struct {
 
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
-	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
+	// ExperimentalEnableV2V3 configures URLs that expose deprecated V2 API working on V3 store.
+	// Deprecated in v3.5.
+	// TODO: Delete in v3.6 (https://github.com/etcd-io/etcd/issues/12913)
+	ExperimentalEnableV2V3 string `json:"experimental-enable-v2v3"`
 	// ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
 	ExperimentalEnableLeaseCheckpoint       bool          `json:"experimental-enable-lease-checkpoint"`
 	ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit"`
