@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/datadir"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -162,6 +163,11 @@ type ServerConfig struct {
 	LeaseCheckpointInterval time.Duration
 
 	EnableGRPCGateway bool
+
+	// ExperimentalEnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.
+	ExperimentalEnableDistributedTracing bool
+	// ExperimentalTracerOptions are options for OpenTelemetry gRPC interceptor.
+	ExperimentalTracerOptions []otelgrpc.Option
 
 	WatchProgressNotifyInterval time.Duration
 

@@ -6,7 +6,7 @@ require (
 	github.com/certifi/gocertifi v0.0.0-20200922220541-2c3bb06c6054 // indirect
 	github.com/cockroachdb/datadriven v0.0.0-20200714090401-bf6692d28da5
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/protobuf v1.5.1
+	github.com/golang/protobuf v1.5.2
 	github.com/pkg/errors v0.9.1 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0-alpha.0
 )

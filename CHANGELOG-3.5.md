@@ -163,6 +163,11 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - `ETCD_VERIFY="all"` enviroment triggers [additional verification of consistency](https://github.com/etcd-io/etcd/pull/) of etcd data-dir files. 
 - Add [`etcd --enable-log-rotation`](https://github.com/etcd-io/etcd/pull/12774) boolean flag which enables log rotation if true.
 - Add [`etcd --log-rotation-config-json`](https://github.com/etcd-io/etcd/pull/12774) flag which allows passthrough of JSON config to configure log rotation for a file output target.
+- Add experimental distributed tracing boolean flag [`--experimental-enable-distributed-tracing`](https://github.com/etcd-io/etcd/pull/12919) which enables tracing.
+- Add [`--experimental-distributed-tracing-address`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows configuring the OpenTelemetry collector address.
+- Add [`--experimental-distributed-tracing-service-name`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows changing the default "etcd" service name.
+- Add [`--experimental-distributed-tracing-instance-id`](https://github.com/etcd-io/etcd/pull/12919) string flag which configures an instance ID, which must be unique per etcd instance.
+
 ### Package `runtime`
 
 - Optimize [`runtime.FDUsage` by removing unnecessary sorting](https://github.com/etcd-io/etcd/pull/12214).
@@ -175,6 +180,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Replace [global `*zap.Logger` with etcd server logger object](https://github.com/etcd-io/etcd/pull/12212).
 - Add [`embed.Config.EnableLogRotation`](https://github.com/etcd-io/etcd/pull/12774) which enables log rotation if true.
 - Add [`embed.Config.LogRotationConfigJSON`](https://github.com/etcd-io/etcd/pull/12774) to allow passthrough of JSON config to configure log rotation for a file output target.
+- Add [`embed.Config.ExperimentalEnableDistributedTracing`](https://github.com/etcd-io/etcd/pull/12919) which enables experimental distributed tracing if true.
+- Add [`embed.Config.ExperimentalDistributedTracingAddress`](https://github.com/etcd-io/etcd/pull/12919) which allows overriding default collector address. 
+- Add [`embed.Config.ExperimentalDistributedTracingServiceName`](https://github.com/etcd-io/etcd/pull/12919) which allows overriding default "etcd" service name.
+- Add [`embed.Config.ExperimentalDistributedTracingServiceInstanceID`](https://github.com/etcd-io/etcd/pull/12919) which allows configuring an instance ID, which must be uniquer per etcd instance.
 
 ### Package `clientv3`
 

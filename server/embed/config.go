@@ -77,6 +77,11 @@ const (
 	// Compress   = false // compress the rotated log in gzip format
 	DefaultLogRotationConfig = `{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}`
 
+	// ExperimentalDistributedTracingAddress is the default collector address.
+	ExperimentalDistributedTracingAddress = "localhost:4317"
+	// ExperimentalDistributedTracingServiceName is the default etcd service name.
+	ExperimentalDistributedTracingServiceName = "etcd"
+
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
@@ -317,6 +322,20 @@ type Config struct {
 	Metrics               string `json:"metrics"`
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
+
+	// ExperimentalEnableDistributedTracing indicates if experimental tracing using OpenTelemetry is enabled.
+	ExperimentalEnableDistributedTracing bool `json:"experimental-enable-distributed-tracing"`
+	// ExperimentalDistributedTracingAddress is the address of the OpenTelemetry Collector.
+	// Can only be set if ExperimentalEnableDistributedTracing is true.
+	ExperimentalDistributedTracingAddress string `json:"experimental-distributed-tracing-address"`
+	// ExperimentalDistributedTracingServiceName is the name of the service.
+	// Can only be used if ExperimentalEnableDistributedTracing is true.
+	ExperimentalDistributedTracingServiceName string `json:"experimental-distributed-tracing-service-name"`
+	// ExperimentalDistributedTracingServiceInstanceID is the ID key of the service.
+	// This ID must be unique, as helps to distinguish instances of the same service
+	// that exist at the same time.
+	// Can only be used if ExperimentalEnableDistributedTracing is true.
+	ExperimentalDistributedTracingServiceInstanceID string `json:"experimental-distributed-tracing-instance-id"`
 
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
