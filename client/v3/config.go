@@ -76,6 +76,10 @@ type Config struct {
 	// other operations that do not have an explicit context.
 	Context context.Context
 
+	// Logger sets client-side logger.
+	// If nil, fallback to building LogConfig.
+	Logger *zap.Logger
+
 	// LogConfig configures client-side logger.
 	// If nil, use the default logger.
 	// TODO: configure gRPC logger

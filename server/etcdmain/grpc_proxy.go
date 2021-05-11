@@ -283,17 +283,18 @@ func mustNewClient(lg *zap.Logger) *clientv3.Client {
 		grpc.WithUnaryInterceptor(grpcproxy.AuthUnaryClientInterceptor))
 	cfg.DialOptions = append(cfg.DialOptions,
 		grpc.WithStreamInterceptor(grpcproxy.AuthStreamClientInterceptor))
+	cfg.Logger = lg.Named("client")
 	client, err := clientv3.New(*cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	return client.WithLogger(lg.Named("client"))
+	return client
 }
 
 func mustNewProxyClient(lg *zap.Logger, tls *transport.TLSInfo) *clientv3.Client {
 	eps := []string{grpcProxyAdvertiseClientURL}
-	cfg, err := newProxyClientCfg(lg, eps, tls)
+	cfg, err := newProxyClientCfg(lg.Named("client"), eps, tls)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -304,13 +305,14 @@ func mustNewProxyClient(lg *zap.Logger, tls *transport.TLSInfo) *clientv3.Client
 		os.Exit(1)
 	}
 	lg.Info("create proxy client", zap.String("grpcProxyAdvertiseClientURL", grpcProxyAdvertiseClientURL))
-	return client.WithLogger(lg.Named("client"))
+	return client
 }
 
 func newProxyClientCfg(lg *zap.Logger, eps []string, tls *transport.TLSInfo) (*clientv3.Config, error) {
 	cfg := clientv3.Config{
 		Endpoints:   eps,
 		DialTimeout: 5 * time.Second,
+		Logger:      lg,
 	}
 	if tls != nil {
 		clientTLS, err := tls.ClientConfig()
