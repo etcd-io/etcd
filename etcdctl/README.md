@@ -1040,12 +1040,12 @@ Prints a line of JSON encoding the database hash, revision, total keys, and size
 ```
 
 ```bash
-./etcdctl -write-out=json snapshot status file.db
+./etcdctl --write-out=json snapshot status file.db
 # {"hash":3474280699,"revision":3,"totalKey":3,"totalSize":24576}
 ```
 
 ```bash
-./etcdctl -write-out=table snapshot status file.db
+./etcdctl --write-out=table snapshot status file.db
 +----------+----------+------------+------------+
 |   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
 +----------+----------+------------+------------+
