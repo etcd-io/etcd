@@ -1,6 +1,6 @@
 # ./hack/patch/cherrypick.sh
 
-Handles cherry-picks of PR(s) from etcd master to a stable etcd release branch automatically.
+Handles cherry-picks of PR(s) from etcd main to a stable etcd release branch automatically.
 
 ## Setup
 
