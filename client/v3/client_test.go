@@ -17,6 +17,7 @@ package clientv3
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"net"
 	"testing"
 	"time"
@@ -185,5 +186,15 @@ func TestWithLogger(t *testing.T) {
 	c.WithLogger(nil)
 	if c.lg != nil {
 		t.Errorf("WithLogger should modify *zap.Logger")
+	}
+}
+
+func TestZapWithLogger(t *testing.T) {
+	ctx := context.Background()
+	lg := zap.NewNop()
+	c := NewCtxClient(ctx, WithZapLogger(lg))
+
+	if c.lg != lg {
+		t.Errorf("WithZapLogger should modify *zap.Logger")
 	}
 }
