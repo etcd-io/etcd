@@ -183,7 +183,7 @@ func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 // cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
-func isCompatibleWithCluster(cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+func isCompatibleWithCluster(cl *membership.RaftCluster, local types.ID, rt http.RoundTripper, allowDowngrade bool) bool {
 	vers := getVersions(cl, local, rt)
 	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
 	maxV := semver.Must(semver.NewVersion(version.Version))
@@ -192,10 +192,10 @@ func isCompatibleWithCluster(cl *membership.RaftCluster, local types.ID, rt http
 		Minor: maxV.Minor,
 	}
 
-	return isCompatibleWithVers(vers, local, minV, maxV)
+	return isCompatibleWithVers(vers, local, minV, maxV, allowDowngrade)
 }
 
-func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, minV, maxV *semver.Version) bool {
+func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, minV, maxV *semver.Version, allowDowngrade bool) bool {
 	var ok bool
 	for id, v := range vers {
 		// ignore comparison with local version
@@ -216,6 +216,9 @@ func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, min
 		}
 		if maxV.LessThan(*clusterv) {
 			plog.Warningf("the running cluster version(%v) is higher than the maximum cluster version(%v) supported", clusterv.String(), maxV.String())
+			if !allowDowngrade || maxV.Major < clusterv.Major || maxV.Minor < clusterv.Minor-1 {
+				return false
+			}
 		}
 		ok = true
 	}

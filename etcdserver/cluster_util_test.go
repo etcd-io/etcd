@@ -61,10 +61,11 @@ func TestDecideClusterVersion(t *testing.T) {
 
 func TestIsCompatibleWithVers(t *testing.T) {
 	tests := []struct {
-		vers       map[string]*version.Versions
-		local      types.ID
-		minV, maxV *semver.Version
-		wok        bool
+		vers           map[string]*version.Versions
+		local          types.ID
+		minV, maxV     *semver.Version
+		wok            bool
+		allowDowngrade bool
 	}{
 		// too low
 		{
@@ -76,6 +77,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 			0xa,
 			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.0.0")),
 			false,
+			false,
 		},
 		{
 			map[string]*version.Versions{
@@ -86,6 +88,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 			0xa,
 			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
 			true,
+			false,
 		},
 		// too high
 		{
@@ -96,6 +99,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 			},
 			0xa,
 			semver.Must(semver.NewVersion("2.1.0")), semver.Must(semver.NewVersion("2.2.0")),
+			false,
 			false,
 		},
 		// cannot get b's version, expect ok
@@ -108,6 +112,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 			0xa,
 			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
 			true,
+			false,
 		},
 		// cannot get b and c's version, expect not ok
 		{
@@ -119,11 +124,36 @@ func TestIsCompatibleWithVers(t *testing.T) {
 			0xa,
 			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
 			false,
+			false,
+		},
+		// a is downgrade from 3.3 to 2.0, expect not ok
+		{
+			map[string]*version.Versions{
+				"a": {Server: "2.1.0", Cluster: "not_decided"},
+				"b": {Server: "3.3.25", Cluster: "3.3.0"},
+				"c": {Server: "3.3.25", Cluster: "3.3.0"},
+			},
+			0xa,
+			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
+			false,
+			true,
+		},
+		// a is downgrade from 3.4 to 3.3, expect ok
+		{
+			map[string]*version.Versions{
+				"a": {Server: "3.3.25", Cluster: "not_decided"},
+				"b": {Server: "3.4.16", Cluster: "3.4.0"},
+				"c": {Server: "3.4.16", Cluster: "3.4.0"},
+			},
+			0xa,
+			semver.Must(semver.NewVersion("3.3.0")), semver.Must(semver.NewVersion("3.3.25")),
+			true,
+			true,
 		},
 	}
 
 	for i, tt := range tests {
-		ok := isCompatibleWithVers(tt.vers, tt.local, tt.minV, tt.maxV)
+		ok := isCompatibleWithVers(tt.vers, tt.local, tt.minV, tt.maxV, tt.allowDowngrade)
 		if ok != tt.wok {
 			t.Errorf("#%d: ok = %+v, want %+v", i, ok, tt.wok)
 		}

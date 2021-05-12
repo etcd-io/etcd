@@ -47,6 +47,9 @@ type RaftCluster struct {
 	store store.Store
 	be    backend.Backend
 
+	// Readonly field after initialization
+	allowDowngrade bool
+
 	sync.Mutex // guards the fields below
 	version    *semver.Version
 	members    map[types.ID]*Member
@@ -210,7 +213,7 @@ func (c *RaftCluster) Recover(onSet func(*semver.Version)) {
 
 	c.members, c.removed = membersFromStore(c.store)
 	c.version = clusterVersionFromStore(c.store)
-	mustDetectDowngrade(c.version)
+	mustDetectDowngrade(c.version, c.allowDowngrade)
 	onSet(c.version)
 
 	for _, m := range c.members {
@@ -361,6 +364,10 @@ func (c *RaftCluster) Version() *semver.Version {
 	return semver.Must(semver.NewVersion(c.version.String()))
 }
 
+func (c *RaftCluster) AllowDowngrade() {
+	c.allowDowngrade = true
+}
+
 func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
@@ -371,7 +378,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version
 	}
 	oldVer := c.version
 	c.version = ver
-	mustDetectDowngrade(c.version)
+	mustDetectDowngrade(c.version, c.allowDowngrade)
 	if c.store != nil {
 		mustSaveClusterVersionToStore(c.store, ver)
 	}
@@ -508,13 +515,17 @@ func ValidateClusterAndAssignIDs(local *RaftCluster, existing *RaftCluster) erro
 	return nil
 }
 
-func mustDetectDowngrade(cv *semver.Version) {
+func mustDetectDowngrade(cv *semver.Version, allowMinorVersionDowngrade bool) {
 	lv := semver.Must(semver.NewVersion(version.Version))
 	// only keep major.minor version for comparison against cluster version
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	if cv != nil && lv.LessThan(*cv) {
-		plog.Warningf("cluster downgrade (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
-		// overwrite the cluster version restored from snapshot/store with local version determined by the etcd binary version
+		if !allowMinorVersionDowngrade || lv.Major < cv.Major || lv.Minor < cv.Minor-1 {
+			plog.Panicf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+		}
+
+		plog.Warningf("cluster downgrade from %s to %s.", version.Cluster(cv.String()), version.Cluster(lv.String()))
+		// overwrite the cluster version with local version determined by the etcd binary version
 		*cv = *lv
 	}
 }

@@ -220,6 +220,7 @@ func newConfig() *config {
 	// experimental
 	fs.BoolVar(&cfg.ec.ExperimentalInitialCorruptCheck, "experimental-initial-corrupt-check", cfg.ec.ExperimentalInitialCorruptCheck, "Enable to check data corruption before serving any client/peer traffic.")
 	fs.DurationVar(&cfg.ec.ExperimentalCorruptCheckTime, "experimental-corrupt-check-time", cfg.ec.ExperimentalCorruptCheckTime, "Duration of time between cluster corruption check passes.")
+	fs.BoolVar(&cfg.ec.ExperimentalVersionDowngrade, "experimental-version-downgrade", cfg.ec.ExperimentalVersionDowngrade, "Enable to allow only one single minor version downgrade automatically")
 
 	// ignored
 	for _, f := range cfg.ignored {
