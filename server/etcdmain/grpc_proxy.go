@@ -32,7 +32,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/leasing"
 	"go.etcd.io/etcd/client/v3/namespace"
 	"go.etcd.io/etcd/client/v3/ordering"
@@ -218,7 +218,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	httpClient := mustNewHTTPClient(lg)
 
 	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client, proxyClient)
-	errc := make(chan error)
+	errc := make(chan error, 3)
 	go func() { errc <- newGRPCProxyServer(lg, client).Serve(grpcl) }()
 	go func() { errc <- srvhttp.Serve(httpl) }()
 	go func() { errc <- m.Serve() }()
@@ -283,17 +283,18 @@ func mustNewClient(lg *zap.Logger) *clientv3.Client {
 		grpc.WithUnaryInterceptor(grpcproxy.AuthUnaryClientInterceptor))
 	cfg.DialOptions = append(cfg.DialOptions,
 		grpc.WithStreamInterceptor(grpcproxy.AuthStreamClientInterceptor))
+	cfg.Logger = lg.Named("client")
 	client, err := clientv3.New(*cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	return client.WithLogger(lg.Named("client"))
+	return client
 }
 
 func mustNewProxyClient(lg *zap.Logger, tls *transport.TLSInfo) *clientv3.Client {
 	eps := []string{grpcProxyAdvertiseClientURL}
-	cfg, err := newProxyClientCfg(lg, eps, tls)
+	cfg, err := newProxyClientCfg(lg.Named("client"), eps, tls)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -304,13 +305,14 @@ func mustNewProxyClient(lg *zap.Logger, tls *transport.TLSInfo) *clientv3.Client
 		os.Exit(1)
 	}
 	lg.Info("create proxy client", zap.String("grpcProxyAdvertiseClientURL", grpcProxyAdvertiseClientURL))
-	return client.WithLogger(lg.Named("client"))
+	return client
 }
 
 func newProxyClientCfg(lg *zap.Logger, eps []string, tls *transport.TLSInfo) (*clientv3.Config, error) {
 	cfg := clientv3.Config{
 		Endpoints:   eps,
 		DialTimeout: 5 * time.Second,
+		Logger:      lg,
 	}
 	if tls != nil {
 		clientTLS, err := tls.ClientConfig()

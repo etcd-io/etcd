@@ -29,11 +29,8 @@ import (
 )
 
 func NewClient(t *testing.T, cfg Config) (*Client, error) {
-	client, err := New(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return client.WithLogger(zaptest.NewLogger(t)), nil
+	cfg.Logger = zaptest.NewLogger(t)
+	return New(cfg)
 }
 
 func TestDialCancel(t *testing.T) {
