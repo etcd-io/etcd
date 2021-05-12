@@ -99,6 +99,9 @@ func NewFromURLs(urls []string) (*Client, error) {
 }
 
 // WithLogger overrides the logger.
+//
+// Deprecated: Please use Logger field in clientv3.Config
+//
 // Does not changes grpcLogger, that can be explicitly configured
 // using grpc_zap.ReplaceGrpcLoggerV2(..) method.
 func (c *Client) WithLogger(lg *zap.Logger) *Client {
@@ -331,7 +334,9 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 
 	var err error
-	if cfg.LogConfig != nil {
+	if cfg.Logger != nil {
+		client.lg = cfg.Logger
+	} else if cfg.LogConfig != nil {
 		client.lg, err = cfg.LogConfig.Build()
 	} else {
 		client.lg, err = createDefaultZapLogger()

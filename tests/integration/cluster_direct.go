@@ -41,9 +41,6 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 }
 
 func newClientV3(cfg clientv3.Config, lg *zap.Logger) (*clientv3.Client, error) {
-	c, err := clientv3.New(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return c.WithLogger(lg), nil
+	cfg.Logger = lg
+	return clientv3.New(cfg)
 }

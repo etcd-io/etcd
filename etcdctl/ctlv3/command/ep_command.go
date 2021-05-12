@@ -115,12 +115,12 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 		go func(cfg *v3.Config) {
 			defer wg.Done()
 			ep := cfg.Endpoints[0]
+			cfg.Logger = lg.Named("client")
 			cli, err := v3.New(*cfg)
 			if err != nil {
 				hch <- epHealth{Ep: ep, Health: false, Error: err.Error()}
 				return
 			}
-			cli = cli.WithLogger(lg.Named("client"))
 			st := time.Now()
 			// get a random key. As long as we can get the response without an error, the
 			// endpoint is health.
