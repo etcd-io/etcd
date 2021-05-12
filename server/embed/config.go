@@ -321,6 +321,9 @@ type Config struct {
 	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
 	// takes more time than this value.
 	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
+	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
+	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
+	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`

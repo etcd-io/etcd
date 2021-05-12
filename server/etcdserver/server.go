@@ -362,6 +362,13 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	ci.SetBackend(be)
 	cindex.CreateMetaBucket(be.BatchTx())
 
+	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
+		err := maybeDefragBackend(cfg, be)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	defer func() {
 		if err != nil {
 			be.Close()
@@ -2579,4 +2586,23 @@ func (s *EtcdServer) IsMemberExist(id types.ID) bool {
 // raftStatus returns the raft status of this etcd node.
 func (s *EtcdServer) raftStatus() raft.Status {
 	return s.r.Node.Status()
+}
+
+func maybeDefragBackend(cfg config.ServerConfig, be backend.Backend) error {
+	size := be.Size()
+	sizeInUse := be.SizeInUse()
+	freeableMemory := uint(size - sizeInUse)
+	thresholdBytes := cfg.ExperimentalBootstrapDefragThresholdMegabytes * 1024 * 1024
+	if freeableMemory < thresholdBytes {
+		cfg.Logger.Info("Skipping defragmentation",
+			zap.Int64("current-db-size-bytes", size),
+			zap.String("current-db-size", humanize.Bytes(uint64(size))),
+			zap.Int64("current-db-size-in-use-bytes", sizeInUse),
+			zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse))),
+			zap.Uint("experimental-bootstrap-defrag-threshold-bytes", thresholdBytes),
+			zap.String("experimental-bootstrap-defrag-threshold", humanize.Bytes(uint64(thresholdBytes))),
+		)
+		return nil
+	}
+	return be.Defrag()
 }
