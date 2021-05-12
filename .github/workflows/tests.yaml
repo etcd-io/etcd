@@ -6,8 +6,6 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        # TODO: Add tip when https://github.com/actions/setup-go/issues/21 is resolved
-        go: [1.16.3]
         target:
         - linux-amd64-fmt
         - linux-amd64-grpcproxy
@@ -16,13 +14,15 @@ jobs:
         - linux-amd64-integration-4-cpu
         - linux-amd64-functional
         - linux-amd64-unit-4-cpu-race
+        - linux-amd64-e2e
+        - linux-386-e2e
         - all-build
         - linux-386-unit-1-cpu
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
       with:
-        go-version: ${{ matrix.go }}
+        go-version: 1.16.3
     - run: date
     - env:
         TARGET: ${{ matrix.target }}
@@ -63,5 +63,17 @@ jobs:
             ;;
           linux-386-unit-1-cpu)
             GOARCH=386 PASSES='unit' RACE='false' CPU='1' ./test -p=4
+            ;;
+          linux-amd64-e2e)
+            PASSES='build release e2e' MANUAL_VER=v3.4.7 CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./test.sh 2>&1 | tee test.log
+            ! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
+            ;;
+          linux-386-e2e)
+            GOARCH=386 PASSES='build e2e' CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./test.sh 2>&1 | tee test.log
+            ! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
+            ;;
+          *)
+            echo "Failed to find target"
+            exit 1
             ;;
         esac
