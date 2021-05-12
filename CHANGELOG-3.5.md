@@ -31,8 +31,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
-- **`etcd --experimental-enable-v2v3` flag has been deprecated.** Use **`etcd --enable-v2v3`** instead.
-  - Change [`etcd --experimental-enable-v2v3`](TODO) flag to `etcd --enable-v2v3`; v2 storage emulation is now stable.
+- **`etcd --experimental-enable-v2v3` flag remains experimental and to be deprecated.**
+  - v2 storage emulation feature will be deprecated in the next release.
+  - etcd 3.5 is the last version that supports V2 API. Flags `--enable-v2` and `--experimental-enable-v2v3` [are now deprecated](https://github.com/etcd-io/etcd/pull/) and will be removed in etcd v3.6 release.
 - **`etcd --experimental-backend-bbolt-freelist-type` flag has been deprecated.** Use **`etcd --backend-bbolt-freelist-type`** instead. The default type is hashmap and it is stable now.
 - **`etcd --debug` flag has been deprecated.** Use **`etcd --log-level=debug`** instead.
 - Remove [`embed.Config.Debug`](https://github.com/etcd-io/etcd/pull/10947).
@@ -70,12 +71,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - [ETCD_CLIENT_DEBUG env](https://github.com/etcd-io/etcd/pull/12786): Now supports log levels (debug, info, warn, error, dpanic, panic, fatal). Only when set, overrides application-wide grpc logging settings.
 - [Embed Etcd.Close()](https://github.com/etcd-io/etcd/pull/12828) needs to called exactly once and closes Etcd.Err() stream.
 - [Embed Etcd does not override global/grpc logger](https://github.com/etcd-io/etcd/pull/12861) be default any longer. If desired, please call `embed.Config::SetupGlobalLoggers()` explicitly. 
-- Errors: `context cancelled` or `context deadline exceeded` are exposed as codes.Canceled, codes.DeadlineExceeded instead of 'codes.Unknown'.
-- Version 3.5 is the last version that supports V2 API. Flags `--enable-v2` and `--experimental-enable-v2v3` [are now deprecated](https://github.com/etcd-io/etcd/pull/)
-  and will be removed in etcd v3.6 release.
-###
-
-- Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
+- Client errors of `context cancelled` or `context deadline exceeded` are exposed as `codes.Canceled` and `codes.DeadlineExceeded`, instead of `codes.Unknown`.
 
 ### Security
 
@@ -106,19 +102,12 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### etcd server
 
-- [`etcd --enable-v2v3`](TODO) flag is now stable.
-  - `etcd --experimental-enable-v2v3` has been deprecated.
-  - Added [more v2v3 integration tests](https://github.com/etcd-io/etcd/pull/9634).
-  - `etcd --enable-v2=true --enable-v2v3=''` by default, to enable v2 API server that is backed by **v2 store**.
-  - `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
-  - `etcd --enable-v2=false --enable-v2v3=''` to disable v2 API server.
-  - `etcd --enable-v2=false --enable-v2v3=/aaa` to disable v2 API server. TODO: error?
   - Add [`TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` to `etcd --cipher-suites`](https://github.com/etcd-io/etcd/pull/11864).
   - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
   - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.
 - [`etcd --backend-bbolt-freelist-type`] flag is now stable.
   - `etcd --experimental-backend-bbolt-freelist-type` has been deprecated.
-- Support [rollback/downgrade](TODO).
+- Support [downgrade API](https://github.com/etcd-io/etcd/pull/11715).
 - Deprecate v2 apply on cluster version. [Use v3 request to set cluster version and recover cluster version from v3 backend](https://github.com/etcd-io/etcd/pull/11427).
 - [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
 - Fix [quorum protection logic when promoting a learner](https://github.com/etcd-io/etcd/pull/11640).
@@ -140,10 +129,10 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve logging around snapshot send and receive.
 - [Push down RangeOptions.limit argv into index tree to reduce memory overhead](https://github.com/etcd-io/etcd/pull/11990).
 - Add [reason field for /health response](https://github.com/etcd-io/etcd/pull/11983).
-- Add [exclude alarms from health check conditionally](https://github.com/etcd-io/etcd/pull/12880)
-- Add [`--unsafe-no-fsync`](https://github.com/etcd-io/etcd/pull/11946) flag.
+- Add [exclude alarms from health check conditionally](https://github.com/etcd-io/etcd/pull/12880).
+- Add [`etcd --unsafe-no-fsync`](https://github.com/etcd-io/etcd/pull/11946) flag.
   - Setting the flag disables all uses of fsync, which is unsafe and will cause data loss. This flag makes it possible to run an etcd node for testing and development without placing lots of load on the file system.
-- Add [etcd --auth-token-ttl](https://github.com/etcd-io/etcd/pull/11980) flag to customize `simpleTokenTTL` settings.
+- Add [`etcd --auth-token-ttl`](https://github.com/etcd-io/etcd/pull/11980) flag to customize `simpleTokenTTL` settings.
 - Improve [`runtime.FDUsage` call pattern to reduce objects malloc of Memory Usage and CPU Usage](https://github.com/etcd-io/etcd/pull/11986).
 - Improve [mvcc.watchResponse channel Memory Usage](https://github.com/etcd-io/etcd/pull/11987).
 - Log [expensive request info in UnaryInterceptor](https://github.com/etcd-io/etcd/pull/12086).
@@ -153,22 +142,22 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Fix [server panic in slow writes warnings](https://github.com/etcd-io/etcd/issues/12197).
   - Fixed via [PR#12238](https://github.com/etcd-io/etcd/pull/12238).
 - [Fix server panic](https://github.com/etcd-io/etcd/pull/12288) when force-new-cluster flag is enabled in a cluster which had learner node.
-- Add [`--self-signed-cert-validity`](https://github.com/etcd-io/etcd/pull/12429) flag to support setting certificate expiration time.
+- Add [`etcd --self-signed-cert-validity`](https://github.com/etcd-io/etcd/pull/12429) flag to support setting certificate expiration time.
   - Notice, certificates generated by etcd are valid for 1 year by default when specifying the auto-tls or peer-auto-tls option.
-- Add [`--experimental-warning-apply-duration`](https://github.com/etcd-io/etcd/pull/12448) flag which allows apply duration threshold to be configurable.
-- Add [`--experimental-memory-mlock`](https://github.com/etcd-io/etcd/pull/TODO)" flag which prevents etcd memory pages to be swapped out.
-- Add [`--socket-reuse-port`](https://github.com/etcd-io/etcd/pull/12702) flag
+- Add [`etcd --experimental-warning-apply-duration`](https://github.com/etcd-io/etcd/pull/12448) flag which allows apply duration threshold to be configurable.
+- Add [`etcd --experimental-memory-mlock`](https://github.com/etcd-io/etcd/pull/TODO) flag which prevents etcd memory pages to be swapped out.
+- Add [`etcd --socket-reuse-port`](https://github.com/etcd-io/etcd/pull/12702) flag
   - Setting this flag enables `SO_REUSEPORT` which allows rebind of a port already in use. User should take caution when using this flag to ensure flock is properly enforced. 
-- Add [`--socket-reuse-address`](https://github.com/etcd-io/etcd/pull/12702) flag
+- Add [`etcd --socket-reuse-address`](https://github.com/etcd-io/etcd/pull/12702) flag
   - Setting this flag enables `SO_REUSEADDR` which allows binding to an address in `TIME_WAIT` state, improving etcd restart time.
 - Reduce [around 30% memory allocation by logging range response size without marshal](https://github.com/etcd-io/etcd/pull/12871).
 - `ETCD_VERIFY="all"` enviroment triggers [additional verification of consistency](https://github.com/etcd-io/etcd/pull/) of etcd data-dir files. 
 - Add [`etcd --enable-log-rotation`](https://github.com/etcd-io/etcd/pull/12774) boolean flag which enables log rotation if true.
 - Add [`etcd --log-rotation-config-json`](https://github.com/etcd-io/etcd/pull/12774) flag which allows passthrough of JSON config to configure log rotation for a file output target.
 - Add experimental distributed tracing boolean flag [`--experimental-enable-distributed-tracing`](https://github.com/etcd-io/etcd/pull/12919) which enables tracing.
-- Add [`--experimental-distributed-tracing-address`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows configuring the OpenTelemetry collector address.
-- Add [`--experimental-distributed-tracing-service-name`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows changing the default "etcd" service name.
-- Add [`--experimental-distributed-tracing-instance-id`](https://github.com/etcd-io/etcd/pull/12919) string flag which configures an instance ID, which must be unique per etcd instance.
+- Add [`etcd --experimental-distributed-tracing-address`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows configuring the OpenTelemetry collector address.
+- Add [`etcd --experimental-distributed-tracing-service-name`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows changing the default "etcd" service name.
+- Add [`etcd --experimental-distributed-tracing-instance-id`](https://github.com/etcd-io/etcd/pull/12919) string flag which configures an instance ID, which must be unique per etcd instance.
 
 ### Package `runtime`
 
@@ -206,6 +195,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Improve [clientv3:get AuthToken gracefully without extra connection](https://github.com/etcd-io/etcd/pull/12165).
 - Changed [clientv3 dialing code](https://github.com/etcd-io/etcd/pull/12671) to use grpc resolver API instead of custom balancer.
   - Endpoints self identify now as `etcd-endpoints://{id}/#initially={list of endpoints}` e.g. `etcd-endpoints://0xc0009d8540/#initially=[localhost:2079]`
+- Make sure [save snapshot downloads checksum for integrity checks](https://github.com/etcd-io/etcd/pull/11896).
 
 ### Package `lease`
 
@@ -268,8 +258,14 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### Dependency
 
-- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.26.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.26.0).
-- Upgrade [`go.uber.org/zap`](https://github.com/uber-go/zap/releases) from [**`v1.14.1`**](https://github.com/uber-go/zap/releases/tag/v1.14.1) to [**`v1.15.0`**](https://github.com/uber-go/zap/releases/tag/v1.15.0).
+- Upgrade [`google.golang.org/grpc`](https://github.com/grpc/grpc-go/releases) from [**`v1.23.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.23.0) to [**`v1.37.0`**](https://github.com/grpc/grpc-go/releases/tag/v1.37.0).
+- Upgrade [`go.uber.org/zap`](https://github.com/uber-go/zap/releases) from [**`v1.14.1`**](https://github.com/uber-go/zap/releases/tag/v1.14.1) to [**`v1.16.0`**](https://github.com/uber-go/zap/releases/tag/v1.16.0).
+
+### Platforms
+
+- etcd now [officially supports `arm64`](https://github.com/etcd-io/etcd/pull/12929).
+  - See https://github.com/etcd-io/etcd/pull/12928 for adding automated tests with `arm64` EC2 instances (Graviton 2).
+  - See https://github.com/etcd-io/website/pull/273 for new platform support tier policies.
 
 ### Release
 
@@ -278,7 +274,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Go
 
 - Require [*Go 1.16+*](https://github.com/etcd-io/etcd/pull/11110).
-- Compile with [*Go 1.16*](https://golang.org/doc/devel/release.html#go1.16)
+- Compile with [*Go 1.16+*](https://golang.org/doc/devel/release.html#go1.16)
 - etcd uses [go modules](https://github.com/etcd-io/etcd/pull/12279) (instead of vendor dir) to track dependencies.
 
 ### Project Governance
