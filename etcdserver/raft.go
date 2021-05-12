@@ -461,6 +461,9 @@ func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *member
 	plog.Infof("restarting member %s in cluster %s at commit index %d", id, cid, st.Commit)
 	cl := membership.NewCluster("")
 	cl.SetID(cid)
+	if cfg.VersionDowngrade {
+		cl.AllowDowngrade()
+	}
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
@@ -515,6 +518,9 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 
 	plog.Printf("forcing restart of member %s in cluster %s at commit index %d", id, cid, st.Commit)
 	cl := membership.NewCluster("")
+	if cfg.VersionDowngrade {
+		cl.AllowDowngrade()
+	}
 	cl.SetID(cid)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {

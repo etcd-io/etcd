@@ -101,6 +101,8 @@ type ServerConfig struct {
 	// before serving any peer/client traffic.
 	InitialCorruptCheck bool
 	CorruptCheckTime    time.Duration
+	// VersionDowngrade is true to allow minor version downgrade automatically
+	VersionDowngrade    bool
 
 	Debug bool
 }

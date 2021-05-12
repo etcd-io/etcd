@@ -113,6 +113,7 @@ func (s *EtcdServer) applyV2Request(r *RequestV2) Response {
 	case "POST":
 		return s.applyV2.Post(r)
 	case "PUT":
+		plog.Infof("received put v2 request, %s", r.String())
 		return s.applyV2.Put(r)
 	case "DELETE":
 		return s.applyV2.Delete(r)
