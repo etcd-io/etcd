@@ -83,10 +83,20 @@ func New(cfg Config) (*Client, error) {
 // NewCtxClient creates a client with a context but no underlying grpc
 // connection. This is useful for embedded cases that override the
 // service interface implementations and do not need connection management.
-func NewCtxClient(ctx context.Context) *Client {
+func NewCtxClient(ctx context.Context, opts ...Option) *Client {
 	cctx, cancel := context.WithCancel(ctx)
-	return &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex), lg: zap.NewNop()}
+	c := &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex)}
+	for _, opt := range opts {
+		opt(c)
+	}
+	if c.lg == nil {
+		c.lg = zap.NewNop()
+	}
+	return c
 }
+
+// Option is a function type that can be passed as argument to NewCtxClient to configure client
+type Option func(*Client)
 
 // NewFromURL creates a new etcdv3 client from a URL.
 func NewFromURL(url string) (*Client, error) {
@@ -98,9 +108,16 @@ func NewFromURLs(urls []string) (*Client, error) {
 	return New(Config{Endpoints: urls})
 }
 
+// WithZapLogger is a NewCtxClient option that overrides the logger
+func WithZapLogger(lg *zap.Logger) Option {
+	return func(c *Client) {
+		c.lg = lg
+	}
+}
+
 // WithLogger overrides the logger.
 //
-// Deprecated: Please use Logger field in clientv3.Config
+// Deprecated: Please use WithZapLogger or Logger field in clientv3.Config
 //
 // Does not changes grpcLogger, that can be explicitly configured
 // using grpc_zap.ReplaceGrpcLoggerV2(..) method.
