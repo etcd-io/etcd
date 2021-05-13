@@ -35,7 +35,7 @@ import (
 
 var (
 	keyBucketName  = []byte("key")
-	metaBucketName = cindex.MetaBucketName
+	MetaBucketName = cindex.MetaBucketName
 
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
@@ -242,7 +242,7 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 
 	tx := s.b.BatchTx()
 	tx.Lock()
-	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
+	tx.UnsafePut(MetaBucketName, scheduledCompactKeyName, rbytes)
 	tx.Unlock()
 	// ensure that desired compaction is persisted
 	s.b.ForceCommit()
@@ -304,7 +304,7 @@ func init() {
 	DefaultIgnores = map[backend.IgnoreKey]struct{}{
 		// consistent index might be changed due to v2 internal sync, which
 		// is not controllable by the user.
-		{Bucket: string(metaBucketName), Key: string(cindex.ConsistentIndexKeyName)}: {},
+		{Bucket: string(MetaBucketName), Key: string(cindex.ConsistentIndexKeyName)}: {},
 	}
 }
 
@@ -351,20 +351,20 @@ func (s *store) restore() error {
 	tx := s.b.BatchTx()
 	tx.Lock()
 
-	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
+	_, finishedCompactBytes := tx.UnsafeRange(MetaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		s.revMu.Lock()
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
 
 		s.lg.Info(
 			"restored last compact revision",
-			zap.String("meta-bucket-name", string(metaBucketName)),
+			zap.String("meta-bucket-name", string(MetaBucketName)),
 			zap.String("meta-bucket-name-key", string(finishedCompactKeyName)),
 			zap.Int64("restored-compact-revision", s.compactMainRev),
 		)
 		s.revMu.Unlock()
 	}
-	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
+	_, scheduledCompactBytes := tx.UnsafeRange(MetaBucketName, scheduledCompactKeyName, nil, 0)
 	scheduledCompact := int64(0)
 	if len(scheduledCompactBytes) != 0 {
 		scheduledCompact = bytesToRev(scheduledCompactBytes[0]).main
@@ -435,7 +435,7 @@ func (s *store) restore() error {
 
 		s.lg.Info(
 			"resume scheduled compaction",
-			zap.String("meta-bucket-name", string(metaBucketName)),
+			zap.String("meta-bucket-name", string(MetaBucketName)),
 			zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
 			zap.Int64("scheduled-compact-revision", scheduledCompact),
 		)
