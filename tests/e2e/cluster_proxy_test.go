@@ -22,6 +22,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
@@ -268,10 +269,10 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 		// Configure certificates for connection proxy ---> server.
 		// This certificate must NOT have CN set.
 		tlsArgs = append(tlsArgs,
-			"--cert", "../fixtures/client-nocn.crt",
-			"--key", "../fixtures/client-nocn.key.insecure",
-			"--cacert", "../fixtures/ca.crt",
-			"--client-crl-file", "../fixtures/revoke.crl")
+			"--cert", path.Join(fixturesDir, "client-nocn.crt"),
+			"--key", path.Join(fixturesDir, "client-nocn.key.insecure"),
+			"--cacert", path.Join(fixturesDir, "ca.crt"),
+			"--client-crl-file", path.Join(fixturesDir, "revoke.crl"))
 	}
 	return &proxyV3Proc{
 		proxyProc{

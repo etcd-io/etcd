@@ -192,6 +192,9 @@ type ServerConfig struct {
 	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
 	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
+
+	// V2Deprecation defines a phase of v2store deprecation process.
+	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

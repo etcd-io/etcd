@@ -30,7 +30,7 @@ import (
 func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
 
 func TestClusterVersion(t *testing.T) {
-	skipInShortMode(t)
+	BeforeTest(t)
 
 	tests := []struct {
 		name         string

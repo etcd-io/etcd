@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 
+	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -124,6 +125,13 @@ Clustering:
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
   --enable-v2 '` + strconv.FormatBool(embed.DefaultEnableV2) + `'
     Accept etcd V2 client requests. Deprecated and to be decommissioned in v3.6.
+  --v2-deprecation '` + string(cconfig.V2_DEPR_DEFAULT) + `'
+    Phase of v2store deprecation. Allows to opt-in for higher compatibility mode.
+    Supported values:
+      'not-yet'                // Issues a warning if v2store have meaningful content (default in v3.5)
+      'write-only'             // Custom v2 state is not allowed (planned default in v3.6)
+      'write-only-drop-data'   // Custom v2 state will get DELETED !
+      'gone'                   // v2store is not maintained any longer. (planned default in v3.7)
 
 Security:
   --cert-file ''

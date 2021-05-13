@@ -31,7 +31,7 @@ const (
 	attributesSuffix     = "attributes"
 	raftAttributesSuffix = "raftAttributes"
 
-	// the prefix for stroing membership related information in store provided by store pkg.
+	// the prefix for storing membership related information in store provided by store pkg.
 	storePrefix = "/0"
 )
 
