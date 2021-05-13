@@ -32,7 +32,10 @@ const (
 // IsDirWriteable checks if dir is writable by writing and removing a file
 // to dir. It returns nil if dir is writable.
 func IsDirWriteable(dir string) error {
-	f := filepath.Join(dir, ".touch")
+	f, err := filepath.Abs(filepath.Join(dir, ".touch"))
+	if err != nil {
+		return err
+	}
 	if err := ioutil.WriteFile(f, []byte(""), PrivateFileMode); err != nil {
 		return err
 	}
