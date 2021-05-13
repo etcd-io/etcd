@@ -265,7 +265,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		return err
 	}
 
-	if err := s.updateCIndex(hardstate.Commit); err != nil {
+	if err := s.updateCIndex(hardstate.Commit, hardstate.Term); err != nil {
 		return err
 	}
 
@@ -475,10 +475,10 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	return &hardState, w.SaveSnapshot(snapshot)
 }
 
-func (s *v3Manager) updateCIndex(commit uint64) error {
+func (s *v3Manager) updateCIndex(commit uint64, term uint64) error {
 	be := backend.NewDefaultBackend(s.outDbPath())
 	defer be.Close()
 
-	cindex.UpdateConsistentIndex(be.BatchTx(), commit, false)
+	cindex.UpdateConsistentIndex(be.BatchTx(), commit, term, false)
 	return nil
 }

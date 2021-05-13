@@ -79,7 +79,7 @@ func BenchmarkConsistentIndex(b *testing.B) {
 	defer betesting.Close(b, be)
 
 	// This will force the index to be reread from scratch on each call.
-	ci.SetConsistentIndex(0)
+	ci.SetConsistentIndex(0, 0)
 
 	tx := be.BatchTx()
 	tx.Lock()
