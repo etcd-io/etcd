@@ -18,7 +18,9 @@ package ctlv3
 import (
 	"time"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
 )
@@ -95,6 +97,10 @@ func init() {
 	)
 }
 
+func usageFunc(c *cobra.Command) error {
+	return cobrautl.UsageFunc(c, version.Version, version.APIVersion)
+}
+
 func Start() error {
 	rootCmd.SetUsageFunc(usageFunc)
 	// Make help just show the usage
@@ -104,7 +110,7 @@ func Start() error {
 
 func MustStart() {
 	if err := Start(); err != nil {
-		command.ExitWithError(command.ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 }
 

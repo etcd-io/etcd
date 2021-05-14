@@ -7,7 +7,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/olekukonko/tablewriter v0.0.4
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/urfave/cli v1.22.4
 	go.etcd.io/bbolt v1.3.6-0.20210426205525-9c92be978ae0
