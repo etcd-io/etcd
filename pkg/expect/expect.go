@@ -147,6 +147,8 @@ func (ep *ExpectProcess) Signal(sig os.Signal) error {
 }
 
 // Close waits for the expect process to exit.
+// Close currently does not return error if process exited with !=0 status.
+// TODO: Close should expose underlying proces failure by default.
 func (ep *ExpectProcess) Close() error { return ep.close(false) }
 
 func (ep *ExpectProcess) close(kill bool) error {
@@ -162,7 +164,6 @@ func (ep *ExpectProcess) close(kill bool) error {
 	ep.wg.Wait()
 
 	if err != nil {
-		ep.err = err
 		if !kill && strings.Contains(err.Error(), "exit status") {
 			// non-zero exit code
 			err = nil
@@ -170,6 +171,7 @@ func (ep *ExpectProcess) close(kill bool) error {
 			err = nil
 		}
 	}
+
 	ep.cmd = nil
 	return err
 }
@@ -177,4 +179,13 @@ func (ep *ExpectProcess) close(kill bool) error {
 func (ep *ExpectProcess) Send(command string) error {
 	_, err := io.WriteString(ep.fpty, command)
 	return err
+}
+
+func (ep *ExpectProcess) ProcessError() error {
+	if strings.Contains(ep.err.Error(), "input/output error") {
+		// TODO: The expect library should not return
+		// `/dev/ptmx: input/output error` when process just exits.
+		return nil
+	}
+	return ep.err
 }

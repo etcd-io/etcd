@@ -52,6 +52,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock"
 	lockpb "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/verify"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
@@ -583,6 +584,7 @@ type member struct {
 	useIP                    bool
 
 	isLearner bool
+	closed    bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -704,19 +706,25 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.InitialCorruptCheck = true
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 
-	level := zapcore.InfoLevel
-	if os.Getenv("CLUSTER_DEBUG") != "" {
-		level = zapcore.DebugLevel
-	}
+	m.V2Deprecation = config.V2_DEPR_DEFAULT
 
-	options := zaptest.WrapOptions(zap.Fields(zap.String("member", mcfg.name)))
-	m.Logger = zaptest.NewLogger(t, zaptest.Level(level), options).Named(mcfg.name)
+	m.Logger = memberLogger(t, mcfg.name)
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
 		// might reuse this (t).
 		raft.ResetDefaultLogger()
 	})
 	return m
+}
+
+func memberLogger(t testutil.TB, name string) *zap.Logger {
+	level := zapcore.InfoLevel
+	if os.Getenv("CLUSTER_DEBUG") != "" {
+		level = zapcore.DebugLevel
+	}
+
+	options := zaptest.WrapOptions(zap.Fields(zap.String("member", name)))
+	return zaptest.NewLogger(t, zaptest.Level(level), options).Named(name)
 }
 
 // listenGRPC starts a grpc server over a unix domain socket on the member
@@ -782,7 +790,7 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 
 // Clone returns a member with the same server configuration. The returned
 // member will not set PeerListeners and ClientListeners.
-func (m *member) Clone(_ testutil.TB) *member {
+func (m *member) Clone(t testutil.TB) *member {
 	mm := &member{}
 	mm.ServerConfig = m.ServerConfig
 
@@ -809,6 +817,7 @@ func (m *member) Clone(_ testutil.TB) *member {
 	mm.ElectionTicks = m.ElectionTicks
 	mm.PeerTLSInfo = m.PeerTLSInfo
 	mm.ClientTLSInfo = m.ClientTLSInfo
+	mm.Logger = memberLogger(t, mm.Name+"c")
 	return mm
 }
 
@@ -1071,6 +1080,16 @@ func (m *member) Close() {
 	for _, f := range m.serverClosers {
 		f()
 	}
+	if !m.closed {
+		// Avoid verification of the same file multiple times
+		// (that might not exist any longer)
+		verify.MustVerifyIfEnabled(verify.Config{
+			Logger:     m.Logger,
+			DataDir:    m.DataDir,
+			ExactIndex: false,
+		})
+	}
+	m.closed = true
 }
 
 // Stop stops the member, but the data dir of the member is preserved.

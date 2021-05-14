@@ -16,8 +16,11 @@ package embed
 
 import (
 	"crypto/tls"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -26,6 +29,7 @@ import (
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // GetLogger returns the logger.
@@ -54,6 +58,11 @@ func (cfg *Config) setupLogging() error {
 				}
 			}
 		}
+		if cfg.EnableLogRotation {
+			if err := setupLogRotation(cfg.LogOutputs, cfg.LogRotationConfigJSON); err != nil {
+				return err
+			}
+		}
 
 		outputPaths, errOutputPaths := make([]string, 0), make([]string, 0)
 		isJournal := false
@@ -75,8 +84,15 @@ func (cfg *Config) setupLogging() error {
 				errOutputPaths = append(errOutputPaths, StdOutLogOutput)
 
 			default:
-				outputPaths = append(outputPaths, v)
-				errOutputPaths = append(errOutputPaths, v)
+				var path string
+				if cfg.EnableLogRotation {
+					// append rotate scheme to logs managed by lumberjack log rotation
+					path = fmt.Sprintf("rotate:%s", v)
+				} else {
+					path = v
+				}
+				outputPaths = append(outputPaths, path)
+				errOutputPaths = append(errOutputPaths, path)
 			}
 		}
 
@@ -210,4 +226,49 @@ func (cfg *Config) SetupGlobalLoggers() {
 		}
 		zap.ReplaceGlobals(lg)
 	}
+}
+
+type logRotationConfig struct {
+	*lumberjack.Logger
+}
+
+// Sync implements zap.Sink
+func (logRotationConfig) Sync() error { return nil }
+
+// setupLogRotation initializes log rotation for a single file path target.
+func setupLogRotation(logOutputs []string, logRotateConfigJSON string) error {
+	var logRotationConfig logRotationConfig
+	outputFilePaths := 0
+	for _, v := range logOutputs {
+		switch v {
+		case DefaultLogOutput, StdErrLogOutput, StdOutLogOutput:
+			continue
+		default:
+			outputFilePaths++
+		}
+	}
+	// log rotation requires file target
+	if len(logOutputs) == 1 && outputFilePaths == 0 {
+		return ErrLogRotationInvalidLogOutput
+	}
+	// support max 1 file target for log rotation
+	if outputFilePaths > 1 {
+		return ErrLogRotationInvalidLogOutput
+	}
+
+	if err := json.Unmarshal([]byte(logRotateConfigJSON), &logRotationConfig); err != nil {
+		var unmarshalTypeError *json.UnmarshalTypeError
+		var syntaxError *json.SyntaxError
+		switch {
+		case errors.As(err, &syntaxError):
+			return fmt.Errorf("improperly formatted log rotation config: %w", err)
+		case errors.As(err, &unmarshalTypeError):
+			return fmt.Errorf("invalid log rotation config: %w", err)
+		}
+	}
+	zap.RegisterSink("rotate", func(u *url.URL) (zap.Sink, error) {
+		logRotationConfig.Filename = u.Path
+		return &logRotationConfig, nil
+	})
+	return nil
 }

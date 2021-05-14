@@ -3,7 +3,7 @@ etcdctl
 
 `etcdctl` is a command line client for [etcd][etcd].
 
-The v3 API is used by default on master branch. For the v2 API, make sure to set environment variable `ETCDCTL_API=2`. See also [READMEv2][READMEv2].
+The v3 API is used by default on main branch. For the v2 API, make sure to set environment variable `ETCDCTL_API=2`. See also [READMEv2][READMEv2].
 
 If using released versions earlier than v3.4, set `ETCDCTL_API=3` to use v3 API.
 
@@ -1040,12 +1040,12 @@ Prints a line of JSON encoding the database hash, revision, total keys, and size
 ```
 
 ```bash
-./etcdctl -write-out=json snapshot status file.db
+./etcdctl --write-out=json snapshot status file.db
 # {"hash":3474280699,"revision":3,"totalKey":3,"totalSize":24576}
 ```
 
 ```bash
-./etcdctl -write-out=table snapshot status file.db
+./etcdctl --write-out=table snapshot status file.db
 +----------+----------+------------+------------+
 |   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
 +----------+----------+------------+------------+

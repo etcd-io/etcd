@@ -21,13 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/v3"
 )
-
-func BeforeTest(t testing.TB) {
-	testutil.BeforeTest(t)
-}
 
 func TestCtlV3Migrate(t *testing.T) {
 	BeforeTest(t)

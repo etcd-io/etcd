@@ -230,7 +230,7 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 
 func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	n := newNopReadyNode()
-	cl := membership.NewCluster(zap.NewExample(), "abc")
+	cl := membership.NewCluster(zap.NewExample())
 
 	rs := raft.NewMemoryStorage()
 	p := mockstorage.NewStorageRecorder("")

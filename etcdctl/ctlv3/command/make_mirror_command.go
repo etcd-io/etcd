@@ -18,10 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/bgentry/speakeasy"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/bgentry/speakeasy"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"

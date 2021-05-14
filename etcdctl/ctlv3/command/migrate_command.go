@@ -36,6 +36,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	"go.etcd.io/etcd/server/v3/wal"
@@ -91,7 +92,7 @@ func migrateCommandFunc(cmd *cobra.Command, args []string) {
 	}()
 
 	readKeys(reader, be)
-	mvcc.UpdateConsistentIndex(be, index)
+	cindex.UpdateConsistentIndex(be.BatchTx(), index, true)
 	err := <-errc
 	if err != nil {
 		fmt.Println("failed to transform keys")
@@ -128,7 +129,7 @@ func prepareBackend() backend.Backend {
 
 func rebuildStoreV2() (v2store.Store, uint64) {
 	var index uint64
-	cl := membership.NewCluster(zap.NewExample(), "")
+	cl := membership.NewCluster(zap.NewExample())
 
 	waldir := migrateWALdir
 	if len(waldir) == 0 {

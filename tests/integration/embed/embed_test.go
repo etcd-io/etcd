@@ -160,7 +160,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 			t.Fatal(err)
 		}
 	}
-	cli, err := clientv3.New(clientCfg)
+	cli, err := integration.NewClient(t, clientCfg)
 	if err != nil {
 		t.Fatal(err)
 	}

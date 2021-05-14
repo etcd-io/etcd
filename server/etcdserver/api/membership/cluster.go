@@ -48,7 +48,6 @@ type RaftCluster struct {
 
 	localID types.ID
 	cid     types.ID
-	token   string
 
 	v2store v2store.Store
 	be      backend.Backend
@@ -82,7 +81,7 @@ const (
 // NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
 // cluster with raft learner member.
 func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
-	c := NewCluster(lg, token)
+	c := NewCluster(lg)
 	for name, urls := range urlsmap {
 		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
@@ -97,8 +96,8 @@ func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) 
 	return c, nil
 }
 
-func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*Member) *RaftCluster {
-	c := NewCluster(lg, token)
+func NewClusterFromMembers(lg *zap.Logger, id types.ID, membs []*Member) *RaftCluster {
+	c := NewCluster(lg)
 	c.cid = id
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -106,13 +105,12 @@ func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*M
 	return c
 }
 
-func NewCluster(lg *zap.Logger, token string) *RaftCluster {
+func NewCluster(lg *zap.Logger) *RaftCluster {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	return &RaftCluster{
 		lg:            lg,
-		token:         token,
 		members:       make(map[types.ID]*Member),
 		removed:       make(map[types.ID]bool),
 		downgradeInfo: &DowngradeInfo{Enabled: false},
@@ -255,11 +253,12 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	if c.be != nil {
 		c.version = clusterVersionFromBackend(c.lg, c.be)
+		c.members, c.removed = membersFromBackend(c.lg, c.be)
 	} else {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
+		c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	}
 
 	if c.be != nil {
@@ -564,7 +563,7 @@ func (c *RaftCluster) IsReadyToAddVotingMember() bool {
 
 	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
-		// https://github.com/etcd-io/website/blob/master/content/docs/v2/admin_guide.md#restoring-the-cluster
+		// https://github.com/etcd-io/website/blob/main/content/docs/v2/admin_guide.md#restoring-the-cluster
 		c.lg.Debug("number of started member is 1; can accept add member request")
 		return true
 	}
@@ -676,6 +675,10 @@ func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, m
 	return members, removed
 }
 
+func membersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool) {
+	return mustReadMembersFromBackend(lg, be)
+}
+
 func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
 	if err != nil {
@@ -691,6 +694,7 @@ func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 	return semver.Must(semver.NewVersion(*e.Node.Value))
 }
 
+// The field is populated since etcd v3.5.
 func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Version {
 	ckey := backendClusterVersionKey()
 	tx := be.ReadTx()
@@ -709,6 +713,7 @@ func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Versi
 	return semver.Must(semver.NewVersion(string(vals[0])))
 }
 
+// The field is populated since etcd v3.5.
 func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
 	dkey := backendDowngradeKey()
 	tx := be.ReadTx()
@@ -856,4 +861,21 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 	}
 	sort.Sort(types.IDSlice(ids))
 	return ids
+}
+
+// PushMembershipToStorage is overriding storage information about cluster's
+// members, such that they fully reflect internal RaftCluster's storage.
+func (c *RaftCluster) PushMembershipToStorage() {
+	if c.be != nil {
+		TrimMembershipFromBackend(c.lg, c.be)
+		for _, m := range c.members {
+			mustSaveMemberToBackend(c.lg, c.be, m)
+		}
+	}
+	if c.v2store != nil {
+		TrimMembershipFromV2Store(c.lg, c.v2store)
+		for _, m := range c.members {
+			mustSaveMemberToStore(c.lg, c.v2store, m)
+		}
+	}
 }

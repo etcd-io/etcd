@@ -52,7 +52,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	// no changes to commit
 	b2 := backend.NewDefaultBackend(tPath)
 	defer b2.Close()
-	as = NewAuthStore(zap.NewExample(), b2, nil, tp, bcrypt.MinCost)
+	as = NewAuthStore(zap.NewExample(), b2, tp, bcrypt.MinCost)
 	defer as.Close()
 	new := as.Revision()
 
@@ -85,7 +85,7 @@ func TestNewAuthStoreBcryptCost(t *testing.T) {
 
 	invalidCosts := [2]int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
 	for _, invalidCost := range invalidCosts {
-		as := NewAuthStore(zap.NewExample(), b, nil, tp, invalidCost)
+		as := NewAuthStore(zap.NewExample(), b, tp, invalidCost)
 		defer as.Close()
 		if as.BcryptCost() != bcrypt.DefaultCost {
 			t.Fatalf("expected DefaultCost when bcryptcost is invalid")
@@ -105,7 +105,7 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -657,7 +657,7 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	defer as.Close()
 
 	donec := make(chan struct{})
@@ -730,7 +730,7 @@ func TestRecoverFromSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as2 := NewAuthStore(zap.NewExample(), as.be, nil, tp, bcrypt.MinCost)
+	as2 := NewAuthStore(zap.NewExample(), as.be, tp, bcrypt.MinCost)
 	defer as2.Close()
 
 	if !as2.IsAuthEnabled() {
@@ -811,7 +811,7 @@ func TestRolesOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	defer as.Close()
 	err = enableAuthAndCreateRoot(as)
 	if err != nil {
@@ -867,7 +867,7 @@ func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	as := NewAuthStore(zap.NewExample(), b, nil, tp, bcrypt.MinCost)
+	as := NewAuthStore(zap.NewExample(), b, tp, bcrypt.MinCost)
 	defer as.Close()
 
 	if err = enableAuthAndCreateRoot(as); err != nil {

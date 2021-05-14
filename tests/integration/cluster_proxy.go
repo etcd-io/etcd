@@ -109,11 +109,11 @@ func (pc *proxyCloser) Close() error {
 }
 
 func newClientV3(cfg clientv3.Config, lg *zap.Logger) (*clientv3.Client, error) {
+	cfg.Logger = lg
 	c, err := clientv3.New(cfg)
 	if err != nil {
 		return nil, err
 	}
-	c = c.WithLogger(lg)
 	rpc := toGRPC(c)
 	c.KV = clientv3.NewKVFromKVClient(rpc.KV, c)
 	pmu.Lock()

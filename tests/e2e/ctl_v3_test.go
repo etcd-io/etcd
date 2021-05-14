@@ -30,7 +30,7 @@ import (
 func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
 
 func TestClusterVersion(t *testing.T) {
-	skipInShortMode(t)
+	BeforeTest(t)
 
 	tests := []struct {
 		name         string
@@ -250,6 +250,7 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
 	case <-donec:
 	}
+	t.Log("---Test logic DONE")
 }
 
 func (cx *ctlCtx) prefixArgs(eps []string) []string {

@@ -20,9 +20,9 @@ meeting the membership criteria.
 **4. Be a participant and active contributor in the community.**
 
 **5. Accept the Embargo Policy.**
-<!-- https://github.com/etcd-io/etcd/blob/master/security/security-release-process.md#disclosures -->
+<!-- https://github.com/etcd-io/etcd/blob/main/security/security-release-process.md#disclosures -->
 
 **6. Be willing to contribute back.**
-<!-- Per https://github.com/etcd-io/etcd/blob/master/security/security-release-process.md#patch-release-and-public-communication -->
+<!-- Per https://github.com/etcd-io/etcd/blob/main/security/security-release-process.md#patch-release-and-public-communication -->
 
 **7. Have someone already on the list vouch for the person requesting membership on behalf of your distribution.**

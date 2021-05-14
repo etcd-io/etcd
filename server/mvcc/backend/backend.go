@@ -91,6 +91,8 @@ type backend struct {
 	commits int64
 	// openReadTxN is the number of currently open read transactions in the backend
 	openReadTxN int64
+	// mlock prevents backend database file to be swapped
+	mlock bool
 
 	mu sync.RWMutex
 	db *bolt.DB
@@ -103,6 +105,8 @@ type backend struct {
 
 	stopc chan struct{}
 	donec chan struct{}
+
+	hooks Hooks
 
 	lg *zap.Logger
 }
@@ -122,6 +126,11 @@ type BackendConfig struct {
 	Logger *zap.Logger
 	// UnsafeNoFsync disables all uses of fsync.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
+	// Mlock prevents backend database file to be swapped
+	Mlock bool
+
+	// Hooks are getting executed during lifecycle of Backend's transactions.
+	Hooks Hooks
 }
 
 func DefaultBackendConfig() BackendConfig {
@@ -155,6 +164,7 @@ func newBackend(bcfg BackendConfig) *backend {
 	bopts.FreelistType = bcfg.BackendFreelistType
 	bopts.NoSync = bcfg.UnsafeNoFsync
 	bopts.NoGrowSync = bcfg.UnsafeNoFsync
+	bopts.Mlock = bcfg.Mlock
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {
@@ -168,6 +178,7 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		batchInterval: bcfg.BatchInterval,
 		batchLimit:    bcfg.BatchLimit,
+		mlock:         bcfg.Mlock,
 
 		readTx: &readTx{
 			baseReadTx: baseReadTx{
@@ -186,6 +197,9 @@ func newBackend(bcfg BackendConfig) *backend {
 		lg: bcfg.Logger,
 	}
 	b.batchTx = newBatchTxBuffered(b)
+	// We set it after newBatchTxBuffered to skip the 'empty' commit.
+	b.hooks = bcfg.Hooks
+
 	go b.run()
 	return b
 }
@@ -378,9 +392,11 @@ func (b *backend) defrag() error {
 	if boltOpenOptions != nil {
 		options = *boltOpenOptions
 	}
-	options.OpenFile = func(path string, i int, mode os.FileMode) (file *os.File, err error) {
+	options.OpenFile = func(_ string, _ int, _ os.FileMode) (file *os.File, err error) {
 		return temp, nil
 	}
+	// Don't load tmp db into memory regardless of opening options
+	options.Mlock = false
 	tdbp := temp.Name()
 	tmpdb, err := bolt.Open(tdbp, 0600, &options)
 	if err != nil {
@@ -423,7 +439,13 @@ func (b *backend) defrag() error {
 		b.lg.Fatal("failed to rename tmp database", zap.Error(err))
 	}
 
-	b.db, err = bolt.Open(dbp, 0600, boltOpenOptions)
+	defragmentedBoltOptions := bolt.Options{}
+	if boltOpenOptions != nil {
+		defragmentedBoltOptions = *boltOpenOptions
+	}
+	defragmentedBoltOptions.Mlock = b.mlock
+
+	b.db, err = bolt.Open(dbp, 0600, &defragmentedBoltOptions)
 	if err != nil {
 		b.lg.Fatal("failed to open database", zap.String("path", dbp), zap.Error(err))
 	}

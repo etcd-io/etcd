@@ -17,15 +17,22 @@ package clientv3
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"net"
 	"testing"
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.uber.org/zap/zaptest"
 
 	"google.golang.org/grpc"
 )
+
+func NewClient(t *testing.T, cfg Config) (*Client, error) {
+	cfg.Logger = zaptest.NewLogger(t)
+	return New(cfg)
+}
 
 func TestDialCancel(t *testing.T) {
 	testutil.BeforeTest(t)
@@ -41,7 +48,7 @@ func TestDialCancel(t *testing.T) {
 	cfg := Config{
 		Endpoints:   []string{ep},
 		DialTimeout: 30 * time.Second}
-	c, err := New(cfg)
+	c, err := NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +111,7 @@ func TestDialTimeout(t *testing.T) {
 		donec := make(chan error, 1)
 		go func(cfg Config) {
 			// without timeout, dial continues forever on ipv4 black hole
-			c, err := New(cfg)
+			c, err := NewClient(t, cfg)
 			if c != nil || err == nil {
 				t.Errorf("#%d: new client should fail", i)
 			}
@@ -132,7 +139,7 @@ func TestDialTimeout(t *testing.T) {
 
 func TestDialNoTimeout(t *testing.T) {
 	cfg := Config{Endpoints: []string{"127.0.0.1:12345"}}
-	c, err := New(cfg)
+	c, err := NewClient(t, cfg)
 	if c == nil || err != nil {
 		t.Fatalf("new client with DialNoWait should succeed, got %v", err)
 	}
@@ -179,5 +186,15 @@ func TestWithLogger(t *testing.T) {
 	c.WithLogger(nil)
 	if c.lg != nil {
 		t.Errorf("WithLogger should modify *zap.Logger")
+	}
+}
+
+func TestZapWithLogger(t *testing.T) {
+	ctx := context.Background()
+	lg := zap.NewNop()
+	c := NewCtxClient(ctx, WithZapLogger(lg))
+
+	if c.lg != lg {
+		t.Errorf("WithZapLogger should modify *zap.Logger")
 	}
 }

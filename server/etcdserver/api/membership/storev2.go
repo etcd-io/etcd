@@ -12,16 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build windows
-// +build windows
-
-package etcdserver
+package membership
 
 import (
-	"errors"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 )
 
-// MlockAll prevents current and future mmaped memory areas from being swapped out.
-func MlockAll() error {
-	return errors.New("Mlockall is supported only on UNIX systems.")
+// IsMetaStoreOnly verifies if the given `store` contains only
+// a meta-information (members, version) that can be recovered from the
+// backend (storev3) as well as opposed to user-data.
+func IsMetaStoreOnly(store v2store.Store) (bool, error) {
+	event, err := store.Get("/", true, false)
+	if err != nil {
+		return false, err
+	}
+	for _, n := range event.Node.Nodes {
+		if n.Key != storePrefix && n.Nodes.Len() > 0 {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

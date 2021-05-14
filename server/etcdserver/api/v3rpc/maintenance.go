@@ -34,7 +34,7 @@ import (
 )
 
 type KVGetter interface {
-	KV() mvcc.ConsistentWatchableKV
+	KV() mvcc.WatchableKV
 }
 
 type BackendGetter interface {

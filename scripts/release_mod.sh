@@ -87,8 +87,8 @@ function push_mod_tags_cmd {
   log_info "REMOTE_REPO:  ${REMOTE_REPO}"
 
   # Any module ccan be used for this
-  local master_version
-  master_version=$(go list -f '{{.Version}}' -m "${ROOT_MODULE}/api/v3")
+  local main_version
+  main_version=$(go list -f '{{.Version}}' -m "${ROOT_MODULE}/api/v3")
   local tags=()
 
   keyid=$(get_gpg_key) || return 2
@@ -101,8 +101,8 @@ function push_mod_tags_cmd {
     local subdir="${path//${ROOT_MODULE}\//}"
     local tag
     if [ -z "${version}" ]; then
-      tag="${master_version}"
-      version="${master_version}"
+      tag="${main_version}"
+      version="${main_version}"
     else
       tag="${subdir///v[23]/}/${version}"
     fi

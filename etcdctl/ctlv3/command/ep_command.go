@@ -115,6 +115,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 		go func(cfg *v3.Config) {
 			defer wg.Done()
 			ep := cfg.Endpoints[0]
+			cfg.Logger = lg.Named("client")
 			cli, err := v3.New(*cfg)
 			if err != nil {
 				hch <- epHealth{Ep: ep, Health: false, Error: err.Error()}

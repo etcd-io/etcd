@@ -21,6 +21,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
 	"time"
@@ -157,13 +158,18 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.duration)*time.Second)
-	resp, err := clients[0].Get(ctx, checkPerfPrefix, v3.WithPrefix(), v3.WithLimit(1))
-	cancel()
+	defer cancel()
+	ctx, icancel := interruptableContext(ctx, func() { attemptCleanup(clients[0], false) })
+	defer icancel()
+
+	gctx, gcancel := context.WithCancel(ctx)
+	resp, err := clients[0].Get(gctx, checkPerfPrefix, v3.WithPrefix(), v3.WithLimit(1))
+	gcancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 	if len(resp.Kvs) > 0 {
-		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first", checkPerfPrefix, checkPerfPrefix))
+		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with 'etcdctl del --prefix %s' first", checkPerfPrefix, checkPerfPrefix))
 	}
 
 	ksize, vsize := 256, 1024
@@ -189,7 +195,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	}
 
 	go func() {
-		cctx, ccancel := context.WithTimeout(context.Background(), time.Duration(cfg.duration)*time.Second)
+		cctx, ccancel := context.WithCancel(ctx)
 		defer ccancel()
 		for limit.Wait(cctx) == nil {
 			binary.PutVarint(k, rand.Int63n(math.MaxInt64))
@@ -212,16 +218,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 
 	s := <-sc
 
-	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
-	dresp, err := clients[0].Delete(ctx, checkPerfPrefix, v3.WithPrefix())
-	cancel()
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-
-	if autoCompact {
-		compact(clients[0], dresp.Header.Revision)
-	}
+	attemptCleanup(clients[0], autoCompact)
 
 	if autoDefrag {
 		for _, ep := range clients[0].Endpoints() {
@@ -263,6 +260,34 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 		fmt.Println("FAIL")
 		os.Exit(ExitError)
 	}
+}
+
+func attemptCleanup(client *v3.Client, autoCompact bool) {
+	dctx, dcancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer dcancel()
+	dresp, err := client.Delete(dctx, checkPerfPrefix, v3.WithPrefix())
+	if err != nil {
+		fmt.Printf("FAIL: Cleanup failed during key deletion: ERROR(%v)\n", err)
+		return
+	}
+	if autoCompact {
+		compact(client, dresp.Header.Revision)
+	}
+}
+
+func interruptableContext(ctx context.Context, attemptCleanup func()) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		defer signal.Stop(signalChan)
+		select {
+		case <-signalChan:
+			cancel()
+			attemptCleanup()
+		}
+	}()
+	return ctx, cancel
 }
 
 // NewCheckDatascaleCommand returns the cobra command for "check datascale".

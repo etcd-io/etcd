@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 
@@ -68,6 +69,20 @@ const (
 	StdErrLogOutput  = "stderr"
 	StdOutLogOutput  = "stdout"
 
+	// DefaultLogRotationConfig is the default configuration used for log rotation.
+	// Log rotation is disabled by default.
+	// MaxSize    = 100 // MB
+	// MaxAge     = 0 // days (no limit)
+	// MaxBackups = 0 // no limit
+	// LocalTime  = false // use computers local time, UTC by default
+	// Compress   = false // compress the rotated log in gzip format
+	DefaultLogRotationConfig = `{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}`
+
+	// ExperimentalDistributedTracingAddress is the default collector address.
+	ExperimentalDistributedTracingAddress = "localhost:4317"
+	// ExperimentalDistributedTracingServiceName is the default etcd service name.
+	ExperimentalDistributedTracingServiceName = "etcd"
+
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
@@ -86,6 +101,7 @@ var (
 	ErrConflictBootstrapFlags = fmt.Errorf("multiple discovery or bootstrap flags are set. " +
 		"Choose one of \"initial-cluster\", \"discovery\" or \"discovery-srv\"")
 	ErrUnsetAdvertiseClientURLsFlag = fmt.Errorf("--advertise-client-urls is required when --listen-client-urls is set explicitly")
+	ErrLogRotationInvalidLogOutput  = fmt.Errorf("--log-outputs requires a single file path when --log-rotate-config-json is defined")
 
 	DefaultInitialAdvertisePeerURLs = "http://localhost:2380"
 	DefaultAdvertiseClientURLs      = "http://localhost:2379"
@@ -207,7 +223,11 @@ type Config struct {
 	InitialCluster        string `json:"initial-cluster"`
 	InitialClusterToken   string `json:"initial-cluster-token"`
 	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
-	EnableV2              bool   `json:"enable-v2"`
+
+	// EnableV2 exposes the deprecated V2 API surface.
+	// TODO: Delete in 3.6 (https://github.com/etcd-io/etcd/issues/12913)
+	// Deprecated in 3.5.
+	EnableV2 bool `json:"enable-v2"`
 
 	// AutoCompactionMode is either 'periodic' or 'revision'.
 	AutoCompactionMode string `json:"auto-compaction-mode"`
@@ -291,7 +311,10 @@ type Config struct {
 
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
-	ExperimentalEnableV2V3          string        `json:"experimental-enable-v2v3"`
+	// ExperimentalEnableV2V3 configures URLs that expose deprecated V2 API working on V3 store.
+	// Deprecated in v3.5.
+	// TODO: Delete in v3.6 (https://github.com/etcd-io/etcd/issues/12913)
+	ExperimentalEnableV2V3 string `json:"experimental-enable-v2v3"`
 	// ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
 	ExperimentalEnableLeaseCheckpoint       bool          `json:"experimental-enable-lease-checkpoint"`
 	ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit"`
@@ -299,6 +322,9 @@ type Config struct {
 	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
 	// takes more time than this value.
 	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
+	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
+	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
+	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -307,6 +333,20 @@ type Config struct {
 	Metrics               string `json:"metrics"`
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
+
+	// ExperimentalEnableDistributedTracing indicates if experimental tracing using OpenTelemetry is enabled.
+	ExperimentalEnableDistributedTracing bool `json:"experimental-enable-distributed-tracing"`
+	// ExperimentalDistributedTracingAddress is the address of the OpenTelemetry Collector.
+	// Can only be set if ExperimentalEnableDistributedTracing is true.
+	ExperimentalDistributedTracingAddress string `json:"experimental-distributed-tracing-address"`
+	// ExperimentalDistributedTracingServiceName is the name of the service.
+	// Can only be used if ExperimentalEnableDistributedTracing is true.
+	ExperimentalDistributedTracingServiceName string `json:"experimental-distributed-tracing-service-name"`
+	// ExperimentalDistributedTracingServiceInstanceID is the ID key of the service.
+	// This ID must be unique, as helps to distinguish instances of the same service
+	// that exist at the same time.
+	// Can only be used if ExperimentalEnableDistributedTracing is true.
+	ExperimentalDistributedTracingServiceInstanceID string `json:"experimental-distributed-tracing-instance-id"`
 
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
@@ -320,7 +360,10 @@ type Config struct {
 	//  - file path to append server logs to.
 	// It can be multiple when "Logger" is zap.
 	LogOutputs []string `json:"log-outputs"`
-
+	// EnableLogRotation enables log rotation of a single LogOutputs file target.
+	EnableLogRotation bool `json:"enable-log-rotation"`
+	// LogRotationConfigJSON is a passthrough allowing a log rotation JSON config to be passed directly.
+	LogRotationConfigJSON string `json:"log-rotation-config-json"`
 	// ZapLoggerBuilder is used to build the zap logger.
 	ZapLoggerBuilder func(*Config) error
 
@@ -355,6 +398,12 @@ type Config struct {
 	// Currently all etcd memory gets mlocked, but in future the flag can
 	// be refined to mlock in-use area of bbolt only.
 	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
+
+	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
+	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
+
+	// V2Deprecation describes phase of API & Storage V2 support
+	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -437,15 +486,20 @@ func NewConfig() *Config {
 
 		PreVote: true,
 
-		loggerMu:          new(sync.RWMutex),
-		logger:            nil,
-		Logger:            "zap",
-		LogOutputs:        []string{DefaultLogOutput},
-		LogLevel:          logutil.DefaultLogLevel,
-		EnableGRPCGateway: true,
+		loggerMu:              new(sync.RWMutex),
+		logger:                nil,
+		Logger:                "zap",
+		LogOutputs:            []string{DefaultLogOutput},
+		LogLevel:              logutil.DefaultLogLevel,
+		EnableLogRotation:     false,
+		LogRotationConfigJSON: DefaultLogRotationConfig,
+		EnableGRPCGateway:     true,
 
-		ExperimentalDowngradeCheckTime: DefaultDowngradeCheckTime,
-		ExperimentalMemoryMlock:        false,
+		ExperimentalDowngradeCheckTime:           DefaultDowngradeCheckTime,
+		ExperimentalMemoryMlock:                  false,
+		ExperimentalTxnModeWriteWithSharedBuffer: true,
+
+		V2Deprecation: config.V2_DEPR_DEFAULT,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -746,6 +800,13 @@ func (cfg Config) InitialClusterFromName(name string) (ret string) {
 
 func (cfg Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
 func (cfg Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
+
+func (cfg Config) V2DeprecationEffective() config.V2DeprecationEnum {
+	if cfg.V2Deprecation == "" {
+		return config.V2_DEPR_DEFAULT
+	}
+	return cfg.V2Deprecation
+}
 
 func (cfg Config) defaultPeerHost() bool {
 	return len(cfg.APUrls) == 1 && cfg.APUrls[0].String() == DefaultInitialAdvertisePeerURLs

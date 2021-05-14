@@ -28,11 +28,7 @@ import (
 // of making gRPC calls through sockets, the client makes direct function calls
 // to the etcd server through its api/v3rpc function interfaces.
 func New(s *etcdserver.EtcdServer) *clientv3.Client {
-	c := clientv3.NewCtxClient(context.Background())
-	lg := s.Logger()
-	if lg != nil {
-		c.WithLogger(lg)
-	}
+	c := clientv3.NewCtxClient(context.Background(), clientv3.WithZapLogger(s.Logger()))
 
 	kvc := adapter.KvServerToKvClient(v3rpc.NewQuotaKVServer(s))
 	c.KV = clientv3.NewKVFromKVClient(kvc, c)

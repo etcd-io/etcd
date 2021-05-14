@@ -42,7 +42,7 @@ func TestKVProxyRange(t *testing.T) {
 		Endpoints:   []string{kvts.l.Addr().String()},
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := clientv3.New(cfg)
+	client, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -71,7 +71,7 @@ func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := clientv3.New(cfg)
+	client, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

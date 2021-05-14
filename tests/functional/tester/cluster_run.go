@@ -33,6 +33,10 @@ const compactQPS = 50000
 func (clus *Cluster) Run() {
 	defer printReport()
 
+	// updateCases must be executed after etcd is started, because the FAILPOINTS case
+	// needs to obtain all the failpoints from the etcd member.
+	clus.updateCases()
+
 	if err := fileutil.TouchDirAll(clus.Tester.DataDir); err != nil {
 		clus.lg.Panic(
 			"failed to create test data directory",

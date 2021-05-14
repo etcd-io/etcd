@@ -193,6 +193,7 @@ tester-config:
   - RANDOM_DELAY_PEER_PORT_TX_RX_ALL
   - NO_FAIL_WITH_STRESS
   - NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS
+  # - FAILPOINTS_WITH_DISK_IO_LATENCY
 
   # TODO: use iptables for discarding outbound rafthttp traffic to peer port
   # - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
@@ -208,6 +209,7 @@ tester-config:
   failpoint-commands:
   - panic("etcd-tester")
   # - panic("etcd-tester"),1*sleep(1000)
+  # - sleep(3000)
 
   runner-exec-path: ./bin/etcd-runner
   external-exec-path: ""
@@ -239,6 +241,7 @@ tester-config:
   checkers:
   - KV_HASH
   - LEASE_EXPIRE
+  #- SHORT_TTL_LEASE_EXPIRE
 
   stress-key-size: 100
   stress-key-size-large: 32769

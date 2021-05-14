@@ -29,7 +29,6 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 
 	"go.uber.org/zap"
@@ -215,7 +214,6 @@ type authStore struct {
 
 	tokenProvider TokenProvider
 	bcryptCost    int // the algorithm cost / strength for hashing auth passwords
-	ci            cindex.ConsistentIndexer
 }
 
 func (as *authStore) AuthEnable() error {
@@ -266,7 +264,6 @@ func (as *authStore) AuthDisable() {
 	tx.Lock()
 	tx.UnsafePut(authBucketName, enableFlagKey, authDisabled)
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 	tx.Unlock()
 	b.ForceCommit()
 
@@ -424,7 +421,6 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 	putUser(as.lg, tx, newUser)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info("added a user", zap.String("user-name", r.Name))
 	return &pb.AuthUserAddResponse{}, nil
@@ -448,7 +444,6 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 	delUser(tx, r.Name)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
@@ -491,7 +486,6 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	putUser(as.lg, tx, updatedUser)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
@@ -540,7 +534,6 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	as.invalidateCachedPerm(r.User)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"granted a role to a user",
@@ -619,7 +612,6 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	as.invalidateCachedPerm(r.Name)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"revoked a role from a user",
@@ -690,7 +682,6 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"revoked a permission on range",
@@ -742,7 +733,6 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	}
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info("deleted a role", zap.String("role-name", r.Role))
 	return &pb.AuthRoleDeleteResponse{}, nil
@@ -769,7 +759,6 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	putRole(as.lg, tx, newRole)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info("created a role", zap.String("role-name", r.Name))
 	return &pb.AuthRoleAddResponse{}, nil
@@ -829,7 +818,6 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"granted/updated a permission to a user",
@@ -1021,7 +1009,7 @@ func (as *authStore) IsAuthEnabled() bool {
 }
 
 // NewAuthStore creates a new AuthStore.
-func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexer, tp TokenProvider, bcryptCost int) *authStore {
+func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCost int) *authStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -1056,7 +1044,6 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexe
 		revision:       getRevision(tx),
 		lg:             lg,
 		be:             be,
-		ci:             ci,
 		enabled:        enabled,
 		rangePermCache: make(map[string]*unifiedRangePermissions),
 		tokenProvider:  tp,
@@ -1315,14 +1302,6 @@ func (as *authStore) HasRole(user, role string) bool {
 
 func (as *authStore) BcryptCost() int {
 	return as.bcryptCost
-}
-
-func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
-	if as.ci != nil {
-		as.ci.UnsafeSave(tx)
-	} else {
-		as.lg.Error("failed to save consistentIndex,consistentIndexer is nil")
-	}
 }
 
 func (as *authStore) setupMetricsReporter() {

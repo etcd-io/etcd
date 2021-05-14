@@ -319,3 +319,18 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestBootstrapDefragFlag(t *testing.T) {
+	skipInShortMode(t)
+
+	proc, err := spawnCmd([]string{binDir + "/etcd", "--experimental-bootstrap-defrag-threshold-megabytes", "1000"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = waitReadyExpectProc(proc, []string{"Skipping defragmentation"}); err != nil {
+		t.Fatal(err)
+	}
+	if err = proc.Stop(); err != nil {
+		t.Fatal(err)
+	}
+}

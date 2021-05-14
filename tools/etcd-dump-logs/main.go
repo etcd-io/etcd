@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -88,8 +89,12 @@ and output a hex encoded line of binary for each input line`)
 		case nil:
 			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
-			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
-				walsnap.Term, walsnap.Index, nodes)
+			confstateJson, err := json.Marshal(snapshot.Metadata.ConfState)
+			if err != nil {
+				confstateJson = []byte(fmt.Sprintf("confstate err: %v", err))
+			}
+			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
+				walsnap.Term, walsnap.Index, nodes, confstateJson)
 		case snap.ErrNoSnapshot:
 			fmt.Printf("Snapshot:\nempty\n")
 		default:

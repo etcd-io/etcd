@@ -531,6 +531,96 @@
 		]
 	},
 	{
+		"project": "go.opentelemetry.io/contrib",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/exporters/otlp",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/sdk",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/sdk/export/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/sdk/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/trace",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/proto/otlp",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "go.uber.org/atomic",
 		"licenses": [
 			{
@@ -639,6 +729,15 @@
 		]
 	},
 	{
+		"project": "gopkg.in/natefinch/lumberjack.v2",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "gopkg.in/yaml.v2",
 		"licenses": [
 			{
@@ -648,6 +747,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.8975609756097561
+			}
+		]
+	},
+	{
+		"project": "gopkg.in/yaml.v3",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.7469879518072289
 			}
 		]
 	},

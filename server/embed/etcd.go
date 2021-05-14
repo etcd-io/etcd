@@ -42,9 +42,17 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/verify"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/semconv"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -71,6 +79,8 @@ type Etcd struct {
 	// a map of contexts for the servers that serves client requests.
 	sctxs            map[string]*serveCtx
 	metricsListeners []net.Listener
+
+	tracingExporterShutdown func()
 
 	Server *etcdserver.EtcdServer
 
@@ -163,58 +173,77 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	backendFreelistType := parseBackendFreelistType(cfg.BackendFreelistType)
 
 	srvcfg := config.ServerConfig{
-		Name:                        cfg.Name,
-		ClientURLs:                  cfg.ACUrls,
-		PeerURLs:                    cfg.APUrls,
-		DataDir:                     cfg.Dir,
-		DedicatedWALDir:             cfg.WalDir,
-		SnapshotCount:               cfg.SnapshotCount,
-		SnapshotCatchUpEntries:      cfg.SnapshotCatchUpEntries,
-		MaxSnapFiles:                cfg.MaxSnapFiles,
-		MaxWALFiles:                 cfg.MaxWalFiles,
-		InitialPeerURLsMap:          urlsmap,
-		InitialClusterToken:         token,
-		DiscoveryURL:                cfg.Durl,
-		DiscoveryProxy:              cfg.Dproxy,
-		NewCluster:                  cfg.IsNewCluster(),
-		PeerTLSInfo:                 cfg.PeerTLSInfo,
-		TickMs:                      cfg.TickMs,
-		ElectionTicks:               cfg.ElectionTicks(),
-		InitialElectionTickAdvance:  cfg.InitialElectionTickAdvance,
-		AutoCompactionRetention:     autoCompactionRetention,
-		AutoCompactionMode:          cfg.AutoCompactionMode,
-		QuotaBackendBytes:           cfg.QuotaBackendBytes,
-		BackendBatchLimit:           cfg.BackendBatchLimit,
-		BackendFreelistType:         backendFreelistType,
-		BackendBatchInterval:        cfg.BackendBatchInterval,
-		MaxTxnOps:                   cfg.MaxTxnOps,
-		MaxRequestBytes:             cfg.MaxRequestBytes,
-		SocketOpts:                  cfg.SocketOpts,
-		StrictReconfigCheck:         cfg.StrictReconfigCheck,
-		ClientCertAuthEnabled:       cfg.ClientTLSInfo.ClientCertAuth,
-		AuthToken:                   cfg.AuthToken,
-		BcryptCost:                  cfg.BcryptCost,
-		TokenTTL:                    cfg.AuthTokenTTL,
-		CORS:                        cfg.CORS,
-		HostWhitelist:               cfg.HostWhitelist,
-		InitialCorruptCheck:         cfg.ExperimentalInitialCorruptCheck,
-		CorruptCheckTime:            cfg.ExperimentalCorruptCheckTime,
-		PreVote:                     cfg.PreVote,
-		Logger:                      cfg.logger,
-		LoggerConfig:                cfg.loggerConfig,
-		LoggerCore:                  cfg.loggerCore,
-		LoggerWriteSyncer:           cfg.loggerWriteSyncer,
-		ForceNewCluster:             cfg.ForceNewCluster,
-		EnableGRPCGateway:           cfg.EnableGRPCGateway,
-		UnsafeNoFsync:               cfg.UnsafeNoFsync,
-		EnableLeaseCheckpoint:       cfg.ExperimentalEnableLeaseCheckpoint,
-		CompactionBatchLimit:        cfg.ExperimentalCompactionBatchLimit,
-		WatchProgressNotifyInterval: cfg.ExperimentalWatchProgressNotifyInterval,
-		DowngradeCheckTime:          cfg.ExperimentalDowngradeCheckTime,
-		WarningApplyDuration:        cfg.ExperimentalWarningApplyDuration,
-		ExperimentalMemoryMlock:     cfg.ExperimentalMemoryMlock,
+		Name:                                     cfg.Name,
+		ClientURLs:                               cfg.ACUrls,
+		PeerURLs:                                 cfg.APUrls,
+		DataDir:                                  cfg.Dir,
+		DedicatedWALDir:                          cfg.WalDir,
+		SnapshotCount:                            cfg.SnapshotCount,
+		SnapshotCatchUpEntries:                   cfg.SnapshotCatchUpEntries,
+		MaxSnapFiles:                             cfg.MaxSnapFiles,
+		MaxWALFiles:                              cfg.MaxWalFiles,
+		InitialPeerURLsMap:                       urlsmap,
+		InitialClusterToken:                      token,
+		DiscoveryURL:                             cfg.Durl,
+		DiscoveryProxy:                           cfg.Dproxy,
+		NewCluster:                               cfg.IsNewCluster(),
+		PeerTLSInfo:                              cfg.PeerTLSInfo,
+		TickMs:                                   cfg.TickMs,
+		ElectionTicks:                            cfg.ElectionTicks(),
+		InitialElectionTickAdvance:               cfg.InitialElectionTickAdvance,
+		AutoCompactionRetention:                  autoCompactionRetention,
+		AutoCompactionMode:                       cfg.AutoCompactionMode,
+		QuotaBackendBytes:                        cfg.QuotaBackendBytes,
+		BackendBatchLimit:                        cfg.BackendBatchLimit,
+		BackendFreelistType:                      backendFreelistType,
+		BackendBatchInterval:                     cfg.BackendBatchInterval,
+		MaxTxnOps:                                cfg.MaxTxnOps,
+		MaxRequestBytes:                          cfg.MaxRequestBytes,
+		SocketOpts:                               cfg.SocketOpts,
+		StrictReconfigCheck:                      cfg.StrictReconfigCheck,
+		ClientCertAuthEnabled:                    cfg.ClientTLSInfo.ClientCertAuth,
+		AuthToken:                                cfg.AuthToken,
+		BcryptCost:                               cfg.BcryptCost,
+		TokenTTL:                                 cfg.AuthTokenTTL,
+		CORS:                                     cfg.CORS,
+		HostWhitelist:                            cfg.HostWhitelist,
+		InitialCorruptCheck:                      cfg.ExperimentalInitialCorruptCheck,
+		CorruptCheckTime:                         cfg.ExperimentalCorruptCheckTime,
+		PreVote:                                  cfg.PreVote,
+		Logger:                                   cfg.logger,
+		LoggerConfig:                             cfg.loggerConfig,
+		LoggerCore:                               cfg.loggerCore,
+		LoggerWriteSyncer:                        cfg.loggerWriteSyncer,
+		ForceNewCluster:                          cfg.ForceNewCluster,
+		EnableGRPCGateway:                        cfg.EnableGRPCGateway,
+		ExperimentalEnableDistributedTracing:     cfg.ExperimentalEnableDistributedTracing,
+		UnsafeNoFsync:                            cfg.UnsafeNoFsync,
+		EnableLeaseCheckpoint:                    cfg.ExperimentalEnableLeaseCheckpoint,
+		CompactionBatchLimit:                     cfg.ExperimentalCompactionBatchLimit,
+		WatchProgressNotifyInterval:              cfg.ExperimentalWatchProgressNotifyInterval,
+		DowngradeCheckTime:                       cfg.ExperimentalDowngradeCheckTime,
+		WarningApplyDuration:                     cfg.ExperimentalWarningApplyDuration,
+		ExperimentalMemoryMlock:                  cfg.ExperimentalMemoryMlock,
+		ExperimentalTxnModeWriteWithSharedBuffer: cfg.ExperimentalTxnModeWriteWithSharedBuffer,
+		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
+		V2Deprecation: cfg.V2DeprecationEffective(),
 	}
+
+	if srvcfg.ExperimentalEnableDistributedTracing {
+		tctx := context.Background()
+		tracingExporter, opts, err := e.setupTracing(tctx)
+		if err != nil {
+			return e, err
+		}
+		if tracingExporter == nil || len(opts) == 0 {
+			return e, fmt.Errorf("error setting up distributed tracing")
+		}
+		e.tracingExporterShutdown = func() { tracingExporter.Shutdown(tctx) }
+		srvcfg.ExperimentalTracerOptions = opts
+	}
+
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
+
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
 		return e, err
 	}
@@ -228,6 +257,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		if err = e.Server.CheckInitialHashKV(); err != nil {
 			// set "EtcdServer" to nil, so that it does not block on "EtcdServer.Close()"
 			// (nothing to close since rafthttp transports have not been started)
+
+			e.cfg.logger.Error("checkInitialHashKV failed", zap.Error(err))
+			e.Server.Cleanup()
 			e.Server = nil
 			return e, err
 		}
@@ -338,6 +370,11 @@ func (e *Etcd) Close() {
 	lg.Info("closing etcd server", fields...)
 	defer func() {
 		lg.Info("closed etcd server", fields...)
+		verify.MustVerifyIfEnabled(verify.Config{
+			Logger:     lg,
+			DataDir:    e.cfg.Dir,
+			ExactIndex: false,
+		})
 		lg.Sync()
 	}()
 
@@ -370,6 +407,11 @@ func (e *Etcd) Close() {
 
 	for i := range e.metricsListeners {
 		e.metricsListeners[i].Close()
+	}
+
+	// shutdown tracing exporter
+	if e.tracingExporterShutdown != nil {
+		e.tracingExporterShutdown()
 	}
 
 	// close rafthttp transports
@@ -513,7 +555,6 @@ func (e *Etcd) servePeers() (err error) {
 			e.cfg.logger.Info(
 				"cmux::serve",
 				zap.String("address", u),
-				zap.String("cmuxp", fmt.Sprintf("%p", m)),
 			)
 			return m.Serve()
 		}
@@ -524,16 +565,13 @@ func (e *Etcd) servePeers() (err error) {
 			e.cfg.logger.Info(
 				"stopping serving peer traffic",
 				zap.String("address", u),
-				zap.String("cmuxp", fmt.Sprintf("%p", m)),
 			)
 			stopServers(ctx, &servers{secure: peerTLScfg != nil, grpc: gs, http: srv})
 			e.cfg.logger.Info(
 				"stopped serving peer traffic",
 				zap.String("address", u),
-				zap.String("cmuxp", fmt.Sprintf("%p", m)),
 			)
 			m.Close()
-			e.cfg.logger.Info("Closed", zap.String("cmuxp", fmt.Sprintf("%p", m)))
 			return nil
 		}
 	}
@@ -659,7 +697,12 @@ func (e *Etcd) serveClients() (err error) {
 	// Start a client server goroutine for each listen address
 	var h http.Handler
 	if e.Config().EnableV2 {
+		if e.Config().V2DeprecationEffective().IsAtLeast(config.V2_DEPR_1_WRITE_ONLY) {
+			return fmt.Errorf("--enable-v2 and --v2-deprecation=%s are mutually exclusive", e.Config().V2DeprecationEffective())
+		}
+		e.cfg.logger.Warn("Flag `enable-v2` is deprecated and will get removed in etcd 3.6.")
 		if len(e.Config().ExperimentalEnableV2V3) > 0 {
+			e.cfg.logger.Warn("Flag `experimental-enable-v2v3` is deprecated and will get removed in etcd 3.6.")
 			srv := v2v3.NewServer(e.cfg.logger, v3client.New(e.Server), e.cfg.ExperimentalEnableV2V3)
 			h = v2http.NewClientHandler(e.GetLogger(), srv, e.Server.Cfg.ReqTimeout())
 		} else {
@@ -767,4 +810,53 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 		}
 	}
 	return ret, nil
+}
+
+func (e *Etcd) setupTracing(ctx context.Context) (exporter tracesdk.SpanExporter, options []otelgrpc.Option, err error) {
+	exporter, err = otlp.NewExporter(ctx,
+		otlpgrpc.NewDriver(
+			otlpgrpc.WithEndpoint(e.cfg.ExperimentalDistributedTracingAddress),
+			otlpgrpc.WithInsecure(),
+		))
+	if err != nil {
+		return nil, nil, err
+	}
+	res := resource.NewWithAttributes(
+		semconv.ServiceNameKey.String(e.cfg.ExperimentalDistributedTracingServiceName),
+	)
+	// As Tracing service Instance ID must be unique, it should
+	// never use the empty default string value, so we only set it
+	// if it's a non empty string.
+	if e.cfg.ExperimentalDistributedTracingServiceInstanceID != "" {
+		resWithIDKey := resource.NewWithAttributes(
+			(semconv.ServiceInstanceIDKey.String(e.cfg.ExperimentalDistributedTracingServiceInstanceID)),
+		)
+		// Merge resources to combine into a new
+		// resource in case of duplicates.
+		res = resource.Merge(res, resWithIDKey)
+	}
+
+	options = append(options,
+		otelgrpc.WithPropagators(
+			propagation.NewCompositeTextMapPropagator(
+				propagation.TraceContext{},
+				propagation.Baggage{},
+			),
+		),
+		otelgrpc.WithTracerProvider(
+			tracesdk.NewTracerProvider(
+				tracesdk.WithBatcher(exporter),
+				tracesdk.WithResource(res),
+			),
+		),
+	)
+
+	e.cfg.logger.Info(
+		"distributed tracing enabled",
+		zap.String("distributed-tracing-address", e.cfg.ExperimentalDistributedTracingAddress),
+		zap.String("distributed-tracing-service-name", e.cfg.ExperimentalDistributedTracingServiceName),
+		zap.String("distributed-tracing-service-instance-id", e.cfg.ExperimentalDistributedTracingServiceInstanceID),
+	)
+
+	return exporter, options, err
 }

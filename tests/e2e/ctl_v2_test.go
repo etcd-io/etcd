@@ -20,17 +20,14 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func BeforeTestV2(t testing.TB) {
-	skipInShortMode(t)
+	BeforeTest(t)
 	os.Setenv("ETCDCTL_API", "2")
 	t.Cleanup(func() {
 		os.Unsetenv("ETCDCTL_API")
 	})
-	testutil.BeforeTest(t)
 }
 
 func TestCtlV2Set(t *testing.T)          { testCtlV2Set(t, newConfigNoTLS(), false) }
@@ -222,15 +219,15 @@ func TestCtlV2BackupV3Snapshot(t *testing.T) { testCtlV2Backup(t, 1, true) }
 func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	BeforeTestV2(t)
 
-	backupDir, err := ioutil.TempDir("", "testbackup0.etcd")
+	backupDir, err := ioutil.TempDir(t.TempDir(), "testbackup0.etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(backupDir)
 
 	etcdCfg := newConfigNoTLS()
 	etcdCfg.snapshotCount = snapCount
 	etcdCfg.enableV2 = true
+	t.Log("Starting etcd-1")
 	epc1 := setupEtcdctlTest(t, etcdCfg, false)
 
 	// v3 put before v2 set so snapshot happens after v3 operations to confirm
@@ -241,23 +238,30 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	}
 	os.Setenv("ETCDCTL_API", "2")
 
+	t.Log("Setting key in etcd-1")
 	if err := etcdctlSet(epc1, "foo1", "bar1"); err != nil {
 		t.Fatal(err)
 	}
 
 	if v3 {
+		t.Log("Stopping etcd-1")
 		// v3 must lock the db to backup, so stop process
 		if err := epc1.Stop(); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := etcdctlBackup(epc1, epc1.procs[0].Config().dataDirPath, backupDir, v3); err != nil {
+	t.Log("Triggering etcd backup")
+	if err := etcdctlBackup(t, epc1, epc1.procs[0].Config().dataDirPath, backupDir, v3); err != nil {
 		t.Fatal(err)
 	}
+	t.Log("Closing etcd-1 backup")
 	if err := epc1.Close(); err != nil {
 		t.Fatalf("error closing etcd processes (%v)", err)
 	}
 
+	t.Logf("Backup directory: %s", backupDir)
+
+	t.Log("Starting etcd-2 (post backup)")
 	// restart from the backup directory
 	cfg2 := newConfigNoTLS()
 	cfg2.dataDirPath = backupDir
@@ -268,6 +272,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	// Make sure a failing test is not leaking resources (running server).
 	defer epc2.Close()
 
+	t.Log("Getting examplar key")
 	// check if backup went through correctly
 	if err := etcdctlGet(epc2, "foo1", "bar1", false); err != nil {
 		t.Fatal(err)
@@ -276,6 +281,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	os.Setenv("ETCDCTL_API", "3")
 	ctx2 := ctlCtx{t: t, epc: epc2}
 	if v3 {
+		t.Log("Getting v3 examplar key")
 		if err := ctlV3Get(ctx2, []string{"v3key"}, kv{"v3key", "123"}); err != nil {
 			t.Fatal(err)
 		}
@@ -286,6 +292,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	}
 	os.Setenv("ETCDCTL_API", "2")
 
+	t.Log("Getting examplar key foo2")
 	// check if it can serve client requests
 	if err := etcdctlSet(epc2, "foo2", "bar2"); err != nil {
 		t.Fatal(err)
@@ -294,6 +301,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 		t.Fatal(err)
 	}
 
+	t.Log("Closing etcd-2")
 	if err := epc2.Close(); err != nil {
 		t.Fatalf("error closing etcd processes (%v)", err)
 	}
@@ -472,16 +480,21 @@ func etcdctlAuthEnable(clus *etcdProcessCluster) error {
 	return spawnWithExpect(cmdArgs, "Authentication Enabled")
 }
 
-func etcdctlBackup(clus *etcdProcessCluster, dataDir, backupDir string, v3 bool) error {
+func etcdctlBackup(t testing.TB, clus *etcdProcessCluster, dataDir, backupDir string, v3 bool) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "backup", "--data-dir", dataDir, "--backup-dir", backupDir)
 	if v3 {
 		cmdArgs = append(cmdArgs, "--with-v3")
 	}
+	t.Logf("Running: %v", cmdArgs)
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return err
 	}
-	return proc.Close()
+	err = proc.Close()
+	if err != nil {
+		return err
+	}
+	return proc.ProcessError()
 }
 
 func setupEtcdctlTest(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {

@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -149,7 +149,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	clus.Members[0].Stop(t)
 	dpath := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
 	b := backend.NewDefaultBackend(dpath)
-	s := mvcc.NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
+	s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
 	rev := 100000
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte(fmt.Sprintf("%10d", i)), bytes.Repeat([]byte("a"), 1024), lease.NoLease)
@@ -209,7 +209,7 @@ func TestMaintenanceStatus(t *testing.T) {
 		eps[i] = clus.Members[i].GRPCAddr()
 	}
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
 	if err != nil {
 		t.Fatal(err)
 	}

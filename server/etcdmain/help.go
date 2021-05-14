@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 
+	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -123,7 +124,14 @@ Clustering:
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
   --enable-v2 '` + strconv.FormatBool(embed.DefaultEnableV2) + `'
-    Accept etcd V2 client requests.
+    Accept etcd V2 client requests. Deprecated and to be decommissioned in v3.6.
+  --v2-deprecation '` + string(cconfig.V2_DEPR_DEFAULT) + `'
+    Phase of v2store deprecation. Allows to opt-in for higher compatibility mode.
+    Supported values:
+      'not-yet'                // Issues a warning if v2store have meaningful content (default in v3.5)
+      'write-only'             // Custom v2 state is not allowed (planned default in v3.6)
+      'write-only-drop-data'   // Custom v2 state will get DELETED !
+      'gone'                   // v2store is not maintained any longer. (planned default in v3.7)
 
 Security:
   --cert-file ''
@@ -188,8 +196,22 @@ Logging:
     Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
   --log-level 'info'
     Configures log level. Only supports debug, info, warn, error, panic, or fatal.
+  --enable-log-rotation 'false'
+    Enable log rotation of a single log-outputs file target.
+  --log-rotation-config-json '{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}'
+    Configures log rotation if enabled with a JSON logger config. MaxSize(MB), MaxAge(days,0=no limit), MaxBackups(0=no limit), LocalTime(use computers local time), Compress(gzip)". 
 
-v2 Proxy (to be deprecated in v4):
+Experimental distributed tracing:
+  --experimental-enable-distributed-tracing 'false'
+    Enable experimental distributed tracing.
+  --experimental-distributed-tracing-address 'localhost:4317'
+    Distributed tracing collector address.
+  --experimental-distributed-tracing-service-name 'etcd'
+    Distributed tracing service name, must be same across all etcd instances.
+  --experimental-distributed-tracing-instance-id ''
+    Distributed tracing instance ID, must be unique per each etcd instance.
+
+v2 Proxy (to be deprecated in v3.6):
   --proxy 'off'
     Proxy mode setting ('off', 'readonly' or 'on').
   --proxy-failure-wait 5000
@@ -209,7 +231,7 @@ Experimental feature:
   --experimental-corrupt-check-time '0s'
     Duration of time between cluster corruption check passes.
   --experimental-enable-v2v3 ''
-    Serve v2 requests through the v3 backend under a given prefix.
+    Serve v2 requests through the v3 backend under a given prefix. Deprecated and to be decommissioned in v3.6.
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
   --experimental-compaction-batch-limit 1000
@@ -220,6 +242,10 @@ Experimental feature:
     Duration of periodical watch progress notification.
   --experimental-warning-apply-duration '100ms'
 	Warning is generated if requests take more than this duration.
+  --experimental-txn-mode-write-with-shared-buffer 'true'
+    Enable the write transaction to use a shared buffer in its readonly check operations.
+  --experimental-bootstrap-defrag-threshold-megabytes
+    Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
 
 Unsafe feature:
   --force-new-cluster 'false'

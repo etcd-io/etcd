@@ -193,11 +193,11 @@ docker-test-coverage:
 
 # Example:
 #   make compile-with-docker-test
-#   ETCD_VERSION=v3-test make build-docker-release-master
-#   ETCD_VERSION=v3-test make push-docker-release-master
+#   ETCD_VERSION=v3-test make build-docker-release-main
+#   ETCD_VERSION=v3-test make push-docker-release-main
 #   gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
 
-build-docker-release-master:
+build-docker-release-main:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
 	cp ./Dockerfile-release.$(ARCH) ./bin/Dockerfile-release.$(ARCH)
 	docker build \
@@ -212,7 +212,7 @@ build-docker-release-master:
 	  gcr.io/etcd-development/etcd:$(ETCD_VERSION) \
 	  /bin/sh -c "/usr/local/bin/etcd --version && /usr/local/bin/etcdctl version"
 
-push-docker-release-master:
+push-docker-release-main:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
 	docker push gcr.io/etcd-development/etcd:$(ETCD_VERSION)
 

@@ -74,12 +74,13 @@ func (lc *leaseExpireChecker) Check() error {
 	}()
 	lc.cli = cli
 
-	if err := lc.check(true, lc.ls.revokedLeases.leases); err != nil {
+	if err := check(lc.lg, lc.cli, true, lc.ls.revokedLeases.leases); err != nil {
 		return err
 	}
-	if err := lc.check(false, lc.ls.aliveLeases.leases); err != nil {
+	if err := check(lc.lg, lc.cli, false, lc.ls.aliveLeases.leases); err != nil {
 		return err
 	}
+
 	return lc.checkShortLivedLeases()
 }
 
@@ -109,7 +110,7 @@ func (lc *leaseExpireChecker) checkShortLivedLease(ctx context.Context, leaseID 
 	// retry in case of transient failure or lease is expired but not yet revoked due to the fact that etcd cluster didn't have enought time to delete it.
 	var resp *clientv3.LeaseTimeToLiveResponse
 	for i := 0; i < retries; i++ {
-		resp, err = lc.getLeaseByID(ctx, leaseID)
+		resp, err = getLeaseByID(ctx, lc.cli, leaseID)
 		// lease not found, for ~v3.1 compatibilities, check ErrLeaseNotFound
 		if (err == nil && resp.TTL == -1) || (err != nil && rpctypes.Error(err) == rpctypes.ErrLeaseNotFound) {
 			return nil
@@ -142,7 +143,7 @@ func (lc *leaseExpireChecker) checkShortLivedLease(ctx context.Context, leaseID 
 			)
 			time.Sleep(time.Second)
 		}
-		if err = lc.checkLease(ctx, false, leaseID); err != nil {
+		if err = checkLease(ctx, lc.lg, lc.cli, false, leaseID); err != nil {
 			continue
 		}
 		return nil
@@ -150,21 +151,21 @@ func (lc *leaseExpireChecker) checkShortLivedLease(ctx context.Context, leaseID 
 	return err
 }
 
-func (lc *leaseExpireChecker) checkLease(ctx context.Context, expired bool, leaseID int64) error {
-	keysExpired, err := lc.hasKeysAttachedToLeaseExpired(ctx, leaseID)
+func checkLease(ctx context.Context, lg *zap.Logger, cli *clientv3.Client, expired bool, leaseID int64) error {
+	keysExpired, err := hasKeysAttachedToLeaseExpired(ctx, lg, cli, leaseID)
 	if err != nil {
-		lc.lg.Warn(
+		lg.Warn(
 			"hasKeysAttachedToLeaseExpired failed",
-			zap.String("endpoint", lc.m.EtcdClientEndpoint),
+			zap.Any("endpoint", cli.Endpoints()),
 			zap.Error(err),
 		)
 		return err
 	}
-	leaseExpired, err := lc.hasLeaseExpired(ctx, leaseID)
+	leaseExpired, err := hasLeaseExpired(ctx, lg, cli, leaseID)
 	if err != nil {
-		lc.lg.Warn(
+		lg.Warn(
 			"hasLeaseExpired failed",
-			zap.String("endpoint", lc.m.EtcdClientEndpoint),
+			zap.Any("endpoint", cli.Endpoints()),
 			zap.Error(err),
 		)
 		return err
@@ -178,11 +179,11 @@ func (lc *leaseExpireChecker) checkLease(ctx context.Context, expired bool, leas
 	return nil
 }
 
-func (lc *leaseExpireChecker) check(expired bool, leases map[int64]time.Time) error {
+func check(lg *zap.Logger, cli *clientv3.Client, expired bool, leases map[int64]time.Time) error {
 	ctx, cancel := context.WithTimeout(context.Background(), leaseExpireCheckerTimeout)
 	defer cancel()
 	for leaseID := range leases {
-		if err := lc.checkLease(ctx, expired, leaseID); err != nil {
+		if err := checkLease(ctx, lg, cli, expired, leaseID); err != nil {
 			return err
 		}
 	}
@@ -190,18 +191,18 @@ func (lc *leaseExpireChecker) check(expired bool, leases map[int64]time.Time) er
 }
 
 // TODO: handle failures from "grpc.WaitForReady(true)"
-func (lc *leaseExpireChecker) getLeaseByID(ctx context.Context, leaseID int64) (*clientv3.LeaseTimeToLiveResponse, error) {
-	return lc.cli.TimeToLive(
+func getLeaseByID(ctx context.Context, cli *clientv3.Client, leaseID int64) (*clientv3.LeaseTimeToLiveResponse, error) {
+	return cli.TimeToLive(
 		ctx,
 		clientv3.LeaseID(leaseID),
 		clientv3.WithAttachedKeys(),
 	)
 }
 
-func (lc *leaseExpireChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
+func hasLeaseExpired(ctx context.Context, lg *zap.Logger, cli *clientv3.Client, leaseID int64) (bool, error) {
 	// keep retrying until lease's state is known or ctx is being canceled
 	for ctx.Err() == nil {
-		resp, err := lc.getLeaseByID(ctx, leaseID)
+		resp, err := getLeaseByID(ctx, cli, leaseID)
 		if err != nil {
 			// for ~v3.1 compatibilities
 			if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
@@ -210,9 +211,9 @@ func (lc *leaseExpireChecker) hasLeaseExpired(ctx context.Context, leaseID int64
 		} else {
 			return resp.TTL == -1, nil
 		}
-		lc.lg.Warn(
+		lg.Warn(
 			"hasLeaseExpired getLeaseByID failed",
-			zap.String("endpoint", lc.m.EtcdClientEndpoint),
+			zap.Any("endpoint", cli.Endpoints()),
 			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 			zap.Error(err),
 		)
@@ -223,12 +224,12 @@ func (lc *leaseExpireChecker) hasLeaseExpired(ctx context.Context, leaseID int64
 // The keys attached to the lease has the format of "<leaseID>_<idx>" where idx is the ordering key creation
 // Since the format of keys contains about leaseID, finding keys base on "<leaseID>" prefix
 // determines whether the attached keys for a given leaseID has been deleted or not
-func (lc *leaseExpireChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
-	resp, err := lc.cli.Get(ctx, fmt.Sprintf("%d", leaseID), clientv3.WithPrefix())
+func hasKeysAttachedToLeaseExpired(ctx context.Context, lg *zap.Logger, cli *clientv3.Client, leaseID int64) (bool, error) {
+	resp, err := cli.Get(ctx, fmt.Sprintf("%d", leaseID), clientv3.WithPrefix())
 	if err != nil {
-		lc.lg.Warn(
+		lg.Warn(
 			"hasKeysAttachedToLeaseExpired failed",
-			zap.String("endpoint", lc.m.EtcdClientEndpoint),
+			zap.Any("endpoint", cli.Endpoints()),
 			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 			zap.Error(err),
 		)

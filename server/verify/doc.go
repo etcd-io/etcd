@@ -12,22 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build aix || darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris || zos
-// +build aix darwin dragonfly freebsd linux netbsd openbsd solaris zos
+package verify
 
-package etcdserver
-
-import (
-	"fmt"
-
-	"golang.org/x/sys/unix"
-)
-
-// MlockAll prevents current and future mmaped memory areas from being swapped out.
-func MlockAll() error {
-	err := unix.Mlockall(unix.MCL_FUTURE | unix.MCL_CURRENT)
-	if err != nil {
-		return fmt.Errorf("cannot mlockAll: %v", err)
-	}
-	return nil
-}
+// verify package is analyzing persistent state of etcd to find potential
+// inconsistencies.
+// In particular it covers cross-checking between different aspacts of etcd
+// storage like WAL & Backend.

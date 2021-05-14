@@ -34,12 +34,20 @@ type storeTxnRead struct {
 	trace *traceutil.Trace
 }
 
-func (s *store) Read(trace *traceutil.Trace) TxnRead {
+func (s *store) Read(mode ReadTxMode, trace *traceutil.Trace) TxnRead {
 	s.mu.RLock()
 	s.revMu.RLock()
-	// backend holds b.readTx.RLock() only when creating the concurrentReadTx. After
-	// ConcurrentReadTx is created, it will not block write transaction.
-	tx := s.b.ConcurrentReadTx()
+	// For read-only workloads, we use shared buffer by copying transaction read buffer
+	// for higher concurrency with ongoing blocking writes.
+	// For write/write-read transactions, we use the shared buffer
+	// rather than duplicating transaction read buffer to avoid transaction overhead.
+	var tx backend.ReadTx
+	if mode == ConcurrentReadTxMode {
+		tx = s.b.ConcurrentReadTx()
+	} else {
+		tx = s.b.ReadTx()
+	}
+
 	tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
@@ -104,7 +112,6 @@ func (tw *storeTxnWrite) Put(key, value []byte, lease lease.LeaseID) int64 {
 func (tw *storeTxnWrite) End() {
 	// only update index if the txn modifies the mvcc state.
 	if len(tw.changes) != 0 {
-		tw.s.saveIndex(tw.tx)
 		// hold revMu lock to prevent new read txns from opening until writeback.
 		tw.s.revMu.Lock()
 		tw.s.currentRev++
@@ -182,8 +189,8 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	if err == nil {
 		c = created.main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
+		tw.trace.Step("get key's previous created_revision and leaseID")
 	}
-	tw.trace.Step("get key's previous created_revision and leaseID")
 	ibytes := newRevBytes()
 	idxRev := revision{main: rev, sub: int64(len(tw.changes))}
 	revToBytes(idxRev, ibytes)
