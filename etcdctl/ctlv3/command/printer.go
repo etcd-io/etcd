@@ -21,7 +21,6 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/dustin/go-humanize"
@@ -52,7 +51,6 @@ type printer interface {
 	MoveLeader(leader, target uint64, r v3.MoveLeaderResponse)
 
 	Alarm(v3.AlarmResponse)
-	DBStatus(snapshot.Status)
 
 	RoleAdd(role string, r v3.AuthRoleAddResponse)
 	RoleGet(role string, r v3.AuthRoleGetResponse)
@@ -160,7 +158,6 @@ func newPrinterUnsupported(n string) printer {
 func (p *printerUnsupported) EndpointHealth([]epHealth) { p.p(nil) }
 func (p *printerUnsupported) EndpointStatus([]epStatus) { p.p(nil) }
 func (p *printerUnsupported) EndpointHashKV([]epHashKV) { p.p(nil) }
-func (p *printerUnsupported) DBStatus(snapshot.Status)  { p.p(nil) }
 
 func (p *printerUnsupported) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) { p.p(nil) }
 
@@ -228,16 +225,5 @@ func makeEndpointHashKVTable(hashList []epHashKV) (hdr []string, rows [][]string
 			fmt.Sprint(h.Resp.Hash),
 		})
 	}
-	return hdr, rows
-}
-
-func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
-	hdr = []string{"hash", "revision", "total keys", "total size"}
-	rows = append(rows, []string{
-		fmt.Sprintf("%x", ds.Hash),
-		fmt.Sprint(ds.Revision),
-		fmt.Sprint(ds.TotalKey),
-		humanize.Bytes(uint64(ds.TotalSize)),
-	})
 	return hdr, rows
 }
