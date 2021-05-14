@@ -401,13 +401,16 @@ func (s *server) listenAndServe() {
 			continue
 		}
 
+		s.closeWg.Add(2)
 		go func() {
+			defer s.closeWg.Done()
 			// read incoming bytes from listener, dispatch to outgoing connection
 			s.transmit(out, in)
 			out.Close()
 			in.Close()
 		}()
 		go func() {
+			defer s.closeWg.Done()
 			// read response from outgoing connection, write back to listener
 			s.receive(in, out)
 			in.Close()

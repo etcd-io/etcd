@@ -477,6 +477,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request) {
 		d, err := ioutil.ReadAll(req.Body)
+		req.Body.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -505,13 +506,12 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		<-donec
 	}()
 	go func() {
-		defer close(donec)
 		if !secure {
 			srv.ListenAndServe()
 		} else {
 			srv.ListenAndServeTLS(tlsInfo.CertFile, tlsInfo.KeyFile)
 		}
-		defer srv.Close()
+		defer close(donec)
 	}()
 	time.Sleep(200 * time.Millisecond)
 
@@ -525,7 +525,11 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	}
 	p := NewServer(cfg)
 	<-p.Ready()
-	defer p.Close()
+	defer func() {
+		lg.Info("closing Proxy server...")
+		p.Close()
+		lg.Info("closed Proxy server.")
+	}()
 
 	data := "Hello World!"
 
@@ -537,14 +541,18 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		assert.NoError(t, terr)
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
+		defer cli.CloseIdleConnections()
+		defer tp.CloseIdleConnections()
 	} else {
 		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
+		defer http.DefaultClient.CloseIdleConnections()
 	}
 	assert.NoError(t, err)
 	d, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
+	resp.Body.Close()
 	took1 := time.Since(now)
 	t.Logf("took %v with no latency", took1)
 
@@ -571,8 +579,11 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		}
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
+		defer cli.CloseIdleConnections()
+		defer tp.CloseIdleConnections()
 	} else {
 		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
+		defer http.DefaultClient.CloseIdleConnections()
 	}
 	if err != nil {
 		t.Fatal(err)
@@ -581,6 +592,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	resp.Body.Close()
 	took2 := time.Since(now)
 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
 
