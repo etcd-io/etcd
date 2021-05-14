@@ -37,9 +37,10 @@ func (txb *txBuffer) reset() {
 // txWriteBuffer buffers writes of pending updates that have not yet committed.
 type txWriteBuffer struct {
 	txBuffer
+	// Map from bucket name into information whether this bucket is edited
+	// sequentially (i.e. keys are growing monotonically).
 	seq map[string]bool
 }
-
 
 func (txw *txWriteBuffer) put(bucket, k, v []byte) {
 	txw.seq[string(bucket)] = false
