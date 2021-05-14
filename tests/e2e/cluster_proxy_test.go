@@ -186,21 +186,23 @@ func proxyListenURL(cfg *etcdServerProcessConfig, portOffset int) string {
 func newProxyV2Proc(cfg *etcdServerProcessConfig) *proxyV2Proc {
 	listenAddr := proxyListenURL(cfg, 2)
 	name := fmt.Sprintf("testname-proxy-%p", cfg)
+	dataDir := path.Join(cfg.dataDirPath, name+".etcd")
 	args := []string{
 		"--name", name,
 		"--proxy", "on",
 		"--listen-client-urls", listenAddr,
 		"--initial-cluster", cfg.name + "=" + cfg.purl.String(),
+		"--data-dir", dataDir,
 	}
 	return &proxyV2Proc{
-		proxyProc{
+		proxyProc: proxyProc{
 			lg:       cfg.lg,
 			execPath: cfg.execPath,
 			args:     append(args, cfg.tlsArgs...),
 			ep:       listenAddr,
 			donec:    make(chan struct{}),
 		},
-		name + ".etcd",
+		dataDir: dataDir,
 	}
 }
 
@@ -242,6 +244,7 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 		"--endpoints", cfg.acurl,
 		// pass-through member RPCs
 		"--advertise-client-url", "",
+		"--data-dir", cfg.dataDirPath,
 	}
 	murl := ""
 	if cfg.murl != "" {
