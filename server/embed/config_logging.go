@@ -98,7 +98,7 @@ func (cfg *Config) setupLogging() error {
 
 		if !isJournal {
 			copied := logutil.DefaultZapLoggerConfig
-			copied.OutputPaths = outputPaths
+			copied.Encoding = cfg.LogFormat
 			copied.ErrorOutputPaths = errOutputPaths
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
@@ -124,6 +124,9 @@ func (cfg *Config) setupLogging() error {
 						return fmt.Errorf("running with systemd/journal but other '--log-outputs' values (%q) are configured with 'default'; override 'default' value with something else", cfg.LogOutputs)
 					}
 				}
+			}
+			if cfg.LogFormat != logutil.DefaultLogLevel {
+				return fmt.Errorf("--log-format=%q with systemd/journal is not supported", cfg.LogFormat)
 			}
 
 			// use stderr as fallback

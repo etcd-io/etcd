@@ -350,6 +350,8 @@ type Config struct {
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
+	// LogFormat configures format of logs. Only supports json, console. Default 'json'.
+	LogFormat string `json:"log-format"`
 	// LogLevel configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.
 	LogLevel string `json:"log-level"`
 	// LogOutputs is either:
@@ -485,6 +487,7 @@ func NewConfig() *Config {
 		loggerMu:              new(sync.RWMutex),
 		logger:                nil,
 		Logger:                "zap",
+		LogFormat:             "json",
 		LogOutputs:            []string{DefaultLogOutput},
 		LogLevel:              logutil.DefaultLogLevel,
 		EnableLogRotation:     false,
@@ -619,6 +622,11 @@ func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 
 // Validate ensures that '*embed.Config' fields are properly configured.
 func (cfg *Config) Validate() error {
+	switch cfg.LogFormat {
+	case "json", "console":
+	default:
+		return fmt.Errorf("--log-format=%s is not supported", cfg.LogFormat)
+	}
 	if err := cfg.setupLogging(); err != nil {
 		return err
 	}
