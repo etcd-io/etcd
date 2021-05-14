@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package command
+package cobrautl
 
 import (
 	"fmt"
 	"os"
-
-	"go.etcd.io/etcd/client/v2"
 )
 
 const (
@@ -31,12 +29,12 @@ const (
 	ExitInterrupted
 	ExitIO
 	ExitBadArgs = 128
+
+	ExitServerError       = 4
+	ExitClusterNotHealthy = 5
 )
 
 func ExitWithError(code int, err error) {
 	fmt.Fprintln(os.Stderr, "Error:", err)
-	if cerr, ok := err.(*client.ClusterError); ok {
-		fmt.Fprintln(os.Stderr, cerr.Detail())
-	}
 	os.Exit(code)
 }

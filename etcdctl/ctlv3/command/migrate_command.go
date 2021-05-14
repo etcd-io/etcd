@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -96,7 +97,7 @@ func migrateCommandFunc(cmd *cobra.Command, args []string) {
 	err := <-errc
 	if err != nil {
 		fmt.Println("failed to transform keys")
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
 	fmt.Println("finished transforming keys")
@@ -139,7 +140,7 @@ func rebuildStoreV2() (st v2store.Store, index uint64, term uint64) {
 	ss := snap.New(zap.NewExample(), snapdir)
 	snapshot, err := ss.Load()
 	if err != nil && err != snap.ErrNoSnapshot {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
 	var walsnap walpb.Snapshot
@@ -151,20 +152,20 @@ func rebuildStoreV2() (st v2store.Store, index uint64, term uint64) {
 
 	w, err := wal.OpenForRead(zap.NewExample(), waldir, walsnap)
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	defer w.Close()
 
 	_, _, ents, err := w.ReadAll()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
 	st = v2store.New()
 	if snapshot != nil {
 		err := st.Recovery(snapshot.Data)
 		if err != nil {
-			ExitWithError(ExitError, err)
+			cobrautl.ExitWithError(cobrautl.ExitError, err)
 		}
 	}
 
@@ -248,7 +249,7 @@ func writeStore(w io.Writer, st v2store.Store) uint64 {
 			fmt.Println("no v2 keys to migrate")
 			os.Exit(0)
 		}
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return writeKeys(w, all.Node)
 }
@@ -268,7 +269,7 @@ func writeKeys(w io.Writer, n *v2store.NodeExtern) uint64 {
 	if !migrateExcludeTTLKey || n.TTL == 0 {
 		b, err := json.Marshal(n)
 		if err != nil {
-			ExitWithError(ExitError, err)
+			cobrautl.ExitWithError(cobrautl.ExitError, err)
 		}
 		fmt.Fprint(w, string(b))
 	}
@@ -318,16 +319,16 @@ func startTransformer() (io.WriteCloser, io.ReadCloser, chan error) {
 
 	writer, err := cmd.StdinPipe()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
 	reader, rerr := cmd.StdoutPipe()
 	if rerr != nil {
-		ExitWithError(ExitError, rerr)
+		cobrautl.ExitWithError(cobrautl.ExitError, rerr)
 	}
 
 	if err := cmd.Start(); err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
 	errc := make(chan error, 1)

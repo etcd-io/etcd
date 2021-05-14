@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"go.etcd.io/etcd/etcdctl/v3/snapshot"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -92,12 +93,12 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
 		err := fmt.Errorf("snapshot save expects one argument")
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
 	lg, err := zap.NewProduction()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	sp := snapshot.NewV3(lg)
 	cfg := mustClientCfgFromCmd(cmd)
@@ -111,7 +112,7 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 
 	path := args[0]
 	if err := sp.Save(ctx, *cfg, path); err != nil {
-		ExitWithError(ExitInterrupted, err)
+		cobrautl.ExitWithError(cobrautl.ExitInterrupted, err)
 	}
 	fmt.Printf("Snapshot saved at %s\n", path)
 }
@@ -119,18 +120,18 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
 		err := fmt.Errorf("snapshot status requires exactly one argument")
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 	initDisplayFromCmd(cmd)
 
 	lg, err := zap.NewProduction()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	sp := snapshot.NewV3(lg)
 	ds, err := sp.Status(args[0])
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	display.DBStatus(ds)
 }
@@ -138,7 +139,7 @@ func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
 		err := fmt.Errorf("snapshot restore requires exactly one argument")
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
 	dataDir := restoreDataDir
@@ -153,7 +154,7 @@ func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 
 	lg, err := zap.NewProduction()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	sp := snapshot.NewV3(lg)
 
@@ -167,7 +168,7 @@ func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 		InitialClusterToken: restoreClusterToken,
 		SkipHashCheck:       skipHashCheck,
 	}); err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 }
 

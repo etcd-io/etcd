@@ -19,6 +19,7 @@ import (
 
 	"github.com/urfave/cli"
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 // NewRemoveDirCommand returns the CLI command for "rmdir".
@@ -37,7 +38,7 @@ func NewRemoveDirCommand() cli.Command {
 // rmdirCommandFunc executes the "rmdir" command.
 func rmdirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		handleError(c, ExitBadArgs, errors.New("key required"))
+		handleError(c, cobrautl.ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 
@@ -45,7 +46,7 @@ func rmdirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	resp, err := ki.Delete(ctx, key, &client.DeleteOptions{Dir: true})
 	cancel()
 	if err != nil {
-		handleError(c, ExitServerError, err)
+		handleError(c, cobrautl.ExitServerError, err)
 	}
 
 	if !resp.Node.Dir || c.GlobalString("output") != "simple" {

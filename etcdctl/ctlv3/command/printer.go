@@ -22,6 +22,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdctl/v3/snapshot"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/dustin/go-humanize"
 )
@@ -151,7 +152,7 @@ type printerUnsupported struct{ printerRPC }
 
 func newPrinterUnsupported(n string) printer {
 	f := func(interface{}) {
-		ExitWithError(ExitBadFeature, errors.New(n+" not supported as output format"))
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, errors.New(n+" not supported as output format"))
 	}
 	return &printerUnsupported{printerRPC{nil, f}}
 }

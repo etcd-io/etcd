@@ -21,6 +21,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 type pbPrinter struct{ printer }
@@ -53,7 +54,7 @@ func (p *pbPrinter) Watch(r v3.WatchResponse) {
 func printPB(v interface{}) {
 	m, ok := v.(pbMarshal)
 	if !ok {
-		ExitWithError(ExitBadFeature, fmt.Errorf("marshal unsupported for type %T (%v)", v, v))
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("marshal unsupported for type %T (%v)", v, v))
 	}
 	b, err := m.Marshal()
 	if err != nil {

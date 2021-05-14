@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 // NewAlarmCommand returns the cobra command for "alarm".
@@ -46,13 +47,13 @@ func NewAlarmDisarmCommand() *cobra.Command {
 // alarmDisarmCommandFunc executes the "alarm disarm" command.
 func alarmDisarmCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("alarm disarm command accepts no arguments"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("alarm disarm command accepts no arguments"))
 	}
 	ctx, cancel := commandCtx(cmd)
 	resp, err := mustClientFromCmd(cmd).AlarmDisarm(ctx, &v3.AlarmMember{})
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	display.Alarm(*resp)
 }
@@ -69,13 +70,13 @@ func NewAlarmListCommand() *cobra.Command {
 // alarmListCommandFunc executes the "alarm list" command.
 func alarmListCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("alarm list command accepts no arguments"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("alarm list command accepts no arguments"))
 	}
 	ctx, cancel := commandCtx(cmd)
 	resp, err := mustClientFromCmd(cmd).AlarmList(ctx)
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	display.Alarm(*resp)
 }

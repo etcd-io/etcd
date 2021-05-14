@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 )
 
@@ -45,7 +46,7 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 		err := defragData(defragDataDir)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to defragment etcd data[%s] (%v)\n", defragDataDir, err)
-			os.Exit(ExitError)
+			os.Exit(cobrautl.ExitError)
 		}
 		return
 	}
@@ -65,7 +66,7 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	if failures != 0 {
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
 }
 

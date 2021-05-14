@@ -14,7 +14,7 @@
 
 // copied from https://github.com/rkt/rkt/blob/master/rkt/help.go
 
-package ctlv3
+package cobrautl
 
 import (
 	"bytes"
@@ -24,8 +24,6 @@ import (
 	"strings"
 	"text/tabwriter"
 	"text/template"
-
-	"go.etcd.io/etcd/api/v3/version"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -146,7 +144,7 @@ func getSubCommands(cmd *cobra.Command) []*cobra.Command {
 	return subCommands
 }
 
-func usageFunc(cmd *cobra.Command) error {
+func UsageFunc(cmd *cobra.Command, version, APIVersion string) error {
 	subCommands := getSubCommands(cmd)
 	tabOut := getTabOutWithWriter(os.Stdout)
 	commandUsageTemplate.Execute(tabOut, struct {
@@ -161,8 +159,8 @@ func usageFunc(cmd *cobra.Command) error {
 		etcdFlagUsages(cmd.LocalFlags()),
 		etcdFlagUsages(cmd.InheritedFlags()),
 		subCommands,
-		version.Version,
-		version.APIVersion,
+		version,
+		APIVersion,
 	})
 	tabOut.Flush()
 	return nil

@@ -22,6 +22,7 @@ import (
 	"os/signal"
 
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/urfave/cli"
 )
@@ -47,7 +48,7 @@ func NewWatchCommand() cli.Command {
 // watchCommandFunc executes the "watch" command.
 func watchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		handleError(c, ExitBadArgs, errors.New("key required"))
+		handleError(c, cobrautl.ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	recursive := c.Bool("recursive")
@@ -68,7 +69,7 @@ func watchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	for !stop {
 		resp, err := w.Next(context.TODO())
 		if err != nil {
-			handleError(c, ExitServerError, err)
+			handleError(c, cobrautl.ExitServerError, err)
 		}
 		if resp.Node.Dir {
 			continue
