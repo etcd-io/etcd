@@ -305,6 +305,7 @@ func init() {
 		// consistent index might be changed due to v2 internal sync, which
 		// is not controllable by the user.
 		{Bucket: string(MetaBucketName), Key: string(cindex.ConsistentIndexKeyName)}: {},
+		{Bucket: string(MetaBucketName), Key: string(cindex.TermKeyName)}:            {},
 	}
 }
 

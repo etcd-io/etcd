@@ -109,13 +109,20 @@ func MustVerifyIfEnabled(cfg Config) {
 
 func validateConsistentIndex(cfg Config, hardstate *raftpb.HardState, snapshot *walpb.Snapshot, be backend.Backend) error {
 	tx := be.BatchTx()
-	index := cindex.ReadConsistentIndex(tx)
+	index, term := cindex.ReadConsistentIndex(tx)
 	if cfg.ExactIndex && index != hardstate.Commit {
 		return fmt.Errorf("backend.ConsistentIndex (%v) expected == WAL.HardState.commit (%v)", index, hardstate.Commit)
+	}
+	if cfg.ExactIndex && term != hardstate.Term {
+		return fmt.Errorf("backend.Term (%v) expected == WAL.HardState.term, (%v)", term, hardstate.Term)
 	}
 	if index > hardstate.Commit {
 		return fmt.Errorf("backend.ConsistentIndex (%v) must be <= WAL.HardState.commit (%v)", index, hardstate.Commit)
 	}
+	if term > hardstate.Term {
+		return fmt.Errorf("backend.Term (%v) must be <= WAL.HardState.term, (%v)", term, hardstate.Term)
+	}
+
 	if index < snapshot.Index {
 		return fmt.Errorf("backend.ConsistentIndex (%v) must be >= last snapshot index (%v)", index, snapshot.Index)
 	}

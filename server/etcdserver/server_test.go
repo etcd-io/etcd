@@ -678,6 +678,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	cc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2, Context: b}
 	ents := []raftpb.Entry{{
 		Index: 2,
+		Term:  4,
 		Type:  raftpb.EntryConfChange,
 		Data:  pbutil.MustMarshal(cc),
 	}}
@@ -695,7 +696,9 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		srv.beHooks.OnPreCommitUnsafe(tx)
 		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *membership.UnsafeConfStateFromBackend(lg, tx))
 	})
-	assert.Equal(t, consistIndex, cindex.ReadConsistentIndex(be.BatchTx()))
+	rindex, rterm := cindex.ReadConsistentIndex(be.BatchTx())
+	assert.Equal(t, consistIndex, rindex)
+	assert.Equal(t, uint64(4), rterm)
 }
 
 func realisticRaftNode(lg *zap.Logger) *raftNode {

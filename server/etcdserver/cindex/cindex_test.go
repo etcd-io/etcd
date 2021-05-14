@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 )
@@ -38,8 +39,9 @@ func TestConsistentIndex(t *testing.T) {
 	UnsafeCreateMetaBucket(tx)
 	tx.Unlock()
 	be.ForceCommit()
-	r := rand.Uint64()
-	ci.SetConsistentIndex(r)
+	r := uint64(7890123)
+	term := uint64(234)
+	ci.SetConsistentIndex(r, term)
 	index := ci.ConsistentIndex()
 	if index != r {
 		t.Errorf("expected %d,got %d", r, index)
@@ -54,15 +56,11 @@ func TestConsistentIndex(t *testing.T) {
 	defer b.Close()
 	ci.SetBackend(b)
 	index = ci.ConsistentIndex()
-	if index != r {
-		t.Errorf("expected %d,got %d", r, index)
-	}
+	assert.Equal(t, r, index)
 
 	ci = NewConsistentIndex(b)
 	index = ci.ConsistentIndex()
-	if index != r {
-		t.Errorf("expected %d,got %d", r, index)
-	}
+	assert.Equal(t, r, index)
 }
 
 func TestFakeConsistentIndex(t *testing.T) {
@@ -74,7 +72,7 @@ func TestFakeConsistentIndex(t *testing.T) {
 		t.Errorf("expected %d,got %d", r, index)
 	}
 	r = rand.Uint64()
-	ci.SetConsistentIndex(r)
+	ci.SetConsistentIndex(r, 5)
 	index = ci.ConsistentIndex()
 	if index != r {
 		t.Errorf("expected %d,got %d", r, index)

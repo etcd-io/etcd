@@ -82,7 +82,7 @@ func migrateCommandFunc(cmd *cobra.Command, args []string) {
 		writer, reader, errc = defaultTransformer()
 	}
 
-	st, index := rebuildStoreV2()
+	st, index, term := rebuildStoreV2()
 	be := prepareBackend()
 	defer be.Close()
 
@@ -92,7 +92,7 @@ func migrateCommandFunc(cmd *cobra.Command, args []string) {
 	}()
 
 	readKeys(reader, be)
-	cindex.UpdateConsistentIndex(be.BatchTx(), index, true)
+	cindex.UpdateConsistentIndex(be.BatchTx(), index, term, true)
 	err := <-errc
 	if err != nil {
 		fmt.Println("failed to transform keys")
@@ -127,8 +127,7 @@ func prepareBackend() backend.Backend {
 	return be
 }
 
-func rebuildStoreV2() (v2store.Store, uint64) {
-	var index uint64
+func rebuildStoreV2() (st v2store.Store, index uint64, term uint64) {
 	cl := membership.NewCluster(zap.NewExample())
 
 	waldir := migrateWALdir
@@ -147,6 +146,7 @@ func rebuildStoreV2() (v2store.Store, uint64) {
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 		index = snapshot.Metadata.Index
+		term = snapshot.Metadata.Term
 	}
 
 	w, err := wal.OpenForRead(zap.NewExample(), waldir, walsnap)
@@ -160,7 +160,7 @@ func rebuildStoreV2() (v2store.Store, uint64) {
 		ExitWithError(ExitError, err)
 	}
 
-	st := v2store.New()
+	st = v2store.New()
 	if snapshot != nil {
 		err := st.Recovery(snapshot.Data)
 		if err != nil {
@@ -191,12 +191,13 @@ func rebuildStoreV2() (v2store.Store, uint64) {
 				applyRequest(req, applier)
 			}
 		}
-		if ent.Index > index {
+		if ent.Index >= index {
 			index = ent.Index
+			term = ent.Term
 		}
 	}
 
-	return st, index
+	return st, index, term
 }
 
 func applyConf(cc raftpb.ConfChange, cl *membership.RaftCluster) {

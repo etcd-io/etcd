@@ -124,7 +124,7 @@ func handleBackup(c *cli.Context) error {
 
 	walsnap := saveSnap(lg, destSnap, srcSnap, &desired)
 	metadata, state, ents := translateWAL(lg, srcWAL, walsnap, withV3)
-	saveDB(lg, destDbPath, srcDbPath, state.Commit, &desired, withV3)
+	saveDB(lg, destDbPath, srcDbPath, state.Commit, state.Term, &desired, withV3)
 
 	neww, err := wal.Create(lg, destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {
@@ -265,7 +265,7 @@ func raftEntryToNoOp(entry *raftpb.Entry) {
 }
 
 // saveDB copies the v3 backend and strips cluster information.
-func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, desired *desiredCluster, v3 bool) {
+func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desired *desiredCluster, v3 bool) {
 
 	// open src db to safely copy db state
 	if v3 {
@@ -322,7 +322,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, desired *desiredCl
 		tx.Lock()
 		defer tx.Unlock()
 		cindex.UnsafeCreateMetaBucket(tx)
-		cindex.UnsafeUpdateConsistentIndex(tx, idx, false)
+		cindex.UnsafeUpdateConsistentIndex(tx, idx, term, false)
 	} else {
 		// Thanks to translateWAL not moving entries, but just replacing them with
 		// 'empty', there is no need to update the consistency index.

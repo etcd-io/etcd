@@ -76,7 +76,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 ### Storage format changes
 - [WAL log's snapshots persists raftpb.ConfState](https://github.com/etcd-io/etcd/pull/12735)
 - [Backend persists raftpb.ConfState](https://github.com/etcd-io/etcd/pull/12962) in the `meta` bucket `confState` key.
-- Backend persists downgrade in the `cluster` bucket
+- [Backend persists applied term](https://github.com/etcd-io/etcd/pull/) in the `meta` bucket.
+- Backend persists `downgrade` in the `cluster` bucket
 
 ### Security
 
