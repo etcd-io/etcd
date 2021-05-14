@@ -104,16 +104,13 @@ func (cfg *Config) setupLogging() error {
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
 			if cfg.ZapLoggerBuilder == nil {
 				cfg.ZapLoggerBuilder = func(c *Config) error {
+					c.loggerMu.Lock()
+					defer c.loggerMu.Unlock()
 					var err error
 					c.logger, err = copied.Build()
 					if err != nil {
 						return err
 					}
-					c.loggerMu.Lock()
-					defer c.loggerMu.Unlock()
-					c.loggerConfig = &copied
-					c.loggerCore = nil
-					c.loggerWriteSyncer = nil
 					return nil
 				}
 			}
@@ -143,13 +140,9 @@ func (cfg *Config) setupLogging() error {
 			)
 			if cfg.ZapLoggerBuilder == nil {
 				cfg.ZapLoggerBuilder = func(c *Config) error {
-					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
 					c.loggerMu.Lock()
 					defer c.loggerMu.Unlock()
-					c.loggerConfig = nil
-					c.loggerCore = cr
-					c.loggerWriteSyncer = syncer
-
+					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
 					return nil
 				}
 			}
@@ -203,9 +196,6 @@ func NewZapCoreLoggerBuilder(lg *zap.Logger) func(*Config) error {
 		cfg.loggerMu.Lock()
 		defer cfg.loggerMu.Unlock()
 		cfg.logger = lg
-		cfg.loggerConfig = nil
-		cfg.loggerCore = nil
-		cfg.loggerWriteSyncer = nil
 		return nil
 	}
 }

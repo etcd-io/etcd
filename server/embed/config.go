@@ -39,7 +39,6 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"sigs.k8s.io/yaml"
@@ -371,15 +370,6 @@ type Config struct {
 	// Do not set logger directly.
 	loggerMu *sync.RWMutex
 	logger   *zap.Logger
-
-	// loggerConfig is server logger configuration for Raft logger.
-	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
-	loggerConfig *zap.Config
-	// loggerCore is "zapcore.Core" for raft logger.
-	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
-	loggerCore        zapcore.Core
-	loggerWriteSyncer zapcore.WriteSyncer
-
 	// EnableGRPCGateway enables grpc gateway.
 	// The gateway translates a RESTful HTTP API into gRPC.
 	EnableGRPCGateway bool `json:"enable-grpc-gateway"`

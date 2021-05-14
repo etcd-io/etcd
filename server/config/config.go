@@ -30,7 +30,6 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
@@ -144,16 +143,7 @@ type ServerConfig struct {
 	SocketOpts transport.SocketOpts
 
 	// Logger logs server-side operations.
-	// If not nil, it disables "capnslog" and uses the given logger.
 	Logger *zap.Logger
-
-	// LoggerConfig is server logger configuration for Raft logger.
-	// Must be either: "LoggerConfig != nil" or "LoggerCore != nil && LoggerWriteSyncer != nil".
-	LoggerConfig *zap.Config
-	// LoggerCore is "zapcore.Core" for raft logger.
-	// Must be either: "LoggerConfig != nil" or "LoggerCore != nil && LoggerWriteSyncer != nil".
-	LoggerCore        zapcore.Core
-	LoggerWriteSyncer zapcore.WriteSyncer
 
 	ForceNewCluster bool
 
