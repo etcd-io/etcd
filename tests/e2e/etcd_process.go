@@ -21,6 +21,7 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.uber.org/zap"
 )
 
 var (
@@ -50,6 +51,7 @@ type etcdServerProcess struct {
 }
 
 type etcdServerProcessConfig struct {
+	lg       *zap.Logger
 	execPath string
 	args     []string
 	tlsArgs  []string
@@ -88,7 +90,7 @@ func (ep *etcdServerProcess) Start() error {
 	if ep.proc != nil {
 		panic("already started")
 	}
-	proc, err := spawnCmd(append([]string{ep.cfg.execPath}, ep.cfg.args...))
+	proc, err := spawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.execPath}, ep.cfg.args...))
 	if err != nil {
 		return err
 	}
