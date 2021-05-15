@@ -6,12 +6,12 @@ require (
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd/v22 v22.3.1
 	github.com/dustin/go-humanize v1.0.0
-	github.com/form3tech-oss/jwt-go v3.2.2+incompatible
+	github.com/form3tech-oss/jwt-go v3.2.3+incompatible
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/golang/protobuf v1.5.2
 	github.com/google/btree v1.0.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.3-0.20210316121004-a77ba4df9c27
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/jonboulle/clockwork v0.2.2
@@ -24,7 +24,7 @@ require (
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
-	github.com/tmc/grpc-websocket-proxy v0.0.0-20200427203606-3cfed13b9966
+	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.6-0.20210426205525-9c92be978ae0
 	go.etcd.io/etcd/api/v3 v3.5.0-alpha.0
