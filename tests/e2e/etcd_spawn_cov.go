@@ -20,17 +20,21 @@ package e2e
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/integration"
 	"go.uber.org/zap"
 )
 
 const noOutputLineCount = 2 // cov-enabled binaries emit PASS and coverage count lines
+
+var (
+	coverDir = integration.MustAbsPath(os.Getenv("COVERDIR"))
+)
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 	return spawnCmdWithLogger(zap.NewNop(), args)
@@ -72,18 +76,12 @@ func spawnCmdWithLogger(lg *zap.Logger, args []string) (*expect.ExpectProcess, e
 }
 
 func getCovArgs() ([]string, error) {
-	coverPath := os.Getenv("COVERDIR")
-	if !filepath.IsAbs(coverPath) {
-		// COVERDIR is relative to etcd root but e2e test has its path set to be relative to the e2e folder.
-		// adding ".." in front of COVERDIR ensures that e2e saves coverage reports to the correct location.
-		coverPath = filepath.Join("../..", coverPath)
-	}
-	if !fileutil.Exist(coverPath) {
-		return nil, fmt.Errorf("could not find coverage folder")
+	if !fileutil.Exist(coverDir) {
+		return nil, fmt.Errorf("could not find coverage folder: %s", coverDir)
 	}
 	covArgs := []string{
 		fmt.Sprintf("-test.coverprofile=e2e.%v.coverprofile", time.Now().UnixNano()),
-		"-test.outputdir=" + coverPath,
+		"-test.outputdir=" + coverDir,
 	}
 	return covArgs, nil
 }
