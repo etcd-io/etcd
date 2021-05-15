@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.uber.org/zap"
 )
 
 type proxyEtcdProcess struct {
@@ -115,6 +116,7 @@ func (p *proxyEtcdProcess) WithStopSignal(sig os.Signal) os.Signal {
 }
 
 type proxyProc struct {
+	lg       *zap.Logger
 	execPath string
 	args     []string
 	ep       string
@@ -130,7 +132,7 @@ func (pp *proxyProc) start() error {
 	if pp.proc != nil {
 		panic("already started")
 	}
-	proc, err := spawnCmd(append([]string{pp.execPath}, pp.args...))
+	proc, err := spawnCmdWithLogger(pp.lg, append([]string{pp.execPath}, pp.args...))
 	if err != nil {
 		return err
 	}
@@ -184,20 +186,23 @@ func proxyListenURL(cfg *etcdServerProcessConfig, portOffset int) string {
 func newProxyV2Proc(cfg *etcdServerProcessConfig) *proxyV2Proc {
 	listenAddr := proxyListenURL(cfg, 2)
 	name := fmt.Sprintf("testname-proxy-%p", cfg)
+	dataDir := path.Join(cfg.dataDirPath, name+".etcd")
 	args := []string{
 		"--name", name,
 		"--proxy", "on",
 		"--listen-client-urls", listenAddr,
 		"--initial-cluster", cfg.name + "=" + cfg.purl.String(),
+		"--data-dir", dataDir,
 	}
 	return &proxyV2Proc{
-		proxyProc{
+		proxyProc: proxyProc{
+			lg:       cfg.lg,
 			execPath: cfg.execPath,
 			args:     append(args, cfg.tlsArgs...),
 			ep:       listenAddr,
 			donec:    make(chan struct{}),
 		},
-		name + ".etcd",
+		dataDir: dataDir,
 	}
 }
 
@@ -239,6 +244,7 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 		"--endpoints", cfg.acurl,
 		// pass-through member RPCs
 		"--advertise-client-url", "",
+		"--data-dir", cfg.dataDirPath,
 	}
 	murl := ""
 	if cfg.murl != "" {
@@ -276,6 +282,7 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 	}
 	return &proxyV3Proc{
 		proxyProc{
+			lg:       cfg.lg,
 			execPath: cfg.execPath,
 			args:     append(args, tlsArgs...),
 			ep:       listenAddr,

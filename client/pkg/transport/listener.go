@@ -203,8 +203,14 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 		return
 	}
 
-	certPath := filepath.Join(dirpath, "cert.pem")
-	keyPath := filepath.Join(dirpath, "key.pem")
+	certPath, err := filepath.Abs(filepath.Join(dirpath, "cert.pem"))
+	if err != nil {
+		return
+	}
+	keyPath, err := filepath.Abs(filepath.Join(dirpath, "key.pem"))
+	if err != nil {
+		return
+	}
 	_, errcert := os.Stat(certPath)
 	_, errkey := os.Stat(keyPath)
 	if errcert == nil && errkey == nil {
@@ -468,6 +474,10 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 		return nil, err
 	}
 
+	if info.Logger == nil {
+		info.Logger = zap.NewNop()
+	}
+
 	cfg.ClientAuth = tls.NoClientCert
 	if info.TrustedCAFile != "" || info.ClientCertAuth {
 		cfg.ClientAuth = tls.RequireAndVerifyClientCert
@@ -475,6 +485,8 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 
 	cs := info.cafiles()
 	if len(cs) > 0 {
+		info.Logger.Info("Loading cert pool", zap.Strings("cs", cs),
+			zap.Any("tlsinfo", info))
 		cp, err := tlsutil.NewCertPool(cs)
 		if err != nil {
 			return nil, err

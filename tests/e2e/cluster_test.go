@@ -25,6 +25,7 @@ import (
 
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/integration"
+	"go.uber.org/zap/zaptest"
 )
 
 const etcdProcessBasePort = 20000
@@ -225,6 +226,8 @@ func (cfg *etcdProcessClusterConfig) peerScheme() string {
 }
 
 func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*etcdServerProcessConfig {
+	lg := zaptest.NewLogger(tb)
+
 	if cfg.basePort == 0 {
 		cfg.basePort = etcdProcessBasePort
 	}
@@ -309,6 +312,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
+			lg:           lg,
 			execPath:     cfg.execPath,
 			args:         args,
 			tlsArgs:      cfg.tlsArgs(),
