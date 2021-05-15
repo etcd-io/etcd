@@ -103,16 +103,11 @@ func (cfg *Config) setupLogging() error {
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
 			if cfg.ZapLoggerBuilder == nil {
-				cfg.ZapLoggerBuilder = func(c *Config) error {
-					c.loggerMu.Lock()
-					defer c.loggerMu.Unlock()
-					var err error
-					c.logger, err = copied.Build()
-					if err != nil {
-						return err
-					}
-					return nil
+				lg, err := copied.Build()
+				if err != nil {
+					return err
 				}
+				cfg.ZapLoggerBuilder = NewZapLoggerBuilder(lg)
 			}
 		} else {
 			if len(cfg.LogOutputs) > 1 {
@@ -139,12 +134,7 @@ func (cfg *Config) setupLogging() error {
 				lvl,
 			)
 			if cfg.ZapLoggerBuilder == nil {
-				cfg.ZapLoggerBuilder = func(c *Config) error {
-					c.loggerMu.Lock()
-					defer c.loggerMu.Unlock()
-					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
-					return nil
-				}
+				cfg.ZapLoggerBuilder = NewZapLoggerBuilder(zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer)))
 			}
 		}
 
@@ -190,14 +180,21 @@ func (cfg *Config) setupLogging() error {
 	return nil
 }
 
-// NewZapCoreLoggerBuilder generates a zap core logger builder.
-func NewZapCoreLoggerBuilder(lg *zap.Logger) func(*Config) error {
+// NewZapLoggerBuilder generates a zap logger builder that sets given loger
+// for embedded etcd.
+func NewZapLoggerBuilder(lg *zap.Logger) func(*Config) error {
 	return func(cfg *Config) error {
 		cfg.loggerMu.Lock()
 		defer cfg.loggerMu.Unlock()
 		cfg.logger = lg
 		return nil
 	}
+}
+
+// NewZapCoreLoggerBuilder - is a deprecated setter for the logger.
+// Deprecated: Use simpler NewZapLoggerBuilder. To be removed in etcd-3.6.
+func NewZapCoreLoggerBuilder(lg *zap.Logger, _ zapcore.Core, _ zapcore.WriteSyncer) func(*Config) error {
+	return NewZapLoggerBuilder(lg)
 }
 
 // SetupGlobalLoggers configures 'global' loggers (grpc, zapGlobal) based on the cfg.
