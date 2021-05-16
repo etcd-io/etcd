@@ -15,18 +15,23 @@
 package etcdutl
 
 import (
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"fmt"
+
+	"go.etcd.io/etcd/api/v3/version"
+
+	"github.com/spf13/cobra"
 )
 
-func GetLogger() *zap.Logger {
-	config := zap.NewProductionConfig()
-	config.Encoding = "console"
-	config.EncoderConfig.EncodeTime=zapcore.RFC3339TimeEncoder
-	lg, err := config.Build()
-	if err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
+// NewVersionCommand prints out the version of etcd.
+func NewVersionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Prints the version of etcdutl",
+		Run:   versionCommandFunc,
 	}
-	return lg
+}
+
+func versionCommandFunc(cmd *cobra.Command, args []string) {
+	fmt.Println("etcdutl version:", version.Version)
+	fmt.Println("API version:", version.APIVersion)
 }

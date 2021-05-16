@@ -40,6 +40,7 @@ func init() {
 		etcdutl.NewBackupCommand(),
 		etcdutl.NewDefragCommand(),
 		etcdutl.NewSnapshotCommand(),
+		etcdutl.NewVersionCommand(),
 	)
 }
 
