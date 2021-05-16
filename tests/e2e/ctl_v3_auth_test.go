@@ -994,13 +994,13 @@ func authTestDefrag(cx ctlCtx) {
 
 	// ordinary user cannot defrag
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3Defrag(cx); err == nil {
+	if err := ctlV3OnlineDefrag(cx); err == nil {
 		cx.t.Fatal("ordinary user should not be able to issue a defrag request")
 	}
 
 	// root can defrag
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3Defrag(cx); err != nil {
+	if err := ctlV3OnlineDefrag(cx); err != nil {
 		cx.t.Fatal(err)
 	}
 }

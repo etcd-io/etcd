@@ -23,7 +23,7 @@ import (
 func GetLogger() *zap.Logger {
 	config := zap.NewProductionConfig()
 	config.Encoding = "console"
-	config.EncoderConfig.EncodeTime=zapcore.RFC3339TimeEncoder
+	config.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 	lg, err := config.Build()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)

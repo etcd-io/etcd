@@ -46,6 +46,7 @@ func TestMain(m *testing.M) {
 
 	binPath = binDir + "/etcd"
 	ctlBinPath = binDir + "/etcdctl"
+	utlBinPath = binDir + "/etcdutl"
 	certPath = certDir + "/server.crt"
 	privateKeyPath = certDir + "/server.key.insecure"
 	caPath = certDir + "/ca.crt"
