@@ -25,6 +25,7 @@ import (
 
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/integration"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -134,6 +135,7 @@ func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
 }
 
 type etcdProcessCluster struct {
+	lg    *zap.Logger
 	cfg   *etcdProcessClusterConfig
 	procs []etcdProcess
 }
@@ -182,6 +184,7 @@ func newEtcdProcessCluster(t testing.TB, cfg *etcdProcessClusterConfig) (*etcdPr
 	etcdCfgs := cfg.etcdServerProcessConfigs(t)
 	epc := &etcdProcessCluster{
 		cfg:   cfg,
+		lg:    zaptest.NewLogger(t),
 		procs: make([]etcdProcess, cfg.clusterSize),
 	}
 
@@ -451,6 +454,7 @@ func (epc *etcdProcessCluster) Stop() (err error) {
 }
 
 func (epc *etcdProcessCluster) Close() error {
+	epc.lg.Info("closing test cluster...")
 	err := epc.Stop()
 	for _, p := range epc.procs {
 		// p is nil when newEtcdProcess fails in the middle
@@ -462,6 +466,7 @@ func (epc *etcdProcessCluster) Close() error {
 			err = cerr
 		}
 	}
+	epc.lg.Info("closed test cluster.")
 	return err
 }
 
