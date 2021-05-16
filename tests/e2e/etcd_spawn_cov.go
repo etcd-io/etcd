@@ -19,29 +19,43 @@ package e2e
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/integration"
+	"go.uber.org/zap"
 )
 
 const noOutputLineCount = 2 // cov-enabled binaries emit PASS and coverage count lines
 
+var (
+	coverDir = integration.MustAbsPath(os.Getenv("COVERDIR"))
+)
+
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
+	return spawnCmdWithLogger(zap.NewNop(), args)
+}
+
+func spawnCmdWithLogger(lg *zap.Logger, args []string) (*expect.ExpectProcess, error) {
 	cmd := args[0]
 	env := make([]string, 0)
-	switch cmd {
-	case binPath:
-		cmd = "../../bin/etcd_test"
-	case ctlBinPath:
-		cmd = "../../bin/etcdctl_test"
-	case ctlBinPath + "3":
-		cmd = "../../bin/etcdctl_test"
+	switch {
+	case strings.HasSuffix(cmd, "/etcd"):
+		cmd = cmd + "_test"
+	case strings.HasSuffix(cmd, "/etcdctl"):
+		cmd = cmd + "_test"
+	case strings.HasSuffix(cmd, "/etcdctl3"):
+		cmd = ctlBinPath + "_test"
 		env = append(env, "ETCDCTL_API=3")
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
 	}
 
 	covArgs, err := getCovArgs()
@@ -52,7 +66,7 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 	// they must be included in ctl_cov_env.
 	env = append(env, os.Environ()...)
 	all_args := append(args[1:], covArgs...)
-	log.Printf("Executing %v %v", cmd, all_args)
+	lg.Info("spawning process", zap.Strings("args", all_args), zap.String("working-dir", wd))
 	ep, err := expect.NewExpectWithEnv(cmd, all_args, env)
 	if err != nil {
 		return nil, err
@@ -62,18 +76,12 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 }
 
 func getCovArgs() ([]string, error) {
-	coverPath := os.Getenv("COVERDIR")
-	if !filepath.IsAbs(coverPath) {
-		// COVERDIR is relative to etcd root but e2e test has its path set to be relative to the e2e folder.
-		// adding ".." in front of COVERDIR ensures that e2e saves coverage reports to the correct location.
-		coverPath = filepath.Join("../..", coverPath)
-	}
-	if !fileutil.Exist(coverPath) {
-		return nil, fmt.Errorf("could not find coverage folder")
+	if !fileutil.Exist(coverDir) {
+		return nil, fmt.Errorf("could not find coverage folder: %s", coverDir)
 	}
 	covArgs := []string{
 		fmt.Sprintf("-test.coverprofile=e2e.%v.coverprofile", time.Now().UnixNano()),
-		"-test.outputdir=" + coverPath,
+		"-test.outputdir=" + coverDir,
 	}
 	return covArgs, nil
 }

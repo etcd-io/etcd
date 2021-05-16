@@ -90,23 +90,34 @@ func (ep *etcdServerProcess) Start() error {
 	if ep.proc != nil {
 		panic("already started")
 	}
+	ep.cfg.lg.Info("starting server...", zap.String("name", ep.cfg.name))
 	proc, err := spawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.execPath}, ep.cfg.args...))
 	if err != nil {
 		return err
 	}
 	ep.proc = proc
-	return ep.waitReady()
+	err = ep.waitReady()
+	if err == nil {
+		ep.cfg.lg.Info("started server.", zap.String("name", ep.cfg.name))
+	}
+	return err
 }
 
 func (ep *etcdServerProcess) Restart() error {
+	ep.cfg.lg.Info("restaring server...", zap.String("name", ep.cfg.name))
 	if err := ep.Stop(); err != nil {
 		return err
 	}
 	ep.donec = make(chan struct{})
-	return ep.Start()
+	err := ep.Start()
+	if err == nil {
+		ep.cfg.lg.Info("restared server", zap.String("name", ep.cfg.name))
+	}
+	return err
 }
 
 func (ep *etcdServerProcess) Stop() (err error) {
+	ep.cfg.lg.Info("stoping server...", zap.String("name", ep.cfg.name))
 	if ep == nil || ep.proc == nil {
 		return nil
 	}
@@ -123,13 +134,16 @@ func (ep *etcdServerProcess) Stop() (err error) {
 			return err
 		}
 	}
+	ep.cfg.lg.Info("stopped server.", zap.String("name", ep.cfg.name))
 	return nil
 }
 
 func (ep *etcdServerProcess) Close() error {
+	ep.cfg.lg.Info("closing server...", zap.String("name", ep.cfg.name))
 	if err := ep.Stop(); err != nil {
 		return err
 	}
+	ep.cfg.lg.Info("removing directory", zap.String("data-dir", ep.cfg.dataDirPath))
 	return os.RemoveAll(ep.cfg.dataDirPath)
 }
 

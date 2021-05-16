@@ -193,7 +193,6 @@ func TestIssue6361(t *testing.T) {
 	}
 
 	fpath := filepath.Join(t.TempDir(), "test.snapshot")
-	defer os.RemoveAll(fpath)
 
 	t.Log("etcdctl saving snapshot...")
 	if err = spawnWithExpect(append(prefixArgs, "snapshot", "save", fpath), fmt.Sprintf("Snapshot saved at %s", fpath)); err != nil {
@@ -206,7 +205,6 @@ func TestIssue6361(t *testing.T) {
 	}
 
 	newDataDir := filepath.Join(t.TempDir(), "test.data")
-	defer os.RemoveAll(newDataDir)
 
 	t.Log("etcdctl restoring the snapshot...")
 	err = spawnWithExpect([]string{ctlBinPath, "snapshot", "restore", fpath, "--name", epc.procs[0].Config().name, "--initial-cluster", epc.procs[0].Config().initialCluster, "--initial-cluster-token", epc.procs[0].Config().initialToken, "--initial-advertise-peer-urls", epc.procs[0].Config().purl.String(), "--data-dir", newDataDir}, "added member")
@@ -273,4 +271,5 @@ func TestIssue6361(t *testing.T) {
 	if err = nepc.Stop(); err != nil {
 		t.Fatal(err)
 	}
+	t.Log("Test logic done")
 }
