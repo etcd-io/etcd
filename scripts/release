@@ -42,6 +42,8 @@ help() {
   echo "    --no-upload: skip gs://etcd binary artifact uploads."
   echo "    --no-docker-push: skip docker image pushes."
   echo ""
+  echo "One can perform a (dry-run) test release from any (uncommitted) branch using:"
+  echo "  DRY_RUN=true REPOSITORY=\`pwd\` BRANCH='local-branch-name' ./scripts/release 3.5.0-foobar.2"
 }
 
 main() {
