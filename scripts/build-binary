@@ -44,13 +44,14 @@ function package {
   if [ "${GOOS}" == "windows" ]; then
     ext=".exe"
   fi
-  for bin in etcd etcdctl; do
+  for bin in etcd etcdctl etcdutl; do
     cp "${srcdir}/${bin}" "${target}/${bin}${ext}"
   done
 
   cp etcd/README.md "${target}"/README.md
   cp etcd/etcdctl/README.md "${target}"/README-etcdctl.md
   cp etcd/etcdctl/READMEv2.md "${target}"/READMEv2-etcdctl.md
+  cp etcd/etcdutl/README.md "${target}"/README-etcdutl.md
 
   cp -R etcd/Documentation "${target}"/Documentation
 }
