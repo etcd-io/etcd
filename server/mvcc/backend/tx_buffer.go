@@ -39,31 +39,38 @@ type txWriteBuffer struct {
 	txBuffer
 	// Map from bucket name into information whether this bucket is edited
 	// sequentially (i.e. keys are growing monotonically).
-	seq map[string]bool
+	bucket2seq map[string]bool
 }
 
+// TODO: Passing bucket as an (int) enum would avoid a lot of byte[]->string->hash conversions.
 func (txw *txWriteBuffer) put(bucket, k, v []byte) {
-	txw.seq[string(bucket)] = false
-	txw.putSeq(bucket, k, v)
+	bucketstr := string(bucket)
+	txw.bucket2seq[bucketstr] = false
+	txw.putInternal(bucketstr, k, v)
 }
 
 func (txw *txWriteBuffer) putSeq(bucket, k, v []byte) {
-	b, ok := txw.buckets[string(bucket)]
+	// TODO: Add (in tests?) verification whether k>b[len(b)]
+	txw.putInternal(string(bucket), k, v)
+}
+
+func (txw *txWriteBuffer) putInternal(bucket string, k, v []byte) {
+	b, ok := txw.buckets[bucket]
 	if !ok {
 		b = newBucketBuffer()
-		txw.buckets[string(bucket)] = b
+		txw.buckets[bucket] = b
 	}
 	b.add(k, v)
 }
 
 func (txw *txWriteBuffer) reset() {
 	txw.txBuffer.reset()
-	for k := range txw.seq {
+	for k := range txw.bucket2seq {
 		v, ok := txw.buckets[k]
 		if !ok {
-			delete(txw.seq, k)
+			delete(txw.bucket2seq, k)
 		} else if v.used == 0 {
-			txw.seq[k] = true
+			txw.bucket2seq[k] = true
 		}
 	}
 }
@@ -76,7 +83,7 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 			txr.buckets[k] = wb
 			continue
 		}
-		if seq, ok := txw.seq[k]; ok && !seq && wb.used > 1 {
+		if seq, ok := txw.bucket2seq[k]; ok && !seq && wb.used > 1 {
 			// assume no duplicate keys
 			sort.Sort(wb)
 		}

@@ -253,8 +253,8 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 	tx := &batchTxBuffered{
 		batchTx: batchTx{backend: backend},
 		buf: txWriteBuffer{
-			txBuffer: txBuffer{make(map[string]*bucketBuffer)},
-			seq:      make(map[string]bool),
+			txBuffer:   txBuffer{make(map[string]*bucketBuffer)},
+			bucket2seq: make(map[string]bool),
 		},
 	}
 	tx.Commit()
