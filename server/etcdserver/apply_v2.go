@@ -21,7 +21,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 
@@ -92,9 +94,12 @@ func (a *applierV2store) Put(r *RequestV2) Response {
 			// return an empty response since there is no consumer.
 			return Response{}
 		}
-		// remove v2 version set to avoid the conflict between v2 and v3.
+		// TODO remove v2 version set to avoid the conflict between v2 and v3 in etcd 3.6
 		if r.Path == membership.StoreClusterVersionKey() {
-			// return an empty response since there is no consumer.
+			if a.cluster != nil {
+				// persist to backend given v2store can be very stale
+				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability, membership.ApplyBoth)
+			}
 			return Response{}
 		}
 		return toResponse(a.store.Set(r.Path, r.Dir, r.Val, ttlOptions))
