@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/prometheus/client_golang/prometheus"
@@ -700,7 +701,7 @@ func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Versi
 	tx := be.ReadTx()
 	tx.RLock()
 	defer tx.RUnlock()
-	keys, vals := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
+	keys, vals := tx.UnsafeRange(buckets.Cluster, ckey, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}
@@ -719,7 +720,7 @@ func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo
 	tx := be.ReadTx()
 	tx.Lock()
 	defer tx.Unlock()
-	keys, vals := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
+	keys, vals := tx.UnsafeRange(buckets.Cluster, dkey, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}

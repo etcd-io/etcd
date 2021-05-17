@@ -37,6 +37,7 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"go.uber.org/zap"
 )
@@ -148,12 +149,12 @@ func TestStorePut(t *testing.T) {
 		}
 
 		wact := []testutil.Action{
-			{Name: "seqput", Params: []interface{}{keyBucketName, tt.wkey, data}},
+			{Name: "seqput", Params: []interface{}{buckets.Key, tt.wkey, data}},
 		}
 
 		if tt.rr != nil {
 			wact = []testutil.Action{
-				{Name: "seqput", Params: []interface{}{keyBucketName, tt.wkey, data}},
+				{Name: "seqput", Params: []interface{}{buckets.Key, tt.wkey, data}},
 			}
 		}
 
@@ -228,7 +229,7 @@ func TestStoreRange(t *testing.T) {
 		wstart := newRevBytes()
 		revToBytes(tt.idxr.revs[0], wstart)
 		wact := []testutil.Action{
-			{Name: "range", Params: []interface{}{keyBucketName, wstart, []byte(nil), int64(0)}},
+			{Name: "range", Params: []interface{}{buckets.Key, wstart, []byte(nil), int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
@@ -303,7 +304,7 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
 		wact := []testutil.Action{
-			{Name: "seqput", Params: []interface{}{keyBucketName, tt.wkey, data}},
+			{Name: "seqput", Params: []interface{}{buckets.Key, tt.wkey, data}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
@@ -342,10 +343,10 @@ func TestStoreCompact(t *testing.T) {
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(4))
 	wact := []testutil.Action{
-		{Name: "put", Params: []interface{}{MetaBucketName, scheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
-		{Name: "range", Params: []interface{}{keyBucketName, make([]byte, 17), end, int64(10000)}},
-		{Name: "delete", Params: []interface{}{keyBucketName, key2}},
-		{Name: "put", Params: []interface{}{MetaBucketName, finishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
+		{Name: "put", Params: []interface{}{buckets.Meta, scheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
+		{Name: "range", Params: []interface{}{buckets.Key, make([]byte, 17), end, int64(10000)}},
+		{Name: "delete", Params: []interface{}{buckets.Key, key2}},
+		{Name: "put", Params: []interface{}{buckets.Meta, finishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
@@ -398,9 +399,9 @@ func TestStoreRestore(t *testing.T) {
 		t.Errorf("current rev = %v, want 5", s.currentRev)
 	}
 	wact := []testutil.Action{
-		{Name: "range", Params: []interface{}{MetaBucketName, finishedCompactKeyName, []byte(nil), int64(0)}},
-		{Name: "range", Params: []interface{}{MetaBucketName, scheduledCompactKeyName, []byte(nil), int64(0)}},
-		{Name: "range", Params: []interface{}{keyBucketName, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
+		{Name: "range", Params: []interface{}{buckets.Meta, finishedCompactKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{buckets.Meta, scheduledCompactKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{buckets.Key, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
@@ -484,7 +485,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		revToBytes(revision{main: 2}, rbytes)
 		tx := s0.b.BatchTx()
 		tx.Lock()
-		tx.UnsafePut(MetaBucketName, scheduledCompactKeyName, rbytes)
+		tx.UnsafePut(buckets.Meta, scheduledCompactKeyName, rbytes)
 		tx.Unlock()
 
 		s0.Close()
@@ -513,7 +514,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			tx = s.b.BatchTx()
 			tx.Lock()
-			ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+			ks, _ := tx.UnsafeRange(buckets.Key, revbytes, nil, 0)
 			tx.Unlock()
 			if len(ks) != 0 {
 				time.Sleep(100 * time.Millisecond)
@@ -870,27 +871,27 @@ type fakeBatchTx struct {
 	rangeRespc chan rangeResp
 }
 
-func (b *fakeBatchTx) Lock()                          {}
-func (b *fakeBatchTx) Unlock()                        {}
-func (b *fakeBatchTx) RLock()                         {}
-func (b *fakeBatchTx) RUnlock()                       {}
-func (b *fakeBatchTx) UnsafeCreateBucket(name []byte) {}
-func (b *fakeBatchTx) UnsafeDeleteBucket(name []byte) {}
-func (b *fakeBatchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
-	b.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{bucketName, key, value}})
+func (b *fakeBatchTx) Lock()                                    {}
+func (b *fakeBatchTx) Unlock()                                  {}
+func (b *fakeBatchTx) RLock()                                   {}
+func (b *fakeBatchTx) RUnlock()                                 {}
+func (b *fakeBatchTx) UnsafeCreateBucket(bucket backend.Bucket) {}
+func (b *fakeBatchTx) UnsafeDeleteBucket(bucket backend.Bucket) {}
+func (b *fakeBatchTx) UnsafePut(bucket backend.Bucket, key []byte, value []byte) {
+	b.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{bucket, key, value}})
 }
-func (b *fakeBatchTx) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
-	b.Recorder.Record(testutil.Action{Name: "seqput", Params: []interface{}{bucketName, key, value}})
+func (b *fakeBatchTx) UnsafeSeqPut(bucket backend.Bucket, key []byte, value []byte) {
+	b.Recorder.Record(testutil.Action{Name: "seqput", Params: []interface{}{bucket, key, value}})
 }
-func (b *fakeBatchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte) {
-	b.Recorder.Record(testutil.Action{Name: "range", Params: []interface{}{bucketName, key, endKey, limit}})
+func (b *fakeBatchTx) UnsafeRange(bucket backend.Bucket, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte) {
+	b.Recorder.Record(testutil.Action{Name: "range", Params: []interface{}{bucket, key, endKey, limit}})
 	r := <-b.rangeRespc
 	return r.keys, r.vals
 }
-func (b *fakeBatchTx) UnsafeDelete(bucketName []byte, key []byte) {
-	b.Recorder.Record(testutil.Action{Name: "delete", Params: []interface{}{bucketName, key}})
+func (b *fakeBatchTx) UnsafeDelete(bucket backend.Bucket, key []byte) {
+	b.Recorder.Record(testutil.Action{Name: "delete", Params: []interface{}{bucket, key}})
 }
-func (b *fakeBatchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
+func (b *fakeBatchTx) UnsafeForEach(bucket backend.Bucket, visitor func(k, v []byte) error) error {
 	return nil
 }
 func (b *fakeBatchTx) Commit()        {}
@@ -900,17 +901,17 @@ type fakeBackend struct {
 	tx *fakeBatchTx
 }
 
-func (b *fakeBackend) BatchTx() backend.BatchTx                                    { return b.tx }
-func (b *fakeBackend) ReadTx() backend.ReadTx                                      { return b.tx }
-func (b *fakeBackend) ConcurrentReadTx() backend.ReadTx                            { return b.tx }
-func (b *fakeBackend) Hash(ignores map[backend.IgnoreKey]struct{}) (uint32, error) { return 0, nil }
-func (b *fakeBackend) Size() int64                                                 { return 0 }
-func (b *fakeBackend) SizeInUse() int64                                            { return 0 }
-func (b *fakeBackend) OpenReadTxN() int64                                          { return 0 }
-func (b *fakeBackend) Snapshot() backend.Snapshot                                  { return nil }
-func (b *fakeBackend) ForceCommit()                                                {}
-func (b *fakeBackend) Defrag() error                                               { return nil }
-func (b *fakeBackend) Close() error                                                { return nil }
+func (b *fakeBackend) BatchTx() backend.BatchTx                                   { return b.tx }
+func (b *fakeBackend) ReadTx() backend.ReadTx                                     { return b.tx }
+func (b *fakeBackend) ConcurrentReadTx() backend.ReadTx                           { return b.tx }
+func (b *fakeBackend) Hash(func(bucketName, keyName []byte) bool) (uint32, error) { return 0, nil }
+func (b *fakeBackend) Size() int64                                                { return 0 }
+func (b *fakeBackend) SizeInUse() int64                                           { return 0 }
+func (b *fakeBackend) OpenReadTxN() int64                                         { return 0 }
+func (b *fakeBackend) Snapshot() backend.Snapshot                                 { return nil }
+func (b *fakeBackend) ForceCommit()                                               {}
+func (b *fakeBackend) Defrag() error                                              { return nil }
+func (b *fakeBackend) Close() error                                               { return nil }
 
 type indexGetResp struct {
 	rev     revision

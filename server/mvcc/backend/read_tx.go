@@ -15,17 +15,15 @@
 package backend
 
 import (
-	"bytes"
 	"math"
 	"sync"
 
 	bolt "go.etcd.io/bbolt"
 )
 
-// safeRangeBucket is a hack to avoid inadvertently reading duplicate keys;
-// overwrites on a bucket should only fetch with limit=1, but safeRangeBucket
+// IsSafeRangeBucket is a hack to avoid inadvertently reading duplicate keys;
+// overwrites on a bucket should only fetch with limit=1, but IsSafeRangeBucket
 // is known to never overwrite any key so range is safe.
-var safeRangeBucket = []byte("key")
 
 type ReadTx interface {
 	Lock()
@@ -33,8 +31,8 @@ type ReadTx interface {
 	RLock()
 	RUnlock()
 
-	UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte)
-	UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error
+	UnsafeRange(bucket Bucket, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte)
+	UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error
 }
 
 // Base type for readTx and concurrentReadTx to eliminate duplicate functions between these
@@ -47,12 +45,12 @@ type baseReadTx struct {
 	// txMu protects accesses to buckets and tx on Range requests.
 	txMu    *sync.RWMutex
 	tx      *bolt.Tx
-	buckets map[string]*bolt.Bucket
+	buckets map[BucketID]*bolt.Bucket
 	// txWg protects tx from being rolled back at the end of a batch interval until all reads using this tx are done.
 	txWg *sync.WaitGroup
 }
 
-func (baseReadTx *baseReadTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
+func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error {
 	dups := make(map[string]struct{})
 	getDups := func(k, v []byte) error {
 		dups[string(k)] = struct{}{}
@@ -64,19 +62,19 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucketName []byte, visitor func(k, v
 		}
 		return visitor(k, v)
 	}
-	if err := baseReadTx.buf.ForEach(bucketName, getDups); err != nil {
+	if err := baseReadTx.buf.ForEach(bucket, getDups); err != nil {
 		return err
 	}
 	baseReadTx.txMu.Lock()
-	err := unsafeForEach(baseReadTx.tx, bucketName, visitNoDup)
+	err := unsafeForEach(baseReadTx.tx, bucket, visitNoDup)
 	baseReadTx.txMu.Unlock()
 	if err != nil {
 		return err
 	}
-	return baseReadTx.buf.ForEach(bucketName, visitor)
+	return baseReadTx.buf.ForEach(bucket, visitor)
 }
 
-func (baseReadTx *baseReadTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
+func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
 	if endKey == nil {
 		// forbid duplicates for single keys
 		limit = 1
@@ -84,16 +82,16 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketName, key, endKey []byte, limit 
 	if limit <= 0 {
 		limit = math.MaxInt64
 	}
-	if limit > 1 && !bytes.Equal(bucketName, safeRangeBucket) {
+	if limit > 1 && !bucketType.IsSafeRangeBucket() {
 		panic("do not use unsafeRange on non-keys bucket")
 	}
-	keys, vals := baseReadTx.buf.Range(bucketName, key, endKey, limit)
+	keys, vals := baseReadTx.buf.Range(bucketType, key, endKey, limit)
 	if int64(len(keys)) == limit {
 		return keys, vals
 	}
 
 	// find/cache bucket
-	bn := string(bucketName)
+	bn := bucketType.ID()
 	baseReadTx.txMu.RLock()
 	bucket, ok := baseReadTx.buckets[bn]
 	baseReadTx.txMu.RUnlock()
@@ -101,7 +99,7 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketName, key, endKey []byte, limit 
 	if !ok {
 		baseReadTx.txMu.Lock()
 		lockHeld = true
-		bucket = baseReadTx.tx.Bucket(bucketName)
+		bucket = baseReadTx.tx.Bucket(bucketType.Name())
 		baseReadTx.buckets[bn] = bucket
 	}
 
@@ -133,7 +131,7 @@ func (rt *readTx) RUnlock() { rt.mu.RUnlock() }
 
 func (rt *readTx) reset() {
 	rt.buf.reset()
-	rt.buckets = make(map[string]*bolt.Bucket)
+	rt.buckets = make(map[BucketID]*bolt.Bucket)
 	rt.tx = nil
 	rt.txWg = new(sync.WaitGroup)
 }

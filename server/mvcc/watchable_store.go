@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"go.uber.org/zap"
 )
@@ -353,7 +354,7 @@ func (s *watchableStore) syncWatchers() int {
 	// values are actual key-value pairs in backend.
 	tx := s.store.b.ReadTx()
 	tx.RLock()
-	revs, vs := tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
+	revs, vs := tx.UnsafeRange(buckets.Key, minBytes, maxBytes, 0)
 	tx.RUnlock()
 	evs := kvsToEvents(s.store.lg, wg, revs, vs)
 
