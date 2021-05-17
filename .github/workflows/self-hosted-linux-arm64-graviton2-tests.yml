@@ -1,10 +1,5 @@
 name: Linux ARM64 Graviton2
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+on: [push, pull_request]
 
 jobs:
   test:
