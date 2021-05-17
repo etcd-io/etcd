@@ -30,6 +30,7 @@ function update_module_version() {
   local v3version="${1}"
   local v2version="${2}"
   local modules
+  run go mod tidy
   modules=$(run go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
 
   v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
@@ -41,6 +42,13 @@ function update_module_version() {
   for dep in ${v2deps}; do
     run go mod edit -require "${dep}@${v2version}"
   done
+
+  run go mod tidy
+}
+
+function mod_tidy_fix {
+  run rm ./go.sum
+  run go mod tidy || return 2
 }
 
 # Updates all cross-module versions to ${TARGET_VERSION} in local client.
@@ -65,6 +73,7 @@ function update_versions_cmd() {
   log_info "v2version: ${v2version}"
 
   run_for_modules update_module_version "${v3version}" "${v2version}"
+  run_for_modules mod_tidy_fix || exit 2
 }
 
 function get_gpg_key {
