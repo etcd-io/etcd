@@ -28,6 +28,7 @@ var (
 	etcdServerReadyLines = []string{"ready to serve client requests"}
 	binPath              string
 	ctlBinPath           string
+	utlBinPath           string
 )
 
 // etcdProcess is a process that serves etcd requests.
@@ -143,8 +144,11 @@ func (ep *etcdServerProcess) Close() error {
 	if err := ep.Stop(); err != nil {
 		return err
 	}
-	ep.cfg.lg.Info("removing directory", zap.String("data-dir", ep.cfg.dataDirPath))
-	return os.RemoveAll(ep.cfg.dataDirPath)
+	if !ep.cfg.keepDataDir {
+		ep.cfg.lg.Info("removing directory", zap.String("data-dir", ep.cfg.dataDirPath))
+		return os.RemoveAll(ep.cfg.dataDirPath)
+	}
+	return nil
 }
 
 func (ep *etcdServerProcess) WithStopSignal(sig os.Signal) os.Signal {

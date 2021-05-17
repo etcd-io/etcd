@@ -25,6 +25,7 @@ build:
 	GO_BUILD_FLAGS="-v" ./build.sh
 	./bin/etcd --version
 	./bin/etcdctl version
+	./bin/etcdutl version
 
 clean:
 	rm -f ./codecov
@@ -210,7 +211,7 @@ build-docker-release-main:
 	docker run \
 	  --rm \
 	  gcr.io/etcd-development/etcd:$(ETCD_VERSION) \
-	  /bin/sh -c "/usr/local/bin/etcd --version && /usr/local/bin/etcdctl version"
+	  /bin/sh -c "/usr/local/bin/etcd --version && /usr/local/bin/etcdctl version && /usr/local/bin/etcdutl version"
 
 push-docker-release-main:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
@@ -529,6 +530,7 @@ build-docker-functional:
 	  /bin/bash -c "./bin/etcd --version && \
 	   ./bin/etcd-failpoints --version && \
 	   ./bin/etcdctl version && \
+	   ./bin/etcdutl version && \
 	   ./bin/etcd-agent -help || true && \
 	   ./bin/etcd-proxy -help || true && \
 	   ./bin/etcd-runner --help || true && \

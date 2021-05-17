@@ -87,7 +87,6 @@ func init() {
 		command.NewMemberCommand(),
 		command.NewSnapshotCommand(),
 		command.NewMakeMirrorCommand(),
-		command.NewMigrateCommand(),
 		command.NewLockCommand(),
 		command.NewElectCommand(),
 		command.NewAuthCommand(),

@@ -225,6 +225,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcdctl get --count-only`](https://github.com/etcd-io/etcd/pull/11743) flag for output type `fields`.
 - Add [`etcdctl member list -w=json --hex`](https://github.com/etcd-io/etcd/pull/11812) flag to print memberListResponse in hex format json.
 - Changed [`etcdctl lock <lockname> exec-command`](https://github.com/etcd-io/etcd/pull/12829) to return exit code of exec-command.
+- [New tool: `etcdutl`](https://github.com/etcd-io/etcd/pull/12971) incorporated functionality of: `etcdctl snapshot status|restore`, `etcdctl backup`, `etcdctl defrag --data-dir ...`.
+- [ETCDCTL_API=2 `etcdctl migrate`](https://github.com/etcd-io/etcd/pull/12971) has been decomissioned. Use etcd <=v3.4 to restore v2 storage.
 
 ### gRPC gateway
 

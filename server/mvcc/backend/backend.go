@@ -465,7 +465,7 @@ func (b *backend) defrag() error {
 	size2, sizeInUse2 := b.Size(), b.SizeInUse()
 	if b.lg != nil {
 		b.lg.Info(
-			"defragmented",
+			"finished defragmenting directory",
 			zap.String("path", dbp),
 			zap.Int64("current-db-size-bytes-diff", size2-size1),
 			zap.Int64("current-db-size-bytes", size2),

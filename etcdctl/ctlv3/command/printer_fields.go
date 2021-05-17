@@ -20,7 +20,6 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	spb "go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/etcdctl/v3/snapshot"
 )
 
 type fieldsPrinter struct{ printer }
@@ -184,13 +183,6 @@ func (p *fieldsPrinter) Alarm(r v3.AlarmResponse) {
 		fmt.Println(`"AlarmType" :`, a.Alarm)
 		fmt.Println()
 	}
-}
-
-func (p *fieldsPrinter) DBStatus(r snapshot.Status) {
-	fmt.Println(`"Hash" :`, r.Hash)
-	fmt.Println(`"Revision" :`, r.Revision)
-	fmt.Println(`"Keys" :`, r.TotalKey)
-	fmt.Println(`"Size" :`, r.TotalSize)
 }
 
 func (p *fieldsPrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) { p.hdr(r.Header) }

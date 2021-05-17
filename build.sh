@@ -47,6 +47,16 @@ etcd_build() {
       -o="../${out}/etcd" . || return 2
   ) || return 2
 
+  run rm -f "${out}/etcdutl"
+  # shellcheck disable=SC2086
+  (
+    cd ./etcdutl
+    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
+      -installsuffix=cgo \
+      "-ldflags=${GO_LDFLAGS[*]}" \
+      -o="../${out}/etcdutl" . || return 2
+  ) || return 2
+
   run rm -f "${out}/etcdctl"
   # shellcheck disable=SC2086
   (
