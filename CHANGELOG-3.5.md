@@ -117,6 +117,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd --experimental-backend-bbolt-freelist-type` has been deprecated.
 - Support [downgrade API](https://github.com/etcd-io/etcd/pull/11715).
 - Deprecate v2 apply on cluster version. [Use v3 request to set cluster version and recover cluster version from v3 backend](https://github.com/etcd-io/etcd/pull/11427).
+- [Use v2 api to update cluster version to support mixed version cluster during upgrade](https://github.com/etcd-io/etcd/pull/12988).
 - [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
 - Fix [quorum protection logic when promoting a learner](https://github.com/etcd-io/etcd/pull/11640).
 - Improve [peer corruption checker](https://github.com/etcd-io/etcd/pull/11621) to work when peer mTLS is enabled.
