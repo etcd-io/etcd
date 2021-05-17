@@ -71,7 +71,7 @@ var (
 	ErrGRPCNoLeader                   = status.New(codes.Unavailable, "etcdserver: no leader").Err()
 	ErrGRPCNotLeader                  = status.New(codes.FailedPrecondition, "etcdserver: not leader").Err()
 	ErrGRPCLeaderChanged              = status.New(codes.Unavailable, "etcdserver: leader changed").Err()
-	ErrGRPCNotCapable                 = status.New(codes.Unavailable, "etcdserver: not capable").Err()
+	ErrGRPCNotCapable                 = status.New(codes.FailedPrecondition, "etcdserver: not capable").Err()
 	ErrGRPCStopped                    = status.New(codes.Unavailable, "etcdserver: server stopped").Err()
 	ErrGRPCTimeout                    = status.New(codes.Unavailable, "etcdserver: request timed out").Err()
 	ErrGRPCTimeoutDueToLeaderFail     = status.New(codes.Unavailable, "etcdserver: request timed out, possibly due to previous leader failure").Err()
@@ -79,12 +79,12 @@ var (
 	ErrGRPCTimeoutWaitAppliedIndex    = status.New(codes.Unavailable, "etcdserver: request timed out, waiting for the applied index took too long").Err()
 	ErrGRPCUnhealthy                  = status.New(codes.Unavailable, "etcdserver: unhealthy cluster").Err()
 	ErrGRPCCorrupt                    = status.New(codes.DataLoss, "etcdserver: corrupt cluster").Err()
-	ErrGPRCNotSupportedForLearner     = status.New(codes.Unavailable, "etcdserver: rpc not supported for learner").Err()
+	ErrGPRCNotSupportedForLearner     = status.New(codes.FailedPrecondition, "etcdserver: rpc not supported for learner").Err()
 	ErrGRPCBadLeaderTransferee        = status.New(codes.FailedPrecondition, "etcdserver: bad leader transferee").Err()
 
-	ErrGRPCClusterVersionUnavailable     = status.New(codes.Unavailable, "etcdserver: cluster version not found during downgrade").Err()
 	ErrGRPCWrongDowngradeVersionFormat   = status.New(codes.InvalidArgument, "etcdserver: wrong downgrade target version format").Err()
 	ErrGRPCInvalidDowngradeTargetVersion = status.New(codes.InvalidArgument, "etcdserver: invalid downgrade target version").Err()
+	ErrGRPCClusterVersionUnavailable     = status.New(codes.FailedPrecondition, "etcdserver: cluster version not found during downgrade").Err()
 	ErrGRPCDowngradeInProcess            = status.New(codes.FailedPrecondition, "etcdserver: cluster has a downgrade job in progress").Err()
 	ErrGRPCNoInflightDowngrade           = status.New(codes.FailedPrecondition, "etcdserver: no inflight downgrade job").Err()
 
