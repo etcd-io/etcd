@@ -2428,6 +2428,7 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 // It updates the cluster version if all members agrees on a higher one.
 // It prints out log if there is a member with a higher version than the
 // local version.
+// TODO switch to updateClusterVersionV3 in 3.6
 func (s *EtcdServer) monitorVersions() {
 	for {
 		select {
@@ -2458,27 +2459,67 @@ func (s *EtcdServer) monitorVersions() {
 			if v != nil {
 				verStr = v.String()
 			}
-			s.GoAttach(func() { s.updateClusterVersion(verStr) })
+			s.GoAttach(func() { s.updateClusterVersionV2(verStr) })
 			continue
 		}
 
 		if v != nil && membership.IsValidVersionChange(s.cluster.Version(), v) {
-			s.GoAttach(func() { s.updateClusterVersion(v.String()) })
+			s.GoAttach(func() { s.updateClusterVersionV2(v.String()) })
 		}
 	}
 }
 
-func (s *EtcdServer) updateClusterVersion(ver string) {
+func (s *EtcdServer) updateClusterVersionV2(ver string) {
 	lg := s.Logger()
 
 	if s.cluster.Version() == nil {
 		lg.Info(
-			"setting up initial cluster version",
+			"setting up initial cluster version using v2 API",
 			zap.String("cluster-version", version.Cluster(ver)),
 		)
 	} else {
 		lg.Info(
-			"updating cluster version",
+			"updating cluster version using v2 API",
+			zap.String("from", version.Cluster(s.cluster.Version().String())),
+			zap.String("to", version.Cluster(ver)),
+		)
+	}
+
+	req := pb.Request{
+		Method: "PUT",
+		Path:   membership.StoreClusterVersionKey(),
+		Val:    ver,
+	}
+
+	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
+	_, err := s.Do(ctx, req)
+	cancel()
+
+	switch err {
+	case nil:
+		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
+		return
+
+	case ErrStopped:
+		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
+		return
+
+	default:
+		lg.Warn("failed to update cluster version", zap.Error(err))
+	}
+}
+
+func (s *EtcdServer) updateClusterVersionV3(ver string) {
+	lg := s.Logger()
+
+	if s.cluster.Version() == nil {
+		lg.Info(
+			"setting up initial cluster version using v3 API",
+			zap.String("cluster-version", version.Cluster(ver)),
+		)
+	} else {
+		lg.Info(
+			"updating cluster version using v3 API",
 			zap.String("from", version.Cluster(s.cluster.Version().String())),
 			zap.String("to", version.Cluster(ver)),
 		)
