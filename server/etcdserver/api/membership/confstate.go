@@ -19,8 +19,8 @@ import (
 	"log"
 
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap"
 )
 
@@ -36,13 +36,13 @@ func MustUnsafeSaveConfStateToBackend(lg *zap.Logger, tx backend.BatchTx, confSt
 		lg.Panic("Cannot marshal raftpb.ConfState", zap.Stringer("conf-state", confState), zap.Error(err))
 	}
 
-	tx.UnsafePut(mvcc.MetaBucketName, confStateKey, confStateBytes)
+	tx.UnsafePut(buckets.Meta, confStateKey, confStateBytes)
 }
 
 // UnsafeConfStateFromBackend retrieves ConfState from the backend.
 // Returns nil if confState in backend is not persisted (e.g. backend writen by <v3.5).
 func UnsafeConfStateFromBackend(lg *zap.Logger, tx backend.ReadTx) *raftpb.ConfState {
-	keys, vals := tx.UnsafeRange(mvcc.MetaBucketName, confStateKey, nil, 0)
+	keys, vals := tx.UnsafeRange(buckets.Meta, confStateKey, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}

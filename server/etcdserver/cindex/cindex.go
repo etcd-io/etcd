@@ -20,13 +20,7 @@ import (
 	"sync/atomic"
 
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
-)
-
-var (
-	MetaBucketName = []byte("meta")
-
-	ConsistentIndexKeyName = []byte("consistent_index")
-	TermKeyName            = []byte("term")
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 )
 
 type Backend interface {
@@ -125,26 +119,26 @@ func (f *fakeConsistentIndex) SetBackend(_ Backend)         {}
 
 // UnsafeCreateMetaBucket creates the `meta` bucket (if it does not exists yet).
 func UnsafeCreateMetaBucket(tx backend.BatchTx) {
-	tx.UnsafeCreateBucket(MetaBucketName)
+	tx.UnsafeCreateBucket(buckets.Meta)
 }
 
 // CreateMetaBucket creates the `meta` bucket (if it does not exists yet).
 func CreateMetaBucket(tx backend.BatchTx) {
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafeCreateBucket(MetaBucketName)
+	tx.UnsafeCreateBucket(buckets.Meta)
 }
 
 // unsafeGetConsistentIndex loads consistent index & term from given transaction.
 // returns 0,0 if the data are not found.
 // Term is persisted since v3.5.
 func unsafeReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
-	_, vs := tx.UnsafeRange(MetaBucketName, ConsistentIndexKeyName, nil, 0)
+	_, vs := tx.UnsafeRange(buckets.Meta, buckets.MetaConsistentIndexKeyName, nil, 0)
 	if len(vs) == 0 {
 		return 0, 0
 	}
 	v := binary.BigEndian.Uint64(vs[0])
-	_, ts := tx.UnsafeRange(MetaBucketName, TermKeyName, nil, 0)
+	_, ts := tx.UnsafeRange(buckets.Meta, buckets.MetaTermKeyName, nil, 0)
 	if len(ts) == 0 {
 		return v, 0
 	}
@@ -180,11 +174,11 @@ func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, 
 	binary.BigEndian.PutUint64(bs1, index)
 	// put the index into the underlying backend
 	// tx has been locked in TxnBegin, so there is no need to lock it again
-	tx.UnsafePut(MetaBucketName, ConsistentIndexKeyName, bs1)
+	tx.UnsafePut(buckets.Meta, buckets.MetaConsistentIndexKeyName, bs1)
 	if term > 0 {
 		bs2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(bs2, term)
-		tx.UnsafePut(MetaBucketName, TermKeyName, bs2)
+		tx.UnsafePut(buckets.Meta, buckets.MetaTermKeyName, bs2)
 	}
 }
 
