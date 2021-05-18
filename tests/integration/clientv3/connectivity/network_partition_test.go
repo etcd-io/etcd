@@ -28,7 +28,6 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/tests/v3/integration/clientv3"
-	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 )
 
@@ -119,7 +118,6 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 		Endpoints:   []string{eps[0]},
 		DialTimeout: 3 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
-		Logger:      zaptest.NewLogger(t).Named("client"),
 	}
 	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
