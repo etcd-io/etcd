@@ -141,7 +141,7 @@ func newBucketBuffer() *bucketBuffer {
 func (bb *bucketBuffer) Range(key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte) {
 	f := func(i int) bool { return bytes.Compare(bb.buf[i].key, key) >= 0 }
 	idx := sort.Search(bb.used, f)
-	if idx < 0 {
+	if idx < 0 || idx >= bb.used {
 		return nil, nil
 	}
 	if len(endKey) == 0 {
