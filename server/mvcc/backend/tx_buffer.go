@@ -21,7 +21,7 @@ import (
 
 // txBuffer handles functionality shared between txWriteBuffer and txReadBuffer.
 type txBuffer struct {
-	buckets map[string]*bucketBuffer
+	buckets map[BucketID]*bucketBuffer
 }
 
 func (txb *txBuffer) reset() {
@@ -37,28 +37,26 @@ func (txb *txBuffer) reset() {
 // txWriteBuffer buffers writes of pending updates that have not yet committed.
 type txWriteBuffer struct {
 	txBuffer
-	// Map from bucket name into information whether this bucket is edited
+	// Map from bucket ID into information whether this bucket is edited
 	// sequentially (i.e. keys are growing monotonically).
-	bucket2seq map[string]bool
+	bucket2seq map[BucketID]bool
 }
 
-// TODO: Passing bucket as an (int) enum would avoid a lot of byte[]->string->hash conversions.
-func (txw *txWriteBuffer) put(bucket, k, v []byte) {
-	bucketstr := string(bucket)
-	txw.bucket2seq[bucketstr] = false
-	txw.putInternal(bucketstr, k, v)
+func (txw *txWriteBuffer) put(bucket Bucket, k, v []byte) {
+	txw.bucket2seq[bucket.ID()] = false
+	txw.putInternal(bucket, k, v)
 }
 
-func (txw *txWriteBuffer) putSeq(bucket, k, v []byte) {
+func (txw *txWriteBuffer) putSeq(bucket Bucket, k, v []byte) {
 	// TODO: Add (in tests?) verification whether k>b[len(b)]
-	txw.putInternal(string(bucket), k, v)
+	txw.putInternal(bucket, k, v)
 }
 
-func (txw *txWriteBuffer) putInternal(bucket string, k, v []byte) {
-	b, ok := txw.buckets[bucket]
+func (txw *txWriteBuffer) putInternal(bucket Bucket, k, v []byte) {
+	b, ok := txw.buckets[bucket.ID()]
 	if !ok {
 		b = newBucketBuffer()
-		txw.buckets[bucket] = b
+		txw.buckets[bucket.ID()] = b
 	}
 	b.add(k, v)
 }
@@ -95,15 +93,15 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 // txReadBuffer accesses buffered updates.
 type txReadBuffer struct{ txBuffer }
 
-func (txr *txReadBuffer) Range(bucketName, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
-	if b := txr.buckets[string(bucketName)]; b != nil {
+func (txr *txReadBuffer) Range(bucket Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
+	if b := txr.buckets[bucket.ID()]; b != nil {
 		return b.Range(key, endKey, limit)
 	}
 	return nil, nil
 }
 
-func (txr *txReadBuffer) ForEach(bucketName []byte, visitor func(k, v []byte) error) error {
-	if b := txr.buckets[string(bucketName)]; b != nil {
+func (txr *txReadBuffer) ForEach(bucket Bucket, visitor func(k, v []byte) error) error {
+	if b := txr.buckets[bucket.ID()]; b != nil {
 		return b.ForEach(visitor)
 	}
 	return nil
@@ -113,7 +111,7 @@ func (txr *txReadBuffer) ForEach(bucketName []byte, visitor func(k, v []byte) er
 func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 	txrCopy := txReadBuffer{
 		txBuffer: txBuffer{
-			buckets: make(map[string]*bucketBuffer, len(txr.txBuffer.buckets)),
+			buckets: make(map[BucketID]*bucketBuffer, len(txr.txBuffer.buckets)),
 		},
 	}
 	for bucketName, bucket := range txr.txBuffer.buckets {

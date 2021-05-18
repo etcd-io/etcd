@@ -19,6 +19,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 )
 
 func WriteKV(be backend.Backend, kv mvccpb.KeyValue) {
@@ -31,6 +32,6 @@ func WriteKV(be backend.Backend, kv mvccpb.KeyValue) {
 	}
 
 	be.BatchTx().Lock()
-	be.BatchTx().UnsafePut(keyBucketName, ibytes, d)
+	be.BatchTx().UnsafePut(buckets.Key, ibytes, d)
 	be.BatchTx().Unlock()
 }
