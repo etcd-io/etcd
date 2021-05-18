@@ -25,7 +25,6 @@ import (
 	"go.etcd.io/etcd/client/v3/namespace"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/adapter"
-	"go.uber.org/zap"
 )
 
 const ThroughProxy = true
@@ -108,8 +107,7 @@ func (pc *proxyCloser) Close() error {
 	return err
 }
 
-func newClientV3(cfg clientv3.Config, lg *zap.Logger) (*clientv3.Client, error) {
-	cfg.Logger = lg
+func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
 	c, err := clientv3.New(cfg)
 	if err != nil {
 		return nil, err

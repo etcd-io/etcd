@@ -30,7 +30,9 @@ import (
 )
 
 func NewClient(t *testing.T, cfg Config) (*Client, error) {
-	cfg.Logger = zaptest.NewLogger(t)
+	if cfg.Logger == nil {
+		cfg.Logger = zaptest.NewLogger(t).Named("client")
+	}
 	return New(cfg)
 }
 

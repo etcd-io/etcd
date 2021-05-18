@@ -73,8 +73,8 @@ func NewEmbedConfig(t testing.TB, name string) *embed.Config {
 }
 
 func NewClient(t testing.TB, cfg clientv3.Config) (*clientv3.Client, error) {
-	if cfg.Logger != nil {
-		cfg.Logger = zaptest.NewLogger(t)
+	if cfg.Logger == nil {
+		cfg.Logger = zaptest.NewLogger(t).Named("client")
 	}
 	return clientv3.New(cfg)
 }
