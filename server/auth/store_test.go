@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"reflect"
+	"github.com/stretchr/testify/assert"
 	"strings"
 	"sync"
 	"testing"
@@ -384,9 +384,8 @@ func TestGetUser(t *testing.T) {
 		t.Fatal("expect user not nil, got nil")
 	}
 	expected := []string{"role-test"}
-	if !reflect.DeepEqual(expected, u.Roles) {
-		t.Errorf("expected %v, got %v", expected, u.Roles)
-	}
+
+	assert.Equal(t, expected, u.Roles)
 
 	// check non existent user
 	_, err = as.UserGet(&pb.AuthUserGetRequest{Name: "nouser"})
@@ -445,9 +444,40 @@ func TestRoleGrantPermission(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(perm, r.Perm[0]) {
-		t.Errorf("expected %v, got %v", perm, r.Perm[0])
+	assert.Equal(t, perm, r.Perm[0])
+}
+
+func TestRootRoleGrantPermission(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	perm := &authpb.Permission{
+		PermType: authpb.WRITE,
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
 	}
+	_, err := as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "root",
+		Perm: perm,
+	})
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	r, err := as.RoleGet(&pb.AuthRoleGetRequest{Role: "root"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//whatever grant permission to root, it always return root permission.
+	expectPerm := &authpb.Permission{
+		PermType: authpb.READWRITE,
+		Key:      []byte{},
+		RangeEnd: []byte{0},
+	}
+
+	assert.Equal(t, expectPerm, r.Perm[0])
 }
 
 func TestRoleRevokePermission(t *testing.T) {
@@ -522,9 +552,8 @@ func TestUserRevokePermission(t *testing.T) {
 	}
 
 	expected := []string{"role-test", "role-test-1"}
-	if !reflect.DeepEqual(expected, u.Roles) {
-		t.Fatalf("expected %v, got %v", expected, u.Roles)
-	}
+
+	assert.Equal(t, expected, u.Roles)
 
 	_, err = as.UserRevokeRole(&pb.AuthUserRevokeRoleRequest{Name: "foo", Role: "role-test-1"})
 	if err != nil {
@@ -537,9 +566,8 @@ func TestUserRevokePermission(t *testing.T) {
 	}
 
 	expected = []string{"role-test"}
-	if !reflect.DeepEqual(expected, u.Roles) {
-		t.Errorf("expected %v, got %v", expected, u.Roles)
-	}
+
+	assert.Equal(t, expected, u.Roles)
 }
 
 func TestRoleDelete(t *testing.T) {
@@ -555,9 +583,8 @@ func TestRoleDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := []string{"root"}
-	if !reflect.DeepEqual(expected, rl.Roles) {
-		t.Errorf("expected %v, got %v", expected, rl.Roles)
-	}
+
+	assert.Equal(t, expected, rl.Roles)
 }
 
 func TestAuthInfoFromCtx(t *testing.T) {
