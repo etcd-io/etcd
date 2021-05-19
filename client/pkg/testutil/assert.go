@@ -29,10 +29,11 @@ func AssertEqual(t *testing.T, e, a interface{}, msg ...string) {
 		return
 	}
 	s := ""
-	if len(msg) > 1 {
+	if len(msg) > 0 {
 		s = msg[0] + ": "
 	}
-	s = fmt.Sprintf("%sexpected %+v, got %+v", s, e, a)
+
+	s = fmt.Sprintf("%s:expected %+v, got %+v", s, e, a)
 	FatalStack(t, s)
 }
 
