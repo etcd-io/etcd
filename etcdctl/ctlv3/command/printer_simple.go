@@ -24,6 +24,8 @@ import (
 	v3 "go.etcd.io/etcd/client/v3"
 )
 
+const rootRole = "root"
+
 type simplePrinter struct {
 	isHex     bool
 	valueOnly bool
@@ -180,6 +182,14 @@ func (s *simplePrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) {
 
 func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 	fmt.Printf("Role %s\n", role)
+	if rootRole == role && r.Perm == nil {
+		fmt.Println("KV Read:")
+		fmt.Println("\t[, <open ended>")
+		fmt.Println("KV Write:")
+		fmt.Println("\t[, <open ended>")
+		return
+	}
+
 	fmt.Println("KV Read:")
 
 	printRange := func(perm *v3.Permission) {
