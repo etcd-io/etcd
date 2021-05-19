@@ -36,7 +36,7 @@ const v2Version = "v2"
 type ApplierV2 interface {
 	Delete(r *RequestV2) Response
 	Post(r *RequestV2) Response
-	Put(r *RequestV2) Response
+	Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) Response
 	QGet(r *RequestV2) Response
 	Sync(r *RequestV2) Response
 }
@@ -67,7 +67,7 @@ func (a *applierV2store) Post(r *RequestV2) Response {
 	return toResponse(a.store.Create(r.Path, r.Dir, r.Val, true, r.TTLOptions()))
 }
 
-func (a *applierV2store) Put(r *RequestV2) Response {
+func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) Response {
 	ttlOptions := r.TTLOptions()
 	exists, existsSet := pbutil.GetBool(r.PrevExist)
 	switch {
@@ -89,7 +89,7 @@ func (a *applierV2store) Put(r *RequestV2) Response {
 				a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
 			}
 			if a.cluster != nil {
-				a.cluster.UpdateAttributes(id, attr, true)
+				a.cluster.UpdateAttributes(id, attr, shouldApplyV3)
 			}
 			// return an empty response since there is no consumer.
 			return Response{}
@@ -98,7 +98,7 @@ func (a *applierV2store) Put(r *RequestV2) Response {
 		if r.Path == membership.StoreClusterVersionKey() {
 			if a.cluster != nil {
 				// persist to backend given v2store can be very stale
-				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability, membership.ApplyBoth)
+				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability, shouldApplyV3)
 			}
 			return Response{}
 		}
@@ -117,7 +117,7 @@ func (a *applierV2store) Sync(r *RequestV2) Response {
 
 // applyV2Request interprets r as a call to v2store.X
 // and returns a Response interpreted from v2store.Event
-func (s *EtcdServer) applyV2Request(r *RequestV2) (resp Response) {
+func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) (resp Response) {
 	stringer := panicAlternativeStringer{
 		stringer:    r,
 		alternative: func() string { return fmt.Sprintf("id:%d,method:%s,path:%s", r.ID, r.Method, r.Path) },
@@ -132,7 +132,7 @@ func (s *EtcdServer) applyV2Request(r *RequestV2) (resp Response) {
 	case "POST":
 		return s.applyV2.Post(r)
 	case "PUT":
-		return s.applyV2.Put(r)
+		return s.applyV2.Put(r, shouldApplyV3)
 	case "DELETE":
 		return s.applyV2.Delete(r)
 	case "QGET":
