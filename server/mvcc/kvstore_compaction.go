@@ -61,9 +61,9 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 			return true
 		}
 
+		tx.Unlock()
 		// update last
 		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
-		tx.Unlock()
 		// Immediately commit the compaction deletes instead of letting them accumulate in the write buffer
 		s.b.ForceCommit()
 		dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
