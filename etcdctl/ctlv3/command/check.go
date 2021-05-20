@@ -21,11 +21,13 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
 	"time"
 
 	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/report"
 
 	"github.com/spf13/cobra"
@@ -143,7 +145,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 
 	model, ok := checkPerfAlias[checkPerfLoad]
 	if !ok {
-		ExitWithError(ExitBadFeature, fmt.Errorf("unknown load option %v", checkPerfLoad))
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("unknown load option %v", checkPerfLoad))
 	}
 	cfg := checkPerfCfgMap[model]
 
@@ -157,13 +159,18 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.duration)*time.Second)
-	resp, err := clients[0].Get(ctx, checkPerfPrefix, v3.WithPrefix(), v3.WithLimit(1))
-	cancel()
+	defer cancel()
+	ctx, icancel := interruptableContext(ctx, func() { attemptCleanup(clients[0], false) })
+	defer icancel()
+
+	gctx, gcancel := context.WithCancel(ctx)
+	resp, err := clients[0].Get(gctx, checkPerfPrefix, v3.WithPrefix(), v3.WithLimit(1))
+	gcancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	if len(resp.Kvs) > 0 {
-		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first", checkPerfPrefix, checkPerfPrefix))
+		cobrautl.ExitWithError(cobrautl.ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with 'etcdctl del --prefix %s' first", checkPerfPrefix, checkPerfPrefix))
 	}
 
 	ksize, vsize := 256, 1024
@@ -189,7 +196,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	}
 
 	go func() {
-		cctx, ccancel := context.WithTimeout(context.Background(), time.Duration(cfg.duration)*time.Second)
+		cctx, ccancel := context.WithCancel(ctx)
 		defer ccancel()
 		for limit.Wait(cctx) == nil {
 			binary.PutVarint(k, rand.Int63n(math.MaxInt64))
@@ -212,16 +219,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 
 	s := <-sc
 
-	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
-	dresp, err := clients[0].Delete(ctx, checkPerfPrefix, v3.WithPrefix())
-	cancel()
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-
-	if autoCompact {
-		compact(clients[0], dresp.Header.Revision)
-	}
+	attemptCleanup(clients[0], autoCompact)
 
 	if autoDefrag {
 		for _, ep := range clients[0].Endpoints() {
@@ -261,8 +259,36 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 		fmt.Println("PASS")
 	} else {
 		fmt.Println("FAIL")
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
+}
+
+func attemptCleanup(client *v3.Client, autoCompact bool) {
+	dctx, dcancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer dcancel()
+	dresp, err := client.Delete(dctx, checkPerfPrefix, v3.WithPrefix())
+	if err != nil {
+		fmt.Printf("FAIL: Cleanup failed during key deletion: ERROR(%v)\n", err)
+		return
+	}
+	if autoCompact {
+		compact(client, dresp.Header.Revision)
+	}
+}
+
+func interruptableContext(ctx context.Context, attemptCleanup func()) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		defer signal.Stop(signalChan)
+		select {
+		case <-signalChan:
+			cancel()
+			attemptCleanup()
+		}
+	}()
+	return ctx, cancel
 }
 
 // NewCheckDatascaleCommand returns the cobra command for "check datascale".
@@ -293,7 +319,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 
 	model, ok := checkDatascaleAlias[checkDatascaleLoad]
 	if !ok {
-		ExitWithError(ExitBadFeature, fmt.Errorf("unknown load option %v", checkDatascaleLoad))
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("unknown load option %v", checkDatascaleLoad))
 	}
 	cfg := checkDatascaleCfgMap[model]
 
@@ -308,17 +334,19 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	// get endpoints
 	eps, errEndpoints := endpointsFromCmd(cmd)
 	if errEndpoints != nil {
-		ExitWithError(ExitError, errEndpoints)
+		cobrautl.ExitWithError(cobrautl.ExitError, errEndpoints)
 	}
+
+	sec := secureCfgFromCmd(cmd)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	resp, err := clients[0].Get(ctx, checkDatascalePrefix, v3.WithPrefix(), v3.WithLimit(1))
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	if len(resp.Kvs) > 0 {
-		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first", checkDatascalePrefix, checkDatascalePrefix))
+		cobrautl.ExitWithError(cobrautl.ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first", checkDatascalePrefix, checkDatascalePrefix))
 	}
 
 	ksize, vsize := 512, 512
@@ -329,10 +357,10 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	wg.Add(len(clients))
 
 	// get the process_resident_memory_bytes and process_virtual_memory_bytes before the put operations
-	bytesBefore := endpointMemoryMetrics(eps[0])
+	bytesBefore := endpointMemoryMetrics(eps[0], sec)
 	if bytesBefore == 0 {
 		fmt.Println("FAIL: Could not read process_resident_memory_bytes before the put operations.")
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
 
 	fmt.Println(fmt.Sprintf("Start data scale check for work load [%v key-value pairs, %v bytes per key-value, %v concurrent clients].", cfg.limit, cfg.kvSize, cfg.clients))
@@ -367,10 +395,10 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	s := <-sc
 
 	// get the process_resident_memory_bytes after the put operations
-	bytesAfter := endpointMemoryMetrics(eps[0])
+	bytesAfter := endpointMemoryMetrics(eps[0], sec)
 	if bytesAfter == 0 {
 		fmt.Println("FAIL: Could not read process_resident_memory_bytes after the put operations.")
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
 
 	// delete the created kv pairs
@@ -378,7 +406,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	dresp, derr := clients[0].Delete(ctx, checkDatascalePrefix, v3.WithPrefix())
 	defer cancel()
 	if derr != nil {
-		ExitWithError(ExitError, derr)
+		cobrautl.ExitWithError(cobrautl.ExitError, derr)
 	}
 
 	if autoCompact {
@@ -393,7 +421,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 
 	if bytesAfter == 0 {
 		fmt.Println("FAIL: Could not read process_resident_memory_bytes after the put operations.")
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
 
 	bytesUsed := bytesAfter - bytesBefore
@@ -404,7 +432,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 		for k, v := range s.ErrorDist {
 			fmt.Printf("FAIL: ERROR(%v) -> %d\n", k, v)
 		}
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	} else {
 		fmt.Println(fmt.Sprintf("PASS: Approximate system memory used : %v MB.", strconv.FormatFloat(mbUsed, 'f', 2, 64)))
 	}

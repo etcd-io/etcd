@@ -26,24 +26,19 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/schedule"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"go.uber.org/zap"
 )
 
 var (
-	keyBucketName  = []byte("key")
-	metaBucketName = []byte("meta")
-
-	consistentIndexKeyName  = []byte("consistent_index")
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
-	ErrCanceled  = errors.New("mvcc: watcher is canceled")
 )
 
 const (
@@ -57,11 +52,11 @@ const (
 
 var restoreChunkKeys = 10000 // non-const for testing
 var defaultCompactBatchLimit = 1000
-var minimumBatchInterval = 10 // 10ms
+var minimumBatchInterval = 10 * time.Millisecond // 10ms
 
 type StoreConfig struct {
 	CompactionBatchLimit    int
-	CompactionSleepInterval int
+	CompactionSleepInterval time.Duration
 }
 
 type store struct {
@@ -72,8 +67,6 @@ type store struct {
 
 	// mu read locks for txns and write locks for non-txn store changes.
 	mu sync.RWMutex
-
-	ci cindex.ConsistentIndexer
 
 	b       backend.Backend
 	kvindex index
@@ -98,20 +91,19 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
-func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) *store {
+func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *store {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	if cfg.CompactionBatchLimit == 0 {
 		cfg.CompactionBatchLimit = defaultCompactBatchLimit
 	}
-	if cfg.CompactionBatchLimit < minimumBatchInterval {
+	if cfg.CompactionSleepInterval < minimumBatchInterval {
 		cfg.CompactionSleepInterval = minimumBatchInterval
 	}
 	s := &store{
 		cfg:     cfg,
 		b:       b,
-		ci:      ci,
 		kvindex: newTreeIndex(lg),
 
 		le: le,
@@ -133,8 +125,8 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.Cons
 
 	tx := s.b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(keyBucketName)
-	tx.UnsafeCreateBucket(metaBucketName)
+	tx.UnsafeCreateBucket(buckets.Key)
+	tx.UnsafeCreateBucket(buckets.Meta)
 	tx.Unlock()
 	s.b.ForceCommit()
 
@@ -172,7 +164,7 @@ func (s *store) Hash() (hash uint32, revision int64, err error) {
 	start := time.Now()
 
 	s.b.ForceCommit()
-	h, err := s.b.Hash(DefaultIgnores)
+	h, err := s.b.Hash(buckets.DefaultIgnores)
 
 	hashSec.Observe(time.Since(start).Seconds())
 	return h, s.currentRev, err
@@ -208,8 +200,8 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	lower := revision{main: compactRev + 1}
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
-	h.Write(keyBucketName)
-	err = tx.UnsafeForEach(keyBucketName, func(k, v []byte) error {
+	h.Write(buckets.Key.Name())
+	err = tx.UnsafeForEach(buckets.Key, func(k, v []byte) error {
 		kr := bytesToRev(k)
 		if !upper.GreaterThan(kr) {
 			return nil
@@ -252,7 +244,7 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 
 	tx := s.b.BatchTx()
 	tx.Lock()
-	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
+	tx.UnsafePut(buckets.Meta, scheduledCompactKeyName, rbytes)
 	tx.Unlock()
 	// ensure that desired compaction is persisted
 	s.b.ForceCommit()
@@ -273,7 +265,7 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 		keep := s.kvindex.Compact(rev)
 		indexCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 		if !s.scheduleCompaction(rev, keep) {
-			s.compactBarrier(nil, ch)
+			s.compactBarrier(context.TODO(), ch)
 			return
 		}
 		close(ch)
@@ -307,25 +299,9 @@ func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 	return s.compact(trace, rev)
 }
 
-// DefaultIgnores is a map of keys to ignore in hash checking.
-var DefaultIgnores map[backend.IgnoreKey]struct{}
-
-func init() {
-	DefaultIgnores = map[backend.IgnoreKey]struct{}{
-		// consistent index might be changed due to v2 internal sync, which
-		// is not controllable by the user.
-		{Bucket: string(metaBucketName), Key: string(consistentIndexKeyName)}: {},
-	}
-}
-
 func (s *store) Commit() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	tx := s.b.BatchTx()
-	tx.Lock()
-	s.saveIndex(tx)
-	tx.Unlock()
 	s.b.ForceCommit()
 }
 
@@ -349,8 +325,6 @@ func (s *store) Restore(b backend.Backend) error {
 
 	s.fifoSched = schedule.NewFIFOScheduler()
 	s.stopc = make(chan struct{})
-	s.ci.SetBatchTx(b.BatchTx())
-	s.ci.SetConsistentIndex(0)
 
 	return s.restore()
 }
@@ -368,20 +342,20 @@ func (s *store) restore() error {
 	tx := s.b.BatchTx()
 	tx.Lock()
 
-	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
+	_, finishedCompactBytes := tx.UnsafeRange(buckets.Meta, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		s.revMu.Lock()
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
 
 		s.lg.Info(
 			"restored last compact revision",
-			zap.String("meta-bucket-name", string(metaBucketName)),
+			zap.Stringer("meta-bucket-name", buckets.Meta),
 			zap.String("meta-bucket-name-key", string(finishedCompactKeyName)),
 			zap.Int64("restored-compact-revision", s.compactMainRev),
 		)
 		s.revMu.Unlock()
 	}
-	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
+	_, scheduledCompactBytes := tx.UnsafeRange(buckets.Meta, scheduledCompactKeyName, nil, 0)
 	scheduledCompact := int64(0)
 	if len(scheduledCompactBytes) != 0 {
 		scheduledCompact = bytesToRev(scheduledCompactBytes[0]).main
@@ -391,7 +365,7 @@ func (s *store) restore() error {
 	keysGauge.Set(0)
 	rkvc, revc := restoreIntoIndex(s.lg, s.kvindex)
 	for {
-		keys, vals := tx.UnsafeRange(keyBucketName, min, max, int64(restoreChunkKeys))
+		keys, vals := tx.UnsafeRange(buckets.Key, min, max, int64(restoreChunkKeys))
 		if len(keys) == 0 {
 			break
 		}
@@ -443,6 +417,8 @@ func (s *store) restore() error {
 
 	tx.Unlock()
 
+	s.lg.Info("kvstore restored", zap.Int64("current-rev", s.currentRev))
+
 	if scheduledCompact != 0 {
 		if _, err := s.compactLockfree(scheduledCompact); err != nil {
 			s.lg.Warn("compaction encountered error", zap.Error(err))
@@ -450,7 +426,7 @@ func (s *store) restore() error {
 
 		s.lg.Info(
 			"resume scheduled compaction",
-			zap.String("meta-bucket-name", string(metaBucketName)),
+			zap.Stringer("meta-bucket-name", buckets.Meta),
 			zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
 			zap.Int64("scheduled-compact-revision", scheduledCompact),
 		)
@@ -534,19 +510,6 @@ func (s *store) Close() error {
 	close(s.stopc)
 	s.fifoSched.Stop()
 	return nil
-}
-
-func (s *store) saveIndex(tx backend.BatchTx) {
-	if s.ci != nil {
-		s.ci.UnsafeSave(tx)
-	}
-}
-
-func (s *store) ConsistentIndex() uint64 {
-	if s.ci != nil {
-		return s.ci.ConsistentIndex()
-	}
-	return 0
 }
 
 func (s *store) setupMetricsReporter() {

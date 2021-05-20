@@ -1,2 +1,2 @@
 
-Please read https://github.com/etcd-io/etcd/blob/master/Documentation/reporting-bugs.md.
+Please read https://etcd.io/docs/latest/reporting_bugs/

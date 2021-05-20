@@ -28,7 +28,6 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"google.golang.org/grpc/metadata"
@@ -46,7 +45,7 @@ type watchctx struct {
 }
 
 func runWatchTest(t *testing.T, f watcherTest) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -300,6 +299,8 @@ func TestWatchCancelRunning(t *testing.T) {
 }
 
 func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
+	integration.BeforeTest(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	if wctx.ch = wctx.w.Watch(ctx, "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil watcher channel")
@@ -346,7 +347,7 @@ func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
 }
 
 func TestWatchResumeInitRev(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -401,7 +402,7 @@ func TestWatchResumeInitRev(t *testing.T) {
 // either a compaction error or all keys by staying in sync before the compaction
 // is finally applied.
 func TestWatchResumeCompacted(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -488,7 +489,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 // TestWatchCompactRevision ensures the CompactRevision error is given on a
 // compaction event ahead of a watcher.
 func TestWatchCompactRevision(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -530,7 +531,7 @@ func TestWatchWithProgressNotify(t *testing.T)        { testWatchWithProgressNot
 func TestWatchWithProgressNotifyNoEvent(t *testing.T) { testWatchWithProgressNotify(t, false) }
 
 func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	// accelerate report interval so test terminates quickly
 	oldpi := v3rpc.GetProgressReportInterval()
@@ -584,6 +585,8 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 }
 
 func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
+	integration.BeforeTest(t)
+
 	progressInterval := 200 * time.Millisecond
 	clus := integration.NewClusterV3(t,
 		&integration.ClusterConfig{
@@ -608,6 +611,8 @@ func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
 }
 
 func TestWatchRequestProgress(t *testing.T) {
+	integration.BeforeTest(t)
+
 	if integration.ThroughProxy {
 		t.Skipf("grpc-proxy does not support WatchProgress yet")
 	}
@@ -622,7 +627,7 @@ func TestWatchRequestProgress(t *testing.T) {
 
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
-			defer testutil.AfterTest(t)
+			integration.BeforeTest(t)
 
 			watchTimeout := 3 * time.Second
 
@@ -683,6 +688,8 @@ func TestWatchRequestProgress(t *testing.T) {
 }
 
 func TestWatchEventType(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -755,7 +762,7 @@ func TestWatchEventType(t *testing.T) {
 }
 
 func TestWatchErrConnClosed(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -785,7 +792,7 @@ func TestWatchErrConnClosed(t *testing.T) {
 }
 
 func TestWatchAfterClose(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -813,7 +820,7 @@ func TestWatchAfterClose(t *testing.T) {
 
 // TestWatchWithRequireLeader checks the watch channel closes when no leader.
 func TestWatchWithRequireLeader(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -887,6 +894,8 @@ func TestWatchWithRequireLeader(t *testing.T) {
 
 // TestWatchWithFilter checks that watch filtering works.
 func TestWatchWithFilter(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -924,6 +933,8 @@ func TestWatchWithFilter(t *testing.T) {
 // TestWatchWithCreatedNotification checks that WithCreatedNotify returns a
 // Created watch response.
 func TestWatchWithCreatedNotification(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -944,6 +955,8 @@ func TestWatchWithCreatedNotification(t *testing.T) {
 // a watcher with created notify does not post duplicate
 // created events from disconnect.
 func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -971,6 +984,8 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 
 // TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
 func TestWatchCancelOnServer(t *testing.T) {
+	integration.BeforeTest(t)
+
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
@@ -1049,7 +1064,7 @@ func TestWatchOverlapDropConnContextCancel(t *testing.T) {
 }
 
 func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3)) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1110,7 +1125,7 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 // TestWatchCancelAndCloseClient ensures that canceling a watcher then immediately
 // closing the client does not return a client closing error.
 func TestWatchCancelAndCloseClient(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
@@ -1140,7 +1155,7 @@ func TestWatchCancelAndCloseClient(t *testing.T) {
 // to put them in resuming mode, cancels them so some resumes by cancel fail,
 // then closes the watcher interface to ensure correct clean up.
 func TestWatchStressResumeClose(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
@@ -1162,7 +1177,7 @@ func TestWatchStressResumeClose(t *testing.T) {
 // TestWatchCancelDisconnected ensures canceling a watcher works when
 // its grpc stream is disconnected / reconnecting.
 func TestWatchCancelDisconnected(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)

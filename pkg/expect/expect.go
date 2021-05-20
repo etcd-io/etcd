@@ -29,6 +29,8 @@ import (
 	"github.com/creack/pty"
 )
 
+const DEBUG_LINES_TAIL = 40
+
 type ExpectProcess struct {
 	cmd  *exec.Cmd
 	fpty *os.File
@@ -96,6 +98,8 @@ func (ep *ExpectProcess) read() {
 
 // ExpectFunc returns the first line satisfying the function f.
 func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
+	lastLinesBuffer := make([]string, 0)
+
 	ep.mu.Lock()
 	for {
 		for len(ep.lines) == 0 && ep.err == nil {
@@ -106,13 +110,19 @@ func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 		}
 		l := ep.lines[0]
 		ep.lines = ep.lines[1:]
+		lastLinesBuffer = append(lastLinesBuffer, l)
+		if l := len(lastLinesBuffer); l > DEBUG_LINES_TAIL {
+			lastLinesBuffer = lastLinesBuffer[l-DEBUG_LINES_TAIL : l-1]
+		}
 		if f(l) {
 			ep.mu.Unlock()
 			return l, nil
 		}
 	}
 	ep.mu.Unlock()
-	return "", ep.err
+	return "", fmt.Errorf("match not found."+
+		" Set EXPECT_DEBUG for more info Err: %v, last lines:\n%s",
+		ep.err, strings.Join(lastLinesBuffer, ""))
 }
 
 // Expect returns the first line containing the given string.
@@ -137,6 +147,8 @@ func (ep *ExpectProcess) Signal(sig os.Signal) error {
 }
 
 // Close waits for the expect process to exit.
+// Close currently does not return error if process exited with !=0 status.
+// TODO: Close should expose underlying proces failure by default.
 func (ep *ExpectProcess) Close() error { return ep.close(false) }
 
 func (ep *ExpectProcess) close(kill bool) error {
@@ -152,7 +164,6 @@ func (ep *ExpectProcess) close(kill bool) error {
 	ep.wg.Wait()
 
 	if err != nil {
-		ep.err = err
 		if !kill && strings.Contains(err.Error(), "exit status") {
 			// non-zero exit code
 			err = nil
@@ -160,6 +171,7 @@ func (ep *ExpectProcess) close(kill bool) error {
 			err = nil
 		}
 	}
+
 	ep.cmd = nil
 	return err
 }
@@ -167,4 +179,13 @@ func (ep *ExpectProcess) close(kill bool) error {
 func (ep *ExpectProcess) Send(command string) error {
 	_, err := io.WriteString(ep.fpty, command)
 	return err
+}
+
+func (ep *ExpectProcess) ProcessError() error {
+	if strings.Contains(ep.err.Error(), "input/output error") {
+		// TODO: The expect library should not return
+		// `/dev/ptmx: input/output error` when process just exits.
+		return nil
+	}
+	return ep.err
 }

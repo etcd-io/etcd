@@ -14,6 +14,7 @@
 
 // These tests depends on certificate-based authentication that is NOT supported
 // by gRPC proxy.
+//go:build !cluster_proxy
 // +build !cluster_proxy
 
 package e2e

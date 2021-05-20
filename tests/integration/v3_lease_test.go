@@ -23,7 +23,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -33,7 +33,9 @@ import (
 // TestV3LeasePrmote ensures the newly elected leader can promote itself
 // to the primary lessor, refresh the leases and start to manage leases.
 // TODO: use customized clock to make this test go faster?
-func TestV3LeasePrmote(t *testing.T) {
+func TestV3LeasePromote(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -94,7 +96,7 @@ func TestV3LeasePrmote(t *testing.T) {
 
 // TestV3LeaseRevoke ensures a key is deleted once its lease is revoked.
 func TestV3LeaseRevoke(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testLeaseRemoveLeasedKey(t, func(clus *ClusterV3, leaseID int64) error {
 		lc := toGRPC(clus.RandClient()).Lease
 		_, err := lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
@@ -104,7 +106,7 @@ func TestV3LeaseRevoke(t *testing.T) {
 
 // TestV3LeaseGrantById ensures leases may be created by a given id.
 func TestV3LeaseGrantByID(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -141,7 +143,7 @@ func TestV3LeaseGrantByID(t *testing.T) {
 
 // TestV3LeaseExpire ensures a key is deleted once a key expires.
 func TestV3LeaseExpire(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testLeaseRemoveLeasedKey(t, func(clus *ClusterV3, leaseID int64) error {
 		// let lease lapse; wait for deleted key
 
@@ -193,7 +195,7 @@ func TestV3LeaseExpire(t *testing.T) {
 
 // TestV3LeaseKeepAlive ensures keepalive keeps the lease alive.
 func TestV3LeaseKeepAlive(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testLeaseRemoveLeasedKey(t, func(clus *ClusterV3, leaseID int64) error {
 		lc := toGRPC(clus.RandClient()).Lease
 		lreq := &pb.LeaseKeepAliveRequest{ID: leaseID}
@@ -227,9 +229,11 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 // TestV3LeaseCheckpoint ensures a lease checkpoint results in a remaining TTL being persisted
 // across leader elections.
 func TestV3LeaseCheckpoint(t *testing.T) {
+	BeforeTest(t)
+
 	var ttl int64 = 300
 	leaseInterval := 2 * time.Second
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{
 		Size:                    3,
 		EnableLeaseCheckpoint:   true,
@@ -280,7 +284,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 
 // TestV3LeaseExists creates a lease on a random client and confirms it exists in the cluster.
 func TestV3LeaseExists(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -304,7 +308,7 @@ func TestV3LeaseExists(t *testing.T) {
 
 // TestV3LeaseLeases creates leases and confirms list RPC fetches created ones.
 func TestV3LeaseLeases(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -354,7 +358,7 @@ func TestV3LeaseTimeToLiveStress(t *testing.T) {
 }
 
 func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient) error) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -425,7 +429,7 @@ func stressLeaseTimeToLive(tctx context.Context, lc pb.LeaseClient) (reterr erro
 }
 
 func TestV3PutOnNonExistLease(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -443,7 +447,7 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 // TestV3GetNonExistLease ensures client retrieving nonexistent lease on a follower doesn't result node panic
 // related issue https://github.com/etcd-io/etcd/issues/6537
 func TestV3GetNonExistLease(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -481,7 +485,7 @@ func TestV3GetNonExistLease(t *testing.T) {
 
 // TestV3LeaseSwitch tests a key can be switched from one lease to another.
 func TestV3LeaseSwitch(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -543,7 +547,7 @@ func TestV3LeaseSwitch(t *testing.T) {
 // election timeout after it loses its quorum. And the new leader extends the TTL of
 // the lease to at least TTL + election timeout.
 func TestV3LeaseFailover(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -604,7 +608,7 @@ func TestV3LeaseFailover(t *testing.T) {
 // TestV3LeaseRequireLeader ensures that a Recv will get a leader
 // loss error if there is no leader.
 func TestV3LeaseRequireLeader(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -644,6 +648,8 @@ const fiveMinTTL int64 = 300
 
 // TestV3LeaseRecoverAndRevoke ensures that revoking a lease after restart deletes the attached key.
 func TestV3LeaseRecoverAndRevoke(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -693,6 +699,8 @@ func TestV3LeaseRecoverAndRevoke(t *testing.T) {
 
 // TestV3LeaseRevokeAndRecover ensures that revoked key stays deleted after restart.
 func TestV3LeaseRevokeAndRecover(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -743,6 +751,8 @@ func TestV3LeaseRevokeAndRecover(t *testing.T) {
 // TestV3LeaseRecoverKeyWithDetachedLease ensures that revoking a detached lease after restart
 // does not delete the key.
 func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -797,6 +807,8 @@ func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 }
 
 func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 

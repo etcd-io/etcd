@@ -15,10 +15,9 @@
 package v2http
 
 import (
+	"net/http"
 	"strconv"
 	"time"
-
-	"net/http"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"

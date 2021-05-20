@@ -12,22 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+package backend_test
 
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 )
 
 func TestBackendClose(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
-	defer os.Remove(tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 
 	// check close could work
 	done := make(chan struct{})
@@ -46,37 +48,37 @@ func TestBackendClose(t *testing.T) {
 }
 
 func TestBackendSnapshot(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("test"))
-	tx.UnsafePut([]byte("test"), []byte("foo"), []byte("bar"))
+	tx.UnsafeCreateBucket(buckets.Test)
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
 	b.ForceCommit()
 
 	// write snapshot to a new file
-	f, err := ioutil.TempFile(os.TempDir(), "etcd_backend_test")
+	f, err := ioutil.TempFile(t.TempDir(), "etcd_backend_test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	snap := b.Snapshot()
-	defer snap.Close()
+	defer func() { assert.NoError(t, snap.Close()) }()
 	if _, err := snap.WriteTo(f); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	assert.NoError(t, f.Close())
 
 	// bootstrap new backend from the snapshot
-	bcfg := DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig()
 	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = f.Name(), time.Hour, 10000
-	nb := New(bcfg)
-	defer cleanup(nb, f.Name())
+	nb := backend.New(bcfg)
+	defer betesting.Close(t, nb)
 
 	newTx := nb.BatchTx()
 	newTx.Lock()
-	ks, _ := newTx.UnsafeRange([]byte("test"), []byte("foo"), []byte("goo"), 0)
+	ks, _ := newTx.UnsafeRange(buckets.Test, []byte("foo"), []byte("goo"), 0)
 	if len(ks) != 1 {
 		t.Errorf("len(kvs) = %d, want 1", len(ks))
 	}
@@ -86,26 +88,26 @@ func TestBackendSnapshot(t *testing.T) {
 func TestBackendBatchIntervalCommit(t *testing.T) {
 	// start backend with super short batch interval so
 	// we do not need to wait long before commit to happen.
-	b, tmpPath := NewTmpBackend(time.Nanosecond, 10000)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Nanosecond, 10000)
+	defer betesting.Close(t, b)
 
-	pc := b.Commits()
+	pc := backend.CommitsForTest(b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("test"))
-	tx.UnsafePut([]byte("test"), []byte("foo"), []byte("bar"))
+	tx.UnsafeCreateBucket(buckets.Test)
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
 
 	for i := 0; i < 10; i++ {
-		if b.Commits() >= pc+1 {
+		if backend.CommitsForTest(b) >= pc+1 {
 			break
 		}
 		time.Sleep(time.Duration(i*100) * time.Millisecond)
 	}
 
 	// check whether put happens via db view
-	b.db.View(func(tx *bolt.Tx) error {
+	assert.NoError(t, backend.DbFromBackendForTest(b).View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte("test"))
 		if bucket == nil {
 			t.Errorf("bucket test does not exit")
@@ -116,18 +118,18 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 			t.Errorf("foo key failed to written in backend")
 		}
 		return nil
-	})
+	}))
 }
 
 func TestBackendDefrag(t *testing.T) {
-	b, tmpPath := NewDefaultTmpBackend()
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("test"))
-	for i := 0; i < defragLimit+100; i++ {
-		tx.UnsafePut([]byte("test"), []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
+	tx.UnsafeCreateBucket(buckets.Test)
+	for i := 0; i < backend.DefragLimitForTest()+100; i++ {
+		tx.UnsafePut(buckets.Test, []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
 	}
 	tx.Unlock()
 	b.ForceCommit()
@@ -136,7 +138,7 @@ func TestBackendDefrag(t *testing.T) {
 	tx = b.BatchTx()
 	tx.Lock()
 	for i := 0; i < 50; i++ {
-		tx.UnsafeDelete([]byte("test"), []byte(fmt.Sprintf("foo_%d", i)))
+		tx.UnsafeDelete(buckets.Test, []byte(fmt.Sprintf("foo_%d", i)))
 	}
 	tx.Unlock()
 	b.ForceCommit()
@@ -170,28 +172,28 @@ func TestBackendDefrag(t *testing.T) {
 	// try put more keys after shrink.
 	tx = b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("test"))
-	tx.UnsafePut([]byte("test"), []byte("more"), []byte("bar"))
+	tx.UnsafeCreateBucket(buckets.Test)
+	tx.UnsafePut(buckets.Test, []byte("more"), []byte("bar"))
 	tx.Unlock()
 	b.ForceCommit()
 }
 
 // TestBackendWriteback ensures writes are stored to the read txn on write txn unlock.
 func TestBackendWriteback(t *testing.T) {
-	b, tmpPath := NewDefaultTmpBackend()
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("key"))
-	tx.UnsafePut([]byte("key"), []byte("abc"), []byte("bar"))
-	tx.UnsafePut([]byte("key"), []byte("def"), []byte("baz"))
-	tx.UnsafePut([]byte("key"), []byte("overwrite"), []byte("1"))
+	tx.UnsafeCreateBucket(buckets.Key)
+	tx.UnsafePut(buckets.Key, []byte("abc"), []byte("bar"))
+	tx.UnsafePut(buckets.Key, []byte("def"), []byte("baz"))
+	tx.UnsafePut(buckets.Key, []byte("overwrite"), []byte("1"))
 	tx.Unlock()
 
 	// overwrites should be propagated too
 	tx.Lock()
-	tx.UnsafePut([]byte("key"), []byte("overwrite"), []byte("2"))
+	tx.UnsafePut(buckets.Key, []byte("overwrite"), []byte("2"))
 	tx.Unlock()
 
 	keys := []struct {
@@ -241,36 +243,38 @@ func TestBackendWriteback(t *testing.T) {
 	}
 	rtx := b.ReadTx()
 	for i, tt := range keys {
-		rtx.RLock()
-		k, v := rtx.UnsafeRange([]byte("key"), tt.key, tt.end, tt.limit)
-		rtx.RUnlock()
-		if !reflect.DeepEqual(tt.wkey, k) || !reflect.DeepEqual(tt.wval, v) {
-			t.Errorf("#%d: want k=%+v, v=%+v; got k=%+v, v=%+v", i, tt.wkey, tt.wval, k, v)
-		}
+		func() {
+			rtx.RLock()
+			defer rtx.RUnlock()
+			k, v := rtx.UnsafeRange(buckets.Key, tt.key, tt.end, tt.limit)
+			if !reflect.DeepEqual(tt.wkey, k) || !reflect.DeepEqual(tt.wval, v) {
+				t.Errorf("#%d: want k=%+v, v=%+v; got k=%+v, v=%+v", i, tt.wkey, tt.wval, k, v)
+			}
+		}()
 	}
 }
 
 // TestConcurrentReadTx ensures that current read transaction can see all prior writes stored in read buffer
 func TestConcurrentReadTx(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
 
 	wtx1 := b.BatchTx()
 	wtx1.Lock()
-	wtx1.UnsafeCreateBucket([]byte("key"))
-	wtx1.UnsafePut([]byte("key"), []byte("abc"), []byte("ABC"))
-	wtx1.UnsafePut([]byte("key"), []byte("overwrite"), []byte("1"))
+	wtx1.UnsafeCreateBucket(buckets.Key)
+	wtx1.UnsafePut(buckets.Key, []byte("abc"), []byte("ABC"))
+	wtx1.UnsafePut(buckets.Key, []byte("overwrite"), []byte("1"))
 	wtx1.Unlock()
 
 	wtx2 := b.BatchTx()
 	wtx2.Lock()
-	wtx2.UnsafePut([]byte("key"), []byte("def"), []byte("DEF"))
-	wtx2.UnsafePut([]byte("key"), []byte("overwrite"), []byte("2"))
+	wtx2.UnsafePut(buckets.Key, []byte("def"), []byte("DEF"))
+	wtx2.UnsafePut(buckets.Key, []byte("overwrite"), []byte("2"))
 	wtx2.Unlock()
 
 	rtx := b.ConcurrentReadTx()
 	rtx.RLock() // no-op
-	k, v := rtx.UnsafeRange([]byte("key"), []byte("abc"), []byte("\xff"), 0)
+	k, v := rtx.UnsafeRange(buckets.Key, []byte("abc"), []byte("\xff"), 0)
 	rtx.RUnlock()
 	wKey := [][]byte{[]byte("abc"), []byte("def"), []byte("overwrite")}
 	wVal := [][]byte{[]byte("ABC"), []byte("DEF"), []byte("2")}
@@ -282,15 +286,15 @@ func TestConcurrentReadTx(t *testing.T) {
 // TestBackendWritebackForEach checks that partially written / buffered
 // data is visited in the same order as fully committed data.
 func TestBackendWritebackForEach(t *testing.T) {
-	b, tmpPath := NewTmpBackend(time.Hour, 10000)
-	defer cleanup(b, tmpPath)
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("key"))
+	tx.UnsafeCreateBucket(buckets.Key)
 	for i := 0; i < 5; i++ {
 		k := []byte(fmt.Sprintf("%04d", i))
-		tx.UnsafePut([]byte("key"), k, []byte("bar"))
+		tx.UnsafePut(buckets.Key, k, []byte("bar"))
 	}
 	tx.Unlock()
 
@@ -298,10 +302,10 @@ func TestBackendWritebackForEach(t *testing.T) {
 	b.ForceCommit()
 
 	tx.Lock()
-	tx.UnsafeCreateBucket([]byte("key"))
+	tx.UnsafeCreateBucket(buckets.Key)
 	for i := 5; i < 20; i++ {
 		k := []byte(fmt.Sprintf("%04d", i))
-		tx.UnsafePut([]byte("key"), k, []byte("bar"))
+		tx.UnsafePut(buckets.Key, k, []byte("bar"))
 	}
 	tx.Unlock()
 
@@ -312,7 +316,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	}
 	rtx := b.ReadTx()
 	rtx.RLock()
-	rtx.UnsafeForEach([]byte("key"), getSeq)
+	assert.NoError(t, rtx.UnsafeForEach(buckets.Key, getSeq))
 	rtx.RUnlock()
 
 	partialSeq := seq
@@ -321,15 +325,10 @@ func TestBackendWritebackForEach(t *testing.T) {
 	b.ForceCommit()
 
 	tx.Lock()
-	tx.UnsafeForEach([]byte("key"), getSeq)
+	assert.NoError(t, tx.UnsafeForEach(buckets.Key, getSeq))
 	tx.Unlock()
 
 	if seq != partialSeq {
 		t.Fatalf("expected %q, got %q", seq, partialSeq)
 	}
-}
-
-func cleanup(b Backend, path string) {
-	b.Close()
-	os.Remove(path)
 }

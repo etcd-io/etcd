@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/fileutil"
 	"go.uber.org/zap"
 )
 
@@ -47,6 +47,7 @@ func Save(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath strin
 	if lg == nil {
 		lg = zap.NewExample()
 	}
+	cfg.Logger = lg.Named("client")
 	if len(cfg.Endpoints) != 1 {
 		return fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
 	}

@@ -16,20 +16,21 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestMoveLeader(t *testing.T)        { testMoveLeader(t, true) }
 func TestMoveLeaderService(t *testing.T) { testMoveLeader(t, false) }
 
 func testMoveLeader(t *testing.T, auto bool) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -37,7 +38,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 	oldLeadIdx := clus.WaitLeader(t)
 	oldLeadID := uint64(clus.Members[oldLeadIdx].s.ID())
 
-	// ensure followers go through leader transition while learship transfer
+	// ensure followers go through leader transition while leadership transfer
 	idc := make(chan uint64)
 	stopc := make(chan struct{})
 	defer close(stopc)
@@ -97,7 +98,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 
 // TestMoveLeaderError ensures that request to non-leader fail.
 func TestMoveLeaderError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -116,7 +117,7 @@ func TestMoveLeaderError(t *testing.T) {
 
 // TestMoveLeaderToLearnerError ensures that leader transfer to learner member will fail.
 func TestMoveLeaderToLearnerError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -149,7 +150,7 @@ func TestMoveLeaderToLearnerError(t *testing.T) {
 // TestTransferLeadershipWithLearner ensures TransferLeadership does not timeout due to learner is
 // automatically picked by leader as transferee.
 func TestTransferLeadershipWithLearner(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -179,4 +180,94 @@ func TestTransferLeadershipWithLearner(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Error("timed out waiting for leader transition")
 	}
+}
+
+func TestFirstCommitNotification(t *testing.T) {
+	BeforeTest(t)
+	ctx := context.Background()
+	clusterSize := 3
+	cluster := NewClusterV3(t, &ClusterConfig{Size: clusterSize})
+	defer cluster.Terminate(t)
+
+	oldLeaderIdx := cluster.WaitLeader(t)
+	oldLeaderClient := cluster.Client(oldLeaderIdx)
+
+	newLeaderIdx := (oldLeaderIdx + 1) % clusterSize
+	newLeaderId := uint64(cluster.Members[newLeaderIdx].ID())
+
+	notifiers := make(map[int]<-chan struct{}, clusterSize)
+	for i, clusterMember := range cluster.Members {
+		notifiers[i] = clusterMember.s.FirstCommitInTermNotify()
+	}
+
+	_, err := oldLeaderClient.MoveLeader(context.Background(), newLeaderId)
+
+	if err != nil {
+		t.Errorf("got error during leadership transfer: %v", err)
+	}
+
+	t.Logf("Leadership transferred.")
+	t.Logf("Submitting write to make sure empty and 'foo' index entry was already flushed")
+	cli := cluster.RandClient()
+
+	if _, err := cli.Put(ctx, "foo", "bar"); err != nil {
+		t.Fatalf("Failed to put kv pair.")
+	}
+
+	// It's guaranteed now that leader contains the 'foo'->'bar' index entry.
+	leaderAppliedIndex := cluster.Members[newLeaderIdx].s.AppliedIndex()
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	group, groupContext := errgroup.WithContext(ctx)
+
+	for i, notifier := range notifiers {
+		member, notifier := cluster.Members[i], notifier
+		group.Go(func() error {
+			return checkFirstCommitNotification(groupContext, t, member, leaderAppliedIndex, notifier)
+		})
+	}
+
+	err = group.Wait()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func checkFirstCommitNotification(
+	ctx context.Context,
+	t testing.TB,
+	member *member,
+	leaderAppliedIndex uint64,
+	notifier <-chan struct{},
+) error {
+	// wait until server applies all the changes of leader
+	for member.s.AppliedIndex() < leaderAppliedIndex {
+		t.Logf("member.s.AppliedIndex():%v <= leaderAppliedIndex:%v", member.s.AppliedIndex(), leaderAppliedIndex)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	select {
+	case msg, ok := <-notifier:
+		if ok {
+			return fmt.Errorf(
+				"member with ID %d got message via notifier, msg: %v",
+				member.ID(),
+				msg,
+			)
+		}
+	default:
+		t.Logf("member.s.AppliedIndex():%v >= leaderAppliedIndex:%v", member.s.AppliedIndex(), leaderAppliedIndex)
+		return fmt.Errorf(
+			"notification was not triggered, member ID: %d",
+			member.ID(),
+		)
+	}
+
+	return nil
 }

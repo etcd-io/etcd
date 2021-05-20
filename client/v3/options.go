@@ -23,10 +23,10 @@ import (
 
 var (
 	// client-side handling retrying of request failures where data was not written to the wire or
-	// where server indicates it did not process the data. gRPC default is default is "FailFast(true)"
-	// but for etcd we default to "FailFast(false)" to minimize client request error responses due to
+	// where server indicates it did not process the data. gRPC default is default is "WaitForReady(false)"
+	// but for etcd we default to "WaitForReady(true)" to minimize client request error responses due to
 	// transient failures.
-	defaultFailFast = grpc.FailFast(false)
+	defaultWaitForReady = grpc.WaitForReady(true)
 
 	// client-side request send limit, gRPC default is math.MaxInt32
 	// Make sure that "client-side send limit < server-side default send/recv limit"
@@ -59,7 +59,11 @@ var (
 // defaultCallOpts defines a list of default "gRPC.CallOption".
 // Some options are exposed to "clientv3.Config".
 // Defaults will be overridden by the settings in "clientv3.Config".
-var defaultCallOpts = []grpc.CallOption{defaultFailFast, defaultMaxCallSendMsgSize, defaultMaxCallRecvMsgSize}
+var defaultCallOpts = []grpc.CallOption{
+	defaultWaitForReady,
+	defaultMaxCallSendMsgSize,
+	defaultMaxCallRecvMsgSize,
+}
 
 // MaxLeaseTTL is the maximum lease TTL value
 const MaxLeaseTTL = 9000000000

@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 type actionAssertingHTTPClient struct {
@@ -154,6 +154,24 @@ func TestSimpleHTTPClientDoError(t *testing.T) {
 
 	_, _, err := c.Do(context.Background(), &fakeAction{})
 	if err == nil {
+		t.Fatalf("expected non-nil error, got nil")
+	}
+}
+
+type nilAction struct{}
+
+func (a *nilAction) HTTPRequest(url.URL) *http.Request {
+	return nil
+}
+
+func TestSimpleHTTPClientDoNilRequest(t *testing.T) {
+	tr := newFakeTransport()
+	c := &simpleHTTPClient{transport: tr}
+
+	tr.errchan <- errors.New("fixture")
+
+	_, _, err := c.Do(context.Background(), &nilAction{})
+	if err != ErrNoRequest {
 		t.Fatalf("expected non-nil error, got nil")
 	}
 }

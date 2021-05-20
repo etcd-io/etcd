@@ -35,6 +35,8 @@ var (
 	ErrGRPCLeaseExist       = status.New(codes.FailedPrecondition, "etcdserver: lease already exists").Err()
 	ErrGRPCLeaseTTLTooLarge = status.New(codes.OutOfRange, "etcdserver: too large lease TTL").Err()
 
+	ErrGRPCWatchCanceled = status.New(codes.Canceled, "etcdserver: watch canceled").Err()
+
 	ErrGRPCMemberExist            = status.New(codes.FailedPrecondition, "etcdserver: member ID already exist").Err()
 	ErrGRPCPeerURLExist           = status.New(codes.FailedPrecondition, "etcdserver: Peer URLs already exists").Err()
 	ErrGRPCMemberNotEnoughStarted = status.New(codes.FailedPrecondition, "etcdserver: re-configuration failed due to not enough started members").Err()
@@ -66,21 +68,24 @@ var (
 	ErrGRPCNoLeader                   = status.New(codes.Unavailable, "etcdserver: no leader").Err()
 	ErrGRPCNotLeader                  = status.New(codes.FailedPrecondition, "etcdserver: not leader").Err()
 	ErrGRPCLeaderChanged              = status.New(codes.Unavailable, "etcdserver: leader changed").Err()
-	ErrGRPCNotCapable                 = status.New(codes.Unavailable, "etcdserver: not capable").Err()
+	ErrGRPCNotCapable                 = status.New(codes.FailedPrecondition, "etcdserver: not capable").Err()
 	ErrGRPCStopped                    = status.New(codes.Unavailable, "etcdserver: server stopped").Err()
 	ErrGRPCTimeout                    = status.New(codes.Unavailable, "etcdserver: request timed out").Err()
 	ErrGRPCTimeoutDueToLeaderFail     = status.New(codes.Unavailable, "etcdserver: request timed out, possibly due to previous leader failure").Err()
 	ErrGRPCTimeoutDueToConnectionLost = status.New(codes.Unavailable, "etcdserver: request timed out, possibly due to connection lost").Err()
 	ErrGRPCUnhealthy                  = status.New(codes.Unavailable, "etcdserver: unhealthy cluster").Err()
 	ErrGRPCCorrupt                    = status.New(codes.DataLoss, "etcdserver: corrupt cluster").Err()
-	ErrGPRCNotSupportedForLearner     = status.New(codes.Unavailable, "etcdserver: rpc not supported for learner").Err()
+	ErrGPRCNotSupportedForLearner     = status.New(codes.FailedPrecondition, "etcdserver: rpc not supported for learner").Err()
 	ErrGRPCBadLeaderTransferee        = status.New(codes.FailedPrecondition, "etcdserver: bad leader transferee").Err()
 
-	ErrGRPCClusterVersionUnavailable     = status.New(codes.Unavailable, "etcdserver: cluster version not found during downgrade").Err()
 	ErrGRPCWrongDowngradeVersionFormat   = status.New(codes.InvalidArgument, "etcdserver: wrong downgrade target version format").Err()
 	ErrGRPCInvalidDowngradeTargetVersion = status.New(codes.InvalidArgument, "etcdserver: invalid downgrade target version").Err()
+	ErrGRPCClusterVersionUnavailable     = status.New(codes.FailedPrecondition, "etcdserver: cluster version not found during downgrade").Err()
 	ErrGRPCDowngradeInProcess            = status.New(codes.FailedPrecondition, "etcdserver: cluster has a downgrade job in progress").Err()
 	ErrGRPCNoInflightDowngrade           = status.New(codes.FailedPrecondition, "etcdserver: no inflight downgrade job").Err()
+
+	ErrGRPCCanceled         = status.New(codes.Canceled, "etcdserver: request canceled").Err()
+	ErrGRPCDeadlineExceeded = status.New(codes.DeadlineExceeded, "etcdserver: context deadline exceeded").Err()
 
 	errStringToError = map[string]error{
 		ErrorDesc(ErrGRPCEmptyKey):      ErrGRPCEmptyKey,

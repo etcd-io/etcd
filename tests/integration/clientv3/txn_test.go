@@ -22,13 +22,12 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestTxnError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -52,7 +51,7 @@ func TestTxnError(t *testing.T) {
 }
 
 func TestTxnWriteFail(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -102,7 +101,7 @@ func TestTxnWriteFail(t *testing.T) {
 func TestTxnReadRetry(t *testing.T) {
 	t.Skipf("skipping txn read retry test: re-enable after we do retry on txn read request")
 
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -141,7 +140,7 @@ func TestTxnReadRetry(t *testing.T) {
 }
 
 func TestTxnSuccess(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -164,7 +163,7 @@ func TestTxnSuccess(t *testing.T) {
 }
 
 func TestTxnCompareRange(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -191,7 +190,7 @@ func TestTxnCompareRange(t *testing.T) {
 }
 
 func TestTxnNested(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)

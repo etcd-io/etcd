@@ -15,6 +15,7 @@
 package rafttest
 
 import (
+	"bufio"
 	"fmt"
 	"math"
 	"strings"
@@ -58,6 +59,18 @@ func NewInteractionEnv(opts *InteractionOpts) *InteractionEnv {
 			Builder: &strings.Builder{},
 		},
 	}
+}
+
+func (env *InteractionEnv) withIndent(f func()) {
+	orig := env.Output.Builder
+	env.Output.Builder = &strings.Builder{}
+	f()
+
+	scanner := bufio.NewScanner(strings.NewReader(env.Output.Builder.String()))
+	for scanner.Scan() {
+		orig.WriteString("  " + scanner.Text() + "\n")
+	}
+	env.Output.Builder = orig
 }
 
 // Storage is the interface used by InteractionEnv. It is comprised of raft's

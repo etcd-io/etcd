@@ -20,7 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/transport"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
 // Infrastructure to provision a single shared cluster for tests - only
@@ -47,6 +48,8 @@ type LazyCluster interface {
 	Transport() *http.Transport
 
 	Terminate()
+
+	TB() testutil.TB
 }
 
 type lazyCluster struct {
@@ -54,6 +57,8 @@ type lazyCluster struct {
 	cluster   *ClusterV3
 	transport *http.Transport
 	once      sync.Once
+	tb        testutil.TB
+	closer    func()
 }
 
 // NewLazyCluster returns a new test cluster handler that gets created on the
@@ -65,7 +70,8 @@ func NewLazyCluster() LazyCluster {
 // NewLazyClusterWithConfig returns a new test cluster handler that gets created
 // on the first call to GetEndpoints() or GetTransport()
 func NewLazyClusterWithConfig(cfg ClusterConfig) LazyCluster {
-	return &lazyCluster{cfg: cfg}
+	tb, closer := testutil.NewTestingTBProthesis("lazy_cluster")
+	return &lazyCluster{cfg: cfg, tb: tb, closer: closer}
 }
 
 func (lc *lazyCluster) mustLazyInit() {
@@ -75,14 +81,19 @@ func (lc *lazyCluster) mustLazyInit() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		lc.cluster = NewClusterV3(nil, &lc.cfg)
+		lc.cluster = NewClusterV3(lc.tb, &lc.cfg)
 	})
 }
 
 func (lc *lazyCluster) Terminate() {
+	lc.tb.Logf("Terminating...")
 	if lc != nil && lc.cluster != nil {
 		lc.cluster.Terminate(nil)
 		lc.cluster = nil
+	}
+	if lc.closer != nil {
+		lc.tb.Logf("Closer...")
+		lc.closer()
 	}
 }
 
@@ -102,4 +113,8 @@ func (lc *lazyCluster) Cluster() *ClusterV3 {
 func (lc *lazyCluster) Transport() *http.Transport {
 	lc.mustLazyInit()
 	return lc.transport
+}
+
+func (lc *lazyCluster) TB() testutil.TB {
+	return lc.tb
 }

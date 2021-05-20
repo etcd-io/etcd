@@ -18,10 +18,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/bgentry/speakeasy"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/bgentry/speakeasy"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -79,7 +81,7 @@ func authDestCfg() *authCfg {
 			cfg.username = mmuser
 			cfg.password, err = speakeasy.Ask("Destination Password: ")
 			if err != nil {
-				ExitWithError(ExitError, err)
+				cobrautl.ExitWithError(cobrautl.ExitError, err)
 			}
 		} else {
 			cfg.username = splitted[0]
@@ -95,7 +97,7 @@ func authDestCfg() *authCfg {
 
 func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, errors.New("make-mirror takes one destination argument"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("make-mirror takes one destination argument"))
 	}
 
 	dialTimeout := dialTimeoutFromCmd(cmd)
@@ -122,7 +124,7 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 	c := mustClientFromCmd(cmd)
 
 	err := makeMirror(context.TODO(), c, dc)
-	ExitWithError(ExitError, err)
+	cobrautl.ExitWithError(cobrautl.ExitError, err)
 }
 
 func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) error {
@@ -141,7 +143,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 
 	// if destination prefix is specified and remove destination prefix is true return error
 	if mmnodestprefix && len(mmdestprefix) > 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one"))
 	}
 
 	// if remove destination prefix is false and destination prefix is empty set the value of destination prefix same as prefix

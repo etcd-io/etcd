@@ -21,8 +21,8 @@
 		"project": "github.com/certifi/gocertifi",
 		"licenses": [
 			{
-				"type": "\"Do What The F*ck You Want To Public License\"",
-				"confidence": 0.3287671232876712
+				"type": "Mozilla Public License 2.0",
+				"confidence": 1
 			}
 		]
 	},
@@ -99,6 +99,15 @@
 		]
 	},
 	{
+		"project": "github.com/davecgh/go-spew/spew",
+		"licenses": [
+			{
+				"type": "ISC License",
+				"confidence": 0.9850746268656716
+			}
+		]
+	},
+	{
 		"project": "github.com/dustin/go-humanize",
 		"licenses": [
 			{
@@ -167,15 +176,6 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/google/uuid",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
 			}
 		]
 	},
@@ -396,6 +396,15 @@
 		]
 	},
 	{
+		"project": "github.com/stretchr/testify/assert",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/tmc/grpc-websocket-proxy/wsproxy",
 		"licenses": [
 			{
@@ -441,6 +450,15 @@
 		]
 	},
 	{
+		"project": "go.etcd.io/etcd/client/pkg/v3",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "go.etcd.io/etcd/client/v2",
 		"licenses": [
 			{
@@ -460,6 +478,15 @@
 	},
 	{
 		"project": "go.etcd.io/etcd/etcdctl/v3",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.etcd.io/etcd/etcdutl/v3",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -505,6 +532,96 @@
 	},
 	{
 		"project": "go.etcd.io/etcd/v3",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/contrib",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/exporters/otlp",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/sdk",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/sdk/export/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/sdk/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/trace",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/proto/otlp",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -603,11 +720,29 @@
 		]
 	},
 	{
+		"project": "google.golang.org/protobuf",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
 		"project": "gopkg.in/cheggaaa/pb.v1",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9916666666666667
+			}
+		]
+	},
+	{
+		"project": "gopkg.in/natefinch/lumberjack.v2",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},
@@ -621,6 +756,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.8975609756097561
+			}
+		]
+	},
+	{
+		"project": "gopkg.in/yaml.v3",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.7469879518072289
 			}
 		]
 	},

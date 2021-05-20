@@ -16,6 +16,7 @@ package command
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -27,6 +28,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
 )
@@ -67,7 +69,7 @@ func argify(s string) []string {
 		} else if args[i][0] == '"' {
 			// "double quoted string"
 			if _, err := fmt.Sscanf(args[i], "%q", &args[i]); err != nil {
-				ExitWithError(ExitInvalidInput, err)
+				cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
 			}
 		}
 	}
@@ -77,7 +79,7 @@ func argify(s string) []string {
 func commandCtx(cmd *cobra.Command) (context.Context, context.CancelFunc) {
 	timeOut, err := cmd.Flags().GetDuration("command-timeout")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return context.WithTimeout(context.Background(), timeOut)
 }
@@ -90,14 +92,26 @@ func isCommandTimeoutFlagSet(cmd *cobra.Command) bool {
 	return commandTimeoutFlag.Changed
 }
 
-// get the process_resident_memory_bytes from <server:2379>/metrics
-func endpointMemoryMetrics(host string) float64 {
+// get the process_resident_memory_bytes from <server>/metrics
+func endpointMemoryMetrics(host string, scfg *secureCfg) float64 {
 	residentMemoryKey := "process_resident_memory_bytes"
 	var residentMemoryValue string
-	if !strings.HasPrefix(host, `http://`) {
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
 		host = "http://" + host
 	}
 	url := host + "/metrics"
+	if strings.HasPrefix(host, "https://") {
+		// load client certificate
+		cert, err := tls.LoadX509KeyPair(scfg.cert, scfg.key)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("client certificate error: %v", err))
+			return 0.0
+		}
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: scfg.insecureSkipVerify,
+		}
+	}
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("fetch error: %v", err))
@@ -136,7 +150,7 @@ func compact(c *v3.Client, rev int64) {
 	_, err := c.Compact(ctx, rev, v3.WithCompactPhysical())
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	fmt.Printf("Compacted with revision %d\n", rev)
 }
@@ -148,7 +162,7 @@ func defrag(c *v3.Client, ep string) {
 	_, err := c.Defragment(ctx, ep)
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	fmt.Printf("Defragmented %q\n", ep)
 }

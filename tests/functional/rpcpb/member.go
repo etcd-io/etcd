@@ -23,10 +23,10 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/etcdctl/v3/snapshot"
-	"go.etcd.io/etcd/pkg/v3/logutil"
-	"go.etcd.io/etcd/pkg/v3/transport"
+	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -186,7 +186,7 @@ func (m *Member) RevHash() (int64, int64, error) {
 
 	mt := pb.NewMaintenanceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	resp, err := mt.Hash(ctx, &pb.HashRequest{}, grpc.FailFast(false))
+	resp, err := mt.Hash(ctx, &pb.HashRequest{}, grpc.WaitForReady(true))
 	cancel()
 
 	if err != nil {

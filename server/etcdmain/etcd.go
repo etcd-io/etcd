@@ -26,11 +26,11 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	pkgioutil "go.etcd.io/etcd/pkg/v3/ioutil"
 	"go.etcd.io/etcd/pkg/v3/osutil"
-	"go.etcd.io/etcd/pkg/v3/transport"
-	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
@@ -57,6 +57,9 @@ func startEtcdOrProxyV2(args []string) {
 
 	err := cfg.parse(args[1:])
 	lg := cfg.ec.GetLogger()
+	// If we failed to parse the whole configuration, print the error using
+	// preferably the resolved logger from the config,
+	// but if does not exists, create a new temporary logger.
 	if lg == nil {
 		var zapError error
 		// use this logger
@@ -75,6 +78,8 @@ func startEtcdOrProxyV2(args []string) {
 		}
 		os.Exit(1)
 	}
+
+	cfg.ec.SetupGlobalLoggers()
 
 	defer func() {
 		logger := cfg.ec.GetLogger()
@@ -458,8 +463,11 @@ func identifyDataDirOrDie(lg *zap.Logger, dir string) dirType {
 }
 
 func checkSupportArch() {
-	// TODO qualify arm64
-	if runtime.GOARCH == "amd64" || runtime.GOARCH == "ppc64le" || runtime.GOARCH == "s390x" {
+	// to add a new platform, check https://github.com/etcd-io/website/blob/main/content/en/docs/next/op-guide/supported-platform.md
+	if runtime.GOARCH == "amd64" ||
+		runtime.GOARCH == "arm64" ||
+		runtime.GOARCH == "ppc64le" ||
+		runtime.GOARCH == "s390x" {
 		return
 	}
 	// unsupported arch only configured via environment variable

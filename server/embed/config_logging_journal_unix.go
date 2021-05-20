@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !windows
 // +build !windows
 
 package embed
@@ -20,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"go.etcd.io/etcd/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 
 	"go.uber.org/zap/zapcore"
 )

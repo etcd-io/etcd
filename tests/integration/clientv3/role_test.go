@@ -19,12 +19,11 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestRoleError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

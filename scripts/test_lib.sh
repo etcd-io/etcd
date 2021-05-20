@@ -164,7 +164,7 @@ function run_for_module {
 }
 
 function module_dirs() {
-  echo "api pkg raft client/v2 client/v3 server etcdctl tests ."
+  echo "api pkg raft client/pkg client/v2 client/v3 server etcdutl etcdctl tests ."
 }
 
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
@@ -181,9 +181,11 @@ function modules() {
     "${ROOT_MODULE}/api/v3"
     "${ROOT_MODULE}/pkg/v3"
     "${ROOT_MODULE}/raft/v3"
+    "${ROOT_MODULE}/client/pkg/v3"
     "${ROOT_MODULE}/client/v2"
     "${ROOT_MODULE}/client/v3"
     "${ROOT_MODULE}/server/v3"
+    "${ROOT_MODULE}/etcdutl/v3"
     "${ROOT_MODULE}/etcdctl/v3"
     "${ROOT_MODULE}/tests/v3"
     "${ROOT_MODULE}/v3")
@@ -201,7 +203,7 @@ function modules_exp() {
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
 function run_for_modules {
   local pkg="${PKG:-./...}"
-  if [ -z "${USERMOD}" ]; then
+  if [ -z "${USERMOD:-}" ]; then
     for m in $(module_dirs); do
       run_for_module "${m}" "$@" "${pkg}" || return "$?"
     done
@@ -242,10 +244,6 @@ function go_test {
   if [ "${VERBOSE}" == "1" ]; then
     goTestFlags="-v"
   fi
-  if [ "${VERBOSE}" == "2" ]; then
-    goTestFlags="-v"
-    goTestEnv="CLIENT_DEBUG=1"
-  fi
 
   # Expanding patterns (like ./...) into list of packages
 
@@ -270,6 +268,7 @@ function go_test {
     # shellcheck disable=SC2206
     local cmd=( go test ${goTestFlags} ${additional_flags} "$@" ${pkg} )
 
+    # shellcheck disable=SC2086
     if ! run env ${goTestEnv} "${cmd[@]}" ; then
       if [ "${mode}" != "keep_going" ]; then
         return 2
@@ -355,7 +354,9 @@ function assert_no_git_modifications {
 #  - no differencing commits in relation to the origin/$branch
 function git_assert_branch_in_sync {
   local branch
-  branch=$(git branch --show-current)
+  branch=$(run git rev-parse --abbrev-ref HEAD)
+  # TODO: When git 2.22 popular, change to:
+  # branch=$(git branch --show-current)
   if [[ $(run git status --porcelain --untracked-files=no) ]]; then
     log_error "The workspace in '$(pwd)' for branch: ${branch} has uncommitted changes"
     log_error "Consider cleaning up / renaming this directory or (cd $(pwd) && git reset --hard)"

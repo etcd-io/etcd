@@ -77,7 +77,7 @@ if err != nil {
 
 ## Metrics
 
-The etcd client optionally exposes RPC metrics through [go-grpc-prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus). See the [examples](https://github.com/etcd-io/etcd/blob/master/clientv3/example_metrics_test.go).
+The etcd client optionally exposes RPC metrics through [go-grpc-prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus). See the [examples](https://github.com/etcd-io/etcd/blob/main/tests/integration/clientv3/examples/example_metrics_test.go).
 
 ## Namespacing
 
@@ -89,4 +89,4 @@ Client request size limit is configurable via `clientv3.Config.MaxCallSendMsgSiz
 
 ## Examples
 
-More code [examples](https://github.com/etcd-io/etcd/tree/master/tests/integration/clientv3/examples) can be found at [GoDoc](https://pkg.go.dev/go.etcd.io/etcd/client/v3).
+More code [examples](https://github.com/etcd-io/etcd/tree/main/tests/integration/clientv3/examples) can be found at [GoDoc](https://pkg.go.dev/go.etcd.io/etcd/client/v3).

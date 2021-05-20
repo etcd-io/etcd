@@ -19,9 +19,10 @@ import (
 	"fmt"
 	"path"
 
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -31,15 +32,11 @@ const (
 	attributesSuffix     = "attributes"
 	raftAttributesSuffix = "raftAttributes"
 
-	// the prefix for stroing membership related information in store provided by store pkg.
+	// the prefix for storing membership related information in store provided by store pkg.
 	storePrefix = "/0"
 )
 
 var (
-	membersBucketName        = []byte("members")
-	membersRemovedBucketName = []byte("members_removed")
-	clusterBucketName        = []byte("cluster")
-
 	StoreMembersPrefix        = path.Join(storePrefix, "members")
 	storeRemovedMembersPrefix = path.Join(storePrefix, "removed_members")
 )
@@ -54,7 +51,17 @@ func mustSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(membersBucketName, mkey, mvalue)
+	tx.UnsafePut(buckets.Members, mkey, mvalue)
+}
+
+// TrimClusterFromBackend removes all information about cluster (versions)
+// from the v3 backend.
+func TrimClusterFromBackend(be backend.Backend) error {
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafeDeleteBucket(buckets.Cluster)
+	return nil
 }
 
 func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
@@ -63,19 +70,105 @@ func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafeDelete(membersBucketName, mkey)
-	tx.UnsafePut(membersRemovedBucketName, mkey, []byte("removed"))
+	tx.UnsafeDelete(buckets.Members, mkey)
+	tx.UnsafePut(buckets.MembersRemoved, mkey, []byte("removed"))
 }
 
+func readMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool, error) {
+	members := make(map[types.ID]*Member)
+	removed := make(map[types.ID]bool)
+
+	tx := be.ReadTx()
+	tx.RLock()
+	defer tx.RUnlock()
+	err := tx.UnsafeForEach(buckets.Members, func(k, v []byte) error {
+		memberId := mustParseMemberIDFromBytes(lg, k)
+		m := &Member{ID: memberId}
+		if err := json.Unmarshal(v, &m); err != nil {
+			return err
+		}
+		members[memberId] = m
+		return nil
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't read members from backend: %w", err)
+	}
+
+	err = tx.UnsafeForEach(buckets.MembersRemoved, func(k, v []byte) error {
+		memberId := mustParseMemberIDFromBytes(lg, k)
+		removed[memberId] = true
+		return nil
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't read members_removed from backend: %w", err)
+	}
+	return members, removed, nil
+}
+
+func mustReadMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool) {
+	members, removed, err := readMembersFromBackend(lg, be)
+	if err != nil {
+		lg.Panic("couldn't read members from backend", zap.Error(err))
+	}
+	return members, removed
+}
+
+// TrimMembershipFromBackend removes all information about members &
+// removed_members from the v3 backend.
+func TrimMembershipFromBackend(lg *zap.Logger, be backend.Backend) error {
+	lg.Info("Trimming membership information from the backend...")
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	err := tx.UnsafeForEach(buckets.Members, func(k, v []byte) error {
+		tx.UnsafeDelete(buckets.Members, k)
+		lg.Debug("Removed member from the backend",
+			zap.Stringer("member", mustParseMemberIDFromBytes(lg, k)))
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return tx.UnsafeForEach(buckets.MembersRemoved, func(k, v []byte) error {
+		tx.UnsafeDelete(buckets.MembersRemoved, k)
+		lg.Debug("Removed removed_member from the backend",
+			zap.Stringer("member", mustParseMemberIDFromBytes(lg, k)))
+		return nil
+	})
+}
+
+// TrimMembershipFromV2Store removes all information about members &
+// removed_members from the v2 store.
+func TrimMembershipFromV2Store(lg *zap.Logger, s v2store.Store) error {
+	members, removed := membersFromStore(lg, s)
+
+	for mID := range members {
+		_, err := s.Delete(MemberStoreKey(mID), true, true)
+		if err != nil {
+			return err
+		}
+	}
+	for mID := range removed {
+		_, err := s.Delete(RemovedMemberStoreKey(mID), true, true)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// The field is populated since etcd v3.5.
 func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 	ckey := backendClusterVersionKey()
 
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(clusterBucketName, ckey, []byte(ver.String()))
+	tx.UnsafePut(buckets.Cluster, ckey, []byte(ver.String()))
 }
 
+// The field is populated since etcd v3.5.
 func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *DowngradeInfo) {
 	dkey := backendDowngradeKey()
 	dvalue, err := json.Marshal(downgrade)
@@ -85,7 +178,7 @@ func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *D
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(clusterBucketName, dkey, dvalue)
+	tx.UnsafePut(buckets.Cluster, dkey, dvalue)
 }
 
 func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {
@@ -204,9 +297,9 @@ func mustCreateBackendBuckets(be backend.Backend) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafeCreateBucket(membersBucketName)
-	tx.UnsafeCreateBucket(membersRemovedBucketName)
-	tx.UnsafeCreateBucket(clusterBucketName)
+	tx.UnsafeCreateBucket(buckets.Members)
+	tx.UnsafeCreateBucket(buckets.MembersRemoved)
+	tx.UnsafeCreateBucket(buckets.Cluster)
 }
 
 func MemberStoreKey(id types.ID) string {
@@ -221,10 +314,18 @@ func MemberAttributesStorePath(id types.ID) string {
 	return path.Join(MemberStoreKey(id), attributesSuffix)
 }
 
+func mustParseMemberIDFromBytes(lg *zap.Logger, key []byte) types.ID {
+	id, err := types.IDFromString(string(key))
+	if err != nil {
+		lg.Panic("failed to parse member id from key", zap.Error(err))
+	}
+	return id
+}
+
 func MustParseMemberIDFromKey(lg *zap.Logger, key string) types.ID {
 	id, err := types.IDFromString(path.Base(key))
 	if err != nil {
-		lg.Panic("failed to parse memver id from key", zap.Error(err))
+		lg.Panic("failed to parse member id from key", zap.Error(err))
 	}
 	return id
 }

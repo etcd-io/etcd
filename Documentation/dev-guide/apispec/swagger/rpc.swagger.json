@@ -1247,7 +1247,7 @@
         "tags": [
           "Maintenance"
         ],
-        "summary": "Downgrade requests downgrade, cancel downgrade on the cluster version.",
+        "summary": "Downgrade requests downgrades, verifies feasibility or cancels downgrade\non the cluster version.\nSupported since etcd 3.5.",
         "operationId": "Maintenance_Downgrade",
         "parameters": [
           {

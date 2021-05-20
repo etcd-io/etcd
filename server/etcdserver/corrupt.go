@@ -26,8 +26,8 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/mvcc"
 
 	"go.uber.org/zap"
@@ -41,7 +41,7 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 		return nil
 	}
 
-	lg := s.getLogger()
+	lg := s.Logger()
 
 	lg.Info(
 		"starting initial corruption check",
@@ -126,7 +126,7 @@ func (s *EtcdServer) monitorKVHash() {
 		return
 	}
 
-	lg := s.getLogger()
+	lg := s.Logger()
 	lg.Info(
 		"enabled corruption checking",
 		zap.String("local-member-id", s.ID().String()),
@@ -149,7 +149,7 @@ func (s *EtcdServer) monitorKVHash() {
 }
 
 func (s *EtcdServer) checkHashKV() error {
-	lg := s.getLogger()
+	lg := s.Logger()
 
 	h, rev, crev, err := s.kv.HashByRev(0)
 	if err != nil {
@@ -268,7 +268,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 		peers = append(peers, peerInfo{id: m.ID, eps: m.PeerURLs})
 	}
 
-	lg := s.getLogger()
+	lg := s.Logger()
 
 	var resps []*peerHashKVResp
 	for _, p := range peers {
@@ -345,7 +345,7 @@ type hashKVHandler struct {
 }
 
 func (s *EtcdServer) HashKVHandler() http.Handler {
-	return &hashKVHandler{lg: s.getLogger(), server: s}
+	return &hashKVHandler{lg: s.Logger(), server: s}
 }
 
 func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

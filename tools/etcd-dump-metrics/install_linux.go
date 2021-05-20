@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 package main
@@ -23,7 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"go.etcd.io/etcd/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 )
 
 const downloadURL = `https://storage.googleapis.com/etcd/%s/etcd-%s-linux-amd64.tar.gz`

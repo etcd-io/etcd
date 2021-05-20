@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -230,7 +230,7 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 
 func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	n := newNopReadyNode()
-	cl := membership.NewCluster(zap.NewExample(), "abc")
+	cl := membership.NewCluster(zap.NewExample())
 
 	rs := raft.NewMemoryStorage()
 	p := mockstorage.NewStorageRecorder("")

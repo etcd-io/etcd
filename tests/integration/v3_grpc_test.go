@@ -27,9 +27,8 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/pkg/v3/transport"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -40,7 +39,7 @@ import (
 // TestV3PutOverwrite puts a key with the v3 api to a random cluster member,
 // overwrites it, then checks that the change was applied.
 func TestV3PutOverwrite(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -88,7 +87,7 @@ func TestV3PutOverwrite(t *testing.T) {
 
 // TestPutRestart checks if a put after an unrelated member restart succeeds
 func TestV3PutRestart(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -120,7 +119,7 @@ func TestV3PutRestart(t *testing.T) {
 
 // TestV3CompactCurrentRev ensures keys are present when compacting on current revision.
 func TestV3CompactCurrentRev(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -154,7 +153,7 @@ func TestV3CompactCurrentRev(t *testing.T) {
 
 // TestV3HashKV ensures that multiple calls of HashKV on same node return same hash and compact rev.
 func TestV3HashKV(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -202,7 +201,7 @@ func TestV3HashKV(t *testing.T) {
 }
 
 func TestV3TxnTooManyOps(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	maxTxnOps := uint(128)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3, MaxTxnOps: maxTxnOps})
 	defer clus.Terminate(t)
@@ -278,7 +277,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 }
 
 func TestV3TxnDuplicateKeys(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -396,7 +395,7 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 
 // Testv3TxnRevision tests that the transaction header revision is set as expected.
 func TestV3TxnRevision(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -447,7 +446,7 @@ func TestV3TxnRevision(t *testing.T) {
 // Testv3TxnCmpHeaderRev tests that the txn header revision is set as expected
 // when compared to the Succeeded field in the txn response.
 func TestV3TxnCmpHeaderRev(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -503,7 +502,7 @@ func TestV3TxnCmpHeaderRev(t *testing.T) {
 
 // TestV3TxnRangeCompare tests range comparisons in txns
 func TestV3TxnRangeCompare(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -614,7 +613,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 
 // TestV3TxnNested tests nested txns follow paths as expected.
 func TestV3TxnNestedPath(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -667,7 +666,7 @@ func TestV3TxnNestedPath(t *testing.T) {
 
 // TestV3PutIgnoreValue ensures that writes with ignore_value overwrites with previous key-value pair.
 func TestV3PutIgnoreValue(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -800,7 +799,7 @@ func TestV3PutIgnoreValue(t *testing.T) {
 
 // TestV3PutIgnoreLease ensures that writes with ignore_lease uses previous lease for the key overwrites.
 func TestV3PutIgnoreLease(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -940,7 +939,7 @@ func TestV3PutIgnoreLease(t *testing.T) {
 
 // TestV3PutMissingLease ensures that a Put on a key with a bogus lease fails.
 func TestV3PutMissingLease(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -1011,7 +1010,7 @@ func TestV3PutMissingLease(t *testing.T) {
 
 // TestV3DeleteRange tests various edge cases in the DeleteRange API.
 func TestV3DeleteRange(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	tests := []struct {
 		keySet []string
 		begin  string
@@ -1120,7 +1119,7 @@ func TestV3DeleteRange(t *testing.T) {
 
 // TestV3TxnInvalidRange tests that invalid ranges are rejected in txns.
 func TestV3TxnInvalidRange(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -1163,7 +1162,7 @@ func TestV3TxnInvalidRange(t *testing.T) {
 }
 
 func TestV3TooLargeRequest(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -1182,7 +1181,7 @@ func TestV3TooLargeRequest(t *testing.T) {
 
 // TestV3Hash tests hash.
 func TestV3Hash(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -1207,7 +1206,7 @@ func TestV3Hash(t *testing.T) {
 
 // TestV3HashRestart ensures that hash stays the same after restart.
 func TestV3HashRestart(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1238,7 +1237,7 @@ func TestV3HashRestart(t *testing.T) {
 
 // TestV3StorageQuotaAPI tests the V3 server respects quotas at the API layer
 func TestV3StorageQuotaAPI(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
@@ -1285,7 +1284,7 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 }
 
 func TestV3RangeRequest(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	tests := []struct {
 		putKeys []string
 		reqs    []pb.RangeRequest
@@ -1535,7 +1534,7 @@ func newClusterV3NoClients(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 
 // TestTLSGRPCRejectInsecureClient checks that connection is rejected if server is TLS but not client.
 func TestTLSGRPCRejectInsecureClient(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	cfg := ClusterConfig{Size: 3, ClientTLS: &testTLSInfo}
 	clus := newClusterV3NoClients(t, &cfg)
@@ -1570,7 +1569,7 @@ func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 
 // TestTLSGRPCRejectSecureClient checks that connection is rejected if client is TLS but not server.
 func TestTLSGRPCRejectSecureClient(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	cfg := ClusterConfig{Size: 3}
 	clus := newClusterV3NoClients(t, &cfg)
@@ -1588,7 +1587,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 
 // TestTLSGRPCAcceptSecureAll checks that connection is accepted if both client and server are TLS
 func TestTLSGRPCAcceptSecureAll(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	cfg := ClusterConfig{Size: 3, ClientTLS: &testTLSInfo}
 	clus := newClusterV3NoClients(t, &cfg)
@@ -1610,20 +1609,20 @@ func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 // when all certs are atomically replaced by directory renaming.
 // And expects server to reject client requests, and vice versa.
 func TestTLSReloadAtomicReplace(t *testing.T) {
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "fixtures-tmp")
+	tmpDir, err := ioutil.TempDir(t.TempDir(), "fixtures-tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
 	os.RemoveAll(tmpDir)
 	defer os.RemoveAll(tmpDir)
 
-	certsDir, err := ioutil.TempDir(os.TempDir(), "fixtures-to-load")
+	certsDir, err := ioutil.TempDir(t.TempDir(), "fixtures-to-load")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(certsDir)
 
-	certsDirExp, err := ioutil.TempDir(os.TempDir(), "fixtures-expired")
+	certsDirExp, err := ioutil.TempDir(t.TempDir(), "fixtures-expired")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1669,7 +1668,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 // when new certs are copied over, one by one. And expects server
 // to reject client requests, and vice versa.
 func TestTLSReloadCopy(t *testing.T) {
-	certsDir, err := ioutil.TempDir(os.TempDir(), "fixtures-to-load")
+	certsDir, err := ioutil.TempDir(t.TempDir(), "fixtures-to-load")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1699,7 +1698,7 @@ func TestTLSReloadCopy(t *testing.T) {
 // when new certs are copied over, one by one. And expects server
 // to reject client requests, and vice versa.
 func TestTLSReloadCopyIPOnly(t *testing.T) {
-	certsDir, err := ioutil.TempDir(os.TempDir(), "fixtures-to-load")
+	certsDir, err := ioutil.TempDir(t.TempDir(), "fixtures-to-load")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1731,7 +1730,7 @@ func testTLSReload(
 	replaceFunc func(),
 	revertFunc func(),
 	useIP bool) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	// 1. separate copies for TLS assets modification
 	tlsInfo := cloneFunc()
@@ -1759,7 +1758,7 @@ func testTLSReload(
 				t.Log(err)
 				continue
 			}
-			cli, cerr := clientv3.New(clientv3.Config{
+			cli, cerr := NewClient(t, clientv3.Config{
 				DialOptions: []grpc.DialOption{grpc.WithBlock()},
 				Endpoints:   []string{clus.Members[0].GRPCAddr()},
 				DialTimeout: time.Second,
@@ -1794,7 +1793,7 @@ func testTLSReload(
 	if terr != nil {
 		t.Fatal(terr)
 	}
-	cl, cerr := clientv3.New(clientv3.Config{
+	cl, cerr := NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: 5 * time.Second,
 		TLS:         tls,
@@ -1806,7 +1805,7 @@ func testTLSReload(
 }
 
 func TestGRPCRequireLeader(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	cfg := ClusterConfig{Size: 3}
 	clus := newClusterV3NoClients(t, &cfg)
@@ -1833,7 +1832,7 @@ func TestGRPCRequireLeader(t *testing.T) {
 }
 
 func TestGRPCStreamRequireLeader(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	cfg := ClusterConfig{Size: 3}
 	clus := newClusterV3NoClients(t, &cfg)
@@ -1896,7 +1895,7 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 
 // TestV3LargeRequests ensures that configurable MaxRequestBytes works as intended.
 func TestV3LargeRequests(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	tests := []struct {
 		maxRequestBytes uint
 		valueSize       int
@@ -1944,7 +1943,7 @@ func waitForRestart(t *testing.T, kvc pb.KVClient) {
 	// TODO: Remove retry loop once the new grpc load balancer provides retry.
 	var err error
 	for i := 0; i < 10; i++ {
-		if _, err = kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
+		if _, err = kvc.Range(context.TODO(), req, grpc.WaitForReady(true)); err != nil {
 			if status, ok := status.FromError(err); ok && status.Code() == codes.Unavailable {
 				time.Sleep(time.Millisecond * 250)
 			} else {

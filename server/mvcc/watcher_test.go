@@ -24,15 +24,15 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap"
 )
 
 // TestWatcherWatchID tests that each watcher provides unique watchID,
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -81,8 +81,8 @@ func TestWatcherWatchID(t *testing.T) {
 }
 
 func TestWatcherRequestsCustomID(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -118,8 +118,8 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 // TestWatcherWatchPrefix tests if Watch operation correctly watches
 // and returns events with matching prefixes.
 func TestWatcherWatchPrefix(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -192,8 +192,8 @@ func TestWatcherWatchPrefix(t *testing.T) {
 // TestWatcherWatchWrongRange ensures that watcher with wrong 'end' range
 // does not create watcher, which panics when canceling in range tree.
 func TestWatcherWatchWrongRange(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -212,8 +212,8 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 }
 
 func TestWatchDeleteRange(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
 		s.store.Close()
@@ -251,8 +251,8 @@ func TestWatchDeleteRange(t *testing.T) {
 // TestWatchStreamCancelWatcherByID ensures cancel calls the cancel func of the watcher
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -288,14 +288,14 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 // TestWatcherRequestProgress ensures synced watcher can correctly
 // report its correct progress.
 func TestWatcherRequestProgress(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore automatically calls syncWatchers
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
-		store:    NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}),
+		store:    NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
 	}
@@ -343,8 +343,8 @@ func TestWatcherRequestProgress(t *testing.T) {
 }
 
 func TestWatcherWatchWithFilter(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}))
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := WatchableKV(newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()

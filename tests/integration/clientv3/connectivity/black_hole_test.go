@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !cluster_proxy
 // +build !cluster_proxy
 
 package connectivity_test
@@ -23,7 +24,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.etcd.io/etcd/tests/v3/integration/clientv3"
 	"google.golang.org/grpc"
@@ -33,7 +33,7 @@ import (
 // blackholed endpoint, client balancer switches to healthy one.
 // TODO: test server-to-client keepalive ping
 func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:                 2,
@@ -59,7 +59,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	// then we can reduce 3s to 1s.
 	timeout := pingInterval + integration.RequestWaitTimeout
 
-	cli, err := clientv3.New(ccfg)
+	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestBalancerUnderBlackholeNoKeepAliveSerializableGet(t *testing.T) {
 // testBalancerUnderBlackholeNoKeepAlive ensures that first request to blackholed endpoint
 // fails due to context timeout, but succeeds on next try, with endpoint switch.
 func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Client, context.Context) error) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               2,
@@ -180,7 +180,7 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 		DialTimeout: 1 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := clientv3.New(ccfg)
+	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,14 +19,11 @@ import (
 	"sync"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"go.uber.org/zap"
-)
-
-var (
-	alarmBucketName = []byte("alarm")
 )
 
 type BackendGetter interface {
@@ -69,7 +66,7 @@ func (a *AlarmStore) Activate(id types.ID, at pb.AlarmType) *pb.AlarmMember {
 
 	b := a.bg.Backend()
 	b.BatchTx().Lock()
-	b.BatchTx().UnsafePut(alarmBucketName, v, nil)
+	b.BatchTx().UnsafePut(buckets.Alarm, v, nil)
 	b.BatchTx().Unlock()
 
 	return newAlarm
@@ -98,7 +95,7 @@ func (a *AlarmStore) Deactivate(id types.ID, at pb.AlarmType) *pb.AlarmMember {
 
 	b := a.bg.Backend()
 	b.BatchTx().Lock()
-	b.BatchTx().UnsafeDelete(alarmBucketName, v)
+	b.BatchTx().UnsafeDelete(buckets.Alarm, v)
 	b.BatchTx().Unlock()
 
 	return m
@@ -126,8 +123,8 @@ func (a *AlarmStore) restore() error {
 	tx := b.BatchTx()
 
 	tx.Lock()
-	tx.UnsafeCreateBucket(alarmBucketName)
-	err := tx.UnsafeForEach(alarmBucketName, func(k, v []byte) error {
+	tx.UnsafeCreateBucket(buckets.Alarm)
+	err := tx.UnsafeForEach(buckets.Alarm, func(k, v []byte) error {
 		var m pb.AlarmMember
 		if err := m.Unmarshal(k); err != nil {
 			return err

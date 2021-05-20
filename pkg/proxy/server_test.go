@@ -16,6 +16,7 @@ package proxy
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -29,20 +30,12 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/transport"
+	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.uber.org/zap/zaptest"
 
 	"go.uber.org/zap"
 )
-
-// enable DebugLevel
-var testLogger = zap.NewExample()
-
-var testTLSInfo = transport.TLSInfo{
-	KeyFile:        "../../tests/fixtures/server.key.insecure",
-	CertFile:       "../../tests/fixtures/server.crt",
-	TrustedCAFile:  "../../tests/fixtures/ca.crt",
-	ClientCertAuth: true,
-}
 
 func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
 func TestServer_TCP_Insecure(t *testing.T)          { testServer(t, "tcp", false, false) }
@@ -52,7 +45,9 @@ func TestServer_Unix_Insecure_DelayTx(t *testing.T) { testServer(t, "unix", fals
 func TestServer_TCP_Insecure_DelayTx(t *testing.T)  { testServer(t, "tcp", false, true) }
 func TestServer_Unix_Secure_DelayTx(t *testing.T)   { testServer(t, "unix", true, true) }
 func TestServer_TCP_Secure_DelayTx(t *testing.T)    { testServer(t, "tcp", true, true) }
+
 func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
+	lg := zaptest.NewLogger(t)
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	if scheme == "tcp" {
 		ln1, ln2 := listen(t, "tcp", "localhost:0", transport.TLSInfo{}), listen(t, "tcp", "localhost:0", transport.TLSInfo{})
@@ -65,20 +60,17 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 			os.RemoveAll(dstAddr)
 		}()
 	}
-	tlsInfo := testTLSInfo
-	if !secure {
-		tlsInfo = transport.TLSInfo{}
-	}
+	tlsInfo := createTLSInfo(lg, secure)
 	ln := listen(t, scheme, dstAddr, tlsInfo)
 	defer ln.Close()
 
 	cfg := ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	}
 	if secure {
-		cfg.TLSInfo = testTLSInfo
+		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
 	<-p.Ready()
@@ -122,15 +114,15 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	}
 	took2 := time.Since(now)
 	if delayTx {
-		t.Logf("took %v with latency %v±%v", took2, lat, rv)
+		t.Logf("took %v with latency %v+-%v", took2, lat, rv)
 	} else {
 		t.Logf("took %v with no latency", took2)
 	}
 
 	if delayTx {
 		p.UndelayTx()
-		if took1 >= took2 {
-			t.Fatalf("expected took1 %v < took2 %v (with latency)", took1, took2)
+		if took2 < lat-rv {
+			t.Fatalf("expected took2 %v (with latency) > delay: %v", took2, lat-rv)
 		}
 	}
 
@@ -165,29 +157,40 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	}
 }
 
+func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
+	if secure {
+		return transport.TLSInfo{
+			KeyFile:        "../../tests/fixtures/server.key.insecure",
+			CertFile:       "../../tests/fixtures/server.crt",
+			TrustedCAFile:  "../../tests/fixtures/ca.crt",
+			ClientCertAuth: true,
+			Logger:         lg,
+		}
+	}
+	return transport.TLSInfo{Logger: lg}
+}
+
 func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(t, false) }
 func TestServer_Unix_Secure_DelayAccept(t *testing.T)   { testServerDelayAccept(t, true) }
 func testServerDelayAccept(t *testing.T, secure bool) {
+	lg := zaptest.NewLogger(t)
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	tlsInfo := testTLSInfo
-	if !secure {
-		tlsInfo = transport.TLSInfo{}
-	}
+	tlsInfo := createTLSInfo(lg, secure)
 	scheme := "unix"
 	ln := listen(t, scheme, dstAddr, tlsInfo)
 	defer ln.Close()
 
 	cfg := ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	}
 	if secure {
-		cfg.TLSInfo = testTLSInfo
+		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
 	<-p.Ready()
@@ -225,6 +228,7 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 }
 
 func TestServer_PauseTx(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
@@ -235,7 +239,7 @@ func TestServer_PauseTx(t *testing.T) {
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
@@ -271,6 +275,7 @@ func TestServer_PauseTx(t *testing.T) {
 }
 
 func TestServer_ModifyTx_corrupt(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
@@ -281,7 +286,7 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
@@ -306,6 +311,7 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 }
 
 func TestServer_ModifyTx_packet_loss(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
@@ -316,7 +322,7 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
@@ -342,6 +348,7 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 }
 
 func TestServer_BlackholeTx(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
@@ -352,7 +359,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
@@ -392,6 +399,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 }
 
 func TestServer_Shutdown(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
@@ -402,7 +410,7 @@ func TestServer_Shutdown(t *testing.T) {
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
@@ -421,6 +429,7 @@ func TestServer_Shutdown(t *testing.T) {
 }
 
 func TestServer_ShutdownListener(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	scheme := "unix"
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
@@ -432,7 +441,7 @@ func TestServer_ShutdownListener(t *testing.T) {
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
@@ -458,6 +467,7 @@ func TestServerHTTP_Secure_DelayTx(t *testing.T)   { testServerHTTP(t, true, tru
 func TestServerHTTP_Insecure_DelayRx(t *testing.T) { testServerHTTP(t, false, false) }
 func TestServerHTTP_Secure_DelayRx(t *testing.T)   { testServerHTTP(t, true, false) }
 func testServerHTTP(t *testing.T, secure, delayTx bool) {
+	lg := zaptest.NewLogger(t)
 	scheme := "tcp"
 	ln1, ln2 := listen(t, scheme, "localhost:0", transport.TLSInfo{}), listen(t, scheme, "localhost:0", transport.TLSInfo{})
 	srcAddr, dstAddr := ln1.Addr().String(), ln2.Addr().String()
@@ -467,6 +477,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request) {
 		d, err := ioutil.ReadAll(req.Body)
+		req.Body.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -474,10 +485,10 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 			t.Fatal(err)
 		}
 	})
+	tlsInfo := createTLSInfo(lg, secure)
 	var tlsConfig *tls.Config
-	var err error
 	if secure {
-		tlsConfig, err = testTLSInfo.ServerConfig()
+		_, err := tlsInfo.ServerConfig()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -495,48 +506,53 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		<-donec
 	}()
 	go func() {
-		defer close(donec)
 		if !secure {
 			srv.ListenAndServe()
 		} else {
-			srv.ListenAndServeTLS(testTLSInfo.CertFile, testTLSInfo.KeyFile)
+			srv.ListenAndServeTLS(tlsInfo.CertFile, tlsInfo.KeyFile)
 		}
+		defer close(donec)
 	}()
 	time.Sleep(200 * time.Millisecond)
 
 	cfg := ServerConfig{
-		Logger: testLogger,
+		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	}
 	if secure {
-		cfg.TLSInfo = testTLSInfo
+		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
 	<-p.Ready()
-	defer p.Close()
+	defer func() {
+		lg.Info("closing Proxy server...")
+		p.Close()
+		lg.Info("closed Proxy server.")
+	}()
 
 	data := "Hello World!"
 
-	now := time.Now()
 	var resp *http.Response
+	var err error
+	now := time.Now()
 	if secure {
-		tp, terr := transport.NewTransport(testTLSInfo, 3*time.Second)
-		if terr != nil {
-			t.Fatal(terr)
-		}
+		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
+		assert.NoError(t, terr)
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
+		defer cli.CloseIdleConnections()
+		defer tp.CloseIdleConnections()
 	} else {
 		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
+		defer http.DefaultClient.CloseIdleConnections()
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	d, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
+	resp.Body.Close()
 	took1 := time.Since(now)
 	t.Logf("took %v with no latency", took1)
 
@@ -557,14 +573,17 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 
 	now = time.Now()
 	if secure {
-		tp, terr := transport.NewTransport(testTLSInfo, 3*time.Second)
+		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
 		if terr != nil {
 			t.Fatal(terr)
 		}
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
+		defer cli.CloseIdleConnections()
+		defer tp.CloseIdleConnections()
 	} else {
 		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
+		defer http.DefaultClient.CloseIdleConnections()
 	}
 	if err != nil {
 		t.Fatal(err)
@@ -573,6 +592,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	resp.Body.Close()
 	took2 := time.Since(now)
 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
 
@@ -614,7 +634,7 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 		if terr != nil {
 			t.Fatal(terr)
 		}
-		out, err = tp.Dial(scheme, addr)
+		out, err = tp.DialContext(context.Background(), scheme, addr)
 	} else {
 		out, err = net.Dial(scheme, addr)
 	}

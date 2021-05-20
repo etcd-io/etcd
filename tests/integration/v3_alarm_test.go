@@ -24,18 +24,15 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply
 func TestV3StorageQuotaApply(t *testing.T) {
-	testutil.AfterTest(t)
+	BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 2})
@@ -115,6 +112,8 @@ func TestV3StorageQuotaApply(t *testing.T) {
 
 // TestV3AlarmDeactivate ensures that space alarms can be deactivated so puts go through.
 func TestV3AlarmDeactivate(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	kvc := toGRPC(clus.RandClient()).KV
@@ -147,7 +146,7 @@ func TestV3AlarmDeactivate(t *testing.T) {
 }
 
 func TestV3CorruptAlarm(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -167,7 +166,7 @@ func TestV3CorruptAlarm(t *testing.T) {
 	clus.Members[0].Stop(t)
 	fp := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
 	be := backend.NewDefaultBackend(fp)
-	s := mvcc.NewStore(zap.NewExample(), be, nil, cindex.NewFakeConsistentIndex(13), mvcc.StoreConfig{})
+	s := mvcc.NewStore(zaptest.NewLogger(t), be, nil, mvcc.StoreConfig{})
 	// NOTE: cluster_proxy mode with namespacing won't set 'k', but namespace/'k'.
 	s.Put([]byte("abc"), []byte("def"), 0)
 	s.Put([]byte("xyz"), []byte("123"), 0)

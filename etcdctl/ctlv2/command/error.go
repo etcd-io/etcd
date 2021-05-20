@@ -23,15 +23,6 @@ import (
 	"go.etcd.io/etcd/client/v2"
 )
 
-const (
-	ExitSuccess = iota
-	ExitBadArgs
-	ExitBadConnection
-	ExitBadAuth
-	ExitServerError
-	ExitClusterNotHealthy
-)
-
 func handleError(c *cli.Context, code int, err error) {
 	if c.GlobalString("output") == "json" {
 		if err, ok := err.(*client.Error); ok {

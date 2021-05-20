@@ -28,7 +28,7 @@ func (env *InteractionEnv) handleLogLevel(t *testing.T, d datadriven.TestData) e
 
 func (env *InteractionEnv) LogLevel(name string) error {
 	for i, s := range lvlNames {
-		if strings.ToLower(s) == strings.ToLower(name) {
+		if strings.EqualFold(s, name) {
 			env.Output.Lvl = i
 			return nil
 		}

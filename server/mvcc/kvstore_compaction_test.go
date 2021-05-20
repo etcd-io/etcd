@@ -23,7 +23,8 @@ import (
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap"
 )
 
@@ -66,15 +67,15 @@ func TestScheduleCompaction(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		b, tmpPath := backend.NewDefaultTmpBackend()
-		s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+		b, tmpPath := betesting.NewDefaultTmpBackend(t)
+		s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 		tx := s.b.BatchTx()
 
 		tx.Lock()
 		ibytes := newRevBytes()
 		for _, rev := range revs {
 			revToBytes(rev, ibytes)
-			tx.UnsafePut(keyBucketName, ibytes, []byte("bar"))
+			tx.UnsafePut(buckets.Key, ibytes, []byte("bar"))
 		}
 		tx.Unlock()
 
@@ -83,12 +84,12 @@ func TestScheduleCompaction(t *testing.T) {
 		tx.Lock()
 		for _, rev := range tt.wrevs {
 			revToBytes(rev, ibytes)
-			keys, _ := tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
+			keys, _ := tx.UnsafeRange(buckets.Key, ibytes, nil, 0)
 			if len(keys) != 1 {
 				t.Errorf("#%d: range on %v = %d, want 1", i, rev, len(keys))
 			}
 		}
-		_, vals := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
+		_, vals := tx.UnsafeRange(buckets.Meta, finishedCompactKeyName, nil, 0)
 		revToBytes(revision{main: tt.rev}, ibytes)
 		if w := [][]byte{ibytes}; !reflect.DeepEqual(vals, w) {
 			t.Errorf("#%d: vals on %v = %+v, want %+v", i, finishedCompactKeyName, vals, w)
@@ -100,8 +101,8 @@ func TestScheduleCompaction(t *testing.T) {
 }
 
 func TestCompactAllAndRestore(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -127,7 +128,7 @@ func TestCompactAllAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s1 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s1 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 	if s1.Rev() != rev {
 		t.Errorf("rev = %v, want %v", s1.Rev(), rev)
 	}

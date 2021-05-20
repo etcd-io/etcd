@@ -15,6 +15,7 @@
 package rafttest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/cockroachdb/datadriven"
@@ -23,8 +24,20 @@ import (
 )
 
 func (env *InteractionEnv) handleProcessReady(t *testing.T, d datadriven.TestData) error {
-	idx := firstAsNodeIdx(t, d)
-	return env.ProcessReady(idx)
+	idxs := nodeIdxs(t, d)
+	for _, idx := range idxs {
+		var err error
+		if len(idxs) > 1 {
+			fmt.Fprintf(env.Output, "> %d handling Ready\n", idx+1)
+			env.withIndent(func() { err = env.ProcessReady(idx) })
+		} else {
+			err = env.ProcessReady(idx)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ProcessReady runs Ready handling on the node with the given index.
@@ -86,9 +99,9 @@ func (env *InteractionEnv) ProcessReady(idx int) error {
 		snap.Metadata.ConfState = *cs
 		env.Nodes[idx].History = append(env.Nodes[idx].History, snap)
 	}
-	for _, msg := range rd.Messages {
-		env.Messages = append(env.Messages, msg)
-	}
+
+	env.Messages = append(env.Messages, rd.Messages...)
+
 	rn.Advance(rd)
 	return nil
 }

@@ -31,6 +31,8 @@ const (
 
 // TestQueueOneReaderOneWriter confirms the queue is FIFO
 func TestQueueOneReaderOneWriter(t *testing.T) {
+	integration.BeforeTest(t)
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -76,6 +78,8 @@ func TestQueueManyReaderManyWriter(t *testing.T) {
 
 // BenchmarkQueue benchmarks Queues using many/many readers/writers
 func BenchmarkQueue(b *testing.B) {
+	integration.BeforeTest(b)
+
 	// XXX switch tests to use TB interface
 	clus := integration.NewClusterV3(nil, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
@@ -86,6 +90,8 @@ func BenchmarkQueue(b *testing.B) {
 
 // TestPrQueueOneReaderOneWriter tests whether priority queues respect priorities.
 func TestPrQueueOneReaderOneWriter(t *testing.T) {
+	integration.BeforeTest(t)
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -118,6 +124,8 @@ func TestPrQueueOneReaderOneWriter(t *testing.T) {
 }
 
 func TestPrQueueManyReaderManyWriter(t *testing.T) {
+	integration.BeforeTest(t)
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	rqs := newPriorityQueues(clus, manyQueueClients)
@@ -127,6 +135,8 @@ func TestPrQueueManyReaderManyWriter(t *testing.T) {
 
 // BenchmarkQueue benchmarks Queues using n/n readers/writers
 func BenchmarkPrQueueOneReaderOneWriter(b *testing.B) {
+	integration.BeforeTest(b)
+
 	// XXX switch tests to use TB interface
 	clus := integration.NewClusterV3(nil, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
@@ -138,6 +148,7 @@ func BenchmarkPrQueueOneReaderOneWriter(b *testing.B) {
 }
 
 func testQueueNReaderMWriter(t *testing.T, n int, m int) {
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testReadersWriters(t, newQueues(clus, n), newQueues(clus, m))

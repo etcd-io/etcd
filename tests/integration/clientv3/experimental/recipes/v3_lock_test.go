@@ -24,11 +24,12 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestMutexLockSingleNode(t *testing.T) {
+	integration.BeforeTest(t)
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -38,6 +39,8 @@ func TestMutexLockSingleNode(t *testing.T) {
 }
 
 func TestMutexLockMultiNode(t *testing.T) {
+	integration.BeforeTest(t)
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -90,6 +93,7 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 }
 
 func TestMutexTryLockSingleNode(t *testing.T) {
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -99,6 +103,7 @@ func TestMutexTryLockSingleNode(t *testing.T) {
 }
 
 func TestMutexTryLockMultiNode(t *testing.T) {
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -108,6 +113,8 @@ func TestMutexTryLockMultiNode(t *testing.T) {
 }
 
 func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.Client) {
+	integration.BeforeTest(t)
+
 	lockedC := make(chan *concurrency.Mutex)
 	notlockedC := make(chan *concurrency.Mutex)
 	stopC := make(chan struct{})
@@ -156,6 +163,8 @@ func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.C
 // TestMutexSessionRelock ensures that acquiring the same lock with the same
 // session will not result in deadlock.
 func TestMutexSessionRelock(t *testing.T) {
+	integration.BeforeTest(t)
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	session, err := concurrency.NewSession(clus.RandClient())
@@ -178,7 +187,7 @@ func TestMutexSessionRelock(t *testing.T) {
 // waiters older than the new owner are gone by testing the case where
 // the waiter prior to the acquirer expires before the current holder.
 func TestMutexWaitsOnCurrentHolder(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -286,6 +295,7 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 }
 
 func BenchmarkMutex4Waiters(b *testing.B) {
+	integration.BeforeTest(b)
 	// XXX switch tests to use TB interface
 	clus := integration.NewClusterV3(nil, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
@@ -295,12 +305,14 @@ func BenchmarkMutex4Waiters(b *testing.B) {
 }
 
 func TestRWMutexSingleNode(t *testing.T) {
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testRWMutex(t, 5, func() *clientv3.Client { return clus.Client(0) })
 }
 
 func TestRWMutexMultiNode(t *testing.T) {
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testRWMutex(t, 5, func() *clientv3.Client { return clus.RandClient() })

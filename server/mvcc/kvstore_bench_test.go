@@ -18,17 +18,18 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 
 	"go.uber.org/zap"
 )
 
 func BenchmarkStorePut(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
+	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -46,8 +47,8 @@ func BenchmarkStoreRangeKey1(b *testing.B)   { benchmarkStoreRange(b, 1) }
 func BenchmarkStoreRangeKey100(b *testing.B) { benchmarkStoreRange(b, 100) }
 
 func benchmarkStoreRange(b *testing.B, n int) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
+	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// 64 byte key/val
@@ -73,26 +74,30 @@ func benchmarkStoreRange(b *testing.B, n int) {
 }
 
 func BenchmarkConsistentIndex(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
-	defer cleanup(s, be, tmpPath)
+	be, _ := betesting.NewDefaultTmpBackend(b)
+	ci := cindex.NewConsistentIndex(be)
+	defer betesting.Close(b, be)
 
-	tx := s.b.BatchTx()
+	// This will force the index to be reread from scratch on each call.
+	ci.SetConsistentIndex(0, 0)
+
+	tx := be.BatchTx()
 	tx.Lock()
-	s.saveIndex(tx)
+	cindex.UnsafeCreateMetaBucket(tx)
+	ci.UnsafeSave(tx)
 	tx.Unlock()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.ConsistentIndex()
+		ci.ConsistentIndex()
 	}
 }
 
 // BenchmarkStoreTxnPutUpdate is same as above, but instead updates single key
 func BenchmarkStorePutUpdate(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
+	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -109,8 +114,8 @@ func BenchmarkStorePutUpdate(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkStoreTxnPut(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
+	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -129,8 +134,8 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 
 // benchmarkStoreRestore benchmarks the restore operation
 func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
+	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
 	// use closure to capture 's' to pick up the reassignment
 	defer func() { cleanup(s, be, tmpPath) }()
 
@@ -146,11 +151,11 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 			txn.End()
 		}
 	}
-	s.Close()
+	assert.NoError(b, s.Close())
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	s = NewStore(zap.NewExample(), be, &lease.FakeLessor{}, cindex.NewConsistentIndex(be.BatchTx()), StoreConfig{})
+	s = NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
 }
 
 func BenchmarkStoreRestoreRevs1(b *testing.B) {

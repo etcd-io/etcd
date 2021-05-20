@@ -1,0 +1,19 @@
+name: Linux ARM64 Graviton2
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, ARM64, graviton2]
+    steps:
+      - uses: actions/checkout@v2
+      - name: install dependencies
+        run: |
+          sudo amazon-linux-extras install epel
+          sudo yum install -y git gcc ShellCheck
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.16"
+      - run: go version
+      - run: date
+      - name: Run tests
+        run: TEST_OPTS="PASSES='fmt bom dep build unit integration_e2e'" make test

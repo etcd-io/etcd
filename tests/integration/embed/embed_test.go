@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !cluster_proxy
 // +build !cluster_proxy
 
 // Keep the test in a separate package from other tests such that
@@ -29,17 +30,18 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "../../fixtures/server.key.insecure",
-		CertFile:       "../../fixtures/server.crt",
-		TrustedCAFile:  "../../fixtures/ca.crt",
+		KeyFile:        integration.MustAbsPath("../../fixtures/server.key.insecure"),
+		CertFile:       integration.MustAbsPath("../../fixtures/server.crt"),
+		TrustedCAFile:  integration.MustAbsPath("../../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 )
@@ -87,9 +89,7 @@ func TestEmbedEtcd(t *testing.T) {
 	tests[7].cfg.LCUrls = []url.URL{*dnsURL}
 	tests[8].cfg.LPUrls = []url.URL{*dnsURL}
 
-	dir := filepath.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
-	os.RemoveAll(dir)
-	defer os.RemoveAll(dir)
+	dir := filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd"))
 
 	for i, tt := range tests {
 		tests[i].cfg.Dir = dir
@@ -119,8 +119,9 @@ func TestEmbedEtcd(t *testing.T) {
 		e.Close()
 		select {
 		case err := <-e.Err():
-			t.Errorf("#%d: unexpected error on close (%v)", i, err)
-		default:
+			if err != nil {
+				t.Errorf("#%d: unexpected error on close (%v)", i, err)
+			}
 		}
 	}
 }
@@ -142,9 +143,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	urls := newEmbedURLs(secure, 2)
 	setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
 
-	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
-	os.RemoveAll(cfg.Dir)
-	defer os.RemoveAll(cfg.Dir)
+	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd"))
 
 	e, err := embed.StartEtcd(cfg)
 	if err != nil {
@@ -161,7 +160,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 			t.Fatal(err)
 		}
 	}
-	cli, err := clientv3.New(clientCfg)
+	cli, err := integration.NewClient(t, clientCfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,11 +175,13 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 		close(donec)
 	}()
 	select {
-	case err := <-e.Err():
-		t.Fatal(err)
 	case <-donec:
 	case <-time.After(2*time.Second + e.Server.Cfg.ReqTimeout()):
 		t.Fatalf("took too long to close server")
+	}
+	err = <-e.Err()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

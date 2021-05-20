@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -37,8 +37,8 @@ const (
 	// to keep the connection alive.
 	// For short term pipeline connections, the connection MUST be killed to avoid it being
 	// put back to http pkg connection pool.
-	ConnReadTimeout  = 5 * time.Second
-	ConnWriteTimeout = 5 * time.Second
+	DefaultConnReadTimeout  = 5 * time.Second
+	DefaultConnWriteTimeout = 5 * time.Second
 
 	recvBufSize = 4096
 	// maxPendingProposals holds the proposals during one leader election process.
@@ -53,6 +53,11 @@ const (
 	streamMsg   = "streamMsg"
 	pipelineMsg = "pipeline"
 	sendSnap    = "sendMsgSnap"
+)
+
+var (
+	ConnReadTimeout  = DefaultConnReadTimeout
+	ConnWriteTimeout = DefaultConnWriteTimeout
 )
 
 type Peer interface {

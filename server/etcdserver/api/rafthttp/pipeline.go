@@ -19,11 +19,12 @@ import (
 	"context"
 	"errors"
 	"io/ioutil"
+	"runtime"
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
@@ -139,6 +140,7 @@ func (p *pipeline) post(data []byte) (err error) {
 	go func() {
 		select {
 		case <-done:
+			cancel()
 		case <-p.stopc:
 			waitSchedule()
 			cancel()
@@ -173,4 +175,4 @@ func (p *pipeline) post(data []byte) (err error) {
 }
 
 // waitSchedule waits other goroutines to be scheduled for a while
-func waitSchedule() { time.Sleep(time.Millisecond) }
+func waitSchedule() { runtime.Gosched() }

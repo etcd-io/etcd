@@ -21,14 +21,13 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 )
 
 // TestV3ElectionCampaign checks that Campaign will not give
 // simultaneous leadership to multiple campaigners.
 func TestV3ElectionCampaign(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -90,7 +89,7 @@ func TestV3ElectionCampaign(t *testing.T) {
 // TestV3ElectionObserve checks that an Observe stream receives
 // proclamations from different leaders uninterrupted.
 func TestV3ElectionObserve(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
