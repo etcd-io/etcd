@@ -25,12 +25,11 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
@@ -38,7 +37,7 @@ import (
 )
 
 func TestMaintenanceHashKV(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -71,7 +70,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 }
 
 func TestMaintenanceMoveLeader(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -102,7 +101,7 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 // TestMaintenanceSnapshotError ensures that context cancel/timeout
 // before snapshot reading returns corresponding context errors.
 func TestMaintenanceSnapshotError(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -141,7 +140,7 @@ func TestMaintenanceSnapshotError(t *testing.T) {
 // TestMaintenanceSnapshotErrorInflight ensures that inflight context cancel/timeout
 // fails snapshot reading with corresponding context errors.
 func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -150,7 +149,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	clus.Members[0].Stop(t)
 	dpath := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
 	b := backend.NewDefaultBackend(dpath)
-	s := mvcc.NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
+	s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
 	rev := 100000
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte(fmt.Sprintf("%10d", i)), bytes.Repeat([]byte("a"), 1024), lease.NoLease)
@@ -198,7 +197,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 }
 
 func TestMaintenanceStatus(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -210,7 +209,7 @@ func TestMaintenanceStatus(t *testing.T) {
 		eps[i] = clus.Members[i].GRPCAddr()
 	}
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
 	if err != nil {
 		t.Fatal(err)
 	}

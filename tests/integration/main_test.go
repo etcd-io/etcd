@@ -7,11 +7,9 @@ package integration
 import (
 	"testing"
 
-	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func TestMain(m *testing.M) {
-	embed.SetupGrpcLoggingForTest(true)
 	testutil.MustTestMainWithLeakDetection(m)
 }

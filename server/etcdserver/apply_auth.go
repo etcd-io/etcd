@@ -21,6 +21,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc"
 )
@@ -41,7 +42,7 @@ func newAuthApplierV3(as auth.AuthStore, base applierV3, lessor lease.Lessor) *a
 	return &authApplierV3{applierV3: base, as: as, lessor: lessor}
 }
 
-func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
+func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult {
 	aa.mu.Lock()
 	defer aa.mu.Unlock()
 	if r.Header != nil {
@@ -57,7 +58,7 @@ func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
 			return &applyResult{err: err}
 		}
 	}
-	ret := aa.applierV3.Apply(r)
+	ret := aa.applierV3.Apply(r, shouldApplyV3)
 	aa.authInfo.Username = ""
 	aa.authInfo.Revision = 0
 	return ret

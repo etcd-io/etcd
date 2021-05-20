@@ -39,7 +39,7 @@
 //	func etcdDial(c *clientv3.Client, service string) (*grpc.ClientConn, error) {
 //		etcdResolver, err := resolver.NewBuilder(c);
 //		if err { return nil, err }
-//		return  grpc.Dial("etc://foo", grpc.WithResolvers(etcdResolver))
+//		return  grpc.Dial("etcd:///" + service, grpc.WithResolvers(etcdResolver))
 //	}
 //
 // Optionally, force delete an endpoint:

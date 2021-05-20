@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 
 	"github.com/coreos/go-semver/semver"
@@ -113,7 +113,7 @@ func getClusterFromRemotePeers(lg *zap.Logger, urls []string, timeout time.Durat
 		// if membership members are not present then the raft cluster formed will be
 		// an invalid empty cluster hence return failed to get raft cluster member(s) from the given urls error
 		if len(membs) > 0 {
-			return membership.NewClusterFromMembers(lg, "", id, membs), nil
+			return membership.NewClusterFromMembers(lg, id, membs), nil
 		}
 		return nil, fmt.Errorf("failed to get raft cluster member(s) from the given URLs")
 	}

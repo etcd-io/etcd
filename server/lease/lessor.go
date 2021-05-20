@@ -25,9 +25,9 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap"
 )
 
@@ -39,8 +39,6 @@ const MaxLeaseTTL = 9000000000
 
 var (
 	forever = time.Time{}
-
-	leaseBucketName = []byte("lease")
 
 	// maximum number of leases to revoke per second; configurable for tests
 	leaseRevokeRate = 1000
@@ -182,7 +180,6 @@ type lessor struct {
 	checkpointInterval time.Duration
 	// the interval to check if the expired lease is revoked
 	expiredLeaseRetryInterval time.Duration
-	ci                        cindex.ConsistentIndexer
 }
 
 type LessorConfig struct {
@@ -191,11 +188,11 @@ type LessorConfig struct {
 	ExpiredLeasesRetryInterval time.Duration
 }
 
-func NewLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig, ci cindex.ConsistentIndexer) Lessor {
-	return newLessor(lg, b, cfg, ci)
+func NewLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) Lessor {
+	return newLessor(lg, b, cfg)
 }
 
-func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig, ci cindex.ConsistentIndexer) *lessor {
+func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig) *lessor {
 	checkpointInterval := cfg.CheckpointInterval
 	expiredLeaseRetryInterval := cfg.ExpiredLeasesRetryInterval
 	if checkpointInterval == 0 {
@@ -218,7 +215,6 @@ func newLessor(lg *zap.Logger, b backend.Backend, cfg LessorConfig, ci cindex.Co
 		stopC:    make(chan struct{}),
 		doneC:    make(chan struct{}),
 		lg:       lg,
-		ci:       ci,
 	}
 	l.initAndRecover()
 
@@ -294,7 +290,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	}
 
 	le.leaseMap[id] = l
-	l.persistTo(le.b, le.ci)
+	l.persistTo(le.b)
 
 	leaseTotalTTLs.Observe(float64(l.ttl))
 	leaseGranted.Inc()
@@ -340,11 +336,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// lease deletion needs to be in the same backend transaction with the
 	// kv deletion. Or we might end up with not executing the revoke or not
 	// deleting the keys if etcdserver fails in between.
-	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
-	// if len(keys) > 0, txn.End() will call ci.UnsafeSave function.
-	if le.ci != nil && len(keys) == 0 {
-		le.ci.UnsafeSave(le.b.BatchTx())
-	}
+	le.b.BatchTx().UnsafeDelete(buckets.Lease, int64ToBytes(int64(l.ID)))
 
 	txn.End()
 
@@ -778,8 +770,8 @@ func (le *lessor) initAndRecover() {
 	tx := le.b.BatchTx()
 	tx.Lock()
 
-	tx.UnsafeCreateBucket(leaseBucketName)
-	_, vs := tx.UnsafeRange(leaseBucketName, int64ToBytes(0), int64ToBytes(math.MaxInt64), 0)
+	tx.UnsafeCreateBucket(buckets.Lease)
+	_, vs := tx.UnsafeRange(buckets.Lease, int64ToBytes(0), int64ToBytes(math.MaxInt64), 0)
 	// TODO: copy vs and do decoding outside tx lock if lock contention becomes an issue.
 	for i := range vs {
 		var lpb leasepb.Lease
@@ -828,7 +820,7 @@ func (l *Lease) expired() bool {
 	return l.Remaining() <= 0
 }
 
-func (l *Lease) persistTo(b backend.Backend, ci cindex.ConsistentIndexer) {
+func (l *Lease) persistTo(b backend.Backend) {
 	key := int64ToBytes(int64(l.ID))
 
 	lpb := leasepb.Lease{ID: int64(l.ID), TTL: l.ttl, RemainingTTL: l.remainingTTL}
@@ -838,10 +830,7 @@ func (l *Lease) persistTo(b backend.Backend, ci cindex.ConsistentIndexer) {
 	}
 
 	b.BatchTx().Lock()
-	b.BatchTx().UnsafePut(leaseBucketName, key, val)
-	if ci != nil {
-		ci.UnsafeSave(b.BatchTx())
-	}
+	b.BatchTx().UnsafePut(buckets.Lease, key, val)
 	b.BatchTx().Unlock()
 }
 

@@ -24,10 +24,10 @@ import (
 	"strings"
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
-	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
@@ -303,8 +303,12 @@ type accessController struct {
 }
 
 func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if req == nil {
+		http.Error(rw, "Request is nil", http.StatusBadRequest)
+		return
+	}
 	// redirect for backward compatibilities
-	if req != nil && req.URL != nil && strings.HasPrefix(req.URL.Path, "/v3beta/") {
+	if req.URL != nil && strings.HasPrefix(req.URL.Path, "/v3beta/") {
 		req.URL.Path = strings.Replace(req.URL.Path, "/v3beta/", "/v3/", 1)
 	}
 

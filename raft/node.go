@@ -183,6 +183,8 @@ type Node interface {
 	// Read state has a read index. Once the application advances further than the read
 	// index, any linearizable read requests issued before the read request can be
 	// processed safely. The read state will have the same rctx attached.
+	// Note that request can be lost without notice, therefore it is user's job
+	// to ensure read index retries.
 	ReadIndex(ctx context.Context, rctx []byte) error
 
 	// Status returns the current status of the raft state machine.

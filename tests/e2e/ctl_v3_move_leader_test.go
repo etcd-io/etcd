@@ -22,10 +22,9 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/pkg/v3/transport"
-	"go.etcd.io/etcd/pkg/v3/types"
 )
 
 func TestCtlV3MoveLeaderSecure(t *testing.T) {
@@ -37,7 +36,7 @@ func TestCtlV3MoveLeaderInsecure(t *testing.T) {
 }
 
 func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	epc := setupEtcdctlTest(t, &cfg, true)
 	defer func() {

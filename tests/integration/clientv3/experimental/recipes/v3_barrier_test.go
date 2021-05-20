@@ -20,19 +20,18 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestBarrierSingleNode(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	testBarrier(t, 5, func() *clientv3.Client { return clus.Client(0) })
 }
 
 func TestBarrierMultiNode(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testBarrier(t, 5, func() *clientv3.Client { return clus.RandClient() })

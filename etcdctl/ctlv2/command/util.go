@@ -28,8 +28,9 @@ import (
 	"syscall"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/pkg/v3/transport"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/bgentry/speakeasy"
 	"github.com/urfave/cli"
@@ -242,10 +243,10 @@ func mustNewClient(c *cli.Context) client.Client {
 			if err == client.ErrNoEndpoints {
 				fmt.Fprintf(os.Stderr, "etcd cluster has no published client endpoints.\n")
 				fmt.Fprintf(os.Stderr, "Try '--no-sync' if you want to access non-published client endpoints(%s).\n", strings.Join(hc.Endpoints(), ","))
-				handleError(c, ExitServerError, err)
+				handleError(c, cobrautl.ExitServerError, err)
 			}
 			if isConnectionError(err) {
-				handleError(c, ExitBadConnection, err)
+				handleError(c, cobrautl.ExitBadConnection, err)
 			}
 		}
 		if debug {

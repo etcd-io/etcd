@@ -29,8 +29,8 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -45,10 +45,6 @@ var (
 	authDisabled  = []byte{0}
 
 	revisionKey = []byte("authRevision")
-
-	authBucketName      = []byte("auth")
-	authUsersBucketName = []byte("authUsers")
-	authRolesBucketName = []byte("authRoles")
 
 	ErrRootUserNotExist     = errors.New("auth: root user does not exist")
 	ErrRootRoleNotExist     = errors.New("auth: root user does not have root role")
@@ -215,7 +211,6 @@ type authStore struct {
 
 	tokenProvider TokenProvider
 	bcryptCost    int // the algorithm cost / strength for hashing auth passwords
-	ci            cindex.ConsistentIndexer
 }
 
 func (as *authStore) AuthEnable() error {
@@ -242,7 +237,7 @@ func (as *authStore) AuthEnable() error {
 		return ErrRootRoleNotExist
 	}
 
-	tx.UnsafePut(authBucketName, enableFlagKey, authEnabled)
+	tx.UnsafePut(buckets.Auth, enableFlagKey, authEnabled)
 
 	as.enabled = true
 	as.tokenProvider.enable()
@@ -264,9 +259,8 @@ func (as *authStore) AuthDisable() {
 	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafePut(authBucketName, enableFlagKey, authDisabled)
+	tx.UnsafePut(buckets.Auth, enableFlagKey, authDisabled)
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 	tx.Unlock()
 	b.ForceCommit()
 
@@ -360,7 +354,7 @@ func (as *authStore) Recover(be backend.Backend) {
 	as.be = be
 	tx := be.BatchTx()
 	tx.Lock()
-	_, vs := tx.UnsafeRange(authBucketName, enableFlagKey, nil, 0)
+	_, vs := tx.UnsafeRange(buckets.Auth, enableFlagKey, nil, 0)
 	if len(vs) == 1 {
 		if bytes.Equal(vs[0], authEnabled) {
 			enabled = true
@@ -424,7 +418,6 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 	putUser(as.lg, tx, newUser)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info("added a user", zap.String("user-name", r.Name))
 	return &pb.AuthUserAddResponse{}, nil
@@ -448,7 +441,6 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 	delUser(tx, r.Name)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
@@ -491,7 +483,6 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	putUser(as.lg, tx, updatedUser)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.invalidateCachedPerm(r.Name)
 	as.tokenProvider.invalidateUser(r.Name)
@@ -540,7 +531,6 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	as.invalidateCachedPerm(r.User)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"granted a role to a user",
@@ -619,7 +609,6 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	as.invalidateCachedPerm(r.Name)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"revoked a role from a user",
@@ -690,7 +679,6 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"revoked a permission on range",
@@ -742,7 +730,6 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	}
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info("deleted a role", zap.String("role-name", r.Role))
 	return &pb.AuthRoleDeleteResponse{}, nil
@@ -769,7 +756,6 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	putRole(as.lg, tx, newRole)
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info("created a role", zap.String("role-name", r.Name))
 	return &pb.AuthRoleAddResponse{}, nil
@@ -829,7 +815,6 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	as.clearCachedPerm()
 
 	as.commitRevision(tx)
-	as.saveConsistentIndex(tx)
 
 	as.lg.Info(
 		"granted/updated a permission to a user",
@@ -918,7 +903,7 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 }
 
 func getUser(lg *zap.Logger, tx backend.BatchTx, username string) *authpb.User {
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(username), nil, 0)
+	_, vs := tx.UnsafeRange(buckets.AuthUsers, []byte(username), nil, 0)
 	if len(vs) == 0 {
 		return nil
 	}
@@ -936,7 +921,7 @@ func getUser(lg *zap.Logger, tx backend.BatchTx, username string) *authpb.User {
 }
 
 func getAllUsers(lg *zap.Logger, tx backend.BatchTx) []*authpb.User {
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte{0}, []byte{0xff}, -1)
+	_, vs := tx.UnsafeRange(buckets.AuthUsers, []byte{0}, []byte{0xff}, -1)
 	if len(vs) == 0 {
 		return nil
 	}
@@ -958,15 +943,15 @@ func putUser(lg *zap.Logger, tx backend.BatchTx, user *authpb.User) {
 	if err != nil {
 		lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
 	}
-	tx.UnsafePut(authUsersBucketName, user.Name, b)
+	tx.UnsafePut(buckets.AuthUsers, user.Name, b)
 }
 
 func delUser(tx backend.BatchTx, username string) {
-	tx.UnsafeDelete(authUsersBucketName, []byte(username))
+	tx.UnsafeDelete(buckets.AuthUsers, []byte(username))
 }
 
 func getRole(lg *zap.Logger, tx backend.BatchTx, rolename string) *authpb.Role {
-	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(rolename), nil, 0)
+	_, vs := tx.UnsafeRange(buckets.AuthRoles, []byte(rolename), nil, 0)
 	if len(vs) == 0 {
 		return nil
 	}
@@ -980,7 +965,7 @@ func getRole(lg *zap.Logger, tx backend.BatchTx, rolename string) *authpb.Role {
 }
 
 func getAllRoles(lg *zap.Logger, tx backend.BatchTx) []*authpb.Role {
-	_, vs := tx.UnsafeRange(authRolesBucketName, []byte{0}, []byte{0xff}, -1)
+	_, vs := tx.UnsafeRange(buckets.AuthRoles, []byte{0}, []byte{0xff}, -1)
 	if len(vs) == 0 {
 		return nil
 	}
@@ -1007,11 +992,11 @@ func putRole(lg *zap.Logger, tx backend.BatchTx, role *authpb.Role) {
 		)
 	}
 
-	tx.UnsafePut(authRolesBucketName, role.Name, b)
+	tx.UnsafePut(buckets.AuthRoles, role.Name, b)
 }
 
 func delRole(tx backend.BatchTx, rolename string) {
-	tx.UnsafeDelete(authRolesBucketName, []byte(rolename))
+	tx.UnsafeDelete(buckets.AuthRoles, []byte(rolename))
 }
 
 func (as *authStore) IsAuthEnabled() bool {
@@ -1021,7 +1006,7 @@ func (as *authStore) IsAuthEnabled() bool {
 }
 
 // NewAuthStore creates a new AuthStore.
-func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexer, tp TokenProvider, bcryptCost int) *authStore {
+func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCost int) *authStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -1040,12 +1025,12 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexe
 	tx := be.BatchTx()
 	tx.Lock()
 
-	tx.UnsafeCreateBucket(authBucketName)
-	tx.UnsafeCreateBucket(authUsersBucketName)
-	tx.UnsafeCreateBucket(authRolesBucketName)
+	tx.UnsafeCreateBucket(buckets.Auth)
+	tx.UnsafeCreateBucket(buckets.AuthUsers)
+	tx.UnsafeCreateBucket(buckets.AuthRoles)
 
 	enabled := false
-	_, vs := tx.UnsafeRange(authBucketName, enableFlagKey, nil, 0)
+	_, vs := tx.UnsafeRange(buckets.Auth, enableFlagKey, nil, 0)
 	if len(vs) == 1 {
 		if bytes.Equal(vs[0], authEnabled) {
 			enabled = true
@@ -1056,7 +1041,6 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, ci cindex.ConsistentIndexe
 		revision:       getRevision(tx),
 		lg:             lg,
 		be:             be,
-		ci:             ci,
 		enabled:        enabled,
 		rangePermCache: make(map[string]*unifiedRangePermissions),
 		tokenProvider:  tp,
@@ -1089,11 +1073,11 @@ func (as *authStore) commitRevision(tx backend.BatchTx) {
 	atomic.AddUint64(&as.revision, 1)
 	revBytes := make([]byte, revBytesLen)
 	binary.BigEndian.PutUint64(revBytes, as.Revision())
-	tx.UnsafePut(authBucketName, revisionKey, revBytes)
+	tx.UnsafePut(buckets.Auth, revisionKey, revBytes)
 }
 
 func getRevision(tx backend.BatchTx) uint64 {
-	_, vs := tx.UnsafeRange(authBucketName, revisionKey, nil, 0)
+	_, vs := tx.UnsafeRange(buckets.Auth, revisionKey, nil, 0)
 	if len(vs) != 1 {
 		// this can happen in the initialization phase
 		return 0
@@ -1315,14 +1299,6 @@ func (as *authStore) HasRole(user, role string) bool {
 
 func (as *authStore) BcryptCost() int {
 	return as.bcryptCost
-}
-
-func (as *authStore) saveConsistentIndex(tx backend.BatchTx) {
-	if as.ci != nil {
-		as.ci.UnsafeSave(tx)
-	} else {
-		as.lg.Error("failed to save consistentIndex,consistentIndexer is nil")
-	}
 }
 
 func (as *authStore) setupMetricsReporter() {

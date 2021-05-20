@@ -22,8 +22,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/fileutil"
-	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 )
 
 // TestReleaseUpgrade ensures that changes to master branch does not affect
@@ -34,7 +33,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	copiedCfg := newConfigNoTLS()
 	copiedCfg.execPath = lastReleaseBinary
@@ -50,20 +49,6 @@ func TestReleaseUpgrade(t *testing.T) {
 			t.Fatalf("error closing etcd processes (%v)", errC)
 		}
 	}()
-	// 3.0 boots as 2.3 then negotiates up to 3.0
-	// so there's a window at boot time where it doesn't have V3rpcCapability enabled
-	// poll /version until etcdcluster is >2.3.x before making v3 requests
-	for i := 0; i < 7; i++ {
-		if err = cURLGet(epc, cURLReq{endpoint: "/version", expected: `"etcdcluster":"3.`}); err != nil {
-			t.Logf("#%d: v3 is not ready yet (%v)", i, err)
-			time.Sleep(time.Second)
-			continue
-		}
-		break
-	}
-	if err != nil {
-		t.Fatalf("cannot pull version (%v)", err)
-	}
 
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
@@ -84,24 +69,32 @@ func TestReleaseUpgrade(t *testing.T) {
 		}
 	}
 
+	t.Log("Cluster of etcd in old version running")
+
 	for i := range epc.procs {
+		t.Logf("Stopping node: %v", i)
 		if err := epc.procs[i].Stop(); err != nil {
 			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
 		}
+		t.Logf("Stopped node: %v", i)
 		epc.procs[i].Config().execPath = binDir + "/etcd"
 		epc.procs[i].Config().keepDataDir = true
 
+		t.Logf("Restarting node in the new version: %v", i)
 		if err := epc.procs[i].Restart(); err != nil {
 			t.Fatalf("error restarting etcd process (%v)", err)
 		}
 
+		t.Logf("Testing reads after node restarts: %v", i)
 		for j := range kvs {
 			if err := ctlV3Get(cx, []string{kvs[j].key}, []kv{kvs[j]}...); err != nil {
 				cx.t.Fatalf("#%d-%d: ctlV3Get error (%v)", i, j, err)
 			}
 		}
+		t.Logf("Tested reads after node restarts: %v", i)
 	}
 
+	t.Log("Waiting for full upgrade...")
 	// TODO: update after release candidate
 	// expect upgraded cluster version
 	// new cluster version needs more time to upgrade
@@ -117,6 +110,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cluster version is not upgraded (%v)", err)
 	}
+	t.Log("TestReleaseUpgrade businessLogic DONE")
 }
 
 func TestReleaseUpgradeWithRestart(t *testing.T) {
@@ -125,7 +119,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	copiedCfg := newConfigNoTLS()
 	copiedCfg.execPath = lastReleaseBinary

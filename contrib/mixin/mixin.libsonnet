@@ -10,6 +10,11 @@
     // scrape_interval_seconds is the global scrape interval which can be
     // used to dynamically adjust rate windows as a function of the interval.
     scrape_interval_seconds: 30,
+    // Dashboard variable refresh option on Grafana (https://grafana.com/docs/grafana/latest/datasources/prometheus/).
+    // 0 : Never (Will never refresh the Dashboard variables values)
+    // 1 : On Dashboard Load  (Will refresh Dashboards variables when dashboard are loaded)
+    // 2 : On Time Range Change (Will refresh Dashboards variables when time range will be changed)
+    dashboard_var_refresh: 2,
   },
 
   prometheusAlerts+:: {
@@ -1287,7 +1292,7 @@
             name: 'cluster',
             options: [],
             query: 'label_values(etcd_server_has_leader, job)',
-            refresh: 1,
+            refresh: $._config.dashboard_var_refresh,
             regex: '',
             sort: 2,
             tagValuesQuery: '',

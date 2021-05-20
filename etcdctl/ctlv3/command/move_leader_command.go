@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 // NewMoveLeaderCommand returns the cobra command for "move-leader".
@@ -35,11 +36,11 @@ func NewMoveLeaderCommand() *cobra.Command {
 // transferLeadershipCommandFunc executes the "compaction" command.
 func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("move-leader command needs 1 argument"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("move-leader command needs 1 argument"))
 	}
 	target, err := strconv.ParseUint(args[0], 16, 64)
 	if err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
 	c := mustClientFromCmd(cmd)
@@ -57,7 +58,7 @@ func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 		cli := cfg.mustClient()
 		resp, serr := cli.Status(ctx, ep)
 		if serr != nil {
-			ExitWithError(ExitError, serr)
+			cobrautl.ExitWithError(cobrautl.ExitError, serr)
 		}
 
 		if resp.Header.GetMemberId() == resp.Leader {
@@ -68,14 +69,14 @@ func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 		cli.Close()
 	}
 	if leaderCli == nil {
-		ExitWithError(ExitBadArgs, fmt.Errorf("no leader endpoint given at %v", eps))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("no leader endpoint given at %v", eps))
 	}
 
 	var resp *clientv3.MoveLeaderResponse
 	resp, err = leaderCli.MoveLeader(ctx, target)
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
 	display.MoveLeader(leaderID, target, *resp)

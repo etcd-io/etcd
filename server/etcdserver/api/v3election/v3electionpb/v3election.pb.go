@@ -1569,10 +1569,7 @@ func (m *CampaignRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {
@@ -1695,10 +1692,7 @@ func (m *CampaignResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {
@@ -1855,10 +1849,7 @@ func (m *LeaderKey) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {
@@ -1943,10 +1934,7 @@ func (m *LeaderRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {
@@ -2069,10 +2057,7 @@ func (m *LeaderResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {
@@ -2159,10 +2144,7 @@ func (m *ResignRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {
@@ -2249,10 +2231,7 @@ func (m *ResignResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {
@@ -2373,10 +2352,7 @@ func (m *ProclaimRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {
@@ -2463,10 +2439,7 @@ func (m *ProclaimResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthV3Election
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthV3Election
 			}
 			if (iNdEx + skippy) > l {

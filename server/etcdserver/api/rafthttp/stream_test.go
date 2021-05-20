@@ -27,8 +27,8 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 
@@ -187,7 +187,7 @@ func TestStreamReaderDialResult(t *testing.T) {
 
 // TestStreamReaderStopOnDial tests a stream reader closes the connection on stop.
 func TestStreamReaderStopOnDial(t *testing.T) {
-	defer testutil.AfterTest(t)
+	testutil.BeforeTest(t)
 	h := http.Header{}
 	h.Add("X-Server-Version", version.Version)
 	tr := &respWaitRoundTripper{rrt: &respRoundTripper{code: http.StatusOK, header: h}}

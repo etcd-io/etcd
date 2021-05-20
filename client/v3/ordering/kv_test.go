@@ -77,7 +77,7 @@ func TestKvOrdering(t *testing.T) {
 			tt.prevRev,
 			sync.RWMutex{},
 		}
-		res, err := kv.Get(nil, "mockKey")
+		res, err := kv.Get(context.TODO(), "mockKey")
 		if err != nil {
 			t.Errorf("#%d: expected response %+v, got error %+v", i, tt.response, err)
 		}

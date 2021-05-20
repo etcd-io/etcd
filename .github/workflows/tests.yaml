@@ -1,0 +1,60 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+        - linux-amd64-fmt
+        - linux-amd64-integration-1-cpu
+        - linux-amd64-integration-2-cpu
+        - linux-amd64-integration-4-cpu
+        - linux-amd64-unit-4-cpu-race
+        - all-build
+        - linux-386-unit-1-cpu
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "^1.16"
+    - run: date
+    - env:
+        TARGET: ${{ matrix.target }}
+      run: |
+        echo "${TARGET}"
+        case "${TARGET}" in
+          linux-amd64-fmt)
+            GOARCH=amd64 PASSES='fmt bom dep' ./test.sh
+            ;;
+          linux-amd64-integration-1-cpu)
+            GOARCH=amd64 CPU=1 PASSES='integration' RACE='false' ./test.sh
+            ;;
+          linux-amd64-integration-2-cpu)
+            GOARCH=amd64 CPU=2 PASSES='integration' RACE='false' ./test.sh
+            ;;
+          linux-amd64-integration-4-cpu)
+            GOARCH=amd64 CPU=4 PASSES='integration' RACE='false' ./test.sh
+            ;;
+          linux-amd64-unit-4-cpu-race)
+            GOARCH=amd64 PASSES='unit' RACE='true' CPU='4' ./test.sh -p=2
+            ;;
+          all-build)
+            GOARCH=amd64 PASSES='build' ./test.sh
+            GOARCH=386 PASSES='build' ./test.sh
+            GO_BUILD_FLAGS='-v -mod=readonly' GOOS=darwin GOARCH=amd64 ./build.sh
+            GO_BUILD_FLAGS='-v -mod=readonly' GOOS=windows GOARCH=amd64 ./build.sh
+            GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=arm ./build.sh
+            GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=arm64 ./build.sh
+            GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=ppc64le ./build.sh
+            GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=s390x ./build.sh
+            ;;
+          linux-386-unit-1-cpu)
+            GOARCH=386 PASSES='unit' RACE='false' CPU='1' ./test -p=4
+            ;;
+          *)
+            echo "Failed to find target"
+            exit 1
+            ;;
+        esac

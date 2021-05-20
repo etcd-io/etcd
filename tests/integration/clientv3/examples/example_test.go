@@ -16,9 +16,10 @@ package clientv3_test
 
 import (
 	"context"
-	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/transport"
 	"log"
+
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.etcd.io/etcd/client/v3"
 )
 
 func mockConfig_insecure() {}

@@ -15,14 +15,15 @@
 package clientv3
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func TestTxnPanics(t *testing.T) {
-	defer testutil.AfterTest(t)
+	testutil.BeforeTest(t)
 
 	kv := &kv{}
 
@@ -44,7 +45,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn(nil).If(cmp).If(cmp)
+				kv.Txn(context.TODO()).If(cmp).If(cmp)
 			},
 
 			err: "cannot call If twice!",
@@ -52,7 +53,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn(nil).Then(op).If(cmp)
+				kv.Txn(context.TODO()).Then(op).If(cmp)
 			},
 
 			err: "cannot call If after Then!",
@@ -60,7 +61,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn(nil).Else(op).If(cmp)
+				kv.Txn(context.TODO()).Else(op).If(cmp)
 			},
 
 			err: "cannot call If after Else!",
@@ -68,7 +69,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn(nil).Then(op).Then(op)
+				kv.Txn(context.TODO()).Then(op).Then(op)
 			},
 
 			err: "cannot call Then twice!",
@@ -76,7 +77,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn(nil).Else(op).Then(op)
+				kv.Txn(context.TODO()).Else(op).Then(op)
 			},
 
 			err: "cannot call Then after Else!",
@@ -84,7 +85,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn(nil).Else(op).Else(op)
+				kv.Txn(context.TODO()).Else(op).Else(op)
 			},
 
 			err: "cannot call Else twice!",

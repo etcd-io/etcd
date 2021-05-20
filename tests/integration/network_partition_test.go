@@ -18,12 +18,10 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 func TestNetworkPartition5MembersLeaderInMinority(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 5})
 	defer clus.Terminate(t)
@@ -71,7 +69,7 @@ func TestNetworkPartition5MembersLeaderInMajority(t *testing.T) {
 }
 
 func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 5})
 	defer clus.Terminate(t)
@@ -110,7 +108,7 @@ func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 }
 
 func TestNetworkPartition4Members(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 4})
 	defer clus.Terminate(t)

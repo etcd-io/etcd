@@ -20,15 +20,13 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/tests/v3/integration"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestRegister(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -38,7 +36,7 @@ func TestRegister(t *testing.T) {
 	testPrefix := "test-name"
 	wa := mustCreateWatcher(t, cli, testPrefix)
 
-	donec := grpcproxy.Register(zap.NewExample(), cli, testPrefix, paddr, 5)
+	donec := grpcproxy.Register(zaptest.NewLogger(t), cli, testPrefix, paddr, 5)
 
 	ups := <-wa
 	if len(ups) != 1 {

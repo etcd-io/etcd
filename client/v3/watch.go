@@ -581,10 +581,12 @@ func (w *watchGrpcStream) run() {
 			switch {
 			case pbresp.Created:
 				// response to head of queue creation
-				if ws := w.resuming[0]; ws != nil {
-					w.addSubstream(pbresp, ws)
-					w.dispatchEvent(pbresp)
-					w.resuming[0] = nil
+				if len(w.resuming) != 0 {
+					if ws := w.resuming[0]; ws != nil {
+						w.addSubstream(pbresp, ws)
+						w.dispatchEvent(pbresp)
+						w.resuming[0] = nil
+					}
 				}
 
 				if ws := w.nextResume(); ws != nil {

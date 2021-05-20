@@ -26,13 +26,12 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 )
 
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.
 func TestV3WatchFromCurrentRevision(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	tests := []struct {
 		putKeys      []string
 		watchRequest *pb.WatchRequest
@@ -298,7 +297,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 
 // TestV3WatchFutureRevision tests Watch APIs from a future revision.
 func TestV3WatchFutureRevision(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -359,7 +358,7 @@ func TestV3WatchFutureRevision(t *testing.T) {
 
 // TestV3WatchWrongRange tests wrong range does not create watchers.
 func TestV3WatchWrongRange(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -404,13 +403,13 @@ func TestV3WatchWrongRange(t *testing.T) {
 
 // TestV3WatchCancelSynced tests Watch APIs cancellation from synced map.
 func TestV3WatchCancelSynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testV3WatchCancel(t, 0)
 }
 
 // TestV3WatchCancelUnsynced tests Watch APIs cancellation from unsynced map.
 func TestV3WatchCancelUnsynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testV3WatchCancel(t, 1)
 }
 
@@ -470,7 +469,7 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 // TestV3WatchCurrentPutOverlap ensures current watchers receive all events with
 // overlapping puts.
 func TestV3WatchCurrentPutOverlap(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -554,7 +553,7 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 
 // TestV3WatchEmptyKey ensures synced watchers see empty key PUTs as PUT events
 func TestV3WatchEmptyKey(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -600,12 +599,12 @@ func TestV3WatchEmptyKey(t *testing.T) {
 }
 
 func TestV3WatchMultipleWatchersSynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testV3WatchMultipleWatchers(t, 0)
 }
 
 func TestV3WatchMultipleWatchersUnsynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testV3WatchMultipleWatchers(t, 1)
 }
 
@@ -705,12 +704,12 @@ func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
 }
 
 func TestV3WatchMultipleEventsTxnSynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testV3WatchMultipleEventsTxn(t, 0)
 }
 
 func TestV3WatchMultipleEventsTxnUnsynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testV3WatchMultipleEventsTxn(t, 1)
 }
 
@@ -798,7 +797,7 @@ func (evs eventsSortByKey) Less(i, j int) bool {
 }
 
 func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -877,12 +876,12 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 }
 
 func TestV3WatchMultipleStreamsSynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testV3WatchMultipleStreams(t, 0)
 }
 
 func TestV3WatchMultipleStreamsUnsynced(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	testV3WatchMultipleStreams(t, 1)
 }
 
@@ -990,7 +989,7 @@ func TestWatchWithProgressNotify(t *testing.T) {
 	testInterval := 3 * time.Second
 	defer func() { v3rpc.SetProgressReportInterval(oldpi) }()
 
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -1040,7 +1039,7 @@ func TestWatchWithProgressNotify(t *testing.T) {
 
 // TestV3WatcMultiOpenhClose opens many watchers concurrently on multiple streams.
 func TestV3WatchClose(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1075,6 +1074,8 @@ func TestV3WatchClose(t *testing.T) {
 
 // TestV3WatchWithFilter ensures watcher filters out the events correctly.
 func TestV3WatchWithFilter(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1142,7 +1143,7 @@ func TestV3WatchWithFilter(t *testing.T) {
 }
 
 func TestV3WatchWithPrevKV(t *testing.T) {
-	defer testutil.AfterTest(t)
+	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1216,6 +1217,8 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 
 // TestV3WatchCancellation ensures that watch cancellation frees up server resources.
 func TestV3WatchCancellation(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
@@ -1256,6 +1259,8 @@ func TestV3WatchCancellation(t *testing.T) {
 
 // TestV3WatchCloseCancelRace ensures that watch close doesn't decrement the watcher total too far.
 func TestV3WatchCloseCancelRace(t *testing.T) {
+	BeforeTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 

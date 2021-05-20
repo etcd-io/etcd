@@ -61,7 +61,7 @@ stabilize 1 2
   2->1 MsgAppResp Term:1 Log:0/3 Rejected (Hint: 0)
 > 1 receiving messages
   2->1 MsgAppResp Term:1 Log:0/3 Rejected (Hint: 0)
-  DEBUG 1 received MsgAppResp(MsgApp was rejected, lastindex: 0) from 2 for index 3
+  DEBUG 1 received MsgAppResp(rejected, hint: (index 0, term 0)) from 2 for index 3
   DEBUG 1 decreased progress of 2 to [StateProbe match=0 next=1]
   DEBUG 1 [firstindex: 3, commit: 4] sent snapshot[index: 4, term: 1] to 2 [StateProbe match=0 next=1]
   DEBUG 1 paused sending replication messages to 2 [StateSnapshot match=0 next=1 paused pendingSnap=4]
@@ -103,7 +103,7 @@ stabilize 1 2
 propose-conf-change 1
 v3 v4 v5
 ----
-INFO 1 ignoring conf change {ConfChangeTransitionAuto [{ConfChangeAddNode 3 {} [] 0} {ConfChangeAddNode 4 {} [] 0} {ConfChangeAddNode 5 {} [] 0}] [] {} [] 0} at config voters=(1 2)&&(1): must transition out of joint config first
+INFO 1 ignoring conf change {ConfChangeTransitionAuto [{ConfChangeAddNode 3} {ConfChangeAddNode 4} {ConfChangeAddNode 5}] []} at config voters=(1 2)&&(1): must transition out of joint config first
 
 # Propose a transition out of the joint config. We'll see this at index 6 below.
 propose-conf-change 1
@@ -165,7 +165,7 @@ stabilize
 # Check that trying to transition out again won't do anything.
 propose-conf-change 1
 ----
-INFO 1 ignoring conf change {ConfChangeTransitionAuto [] [] {} [] 0} at config voters=(1 2): not in joint state; refusing empty conf change
+INFO 1 ignoring conf change {ConfChangeTransitionAuto [] []} at config voters=(1 2): not in joint state; refusing empty conf change
 
 # Finishes work for the empty entry we just proposed.
 stabilize

@@ -50,7 +50,8 @@ func IsServerCtxTimeout(err error) bool {
 		return false
 	}
 	code := ev.Code()
-	return code == codes.DeadlineExceeded && strings.Contains(err.Error(), "context deadline exceeded")
+	return (code == codes.DeadlineExceeded /*3.5+"*/ || code == codes.Unknown /*<=3.4*/) &&
+		strings.Contains(err.Error(), "context deadline exceeded")
 }
 
 // IsClientTimeout checks reason of the error.

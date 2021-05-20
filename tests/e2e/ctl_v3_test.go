@@ -21,16 +21,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/flags"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 )
 
 func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
 
 func TestClusterVersion(t *testing.T) {
-	skipInShortMode(t)
+	BeforeTest(t)
 
 	tests := []struct {
 		name         string
@@ -52,7 +53,7 @@ func TestClusterVersion(t *testing.T) {
 			if !fileutil.Exist(binary) {
 				t.Skipf("%q does not exist", binary)
 			}
-			defer testutil.AfterTest(t)
+			BeforeTest(t)
 			cfg := newConfigNoTLS()
 			cfg.execPath = binary
 			cfg.snapshotCount = 3
@@ -142,6 +143,12 @@ type ctlCtx struct {
 
 	// for compaction
 	compactPhysical bool
+
+	// to run etcdutl instead of etcdctl for suitable commands.
+	etcdutl bool
+
+	// dir that was used during the test
+	dataDir string
 }
 
 type ctlOption func(*ctlCtx)
@@ -197,8 +204,16 @@ func withFlagByEnv() ctlOption {
 	return func(cx *ctlCtx) { cx.envMap = make(map[string]struct{}) }
 }
 
+func withEtcdutl() ctlOption {
+	return func(cx *ctlCtx) { cx.etcdutl = true }
+}
+
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
-	defer testutil.AfterTest(t)
+	testCtlWithOffline(t, testFunc, nil, opts...)
+}
+
+func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx), opts ...ctlOption) {
+	BeforeTest(t)
 
 	ret := ctlCtx{
 		t:           t,
@@ -217,12 +232,16 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	if ret.initialCorruptCheck {
 		ret.cfg.initialCorruptCheck = ret.initialCorruptCheck
 	}
+	if testOfflineFunc != nil {
+		ret.cfg.keepDataDir = true
+	}
 
 	epc, err := newEtcdProcessCluster(t, &ret.cfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
 	ret.epc = epc
+	ret.dataDir = epc.procs[0].Config().dataDirPath
 
 	defer func() {
 		if ret.envMap != nil {
@@ -230,8 +249,10 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 				os.Unsetenv(k)
 			}
 		}
-		if errC := ret.epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
+		if ret.epc != nil {
+			if errC := ret.epc.Close(); errC != nil {
+				t.Fatalf("error closing etcd processes (%v)", errC)
+			}
 		}
 	}()
 
@@ -239,6 +260,7 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	go func() {
 		defer close(donec)
 		testFunc(ret)
+		t.Log("---testFunc logic DONE")
 	}()
 
 	timeout := 2*ret.dialTimeout + time.Second
@@ -249,6 +271,15 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	case <-time.After(timeout):
 		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
 	case <-donec:
+	}
+
+	t.Log("closing test cluster...")
+	assert.NoError(t, epc.Close())
+	epc = nil
+	t.Log("closed test cluster...")
+
+	if testOfflineFunc != nil {
+		testOfflineFunc(ret)
 	}
 }
 
@@ -293,6 +324,16 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 // Make sure to unset environment variables after tests.
 func (cx *ctlCtx) PrefixArgs() []string {
 	return cx.prefixArgs(cx.epc.EndpointsV3())
+}
+
+// PrefixArgsUtl returns prefix of the command that is either etcdctl or etcdutl
+// depending on cx configuration.
+// Please not thet 'utl' compatible commands does not consume --endpoints flag.
+func (cx *ctlCtx) PrefixArgsUtl() []string {
+	if cx.etcdutl {
+		return []string{utlBinPath}
+	}
+	return []string{ctlBinPath}
 }
 
 func isGRPCTimedout(err error) bool {

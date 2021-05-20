@@ -126,7 +126,7 @@ peer-transport-security:
   auto-tls: false
 
 # Enable debug-level logging for etcd.
-debug: false
+log-level: debug
 
 logger: zap
 

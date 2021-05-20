@@ -21,7 +21,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 
@@ -34,7 +36,7 @@ const v2Version = "v2"
 type ApplierV2 interface {
 	Delete(r *RequestV2) Response
 	Post(r *RequestV2) Response
-	Put(r *RequestV2) Response
+	Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) Response
 	QGet(r *RequestV2) Response
 	Sync(r *RequestV2) Response
 }
@@ -65,7 +67,7 @@ func (a *applierV2store) Post(r *RequestV2) Response {
 	return toResponse(a.store.Create(r.Path, r.Dir, r.Val, true, r.TTLOptions()))
 }
 
-func (a *applierV2store) Put(r *RequestV2) Response {
+func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) Response {
 	ttlOptions := r.TTLOptions()
 	exists, existsSet := pbutil.GetBool(r.PrevExist)
 	switch {
@@ -87,14 +89,17 @@ func (a *applierV2store) Put(r *RequestV2) Response {
 				a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
 			}
 			if a.cluster != nil {
-				a.cluster.UpdateAttributes(id, attr)
+				a.cluster.UpdateAttributes(id, attr, shouldApplyV3)
 			}
 			// return an empty response since there is no consumer.
 			return Response{}
 		}
-		// remove v2 version set to avoid the conflict between v2 and v3.
+		// TODO remove v2 version set to avoid the conflict between v2 and v3 in etcd 3.6
 		if r.Path == membership.StoreClusterVersionKey() {
-			// return an empty response since there is no consumer.
+			if a.cluster != nil {
+				// persist to backend given v2store can be very stale
+				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability, shouldApplyV3)
+			}
 			return Response{}
 		}
 		return toResponse(a.store.Set(r.Path, r.Dir, r.Val, ttlOptions))
@@ -112,7 +117,7 @@ func (a *applierV2store) Sync(r *RequestV2) Response {
 
 // applyV2Request interprets r as a call to v2store.X
 // and returns a Response interpreted from v2store.Event
-func (s *EtcdServer) applyV2Request(r *RequestV2) (resp Response) {
+func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) (resp Response) {
 	stringer := panicAlternativeStringer{
 		stringer:    r,
 		alternative: func() string { return fmt.Sprintf("id:%d,method:%s,path:%s", r.ID, r.Method, r.Path) },
@@ -120,14 +125,14 @@ func (s *EtcdServer) applyV2Request(r *RequestV2) (resp Response) {
 	defer func(start time.Time) {
 		success := resp.Err == nil
 		applySec.WithLabelValues(v2Version, r.Method, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		warnOfExpensiveRequest(s.getLogger(), s.Cfg.WarningApplyDuration, start, stringer, nil, nil)
+		warnOfExpensiveRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, stringer, nil, nil)
 	}(time.Now())
 
 	switch r.Method {
 	case "POST":
 		return s.applyV2.Post(r)
 	case "PUT":
-		return s.applyV2.Put(r)
+		return s.applyV2.Put(r, shouldApplyV3)
 	case "DELETE":
 		return s.applyV2.Delete(r)
 	case "QGET":

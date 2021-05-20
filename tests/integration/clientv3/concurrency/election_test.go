@@ -23,12 +23,13 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestResumeElection(t *testing.T) {
 	const prefix = "/resume-election/"
 
-	cli, err := clientv3.New(clientv3.Config{Endpoints: exampleEndpoints()})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -68,20 +69,15 @@ func TestResumeElection(t *testing.T) {
 		defer close(respChan)
 		o := e.Observe(ctx)
 		respChan <- nil
-		for {
-			select {
-			case resp, ok := <-o:
-				if !ok {
-					t.Error("Observe() channel closed prematurely")
-				}
-				// Ignore any observations that candidate1 was elected
-				if string(resp.Kvs[0].Value) == "candidate1" {
-					continue
-				}
-				respChan <- &resp
-				return
+		for resp := range o {
+			// Ignore any observations that candidate1 was elected
+			if string(resp.Kvs[0].Value) == "candidate1" {
+				continue
 			}
+			respChan <- &resp
+			return
 		}
+		t.Error("Observe() channel closed prematurely")
 	}()
 
 	// wait until observe goroutine is running

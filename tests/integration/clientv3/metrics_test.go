@@ -25,9 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/testutil"
-	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/tests/v3/integration"
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -36,7 +35,7 @@ import (
 )
 
 func TestV3ClientMetrics(t *testing.T) {
-	defer testutil.AfterTest(t)
+	integration.BeforeTest(t)
 
 	var (
 		addr = "localhost:27989"
@@ -82,7 +81,7 @@ func TestV3ClientMetrics(t *testing.T) {
 			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
 		},
 	}
-	cli, cerr := clientv3.New(cfg)
+	cli, cerr := integration.NewClient(t, cfg)
 	if cerr != nil {
 		t.Fatal(cerr)
 	}

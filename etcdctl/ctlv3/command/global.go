@@ -25,10 +25,11 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
+	"go.etcd.io/etcd/client/pkg/v3/srv"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/flags"
-	"go.etcd.io/etcd/pkg/v3/srv"
-	"go.etcd.io/etcd/pkg/v3/transport"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -86,14 +87,14 @@ var display printer = &simplePrinter{}
 func initDisplayFromCmd(cmd *cobra.Command) {
 	isHex, err := cmd.Flags().GetBool("hex")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	outputType, err := cmd.Flags().GetString("write-out")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	if display = NewPrinter(outputType, isHex); display == nil {
-		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, errors.New("unsupported output format"))
 	}
 }
 
@@ -115,7 +116,7 @@ func (*discardValue) Type() string     { return "" }
 func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 	lg, err := zap.NewProduction()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	fs := cmd.InheritedFlags()
 	if strings.HasPrefix(cmd.Use, "watch") {
@@ -128,10 +129,10 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 
 	debug, err := cmd.Flags().GetBool("debug")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	if debug {
-		clientv3.SetLogger(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
 		fs.VisitAll(func(f *pflag.Flag) {
 			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
 		})
@@ -140,13 +141,13 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		// too many routine connection disconnects to turn on by default.
 		//
 		// See https://github.com/etcd-io/etcd/pull/9623 for background
-		clientv3.SetLogger(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	}
 
 	cfg := &clientConfig{}
 	cfg.endpoints, err = endpointsFromCmd(cmd)
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
 	cfg.dialTimeout = dialTimeoutFromCmd(cmd)
@@ -164,7 +165,7 @@ func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 	cc := clientConfigFromCmd(cmd)
 	cfg, err := newClientCfg(cc.endpoints, cc.dialTimeout, cc.keepAliveTime, cc.keepAliveTimeout, cc.scfg, cc.acfg)
 	if err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 	return cfg
 }
@@ -177,12 +178,12 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 func (cc *clientConfig) mustClient() *clientv3.Client {
 	cfg, err := newClientCfg(cc.endpoints, cc.dialTimeout, cc.keepAliveTime, cc.keepAliveTimeout, cc.scfg, cc.acfg)
 	if err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
 	client, err := clientv3.New(*cfg)
 	if err != nil {
-		ExitWithError(ExitBadConnection, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadConnection, err)
 	}
 
 	return client
@@ -263,7 +264,7 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 	dialTimeout, err := cmd.Flags().GetDuration("dial-timeout")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return dialTimeout
 }
@@ -271,7 +272,7 @@ func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 func keepAliveTimeFromCmd(cmd *cobra.Command) time.Duration {
 	keepAliveTime, err := cmd.Flags().GetDuration("keepalive-time")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return keepAliveTime
 }
@@ -279,7 +280,7 @@ func keepAliveTimeFromCmd(cmd *cobra.Command) time.Duration {
 func keepAliveTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 	keepAliveTimeout, err := cmd.Flags().GetDuration("keepalive-timeout")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return keepAliveTimeout
 }
@@ -308,7 +309,7 @@ func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
 func insecureTransportFromCmd(cmd *cobra.Command) bool {
 	insecureTr, err := cmd.Flags().GetBool("insecure-transport")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return insecureTr
 }
@@ -316,7 +317,7 @@ func insecureTransportFromCmd(cmd *cobra.Command) bool {
 func insecureSkipVerifyFromCmd(cmd *cobra.Command) bool {
 	skipVerify, err := cmd.Flags().GetBool("insecure-skip-tls-verify")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return skipVerify
 }
@@ -324,21 +325,21 @@ func insecureSkipVerifyFromCmd(cmd *cobra.Command) bool {
 func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {
 	var err error
 	if cert, err = cmd.Flags().GetString("cert"); err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	} else if cert == "" && cmd.Flags().Changed("cert") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cert option"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("empty string is passed to --cert option"))
 	}
 
 	if key, err = cmd.Flags().GetString("key"); err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	} else if key == "" && cmd.Flags().Changed("key") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --key option"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("empty string is passed to --key option"))
 	}
 
 	if cacert, err = cmd.Flags().GetString("cacert"); err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	} else if cacert == "" && cmd.Flags().Changed("cacert") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cacert option"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("empty string is passed to --cacert option"))
 	}
 
 	return cert, key, cacert
@@ -347,11 +348,11 @@ func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {
 func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 	userFlag, err := cmd.Flags().GetString("user")
 	if err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 	passwordFlag, err := cmd.Flags().GetString("password")
 	if err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
 	if userFlag == "" {
@@ -366,7 +367,7 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 			cfg.username = userFlag
 			cfg.password, err = speakeasy.Ask("Password: ")
 			if err != nil {
-				ExitWithError(ExitError, err)
+				cobrautl.ExitWithError(cobrautl.ExitError, err)
 			}
 		} else {
 			cfg.username = splitted[0]
@@ -383,7 +384,7 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 func insecureDiscoveryFromCmd(cmd *cobra.Command) bool {
 	discovery, err := cmd.Flags().GetBool("insecure-discovery")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return discovery
 }
@@ -391,7 +392,7 @@ func insecureDiscoveryFromCmd(cmd *cobra.Command) bool {
 func discoverySrvFromCmd(cmd *cobra.Command) string {
 	domainStr, err := cmd.Flags().GetString("discovery-srv")
 	if err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 	return domainStr
 }
@@ -399,7 +400,7 @@ func discoverySrvFromCmd(cmd *cobra.Command) string {
 func discoveryDNSClusterServiceNameFromCmd(cmd *cobra.Command) string {
 	serviceNameStr, err := cmd.Flags().GetString("discovery-srv-name")
 	if err != nil {
-		ExitWithError(ExitBadArgs, err)
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 	return serviceNameStr
 }

@@ -20,9 +20,9 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"go.uber.org/zap"
 )
@@ -70,16 +70,16 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) ConsistentWatchableKV {
-	return newWatchableStore(lg, b, le, ci, cfg)
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) WatchableKV {
+	return newWatchableStore(lg, b, le, cfg)
 }
 
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.ConsistentIndexer, cfg StoreConfig) *watchableStore {
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	s := &watchableStore{
-		store:    NewStore(lg, b, le, ci, cfg),
+		store:    NewStore(lg, b, le, cfg),
 		victimc:  make(chan struct{}, 1),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
@@ -131,8 +131,6 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 		if startRev > wa.minRev {
 			wa.minRev = startRev
 		}
-	}
-	if synced {
 		s.synced.add(wa)
 	} else {
 		slowWatcherGauge.Inc()
@@ -356,10 +354,9 @@ func (s *watchableStore) syncWatchers() int {
 	// values are actual key-value pairs in backend.
 	tx := s.store.b.ReadTx()
 	tx.RLock()
-	revs, vs := tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
+	revs, vs := tx.UnsafeRange(buckets.Key, minBytes, maxBytes, 0)
 	tx.RUnlock()
-	var evs []mvccpb.Event
-	evs = kvsToEvents(s.store.lg, wg, revs, vs)
+	evs := kvsToEvents(s.store.lg, wg, revs, vs)
 
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)

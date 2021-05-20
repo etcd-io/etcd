@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !v2v3
 // +build !v2v3
 
 package v2store_test
@@ -19,8 +20,9 @@ package v2store_test
 import (
 	"testing"
 
-	"go.etcd.io/etcd/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 type v2TestStore struct {
@@ -30,6 +32,7 @@ type v2TestStore struct {
 func (s *v2TestStore) Close() {}
 
 func newTestStore(t *testing.T, ns ...string) StoreCloser {
+	integration.BeforeTest(t)
 	if len(ns) == 0 {
 		t.Logf("new v2 store with no namespace")
 	}

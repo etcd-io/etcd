@@ -1,2 +1,2 @@
 
-Please read https://github.com/etcd-io/etcd/blob/master/CONTRIBUTING.md#contribution-flow.
+Please read https://github.com/etcd-io/etcd/blob/main/CONTRIBUTING.md#contribution-flow.

@@ -163,6 +163,8 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 			args = []string{
 				"--peer-cert-file", certPath,
 				"--peer-key-file", privateKeyPath,
+				"--peer-client-cert-file", certPath,
+				"--peer-client-key-file", privateKeyPath,
 				"--peer-trusted-ca-file", caPath,
 				"--peer-client-cert-auth",
 				"--peer-cert-allowed-cn", "example.com",
@@ -171,6 +173,8 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 			args = []string{
 				"--peer-cert-file", certPath2,
 				"--peer-key-file", privateKeyPath2,
+				"--peer-client-cert-file", certPath2,
+				"--peer-client-key-file", privateKeyPath2,
 				"--peer-trusted-ca-file", caPath,
 				"--peer-client-cert-auth",
 				"--peer-cert-allowed-cn", "example2.com",
@@ -312,6 +316,21 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 	}()
 
 	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBootstrapDefragFlag(t *testing.T) {
+	skipInShortMode(t)
+
+	proc, err := spawnCmd([]string{binDir + "/etcd", "--experimental-bootstrap-defrag-threshold-megabytes", "1000"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = waitReadyExpectProc(proc, []string{"Skipping defragmentation"}); err != nil {
+		t.Fatal(err)
+	}
+	if err = proc.Stop(); err != nil {
 		t.Fatal(err)
 	}
 }

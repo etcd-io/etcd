@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 var (
@@ -71,19 +72,19 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 	resp, err := mustClientFromCmd(cmd).Put(ctx, key, value, opts...)
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	display.Put(*resp)
 }
 
 func getPutOp(args []string) (string, string, []clientv3.OpOption) {
 	if len(args) == 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments"))
 	}
 
 	key := args[0]
 	if putIgnoreVal && len(args) > 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs only 1 argument when 'ignore-value' is set"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("put command needs only 1 argument when 'ignore-value' is set"))
 	}
 
 	var value string
@@ -91,13 +92,13 @@ func getPutOp(args []string) (string, string, []clientv3.OpOption) {
 	if !putIgnoreVal {
 		value, err = argOrStdin(args, os.Stdin, 1)
 		if err != nil {
-			ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments"))
+			cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments"))
 		}
 	}
 
 	id, err := strconv.ParseInt(leaseStr, 16, 64)
 	if err != nil {
-		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID (%v), expecting ID in Hex", err))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("bad lease ID (%v), expecting ID in Hex", err))
 	}
 
 	opts := []clientv3.OpOption{}

@@ -25,15 +25,14 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap"
 )
 
 func TestWatch(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
 		s.store.Close()
@@ -54,8 +53,8 @@ func TestWatch(t *testing.T) {
 }
 
 func TestNewWatcherCancel(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
 		s.store.Close()
@@ -80,14 +79,14 @@ func TestNewWatcherCancel(t *testing.T) {
 
 // TestCancelUnsynced tests if running CancelFunc removes watchers from unsynced.
 func TestCancelUnsynced(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore automatically calls syncWatchers
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
-		store:    NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}),
+		store:    NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}),
 		unsynced: newWatcherGroup(),
 
 		// to make the test not crash from assigning to nil map.
@@ -139,10 +138,10 @@ func TestCancelUnsynced(t *testing.T) {
 // method to see if it correctly sends events to channel of unsynced watchers
 // and moves these watchers to synced.
 func TestSyncWatchers(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 
 	s := &watchableStore{
-		store:    NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{}),
+		store:    NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{}),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
 	}
@@ -224,8 +223,8 @@ func TestSyncWatchers(t *testing.T) {
 
 // TestWatchCompacted tests a watcher that watches on a compacted revision.
 func TestWatchCompacted(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
 		s.store.Close()
@@ -261,8 +260,8 @@ func TestWatchCompacted(t *testing.T) {
 }
 
 func TestWatchFutureRev(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
 		s.store.Close()
@@ -302,16 +301,16 @@ func TestWatchFutureRev(t *testing.T) {
 func TestWatchRestore(t *testing.T) {
 	test := func(delay time.Duration) func(t *testing.T) {
 		return func(t *testing.T) {
-			b, tmpPath := backend.NewDefaultTmpBackend()
-			s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, cindex.NewConsistentIndex(b.BatchTx()), StoreConfig{})
+			b, tmpPath := betesting.NewDefaultTmpBackend(t)
+			s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 			defer cleanup(s, b, tmpPath)
 
 			testKey := []byte("foo")
 			testValue := []byte("bar")
 			rev := s.Put(testKey, testValue, lease.NoLease)
 
-			newBackend, newPath := backend.NewDefaultTmpBackend()
-			newStore := newWatchableStore(zap.NewExample(), newBackend, &lease.FakeLessor{}, cindex.NewConsistentIndex(newBackend.BatchTx()), StoreConfig{})
+			newBackend, newPath := betesting.NewDefaultTmpBackend(t)
+			newStore := newWatchableStore(zap.NewExample(), newBackend, &lease.FakeLessor{}, StoreConfig{})
 			defer cleanup(newStore, newBackend, newPath)
 
 			w := newStore.NewWatchStream()
@@ -348,12 +347,12 @@ func TestWatchRestore(t *testing.T) {
 //   4. restore operation moves "synced" to "unsynced" watcher group
 //   5. choose the watcher from step 1, without panic
 func TestWatchRestoreSyncedWatcher(t *testing.T) {
-	b1, b1Path := backend.NewDefaultTmpBackend()
-	s1 := newWatchableStore(zap.NewExample(), b1, &lease.FakeLessor{}, cindex.NewConsistentIndex(b1.BatchTx()), StoreConfig{})
+	b1, b1Path := betesting.NewDefaultTmpBackend(t)
+	s1 := newWatchableStore(zap.NewExample(), b1, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s1, b1, b1Path)
 
-	b2, b2Path := backend.NewDefaultTmpBackend()
-	s2 := newWatchableStore(zap.NewExample(), b2, &lease.FakeLessor{}, cindex.NewConsistentIndex(b2.BatchTx()), StoreConfig{})
+	b2, b2Path := betesting.NewDefaultTmpBackend(t)
+	s2 := newWatchableStore(zap.NewExample(), b2, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s2, b2, b2Path)
 
 	testKey, testValue := []byte("foo"), []byte("bar")
@@ -399,8 +398,8 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 
 // TestWatchBatchUnsynced tests batching on unsynced watchers
 func TestWatchBatchUnsynced(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	oldMaxRevs := watchBatchMaxRevs
 	defer func() {
@@ -533,8 +532,8 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 func TestWatchVictims(t *testing.T) {
 	oldChanBufLen, oldMaxWatchersPerSync := chanBufLen, maxWatchersPerSync
 
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
 		s.store.Close()
@@ -611,8 +610,8 @@ func TestWatchVictims(t *testing.T) {
 // TestStressWatchCancelClose tests closing a watch stream while
 // canceling its watches.
 func TestStressWatchCancelClose(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
 		s.store.Close()

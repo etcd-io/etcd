@@ -30,13 +30,13 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/leasing"
 	"go.etcd.io/etcd/client/v3/namespace"
 	"go.etcd.io/etcd/client/v3/ordering"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
-	"go.etcd.io/etcd/pkg/v3/logutil"
-	"go.etcd.io/etcd/pkg/v3/transport"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
@@ -208,11 +208,17 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}()
 
 	client := mustNewClient(lg)
-	proxyClient := mustNewProxyClient(lg, tlsinfo)
+
+	// The proxy client is used for self-healthchecking.
+	// TODO: The mechanism should be refactored to use internal connection.
+	var proxyClient *clientv3.Client
+	if grpcProxyAdvertiseClientURL != "" {
+		proxyClient = mustNewProxyClient(lg, tlsinfo)
+	}
 	httpClient := mustNewHTTPClient(lg)
 
 	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client, proxyClient)
-	errc := make(chan error)
+	errc := make(chan error, 3)
 	go func() { errc <- newGRPCProxyServer(lg, client).Serve(grpcl) }()
 	go func() { errc <- srvhttp.Serve(httpl) }()
 	go func() { errc <- m.Serve() }()
@@ -277,6 +283,7 @@ func mustNewClient(lg *zap.Logger) *clientv3.Client {
 		grpc.WithUnaryInterceptor(grpcproxy.AuthUnaryClientInterceptor))
 	cfg.DialOptions = append(cfg.DialOptions,
 		grpc.WithStreamInterceptor(grpcproxy.AuthStreamClientInterceptor))
+	cfg.Logger = lg.Named("client")
 	client, err := clientv3.New(*cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -287,7 +294,7 @@ func mustNewClient(lg *zap.Logger) *clientv3.Client {
 
 func mustNewProxyClient(lg *zap.Logger, tls *transport.TLSInfo) *clientv3.Client {
 	eps := []string{grpcProxyAdvertiseClientURL}
-	cfg, err := newProxyClientCfg(lg, eps, tls)
+	cfg, err := newProxyClientCfg(lg.Named("client"), eps, tls)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -305,6 +312,7 @@ func newProxyClientCfg(lg *zap.Logger, eps []string, tls *transport.TLSInfo) (*c
 	cfg := clientv3.Config{
 		Endpoints:   eps,
 		DialTimeout: 5 * time.Second,
+		Logger:      lg,
 	}
 	if tls != nil {
 		clientTLS, err := tls.ClientConfig()
@@ -380,7 +388,7 @@ func mustListenCMux(lg *zap.Logger, tlsinfo *transport.TLSInfo) cmux.CMux {
 
 func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	if grpcProxyEnableOrdering {
-		vf := ordering.NewOrderViolationSwitchEndpointClosure(*client)
+		vf := ordering.NewOrderViolationSwitchEndpointClosure(client)
 		client.KV = ordering.NewKV(client.KV, vf)
 		lg.Info("waiting for linearized read from cluster to recover ordering")
 		for {

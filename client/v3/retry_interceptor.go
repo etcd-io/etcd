@@ -19,6 +19,7 @@ package clientv3
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 	"time"
@@ -35,7 +36,7 @@ import (
 //
 // The default configuration of the interceptor is to not retry *at all*. This behaviour can be
 // changed through options (e.g. WithMax) on creation of the interceptor or on call (through grpc.CallOptions).
-func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOption) grpc.UnaryClientInterceptor {
+func (c *Client) unaryClientInterceptor(optFuncs ...retryOption) grpc.UnaryClientInterceptor {
 	intOpts := reuseOrNewWithCallOptions(defaultOptions, optFuncs)
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		ctx = withVersion(ctx)
@@ -50,7 +51,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 			if err := waitRetryBackoff(ctx, attempt, callOpts); err != nil {
 				return err
 			}
-			logger.Debug(
+			c.GetLogger().Debug(
 				"retrying of unary invoker",
 				zap.String("target", cc.Target()),
 				zap.Uint("attempt", attempt),
@@ -59,7 +60,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 			if lastErr == nil {
 				return nil
 			}
-			logger.Warn(
+			c.GetLogger().Warn(
 				"retrying of unary invoker failed",
 				zap.String("target", cc.Target()),
 				zap.Uint("attempt", attempt),
@@ -82,7 +83,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 
 				gterr := c.getToken(ctx)
 				if gterr != nil {
-					logger.Warn(
+					c.GetLogger().Warn(
 						"retrying of unary invoker failed to fetch new auth token",
 						zap.String("target", cc.Target()),
 						zap.Error(gterr),
@@ -91,7 +92,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 				}
 				continue
 			}
-			if !isSafeRetry(c.lg, lastErr, callOpts) {
+			if !isSafeRetry(c, lastErr, callOpts) {
 				return lastErr
 			}
 		}
@@ -107,7 +108,7 @@ func (c *Client) unaryClientInterceptor(logger *zap.Logger, optFuncs ...retryOpt
 // Retry logic is available *only for ServerStreams*, i.e. 1:n streams, as the internal logic needs
 // to buffer the messages sent by the client. If retry is enabled on any other streams (ClientStreams,
 // BidiStreams), the retry interceptor will fail the call.
-func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOption) grpc.StreamClientInterceptor {
+func (c *Client) streamClientInterceptor(optFuncs ...retryOption) grpc.StreamClientInterceptor {
 	intOpts := reuseOrNewWithCallOptions(defaultOptions, optFuncs)
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		ctx = withVersion(ctx)
@@ -117,7 +118,7 @@ func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOp
 			// equal to c.Username != "" && c.Password != ""
 			err := c.getToken(ctx)
 			if err != nil && rpctypes.Error(err) != rpctypes.ErrAuthNotEnabled {
-				logger.Error("clientv3/retry_interceptor: getToken failed", zap.Error(err))
+				c.GetLogger().Error("clientv3/retry_interceptor: getToken failed", zap.Error(err))
 				return nil, err
 			}
 		}
@@ -132,7 +133,7 @@ func (c *Client) streamClientInterceptor(logger *zap.Logger, optFuncs ...retryOp
 		}
 		newStreamer, err := streamer(ctx, desc, cc, method, grpcOpts...)
 		if err != nil {
-			logger.Error("streamer failed to create ClientStream", zap.Error(err))
+			c.GetLogger().Error("streamer failed to create ClientStream", zap.Error(err))
 			return nil, err // TODO(mwitkow): Maybe dial and transport errors should be retriable?
 		}
 		retryingStreamer := &serverStreamingRetryingStream{
@@ -257,7 +258,7 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}
 		return true, err
 
 	}
-	return isSafeRetry(s.client.lg, err, s.callOpts), err
+	return isSafeRetry(s.client, err, s.callOpts), err
 }
 
 func (s *serverStreamingRetryingStream) reestablishStreamAndResendBuffer(callCtx context.Context) (grpc.ClientStream, error) {
@@ -297,23 +298,34 @@ func waitRetryBackoff(ctx context.Context, attempt uint, callOpts *options) erro
 }
 
 // isSafeRetry returns "true", if request is safe for retry with the given error.
-func isSafeRetry(lg *zap.Logger, err error, callOpts *options) bool {
+func isSafeRetry(c *Client, err error, callOpts *options) bool {
 	if isContextError(err) {
 		return false
 	}
+
+	// Situation when learner refuses RPC it is supposed to not serve is from the server
+	// perspective not retryable.
+	// But for backward-compatibility reasons we need  to support situation that
+	// customer provides mix of learners (not yet voters) and voters with an
+	// expectation to pick voter in the next attempt.
+	// TODO: Ideally client should be 'aware' which endpoint represents: leader/voter/learner with high probability.
+	if errors.Is(err, rpctypes.ErrGPRCNotSupportedForLearner) && len(c.Endpoints()) > 1 {
+		return true
+	}
+
 	switch callOpts.retryPolicy {
 	case repeatable:
 		return isSafeRetryImmutableRPC(err)
 	case nonRepeatable:
 		return isSafeRetryMutableRPC(err)
 	default:
-		lg.Warn("unrecognized retry policy", zap.String("retryPolicy", callOpts.retryPolicy.String()))
+		c.lg.Warn("unrecognized retry policy", zap.String("retryPolicy", callOpts.retryPolicy.String()))
 		return false
 	}
 }
 
 func isContextError(err error) bool {
-	return grpc.Code(err) == codes.DeadlineExceeded || grpc.Code(err) == codes.Canceled
+	return status.Code(err) == codes.DeadlineExceeded || status.Code(err) == codes.Canceled
 }
 
 func contextErrToGrpcErr(err error) error {

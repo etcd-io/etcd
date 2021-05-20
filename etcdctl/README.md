@@ -3,7 +3,7 @@ etcdctl
 
 `etcdctl` is a command line client for [etcd][etcd].
 
-The v3 API is used by default on master branch. For the v2 API, make sure to set environment variable `ETCDCTL_API=2`. See also [READMEv2][READMEv2].
+The v3 API is used by default on main branch. For the v2 API, make sure to set environment variable `ETCDCTL_API=2`. See also [READMEv2][READMEv2].
 
 If using released versions earlier than v3.4, set `ETCDCTL_API=3` to use v3 API.
 
@@ -913,7 +913,9 @@ If NOSPACE alarm is present:
 
 ### DEFRAG [options]
 
-DEFRAG defragments the backend database file for a set of given endpoints while etcd is running, or directly defragments an etcd data directory while etcd is not running. When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
+DEFRAG defragments the backend database file for a set of given endpoints while etcd is running, ~~or directly defragments an etcd data directory while etcd is not running~~. When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
+
+**Note: to defragment offline (`--data-dir` flag), use: `etcutl defrag` instead**
 
 **Note that defragmentation to a live member blocks the system from reading and writing data while rebuilding its states.**
 
@@ -921,7 +923,7 @@ DEFRAG defragments the backend database file for a set of given endpoints while 
 
 #### Options
 
-- data-dir -- Optional. If present, defragments a data directory not in use by etcd.
+- data-dir -- Optional. **Deprecated**. If present, defragments a data directory not in use by etcd. To be removed in v3.6.
 
 #### Output
 
@@ -944,11 +946,12 @@ Finished defragmenting etcd member[http://127.0.0.1:22379]
 Finished defragmenting etcd member[http://127.0.0.1:32379]
 ```
 
-To defragment a data directory directly, use the `--data-dir` flag:
+To defragment a data directory directly, use the `etcdutl` with `--data-dir` flag 
+(`etcdctl` will remove this flag in v3.6):
 
 ``` bash
 # Defragment while etcd is not running
-./etcdctl defrag --data-dir default.etcd
+./etcdutl defrag --data-dir default.etcd
 # success (exit status 0)
 # Error: cannot open database at default.etcd/member/snap/db
 ```
@@ -977,6 +980,8 @@ Save a snapshot to "snapshot.db":
 ```
 
 ### SNAPSHOT RESTORE [options] \<filename\>
+
+Note: Deprecated. Use `etcdutl snapshot restore` instead. To be removed in v3.6.
 
 SNAPSHOT RESTORE creates an etcd data directory for an etcd cluster member from a backend database snapshot and a new cluster configuration. Restoring the snapshot into each member for a new cluster configuration will initialize a new etcd cluster preloaded by the snapshot data.
 
@@ -1021,6 +1026,8 @@ bin/etcd --name sshot3 --listen-client-urls http://127.0.0.1:32379 --advertise-c
 
 ### SNAPSHOT STATUS \<filename\>
 
+Note: Deprecated. Use `etcdutl snapshot restore` instead. To be removed in v3.6.
+
 SNAPSHOT STATUS lists information about a given backend database snapshot file.
 
 #### Output
@@ -1040,12 +1047,12 @@ Prints a line of JSON encoding the database hash, revision, total keys, and size
 ```
 
 ```bash
-./etcdctl -write-out=json snapshot status file.db
+./etcdctl --write-out=json snapshot status file.db
 # {"hash":3474280699,"revision":3,"totalKey":3,"totalSize":24576}
 ```
 
 ```bash
-./etcdctl -write-out=table snapshot status file.db
+./etcdctl --write-out=table snapshot status file.db
 +----------+----------+------------+------------+
 |   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
 +----------+----------+------------+------------+
@@ -1495,54 +1502,6 @@ The approximate total number of keys transferred to the destination cluster, upd
 
 [mirror]: ./doc/mirror_maker.md
 
-### MIGRATE [options]
-
-Migrates keys in a v2 store to a v3 mvcc store. Users should run migration command for all members in the cluster.
-
-#### Options
-
-- data-dir -- Path to the data directory
-
-- wal-dir -- Path to the WAL directory
-
-- transformer -- Path to the user-provided transformer program (default if not provided)
-
-#### Output
-
-No output on success.
-
-#### Default transformer
-
-If user does not provide a transformer program, migrate command will use the default transformer. The default transformer transforms `storev2` formatted keys into `mvcc` formatted keys according to the following Go program:
-
-```go
-func transform(n *storev2.Node) *mvccpb.KeyValue {
-	if n.Dir {
-		return nil
-	}
-	kv := &mvccpb.KeyValue{
-		Key:            []byte(n.Key),
-		Value:          []byte(n.Value),
-		CreateRevision: int64(n.CreatedIndex),
-		ModRevision:    int64(n.ModifiedIndex),
-		Version:        1,
-	}
-	return kv
-}
-```
-
-#### User-provided transformer
-
-Users can provide a customized 1:n transformer function that transforms a key from the v2 store to any number of keys in the mvcc store. The migration program writes JSON formatted [v2 store keys][v2key] to the transformer program's stdin, reads protobuf formatted [mvcc keys][v3key] back from the transformer program's stdout, and finishes migration by saving the transformed keys into the mvcc store.
-
-The provided transformer should read until EOF and flush the stdout before exiting to ensure data integrity.
-
-#### Example
-
-```
-./etcdctl migrate --data-dir=/var/etcd --transformer=k8s-transformer
-# finished transforming keys
-```
 
 ### VERSION
 

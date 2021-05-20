@@ -20,10 +20,11 @@ import (
 	"strings"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	v3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/etcdctl/v3/snapshot"
-	"go.etcd.io/etcd/pkg/v3/types"
 )
+
+const rootRole = "root"
 
 type simplePrinter struct {
 	isHex     bool
@@ -171,13 +172,6 @@ func (s *simplePrinter) EndpointHashKV(hashList []epHashKV) {
 	}
 }
 
-func (s *simplePrinter) DBStatus(ds snapshot.Status) {
-	_, rows := makeDBStatusTable(ds)
-	for _, row := range rows {
-		fmt.Println(strings.Join(row, ", "))
-	}
-}
-
 func (s *simplePrinter) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) {
 	fmt.Printf("Leadership transferred from %s to %s\n", types.ID(leader), types.ID(target))
 }
@@ -188,6 +182,14 @@ func (s *simplePrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) {
 
 func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 	fmt.Printf("Role %s\n", role)
+	if rootRole == role && r.Perm == nil {
+		fmt.Println("KV Read:")
+		fmt.Println("\t[, <open ended>")
+		fmt.Println("KV Write:")
+		fmt.Println("\t[, <open ended>")
+		return
+	}
+
 	fmt.Println("KV Read:")
 
 	printRange := func(perm *v3.Permission) {

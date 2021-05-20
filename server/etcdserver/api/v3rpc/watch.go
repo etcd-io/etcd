@@ -197,15 +197,25 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 		}
 	}()
 
+	// TODO: There's a race here. When a stream  is closed (e.g. due to a cancellation),
+	// the underlying error (e.g. a gRPC stream error) may be returned and handled
+	// through errc if the recv goroutine finishes before the send goroutine.
+	// When the recv goroutine wins, the stream error is retained. When recv loses
+	// the race, the underlying error is lost (unless the root error is propagated
+	// through Context.Err() which is not always the case (as callers have to decide
+	// to implement a custom context to do so). The stdlib context package builtins
+	// may be insufficient to carry semantically useful errors around and should be
+	// revisited.
 	select {
 	case err = <-errc:
+		if err == context.Canceled {
+			err = rpctypes.ErrGRPCWatchCanceled
+		}
 		close(sws.ctrlStream)
-
 	case <-stream.Context().Done():
 		err = stream.Context().Err()
-		// the only server-side cancellation is noleader for now.
 		if err == context.Canceled {
-			err = rpctypes.ErrGRPCNoLeader
+			err = rpctypes.ErrGRPCWatchCanceled
 		}
 	}
 
@@ -381,7 +391,7 @@ func (sws *serverWatchStream) sendLoop() {
 			sws.mu.RUnlock()
 			for i := range evs {
 				events[i] = &evs[i]
-				if needPrevKV {
+				if needPrevKV && !IsCreateEvent(evs[i]) {
 					opt := mvcc.RangeOptions{Rev: evs[i].Kv.ModRevision - 1}
 					r, err := sws.watchable.Range(context.TODO(), evs[i].Kv.Key, nil, opt)
 					if err == nil && len(r.KVs) != 0 {
@@ -489,6 +499,10 @@ func (sws *serverWatchStream) sendLoop() {
 			return
 		}
 	}
+}
+
+func IsCreateEvent(e mvccpb.Event) bool {
+	return e.Type == mvccpb.PUT && e.Kv.CreateRevision == e.Kv.ModRevision
 }
 
 func sendFragments(

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
@@ -27,9 +28,9 @@ import (
 	"go.uber.org/zap"
 )
 
-func newBackend(cfg ServerConfig) backend.Backend {
+func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 	bcfg := backend.DefaultBackendConfig()
-	bcfg.Path = cfg.backendPath()
+	bcfg.Path = cfg.BackendPath()
 	bcfg.UnsafeNoFsync = cfg.UnsafeNoFsync
 	if cfg.BackendBatchLimit != 0 {
 		bcfg.BatchLimit = cfg.BackendBatchLimit
@@ -49,28 +50,30 @@ func newBackend(cfg ServerConfig) backend.Backend {
 		// permit 10% excess over quota for disarm
 		bcfg.MmapSize = uint64(cfg.QuotaBackendBytes + cfg.QuotaBackendBytes/10)
 	}
+	bcfg.Mlock = cfg.ExperimentalMemoryMlock
+	bcfg.Hooks = hooks
 	return backend.New(bcfg)
 }
 
 // openSnapshotBackend renames a snapshot db to the current etcd db and opens it.
-func openSnapshotBackend(cfg ServerConfig, ss *snap.Snapshotter, snapshot raftpb.Snapshot) (backend.Backend, error) {
+func openSnapshotBackend(cfg config.ServerConfig, ss *snap.Snapshotter, snapshot raftpb.Snapshot, hooks backend.Hooks) (backend.Backend, error) {
 	snapPath, err := ss.DBFilePath(snapshot.Metadata.Index)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find database snapshot file (%v)", err)
 	}
-	if err := os.Rename(snapPath, cfg.backendPath()); err != nil {
+	if err := os.Rename(snapPath, cfg.BackendPath()); err != nil {
 		return nil, fmt.Errorf("failed to rename database snapshot file (%v)", err)
 	}
-	return openBackend(cfg), nil
+	return openBackend(cfg, hooks), nil
 }
 
 // openBackend returns a backend using the current etcd db.
-func openBackend(cfg ServerConfig) backend.Backend {
-	fn := cfg.backendPath()
+func openBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
+	fn := cfg.BackendPath()
 
 	now, beOpened := time.Now(), make(chan backend.Backend)
 	go func() {
-		beOpened <- newBackend(cfg)
+		beOpened <- newBackend(cfg, hooks)
 	}()
 
 	select {
@@ -93,15 +96,14 @@ func openBackend(cfg ServerConfig) backend.Backend {
 // before updating the backend db after persisting raft snapshot to disk,
 // violating the invariant snapshot.Metadata.Index < db.consistentIndex. In this
 // case, replace the db with the snapshot db sent by the leader.
-func recoverSnapshotBackend(cfg ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot, beExist bool) (backend.Backend, error) {
+func recoverSnapshotBackend(cfg config.ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot, beExist bool, hooks backend.Hooks) (backend.Backend, error) {
 	consistentIndex := uint64(0)
 	if beExist {
-		ci := cindex.NewConsistentIndex(oldbe.BatchTx())
-		consistentIndex = ci.ConsistentIndex()
+		consistentIndex, _ = cindex.ReadConsistentIndex(oldbe.BatchTx())
 	}
 	if snapshot.Metadata.Index <= consistentIndex {
 		return oldbe, nil
 	}
 	oldbe.Close()
-	return openSnapshotBackend(cfg, snap.New(cfg.Logger, cfg.SnapDir()), snapshot)
+	return openSnapshotBackend(cfg, snap.New(cfg.Logger, cfg.SnapDir()), snapshot, hooks)
 }

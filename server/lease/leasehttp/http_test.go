@@ -18,22 +18,20 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
-	"go.uber.org/zap"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestRenewHTTP(t *testing.T) {
-	lg := zap.NewNop()
-	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
-	defer os.Remove(tmpPath)
-	defer be.Close()
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)}, nil)
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -53,12 +51,11 @@ func TestRenewHTTP(t *testing.T) {
 }
 
 func TestTimeToLiveHTTP(t *testing.T) {
-	lg := zap.NewNop()
-	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
-	defer os.Remove(tmpPath)
-	defer be.Close()
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)}, nil)
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -95,12 +92,11 @@ func TestTimeToLiveHTTPTimeout(t *testing.T) {
 }
 
 func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
-	lg := zap.NewNop()
-	be, tmpPath := backend.NewTmpBackend(time.Hour, 10000)
-	defer os.Remove(tmpPath)
-	defer be.Close()
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)}, nil)
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {

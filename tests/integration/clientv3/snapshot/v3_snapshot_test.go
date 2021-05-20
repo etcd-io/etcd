@@ -24,13 +24,13 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
-	"go.etcd.io/etcd/pkg/v3/fileutil"
-	"go.etcd.io/etcd/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/embed"
-
-	"go.uber.org/zap"
+	"go.etcd.io/etcd/tests/v3/integration"
+	"go.uber.org/zap/zaptest"
 )
 
 // TestSaveSnapshotFilePermissions ensures that the snapshot is saved with
@@ -64,21 +64,16 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	urls := newEmbedURLs(clusterN * 2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
-	cfg := embed.NewConfig()
-	cfg.Logger = "zap"
-	cfg.LogOutputs = []string{"/dev/null"}
-	cfg.Name = "default"
+	cfg := integration.NewEmbedConfig(t, "default")
 	cfg.ClusterState = "new"
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
 	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
-	cfg.Dir = filepath.Join(os.TempDir(), fmt.Sprint(time.Now().Nanosecond()))
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		os.RemoveAll(cfg.Dir)
 		srv.Close()
 	}()
 	select {
@@ -88,7 +83,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	}
 
 	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
-	cli, err := clientv3.New(ccfg)
+	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,13 +97,11 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		}
 	}
 
-	dpPath := filepath.Join(os.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
-	if err = snapshot.Save(context.Background(), zap.NewExample(), ccfg, dpPath); err != nil {
+	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
+	if err = snapshot.Save(context.Background(), zaptest.NewLogger(t), ccfg, dpPath); err != nil {
 		t.Fatal(err)
 	}
 
-	os.RemoveAll(cfg.Dir)
-	srv.Close()
 	return dpPath
 }
 
