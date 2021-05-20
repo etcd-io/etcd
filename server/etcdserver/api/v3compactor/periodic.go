@@ -16,6 +16,7 @@ package v3compactor
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -26,12 +27,86 @@ import (
 	"go.uber.org/zap"
 )
 
+// PeriodicOption set periodic option
+type PeriodicOption func(options *PeriodicOptions)
+
+// PeriodicOptions defines Periodic config
+type PeriodicOptions struct {
+	specialFlag        bool
+	specialStartHour   int
+	specialStartMinute int
+	specialEndHour     int
+	specialEndMinute   int
+	specialPeriod      time.Duration
+}
+
+func validatePeriodicOptions(opts PeriodicOptions) bool {
+	if opts.specialStartHour < 0 || 23 < opts.specialStartHour {
+		return false
+	}
+	if opts.specialStartMinute < 0 || 59 < opts.specialEndHour {
+		return false
+	}
+	if opts.specialEndHour < 0 || 23 < opts.specialEndHour {
+		return false
+	}
+	if opts.specialEndMinute < 0 || 59 < opts.specialEndHour {
+		return false
+	}
+
+	if opts.specialEndHour < opts.specialStartHour {
+		return false
+	} else if opts.specialEndHour == opts.specialStartHour {
+		if opts.specialEndMinute <= opts.specialStartMinute {
+			return false
+		}
+	}
+
+	return true
+}
+
+// WithSpecialStartHour set the special compaction start hour
+func WithSpecialStartHour(startHour int) PeriodicOption {
+	return func(o *PeriodicOptions) {
+		o.specialStartHour = startHour
+	}
+}
+
+// WithSpecialStartMinute set the special compaction start minute
+func WithSpecialStartMinute(startMinute int) PeriodicOption {
+	return func(o *PeriodicOptions) {
+		o.specialStartMinute = startMinute
+	}
+}
+
+// WithSpecialEndHour set the special compaction end hour
+func WithSpecialEndHour(endHour int) PeriodicOption {
+	return func(o *PeriodicOptions) {
+		o.specialEndHour = endHour
+	}
+}
+
+// WithSpecialEndMinute set the special compaction end minute
+func WithSpecialEndMinute(endMinute int) PeriodicOption {
+	return func(o *PeriodicOptions) {
+		o.specialEndMinute = endMinute
+	}
+}
+
+// WithSpecialPeriod sets the compaction interval in special compaction time span
+func WithSpecialPeriod(specialPeriod time.Duration) PeriodicOption {
+	return func(o *PeriodicOptions) {
+		o.specialPeriod = specialPeriod
+	}
+}
+
 // Periodic compacts the log by purging revisions older than
 // the configured retention time.
 type Periodic struct {
 	lg     *zap.Logger
 	clock  clockwork.Clock
 	period time.Duration
+	opts   PeriodicOptions
 
 	rg RevGetter
 	c  Compactable
@@ -47,7 +122,14 @@ type Periodic struct {
 
 // newPeriodic creates a new instance of Periodic compactor that purges
 // the log older than h Duration.
-func newPeriodic(lg *zap.Logger, clock clockwork.Clock, h time.Duration, rg RevGetter, c Compactable) *Periodic {
+func newPeriodic(
+	lg *zap.Logger,
+	clock clockwork.Clock,
+	h time.Duration,
+	rg RevGetter,
+	c Compactable,
+	options ...PeriodicOption,
+) (*Periodic, error) {
 	pc := &Periodic{
 		lg:     lg,
 		clock:  clock,
@@ -56,8 +138,20 @@ func newPeriodic(lg *zap.Logger, clock clockwork.Clock, h time.Duration, rg RevG
 		c:      c,
 		revs:   make([]int64, 0),
 	}
+
+	for _, opt := range options {
+		opt(&(pc.opts))
+	}
+	pc.opts.specialFlag = validatePeriodicOptions(pc.opts)
+	if pc.opts.specialFlag && pc.opts.specialPeriod == 0 {
+		return nil, fmt.Errorf("illegal compact params specialPeriod == 0")
+	}
+	if !pc.opts.specialFlag && pc.opts.specialPeriod > 0 {
+		return nil, fmt.Errorf("illegal compact time span range")
+	}
+
 	pc.ctx, pc.cancel = context.WithCancel(context.Background())
-	return pc
+	return pc, nil
 }
 
 /*
@@ -96,7 +190,6 @@ Compaction period 5-sec:
 
 // Run runs periodic compactor.
 func (pc *Periodic) Run() {
-	compactInterval := pc.getCompactInterval()
 	retryInterval := pc.getRetryInterval()
 	retentions := pc.getRetentions()
 
@@ -126,9 +219,7 @@ func (pc *Periodic) Run() {
 			}
 
 			// wait up to initial given period
-			if baseInterval == pc.period {
-				baseInterval = compactInterval
-			}
+			baseInterval = pc.getCompactInterval()
 			rev := pc.revs[0]
 
 			pc.lg.Info(
@@ -165,6 +256,15 @@ func (pc *Periodic) Run() {
 // (e.g. --auto-compaction-mode 'periodic' --auto-compaction-retention='2h', then compact every 1-hour)
 func (pc *Periodic) getCompactInterval() time.Duration {
 	itv := pc.period
+	if pc.opts.specialFlag {
+		now := time.Now()
+		if now.Hour() > pc.opts.specialStartHour || (now.Hour() == pc.opts.specialStartHour && now.Minute() >= pc.opts.specialStartMinute) {
+			if now.Hour() < pc.opts.specialEndHour || (now.Hour() == pc.opts.specialEndHour && now.Minute() <= pc.opts.specialEndMinute) {
+				itv = pc.opts.specialPeriod
+			}
+		}
+	}
+
 	if itv > time.Hour {
 		itv = time.Hour
 	}
@@ -172,13 +272,13 @@ func (pc *Periodic) getCompactInterval() time.Duration {
 }
 
 func (pc *Periodic) getRetentions() int {
-	return int(pc.period/pc.getRetryInterval()) + 1
+	return int(pc.getCompactInterval()/pc.getRetryInterval()) + 1
 }
 
 const retryDivisor = 10
 
 func (pc *Periodic) getRetryInterval() time.Duration {
-	itv := pc.period
+	itv := pc.getCompactInterval()
 	if itv > time.Hour {
 		itv = time.Hour
 	}

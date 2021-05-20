@@ -235,6 +235,24 @@ type Config struct {
 	// If no time unit is provided and compaction mode is 'periodic',
 	// the unit defaults to hour. For example, '5' translates into 5-hour.
 	AutoCompactionRetention string `json:"auto-compaction-retention"`
+	// If AutoCompactionMode is 'periodic', we can set a special time span
+	// in which the etcd does compaction in every @CompactSpecialCompactionInterval.
+	// The time span is [CompactSpecialStartHour:CompactSpecialStartMinute,
+	// CompactSpecialEndHour:CompactSpecialEndMinute].
+	//
+	// SpecialCompactStartHour param range is [0, 23]
+	SpecialCompactStartHour int `json:"special-compaction-start-hour"`
+	// SpecialCompactStartMinute param range is [0, 59]
+	SpecialCompactStartMinute int `json:"special-compaction-start-minute"`
+	// SpecialCompactEndHour param range is [0, 23]
+	SpecialCompactEndHour int `json:"special-compaction-end-hour"`
+	// SpecialCompactEndMinute param range is [0, 59]
+	SpecialCompactEndMinute int `json:"special-compaction-end-minute"`
+	// SpecialCompactInterval is either duration string with time unit
+	// (e.g. '5m' for 5-minute), or revision unit (e.g. '5000').
+	// If no time unit is provided and compaction mode is 'periodic',
+	// the unit defaults to hour. For example, '5' translates into 5-hour.
+	SpecialCompactInterval string `json:"special-compaction-interval"`
 
 	// GRPCKeepAliveMinTime is the minimum interval that a client should
 	// wait before pinging server. When client pings "too fast", server

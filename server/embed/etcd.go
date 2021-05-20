@@ -169,6 +169,14 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if err != nil {
 		return e, err
 	}
+	// SpecialCompactInterval defaults to "0" if not set.
+	if len(cfg.SpecialCompactInterval) == 0 {
+		cfg.SpecialCompactInterval = "0"
+	}
+	specialCompactInterval, err := parseCompactionRetention(cfg.AutoCompactionMode, cfg.SpecialCompactInterval)
+	if err != nil {
+		return e, err
+	}
 
 	backendFreelistType := parseBackendFreelistType(cfg.BackendFreelistType)
 
@@ -193,6 +201,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		InitialElectionTickAdvance:               cfg.InitialElectionTickAdvance,
 		AutoCompactionRetention:                  autoCompactionRetention,
 		AutoCompactionMode:                       cfg.AutoCompactionMode,
+		SpecialCompactStartHour:                  cfg.SpecialCompactStartHour,
+		SpecialCompactStartMinute:                cfg.SpecialCompactStartMinute,
+		SpecialCompactEndHour:                    cfg.SpecialCompactEndHour,
+		SpecialCompactEndMinute:                  cfg.SpecialCompactEndMinute,
+		SpecialCompactPeriod:                     specialCompactInterval,
 		QuotaBackendBytes:                        cfg.QuotaBackendBytes,
 		BackendBatchLimit:                        cfg.BackendBatchLimit,
 		BackendFreelistType:                      backendFreelistType,
@@ -342,6 +355,12 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("auto-compaction-mode", sc.AutoCompactionMode),
 		zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention),
 		zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
+		zap.Int("special-compaction-start-hour", sc.SpecialCompactStartHour),
+		zap.Int("special-compaction-start-minute", sc.SpecialCompactStartMinute),
+		zap.Int("special-compaction-end-hour", sc.SpecialCompactEndHour),
+		zap.Int("special-compaction-end-minute", sc.SpecialCompactEndMinute),
+		zap.String("special-compaction-interval", sc.SpecialCompactPeriod.String()),
+
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),

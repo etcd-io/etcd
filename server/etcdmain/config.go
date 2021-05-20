@@ -255,6 +255,11 @@ func newConfig() *config {
 
 	fs.StringVar(&cfg.ec.AutoCompactionRetention, "auto-compaction-retention", "0", "Auto compaction retention for mvcc key value store. 0 means disable auto compaction.")
 	fs.StringVar(&cfg.ec.AutoCompactionMode, "auto-compaction-mode", "periodic", "interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.")
+	fs.StringVar(&cfg.ec.SpecialCompactInterval, "special-compaction-retention", "0", "Another compaction retention for mvcc key value store in a special time span [special-compaction-start-hour:special-compaction-start-minute, special-compaction-end-hour:special-compaction-end-minute]. 0 means disable special compaction.")
+	fs.IntVar(&cfg.ec.SpecialCompactStartHour, "special-compaction-start-hour", 0, "Another compaction time span start hour whose value range is [0, 23].")
+	fs.IntVar(&cfg.ec.SpecialCompactStartMinute, "special-compaction-start-minute", 0, "Another compaction time span start minute whose value range is [0, 59].")
+	fs.IntVar(&cfg.ec.SpecialCompactEndHour, "special-compaction-end-hour", 0, "Another compaction time span end hour whose value range is [0, 23].")
+	fs.IntVar(&cfg.ec.SpecialCompactEndMinute, "special-compaction-end-minute", 0, "Another compaction time span end minute whose value range is [0, 59].")
 
 	// pprof profiler via HTTP
 	fs.BoolVar(&cfg.ec.EnablePprof, "enable-pprof", false, "Enable runtime profiling data via HTTP server. Address is at client URL + \"/debug/pprof/\"")

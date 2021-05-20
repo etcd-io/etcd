@@ -58,13 +58,14 @@ func New(
 	retention time.Duration,
 	rg RevGetter,
 	c Compactable,
+	options ...PeriodicOption,
 ) (Compactor, error) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	switch mode {
 	case ModePeriodic:
-		return newPeriodic(lg, clockwork.NewRealClock(), retention, rg, c), nil
+		return newPeriodic(lg, clockwork.NewRealClock(), retention, rg, c, options...)
 	case ModeRevision:
 		return newRevision(lg, clockwork.NewRealClock(), int64(retention), rg, c), nil
 	default:
