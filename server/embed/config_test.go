@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/srv"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 
@@ -40,12 +41,13 @@ func TestConfigFileOtherFields(t *testing.T) {
 	ctls := securityConfig{TrustedCAFile: "cca", CertFile: "ccert", KeyFile: "ckey"}
 	ptls := securityConfig{TrustedCAFile: "pca", CertFile: "pcert", KeyFile: "pkey"}
 	yc := struct {
-		ClientSecurityCfgFile securityConfig `json:"client-transport-security"`
-		PeerSecurityCfgFile   securityConfig `json:"peer-transport-security"`
-		ForceNewCluster       bool           `json:"force-new-cluster"`
-		Logger                string         `json:"logger"`
-		LogOutputs            []string       `json:"log-outputs"`
-		Debug                 bool           `json:"debug"`
+		ClientSecurityCfgFile securityConfig       `json:"client-transport-security"`
+		PeerSecurityCfgFile   securityConfig       `json:"peer-transport-security"`
+		ForceNewCluster       bool                 `json:"force-new-cluster"`
+		Logger                string               `json:"logger"`
+		LogOutputs            []string             `json:"log-outputs"`
+		Debug                 bool                 `json:"debug"`
+		SocketOpts            transport.SocketOpts `json:"socket-options"`
 	}{
 		ctls,
 		ptls,
@@ -53,6 +55,9 @@ func TestConfigFileOtherFields(t *testing.T) {
 		"zap",
 		[]string{"/dev/null"},
 		false,
+		transport.SocketOpts{
+			ReusePort: true,
+		},
 	}
 
 	b, err := yaml.Marshal(&yc)
@@ -68,16 +73,18 @@ func TestConfigFileOtherFields(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !cfg.ForceNewCluster {
-		t.Errorf("ForceNewCluster = %v, want %v", cfg.ForceNewCluster, true)
-	}
-
 	if !ctls.equals(&cfg.ClientTLSInfo) {
 		t.Errorf("ClientTLS = %v, want %v", cfg.ClientTLSInfo, ctls)
 	}
 	if !ptls.equals(&cfg.PeerTLSInfo) {
 		t.Errorf("PeerTLS = %v, want %v", cfg.PeerTLSInfo, ptls)
 	}
+
+	testutil.AssertEqual(t, true, cfg.ForceNewCluster, "ForceNewCluster does not match")
+
+	testutil.AssertEqual(t, true, cfg.SocketOpts.ReusePort, "ReusePort does not match")
+
+	testutil.AssertEqual(t, false, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
 }
 
 // TestUpdateDefaultClusterFromName ensures that etcd can start with 'etcd --name=abc'.
