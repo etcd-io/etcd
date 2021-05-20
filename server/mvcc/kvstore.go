@@ -57,9 +57,11 @@ const (
 
 var restoreChunkKeys = 10000 // non-const for testing
 var defaultCompactBatchLimit = 1000
+var minimumBatchInterval = 10 // 10ms
 
 type StoreConfig struct {
-	CompactionBatchLimit int
+	CompactionBatchLimit    int
+	CompactionSleepInterval int
 }
 
 type store struct {
@@ -102,6 +104,9 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ci cindex.Cons
 	}
 	if cfg.CompactionBatchLimit == 0 {
 		cfg.CompactionBatchLimit = defaultCompactBatchLimit
+	}
+	if cfg.CompactionBatchLimit < minimumBatchInterval {
+		cfg.CompactionSleepInterval = minimumBatchInterval
 	}
 	s := &store{
 		cfg:     cfg,
