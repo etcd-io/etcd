@@ -24,8 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 
@@ -80,11 +80,11 @@ func TestConfigFileOtherFields(t *testing.T) {
 		t.Errorf("PeerTLS = %v, want %v", cfg.PeerTLSInfo, ptls)
 	}
 
-	testutil.AssertEqual(t, true, cfg.ForceNewCluster, "ForceNewCluster does not match")
+	assert.Equal(t, true, cfg.ForceNewCluster, "ForceNewCluster does not match")
 
-	testutil.AssertEqual(t, true, cfg.SocketOpts.ReusePort, "ReusePort does not match")
+	assert.Equal(t, true, cfg.SocketOpts.ReusePort, "ReusePort does not match")
 
-	testutil.AssertEqual(t, false, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
+	assert.Equal(t, false, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
 }
 
 // TestUpdateDefaultClusterFromName ensures that etcd can start with 'etcd --name=abc'.
