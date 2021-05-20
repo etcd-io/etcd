@@ -32,6 +32,9 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
 
+	batchNum := s.cfg.CompactionBatchLimit
+	batchInterval := s.cfg.CompactionSleepInterval
+
 	last := make([]byte, 8+1+8)
 	for {
 		var rev revision
@@ -40,7 +43,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 
 		tx := s.b.BatchTx()
 		tx.Lock()
-		keys, _ := tx.UnsafeRange(buckets.Key, last, end, int64(s.cfg.CompactionBatchLimit))
+		keys, _ := tx.UnsafeRange(buckets.Key, last, end, int64(batchNum))
 		for _, key := range keys {
 			rev = bytesToRev(key)
 			if _, ok := keep[rev]; !ok {
@@ -49,7 +52,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 			}
 		}
 
-		if len(keys) < s.cfg.CompactionBatchLimit {
+		if len(keys) < batchNum {
 			rbytes := make([]byte, 8+1+8)
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(buckets.Meta, finishedCompactKeyName, rbytes)
@@ -70,7 +73,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 
 		select {
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(batchInterval):
 		case <-s.stopc:
 			return false
 		}
