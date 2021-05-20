@@ -36,6 +36,8 @@ agent-configs:
     logger: zap
     log-outputs: [/tmp/etcd-functional-1/etcd.log]
     log-level: info
+    socket-reuse-address: true
+    socket-reuse-port: true
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -87,6 +89,8 @@ agent-configs:
     logger: zap
     log-outputs: [/tmp/etcd-functional-2/etcd.log]
     log-level: info
+    socket-reuse-address: true
+    socket-reuse-port: true
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
@@ -138,6 +142,8 @@ agent-configs:
     logger: zap
     log-outputs: [/tmp/etcd-functional-3/etcd.log]
     log-level: info
+    socket-reuse-address: true
+    socket-reuse-port: true
   client-cert-data: ""
   client-cert-path: ""
   client-key-data: ""
