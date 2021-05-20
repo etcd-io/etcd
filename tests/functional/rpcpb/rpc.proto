@@ -239,6 +239,9 @@ message Etcd {
   // LogOutputs is the log file to store current etcd server logs.
   repeated string LogOutputs = 72 [(gogoproto.moretags) = "yaml:\"log-outputs\""];
   string LogLevel = 73 [(gogoproto.moretags) = "yaml:\"log-level\""];
+
+  bool SocketReuseAddress = 81 [(gogoproto.moretags) = "yaml:\"socket-reuse-address\""];
+  bool SocketReusePort = 82 [(gogoproto.moretags) = "yaml:\"socket-reuse-port\""];
 }
 
 enum Operation {
