@@ -26,13 +26,13 @@ type StubServer struct {
 	s *grpc.Server
 
 	cleanups []func() // Lambdas executed in Stop(); populated by Start().
-	started chan struct{}
+	started  chan struct{}
 }
 
 func New(testService testpb.TestServiceServer) *StubServer {
 	return &StubServer{
 		testService: testService,
-		started: make(chan struct{}),
+		started:     make(chan struct{}),
 	}
 }
 
@@ -67,6 +67,7 @@ func (ss *StubServer) Start(sopts []grpc.ServerOption, dopts ...grpc.DialOption)
 // Stop stops ss and cleans up all resources it consumed.
 func (ss *StubServer) Stop() {
 	<-ss.started
+
 	for i := len(ss.cleanups) - 1; i >= 0; i-- {
 		ss.cleanups[i]()
 	}
