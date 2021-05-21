@@ -31,7 +31,7 @@ func copyToInterface(msg ...string) []interface{} {
 
 func AssertNil(t *testing.T, v interface{}) {
 	t.Helper()
-	assert.Equal(t, nil, v)
+	assert.Nil(t, v)
 }
 
 func AssertNotNil(t *testing.T, v interface{}) {
