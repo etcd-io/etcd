@@ -67,7 +67,6 @@ func (ss *StubServer) Start(sopts []grpc.ServerOption, dopts ...grpc.DialOption)
 // Stop stops ss and cleans up all resources it consumed.
 func (ss *StubServer) Stop() {
 	<-ss.started
-
 	for i := len(ss.cleanups) - 1; i >= 0; i-- {
 		ss.cleanups[i]()
 	}
