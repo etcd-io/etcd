@@ -69,7 +69,7 @@ var (
 // generations:
 //    {empty} -> key SHOULD be removed.
 type keyIndex struct {
-	mu          sync.Mutex
+	mu          sync.RWMutex
 	key         []byte
 	modified    revision // the main rev of the last modification
 	generations []generation

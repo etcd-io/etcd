@@ -76,8 +76,8 @@ func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, v
 		ti.RUnlock()
 		return revision{}, revision{}, 0, ErrRevisionNotFound
 	}
-	keyi.mu.Lock()
-	defer keyi.mu.Unlock()
+	keyi.mu.RLock()
+	defer keyi.mu.RUnlock()
 	ti.RUnlock()
 	return keyi.get(ti.lg, atRev)
 }
@@ -106,8 +106,8 @@ func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex) bool) {
 			return false
 		}
 		keyi := item.(*keyIndex)
-		keyi.mu.Lock()
-		defer keyi.mu.Unlock()
+		keyi.mu.RLock()
+		defer keyi.mu.RUnlock()
 		if !f(keyi) {
 			return false
 		}
@@ -178,15 +178,16 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
-	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
+		ti.Unlock()
 		return ErrRevisionNotFound
 	}
 
 	ki := item.(*keyIndex)
 	ki.mu.Lock()
 	defer ki.mu.Unlock()
+	ti.Unlock()
 	return ki.tombstone(ti.lg, rev.main, rev.sub)
 }
 
@@ -197,16 +198,16 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 	keyi := &keyIndex{key: key}
 
 	ti.RLock()
-	defer ti.RUnlock()
-
 	if end == nil {
 		item := ti.tree.Get(keyi)
 		if item == nil {
+			ti.RUnlock()
 			return nil
 		}
 		keyi = item.(*keyIndex)
-		keyi.mu.Lock()
-		defer keyi.mu.Unlock()
+		keyi.mu.RLock()
+		defer keyi.mu.RUnlock()
+		ti.RUnlock()
 		return keyi.since(ti.lg, rev)
 	}
 
@@ -217,11 +218,12 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 			return false
 		}
 		curKeyi := item.(*keyIndex)
-		curKeyi.mu.Lock()
-		defer curKeyi.mu.Unlock()
+		curKeyi.mu.RLock()
+		defer curKeyi.mu.RUnlock()
 		revs = append(revs, curKeyi.since(ti.lg, rev)...)
 		return true
 	})
+	ti.RUnlock()
 	sort.Sort(revisions(revs))
 
 	return revs
