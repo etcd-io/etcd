@@ -76,8 +76,8 @@ func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, v
 		ti.RUnlock()
 		return revision{}, revision{}, 0, ErrRevisionNotFound
 	}
-	keyi.mu.RLock()
-	defer keyi.mu.RUnlock()
+	keyi.mu.Lock()
+	defer keyi.mu.Unlock()
 	ti.RUnlock()
 	return keyi.get(ti.lg, atRev)
 }
@@ -106,8 +106,8 @@ func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex) bool) {
 			return false
 		}
 		keyi := item.(*keyIndex)
-		keyi.mu.RLock()
-		defer keyi.mu.RUnlock()
+		keyi.mu.Lock()
+		defer keyi.mu.Unlock()
 		if !f(keyi) {
 			return false
 		}
@@ -205,8 +205,8 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 			return nil
 		}
 		keyi = item.(*keyIndex)
-		keyi.mu.RLock()
-		defer keyi.mu.RUnlock()
+		keyi.mu.Lock()
+		defer keyi.mu.Unlock()
 		ti.RUnlock()
 		return keyi.since(ti.lg, rev)
 	}
@@ -218,8 +218,8 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 			return false
 		}
 		curKeyi := item.(*keyIndex)
-		curKeyi.mu.RLock()
-		defer curKeyi.mu.RUnlock()
+		curKeyi.mu.Lock()
+		defer curKeyi.mu.Unlock()
 		revs = append(revs, curKeyi.since(ti.lg, rev)...)
 		return true
 	})
