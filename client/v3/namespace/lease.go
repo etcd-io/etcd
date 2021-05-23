@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/stringutil"
 )
 
 type leasePrefix struct {
@@ -29,7 +30,7 @@ type leasePrefix struct {
 // NewLease wraps a Lease interface to filter for only keys with a prefix
 // and remove that prefix when fetching attached keys through TimeToLive.
 func NewLease(l clientv3.Lease, prefix string) clientv3.Lease {
-	return &leasePrefix{l, []byte(prefix)}
+	return &leasePrefix{l, stringutil.StringToBytes(prefix)}
 }
 
 func (l *leasePrefix) TimeToLive(ctx context.Context, id clientv3.LeaseID, opts ...clientv3.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {

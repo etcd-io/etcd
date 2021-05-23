@@ -14,7 +14,10 @@
 
 package clientv3
 
-import pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+import (
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/stringutil"
+)
 
 type opType int
 
@@ -222,7 +225,7 @@ func OpGet(key string, opts ...OpOption) Op {
 	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
-	ret := Op{t: tRange, key: []byte(key)}
+	ret := Op{t: tRange, key: stringutil.StringToBytes(key)}
 	ret.applyOpts(opts)
 	return ret
 }
@@ -233,7 +236,7 @@ func OpDelete(key string, opts ...OpOption) Op {
 	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
-	ret := Op{t: tDeleteRange, key: []byte(key)}
+	ret := Op{t: tDeleteRange, key: stringutil.StringToBytes(key)}
 	ret.applyOpts(opts)
 	switch {
 	case ret.leaseID != 0:
@@ -262,7 +265,7 @@ func OpDelete(key string, opts ...OpOption) Op {
 
 // OpPut returns "put" operation based on given key-value and operation options.
 func OpPut(key, val string, opts ...OpOption) Op {
-	ret := Op{t: tPut, key: []byte(key), val: []byte(val)}
+	ret := Op{t: tPut, key: stringutil.StringToBytes(key), val: stringutil.StringToBytes(val)}
 	ret.applyOpts(opts)
 	switch {
 	case ret.end != nil:
@@ -295,7 +298,7 @@ func OpTxn(cmps []Cmp, thenOps []Op, elseOps []Op) Op {
 }
 
 func opWatch(key string, opts ...OpOption) Op {
-	ret := Op{t: tRange, key: []byte(key)}
+	ret := Op{t: tRange, key: stringutil.StringToBytes(key)}
 	ret.applyOpts(opts)
 	switch {
 	case ret.leaseID != 0:
@@ -359,7 +362,7 @@ func WithSort(target SortTarget, order SortOrder) OpOption {
 // GetPrefixRangeEnd gets the range end of the prefix.
 // 'Get(foo, WithPrefix())' is equal to 'Get(foo, WithRange(GetPrefixRangeEnd(foo))'.
 func GetPrefixRangeEnd(prefix string) string {
-	return string(getPrefix([]byte(prefix)))
+	return string(getPrefix(stringutil.StringToBytes(prefix)))
 }
 
 func getPrefix(key []byte) []byte {
@@ -395,7 +398,7 @@ func WithPrefix() OpOption {
 // the keys in the range [key, end).
 // endKey must be lexicographically greater than start key.
 func WithRange(endKey string) OpOption {
-	return func(op *Op) { op.end = []byte(endKey) }
+	return func(op *Op) { op.end = stringutil.StringToBytes(endKey) }
 }
 
 // WithFromKey specifies the range of 'Get', 'Delete', 'Watch' requests
@@ -405,7 +408,7 @@ func WithFromKey() OpOption {
 		if len(op.key) == 0 {
 			op.key = []byte{0}
 		}
-		op.end = []byte("\x00")
+		op.end = stringutil.StringToBytes("\x00")
 	}
 }
 
