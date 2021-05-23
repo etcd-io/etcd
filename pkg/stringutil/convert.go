@@ -8,6 +8,6 @@ import (
 func StringToBytes(s string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&struct {
 		string
-		int
+		Cap int
 	}{s, len(s)}))
 }

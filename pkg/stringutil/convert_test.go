@@ -18,7 +18,7 @@ func BenchmarkStringToBytesRaw(b *testing.B) {
 
 func TestStringToBytes(t *testing.T) {
 	for i := 0; i < 1000; i++ {
-		randStr := randString(i)
+		randStr := randString(uint(i))
 		if !bytes.Equal(StringToBytes(randStr), []byte(randStr)) {
 			t.Fatalf("string %s ,convert incorrectly", randStr)
 		}
