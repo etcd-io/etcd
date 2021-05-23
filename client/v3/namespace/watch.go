@@ -18,7 +18,8 @@ import (
 	"context"
 	"sync"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/stringutil"
 )
 
 type watcherPrefix struct {
@@ -41,7 +42,7 @@ func (w *watcherPrefix) Watch(ctx context.Context, key string, opts ...clientv3.
 	// since OpOption is opaque, determine range for prefixing through an OpGet
 	op := clientv3.OpGet(key, opts...)
 	end := op.RangeBytes()
-	pfxBegin, pfxEnd := prefixInterval(w.pfx, []byte(key), end)
+	pfxBegin, pfxEnd := prefixInterval(w.pfx, stringutil.StringToBytes(key), end)
 	if pfxEnd != nil {
 		opts = append(opts, clientv3.WithRange(string(pfxEnd)))
 	}

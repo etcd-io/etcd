@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/stringutil"
 )
 
 type CompareTarget int
@@ -53,7 +54,7 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 		if !ok {
 			panic("bad compare value")
 		}
-		cmp.TargetUnion = &pb.Compare_Value{Value: []byte(val)}
+		cmp.TargetUnion = &pb.Compare_Value{Value: stringutil.StringToBytes(val)}
 	case pb.Compare_VERSION:
 		cmp.TargetUnion = &pb.Compare_Version{Version: mustInt64(v)}
 	case pb.Compare_CREATE:
@@ -69,25 +70,25 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 }
 
 func Value(key string) Cmp {
-	return Cmp{Key: []byte(key), Target: pb.Compare_VALUE}
+	return Cmp{Key: stringutil.StringToBytes(key), Target: pb.Compare_VALUE}
 }
 
 func Version(key string) Cmp {
-	return Cmp{Key: []byte(key), Target: pb.Compare_VERSION}
+	return Cmp{Key: stringutil.StringToBytes(key), Target: pb.Compare_VERSION}
 }
 
 func CreateRevision(key string) Cmp {
-	return Cmp{Key: []byte(key), Target: pb.Compare_CREATE}
+	return Cmp{Key: stringutil.StringToBytes(key), Target: pb.Compare_CREATE}
 }
 
 func ModRevision(key string) Cmp {
-	return Cmp{Key: []byte(key), Target: pb.Compare_MOD}
+	return Cmp{Key: stringutil.StringToBytes(key), Target: pb.Compare_MOD}
 }
 
 // LeaseValue compares a key's LeaseID to a value of your choosing. The empty
 // LeaseID is 0, otherwise known as `NoLease`.
 func LeaseValue(key string) Cmp {
-	return Cmp{Key: []byte(key), Target: pb.Compare_LEASE}
+	return Cmp{Key: stringutil.StringToBytes(key), Target: pb.Compare_LEASE}
 }
 
 // KeyBytes returns the byte slice holding with the comparison key.
@@ -109,7 +110,7 @@ func (cmp *Cmp) WithValueBytes(v []byte) { cmp.TargetUnion.(*pb.Compare_Value).V
 
 // WithRange sets the comparison to scan the range [key, end).
 func (cmp Cmp) WithRange(end string) Cmp {
-	cmp.RangeEnd = []byte(end)
+	cmp.RangeEnd = stringutil.StringToBytes(end)
 	return cmp
 }
 

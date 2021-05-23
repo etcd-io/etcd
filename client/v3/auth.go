@@ -21,6 +21,8 @@ import (
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/stringutil"
+
 	"google.golang.org/grpc"
 )
 
@@ -199,8 +201,8 @@ func (auth *authClient) RoleAdd(ctx context.Context, name string) (*AuthRoleAddR
 
 func (auth *authClient) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error) {
 	perm := &authpb.Permission{
-		Key:      []byte(key),
-		RangeEnd: []byte(rangeEnd),
+		Key:      stringutil.StringToBytes(key),
+		RangeEnd: stringutil.StringToBytes(rangeEnd),
 		PermType: authpb.Permission_Type(permType),
 	}
 	resp, err := auth.remote.RoleGrantPermission(ctx, &pb.AuthRoleGrantPermissionRequest{Name: name, Perm: perm}, auth.callOpts...)
@@ -218,7 +220,7 @@ func (auth *authClient) RoleList(ctx context.Context) (*AuthRoleListResponse, er
 }
 
 func (auth *authClient) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*AuthRoleRevokePermissionResponse, error) {
-	resp, err := auth.remote.RoleRevokePermission(ctx, &pb.AuthRoleRevokePermissionRequest{Role: role, Key: []byte(key), RangeEnd: []byte(rangeEnd)}, auth.callOpts...)
+	resp, err := auth.remote.RoleRevokePermission(ctx, &pb.AuthRoleRevokePermissionRequest{Role: role, Key: stringutil.StringToBytes(key), RangeEnd: stringutil.StringToBytes(rangeEnd)}, auth.callOpts...)
 	return (*AuthRoleRevokePermissionResponse)(resp), toErr(ctx, err)
 }
 

@@ -24,6 +24,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/stringutil"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -1002,8 +1003,8 @@ func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error)
 func (wr *watchRequest) toPB() *pb.WatchRequest {
 	req := &pb.WatchCreateRequest{
 		StartRevision:  wr.rev,
-		Key:            []byte(wr.key),
-		RangeEnd:       []byte(wr.end),
+		Key:            stringutil.StringToBytes(wr.key),
+		RangeEnd:       stringutil.StringToBytes(wr.end),
 		ProgressNotify: wr.progressNotify,
 		Filters:        wr.filters,
 		PrevKv:         wr.prevKV,
