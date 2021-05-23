@@ -1,6 +1,9 @@
 package stringutil
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 var str = "distributed under the License is distributed on an  AS IS BASIS,"
 
