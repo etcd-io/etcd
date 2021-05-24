@@ -235,6 +235,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
+- Set [`enable-grpc-gateway`](https://github.com/etcd-io/etcd/pull/12297) flag to true when using a config file to keep the defaults the same as the command line configuration.
 
 ### gRPC Proxy
 
