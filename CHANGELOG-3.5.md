@@ -87,6 +87,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - Changed [the format of WAL entries related to auth for not keeping password as a plain text](https://github.com/etcd-io/etcd/pull/11943).
 - Add third party [Security Audit Report](https://github.com/etcd-io/etcd/pull/12201).
 - A [log warning](https://github.com/etcd-io/etcd/pull/12242) is added when etcd uses any existing directory that has a permission different than 700 on Linux and 777 on Windows.
+- Add optional [`ClientCertFile` and `ClientKeyFile`](https://github.com/etcd-io/etcd/pull/12705) options for peer and client tls configuration when split certificates are used.
 
 ### Metrics, Monitoring
 
