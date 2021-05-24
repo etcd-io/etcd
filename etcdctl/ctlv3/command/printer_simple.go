@@ -200,7 +200,7 @@ func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 		} else {
 			fmt.Printf("\t[%s, <open ended>", sKey)
 		}
-		if v3.GetPrefixRangeEnd(sKey) == sRangeEnd {
+		if v3.GetPrefixRangeEnd(sKey) == sRangeEnd && len(sKey) > 0 {
 			fmt.Printf(" (prefix %s)", sKey)
 		}
 		fmt.Printf("\n")
