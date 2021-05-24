@@ -19,6 +19,8 @@ import (
 	"sort"
 )
 
+const bucketBufferInitialSize = 512
+
 // txBuffer handles functionality shared between txWriteBuffer and txReadBuffer.
 type txBuffer struct {
 	buckets map[BucketID]*bucketBuffer
@@ -88,10 +90,16 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 		rb.merge(wb)
 	}
 	txw.reset()
+	// increase the buffer version
+	txr.bufVersion++
 }
 
 // txReadBuffer accesses buffered updates.
-type txReadBuffer struct{ txBuffer }
+type txReadBuffer struct {
+	txBuffer
+	// bufVersion is used to check if the buffer is modified recently
+	bufVersion uint64
+}
 
 func (txr *txReadBuffer) Range(bucket Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
 	if b := txr.buckets[bucket.ID()]; b != nil {
@@ -113,6 +121,7 @@ func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 		txBuffer: txBuffer{
 			buckets: make(map[BucketID]*bucketBuffer, len(txr.txBuffer.buckets)),
 		},
+		bufVersion: 0,
 	}
 	for bucketName, bucket := range txr.txBuffer.buckets {
 		txrCopy.txBuffer.buckets[bucketName] = bucket.Copy()
@@ -133,7 +142,7 @@ type bucketBuffer struct {
 }
 
 func newBucketBuffer() *bucketBuffer {
-	return &bucketBuffer{buf: make([]kv, 512), used: 0}
+	return &bucketBuffer{buf: make([]kv, bucketBufferInitialSize), used: 0}
 }
 
 func (bb *bucketBuffer) Range(key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte) {
