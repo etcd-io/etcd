@@ -43,7 +43,8 @@ def load_data_files(*args):
     try:
         for df in df_list:
             new_df = df[['ratio', 'conn_size', 'value_size']].copy()
-            tmp = [df[x].str.split(':') for x in ['1', '2', '3', '4', '5']]
+            cols = [x for x in df.columns if x.find('iter') != -1]
+            tmp = [df[x].str.split(':') for x in cols]
 
             read_df = [x.apply(lambda x: float(x[0])) for x in tmp]
             read_avg = sum(read_df)/len(read_df)
@@ -73,7 +74,7 @@ def plot_data(title, *args):
             count += 1
             plt.subplot(4, 2, count)
             plt.tripcolor(df['conn_size'], df['value_size'], df['read'] + df['write'])
-            plt.title('R/W Ratio {:.2f}'.format(val))
+            plt.title('R/W Ratio {:.4f}'.format(val))
             plt.yscale('log', base=2)
             plt.ylabel('Value Size')
             plt.xscale('log', base=2)
@@ -99,13 +100,13 @@ def plot_data(title, *args):
                     cmap_name = 'viridis'
                 plt.tripcolor(df['conn_size'], df['value_size'], df['read'] + df['write'], cmap=plt.get_cmap(cmap_name))
                 if count2 == 1:
-                    plt.title('{}\nR/W Ratio {:.2f}'.format(os.path.basename(params.input_file_a), val))
+                    plt.title('{}\nR/W Ratio {:.4f}'.format(os.path.basename(params.input_file_a), val))
                 elif count2 == 2:
-                    plt.title('{}\nR/W Ratio {:.2f}'.format(os.path.basename(params.input_file_b), val))
+                    plt.title('{}\nR/W Ratio {:.4f}'.format(os.path.basename(params.input_file_b), val))
                 elif count2 == 3:
-                    plt.title('Delta\nR/W Ratio {:.2f}'.format(val))
+                    plt.title('Delta\nR/W Ratio {:.4f}'.format(val))
                 else:
-                    plt.title('R/W Ratio {:.2f}'.format(val))
+                    plt.title('R/W Ratio {:.4f}'.format(val))
                 plt.yscale('log', base=2)
                 plt.ylabel('Value Size')
                 plt.xscale('log', base=2)
