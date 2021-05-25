@@ -139,7 +139,7 @@ PERCENTAGE_LAST_PRINT=0
 PERCENTAGE_PRINT_THRESHOLD=5
 
 for RATIO_STR in ${RATIO_LIST}; do
-  RATIO=$(echo "scale=2; ${RATIO_STR}" | bc -l)
+  RATIO=$(echo "scale=4; ${RATIO_STR}" | bc -l)
   for VALUE_SIZE_POWER in $(seq ${VALUE_SIZE_POWER_RANGE}); do
     VALUE_SIZE=$((2 ** ${VALUE_SIZE_POWER}))
     for CONN_CLI_COUNT_POWER in $(seq ${CONN_CLI_COUNT_POWER_RANGE}); do
@@ -178,6 +178,12 @@ for RATIO_STR in ${RATIO_LIST}; do
         fi
         RD_QPS=$(echo -e "${QPS}" | sed -n '1 p')
         WR_QPS=$(echo -e "${QPS}" | sed -n '2 p')
+        if [ -z "${RD_QPS}" ]; then
+          RD_QPS=0
+        fi
+        if [ -z "${WR_QPS}" ]; then
+          WR_QPS=0
+        fi
         LINE="${LINE},${RD_QPS}:${WR_QPS}"
       done
       END=$(date +%s)
