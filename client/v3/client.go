@@ -356,7 +356,7 @@ func newClient(cfg *Config) (*Client, error) {
 	} else if cfg.LogConfig != nil {
 		client.lg, err = cfg.LogConfig.Build()
 	} else {
-		client.lg, err = createDefaultZapLogger()
+		client.lg, err = CreateDefaultZapLogger()
 	}
 	if err != nil {
 		return nil, err
