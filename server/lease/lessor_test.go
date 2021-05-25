@@ -28,6 +28,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap"
 )
 
@@ -92,7 +93,7 @@ func TestLessorGrant(t *testing.T) {
 	}
 
 	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
+	_, vs := be.BatchTx().UnsafeRange(buckets.Lease, int64ToBytes(int64(l.ID)), nil, 0)
 	if len(vs) != 1 {
 		t.Errorf("len(vs) = %d, want 1", len(vs))
 	}
@@ -195,7 +196,7 @@ func TestLessorRevoke(t *testing.T) {
 	}
 
 	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
+	_, vs := be.BatchTx().UnsafeRange(buckets.Lease, int64ToBytes(int64(l.ID)), nil, 0)
 	if len(vs) != 0 {
 		t.Errorf("len(vs) = %d, want 0", len(vs))
 	}

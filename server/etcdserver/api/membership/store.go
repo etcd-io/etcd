@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -36,10 +37,6 @@ const (
 )
 
 var (
-	membersBucketName        = []byte("members")
-	membersRemovedBucketName = []byte("members_removed")
-	clusterBucketName        = []byte("cluster")
-
 	StoreMembersPrefix        = path.Join(storePrefix, "members")
 	storeRemovedMembersPrefix = path.Join(storePrefix, "removed_members")
 )
@@ -54,7 +51,7 @@ func mustSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(membersBucketName, mkey, mvalue)
+	tx.UnsafePut(buckets.Members, mkey, mvalue)
 }
 
 // TrimClusterFromBackend removes all information about cluster (versions)
@@ -63,7 +60,7 @@ func TrimClusterFromBackend(be backend.Backend) error {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafeDeleteBucket(clusterBucketName)
+	tx.UnsafeDeleteBucket(buckets.Cluster)
 	return nil
 }
 
@@ -73,8 +70,8 @@ func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafeDelete(membersBucketName, mkey)
-	tx.UnsafePut(membersRemovedBucketName, mkey, []byte("removed"))
+	tx.UnsafeDelete(buckets.Members, mkey)
+	tx.UnsafePut(buckets.MembersRemoved, mkey, []byte("removed"))
 }
 
 func readMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool, error) {
@@ -84,7 +81,7 @@ func readMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*M
 	tx := be.ReadTx()
 	tx.RLock()
 	defer tx.RUnlock()
-	err := tx.UnsafeForEach(membersBucketName, func(k, v []byte) error {
+	err := tx.UnsafeForEach(buckets.Members, func(k, v []byte) error {
 		memberId := mustParseMemberIDFromBytes(lg, k)
 		m := &Member{ID: memberId}
 		if err := json.Unmarshal(v, &m); err != nil {
@@ -97,7 +94,7 @@ func readMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*M
 		return nil, nil, fmt.Errorf("couldn't read members from backend: %w", err)
 	}
 
-	err = tx.UnsafeForEach(membersRemovedBucketName, func(k, v []byte) error {
+	err = tx.UnsafeForEach(buckets.MembersRemoved, func(k, v []byte) error {
 		memberId := mustParseMemberIDFromBytes(lg, k)
 		removed[memberId] = true
 		return nil
@@ -123,8 +120,8 @@ func TrimMembershipFromBackend(lg *zap.Logger, be backend.Backend) error {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	err := tx.UnsafeForEach(membersBucketName, func(k, v []byte) error {
-		tx.UnsafeDelete(membersBucketName, k)
+	err := tx.UnsafeForEach(buckets.Members, func(k, v []byte) error {
+		tx.UnsafeDelete(buckets.Members, k)
 		lg.Debug("Removed member from the backend",
 			zap.Stringer("member", mustParseMemberIDFromBytes(lg, k)))
 		return nil
@@ -132,8 +129,8 @@ func TrimMembershipFromBackend(lg *zap.Logger, be backend.Backend) error {
 	if err != nil {
 		return err
 	}
-	return tx.UnsafeForEach(membersRemovedBucketName, func(k, v []byte) error {
-		tx.UnsafeDelete(membersRemovedBucketName, k)
+	return tx.UnsafeForEach(buckets.MembersRemoved, func(k, v []byte) error {
+		tx.UnsafeDelete(buckets.MembersRemoved, k)
 		lg.Debug("Removed removed_member from the backend",
 			zap.Stringer("member", mustParseMemberIDFromBytes(lg, k)))
 		return nil
@@ -168,7 +165,7 @@ func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(clusterBucketName, ckey, []byte(ver.String()))
+	tx.UnsafePut(buckets.Cluster, ckey, []byte(ver.String()))
 }
 
 // The field is populated since etcd v3.5.
@@ -181,7 +178,7 @@ func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *D
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(clusterBucketName, dkey, dvalue)
+	tx.UnsafePut(buckets.Cluster, dkey, dvalue)
 }
 
 func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {
@@ -300,9 +297,9 @@ func mustCreateBackendBuckets(be backend.Backend) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafeCreateBucket(membersBucketName)
-	tx.UnsafeCreateBucket(membersRemovedBucketName)
-	tx.UnsafeCreateBucket(clusterBucketName)
+	tx.UnsafeCreateBucket(buckets.Members)
+	tx.UnsafeCreateBucket(buckets.MembersRemoved)
+	tx.UnsafeCreateBucket(buckets.Cluster)
 }
 
 func MemberStoreKey(id types.ID) string {
