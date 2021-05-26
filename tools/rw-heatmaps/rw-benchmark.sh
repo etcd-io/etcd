@@ -48,7 +48,7 @@ function check_prerequisite() {
     exit 1
   fi
   cat >"${OUTPUT_FILE}" <<EOF
-ratio, conn_size, value_size, 1, 2, 3, 4, 5
+ratio,conn_size,value_size$(for i in $(seq 1 ${REPEAT_COUNT});do echo -n ",iter$i"; done)
 EOF
 }
 
