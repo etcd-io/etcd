@@ -14,6 +14,8 @@ BACKEND_SIZE="$((20 * 1024 * 1024 * 1024))"
 RANGE_RESULT_LIMIT=100
 CLIENT_PORT="23790"
 
+COMMIT=
+
 ETCD_ROOT_DIR="$(cd $(dirname $0) && pwd)/../.."
 ETCD_BIN_DIR="${ETCD_ROOT_DIR}/bin"
 ETCD_BIN="${ETCD_BIN_DIR}/etcd"
@@ -47,9 +49,17 @@ function check_prerequisite() {
     echo "file ${OUTPUT_FILE} already exists."
     exit 1
   fi
+  pushd ${ETCD_ROOT_DIR} > /dev/null
+  COMMIT=$(git log --pretty=format:'%h' -n 1)
+  if [ $? -ne 0 ]; then
+    COMMIT=N/A
+  fi
+  popd > /dev/null
   cat >"${OUTPUT_FILE}" <<EOF
-ratio,conn_size,value_size$(for i in $(seq 1 ${REPEAT_COUNT});do echo -n ",iter$i"; done)
+type,ratio,conn_size,value_size$(for i in $(seq 1 ${REPEAT_COUNT});do echo -n ",iter$i"; done),comment
+PARAM,,,$(for i in $(seq 1 ${REPEAT_COUNT});do echo -n ","; done),"key_size=${KEY_SIZE},key_space_size=${KEY_SPACE_SIZE},backend_size=${BACKEND_SIZE},range_limit=${RANGE_RESULT_LIMIT},commit=${COMMIT}"
 EOF
+
 }
 
 function run_etcd_server() {
@@ -97,7 +107,6 @@ function kill_etcd_server() {
   sleep 5
 }
 
-check_prerequisite
 
 while getopts ":w:c:p:l:vh" OPTION; do
   case $OPTION in
@@ -127,6 +136,8 @@ while getopts ":w:c:p:l:vh" OPTION; do
   esac
 done
 shift "$((${OPTIND} - 1))"
+
+check_prerequisite
 
 pushd "${WORKING_DIR}" > /dev/null
 
@@ -162,7 +173,7 @@ for RATIO_STR in ${RATIO_LIST}; do
       init_etcd_db
 
       START=$(date +%s)
-      LINE="${RATIO},${CONN_CLI_COUNT},${VALUE_SIZE}"
+      LINE="DATA,${RATIO},${CONN_CLI_COUNT},${VALUE_SIZE}"
       echo -n "run with setting [${LINE}]"
       for i in $(seq ${REPEAT_COUNT}); do
         echo -n "."
