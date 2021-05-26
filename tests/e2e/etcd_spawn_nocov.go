@@ -19,16 +19,28 @@ package e2e
 
 import (
 	"os"
+	"strings"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.uber.org/zap"
 )
 
 const noOutputLineCount = 0 // regular binaries emit no extra lines
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	if args[0] == ctlBinPath+"3" {
+	return spawnCmdWithLogger(zap.NewNop(), args)
+}
+
+func spawnCmdWithLogger(lg *zap.Logger, args []string) (*expect.ExpectProcess, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasSuffix(args[0], "/etcdctl3") {
 		env := append(os.Environ(), "ETCDCTL_API=3")
+		lg.Info("spawning process with ETCDCTL_API=3", zap.Strings("args", args), zap.String("working-dir", wd))
 		return expect.NewExpectWithEnv(ctlBinPath, args[1:], env)
 	}
+	lg.Info("spawning process", zap.Strings("args", args), zap.String("working-dir", wd))
 	return expect.NewExpect(args[0], args[1:]...)
 }

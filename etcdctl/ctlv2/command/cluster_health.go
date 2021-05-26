@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/urfave/cli"
 )
@@ -55,7 +56,7 @@ func handleClusterHealth(c *cli.Context) error {
 
 	tr, err := getTransport(c)
 	if err != nil {
-		handleError(c, ExitServerError, err)
+		handleError(c, cobrautl.ExitServerError, err)
 	}
 
 	hc := http.Client{
@@ -67,7 +68,7 @@ func handleClusterHealth(c *cli.Context) error {
 	ms, err := mi.List(context.TODO())
 	if err != nil {
 		fmt.Println("cluster may be unhealthy: failed to list members")
-		handleError(c, ExitServerError, err)
+		handleError(c, cobrautl.ExitServerError, err)
 	}
 
 	for {
@@ -128,9 +129,9 @@ func handleClusterHealth(c *cli.Context) error {
 
 		if !forever {
 			if healthyMembers == len(ms) {
-				os.Exit(ExitSuccess)
+				os.Exit(cobrautl.ExitSuccess)
 			}
-			os.Exit(ExitClusterNotHealthy)
+			os.Exit(cobrautl.ExitClusterNotHealthy)
 		}
 
 		fmt.Printf("\nnext check after 10 second...\n\n")

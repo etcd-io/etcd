@@ -22,10 +22,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 )
 
 var (
-	bucket = []byte("bucket")
+	bucket = buckets.Test
 	key    = []byte("key")
 )
 

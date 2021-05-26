@@ -24,11 +24,12 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/etcdctl/v3/snapshot"
+	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
-func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
+func TestCtlV3Snapshot(t *testing.T)        { testCtl(t, snapshotTest) }
+func TestCtlV3SnapshotEtcdutl(t *testing.T) { testCtl(t, snapshotTest, withEtcdutl()) }
 
 func snapshotTest(cx ctlCtx) {
 	maintenanceInitKeys(cx)
@@ -60,7 +61,8 @@ func snapshotTest(cx ctlCtx) {
 	}
 }
 
-func TestCtlV3SnapshotCorrupt(t *testing.T) { testCtl(t, snapshotCorruptTest) }
+func TestCtlV3SnapshotCorrupt(t *testing.T)        { testCtl(t, snapshotCorruptTest) }
+func TestCtlV3SnapshotCorruptEtcdutl(t *testing.T) { testCtl(t, snapshotCorruptTest, withEtcdutl()) }
 
 func snapshotCorruptTest(cx ctlCtx) {
 	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
@@ -81,10 +83,9 @@ func snapshotCorruptTest(cx ctlCtx) {
 	f.Close()
 
 	datadir := cx.t.TempDir()
-	defer os.RemoveAll(datadir)
 
 	serr := spawnWithExpect(
-		append(cx.PrefixArgs(), "snapshot", "restore",
+		append(cx.PrefixArgsUtl(), "snapshot", "restore",
 			"--data-dir", datadir,
 			fpath),
 		"expected sha256")
@@ -96,6 +97,9 @@ func snapshotCorruptTest(cx ctlCtx) {
 
 // This test ensures that the snapshot status does not modify the snapshot file
 func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) { testCtl(t, snapshotStatusBeforeRestoreTest) }
+func TestCtlV3SnapshotStatusBeforeRestoreEtcdutl(t *testing.T) {
+	testCtl(t, snapshotStatusBeforeRestoreTest, withEtcdutl())
+}
 
 func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
@@ -114,7 +118,7 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 	dataDir := cx.t.TempDir()
 	defer os.RemoveAll(dataDir)
 	serr := spawnWithExpect(
-		append(cx.PrefixArgs(), "snapshot", "restore",
+		append(cx.PrefixArgsUtl(), "snapshot", "restore",
 			"--data-dir", dataDir,
 			fpath),
 		"added member")
@@ -129,7 +133,7 @@ func ctlV3SnapshotSave(cx ctlCtx, fpath string) error {
 }
 
 func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
-	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "snapshot", "status", fpath)
+	cmdArgs := append(cx.PrefixArgsUtl(), "--write-out", "json", "snapshot", "status", fpath)
 
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
@@ -152,9 +156,12 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 	return resp, nil
 }
 
+func TestIssue6361(t *testing.T)        { testIssue6361(t, false) }
+func TestIssue6361etcdutl(t *testing.T) { testIssue6361(t, true) }
+
 // TestIssue6361 ensures new member that starts with snapshot correctly
 // syncs up with other members and serve correct data.
-func TestIssue6361(t *testing.T) {
+func testIssue6361(t *testing.T, etcdutl bool) {
 	{
 		// This tests is pretty flaky on semaphoreci as of 2021-01-10.
 		// TODO: Remove when the flakiness source is identified.
@@ -193,7 +200,6 @@ func TestIssue6361(t *testing.T) {
 	}
 
 	fpath := filepath.Join(t.TempDir(), "test.snapshot")
-	defer os.RemoveAll(fpath)
 
 	t.Log("etcdctl saving snapshot...")
 	if err = spawnWithExpect(append(prefixArgs, "snapshot", "save", fpath), fmt.Sprintf("Snapshot saved at %s", fpath)); err != nil {
@@ -206,10 +212,14 @@ func TestIssue6361(t *testing.T) {
 	}
 
 	newDataDir := filepath.Join(t.TempDir(), "test.data")
-	defer os.RemoveAll(newDataDir)
+
+	uctlBinPath := ctlBinPath
+	if etcdutl {
+		uctlBinPath = utlBinPath
+	}
 
 	t.Log("etcdctl restoring the snapshot...")
-	err = spawnWithExpect([]string{ctlBinPath, "snapshot", "restore", fpath, "--name", epc.procs[0].Config().name, "--initial-cluster", epc.procs[0].Config().initialCluster, "--initial-cluster-token", epc.procs[0].Config().initialToken, "--initial-advertise-peer-urls", epc.procs[0].Config().purl.String(), "--data-dir", newDataDir}, "added member")
+	err = spawnWithExpect([]string{uctlBinPath, "snapshot", "restore", fpath, "--name", epc.procs[0].Config().name, "--initial-cluster", epc.procs[0].Config().initialCluster, "--initial-cluster-token", epc.procs[0].Config().initialToken, "--initial-advertise-peer-urls", epc.procs[0].Config().purl.String(), "--data-dir", newDataDir}, "added member")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,4 +283,5 @@ func TestIssue6361(t *testing.T) {
 	if err = nepc.Stop(); err != nil {
 		t.Fatal(err)
 	}
+	t.Log("Test logic done")
 }

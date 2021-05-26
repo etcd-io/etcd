@@ -1,7 +1,7 @@
 
 go install -v ./tools/etcd-dump-metrics
 
-# for latest master branch
+# for latest main branch
 etcd-dump-metrics > Documentation/metrics/latest
 
 # Or download etcd v3.3.9 to ./bin

@@ -6,9 +6,9 @@ if ! [[ "$0" =~ "scripts/genproto.sh" ]]; then
   exit 255
 fi
 
-# for now, be conservative about what version of protoc we expect
-if ! [[ $(protoc --version) =~ "3.7.1" ]]; then
-  echo "could not find protoc 3.7.1, is it installed + in PATH?"
+# protoc version should be the same as one in main etcd scripts.
+if [[ $(protoc --version | cut -f2 -d' ') != "3.14.0" ]]; then
+  echo "could not find protoc 3.14.0, is it installed + in PATH?"
   exit 255
 fi
 

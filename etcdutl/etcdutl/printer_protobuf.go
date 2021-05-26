@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2021 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,31 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package command
+package etcdutl
 
 import (
 	"fmt"
 	"os"
 
-	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
-const (
-	// http://tldp.org/LDP/abs/html/exitcodes.html
-	ExitSuccess = iota
-	ExitError
-	ExitBadConnection
-	ExitInvalidInput // for txn, watch command
-	ExitBadFeature   // provided a valid flag with an unsupported value
-	ExitInterrupted
-	ExitIO
-	ExitBadArgs = 128
-)
+type pbPrinter struct{ printer }
 
-func ExitWithError(code int, err error) {
-	fmt.Fprintln(os.Stderr, "Error:", err)
-	if cerr, ok := err.(*client.ClusterError); ok {
-		fmt.Fprintln(os.Stderr, cerr.Detail())
+type pbMarshal interface {
+	Marshal() ([]byte, error)
+}
+
+func newPBPrinter() printer {
+	return &pbPrinter{
+		&printerRPC{newPrinterUnsupported("protobuf"), printPB},
 	}
-	os.Exit(code)
+}
+
+func printPB(v interface{}) {
+	m, ok := v.(pbMarshal)
+	if !ok {
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("marshal unsupported for type %T (%v)", v, v))
+	}
+	b, err := m.Marshal()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return
+	}
+	fmt.Print(string(b))
 }

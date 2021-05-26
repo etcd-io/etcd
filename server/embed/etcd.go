@@ -211,21 +211,20 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		CorruptCheckTime:                         cfg.ExperimentalCorruptCheckTime,
 		PreVote:                                  cfg.PreVote,
 		Logger:                                   cfg.logger,
-		LoggerConfig:                             cfg.loggerConfig,
-		LoggerCore:                               cfg.loggerCore,
-		LoggerWriteSyncer:                        cfg.loggerWriteSyncer,
 		ForceNewCluster:                          cfg.ForceNewCluster,
 		EnableGRPCGateway:                        cfg.EnableGRPCGateway,
 		ExperimentalEnableDistributedTracing:     cfg.ExperimentalEnableDistributedTracing,
 		UnsafeNoFsync:                            cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:                    cfg.ExperimentalEnableLeaseCheckpoint,
 		CompactionBatchLimit:                     cfg.ExperimentalCompactionBatchLimit,
+		CompactionSleepInterval:                  cfg.ExperimentalCompactionSleepInterval,
 		WatchProgressNotifyInterval:              cfg.ExperimentalWatchProgressNotifyInterval,
 		DowngradeCheckTime:                       cfg.ExperimentalDowngradeCheckTime,
 		WarningApplyDuration:                     cfg.ExperimentalWarningApplyDuration,
 		ExperimentalMemoryMlock:                  cfg.ExperimentalMemoryMlock,
 		ExperimentalTxnModeWriteWithSharedBuffer: cfg.ExperimentalTxnModeWriteWithSharedBuffer,
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
+		V2Deprecation: cfg.V2DeprecationEffective(),
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
@@ -696,6 +695,9 @@ func (e *Etcd) serveClients() (err error) {
 	// Start a client server goroutine for each listen address
 	var h http.Handler
 	if e.Config().EnableV2 {
+		if e.Config().V2DeprecationEffective().IsAtLeast(config.V2_DEPR_1_WRITE_ONLY) {
+			return fmt.Errorf("--enable-v2 and --v2-deprecation=%s are mutually exclusive", e.Config().V2DeprecationEffective())
+		}
 		e.cfg.logger.Warn("Flag `enable-v2` is deprecated and will get removed in etcd 3.6.")
 		if len(e.Config().ExperimentalEnableV2V3) > 0 {
 			e.cfg.logger.Warn("Flag `experimental-enable-v2v3` is deprecated and will get removed in etcd 3.6.")

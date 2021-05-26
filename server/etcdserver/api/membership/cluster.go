@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/prometheus/client_golang/prometheus"
@@ -563,7 +564,7 @@ func (c *RaftCluster) IsReadyToAddVotingMember() bool {
 
 	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
-		// https://github.com/etcd-io/website/blob/master/content/docs/v2/admin_guide.md#restoring-the-cluster
+		// https://github.com/etcd-io/website/blob/main/content/docs/v2/admin_guide.md#restoring-the-cluster
 		c.lg.Debug("number of started member is 1; can accept add member request")
 		return true
 	}
@@ -694,12 +695,13 @@ func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 	return semver.Must(semver.NewVersion(*e.Node.Value))
 }
 
+// The field is populated since etcd v3.5.
 func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Version {
 	ckey := backendClusterVersionKey()
 	tx := be.ReadTx()
 	tx.RLock()
 	defer tx.RUnlock()
-	keys, vals := tx.UnsafeRange(clusterBucketName, ckey, nil, 0)
+	keys, vals := tx.UnsafeRange(buckets.Cluster, ckey, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}
@@ -712,12 +714,13 @@ func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Versi
 	return semver.Must(semver.NewVersion(string(vals[0])))
 }
 
+// The field is populated since etcd v3.5.
 func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
 	dkey := backendDowngradeKey()
 	tx := be.ReadTx()
 	tx.Lock()
 	defer tx.Unlock()
-	keys, vals := tx.UnsafeRange(clusterBucketName, dkey, nil, 0)
+	keys, vals := tx.UnsafeRange(buckets.Cluster, dkey, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}

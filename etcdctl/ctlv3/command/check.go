@@ -27,6 +27,7 @@ import (
 	"time"
 
 	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/report"
 
 	"github.com/spf13/cobra"
@@ -144,7 +145,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 
 	model, ok := checkPerfAlias[checkPerfLoad]
 	if !ok {
-		ExitWithError(ExitBadFeature, fmt.Errorf("unknown load option %v", checkPerfLoad))
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("unknown load option %v", checkPerfLoad))
 	}
 	cfg := checkPerfCfgMap[model]
 
@@ -166,10 +167,10 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	resp, err := clients[0].Get(gctx, checkPerfPrefix, v3.WithPrefix(), v3.WithLimit(1))
 	gcancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	if len(resp.Kvs) > 0 {
-		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with 'etcdctl del --prefix %s' first", checkPerfPrefix, checkPerfPrefix))
+		cobrautl.ExitWithError(cobrautl.ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with 'etcdctl del --prefix %s' first", checkPerfPrefix, checkPerfPrefix))
 	}
 
 	ksize, vsize := 256, 1024
@@ -258,7 +259,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 		fmt.Println("PASS")
 	} else {
 		fmt.Println("FAIL")
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
 }
 
@@ -318,7 +319,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 
 	model, ok := checkDatascaleAlias[checkDatascaleLoad]
 	if !ok {
-		ExitWithError(ExitBadFeature, fmt.Errorf("unknown load option %v", checkDatascaleLoad))
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("unknown load option %v", checkDatascaleLoad))
 	}
 	cfg := checkDatascaleCfgMap[model]
 
@@ -333,7 +334,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	// get endpoints
 	eps, errEndpoints := endpointsFromCmd(cmd)
 	if errEndpoints != nil {
-		ExitWithError(ExitError, errEndpoints)
+		cobrautl.ExitWithError(cobrautl.ExitError, errEndpoints)
 	}
 
 	sec := secureCfgFromCmd(cmd)
@@ -342,10 +343,10 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	resp, err := clients[0].Get(ctx, checkDatascalePrefix, v3.WithPrefix(), v3.WithLimit(1))
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	if len(resp.Kvs) > 0 {
-		ExitWithError(ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first", checkDatascalePrefix, checkDatascalePrefix))
+		cobrautl.ExitWithError(cobrautl.ExitInvalidInput, fmt.Errorf("prefix %q has keys. Delete with etcdctl del --prefix %s first", checkDatascalePrefix, checkDatascalePrefix))
 	}
 
 	ksize, vsize := 512, 512
@@ -359,7 +360,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	bytesBefore := endpointMemoryMetrics(eps[0], sec)
 	if bytesBefore == 0 {
 		fmt.Println("FAIL: Could not read process_resident_memory_bytes before the put operations.")
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
 
 	fmt.Println(fmt.Sprintf("Start data scale check for work load [%v key-value pairs, %v bytes per key-value, %v concurrent clients].", cfg.limit, cfg.kvSize, cfg.clients))
@@ -397,7 +398,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	bytesAfter := endpointMemoryMetrics(eps[0], sec)
 	if bytesAfter == 0 {
 		fmt.Println("FAIL: Could not read process_resident_memory_bytes after the put operations.")
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
 
 	// delete the created kv pairs
@@ -405,7 +406,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	dresp, derr := clients[0].Delete(ctx, checkDatascalePrefix, v3.WithPrefix())
 	defer cancel()
 	if derr != nil {
-		ExitWithError(ExitError, derr)
+		cobrautl.ExitWithError(cobrautl.ExitError, derr)
 	}
 
 	if autoCompact {
@@ -420,7 +421,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 
 	if bytesAfter == 0 {
 		fmt.Println("FAIL: Could not read process_resident_memory_bytes after the put operations.")
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	}
 
 	bytesUsed := bytesAfter - bytesBefore
@@ -431,7 +432,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 		for k, v := range s.ErrorDist {
 			fmt.Printf("FAIL: ERROR(%v) -> %d\n", k, v)
 		}
-		os.Exit(ExitError)
+		os.Exit(cobrautl.ExitError)
 	} else {
 		fmt.Println(fmt.Sprintf("PASS: Approximate system memory used : %v MB.", strconv.FormatFloat(mbUsed, 'f', 2, 64)))
 	}

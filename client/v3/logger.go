@@ -21,6 +21,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -28,14 +29,11 @@ func init() {
 	// We override grpc logger only when the environment variable is set
 	// in order to not interfere by default with user's code or other libraries.
 	if os.Getenv("ETCD_CLIENT_DEBUG") != "" {
-		// We don't use grpc_zap.ReplaceGrpcLoggerV2(lg) to not push (wide) set
-		// of grpc-ecosystem/go-grpc-middleware dependencies on etcd-client users.
-		lg, err := logutil.NewGRPCLoggerV2(createDefaultZapLoggerConfig())
+		lg, err := CreateDefaultZapLogger()
 		if err != nil {
 			panic(err)
 		}
-
-		grpclog.SetLoggerV2(lg)
+		grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
 	}
 }
 
@@ -60,14 +58,18 @@ func etcdClientDebugLevel() zapcore.Level {
 	return l
 }
 
-func createDefaultZapLoggerConfig() zap.Config {
+// CreateDefaultZapLoggerConfig creates a logger config that is configurable using env variable:
+// ETCD_CLIENT_DEBUG= debug|info|warn|error|dpanic|panic|fatal|true (true=info)
+func CreateDefaultZapLoggerConfig() zap.Config {
 	lcfg := logutil.DefaultZapLoggerConfig
 	lcfg.Level = zap.NewAtomicLevelAt(etcdClientDebugLevel())
 	return lcfg
 }
 
-func createDefaultZapLogger() (*zap.Logger, error) {
-	c, err := createDefaultZapLoggerConfig().Build()
+// CreateDefaultZapLogger creates a logger that is configurable using env variable:
+// ETCD_CLIENT_DEBUG= debug|info|warn|error|dpanic|panic|fatal|true (true=info)
+func CreateDefaultZapLogger() (*zap.Logger, error) {
+	c, err := CreateDefaultZapLoggerConfig().Build()
 	if err != nil {
 		return nil, err
 	}

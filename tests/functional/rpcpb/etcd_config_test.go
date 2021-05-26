@@ -54,9 +54,11 @@ func TestEtcd(t *testing.T) {
 		PreVote:             true,
 		InitialCorruptCheck: true,
 
-		Logger:     "zap",
-		LogOutputs: []string{"/tmp/etcd-functional-1/etcd.log"},
-		LogLevel:   "info",
+		Logger:             "zap",
+		LogOutputs:         []string{"/tmp/etcd-functional-1/etcd.log"},
+		LogLevel:           "info",
+		SocketReuseAddress: true,
+		SocketReusePort:    true,
 	}
 
 	exps := []string{
@@ -83,6 +85,8 @@ func TestEtcd(t *testing.T) {
 		"--logger=zap",
 		"--log-outputs=/tmp/etcd-functional-1/etcd.log",
 		"--log-level=info",
+		"--socket-reuse-address=true",
+		"--socket-reuse-port=true",
 	}
 	fs := e.Flags()
 	if !reflect.DeepEqual(exps, fs) {

@@ -53,7 +53,7 @@ type Backend interface {
 	ConcurrentReadTx() ReadTx
 
 	Snapshot() Snapshot
-	Hash(ignores map[IgnoreKey]struct{}) (uint32, error)
+	Hash(ignores func(bucketName, keyName []byte) bool) (uint32, error)
 	// Size returns the current size of the backend physically allocated.
 	// The backend can hold DB space that is not utilized at the moment,
 	// since it can conduct pre-allocation or spare unused space for recycling.
@@ -79,6 +79,12 @@ type Snapshot interface {
 	Close() error
 }
 
+type txReadBufferCache struct {
+	mu         sync.Mutex
+	buf        *txReadBuffer
+	bufVersion uint64
+}
+
 type backend struct {
 	// size and commits are used with atomic operations so they must be
 	// 64-bit aligned, otherwise 32-bit tests will crash
@@ -102,6 +108,11 @@ type backend struct {
 	batchTx       *batchTxBuffered
 
 	readTx *readTx
+	// txReadBufferCache mirrors "txReadBuffer" within "readTx" -- readTx.baseReadTx.buf.
+	// When creating "concurrentReadTx":
+	// - if the cache is up-to-date, "readTx.baseReadTx.buf" copy can be skipped
+	// - if the cache is empty or outdated, "readTx.baseReadTx.buf" copy is required
+	txReadBufferCache txReadBufferCache
 
 	stopc chan struct{}
 	donec chan struct{}
@@ -183,12 +194,18 @@ func newBackend(bcfg BackendConfig) *backend {
 		readTx: &readTx{
 			baseReadTx: baseReadTx{
 				buf: txReadBuffer{
-					txBuffer: txBuffer{make(map[string]*bucketBuffer)},
+					txBuffer:   txBuffer{make(map[BucketID]*bucketBuffer)},
+					bufVersion: 0,
 				},
-				buckets: make(map[string]*bolt.Bucket),
+				buckets: make(map[BucketID]*bolt.Bucket),
 				txWg:    new(sync.WaitGroup),
 				txMu:    new(sync.RWMutex),
 			},
+		},
+		txReadBufferCache: txReadBufferCache{
+			mu:         sync.Mutex{},
+			bufVersion: 0,
+			buf:        nil,
 		},
 
 		stopc: make(chan struct{}),
@@ -196,6 +213,7 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		lg: bcfg.Logger,
 	}
+
 	b.batchTx = newBatchTxBuffered(b)
 	// We set it after newBatchTxBuffered to skip the 'empty' commit.
 	b.hooks = bcfg.Hooks
@@ -221,10 +239,68 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 	defer b.readTx.RUnlock()
 	// prevent boltdb read Tx from been rolled back until store read Tx is done. Needs to be called when holding readTx.RLock().
 	b.readTx.txWg.Add(1)
+
 	// TODO: might want to copy the read buffer lazily - create copy when A) end of a write transaction B) end of a batch interval.
+
+	// inspect/update cache recency iff there's no ongoing update to the cache
+	// this falls through if there's no cache update
+
+	// by this line, "ConcurrentReadTx" code path is already protected against concurrent "writeback" operations
+	// which requires write lock to update "readTx.baseReadTx.buf".
+	// Which means setting "buf *txReadBuffer" with "readTx.buf.unsafeCopy()" is guaranteed to be up-to-date,
+	// whereas "txReadBufferCache.buf" may be stale from concurrent "writeback" operations.
+	// We only update "txReadBufferCache.buf" if we know "buf *txReadBuffer" is up-to-date.
+	// The update to "txReadBufferCache.buf" will benefit the following "ConcurrentReadTx" creation
+	// by avoiding copying "readTx.baseReadTx.buf".
+	b.txReadBufferCache.mu.Lock()
+
+	curCache := b.txReadBufferCache.buf
+	curCacheVer := b.txReadBufferCache.bufVersion
+	curBufVer := b.readTx.buf.bufVersion
+
+	isEmptyCache := curCache == nil
+	isStaleCache := curCacheVer != curBufVer
+
+	var buf *txReadBuffer
+	switch {
+	case isEmptyCache:
+		// perform safe copy of buffer while holding "b.txReadBufferCache.mu.Lock"
+		// this is only supposed to run once so there won't be much overhead
+		curBuf := b.readTx.buf.unsafeCopy()
+		buf = &curBuf
+	case isStaleCache:
+		// to maximize the concurrency, try unsafe copy of buffer
+		// release the lock while copying buffer -- cache may become stale again and
+		// get overwritten by someone else.
+		// therefore, we need to check the readTx buffer version again
+		b.txReadBufferCache.mu.Unlock()
+		curBuf := b.readTx.buf.unsafeCopy()
+		b.txReadBufferCache.mu.Lock()
+		buf = &curBuf
+	default:
+		// neither empty nor stale cache, just use the current buffer
+		buf = curCache
+	}
+	// txReadBufferCache.bufVersion can be modified when we doing an unsafeCopy()
+	// as a result, curCacheVer could be no longer the same as
+	// txReadBufferCache.bufVersion
+	// if !isEmptyCache && curCacheVer != b.txReadBufferCache.bufVersion
+	// then the cache became stale while copying "readTx.baseReadTx.buf".
+	// It is safe to not update "txReadBufferCache.buf", because the next following
+	// "ConcurrentReadTx" creation will trigger a new "readTx.baseReadTx.buf" copy
+	// and "buf" is still used for the current "concurrentReadTx.baseReadTx.buf".
+	if isEmptyCache || curCacheVer == b.txReadBufferCache.bufVersion {
+		// continue if the cache is never set or no one has modified the cache
+		b.txReadBufferCache.buf = buf
+		b.txReadBufferCache.bufVersion = curBufVer
+	}
+
+	b.txReadBufferCache.mu.Unlock()
+
+	// concurrentReadTx is not supposed to write to its txReadBuffer
 	return &concurrentReadTx{
 		baseReadTx: baseReadTx{
-			buf:     b.readTx.buf.unsafeCopy(),
+			buf:     *buf,
 			txMu:    b.readTx.txMu,
 			tx:      b.readTx.tx,
 			buckets: b.readTx.buckets,
@@ -282,12 +358,7 @@ func (b *backend) Snapshot() Snapshot {
 	return &snapshot{tx, stopc, donec}
 }
 
-type IgnoreKey struct {
-	Bucket string
-	Key    string
-}
-
-func (b *backend) Hash(ignores map[IgnoreKey]struct{}) (uint32, error) {
+func (b *backend) Hash(ignores func(bucketName, keyName []byte) bool) (uint32, error) {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
 	b.mu.RLock()
@@ -301,8 +372,7 @@ func (b *backend) Hash(ignores map[IgnoreKey]struct{}) (uint32, error) {
 			}
 			h.Write(next)
 			b.ForEach(func(k, v []byte) error {
-				bk := IgnoreKey{Bucket: string(next), Key: string(k)}
-				if _, ok := ignores[bk]; !ok {
+				if ignores != nil && !ignores(next, k) {
 					h.Write(k)
 					h.Write(v)
 				}
@@ -465,7 +535,7 @@ func (b *backend) defrag() error {
 	size2, sizeInUse2 := b.Size(), b.SizeInUse()
 	if b.lg != nil {
 		b.lg.Info(
-			"defragmented",
+			"finished defragmenting directory",
 			zap.String("path", dbp),
 			zap.Int64("current-db-size-bytes-diff", size2-size1),
 			zap.Int64("current-db-size-bytes", size2),
@@ -511,7 +581,7 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 		if berr != nil {
 			return berr
 		}
-		tmpb.FillPercent = 0.9 // for seq write in for each
+		tmpb.FillPercent = 0.9 // for bucket2seq write in for each
 
 		if err = b.ForEach(func(k, v []byte) error {
 			count++
@@ -525,7 +595,7 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 					return err
 				}
 				tmpb = tmptx.Bucket(next)
-				tmpb.FillPercent = 0.9 // for seq write in for each
+				tmpb.FillPercent = 0.9 // for bucket2seq write in for each
 
 				count = 0
 			}

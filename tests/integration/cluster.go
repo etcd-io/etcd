@@ -706,6 +706,8 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.InitialCorruptCheck = true
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 
+	m.V2Deprecation = config.V2_DEPR_DEFAULT
+
 	m.Logger = memberLogger(t, mcfg.name)
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
@@ -771,6 +773,7 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
 		MaxCallSendMsgSize: m.clientMaxCallSendMsgSize,
 		MaxCallRecvMsgSize: m.clientMaxCallRecvMsgSize,
+		Logger:             m.Logger.Named("client"),
 	}
 
 	if m.ClientTLSInfo != nil {
@@ -783,7 +786,7 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	if m.DialOptions != nil {
 		cfg.DialOptions = append(cfg.DialOptions, m.DialOptions...)
 	}
-	return newClientV3(cfg, m.Logger.Named("client"))
+	return newClientV3(cfg)
 }
 
 // Clone returns a member with the same server configuration. The returned

@@ -33,13 +33,13 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"sigs.k8s.io/yaml"
@@ -252,7 +252,7 @@ type Config struct {
 	GRPCKeepAliveTimeout time.Duration `json:"grpc-keepalive-timeout"`
 
 	// SocketOpts are socket options passed to listener config.
-	SocketOpts transport.SocketOpts
+	SocketOpts transport.SocketOpts `json:"socket-options"`
 
 	// PreVote is true to enable Raft Pre-Vote.
 	// If enabled, Raft runs an additional election phase
@@ -315,8 +315,10 @@ type Config struct {
 	// TODO: Delete in v3.6 (https://github.com/etcd-io/etcd/issues/12913)
 	ExperimentalEnableV2V3 string `json:"experimental-enable-v2v3"`
 	// ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
-	ExperimentalEnableLeaseCheckpoint       bool          `json:"experimental-enable-lease-checkpoint"`
-	ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit"`
+	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
+	ExperimentalCompactionBatchLimit  int  `json:"experimental-compaction-batch-limit"`
+	// ExperimentalCompactionSleepInterval is the sleep interval between every etcd compaction loop.
+	ExperimentalCompactionSleepInterval     time.Duration `json:"experimental-compaction-sleep-interval"`
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
 	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
 	// takes more time than this value.
@@ -371,15 +373,6 @@ type Config struct {
 	// Do not set logger directly.
 	loggerMu *sync.RWMutex
 	logger   *zap.Logger
-
-	// loggerConfig is server logger configuration for Raft logger.
-	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
-	loggerConfig *zap.Config
-	// loggerCore is "zapcore.Core" for raft logger.
-	// Must be either: "loggerConfig != nil" or "loggerCore != nil && loggerWriteSyncer != nil".
-	loggerCore        zapcore.Core
-	loggerWriteSyncer zapcore.WriteSyncer
-
 	// EnableGRPCGateway enables grpc gateway.
 	// The gateway translates a RESTful HTTP API into gRPC.
 	EnableGRPCGateway bool `json:"enable-grpc-gateway"`
@@ -400,6 +393,9 @@ type Config struct {
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
+
+	// V2Deprecation describes phase of API & Storage V2 support
+	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -455,7 +451,10 @@ func NewConfig() *Config {
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
 		GRPCKeepAliveTimeout:  DefaultGRPCKeepAliveTimeout,
 
-		SocketOpts: transport.SocketOpts{},
+		SocketOpts: transport.SocketOpts{
+			ReusePort:    false,
+			ReuseAddress: false,
+		},
 
 		TickMs:                     100,
 		ElectionMs:                 1000,
@@ -494,6 +493,8 @@ func NewConfig() *Config {
 		ExperimentalDowngradeCheckTime:           DefaultDowngradeCheckTime,
 		ExperimentalMemoryMlock:                  false,
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
+
+		V2Deprecation: config.V2_DEPR_DEFAULT,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -794,6 +795,13 @@ func (cfg Config) InitialClusterFromName(name string) (ret string) {
 
 func (cfg Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
 func (cfg Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
+
+func (cfg Config) V2DeprecationEffective() config.V2DeprecationEnum {
+	if cfg.V2Deprecation == "" {
+		return config.V2_DEPR_DEFAULT
+	}
+	return cfg.V2Deprecation
+}
 
 func (cfg Config) defaultPeerHost() bool {
 	return len(cfg.APUrls) == 1 && cfg.APUrls[0].String() == DefaultInitialAdvertisePeerURLs

@@ -27,6 +27,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap"
 )
 
@@ -38,8 +39,6 @@ const MaxLeaseTTL = 9000000000
 
 var (
 	forever = time.Time{}
-
-	leaseBucketName = []byte("lease")
 
 	// maximum number of leases to revoke per second; configurable for tests
 	leaseRevokeRate = 1000
@@ -337,7 +336,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// lease deletion needs to be in the same backend transaction with the
 	// kv deletion. Or we might end up with not executing the revoke or not
 	// deleting the keys if etcdserver fails in between.
-	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
+	le.b.BatchTx().UnsafeDelete(buckets.Lease, int64ToBytes(int64(l.ID)))
 
 	txn.End()
 
@@ -771,8 +770,8 @@ func (le *lessor) initAndRecover() {
 	tx := le.b.BatchTx()
 	tx.Lock()
 
-	tx.UnsafeCreateBucket(leaseBucketName)
-	_, vs := tx.UnsafeRange(leaseBucketName, int64ToBytes(0), int64ToBytes(math.MaxInt64), 0)
+	tx.UnsafeCreateBucket(buckets.Lease)
+	_, vs := tx.UnsafeRange(buckets.Lease, int64ToBytes(0), int64ToBytes(math.MaxInt64), 0)
 	// TODO: copy vs and do decoding outside tx lock if lock contention becomes an issue.
 	for i := range vs {
 		var lpb leasepb.Lease
@@ -831,7 +830,7 @@ func (l *Lease) persistTo(b backend.Backend) {
 	}
 
 	b.BatchTx().Lock()
-	b.BatchTx().UnsafePut(leaseBucketName, key, val)
+	b.BatchTx().UnsafePut(buckets.Lease, key, val)
 	b.BatchTx().Unlock()
 }
 

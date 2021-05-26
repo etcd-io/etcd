@@ -1,0 +1,29 @@
+name: functional-tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+        - linux-amd64-functional
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "^1.16"
+    - run: date
+    - env:
+        TARGET: ${{ matrix.target }}
+      run: |
+        echo "${TARGET}"
+        case "${TARGET}" in
+          linux-amd64-functional)
+            GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh && GOARCH=amd64 PASSES='functional' ./test.sh
+            ;;
+          *)
+            echo "Failed to find target"
+            exit 1
+            ;;
+        esac

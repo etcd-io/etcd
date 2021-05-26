@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -210,13 +211,20 @@ func TestCtlV2RoleList(t *testing.T) {
 	}
 }
 
-func TestCtlV2Backup(t *testing.T)         { testCtlV2Backup(t, 0, false) }
-func TestCtlV2BackupSnapshot(t *testing.T) { testCtlV2Backup(t, 1, false) }
+func TestUtlCtlV2Backup(t *testing.T) {
+	for snap := range []int{0, 1} {
+		for _, v3 := range []bool{true, false} {
+			for _, utl := range []bool{true, false} {
+				t.Run(fmt.Sprintf("etcdutl:%v;snap:%v;v3:%v", utl, snap, v3),
+					func(t *testing.T) {
+						testUtlCtlV2Backup(t, snap, v3, utl)
+					})
+			}
+		}
+	}
+}
 
-func TestCtlV2BackupV3(t *testing.T)         { testCtlV2Backup(t, 0, true) }
-func TestCtlV2BackupV3Snapshot(t *testing.T) { testCtlV2Backup(t, 1, true) }
-
-func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
+func testUtlCtlV2Backup(t *testing.T, snapCount int, v3 bool, utl bool) {
 	BeforeTestV2(t)
 
 	backupDir, err := ioutil.TempDir(t.TempDir(), "testbackup0.etcd")
@@ -251,7 +259,7 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 		}
 	}
 	t.Log("Triggering etcd backup")
-	if err := etcdctlBackup(t, epc1, epc1.procs[0].Config().dataDirPath, backupDir, v3); err != nil {
+	if err := etcdctlBackup(t, epc1, epc1.procs[0].Config().dataDirPath, backupDir, v3, utl); err != nil {
 		t.Fatal(err)
 	}
 	t.Log("Closing etcd-1 backup")
@@ -377,11 +385,20 @@ func TestCtlV2ClusterHealth(t *testing.T) {
 
 func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
 	endpoints := strings.Join(clus.EndpointsV2(), ",")
-	cmdArgs := []string{ctlBinPath, "--endpoints", endpoints}
+	cmdArgs := []string{ctlBinPath}
+
+	cmdArgs = append(cmdArgs, "--endpoints", endpoints)
 	if clus.cfg.clientTLS == clientTLS {
 		cmdArgs = append(cmdArgs, "--ca-file", caPath, "--cert-file", certPath, "--key-file", privateKeyPath)
 	}
 	return cmdArgs
+}
+
+func etcductlPrefixArgs(utl bool) []string {
+	if utl {
+		return []string{utlBinPath}
+	}
+	return []string{ctlBinPath}
 }
 
 func etcdctlClusterHealth(clus *etcdProcessCluster, val string) error {
@@ -480,10 +497,12 @@ func etcdctlAuthEnable(clus *etcdProcessCluster) error {
 	return spawnWithExpect(cmdArgs, "Authentication Enabled")
 }
 
-func etcdctlBackup(t testing.TB, clus *etcdProcessCluster, dataDir, backupDir string, v3 bool) error {
-	cmdArgs := append(etcdctlPrefixArgs(clus), "backup", "--data-dir", dataDir, "--backup-dir", backupDir)
+func etcdctlBackup(t testing.TB, clus *etcdProcessCluster, dataDir, backupDir string, v3 bool, utl bool) error {
+	cmdArgs := append(etcductlPrefixArgs(utl), "backup", "--data-dir", dataDir, "--backup-dir", backupDir)
 	if v3 {
 		cmdArgs = append(cmdArgs, "--with-v3")
+	} else if utl {
+		cmdArgs = append(cmdArgs, "--with-v3=false")
 	}
 	t.Logf("Running: %v", cmdArgs)
 	proc, err := spawnCmd(cmdArgs)

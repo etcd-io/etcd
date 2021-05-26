@@ -23,8 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/leasing"
 	"go.etcd.io/etcd/tests/v3/integration"
@@ -209,14 +210,14 @@ func TestLeasingGetNoLeaseTTL(t *testing.T) {
 
 	gresp, err := lkv.Get(context.TODO(), "k")
 	testutil.AssertNil(t, err)
-	testutil.AssertEqual(t, len(gresp.Kvs), 1)
+	assert.Equal(t, len(gresp.Kvs), 1)
 
 	clus.Members[0].Stop(t)
 
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	_, err = lkv.Get(ctx, "k")
 	cancel()
-	testutil.AssertEqual(t, err, ctx.Err())
+	assert.Equal(t, err, ctx.Err())
 }
 
 // TestLeasingGetSerializable checks the leasing KV can make serialized requests

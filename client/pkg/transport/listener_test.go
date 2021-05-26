@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func createSelfCert(hosts ...string) (*TLSInfo, func(), error) {
@@ -473,6 +474,7 @@ func TestTLSInfoParseFuncError(t *testing.T) {
 }
 
 func TestTLSInfoConfigFuncs(t *testing.T) {
+	ln := zaptest.NewLogger(t)
 	tlsinfo, del, err := createSelfCert()
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
@@ -485,13 +487,13 @@ func TestTLSInfoConfigFuncs(t *testing.T) {
 		wantCAs    bool
 	}{
 		{
-			info:       TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile},
+			info:       TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile, Logger: ln},
 			clientAuth: tls.NoClientCert,
 			wantCAs:    false,
 		},
 
 		{
-			info:       TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile, TrustedCAFile: tlsinfo.CertFile},
+			info:       TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile, TrustedCAFile: tlsinfo.CertFile, Logger: ln},
 			clientAuth: tls.RequireAndVerifyClientCert,
 			wantCAs:    true,
 		},

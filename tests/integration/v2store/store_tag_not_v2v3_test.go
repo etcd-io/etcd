@@ -20,6 +20,7 @@ package v2store_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/tests/v3/integration"
@@ -55,14 +56,14 @@ func TestStoreRecover(t *testing.T) {
 	s2.Recovery(b)
 
 	e, err := s.Get("/foo/x", false, false)
-	testutil.AssertEqual(t, e.Node.CreatedIndex, uint64(2))
-	testutil.AssertEqual(t, e.Node.ModifiedIndex, uint64(3))
-	testutil.AssertEqual(t, e.EtcdIndex, eidx)
+	assert.Equal(t, e.Node.CreatedIndex, uint64(2))
+	assert.Equal(t, e.Node.ModifiedIndex, uint64(3))
+	assert.Equal(t, e.EtcdIndex, eidx)
 	testutil.AssertNil(t, err)
-	testutil.AssertEqual(t, *e.Node.Value, "barbar")
+	assert.Equal(t, *e.Node.Value, "barbar")
 
 	e, err = s.Get("/foo/y", false, false)
-	testutil.AssertEqual(t, e.EtcdIndex, eidx)
+	assert.Equal(t, e.EtcdIndex, eidx)
 	testutil.AssertNil(t, err)
-	testutil.AssertEqual(t, *e.Node.Value, "baz")
+	assert.Equal(t, *e.Node.Value, "baz")
 }

@@ -1118,6 +1118,7 @@ func TestBalancerSupportLearner(t *testing.T) {
 	if _, err := cli.Get(context.Background(), "foo"); err == nil {
 		t.Fatalf("expect Get request to learner to fail, got no error")
 	}
+	t.Logf("Expected: Read from learner error: %v", err)
 
 	eps := []string{learnerEp, clus.Members[0].GRPCAddr()}
 	cli.SetEndpoints(eps...)

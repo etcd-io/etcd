@@ -1,6 +1,6 @@
 
 
-Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.4.md).
+Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG-3.4.md).
 
 
 The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
@@ -22,8 +22,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 ### Breaking Changes
 
 - `go.etcd.io/etcd` Go packages have moved to `go.etcd.io/etcd/{api,pkg,raft,client,etcdctl,server,raft,tests}/v3` to follow the [Go modules](https://github.com/golang/go/wiki/Modules) conventions
-- `go.etcd.io/clientv3/snapshot` SnapshotManager class have moved to `go.etcd.io/clientv3/etcdctl`. 
-   The method `snapshot.Save` to download a snapshot from the remote server was preserved in 'go.etcd.io/clientv3/snapshot`. 
+- `go.etcd.io/clientv3/snapshot` SnapshotManager class have moved to `go.etcd.io/clientv3/etcdctl`.
+   The method `snapshot.Save` to download a snapshot from the remote server was preserved in 'go.etcd.io/clientv3/snapshot`.
 - `go.etcd.io/client' package got migrated to 'go.etcd.io/client/v2'.
 - Changed behavior of clienv3 API [MemberList](https://github.com/etcd-io/etcd/pull/11639).
   - Previously, it is directly served with server's local data, which could be stale.
@@ -56,7 +56,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - Deprecated `etcd_debugging_mvcc_delete_total` Prometheus metric. Use `etcd_mvcc_delete_total` instead.
 - Deprecated `etcd_debugging_mvcc_txn_total` Prometheus metric. Use `etcd_mvcc_txn_total` instead.
 - Deprecated `etcd_debugging_mvcc_range_total` Prometheus metric. Use `etcd_mvcc_range_total` instead.
-- Master branch `/version` outputs `3.5.0-pre`, instead of `3.4.0+git`.
+- Main branch `/version` outputs `3.5.0-pre`, instead of `3.4.0+git`.
 - Changed `proxy` package function signature to [support structured logger](https://github.com/etcd-io/etcd/pull/11614).
   - Previously, `NewClusterProxy(c *clientv3.Client, advaddr string, prefix string) (pb.ClusterServer, <-chan struct{})`, now `NewClusterProxy(lg *zap.Logger, c *clientv3.Client, advaddr string, prefix string) (pb.ClusterServer, <-chan struct{})`.
   - Previously, `Register(c *clientv3.Client, prefix string, addr string, ttl int)`, now `Register(lg *zap.Logger, c *clientv3.Client, prefix string, addr string, ttl int) <-chan struct{}`.
@@ -64,14 +64,22 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - Changed `pkg/flags` function signature to [support structured logger](https://github.com/etcd-io/etcd/pull/11616).
   - Previously, `SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error`, now `SetFlagsFromEnv(lg *zap.Logger, prefix string, fs *flag.FlagSet) error`.
   - Previously, `SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error`, now `SetPflagsFromEnv(lg *zap.Logger, prefix string, fs *pflag.FlagSet) error`.
-- ClientV3 supports [grpc resolver API](https://github.com/etcd-io/etcd/blob/master/client/v3/naming/resolver/resolver.go).
-  - Endpoints can be managed using [endpoints.Manager](https://github.com/etcd-io/etcd/blob/master/client/v3/naming/endpoints/endpoints.go)
-  - Previously supported [GRPCResolver was decomissioned](https://github.com/etcd-io/etcd/pull/12675). Use [resolver](https://github.com/etcd-io/etcd/blob/master/client/v3/naming/resolver/resolver.go) instead.
-- Turned on [--pre-vote by default](https://github.com/etcd-io/etcd/pull/12770). Should prevent disrupting RAFT leader by an individual member. 
+- ClientV3 supports [grpc resolver API](https://github.com/etcd-io/etcd/blob/main/client/v3/naming/resolver/resolver.go).
+  - Endpoints can be managed using [endpoints.Manager](https://github.com/etcd-io/etcd/blob/main/client/v3/naming/endpoints/endpoints.go)
+  - Previously supported [GRPCResolver was decomissioned](https://github.com/etcd-io/etcd/pull/12675). Use [resolver](https://github.com/etcd-io/etcd/blob/main/client/v3/naming/resolver/resolver.go) instead.
+- Turned on [--pre-vote by default](https://github.com/etcd-io/etcd/pull/12770). Should prevent disrupting RAFT leader by an individual member.
 - [ETCD_CLIENT_DEBUG env](https://github.com/etcd-io/etcd/pull/12786): Now supports log levels (debug, info, warn, error, dpanic, panic, fatal). Only when set, overrides application-wide grpc logging settings.
 - [Embed Etcd.Close()](https://github.com/etcd-io/etcd/pull/12828) needs to called exactly once and closes Etcd.Err() stream.
 - [Embed Etcd does not override global/grpc logger](https://github.com/etcd-io/etcd/pull/12861) be default any longer. If desired, please call `embed.Config::SetupGlobalLoggers()` explicitly. 
+- [Embed Etcd custom logger should be configured using simpler builder `NewZapLoggerBuilder`](https://github.com/etcd-io/etcd/pull/12973).
 - Client errors of `context cancelled` or `context deadline exceeded` are exposed as `codes.Canceled` and `codes.DeadlineExceeded`, instead of `codes.Unknown`.
+
+
+### Storage format changes
+- [WAL log's snapshots persists raftpb.ConfState](https://github.com/etcd-io/etcd/pull/12735)
+- [Backend persists raftpb.ConfState](https://github.com/etcd-io/etcd/pull/12962) in the `meta` bucket `confState` key.
+- [Backend persists applied term](https://github.com/etcd-io/etcd/pull/) in the `meta` bucket.
+- Backend persists `downgrade` in the `cluster` bucket
 
 ### Security
 
@@ -79,6 +87,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - Changed [the format of WAL entries related to auth for not keeping password as a plain text](https://github.com/etcd-io/etcd/pull/11943).
 - Add third party [Security Audit Report](https://github.com/etcd-io/etcd/pull/12201).
 - A [log warning](https://github.com/etcd-io/etcd/pull/12242) is added when etcd uses any existing directory that has a permission different than 700 on Linux and 777 on Windows.
+- Add optional [`ClientCertFile` and `ClientKeyFile`](https://github.com/etcd-io/etcd/pull/12705) options for peer and client tls configuration when split certificates are used.
 
 ### Metrics, Monitoring
 
@@ -109,6 +118,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - `etcd --experimental-backend-bbolt-freelist-type` has been deprecated.
 - Support [downgrade API](https://github.com/etcd-io/etcd/pull/11715).
 - Deprecate v2 apply on cluster version. [Use v3 request to set cluster version and recover cluster version from v3 backend](https://github.com/etcd-io/etcd/pull/11427).
+- [Use v2 api to update cluster version to support mixed version cluster during upgrade](https://github.com/etcd-io/etcd/pull/12988).
 - [Fix corruption bug in defrag](https://github.com/etcd-io/etcd/pull/11613).
 - Fix [quorum protection logic when promoting a learner](https://github.com/etcd-io/etcd/pull/11640).
 - Improve [peer corruption checker](https://github.com/etcd-io/etcd/pull/11621) to work when peer mTLS is enabled.
@@ -147,11 +157,11 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd --experimental-warning-apply-duration`](https://github.com/etcd-io/etcd/pull/12448) flag which allows apply duration threshold to be configurable.
 - Add [`etcd --experimental-memory-mlock`](https://github.com/etcd-io/etcd/pull/TODO) flag which prevents etcd memory pages to be swapped out.
 - Add [`etcd --socket-reuse-port`](https://github.com/etcd-io/etcd/pull/12702) flag
-  - Setting this flag enables `SO_REUSEPORT` which allows rebind of a port already in use. User should take caution when using this flag to ensure flock is properly enforced. 
+  - Setting this flag enables `SO_REUSEPORT` which allows rebind of a port already in use. User should take caution when using this flag to ensure flock is properly enforced.
 - Add [`etcd --socket-reuse-address`](https://github.com/etcd-io/etcd/pull/12702) flag
   - Setting this flag enables `SO_REUSEADDR` which allows binding to an address in `TIME_WAIT` state, improving etcd restart time.
 - Reduce [around 30% memory allocation by logging range response size without marshal](https://github.com/etcd-io/etcd/pull/12871).
-- `ETCD_VERIFY="all"` enviroment triggers [additional verification of consistency](https://github.com/etcd-io/etcd/pull/) of etcd data-dir files. 
+- `ETCD_VERIFY="all"` environment triggers [additional verification of consistency](https://github.com/etcd-io/etcd/pull/) of etcd data-dir files.
 - Add [`etcd --enable-log-rotation`](https://github.com/etcd-io/etcd/pull/12774) boolean flag which enables log rotation if true.
 - Add [`etcd --log-rotation-config-json`](https://github.com/etcd-io/etcd/pull/12774) flag which allows passthrough of JSON config to configure log rotation for a file output target.
 - Add experimental distributed tracing boolean flag [`--experimental-enable-distributed-tracing`](https://github.com/etcd-io/etcd/pull/12919) which enables tracing.
@@ -172,7 +182,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`embed.Config.EnableLogRotation`](https://github.com/etcd-io/etcd/pull/12774) which enables log rotation if true.
 - Add [`embed.Config.LogRotationConfigJSON`](https://github.com/etcd-io/etcd/pull/12774) to allow passthrough of JSON config to configure log rotation for a file output target.
 - Add [`embed.Config.ExperimentalEnableDistributedTracing`](https://github.com/etcd-io/etcd/pull/12919) which enables experimental distributed tracing if true.
-- Add [`embed.Config.ExperimentalDistributedTracingAddress`](https://github.com/etcd-io/etcd/pull/12919) which allows overriding default collector address. 
+- Add [`embed.Config.ExperimentalDistributedTracingAddress`](https://github.com/etcd-io/etcd/pull/12919) which allows overriding default collector address.
 - Add [`embed.Config.ExperimentalDistributedTracingServiceName`](https://github.com/etcd-io/etcd/pull/12919) which allows overriding default "etcd" service name.
 - Add [`embed.Config.ExperimentalDistributedTracingServiceInstanceID`](https://github.com/etcd-io/etcd/pull/12919) which allows configuring an instance ID, which must be uniquer per etcd instance.
 
@@ -218,12 +228,15 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcdctl member list -w=json --hex`](https://github.com/etcd-io/etcd/pull/11812) flag to print memberListResponse in hex format json.
 - Changed [`etcdctl lock <lockname> exec-command`](https://github.com/etcd-io/etcd/pull/12829) to return exit code of exec-command.
 - Add support for a config file. Add [`etcdctl --config-file`](https://github.com/etcd-io/etcd/pull/12891) to specify a config file and search in default location in `$HOME/.etcdctl/config.yml`.
+- [New tool: `etcdutl`](https://github.com/etcd-io/etcd/pull/12971) incorporated functionality of: `etcdctl snapshot status|restore`, `etcdctl backup`, `etcdctl defrag --data-dir ...`.
+- [ETCDCTL_API=2 `etcdctl migrate`](https://github.com/etcd-io/etcd/pull/12971) has been decomissioned. Use etcd <=v3.4 to restore v2 storage.
 
 ### gRPC gateway
 
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
   - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
+- Set [`enable-grpc-gateway`](https://github.com/etcd-io/etcd/pull/12297) flag to true when using a config file to keep the defaults the same as the command line configuration.
 
 ### gRPC Proxy
 

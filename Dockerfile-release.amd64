@@ -2,6 +2,7 @@ FROM k8s.gcr.io/build-image/debian-base:buster-v1.4.0
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
+ADD etcdutl /usr/local/bin/
 RUN mkdir -p /var/etcd/
 RUN mkdir -p /var/lib/etcd/
 

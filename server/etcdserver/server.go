@@ -260,7 +260,7 @@ type EtcdServer struct {
 	lessor     lease.Lessor
 	bemu       sync.Mutex
 	be         backend.Backend
-	beHooks    backend.Hooks
+	beHooks    *backendHooks
 	authStore  auth.AuthStore
 	alarmStore *v3alarm.AlarmStore
 
@@ -298,10 +298,31 @@ type EtcdServer struct {
 type backendHooks struct {
 	indexer cindex.ConsistentIndexer
 	lg      *zap.Logger
+
+	// confState to be written in the next submitted backend transaction (if dirty)
+	confState raftpb.ConfState
+	// first write changes it to 'dirty'. false by default, so
+	// not initialized `confState` is meaningless.
+	confStateDirty bool
+	confStateLock  sync.Mutex
 }
 
 func (bh *backendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
 	bh.indexer.UnsafeSave(tx)
+	bh.confStateLock.Lock()
+	defer bh.confStateLock.Unlock()
+	if bh.confStateDirty {
+		membership.MustUnsafeSaveConfStateToBackend(bh.lg, tx, &bh.confState)
+		// save bh.confState
+		bh.confStateDirty = false
+	}
+}
+
+func (bh *backendHooks) SetConfState(confState *raftpb.ConfState) {
+	bh.confStateLock.Lock()
+	defer bh.confStateLock.Unlock()
+	bh.confState = *confState
+	bh.confStateDirty = true
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -479,6 +500,11 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 				cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
 			}
 
+			if err = assertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
+				cfg.Logger.Error("illegal v2store content", zap.Error(err))
+				return nil, err
+			}
+
 			cfg.Logger.Info(
 				"recovered v2 store from snapshot",
 				zap.Uint64("snapshot-index", snapshot.Metadata.Index),
@@ -496,6 +522,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 				zap.Int64("backend-size-in-use-bytes", s2),
 				zap.String("backend-size-in-use", humanize.Bytes(uint64(s2))),
 			)
+		} else {
+			cfg.Logger.Info("No snapshot found. Recovering WAL from scratch!")
 		}
 
 		if !cfg.ForceNewCluster {
@@ -580,10 +608,16 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		cfg.Logger.Warn("failed to create token provider", zap.Error(err))
 		return nil, err
 	}
-	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvcc.StoreConfig{CompactionBatchLimit: cfg.CompactionBatchLimit})
+
+	mvccStoreConfig := mvcc.StoreConfig{
+		CompactionBatchLimit:    cfg.CompactionBatchLimit,
+		CompactionSleepInterval: cfg.CompactionSleepInterval,
+	}
+	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
 
 	kvindex := ci.ConsistentIndex()
 	srv.lg.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
+
 	if beExist {
 		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
 		// etcd from pre-3.0 release.
@@ -660,6 +694,23 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.r.transport = tr
 
 	return srv, nil
+}
+
+// assertNoV2StoreContent -> depending on the deprecation stage, warns or report an error
+// if the v2store contains custom content.
+func assertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage config.V2DeprecationEnum) error {
+	metaOnly, err := membership.IsMetaStoreOnly(st)
+	if err != nil {
+		return err
+	}
+	if metaOnly {
+		return nil
+	}
+	if deprecationStage.IsAtLeast(config.V2_DEPR_1_WRITE_ONLY) {
+		return fmt.Errorf("detected disallowed custom content in v2store for stage --v2-deprecation=%s", deprecationStage)
+	}
+	lg.Warn("detected custom v2store content. Etcd v3.5 is the last version allowing to access it using API v2. Please remove the content.")
+	return nil
 }
 
 func (s *EtcdServer) Logger() *zap.Logger {
@@ -1250,6 +1301,10 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	lg.Info("restoring v2 store")
 	if err := s.v2store.Recovery(apply.snapshot.Data); err != nil {
 		lg.Panic("failed to restore v2 store", zap.Error(err))
+	}
+
+	if err := assertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
+		lg.Panic("illegal v2store content", zap.Error(err))
 	}
 
 	lg.Info("restored v2 store")
@@ -2075,7 +2130,7 @@ func (s *EtcdServer) apply(
 
 			// set the consistent index of current executing entry
 			if e.Index > s.consistIndex.ConsistentIndex() {
-				s.consistIndex.SetConsistentIndex(e.Index)
+				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
 				shouldApplyV3 = membership.ApplyBoth
 			}
 
@@ -2105,7 +2160,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
-		s.consistIndex.SetConsistentIndex(e.Index)
+		s.consistIndex.SetConsistentIndex(e.Index, e.Term)
 		shouldApplyV3 = membership.ApplyBoth
 	}
 	s.lg.Debug("apply entry normal",
@@ -2132,14 +2187,14 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
 		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp)))
+		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
-		s.w.Trigger(req.ID, s.applyV2Request(req))
+		s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
 		return
 	}
 
@@ -2210,6 +2265,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 	lg := s.Logger()
 	*confState = *s.r.ApplyConfChange(cc)
+	s.beHooks.SetConfState(confState)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
 		confChangeContext := new(membership.ConfigChangeContext)
@@ -2378,6 +2434,7 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 // It updates the cluster version if all members agrees on a higher one.
 // It prints out log if there is a member with a higher version than the
 // local version.
+// TODO switch to updateClusterVersionV3 in 3.6
 func (s *EtcdServer) monitorVersions() {
 	for {
 		select {
@@ -2408,27 +2465,67 @@ func (s *EtcdServer) monitorVersions() {
 			if v != nil {
 				verStr = v.String()
 			}
-			s.GoAttach(func() { s.updateClusterVersion(verStr) })
+			s.GoAttach(func() { s.updateClusterVersionV2(verStr) })
 			continue
 		}
 
 		if v != nil && membership.IsValidVersionChange(s.cluster.Version(), v) {
-			s.GoAttach(func() { s.updateClusterVersion(v.String()) })
+			s.GoAttach(func() { s.updateClusterVersionV2(v.String()) })
 		}
 	}
 }
 
-func (s *EtcdServer) updateClusterVersion(ver string) {
+func (s *EtcdServer) updateClusterVersionV2(ver string) {
 	lg := s.Logger()
 
 	if s.cluster.Version() == nil {
 		lg.Info(
-			"setting up initial cluster version",
+			"setting up initial cluster version using v2 API",
 			zap.String("cluster-version", version.Cluster(ver)),
 		)
 	} else {
 		lg.Info(
-			"updating cluster version",
+			"updating cluster version using v2 API",
+			zap.String("from", version.Cluster(s.cluster.Version().String())),
+			zap.String("to", version.Cluster(ver)),
+		)
+	}
+
+	req := pb.Request{
+		Method: "PUT",
+		Path:   membership.StoreClusterVersionKey(),
+		Val:    ver,
+	}
+
+	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
+	_, err := s.Do(ctx, req)
+	cancel()
+
+	switch err {
+	case nil:
+		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
+		return
+
+	case ErrStopped:
+		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
+		return
+
+	default:
+		lg.Warn("failed to update cluster version", zap.Error(err))
+	}
+}
+
+func (s *EtcdServer) updateClusterVersionV3(ver string) {
+	lg := s.Logger()
+
+	if s.cluster.Version() == nil {
+		lg.Info(
+			"setting up initial cluster version using v3 API",
+			zap.String("cluster-version", version.Cluster(ver)),
+		)
+	} else {
+		lg.Info(
+			"updating cluster version using v3 API",
 			zap.String("from", version.Cluster(s.cluster.Version().String())),
 			zap.String("to", version.Cluster(ver)),
 		)

@@ -30,7 +30,6 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
@@ -115,6 +114,7 @@ type ServerConfig struct {
 	AutoCompactionRetention time.Duration
 	AutoCompactionMode      string
 	CompactionBatchLimit    int
+	CompactionSleepInterval time.Duration
 	QuotaBackendBytes       int64
 	MaxTxnOps               uint
 
@@ -144,16 +144,7 @@ type ServerConfig struct {
 	SocketOpts transport.SocketOpts
 
 	// Logger logs server-side operations.
-	// If not nil, it disables "capnslog" and uses the given logger.
 	Logger *zap.Logger
-
-	// LoggerConfig is server logger configuration for Raft logger.
-	// Must be either: "LoggerConfig != nil" or "LoggerCore != nil && LoggerWriteSyncer != nil".
-	LoggerConfig *zap.Config
-	// LoggerCore is "zapcore.Core" for raft logger.
-	// Must be either: "LoggerConfig != nil" or "LoggerCore != nil && LoggerWriteSyncer != nil".
-	LoggerCore        zapcore.Core
-	LoggerWriteSyncer zapcore.WriteSyncer
 
 	ForceNewCluster bool
 
@@ -192,6 +183,9 @@ type ServerConfig struct {
 	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
 	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
+
+	// V2Deprecation defines a phase of v2store deprecation process.
+	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
