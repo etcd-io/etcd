@@ -33,7 +33,6 @@ type v2TestStore struct {
 func (s *v2TestStore) Close() {}
 
 func newTestStore(t *testing.T, ns ...string) StoreCloser {
-	integration.BeforeTest(t)
 	if len(ns) == 0 {
 		t.Logf("new v2 store with no namespace")
 	}
@@ -42,6 +41,7 @@ func newTestStore(t *testing.T, ns ...string) StoreCloser {
 
 // Ensure that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
+	integration.BeforeTest(t)
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 4

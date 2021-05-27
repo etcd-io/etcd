@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+// TODO: Replace with https://github.com/uber-go/goleak.
+
 /*
 CheckLeakedGoroutine verifies tests do not leave any leaky
 goroutines. It returns true when there are goroutines still
@@ -28,10 +30,9 @@ running(leaking) after all tests.
 	}
 
 	func TestSample(t *testing.T) {
-		BeforeTest(t)
+		RegisterLeakDetection(t)
 		...
 	}
-
 */
 func CheckLeakedGoroutine() bool {
 	gs := interestingGoroutines()
@@ -94,22 +95,22 @@ func CheckAfterTest(d time.Duration) error {
 	return fmt.Errorf("appears to have leaked %s:\n%s", bad, stacks)
 }
 
-// BeforeTest is a convenient way to register before-and-after code to a test.
-// If you execute BeforeTest, you don't need to explicitly register AfterTest.
-func BeforeTest(t TB) {
+// RegisterLeakDetection is a convenient way to register before-and-after code to a test.
+// If you execute RegisterLeakDetection, you don't need to explicitly register AfterTest.
+func RegisterLeakDetection(t TB) {
 	if err := CheckAfterTest(10 * time.Millisecond); err != nil {
 		t.Skip("Found leaked goroutined BEFORE test", err)
 		return
 	}
 	t.Cleanup(func() {
-		AfterTest(t)
+		afterTest(t)
 	})
 }
 
-// AfterTest is meant to run in a defer that executes after a test completes.
+// afterTest is meant to run in a defer that executes after a test completes.
 // It will detect common goroutine leaks, retrying in case there are goroutines
 // not synchronously torn down, and fail the test if any goroutines are stuck.
-func AfterTest(t TB) {
+func afterTest(t TB) {
 	// If test-failed the leaked goroutines list is hidding the real
 	// source of problem.
 	if !t.Failed() {
