@@ -30,29 +30,85 @@ import (
 )
 
 var grpc_logger grpc_logsettable.SettableLoggerV2
+var insideTestContext bool
 
 func init() {
 	grpc_logger = grpc_logsettable.ReplaceGrpcLoggerV2()
 }
 
-func BeforeTest(t testutil.TB) {
-	testutil.BeforeTest(t)
+type testOptions struct {
+	goLeakDetection bool
+	skipInShort     bool
+}
 
-	grpc_logger.Set(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
+func newTestOptions(opts ...TestOption) *testOptions {
+	o := &testOptions{goLeakDetection: true, skipInShort: true}
+	for _, opt := range opts {
+		opt(o)
+	}
+	return o
+}
 
-	// Integration tests should verify written state as much as possible.
-	os.Setenv(verify.ENV_VERIFY, verify.ENV_VERIFY_ALL_VALUE)
+type TestOption func(opt *testOptions)
+
+// WithoutGoLeakDetection disables checking whether a testcase leaked a goroutine.
+func WithoutGoLeakDetection() TestOption {
+	return func(opt *testOptions) { opt.goLeakDetection = false }
+}
+
+func WithoutSkipInShort() TestOption {
+	return func(opt *testOptions) { opt.skipInShort = false }
+}
+
+// BeforeTestExternal initializes test context and is targeted for external APIs.
+// In general the `integration` package is not targeted to be used outside of
+// etcd project, but till the dedicated package is developed, this is
+// the best entry point so far (without backward compatibility promise).
+func BeforeTestExternal(t testutil.TB) {
+	BeforeTest(t, WithoutSkipInShort(), WithoutGoLeakDetection())
+}
+
+func BeforeTest(t testutil.TB, opts ...TestOption) {
+	t.Helper()
+	options := newTestOptions(opts...)
+
+	if options.skipInShort {
+		testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
+	}
+
+	if options.goLeakDetection {
+		testutil.RegisterLeakDetection(t)
+	}
 
 	previousWD, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.Chdir(t.TempDir())
+	previousInsideTestContext := insideTestContext
+
+	// Registering cleanup early, such it will get executed even if the helper fails.
 	t.Cleanup(func() {
 		grpc_logger.Reset()
+		insideTestContext = previousInsideTestContext
 		os.Chdir(previousWD)
 	})
 
+	if insideTestContext {
+		t.Fatal("already in test context. BeforeTest was likely already called")
+	}
+
+	grpc_logger.Set(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
+	insideTestContext = true
+
+	// Integration tests should verify written state as much as possible.
+	os.Setenv(verify.ENV_VERIFY, verify.ENV_VERIFY_ALL_VALUE)
+	os.Chdir(t.TempDir())
+}
+
+func assertInTestContext(t testutil.TB) {
+	if !insideTestContext {
+		t.Errorf("the function can be called only in the test context. Was integration.BeforeTest() called ?")
+	}
 }
 
 func MustAbsPath(path string) string {
