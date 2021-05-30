@@ -12,27 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package integration_test
 
 import (
-	"os"
 	"testing"
+	"time"
 
-	"github.com/stretchr/testify/assert"
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.etcd.io/etcd/server/v3/verify"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
-func BeforeTest(t testing.TB) {
-	skipInShortMode(t)
-	testutil.RegisterLeakDetection(t)
-	os.Setenv(verify.ENV_VERIFY, verify.ENV_VERIFY_ALL_VALUE)
-
-	path, err := os.Getwd()
-	assert.NoError(t, err)
-	tempDir := t.TempDir()
-	assert.NoError(t, os.Chdir(tempDir))
-	t.Logf("Changing working directory to: %s", tempDir)
-
-	t.Cleanup(func() { assert.NoError(t, os.Chdir(path)) })
+func TestBeforeTestWithoutLeakDetection(t *testing.T) {
+	integration.BeforeTest(t, integration.WithoutGoLeakDetection(), integration.WithoutSkipInShort())
+	// Intentional leak that should get ignored
+	go time.Sleep(2 * time.Second)
 }

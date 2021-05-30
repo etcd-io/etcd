@@ -37,7 +37,7 @@ func NewClient(t *testing.T, cfg Config) (*Client, error) {
 }
 
 func TestDialCancel(t *testing.T) {
-	testutil.BeforeTest(t)
+	testutil.RegisterLeakDetection(t)
 
 	// accept first connection so client is created with dial timeout
 	ln, err := net.Listen("unix", "dialcancel:12345")
@@ -89,7 +89,7 @@ func TestDialCancel(t *testing.T) {
 }
 
 func TestDialTimeout(t *testing.T) {
-	testutil.BeforeTest(t)
+	testutil.RegisterLeakDetection(t)
 
 	wantError := context.DeadlineExceeded
 
