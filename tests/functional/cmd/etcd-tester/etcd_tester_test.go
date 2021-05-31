@@ -17,44 +17,38 @@ package main
 
 import (
 	"flag"
+	"testing"
 
-	_ "github.com/etcd-io/gofail/runtime"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/functional/tester"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest"
 )
 
-var logger *zap.Logger
+var config = flag.String("config", "../../functional.yaml", "path to tester configuration")
 
-func init() {
-	var err error
-	logger, err = zap.NewProduction()
+func TestFunctional(t *testing.T) {
+	testutil.SkipTestIfShortMode(t, "functional tests are skipped in --short mode")
+
+	lg := zaptest.NewLogger(t, zaptest.Level(zapcore.InfoLevel)).Named("tester")
+
+	clus, err := tester.NewCluster(lg, *config)
 	if err != nil {
-		panic(err)
-	}
-}
-
-func main() {
-	config := flag.String("config", "", "path to tester configuration")
-	flag.Parse()
-
-	defer logger.Sync()
-
-	clus, err := tester.NewCluster(logger, *config)
-	if err != nil {
-		logger.Fatal("failed to create a cluster", zap.Error(err))
+		t.Fatalf("failed to create a cluster: %v", err)
 	}
 
 	err = clus.Send_INITIAL_START_ETCD()
 	if err != nil {
-		logger.Fatal("Bootstrap failed", zap.Error(err))
+		t.Fatal("Bootstrap failed", zap.Error(err))
 	}
 	defer clus.Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
-	logger.Info("wait health after bootstrap")
+	t.Log("wait health after bootstrap")
 	err = clus.WaitHealth()
 	if err != nil {
-		logger.Fatal("WaitHealth failed", zap.Error(err))
+		t.Fatal("WaitHealth failed", zap.Error(err))
 	}
 
-	clus.Run()
+	clus.Run(t)
 }
