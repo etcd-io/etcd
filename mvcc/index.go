@@ -25,8 +25,8 @@ import (
 type index interface {
 	Get(key []byte, atRev int64) (rev, created revision, ver int64, err error)
 	Range(key, end []byte, atRev int64) ([][]byte, []revision)
-	Revisions(key, end []byte, atRev int64, limit int) []revision
-	CountRevisions(key, end []byte, atRev int64, limit int) int
+	Revisions(key, end []byte, atRev int64, limit int) ([]revision, int)
+	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev revision)
 	Tombstone(key []byte, rev revision) error
 	RangeSince(key, end []byte, rev int64) []revision
@@ -106,27 +106,27 @@ func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex) bool) {
 	})
 }
 
-func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []revision) {
+func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []revision, total int) {
 	if end == nil {
 		rev, _, _, err := ti.Get(key, atRev)
 		if err != nil {
-			return nil
+			return nil, 0
 		}
-		return []revision{rev}
+		return []revision{rev}, 1
 	}
 	ti.visit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			revs = append(revs, rev)
-			if len(revs) == limit {
-				return false
+			if limit <= 0 || len(revs) < limit {
+				revs = append(revs, rev)
 			}
+			total++
 		}
 		return true
 	})
-	return revs
+	return revs, total
 }
 
-func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64, limit int) int {
+func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
 	if end == nil {
 		_, _, _, err := ti.Get(key, atRev)
 		if err != nil {
@@ -138,9 +138,6 @@ func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64, limit int) int
 	ti.visit(key, end, func(ki *keyIndex) bool {
 		if _, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			total++
-			if total == limit {
-				return false
-			}
 		}
 		return true
 	})
