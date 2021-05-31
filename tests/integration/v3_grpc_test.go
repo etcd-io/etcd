@@ -1289,8 +1289,9 @@ func TestV3RangeRequest(t *testing.T) {
 		putKeys []string
 		reqs    []pb.RangeRequest
 
-		wresps [][]string
-		wmores []bool
+		wresps  [][]string
+		wmores  []bool
+		wcounts []int64
 	}{
 		// single key
 		{
@@ -1307,6 +1308,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{},
 			},
 			[]bool{false, false},
+			[]int64{1, 0},
 		},
 		// multi-key
 		{
@@ -1335,6 +1337,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"a", "b", "c", "d", "e"},
 			},
 			[]bool{false, false, false, false, false, false},
+			[]int64{5, 2, 0, 0, 0, 5},
 		},
 		// revision
 		{
@@ -1353,22 +1356,30 @@ func TestV3RangeRequest(t *testing.T) {
 				{"a", "b"},
 			},
 			[]bool{false, false, false, false},
+			[]int64{5, 0, 1, 2},
 		},
 		// limit
 		{
-			[]string{"foo", "bar"},
+			[]string{"a", "b", "c"},
 			[]pb.RangeRequest{
 				// more
 				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 1},
-				// no more
+				// half
 				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 2},
+				// no more
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 3},
+				// limit over
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 4},
 			},
 
 			[][]string{
-				{"bar"},
-				{"bar", "foo"},
+				{"a"},
+				{"a", "b"},
+				{"a", "b", "c"},
+				{"a", "b", "c"},
 			},
-			[]bool{true, false},
+			[]bool{true, true, false, false},
+			[]int64{3, 3, 3, 3},
 		},
 		// sort
 		{
@@ -1421,6 +1432,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"b", "a", "c", "d"},
 			},
 			[]bool{true, true, true, true, false, false},
+			[]int64{4, 4, 4, 4, 0, 4},
 		},
 		// min/max mod rev
 		{
@@ -1452,6 +1464,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"rev2", "rev3", "rev4", "rev5", "rev6"},
 			},
 			[]bool{false, false, false, false},
+			[]int64{5, 5, 5, 5},
 		},
 		// min/max create rev
 		{
@@ -1483,6 +1496,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"rev2", "rev3", "rev6"},
 			},
 			[]bool{false, false, false, false},
+			[]int64{3, 3, 3, 3},
 		},
 	}
 
@@ -1515,6 +1529,9 @@ func TestV3RangeRequest(t *testing.T) {
 			}
 			if resp.More != tt.wmores[j] {
 				t.Errorf("#%d.%d: bad more. got = %v, want = %v, ", i, j, resp.More, tt.wmores[j])
+			}
+			if resp.GetCount() != tt.wcounts[j] {
+				t.Errorf("#%d.%d: bad count. got = %v, want = %v, ", i, j, resp.GetCount(), tt.wcounts[j])
 			}
 			wrev := int64(len(tt.putKeys) + 1)
 			if resp.Header.Revision != wrev {
