@@ -936,12 +936,15 @@ type fakeIndex struct {
 	indexCompactRespc     chan map[revision]struct{}
 }
 
-func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int) []revision {
+func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int) ([]revision, int) {
 	_, rev := i.Range(key, end, atRev)
-	return rev
+	if len(rev) >= limit {
+		rev = rev[:limit]
+	}
+	return rev, len(rev)
 }
 
-func (i *fakeIndex) CountRevisions(key, end []byte, atRev int64, limit int) int {
+func (i *fakeIndex) CountRevisions(key, end []byte, atRev int64) int {
 	_, rev := i.Range(key, end, atRev)
 	return len(rev)
 }
