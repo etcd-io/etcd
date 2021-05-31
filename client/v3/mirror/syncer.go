@@ -36,14 +36,15 @@ type Syncer interface {
 }
 
 // NewSyncer creates a Syncer.
-func NewSyncer(c *clientv3.Client, prefix string, rev int64) Syncer {
-	return &syncer{c: c, prefix: prefix, rev: rev}
+func NewSyncer(c *clientv3.Client, prefix string, rev int64, key string) Syncer {
+	return &syncer{c: c, prefix: prefix, rev: rev, key: key}
 }
 
 type syncer struct {
 	c      *clientv3.Client
 	rev    int64
 	prefix string
+	key    string
 }
 
 func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, chan error) {
@@ -52,7 +53,11 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 
 	// if rev is not specified, we will choose the most recent revision.
 	if s.rev == 0 {
-		resp, err := s.c.Get(ctx, "foo")
+		key := "foo"
+		if len(s.key) > 0 {
+		        key = s.key
+		}
+		resp, err := s.c.Get(ctx, key)
 		if err != nil {
 			errchan <- err
 			close(respchan)

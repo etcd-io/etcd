@@ -137,7 +137,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 		}
 	}()
 
-	s := mirror.NewSyncer(c, mmprefix, 0)
+	s := mirror.NewSyncer(c, mmprefix, 0, "")
 
 	rc, errc := s.SyncBase(ctx)
 

@@ -39,7 +39,7 @@ func TestMirrorSync(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	syncer := mirror.NewSyncer(c, "", 0)
+	syncer := mirror.NewSyncer(c, "", 0, "")
 	gch, ech := syncer.SyncBase(context.TODO())
 	wkvs := []*mvccpb.KeyValue{{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}
 
@@ -104,7 +104,7 @@ func TestMirrorSyncBase(t *testing.T) {
 	close(keyCh)
 	wg.Wait()
 
-	syncer := mirror.NewSyncer(cli, "test", 0)
+	syncer := mirror.NewSyncer(cli, "test", 0, "")
 	respCh, errCh := syncer.SyncBase(ctx)
 
 	count := 0
