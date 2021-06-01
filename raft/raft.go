@@ -647,7 +647,9 @@ func (r *raft) tickElection() {
 
 	if r.promotable() && r.pastElectionTimeout() {
 		r.electionElapsed = 0
-		r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
+		if err := r.Step(pb.Message{From: r.id, Type: pb.MsgHup}); err != nil {
+			r.logger.Debugf("error occurred during election: %v", err)
+		}
 	}
 }
 
@@ -659,7 +661,9 @@ func (r *raft) tickHeartbeat() {
 	if r.electionElapsed >= r.electionTimeout {
 		r.electionElapsed = 0
 		if r.checkQuorum {
-			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum})
+			if err := r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum}); err != nil {
+				r.logger.Debugf("error occurred during checking sending hearbeat: %v", err)
+			}
 		}
 		// If current leader cannot transfer leadership in electionTimeout, it becomes leader again.
 		if r.state == StateLeader && r.leadTransferee != None {
@@ -673,7 +677,9 @@ func (r *raft) tickHeartbeat() {
 
 	if r.heartbeatElapsed >= r.heartbeatTimeout {
 		r.heartbeatElapsed = 0
-		r.Step(pb.Message{From: r.id, Type: pb.MsgBeat})
+		if err := r.Step(pb.Message{From: r.id, Type: pb.MsgBeat}); err != nil {
+			r.logger.Debugf("error occurred during checking sending hearbeat: %v", err)
+		}
 	}
 }
 
