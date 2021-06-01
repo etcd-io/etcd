@@ -33,13 +33,15 @@ import (
 func TestV3WatchFromCurrentRevision(t *testing.T) {
 	BeforeTest(t)
 	tests := []struct {
+		name string
+
 		putKeys      []string
 		watchRequest *pb.WatchRequest
 
 		wresps []*pb.WatchResponse
 	}{
-		// watch the key, matching
 		{
+			"watch the key, matching",
 			[]string{"foo"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
@@ -58,8 +60,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				},
 			},
 		},
-		// watch the key, non-matching
 		{
+			"watch the key, non-matching",
 			[]string{"foo"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
@@ -67,8 +69,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 
 			[]*pb.WatchResponse{},
 		},
-		// watch the prefix, matching
 		{
+			"watch the prefix, matching",
 			[]string{"fooLong"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
@@ -88,8 +90,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				},
 			},
 		},
-		// watch the prefix, non-matching
 		{
+			"watch the prefix, non-matching",
 			[]string{"foo"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
@@ -98,8 +100,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 
 			[]*pb.WatchResponse{},
 		},
-		// watch full range, matching
 		{
+			"watch full range, matching",
 			[]string{"fooLong"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
@@ -119,8 +121,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				},
 			},
 		},
-		// multiple puts, one watcher with matching key
 		{
+			"multiple puts, one watcher with matching key",
 			[]string{"foo", "foo", "foo"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
@@ -159,8 +161,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				},
 			},
 		},
-		// multiple puts, one watcher with matching prefix
 		{
+			"multiple puts, one watcher with matching perfix",
 			[]string{"foo", "foo", "foo"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
@@ -203,95 +205,87 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+		t.Run(tt.name, func(t *testing.T) {
+			clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+			defer clus.Terminate(t)
 
-		wAPI := toGRPC(clus.RandClient()).Watch
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		wStream, err := wAPI.Watch(ctx)
-		if err != nil {
-			t.Fatalf("#%d: wAPI.Watch error: %v", i, err)
-		}
+			wAPI := toGRPC(clus.RandClient()).Watch
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			wStream, err := wAPI.Watch(ctx)
+			if err != nil {
+				t.Fatalf("#%d: wAPI.Watch error: %v", i, err)
+			}
 
-		err = wStream.Send(tt.watchRequest)
-		if err != nil {
-			t.Fatalf("#%d: wStream.Send error: %v", i, err)
-		}
+			err = wStream.Send(tt.watchRequest)
+			if err != nil {
+				t.Fatalf("#%d: wStream.Send error: %v", i, err)
+			}
 
-		// ensure watcher request created a new watcher
-		cresp, err := wStream.Recv()
-		if err != nil {
-			t.Errorf("#%d: wStream.Recv error: %v", i, err)
-			clus.Terminate(t)
-			continue
-		}
-		if !cresp.Created {
-			t.Errorf("#%d: did not create watchid, got %+v", i, cresp)
-			clus.Terminate(t)
-			continue
-		}
-		if cresp.Canceled {
-			t.Errorf("#%d: canceled watcher on create %+v", i, cresp)
-			clus.Terminate(t)
-			continue
-		}
+			// ensure watcher request created a new watcher
+			cresp, err := wStream.Recv()
+			if err != nil {
+				t.Fatalf("#%d: wStream.Recv error: %v", i, err)
+			}
+			if !cresp.Created {
+				t.Fatalf("#%d: did not create watchid, got %+v", i, cresp)
+			}
+			if cresp.Canceled {
+				t.Fatalf("#%d: canceled watcher on create %+v", i, cresp)
+			}
 
-		createdWatchId := cresp.WatchId
-		if cresp.Header == nil || cresp.Header.Revision != 1 {
-			t.Errorf("#%d: header revision got +%v, wanted revison 1", i, cresp)
-			clus.Terminate(t)
-			continue
-		}
+			createdWatchId := cresp.WatchId
+			if cresp.Header == nil || cresp.Header.Revision != 1 {
+				t.Fatalf("#%d: header revision got +%v, wanted revison 1", i, cresp)
+			}
 
-		// asynchronously create keys
-		ch := make(chan struct{}, 1)
-		go func() {
-			for _, k := range tt.putKeys {
-				kvc := toGRPC(clus.RandClient()).KV
-				req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
-				if _, err := kvc.Put(context.TODO(), req); err != nil {
-					t.Errorf("#%d: couldn't put key (%v)", i, err)
+			// asynchronously create keys
+			ch := make(chan struct{}, 1)
+			go func() {
+				for _, k := range tt.putKeys {
+					kvc := toGRPC(clus.RandClient()).KV
+					req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
+					if _, err := kvc.Put(context.TODO(), req); err != nil {
+						t.Errorf("#%d: couldn't put key (%v)", i, err)
+					}
+				}
+				ch <- struct{}{}
+			}()
+
+			// check stream results
+			for j, wresp := range tt.wresps {
+				resp, err := wStream.Recv()
+				if err != nil {
+					t.Errorf("#%d.%d: wStream.Recv error: %v", i, j, err)
+				}
+
+				if resp.Header == nil {
+					t.Fatalf("#%d.%d: unexpected nil resp.Header", i, j)
+				}
+				if resp.Header.Revision != wresp.Header.Revision {
+					t.Errorf("#%d.%d: resp.Header.Revision got = %d, want = %d", i, j, resp.Header.Revision, wresp.Header.Revision)
+				}
+
+				if wresp.Created != resp.Created {
+					t.Errorf("#%d.%d: resp.Created got = %v, want = %v", i, j, resp.Created, wresp.Created)
+				}
+				if resp.WatchId != createdWatchId {
+					t.Errorf("#%d.%d: resp.WatchId got = %d, want = %d", i, j, resp.WatchId, createdWatchId)
+				}
+
+				if !reflect.DeepEqual(resp.Events, wresp.Events) {
+					t.Errorf("#%d.%d: resp.Events got = %+v, want = %+v", i, j, resp.Events, wresp.Events)
 				}
 			}
-			ch <- struct{}{}
-		}()
 
-		// check stream results
-		for j, wresp := range tt.wresps {
-			resp, err := wStream.Recv()
-			if err != nil {
-				t.Errorf("#%d.%d: wStream.Recv error: %v", i, j, err)
+			rok, nr := waitResponse(wStream, 1*time.Second)
+			if !rok {
+				t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 			}
 
-			if resp.Header == nil {
-				t.Fatalf("#%d.%d: unexpected nil resp.Header", i, j)
-			}
-			if resp.Header.Revision != wresp.Header.Revision {
-				t.Errorf("#%d.%d: resp.Header.Revision got = %d, want = %d", i, j, resp.Header.Revision, wresp.Header.Revision)
-			}
-
-			if wresp.Created != resp.Created {
-				t.Errorf("#%d.%d: resp.Created got = %v, want = %v", i, j, resp.Created, wresp.Created)
-			}
-			if resp.WatchId != createdWatchId {
-				t.Errorf("#%d.%d: resp.WatchId got = %d, want = %d", i, j, resp.WatchId, createdWatchId)
-			}
-
-			if !reflect.DeepEqual(resp.Events, wresp.Events) {
-				t.Errorf("#%d.%d: resp.Events got = %+v, want = %+v", i, j, resp.Events, wresp.Events)
-			}
-		}
-
-		rok, nr := waitResponse(wStream, 1*time.Second)
-		if !rok {
-			t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
-		}
-
-		// wait for the client to finish sending the keys before terminating the cluster
-		<-ch
-
-		// can't defer because tcp ports will be in use
-		clus.Terminate(t)
+			// wait for the client to finish sending the keys before terminating the cluster
+			<-ch
+		})
 	}
 }
 
