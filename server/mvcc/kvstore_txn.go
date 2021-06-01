@@ -136,14 +136,14 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
 	}
 	if ro.Count {
-		total := tr.s.kvindex.CountRevisions(key, end, rev, int(ro.Limit))
+		total := tr.s.kvindex.CountRevisions(key, end, rev)
 		tr.trace.Step("count revisions from in-memory index tree")
 		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil
 	}
-	revpairs := tr.s.kvindex.Revisions(key, end, rev, int(ro.Limit))
+	revpairs, total := tr.s.kvindex.Revisions(key, end, rev, int(ro.Limit))
 	tr.trace.Step("range keys from in-memory index tree")
 	if len(revpairs) == 0 {
-		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
+		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil
 	}
 
 	limit := int(ro.Limit)
@@ -176,7 +176,7 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 		}
 	}
 	tr.trace.Step("range keys from bolt db")
-	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
+	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
 }
 
 func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
