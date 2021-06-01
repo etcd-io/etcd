@@ -76,7 +76,15 @@ $ ./bin/etcdctl --endpoints localhost:23790 put foo bar`)
 		To:   url.URL{Scheme: "tcp", Host: to},
 	}
 	if verbose {
-		cfg.Logger = zap.NewExample()
+		var err error
+		cfg.Logger, err = zap.NewDevelopment()
+		if err != nil {
+			panic(err)
+		}
+		cfg.Logger = cfg.Logger.Named("proxy").With(
+			zap.String("from", from),
+			zap.String("to", to),
+			zap.Int("port", httpPort))
 	}
 	p := proxy.NewServer(cfg)
 	<-p.Ready()

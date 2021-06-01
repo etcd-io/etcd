@@ -16,7 +16,6 @@ replace (
 
 require (
 	github.com/dustin/go-humanize v1.0.0
-	github.com/etcd-io/gofail v0.0.0-20190801230047-ad7f989257ca
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0

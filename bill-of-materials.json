@@ -117,15 +117,6 @@
 		]
 	},
 	{
-		"project": "github.com/etcd-io/gofail/runtime",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/form3tech-oss/jwt-go",
 		"licenses": [
 			{
