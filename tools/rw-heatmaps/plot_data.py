@@ -23,9 +23,11 @@ def parse_args():
                         help='second input data files in csv format. (optional)')
     parser.add_argument('-t', '--title', dest='title', type=str, required=True,
                         help='plot graph title string')
-    parser.add_argument('-z', '--zero-centered', dest='zero', type=bool, required=False,
+    parser.add_argument('-z', '--zero-centered', dest='zero', action='store_true', required=False,
                         help='plot the improvement graph with white color represents 0.0',
                         default=True)
+    parser.add_argument('--no-zero-centered', dest='zero', action='store_false', required=False,
+                        help='plot the improvement graph without white color represents 0.0')
     parser.add_argument('-o', '--output-image', dest='output', type=str, required=True,
                         help='output image filename')
     return parser.parse_args()
