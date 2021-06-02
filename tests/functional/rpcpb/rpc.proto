@@ -27,6 +27,7 @@ message SnapshotInfo {
   int64 SnapshotHash = 7;
   int64 SnapshotRevision = 8;
   string Took = 9;
+  string Version = 10;
 }
 
 message Response {

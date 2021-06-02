@@ -202,7 +202,10 @@ func testIssue6361(t *testing.T, etcdutl bool) {
 	fpath := filepath.Join(t.TempDir(), "test.snapshot")
 
 	t.Log("etcdctl saving snapshot...")
-	if err = spawnWithExpect(append(prefixArgs, "snapshot", "save", fpath), fmt.Sprintf("Snapshot saved at %s", fpath)); err != nil {
+	if err = spawnWithExpects(append(prefixArgs, "snapshot", "save", fpath),
+		fmt.Sprintf("Snapshot saved at %s", fpath),
+		"Server version 3.5.0",
+	); err != nil {
 		t.Fatal(err)
 	}
 

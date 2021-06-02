@@ -49,14 +49,14 @@ import (
 
 // Manager defines snapshot methods.
 type Manager interface {
-	// Save fetches snapshot from remote etcd server and saves data
-	// to target path. If the context "ctx" is canceled or timed out,
+	// Save fetches snapshot from remote etcd server, saves data
+	// to target path and returns server version. If the context "ctx" is canceled or timed out,
 	// snapshot save stream will error out (e.g. context.Canceled,
 	// context.DeadlineExceeded). Make sure to specify only one endpoint
 	// in client configuration. Snapshot API must be requested to a
 	// selected node, and saved snapshot is the point-in-time state of
 	// the selected node.
-	Save(ctx context.Context, cfg clientv3.Config, dbPath string) error
+	Save(ctx context.Context, cfg clientv3.Config, dbPath string) (version string, err error)
 
 	// Status returns the snapshot file information.
 	Status(dbPath string) (Status, error)
@@ -96,8 +96,8 @@ func hasChecksum(n int64) bool {
 }
 
 // Save fetches snapshot from remote etcd server and saves data to target path.
-func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string) error {
-	return snapshot.Save(ctx, s.lg, cfg, dbPath)
+func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string) (version string, err error) {
+	return snapshot.SaveWithVersion(ctx, s.lg, cfg, dbPath)
 }
 
 // Status is the snapshot file status.

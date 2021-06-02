@@ -29,6 +29,7 @@ import (
 	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc"
@@ -98,9 +99,9 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 	}
 }
 
-// TestMaintenanceSnapshotError ensures that context cancel/timeout
+// TestMaintenanceSnapshotCancel ensures that context cancel
 // before snapshot reading returns corresponding context errors.
-func TestMaintenanceSnapshotError(t *testing.T) {
+func TestMaintenanceSnapshotCancel(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
@@ -119,11 +120,40 @@ func TestMaintenanceSnapshotError(t *testing.T) {
 	if err != context.Canceled {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
+}
+
+// TestMaintenanceSnapshotWithVersionTimeout ensures that SnapshotWithVersion function
+// returns corresponding context errors when context timeout happened before snapshot reading
+func TestMaintenanceSnapshotWithVersionTimeout(t *testing.T) {
+	testMaintenanceSnapshotTimeout(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {
+		resp, err := client.SnapshotWithVersion(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return resp.Snapshot, nil
+	})
+}
+
+// TestMaintenanceSnapshotTimeout ensures that Snapshot function
+// returns corresponding context errors when context timeout happened before snapshot reading
+func TestMaintenanceSnapshotTimeout(t *testing.T) {
+	testMaintenanceSnapshotTimeout(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {
+		return client.Snapshot(ctx)
+	})
+}
+
+// testMaintenanceSnapshotTimeout given snapshot function ensures that it
+// returns corresponding context errors when context timeout happened before snapshot reading
+func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
 
 	// reading snapshot with deadline exceeded should error out
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	rc2, err := clus.RandClient().Snapshot(ctx)
+	rc2, err := snapshot(ctx, clus.RandClient())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,9 +167,29 @@ func TestMaintenanceSnapshotError(t *testing.T) {
 	}
 }
 
-// TestMaintenanceSnapshotErrorInflight ensures that inflight context cancel/timeout
-// fails snapshot reading with corresponding context errors.
+// TestMaintenanceSnapshotWithVersionErrorInflight ensures that ReaderCloser returned by SnapshotWithVersion function
+// will fail to read with corresponding context errors on inflight context cancel timeout.
+func TestMaintenanceSnapshotWithVersionErrorInflight(t *testing.T) {
+	testMaintenanceSnapshotErrorInflight(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {
+		resp, err := client.SnapshotWithVersion(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return resp.Snapshot, nil
+	})
+}
+
+// TestMaintenanceSnapshotError ensures that ReaderCloser returned by Snapshot function
+// will fail to read with corresponding context errors on inflight context cancel timeout.
 func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
+	testMaintenanceSnapshotErrorInflight(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {
+		return client.Snapshot(ctx)
+	})
+}
+
+// testMaintenanceSnapshotErrorInflight given snapshot function ensures that ReaderCloser returned by it
+// will fail to read with corresponding context errors on inflight context cancel timeout.
+func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
 	integration.BeforeTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
@@ -158,10 +208,9 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	b.Close()
 	clus.Members[0].Restart(t)
 
-	cli := clus.RandClient()
 	// reading snapshot with canceled context should error out
 	ctx, cancel := context.WithCancel(context.Background())
-	rc1, err := cli.Snapshot(ctx)
+	rc1, err := snapshot(ctx, clus.RandClient())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +231,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	// reading snapshot with deadline exceeded should error out
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	rc2, err := clus.RandClient().Snapshot(ctx)
+	rc2, err := snapshot(ctx, clus.RandClient())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,6 +242,24 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	_, err = io.Copy(ioutil.Discard, rc2)
 	if err != nil && !IsClientTimeout(err) {
 		t.Errorf("expected client timeout, got %v", err)
+	}
+}
+
+// TestMaintenanceSnapshotWithVersionVersion ensures that SnapshotWithVersion returns correct version value.
+func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	// reading snapshot with canceled context should error out
+	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Snapshot.Close()
+	if resp.Version != version.Version {
+		t.Errorf("unexpected version, expected %q, got %q", version.Version, resp.Version)
 	}
 }
 

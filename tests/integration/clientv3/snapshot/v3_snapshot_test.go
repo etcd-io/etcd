@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/v3"
@@ -38,7 +39,7 @@ import (
 func TestSaveSnapshotFilePermissions(t *testing.T) {
 	expectedFileMode := os.FileMode(fileutil.PrivateFileMode)
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
-	dbPath := createSnapshotFile(t, kvs)
+	_, dbPath := createSnapshotFile(t, kvs)
 	defer os.RemoveAll(dbPath)
 
 	dbInfo, err := os.Stat(dbPath)
@@ -52,12 +53,23 @@ func TestSaveSnapshotFilePermissions(t *testing.T) {
 	}
 }
 
+// TestSaveSnapshotVersion ensures that the snapshot returns proper etcd version.
+func TestSaveSnapshotVersion(t *testing.T) {
+	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
+	ver, dbPath := createSnapshotFile(t, kvs)
+	defer os.RemoveAll(dbPath)
+
+	if ver != version.Version {
+		t.Fatalf("expected snapshot version %s, got %s:", version.Version, ver)
+	}
+}
+
 type kv struct {
 	k, v string
 }
 
 // creates a snapshot file and returns the file path.
-func createSnapshotFile(t *testing.T, kvs []kv) string {
+func createSnapshotFile(t *testing.T, kvs []kv) (version string, dbPath string) {
 	testutil.SkipTestIfShortMode(t,
 		"Snapshot creation tests are depending on embedded etcServer so are integration-level tests.")
 	clusterN := 1
@@ -97,12 +109,12 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		}
 	}
 
-	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
-	if err = snapshot.Save(context.Background(), zaptest.NewLogger(t), ccfg, dpPath); err != nil {
+	dbPath = filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
+	version, err = snapshot.SaveWithVersion(context.Background(), zaptest.NewLogger(t), ccfg, dbPath)
+	if err != nil {
 		t.Fatal(err)
 	}
-
-	return dpPath
+	return version, dbPath
 }
 
 func newEmbedURLs(n int) (urls []url.URL) {

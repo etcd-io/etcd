@@ -2713,6 +2713,10 @@
           "type": "string",
           "format": "uint64",
           "title": "remaining_bytes is the number of blob bytes to be sent after this message"
+        },
+        "version": {
+          "description": "local version of server that created the snapshot.\nIn cluster with binaries with different version, each cluster can return different result.\nInforms which etcd server version should be used when restoring the snapshot.",
+          "type": "string"
         }
       }
     },

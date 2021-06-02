@@ -210,10 +210,10 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 
 	sp := snapshot.NewV3(zaptest.NewLogger(t))
 	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
-	if err = sp.Save(context.Background(), ccfg, dpPath); err != nil {
+	_, err = sp.Save(context.Background(), ccfg, dpPath)
+	if err != nil {
 		t.Fatal(err)
 	}
-
 	return dpPath
 }
 
