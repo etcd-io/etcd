@@ -4,6 +4,7 @@
 # Run from repository root directory named etcd.
 #
 set -e
+shopt -s globstar
 
 if ! [[ "$0" =~ scripts/genproto.sh ]]; then
   echo "must be run from repository root"
@@ -33,21 +34,21 @@ echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 
 # directories containing protos to be built
-DIRS="./server/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./raft/raftpb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb"
+DIRS="./server/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./raft/raftpb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./tests/functional"
 
 log_callout -e "\\nRunning gofast (gogo) proto generation..."
 
 for dir in ${DIRS}; do
   run pushd "${dir}"
     run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${ETCD_ROOT_DIR}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
-      --plugin="${GOFAST_BIN}" ./*.proto
+      --plugin="${GOFAST_BIN}" ./**/*.proto
 
-    run sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./*.pb.go
-    run sed -i.bak -E 's|"raft/raftpb"|"go.etcd.io/etcd/raft/v3/raftpb"|g' ./*.pb.go
+    run sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./**/*.pb.go
+    run sed -i.bak -E 's|"raft/raftpb"|"go.etcd.io/etcd/raft/v3/raftpb"|g' ./**/*.pb.go
 
-    rm -f ./*.bak
-    run gofmt -s -w ./*.pb.go
-    run goimports -w ./*.pb.go
+    rm -f ./**/*.bak
+    run gofmt -s -w ./**/*.pb.go
+    run goimports -w ./**/*.pb.go
   run popd
 done
 
