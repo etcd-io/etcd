@@ -26,7 +26,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
-	go.etcd.io/bbolt v1.3.6-0.20210426205525-9c92be978ae0
+	go.etcd.io/bbolt v1.3.6
 	go.etcd.io/etcd/api/v3 v3.5.0-alpha.0
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0-alpha.0
 	go.etcd.io/etcd/client/v2 v2.305.0-alpha.0

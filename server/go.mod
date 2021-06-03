@@ -26,7 +26,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
-	go.etcd.io/bbolt v1.3.6-0.20210426205525-9c92be978ae0
+	go.etcd.io/bbolt v1.3.6
 	go.etcd.io/etcd/api/v3 v3.5.0-alpha.0
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0-alpha.0
 	go.etcd.io/etcd/client/v2 v2.305.0-alpha.0
