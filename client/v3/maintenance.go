@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -31,6 +32,7 @@ type (
 	StatusResponse     pb.StatusResponse
 	HashKVResponse     pb.HashKVResponse
 	MoveLeaderResponse pb.MoveLeaderResponse
+	DowngradeResponse  pb.DowngradeResponse
 )
 
 type Maintenance interface {
@@ -65,6 +67,15 @@ type Maintenance interface {
 	// MoveLeader requests current leader to transfer its leadership to the transferee.
 	// Request must be made to the leader.
 	MoveLeader(ctx context.Context, transfereeID uint64) (*MoveLeaderResponse, error)
+
+	// Downgrade requests downgrades, verifies feasibility or cancels downgrade
+	// on the cluster version.
+	// action is one of the following:
+	// VALIDATE = 0;
+	// ENABLE = 1;
+	// CANCEL = 2;
+	// Supported since etcd 3.5.
+	Downgrade(ctx context.Context, action int32, version string) (*DowngradeResponse, error)
 }
 
 type maintenance struct {
@@ -251,4 +262,20 @@ func (rc *snapshotReadCloser) Read(p []byte) (n int, err error) {
 func (m *maintenance) MoveLeader(ctx context.Context, transfereeID uint64) (*MoveLeaderResponse, error) {
 	resp, err := m.remote.MoveLeader(ctx, &pb.MoveLeaderRequest{TargetID: transfereeID}, m.callOpts...)
 	return (*MoveLeaderResponse)(resp), toErr(ctx, err)
+}
+
+func (m *maintenance) Downgrade(ctx context.Context, action int32, version string) (*DowngradeResponse, error) {
+	actionType := pb.DowngradeRequest_VALIDATE
+	switch action {
+	case 0:
+		actionType = pb.DowngradeRequest_VALIDATE
+	case 1:
+		actionType = pb.DowngradeRequest_ENABLE
+	case 2:
+		actionType = pb.DowngradeRequest_CANCEL
+	default:
+		return nil, errors.New("etcdclient: unknown downgrade action")
+	}
+	resp, err := m.remote.Downgrade(ctx, &pb.DowngradeRequest{Action: actionType, Version: version}, m.callOpts...)
+	return (*DowngradeResponse)(resp), toErr(ctx, err)
 }
