@@ -16,11 +16,9 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/jonboulle/clockwork v0.2.2
 	github.com/kr/text v0.2.0 // indirect
-	github.com/prometheus/client_golang v1.5.1
+	github.com/prometheus/client_golang v1.10.1-0.20210603120351-253906201bda
 	github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common v0.10.0 // indirect
-	github.com/prometheus/procfs v0.2.0 // indirect
-	github.com/sirupsen/logrus v1.7.0 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
@@ -37,13 +35,13 @@ require (
 	go.opentelemetry.io/otel v0.20.0
 	go.opentelemetry.io/otel/exporters/otlp v0.20.0
 	go.opentelemetry.io/otel/sdk v0.20.0
-	go.uber.org/multierr v1.6.0
+	go.uber.org/multierr v1.7.0
 	go.uber.org/zap v1.17.0
-	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
-	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb
+	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
+	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
-	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
-	google.golang.org/grpc v1.37.0
+	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
+	google.golang.org/grpc v1.38.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	sigs.k8s.io/yaml v1.2.0
 )
@@ -59,7 +57,6 @@ replace (
 
 // Bad imports are sometimes causing attempts to pull that code.
 // This makes the error more explicit.
-replace (
-	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
-)
+replace go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
+
+replace go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
