@@ -518,6 +518,24 @@ func TestRoleGrantPermission(t *testing.T) {
 	if !reflect.DeepEqual(perm, r.Perm[0]) {
 		t.Errorf("expected %v, got %v", perm, r.Perm[0])
 	}
+
+	// trying to grant nil permissions returns an error (and doesn't change the actual permissions!)
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+	})
+
+	if err != ErrPermissionNotGiven {
+		t.Error(err)
+	}
+
+	r, err = as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(perm, r.Perm[0]) {
+		t.Errorf("expected %v, got %v", perm, r.Perm[0])
+	}
 }
 
 func TestRoleRevokePermission(t *testing.T) {
