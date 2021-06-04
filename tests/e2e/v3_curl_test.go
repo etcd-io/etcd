@@ -366,6 +366,21 @@ func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
 	}
 }
 
+func TestV3CurlMaintenanceAlarmMissiongAlarm(t *testing.T) {
+	for _, p := range apiPrefix {
+		testCtl(t, testV3CurlMaintenanceAlarmMissiongAlarm, withApiPrefix(p), withCfg(*newConfigNoTLS()))
+	}
+}
+
+func testV3CurlMaintenanceAlarmMissiongAlarm(cx ctlCtx) {
+	if err := cURLPost(cx.epc, cURLReq{
+		endpoint: path.Join(cx.apiPrefix, "/maintenance/alarm"),
+		value:    `{"action": "ACTIVATE"}`,
+	}); err != nil {
+		cx.t.Fatalf("failed post maintenance alarm (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
 // to manually decode; JSON marshals integer fields with
 // string types, so can't unmarshal with epb.CampaignResponse
 type campaignResponse struct {
