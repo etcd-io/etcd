@@ -445,6 +445,22 @@ func TestRoleGrantPermission(t *testing.T) {
 	}
 
 	assert.Equal(t, perm, r.Perm[0])
+
+	// trying to grant nil permissions returns an error (and doesn't change the actual permissions!)
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+	})
+
+	if err != ErrPermissionNotGiven {
+		t.Error(err)
+	}
+
+	r, err = as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, perm, r.Perm[0])
 }
 
 func TestRootRoleGrantPermission(t *testing.T) {
