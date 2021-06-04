@@ -111,6 +111,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### etcd server
 
+  - Add [don't attempt to grant nil permission to a role](https://github.com/etcd-io/etcd/pull/13086).
   - Add [don't activate alarms w/missing AlarmType](https://github.com/etcd-io/etcd/pull/13084).
   - Add [`TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` to `etcd --cipher-suites`](https://github.com/etcd-io/etcd/pull/11864).
   - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
