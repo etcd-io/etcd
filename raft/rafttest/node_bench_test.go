@@ -37,7 +37,7 @@ func BenchmarkProposal3Nodes(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
+		nodes[0].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 
 	for _, n := range nodes {

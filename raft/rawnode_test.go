@@ -63,7 +63,7 @@ func (a *rawNodeAdapter) ReadIndex(_ context.Context, rctx []byte) error {
 	return nil
 }
 func (a *rawNodeAdapter) Step(_ context.Context, m pb.Message) error { return a.RawNode.Step(m) }
-func (a *rawNodeAdapter) Propose(_ context.Context, data []byte) error {
+func (a *rawNodeAdapter) Propose(_ context.Context, data []byte, _ uint64) error {
 	return a.RawNode.Propose(data)
 }
 func (a *rawNodeAdapter) ProposeConfChange(_ context.Context, cc pb.ConfChangeI) error {

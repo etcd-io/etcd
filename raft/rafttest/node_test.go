@@ -36,7 +36,7 @@ func TestBasicProgress(t *testing.T) {
 	waitLeader(nodes)
 
 	for i := 0; i < 100; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
+		nodes[0].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 
 	if !waitCommitConverge(nodes, 100) {
@@ -63,19 +63,19 @@ func TestRestart(t *testing.T) {
 	k1, k2 := (l+1)%5, (l+2)%5
 
 	for i := 0; i < 30; i++ {
-		nodes[l].Propose(context.TODO(), []byte("somedata"))
+		nodes[l].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 	nodes[k1].stop()
 	for i := 0; i < 30; i++ {
-		nodes[(l+3)%5].Propose(context.TODO(), []byte("somedata"))
+		nodes[(l+3)%5].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 	nodes[k2].stop()
 	for i := 0; i < 30; i++ {
-		nodes[(l+4)%5].Propose(context.TODO(), []byte("somedata"))
+		nodes[(l+4)%5].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 	nodes[k2].restart()
 	for i := 0; i < 30; i++ {
-		nodes[l].Propose(context.TODO(), []byte("somedata"))
+		nodes[l].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 	nodes[k1].restart()
 
@@ -102,19 +102,19 @@ func TestPause(t *testing.T) {
 	waitLeader(nodes)
 
 	for i := 0; i < 30; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
+		nodes[0].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 	nodes[1].pause()
 	for i := 0; i < 30; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
+		nodes[0].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 	nodes[2].pause()
 	for i := 0; i < 30; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
+		nodes[0].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 	nodes[2].resume()
 	for i := 0; i < 30; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
+		nodes[0].Propose(context.TODO(), []byte("somedata"), 0)
 	}
 	nodes[1].resume()
 

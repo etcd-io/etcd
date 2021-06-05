@@ -149,7 +149,7 @@ func TestNodePropose(t *testing.T) {
 		}
 		n.Advance()
 	}
-	n.Propose(context.TODO(), []byte("somedata"))
+	n.Propose(context.TODO(), []byte("somedata"), 0)
 	n.Stop()
 
 	if len(msgs) != 1 {
@@ -434,7 +434,7 @@ func TestBlockProposal(t *testing.T) {
 
 	errc := make(chan error, 1)
 	go func() {
-		errc <- n.Propose(context.TODO(), []byte("somedata"))
+		errc <- n.Propose(context.TODO(), []byte("somedata"), 0)
 	}()
 
 	testutil.WaitSchedule()
@@ -487,7 +487,7 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 	proposalTimeout := time.Millisecond * 100
 	ctx, cancel := context.WithTimeout(context.Background(), proposalTimeout)
 	// propose with cancel should be cancelled earyly if dropped
-	err := n.Propose(ctx, droppingMsg)
+	err := n.Propose(ctx, droppingMsg, 0)
 	if err != ErrProposalDropped {
 		t.Errorf("should drop proposal : %v", err)
 	}
@@ -632,7 +632,7 @@ func TestNodeStart(t *testing.T) {
 	storage.Append(rd.Entries)
 	n.Advance()
 
-	n.Propose(ctx, []byte("foo"))
+	n.Propose(ctx, []byte("foo"), 0)
 	if g2 := <-n.Ready(); !reflect.DeepEqual(g2, wants[1]) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 2, g2, wants[1])
 	} else {
@@ -761,7 +761,7 @@ func TestNodeAdvance(t *testing.T) {
 	n.Campaign(ctx)
 	<-n.Ready()
 
-	n.Propose(ctx, []byte("foo"))
+	n.Propose(ctx, []byte("foo"), 0)
 	select {
 	case rd = <-n.Ready():
 		t.Fatalf("unexpected Ready before Advance: %+v", rd)
@@ -927,7 +927,7 @@ func TestCommitPagination(t *testing.T) {
 
 	blob := []byte(strings.Repeat("a", 1000))
 	for i := 0; i < 3; i++ {
-		if err := n.Propose(context.TODO(), blob); err != nil {
+		if err := n.Propose(context.TODO(), blob, 0); err != nil {
 			t.Fatal(err)
 		}
 	}

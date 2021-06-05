@@ -1840,7 +1840,7 @@ func (n *nodeRecorder) Campaign(ctx context.Context) error {
 	n.Record(testutil.Action{Name: "Campaign"})
 	return nil
 }
-func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
+func (n *nodeRecorder) Propose(ctx context.Context, data []byte, _ uint64) error {
 	n.Record(testutil.Action{Name: "Propose", Params: []interface{}{data}})
 	return nil
 }
@@ -1882,7 +1882,7 @@ func newProposalBlockerRecorder() *nodeProposalBlockerRecorder {
 	return &nodeProposalBlockerRecorder{*newNodeRecorderStream()}
 }
 
-func (n *nodeProposalBlockerRecorder) Propose(ctx context.Context, data []byte) error {
+func (n *nodeProposalBlockerRecorder) Propose(ctx context.Context, data []byte, _ uint64) error {
 	<-ctx.Done()
 	n.Record(testutil.Action{Name: "Propose blocked"})
 	return nil
@@ -1961,7 +1961,7 @@ type nodeCommitter struct {
 func newNodeCommitter() raft.Node {
 	return &nodeCommitter{*newNopReadyNode(), 0}
 }
-func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
+func (n *nodeCommitter) Propose(ctx context.Context, data []byte, _ uint64) error {
 	n.index++
 	ents := []raftpb.Entry{{Index: n.index, Data: data}}
 	n.readyc <- raft.Ready{

@@ -677,12 +677,15 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		id = r.Header.ID
 	}
 	ch := s.w.Register(id)
+	if s.internalRaftRequestCache.Fits(len(data)) {
+		s.internalRaftRequestCache.Put(id, &r)
+	}
 
 	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
 	defer cancel()
 
 	start := time.Now()
-	err = s.r.Propose(cctx, data)
+	err = s.r.Propose(cctx, data, id)
 	if err != nil {
 		proposalsFailed.Inc()
 		s.w.Trigger(id, nil) // GC wait

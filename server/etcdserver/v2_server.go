@@ -102,7 +102,7 @@ func (a *reqV2HandlerEtcdServer) processRaftRequest(ctx context.Context, r *Requ
 	ch := a.s.w.Register(r.ID)
 
 	start := time.Now()
-	a.s.r.Propose(ctx, data)
+	a.s.r.Propose(ctx, data, 0)
 	proposalsPending.Inc()
 	defer proposalsPending.Dec()
 

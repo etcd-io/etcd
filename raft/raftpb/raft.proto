@@ -22,6 +22,7 @@ message Entry {
 	optional uint64     Term  = 2 [(gogoproto.nullable) = false]; // must be 64-bit aligned for atomic operations
 	optional uint64     Index = 3 [(gogoproto.nullable) = false]; // must be 64-bit aligned for atomic operations
 	optional EntryType  Type  = 1 [(gogoproto.nullable) = false];
+	optional uint64     ID    = 5 [(gogoproto.nullable) = false];
 	optional bytes      Data  = 4;
 }
 

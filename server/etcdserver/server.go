@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/cache"
 	"math"
 	"math/rand"
 	"net/http"
@@ -291,6 +292,8 @@ type EtcdServer struct {
 
 	firstCommitInTermMu sync.RWMutex
 	firstCommitInTermC  chan struct{}
+
+	internalRaftRequestCache *cache.InternalRaftRequestCache
 
 	*AccessController
 }
@@ -581,6 +584,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		AccessController:   &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
 		consistIndex:       ci,
 		firstCommitInTermC: make(chan struct{}),
+
+		internalRaftRequestCache: cache.NewInternalRaftRequestCache(),
 	}
 	serverID.With(prometheus.Labels{"server_id": id.String()}).Set(1)
 
@@ -1939,7 +1944,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 	// so it uses goroutine to propose.
 	ctx, cancel := context.WithTimeout(s.ctx, timeout)
 	s.GoAttach(func() {
-		s.r.Propose(ctx, data)
+		s.r.Propose(ctx, data, 0)
 		cancel()
 	})
 }
@@ -2181,16 +2186,22 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		return
 	}
 
-	var raftReq pb.InternalRaftRequest
-	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
-		var r pb.Request
-		rp := &r
-		pbutil.MustUnmarshal(rp, e.Data)
-		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
-		return
+	var raftReq *pb.InternalRaftRequest
+	if s.internalRaftRequestCache.Fits(len(e.Data)) {
+		raftReq = s.internalRaftRequestCache.Get(e.ID)
 	}
-	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
+	if raftReq == nil {
+		raftReq = &pb.InternalRaftRequest{}
+		if !pbutil.MaybeUnmarshal(raftReq, e.Data) { // backward compatible
+			var r pb.Request
+			rp := &r
+			pbutil.MustUnmarshal(rp, e.Data)
+			s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
+			s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
+			return
+		}
+	}
+	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
@@ -2205,11 +2216,11 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 
 	var ar *applyResult
 	needResult := s.w.IsRegistered(id)
-	if needResult || !noSideEffect(&raftReq) {
+	if needResult || !noSideEffect(raftReq) {
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
-		ar = s.applyV3.Apply(&raftReq, shouldApplyV3)
+		ar = s.applyV3.Apply(raftReq, shouldApplyV3)
 	}
 
 	// do not re-apply applied entries.
