@@ -14,13 +14,13 @@ To get a mixed read/write performance evaluation result:
 
 Note: the result csv file will be saved to current working directory. The working directory is where etcd database is saved. The working directory is designed for scenarios where a different mounted disk is preferred.
 
-### Plot Graph
-To generate a image based on the benchmark result csv file:
+### Plot Graphs
+To generate two images (read and write) based on the benchmark result csv file:
 ```sh
-# to generate a image from one data csv file
+# to generate a pair of read & write images from one data csv file
 ./plot_data.py ${FIRST_CSV_FILE} -t ${IMAGE_TITLE} -o ${OUTPUT_IMAGE_NAME}
 
 
-# to generate a image comparing two data csv files
+# to generate a pair of read & write images by comparing two data csv files
 ./plot_data.py ${FIRST_CSV_FILE} ${SECOND_CSV_FILE} -t ${IMAGE_TITLE} -o ${OUTPUT_IMAGE_NAME}
 ```
