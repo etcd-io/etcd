@@ -28,8 +28,10 @@ def parse_args():
                         default=True)
     parser.add_argument('--no-zero-centered', dest='zero', action='store_false', required=False,
                         help='plot the improvement graph without white color represents 0.0')
-    parser.add_argument('-o', '--output-image', dest='output', type=str, required=True,
+    parser.add_argument('-o', '--output-image-file', dest='output', type=str, required=True,
                         help='output image filename')
+    parser.add_argument('-F', '--output-format', dest='format', type=str, default='png',
+                        help='output image file format. default: jpg')
     return parser.parse_args()
 
 
@@ -119,7 +121,6 @@ class CenteredNorm(colors.Normalize):
         self.halfrange = halfrange
         self.clip = clip
 
-
     def _set_vmin_vmax(self):
         """
         Set *vmin* and *vmax* based on *vcenter* and *halfrange*.
@@ -176,7 +177,8 @@ class CenteredNorm(colors.Normalize):
         return super().__call__(value, clip=clip)
 
 
-def plot_data(title, *args):
+# plot type is the type of the data to plot. Either 'read' or 'write'
+def plot_data(title, plot_type, cmap_name_default, *args):
     if len(args) == 1:
         fig_size = (12, 16)
         df0 = args[0]['dataframe']
@@ -186,7 +188,7 @@ def plot_data(title, *args):
         for val, df in df0.groupby('ratio'):
             count += 1
             plt.subplot(4, 2, count)
-            plt.tripcolor(df['conn_size'], df['value_size'], df['read'] + df['write'])
+            plt.tripcolor(df['conn_size'], df['value_size'], df[plot_type])
             plt.title('R/W Ratio {:.4f}'.format(val))
             plt.yscale('log', base=2)
             plt.ylabel('Value Size')
@@ -194,7 +196,7 @@ def plot_data(title, *args):
             plt.xlabel('Connections Amount')
             plt.colorbar()
             plt.tight_layout()
-        fig.suptitle('{}\n{}'.format(title, df0param))
+        fig.suptitle('{} [{}]\n{}'.format(title, plot_type.upper(), df0param))
     elif len(args) == 2:
         fig_size = (12, 26)
         df0 = args[0]['dataframe']
@@ -204,8 +206,8 @@ def plot_data(title, *args):
         fig = plt.figure(figsize=fig_size)
         count = 0
         delta_df = df1.copy()
-        delta_df[['read', 'write']] = ((df1[['read', 'write']] - df0[['read', 'write']]) /
-                                       df0[['read', 'write']]) * 100
+        delta_df[[plot_type]] = ((df1[[plot_type]] - df0[[plot_type]]) /
+                                       df0[[plot_type]]) * 100
         for tmp in [df0, df1, delta_df]:
             count += 1
             count2 = count
@@ -217,8 +219,8 @@ def plot_data(title, *args):
                     if params.zero:
                         norm = CenteredNorm()
                 else:
-                    cmap_name = 'viridis'
-                plt.tripcolor(df['conn_size'], df['value_size'], df['read'] + df['write'],
+                    cmap_name = cmap_name_default
+                plt.tripcolor(df['conn_size'], df['value_size'], df[plot_type],
                               norm=norm,
                               cmap=plt.get_cmap(cmap_name))
                 if count2 == 1:
@@ -230,9 +232,11 @@ def plot_data(title, *args):
                         os.path.basename(params.input_file_b),
                         val))
                 elif count2 == 3:
-                    plt.title('Gain\nR/W Ratio {:.4f}'.format(val))
+                    plt.title('Gain\nR/W Ratio {:.4f} [{:.2f}%, {:.2f}%]'.format(val, df[plot_type].min(),
+                                                                               df[plot_type].max()))
                 else:
-                    plt.title('R/W Ratio {:.4f}'.format(val))
+                    plt.title('R/W Ratio {:.4f} [{:.2f}%, {:.2f}%]'.format(val, df[plot_type].min(),
+                                                                         df[plot_type].max()))
                 plt.yscale('log', base=2)
                 plt.ylabel('Value Size')
                 plt.xscale('log', base=2)
@@ -244,24 +248,13 @@ def plot_data(title, *args):
                     plt.colorbar()
                 plt.tight_layout()
                 count2 += 3
-        fig.suptitle('{}\n{}    {}\n{}    {}'.format(
-            title, os.path.basename(params.input_file_a), df0param,
+        fig.suptitle('{} [{}]\n{}    {}\n{}    {}'.format(
+            title, plot_type.upper(), os.path.basename(params.input_file_a), df0param,
             os.path.basename(params.input_file_b), df1param))
     else:
         raise Exception('invalid plot input data')
     fig.subplots_adjust(top=0.93)
-    plt.savefig(params.output)
-
-
-def plot_data_3d(df, title):
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot(projection='3d')
-    ax.scatter(df['conn_size'], df['value_size'], 1 / (1 + 1 / df['ratio']), c=df['read'] + df['write'])
-    ax.set_title('{}'.format(title))
-    ax.set_zlabel('R/W Ratio')
-    ax.set_ylabel('Value Size')
-    ax.set_xlabel('Connections Amount')
-    plt.show()
+    plt.savefig("{}_{}.{}".format(params.output, plot_type, params.format), format=params.format)
 
 
 def main():
@@ -269,7 +262,8 @@ def main():
     logging.basicConfig()
     params = parse_args()
     result = load_data_files(params.input_file_a, params.input_file_b)
-    plot_data(params.title, *result)
+    for i in [('read', 'viridis'), ('write', 'plasma')]:
+        plot_data(params.title, i[0], i[1], *result)
 
 
 if __name__ == '__main__':
