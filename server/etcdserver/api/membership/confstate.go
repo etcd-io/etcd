@@ -24,10 +24,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	confStateKey = []byte("confState")
-)
-
 // MustUnsafeSaveConfStateToBackend persists confState using given transaction (tx).
 // confState in backend is persisted since etcd v3.5.
 func MustUnsafeSaveConfStateToBackend(lg *zap.Logger, tx backend.BatchTx, confState *raftpb.ConfState) {
@@ -36,20 +32,20 @@ func MustUnsafeSaveConfStateToBackend(lg *zap.Logger, tx backend.BatchTx, confSt
 		lg.Panic("Cannot marshal raftpb.ConfState", zap.Stringer("conf-state", confState), zap.Error(err))
 	}
 
-	tx.UnsafePut(buckets.Meta, confStateKey, confStateBytes)
+	tx.UnsafePut(buckets.Meta, buckets.MetaConfStateName, confStateBytes)
 }
 
 // UnsafeConfStateFromBackend retrieves ConfState from the backend.
 // Returns nil if confState in backend is not persisted (e.g. backend writen by <v3.5).
 func UnsafeConfStateFromBackend(lg *zap.Logger, tx backend.ReadTx) *raftpb.ConfState {
-	keys, vals := tx.UnsafeRange(buckets.Meta, confStateKey, nil, 0)
+	keys, vals := tx.UnsafeRange(buckets.Meta, buckets.MetaConfStateName, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}
 
 	if len(keys) != 1 {
 		lg.Panic(
-			"unexpected number of key: "+string(confStateKey)+" when getting cluster version from backend",
+			"unexpected number of key: "+string(buckets.MetaConfStateName)+" when getting cluster version from backend",
 			zap.Int("number-of-key", len(keys)),
 		)
 	}
