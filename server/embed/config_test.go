@@ -305,6 +305,11 @@ func TestLogRotation(t *testing.T) {
 			logRotationConfig: `{"maxsize": 1}`,
 		},
 		{
+			name:              "log output relative path",
+			logOutputs:        []string{"stderr", "tmp/path"},
+			logRotationConfig: `{"maxsize": 1}`,
+		},
+		{
 			name:              "no file targets",
 			logOutputs:        []string{"stderr"},
 			logRotationConfig: `{"maxsize": 1}`,
@@ -360,6 +365,9 @@ func TestLogRotation(t *testing.T) {
 			}
 			if err == nil && tt.wantErr {
 				t.Errorf("test %q, expected error, got nil", tt.name)
+			}
+			if err == nil {
+				cfg.GetLogger().Info("test log")
 			}
 		})
 	}
