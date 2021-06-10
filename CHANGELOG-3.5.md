@@ -13,9 +13,13 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/) for any breaking changes.
 
-- [v3.5.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.1...v3.5.0).
-- [v3.5.0-rc.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.1) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.0...v3.5.0-rc.1).
-- [v3.5.0-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.0) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0-rc.0).
+- [v3.5.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0) (2021 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.1...v3.5.0).
+- [v3.5.0-rc.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.1) (2021-06-10), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.0...v3.5.0-rc.1).
+- [v3.5.0-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.0) (2021-06-04), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-beta.4...v3.5.0-rc.0).
+- [v3.5.0-beta.4](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-beta.4) (2021-05-26), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-beta.3...v3.5.0-beta.4).
+- [v3.5.0-beta.3](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-beta.3) (2021-05-18), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-beta.2...v3.5.0-beta.3).
+- [v3.5.0-beta.2](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-beta.2) (2021-05-18), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-beta.1...v3.5.0-beta.2).
+- [v3.5.0-beta.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-beta.1) (2021-05-18), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0-beta.1).
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/).**
 
@@ -25,7 +29,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - `go.etcd.io/clientv3/snapshot` SnapshotManager class have moved to `go.etcd.io/clientv3/etcdctl`.
    The method `snapshot.Save` to download a snapshot from the remote server was preserved in 'go.etcd.io/clientv3/snapshot`.
 - `go.etcd.io/client' package got migrated to 'go.etcd.io/client/v2'.
-- Changed behavior of clienv3 API [MemberList](https://github.com/etcd-io/etcd/pull/11639).
+- Changed behavior of clientv3 API [MemberList](https://github.com/etcd-io/etcd/pull/11639).
   - Previously, it is directly served with server's local data, which could be stale.
   - Now, it is served with linearizable guarantee. If the server is disconnected from quorum, `MemberList` call will fail.
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
