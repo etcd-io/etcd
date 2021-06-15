@@ -21,6 +21,8 @@ require (
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	google.golang.org/genproto v0.0.0-20201008135153-289734e2e40c // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
+	gotest.tools v2.2.0+incompatible
+	gotest.tools/gotestsum v0.3.5
 	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc
 	mvdan.cc/unparam v0.0.0-20200501210554-b37ab49443f7
 )
