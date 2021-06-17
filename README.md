@@ -160,6 +160,7 @@ go get go.etcd.io/etcd/client/v3
 ```
 
 `etcd/clientv3` is the official Go etcd client for v3. Read more:[etcd client v3 install](https://github.com/etcd-io/etcd/tree/main/client/v3#install)
+
 Notes to resolve dependency and compatibility issues for go modules: [#13108](https://github.com/etcd-io/etcd/issues/13108)
 
 ### Next steps
