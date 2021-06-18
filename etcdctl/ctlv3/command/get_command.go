@@ -54,6 +54,17 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&getKeysOnly, "keys-only", false, "Get only the keys")
 	cmd.Flags().BoolVar(&getCountOnly, "count-only", false, "Get only the count")
 	cmd.Flags().BoolVar(&printValueOnly, "print-value-only", false, `Only write values when using the "simple" output format`)
+
+	cmd.RegisterFlagCompletionFunc("consistency", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"l", "s"}, cobra.ShellCompDirectiveDefault
+	})
+	cmd.RegisterFlagCompletionFunc("order", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"ASCEND", "DESCEND"}, cobra.ShellCompDirectiveDefault
+	})
+	cmd.RegisterFlagCompletionFunc("sort-by", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"CREATE", "KEY", "MODIFY", "VALUE", "VERSION"}, cobra.ShellCompDirectiveDefault
+	})
+
 	return cmd
 }
 
