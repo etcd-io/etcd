@@ -20,27 +20,35 @@ import (
 )
 
 const testSamplesLength = 10
+const testSamplesCount = 50
 
 func TestUniqueStrings(t *testing.T) {
-	ss := UniqueStrings(testSamplesLength, 50)
+	ss := UniqueStrings(testSamplesLength, testSamplesCount)
 	for i := 1; i < len(ss); i++ {
 		if ss[i-1] == ss[i] {
 			t.Fatalf("ss[i-1] %q == ss[i] %q", ss[i-1], ss[i])
 		}
 	}
+
+	// validate length of each sample
+	for i := 0; i < testSamplesCount; i++ {
+		if len(ss[i]) != testSamplesLength {
+			t.Fatalf("ss[%d] %q length != %d", i, ss[i], testSamplesLength)
+		}
+	}
+
 	fmt.Println(ss)
 }
 
 func TestRandString(t *testing.T) {
-	const count = 50
-	ss := make([]string, count)
-	for i := 0; i < count; i++ {
+	ss := make([]string, testSamplesCount)
+	for i := 0; i < testSamplesCount; i++ {
 		ss[i] = RandString(testSamplesLength)
 	}
 
 	// search for duplicate strings
-	for i := 1; i < count; i++ {
-		for n := i+1; n < count; n++ {
+	for i := 1; i < testSamplesCount; i++ {
+		for n := i+1; n < testSamplesCount; n++ {
 			if ss[i] == ss[n] {
 				t.Fatalf("ss[%d] %q == ss[%d] %q", i, ss[i], n, ss[n])
 			}
@@ -48,7 +56,7 @@ func TestRandString(t *testing.T) {
 	}
 
 	// validate length of each sample
-	for i := 0; i < count; i++ {
+	for i := 0; i < testSamplesCount; i++ {
 		if len(ss[i]) != testSamplesLength {
 			t.Fatalf("ss[%d] %q length != %d", i, ss[i], testSamplesLength)
 		}
