@@ -153,6 +153,12 @@ Follow the steps in [Procfile.learner](./Procfile.learner) to add a learner node
 goreman -f ./Procfile.learner start
 ```
 
+### Install etcd client v3
+
+```bash
+go get go.etcd.io/etcd/client/v3
+```
+
 ### Next steps
 
 Now it's time to dig into the full etcd API and other guides.
