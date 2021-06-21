@@ -125,6 +125,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	ms.lg.Info("sending database snapshot to client",
 		zap.Int64("total-bytes", total),
 		zap.String("size", size),
+		zap.String("etcd-version", version.Version),
 	)
 	for total-sent > 0 {
 		// buffer just holds read bytes from stream
@@ -151,6 +152,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		resp := &pb.SnapshotResponse{
 			RemainingBytes: uint64(total - sent),
 			Blob:           buf[:n],
+			Version:        version.Version,
 		}
 		if err = srv.Send(resp); err != nil {
 			return togRPCError(err)
@@ -166,7 +168,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		zap.Int64("total-bytes", total),
 		zap.Int("checksum-size", len(sha)),
 	)
-	hresp := &pb.SnapshotResponse{RemainingBytes: 0, Blob: sha}
+	hresp := &pb.SnapshotResponse{RemainingBytes: 0, Blob: sha, Version: version.Version}
 	if err := srv.Send(hresp); err != nil {
 		return togRPCError(err)
 	}
@@ -175,6 +177,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		zap.Int64("total-bytes", total),
 		zap.String("size", size),
 		zap.String("took", humanize.Time(start)),
+		zap.String("etcd-version", version.Version),
 	)
 	return nil
 }

@@ -112,10 +112,14 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	path := args[0]
-	if err := snapshot.Save(ctx, lg, *cfg, path); err != nil {
+	version, err := snapshot.SaveWithVersion(ctx, lg, *cfg, path)
+	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitInterrupted, err)
 	}
 	fmt.Printf("Snapshot saved at %s\n", path)
+	if version != "" {
+		fmt.Printf("Server version %s\n", version)
+	}
 }
 
 func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
