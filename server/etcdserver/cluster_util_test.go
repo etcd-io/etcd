@@ -15,7 +15,6 @@
 package etcdserver
 
 import (
-	"reflect"
 	"testing"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -26,42 +25,6 @@ import (
 )
 
 var testLogger = zap.NewExample()
-
-func TestDecideClusterVersion(t *testing.T) {
-	tests := []struct {
-		vers  map[string]*version.Versions
-		wdver *semver.Version
-	}{
-		{
-			map[string]*version.Versions{"a": {Server: "2.0.0"}},
-			semver.Must(semver.NewVersion("2.0.0")),
-		},
-		// unknown
-		{
-			map[string]*version.Versions{"a": nil},
-			nil,
-		},
-		{
-			map[string]*version.Versions{"a": {Server: "2.0.0"}, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
-			semver.Must(semver.NewVersion("2.0.0")),
-		},
-		{
-			map[string]*version.Versions{"a": {Server: "2.1.0"}, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
-			semver.Must(semver.NewVersion("2.1.0")),
-		},
-		{
-			map[string]*version.Versions{"a": nil, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
-			nil,
-		},
-	}
-
-	for i, tt := range tests {
-		dver := decideClusterVersion(testLogger, tt.vers)
-		if !reflect.DeepEqual(dver, tt.wdver) {
-			t.Errorf("#%d: ver = %+v, want %+v", i, dver, tt.wdver)
-		}
-	}
-}
 
 func TestIsCompatibleWithVers(t *testing.T) {
 	tests := []struct {
@@ -211,55 +174,6 @@ func TestDecideAllowedVersionRange(t *testing.T) {
 
 			if !maxV.Equal(*tt.expectedMaxV) {
 				t.Errorf("Expected maxV is %v; Got %v", tt.expectedMaxV.String(), maxV.String())
-			}
-		})
-	}
-}
-
-func TestIsMatchedVersions(t *testing.T) {
-	tests := []struct {
-		name             string
-		targetVersion    *semver.Version
-		versionMap       map[string]*version.Versions
-		expectedFinished bool
-	}{
-		{
-			"When downgrade finished",
-			&semver.Version{Major: 3, Minor: 4},
-			map[string]*version.Versions{
-				"mem1": {Server: "3.4.1", Cluster: "3.4.0"},
-				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
-				"mem3": {Server: "3.4.2", Cluster: "3.4.0"},
-			},
-			true,
-		},
-		{
-			"When cannot parse peer version",
-			&semver.Version{Major: 3, Minor: 4},
-			map[string]*version.Versions{
-				"mem1": {Server: "3.4.1", Cluster: "3.4"},
-				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
-				"mem3": {Server: "3.4.2", Cluster: "3.4.0"},
-			},
-			false,
-		},
-		{
-			"When downgrade not finished",
-			&semver.Version{Major: 3, Minor: 4},
-			map[string]*version.Versions{
-				"mem1": {Server: "3.4.1", Cluster: "3.4.0"},
-				"mem2": {Server: "3.4.2-pre", Cluster: "3.4.0"},
-				"mem3": {Server: "3.5.2", Cluster: "3.5.0"},
-			},
-			false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actual := isMatchedVersions(zap.NewNop(), tt.targetVersion, tt.versionMap)
-			if actual != tt.expectedFinished {
-				t.Errorf("expected downgrade finished is %v; got %v", tt.expectedFinished, actual)
 			}
 		})
 	}
