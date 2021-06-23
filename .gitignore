@@ -31,6 +31,7 @@ vendor/**/*
 !vendor/**/License*
 !vendor/**/LICENCE*
 !vendor/**/LICENSE*
+!vendor/modules.txt
 vendor/**/*_test.go
 
 *.bak
