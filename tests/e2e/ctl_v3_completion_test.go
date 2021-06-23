@@ -24,13 +24,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCtlV3CompletionBash(t *testing.T) { testShellCompletion(t, "bash") }
+func TestCtlV3CompletionBash(t *testing.T) { testShellCompletion(t, ctlBinPath, "bash") }
 
-func testShellCompletion(t *testing.T, shellName string) {
+func TestUtlV3CompletionBash(t *testing.T) { testShellCompletion(t, utlBinPath, "bash") }
+
+func testShellCompletion(t *testing.T, binPath, shellName string) {
 	BeforeTest(t)
 
 	stdout := new(bytes.Buffer)
-	completionCmd := exec.Command(ctlBinPath, "completion", shellName)
+	completionCmd := exec.Command(binPath, "completion", shellName)
 	completionCmd.Stdout = stdout
 	completionCmd.Stderr = os.Stderr
 	require.NoError(t, completionCmd.Run())

@@ -64,6 +64,10 @@ func NewBackupCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&withV3, "with-v3", true, "Backup v3 backend data")
 	cmd.MarkFlagRequired("data-dir")
 	cmd.MarkFlagRequired("backup-dir")
+	cmd.MarkFlagDirname("data-dir")
+	cmd.MarkFlagDirname("wal-dir")
+	cmd.MarkFlagDirname("backup-dir")
+	cmd.MarkFlagDirname("backup-wal-dir")
 	return cmd
 }
 

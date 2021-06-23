@@ -35,12 +35,16 @@ var (
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&etcdutl.OutputFormat, "write-out", "w", "simple", "set the output format (fields, json, protobuf, simple, table)")
+	rootCmd.RegisterFlagCompletionFunc("write-out", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"fields", "json", "protobuf", "simple", "table"}, cobra.ShellCompDirectiveDefault
+	})
 
 	rootCmd.AddCommand(
 		etcdutl.NewBackupCommand(),
 		etcdutl.NewDefragCommand(),
 		etcdutl.NewSnapshotCommand(),
 		etcdutl.NewVersionCommand(),
+		etcdutl.NewCompletionCommand(),
 	)
 }
 
