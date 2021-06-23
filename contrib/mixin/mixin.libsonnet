@@ -33,7 +33,7 @@
                 )
               )
               > 0
-            ||| % {etcd_instance_labels: $._config.etcd_instance_labels, etcd_selector: $._config.etcd_selector, network_failure_range: $._config.scrape_interval_seconds*4},
+            ||| % { etcd_instance_labels: $._config.etcd_instance_labels, etcd_selector: $._config.etcd_selector, network_failure_range: $._config.scrape_interval_seconds * 4 },
             'for': '10m',
             labels: {
               severity: 'critical',
@@ -88,7 +88,7 @@
           {
             alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
-              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) without (grpc_type, grpc_code)
+              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[5m])) without (grpc_type, grpc_code)
                 /
               sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) without (grpc_type, grpc_code)
                 > 1
@@ -105,7 +105,7 @@
           {
             alert: 'etcdHighNumberOfFailedGRPCRequests',
             expr: |||
-              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code!="OK"}[5m])) without (grpc_type, grpc_code)
+              100 * sum(rate(grpc_server_handled_total{%(etcd_selector)s, grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[5m])) without (grpc_type, grpc_code)
                 /
               sum(rate(grpc_server_handled_total{%(etcd_selector)s}[5m])) without (grpc_type, grpc_code)
                 > 5
@@ -207,7 +207,7 @@
               summary: 'etcd cluster 99th percentile commit durations are too high.',
             },
           },
-         {
+          {
             alert: 'etcdBackendQuotaLowSpace',
             expr: |||
               (etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100 > 95
@@ -219,8 +219,8 @@
             annotations: {
               message: 'etcd cluster "{{ $labels.job }}": database size exceeds the defined quota on etcd instance {{ $labels.instance }}, please defrag or increase the quota as the writes to etcd will be disabled when it is full.',
             },
-         },
-         {
+          },
+          {
             alert: 'etcdExcessiveDatabaseGrowth',
             expr: |||
               increase(((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100)[240m:1m]) > 50
@@ -232,7 +232,7 @@
             annotations: {
               message: 'etcd cluster "{{ $labels.job }}": Observed surge in etcd writes leading to 50% increase in database size over the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.',
             },
-         },
+          },
         ],
       },
     ],
@@ -243,7 +243,7 @@
       uid: std.md5('etcd.json'),
       title: 'etcd',
       description: 'etcd sample Grafana dashboard with Prometheus',
-      tags: [ 'etcd-mixin' ],
+      tags: ['etcd-mixin'],
       style: 'dark',
       timezone: 'browser',
       editable: true,
@@ -369,7 +369,7 @@
                   step: 2,
                 },
                 {
-                  expr: 'sum(rate(grpc_server_handled_total{job="$cluster",grpc_type="unary",grpc_code!="OK"}[5m]))',
+                  expr: 'sum(rate(grpc_server_handled_total{job="$cluster",grpc_type="unary",grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[5m]))',
                   format: 'time_series',
                   intervalFactor: 2,
                   legendFormat: 'RPC Failed Rate',
