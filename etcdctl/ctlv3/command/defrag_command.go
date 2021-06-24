@@ -36,6 +36,7 @@ func NewDefragCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().BoolVar(&epClusterEndpoints, "cluster", false, "use all endpoints from the cluster member list")
 	cmd.Flags().StringVar(&defragDataDir, "data-dir", "", "Optional. If present, defragments a data directory not in use by etcd.")
+	cmd.MarkFlagDirname("data-dir")
 	return cmd
 }
 

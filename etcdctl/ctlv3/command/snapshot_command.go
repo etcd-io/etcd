@@ -88,6 +88,8 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
+	cmd.MarkFlagDirname("data-dir")
+	cmd.MarkFlagDirname("wal-dir")
 
 	return cmd
 }
