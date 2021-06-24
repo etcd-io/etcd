@@ -161,44 +161,6 @@ func getVersions(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt 
 	return vers
 }
 
-// decideClusterVersion decides the cluster version based on the versions map.
-// The returned version is the min server version in the map, or nil if the min
-// version in unknown.
-func decideClusterVersion(lg *zap.Logger, vers map[string]*version.Versions) *semver.Version {
-	var cv *semver.Version
-	lv := semver.Must(semver.NewVersion(version.Version))
-
-	for mid, ver := range vers {
-		if ver == nil {
-			return nil
-		}
-		v, err := semver.NewVersion(ver.Server)
-		if err != nil {
-			lg.Warn(
-				"failed to parse server version of remote member",
-				zap.String("remote-member-id", mid),
-				zap.String("remote-member-version", ver.Server),
-				zap.Error(err),
-			)
-			return nil
-		}
-		if lv.LessThan(*v) {
-			lg.Warn(
-				"leader found higher-versioned member",
-				zap.String("local-member-version", lv.String()),
-				zap.String("remote-member-id", mid),
-				zap.String("remote-member-version", ver.Server),
-			)
-		}
-		if cv == nil {
-			cv = v
-		} else if v.LessThan(*cv) {
-			cv = v
-		}
-	}
-	return cv
-}
-
 // allowedVersionRange decides the available version range of the cluster that local server can join in;
 // if the downgrade enabled status is true, the version window is [oneMinorHigher, oneMinorHigher]
 // if the downgrade is not enabled, the version window is [MinClusterVersion, localVersion]
@@ -436,35 +398,6 @@ func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTrip
 		return enable, nil
 	}
 	return false, err
-}
-
-// isMatchedVersions returns true if all server versions are equal to target version, otherwise return false.
-// It can be used to decide the whether the cluster finishes downgrading to target version.
-func isMatchedVersions(lg *zap.Logger, targetVersion *semver.Version, vers map[string]*version.Versions) bool {
-	for mid, ver := range vers {
-		if ver == nil {
-			return false
-		}
-		v, err := semver.NewVersion(ver.Cluster)
-		if err != nil {
-			lg.Warn(
-				"failed to parse server version of remote member",
-				zap.String("remote-member-id", mid),
-				zap.String("remote-member-version", ver.Server),
-				zap.Error(err),
-			)
-			return false
-		}
-		if !targetVersion.Equal(*v) {
-			lg.Warn("remotes server has mismatching etcd version",
-				zap.String("remote-member-id", mid),
-				zap.String("current-server-version", v.String()),
-				zap.String("target-version", targetVersion.String()),
-			)
-			return false
-		}
-	}
-	return true
 }
 
 func convertToClusterVersion(v string) (*semver.Version, error) {

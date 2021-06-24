@@ -62,6 +62,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/mvcc"
@@ -2430,12 +2431,9 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 	return s.cluster.Version()
 }
 
-// monitorVersions checks the member's version every monitorVersionInterval.
-// It updates the cluster version if all members agrees on a higher one.
-// It prints out log if there is a member with a higher version than the
-// local version.
-// TODO switch to updateClusterVersionV3 in 3.6
+// monitorVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.
 func (s *EtcdServer) monitorVersions() {
+	monitor := serverversion.NewMonitor(s.Logger(), &serverVersionAdapter{s})
 	for {
 		select {
 		case <-s.FirstCommitInTermNotify():
@@ -2447,31 +2445,7 @@ func (s *EtcdServer) monitorVersions() {
 		if s.Leader() != s.ID() {
 			continue
 		}
-
-		v := decideClusterVersion(s.Logger(), getVersions(s.Logger(), s.cluster, s.id, s.peerRt))
-		if v != nil {
-			// only keep major.minor version for comparison
-			v = &semver.Version{
-				Major: v.Major,
-				Minor: v.Minor,
-			}
-		}
-
-		// if the current version is nil:
-		// 1. use the decided version if possible
-		// 2. or use the min cluster version
-		if s.cluster.Version() == nil {
-			verStr := version.MinClusterVersion
-			if v != nil {
-				verStr = v.String()
-			}
-			s.GoAttach(func() { s.updateClusterVersionV2(verStr) })
-			continue
-		}
-
-		if v != nil && membership.IsValidVersionChange(s.cluster.Version(), v) {
-			s.GoAttach(func() { s.updateClusterVersionV2(v.String()) })
-		}
+		monitor.UpdateClusterVersionIfNeeded()
 	}
 }
 
@@ -2551,12 +2525,13 @@ func (s *EtcdServer) updateClusterVersionV3(ver string) {
 	}
 }
 
+// monitorDowngrade every DowngradeCheckTime checks if it's the leader and cancels downgrade if needed.
 func (s *EtcdServer) monitorDowngrade() {
+	monitor := serverversion.NewMonitor(s.Logger(), &serverVersionAdapter{s})
 	t := s.Cfg.DowngradeCheckTime
 	if t == 0 {
 		return
 	}
-	lg := s.Logger()
 	for {
 		select {
 		case <-time.After(t):
@@ -2567,22 +2542,7 @@ func (s *EtcdServer) monitorDowngrade() {
 		if !s.isLeader() {
 			continue
 		}
-
-		d := s.cluster.DowngradeInfo()
-		if !d.Enabled {
-			continue
-		}
-
-		targetVersion := d.TargetVersion
-		v := semver.Must(semver.NewVersion(targetVersion))
-		if isMatchedVersions(s.Logger(), v, getVersions(s.Logger(), s.cluster, s.id, s.peerRt)) {
-			lg.Info("the cluster has been downgraded", zap.String("cluster-version", targetVersion))
-			ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-			if _, err := s.downgradeCancel(ctx); err != nil {
-				lg.Warn("failed to cancel downgrade", zap.Error(err))
-			}
-			cancel()
-		}
+		monitor.CancelDowngradeIfNeeded()
 	}
 }
 
