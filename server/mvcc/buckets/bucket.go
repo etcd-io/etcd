@@ -67,8 +67,14 @@ func (b bucket) String() string          { return string(b.Name()) }
 func (b bucket) IsSafeRangeBucket() bool { return b.safeRangeBucket }
 
 var (
+	// Since v3.0
 	MetaConsistentIndexKeyName = []byte("consistent_index")
-	MetaTermKeyName            = []byte("term")
+	// Since v3.5
+	MetaTermKeyName   = []byte("term")
+	MetaConfStateName = []byte("confState")
+	// Since v3.6
+	MetaStorageVersionName = []byte("storageVersion")
+	// Before adding new meta key please update server/etcdserver/version
 )
 
 // DefaultIgnores defines buckets & keys to ignore in hash checking.

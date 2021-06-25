@@ -66,12 +66,13 @@ func newPrinterUnsupported(n string) printer {
 func (p *printerUnsupported) DBStatus(snapshot.Status) { p.p(nil) }
 
 func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
-	hdr = []string{"hash", "revision", "total keys", "total size"}
+	hdr = []string{"hash", "revision", "total keys", "total size", "version"}
 	rows = append(rows, []string{
 		fmt.Sprintf("%x", ds.Hash),
 		fmt.Sprint(ds.Revision),
 		fmt.Sprint(ds.TotalKey),
 		humanize.Bytes(uint64(ds.TotalSize)),
+		ds.Version,
 	})
 	return hdr, rows
 }

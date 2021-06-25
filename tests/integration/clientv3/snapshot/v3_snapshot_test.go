@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/v3"
@@ -39,7 +38,7 @@ import (
 func TestSaveSnapshotFilePermissions(t *testing.T) {
 	expectedFileMode := os.FileMode(fileutil.PrivateFileMode)
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
-	_, dbPath := createSnapshotFile(t, kvs)
+	_, dbPath := createSnapshotFile(t, newEmbedConfig(t), kvs)
 	defer os.RemoveAll(dbPath)
 
 	dbInfo, err := os.Stat(dbPath)
@@ -53,14 +52,17 @@ func TestSaveSnapshotFilePermissions(t *testing.T) {
 	}
 }
 
-// TestSaveSnapshotVersion ensures that the snapshot returns proper etcd version.
+// TestSaveSnapshotVersion ensures that the snapshot returns proper storage version.
 func TestSaveSnapshotVersion(t *testing.T) {
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
-	ver, dbPath := createSnapshotFile(t, kvs)
+	cfg := newEmbedConfig(t)
+	// Force raft snapshot to ensure that storage version is set
+	cfg.SnapshotCount = 1
+	ver, dbPath := createSnapshotFile(t, cfg, kvs)
 	defer os.RemoveAll(dbPath)
 
-	if ver != version.Version {
-		t.Fatalf("expected snapshot version %s, got %s:", version.Version, ver)
+	if ver != "3.6.0" {
+		t.Fatalf("expected snapshot version %s, got %s:", "3.6.0", ver)
 	}
 }
 
@@ -68,19 +70,23 @@ type kv struct {
 	k, v string
 }
 
-// creates a snapshot file and returns the file path.
-func createSnapshotFile(t *testing.T, kvs []kv) (version string, dbPath string) {
-	testutil.SkipTestIfShortMode(t,
-		"Snapshot creation tests are depending on embedded etcServer so are integration-level tests.")
+func newEmbedConfig(t *testing.T) *embed.Config {
 	clusterN := 1
 	urls := newEmbedURLs(clusterN * 2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
-
 	cfg := integration.NewEmbedConfig(t, "default")
 	cfg.ClusterState = "new"
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
 	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
+	return cfg
+}
+
+// creates a snapshot file and returns the file path.
+func createSnapshotFile(t *testing.T, cfg *embed.Config, kvs []kv) (version string, dbPath string) {
+	testutil.SkipTestIfShortMode(t,
+		"Snapshot creation tests are depending on embedded etcServer so are integration-level tests.")
+
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
 		t.Fatal(err)

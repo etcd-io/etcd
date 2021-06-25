@@ -12,20 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdutl
-
-import (
-	"fmt"
-
-	"go.etcd.io/etcd/etcdutl/v3/snapshot"
-)
-
-type fieldsPrinter struct{ printer }
-
-func (p *fieldsPrinter) DBStatus(r snapshot.Status) {
-	fmt.Println(`"Hash" :`, r.Hash)
-	fmt.Println(`"Revision" :`, r.Revision)
-	fmt.Println(`"Keys" :`, r.TotalKey)
-	fmt.Println(`"Size" :`, r.TotalSize)
-	fmt.Println(`"Version" :`, r.Version)
-}
+// Package version provides functions for getting/saving storage version.
+package version

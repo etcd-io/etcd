@@ -249,7 +249,8 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	// Set SnapshotCount to 1 to force raft snapshot to ensure that storage version is set
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, SnapshotCount: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with canceled context should error out
@@ -258,7 +259,7 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer resp.Snapshot.Close()
-	if resp.Version != version.Version {
+	if resp.Version != "3.6.0" {
 		t.Errorf("unexpected version, expected %q, got %q", version.Version, resp.Version)
 	}
 }

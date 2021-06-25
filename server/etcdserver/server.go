@@ -294,6 +294,9 @@ type EtcdServer struct {
 	firstCommitInTermC  chan struct{}
 
 	*AccessController
+
+	// Ensure that storage version is updated only once.
+	storageVersionUpdated sync.Once
 }
 
 type backendHooks struct {
@@ -2371,6 +2374,12 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			"saved snapshot",
 			zap.Uint64("snapshot-index", snap.Metadata.Index),
 		)
+		s.storageVersionUpdated.Do(func() {
+			err := serverversion.UpdateStorageVersion(s.lg, s.be.BatchTx())
+			if err != nil {
+				s.lg.Warn("failed to update storage version", zap.Error(err))
+			}
+		})
 
 		// When sending a snapshot, etcd will pause compaction.
 		// After receives a snapshot, the slow follower needs to get all the entries right after
