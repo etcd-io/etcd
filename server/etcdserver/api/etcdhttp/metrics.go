@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.uber.org/zap"
 )
@@ -193,7 +194,7 @@ func checkV3Health(lg *zap.Logger, srv *etcdserver.EtcdServer, excludedAlarms Al
 	ctx, cancel := context.WithTimeout(context.Background(), srv.Cfg.ReqTimeout())
 	_, err := srv.Range(ctx, &etcdserverpb.RangeRequest{KeysOnly: true, Limit: 1})
 	cancel()
-	if err != nil {
+	if err != nil && err != auth.ErrUserEmpty && err != auth.ErrPermissionDenied {
 		h.Health = "false"
 		h.Reason = fmt.Sprintf("RANGE ERROR:%s", err)
 		lg.Warn("serving /health false; Range fails", zap.Error(err))
