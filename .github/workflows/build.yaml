@@ -1,0 +1,56 @@
+name: Build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - linux-amd64
+          - linux-386
+          - darwin-amd64
+          - windows-amd64
+          - linux-arm
+          - linux-arm64
+          - linux-ppc64le
+          - linux-s390x
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.16"
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          echo "${TARGET}"
+          case "${TARGET}" in
+            linux-amd64)
+              ARCH=amd64 PASSES='build' ./test.sh
+              ;;
+            linux-386)
+              ARCH=386 PASSES='build' ./test.sh
+              ;;
+            darwin-amd64)
+              ARCH=amd64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ;;
+            windows-amd64)
+              ARCH=amd64 GOOS=windows GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ;;
+            linux-arm)
+              ARCH=arm GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ;;
+            linux-arm64)
+              ARCH=arm64 GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ;;
+            linux-ppc64le)
+              ARCH=ppc64le GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ;;
+            linux-s390x)
+              ARCH=s390x GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ;;
+            *)
+              echo "Failed to find target"
+              exit 1
+              ;;
+          esac

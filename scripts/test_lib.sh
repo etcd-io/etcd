@@ -231,13 +231,8 @@ function produce_junit_xmlreport {
   local junit_xml_filename
   junit_xml_filename="${junit_filename_prefix}.xml"
 
-  if ! command -v gotestsum >/dev/null 2>&1; then
-    log_callout "gotestsum not found; installing now"
-    pushd "${ETCD_ROOT_DIR}/tools/mod" >/dev/null || return
-      GO111MODULE=on go install gotest.tools/gotestsum
-    popd >/dev/null || return
-  fi
-  gotestsum --junitfile "${junit_xml_filename}" --raw-command cat "${junit_filename_prefix}"*.stdout
+  # Ensure that gotestsum is run without cross-compiling
+  run_go_tool gotest.tools/gotestsum --junitfile "${junit_xml_filename}" --raw-command cat "${junit_filename_prefix}"*.stdout || exit 1
   if [ "${VERBOSE}" != "1" ]; then
     rm "${junit_filename_prefix}"*.stdout
   fi
@@ -360,7 +355,7 @@ function tool_exists {
 
 # Ensure gobin is available, as it runs majority of the tools
 if ! command -v "gobin" >/dev/null; then
-    run env GO111MODULE=off go get github.com/myitcv/gobin || exit 1
+    GOARCH="" run env GO111MODULE=off go get github.com/myitcv/gobin || exit 1
 fi
 
 # tool_get_bin [tool] - returns absolute path to a tool binary (or returns error)
@@ -386,11 +381,11 @@ function tool_pkg_dir {
 # tool_get_bin [tool]
 function run_go_tool {
   local cmdbin
-  if ! cmdbin=$(tool_get_bin "${1}"); then
+  if ! cmdbin=$(GOARCH="" tool_get_bin "${1}"); then
     return 2
   fi
   shift 1
-  run "${cmdbin}" "$@" || return 2
+  GOARCH="" run "${cmdbin}" "$@" || return 2
 }
 
 # assert_no_git_modifications fails if there are any uncommited changes.
