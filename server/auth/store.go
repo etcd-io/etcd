@@ -40,11 +40,8 @@ import (
 )
 
 var (
-	enableFlagKey = []byte("authEnabled")
-	authEnabled   = []byte{1}
-	authDisabled  = []byte{0}
-
-	revisionKey = []byte("authRevision")
+	authEnabled  = []byte{1}
+	authDisabled = []byte{0}
 
 	rootPerm = authpb.Permission{PermType: authpb.READWRITE, Key: []byte{}, RangeEnd: []byte{0}}
 
@@ -240,7 +237,7 @@ func (as *authStore) AuthEnable() error {
 		return ErrRootRoleNotExist
 	}
 
-	tx.UnsafePut(buckets.Auth, enableFlagKey, authEnabled)
+	tx.UnsafePut(buckets.Auth, buckets.AuthEnabledKeyName, authEnabled)
 
 	as.enabled = true
 	as.tokenProvider.enable()
@@ -262,7 +259,7 @@ func (as *authStore) AuthDisable() {
 	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafePut(buckets.Auth, enableFlagKey, authDisabled)
+	tx.UnsafePut(buckets.Auth, buckets.AuthEnabledKeyName, authDisabled)
 	as.commitRevision(tx)
 	tx.Unlock()
 	b.ForceCommit()
@@ -357,7 +354,7 @@ func (as *authStore) Recover(be backend.Backend) {
 	as.be = be
 	tx := be.BatchTx()
 	tx.Lock()
-	_, vs := tx.UnsafeRange(buckets.Auth, enableFlagKey, nil, 0)
+	_, vs := tx.UnsafeRange(buckets.Auth, buckets.AuthEnabledKeyName, nil, 0)
 	if len(vs) == 1 {
 		if bytes.Equal(vs[0], authEnabled) {
 			enabled = true
@@ -1041,7 +1038,7 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 	tx.UnsafeCreateBucket(buckets.AuthRoles)
 
 	enabled := false
-	_, vs := tx.UnsafeRange(buckets.Auth, enableFlagKey, nil, 0)
+	_, vs := tx.UnsafeRange(buckets.Auth, buckets.AuthEnabledKeyName, nil, 0)
 	if len(vs) == 1 {
 		if bytes.Equal(vs[0], authEnabled) {
 			enabled = true
@@ -1084,11 +1081,11 @@ func (as *authStore) commitRevision(tx backend.BatchTx) {
 	atomic.AddUint64(&as.revision, 1)
 	revBytes := make([]byte, revBytesLen)
 	binary.BigEndian.PutUint64(revBytes, as.Revision())
-	tx.UnsafePut(buckets.Auth, revisionKey, revBytes)
+	tx.UnsafePut(buckets.Auth, buckets.AuthRevisionKeyName, revBytes)
 }
 
 func getRevision(tx backend.BatchTx) uint64 {
-	_, vs := tx.UnsafeRange(buckets.Auth, revisionKey, nil, 0)
+	_, vs := tx.UnsafeRange(buckets.Auth, buckets.AuthRevisionKeyName, nil, 0)
 	if len(vs) != 1 {
 		// this can happen in the initialization phase
 		return 0

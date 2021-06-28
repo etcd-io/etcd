@@ -17,6 +17,7 @@ package buckets
 import (
 	"bytes"
 
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 )
 
@@ -67,11 +68,17 @@ func (b bucket) String() string          { return string(b.Name()) }
 func (b bucket) IsSafeRangeBucket() bool { return b.safeRangeBucket }
 
 var (
-	// Since v3.0
+	// Pre v3.5
+	ScheduledCompactKeyName    = []byte("scheduledCompactRev")
+	FinishedCompactKeyName     = []byte("finishedCompactRev")
 	MetaConsistentIndexKeyName = []byte("consistent_index")
+	AuthEnabledKeyName         = []byte("authEnabled")
+	AuthRevisionKeyName        = []byte("authRevision")
 	// Since v3.5
-	MetaTermKeyName   = []byte("term")
-	MetaConfStateName = []byte("confState")
+	MetaTermKeyName              = []byte("term")
+	MetaConfStateName            = []byte("confState")
+	ClusterClusterVersionKeyName = []byte("clusterVersion")
+	ClusterDowngradeKeyName      = []byte("downgrade")
 	// Since v3.6
 	MetaStorageVersionName = []byte("storageVersion")
 	// Before adding new meta key please update server/etcdserver/version
@@ -83,4 +90,8 @@ func DefaultIgnores(bucket, key []byte) bool {
 	// is not controllable by the user.
 	return bytes.Compare(bucket, Meta.Name()) == 0 &&
 		(bytes.Compare(key, MetaTermKeyName) == 0 || bytes.Compare(key, MetaConsistentIndexKeyName) == 0)
+}
+
+func BackendMemberKey(id types.ID) []byte {
+	return []byte(id.String())
 }
