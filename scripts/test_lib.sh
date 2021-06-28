@@ -238,11 +238,16 @@ function produce_junit_xmlreport {
     popd >/dev/null || return
   fi
   gotestsum --junitfile "${junit_xml_filename}" --raw-command cat "${junit_filename_prefix}"*.stdout
+  local cmd_code=$?
   if [ "${VERBOSE}" != "1" ]; then
     rm "${junit_filename_prefix}"*.stdout
   fi
 
-  log_callout "Saved JUnit XML test report to ${junit_xml_filename}"
+  if [ ${cmd_code} -ne 0 ]; then
+    log_error "gotestsum failed and did not generate JUnit XML test report"
+  else
+    log_callout "Saved JUnit XML test report to ${junit_xml_filename}"
+  fi
 }
 
 
