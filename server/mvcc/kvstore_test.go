@@ -512,7 +512,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		// The disk compaction is done asynchronously and requires more time on slow disk.
 		// try 5 times for CI with slow IO.
 		for i := 0; i < 5; i++ {
-			tx = s.b.BatchTx()
+			tx := s.b.BatchTx()
 			tx.Lock()
 			ks, _ := tx.UnsafeRange(buckets.Key, revbytes, nil, 0)
 			tx.Unlock()
