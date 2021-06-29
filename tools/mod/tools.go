@@ -24,6 +24,7 @@ import (
 	_ "github.com/alexkohler/nakedret"
 	_ "github.com/chzchzchz/goword"
 	_ "github.com/coreos/license-bill-of-materials"
+	_ "github.com/google/addlicense"
 	_ "github.com/gordonklaus/ineffassign"
 	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway"
 	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger"
