@@ -34,10 +34,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
   - Now, it is served with linearizable guarantee. If the server is disconnected from quorum, `MemberList` call will fail.
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
-  - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
+  - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` doesn't work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
 - **`etcd --experimental-enable-v2v3` flag remains experimental and to be deprecated.**
   - v2 storage emulation feature will be deprecated in the next release.
-  - etcd 3.5 is the last version that supports V2 API. Flags `--enable-v2` and `--experimental-enable-v2v3` [are now deprecated](https://github.com/etcd-io/etcd/pull/) and will be removed in etcd v3.6 release.
+  - etcd 3.5 is the last version that supports V2 API. Flags `--enable-v2` and `--experimental-enable-v2v3` [are now deprecated](https://github.com/etcd-io/etcd/pull/12940) and will be removed in etcd v3.6 release.
 - **`etcd --experimental-backend-bbolt-freelist-type` flag has been deprecated.** Use **`etcd --backend-bbolt-freelist-type`** instead. The default type is hashmap and it is stable now.
 - **`etcd --debug` flag has been deprecated.** Use **`etcd --log-level=debug`** instead.
 - Remove [`embed.Config.Debug`](https://github.com/etcd-io/etcd/pull/10947).
