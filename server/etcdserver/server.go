@@ -67,6 +67,7 @@ import (
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.etcd.io/etcd/server/v3/wal"
 )
 
@@ -316,7 +317,7 @@ func (bh *backendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
 	bh.confStateLock.Lock()
 	defer bh.confStateLock.Unlock()
 	if bh.confStateDirty {
-		membership.MustUnsafeSaveConfStateToBackend(bh.lg, tx, &bh.confState)
+		buckets.MustUnsafeSaveConfStateToBackend(bh.lg, tx, &bh.confState)
 		// save bh.confState
 		bh.confStateDirty = false
 	}
@@ -432,7 +433,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		remotes = existingCluster.Members()
 		cl.SetID(types.ID(0), existingCluster.ID())
 		cl.SetStore(st)
-		cl.SetBackend(be)
+		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
 		id, n, s, w = startNode(cfg, cl, nil)
 		cl.SetID(id, existingCluster.ID())
 
@@ -467,7 +468,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			}
 		}
 		cl.SetStore(st)
-		cl.SetBackend(be)
+		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
 		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
 		cl.SetID(id, cl.ID())
 
@@ -537,7 +538,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 
 		cl.SetStore(st)
-		cl.SetBackend(be)
+		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
 		cl.Recover(api.UpdateCapability)
 		if cl.Version() != nil && !cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
 			os.RemoveAll(bepath)
@@ -1313,7 +1314,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	lg.Info("restored v2 store")
 
-	s.cluster.SetBackend(newbe)
+	s.cluster.SetBackend(buckets.NewMembershipStore(lg, newbe))
 
 	lg.Info("restoring cluster configuration")
 

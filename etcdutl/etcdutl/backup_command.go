@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.etcd.io/etcd/server/v3/verify"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
@@ -307,14 +308,14 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 
 	be := backend.NewDefaultBackend(destDB)
 	defer be.Close()
-
-	if err := membership.TrimClusterFromBackend(be); err != nil {
+	ms := buckets.NewMembershipStore(lg, be)
+	if err := ms.TrimClusterFromBackend(); err != nil {
 		lg.Fatal("bbolt tx.Membership failed", zap.Error(err))
 	}
 
 	raftCluster := membership.NewClusterFromMembers(lg, desired.clusterId, desired.members)
 	raftCluster.SetID(desired.nodeId, desired.clusterId)
-	raftCluster.SetBackend(be)
+	raftCluster.SetBackend(ms)
 	raftCluster.PushMembershipToStorage()
 
 	if !v3 {
