@@ -92,12 +92,13 @@ func TestLessorGrant(t *testing.T) {
 		}
 	}
 
-	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(buckets.Lease, int64ToBytes(int64(l.ID)), nil, 0)
-	if len(vs) != 1 {
-		t.Errorf("len(vs) = %d, want 1", len(vs))
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	lpb := buckets.MustUnsafeGetLease(tx, int64(l.ID))
+	if lpb == nil {
+		t.Errorf("lpb = %d, want not nil", lpb)
 	}
-	be.BatchTx().Unlock()
 }
 
 // TestLeaseConcurrentKeys ensures Lease.Keys method calls are guarded
@@ -195,12 +196,13 @@ func TestLessorRevoke(t *testing.T) {
 		t.Errorf("deleted= %v, want %v", fd.deleted, wdeleted)
 	}
 
-	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(buckets.Lease, int64ToBytes(int64(l.ID)), nil, 0)
-	if len(vs) != 0 {
-		t.Errorf("len(vs) = %d, want 0", len(vs))
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	lpb := buckets.MustUnsafeGetLease(tx, int64(l.ID))
+	if lpb != nil {
+		t.Errorf("lpb = %d, want nil", lpb)
 	}
-	be.BatchTx().Unlock()
 }
 
 // TestLessorRenew ensures Lessor can renew an existing lease.
