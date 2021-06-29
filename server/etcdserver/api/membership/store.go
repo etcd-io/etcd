@@ -42,7 +42,7 @@ var (
 )
 
 func mustSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) {
-	mkey := backendMemberKey(m.ID)
+	mkey := buckets.BackendMemberKey(m.ID)
 	mvalue, err := json.Marshal(m)
 	if err != nil {
 		lg.Panic("failed to marshal member", zap.Error(err))
@@ -65,7 +65,7 @@ func TrimClusterFromBackend(be backend.Backend) error {
 }
 
 func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
-	mkey := backendMemberKey(id)
+	mkey := buckets.BackendMemberKey(id)
 
 	tx := be.BatchTx()
 	tx.Lock()
@@ -160,7 +160,7 @@ func TrimMembershipFromV2Store(lg *zap.Logger, s v2store.Store) error {
 
 // The field is populated since etcd v3.5.
 func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
-	ckey := backendClusterVersionKey()
+	ckey := buckets.ClusterClusterVersionKeyName
 
 	tx := be.BatchTx()
 	tx.Lock()
@@ -170,7 +170,7 @@ func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 
 // The field is populated since etcd v3.5.
 func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *DowngradeInfo) {
-	dkey := backendDowngradeKey()
+	dkey := buckets.ClusterDowngradeKeyName
 	dvalue, err := json.Marshal(downgrade)
 	if err != nil {
 		lg.Panic("failed to marshal downgrade information", zap.Error(err))
@@ -279,18 +279,6 @@ func nodeToMember(lg *zap.Logger, n *v2store.NodeExtern) (*Member, error) {
 		}
 	}
 	return m, nil
-}
-
-func backendMemberKey(id types.ID) []byte {
-	return []byte(id.String())
-}
-
-func backendClusterVersionKey() []byte {
-	return []byte("clusterVersion")
-}
-
-func backendDowngradeKey() []byte {
-	return []byte("downgrade")
 }
 
 func mustCreateBackendBuckets(be backend.Backend) {

@@ -697,7 +697,7 @@ func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 
 // The field is populated since etcd v3.5.
 func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Version {
-	ckey := backendClusterVersionKey()
+	ckey := buckets.ClusterClusterVersionKeyName
 	tx := be.ReadTx()
 	tx.RLock()
 	defer tx.RUnlock()
@@ -716,7 +716,7 @@ func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Versi
 
 // The field is populated since etcd v3.5.
 func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
-	dkey := backendDowngradeKey()
+	dkey := buckets.ClusterDowngradeKeyName
 	tx := be.ReadTx()
 	tx.Lock()
 	defer tx.Unlock()

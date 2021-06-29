@@ -34,9 +34,6 @@ import (
 )
 
 var (
-	scheduledCompactKeyName = []byte("scheduledCompactRev")
-	finishedCompactKeyName  = []byte("finishedCompactRev")
-
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
 )
@@ -244,7 +241,7 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 
 	tx := s.b.BatchTx()
 	tx.Lock()
-	tx.UnsafePut(buckets.Meta, scheduledCompactKeyName, rbytes)
+	tx.UnsafePut(buckets.Meta, buckets.ScheduledCompactKeyName, rbytes)
 	tx.Unlock()
 	// ensure that desired compaction is persisted
 	s.b.ForceCommit()
@@ -342,7 +339,7 @@ func (s *store) restore() error {
 	tx := s.b.BatchTx()
 	tx.Lock()
 
-	_, finishedCompactBytes := tx.UnsafeRange(buckets.Meta, finishedCompactKeyName, nil, 0)
+	_, finishedCompactBytes := tx.UnsafeRange(buckets.Meta, buckets.FinishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		s.revMu.Lock()
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
@@ -350,12 +347,12 @@ func (s *store) restore() error {
 		s.lg.Info(
 			"restored last compact revision",
 			zap.Stringer("meta-bucket-name", buckets.Meta),
-			zap.String("meta-bucket-name-key", string(finishedCompactKeyName)),
+			zap.String("meta-bucket-name-key", string(buckets.FinishedCompactKeyName)),
 			zap.Int64("restored-compact-revision", s.compactMainRev),
 		)
 		s.revMu.Unlock()
 	}
-	_, scheduledCompactBytes := tx.UnsafeRange(buckets.Meta, scheduledCompactKeyName, nil, 0)
+	_, scheduledCompactBytes := tx.UnsafeRange(buckets.Meta, buckets.ScheduledCompactKeyName, nil, 0)
 	scheduledCompact := int64(0)
 	if len(scheduledCompactBytes) != 0 {
 		scheduledCompact = bytesToRev(scheduledCompactBytes[0]).main
@@ -427,7 +424,7 @@ func (s *store) restore() error {
 		s.lg.Info(
 			"resume scheduled compaction",
 			zap.Stringer("meta-bucket-name", buckets.Meta),
-			zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
+			zap.String("meta-bucket-name-key", string(buckets.ScheduledCompactKeyName)),
 			zap.Int64("scheduled-compact-revision", scheduledCompact),
 		)
 	}
