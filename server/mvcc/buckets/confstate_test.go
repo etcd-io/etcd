@@ -29,7 +29,7 @@ func TestConfStateFromBackendInOneTx(t *testing.T) {
 	defer betesting.Close(t, be)
 
 	tx := be.BatchTx()
-	tx.UnsafeCreateBucket(Meta)
+	CreateMetaBucket(tx)
 	tx.Lock()
 	defer tx.Unlock()
 	assert.Nil(t, UnsafeConfStateFromBackend(lg, tx))
@@ -47,7 +47,7 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 
 	{
 		tx := be.BatchTx()
-		tx.UnsafeCreateBucket(Meta)
+		CreateMetaBucket(tx)
 		tx.Commit()
 	}
 

@@ -386,7 +386,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	beHooks := &backendHooks{lg: cfg.Logger, indexer: ci}
 	be := openBackend(cfg, beHooks)
 	ci.SetBackend(be)
-	cindex.CreateMetaBucket(be.BatchTx())
+	buckets.CreateMetaBucket(be.BatchTx())
 
 	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
 		err := maybeDefragBackend(cfg, be)
