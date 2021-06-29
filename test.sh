@@ -473,20 +473,15 @@ function nakedret_pass {
   run_for_modules generic_checker run_go_tool "github.com/alexkohler/nakedret"
 }
 
-function license_header_pass {
+function license_header_per_module {
   # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
   local gofiles=()
   while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
-  
-  for file in "${gofiles[@]}"; do
-    if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
-      licRes="${licRes}"$(echo -e "  ${file}")
-    fi
-  done
-  if [ -n "${licRes}" ]; then
-    log_error -e "license header checking failed:\\n${licRes}"
-    return 255
-  fi
+  run_go_tool "github.com/google/addlicense" --check "${gofiles[@]}"
+}
+
+function license_header_pass {
+  run_for_modules generic_checker license_header_per_module
 }
 
 function receiver_name_for_package {
