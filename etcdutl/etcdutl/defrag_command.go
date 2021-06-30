@@ -38,6 +38,7 @@ func NewDefragCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&defragDataDir, "data-dir", "", "Required. Defragments a data directory not in use by etcd.")
 	cmd.MarkFlagRequired("data-dir")
+	cmd.MarkFlagDirname("data-dir")
 	return cmd
 }
 
@@ -65,7 +66,7 @@ func DefragData(dataDir string) error {
 	case <-bch:
 	case <-time.After(time.Second):
 		fmt.Fprintf(os.Stderr, "waiting for etcd to close and release its lock on %q. "+
-			"To defrag a running etcd instance, omit --data-dir.\n", dbDir)
+			"To defrag a running etcd instance, use `etcdctl defrag` instead.\n", dbDir)
 		<-bch
 	}
 	return be.Defrag()
