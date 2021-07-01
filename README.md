@@ -75,6 +75,20 @@ Join Hangouts Meet: [meet.google.com/umg-nrxn-qvs](https://meet.google.com/umg-n
 
 Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
 
+## Maintainers
+
+MAINTAINERS strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. MAINTAINERS maintain productive relationships across different companies and disciplines. Additionally MAINTAINERS take the following responsibilities of:
+- Security reports and fixes
+- Bug reports and fixes
+- Design reviews and decisions
+- Feature development
+- Issue triaging
+- Test infrastructure setup
+- Release management
+- Upstream and downstream integration
+- Community meetings and events
+
+A new maintainer is added when the person gets nominated by two existing maintainers (one should be from different team/company). See [MAINTAINERS](MAINTAINERS).
 
 ## Getting started
 
