@@ -102,7 +102,7 @@ For those wanting to try the very latest version, [build the latest version of e
 
 [github-release]: https://github.com/etcd-io/etcd/releases
 [branch-management]: https://etcd.io/docs/latest/branch_management
-[dl-build]: https://etcd.io/docs/latest/dl-build#build-the-latest-version
+[dl-build]: https://etcd.io/docs/latest/install/#build-from-source
 
 ### Running etcd
 
@@ -206,7 +206,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 ## Reporting bugs
 
-See [reporting bugs](https://etcd.io/docs/latest/reporting-bugs) for details about reporting any issues.
+See [reporting bugs](https://etcd.io/docs/latest/reporting_bugs/) for details about reporting any issues.
 
 ## Reporting a security vulnerability
 
