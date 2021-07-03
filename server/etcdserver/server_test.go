@@ -53,6 +53,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	"go.etcd.io/etcd/server/v3/mvcc"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
@@ -695,7 +696,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		tx.Lock()
 		defer tx.Unlock()
 		srv.beHooks.OnPreCommitUnsafe(tx)
-		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *membership.UnsafeConfStateFromBackend(lg, tx))
+		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *buckets.UnsafeConfStateFromBackend(lg, tx))
 	})
 	rindex, rterm := cindex.ReadConsistentIndex(be.BatchTx())
 	assert.Equal(t, consistIndex, rindex)

@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package membership_test
+package buckets
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap/zaptest"
 )
@@ -31,15 +29,15 @@ func TestConfStateFromBackendInOneTx(t *testing.T) {
 	defer betesting.Close(t, be)
 
 	tx := be.BatchTx()
-	cindex.CreateMetaBucket(tx)
+	tx.UnsafeCreateBucket(Meta)
 	tx.Lock()
 	defer tx.Unlock()
-	assert.Nil(t, membership.UnsafeConfStateFromBackend(lg, tx))
+	assert.Nil(t, UnsafeConfStateFromBackend(lg, tx))
 
 	confState := raftpb.ConfState{Learners: []uint64{1, 2}, Voters: []uint64{3}, AutoLeave: false}
-	membership.MustUnsafeSaveConfStateToBackend(lg, tx, &confState)
+	MustUnsafeSaveConfStateToBackend(lg, tx, &confState)
 
-	assert.Equal(t, confState, *membership.UnsafeConfStateFromBackend(lg, tx))
+	assert.Equal(t, confState, *UnsafeConfStateFromBackend(lg, tx))
 }
 
 func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
@@ -49,7 +47,7 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 
 	{
 		tx := be.BatchTx()
-		cindex.CreateMetaBucket(tx)
+		tx.UnsafeCreateBucket(Meta)
 		tx.Commit()
 	}
 
@@ -57,7 +55,7 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 		tx := be.ReadTx()
 		tx.Lock()
 		defer tx.Unlock()
-		assert.Nil(t, membership.UnsafeConfStateFromBackend(lg, tx))
+		assert.Nil(t, UnsafeConfStateFromBackend(lg, tx))
 	})
 
 	confState := raftpb.ConfState{Learners: []uint64{1, 2}, Voters: []uint64{3}, AutoLeave: false}
@@ -65,7 +63,7 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 	t.Run("save", func(t *testing.T) {
 		tx := be.BatchTx()
 		tx.Lock()
-		membership.MustUnsafeSaveConfStateToBackend(lg, tx, &confState)
+		MustUnsafeSaveConfStateToBackend(lg, tx, &confState)
 		tx.Unlock()
 		tx.Commit()
 	})
@@ -74,6 +72,6 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 		tx := be.ReadTx()
 		tx.Lock()
 		defer tx.Unlock()
-		assert.Equal(t, confState, *membership.UnsafeConfStateFromBackend(lg, tx))
+		assert.Equal(t, confState, *UnsafeConfStateFromBackend(lg, tx))
 	})
 }
