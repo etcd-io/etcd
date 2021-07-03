@@ -89,10 +89,9 @@ func TestScheduleCompaction(t *testing.T) {
 				t.Errorf("#%d: range on %v = %d, want 1", i, rev, len(keys))
 			}
 		}
-		_, vals := tx.UnsafeRange(buckets.Meta, buckets.FinishedCompactKeyName, nil, 0)
-		revToBytes(revision{main: tt.rev}, ibytes)
-		if w := [][]byte{ibytes}; !reflect.DeepEqual(vals, w) {
-			t.Errorf("#%d: vals on %v = %+v, want %+v", i, buckets.FinishedCompactKeyName, vals, w)
+		vals, _ := UnsafeReadFinishedCompact(tx)
+		if !reflect.DeepEqual(vals, tt.rev) {
+			t.Errorf("#%d: vals on %v = %+v, want %+v", i, buckets.FinishedCompactKeyName, vals, tt.rev)
 		}
 		tx.Unlock()
 

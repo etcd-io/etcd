@@ -53,9 +53,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		}
 
 		if len(keys) < batchNum {
-			rbytes := make([]byte, 8+1+8)
-			revToBytes(revision{main: compactMainRev}, rbytes)
-			tx.UnsafePut(buckets.Meta, buckets.FinishedCompactKeyName, rbytes)
+			UnsafeSetFinishedCompact(tx, compactMainRev)
 			tx.Unlock()
 			s.lg.Info(
 				"finished scheduled compaction",

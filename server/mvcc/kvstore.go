@@ -236,13 +236,7 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 
 	s.compactMainRev = rev
 
-	rbytes := newRevBytes()
-	revToBytes(revision{main: rev}, rbytes)
-
-	tx := s.b.BatchTx()
-	tx.Lock()
-	tx.UnsafePut(buckets.Meta, buckets.ScheduledCompactKeyName, rbytes)
-	tx.Unlock()
+	SetScheduledCompact(s.b.BatchTx(), rev)
 	// ensure that desired compaction is persisted
 	s.b.ForceCommit()
 
@@ -339,10 +333,10 @@ func (s *store) restore() error {
 	tx := s.b.BatchTx()
 	tx.Lock()
 
-	_, finishedCompactBytes := tx.UnsafeRange(buckets.Meta, buckets.FinishedCompactKeyName, nil, 0)
-	if len(finishedCompactBytes) != 0 {
+	finishedCompact, found := UnsafeReadFinishedCompact(tx)
+	if found {
 		s.revMu.Lock()
-		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
+		s.compactMainRev = finishedCompact
 
 		s.lg.Info(
 			"restored last compact revision",
@@ -352,12 +346,7 @@ func (s *store) restore() error {
 		)
 		s.revMu.Unlock()
 	}
-	_, scheduledCompactBytes := tx.UnsafeRange(buckets.Meta, buckets.ScheduledCompactKeyName, nil, 0)
-	scheduledCompact := int64(0)
-	if len(scheduledCompactBytes) != 0 {
-		scheduledCompact = bytesToRev(scheduledCompactBytes[0]).main
-	}
-
+	scheduledCompact, _ := UnsafeReadScheduledCompact(tx)
 	// index keys concurrently as they're loaded in from tx
 	keysGauge.Set(0)
 	rkvc, revc := restoreIntoIndex(s.lg, s.kvindex)
