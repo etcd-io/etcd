@@ -59,16 +59,7 @@ func (a *AlarmStore) Activate(id types.ID, at pb.AlarmType) *pb.AlarmMember {
 		return m
 	}
 
-	v, err := newAlarm.Marshal()
-	if err != nil {
-		a.lg.Panic("failed to marshal alarm member", zap.Error(err))
-	}
-
-	b := a.bg.Backend()
-	b.BatchTx().Lock()
-	b.BatchTx().UnsafePut(buckets.Alarm, v, nil)
-	b.BatchTx().Unlock()
-
+	buckets.MustPutAlarm(a.lg, a.bg.Backend().BatchTx(), newAlarm)
 	return newAlarm
 }
 
@@ -88,16 +79,7 @@ func (a *AlarmStore) Deactivate(id types.ID, at pb.AlarmType) *pb.AlarmMember {
 
 	delete(t, id)
 
-	v, err := m.Marshal()
-	if err != nil {
-		a.lg.Panic("failed to marshal alarm member", zap.Error(err))
-	}
-
-	b := a.bg.Backend()
-	b.BatchTx().Lock()
-	b.BatchTx().UnsafeDelete(buckets.Alarm, v)
-	b.BatchTx().Unlock()
-
+	buckets.MustDeleteAlarm(a.lg, a.bg.Backend().BatchTx(), m)
 	return m
 }
 
@@ -123,17 +105,15 @@ func (a *AlarmStore) restore() error {
 	tx := b.BatchTx()
 
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Alarm)
-	err := tx.UnsafeForEach(buckets.Alarm, func(k, v []byte) error {
-		var m pb.AlarmMember
-		if err := m.Unmarshal(k); err != nil {
-			return err
-		}
-		a.addToMap(&m)
-		return nil
-	})
+	buckets.UnsafeCreateAlarmBucket(tx)
+	ms, err := buckets.UnsafeGetAllAlarms(tx)
 	tx.Unlock()
-
+	if err != nil {
+		return err
+	}
+	for _, m := range ms {
+		a.addToMap(m)
+	}
 	b.ForceCommit()
 	return err
 }
