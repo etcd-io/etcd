@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"errors"
 	"sort"
 	"strings"
@@ -76,8 +75,6 @@ const (
 
 	tokenTypeSimple = "simple"
 	tokenTypeJWT    = "jwt"
-
-	revBytesLen = 8
 )
 
 type AuthInfo struct {
@@ -237,7 +234,7 @@ func (as *authStore) AuthEnable() error {
 		return ErrRootRoleNotExist
 	}
 
-	tx.UnsafePut(buckets.Auth, buckets.AuthEnabledKeyName, authEnabled)
+	buckets.UnsafeSaveAuthEnabled(tx, true)
 
 	as.enabled = true
 	as.tokenProvider.enable()
@@ -259,7 +256,7 @@ func (as *authStore) AuthDisable() {
 	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafePut(buckets.Auth, buckets.AuthEnabledKeyName, authDisabled)
+	buckets.UnsafeSaveAuthEnabled(tx, false)
 	as.commitRevision(tx)
 	tx.Unlock()
 	b.ForceCommit()
@@ -350,17 +347,11 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 }
 
 func (as *authStore) Recover(be backend.Backend) {
-	enabled := false
 	as.be = be
 	tx := be.BatchTx()
 	tx.Lock()
-	_, vs := tx.UnsafeRange(buckets.Auth, buckets.AuthEnabledKeyName, nil, 0)
-	if len(vs) == 1 {
-		if bytes.Equal(vs[0], authEnabled) {
-			enabled = true
-		}
-	}
 
+	enabled := buckets.UnsafeReadAuthEnabled(tx)
 	as.setRevision(getRevision(tx))
 
 	tx.Unlock()
@@ -936,17 +927,11 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 	tx := be.BatchTx()
 	tx.Lock()
 
-	tx.UnsafeCreateBucket(buckets.Auth)
+	buckets.UnsafeCreateAuthBucket(tx)
 	tx.UnsafeCreateBucket(buckets.AuthUsers)
 	tx.UnsafeCreateBucket(buckets.AuthRoles)
 
-	enabled := false
-	_, vs := tx.UnsafeRange(buckets.Auth, buckets.AuthEnabledKeyName, nil, 0)
-	if len(vs) == 1 {
-		if bytes.Equal(vs[0], authEnabled) {
-			enabled = true
-		}
-	}
+	enabled := buckets.UnsafeReadAuthEnabled(tx)
 
 	as := &authStore{
 		revision:       getRevision(tx),
@@ -982,18 +967,11 @@ func hasRootRole(u *authpb.User) bool {
 
 func (as *authStore) commitRevision(tx backend.BatchTx) {
 	atomic.AddUint64(&as.revision, 1)
-	revBytes := make([]byte, revBytesLen)
-	binary.BigEndian.PutUint64(revBytes, as.Revision())
-	tx.UnsafePut(buckets.Auth, buckets.AuthRevisionKeyName, revBytes)
+	buckets.UnsafeSaveAuthRevision(tx, as.Revision())
 }
 
 func getRevision(tx backend.BatchTx) uint64 {
-	_, vs := tx.UnsafeRange(buckets.Auth, buckets.AuthRevisionKeyName, nil, 0)
-	if len(vs) != 1 {
-		// this can happen in the initialization phase
-		return 0
-	}
-	return binary.BigEndian.Uint64(vs[0])
+	return buckets.UnsafeReadAuthRevision(tx)
 }
 
 func (as *authStore) setRevision(rev uint64) {
