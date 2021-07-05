@@ -651,7 +651,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
-	cindex.CreateMetaBucket(be.BatchTx())
+	buckets.CreateMetaBucket(be.BatchTx())
 
 	ci := cindex.NewConsistentIndex(be)
 	srv := &EtcdServer{
@@ -698,7 +698,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		srv.beHooks.OnPreCommitUnsafe(tx)
 		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *buckets.UnsafeConfStateFromBackend(lg, tx))
 	})
-	rindex, rterm := cindex.ReadConsistentIndex(be.BatchTx())
+	rindex, rterm := buckets.ReadConsistentIndex(be.BatchTx())
 	assert.Equal(t, consistIndex, rindex)
 	assert.Equal(t, uint64(4), rterm)
 }
