@@ -306,7 +306,7 @@ func (s *v3Manager) saveDB() error {
 	be := backend.NewDefaultBackend(s.outDbPath())
 	defer be.Close()
 
-	err = schema.NewMembershipStore(s.lg, be).TrimMembershipFromBackend()
+	err = schema.NewMembershipBackend(s.lg, be).TrimMembershipFromBackend()
 	if err != nil {
 		return err
 	}
@@ -403,7 +403,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	s.cl.SetStore(st)
 	be := backend.NewDefaultBackend(s.outDbPath())
 	defer be.Close()
-	s.cl.SetBackend(schema.NewMembershipStore(s.lg, be))
+	s.cl.SetBackend(schema.NewMembershipBackend(s.lg, be))
 	for _, m := range s.cl.Members() {
 		s.cl.AddMember(m, true)
 	}
