@@ -162,7 +162,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 
 	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
 
-	cmd.Flags().DurationVar(&grpcLruCacheTimeout, "grpc-lrucache-timeout", embed.DefaultLRUCacheTimeout, "LRU cache key timeout(Default 10 minutes).")
+	cmd.Flags().DurationVar(&grpcLruCacheTimeout, "grpc-lrucache-timeout", embed.DefaultLRUCacheTimeout, "LRU cache key timeout.")
 	return &cmd
 }
 

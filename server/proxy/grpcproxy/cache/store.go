@@ -28,10 +28,13 @@ import (
 	"go.etcd.io/etcd/pkg/v3/adt"
 )
 
-var (
-	DefaultMaxEntries      = 2048
-	ErrCompacted           = rpctypes.ErrGRPCCompacted
+const (
 	DefaultLruCacheTimeout = 10 * time.Minute
+)
+
+var (
+	DefaultMaxEntries = 2048
+	ErrCompacted      = rpctypes.ErrGRPCCompacted
 )
 
 type Cache interface {
@@ -55,10 +58,10 @@ func keyFunc(req *pb.RangeRequest) string {
 
 func NewCache(maxCacheEntries int) Cache {
 	return &cache{
-		lru:           lru.New(maxCacheEntries),
-		cachedRanges:  adt.NewIntervalTree(),
-		compactedRev:  -1,
-		keyTimeoutMap: cmap.New(),
+		lru:            lru.New(maxCacheEntries),
+		cachedRanges:   adt.NewIntervalTree(),
+		compactedRev:   -1,
+		expiredTimeMap: cmap.New(),
 	}
 }
 
@@ -72,8 +75,8 @@ type cache struct {
 	// a reverse index for cache invalidation
 	cachedRanges adt.IntervalTree
 
-	compactedRev  int64
-	keyTimeoutMap cmap.ConcurrentMap
+	compactedRev   int64
+	expiredTimeMap cmap.ConcurrentMap
 }
 
 // Add adds the response of a request to the cache if its revision is larger than the compacted revision of the cache.
@@ -85,7 +88,7 @@ func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
 
 	if req.Revision > c.compactedRev {
 		c.lru.Add(key, resp)
-		c.keyTimeoutMap.Set(key, time.Now())
+		c.expiredTimeMap.Set(key, time.Now())
 	}
 	// we do not need to invalidate a request with a revision specified.
 	// so we do not need to add it into the reverse index.
@@ -125,25 +128,25 @@ func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
 
 	if req.Revision > 0 && req.Revision < c.compactedRev {
 		c.lru.Remove(key)
-		c.keyTimeoutMap.Remove(key)
+		c.expiredTimeMap.Remove(key)
 		return nil, ErrCompacted
 	}
 
 	if resp, ok := c.lru.Get(key); ok {
-		if timeout, ok2 := c.keyTimeoutMap.Get(key); ok2 {
-			if time.Now().Sub(timeout.(time.Time)) > DefaultLruCacheTimeout {
+		if timeout, ok2 := c.expiredTimeMap.Get(key); ok2 {
+			if time.Since(timeout.(time.Time)) > DefaultLruCacheTimeout {
 				c.lru.Remove(key)
-				c.keyTimeoutMap.Remove(key)
+				c.expiredTimeMap.Remove(key)
 				return nil, errors.New("key in lru cache timeout")
 			}
 		} else {
-			c.keyTimeoutMap.Set(key, time.Now())
+			c.expiredTimeMap.Set(key, time.Now())
 		}
 
 		return resp.(*pb.RangeResponse), nil
 	} else {
 		// Avoid LRU remove the key
-		c.keyTimeoutMap.Remove(key)
+		c.expiredTimeMap.Remove(key)
 	}
 	return nil, errors.New("not exist")
 }
@@ -168,7 +171,7 @@ func (c *cache) Invalidate(key, endkey []byte) {
 		keys := iv.Val.(map[string]struct{})
 		for key := range keys {
 			c.lru.Remove(key)
-			c.keyTimeoutMap.Remove(key)
+			c.expiredTimeMap.Remove(key)
 		}
 	}
 	// delete after removing all keys since it is destructive to 'ivs'
