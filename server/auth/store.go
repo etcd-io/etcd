@@ -931,8 +931,8 @@ func NewAuthStore(lg *zap.Logger, be backend.Backend, tp TokenProvider, bcryptCo
 	tx.Lock()
 
 	schema.UnsafeCreateAuthBucket(tx)
-	tx.UnsafeCreateBucket(schema.AuthUsers)
-	tx.UnsafeCreateBucket(schema.AuthRoles)
+	schema.UnsafeCreateAuthUsersBucket(tx)
+	schema.UnsafeCreateAuthRolesBucket(tx)
 
 	enabled := schema.UnsafeReadAuthEnabled(tx)
 

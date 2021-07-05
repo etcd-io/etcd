@@ -31,48 +31,63 @@ func TestUpdateStorageVersion(t *testing.T) {
 	tcs := []struct {
 		name             string
 		version          string
-		metaKeys         [][]byte
+		setupKeys        func(tx backend.BatchTx)
 		expectVersion    *semver.Version
 		expectError      bool
 		expectedErrorMsg string
 	}{
 		{
-			name:             `Backend before 3.6 without "confState" should be rejected`,
+			name:             `Backend before 3.6 without confstate should be rejected`,
 			version:          "",
 			expectVersion:    nil,
+			setupKeys:        func(tx backend.BatchTx) {},
 			expectError:      true,
-			expectedErrorMsg: `cannot determine storage version: missing "confState" key`,
+			expectedErrorMsg: `cannot determine storage version: missing confstate information`,
 		},
 		{
-			name:             `Backend before 3.6 without "term" should be rejected`,
-			version:          "",
-			metaKeys:         [][]byte{MetaConfStateName},
+			name:    `Backend before 3.6 without term should be rejected`,
+			version: "",
+			setupKeys: func(tx backend.BatchTx) {
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+			},
 			expectVersion:    nil,
 			expectError:      true,
-			expectedErrorMsg: `cannot determine storage version: missing "term" key`,
+			expectedErrorMsg: `cannot determine storage version: missing term information`,
 		},
 		{
-			name:          "Backend with 3.5 with all metadata keys should be upgraded to v3.6",
-			version:       "",
-			metaKeys:      [][]byte{MetaTermKeyName, MetaConfStateName},
+			name:    "Backend with 3.5 with all metadata keys should be upgraded to v3.6",
+			version: "",
+			setupKeys: func(tx backend.BatchTx) {
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			},
 			expectVersion: &semver.Version{Major: 3, Minor: 6},
 		},
 		{
-			name:          "Backend in 3.6.0 should be skipped",
-			version:       "3.6.0",
-			metaKeys:      [][]byte{MetaTermKeyName, MetaConfStateName, MetaStorageVersionName},
+			name:    "Backend in 3.6.0 should be skipped",
+			version: "3.6.0",
+			setupKeys: func(tx backend.BatchTx) {
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			},
 			expectVersion: &semver.Version{Major: 3, Minor: 6},
 		},
 		{
-			name:          "Backend with current version should be skipped",
-			version:       version.Version,
-			metaKeys:      [][]byte{MetaTermKeyName, MetaConfStateName, MetaStorageVersionName},
+			name:    "Backend with current version should be skipped",
+			version: version.Version,
+			setupKeys: func(tx backend.BatchTx) {
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			},
 			expectVersion: &semver.Version{Major: 3, Minor: 6},
 		},
 		{
-			name:          "Backend in 3.7.0 should be skipped",
-			version:       "3.7.0",
-			metaKeys:      [][]byte{MetaTermKeyName, MetaConfStateName, MetaStorageVersionName, []byte("future-key")},
+			name:    "Backend in 3.7.0 should be skipped",
+			version: "3.7.0",
+			setupKeys: func(tx backend.BatchTx) {
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			},
 			expectVersion: &semver.Version{Major: 3, Minor: 7},
 		},
 	}
@@ -86,16 +101,7 @@ func TestUpdateStorageVersion(t *testing.T) {
 			}
 			tx.Lock()
 			UnsafeCreateMetaBucket(tx)
-			for _, k := range tc.metaKeys {
-				switch string(k) {
-				case string(MetaConfStateName):
-					MustUnsafeSaveConfStateToBackend(lg, tx, &raftpb.ConfState{})
-				case string(MetaTermKeyName):
-					UnsafeUpdateConsistentIndex(tx, 1, 1, false)
-				default:
-					tx.UnsafePut(Meta, k, []byte{})
-				}
-			}
+			tc.setupKeys(tx)
 			if tc.version != "" {
 				UnsafeSetStorageVersion(tx, semver.New(tc.version))
 			}
