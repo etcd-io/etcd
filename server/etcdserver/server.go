@@ -393,12 +393,8 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 }
 
 type boostrapResult struct {
-	cl      *membership.RaftCluster
+	raft    *boostrapRaft
 	remotes []*membership.Member
-	w       *wal.WAL
-	n       raft.Node
-	s       *raft.MemoryStorage
-	id      types.ID
 	prt     http.RoundTripper
 	ci      cindex.ConsistentIndexer
 	st      v2store.Store
@@ -469,15 +465,11 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	cl.SetID(types.ID(0), existingCluster.ID())
 	cl.SetStore(st)
 	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-	id, n, s, w := startNode(cfg, cl, nil)
-	cl.SetID(id, existingCluster.ID())
+	br := startNode(cfg, cl, nil)
+	cl.SetID(br.id, existingCluster.ID())
 	return &boostrapResult{
-		cl:      cl,
+		raft:    br,
 		remotes: remotes,
-		w:       w,
-		n:       n,
-		s:       s,
-		id:      id,
 	}, nil
 }
 
@@ -513,15 +505,11 @@ func boostrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st 
 	}
 	cl.SetStore(st)
 	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-	id, n, s, w := startNode(cfg, cl, cl.MemberIDs())
-	cl.SetID(id, cl.ID())
+	br := startNode(cfg, cl, cl.MemberIDs())
+	cl.SetID(br.id, cl.ID())
 	return &boostrapResult{
-		cl:      cl,
 		remotes: nil,
-		w:       w,
-		n:       n,
-		s:       s,
-		id:      id,
+		raft:    br,
 	}, nil
 }
 
@@ -600,15 +588,15 @@ func boostrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 
 	r := &boostrapResult{}
 	if !cfg.ForceNewCluster {
-		r.id, r.cl, r.n, r.s, r.w = restartNode(cfg, snapshot)
+		r.raft = restartNode(cfg, snapshot)
 	} else {
-		r.id, r.cl, r.n, r.s, r.w = restartAsStandaloneNode(cfg, snapshot)
+		r.raft = restartAsStandaloneNode(cfg, snapshot)
 	}
 
-	r.cl.SetStore(st)
-	r.cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-	r.cl.Recover(api.UpdateCapability)
-	if r.cl.Version() != nil && !r.cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
+	r.raft.cl.SetStore(st)
+	r.raft.cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
+	r.raft.cl.Recover(api.UpdateCapability)
+	if r.raft.cl.Version() != nil && !r.raft.cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
 		bepath := cfg.BackendPath()
 		os.RemoveAll(bepath)
 		return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
@@ -630,8 +618,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 
-	sstats := stats.NewServerStats(cfg.Name, b.id.String())
-	lstats := stats.NewLeaderStats(cfg.Logger, b.id.String())
+	sstats := stats.NewServerStats(cfg.Name, b.raft.id.String())
+	lstats := stats.NewLeaderStats(cfg.Logger, b.raft.id.String())
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
@@ -645,26 +633,26 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		r: *newRaftNode(
 			raftNodeConfig{
 				lg:          cfg.Logger,
-				isIDRemoved: func(id uint64) bool { return b.cl.IsIDRemoved(types.ID(id)) },
-				Node:        b.n,
+				isIDRemoved: func(id uint64) bool { return b.raft.cl.IsIDRemoved(types.ID(id)) },
+				Node:        b.raft.node,
 				heartbeat:   heartbeat,
-				raftStorage: b.s,
-				storage:     NewStorage(b.w, b.ss),
+				raftStorage: b.raft.storage,
+				storage:     NewStorage(b.raft.wal, b.ss),
 			},
 		),
-		id:                 b.id,
+		id:                 b.raft.id,
 		attributes:         membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:            b.cl,
+		cluster:            b.raft.cl,
 		stats:              sstats,
 		lstats:             lstats,
 		SyncTicker:         time.NewTicker(500 * time.Millisecond),
 		peerRt:             b.prt,
-		reqIDGen:           idutil.NewGenerator(uint16(b.id), time.Now()),
+		reqIDGen:           idutil.NewGenerator(uint16(b.raft.id), time.Now()),
 		AccessController:   &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
 		consistIndex:       b.ci,
 		firstCommitInTermC: make(chan struct{}),
 	}
-	serverID.With(prometheus.Labels{"server_id": b.id.String()}).Set(1)
+	serverID.With(prometheus.Labels{"server_id": b.raft.id.String()}).Set(1)
 
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
@@ -733,9 +721,9 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		Logger:      cfg.Logger,
 		TLSInfo:     cfg.PeerTLSInfo,
 		DialTimeout: cfg.PeerDialTimeout(),
-		ID:          b.id,
+		ID:          b.raft.id,
 		URLs:        cfg.PeerURLs,
-		ClusterID:   b.cl.ID(),
+		ClusterID:   b.raft.cl.ID(),
 		Raft:        srv,
 		Snapshotter: b.ss,
 		ServerStats: sstats,
@@ -747,12 +735,12 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	// add all remotes into transport
 	for _, m := range b.remotes {
-		if m.ID != b.id {
+		if m.ID != b.raft.id {
 			tr.AddRemote(m.ID, m.PeerURLs)
 		}
 	}
-	for _, m := range b.cl.Members() {
-		if m.ID != b.id {
+	for _, m := range b.raft.cl.Members() {
+		if m.ID != b.raft.id {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}

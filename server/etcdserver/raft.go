@@ -420,8 +420,7 @@ func (r *raftNode) advanceTicks(ticks int) {
 	}
 }
 
-func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
-	var err error
+func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) *boostrapRaft {
 	member := cl.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(
 		&pb.Metadata{
@@ -429,7 +428,8 @@ func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.
 			ClusterID: uint64(cl.ID()),
 		},
 	)
-	if w, err = wal.Create(cfg.Logger, cfg.WALDir(), metadata); err != nil {
+	w, err := wal.Create(cfg.Logger, cfg.WALDir(), metadata)
+	if err != nil {
 		cfg.Logger.Panic("failed to create WAL", zap.Error(err))
 	}
 	if cfg.UnsafeNoFsync {
@@ -444,14 +444,15 @@ func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.
 		}
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
-	id = member.ID
+	id := member.ID
 	cfg.Logger.Info(
 		"starting local member",
 		zap.String("local-member-id", id.String()),
 		zap.String("cluster-id", cl.ID().String()),
 	)
-	s = raft.NewMemoryStorage()
+	s := raft.NewMemoryStorage()
 	c := raftConfig(cfg, uint64(id), s)
+	var n raft.Node
 	if len(peers) == 0 {
 		n = raft.RestartNode(c)
 	} else {
@@ -460,10 +461,17 @@ func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.
 	raftStatusMu.Lock()
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
-	return id, n, s, w
+
+	return &boostrapRaft{
+		id:      id,
+		cl:      cl,
+		node:    n,
+		storage: s,
+		wal:     w,
+	}
 }
 
-func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -489,10 +497,16 @@ func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (types.ID, 
 	raftStatusMu.Lock()
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
-	return id, cl, n, s, w
+	return &boostrapRaft{
+		id:      id,
+		cl:      cl,
+		node:    n,
+		storage: s,
+		wal:     w,
+	}
 }
 
-func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -551,7 +565,13 @@ func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot)
 
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
-	return id, cl, n, s, w
+	return &boostrapRaft{
+		id:      id,
+		cl:      cl,
+		node:    n,
+		storage: s,
+		wal:     w,
+	}
 }
 
 func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft.Config {
@@ -566,6 +586,14 @@ func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft
 		PreVote:         cfg.PreVote,
 		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
 	}
+}
+
+type boostrapRaft struct {
+	id      types.ID
+	cl      *membership.RaftCluster
+	node    raft.Node
+	storage *raft.MemoryStorage
+	wal     *wal.WAL
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and
