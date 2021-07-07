@@ -623,23 +623,14 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
-		readych:     make(chan struct{}),
-		Cfg:         cfg,
-		lgMu:        new(sync.RWMutex),
-		lg:          cfg.Logger,
-		errorc:      make(chan error, 1),
-		v2store:     b.st,
-		snapshotter: b.ss,
-		r: *newRaftNode(
-			raftNodeConfig{
-				lg:          cfg.Logger,
-				isIDRemoved: func(id uint64) bool { return b.raft.cl.IsIDRemoved(types.ID(id)) },
-				Node:        b.raft.node,
-				heartbeat:   heartbeat,
-				raftStorage: b.raft.storage,
-				storage:     NewStorage(b.raft.wal, b.ss),
-			},
-		),
+		readych:            make(chan struct{}),
+		Cfg:                cfg,
+		lgMu:               new(sync.RWMutex),
+		lg:                 cfg.Logger,
+		errorc:             make(chan error, 1),
+		v2store:            b.st,
+		snapshotter:        b.ss,
+		r:                  *b.raft.newRaftNode(b.ss),
 		id:                 b.raft.id,
 		attributes:         membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:            b.raft.cl,

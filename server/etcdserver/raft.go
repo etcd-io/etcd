@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
@@ -463,11 +464,13 @@ func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.
 	raftStatusMu.Unlock()
 
 	return &boostrapRaft{
-		id:      id,
-		cl:      cl,
-		node:    n,
-		storage: s,
-		wal:     w,
+		lg:        cfg.Logger,
+		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
+		id:        id,
+		cl:        cl,
+		node:      n,
+		storage:   s,
+		wal:       w,
 	}
 }
 
@@ -498,11 +501,13 @@ func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRa
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
 	return &boostrapRaft{
-		id:      id,
-		cl:      cl,
-		node:    n,
-		storage: s,
-		wal:     w,
+		lg:        cfg.Logger,
+		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
+		id:        id,
+		cl:        cl,
+		node:      n,
+		storage:   s,
+		wal:       w,
 	}
 }
 
@@ -566,11 +571,13 @@ func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot)
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
 	return &boostrapRaft{
-		id:      id,
-		cl:      cl,
-		node:    n,
-		storage: s,
-		wal:     w,
+		lg:        cfg.Logger,
+		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
+		id:        id,
+		cl:        cl,
+		node:      n,
+		storage:   s,
+		wal:       w,
 	}
 }
 
@@ -589,11 +596,27 @@ func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft
 }
 
 type boostrapRaft struct {
+	lg        *zap.Logger
+	heartbeat time.Duration
+
 	id      types.ID
 	cl      *membership.RaftCluster
 	node    raft.Node
 	storage *raft.MemoryStorage
 	wal     *wal.WAL
+}
+
+func (b *boostrapRaft) newRaftNode(ss *snap.Snapshotter) *raftNode {
+	return newRaftNode(
+		raftNodeConfig{
+			lg:          b.lg,
+			isIDRemoved: func(id uint64) bool { return b.cl.IsIDRemoved(types.ID(id)) },
+			Node:        b.node,
+			heartbeat:   b.heartbeat,
+			raftStorage: b.storage,
+			storage:     NewStorage(b.wal, ss),
+		},
+	)
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and
