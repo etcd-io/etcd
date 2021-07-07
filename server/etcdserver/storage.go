@@ -82,10 +82,10 @@ func (st *storage) Release(snap raftpb.Snapshot) error {
 	return st.Snapshotter.ReleaseSnapDBs(snap)
 }
 
-// boostrapWALFromSnapshot reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear
+// bootstrapWALFromSnapshot reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear
 // after the position of the given snap in the WAL.
 // The snap must have been previously saved to the WAL, or this call will panic.
-func boostrapWALFromSnapshot(lg *zap.Logger, waldir string, snapshot *raftpb.Snapshot, unsafeNoFsync bool) *boostrappedWAL {
+func bootstrapWALFromSnapshot(lg *zap.Logger, waldir string, snapshot *raftpb.Snapshot, unsafeNoFsync bool) *bootstrappedWAL {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -118,7 +118,7 @@ func boostrapWALFromSnapshot(lg *zap.Logger, waldir string, snapshot *raftpb.Sna
 		pbutil.MustUnmarshal(&metadata, wmetadata)
 		id := types.ID(metadata.NodeID)
 		cid := types.ID(metadata.ClusterID)
-		return &boostrappedWAL{
+		return &bootstrappedWAL{
 			lg:       lg,
 			w:        w,
 			id:       id,
@@ -130,7 +130,7 @@ func boostrapWALFromSnapshot(lg *zap.Logger, waldir string, snapshot *raftpb.Sna
 	}
 }
 
-func boostrapNewWal(cfg config.ServerConfig, nodeID, clusterID types.ID) *boostrappedWAL {
+func bootstrapNewWAL(cfg config.ServerConfig, nodeID, clusterID types.ID) *bootstrappedWAL {
 	metadata := pbutil.MustMarshal(
 		&pb.Metadata{
 			NodeID:    uint64(nodeID),
@@ -144,7 +144,7 @@ func boostrapNewWal(cfg config.ServerConfig, nodeID, clusterID types.ID) *boostr
 	if cfg.UnsafeNoFsync {
 		w.SetUnsafeNoFsync()
 	}
-	return &boostrappedWAL{
+	return &bootstrappedWAL{
 		lg:  cfg.Logger,
 		w:   w,
 		id:  nodeID,
@@ -152,7 +152,7 @@ func boostrapNewWal(cfg config.ServerConfig, nodeID, clusterID types.ID) *boostr
 	}
 }
 
-type boostrappedWAL struct {
+type bootstrappedWAL struct {
 	lg *zap.Logger
 
 	w        *wal.WAL
@@ -162,7 +162,7 @@ type boostrappedWAL struct {
 	snapshot *raftpb.Snapshot
 }
 
-func (wal *boostrappedWAL) MemoryStorage() *raft.MemoryStorage {
+func (wal *bootstrappedWAL) MemoryStorage() *raft.MemoryStorage {
 	s := raft.NewMemoryStorage()
 	if wal.snapshot != nil {
 		s.ApplySnapshot(*wal.snapshot)
@@ -176,7 +176,7 @@ func (wal *boostrappedWAL) MemoryStorage() *raft.MemoryStorage {
 	return s
 }
 
-func (wal *boostrappedWAL) CommitedEntries() []raftpb.Entry {
+func (wal *bootstrappedWAL) CommitedEntries() []raftpb.Entry {
 	for i, ent := range wal.ents {
 		if ent.Index > wal.st.Commit {
 			wal.lg.Info(
@@ -191,7 +191,7 @@ func (wal *boostrappedWAL) CommitedEntries() []raftpb.Entry {
 	return wal.ents
 }
 
-func (wal *boostrappedWAL) ConfigChangeEntries() []raftpb.Entry {
+func (wal *bootstrappedWAL) ConfigChangeEntries() []raftpb.Entry {
 	return createConfigChangeEnts(
 		wal.lg,
 		getIDs(wal.lg, wal.snapshot, wal.ents),
@@ -201,7 +201,7 @@ func (wal *boostrappedWAL) ConfigChangeEntries() []raftpb.Entry {
 	)
 }
 
-func (wal *boostrappedWAL) AppendAndCommitEntries(ents []raftpb.Entry) {
+func (wal *bootstrappedWAL) AppendAndCommitEntries(ents []raftpb.Entry) {
 	wal.ents = append(wal.ents, ents...)
 	err := wal.w.Save(raftpb.HardState{}, ents)
 	if err != nil {

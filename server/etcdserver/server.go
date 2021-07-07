@@ -330,7 +330,7 @@ func (bh *backendHooks) SetConfState(confState *raftpb.ConfState) {
 	bh.confStateDirty = true
 }
 
-func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
+func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 
 	if cfg.MaxRequestBytes > recommendedMaxRequestBytes {
@@ -348,9 +348,9 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
-	ss := boostrapSnapshotter(cfg)
+	ss := bootstrapSnapshot(cfg)
 
-	be, ci, beExist, beHooks, err := boostrapBackend(cfg)
+	be, ci, beExist, beHooks, err := bootstrapBackend(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -369,9 +369,9 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 	case !haveWAL && !cfg.NewCluster:
 		b, err = bootstrapExistingClusterNoWAL(cfg, prt, st, be)
 	case !haveWAL && cfg.NewCluster:
-		b, err = boostrapNewClusterNoWAL(cfg, prt, st, be)
+		b, err = bootstrapNewClusterNoWAL(cfg, prt, st, be)
 	case haveWAL:
-		b, err = boostrapWithWAL(cfg, st, be, ss, beExist, beHooks, ci)
+		b, err = bootstrapWithWAL(cfg, st, be, ss, beExist, beHooks, ci)
 	default:
 		be.Close()
 		return nil, fmt.Errorf("unsupported bootstrap config")
@@ -392,8 +392,8 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 	return b, nil
 }
 
-type boostrapResult struct {
-	raft    *boostrapRaft
+type bootstrappedServer struct {
+	raft    *bootstrappedRaft
 	remotes []*membership.Member
 	prt     http.RoundTripper
 	ci      cindex.ConsistentIndexer
@@ -403,7 +403,7 @@ type boostrapResult struct {
 	beHooks *backendHooks
 }
 
-func boostrapSnapshotter(cfg config.ServerConfig) *snap.Snapshotter {
+func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
 	if err := fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
 		cfg.Logger.Fatal(
 			"failed to create snapshot directory",
@@ -424,7 +424,7 @@ func boostrapSnapshotter(cfg config.ServerConfig) *snap.Snapshotter {
 	return snap.New(cfg.Logger, cfg.SnapDir())
 }
 
-func boostrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.ConsistentIndexer, beExist bool, beHooks *backendHooks, err error) {
+func bootstrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.ConsistentIndexer, beExist bool, beHooks *backendHooks, err error) {
 	beExist = fileutil.Exist(cfg.BackendPath())
 	ci = cindex.NewConsistentIndex(nil)
 	beHooks = &backendHooks{lg: cfg.Logger, indexer: ci}
@@ -442,7 +442,7 @@ func boostrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.Con
 	return be, ci, beExist, beHooks, nil
 }
 
-func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st v2store.Store, be backend.Backend) (*boostrapResult, error) {
+func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st v2store.Store, be backend.Backend) (*bootstrappedServer, error) {
 	if err := cfg.VerifyJoinExisting(); err != nil {
 		return nil, err
 	}
@@ -465,15 +465,15 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	cl.SetID(types.ID(0), existingCluster.ID())
 	cl.SetStore(st)
 	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-	br := boostrapRaftFromCluster(cfg, cl, nil)
+	br := bootstrapRaftFromCluster(cfg, cl, nil)
 	cl.SetID(br.wal.id, existingCluster.ID())
-	return &boostrapResult{
+	return &bootstrappedServer{
 		raft:    br,
 		remotes: remotes,
 	}, nil
 }
 
-func boostrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st v2store.Store, be backend.Backend) (*boostrapResult, error) {
+func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st v2store.Store, be backend.Backend) (*bootstrappedServer, error) {
 	if err := cfg.VerifyBootstrap(); err != nil {
 		return nil, err
 	}
@@ -505,15 +505,15 @@ func boostrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st 
 	}
 	cl.SetStore(st)
 	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-	br := boostrapRaftFromCluster(cfg, cl, cl.MemberIDs())
+	br := bootstrapRaftFromCluster(cfg, cl, cl.MemberIDs())
 	cl.SetID(br.wal.id, cl.ID())
-	return &boostrapResult{
+	return &bootstrappedServer{
 		remotes: nil,
 		raft:    br,
 	}, nil
 }
 
-func boostrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Backend, ss *snap.Snapshotter, beExist bool, beHooks *backendHooks, ci cindex.ConsistentIndexer) (*boostrapResult, error) {
+func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Backend, ss *snap.Snapshotter, beExist bool, beHooks *backendHooks, ci cindex.ConsistentIndexer) (*bootstrappedServer, error) {
 	if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
 		return nil, fmt.Errorf("cannot write to member directory: %v", err)
 	}
@@ -586,11 +586,11 @@ func boostrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 		cfg.Logger.Info("No snapshot found. Recovering WAL from scratch!")
 	}
 
-	r := &boostrapResult{}
+	r := &bootstrappedServer{}
 	if !cfg.ForceNewCluster {
-		r.raft = boostrapRaftFromWal(cfg, snapshot)
+		r.raft = bootstrapRaftFromWal(cfg, snapshot)
 	} else {
-		r.raft = boostrapRaftFromWalStandalone(cfg, snapshot)
+		r.raft = bootstrapRaftFromWalStandalone(cfg, snapshot)
 	}
 
 	r.raft.cl.SetStore(st)

@@ -418,10 +418,10 @@ func (r *raftNode) advanceTicks(ticks int) {
 	}
 }
 
-func boostrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) *boostrapRaft {
+func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) *bootstrappedRaft {
 	member := cl.MemberByName(cfg.Name)
 	id := member.ID
-	wal := boostrapNewWal(cfg, id, cl.ID())
+	wal := bootstrapNewWAL(cfg, id, cl.ID())
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		var ctx []byte
@@ -437,7 +437,7 @@ func boostrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster
 		zap.String("cluster-id", cl.ID().String()),
 	)
 	s := wal.MemoryStorage()
-	return &boostrapRaft{
+	return &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		cl:        cl,
@@ -448,8 +448,8 @@ func boostrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster
 	}
 }
 
-func boostrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
-	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
+func bootstrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bootstrappedRaft {
+	wal := bootstrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
 
 	cfg.Logger.Info(
 		"restarting local member",
@@ -460,7 +460,7 @@ func boostrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bo
 	cl := membership.NewCluster(cfg.Logger)
 	cl.SetID(wal.id, wal.cid)
 	s := wal.MemoryStorage()
-	return &boostrapRaft{
+	return &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		cl:        cl,
@@ -470,8 +470,8 @@ func boostrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bo
 	}
 }
 
-func boostrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
-	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
+func bootstrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bootstrappedRaft {
+	wal := bootstrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
 
 	// discard the previously uncommitted entries
 	wal.ents = wal.CommitedEntries()
@@ -489,7 +489,7 @@ func boostrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Sna
 	cl := membership.NewCluster(cfg.Logger)
 	cl.SetID(wal.id, wal.cid)
 	s := wal.MemoryStorage()
-	return &boostrapRaft{
+	return &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		cl:        cl,
@@ -513,7 +513,7 @@ func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft
 	}
 }
 
-type boostrapRaft struct {
+type bootstrappedRaft struct {
 	lg        *zap.Logger
 	heartbeat time.Duration
 
@@ -521,10 +521,10 @@ type boostrapRaft struct {
 	config  *raft.Config
 	cl      *membership.RaftCluster
 	storage *raft.MemoryStorage
-	wal     *boostrappedWAL
+	wal     *bootstrappedWAL
 }
 
-func (b *boostrapRaft) newRaftNode(ss *snap.Snapshotter) *raftNode {
+func (b *bootstrappedRaft) newRaftNode(ss *snap.Snapshotter) *raftNode {
 	var n raft.Node
 	if len(b.peers) == 0 {
 		n = raft.RestartNode(b.config)
