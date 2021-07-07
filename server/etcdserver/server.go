@@ -465,7 +465,7 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	cl.SetID(types.ID(0), existingCluster.ID())
 	cl.SetStore(st)
 	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-	br := startNode(cfg, cl, nil)
+	br := boostrapRaftFromCluster(cfg, cl, nil)
 	cl.SetID(br.id, existingCluster.ID())
 	return &boostrapResult{
 		raft:    br,
@@ -505,7 +505,7 @@ func boostrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st 
 	}
 	cl.SetStore(st)
 	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-	br := startNode(cfg, cl, cl.MemberIDs())
+	br := boostrapRaftFromCluster(cfg, cl, cl.MemberIDs())
 	cl.SetID(br.id, cl.ID())
 	return &boostrapResult{
 		remotes: nil,
@@ -588,9 +588,9 @@ func boostrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 
 	r := &boostrapResult{}
 	if !cfg.ForceNewCluster {
-		r.raft = restartNode(cfg, snapshot)
+		r.raft = boostrapRaftFromWal(cfg, snapshot)
 	} else {
-		r.raft = restartAsStandaloneNode(cfg, snapshot)
+		r.raft = boostrapRaftFromWalStandalone(cfg, snapshot)
 	}
 
 	r.raft.cl.SetStore(st)

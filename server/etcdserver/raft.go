@@ -421,7 +421,7 @@ func (r *raftNode) advanceTicks(ticks int) {
 	}
 }
 
-func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) *boostrapRaft {
+func boostrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) *boostrapRaft {
 	member := cl.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(
 		&pb.Metadata{
@@ -452,29 +452,20 @@ func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.
 		zap.String("cluster-id", cl.ID().String()),
 	)
 	s := raft.NewMemoryStorage()
-	c := raftConfig(cfg, uint64(id), s)
-	var n raft.Node
-	if len(peers) == 0 {
-		n = raft.RestartNode(c)
-	} else {
-		n = raft.StartNode(c, peers)
-	}
-	raftStatusMu.Lock()
-	raftStatus = n.Status
-	raftStatusMu.Unlock()
 
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		id:        id,
 		cl:        cl,
-		node:      n,
+		config:    raftConfig(cfg, uint64(id), s),
+		peers:     peers,
 		storage:   s,
 		wal:       w,
 	}
 }
 
-func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
+func boostrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -495,23 +486,18 @@ func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRa
 	}
 	s.SetHardState(st)
 	s.Append(ents)
-	c := raftConfig(cfg, uint64(id), s)
-	n := raft.RestartNode(c)
-	raftStatusMu.Lock()
-	raftStatus = n.Status
-	raftStatusMu.Unlock()
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		id:        id,
 		cl:        cl,
-		node:      n,
+		config:    raftConfig(cfg, uint64(id), s),
 		storage:   s,
 		wal:       w,
 	}
 }
 
-func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
+func boostrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -566,16 +552,12 @@ func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot)
 	}
 	s.SetHardState(st)
 	s.Append(ents)
-	c := raftConfig(cfg, uint64(id), s)
-
-	n := raft.RestartNode(c)
-	raftStatus = n.Status
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		id:        id,
 		cl:        cl,
-		node:      n,
+		config:    raftConfig(cfg, uint64(id), s),
 		storage:   s,
 		wal:       w,
 	}
@@ -599,19 +581,29 @@ type boostrapRaft struct {
 	lg        *zap.Logger
 	heartbeat time.Duration
 
+	peers   []raft.Peer
+	config  *raft.Config
 	id      types.ID
 	cl      *membership.RaftCluster
-	node    raft.Node
 	storage *raft.MemoryStorage
 	wal     *wal.WAL
 }
 
 func (b *boostrapRaft) newRaftNode(ss *snap.Snapshotter) *raftNode {
+	var n raft.Node
+	if len(b.peers) == 0 {
+		n = raft.RestartNode(b.config)
+	} else {
+		n = raft.StartNode(b.config, b.peers)
+	}
+	raftStatusMu.Lock()
+	raftStatus = n.Status
+	raftStatusMu.Unlock()
 	return newRaftNode(
 		raftNodeConfig{
 			lg:          b.lg,
 			isIDRemoved: func(id uint64) bool { return b.cl.IsIDRemoved(types.ID(id)) },
-			Node:        b.node,
+			Node:        n,
 			heartbeat:   b.heartbeat,
 			raftStorage: b.storage,
 			storage:     NewStorage(b.wal, ss),
