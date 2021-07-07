@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/contention"
@@ -34,7 +33,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
 )
@@ -423,29 +421,17 @@ func (r *raftNode) advanceTicks(ticks int) {
 
 func boostrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) *boostrapRaft {
 	member := cl.MemberByName(cfg.Name)
-	metadata := pbutil.MustMarshal(
-		&pb.Metadata{
-			NodeID:    uint64(member.ID),
-			ClusterID: uint64(cl.ID()),
-		},
-	)
-	w, err := wal.Create(cfg.Logger, cfg.WALDir(), metadata)
-	if err != nil {
-		cfg.Logger.Panic("failed to create WAL", zap.Error(err))
-	}
-	if cfg.UnsafeNoFsync {
-		w.SetUnsafeNoFsync()
-	}
+	id := member.ID
+	wal := boostrapNewWal(cfg, id, cl.ID())
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		var ctx []byte
-		ctx, err = json.Marshal((*cl).Member(id))
+		ctx, err := json.Marshal((*cl).Member(id))
 		if err != nil {
 			cfg.Logger.Panic("failed to marshal member", zap.Error(err))
 		}
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
-	id := member.ID
 	cfg.Logger.Info(
 		"starting local member",
 		zap.String("local-member-id", id.String()),
@@ -456,12 +442,11 @@ func boostrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
-		id:        id,
 		cl:        cl,
-		config:    raftConfig(cfg, uint64(id), s),
+		config:    raftConfig(cfg, uint64(wal.id), s),
 		peers:     peers,
 		storage:   s,
-		wal:       w,
+		wal:       wal,
 	}
 }
 
@@ -470,30 +455,29 @@ func boostrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bo
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 	}
-	w, id, cid, st, ents := readWAL(cfg.Logger, cfg.WALDir(), walsnap, cfg.UnsafeNoFsync)
+	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), walsnap, cfg.UnsafeNoFsync)
 
 	cfg.Logger.Info(
 		"restarting local member",
-		zap.String("cluster-id", cid.String()),
-		zap.String("local-member-id", id.String()),
-		zap.Uint64("commit-index", st.Commit),
+		zap.String("cluster-id", wal.cid.String()),
+		zap.String("local-member-id", wal.id.String()),
+		zap.Uint64("commit-index", wal.st.Commit),
 	)
 	cl := membership.NewCluster(cfg.Logger)
-	cl.SetID(id, cid)
+	cl.SetID(wal.id, wal.cid)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
 	}
-	s.SetHardState(st)
-	s.Append(ents)
+	s.SetHardState(*wal.st)
+	s.Append(wal.ents)
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
-		id:        id,
 		cl:        cl,
-		config:    raftConfig(cfg, uint64(id), s),
+		config:    raftConfig(cfg, uint64(wal.id), s),
 		storage:   s,
-		wal:       w,
+		wal:       wal,
 	}
 }
 
@@ -502,18 +486,18 @@ func boostrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Sna
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 	}
-	w, id, cid, st, ents := readWAL(cfg.Logger, cfg.WALDir(), walsnap, cfg.UnsafeNoFsync)
+	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), walsnap, cfg.UnsafeNoFsync)
 
 	// discard the previously uncommitted entries
-	for i, ent := range ents {
-		if ent.Index > st.Commit {
+	for i, ent := range wal.ents {
+		if ent.Index > wal.st.Commit {
 			cfg.Logger.Info(
 				"discarding uncommitted WAL entries",
 				zap.Uint64("entry-index", ent.Index),
-				zap.Uint64("commit-index-from-wal", st.Commit),
-				zap.Int("number-of-discarded-entries", len(ents)-i),
+				zap.Uint64("commit-index-from-wal", wal.st.Commit),
+				zap.Int("number-of-discarded-entries", len(wal.ents)-i),
 			)
-			ents = ents[:i]
+			wal.ents = wal.ents[:i]
 			break
 		}
 	}
@@ -521,45 +505,44 @@ func boostrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Sna
 	// force append the configuration change entries
 	toAppEnts := createConfigChangeEnts(
 		cfg.Logger,
-		getIDs(cfg.Logger, snapshot, ents),
-		uint64(id),
-		st.Term,
-		st.Commit,
+		getIDs(cfg.Logger, snapshot, wal.ents),
+		uint64(wal.id),
+		wal.st.Term,
+		wal.st.Commit,
 	)
-	ents = append(ents, toAppEnts...)
+	wal.ents = append(wal.ents, toAppEnts...)
 
 	// force commit newly appended entries
-	err := w.Save(raftpb.HardState{}, toAppEnts)
+	err := wal.w.Save(raftpb.HardState{}, toAppEnts)
 	if err != nil {
 		cfg.Logger.Fatal("failed to save hard state and entries", zap.Error(err))
 	}
-	if len(ents) != 0 {
-		st.Commit = ents[len(ents)-1].Index
+	if len(wal.ents) != 0 {
+		wal.st.Commit = wal.ents[len(wal.ents)-1].Index
 	}
 
 	cfg.Logger.Info(
 		"forcing restart member",
-		zap.String("cluster-id", cid.String()),
-		zap.String("local-member-id", id.String()),
-		zap.Uint64("commit-index", st.Commit),
+		zap.String("cluster-id", wal.cid.String()),
+		zap.String("local-member-id", wal.id.String()),
+		zap.Uint64("commit-index", wal.st.Commit),
 	)
 
 	cl := membership.NewCluster(cfg.Logger)
-	cl.SetID(id, cid)
+	cl.SetID(wal.id, wal.cid)
 	s := raft.NewMemoryStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
 	}
-	s.SetHardState(st)
-	s.Append(ents)
+	s.SetHardState(*wal.st)
+	s.Append(wal.ents)
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
-		id:        id,
 		cl:        cl,
-		config:    raftConfig(cfg, uint64(id), s),
+		config:    raftConfig(cfg, uint64(wal.id), s),
 		storage:   s,
-		wal:       w,
+		wal:       wal,
 	}
 }
 
@@ -583,10 +566,9 @@ type boostrapRaft struct {
 
 	peers   []raft.Peer
 	config  *raft.Config
-	id      types.ID
 	cl      *membership.RaftCluster
 	storage *raft.MemoryStorage
-	wal     *wal.WAL
+	wal     *boostrappedWAL
 }
 
 func (b *boostrapRaft) newRaftNode(ss *snap.Snapshotter) *raftNode {
@@ -606,7 +588,7 @@ func (b *boostrapRaft) newRaftNode(ss *snap.Snapshotter) *raftNode {
 			Node:        n,
 			heartbeat:   b.heartbeat,
 			raftStorage: b.storage,
-			storage:     NewStorage(b.wal, ss),
+			storage:     NewStorage(b.wal.w, ss),
 		},
 	)
 }

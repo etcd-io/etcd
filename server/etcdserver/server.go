@@ -466,7 +466,7 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	cl.SetStore(st)
 	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
 	br := boostrapRaftFromCluster(cfg, cl, nil)
-	cl.SetID(br.id, existingCluster.ID())
+	cl.SetID(br.wal.id, existingCluster.ID())
 	return &boostrapResult{
 		raft:    br,
 		remotes: remotes,
@@ -506,7 +506,7 @@ func boostrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st 
 	cl.SetStore(st)
 	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
 	br := boostrapRaftFromCluster(cfg, cl, cl.MemberIDs())
-	cl.SetID(br.id, cl.ID())
+	cl.SetID(br.wal.id, cl.ID())
 	return &boostrapResult{
 		remotes: nil,
 		raft:    br,
@@ -618,8 +618,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 
-	sstats := stats.NewServerStats(cfg.Name, b.raft.id.String())
-	lstats := stats.NewLeaderStats(cfg.Logger, b.raft.id.String())
+	sstats := stats.NewServerStats(cfg.Name, b.raft.wal.id.String())
+	lstats := stats.NewLeaderStats(cfg.Logger, b.raft.wal.id.String())
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
@@ -631,19 +631,19 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		v2store:            b.st,
 		snapshotter:        b.ss,
 		r:                  *b.raft.newRaftNode(b.ss),
-		id:                 b.raft.id,
+		id:                 b.raft.wal.id,
 		attributes:         membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:            b.raft.cl,
 		stats:              sstats,
 		lstats:             lstats,
 		SyncTicker:         time.NewTicker(500 * time.Millisecond),
 		peerRt:             b.prt,
-		reqIDGen:           idutil.NewGenerator(uint16(b.raft.id), time.Now()),
+		reqIDGen:           idutil.NewGenerator(uint16(b.raft.wal.id), time.Now()),
 		AccessController:   &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
 		consistIndex:       b.ci,
 		firstCommitInTermC: make(chan struct{}),
 	}
-	serverID.With(prometheus.Labels{"server_id": b.raft.id.String()}).Set(1)
+	serverID.With(prometheus.Labels{"server_id": b.raft.wal.id.String()}).Set(1)
 
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
@@ -712,7 +712,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		Logger:      cfg.Logger,
 		TLSInfo:     cfg.PeerTLSInfo,
 		DialTimeout: cfg.PeerDialTimeout(),
-		ID:          b.raft.id,
+		ID:          b.raft.wal.id,
 		URLs:        cfg.PeerURLs,
 		ClusterID:   b.raft.cl.ID(),
 		Raft:        srv,
@@ -726,12 +726,12 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	// add all remotes into transport
 	for _, m := range b.remotes {
-		if m.ID != b.raft.id {
+		if m.ID != b.raft.wal.id {
 			tr.AddRemote(m.ID, m.PeerURLs)
 		}
 	}
 	for _, m := range b.raft.cl.Members() {
-		if m.ID != b.raft.id {
+		if m.ID != b.raft.wal.id {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}

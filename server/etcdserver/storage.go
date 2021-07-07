@@ -21,6 +21,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
@@ -80,24 +81,21 @@ func (st *storage) Release(snap raftpb.Snapshot) error {
 	return st.Snapshotter.ReleaseSnapDBs(snap)
 }
 
-// readWAL reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear
+// boostrapWALFromSnapshot reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear
 // after the position of the given snap in the WAL.
 // The snap must have been previously saved to the WAL, or this call will panic.
-func readWAL(lg *zap.Logger, waldir string, snap walpb.Snapshot, unsafeNoFsync bool) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
-	var (
-		err       error
-		wmetadata []byte
-	)
-
+func boostrapWALFromSnapshot(lg *zap.Logger, waldir string, snap walpb.Snapshot, unsafeNoFsync bool) *boostrappedWAL {
 	repaired := false
 	for {
-		if w, err = wal.Open(lg, waldir, snap); err != nil {
+		w, err := wal.Open(lg, waldir, snap)
+		if err != nil {
 			lg.Fatal("failed to open WAL", zap.Error(err))
 		}
 		if unsafeNoFsync {
 			w.SetUnsafeNoFsync()
 		}
-		if wmetadata, st, ents, err = w.ReadAll(); err != nil {
+		wmetadata, st, ents, err := w.ReadAll()
+		if err != nil {
 			w.Close()
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || err != io.ErrUnexpectedEOF {
@@ -111,11 +109,44 @@ func readWAL(lg *zap.Logger, waldir string, snap walpb.Snapshot, unsafeNoFsync b
 			}
 			continue
 		}
-		break
+		var metadata pb.Metadata
+		pbutil.MustUnmarshal(&metadata, wmetadata)
+		id := types.ID(metadata.NodeID)
+		cid := types.ID(metadata.ClusterID)
+		return &boostrappedWAL{
+			w:    w,
+			id:   id,
+			cid:  cid,
+			st:   &st,
+			ents: ents,
+		}
 	}
-	var metadata pb.Metadata
-	pbutil.MustUnmarshal(&metadata, wmetadata)
-	id = types.ID(metadata.NodeID)
-	cid = types.ID(metadata.ClusterID)
-	return w, id, cid, st, ents
+}
+
+func boostrapNewWal(cfg config.ServerConfig, nodeID, clusterID types.ID) *boostrappedWAL {
+	metadata := pbutil.MustMarshal(
+		&pb.Metadata{
+			NodeID:    uint64(nodeID),
+			ClusterID: uint64(clusterID),
+		},
+	)
+	w, err := wal.Create(cfg.Logger, cfg.WALDir(), metadata)
+	if err != nil {
+		cfg.Logger.Panic("failed to create WAL", zap.Error(err))
+	}
+	if cfg.UnsafeNoFsync {
+		w.SetUnsafeNoFsync()
+	}
+	return &boostrappedWAL{
+		w:   w,
+		id:  nodeID,
+		cid: clusterID,
+	}
+}
+
+type boostrappedWAL struct {
+	w       *wal.WAL
+	id, cid types.ID
+	st      *raftpb.HardState
+	ents    []raftpb.Entry
 }
