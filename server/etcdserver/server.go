@@ -331,13 +331,10 @@ func (bh *backendHooks) SetConfState(confState *raftpb.ConfState) {
 }
 
 func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
+	b = &boostrapResult{}
 	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 
 	var (
-		w  *wal.WAL
-		n  raft.Node
-		s  *raft.MemoryStorage
-		id types.ID
 		cl *membership.RaftCluster
 	)
 
@@ -419,8 +416,9 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 		cl.SetID(types.ID(0), existingCluster.ID())
 		cl.SetStore(st)
 		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-		id, n, s, w = startNode(cfg, cl, nil)
-		cl.SetID(id, existingCluster.ID())
+		b.id, b.n, b.s, b.w = startNode(cfg, cl, nil)
+		cl.SetID(b.id, existingCluster.ID())
+		b.cl = cl
 
 	case !haveWAL && cfg.NewCluster:
 		if err = cfg.VerifyBootstrap(); err != nil {
@@ -454,8 +452,9 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 		}
 		cl.SetStore(st)
 		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
-		cl.SetID(id, cl.ID())
+		b.id, b.n, b.s, b.w = startNode(cfg, cl, cl.MemberIDs())
+		cl.SetID(b.id, cl.ID())
+		b.cl = cl
 
 	case haveWAL:
 		if err = fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
@@ -531,9 +530,9 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 		}
 
 		if !cfg.ForceNewCluster {
-			id, cl, n, s, w = restartNode(cfg, snapshot)
+			b.id, cl, b.n, b.s, b.w = restartNode(cfg, snapshot)
 		} else {
-			id, cl, n, s, w = restartAsStandaloneNode(cfg, snapshot)
+			b.id, cl, b.n, b.s, b.w = restartAsStandaloneNode(cfg, snapshot)
 		}
 
 		cl.SetStore(st)
@@ -544,6 +543,7 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 			os.RemoveAll(bepath)
 			return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
 		}
+		b.cl = cl
 
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
@@ -552,20 +552,14 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 	if terr := fileutil.TouchDirAll(cfg.MemberDir()); terr != nil {
 		return nil, fmt.Errorf("cannot access member directory: %v", terr)
 	}
-	return &boostrapResult{
-		cl:      cl,
-		remotes: remotes,
-		w:       w,
-		n:       n,
-		s:       s,
-		id:      id,
-		prt:     prt,
-		ci:      ci,
-		st:      st,
-		be:      be,
-		ss:      ss,
-		beHooks: beHooks,
-	}, nil
+	b.remotes = remotes
+	b.prt = prt
+	b.ci = ci
+	b.st = st
+	b.be = be
+	b.ss = ss
+	b.beHooks = beHooks
+	return b, nil
 }
 
 type boostrapResult struct {
