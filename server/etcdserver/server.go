@@ -348,26 +348,7 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
-
-	if err = fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
-		cfg.Logger.Fatal(
-			"failed to create snapshot directory",
-			zap.String("path", cfg.SnapDir()),
-			zap.Error(err),
-		)
-	}
-
-	if err = fileutil.RemoveMatchFile(cfg.Logger, cfg.SnapDir(), func(fileName string) bool {
-		return strings.HasPrefix(fileName, "tmp")
-	}); err != nil {
-		cfg.Logger.Error(
-			"failed to remove temp file(s) in snapshot directory",
-			zap.String("path", cfg.SnapDir()),
-			zap.Error(err),
-		)
-	}
-
-	ss := snap.New(cfg.Logger, cfg.SnapDir())
+	ss := boostrapSnapshotter(cfg)
 
 	be, ci, beExist, beHooks, err := boostrapBackend(cfg)
 	if err != nil {
@@ -424,6 +405,27 @@ type boostrapResult struct {
 	be      backend.Backend
 	ss      *snap.Snapshotter
 	beHooks *backendHooks
+}
+
+func boostrapSnapshotter(cfg config.ServerConfig) *snap.Snapshotter {
+	if err := fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
+		cfg.Logger.Fatal(
+			"failed to create snapshot directory",
+			zap.String("path", cfg.SnapDir()),
+			zap.Error(err),
+		)
+	}
+
+	if err := fileutil.RemoveMatchFile(cfg.Logger, cfg.SnapDir(), func(fileName string) bool {
+		return strings.HasPrefix(fileName, "tmp")
+	}); err != nil {
+		cfg.Logger.Error(
+			"failed to remove temp file(s) in snapshot directory",
+			zap.String("path", cfg.SnapDir()),
+			zap.Error(err),
+		)
+	}
+	return snap.New(cfg.Logger, cfg.SnapDir())
 }
 
 func boostrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.ConsistentIndexer, beExist bool, beHooks *backendHooks, err error) {
