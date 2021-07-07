@@ -474,37 +474,10 @@ func boostrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Sna
 	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
 
 	// discard the previously uncommitted entries
-	for i, ent := range wal.ents {
-		if ent.Index > wal.st.Commit {
-			cfg.Logger.Info(
-				"discarding uncommitted WAL entries",
-				zap.Uint64("entry-index", ent.Index),
-				zap.Uint64("commit-index-from-wal", wal.st.Commit),
-				zap.Int("number-of-discarded-entries", len(wal.ents)-i),
-			)
-			wal.ents = wal.ents[:i]
-			break
-		}
-	}
-
-	// force append the configuration change entries
-	toAppEnts := createConfigChangeEnts(
-		cfg.Logger,
-		getIDs(cfg.Logger, snapshot, wal.ents),
-		uint64(wal.id),
-		wal.st.Term,
-		wal.st.Commit,
-	)
-	wal.ents = append(wal.ents, toAppEnts...)
-
-	// force commit newly appended entries
-	err := wal.w.Save(raftpb.HardState{}, toAppEnts)
-	if err != nil {
-		cfg.Logger.Fatal("failed to save hard state and entries", zap.Error(err))
-	}
-	if len(wal.ents) != 0 {
-		wal.st.Commit = wal.ents[len(wal.ents)-1].Index
-	}
+	wal.ents = wal.CommitedEntries()
+	entries := wal.ConfigChangeEntries()
+	// force commit config change entries
+	wal.AppendAndCommitEntries(entries)
 
 	cfg.Logger.Info(
 		"forcing restart member",

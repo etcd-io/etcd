@@ -119,6 +119,7 @@ func boostrapWALFromSnapshot(lg *zap.Logger, waldir string, snapshot *raftpb.Sna
 		id := types.ID(metadata.NodeID)
 		cid := types.ID(metadata.ClusterID)
 		return &boostrappedWAL{
+			lg:       lg,
 			w:        w,
 			id:       id,
 			cid:      cid,
@@ -144,6 +145,7 @@ func boostrapNewWal(cfg config.ServerConfig, nodeID, clusterID types.ID) *boostr
 		w.SetUnsafeNoFsync()
 	}
 	return &boostrappedWAL{
+		lg:  cfg.Logger,
 		w:   w,
 		id:  nodeID,
 		cid: clusterID,
@@ -151,6 +153,8 @@ func boostrapNewWal(cfg config.ServerConfig, nodeID, clusterID types.ID) *boostr
 }
 
 type boostrappedWAL struct {
+	lg *zap.Logger
+
 	w        *wal.WAL
 	id, cid  types.ID
 	st       *raftpb.HardState
@@ -170,4 +174,40 @@ func (wal *boostrappedWAL) MemoryStorage() *raft.MemoryStorage {
 		s.Append(wal.ents)
 	}
 	return s
+}
+
+func (wal *boostrappedWAL) CommitedEntries() []raftpb.Entry {
+	for i, ent := range wal.ents {
+		if ent.Index > wal.st.Commit {
+			wal.lg.Info(
+				"discarding uncommitted WAL entries",
+				zap.Uint64("entry-index", ent.Index),
+				zap.Uint64("commit-index-from-wal", wal.st.Commit),
+				zap.Int("number-of-discarded-entries", len(wal.ents)-i),
+			)
+			return wal.ents[:i]
+		}
+	}
+	return wal.ents
+}
+
+func (wal *boostrappedWAL) ConfigChangeEntries() []raftpb.Entry {
+	return createConfigChangeEnts(
+		wal.lg,
+		getIDs(wal.lg, wal.snapshot, wal.ents),
+		uint64(wal.id),
+		wal.st.Term,
+		wal.st.Commit,
+	)
+}
+
+func (wal *boostrappedWAL) AppendAndCommitEntries(ents []raftpb.Entry) {
+	wal.ents = append(wal.ents, ents...)
+	err := wal.w.Save(raftpb.HardState{}, ents)
+	if err != nil {
+		wal.lg.Fatal("failed to save hard state and entries", zap.Error(err))
+	}
+	if len(wal.ents) != 0 {
+		wal.st.Commit = wal.ents[len(wal.ents)-1].Index
+	}
 }
