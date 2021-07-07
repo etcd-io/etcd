@@ -451,17 +451,7 @@ func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.
 		zap.String("cluster-id", cl.ID().String()),
 	)
 	s = raft.NewMemoryStorage()
-	c := &raft.Config{
-		ID:              uint64(id),
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
-		PreVote:         cfg.PreVote,
-		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
-	}
+	c := raftConfig(cfg, uint64(id), s)
 	if len(peers) == 0 {
 		n = raft.RestartNode(c)
 	} else {
@@ -494,18 +484,7 @@ func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (types.ID, 
 	}
 	s.SetHardState(st)
 	s.Append(ents)
-	c := &raft.Config{
-		ID:              uint64(id),
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
-		PreVote:         cfg.PreVote,
-		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
-	}
-
+	c := raftConfig(cfg, uint64(id), s)
 	n := raft.RestartNode(c)
 	raftStatusMu.Lock()
 	raftStatus = n.Status
@@ -568,8 +547,16 @@ func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot)
 	}
 	s.SetHardState(st)
 	s.Append(ents)
-	c := &raft.Config{
-		ID:              uint64(id),
+	c := raftConfig(cfg, uint64(id), s)
+
+	n := raft.RestartNode(c)
+	raftStatus = n.Status
+	return id, cl, n, s, w
+}
+
+func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft.Config {
+	return &raft.Config{
+		ID:              id,
 		ElectionTick:    cfg.ElectionTicks,
 		HeartbeatTick:   1,
 		Storage:         s,
@@ -579,10 +566,6 @@ func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot)
 		PreVote:         cfg.PreVote,
 		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
 	}
-
-	n := raft.RestartNode(c)
-	raftStatus = n.Status
-	return id, cl, n, s, w
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and
