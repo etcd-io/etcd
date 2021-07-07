@@ -377,24 +377,10 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 
 	ss := snap.New(cfg.Logger, cfg.SnapDir())
 
-	bepath := cfg.BackendPath()
-	beExist := fileutil.Exist(bepath)
-
-	ci := cindex.NewConsistentIndex(nil)
-	beHooks := &backendHooks{lg: cfg.Logger, indexer: ci}
-	be := openBackend(cfg, beHooks)
-	ci.SetBackend(be)
-	buckets.CreateMetaBucket(be.BatchTx())
-	kvindex := ci.ConsistentIndex()
-	cfg.Logger.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
-
-	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
-		err := maybeDefragBackend(cfg, be)
-		if err != nil {
-			return nil, err
-		}
+	be, ci, beExist, beHooks, err := boostrapBackend(cfg)
+	if err != nil {
+		return nil, err
 	}
-
 	defer func() {
 		if err != nil {
 			be.Close()
@@ -529,9 +515,10 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 			if beExist {
 				// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
 				// etcd from pre-3.0 release.
+				kvindex := ci.ConsistentIndex()
 				if kvindex < snapshot.Metadata.Index {
 					if kvindex != 0 {
-						return nil, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", bepath, kvindex, snapshot.Metadata.Index)
+						return nil, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", cfg.BackendPath(), kvindex, snapshot.Metadata.Index)
 					}
 					cfg.Logger.Warn(
 						"consistent index was never saved",
@@ -553,6 +540,7 @@ func bootstrap(cfg config.ServerConfig) (b *boostrapResult, err error) {
 		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
 		cl.Recover(api.UpdateCapability)
 		if cl.Version() != nil && !cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
+			bepath := cfg.BackendPath()
 			os.RemoveAll(bepath)
 			return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
 		}
@@ -593,6 +581,24 @@ type boostrapResult struct {
 	be      backend.Backend
 	ss      *snap.Snapshotter
 	beHooks *backendHooks
+}
+
+func boostrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.ConsistentIndexer, beExist bool, beHooks *backendHooks, err error) {
+	beExist = fileutil.Exist(cfg.BackendPath())
+	ci = cindex.NewConsistentIndex(nil)
+	beHooks = &backendHooks{lg: cfg.Logger, indexer: ci}
+	be = openBackend(cfg, beHooks)
+	ci.SetBackend(be)
+	buckets.CreateMetaBucket(be.BatchTx())
+	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
+		err := maybeDefragBackend(cfg, be)
+		if err != nil {
+			be.Close()
+			return nil, nil, false, nil, err
+		}
+	}
+	cfg.Logger.Debug("restore consistentIndex", zap.Uint64("index", ci.ConsistentIndex()))
+	return be, ci, beExist, beHooks, nil
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
