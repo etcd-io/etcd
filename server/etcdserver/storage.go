@@ -20,6 +20,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -84,10 +85,14 @@ func (st *storage) Release(snap raftpb.Snapshot) error {
 // boostrapWALFromSnapshot reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear
 // after the position of the given snap in the WAL.
 // The snap must have been previously saved to the WAL, or this call will panic.
-func boostrapWALFromSnapshot(lg *zap.Logger, waldir string, snap walpb.Snapshot, unsafeNoFsync bool) *boostrappedWAL {
+func boostrapWALFromSnapshot(lg *zap.Logger, waldir string, snapshot *raftpb.Snapshot, unsafeNoFsync bool) *boostrappedWAL {
+	var walsnap walpb.Snapshot
+	if snapshot != nil {
+		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+	}
 	repaired := false
 	for {
-		w, err := wal.Open(lg, waldir, snap)
+		w, err := wal.Open(lg, waldir, walsnap)
 		if err != nil {
 			lg.Fatal("failed to open WAL", zap.Error(err))
 		}
@@ -114,11 +119,12 @@ func boostrapWALFromSnapshot(lg *zap.Logger, waldir string, snap walpb.Snapshot,
 		id := types.ID(metadata.NodeID)
 		cid := types.ID(metadata.ClusterID)
 		return &boostrappedWAL{
-			w:    w,
-			id:   id,
-			cid:  cid,
-			st:   &st,
-			ents: ents,
+			w:        w,
+			id:       id,
+			cid:      cid,
+			st:       &st,
+			ents:     ents,
+			snapshot: snapshot,
 		}
 	}
 }
@@ -145,8 +151,23 @@ func boostrapNewWal(cfg config.ServerConfig, nodeID, clusterID types.ID) *boostr
 }
 
 type boostrappedWAL struct {
-	w       *wal.WAL
-	id, cid types.ID
-	st      *raftpb.HardState
-	ents    []raftpb.Entry
+	w        *wal.WAL
+	id, cid  types.ID
+	st       *raftpb.HardState
+	ents     []raftpb.Entry
+	snapshot *raftpb.Snapshot
+}
+
+func (wal *boostrappedWAL) MemoryStorage() *raft.MemoryStorage {
+	s := raft.NewMemoryStorage()
+	if wal.snapshot != nil {
+		s.ApplySnapshot(*wal.snapshot)
+	}
+	if wal.st != nil {
+		s.SetHardState(*wal.st)
+	}
+	if len(wal.ents) != 0 {
+		s.Append(wal.ents)
+	}
+	return s
 }

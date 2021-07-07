@@ -33,7 +33,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
 )
 
@@ -437,8 +436,7 @@ func boostrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster
 		zap.String("local-member-id", id.String()),
 		zap.String("cluster-id", cl.ID().String()),
 	)
-	s := raft.NewMemoryStorage()
-
+	s := wal.MemoryStorage()
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
@@ -451,11 +449,7 @@ func boostrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster
 }
 
 func boostrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
-	var walsnap walpb.Snapshot
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-	}
-	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), walsnap, cfg.UnsafeNoFsync)
+	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
 
 	cfg.Logger.Info(
 		"restarting local member",
@@ -465,12 +459,7 @@ func boostrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bo
 	)
 	cl := membership.NewCluster(cfg.Logger)
 	cl.SetID(wal.id, wal.cid)
-	s := raft.NewMemoryStorage()
-	if snapshot != nil {
-		s.ApplySnapshot(*snapshot)
-	}
-	s.SetHardState(*wal.st)
-	s.Append(wal.ents)
+	s := wal.MemoryStorage()
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
@@ -482,11 +471,7 @@ func boostrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bo
 }
 
 func boostrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *boostrapRaft {
-	var walsnap walpb.Snapshot
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-	}
-	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), walsnap, cfg.UnsafeNoFsync)
+	wal := boostrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
 
 	// discard the previously uncommitted entries
 	for i, ent := range wal.ents {
@@ -530,12 +515,7 @@ func boostrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Sna
 
 	cl := membership.NewCluster(cfg.Logger)
 	cl.SetID(wal.id, wal.cid)
-	s := raft.NewMemoryStorage()
-	if snapshot != nil {
-		s.ApplySnapshot(*snapshot)
-	}
-	s.SetHardState(*wal.st)
-	s.Append(wal.ents)
+	s := wal.MemoryStorage()
 	return &boostrapRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
