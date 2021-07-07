@@ -387,6 +387,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	be := openBackend(cfg, beHooks)
 	ci.SetBackend(be)
 	buckets.CreateMetaBucket(be.BatchTx())
+	kvindex := ci.ConsistentIndex()
+	cfg.Logger.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
 
 	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
 		err := maybeDefragBackend(cfg, be)
@@ -407,7 +409,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	var (
 		remotes  []*membership.Member
-		snapshot *raftpb.Snapshot
 	)
 
 	switch {
@@ -527,6 +528,19 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 				zap.Int64("backend-size-in-use-bytes", s2),
 				zap.String("backend-size-in-use", humanize.Bytes(uint64(s2))),
 			)
+			if beExist {
+				// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
+				// etcd from pre-3.0 release.
+				if  kvindex < snapshot.Metadata.Index {
+					if kvindex != 0 {
+						return nil, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", bepath, kvindex, snapshot.Metadata.Index)
+					}
+					cfg.Logger.Warn(
+						"consistent index was never saved",
+						zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+					)
+				}
+			}
 		} else {
 			cfg.Logger.Info("No snapshot found. Recovering WAL from scratch!")
 		}
@@ -620,22 +634,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
 
-	kvindex := ci.ConsistentIndex()
-	srv.lg.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
-
-	if beExist {
-		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
-		// etcd from pre-3.0 release.
-		if snapshot != nil && kvindex < snapshot.Metadata.Index {
-			if kvindex != 0 {
-				return nil, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", bepath, kvindex, snapshot.Metadata.Index)
-			}
-			cfg.Logger.Warn(
-				"consistent index was never saved",
-				zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			)
-		}
-	}
 
 	srv.authStore = auth.NewAuthStore(srv.Logger(), srv.be, tp, int(cfg.BcryptCost))
 
