@@ -42,7 +42,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
@@ -147,7 +147,7 @@ func bootstrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.Co
 	beHooks = &backendHooks{lg: cfg.Logger, indexer: ci}
 	be = openBackend(cfg, beHooks)
 	ci.SetBackend(be)
-	buckets.CreateMetaBucket(be.BatchTx())
+	schema.CreateMetaBucket(be.BatchTx())
 	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
 		err := maybeDefragBackend(cfg, be)
 		if err != nil {
@@ -200,7 +200,7 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	remotes := existingCluster.Members()
 	cl.SetID(types.ID(0), existingCluster.ID())
 	cl.SetStore(st)
-	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
+	cl.SetBackend(schema.NewMembershipStore(cfg.Logger, be))
 	br := bootstrapRaftFromCluster(cfg, cl, nil)
 	cl.SetID(br.wal.id, existingCluster.ID())
 	return &bootstrappedServer{
@@ -240,7 +240,7 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st
 		}
 	}
 	cl.SetStore(st)
-	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
+	cl.SetBackend(schema.NewMembershipStore(cfg.Logger, be))
 	br := bootstrapRaftFromCluster(cfg, cl, cl.MemberIDs())
 	cl.SetID(br.wal.id, cl.ID())
 	return &bootstrappedServer{
@@ -330,7 +330,7 @@ func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Back
 	}
 
 	r.raft.cl.SetStore(st)
-	r.raft.cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
+	r.raft.cl.SetBackend(schema.NewMembershipStore(cfg.Logger, be))
 	r.raft.cl.Recover(api.UpdateCapability)
 	if r.raft.cl.Version() != nil && !r.raft.cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
 		bepath := cfg.BackendPath()

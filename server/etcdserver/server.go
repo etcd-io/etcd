@@ -63,8 +63,8 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 const (
@@ -313,7 +313,7 @@ func (bh *backendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
 	bh.confStateLock.Lock()
 	defer bh.confStateLock.Unlock()
 	if bh.confStateDirty {
-		buckets.MustUnsafeSaveConfStateToBackend(bh.lg, tx, &bh.confState)
+		schema.MustUnsafeSaveConfStateToBackend(bh.lg, tx, &bh.confState)
 		// save bh.confState
 		bh.confStateDirty = false
 	}
@@ -1075,7 +1075,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	lg.Info("restored v2 store")
 
-	s.cluster.SetBackend(buckets.NewMembershipStore(lg, newbe))
+	s.cluster.SetBackend(schema.NewMembershipStore(lg, newbe))
 
 	lg.Info("restoring cluster configuration")
 

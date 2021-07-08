@@ -25,7 +25,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 func TestBackendClose(t *testing.T) {
@@ -53,8 +53,8 @@ func TestBackendSnapshot(t *testing.T) {
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Test)
-	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar"))
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
 	b.ForceCommit()
 
@@ -78,7 +78,7 @@ func TestBackendSnapshot(t *testing.T) {
 
 	newTx := nb.BatchTx()
 	newTx.Lock()
-	ks, _ := newTx.UnsafeRange(buckets.Test, []byte("foo"), []byte("goo"), 0)
+	ks, _ := newTx.UnsafeRange(schema.Test, []byte("foo"), []byte("goo"), 0)
 	if len(ks) != 1 {
 		t.Errorf("len(kvs) = %d, want 1", len(ks))
 	}
@@ -95,8 +95,8 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Test)
-	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar"))
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
 
 	for i := 0; i < 10; i++ {
@@ -127,9 +127,9 @@ func TestBackendDefrag(t *testing.T) {
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Test)
+	tx.UnsafeCreateBucket(schema.Test)
 	for i := 0; i < backend.DefragLimitForTest()+100; i++ {
-		tx.UnsafePut(buckets.Test, []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
+		tx.UnsafePut(schema.Test, []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
 	}
 	tx.Unlock()
 	b.ForceCommit()
@@ -138,7 +138,7 @@ func TestBackendDefrag(t *testing.T) {
 	tx = b.BatchTx()
 	tx.Lock()
 	for i := 0; i < 50; i++ {
-		tx.UnsafeDelete(buckets.Test, []byte(fmt.Sprintf("foo_%d", i)))
+		tx.UnsafeDelete(schema.Test, []byte(fmt.Sprintf("foo_%d", i)))
 	}
 	tx.Unlock()
 	b.ForceCommit()
@@ -172,8 +172,8 @@ func TestBackendDefrag(t *testing.T) {
 	// try put more keys after shrink.
 	tx = b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Test)
-	tx.UnsafePut(buckets.Test, []byte("more"), []byte("bar"))
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("more"), []byte("bar"))
 	tx.Unlock()
 	b.ForceCommit()
 }
@@ -185,15 +185,15 @@ func TestBackendWriteback(t *testing.T) {
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Key)
-	tx.UnsafePut(buckets.Key, []byte("abc"), []byte("bar"))
-	tx.UnsafePut(buckets.Key, []byte("def"), []byte("baz"))
-	tx.UnsafePut(buckets.Key, []byte("overwrite"), []byte("1"))
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.UnsafePut(schema.Key, []byte("abc"), []byte("bar"))
+	tx.UnsafePut(schema.Key, []byte("def"), []byte("baz"))
+	tx.UnsafePut(schema.Key, []byte("overwrite"), []byte("1"))
 	tx.Unlock()
 
 	// overwrites should be propagated too
 	tx.Lock()
-	tx.UnsafePut(buckets.Key, []byte("overwrite"), []byte("2"))
+	tx.UnsafePut(schema.Key, []byte("overwrite"), []byte("2"))
 	tx.Unlock()
 
 	keys := []struct {
@@ -246,7 +246,7 @@ func TestBackendWriteback(t *testing.T) {
 		func() {
 			rtx.RLock()
 			defer rtx.RUnlock()
-			k, v := rtx.UnsafeRange(buckets.Key, tt.key, tt.end, tt.limit)
+			k, v := rtx.UnsafeRange(schema.Key, tt.key, tt.end, tt.limit)
 			if !reflect.DeepEqual(tt.wkey, k) || !reflect.DeepEqual(tt.wval, v) {
 				t.Errorf("#%d: want k=%+v, v=%+v; got k=%+v, v=%+v", i, tt.wkey, tt.wval, k, v)
 			}
@@ -261,20 +261,20 @@ func TestConcurrentReadTx(t *testing.T) {
 
 	wtx1 := b.BatchTx()
 	wtx1.Lock()
-	wtx1.UnsafeCreateBucket(buckets.Key)
-	wtx1.UnsafePut(buckets.Key, []byte("abc"), []byte("ABC"))
-	wtx1.UnsafePut(buckets.Key, []byte("overwrite"), []byte("1"))
+	wtx1.UnsafeCreateBucket(schema.Key)
+	wtx1.UnsafePut(schema.Key, []byte("abc"), []byte("ABC"))
+	wtx1.UnsafePut(schema.Key, []byte("overwrite"), []byte("1"))
 	wtx1.Unlock()
 
 	wtx2 := b.BatchTx()
 	wtx2.Lock()
-	wtx2.UnsafePut(buckets.Key, []byte("def"), []byte("DEF"))
-	wtx2.UnsafePut(buckets.Key, []byte("overwrite"), []byte("2"))
+	wtx2.UnsafePut(schema.Key, []byte("def"), []byte("DEF"))
+	wtx2.UnsafePut(schema.Key, []byte("overwrite"), []byte("2"))
 	wtx2.Unlock()
 
 	rtx := b.ConcurrentReadTx()
 	rtx.RLock() // no-op
-	k, v := rtx.UnsafeRange(buckets.Key, []byte("abc"), []byte("\xff"), 0)
+	k, v := rtx.UnsafeRange(schema.Key, []byte("abc"), []byte("\xff"), 0)
 	rtx.RUnlock()
 	wKey := [][]byte{[]byte("abc"), []byte("def"), []byte("overwrite")}
 	wVal := [][]byte{[]byte("ABC"), []byte("DEF"), []byte("2")}
@@ -291,10 +291,10 @@ func TestBackendWritebackForEach(t *testing.T) {
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Key)
+	tx.UnsafeCreateBucket(schema.Key)
 	for i := 0; i < 5; i++ {
 		k := []byte(fmt.Sprintf("%04d", i))
-		tx.UnsafePut(buckets.Key, k, []byte("bar"))
+		tx.UnsafePut(schema.Key, k, []byte("bar"))
 	}
 	tx.Unlock()
 
@@ -302,10 +302,10 @@ func TestBackendWritebackForEach(t *testing.T) {
 	b.ForceCommit()
 
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Key)
+	tx.UnsafeCreateBucket(schema.Key)
 	for i := 5; i < 20; i++ {
 		k := []byte(fmt.Sprintf("%04d", i))
-		tx.UnsafePut(buckets.Key, k, []byte("bar"))
+		tx.UnsafePut(schema.Key, k, []byte("bar"))
 	}
 	tx.Unlock()
 
@@ -316,7 +316,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	}
 	rtx := b.ReadTx()
 	rtx.RLock()
-	assert.NoError(t, rtx.UnsafeForEach(buckets.Key, getSeq))
+	assert.NoError(t, rtx.UnsafeForEach(schema.Key, getSeq))
 	rtx.RUnlock()
 
 	partialSeq := seq
@@ -325,7 +325,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	b.ForceCommit()
 
 	tx.Lock()
-	assert.NoError(t, tx.UnsafeForEach(buckets.Key, getSeq))
+	assert.NoError(t, tx.UnsafeForEach(schema.Key, getSeq))
 	tx.Unlock()
 
 	if seq != partialSeq {

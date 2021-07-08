@@ -10,7 +10,7 @@ import (
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 // TestScheduledCompact ensures that UnsafeSetScheduledCompact&UnsafeReadScheduledCompact work well together.
@@ -39,7 +39,7 @@ func TestScheduledCompact(t *testing.T) {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			tx.UnsafeCreateBucket(buckets.Meta)
+			tx.UnsafeCreateBucket(schema.Meta)
 			UnsafeSetScheduledCompact(tx, tc.value)
 			tx.Unlock()
 			be.ForceCommit()
@@ -80,7 +80,7 @@ func TestFinishedCompact(t *testing.T) {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			tx.UnsafeCreateBucket(buckets.Meta)
+			tx.UnsafeCreateBucket(schema.Meta)
 			UnsafeSetFinishedCompact(tx, tc.value)
 			tx.Unlock()
 			be.ForceCommit()

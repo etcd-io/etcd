@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package buckets
+package schema
 
 import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"

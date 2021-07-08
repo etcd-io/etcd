@@ -28,7 +28,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 
 	"go.uber.org/zap"
 )
@@ -122,8 +122,8 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 
 	tx := s.b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(buckets.Key)
-	tx.UnsafeCreateBucket(buckets.Meta)
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.UnsafeCreateBucket(schema.Meta)
 	tx.Unlock()
 	s.b.ForceCommit()
 
@@ -161,7 +161,7 @@ func (s *store) Hash() (hash uint32, revision int64, err error) {
 	start := time.Now()
 
 	s.b.ForceCommit()
-	h, err := s.b.Hash(buckets.DefaultIgnores)
+	h, err := s.b.Hash(schema.DefaultIgnores)
 
 	hashSec.Observe(time.Since(start).Seconds())
 	return h, s.currentRev, err
@@ -197,8 +197,8 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	lower := revision{main: compactRev + 1}
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
-	h.Write(buckets.Key.Name())
-	err = tx.UnsafeForEach(buckets.Key, func(k, v []byte) error {
+	h.Write(schema.Key.Name())
+	err = tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
 		kr := bytesToRev(k)
 		if !upper.GreaterThan(kr) {
 			return nil
@@ -340,8 +340,8 @@ func (s *store) restore() error {
 
 		s.lg.Info(
 			"restored last compact revision",
-			zap.Stringer("meta-bucket-name", buckets.Meta),
-			zap.String("meta-bucket-name-key", string(buckets.FinishedCompactKeyName)),
+			zap.Stringer("meta-bucket-name", schema.Meta),
+			zap.String("meta-bucket-name-key", string(schema.FinishedCompactKeyName)),
 			zap.Int64("restored-compact-revision", s.compactMainRev),
 		)
 		s.revMu.Unlock()
@@ -351,7 +351,7 @@ func (s *store) restore() error {
 	keysGauge.Set(0)
 	rkvc, revc := restoreIntoIndex(s.lg, s.kvindex)
 	for {
-		keys, vals := tx.UnsafeRange(buckets.Key, min, max, int64(restoreChunkKeys))
+		keys, vals := tx.UnsafeRange(schema.Key, min, max, int64(restoreChunkKeys))
 		if len(keys) == 0 {
 			break
 		}
@@ -412,8 +412,8 @@ func (s *store) restore() error {
 
 		s.lg.Info(
 			"resume scheduled compaction",
-			zap.Stringer("meta-bucket-name", buckets.Meta),
-			zap.String("meta-bucket-name-key", string(buckets.ScheduledCompactKeyName)),
+			zap.Stringer("meta-bucket-name", schema.Meta),
+			zap.String("meta-bucket-name-key", string(schema.ScheduledCompactKeyName)),
 			zap.Int64("scheduled-compact-revision", scheduledCompact),
 		)
 	}

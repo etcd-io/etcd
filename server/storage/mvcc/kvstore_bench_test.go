@@ -23,7 +23,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 
 	"go.uber.org/zap"
 )
@@ -84,7 +84,7 @@ func BenchmarkConsistentIndex(b *testing.B) {
 
 	tx := be.BatchTx()
 	tx.Lock()
-	buckets.UnsafeCreateMetaBucket(tx)
+	schema.UnsafeCreateMetaBucket(tx)
 	ci.UnsafeSave(tx)
 	tx.Unlock()
 

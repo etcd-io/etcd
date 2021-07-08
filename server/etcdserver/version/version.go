@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 var (
@@ -41,7 +41,7 @@ func UpdateStorageVersion(lg *zap.Logger, tx backend.BatchTx) error {
 	case V3_5:
 		lg.Warn("setting storage version", zap.String("storage-version", V3_6.String()))
 		// All meta keys introduced in v3.6 should be filled in here.
-		buckets.UnsafeSetStorageVersion(tx, &V3_6)
+		schema.UnsafeSetStorageVersion(tx, &V3_6)
 	case V3_6:
 	default:
 		lg.Warn("unknown storage version", zap.String("storage-version", v.String()))
@@ -50,17 +50,17 @@ func UpdateStorageVersion(lg *zap.Logger, tx backend.BatchTx) error {
 }
 
 func detectStorageVersion(lg *zap.Logger, tx backend.ReadTx) (*semver.Version, error) {
-	v := buckets.UnsafeReadStorageVersion(tx)
+	v := schema.UnsafeReadStorageVersion(tx)
 	if v != nil {
 		return v, nil
 	}
-	confstate := buckets.UnsafeConfStateFromBackend(lg, tx)
+	confstate := schema.UnsafeConfStateFromBackend(lg, tx)
 	if confstate == nil {
-		return nil, fmt.Errorf("missing %q key", buckets.MetaConfStateName)
+		return nil, fmt.Errorf("missing %q key", schema.MetaConfStateName)
 	}
-	_, term := buckets.UnsafeReadConsistentIndex(tx)
+	_, term := schema.UnsafeReadConsistentIndex(tx)
 	if term == 0 {
-		return nil, fmt.Errorf("missing %q key", buckets.MetaTermKeyName)
+		return nil, fmt.Errorf("missing %q key", schema.MetaTermKeyName)
 	}
 	copied := V3_5
 	return &copied, nil

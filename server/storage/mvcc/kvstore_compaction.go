@@ -18,7 +18,7 @@ import (
 	"encoding/binary"
 	"time"
 
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 )
 
@@ -43,11 +43,11 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 
 		tx := s.b.BatchTx()
 		tx.Lock()
-		keys, _ := tx.UnsafeRange(buckets.Key, last, end, int64(batchNum))
+		keys, _ := tx.UnsafeRange(schema.Key, last, end, int64(batchNum))
 		for _, key := range keys {
 			rev = bytesToRev(key)
 			if _, ok := keep[rev]; !ok {
-				tx.UnsafeDelete(buckets.Key, key)
+				tx.UnsafeDelete(schema.Key, key)
 				keyCompactions++
 			}
 		}

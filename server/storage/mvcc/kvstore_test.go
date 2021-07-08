@@ -37,7 +37,7 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 
 	"go.uber.org/zap"
 )
@@ -149,12 +149,12 @@ func TestStorePut(t *testing.T) {
 		}
 
 		wact := []testutil.Action{
-			{Name: "seqput", Params: []interface{}{buckets.Key, tt.wkey, data}},
+			{Name: "seqput", Params: []interface{}{schema.Key, tt.wkey, data}},
 		}
 
 		if tt.rr != nil {
 			wact = []testutil.Action{
-				{Name: "seqput", Params: []interface{}{buckets.Key, tt.wkey, data}},
+				{Name: "seqput", Params: []interface{}{schema.Key, tt.wkey, data}},
 			}
 		}
 
@@ -229,7 +229,7 @@ func TestStoreRange(t *testing.T) {
 		wstart := newRevBytes()
 		revToBytes(tt.idxr.revs[0], wstart)
 		wact := []testutil.Action{
-			{Name: "range", Params: []interface{}{buckets.Key, wstart, []byte(nil), int64(0)}},
+			{Name: "range", Params: []interface{}{schema.Key, wstart, []byte(nil), int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
@@ -304,7 +304,7 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
 		wact := []testutil.Action{
-			{Name: "seqput", Params: []interface{}{buckets.Key, tt.wkey, data}},
+			{Name: "seqput", Params: []interface{}{schema.Key, tt.wkey, data}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
@@ -343,10 +343,10 @@ func TestStoreCompact(t *testing.T) {
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(4))
 	wact := []testutil.Action{
-		{Name: "put", Params: []interface{}{buckets.Meta, buckets.ScheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
-		{Name: "range", Params: []interface{}{buckets.Key, make([]byte, 17), end, int64(10000)}},
-		{Name: "delete", Params: []interface{}{buckets.Key, key2}},
-		{Name: "put", Params: []interface{}{buckets.Meta, buckets.FinishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
+		{Name: "put", Params: []interface{}{schema.Meta, schema.ScheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
+		{Name: "range", Params: []interface{}{schema.Key, make([]byte, 17), end, int64(10000)}},
+		{Name: "delete", Params: []interface{}{schema.Key, key2}},
+		{Name: "put", Params: []interface{}{schema.Meta, schema.FinishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
@@ -384,8 +384,8 @@ func TestStoreRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b.tx.rangeRespc <- rangeResp{[][]byte{buckets.FinishedCompactKeyName}, [][]byte{newTestRevBytes(revision{3, 0})}}
-	b.tx.rangeRespc <- rangeResp{[][]byte{buckets.ScheduledCompactKeyName}, [][]byte{newTestRevBytes(revision{3, 0})}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{schema.FinishedCompactKeyName}, [][]byte{newTestRevBytes(revision{3, 0})}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{schema.ScheduledCompactKeyName}, [][]byte{newTestRevBytes(revision{3, 0})}}
 
 	b.tx.rangeRespc <- rangeResp{[][]byte{putkey, delkey}, [][]byte{putkvb, delkvb}}
 	b.tx.rangeRespc <- rangeResp{nil, nil}
@@ -399,9 +399,9 @@ func TestStoreRestore(t *testing.T) {
 		t.Errorf("current rev = %v, want 5", s.currentRev)
 	}
 	wact := []testutil.Action{
-		{Name: "range", Params: []interface{}{buckets.Meta, buckets.FinishedCompactKeyName, []byte(nil), int64(0)}},
-		{Name: "range", Params: []interface{}{buckets.Meta, buckets.ScheduledCompactKeyName, []byte(nil), int64(0)}},
-		{Name: "range", Params: []interface{}{buckets.Key, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
+		{Name: "range", Params: []interface{}{schema.Meta, schema.FinishedCompactKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{schema.Meta, schema.ScheduledCompactKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{schema.Key, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
@@ -485,7 +485,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		revToBytes(revision{main: 2}, rbytes)
 		tx := s0.b.BatchTx()
 		tx.Lock()
-		tx.UnsafePut(buckets.Meta, buckets.ScheduledCompactKeyName, rbytes)
+		tx.UnsafePut(schema.Meta, schema.ScheduledCompactKeyName, rbytes)
 		tx.Unlock()
 
 		s0.Close()
@@ -514,7 +514,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			tx := s.b.BatchTx()
 			tx.Lock()
-			ks, _ := tx.UnsafeRange(buckets.Key, revbytes, nil, 0)
+			ks, _ := tx.UnsafeRange(schema.Key, revbytes, nil, 0)
 			tx.Unlock()
 			if len(ks) != 0 {
 				time.Sleep(100 * time.Millisecond)

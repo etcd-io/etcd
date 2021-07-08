@@ -21,7 +21,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 )
 
@@ -160,7 +160,7 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 		default:
 		}
 		revToBytes(revpair, revBytes)
-		_, vs := tr.tx.UnsafeRange(buckets.Key, revBytes, nil, 0)
+		_, vs := tr.tx.UnsafeRange(schema.Key, revBytes, nil, 0)
 		if len(vs) != 1 {
 			tr.s.lg.Fatal(
 				"range failed to find revision pair",
@@ -215,7 +215,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	}
 
 	tw.trace.Step("marshal mvccpb.KeyValue")
-	tw.tx.UnsafeSeqPut(buckets.Key, ibytes, d)
+	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
 	tw.s.kvindex.Put(key, idxRev)
 	tw.changes = append(tw.changes, kv)
 	tw.trace.Step("store kv pair into bolt db")
@@ -276,7 +276,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 		)
 	}
 
-	tw.tx.UnsafeSeqPut(buckets.Key, ibytes, d)
+	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
 	err = tw.s.kvindex.Tombstone(key, idxRev)
 	if err != nil {
 		tw.storeTxnRead.s.lg.Fatal(
