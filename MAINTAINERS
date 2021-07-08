@@ -22,3 +22,9 @@ Xiang Li <xiangli.cs@gmail.com> (@xiang90) pkg:*
 
 Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:go.etcd.io/etcd/raft
 Tobias Grieger <tobias.schottdorf@gmail.com> (@tbg) pkg:go.etcd.io/etcd/raft
+
+# REVIEWERS
+Lili Cosic <cosiclili@gmail.com> (lilic@) pkg:*
+Marek Siarkowicz <siarkowicz@google.com> (serathius@) pkg:*
+Wilson Wang <wilson.wang@bytedance.com> (wilsonwang371@) pkg:*
+
