@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
+package schema
 
 import (
 	"testing"
@@ -24,7 +24,6 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 )
 
@@ -47,7 +46,7 @@ func TestUpdateStorageVersion(t *testing.T) {
 		{
 			name:             `Backend before 3.6 without "term" should be rejected`,
 			version:          "",
-			metaKeys:         [][]byte{schema.MetaConfStateName},
+			metaKeys:         [][]byte{MetaConfStateName},
 			expectVersion:    nil,
 			expectError:      true,
 			expectedErrorMsg: `cannot determine storage version: missing "term" key`,
@@ -55,25 +54,25 @@ func TestUpdateStorageVersion(t *testing.T) {
 		{
 			name:          "Backend with 3.5 with all metadata keys should be upgraded to v3.6",
 			version:       "",
-			metaKeys:      [][]byte{schema.MetaTermKeyName, schema.MetaConfStateName},
+			metaKeys:      [][]byte{MetaTermKeyName, MetaConfStateName},
 			expectVersion: &semver.Version{Major: 3, Minor: 6},
 		},
 		{
 			name:          "Backend in 3.6.0 should be skipped",
 			version:       "3.6.0",
-			metaKeys:      [][]byte{schema.MetaTermKeyName, schema.MetaConfStateName, schema.MetaStorageVersionName},
+			metaKeys:      [][]byte{MetaTermKeyName, MetaConfStateName, MetaStorageVersionName},
 			expectVersion: &semver.Version{Major: 3, Minor: 6},
 		},
 		{
 			name:          "Backend with current version should be skipped",
 			version:       version.Version,
-			metaKeys:      [][]byte{schema.MetaTermKeyName, schema.MetaConfStateName, schema.MetaStorageVersionName},
+			metaKeys:      [][]byte{MetaTermKeyName, MetaConfStateName, MetaStorageVersionName},
 			expectVersion: &semver.Version{Major: 3, Minor: 6},
 		},
 		{
 			name:          "Backend in 3.7.0 should be skipped",
 			version:       "3.7.0",
-			metaKeys:      [][]byte{schema.MetaTermKeyName, schema.MetaConfStateName, schema.MetaStorageVersionName, []byte("future-key")},
+			metaKeys:      [][]byte{MetaTermKeyName, MetaConfStateName, MetaStorageVersionName, []byte("future-key")},
 			expectVersion: &semver.Version{Major: 3, Minor: 7},
 		},
 	}
@@ -86,19 +85,19 @@ func TestUpdateStorageVersion(t *testing.T) {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			schema.UnsafeCreateMetaBucket(tx)
+			UnsafeCreateMetaBucket(tx)
 			for _, k := range tc.metaKeys {
 				switch string(k) {
-				case string(schema.MetaConfStateName):
-					schema.MustUnsafeSaveConfStateToBackend(lg, tx, &raftpb.ConfState{})
-				case string(schema.MetaTermKeyName):
-					schema.UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+				case string(MetaConfStateName):
+					MustUnsafeSaveConfStateToBackend(lg, tx, &raftpb.ConfState{})
+				case string(MetaTermKeyName):
+					UnsafeUpdateConsistentIndex(tx, 1, 1, false)
 				default:
-					tx.UnsafePut(schema.Meta, k, []byte{})
+					tx.UnsafePut(Meta, k, []byte{})
 				}
 			}
 			if tc.version != "" {
-				schema.UnsafeSetStorageVersion(tx, semver.New(tc.version))
+				UnsafeSetStorageVersion(tx, semver.New(tc.version))
 			}
 			tx.Unlock()
 			be.ForceCommit()
@@ -106,14 +105,14 @@ func TestUpdateStorageVersion(t *testing.T) {
 
 			b := backend.NewDefaultBackend(tmpPath)
 			defer b.Close()
-			err := UpdateStorageVersion(lg, b.BatchTx())
+			err := UpdateStorageSchema(lg, b.BatchTx())
 			if (err != nil) != tc.expectError {
 				t.Errorf("UpgradeStorage(...) = %+v, expected error: %v", err, tc.expectError)
 			}
 			if err != nil && err.Error() != tc.expectedErrorMsg {
 				t.Errorf("UpgradeStorage(...) = %q, expected error message: %q", err, tc.expectedErrorMsg)
 			}
-			v := schema.UnsafeReadStorageVersion(b.BatchTx())
+			v := UnsafeReadStorageVersion(b.BatchTx())
 			assert.Equal(t, tc.expectVersion, v)
 		})
 	}

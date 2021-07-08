@@ -292,8 +292,8 @@ type EtcdServer struct {
 
 	*AccessController
 
-	// Ensure that storage version is updated only once.
-	storageVersionUpdated sync.Once
+	// Ensure that storage schema is updated only once.
+	updateStorageSchema sync.Once
 }
 
 type backendHooks struct {
@@ -2136,8 +2136,8 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			"saved snapshot",
 			zap.Uint64("snapshot-index", snap.Metadata.Index),
 		)
-		s.storageVersionUpdated.Do(func() {
-			err := serverversion.UpdateStorageVersion(s.lg, s.be.BatchTx())
+		s.updateStorageSchema.Do(func() {
+			err := schema.UpdateStorageSchema(s.lg, s.be.BatchTx())
 			if err != nil {
 				s.lg.Warn("failed to update storage version", zap.Error(err))
 			}

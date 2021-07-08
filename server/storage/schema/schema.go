@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
+package schema
 
 import (
 	"fmt"
@@ -21,7 +21,6 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 var (
@@ -29,8 +28,8 @@ var (
 	V3_6 = semver.Version{Major: 3, Minor: 6}
 )
 
-// UpdateStorageVersion updates storage version.
-func UpdateStorageVersion(lg *zap.Logger, tx backend.BatchTx) error {
+// UpdateStorageSchema updates storage version.
+func UpdateStorageSchema(lg *zap.Logger, tx backend.BatchTx) error {
 	tx.Lock()
 	defer tx.Unlock()
 	v, err := detectStorageVersion(lg, tx)
@@ -41,7 +40,7 @@ func UpdateStorageVersion(lg *zap.Logger, tx backend.BatchTx) error {
 	case V3_5:
 		lg.Warn("setting storage version", zap.String("storage-version", V3_6.String()))
 		// All meta keys introduced in v3.6 should be filled in here.
-		schema.UnsafeSetStorageVersion(tx, &V3_6)
+		UnsafeSetStorageVersion(tx, &V3_6)
 	case V3_6:
 	default:
 		lg.Warn("unknown storage version", zap.String("storage-version", v.String()))
@@ -50,17 +49,17 @@ func UpdateStorageVersion(lg *zap.Logger, tx backend.BatchTx) error {
 }
 
 func detectStorageVersion(lg *zap.Logger, tx backend.ReadTx) (*semver.Version, error) {
-	v := schema.UnsafeReadStorageVersion(tx)
+	v := UnsafeReadStorageVersion(tx)
 	if v != nil {
 		return v, nil
 	}
-	confstate := schema.UnsafeConfStateFromBackend(lg, tx)
+	confstate := UnsafeConfStateFromBackend(lg, tx)
 	if confstate == nil {
-		return nil, fmt.Errorf("missing %q key", schema.MetaConfStateName)
+		return nil, fmt.Errorf("missing %q key", MetaConfStateName)
 	}
-	_, term := schema.UnsafeReadConsistentIndex(tx)
+	_, term := UnsafeReadConsistentIndex(tx)
 	if term == 0 {
-		return nil, fmt.Errorf("missing %q key", schema.MetaTermKeyName)
+		return nil, fmt.Errorf("missing %q key", MetaTermKeyName)
 	}
 	copied := V3_5
 	return &copied, nil
