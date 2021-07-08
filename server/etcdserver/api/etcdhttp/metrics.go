@@ -119,7 +119,7 @@ func getExcludedAlarms(r *http.Request) (alarms AlarmSet) {
 	alms, found := r.URL.Query()["exclude"]
 	if found {
 		for _, alm := range alms {
-			if len(alms) == 0 {
+			if len(alm) == 0 {
 				continue
 			}
 			alarms[alm] = struct{}{}
