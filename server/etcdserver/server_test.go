@@ -51,9 +51,9 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
-	"go.etcd.io/etcd/server/v3/mvcc"
-	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
-	"go.etcd.io/etcd/server/v3/mvcc/buckets"
+	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	"go.etcd.io/etcd/server/v3/storage/buckets"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )

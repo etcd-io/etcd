@@ -22,9 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
-	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
-	"go.etcd.io/etcd/server/v3/mvcc/buckets"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	"go.etcd.io/etcd/server/v3/storage/buckets"
 	"go.uber.org/zap"
 )
 

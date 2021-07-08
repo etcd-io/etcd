@@ -20,11 +20,11 @@ import (
 	"path/filepath"
 
 	"go.etcd.io/etcd/api/v3/authpb"
-	"go.etcd.io/etcd/server/v3/mvcc/buckets"
+	"go.etcd.io/etcd/server/v3/storage/buckets"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 
 	bolt "go.etcd.io/bbolt"
 )
