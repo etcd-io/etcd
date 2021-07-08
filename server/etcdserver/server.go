@@ -330,18 +330,8 @@ func (bh *backendHooks) SetConfState(confState *raftpb.ConfState) {
 	bh.confStateDirty = true
 }
 
-// NewServer creates a new EtcdServer from the supplied configuration. The
-// configuration is considered static for the lifetime of the EtcdServer.
-func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
+func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
-
-	var (
-		w  *wal.WAL
-		n  raft.Node
-		s  *raft.MemoryStorage
-		id types.ID
-		cl *membership.RaftCluster
-	)
 
 	if cfg.MaxRequestBytes > recommendedMaxRequestBytes {
 		cfg.Logger.Warn(
@@ -358,43 +348,12 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
+	ss := bootstrapSnapshot(cfg)
 
-	if err = fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
-		cfg.Logger.Fatal(
-			"failed to create snapshot directory",
-			zap.String("path", cfg.SnapDir()),
-			zap.Error(err),
-		)
+	be, ci, beExist, beHooks, err := bootstrapBackend(cfg)
+	if err != nil {
+		return nil, err
 	}
-
-	if err = fileutil.RemoveMatchFile(cfg.Logger, cfg.SnapDir(), func(fileName string) bool {
-		return strings.HasPrefix(fileName, "tmp")
-	}); err != nil {
-		cfg.Logger.Error(
-			"failed to remove temp file(s) in snapshot directory",
-			zap.String("path", cfg.SnapDir()),
-			zap.Error(err),
-		)
-	}
-
-	ss := snap.New(cfg.Logger, cfg.SnapDir())
-
-	bepath := cfg.BackendPath()
-	beExist := fileutil.Exist(bepath)
-
-	ci := cindex.NewConsistentIndex(nil)
-	beHooks := &backendHooks{lg: cfg.Logger, indexer: ci}
-	be := openBackend(cfg, beHooks)
-	ci.SetBackend(be)
-	buckets.CreateMetaBucket(be.BatchTx())
-
-	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
-		err := maybeDefragBackend(cfg, be)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	defer func() {
 		if err != nil {
 			be.Close()
@@ -405,194 +364,291 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	if err != nil {
 		return nil, err
 	}
-	var (
-		remotes  []*membership.Member
-		snapshot *raftpb.Snapshot
-	)
 
 	switch {
 	case !haveWAL && !cfg.NewCluster:
-		if err = cfg.VerifyJoinExisting(); err != nil {
-			return nil, err
-		}
-		cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
-		if err != nil {
-			return nil, err
-		}
-		existingCluster, gerr := GetClusterFromRemotePeers(cfg.Logger, getRemotePeerURLs(cl, cfg.Name), prt)
-		if gerr != nil {
-			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", gerr)
-		}
-		if err = membership.ValidateClusterAndAssignIDs(cfg.Logger, cl, existingCluster); err != nil {
-			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
-		}
-		if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt) {
-			return nil, fmt.Errorf("incompatible with current running cluster")
-		}
-
-		remotes = existingCluster.Members()
-		cl.SetID(types.ID(0), existingCluster.ID())
-		cl.SetStore(st)
-		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-		id, n, s, w = startNode(cfg, cl, nil)
-		cl.SetID(id, existingCluster.ID())
-
+		b, err = bootstrapExistingClusterNoWAL(cfg, prt, st, be)
 	case !haveWAL && cfg.NewCluster:
-		if err = cfg.VerifyBootstrap(); err != nil {
-			return nil, err
-		}
-		cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
-		if err != nil {
-			return nil, err
-		}
-		m := cl.MemberByName(cfg.Name)
-		if isMemberBootstrapped(cfg.Logger, cl, cfg.Name, prt, cfg.BootstrapTimeoutEffective()) {
-			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
-		}
-		if cfg.ShouldDiscover() {
-			var str string
-			str, err = v2discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
-			if err != nil {
-				return nil, &DiscoveryError{Op: "join", Err: err}
-			}
-			var urlsmap types.URLsMap
-			urlsmap, err = types.NewURLsMap(str)
-			if err != nil {
-				return nil, err
-			}
-			if config.CheckDuplicateURL(urlsmap) {
-				return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
-			}
-			if cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, urlsmap); err != nil {
-				return nil, err
-			}
-		}
-		cl.SetStore(st)
-		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
-		cl.SetID(id, cl.ID())
-
+		b, err = bootstrapNewClusterNoWAL(cfg, prt, st, be)
 	case haveWAL:
-		if err = fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
-			return nil, fmt.Errorf("cannot write to member directory: %v", err)
-		}
-
-		if err = fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
-			return nil, fmt.Errorf("cannot write to WAL directory: %v", err)
-		}
-
-		if cfg.ShouldDiscover() {
-			cfg.Logger.Warn(
-				"discovery token is ignored since cluster already initialized; valid logs are found",
-				zap.String("wal-dir", cfg.WALDir()),
-			)
-		}
-
-		// Find a snapshot to start/restart a raft node
-		walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
-		if err != nil {
-			return nil, err
-		}
-		// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
-		// wal log entries
-		snapshot, err := ss.LoadNewestAvailable(walSnaps)
-		if err != nil && err != snap.ErrNoSnapshot {
-			return nil, err
-		}
-
-		if snapshot != nil {
-			if err = st.Recovery(snapshot.Data); err != nil {
-				cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
-			}
-
-			if err = assertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
-				cfg.Logger.Error("illegal v2store content", zap.Error(err))
-				return nil, err
-			}
-
-			cfg.Logger.Info(
-				"recovered v2 store from snapshot",
-				zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-				zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
-			)
-
-			if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
-				cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
-			}
-			s1, s2 := be.Size(), be.SizeInUse()
-			cfg.Logger.Info(
-				"recovered v3 backend from snapshot",
-				zap.Int64("backend-size-bytes", s1),
-				zap.String("backend-size", humanize.Bytes(uint64(s1))),
-				zap.Int64("backend-size-in-use-bytes", s2),
-				zap.String("backend-size-in-use", humanize.Bytes(uint64(s2))),
-			)
-		} else {
-			cfg.Logger.Info("No snapshot found. Recovering WAL from scratch!")
-		}
-
-		if !cfg.ForceNewCluster {
-			id, cl, n, s, w = restartNode(cfg, snapshot)
-		} else {
-			id, cl, n, s, w = restartAsStandaloneNode(cfg, snapshot)
-		}
-
-		cl.SetStore(st)
-		cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
-		cl.Recover(api.UpdateCapability)
-		if cl.Version() != nil && !cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
-			os.RemoveAll(bepath)
-			return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
-		}
-
+		b, err = bootstrapWithWAL(cfg, st, be, ss, beExist, beHooks, ci)
 	default:
+		be.Close()
 		return nil, fmt.Errorf("unsupported bootstrap config")
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	if terr := fileutil.TouchDirAll(cfg.MemberDir()); terr != nil {
 		return nil, fmt.Errorf("cannot access member directory: %v", terr)
 	}
+	b.prt = prt
+	b.ci = ci
+	b.st = st
+	b.be = be
+	b.ss = ss
+	b.beHooks = beHooks
+	return b, nil
+}
 
-	sstats := stats.NewServerStats(cfg.Name, id.String())
-	lstats := stats.NewLeaderStats(cfg.Logger, id.String())
+type bootstrappedServer struct {
+	raft    *bootstrappedRaft
+	remotes []*membership.Member
+	prt     http.RoundTripper
+	ci      cindex.ConsistentIndexer
+	st      v2store.Store
+	be      backend.Backend
+	ss      *snap.Snapshotter
+	beHooks *backendHooks
+}
+
+func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
+	if err := fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
+		cfg.Logger.Fatal(
+			"failed to create snapshot directory",
+			zap.String("path", cfg.SnapDir()),
+			zap.Error(err),
+		)
+	}
+
+	if err := fileutil.RemoveMatchFile(cfg.Logger, cfg.SnapDir(), func(fileName string) bool {
+		return strings.HasPrefix(fileName, "tmp")
+	}); err != nil {
+		cfg.Logger.Error(
+			"failed to remove temp file(s) in snapshot directory",
+			zap.String("path", cfg.SnapDir()),
+			zap.Error(err),
+		)
+	}
+	return snap.New(cfg.Logger, cfg.SnapDir())
+}
+
+func bootstrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.ConsistentIndexer, beExist bool, beHooks *backendHooks, err error) {
+	beExist = fileutil.Exist(cfg.BackendPath())
+	ci = cindex.NewConsistentIndex(nil)
+	beHooks = &backendHooks{lg: cfg.Logger, indexer: ci}
+	be = openBackend(cfg, beHooks)
+	ci.SetBackend(be)
+	buckets.CreateMetaBucket(be.BatchTx())
+	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
+		err := maybeDefragBackend(cfg, be)
+		if err != nil {
+			be.Close()
+			return nil, nil, false, nil, err
+		}
+	}
+	cfg.Logger.Debug("restore consistentIndex", zap.Uint64("index", ci.ConsistentIndex()))
+	return be, ci, beExist, beHooks, nil
+}
+
+func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st v2store.Store, be backend.Backend) (*bootstrappedServer, error) {
+	if err := cfg.VerifyJoinExisting(); err != nil {
+		return nil, err
+	}
+	cl, err := membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+	if err != nil {
+		return nil, err
+	}
+	existingCluster, gerr := GetClusterFromRemotePeers(cfg.Logger, getRemotePeerURLs(cl, cfg.Name), prt)
+	if gerr != nil {
+		return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", gerr)
+	}
+	if err := membership.ValidateClusterAndAssignIDs(cfg.Logger, cl, existingCluster); err != nil {
+		return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
+	}
+	if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt) {
+		return nil, fmt.Errorf("incompatible with current running cluster")
+	}
+
+	remotes := existingCluster.Members()
+	cl.SetID(types.ID(0), existingCluster.ID())
+	cl.SetStore(st)
+	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
+	br := bootstrapRaftFromCluster(cfg, cl, nil)
+	cl.SetID(br.wal.id, existingCluster.ID())
+	return &bootstrappedServer{
+		raft:    br,
+		remotes: remotes,
+	}, nil
+}
+
+func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st v2store.Store, be backend.Backend) (*bootstrappedServer, error) {
+	if err := cfg.VerifyBootstrap(); err != nil {
+		return nil, err
+	}
+	cl, err := membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+	if err != nil {
+		return nil, err
+	}
+	m := cl.MemberByName(cfg.Name)
+	if isMemberBootstrapped(cfg.Logger, cl, cfg.Name, prt, cfg.BootstrapTimeoutEffective()) {
+		return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
+	}
+	if cfg.ShouldDiscover() {
+		var str string
+		str, err = v2discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
+		if err != nil {
+			return nil, &DiscoveryError{Op: "join", Err: err}
+		}
+		var urlsmap types.URLsMap
+		urlsmap, err = types.NewURLsMap(str)
+		if err != nil {
+			return nil, err
+		}
+		if config.CheckDuplicateURL(urlsmap) {
+			return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
+		}
+		if cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, urlsmap); err != nil {
+			return nil, err
+		}
+	}
+	cl.SetStore(st)
+	cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
+	br := bootstrapRaftFromCluster(cfg, cl, cl.MemberIDs())
+	cl.SetID(br.wal.id, cl.ID())
+	return &bootstrappedServer{
+		remotes: nil,
+		raft:    br,
+	}, nil
+}
+
+func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Backend, ss *snap.Snapshotter, beExist bool, beHooks *backendHooks, ci cindex.ConsistentIndexer) (*bootstrappedServer, error) {
+	if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
+		return nil, fmt.Errorf("cannot write to member directory: %v", err)
+	}
+
+	if err := fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
+		return nil, fmt.Errorf("cannot write to WAL directory: %v", err)
+	}
+
+	if cfg.ShouldDiscover() {
+		cfg.Logger.Warn(
+			"discovery token is ignored since cluster already initialized; valid logs are found",
+			zap.String("wal-dir", cfg.WALDir()),
+		)
+	}
+
+	// Find a snapshot to start/restart a raft node
+	walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
+	if err != nil {
+		return nil, err
+	}
+	// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
+	// wal log entries
+	snapshot, err := ss.LoadNewestAvailable(walSnaps)
+	if err != nil && err != snap.ErrNoSnapshot {
+		return nil, err
+	}
+
+	if snapshot != nil {
+		if err = st.Recovery(snapshot.Data); err != nil {
+			cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
+		}
+
+		if err = assertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
+			cfg.Logger.Error("illegal v2store content", zap.Error(err))
+			return nil, err
+		}
+
+		cfg.Logger.Info(
+			"recovered v2 store from snapshot",
+			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
+		)
+
+		if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
+			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
+		}
+		s1, s2 := be.Size(), be.SizeInUse()
+		cfg.Logger.Info(
+			"recovered v3 backend from snapshot",
+			zap.Int64("backend-size-bytes", s1),
+			zap.String("backend-size", humanize.Bytes(uint64(s1))),
+			zap.Int64("backend-size-in-use-bytes", s2),
+			zap.String("backend-size-in-use", humanize.Bytes(uint64(s2))),
+		)
+		if beExist {
+			// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
+			// etcd from pre-3.0 release.
+			kvindex := ci.ConsistentIndex()
+			if kvindex < snapshot.Metadata.Index {
+				if kvindex != 0 {
+					return nil, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", cfg.BackendPath(), kvindex, snapshot.Metadata.Index)
+				}
+				cfg.Logger.Warn(
+					"consistent index was never saved",
+					zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+				)
+			}
+		}
+	} else {
+		cfg.Logger.Info("No snapshot found. Recovering WAL from scratch!")
+	}
+
+	r := &bootstrappedServer{}
+	if !cfg.ForceNewCluster {
+		r.raft = bootstrapRaftFromWal(cfg, snapshot)
+	} else {
+		r.raft = bootstrapRaftFromWalStandalone(cfg, snapshot)
+	}
+
+	r.raft.cl.SetStore(st)
+	r.raft.cl.SetBackend(buckets.NewMembershipStore(cfg.Logger, be))
+	r.raft.cl.Recover(api.UpdateCapability)
+	if r.raft.cl.Version() != nil && !r.raft.cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
+		bepath := cfg.BackendPath()
+		os.RemoveAll(bepath)
+		return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
+	}
+	return r, nil
+}
+
+// NewServer creates a new EtcdServer from the supplied configuration. The
+// configuration is considered static for the lifetime of the EtcdServer.
+func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
+	b, err := bootstrap(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			b.be.Close()
+		}
+	}()
+
+	sstats := stats.NewServerStats(cfg.Name, b.raft.wal.id.String())
+	lstats := stats.NewLeaderStats(cfg.Logger, b.raft.wal.id.String())
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
-		readych:     make(chan struct{}),
-		Cfg:         cfg,
-		lgMu:        new(sync.RWMutex),
-		lg:          cfg.Logger,
-		errorc:      make(chan error, 1),
-		v2store:     st,
-		snapshotter: ss,
-		r: *newRaftNode(
-			raftNodeConfig{
-				lg:          cfg.Logger,
-				isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
-				Node:        n,
-				heartbeat:   heartbeat,
-				raftStorage: s,
-				storage:     NewStorage(w, ss),
-			},
-		),
-		id:                 id,
+		readych:            make(chan struct{}),
+		Cfg:                cfg,
+		lgMu:               new(sync.RWMutex),
+		lg:                 cfg.Logger,
+		errorc:             make(chan error, 1),
+		v2store:            b.st,
+		snapshotter:        b.ss,
+		r:                  *b.raft.newRaftNode(b.ss),
+		id:                 b.raft.wal.id,
 		attributes:         membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:            cl,
+		cluster:            b.raft.cl,
 		stats:              sstats,
 		lstats:             lstats,
 		SyncTicker:         time.NewTicker(500 * time.Millisecond),
-		peerRt:             prt,
-		reqIDGen:           idutil.NewGenerator(uint16(id), time.Now()),
+		peerRt:             b.prt,
+		reqIDGen:           idutil.NewGenerator(uint16(b.raft.wal.id), time.Now()),
 		AccessController:   &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
-		consistIndex:       ci,
+		consistIndex:       b.ci,
 		firstCommitInTermC: make(chan struct{}),
 	}
-	serverID.With(prometheus.Labels{"server_id": id.String()}).Set(1)
+	serverID.With(prometheus.Labels{"server_id": b.raft.wal.id.String()}).Set(1)
 
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
-	srv.be = be
-	srv.beHooks = beHooks
+	srv.be = b.be
+	srv.beHooks = b.beHooks
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
@@ -619,23 +675,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		CompactionSleepInterval: cfg.CompactionSleepInterval,
 	}
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
-
-	kvindex := ci.ConsistentIndex()
-	srv.lg.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
-
-	if beExist {
-		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
-		// etcd from pre-3.0 release.
-		if snapshot != nil && kvindex < snapshot.Metadata.Index {
-			if kvindex != 0 {
-				return nil, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", bepath, kvindex, snapshot.Metadata.Index)
-			}
-			cfg.Logger.Warn(
-				"consistent index was never saved",
-				zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			)
-		}
-	}
 
 	srv.authStore = auth.NewAuthStore(srv.Logger(), srv.be, tp, int(cfg.BcryptCost))
 
@@ -673,11 +712,11 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		Logger:      cfg.Logger,
 		TLSInfo:     cfg.PeerTLSInfo,
 		DialTimeout: cfg.PeerDialTimeout(),
-		ID:          id,
+		ID:          b.raft.wal.id,
 		URLs:        cfg.PeerURLs,
-		ClusterID:   cl.ID(),
+		ClusterID:   b.raft.cl.ID(),
 		Raft:        srv,
-		Snapshotter: ss,
+		Snapshotter: b.ss,
 		ServerStats: sstats,
 		LeaderStats: lstats,
 		ErrorC:      srv.errorc,
@@ -686,13 +725,13 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		return nil, err
 	}
 	// add all remotes into transport
-	for _, m := range remotes {
-		if m.ID != id {
+	for _, m := range b.remotes {
+		if m.ID != b.raft.wal.id {
 			tr.AddRemote(m.ID, m.PeerURLs)
 		}
 	}
-	for _, m := range cl.Members() {
-		if m.ID != id {
+	for _, m := range b.raft.cl.Members() {
+		if m.ID != b.raft.wal.id {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}
