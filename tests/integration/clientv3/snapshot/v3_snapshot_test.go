@@ -54,7 +54,11 @@ func TestSaveSnapshotFilePermissions(t *testing.T) {
 
 // TestSaveSnapshotVersion ensures that the snapshot returns proper storage version.
 func TestSaveSnapshotVersion(t *testing.T) {
-	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
+	// Put some keys to ensure that wal snapshot is triggered
+	kvs := []kv{}
+	for i := 0; i < 10; i++ {
+		kvs = append(kvs, kv{fmt.Sprintf("%d", i), "test"})
+	}
 	cfg := newEmbedConfig(t)
 	// Force raft snapshot to ensure that storage version is set
 	cfg.SnapshotCount = 1
