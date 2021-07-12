@@ -253,6 +253,11 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, SnapshotCount: 1})
 	defer clus.Terminate(t)
 
+	// Put some keys to ensure that wal snapshot is triggered
+	for i := 0; i < 10; i++ {
+		clus.RandClient().Put(context.Background(), fmt.Sprintf("%d", i), "1")
+	}
+
 	// reading snapshot with canceled context should error out
 	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
 	if err != nil {
