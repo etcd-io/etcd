@@ -574,7 +574,6 @@ func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) ([]uint6
 			ids[cc.NodeID] = true
 		case raftpb.ConfChangeRemoveNode:
 			delete(ids, cc.NodeID)
-			delete(isLearnerMap, cc.NodeID)
 		case raftpb.ConfChangeUpdateNode:
 			// do nothing
 		default:
