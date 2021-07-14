@@ -179,9 +179,82 @@ etcd 是典型的读多写少存储;
 
 ​	最后各个节点的 etcdserver 模块，可通过 channel 从 Raft 模块获取到已提交的日志条目（流程图中的序号 7 流程），应用日志条目内容到存储状态机（流程图中的序号 8 流程），返回结果给 client。
 
+动画演示：http://kailing.pub/raft/index.html
 
 
-#### 安全性：
+
+### 鉴权：
+
+#### 	认证：
+
+​	 etcd 实现了两种认证机制，分别是密码认证和证书认证。
+
+<img src="./img/鉴权流程.png" alt="鉴权流程" style="zoom:50%;" />
+
+​	当对应的 Raft 日志条目被集群半数以上节点确认后，Apply 模块通过鉴权存储 (AuthStore) 模块，执行日志条目的内容，将规则存储到 boltdb 的一系列“鉴权表”里面。通过认证后，在访问 MVCC 模块之前，还需要通过授权流程。授权的目的是检查 client 是否有权限操作你请求的数据路径，etcd 实现了 RBAC 机制，支持为每个用户分配一个角色，为每个角色授予最小化的权限。
+
+##### **密码认证：**
+
+使用高安全性 hash 函数（Blowfish encryption algorithm）、随机的加盐 salt、可自定义的 hash 值计算迭代次数 cost
+
+```shell
+$ etcdctl user add root:rootUser // 创建一个 root 账号，它拥有集群的最高读写权限
+root created
+$ etcdctl auth enable // 开启鉴权
+Authentication Enabled
+```
+
+​	**etcd server 鉴权时机：**etcd server 收到 put hello 请求的时候，在提交到 Raft 模块前，它会从你请求的上下文中获取你的用户身份信息。如果你未通过认证，那么在状态机应用 put 命令的时候，检查身份权限的时候发现是空，就会返回此错误给 client。
+
+​	**账号创建过程**：鉴权模块收到 etcdctl user add test:test 此命令后，它会使用 bcrpt 库的 blowfish 算法，基于明文密码、随机分配的 salt、自定义的 cost、迭代多次计算得到一个 hash 值，并将加密算法版本、salt 值、cost、hash 值组成一个字符串，作为加密后的密码。最后，鉴权模块将用户名 alice 作为 key，用户名、加密后的密码作为 value，存储到 boltdb 的 authUsers bucket 里面，完成一个账号创建。
+
+​	**提升密码认证性能：**当 etcd server 验证用户密码成功后，它就会返回一个 **Token** 字符串给 client，用于表示用户的身份。后续请求携带此 Token，就无需再次进行密码校验，实现了通信证的效果。（etcd 目前支持两种 Token，分别为 Simple Token 和 JWT Token）
+
+- **Simple Token**：核心原理是当一个用户身份验证通过后，**生成一个随机的字符串值 Token 返回给 client**，并在内存中使用 map 存储用户和 Token 映射关系。当收到用户的请求时， etcd 会从请求中获取 Token 值，转换成对应的用户名信息，返回给下层模块使用。
+  - 如何防止Token 泄漏不安全：通过给每个 Token 设置一个过期时间 TTL 属性，Token 过期后 client 需再次验证身份，减小泄漏时间窗口。
+  - 缺点：Simple Token 字符串本身并未含任何有价值信息，client 无法通过 Token 获取到过期时间、用户名、签发者等信息。所以 client 不容易提前去规避因 Token 失效导致的请求报错。
+
+- **JWT Token**（Json Web Token）：它是一个基于 JSON 的开放标准（RFC 7519）定义的一种紧凑、独立的格式，可用于在身份提供者和服务提供者间，传递被认证的用户身份信息。它由 Header、Payload、Signature 三个对象组成， 每个对象都是一个 JSON 结构体。
+  - Header：包含 **alg** 和 **typ** 两个字段，alg 表示签名的算法，etcd 支持 RSA、ESA、PS 系列，typ 表示类型就是 JWT。
+  - Payload：它表示载荷，包含用户名、过期时间等信息，可以自定义添加字段。
+  - Signature(签名)：它将 header、payload 使用 base64 url 编码，然后将编码后的字符串用"."连接在一起，最后用选择的签名算法比如 RSA 系列的私钥对其计算签名，输出结果即是 Signature。
+
+##### 证书认证:
+
+​	HTTPS 是利用非对称加密实现身份认证和密钥协商，因此使用 HTTPS 协议的时候，你需要使用 CA 证书给 client 生成证书才能访问。client 证书它含有证书版本、序列号、签名算法、签发者、有效期、主体名等信息。在 etcd 中，如果你使用了 HTTPS 协议并启用了 client 证书认证 (--client-cert-auth)，它会取 **CN 字段作为用户名**。
+
+
+
+#### 授权：
+
+​	开启鉴权后，put 请求命令在应用到状态机前，etcd 还会对发出此请求的用户进行权限检查， 判断其是否有权限操作请求的数据。常用的权限控制方法有 ACL(Access Control List)、ABAC(Attribute-based access control)、RBAC(Role-based access control)，etcd 实现的是 RBAC 机制。
+
+- RBAC (基于角色权限的控制系统) : 
+  - 由 User(用户)、Role(角色)、Permission(权限) 三部分组成；
+  - 目前支持三种权限，分别是 READ、WRITE、READWRITE。
+  - etcd 为了提升权限检查的性能，引入了区间树，检查用户操作的 key 是否在已授权的区间，时间复杂度仅为 O(logN)。
+
+```shell
+$ #创建一个admin role 
+etcdctl role add admin  --user root:root
+Role admin created
+# #分配一个可读写[hello，helly]范围数据的权限给admin role
+$ etcdctl role grant-permission admin readwrite hello helly --user root:root
+Role admin updated
+# 将用户alice和admin role关联起来，赋予admin权限给user
+$ etcdctl user grant-role alice admin --user root:root
+Role admin is granted to user alice
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
