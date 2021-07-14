@@ -617,7 +617,6 @@ func createConfigChangeEnts(lg *zap.Logger, ids []uint64, isLearnerMap map[uint6
 			Type:    raftpb.ConfChangeAddNode,
 			NodeID:  id,
 			Context: ctx,
-			ID:      id,
 		}
 		e := raftpb.Entry{
 			Type:  raftpb.EntryConfChange,
