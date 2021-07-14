@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -98,7 +98,7 @@ func TestGetAllUsers(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			abe := NewAuthBackend(zap.NewNop(), be)
+			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 			abe.CreateAuthBuckets()
 
 			tx := abe.BatchTx()
@@ -111,7 +111,7 @@ func TestGetAllUsers(t *testing.T) {
 
 			be2 := backend.NewDefaultBackend(tmpPath)
 			defer be2.Close()
-			abe2 := NewAuthBackend(zap.NewNop(), be2)
+			abe2 := NewAuthBackend(zaptest.NewLogger(t), be2)
 			users := abe2.GetAllUsers()
 
 			assert.Equal(t, tc.want, users)
@@ -182,7 +182,7 @@ func TestGetUser(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			abe := NewAuthBackend(zap.NewNop(), be)
+			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 			abe.CreateAuthBuckets()
 
 			tx := abe.BatchTx()
@@ -195,7 +195,7 @@ func TestGetUser(t *testing.T) {
 
 			be2 := backend.NewDefaultBackend(tmpPath)
 			defer be2.Close()
-			abe2 := NewAuthBackend(zap.NewNop(), be2)
+			abe2 := NewAuthBackend(zaptest.NewLogger(t), be2)
 			users := abe2.GetUser("alice")
 
 			assert.Equal(t, tc.want, users)
