@@ -15,3 +15,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 ### etcdutl v3
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
+
+### Package `server`
+
+- Package `mvcc` was moved to `storage/mvcc`
+- Package `mvcc/backend` was moved to `storage/backend`
+- Package `mvcc/buckets` was moved to `storage/schema`
