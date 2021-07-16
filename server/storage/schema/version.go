@@ -59,3 +59,8 @@ func UnsafeSetStorageVersion(tx backend.BatchTx, v *semver.Version) {
 	sv := semver.Version{Major: v.Major, Minor: v.Minor}
 	tx.UnsafePut(Meta, MetaStorageVersionName, []byte(sv.String()))
 }
+
+// UnsafeClearStorageVersion removes etcd storage version in backend.
+func UnsafeClearStorageVersion(tx backend.BatchTx) {
+	tx.UnsafeDelete(Meta, MetaStorageVersionName)
+}

@@ -32,7 +32,7 @@ var (
 func UpdateStorageSchema(lg *zap.Logger, tx backend.BatchTx) error {
 	tx.Lock()
 	defer tx.Unlock()
-	v, err := detectStorageVersion(lg, tx)
+	v, err := DetectSchemaVersion(lg, tx)
 	if err != nil {
 		return fmt.Errorf("cannot determine storage version: %w", err)
 	}
@@ -48,7 +48,7 @@ func UpdateStorageSchema(lg *zap.Logger, tx backend.BatchTx) error {
 	return nil
 }
 
-func detectStorageVersion(lg *zap.Logger, tx backend.ReadTx) (*semver.Version, error) {
+func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (*semver.Version, error) {
 	v := UnsafeReadStorageVersion(tx)
 	if v != nil {
 		return v, nil
