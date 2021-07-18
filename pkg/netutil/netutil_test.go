@@ -17,6 +17,7 @@ package netutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"reflect"
@@ -292,11 +293,33 @@ func TestURLsEqual(t *testing.T) {
 	}
 }
 func TestURLStringsEqual(t *testing.T) {
-	result, err := URLStringsEqual(context.TODO(), zap.NewExample(), []string{"http://127.0.0.1:8080"}, []string{"http://127.0.0.1:8080"})
-	if !result {
-		t.Errorf("unexpected result %v", result)
+	defer func() { resolveTCPAddr = resolveTCPAddrDefault }()
+	errOnResolve := func(ctx context.Context, addr string) (*net.TCPAddr, error) {
+		return nil, fmt.Errorf("unexpected attempt to resolve: %q", addr)
 	}
-	if err != nil {
-		t.Errorf("unexpected error %v", err)
+	cases := []struct {
+		urlsA    []string
+		urlsB    []string
+		resolver func(ctx context.Context, addr string) (*net.TCPAddr, error)
+	}{
+		{[]string{"http://127.0.0.1:8080"}, []string{"http://127.0.0.1:8080"}, resolveTCPAddrDefault},
+		{[]string{
+			"http://host1:8080",
+			"http://host2:8080",
+		}, []string{
+			"http://host1:8080",
+			"http://host2:8080",
+		}, errOnResolve},
+	}
+	for idx, c := range cases {
+		t.Logf("TestURLStringsEqual, case #%d", idx)
+		resolveTCPAddr = c.resolver
+		result, err := URLStringsEqual(context.TODO(), zap.NewExample(), c.urlsA, c.urlsB)
+		if !result {
+			t.Errorf("unexpected result %v", result)
+		}
+		if err != nil {
+			t.Errorf("unexpected error %v", err)
+		}
 	}
 }
