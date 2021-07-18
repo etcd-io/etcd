@@ -174,21 +174,13 @@ func URLStringsEqual(ctx context.Context, lg *zap.Logger, a []string, b []string
 	if len(a) != len(b) {
 		return false, fmt.Errorf("len(%q) != len(%q)", a, b)
 	}
-	urlsA := make([]url.URL, 0)
-	for _, str := range a {
-		u, err := url.Parse(str)
-		if err != nil {
-			return false, fmt.Errorf("failed to parse %q", str)
-		}
-		urlsA = append(urlsA, *u)
+	urlsA, err := stringsToURLs(a)
+	if err != nil {
+		return false, err
 	}
-	urlsB := make([]url.URL, 0)
-	for _, str := range b {
-		u, err := url.Parse(str)
-		if err != nil {
-			return false, fmt.Errorf("failed to parse %q", str)
-		}
-		urlsB = append(urlsB, *u)
+	urlsB, err := stringsToURLs(b)
+	if err != nil {
+		return false, err
 	}
 	if lg == nil {
 		lg, _ = zap.NewProduction()
@@ -196,7 +188,15 @@ func URLStringsEqual(ctx context.Context, lg *zap.Logger, a []string, b []string
 			lg = zap.NewExample()
 		}
 	}
-	return urlsEqual(ctx, lg, urlsA, urlsB)
+	sort.Sort(types.URLs(urlsA))
+	sort.Sort(types.URLs(urlsB))
+	for i := range urlsA {
+		if !reflect.DeepEqual(urlsA[i], urlsB[i]) {
+			// If urls are not equal, try to resolve it and compare again.
+			return urlsEqual(ctx, lg, urlsA, urlsB)
+		}
+	}
+	return true, nil
 }
 
 func urlsToStrings(us []url.URL) []string {
@@ -205,6 +205,18 @@ func urlsToStrings(us []url.URL) []string {
 		rs[i] = us[i].String()
 	}
 	return rs
+}
+
+func stringsToURLs(us []string) ([]url.URL, error) {
+	urls := make([]url.URL, 0, len(us))
+	for _, str := range us {
+		u, err := url.Parse(str)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse %q", str)
+		}
+		urls = append(urls, *u)
+	}
+	return urls, nil
 }
 
 func IsNetworkTimeoutError(err error) bool {
