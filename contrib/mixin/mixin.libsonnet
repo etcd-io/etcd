@@ -223,7 +223,7 @@
           {
             alert: 'etcdExcessiveDatabaseGrowth',
             expr: |||
-              increase(((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100)[240m:1m]) > 50
+              deriv(((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100)[240m:1m]) > 50
             ||| % $._config,
             'for': '10m',
             labels: {
