@@ -49,16 +49,17 @@ const (
 	ClusterStateFlagNew      = "new"
 	ClusterStateFlagExisting = "existing"
 
-	DefaultName                  = "default"
-	DefaultMaxSnapshots          = 5
-	DefaultMaxWALs               = 5
-	DefaultMaxTxnOps             = uint(128)
-	DefaultWarningApplyDuration  = 100 * time.Millisecond
-	DefaultMaxRequestBytes       = 1.5 * 1024 * 1024
-	DefaultGRPCKeepAliveMinTime  = 5 * time.Second
-	DefaultGRPCKeepAliveInterval = 2 * time.Hour
-	DefaultGRPCKeepAliveTimeout  = 20 * time.Second
-	DefaultDowngradeCheckTime    = 5 * time.Second
+	DefaultName                        = "default"
+	DefaultMaxSnapshots                = 5
+	DefaultMaxWALs                     = 5
+	DefaultMaxTxnOps                   = uint(128)
+	DefaultWarningApplyDuration        = 100 * time.Millisecond
+	DefaultWarningUnaryRequestDuration = 300 * time.Millisecond
+	DefaultMaxRequestBytes             = 1.5 * 1024 * 1024
+	DefaultGRPCKeepAliveMinTime        = 5 * time.Second
+	DefaultGRPCKeepAliveInterval       = 2 * time.Hour
+	DefaultGRPCKeepAliveTimeout        = 20 * time.Second
+	DefaultDowngradeCheckTime          = 5 * time.Second
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
@@ -326,6 +327,9 @@ type Config struct {
 	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
 	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
+	// ExperimentalWarningUnaryRequestDuration is the time duration after which a warning is generated if applying
+	// unary request takes more time than this value.
+	ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -446,6 +450,8 @@ func NewConfig() *Config {
 		MaxTxnOps:                        DefaultMaxTxnOps,
 		MaxRequestBytes:                  DefaultMaxRequestBytes,
 		ExperimentalWarningApplyDuration: DefaultWarningApplyDuration,
+
+		ExperimentalWarningUnaryRequestDuration: DefaultWarningUnaryRequestDuration,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
