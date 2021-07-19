@@ -248,17 +248,97 @@ Role admin is granted to user alice
 
 
 
+### 租约（Lease）:
 
+保证同一时刻只有一个能对外提供服务, 基于主动型上报模式，提供的一种活性检测机制.
 
+实现活性（liveness）检测主要有两种方案。
 
+- 方案一为被动型检测，你可以通过探测节点定时拨测 Leader 节点，看是否健康，比如 Redis Sentinel。
+- 方案二为主动型上报，Leader 节点可定期向协调服务发送"特殊心跳"汇报健康状态，若其未正常发送心跳，并超过和协调服务约定的最大存活时间后，就会被协调服务移除 Leader 身份标识。同时其他节点可通过协调服务，快速感知到 Leader 故障了，进而发起新的选举。
 
+client 和 etcd server 之间存在一个约定，内容是 etcd server 保证在约定的有效期内（TTL），不会删除关联到此 Lease 上的 key-value。若未在有效期内续租，那么 etcd server 就会删除 Lease 和其关联的 key-value。
 
+<img src="./img/etcd租约.png" alt="etcd租约" style="zoom:33%;" />
 
+etcd 在启动的时候，创建 Lessor 模块的时候，它会启动两个常驻 goroutine，如上图所示，一个是 RevokeExpiredLease 任务，定时检查是否有过期 Lease，发起撤销过期的 Lease 操作。一个是 CheckpointScheduledLease，定时触发更新 Lease 的剩余到期时间的操作。
 
+Lessor 模块提供了 Grant、Revoke、LeaseTimeToLive、LeaseKeepAlive API 给 client 使用，各接口作用如下:
 
+- Grant 表示创建一个 TTL 为你指定秒数的 Lease，Lessor 会将 Lease 信息持久化存储在 boltdb 中；
+- Revoke 表示撤销 Lease 并删除其关联的数据；
+- LeaseTimeToLive 表示获取一个 Lease 的有效期、剩余时间；
+- LeaseKeepAlive 表示为 Lease 续期。	
 
+#### 租约创建：
 
+```shell
+# 创建一个TTL为600秒的lease，etcd server返回LeaseID
+$ etcdctl lease grant 600
+lease 326975935f48f814 granted with TTL(600s)
 
+# 查看lease的TTL、剩余时间
+$ etcdctl lease timetolive 326975935f48f814
+lease 326975935f48f814 granted with TTL(600s)， remaining(590s)
+```
+
+​	当 Lease server 收到 client 的创建一个有效期 600 秒的 Lease 请求后，会通过 **Raft 模块**完成日志同步，随后 **Apply 模块**通过 Lessor 模块的 Grant 接口执行日志条目内容。首先 Lessor 的 Grant 接口会把 Lease 保存到内存的 ItemMap 数据结构中，然后它需要持久化 Lease，将 Lease 数据保存到 **boltdb** 的 Lease bucket 中，返回一个唯一的 LeaseID 给 client。
+
+#### 租约关联到node：
+
+​	KV 模块的 API 接口提供了一个"**--lease**"参数，可以通过如下命令，将 key node 关联到对应的 LeaseID 上。然后查询的时候增加 **-w** 参数输出格式为 json，就可查看到 key 关联的 LeaseID。
+
+​	通过 put 等命令新增一个指定了"--lease"的 key 时，**MVCC 模块**它会通过 Lessor 模块的 **Attach** 方法，将 key 关联到 Lease 的 key 内存集合 **ItemSet** 中。MVCC 模块在持久化存储 key-value 的时候，保存到 boltdb 的 value 是个结构体（mvccpb.KeyValue）， 它不仅包含 key-value 数据，还包含了**关联的 LeaseID** 等信息。因此当 etcd 重启时，可根据此信息，重建关联各个 Lease 的 key 集合列表。（*一个 Lease 关联的 key 集合是保存在内存中的*）
+
+```shell
+$ etcdctl put node healthy --lease 326975935f48f818
+OK
+$ etcdctl get node -w=json | python -m json.tool
+{
+    "kvs":[
+        {
+            "create_revision":24，
+            "key":"bm9kZQ=="，
+            "Lease":3632563850270275608，
+            "mod_revision":24，
+            "value":"aGVhbHRoeQ=="，
+            "version":1
+        }
+    ]
+}
+```
+
+#### 租约续期：
+
+​	核心是将 Lease 的过期时间更新为当前系统时间加其 TTL。
+
+​	优化：
+
+​		一方面不同 key 若 TTL 相同，可复用同一个 Lease， 显著减少了 Lease 数。
+
+​		另一方面，通过 gRPC HTTP/2 实现了多路复用，流式传输，同一连接可支持为多个 Lease 续期，大大减少了连接数。
+
+#### 租约淘汰：
+
+​	淘汰过期 Lease 的工作由 Lessor 模块的一个异步 goroutine 负责。它会定时从**最小堆**中取出已过期的 Lease，执行删除 Lease 和其关联的 key 列表数据的 **RevokeExpiredLease** 任务。（每次新增 Lease、续期的时候，它会插入、更新一个对象到最小堆中，对象含有 LeaseID 和其到期时间 unixnano，对象之间按到期时间升序排序。这样每次只需轮询、检查排在前面的 Lease 过期时间，一旦轮询到未过期的 Lease， 则可结束本轮检查。）
+
+​	Lessor 主循环每隔 **500ms** 执行一次撤销 Lease 检查（**RevokeExpiredLease**），每次轮询堆顶的元素，若已过期则加入到待淘汰列表，直到堆顶的 Lease 过期时间大于当前，则结束本轮轮询。
+
+​	通知Follower 节点：Lessor 模块会将已确认过期的 LeaseID，保存在一个名为 expiredC 的 channel 中，而 etcd server 的主循环会定期从 channel 中获取 LeaseID，发起 **revoke 请求**，通过 Raft Log 传递给 Follower 节点。各个节点收到 revoke Lease 请求后，获取关联到此 Lease 上的 key 列表，从 boltdb 中删除 key，从 Lessor 的 **Lease map** 内存中删除此 Lease 对象，最后还需要从 boltdb 的 Lease bucket 中删除这个 Lease。
+
+#### checkpoint 机制：
+
+​	**起因**：若较频繁出现 Leader 切换，切换时间小于 Lease 的 TTL，这会导致 Lease 永远无法删除，大量 key 堆积，db 大小超过配额等异常。
+
+​	**措施**：通过**CheckPointScheduledLeases **的任务：
+
+​		一方面，etcd 启动的时候，Leader 节点后台会运行此异步任务，定期批量地将 Lease 剩余的 TTL 基于 Raft Log 同步给 Follower 节点，Follower 节点收到 CheckPoint 请求后，更新内存数据结构 LeaseMap 的剩余 TTL 信息。
+
+​		另一方面，当 Leader 节点收到 KeepAlive 请求的时候，它也会通过 checkpoint 机制把此 Lease 的剩余 TTL 重置，并同步给 Follower 节点，尽量确保续期后集群各个节点的 Lease 剩余 TTL 一致性。
+
+> lease是leader在内存中维护过期最小堆的，因此续期操作client是必须要直接发送给leader的，如果follower节点收到了keepalive请求，会转发给leader节点。续期操作不经过raft协议处理同步，而leaseGrant/Revoke请求会经过raft协议同步给各个节点，因此任意节点都可以处理它。
+>
+> 淘汰过期lease最小堆中保存的时间是lease到期时间，比如lease TTL是600秒/10分钟，当前时间是00:00:00, 那么到期时间00:10:00。
 
 
 
