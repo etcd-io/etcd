@@ -304,12 +304,12 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	defer func() {
 		if err != nil {
-			b.be.Close()
+			b.storage.be.Close()
 		}
 	}()
 
-	sstats := stats.NewServerStats(cfg.Name, b.raft.wal.id.String())
-	lstats := stats.NewLeaderStats(cfg.Logger, b.raft.wal.id.String())
+	sstats := stats.NewServerStats(cfg.Name, b.storage.cluster.raft.wal.id.String())
+	lstats := stats.NewLeaderStats(cfg.Logger, b.storage.cluster.raft.wal.id.String())
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
@@ -318,28 +318,28 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lgMu:                  new(sync.RWMutex),
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
-		v2store:               b.st,
+		v2store:               b.storage.st,
 		snapshotter:           b.ss,
-		r:                     *b.raft.newRaftNode(b.ss),
-		id:                    b.raft.wal.id,
+		r:                     *b.storage.cluster.raft.newRaftNode(b.ss),
+		id:                    b.storage.cluster.raft.wal.id,
 		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:               b.raft.cl,
+		cluster:               b.storage.cluster.raft.cl,
 		stats:                 sstats,
 		lstats:                lstats,
 		SyncTicker:            time.NewTicker(500 * time.Millisecond),
 		peerRt:                b.prt,
-		reqIDGen:              idutil.NewGenerator(uint16(b.raft.wal.id), time.Now()),
+		reqIDGen:              idutil.NewGenerator(uint16(b.storage.cluster.raft.wal.id), time.Now()),
 		AccessController:      &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
-		consistIndex:          b.ci,
+		consistIndex:          b.storage.ci,
 		firstCommitInTerm:     notify.NewNotifier(),
 		clusterVersionChanged: notify.NewNotifier(),
 	}
-	serverID.With(prometheus.Labels{"server_id": b.raft.wal.id.String()}).Set(1)
+	serverID.With(prometheus.Labels{"server_id": b.storage.cluster.raft.wal.id.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
-	srv.be = b.be
-	srv.beHooks = b.beHooks
+	srv.be = b.storage.be
+	srv.beHooks = b.storage.beHooks
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
@@ -403,9 +403,9 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		Logger:      cfg.Logger,
 		TLSInfo:     cfg.PeerTLSInfo,
 		DialTimeout: cfg.PeerDialTimeout(),
-		ID:          b.raft.wal.id,
+		ID:          b.storage.cluster.raft.wal.id,
 		URLs:        cfg.PeerURLs,
-		ClusterID:   b.raft.cl.ID(),
+		ClusterID:   b.storage.cluster.raft.cl.ID(),
 		Raft:        srv,
 		Snapshotter: b.ss,
 		ServerStats: sstats,
@@ -416,13 +416,13 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		return nil, err
 	}
 	// add all remotes into transport
-	for _, m := range b.remotes {
-		if m.ID != b.raft.wal.id {
+	for _, m := range b.storage.cluster.remotes {
+		if m.ID != b.storage.cluster.raft.wal.id {
 			tr.AddRemote(m.ID, m.PeerURLs)
 		}
 	}
-	for _, m := range b.raft.cl.Members() {
-		if m.ID != b.raft.wal.id {
+	for _, m := range b.storage.cluster.raft.cl.Members() {
+		if m.ID != b.storage.cluster.raft.wal.id {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}
