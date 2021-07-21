@@ -105,6 +105,16 @@ type bootstrapedCluster struct {
 	clusterID, nodeID types.ID
 }
 
+type bootstrappedRaft struct {
+	lg        *zap.Logger
+	heartbeat time.Duration
+
+	peers   []raft.Peer
+	config  *raft.Config
+	cl      *membership.RaftCluster
+	storage *raft.MemoryStorage
+}
+
 func bootstrapStorage(cfg config.ServerConfig, ss *snap.Snapshotter, prt http.RoundTripper) (b *bootstrappedStorage, err error) {
 	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 	haveWAL := wal.Exist(cfg.WALDir())
@@ -459,16 +469,6 @@ func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft
 		PreVote:         cfg.PreVote,
 		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
 	}
-}
-
-type bootstrappedRaft struct {
-	lg        *zap.Logger
-	heartbeat time.Duration
-
-	peers   []raft.Peer
-	config  *raft.Config
-	cl      *membership.RaftCluster
-	storage *raft.MemoryStorage
 }
 
 func (b *bootstrappedRaft) newRaftNode(ss *snap.Snapshotter, wal *wal.WAL) *raftNode {
