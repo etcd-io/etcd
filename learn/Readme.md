@@ -69,12 +69,12 @@ goreman -f Procfile start
 
     - Propose: 通过一系列检查之后，会生成一个唯一的 ID，将此请求关联到一个对应的消息通知 channel，然后向 Raft 模块发起（Propose）一个提案（Proposal）。向 Raft 模块发起提案后，KVServer 模块会等待此 put 请求，等待写入结果通过消息通知 channel 返回或者超时。etcd 默认超时时间是 7 秒（5 秒磁盘 IO 延时 +2*1 秒竞选超时时间），如果一个请求超时未返回结果，则可能会出现你熟悉的 etcdserver: request timed out 错误。
 
-  - Apply 模块: 
+  - **Apply 模块**: 
 
     - 如何异常处理：提交给 Apply 模块执行的提案已获得多数节点确认、持久化，etcd 重启时，会从 WAL 中解析出 Raft 日志条目内容，追加到 Raft 日志的存储中，并重放已提交的日志提案给 Apply 模块执行。etcd 通过引入一个 consistent index 的字段，来存储系统当前已经执行过的日志条目索引，实现幂等性。
     - Apply 模块在执行提案内容前，首先会判断当前提案是否已经执行过了，如果执行了则直接返回，若未执行同时无 db 配额满告警，则进入到 MVCC 模块，开始与持久化存储模块打交道。
 
-  - MVCC: 保存一个 key 的多个历史版本, 核心由内存树形索引模块 (treeIndex) 和嵌入式的 KV 持久化存储库 boltdb 组成. 从 treeIndex 中获取 key hello 的版本号，再以版本号作为 boltdb 的 key，从 boltdb 中获取其 value 信息. etcd 的最大版本号 currentRevision。
+  - **MVCC**: 保存一个 key 的多个历史版本, 核心由内存树形索引模块 (treeIndex) 和嵌入式的 KV 持久化存储库 boltdb 组成. 从 treeIndex 中获取 key hello 的版本号，再以版本号作为 boltdb 的 key，从 boltdb 中获取其 value 信息. etcd 的最大版本号 currentRevision。
 
     - etcd 出于数据一致性、性能等考虑，在访问 boltdb 前，首先会从一个内存读事务 buffer 中，二分查找你要访问 key 是否在 buffer 里面，若命中则直接返回
     - boltdb 里每个 bucket 类似对应 MySQL 一个表，用户的 key 数据存放的 bucket 名字的是 key，etcd MVCC 元数据存放的 bucket 是 meta
@@ -342,17 +342,59 @@ $ etcdctl get node -w=json | python -m json.tool
 
 
 
+### MVCC：
 
+​	Multiversion concurrency control 多版本控制并发；MVCC 机制正是基于多版本技术实现的一种**乐观锁机制**，它乐观地认为数据不会发生冲突，但是当事务**提交时**，具备检测数据是否冲突的能力。
 
+​	更新一个 key-value 数据的时候，它并**不会直接覆盖原数据，而是新增一个版本来存储新的数据**，每个数据都有一个版本号。版本号它是一个逻辑时间。当指定版本号读取数据时，它实际上访问的是版本号生成那个时间点的快照数据。当你删除数据的时候，它实际也是新增一条带删除标识的数据记录。
 
+```shell
+# 更新key hello为world1
+$ etcdctl put hello world1
+OK
+# 通过指定输出模式为json,查看key hello更新后的详细信息
+$ etcdctl get hello -w=json
+{
+    "kvs":[
+        {
+            "key":"aGVsbG8=",
+            "create_revision":2,
+            "mod_revision":2, # 表示 key 最后一次修改时的 etcd 版本号
+            "version":1,
+            "value":"d29ybGQx"
+        }
+    ],
+    "count":1
+}
+# 再次修改key hello为world2
+$ etcdctl put hello world2
+OK
+# 确认修改成功,最新值为wolrd2
+$ etcdctl get hello
+hello
+world2
+# 指定查询版本号,获得了hello上一次修改的值
+$ etcdctl get hello --rev=2
+hello
+world1
+# 删除key hello
+$ etcdctl del  hello
+1
+# 删除后指定查询版本号3,获得了hello删除前的值
+$ etcdctl get hello --rev=3
+hello
+world2
+```
 
+​	**读写流程**：
 
+​	<img src="./img/mvcc流程.png" alt="mvcc流程" style="zoom:40%;" />
 
+- treeIndex 模块基于内存版 B-tree 实现了 key 索引管理，它保存了用户 key 与版本号（revision）的映射关系等信息。
+- Backend 模块负责 etcd 的 key-value 持久化存储，基于boltdb 实现, 主要由 ReadTx、BatchTx、Buffer 组成，ReadTx 定义了抽象的读事务接口，BatchTx 在 ReadTx 之上定义了抽象的写事务接口，Buffer 是数据缓存区。 (boltdb 是一个基于 B+ tree 实现的、支持事务的 key-value 嵌入式数据库)
 
+etcd 保存用户 key 与版本号映射关系的数据结构 B-tree，为什么 etcd 使用它而不使用哈希表、平衡二叉树？
 
-
-
-
-
-
+- 特性上分析: 因 etcd 支持范围查询，因此保存索引的数据结构也必须支持范围查询才行。所以哈希表不适合，而 B-tree 支持范围查询。
+- 性能上分析: 平横二叉树每个节点只能容纳一个数据、导致树的高度较高，而 B-tree 每个节点可以容纳多个数据，树的高度更低，更扁平，涉及的查找次数更少，具有优越的增、删、改、查性能。
 
