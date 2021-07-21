@@ -62,6 +62,7 @@ import (
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
+	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -258,7 +259,7 @@ type EtcdServer struct {
 	lessor     lease.Lessor
 	bemu       sync.Mutex
 	be         backend.Backend
-	beHooks    *backendHooks
+	beHooks    *serverstorage.BackendHooks
 	authStore  auth.AuthStore
 	alarmStore *v3alarm.AlarmStore
 
@@ -294,36 +295,6 @@ type EtcdServer struct {
 
 	// Ensure that storage schema is updated only once.
 	updateStorageSchema sync.Once
-}
-
-type backendHooks struct {
-	indexer cindex.ConsistentIndexer
-	lg      *zap.Logger
-
-	// confState to be written in the next submitted backend transaction (if dirty)
-	confState raftpb.ConfState
-	// first write changes it to 'dirty'. false by default, so
-	// not initialized `confState` is meaningless.
-	confStateDirty bool
-	confStateLock  sync.Mutex
-}
-
-func (bh *backendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
-	bh.indexer.UnsafeSave(tx)
-	bh.confStateLock.Lock()
-	defer bh.confStateLock.Unlock()
-	if bh.confStateDirty {
-		schema.MustUnsafeSaveConfStateToBackend(bh.lg, tx, &bh.confState)
-		// save bh.confState
-		bh.confStateDirty = false
-	}
-}
-
-func (bh *backendHooks) SetConfState(confState *raftpb.ConfState) {
-	bh.confStateLock.Lock()
-	defer bh.confStateLock.Unlock()
-	bh.confState = *confState
-	bh.confStateDirty = true
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -460,23 +431,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.r.transport = tr
 
 	return srv, nil
-}
-
-// assertNoV2StoreContent -> depending on the deprecation stage, warns or report an error
-// if the v2store contains custom content.
-func assertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage config.V2DeprecationEnum) error {
-	metaOnly, err := membership.IsMetaStoreOnly(st)
-	if err != nil {
-		return err
-	}
-	if metaOnly {
-		return nil
-	}
-	if deprecationStage.IsAtLeast(config.V2_DEPR_1_WRITE_ONLY) {
-		return fmt.Errorf("detected disallowed custom content in v2store for stage --v2-deprecation=%s", deprecationStage)
-	}
-	lg.Warn("detected custom v2store content. Etcd v3.5 is the last version allowing to access it using API v2. Please remove the content.")
-	return nil
 }
 
 func (s *EtcdServer) Logger() *zap.Logger {
@@ -1006,7 +960,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// wait for raftNode to persist snapshot onto the disk
 	<-apply.notifyc
 
-	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot, s.beHooks)
+	newbe, err := serverstorage.OpenSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot, s.beHooks)
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
@@ -1069,7 +1023,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		lg.Panic("failed to restore v2 store", zap.Error(err))
 	}
 
-	if err := assertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
+	if err := serverstorage.AssertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
 		lg.Panic("illegal v2store content", zap.Error(err))
 	}
 

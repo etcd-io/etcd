@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package storage
 
 import (
 	"sync"
@@ -52,7 +52,7 @@ func (*passthroughQuota) Available(interface{}) bool { return true }
 func (*passthroughQuota) Cost(interface{}) int       { return 0 }
 func (*passthroughQuota) Remaining() int64           { return 1 }
 
-type backendQuota struct {
+type BackendQuota struct {
 	be              backend.Backend
 	maxBackendBytes int64
 }
@@ -60,7 +60,7 @@ type backendQuota struct {
 const (
 	// leaseOverhead is an estimate for the cost of storing a lease
 	leaseOverhead = 64
-	// kvOverhead is an estimate for the cost of storing a key's metadata
+	// kvOverhead is an estimate for the cost of storing a key's Metadata
 	kvOverhead = 256
 )
 
@@ -102,7 +102,7 @@ func NewBackendQuota(cfg config.ServerConfig, be backend.Backend, name string) Q
 			}
 		})
 		quotaBackendBytes.Set(float64(DefaultQuotaBytes))
-		return &backendQuota{be, DefaultQuotaBytes}
+		return &BackendQuota{be, DefaultQuotaBytes}
 	}
 
 	quotaLogOnce.Do(func() {
@@ -123,15 +123,15 @@ func NewBackendQuota(cfg config.ServerConfig, be backend.Backend, name string) Q
 			zap.String("quota-size", humanize.Bytes(uint64(cfg.QuotaBackendBytes))),
 		)
 	})
-	return &backendQuota{be, cfg.QuotaBackendBytes}
+	return &BackendQuota{be, cfg.QuotaBackendBytes}
 }
 
-func (b *backendQuota) Available(v interface{}) bool {
-	// TODO: maybe optimize backend.Size()
+func (b *BackendQuota) Available(v interface{}) bool {
+	// TODO: maybe optimize Backend.Size()
 	return b.be.Size()+int64(b.Cost(v)) < b.maxBackendBytes
 }
 
-func (b *backendQuota) Cost(v interface{}) int {
+func (b *BackendQuota) Cost(v interface{}) int {
 	switch r := v.(type) {
 	case *pb.PutRequest:
 		return costPut(r)
@@ -169,6 +169,6 @@ func costTxn(r *pb.TxnRequest) int {
 	return sizeSuccess
 }
 
-func (b *backendQuota) Remaining() int64 {
+func (b *BackendQuota) Remaining() int64 {
 	return b.maxBackendBytes - b.be.Size()
 }

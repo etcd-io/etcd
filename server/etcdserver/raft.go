@@ -15,21 +15,16 @@
 package etcdserver
 
 import (
-	"encoding/json"
 	"expvar"
 	"fmt"
 	"log"
-	"sort"
 	"sync"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
-	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/contention"
-	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.uber.org/zap"
 )
@@ -414,107 +409,4 @@ func (r *raftNode) advanceTicks(ticks int) {
 	for i := 0; i < ticks; i++ {
 		r.tick()
 	}
-}
-
-// getIDs returns an ordered set of IDs included in the given snapshot and
-// the entries. The given snapshot/entries can contain three kinds of
-// ID-related entry:
-// - ConfChangeAddNode, in which case the contained ID will be added into the set.
-// - ConfChangeRemoveNode, in which case the contained ID will be removed from the set.
-// - ConfChangeAddLearnerNode, in which the contained ID will be added into the set.
-func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
-	ids := make(map[uint64]bool)
-	if snap != nil {
-		for _, id := range snap.Metadata.ConfState.Voters {
-			ids[id] = true
-		}
-	}
-	for _, e := range ents {
-		if e.Type != raftpb.EntryConfChange {
-			continue
-		}
-		var cc raftpb.ConfChange
-		pbutil.MustUnmarshal(&cc, e.Data)
-		switch cc.Type {
-		case raftpb.ConfChangeAddLearnerNode:
-			ids[cc.NodeID] = true
-		case raftpb.ConfChangeAddNode:
-			ids[cc.NodeID] = true
-		case raftpb.ConfChangeRemoveNode:
-			delete(ids, cc.NodeID)
-		case raftpb.ConfChangeUpdateNode:
-			// do nothing
-		default:
-			lg.Panic("unknown ConfChange Type", zap.String("type", cc.Type.String()))
-		}
-	}
-	sids := make(types.Uint64Slice, 0, len(ids))
-	for id := range ids {
-		sids = append(sids, id)
-	}
-	sort.Sort(sids)
-	return []uint64(sids)
-}
-
-// createConfigChangeEnts creates a series of Raft entries (i.e.
-// EntryConfChange) to remove the set of given IDs from the cluster. The ID
-// `self` is _not_ removed, even if present in the set.
-// If `self` is not inside the given ids, it creates a Raft entry to add a
-// default member with the given `self`.
-func createConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
-	found := false
-	for _, id := range ids {
-		if id == self {
-			found = true
-		}
-	}
-
-	var ents []raftpb.Entry
-	next := index + 1
-
-	// NB: always add self first, then remove other nodes. Raft will panic if the
-	// set of voters ever becomes empty.
-	if !found {
-		m := membership.Member{
-			ID:             types.ID(self),
-			RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:2380"}},
-		}
-		ctx, err := json.Marshal(m)
-		if err != nil {
-			lg.Panic("failed to marshal member", zap.Error(err))
-		}
-		cc := &raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  self,
-			Context: ctx,
-		}
-		e := raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Data:  pbutil.MustMarshal(cc),
-			Term:  term,
-			Index: next,
-		}
-		ents = append(ents, e)
-		next++
-	}
-
-	for _, id := range ids {
-		if id == self {
-			continue
-		}
-		cc := &raftpb.ConfChange{
-			Type:   raftpb.ConfChangeRemoveNode,
-			NodeID: id,
-		}
-		e := raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Data:  pbutil.MustMarshal(cc),
-			Term:  term,
-			Index: next,
-		}
-		ents = append(ents, e)
-		next++
-	}
-
-	return ents
 }
