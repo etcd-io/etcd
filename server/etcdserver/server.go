@@ -308,7 +308,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 
-	sstats := stats.NewServerStats(cfg.Name, b.cluster.nodeID.String())
+	sstats := stats.NewServerStats(cfg.Name, b.cluster.cl.String())
 	lstats := stats.NewLeaderStats(cfg.Logger, b.cluster.nodeID.String())
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
@@ -320,10 +320,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		errorc:                make(chan error, 1),
 		v2store:               b.storage.st,
 		snapshotter:           b.ss,
-		r:                     *b.cluster.raft.newRaftNode(b.ss, b.cluster.wal.w),
+		r:                     *b.cluster.raft.newRaftNode(b.ss, b.cluster.wal.w, b.cluster.cl),
 		id:                    b.cluster.nodeID,
 		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:               b.cluster.raft.cl,
+		cluster:               b.cluster.cl,
 		stats:                 sstats,
 		lstats:                lstats,
 		SyncTicker:            time.NewTicker(500 * time.Millisecond),
@@ -405,7 +405,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		DialTimeout: cfg.PeerDialTimeout(),
 		ID:          b.cluster.nodeID,
 		URLs:        cfg.PeerURLs,
-		ClusterID:   b.cluster.raft.cl.ID(),
+		ClusterID:   b.cluster.cl.ID(),
 		Raft:        srv,
 		Snapshotter: b.ss,
 		ServerStats: sstats,
@@ -421,7 +421,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			tr.AddRemote(m.ID, m.PeerURLs)
 		}
 	}
-	for _, m := range b.cluster.raft.cl.Members() {
+	for _, m := range b.cluster.cl.Members() {
 		if m.ID != b.cluster.nodeID {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
