@@ -304,7 +304,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	defer func() {
 		if err != nil {
-			b.storage.be.Close()
+			b.storage.backend.be.Close()
 		}
 	}()
 
@@ -330,7 +330,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		peerRt:                b.prt,
 		reqIDGen:              idutil.NewGenerator(uint16(b.cluster.nodeID), time.Now()),
 		AccessController:      &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
-		consistIndex:          b.storage.ci,
+		consistIndex:          b.storage.backend.ci,
 		firstCommitInTerm:     notify.NewNotifier(),
 		clusterVersionChanged: notify.NewNotifier(),
 	}
@@ -338,8 +338,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
-	srv.be = b.storage.be
-	srv.beHooks = b.storage.beHooks
+	srv.be = b.storage.backend.be
+	srv.beHooks = b.storage.backend.beHooks
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
