@@ -247,19 +247,19 @@ func bootstrapCluster(cfg config.ServerConfig, haveWAL bool, storage *bootstrapp
 
 	switch {
 	case !haveWAL && !cfg.NewCluster:
-		c, err = bootstrapExistingClusterNoWAL(cfg, prt, storage.st, storage.backend.be)
+		c, err = bootstrapExistingClusterNoWAL(cfg, prt)
 		if err != nil {
 			return nil, err
 		}
 		c.wal = bootstrapNewWAL(cfg, c.cl, c.nodeID)
 	case !haveWAL && cfg.NewCluster:
-		c, err = bootstrapNewClusterNoWAL(cfg, prt, storage.st, storage.backend.be)
+		c, err = bootstrapNewClusterNoWAL(cfg, prt)
 		if err != nil {
 			return nil, err
 		}
 		c.wal = bootstrapNewWAL(cfg, c.cl, c.nodeID)
 	case haveWAL:
-		c, err = bootstrapClusterWithWAL(cfg, storage, bwal.meta)
+		c, err = bootstrapClusterWithWAL(cfg, bwal.meta)
 		if err != nil {
 			return nil, err
 		}
@@ -267,10 +267,20 @@ func bootstrapCluster(cfg config.ServerConfig, haveWAL bool, storage *bootstrapp
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
+	c.cl.SetStore(storage.st)
+	c.cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, storage.backend.be))
+	if haveWAL {
+		c.cl.Recover(api.UpdateCapability)
+		if c.cl.Version() != nil && !c.cl.Version().LessThan(semver.Version{Major: 3}) && !storage.backend.beExist {
+			bepath := cfg.BackendPath()
+			os.RemoveAll(bepath)
+			return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
+		}
+	}
 	return c, nil
 }
 
-func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st v2store.Store, be backend.Backend) (*bootstrapedCluster, error) {
+func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*bootstrapedCluster, error) {
 	if err := cfg.VerifyJoinExisting(); err != nil {
 		return nil, err
 	}
@@ -291,8 +301,6 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 
 	remotes := existingCluster.Members()
 	cl.SetID(types.ID(0), existingCluster.ID())
-	cl.SetStore(st)
-	cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, be))
 	member := cl.MemberByName(cfg.Name)
 	return &bootstrapedCluster{
 		remotes: remotes,
@@ -301,7 +309,7 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	}, nil
 }
 
-func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st v2store.Store, be backend.Backend) (*bootstrapedCluster, error) {
+func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*bootstrapedCluster, error) {
 	if err := cfg.VerifyBootstrap(); err != nil {
 		return nil, err
 	}
@@ -331,17 +339,14 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st
 			return nil, err
 		}
 	}
-	cl.SetStore(st)
-	cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, be))
-	member := cl.MemberByName(cfg.Name)
 	return &bootstrapedCluster{
 		remotes: nil,
 		cl:      cl,
-		nodeID:  member.ID,
+		nodeID:  m.ID,
 	}, nil
 }
 
-func bootstrapClusterWithWAL(cfg config.ServerConfig, storage *bootstrappedStorage, meta *snapshotMetadata) (*bootstrapedCluster, error) {
+func bootstrapClusterWithWAL(cfg config.ServerConfig, meta *snapshotMetadata) (*bootstrapedCluster, error) {
 	if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
 		return nil, fmt.Errorf("cannot write to member directory: %v", err)
 	}
@@ -354,14 +359,6 @@ func bootstrapClusterWithWAL(cfg config.ServerConfig, storage *bootstrappedStora
 	}
 	cl := membership.NewCluster(cfg.Logger)
 	cl.SetID(meta.nodeID, meta.clusterID)
-	cl.SetStore(storage.st)
-	cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, storage.backend.be))
-	cl.Recover(api.UpdateCapability)
-	if cl.Version() != nil && !cl.Version().LessThan(semver.Version{Major: 3}) && !storage.backend.beExist {
-		bepath := cfg.BackendPath()
-		os.RemoveAll(bepath)
-		return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
-	}
 	return &bootstrapedCluster{
 		cl:     cl,
 		nodeID: meta.nodeID,
