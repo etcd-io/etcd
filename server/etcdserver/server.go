@@ -308,8 +308,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 
-	sstats := stats.NewServerStats(cfg.Name, b.storage.cluster.wal.id.String())
-	lstats := stats.NewLeaderStats(cfg.Logger, b.storage.cluster.wal.id.String())
+	sstats := stats.NewServerStats(cfg.Name, b.storage.cluster.nodeID.String())
+	lstats := stats.NewLeaderStats(cfg.Logger, b.storage.cluster.nodeID.String())
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
@@ -321,20 +321,20 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		v2store:               b.storage.st,
 		snapshotter:           b.ss,
 		r:                     *b.storage.cluster.raft.newRaftNode(b.ss, b.storage.cluster.wal.w),
-		id:                    b.storage.cluster.wal.id,
+		id:                    b.storage.cluster.nodeID,
 		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:               b.storage.cluster.raft.cl,
 		stats:                 sstats,
 		lstats:                lstats,
 		SyncTicker:            time.NewTicker(500 * time.Millisecond),
 		peerRt:                b.prt,
-		reqIDGen:              idutil.NewGenerator(uint16(b.storage.cluster.wal.id), time.Now()),
+		reqIDGen:              idutil.NewGenerator(uint16(b.storage.cluster.nodeID), time.Now()),
 		AccessController:      &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
 		consistIndex:          b.storage.ci,
 		firstCommitInTerm:     notify.NewNotifier(),
 		clusterVersionChanged: notify.NewNotifier(),
 	}
-	serverID.With(prometheus.Labels{"server_id": b.storage.cluster.wal.id.String()}).Set(1)
+	serverID.With(prometheus.Labels{"server_id": b.storage.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
@@ -403,7 +403,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		Logger:      cfg.Logger,
 		TLSInfo:     cfg.PeerTLSInfo,
 		DialTimeout: cfg.PeerDialTimeout(),
-		ID:          b.storage.cluster.wal.id,
+		ID:          b.storage.cluster.nodeID,
 		URLs:        cfg.PeerURLs,
 		ClusterID:   b.storage.cluster.raft.cl.ID(),
 		Raft:        srv,
@@ -417,12 +417,12 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	// add all remotes into transport
 	for _, m := range b.storage.cluster.remotes {
-		if m.ID != b.storage.cluster.wal.id {
+		if m.ID != b.storage.cluster.nodeID {
 			tr.AddRemote(m.ID, m.PeerURLs)
 		}
 	}
 	for _, m := range b.storage.cluster.raft.cl.Members() {
-		if m.ID != b.storage.cluster.wal.id {
+		if m.ID != b.storage.cluster.nodeID {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}
