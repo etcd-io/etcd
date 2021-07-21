@@ -21,3 +21,5 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Package `mvcc` was moved to `storage/mvcc`
 - Package `mvcc/backend` was moved to `storage/backend`
 - Package `mvcc/buckets` was moved to `storage/schema`
+- Package `wal` was moved to `storage/wal`
+- Package `datadir` was moved to `storage/datadir`

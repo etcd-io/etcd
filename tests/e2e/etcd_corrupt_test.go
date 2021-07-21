@@ -25,7 +25,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/server/v3/datadir"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
 )
 
 // TODO: test with embedded etcd in integration package
