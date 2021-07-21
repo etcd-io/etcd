@@ -320,7 +320,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		errorc:                make(chan error, 1),
 		v2store:               b.storage.st,
 		snapshotter:           b.ss,
-		r:                     *b.cluster.raft.newRaftNode(b.ss, b.cluster.wal.w, b.cluster.cl),
+		r:                     *b.raft.newRaftNode(b.ss, b.cluster.wal.w, b.cluster.cl),
 		id:                    b.cluster.nodeID,
 		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:               b.cluster.cl,
