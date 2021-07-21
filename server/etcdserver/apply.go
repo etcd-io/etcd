@@ -953,7 +953,7 @@ type quotaApplierV3 struct {
 }
 
 func newQuotaApplierV3(s *EtcdServer, app applierV3) applierV3 {
-	return &quotaApplierV3{app, NewBackendQuota(s, "v3-applier")}
+	return &quotaApplierV3{app, NewBackendQuota(s.Cfg, s.Backend(), "v3-applier")}
 }
 
 func (a *quotaApplierV3) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
