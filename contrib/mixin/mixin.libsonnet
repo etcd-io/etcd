@@ -130,7 +130,7 @@
               severity: 'critical',
             },
             annotations: {
-              description: 'etcd cluster "{{ $labels.job }}": gRPC requests to {{ $labels.grpc_method }} are taking {{ $value }}s on etcd instance {{ $labels.instance }}.',
+              description: 'etcd cluster "{{ $labels.job }}": 99th percentile of gRPC requests is {{ $value }}s on etcd instance {{ $labels.instance }}.',
               summary: 'etcd grpc requests are slow',
             },
           },
@@ -189,7 +189,7 @@
               severity: 'critical',
             },
             annotations: {
-              message: 'etcd cluster "{{ $labels.job }}": 99th percentile fsync durations are {{ $value }}s on etcd instance {{ $labels.instance }}.',
+              description: 'etcd cluster "{{ $labels.job }}": 99th percentile fsync durations are {{ $value }}s on etcd instance {{ $labels.instance }}.',
             },
           },
           {
@@ -217,7 +217,7 @@
               severity: 'critical',
             },
             annotations: {
-              message: 'etcd cluster "{{ $labels.job }}": database size exceeds the defined quota on etcd instance {{ $labels.instance }}, please defrag or increase the quota as the writes to etcd will be disabled when it is full.',
+              description: 'etcd cluster "{{ $labels.job }}": database size exceeds the defined quota on etcd instance {{ $labels.instance }}, please defrag or increase the quota as the writes to etcd will be disabled when it is full.',
             },
           },
           {
@@ -230,7 +230,7 @@
               severity: 'warning',
             },
             annotations: {
-              message: 'etcd cluster "{{ $labels.job }}": Observed surge in etcd writes leading to 50% increase in database size over the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.',
+              description: 'etcd cluster "{{ $labels.job }}": Observed surge in etcd writes leading to 50% increase in database size over the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.',
             },
           },
         ],
