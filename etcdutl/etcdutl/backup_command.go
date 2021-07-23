@@ -311,7 +311,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 
 	be := backend.NewDefaultBackend(destDB)
 	defer be.Close()
-	ms := schema.NewMembershipStore(lg, be)
+	ms := schema.NewMembershipBackend(lg, be)
 	if err := ms.TrimClusterFromBackend(); err != nil {
 		lg.Fatal("bbolt tx.Membership failed", zap.Error(err))
 	}

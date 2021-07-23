@@ -55,11 +55,11 @@ func detectStorageVersion(lg *zap.Logger, tx backend.ReadTx) (*semver.Version, e
 	}
 	confstate := UnsafeConfStateFromBackend(lg, tx)
 	if confstate == nil {
-		return nil, fmt.Errorf("missing %q key", MetaConfStateName)
+		return nil, fmt.Errorf("missing confstate information")
 	}
 	_, term := UnsafeReadConsistentIndex(tx)
 	if term == 0 {
-		return nil, fmt.Errorf("missing %q key", MetaTermKeyName)
+		return nil, fmt.Errorf("missing term information")
 	}
 	copied := V3_5
 	return &copied, nil

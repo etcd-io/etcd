@@ -123,7 +123,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tx.UnsafeCreateBucket(schema.Key)
-	tx.UnsafeCreateBucket(schema.Meta)
+	schema.UnsafeCreateMetaBucket(tx)
 	tx.Unlock()
 	s.b.ForceCommit()
 
@@ -340,7 +340,6 @@ func (s *store) restore() error {
 
 		s.lg.Info(
 			"restored last compact revision",
-			zap.Stringer("meta-bucket-name", schema.Meta),
 			zap.String("meta-bucket-name-key", string(schema.FinishedCompactKeyName)),
 			zap.Int64("restored-compact-revision", s.compactMainRev),
 		)
@@ -412,8 +411,6 @@ func (s *store) restore() error {
 
 		s.lg.Info(
 			"resume scheduled compaction",
-			zap.Stringer("meta-bucket-name", schema.Meta),
-			zap.String("meta-bucket-name-key", string(schema.ScheduledCompactKeyName)),
 			zap.Int64("scheduled-compact-revision", scheduledCompact),
 		)
 	}
