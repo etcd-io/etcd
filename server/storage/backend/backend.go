@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -50,6 +51,7 @@ type Backend interface {
 	BatchTx() BatchTx
 	// ConcurrentReadTx returns a non-blocking read transaction.
 	ConcurrentReadTx() ReadTx
+	ConcurrentReadTxNoCopy() ReadTx
 
 	Snapshot() Snapshot
 	Hash(ignores func(bucketName, keyName []byte) bool) (uint32, error)
@@ -194,13 +196,15 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		readTx: &readTx{
 			baseReadTx: baseReadTx{
-				buf: txReadBuffer{
+				buf: &txReadBuffer{
 					txBuffer:   txBuffer{make(map[BucketID]*bucketBuffer)},
 					bufVersion: 0,
+					bufMinRev:  math.MaxInt64,
 				},
 				buckets: make(map[BucketID]*bolt.Bucket),
 				txWg:    new(sync.WaitGroup),
 				txMu:    new(sync.RWMutex),
+				mu:      new(sync.RWMutex),
 			},
 		},
 		txReadBufferCache: txReadBufferCache{
@@ -301,11 +305,32 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 	// concurrentReadTx is not supposed to write to its txReadBuffer
 	return &concurrentReadTx{
 		baseReadTx: baseReadTx{
-			buf:     *buf,
+			buf:     buf,
+			mu:      nil,
 			txMu:    b.readTx.txMu,
 			tx:      b.readTx.tx,
 			buckets: b.readTx.buckets,
 			txWg:    b.readTx.txWg,
+		},
+	}
+}
+
+func (b *backend) ConcurrentReadTxNoCopy() ReadTx {
+	b.readTx.RLock()
+	defer b.readTx.RUnlock()
+
+	b.readTx.txWg.Add(1)
+
+	// no copy b.readTx.buf
+	return &concurrentReadTx{
+		baseReadTx: baseReadTx{
+			buf:          b.readTx.buf,
+			bufferNoCopy: true,
+			mu:           b.readTx.mu,
+			txMu:         b.readTx.txMu,
+			tx:           b.readTx.tx,
+			buckets:      b.readTx.buckets,
+			txWg:         b.readTx.txWg,
 		},
 	}
 }

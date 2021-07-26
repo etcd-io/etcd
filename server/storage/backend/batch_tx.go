@@ -281,7 +281,7 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 func (t *batchTxBuffered) Unlock() {
 	if t.pending != 0 {
 		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
-		t.buf.writeback(&t.backend.readTx.buf)
+		t.buf.writeback(t.backend.readTx.buf)
 		t.backend.readTx.Unlock()
 		if t.pending >= t.backend.batchLimit {
 			t.commit(false)
@@ -324,6 +324,15 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 			}
 		}(t.backend.readTx.tx, t.backend.readTx.txWg)
 		t.backend.readTx.reset()
+		version := t.backend.readTx.buf.bufVersion
+		// t.backend.readTx.buf is used for ConcurrentReadTxNoCopyMode
+		// t.backend.readTx.buf can not be reset simply
+		// create a new one, old one can still use
+		t.backend.readTx.buf = &txReadBuffer{
+			txBuffer:   txBuffer{make(map[BucketID]*bucketBuffer)},
+			bufVersion: version,
+			bufMinRev:  math.MaxInt64,
+		}
 	}
 
 	t.batchTx.commit(stop)
@@ -341,4 +350,9 @@ func (t *batchTxBuffered) UnsafePut(bucket Bucket, key []byte, value []byte) {
 func (t *batchTxBuffered) UnsafeSeqPut(bucket Bucket, key []byte, value []byte) {
 	t.batchTx.UnsafeSeqPut(bucket, key, value)
 	t.buf.putSeq(bucket, key, value)
+
+	rev := bytesToRev(key)
+	if rev != -1 {
+		t.buf.bufRev = rev
+	}
 }

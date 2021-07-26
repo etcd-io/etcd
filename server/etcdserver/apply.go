@@ -340,7 +340,7 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 	lg := a.s.Logger()
 
 	if txn == nil {
-		txn = a.s.kv.Read(mvcc.ConcurrentReadTxMode, trace)
+		txn = a.s.kv.Read(mvcc.ConcurrentReadTxNoCopyMode, trace)
 		defer txn.End()
 	}
 
@@ -452,7 +452,7 @@ func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnR
 	if isWrite && a.s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer {
 		txn = mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(mvcc.SharedBufReadTxMode, trace))
 	} else {
-		txn = mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(mvcc.ConcurrentReadTxMode, trace))
+		txn = mvcc.NewReadOnlyTxnWrite(a.s.KV().Read(mvcc.ConcurrentReadTxNoCopyMode, trace))
 	}
 
 	var txnPath []bool

@@ -32,6 +32,8 @@ type storeTxnRead struct {
 	firstRev int64
 	rev      int64
 
+	readMode ReadTxMode
+
 	trace *traceutil.Trace
 }
 
@@ -45,14 +47,19 @@ func (s *store) Read(mode ReadTxMode, trace *traceutil.Trace) TxnRead {
 	var tx backend.ReadTx
 	if mode == ConcurrentReadTxMode {
 		tx = s.b.ConcurrentReadTx()
+	} else if mode == ConcurrentReadTxNoCopyMode {
+		tx = nil
 	} else {
 		tx = s.b.ReadTx()
 	}
 
-	tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
+	if tx != nil {
+		tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
+	}
+
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
-	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev, trace})
+	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev, mode, trace})
 }
 
 func (tr *storeTxnRead) FirstRev() int64 { return tr.firstRev }
@@ -89,6 +96,18 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 		limit = len(revpairs)
 	}
 
+	if tr.readMode == ConcurrentReadTxNoCopyMode && tr.tx == nil { // ConcurrentReadTxNoCopyMode
+		var tx backend.ReadTx
+		if limit >= ExpensiveReadLimit { // expensive request
+			tx = tr.s.b.ConcurrentReadTx()
+		} else {
+			tx = tr.s.b.ConcurrentReadTxNoCopy()
+		}
+
+		tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
+		tr.tx = tx
+	}
+
 	kvs := make([]mvccpb.KeyValue, limit)
 	revBytes := newRevBytes()
 	for i, revpair := range revpairs[:len(kvs)] {
@@ -118,7 +137,9 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 }
 
 func (tr *storeTxnRead) End() {
-	tr.tx.RUnlock() // RUnlock signals the end of concurrentReadTx.
+	if tr.tx != nil {
+		tr.tx.RUnlock() // RUnlock signals the end of concurrentReadTx.
+	}
 	tr.s.mu.RUnlock()
 }
 
@@ -135,7 +156,7 @@ func (s *store) Write(trace *traceutil.Trace) TxnWrite {
 	tx := s.b.BatchTx()
 	tx.Lock()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0, trace},
+		storeTxnRead: storeTxnRead{s, tx, 0, 0, ReadTxMode(0), trace},
 		tx:           tx,
 		beginRev:     s.currentRev,
 		changes:      make([]mvccpb.KeyValue, 0, 4),
