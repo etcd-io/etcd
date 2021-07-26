@@ -398,3 +398,111 @@ etcd 保存用户 key 与版本号映射关系的数据结构 B-tree，为什么
 - 特性上分析: 因 etcd 支持范围查询，因此保存索引的数据结构也必须支持范围查询才行。所以哈希表不适合，而 B-tree 支持范围查询。
 - 性能上分析: 平横二叉树每个节点只能容纳一个数据、导致树的高度较高，而 B-tree 每个节点可以容纳多个数据，树的高度更低，更扁平，涉及的查找次数更少，具有优越的增、删、改、查性能。
 
+
+
+### Watch:
+
+#### 轮询 vs 流式推送：
+
+- 在 etcd v2 Watch 机制实现中，使用的是 HTTP/1.x 协议，实现简单、兼容性好，每个 watcher 对应一个 TCP 连接。client 通过 HTTP/1.1 协议长连接定时轮询 server，获取最新的数据变化事件。（大量轮询会产生一定的 QPS，server 端会消耗大量的 socket、内存等资源）
+
+- 在 etcd v3 中，为了解决 etcd v2 的以上缺陷，使用的是基于 HTTP/2 的 gRPC 协议，双向流的 Watch API 设计，实现了连接多路复用。
+
+  - HTTP/2 协议为什么能实现多路复用呢？
+    - 在 HTTP/2 协议中，HTTP 消息被分解独立的帧（Frame），交错发送，帧是最小的数据单位。每个帧会标识属于哪个流（Stream），流由多个数据帧组成，每个流拥有一个唯一的 ID，一个数据流对应一个请求或响应包。HTTP/2 可基于帧的流 ID 将并行、交错发送的帧重新组装成完整的消息。
+
+  - 基于 HTTP/2 协议，实现了一个 client/TCP 连接支持多 gRPC Stream， 一个 gRPC Stream 又支持多个 watcher。同时事件通知模式也从 client 轮询优化成 server 流式推送，极大降低了 server 端 socket、内存等资源。
+
+> 当 watch 连接的节点故障，clientv3 库支持自动重连到健康节点，并使用之前已接收的最大版本号创建新的 watcher，避免旧事件回放等。
+
+#### 滑动窗口 vs MVCC：
+
+- 滑动窗口是**仅**保存**有限的**最近历史版本到**内存**中。
+  - 使用一个环形数组来存储历史事件版本，当 key 被修改后，相关事件就会被添加到数组中来。若超过 eventQueue 的容量，则淘汰最旧的事件。
+- MVCC 机制则将历史版本保存在磁盘中，避免了历史版本的丢失，极大的提升了 Watch 机制的可靠性。
+  - 将一个 key 的历史修改版本保存在 boltdb 里面。boltdb 是一个基于磁盘文件的持久化存储，因此它重启后历史事件不像 etcd v2 一样会丢失，同时可通过配置压缩策略，来控制保存的历史版本数。
+
+> 版本号是 etcd 逻辑时钟，当 client 因网络等异常出现连接闪断后，通过版本号，它就可从 server 端的 boltdb 中获取错过的历史事件，而无需全量同步，它是 etcd Watch 机制数据增量同步的核心
+
+#### 推送机制：
+
+​	**synced watcher**: 表示此类 watcher 监听的数据都已经同步完毕，在等待新的变更。
+
+​	**unsynced watcher**: 表示此类 watcher 监听的数据还未同步完成，落后于当前最新数据变更，正在努力追赶。
+
+<img src="./img/etcd 推送机制.png" alt="etcd 推送机制" style="zoom:40%;" />
+
+- ###### watch 请求：
+
+  1. etcd 的 gRPCWatchServer 收到 watch 请求后，会创建一个 serverWatchStream, 它负责接收 client 的 gRPC Stream 的 create/cancel watcher 请求 (recvLoop goroutine)，并将从 MVCC 模块接收的 Watch 事件转发给 client(sendLoop goroutine)。
+
+  2. 当 serverWatchStream 收到 create watcher 请求后，serverWatchStream 会调用 MVCC 模块的 WatchStream 子模块分配一个 watcher id，并将 watcher 注册到 MVCC 的 WatchableKV 模块。
+
+  3. 在 etcd 启动的时候，WatchableKV 模块会运行 syncWatchersLoop 和 syncVictimsLoop goroutine，分别负责不同场景下的事件推送。
+
+     **syncVictimsLoop:** 负责 slower watcher 的**堆积**的事件推送。
+
+     - 它会遍历 victim watcherBatch 数据结构，尝试将堆积的事件再次推送到 watcher 的接收 channel 中。若推送失败，则再次加入到 victim watcherBatch 数据结构中等待下次重试。
+     - 若推送成功，watcher 监听的最小版本号 (minRev) 小于等于 server 当前版本号 (currentRev)，说明可能还有历史事件未推送，需加入到 unsynced watcherGroup 中，由**历史事件推送机制**，推送 minRev 到 currentRev 之间的事件。
+     - 若 watcher 的最小版本号大于 server 当前版本号，则加入到 synced watcher 集合中，进入下面**最新事件通知机制**(即put 请求)。
+
+     **syncWatchersLoop:** 负责 unsynced watcherGroup 中的 watcher **历史**事件推送。
+
+     - 它会遍历处于 unsynced watcherGroup 中的每个 watcher，为了优化性能，它会选择一批 unsynced watcher 批量同步，找出这一批 unsynced watcher 中监听的最小版本号。
+
+     - 因 boltdb 的 key 是按版本号存储的，因此可通过指定查询的 key 范围的最小版本号作为开始区间，当前 server 最大版本号作为结束区间，遍历 boltdb 获得所有历史数据。
+
+     - 然后将 KeyValue 结构转换成事件，匹配出监听过事件中 key 的 watcher 后，将事件发送给对应的 watcher 事件接收 channel 即可。发送完成后，watcher 从 unsynced watcherGroup 中移除、添加到 synced watcherGroup 中。
+
+     - 若 watcher 监听的版本号已经小于当前 etcd server 压缩的版本号，历史变更数据就可能已丢失，因此 etcd server 会返回 ErrCompacted 错误给 client。client 收到此错误后，需重新获取数据最新版本号后，再次 Watch。
+
+       
+
+     <img src="./img/etcd watch状态转换关系.png" alt="etcd 推送异常" style="zoom:25%;" />
+
+- ###### put 请求：
+
+  1. 当 etcd 收到一个写请求, 请求经过 KVServer、Raft 模块后 Apply 到状态机时，在 MVCC 的 put 事务中，它会将本次修改的后的 mvccpb.KeyValue 保存到一个 changes 数组中。
+  2. 在 put 事务结束时，它会将 KeyValue 转换成 Event 事件，然后回调 watchableStore.notify 函数（流程 5）。notify 会匹配出监听过此 key 并处于 synced watcherGroup 中的 watcher，同时事件中的版本号要大于等于 watcher 监听的最小版本号，才能将事件发送到此 watcher 的事件 channel 中。
+  3. serverWatchStream 的 sendLoop goroutine 监听到 channel 消息后，读出消息立即推送给 client（流程 6 和 7），至此，完成一个最新修改事件推送。
+
+- ###### 重试机制:
+
+  - 若出现 channel buffer 满了，etcd 为了保证 Watch 事件的高可靠性，并不会丢弃它，而是将此 watcher 从 synced watcherGroup 中删除，然后将此 watcher 和事件列表保存到一个名为受害者 victim 的 watcherBatch 结构中，通过异步机制重试保证事件的可靠性。
+
+- ###### 事件匹配：
+
+  1. 当收到创建 watcher 请求的时候，它会把 watcher 监听的 key 范围插入到下面的区间树中，区间的值保存了监听同样 key 范围的 watcher 集合 /watcherSet。
+  2. 当产生一个事件时，etcd 首先需要从 map 查找是否有 watcher 监听了单 key，其次它还需要从区间树找出与此 key 相交的所有区间，然后从区间的值获取监听的 watcher 集合。
+  3. 区间树支持快速查找一个 key 是否在某个区间内，时间复杂度 O(LogN)，因此 etcd 基于 map 和区间树实现了 watcher 与事件快速匹配，具备良好的扩展性。
+
+<img src="./img/etcd watch 匹配.png" alt="etcd watch 匹配" style="zoom:30%;" />
+
+​	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
