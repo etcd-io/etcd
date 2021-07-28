@@ -98,15 +98,11 @@ goreman -f Procfile start
 
     <img src="./img/WAL 格式.png" alt="WAL 格式" style="zoom:30%;" />
 
-  - 
 
-- 
 
-  
+
 
 etcd 是典型的读多写少存储; 
-
-
 
 
 
@@ -480,17 +476,93 @@ etcd 保存用户 key 与版本号映射关系的数据结构 B-tree，为什么
 
 ​	
 
+### 事物：
+
+- etcd v2 的时候， etcd 提供了 CAS（Compare and swap），然而其只支持单 key，不支持多 key。
+- etcd v3 为了解决多 key 的原子操作问题，提供了全新迷你事务 API，同时基于 MVCC 版本号，它可以实现各种隔离级别的事务。事务 API 由 If 语句、Then 语句、Else 语句组成。
+
+<img src="./img/etcd事物.png" alt="etcd事物" style="zoom:33%;" />
+
+通过 client 发起一个 txn 事务操作时，通过 gRPC KV Server、Raft 模块处理后，在 Apply 模块执行此事务的时候，它首先对你的事务的 If 语句进行检查，也就是 ApplyCompares 操作，如果通过此操作，则执行 ApplyTxn/Then 语句，否则执行 ApplyTxn/Else 语句。会根据事务是否只读、可写，通过 MVCC 层的读写事务对象，执行事务中的 get/put/delete 各操作，也就是 MVCC 对 key 的读写原理。
+
+```shell
+$ etcdctl txn -i
+compares: //对应If语句
+value("Alice") = "200" //判断Alice账号资金是否为200
+
+success requests (get, put, del): //对应Then语句
+put Alice 100 //Alice账号初始资金200减100
+put Bob 300 //Bob账号初始资金200加100
+
+failure requests (get, put, del): //对应Else语句
+get Alice  
+get Bob
+
+SUCCESS
+
+OK
+OK
+```
+
+#### ACID 特性:
+
+- 原子性（Atomicity）：指在一个事务中，所有请求要么同时成功，要么同时失败。
+- 一致性（Consistency）：指事务变更前后，数据库必须满足若干恒等条件的状态约束。
+- 隔离性（Isolation）：指事务在执行过程中的可见性。
+- 持久性（Durability）：指事务一旦提交，其所做的修改会永久保存在数据库。
 
 
 
+### boltdb：
 
+- boltdb 文件指的是你 etcd 数据目录下的 member/snap/db 的文件；
+- etcd 启动的时候，会通过 mmap 机制将 db 文件映射到内存，后续可从内存中快速读取文件中的数据。写请求通过 fwrite 和 fdatasync 来写入、持久化数据到磁盘。
 
+<img src="./img/etcd boltdb映射.png" alt="etcd boltdb映射" style="zoom:33%;" />
 
+page 按照功能可分为元数据页 (meta page)、B+ tree 索引节点页 (branch page)、B+ tree 叶子节点页 (leaf page)、空闲页管理页 (freelist page)、空闲页 (free page)。文件最开头的两个 page 是固定的 db 元数据 meta page(在 client 调用 boltdb Open API 时被填充的)，空闲页管理页记录了 db 中哪些页是空闲、可使用的。索引节点页保存了 B+ tree 的内部节点.
 
+```go
+// 往 key bucket 写入一个 key 为 r94，value 为 world 的字符串
+// 打开boltdb文件，获取db对象
+db,err := bolt.Open("db"， 0600， nil)
+if err != nil {
+   log.Fatal(err)
+}
+defer db.Close()
+// 参数true表示创建一个写事务，false读事务
+tx,err := db.Begin(true)
+if err != nil {
+   return err
+}
+defer tx.Rollback()
+// 使用事务对象创建key bucket
+b,err := tx.CreatebucketIfNotExists([]byte("key"))
+if err != nil {
+   return err
+}
+// 使用bucket对象更新一个key
+if err := b.Put([]byte("r94"),[]byte("world")); err != nil {
+   return err
+}
+// 提交事务
+if err := tx.Commit(); err != nil {
+   return err
+}
+```
 
+#### page 磁盘页结构:
 
+- 由页 ID(id)、页类型 (flags)、数量 (count)、溢出页数量 (overflow)、页面数据起始位置 (ptr) 字段组成。
+- 页类型 (flags)目前有如下四种：0x01 表示 branch page，0x02 表示 leaf page，0x04 表示 meta page，0x10 表示 freelist page。
+- 数量字段仅在页类型为 leaf 和 branch 时生效，溢出页数量是指当前页面数据存放不下，需要向后再申请 overflow 个连续页面使用，页面数据起始位置指向 page 的载体数据，比如 meta page、branch/leaf 等 page 的内容。
 
+#### meta page 数据结构：
 
+- 由 boltdb 的文件标识 (magic)、版本号 (version)、页大小 (pagesize)、boltdb 的根 bucket 信息 (root bucket)、freelist 页面 ID(freelist)、总的页面数量 (pgid)、上一次写事务 ID(txid)、校验码 (checksum) 组成。
+- 第 0、1 页我们知道它是固定存储 db 元数据的页 (meta page)。
+
+<img src="./img/etcd boltdb page结构.png" alt="etcd boltdb page结构" style="zoom:40%;" />
 
 
 
