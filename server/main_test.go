@@ -26,7 +26,7 @@ import (
 )
 
 func SplitTestArgs(args []string) (testArgs, appArgs []string) {
-	for i, arg := range os.Args {
+	for i, arg := range args {
 		switch {
 		case strings.HasPrefix(arg, "-test."):
 			testArgs = append(testArgs, arg)
