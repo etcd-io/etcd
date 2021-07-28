@@ -8,6 +8,16 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 <hr>
 
+## [v3.5.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.1) (TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.5.1) and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/) for any breaking changes.
+
+### etcd server
+
+- Fix [self-signed-cert-validity parameter cannot be specified in the config file](https://github.com/etcd-io/etcd/pull/13237).
+
+
+<hr>
 
 ## v3.5.0 (2021-06)
 
