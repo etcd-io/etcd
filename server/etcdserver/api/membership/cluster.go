@@ -21,7 +21,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"path"
 	"sort"
 	"strings"
 	"sync"
@@ -33,8 +32,6 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
-	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,7 +48,7 @@ type RaftCluster struct {
 	cid     types.ID
 
 	v2store v2store.Store
-	be      backend.Backend
+	be      MembershipBackend
 
 	sync.Mutex // guards the fields below
 	version    *semver.Version
@@ -245,9 +242,9 @@ func (c *RaftCluster) SetID(localID, cid types.ID) {
 
 func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
 
-func (c *RaftCluster) SetBackend(be backend.Backend) {
+func (c *RaftCluster) SetBackend(be MembershipBackend) {
 	c.be = be
-	mustCreateBackendBuckets(c.be)
+	c.be.MustCreateBackendBuckets()
 }
 
 func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
@@ -255,15 +252,15 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	defer c.Unlock()
 
 	if c.be != nil {
-		c.version = clusterVersionFromBackend(c.lg, c.be)
-		c.members, c.removed = membersFromBackend(c.lg, c.be)
+		c.version = c.be.ClusterVersionFromBackend()
+		c.members, c.removed = c.be.MustReadMembersFromBackend()
 	} else {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
 		c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	}
 
 	if c.be != nil {
-		c.downgradeInfo = downgradeInfoFromBackend(c.lg, c.be)
+		c.downgradeInfo = c.be.DowngradeInfoFromBackend()
 	}
 	d := &DowngradeInfo{Enabled: false}
 	if c.downgradeInfo != nil {
@@ -385,7 +382,7 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 		mustSaveMemberToStore(c.lg, c.v2store, m)
 	}
 	if c.be != nil && shouldApplyV3 {
-		mustSaveMemberToBackend(c.lg, c.be, m)
+		c.be.MustSaveMemberToBackend(m)
 	}
 
 	c.members[m.ID] = m
@@ -408,7 +405,7 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 		mustDeleteMemberFromStore(c.lg, c.v2store, id)
 	}
 	if c.be != nil && shouldApplyV3 {
-		mustDeleteMemberFromBackend(c.be, id)
+		c.be.MustDeleteMemberFromBackend(id)
 	}
 
 	m, ok := c.members[id]
@@ -443,7 +440,7 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApply
 			mustUpdateMemberAttrInStore(c.lg, c.v2store, m)
 		}
 		if c.be != nil && shouldApplyV3 {
-			mustSaveMemberToBackend(c.lg, c.be, m)
+			c.be.MustSaveMemberToBackend(m)
 		}
 		return
 	}
@@ -476,7 +473,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
 	}
 	if c.be != nil && shouldApplyV3 {
-		mustSaveMemberToBackend(c.lg, c.be, c.members[id])
+		c.be.MustSaveMemberToBackend(c.members[id])
 	}
 
 	c.lg.Info(
@@ -495,7 +492,7 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
 	}
 	if c.be != nil && shouldApplyV3 {
-		mustSaveMemberToBackend(c.lg, c.be, c.members[id])
+		c.be.MustSaveMemberToBackend(c.members[id])
 	}
 
 	c.lg.Info(
@@ -542,7 +539,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}
 	if c.be != nil && shouldApplyV3 {
-		mustSaveClusterVersionToBackend(c.be, ver)
+		c.be.MustSaveClusterVersionToBackend(ver)
 	}
 	if oldVer != nil {
 		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(oldVer.String())}).Set(0)
@@ -676,78 +673,6 @@ func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, m
 	return members, removed
 }
 
-func membersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Member, map[types.ID]bool) {
-	return mustReadMembersFromBackend(lg, be)
-}
-
-func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
-	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
-	if err != nil {
-		if isKeyNotFound(err) {
-			return nil
-		}
-		lg.Panic(
-			"failed to get cluster version from store",
-			zap.String("path", path.Join(storePrefix, "version")),
-			zap.Error(err),
-		)
-	}
-	return semver.Must(semver.NewVersion(*e.Node.Value))
-}
-
-// The field is populated since etcd v3.5.
-func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Version {
-	ckey := backendClusterVersionKey()
-	tx := be.ReadTx()
-	tx.RLock()
-	defer tx.RUnlock()
-	keys, vals := tx.UnsafeRange(buckets.Cluster, ckey, nil, 0)
-	if len(keys) == 0 {
-		return nil
-	}
-	if len(keys) != 1 {
-		lg.Panic(
-			"unexpected number of keys when getting cluster version from backend",
-			zap.Int("number-of-key", len(keys)),
-		)
-	}
-	return semver.Must(semver.NewVersion(string(vals[0])))
-}
-
-// The field is populated since etcd v3.5.
-func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
-	dkey := backendDowngradeKey()
-	tx := be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
-	keys, vals := tx.UnsafeRange(buckets.Cluster, dkey, nil, 0)
-	if len(keys) == 0 {
-		return nil
-	}
-
-	if len(keys) != 1 {
-		lg.Panic(
-			"unexpected number of keys when getting cluster version from backend",
-			zap.Int("number-of-key", len(keys)),
-		)
-	}
-	var d DowngradeInfo
-	if err := json.Unmarshal(vals[0], &d); err != nil {
-		lg.Panic("failed to unmarshal downgrade information", zap.Error(err))
-	}
-
-	// verify the downgrade info from backend
-	if d.Enabled {
-		if _, err := semver.NewVersion(d.TargetVersion); err != nil {
-			lg.Panic(
-				"unexpected version format of the downgrade target version from backend",
-				zap.String("target-version", d.TargetVersion),
-			)
-		}
-	}
-	return &d
-}
-
 // ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
 // with the existing cluster. If the validation succeeds, it assigns the IDs
 // from the existing cluster to the local cluster.
@@ -828,7 +753,7 @@ func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo, shouldApplyV3 ShouldApp
 	defer c.Unlock()
 
 	if c.be != nil && shouldApplyV3 {
-		mustSaveDowngradeToBackend(c.lg, c.be, d)
+		c.be.MustSaveDowngradeToBackend(d)
 	}
 
 	c.downgradeInfo = d
@@ -868,9 +793,9 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 // members, such that they fully reflect internal RaftCluster's storage.
 func (c *RaftCluster) PushMembershipToStorage() {
 	if c.be != nil {
-		TrimMembershipFromBackend(c.lg, c.be)
+		c.be.TrimMembershipFromBackend()
 		for _, m := range c.members {
-			mustSaveMemberToBackend(c.lg, c.be, m)
+			c.be.MustSaveMemberToBackend(m)
 		}
 	}
 	if c.v2store != nil {

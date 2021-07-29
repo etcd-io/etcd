@@ -17,6 +17,7 @@ package connectivity_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -243,8 +244,10 @@ func TestBalancerUnderServerStopInflightLinearizableGetOnRestart(t *testing.T) {
 		{pinLeader: false, stopPinFirst: true},
 		{pinLeader: false, stopPinFirst: false},
 	}
-	for i := range tt {
-		testBalancerUnderServerStopInflightRangeOnRestart(t, true, tt[i])
+	for _, w := range tt {
+		t.Run(fmt.Sprintf("%#v", w), func(t *testing.T) {
+			testBalancerUnderServerStopInflightRangeOnRestart(t, true, w)
+		})
 	}
 }
 
@@ -255,8 +258,10 @@ func TestBalancerUnderServerStopInflightSerializableGetOnRestart(t *testing.T) {
 		{pinLeader: false, stopPinFirst: true},
 		{pinLeader: false, stopPinFirst: false},
 	}
-	for i := range tt {
-		testBalancerUnderServerStopInflightRangeOnRestart(t, false, tt[i])
+	for _, w := range tt {
+		t.Run(fmt.Sprintf("%#v", w), func(t *testing.T) {
+			testBalancerUnderServerStopInflightRangeOnRestart(t, false, w)
+		})
 	}
 }
 

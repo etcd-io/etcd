@@ -36,24 +36,25 @@ func hasChecksum(n int64) bool {
 	return (n % 512) == sha256.Size
 }
 
-// Save fetches snapshot from remote etcd server and saves data
-// to target path. If the context "ctx" is canceled or timed out,
+// SaveWithVersion fetches snapshot from remote etcd server, saves data
+// to target path and returns server version. If the context "ctx" is canceled or timed out,
 // snapshot save stream will error out (e.g. context.Canceled,
 // context.DeadlineExceeded). Make sure to specify only one endpoint
 // in client configuration. Snapshot API must be requested to a
 // selected node, and saved snapshot is the point-in-time state of
 // the selected node.
-func Save(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) error {
+// Etcd <v3.6 will return "" as version.
+func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) (version string, err error) {
 	if lg == nil {
 		lg = zap.NewExample()
 	}
 	cfg.Logger = lg.Named("client")
 	if len(cfg.Endpoints) != 1 {
-		return fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
+		return "", fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
 	}
 	cli, err := clientv3.New(cfg)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer cli.Close()
 
@@ -63,40 +64,54 @@ func Save(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath strin
 	var f *os.File
 	f, err = os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
 	if err != nil {
-		return fmt.Errorf("could not open %s (%v)", partpath, err)
+		return "", fmt.Errorf("could not open %s (%v)", partpath, err)
 	}
 	lg.Info("created temporary db file", zap.String("path", partpath))
 
 	now := time.Now()
-	var rd io.ReadCloser
-	rd, err = cli.Snapshot(ctx)
+	resp, err := cli.SnapshotWithVersion(ctx)
 	if err != nil {
-		return err
+		return resp.Version, err
 	}
+	defer resp.Snapshot.Close()
 	lg.Info("fetching snapshot", zap.String("endpoint", cfg.Endpoints[0]))
 	var size int64
-	size, err = io.Copy(f, rd)
+	size, err = io.Copy(f, resp.Snapshot)
 	if err != nil {
-		return err
+		return resp.Version, err
 	}
 	if !hasChecksum(size) {
-		return fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
+		return resp.Version, fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
 	}
 	if err = fileutil.Fsync(f); err != nil {
-		return err
+		return resp.Version, err
 	}
 	if err = f.Close(); err != nil {
-		return err
+		return resp.Version, err
 	}
 	lg.Info("fetched snapshot",
 		zap.String("endpoint", cfg.Endpoints[0]),
 		zap.String("size", humanize.Bytes(uint64(size))),
 		zap.String("took", humanize.Time(now)),
+		zap.String("etcd-version", version),
 	)
 
 	if err = os.Rename(partpath, dbPath); err != nil {
-		return fmt.Errorf("could not rename %s to %s (%v)", partpath, dbPath, err)
+		return resp.Version, fmt.Errorf("could not rename %s to %s (%v)", partpath, dbPath, err)
 	}
 	lg.Info("saved", zap.String("path", dbPath))
-	return nil
+	return resp.Version, nil
+}
+
+// Save fetches snapshot from remote etcd server and saves data
+// to target path. If the context "ctx" is canceled or timed out,
+// snapshot save stream will error out (e.g. context.Canceled,
+// context.DeadlineExceeded). Make sure to specify only one endpoint
+// in client configuration. Snapshot API must be requested to a
+// selected node, and saved snapshot is the point-in-time state of
+// the selected node.
+// Deprecated: Use SaveWithVersion instead.
+func Save(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) error {
+	_, err := SaveWithVersion(ctx, lg, cfg, dbPath)
+	return err
 }

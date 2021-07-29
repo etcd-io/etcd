@@ -212,6 +212,34 @@ function run_for_modules {
   fi
 }
 
+junitFilenamePrefix() {
+  if [[ -z "${JUNIT_REPORT_DIR}" ]]; then
+    echo ""
+    return
+  fi
+  mkdir -p "${JUNIT_REPORT_DIR}"
+  DATE=$( date +%s | base64 | head -c 15 )
+  echo "${JUNIT_REPORT_DIR}/junit_$DATE"
+}
+
+function produce_junit_xmlreport {
+  local -r junit_filename_prefix=$1
+  if [[ -z "${junit_filename_prefix}" ]]; then
+    return
+  fi
+
+  local junit_xml_filename
+  junit_xml_filename="${junit_filename_prefix}.xml"
+
+  # Ensure that gotestsum is run without cross-compiling
+  run_go_tool gotest.tools/gotestsum --junitfile "${junit_xml_filename}" --raw-command cat "${junit_filename_prefix}"*.stdout || exit 1
+  if [ "${VERBOSE}" != "1" ]; then
+    rm "${junit_filename_prefix}"*.stdout
+  fi
+
+  log_callout "Saved JUnit XML test report to ${junit_xml_filename}"
+}
+
 
 ####    Running go test  ########
 
@@ -236,11 +264,33 @@ function go_test {
   local packages="${1}"
   local mode="${2}"
   local flags_for_package_func="${3}"
+  local junit_filename_prefix
 
   shift 3
 
   local goTestFlags=""
   local goTestEnv=""
+
+  ##### Create a junit-style XML test report in this directory if set. #####
+  JUNIT_REPORT_DIR=${JUNIT_REPORT_DIR:-}
+
+  # If JUNIT_REPORT_DIR is unset, and ARTIFACTS is set, then have them match.
+  if [[ -z "${JUNIT_REPORT_DIR:-}" && -n "${ARTIFACTS:-}" ]]; then
+    export JUNIT_REPORT_DIR="${ARTIFACTS}"
+  fi
+
+  # Used to filter verbose test output.
+  go_test_grep_pattern=".*"
+
+  if [[ -n "${JUNIT_REPORT_DIR}" ]] ; then
+    goTestFlags+="-v "
+    goTestFlags+="-json "
+    # Show only summary lines by matching lines like "status package/test"
+    go_test_grep_pattern="^[^[:space:]]\+[[:space:]]\+[^[:space:]]\+/[^[[:space:]]\+"
+  fi
+
+  junit_filename_prefix=$(junitFilenamePrefix)
+
   if [ "${VERBOSE}" == "1" ]; then
     goTestFlags="-v"
   fi
@@ -269,13 +319,15 @@ function go_test {
     local cmd=( go test ${goTestFlags} ${additional_flags} "$@" ${pkg} )
 
     # shellcheck disable=SC2086
-    if ! run env ${goTestEnv} "${cmd[@]}" ; then
+    if ! run env ${goTestEnv} "${cmd[@]}" | tee ${junit_filename_prefix:+"${junit_filename_prefix}.stdout"} | grep --binary-files=text "${go_test_grep_pattern}" ; then
       if [ "${mode}" != "keep_going" ]; then
+        produce_junit_xmlreport "${junit_filename_prefix}"
         return 2
       else
         failures=("${failures[@]}" "${pkg}")
       fi
     fi
+    produce_junit_xmlreport "${junit_filename_prefix}"
   done
 
   if [ -n "${failures[*]}" ] ; then
@@ -303,7 +355,7 @@ function tool_exists {
 
 # Ensure gobin is available, as it runs majority of the tools
 if ! command -v "gobin" >/dev/null; then
-    run env GO111MODULE=off go get github.com/myitcv/gobin || exit 1
+    GOARCH="" run env GO111MODULE=off go get github.com/myitcv/gobin || exit 1
 fi
 
 # tool_get_bin [tool] - returns absolute path to a tool binary (or returns error)
@@ -329,11 +381,11 @@ function tool_pkg_dir {
 # tool_get_bin [tool]
 function run_go_tool {
   local cmdbin
-  if ! cmdbin=$(tool_get_bin "${1}"); then
+  if ! cmdbin=$(GOARCH="" tool_get_bin "${1}"); then
     return 2
   fi
   shift 1
-  run "${cmdbin}" "$@" || return 2
+  GOARCH="" run "${cmdbin}" "$@" || return 2
 }
 
 # assert_no_git_modifications fails if there are any uncommited changes.

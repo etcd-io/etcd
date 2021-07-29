@@ -40,7 +40,8 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/verify"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
@@ -49,14 +50,14 @@ import (
 
 // Manager defines snapshot methods.
 type Manager interface {
-	// Save fetches snapshot from remote etcd server and saves data
-	// to target path. If the context "ctx" is canceled or timed out,
+	// Save fetches snapshot from remote etcd server, saves data
+	// to target path and returns server version. If the context "ctx" is canceled or timed out,
 	// snapshot save stream will error out (e.g. context.Canceled,
 	// context.DeadlineExceeded). Make sure to specify only one endpoint
 	// in client configuration. Snapshot API must be requested to a
 	// selected node, and saved snapshot is the point-in-time state of
 	// the selected node.
-	Save(ctx context.Context, cfg clientv3.Config, dbPath string) error
+	Save(ctx context.Context, cfg clientv3.Config, dbPath string) (version string, err error)
 
 	// Status returns the snapshot file information.
 	Status(dbPath string) (Status, error)
@@ -96,8 +97,8 @@ func hasChecksum(n int64) bool {
 }
 
 // Save fetches snapshot from remote etcd server and saves data to target path.
-func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string) error {
-	return snapshot.Save(ctx, s.lg, cfg, dbPath)
+func (s *v3Manager) Save(ctx context.Context, cfg clientv3.Config, dbPath string) (version string, err error) {
+	return snapshot.SaveWithVersion(ctx, s.lg, cfg, dbPath)
 }
 
 // Status is the snapshot file status.
@@ -106,6 +107,9 @@ type Status struct {
 	Revision  int64  `json:"revision"`
 	TotalKey  int    `json:"totalKey"`
 	TotalSize int64  `json:"totalSize"`
+	// Version is equal to storageVersion of the snapshot
+	// Empty if server does not supports versioned snapshots (<v3.6)
+	Version string `json:"version"`
 }
 
 // Status returns the snapshot file information.
@@ -132,6 +136,10 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 			return fmt.Errorf("snapshot file integrity check failed. %d errors found.\n"+strings.Join(dbErrStrings, "\n"), len(dbErrStrings))
 		}
 		ds.TotalSize = tx.Size()
+		v := schema.ReadStorageVersionFromSnapshot(tx)
+		if v != nil {
+			ds.Version = v.String()
+		}
 		c := tx.Cursor()
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
@@ -298,7 +306,7 @@ func (s *v3Manager) saveDB() error {
 	be := backend.NewDefaultBackend(s.outDbPath())
 	defer be.Close()
 
-	err = membership.TrimMembershipFromBackend(s.lg, be)
+	err = schema.NewMembershipBackend(s.lg, be).TrimMembershipFromBackend()
 	if err != nil {
 		return err
 	}
@@ -395,7 +403,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	s.cl.SetStore(st)
 	be := backend.NewDefaultBackend(s.outDbPath())
 	defer be.Close()
-	s.cl.SetBackend(be)
+	s.cl.SetBackend(schema.NewMembershipBackend(s.lg, be))
 	for _, m := range s.cl.Members() {
 		s.cl.AddMember(m, true)
 	}

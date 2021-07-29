@@ -394,7 +394,7 @@ message ResponseHeader {
   uint64 member_id = 2;
   // revision is the key-value store revision when the request was applied.
   // For watch progress responses, the header.revision indicates progress. All future events
-  // recieved in this stream are guaranteed to have a higher revision number than the
+  // received in this stream are guaranteed to have a higher revision number than the
   // header.revision number.
   int64 revision = 3;
   // raft_term is the raft term when the request was applied.
@@ -677,6 +677,11 @@ message SnapshotResponse {
 
   // blob contains the next chunk of the snapshot in the snapshot stream.
   bytes blob = 3;
+
+  // local version of server that created the snapshot.
+  // In cluster with binaries with different version, each cluster can return different result.
+  // Informs which etcd server version should be used when restoring the snapshot.
+  string version = 4;
 }
 
 message WatchRequest {

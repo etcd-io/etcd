@@ -10,6 +10,7 @@ require (
 	github.com/go-openapi/loads v0.19.5 // indirect
 	github.com/go-openapi/spec v0.19.9 // indirect
 	github.com/gogo/protobuf v1.3.2
+	github.com/google/addlicense v0.0.0-20210428195630-6d92264d7170 // indirect
 	github.com/gordonklaus/ineffassign v0.0.0-20200809085317-e36bfde3bb78
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/gyuho/gocovmerge v0.0.0-20171205171859-50c7e6afd535
@@ -21,6 +22,8 @@ require (
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	google.golang.org/genproto v0.0.0-20201008135153-289734e2e40c // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
+	gotest.tools v2.2.0+incompatible
+	gotest.tools/gotestsum v0.3.5
 	honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc
 	mvdan.cc/unparam v0.0.0-20200501210554-b37ab49443f7
 )

@@ -51,8 +51,9 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
-	"go.etcd.io/etcd/server/v3/mvcc"
-	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
@@ -650,7 +651,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
-	cindex.CreateMetaBucket(be.BatchTx())
+	schema.CreateMetaBucket(be.BatchTx())
 
 	ci := cindex.NewConsistentIndex(be)
 	srv := &EtcdServer{
@@ -695,9 +696,9 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		tx.Lock()
 		defer tx.Unlock()
 		srv.beHooks.OnPreCommitUnsafe(tx)
-		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *membership.UnsafeConfStateFromBackend(lg, tx))
+		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *schema.UnsafeConfStateFromBackend(lg, tx))
 	})
-	rindex, rterm := cindex.ReadConsistentIndex(be.BatchTx())
+	rindex, rterm := schema.ReadConsistentIndex(be.BatchTx())
 	assert.Equal(t, consistIndex, rindex)
 	assert.Equal(t, uint64(4), rterm)
 }
@@ -1617,7 +1618,7 @@ func TestPublishV3(t *testing.T) {
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
-		authStore:  auth.NewAuthStore(lg, be, nil, 0),
+		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 		ctx:        ctx,
 		cancel:     cancel,
@@ -1688,7 +1689,7 @@ func TestPublishV3Retry(t *testing.T) {
 		cluster:    &membership.RaftCluster{},
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
-		authStore:  auth.NewAuthStore(lg, be, nil, 0),
+		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 		ctx:        ctx,
 		cancel:     cancel,

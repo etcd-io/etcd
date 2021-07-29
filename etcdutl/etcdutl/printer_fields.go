@@ -27,4 +27,5 @@ func (p *fieldsPrinter) DBStatus(r snapshot.Status) {
 	fmt.Println(`"Revision" :`, r.Revision)
 	fmt.Println(`"Keys" :`, r.TotalKey)
 	fmt.Println(`"Size" :`, r.TotalSize)
+	fmt.Println(`"Version" :`, r.Version)
 }

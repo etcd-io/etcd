@@ -23,18 +23,14 @@ import (
 	"sync"
 	"time"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/contention"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/wal"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
 	"go.uber.org/zap"
 )
 
@@ -418,171 +414,6 @@ func (r *raftNode) advanceTicks(ticks int) {
 	for i := 0; i < ticks; i++ {
 		r.tick()
 	}
-}
-
-func startNode(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
-	var err error
-	member := cl.MemberByName(cfg.Name)
-	metadata := pbutil.MustMarshal(
-		&pb.Metadata{
-			NodeID:    uint64(member.ID),
-			ClusterID: uint64(cl.ID()),
-		},
-	)
-	if w, err = wal.Create(cfg.Logger, cfg.WALDir(), metadata); err != nil {
-		cfg.Logger.Panic("failed to create WAL", zap.Error(err))
-	}
-	if cfg.UnsafeNoFsync {
-		w.SetUnsafeNoFsync()
-	}
-	peers := make([]raft.Peer, len(ids))
-	for i, id := range ids {
-		var ctx []byte
-		ctx, err = json.Marshal((*cl).Member(id))
-		if err != nil {
-			cfg.Logger.Panic("failed to marshal member", zap.Error(err))
-		}
-		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
-	}
-	id = member.ID
-	cfg.Logger.Info(
-		"starting local member",
-		zap.String("local-member-id", id.String()),
-		zap.String("cluster-id", cl.ID().String()),
-	)
-	s = raft.NewMemoryStorage()
-	c := &raft.Config{
-		ID:              uint64(id),
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
-		PreVote:         cfg.PreVote,
-		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
-	}
-	if len(peers) == 0 {
-		n = raft.RestartNode(c)
-	} else {
-		n = raft.StartNode(c, peers)
-	}
-	raftStatusMu.Lock()
-	raftStatus = n.Status
-	raftStatusMu.Unlock()
-	return id, n, s, w
-}
-
-func restartNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
-	var walsnap walpb.Snapshot
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-	}
-	w, id, cid, st, ents := readWAL(cfg.Logger, cfg.WALDir(), walsnap, cfg.UnsafeNoFsync)
-
-	cfg.Logger.Info(
-		"restarting local member",
-		zap.String("cluster-id", cid.String()),
-		zap.String("local-member-id", id.String()),
-		zap.Uint64("commit-index", st.Commit),
-	)
-	cl := membership.NewCluster(cfg.Logger)
-	cl.SetID(id, cid)
-	s := raft.NewMemoryStorage()
-	if snapshot != nil {
-		s.ApplySnapshot(*snapshot)
-	}
-	s.SetHardState(st)
-	s.Append(ents)
-	c := &raft.Config{
-		ID:              uint64(id),
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
-		PreVote:         cfg.PreVote,
-		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
-	}
-
-	n := raft.RestartNode(c)
-	raftStatusMu.Lock()
-	raftStatus = n.Status
-	raftStatusMu.Unlock()
-	return id, cl, n, s, w
-}
-
-func restartAsStandaloneNode(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membership.RaftCluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
-	var walsnap walpb.Snapshot
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-	}
-	w, id, cid, st, ents := readWAL(cfg.Logger, cfg.WALDir(), walsnap, cfg.UnsafeNoFsync)
-
-	// discard the previously uncommitted entries
-	for i, ent := range ents {
-		if ent.Index > st.Commit {
-			cfg.Logger.Info(
-				"discarding uncommitted WAL entries",
-				zap.Uint64("entry-index", ent.Index),
-				zap.Uint64("commit-index-from-wal", st.Commit),
-				zap.Int("number-of-discarded-entries", len(ents)-i),
-			)
-			ents = ents[:i]
-			break
-		}
-	}
-
-	// force append the configuration change entries
-	toAppEnts := createConfigChangeEnts(
-		cfg.Logger,
-		getIDs(cfg.Logger, snapshot, ents),
-		uint64(id),
-		st.Term,
-		st.Commit,
-	)
-	ents = append(ents, toAppEnts...)
-
-	// force commit newly appended entries
-	err := w.Save(raftpb.HardState{}, toAppEnts)
-	if err != nil {
-		cfg.Logger.Fatal("failed to save hard state and entries", zap.Error(err))
-	}
-	if len(ents) != 0 {
-		st.Commit = ents[len(ents)-1].Index
-	}
-
-	cfg.Logger.Info(
-		"forcing restart member",
-		zap.String("cluster-id", cid.String()),
-		zap.String("local-member-id", id.String()),
-		zap.Uint64("commit-index", st.Commit),
-	)
-
-	cl := membership.NewCluster(cfg.Logger)
-	cl.SetID(id, cid)
-	s := raft.NewMemoryStorage()
-	if snapshot != nil {
-		s.ApplySnapshot(*snapshot)
-	}
-	s.SetHardState(st)
-	s.Append(ents)
-	c := &raft.Config{
-		ID:              uint64(id),
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
-		PreVote:         cfg.PreVote,
-		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
-	}
-
-	n := raft.RestartNode(c)
-	raftStatus = n.Status
-	return id, cl, n, s, w
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and

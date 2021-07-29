@@ -27,8 +27,9 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/server/v3/mvcc"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 
 	"go.uber.org/zap"
 )
@@ -100,6 +101,11 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 const snapshotSendBufferSize = 32 * 1024
 
 func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance_SnapshotServer) error {
+	ver := schema.ReadStorageVersion(ms.bg.Backend().ReadTx())
+	storageVersion := ""
+	if ver != nil {
+		storageVersion = ver.String()
+	}
 	snap := ms.bg.Backend().Snapshot()
 	pr, pw := io.Pipe()
 
@@ -125,6 +131,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	ms.lg.Info("sending database snapshot to client",
 		zap.Int64("total-bytes", total),
 		zap.String("size", size),
+		zap.String("storage-version", storageVersion),
 	)
 	for total-sent > 0 {
 		// buffer just holds read bytes from stream
@@ -151,6 +158,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		resp := &pb.SnapshotResponse{
 			RemainingBytes: uint64(total - sent),
 			Blob:           buf[:n],
+			Version:        storageVersion,
 		}
 		if err = srv.Send(resp); err != nil {
 			return togRPCError(err)
@@ -166,7 +174,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		zap.Int64("total-bytes", total),
 		zap.Int("checksum-size", len(sha)),
 	)
-	hresp := &pb.SnapshotResponse{RemainingBytes: 0, Blob: sha}
+	hresp := &pb.SnapshotResponse{RemainingBytes: 0, Blob: sha, Version: storageVersion}
 	if err := srv.Send(hresp); err != nil {
 		return togRPCError(err)
 	}
@@ -175,6 +183,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		zap.Int64("total-bytes", total),
 		zap.String("size", size),
 		zap.String("took", humanize.Time(start)),
+		zap.String("storage-version", storageVersion),
 	)
 	return nil
 }

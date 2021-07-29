@@ -8,14 +8,28 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 <hr>
 
+## [v3.5.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.1) (TBD)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.5.1) and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/) for any breaking changes.
+
+### etcd server
+
+- Fix [self-signed-cert-validity parameter cannot be specified in the config file](https://github.com/etcd-io/etcd/pull/13237).
+
+
+<hr>
 
 ## v3.5.0 (2021-06)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/) for any breaking changes.
 
-- [v3.5.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.1...v3.5.0).
-- [v3.5.0-rc.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.1) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.0...v3.5.0-rc.1).
-- [v3.5.0-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.0) (2020 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0-rc.0).
+- [v3.5.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0) (2021 TBD), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.1...v3.5.0).
+- [v3.5.0-rc.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.1) (2021-06-10), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-rc.0...v3.5.0-rc.1).
+- [v3.5.0-rc.0](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-rc.0) (2021-06-04), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-beta.4...v3.5.0-rc.0).
+- [v3.5.0-beta.4](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-beta.4) (2021-05-26), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-beta.3...v3.5.0-beta.4).
+- [v3.5.0-beta.3](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-beta.3) (2021-05-18), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-beta.2...v3.5.0-beta.3).
+- [v3.5.0-beta.2](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-beta.2) (2021-05-18), see [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0-beta.1...v3.5.0-beta.2).
+- [v3.5.0-beta.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.0-beta.1) (2021-05-18), see [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0-beta.1).
 
 **Again, before running upgrades from any previous release, please make sure to read change logs below and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/).**
 
@@ -25,15 +39,15 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.0...v3.5.0) and 
 - `go.etcd.io/clientv3/snapshot` SnapshotManager class have moved to `go.etcd.io/clientv3/etcdctl`.
    The method `snapshot.Save` to download a snapshot from the remote server was preserved in 'go.etcd.io/clientv3/snapshot`.
 - `go.etcd.io/client' package got migrated to 'go.etcd.io/client/v2'.
-- Changed behavior of clienv3 API [MemberList](https://github.com/etcd-io/etcd/pull/11639).
+- Changed behavior of clientv3 API [MemberList](https://github.com/etcd-io/etcd/pull/11639).
   - Previously, it is directly served with server's local data, which could be stale.
   - Now, it is served with linearizable guarantee. If the server is disconnected from quorum, `MemberList` call will fail.
 - [gRPC gateway](https://github.com/grpc-ecosystem/grpc-gateway) only supports [`/v3`](TODO) endpoint.
   - Deprecated [`/v3beta`](https://github.com/etcd-io/etcd/pull/9298).
-  - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` does work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
+  - `curl -L http://localhost:2379/v3beta/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` doesn't work in v3.5. Use `curl -L http://localhost:2379/v3/kv/put -X POST -d '{"key": "Zm9v", "value": "YmFy"}'` instead.
 - **`etcd --experimental-enable-v2v3` flag remains experimental and to be deprecated.**
   - v2 storage emulation feature will be deprecated in the next release.
-  - etcd 3.5 is the last version that supports V2 API. Flags `--enable-v2` and `--experimental-enable-v2v3` [are now deprecated](https://github.com/etcd-io/etcd/pull/) and will be removed in etcd v3.6 release.
+  - etcd 3.5 is the last version that supports V2 API. Flags `--enable-v2` and `--experimental-enable-v2v3` [are now deprecated](https://github.com/etcd-io/etcd/pull/12940) and will be removed in etcd v3.6 release.
 - **`etcd --experimental-backend-bbolt-freelist-type` flag has been deprecated.** Use **`etcd --backend-bbolt-freelist-type`** instead. The default type is hashmap and it is stable now.
 - **`etcd --debug` flag has been deprecated.** Use **`etcd --log-level=debug`** instead.
 - Remove [`embed.Config.Debug`](https://github.com/etcd-io/etcd/pull/10947).
@@ -111,6 +125,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
 ### etcd server
 
+  - Add [don't attempt to grant nil permission to a role](https://github.com/etcd-io/etcd/pull/13086).
+  - Add [don't activate alarms w/missing AlarmType](https://github.com/etcd-io/etcd/pull/13084).
   - Add [`TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256` and `TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256` to `etcd --cipher-suites`](https://github.com/etcd-io/etcd/pull/11864).
   - Automatically [create parent directory if it does not exist](https://github.com/etcd-io/etcd/pull/9626) (fix [issue#9609](https://github.com/etcd-io/etcd/issues/9609)).
   - v4.0 will configure `etcd --enable-v2=true --enable-v2v3=/aaa` to enable v2 API server that is backed by **v3 storage**.

@@ -175,7 +175,7 @@ tester-config:
   case-shuffle: true
 
   # For full descriptions,
-  # https://godoc.org/github.com/etcd-io/etcd/functional/rpcpb#Case
+  # https://pkg.go.dev/go.etcd.io/etcd/tests/v3/functional/rpcpb#Case
   cases:
   - SIGTERM_ONE_FOLLOWER
   - SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT

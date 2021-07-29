@@ -92,7 +92,8 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
 
-	cmd.MarkFlagRequired("data-dir")
+	cmd.MarkFlagDirname("data-dir")
+	cmd.MarkFlagDirname("wal-dir")
 
 	return cmd
 }
