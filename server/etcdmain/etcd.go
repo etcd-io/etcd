@@ -50,12 +50,15 @@ var (
 )
 
 func startEtcdOrProxyV2(args []string) {
+	// Tips: rpc 调试跟踪
 	grpc.EnableTracing = false
 
+	// Tips: 加载配置，分为两步 - 分配默认参数，覆盖自定义参数
 	cfg := newConfig()
 	defaultInitialCluster := cfg.ec.InitialCluster
 
 	err := cfg.parse(args[1:])
+	// 日志默认为uber的zap
 	lg := cfg.ec.GetLogger()
 	// If we failed to parse the whole configuration, print the error using
 	// preferably the resolved logger from the config,
@@ -81,6 +84,7 @@ func startEtcdOrProxyV2(args []string) {
 
 	cfg.ec.SetupGlobalLoggers()
 
+	// 退出前进行一次刷盘，把日志保存下来
 	defer func() {
 		logger := cfg.ec.GetLogger()
 		if logger != nil {
@@ -88,6 +92,7 @@ func startEtcdOrProxyV2(args []string) {
 		}
 	}()
 
+	// UpdateDefaultClusterFromName 是更新参数值中的hostname
 	defaultHost, dhErr := (&cfg.ec).UpdateDefaultClusterFromName(defaultInitialCluster)
 	if defaultHost != "" {
 		lg.Info(
@@ -99,6 +104,7 @@ func startEtcdOrProxyV2(args []string) {
 		lg.Info("failed to detect default host", zap.Error(dhErr))
 	}
 
+	// Tip: 保存数据的目录
 	if cfg.ec.Dir == "" {
 		cfg.ec.Dir = fmt.Sprintf("%v.etcd", cfg.ec.Name)
 		lg.Warn(
@@ -110,6 +116,7 @@ func startEtcdOrProxyV2(args []string) {
 	var stopped <-chan struct{}
 	var errc <-chan error
 
+	// Tip: 检查data目录中的文件的具体类型,分为empty空，member成员，proxy代理三种
 	which := identifyDataDirOrDie(cfg.ec.GetLogger(), cfg.ec.Dir)
 	if which != dirEmpty {
 		lg.Info(
@@ -117,10 +124,13 @@ func startEtcdOrProxyV2(args []string) {
 			zap.String("data-dir", cfg.ec.Dir),
 			zap.String("dir-type", string(which)),
 		)
+		// 非初始化的情况下(数据文件夹中有数据)，会判断其类型，进行对应的操作
 		switch which {
 		case dirMember:
+			// Tip： 启动成员模式，注意，这里需要的参数只有 embed.Config 那部分
 			stopped, errc, err = startEtcd(&cfg.ec)
 		case dirProxy:
+			// Tip： 启动代理模式，这个模式用的不多
 			err = startProxy(cfg)
 		default:
 			lg.Panic(
@@ -129,11 +139,15 @@ func startEtcdOrProxyV2(args []string) {
 			)
 		}
 	} else {
+		// 初始化时，data目录为空，进入这里，大部分和之前一样
 		shouldProxy := cfg.isProxy()
 		if !shouldProxy {
+			// Tip: 关键入口1-开始运行普通模式，注意入参只需要ec部分
 			stopped, errc, err = startEtcd(&cfg.ec)
+			// Tip: 这里有个特别的情况，当服务发现报错"集群已满"时,并且配置可以回滚为代理(shouldProxy)，那么就这个etcd就转变成代理
 			if derr, ok := err.(*etcdserver.DiscoveryError); ok && derr.Err == v2discovery.ErrFullCluster {
 				if cfg.shouldFallbackToProxy() {
+					// 发现集群已满，退回到代理
 					lg.Warn(
 						"discovery cluster is full, falling back to proxy",
 						zap.String("fallback-proxy", fallbackFlagProxy),
@@ -146,20 +160,24 @@ func startEtcdOrProxyV2(args []string) {
 			}
 		}
 		if shouldProxy {
+			// Tip: 关键入口2-开始运行代理
 			err = startProxy(cfg)
 		}
 	}
 
 	if err != nil {
+		// 服务发现类报错，打印后直接退出
 		if derr, ok := err.(*etcdserver.DiscoveryError); ok {
 			switch derr.Err {
 			case v2discovery.ErrDuplicateID:
+				// 会员已在发现服务注册
 				lg.Warn(
 					"member has been registered with discovery service",
 					zap.String("name", cfg.ec.Name),
 					zap.String("discovery-token", cfg.ec.Durl),
 					zap.Error(derr.Err),
 				)
+				// 但是找不到有效的集群配置
 				lg.Warn(
 					"but could not find valid cluster configuration",
 					zap.String("data-dir", cfg.ec.Dir),
@@ -168,6 +186,7 @@ func startEtcdOrProxyV2(args []string) {
 				lg.Warn("or use a new discovery token if previous bootstrap failed")
 
 			case v2discovery.ErrDuplicateName:
+				// 名称重复的成员已经注册
 				lg.Warn(
 					"member with duplicated name has already been registered",
 					zap.String("discovery-token", cfg.ec.Durl),
@@ -177,6 +196,7 @@ func startEtcdOrProxyV2(args []string) {
 				lg.Warn("do not reuse discovery token; generate a new one to bootstrap a cluster")
 
 			default:
+				// 引导失败； 发现令牌已被使用
 				lg.Warn(
 					"failed to bootstrap; discovery token was already used",
 					zap.String("discovery-token", cfg.ec.Durl),
@@ -187,6 +207,7 @@ func startEtcdOrProxyV2(args []string) {
 			os.Exit(1)
 		}
 
+		// 一些初始参数设置错误，或者未设置，打印错误并退出
 		if strings.Contains(err.Error(), "include") && strings.Contains(err.Error(), "--initial-cluster") {
 			lg.Warn("failed to start", zap.Error(err))
 			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) {
@@ -203,6 +224,7 @@ func startEtcdOrProxyV2(args []string) {
 		lg.Fatal("discovery failed", zap.Error(err))
 	}
 
+	// 当程序退出时，触发注册的hook函数
 	osutil.HandleInterrupts(lg)
 
 	// At this point, the initialization of etcd is done.
@@ -210,8 +232,11 @@ func startEtcdOrProxyV2(args []string) {
 	// for accepting connections. The etcd instance should be
 	// joined with the cluster and ready to serve incoming
 	// connections.
+
+	// Tip: deamon守护相关
 	notifySystemd(lg)
 
+	// 接收两个channel的信息
 	select {
 	case lerr := <-errc:
 		// fatal out on listener errors

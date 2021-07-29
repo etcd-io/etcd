@@ -23,9 +23,12 @@ import (
 )
 
 func Main(args []string) {
+	// Tips: 根据命名分析，这里是检查程序所支持的操作系统架构
 	checkSupportArch()
 
 	if len(args) > 1 {
+		// Tips 根据第一个参数设置对应的启动方式,可以看到除默认的启动方式外，特殊的是gateway和grpc-proxy
+		// gateway是四层代理，grpc-proxy是七层代理
 		cmd := args[1]
 		switch cmd {
 		case "gateway", "grpc-proxy":
