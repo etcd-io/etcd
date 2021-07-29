@@ -266,8 +266,13 @@ func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.Put
 				return nil, nil, lease.ErrLeaseNotFound
 			}
 		}
-		txn = a.s.KV().Write(trace)
-		defer txn.End()
+		if a.s.Cfg.ExperimentalCommitAsync {
+			txn = a.s.KV().WriteAsync(trace)
+			defer txn.EndAsync()
+		} else {
+			txn = a.s.KV().Write(trace)
+			defer txn.End()
+		}
 	}
 
 	var rr *mvcc.RangeResult
@@ -309,8 +314,13 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 	end := mkGteRange(dr.RangeEnd)
 
 	if txn == nil {
-		txn = a.s.kv.Write(traceutil.TODO())
-		defer txn.End()
+		if a.s.Cfg.ExperimentalCommitAsync {
+			txn = a.s.KV().WriteAsync(traceutil.TODO())
+			defer txn.EndAsync()
+		} else {
+			txn = a.s.kv.Write(traceutil.TODO())
+			defer txn.End()
+		}
 	}
 
 	if dr.PrevKv {
@@ -473,14 +483,22 @@ func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnR
 	// be the revision of the write txn.
 	if isWrite {
 		txn.End()
-		txn = a.s.KV().Write(trace)
+		if a.s.Cfg.ExperimentalCommitAsync {
+			txn = a.s.KV().WriteAsync(trace)
+		} else {
+			txn = a.s.KV().Write(trace)
+		}
 	}
 	a.applyTxn(ctx, txn, rt, txnPath, txnResp)
 	rev := txn.Rev()
 	if len(txn.Changes()) != 0 {
 		rev++
 	}
-	txn.End()
+	if isWrite && a.s.Cfg.ExperimentalCommitAsync {
+		txn.EndAsync()
+	} else {
+		txn.End()
+	}
 
 	txnResp.Header.Revision = rev
 	trace.AddField(

@@ -49,9 +49,18 @@ func (txw *txWriteBuffer) put(bucket Bucket, k, v []byte) {
 	txw.putInternal(bucket, k, v)
 }
 
+func (txw *txWriteBuffer) putAsync(bucket Bucket, k, v []byte) {
+	txw.bucket2seq[bucket.ID()] = false
+	txw.putInternalAsync(bucket, k, v)
+}
+
 func (txw *txWriteBuffer) putSeq(bucket Bucket, k, v []byte) {
 	// TODO: Add (in tests?) verification whether k>b[len(b)]
 	txw.putInternal(bucket, k, v)
+}
+
+func (txw *txWriteBuffer) putSeqAsync(bucket Bucket, k, v []byte) {
+	txw.putInternalAsync(bucket, k, v)
 }
 
 func (txw *txWriteBuffer) putInternal(bucket Bucket, k, v []byte) {
@@ -61,6 +70,15 @@ func (txw *txWriteBuffer) putInternal(bucket Bucket, k, v []byte) {
 		txw.buckets[bucket.ID()] = b
 	}
 	b.add(k, v)
+}
+
+func (txw *txWriteBuffer) putInternalAsync(bucket Bucket, k, v []byte) {
+	b, ok := txw.buckets[bucket.ID()]
+	if !ok {
+		b = newBucketBuffer()
+		txw.buckets[bucket.ID()] = b
+	}
+	b.addAsyncPut(k, v)
 }
 
 func (txw *txWriteBuffer) reset() {
@@ -94,6 +112,23 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 	txr.bufVersion++
 }
 
+func (txw *txWriteBuffer) writebackNoReset(txr *txReadBuffer) {
+	for k, wb := range txw.buckets {
+		rb, ok := txr.buckets[k]
+		if !ok {
+			txr.buckets[k] = wb
+			continue
+		}
+		if seq, ok := txw.bucket2seq[k]; ok && !seq && wb.used > 1 {
+			// assume no duplicate keys
+			sort.Sort(wb)
+		}
+		rb.merge(wb)
+	}
+	// increase the buffer version
+	txr.bufVersion++
+}
+
 // txReadBuffer accesses buffered updates.
 type txReadBuffer struct {
 	txBuffer
@@ -115,13 +150,20 @@ func (txr *txReadBuffer) ForEach(bucket Bucket, visitor func(k, v []byte) error)
 	return nil
 }
 
+func (txr *txReadBuffer) ForEachWithNeedPutAsync(bucket Bucket, visitor func(k, v []byte, needPut bool) error) error {
+	if b := txr.buckets[bucket.ID()]; b != nil {
+		return b.ForEachWithNeedPutAsync(visitor)
+	}
+	return nil
+}
+
 // unsafeCopy returns a copy of txReadBuffer, caller should acquire backend.readTx.RLock()
 func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 	txrCopy := txReadBuffer{
 		txBuffer: txBuffer{
 			buckets: make(map[BucketID]*bucketBuffer, len(txr.txBuffer.buckets)),
 		},
-		bufVersion: 0,
+		bufVersion: txr.bufVersion,
 	}
 	for bucketName, bucket := range txr.txBuffer.buckets {
 		txrCopy.txBuffer.buckets[bucketName] = bucket.Copy()
@@ -130,8 +172,9 @@ func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 }
 
 type kv struct {
-	key []byte
-	val []byte
+	key          []byte
+	val          []byte
+	needAsyncPut bool
 }
 
 // bucketBuffer buffers key-value pairs that are pending commit.
@@ -180,8 +223,26 @@ func (bb *bucketBuffer) ForEach(visitor func(k, v []byte) error) error {
 	return nil
 }
 
+func (bb *bucketBuffer) ForEachWithNeedPutAsync(visitor func(k, v []byte, needPut bool) error) error {
+	for i := 0; i < bb.used; i++ {
+		if err := visitor(bb.buf[i].key, bb.buf[i].val, bb.buf[i].needAsyncPut); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (bb *bucketBuffer) add(k, v []byte) {
 	bb.buf[bb.used].key, bb.buf[bb.used].val = k, v
+	bb.addCommon(k, v)
+}
+
+func (bb *bucketBuffer) addAsyncPut(k, v []byte) {
+	bb.buf[bb.used].key, bb.buf[bb.used].val, bb.buf[bb.used].needAsyncPut = k, v, true
+	bb.addCommon(k, v)
+}
+
+func (bb *bucketBuffer) addCommon(k, v []byte) {
 	bb.used++
 	if bb.used == len(bb.buf) {
 		buf := make([]kv, (3*len(bb.buf))/2)
@@ -193,7 +254,11 @@ func (bb *bucketBuffer) add(k, v []byte) {
 // merge merges data from bbsrc into bb.
 func (bb *bucketBuffer) merge(bbsrc *bucketBuffer) {
 	for i := 0; i < bbsrc.used; i++ {
-		bb.add(bbsrc.buf[i].key, bbsrc.buf[i].val)
+		if bbsrc.buf[i].needAsyncPut {
+			bb.addAsyncPut(bbsrc.buf[i].key, bbsrc.buf[i].val)
+		} else {
+			bb.add(bbsrc.buf[i].key, bbsrc.buf[i].val)
+		}
 	}
 	if bb.used == bbsrc.used {
 		return

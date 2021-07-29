@@ -87,6 +87,8 @@ type TxnWrite interface {
 	WriteView
 	// Changes gets the changes made since opening the write txn.
 	Changes() []mvccpb.KeyValue
+
+	EndAsync()
 }
 
 // txnReadWrite coerces a read txn to a write, panicking on any write operation.
@@ -97,6 +99,8 @@ func (trw *txnReadWrite) Put(key, value []byte, lease lease.LeaseID) (rev int64)
 	panic("unexpected Put")
 }
 func (trw *txnReadWrite) Changes() []mvccpb.KeyValue { return nil }
+
+func (trw *txnReadWrite) EndAsync() { panic("unexpected txnReadWrite EndAsync") }
 
 func NewReadOnlyTxnWrite(txn TxnRead) TxnWrite { return &txnReadWrite{txn} }
 
@@ -118,6 +122,8 @@ type KV interface {
 
 	// Write creates a write transaction.
 	Write(trace *traceutil.Trace) TxnWrite
+
+	WriteAsync(trace *traceutil.Trace) TxnWrite
 
 	// Hash computes the hash of the KV's backend.
 	Hash() (hash uint32, revision int64, err error)

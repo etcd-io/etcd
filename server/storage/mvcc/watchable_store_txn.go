@@ -46,6 +46,33 @@ func (tw *watchableStoreTxnWrite) End() {
 	tw.s.mu.Unlock()
 }
 
+func (tw *watchableStoreTxnWrite) EndAsync() {
+	changes := tw.Changes()
+	if len(changes) == 0 {
+		tw.TxnWrite.EndAsync()
+		return
+	}
+
+	rev := tw.Rev() + 1
+	evs := make([]mvccpb.Event, len(changes))
+	for i, change := range changes {
+		evs[i].Kv = &changes[i]
+		if change.CreateRevision == 0 {
+			evs[i].Type = mvccpb.DELETE
+			evs[i].Kv.ModRevision = rev
+		} else {
+			evs[i].Type = mvccpb.PUT
+		}
+	}
+
+	// end write txn under watchable store lock so the updates are visible
+	// when asynchronous event posting checks the current store revision
+	tw.s.mu.Lock()
+	tw.s.notify(rev, evs)
+	tw.TxnWrite.EndAsync()
+	tw.s.mu.Unlock()
+}
+
 type watchableStoreTxnWrite struct {
 	TxnWrite
 	s *watchableStore
@@ -53,4 +80,8 @@ type watchableStoreTxnWrite struct {
 
 func (s *watchableStore) Write(trace *traceutil.Trace) TxnWrite {
 	return &watchableStoreTxnWrite{s.store.Write(trace), s}
+}
+
+func (s *watchableStore) WriteAsync(trace *traceutil.Trace) TxnWrite {
+	return &watchableStoreTxnWrite{s.store.WriteAsync(trace), s}
 }

@@ -32,12 +32,16 @@ type ConsistentIndexer interface {
 	// ConsistentIndex returns the consistent index of current executing entry.
 	ConsistentIndex() uint64
 
+	UnsafeConsistentIndexAndTerm() (uint64, uint64)
+
 	// SetConsistentIndex set the consistent index of current executing entry.
 	SetConsistentIndex(v uint64, term uint64)
 
 	// UnsafeSave must be called holding the lock on the tx.
 	// It saves consistentIndex to the underlying stable storage.
 	UnsafeSave(tx backend.BatchTx)
+
+	UnsafeSaveWithIndexAndTerm(tx backend.BatchTx, index uint64, term uint64)
 
 	// SetBackend set the available backend.BatchTx for ConsistentIndexer.
 	SetBackend(be Backend)
@@ -78,6 +82,12 @@ func (ci *consistentIndex) ConsistentIndex() uint64 {
 	return v
 }
 
+func (ci *consistentIndex) UnsafeConsistentIndexAndTerm() (uint64, uint64) {
+	index := atomic.LoadUint64(&ci.consistentIndex)
+	term := atomic.LoadUint64(&ci.term)
+	return index, term
+}
+
 func (ci *consistentIndex) SetConsistentIndex(v uint64, term uint64) {
 	atomic.StoreUint64(&ci.consistentIndex, v)
 	atomic.StoreUint64(&ci.term, term)
@@ -86,6 +96,10 @@ func (ci *consistentIndex) SetConsistentIndex(v uint64, term uint64) {
 func (ci *consistentIndex) UnsafeSave(tx backend.BatchTx) {
 	index := atomic.LoadUint64(&ci.consistentIndex)
 	term := atomic.LoadUint64(&ci.term)
+	schema.UnsafeUpdateConsistentIndex(tx, index, term, true)
+}
+
+func (ci *consistentIndex) UnsafeSaveWithIndexAndTerm(tx backend.BatchTx, index uint64, term uint64) {
 	schema.UnsafeUpdateConsistentIndex(tx, index, term, true)
 }
 
@@ -108,13 +122,16 @@ type fakeConsistentIndex struct {
 
 func (f *fakeConsistentIndex) ConsistentIndex() uint64 { return f.index }
 
+func (f *fakeConsistentIndex) UnsafeConsistentIndexAndTerm() (uint64, uint64) { return f.index, f.term }
+
 func (f *fakeConsistentIndex) SetConsistentIndex(index uint64, term uint64) {
 	atomic.StoreUint64(&f.index, index)
 	atomic.StoreUint64(&f.term, term)
 }
 
-func (f *fakeConsistentIndex) UnsafeSave(_ backend.BatchTx) {}
-func (f *fakeConsistentIndex) SetBackend(_ Backend)         {}
+func (f *fakeConsistentIndex) UnsafeSave(_ backend.BatchTx)                                     {}
+func (f *fakeConsistentIndex) UnsafeSaveWithIndexAndTerm(_ backend.BatchTx, _ uint64, _ uint64) {}
+func (f *fakeConsistentIndex) SetBackend(_ Backend)                                             {}
 
 func UpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, onlyGrow bool) {
 	tx.Lock()

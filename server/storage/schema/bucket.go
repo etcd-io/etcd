@@ -95,3 +95,7 @@ func DefaultIgnores(bucket, key []byte) bool {
 func BackendMemberKey(id types.ID) []byte {
 	return []byte(id.String())
 }
+
+func init() {
+	backend.SetKeyBucket(Key)
+}

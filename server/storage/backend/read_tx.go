@@ -33,13 +33,16 @@ type ReadTx interface {
 
 	UnsafeRange(bucket Bucket, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte)
 	UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error
+
+	GetBuffer() interface{}
 }
 
 // Base type for readTx and concurrentReadTx to eliminate duplicate functions between these
 type baseReadTx struct {
 	// mu protects accesses to the txReadBuffer
-	mu  sync.RWMutex
-	buf txReadBuffer
+	mu            sync.RWMutex
+	buf           *txReadBuffer
+	committingBuf *txReadBuffer
 
 	// TODO: group and encapsulate {txMu, tx, buckets, txWg}, as they share the same lifecycle.
 	// txMu protects accesses to buckets and tx on Range requests.
@@ -65,9 +68,16 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []b
 	if err := baseReadTx.buf.ForEach(bucket, getDups); err != nil {
 		return err
 	}
+	if err := baseReadTx.committingBuf.ForEach(bucket, getDups); err != nil {
+		return err
+	}
 	baseReadTx.txMu.Lock()
 	err := unsafeForEach(baseReadTx.tx, bucket, visitNoDup)
 	baseReadTx.txMu.Unlock()
+	if err != nil {
+		return err
+	}
+	err = baseReadTx.committingBuf.ForEach(bucket, visitor)
 	if err != nil {
 		return err
 	}
@@ -86,6 +96,12 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 		panic("do not use unsafeRange on non-keys bucket")
 	}
 	keys, vals := baseReadTx.buf.Range(bucketType, key, endKey, limit)
+	if int64(len(keys)) == limit {
+		return keys, vals
+	}
+	committingKeys, committingVals := baseReadTx.committingBuf.Range(bucketType, key, endKey, limit)
+	keys = append(keys, committingKeys...)
+	vals = append(vals, committingVals...)
 	if int64(len(keys)) == limit {
 		return keys, vals
 	}
@@ -120,6 +136,8 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 	return append(k2, keys...), append(v2, vals...)
 }
 
+func (baseReadTx *baseReadTx) GetBuffer() interface{} { return baseReadTx.buf }
+
 type readTx struct {
 	baseReadTx
 }
@@ -130,7 +148,6 @@ func (rt *readTx) RLock()   { rt.mu.RLock() }
 func (rt *readTx) RUnlock() { rt.mu.RUnlock() }
 
 func (rt *readTx) reset() {
-	rt.buf.reset()
 	rt.buckets = make(map[BucketID]*bolt.Bucket)
 	rt.tx = nil
 	rt.txWg = new(sync.WaitGroup)

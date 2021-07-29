@@ -401,6 +401,8 @@ type Config struct {
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 
+	ExperimentalCommitAsync bool `json:"experimental-commit-async"`
+
 	// V2Deprecation describes phase of API & Storage V2 support
 	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 }
@@ -502,6 +504,7 @@ func NewConfig() *Config {
 		ExperimentalDowngradeCheckTime:           DefaultDowngradeCheckTime,
 		ExperimentalMemoryMlock:                  false,
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
+		ExperimentalCommitAsync:                  true,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 	}

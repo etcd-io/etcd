@@ -49,6 +49,7 @@ type Backend interface {
 	// ReadTx returns a read transaction. It is replaced by ConcurrentReadTx in the main data path, see #10523.
 	ReadTx() ReadTx
 	BatchTx() BatchTx
+	BatchTxAsync() BatchTxAsync
 	// ConcurrentReadTx returns a non-blocking read transaction.
 	ConcurrentReadTx() ReadTx
 
@@ -80,9 +81,10 @@ type Snapshot interface {
 }
 
 type txReadBufferCache struct {
-	mu         sync.Mutex
-	buf        *txReadBuffer
-	bufVersion uint64
+	mu            sync.Mutex
+	buf           *txReadBuffer
+	committingBuf *txReadBuffer
+	bufVersion    uint64
 }
 
 type backend struct {
@@ -106,6 +108,7 @@ type backend struct {
 	batchInterval time.Duration
 	batchLimit    int
 	batchTx       *batchTxBuffered
+	batchTxAsync  *batchTxBufferedAsync
 
 	readTx *readTx
 	// txReadBufferCache mirrors "txReadBuffer" within "readTx" -- readTx.baseReadTx.buf.
@@ -116,6 +119,8 @@ type backend struct {
 
 	stopc chan struct{}
 	donec chan struct{}
+
+	commitAsync bool
 
 	hooks Hooks
 
@@ -138,7 +143,8 @@ type BackendConfig struct {
 	// UnsafeNoFsync disables all uses of fsync.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 	// Mlock prevents backend database file to be swapped
-	Mlock bool
+	Mlock       bool
+	CommitAsync bool
 
 	// Hooks are getting executed during lifecycle of Backend's transactions.
 	Hooks Hooks
@@ -149,6 +155,7 @@ func DefaultBackendConfig() BackendConfig {
 		BatchInterval: defaultBatchInterval,
 		BatchLimit:    defaultBatchLimit,
 		MmapSize:      initialMmapSize,
+		CommitAsync:   true,
 	}
 }
 
@@ -193,7 +200,11 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		readTx: &readTx{
 			baseReadTx: baseReadTx{
-				buf: txReadBuffer{
+				buf: &txReadBuffer{
+					txBuffer:   txBuffer{make(map[BucketID]*bucketBuffer)},
+					bufVersion: 0,
+				},
+				committingBuf: &txReadBuffer{
 					txBuffer:   txBuffer{make(map[BucketID]*bucketBuffer)},
 					bufVersion: 0,
 				},
@@ -214,7 +225,14 @@ func newBackend(bcfg BackendConfig) *backend {
 		lg: bcfg.Logger,
 	}
 
-	b.batchTx = newBatchTxBuffered(b)
+	if bcfg.CommitAsync {
+		b.batchTxAsync = newBatchTxBufferedAsync(b)
+		b.batchTx = b.batchTxAsync.batchTxBuffered
+		b.commitAsync = true
+	} else {
+		b.batchTx = newBatchTxBuffered(b)
+	}
+
 	// We set it after newBatchTxBuffered to skip the 'empty' commit.
 	b.hooks = bcfg.Hooks
 
@@ -227,6 +245,10 @@ func newBackend(bcfg BackendConfig) *backend {
 // The write result is isolated with other txs until the current one get committed.
 func (b *backend) BatchTx() BatchTx {
 	return b.batchTx
+}
+
+func (b *backend) BatchTxAsync() BatchTxAsync {
+	return b.batchTxAsync
 }
 
 func (b *backend) ReadTx() ReadTx { return b.readTx }
@@ -255,6 +277,7 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 	b.txReadBufferCache.mu.Lock()
 
 	curCache := b.txReadBufferCache.buf
+	curCommittingCache := b.txReadBufferCache.committingBuf
 	curCacheVer := b.txReadBufferCache.bufVersion
 	curBufVer := b.readTx.buf.bufVersion
 
@@ -262,12 +285,15 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 	isStaleCache := curCacheVer != curBufVer
 
 	var buf *txReadBuffer
+	var committingBuf *txReadBuffer
 	switch {
 	case isEmptyCache:
 		// perform safe copy of buffer while holding "b.txReadBufferCache.mu.Lock"
 		// this is only supposed to run once so there won't be much overhead
 		curBuf := b.readTx.buf.unsafeCopy()
+		curCommittingBuf := b.readTx.committingBuf.unsafeCopy()
 		buf = &curBuf
+		committingBuf = &curCommittingBuf
 	case isStaleCache:
 		// to maximize the concurrency, try unsafe copy of buffer
 		// release the lock while copying buffer -- cache may become stale again and
@@ -275,11 +301,14 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 		// therefore, we need to check the readTx buffer version again
 		b.txReadBufferCache.mu.Unlock()
 		curBuf := b.readTx.buf.unsafeCopy()
+		curCommittingBuf := b.readTx.committingBuf.unsafeCopy()
 		b.txReadBufferCache.mu.Lock()
 		buf = &curBuf
+		committingBuf = &curCommittingBuf
 	default:
 		// neither empty nor stale cache, just use the current buffer
 		buf = curCache
+		committingBuf = curCommittingCache
 	}
 	// txReadBufferCache.bufVersion can be modified when we doing an unsafeCopy()
 	// as a result, curCacheVer could be no longer the same as
@@ -292,6 +321,7 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 	if isEmptyCache || curCacheVer == b.txReadBufferCache.bufVersion {
 		// continue if the cache is never set or no one has modified the cache
 		b.txReadBufferCache.buf = buf
+		b.txReadBufferCache.committingBuf = committingBuf
 		b.txReadBufferCache.bufVersion = curBufVer
 	}
 
@@ -300,22 +330,31 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 	// concurrentReadTx is not supposed to write to its txReadBuffer
 	return &concurrentReadTx{
 		baseReadTx: baseReadTx{
-			buf:     *buf,
-			txMu:    b.readTx.txMu,
-			tx:      b.readTx.tx,
-			buckets: b.readTx.buckets,
-			txWg:    b.readTx.txWg,
+			buf:           buf,
+			committingBuf: committingBuf,
+			txMu:          b.readTx.txMu,
+			tx:            b.readTx.tx,
+			buckets:       b.readTx.buckets,
+			txWg:          b.readTx.txWg,
 		},
 	}
 }
 
 // ForceCommit forces the current batching tx to commit.
 func (b *backend) ForceCommit() {
-	b.batchTx.Commit()
+	if b.commitAsync {
+		b.batchTxAsync.Commit()
+	} else {
+		b.batchTx.Commit()
+	}
 }
 
 func (b *backend) Snapshot() Snapshot {
-	b.batchTx.Commit()
+	if b.commitAsync {
+		b.batchTxAsync.Commit()
+	} else {
+		b.batchTx.Commit()
+	}
 
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -405,12 +444,23 @@ func (b *backend) run() {
 		select {
 		case <-t.C:
 		case <-b.stopc:
-			b.batchTx.CommitAndStop()
+			if b.commitAsync {
+				b.batchTxAsync.CommitAndStop()
+			} else {
+				b.batchTx.CommitAndStop()
+			}
 			return
 		}
-		if b.batchTx.safePending() != 0 {
-			b.batchTx.Commit()
+		if b.commitAsync {
+			if b.batchTxAsync.safePending() != 0 {
+				b.batchTxAsync.Commit()
+			}
+		} else {
+			if b.batchTx.safePending() != 0 {
+				b.batchTx.Commit()
+			}
 		}
+
 		t.Reset(b.batchInterval)
 	}
 }

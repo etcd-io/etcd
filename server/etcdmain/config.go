@@ -290,6 +290,7 @@ func newConfig() *config {
 	fs.DurationVar(&cfg.ec.ExperimentalWarningUnaryRequestDuration, "experimental-warning-unary-request-duration", cfg.ec.ExperimentalWarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
 	fs.BoolVar(&cfg.ec.ExperimentalMemoryMlock, "experimental-memory-mlock", cfg.ec.ExperimentalMemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
 	fs.BoolVar(&cfg.ec.ExperimentalTxnModeWriteWithSharedBuffer, "experimental-txn-mode-write-with-shared-buffer", true, "Enable the write transaction to use a shared buffer in its readonly check operations.")
+	fs.BoolVar(&cfg.ec.ExperimentalCommitAsync, "experimental-commit-async", true, "Enable the bolt db commit async, avoiding the Interaction between range/put and commit.")
 	fs.UintVar(&cfg.ec.ExperimentalBootstrapDefragThresholdMegabytes, "experimental-bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.")
 
 	// unsafe

@@ -42,6 +42,12 @@ type Bucket interface {
 	IsSafeRangeBucket() bool
 }
 
+var KeyBucket Bucket
+
+func SetKeyBucket(bucket Bucket) {
+	KeyBucket = bucket
+}
+
 type BatchTx interface {
 	ReadTx
 	UnsafeCreateBucket(bucket Bucket)
@@ -53,6 +59,17 @@ type BatchTx interface {
 	Commit()
 	// CommitAndStop commits the previous tx and does not create a new one.
 	CommitAndStop()
+}
+
+type BatchTxAsync interface {
+	BatchTx
+	UnsafePutAsync(bucket Bucket, key []byte, value []byte)
+	UnsafeSeqPutAsync(bucket Bucket, key []byte, value []byte)
+
+	Flash2ReadTx(readTx ReadTx)
+
+	LockAsync()
+	UnlockAsync()
 }
 
 type batchTx struct {
@@ -85,6 +102,8 @@ func (t *batchTx) RLock() {
 func (t *batchTx) RUnlock() {
 	panic("unexpected RUnlock")
 }
+
+func (t *batchTx) GetBuffer() interface{} { panic("unexpected batchTx GetBuffer") }
 
 func (t *batchTx) UnsafeCreateBucket(bucket Bucket) {
 	_, err := t.tx.CreateBucket(bucket.Name())
@@ -120,7 +139,12 @@ func (t *batchTx) UnsafeSeqPut(bucket Bucket, key []byte, value []byte) {
 	t.unsafePut(bucket, key, value, true)
 }
 
-func (t *batchTx) unsafePut(bucketType Bucket, key []byte, value []byte, seq bool) {
+func (t *batchTx) unsafePut(bucket Bucket, key []byte, value []byte, seq bool) {
+	t.unsafePutWithoutAddPending(bucket, key, value, seq)
+	t.pending++
+}
+
+func (t *batchTx) unsafePutWithoutAddPending(bucketType Bucket, key []byte, value []byte, seq bool) {
 	bucket := t.tx.Bucket(bucketType.Name())
 	if bucket == nil {
 		t.backend.lg.Fatal(
@@ -141,7 +165,6 @@ func (t *batchTx) unsafePut(bucketType Bucket, key []byte, value []byte, seq boo
 			zap.Error(err),
 		)
 	}
-	t.pending++
 }
 
 // UnsafeRange must be called holding the lock on the tx.
@@ -281,7 +304,7 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 func (t *batchTxBuffered) Unlock() {
 	if t.pending != 0 {
 		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
-		t.buf.writeback(&t.backend.readTx.buf)
+		t.buf.writeback(t.backend.readTx.buf)
 		t.backend.readTx.Unlock()
 		if t.pending >= t.backend.batchLimit {
 			t.commit(false)
@@ -314,6 +337,29 @@ func (t *batchTxBuffered) commit(stop bool) {
 }
 
 func (t *batchTxBuffered) unsafeCommit(stop bool) {
+	for bucketID := range t.backend.readTx.buf.buckets {
+		if bucketID == KeyBucket.ID() {
+			put := func(k, v []byte, needPut bool) error {
+				if needPut {
+					if seq, ok := t.buf.bucket2seq[bucketID]; ok {
+						t.batchTx.unsafePutWithoutAddPending(KeyBucket, k, v, seq)
+					} else {
+						t.batchTx.unsafePutWithoutAddPending(KeyBucket, k, v, true)
+					}
+				}
+				return nil
+			}
+
+			err := t.backend.readTx.buf.ForEachWithNeedPutAsync(KeyBucket, put)
+			if err != nil {
+				if t.backend.lg != nil {
+					t.backend.lg.Fatal("failed to ForEach unsafePut", zap.Error(err))
+				}
+
+				return
+			}
+		}
+	}
 	if t.backend.readTx.tx != nil {
 		// wait all store read transactions using the current boltdb tx to finish,
 		// then close the boltdb tx
@@ -324,6 +370,7 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 			}
 		}(t.backend.readTx.tx, t.backend.readTx.txWg)
 		t.backend.readTx.reset()
+		t.backend.readTx.buf.reset()
 	}
 
 	t.batchTx.commit(stop)
@@ -341,4 +388,183 @@ func (t *batchTxBuffered) UnsafePut(bucket Bucket, key []byte, value []byte) {
 func (t *batchTxBuffered) UnsafeSeqPut(bucket Bucket, key []byte, value []byte) {
 	t.batchTx.UnsafeSeqPut(bucket, key, value)
 	t.buf.putSeq(bucket, key, value)
+}
+
+type batchTxBufferedAsync struct {
+	*batchTxBuffered
+	asyncBuf        txWriteBuffer
+	asyncBufLock    sync.Mutex
+	asyncBufPending int
+}
+
+func newBatchTxBufferedAsync(backend *backend) *batchTxBufferedAsync {
+	twb := txWriteBuffer{
+		txBuffer:   txBuffer{make(map[BucketID]*bucketBuffer)},
+		bucket2seq: make(map[BucketID]bool),
+	}
+	tx := &batchTxBufferedAsync{}
+	tx.batchTxBuffered = newBatchTxBuffered(backend)
+	tx.asyncBuf = twb
+
+	return tx
+}
+
+func (t *batchTxBufferedAsync) safePending() int {
+	t.Mutex.Lock()
+	defer t.Mutex.Unlock()
+	t.asyncBufLock.Lock()
+	defer t.asyncBufLock.Unlock()
+
+	return t.pending + t.asyncBufPending
+}
+
+func (t *batchTxBufferedAsync) LockAsync() {
+	t.asyncBufLock.Lock()
+}
+
+func (t *batchTxBufferedAsync) UnlockAsync() {
+	if t.asyncBufPending != 0 {
+		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
+		t.asyncBuf.writeback(t.backend.readTx.buf)
+		t.backend.readTx.Unlock()
+	}
+	t.asyncBufLock.Unlock()
+}
+
+func (t *batchTxBufferedAsync) Commit() {
+	t.Lock()
+	t.commit(false)
+	t.Unlock()
+}
+
+func (t *batchTxBufferedAsync) CommitAndStop() {
+	t.Lock()
+	t.commit(true)
+	t.Unlock()
+}
+
+func (t *batchTxBufferedAsync) commit(stop bool) {
+	t.commitAndPut(stop)
+}
+
+func (t *batchTxBufferedAsync) commitAndPut(stop bool) {
+	// all read txs must be closed to acquire boltdb commit rwlock
+	t.asyncBufLock.Lock()
+	t.backend.readTx.Lock()
+
+	var index uint64
+	var term uint64
+	if t.backend.hooks != nil {
+		index, term = t.backend.hooks.OnPreCommitIndexAndTermUnsafe()
+	}
+
+	t.pending += t.asyncBufPending
+	t.asyncBufPending = 0
+	t.backend.readTx.committingBuf.reset()
+	bufVersion := t.backend.readTx.buf.bufVersion
+	t.backend.readTx.committingBuf, t.backend.readTx.buf = t.backend.readTx.buf, t.backend.readTx.committingBuf
+	t.backend.readTx.buf.bufVersion = bufVersion
+
+	t.backend.readTx.Unlock()
+	t.asyncBufLock.Unlock()
+
+	if t.backend.hooks != nil {
+		t.backend.hooks.OnPreCommitWithIndexAndTermUnsafe(t, index, term)
+	}
+
+	commitDone := make(chan interface{}, 1)
+
+	go t.unsafeCommitAndPut(stop, commitDone)
+
+	timeOut := time.NewTimer(500 * time.Millisecond)
+	defer timeOut.Stop()
+	select {
+	case <-commitDone:
+		var rtx *bolt.Tx
+		if !stop {
+			rtx = t.backend.begin(false)
+		}
+
+		t.backend.readTx.Lock()
+		t.unsafeRollbackTx()
+		if !stop {
+			t.backend.readTx.tx = rtx
+		}
+		t.backend.readTx.Unlock()
+	case <-timeOut.C:
+		t.backend.lg.Warn("commit too long, lock range and put")
+		t.backend.readTx.Lock()
+		t.unsafeRollbackTx()
+		<-commitDone
+
+		if !stop {
+			t.backend.readTx.tx = t.backend.begin(false)
+		}
+		t.backend.readTx.Unlock()
+	}
+}
+
+func (t *batchTxBufferedAsync) unsafeRollbackTx() {
+	if t.backend.readTx.tx != nil {
+		// wait all store read transactions using the current boltdb tx to finish,
+		// then close the boltdb tx
+		go func(tx *bolt.Tx, wg *sync.WaitGroup) {
+			wg.Wait()
+			if err := tx.Rollback(); err != nil {
+				if t.backend.lg != nil {
+					t.backend.lg.Fatal("failed to rollback tx", zap.Error(err))
+				}
+			}
+		}(t.backend.readTx.tx, t.backend.readTx.txWg)
+		t.backend.readTx.reset()
+		t.backend.readTx.committingBuf.reset()
+	}
+}
+
+func (t *batchTxBufferedAsync) unsafeCommitAndPut(stop bool, commitDone chan interface{}) {
+	if t.pending != 0 {
+		for bucketID := range t.backend.readTx.committingBuf.buckets {
+			if bucketID == KeyBucket.ID() {
+				put := func(k, v []byte, needPut bool) error {
+					if needPut {
+						if seq, ok := t.buf.bucket2seq[bucketID]; ok {
+							t.batchTx.unsafePutWithoutAddPending(KeyBucket, k, v, seq)
+						} else {
+							t.batchTx.unsafePutWithoutAddPending(KeyBucket, k, v, true)
+						}
+
+					}
+					return nil
+				}
+
+				err := t.backend.readTx.committingBuf.ForEachWithNeedPutAsync(KeyBucket, put)
+				if err != nil {
+					if t.backend.lg != nil {
+						t.backend.lg.Fatal("failed to ForEach unsafePut", zap.Error(err))
+					}
+
+					return
+				}
+			}
+		}
+	}
+
+	t.batchTx.commit(stop)
+
+	close(commitDone)
+}
+
+func (t *batchTxBufferedAsync) UnsafePutAsync(bucket Bucket, key []byte, value []byte) {
+	t.asyncBuf.putAsync(bucket, key, value)
+	t.asyncBufPending++
+}
+
+func (t *batchTxBufferedAsync) UnsafeSeqPutAsync(bucket Bucket, key []byte, value []byte) {
+	t.asyncBuf.putSeqAsync(bucket, key, value)
+	t.asyncBufPending++
+}
+
+func (t *batchTxBufferedAsync) Flash2ReadTx(readTx ReadTx) {
+	buf := readTx.GetBuffer().(*txReadBuffer)
+	t.asyncBuf.writebackNoReset(buf)
 }

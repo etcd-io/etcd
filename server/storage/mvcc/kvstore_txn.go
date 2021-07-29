@@ -69,7 +69,8 @@ func (tr *storeTxnRead) End() {
 
 type storeTxnWrite struct {
 	storeTxnRead
-	tx backend.BatchTx
+	batchTx      backend.BatchTx
+	batchTxAsync backend.BatchTxAsync
 	// beginRev is the revision where the txn begins; it will write to the next revision.
 	beginRev int64
 	changes  []mvccpb.KeyValue
@@ -81,11 +82,36 @@ func (s *store) Write(trace *traceutil.Trace) TxnWrite {
 	tx.Lock()
 	tw := &storeTxnWrite{
 		storeTxnRead: storeTxnRead{s, tx, 0, 0, trace},
-		tx:           tx,
+		batchTx:      tx,
 		beginRev:     s.currentRev,
 		changes:      make([]mvccpb.KeyValue, 0, 4),
 	}
 	return newMetricsTxnWrite(tw)
+}
+
+func (s *store) WriteAsync(trace *traceutil.Trace) TxnWrite {
+	s.mu.RLock()
+	tx := s.b.BatchTxAsync()
+	tx.LockAsync()
+	tw := &storeTxnWrite{
+		storeTxnRead: storeTxnRead{s, nil, 0, 0, trace},
+		batchTxAsync: tx,
+		beginRev:     s.currentRev,
+		changes:      make([]mvccpb.KeyValue, 0, 4),
+	}
+	return newMetricsTxnWrite(tw)
+}
+
+func (tw *storeTxnWrite) UpdateReadView() {
+	if tw.tx == nil {
+		readTx := tw.s.b.ConcurrentReadTx()
+		readTx.RLock()
+		tw.tx = readTx
+	}
+
+	if len(tw.changes) > 0 {
+		tw.batchTxAsync.Flash2ReadTx(tw.tx)
+	}
 }
 
 func (tw *storeTxnWrite) Rev() int64 { return tw.beginRev }
@@ -95,6 +121,10 @@ func (tw *storeTxnWrite) Range(ctx context.Context, key, end []byte, ro RangeOpt
 	if len(tw.changes) > 0 {
 		rev++
 	}
+	if tw.batchTxAsync != nil {
+		tw.UpdateReadView()
+	}
+
 	return tw.rangeKeys(ctx, key, end, rev, ro)
 }
 
@@ -117,7 +147,24 @@ func (tw *storeTxnWrite) End() {
 		tw.s.revMu.Lock()
 		tw.s.currentRev++
 	}
-	tw.tx.Unlock()
+	tw.batchTx.Unlock()
+	if len(tw.changes) != 0 {
+		tw.s.revMu.Unlock()
+	}
+	tw.s.mu.RUnlock()
+}
+
+func (tw *storeTxnWrite) EndAsync() {
+	if tw.tx != nil {
+		tw.tx.RUnlock()
+	}
+	// only update index if the txn modifies the mvcc state.
+	if len(tw.changes) != 0 {
+		// hold revMu lock to prevent new read txns from opening until writeback.
+		tw.s.revMu.Lock()
+		tw.s.currentRev++
+	}
+	tw.batchTxAsync.UnlockAsync()
 	if len(tw.changes) != 0 {
 		tw.s.revMu.Unlock()
 	}
@@ -215,7 +262,12 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	}
 
 	tw.trace.Step("marshal mvccpb.KeyValue")
-	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
+	if tw.batchTxAsync != nil {
+		tw.batchTxAsync.UnsafeSeqPutAsync(schema.Key, ibytes, d)
+	} else if tw.batchTx != nil {
+		tw.batchTx.UnsafeSeqPut(schema.Key, ibytes, d)
+	}
+
 	tw.s.kvindex.Put(key, idxRev)
 	tw.changes = append(tw.changes, kv)
 	tw.trace.Step("store kv pair into bolt db")
@@ -276,7 +328,11 @@ func (tw *storeTxnWrite) delete(key []byte) {
 		)
 	}
 
-	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
+	if tw.batchTxAsync != nil {
+		tw.batchTxAsync.UnsafeSeqPutAsync(schema.Key, ibytes, d)
+	} else if tw.batchTx != nil {
+		tw.batchTx.UnsafeSeqPut(schema.Key, ibytes, d)
+	}
 	err = tw.s.kvindex.Tombstone(key, idxRev)
 	if err != nil {
 		tw.storeTxnRead.s.lg.Fatal(

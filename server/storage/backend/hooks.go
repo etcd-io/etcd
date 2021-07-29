@@ -21,6 +21,10 @@ type Hooks interface {
 	// OnPreCommitUnsafe is executed before Commit of transactions.
 	// The given transaction is already locked.
 	OnPreCommitUnsafe(tx BatchTx)
+
+	OnPreCommitIndexAndTermUnsafe() (uint64, uint64)
+
+	OnPreCommitWithIndexAndTermUnsafe(tx BatchTx, index uint64, term uint64)
 }
 
 type hooks struct {
@@ -28,6 +32,12 @@ type hooks struct {
 }
 
 func (h hooks) OnPreCommitUnsafe(tx BatchTx) {
+	h.onPreCommitUnsafe(tx)
+}
+
+func (h hooks) OnPreCommitIndexAndTermUnsafe() (uint64, uint64) { return 0, 0 }
+
+func (h hooks) OnPreCommitWithIndexAndTermUnsafe(tx BatchTx, index uint64, term uint64) {
 	h.onPreCommitUnsafe(tx)
 }
 

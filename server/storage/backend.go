@@ -51,6 +51,7 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 		bcfg.MmapSize = uint64(cfg.QuotaBackendBytes + cfg.QuotaBackendBytes/10)
 	}
 	bcfg.Mlock = cfg.ExperimentalMemoryMlock
+	bcfg.CommitAsync = cfg.ExperimentalCommitAsync
 	bcfg.Hooks = hooks
 	return backend.New(bcfg)
 }
