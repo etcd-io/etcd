@@ -55,6 +55,7 @@ func startEtcdOrProxyV2(args []string) {
 
 	// Tips: 加载配置，分为两步 - 分配默认参数，覆盖自定义参数
 	cfg := newConfig()
+	// default
 	defaultInitialCluster := cfg.ec.InitialCluster
 
 	err := cfg.parse(args[1:])

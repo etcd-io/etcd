@@ -564,17 +564,24 @@ if err := tx.Commit(); err != nil {
 
 <img src="./img/etcd boltdb page结构.png" alt="etcd boltdb page结构" style="zoom:40%;" />
 
+### 数据压缩：
 
+- 时间周期性压缩
+  - auto-compaction-mode 为 periodic 时，它表示启用时间周期性压缩，auto-compaction-retention 为保留的时间的周期，比如 1h。（auto-compaction-retention 为'0'时，将关闭自动压缩策略）
+- 版本号压缩
+  - auto-compaction-mode 为 revision 时，它表示启用版本号压缩模式，auto-compaction-retention 为保留的历史版本号数，比如 10000。
 
+<img src="./img/etcd 压缩模块架构图.png" style="zoom:35%;" />
 
+**执行流程：**
 
+1. 通过 API 发起一个 Compact 请求后，KV Server 收到 Compact 请求提交到 Raft 模块处理，在 Raft 模块中提交后，Apply 模块就会通过 MVCC 模块的 Compact 接口执行此压缩任务。
+2. Compact 接口首先会更新当前 server 已压缩的版本号，并将耗时昂贵的压缩任务保存到 FIFO 队列中异步执行。压缩任务执行时，它首先会压缩 treeIndex 模块中的 keyIndex 索引，其次会遍历 boltdb 中的 key，删除已废弃的 key。
 
+> 压缩的本质是回收历史版本，目标对象仅是历史版本，不包括一个 key-value 数据的最新版本
+>
 
-
-
-
-
-
+通过 boltdb 删除大量的 key，在事务提交后 B+ tree 经过分裂、平衡，会释放出若干 branch/leaf page 页面，然而 boltdb 并不会将其释放给磁盘，freelist 会记录哪些页是空闲的。调整 db 大小操作是昂贵的，会对性能有较大的损害。
 
 
 
