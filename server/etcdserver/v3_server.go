@@ -292,7 +292,7 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 	defer cancel()
 
 	// renewals don't go through raft; forward to leader manually
-	for cctx.Err() == nil && err != nil {
+	for cctx.Err() == nil {
 		leader, lerr := s.waitLeader(cctx)
 		if lerr != nil {
 			return -1, lerr
@@ -384,7 +384,7 @@ func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error)
 			return nil, ErrNoLeader
 		}
 	}
-	if leader == nil || len(leader.PeerURLs) == 0 {
+	if len(leader.PeerURLs) == 0 {
 		return nil, ErrNoLeader
 	}
 	return leader, nil
