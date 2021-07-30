@@ -386,6 +386,11 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 		// sorted by keys in lexiographically ascending order,
 		// sort ASCEND by default only when target is not 'KEY'
 		sortOrder = pb.RangeRequest_ASCEND
+	} else if r.SortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_ASCEND {
+		// Since current mvcc.Range implementation returns results
+		// sorted by keys in lexiographically ascending order,
+		// don't re-sort when target is 'KEY' and order is ASCEND
+		sortOrder = pb.RangeRequest_NONE
 	}
 	if sortOrder != pb.RangeRequest_NONE {
 		var sorter sort.Interface
