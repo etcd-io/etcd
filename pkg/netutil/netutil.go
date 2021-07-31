@@ -192,7 +192,7 @@ func URLStringsEqual(ctx context.Context, lg *zap.Logger, a []string, b []string
 	sort.Sort(types.URLs(urlsB))
 	for i := range urlsA {
 		if !reflect.DeepEqual(urlsA[i], urlsB[i]) {
-			// If urls are not equal, try to resolve it and compare again.
+			// If URLs are not equal, try to resolve it and compare again.
 			return urlsEqual(ctx, lg, urlsA, urlsB)
 		}
 	}
@@ -212,7 +212,7 @@ func stringsToURLs(us []string) ([]url.URL, error) {
 	for _, str := range us {
 		u, err := url.Parse(str)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse %q", str)
+			return nil, fmt.Errorf("failed to parse string to URL: %q", str)
 		}
 		urls = append(urls, *u)
 	}
