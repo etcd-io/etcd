@@ -198,7 +198,7 @@ func stringsToURLs(us []string) ([]url.URL, error) {
 	for _, str := range us {
 		u, err := url.Parse(str)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse %q", str)
+			return nil, fmt.Errorf("failed to parse string to URL: %q", str)
 		}
 		urls = append(urls, *u)
 	}
