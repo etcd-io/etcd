@@ -72,7 +72,7 @@ type ServerConfig struct {
 	InitialPeerURLsMap  types.URLsMap
 	InitialClusterToken string
 	NewCluster          bool
-	PeerTLSInfo         transport.TLSInfo
+	PeerTLSInfo         *transport.TLSInfo
 
 	CORS map[string]struct{}
 

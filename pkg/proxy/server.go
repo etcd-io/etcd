@@ -133,7 +133,7 @@ type ServerConfig struct {
 	Logger        *zap.Logger
 	From          url.URL
 	To            url.URL
-	TLSInfo       transport.TLSInfo
+	TLSInfo       *transport.TLSInfo
 	DialTimeout   time.Duration
 	BufferSize    int
 	RetryInterval time.Duration
@@ -147,7 +147,7 @@ type server struct {
 	to       url.URL
 	toPort   int
 
-	tlsInfo     transport.TLSInfo
+	tlsInfo     *transport.TLSInfo
 	dialTimeout time.Duration
 
 	bufferSize    int
@@ -250,7 +250,7 @@ func NewServer(cfg ServerConfig) Server {
 
 	var ln net.Listener
 	if !s.tlsInfo.Empty() {
-		ln, err = transport.NewListener(addr, s.from.Scheme, &s.tlsInfo)
+		ln, err = transport.NewListener(addr, s.from.Scheme, s.tlsInfo)
 	} else {
 		ln, err = net.Listen(s.from.Scheme, addr)
 	}
@@ -639,6 +639,7 @@ func (s *server) Close() (err error) {
 		}
 		s.lg.Sync()
 		s.listenerMu.Unlock()
+		s.tlsInfo.Close()
 	})
 	s.closeWg.Wait()
 	return err
@@ -973,7 +974,7 @@ func (s *server) ResetListener() error {
 	var ln net.Listener
 	var err error
 	if !s.tlsInfo.Empty() {
-		ln, err = transport.NewListener(s.from.Host, s.from.Scheme, &s.tlsInfo)
+		ln, err = transport.NewListener(s.from.Host, s.from.Scheme, s.tlsInfo)
 	} else {
 		ln, err = net.Listen(s.from.Scheme, s.from.Host)
 	}

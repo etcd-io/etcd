@@ -50,7 +50,7 @@ func newTLSListener(l net.Listener, tlsinfo *TLSInfo, check tlsCheckFunc) (net.L
 		l.Close()
 		return nil, fmt.Errorf("cannot listen on TLS for %s: KeyFile and CertFile are not presented", l.Addr().String())
 	}
-	tlscfg, err := tlsinfo.ServerConfig()
+	tlscfg, err := tlsinfo.ReloadableServerConfig()
 	if err != nil {
 		return nil, err
 	}

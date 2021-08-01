@@ -186,7 +186,7 @@ func TestMetricsHealth(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	tr, err := transport.NewTransport(transport.TLSInfo{}, 5*time.Second)
+	tr, err := transport.NewTransport(&transport.TLSInfo{}, 5*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}

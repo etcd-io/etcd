@@ -15,19 +15,30 @@
 package transport
 
 import (
+	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
 
-func createSelfCert(t *testing.T, hosts ...string) (*TLSInfo, error) {
+func createSelfCert(t *testing.T) (*TLSInfo, error) {
 	return createSelfCertEx(t, "127.0.0.1")
 }
 
@@ -37,7 +48,7 @@ func createSelfCertEx(t *testing.T, host string, additionalUsages ...x509.ExtKey
 	if err != nil {
 		return nil, err
 	}
-	return &info, nil
+	return info, nil
 }
 
 func fakeCertificateParserFunc(cert tls.Certificate, err error) func(certPEMBlock, keyPEMBlock []byte) (tls.Certificate, error) {
@@ -53,7 +64,7 @@ func TestNewListenerTLSInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	testNewListenerTLSInfoAccept(t, *tlsInfo)
+	testNewListenerTLSInfoAccept(t, tlsInfo)
 }
 
 func TestNewListenerWithOpts(t *testing.T) {
@@ -218,8 +229,8 @@ func TestNewListenerWithSocketOpts(t *testing.T) {
 	}
 }
 
-func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
-	ln, err := NewListener("127.0.0.1:0", "https", &tlsInfo)
+func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo *TLSInfo) {
+	ln, err := NewListener("127.0.0.1:0", "https", tlsInfo)
 	if err != nil {
 		t.Fatalf("unexpected NewListener error: %v", err)
 	}
@@ -243,6 +254,7 @@ func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
 // with specified address in its certificate the connection is still accepted
 // if the flag SkipClientSANVerify is set (i.e. checkSAN() is disabled for the client side)
 func TestNewListenerTLSInfoSkipClientSANVerify(t *testing.T) {
+
 	tests := []struct {
 		skipClientSANVerify bool
 		goodClientHost      bool
@@ -349,7 +361,7 @@ func TestNewTransportTLSInfo(t *testing.T) {
 		t.Fatalf("unable to create cert: %v", err)
 	}
 
-	tests := []TLSInfo{
+	tests := []*TLSInfo{
 		{},
 		{
 			CertFile: tlsinfo.CertFile,
@@ -380,7 +392,7 @@ func TestNewTransportTLSInfo(t *testing.T) {
 
 func TestTLSInfoNonexist(t *testing.T) {
 	tlsInfo := TLSInfo{CertFile: "@badname", KeyFile: "@badname"}
-	_, err := tlsInfo.ServerConfig()
+	_, err := tlsInfo.serverConfig()
 	werr := &os.PathError{
 		Op:   "open",
 		Path: "@badname",
@@ -393,17 +405,17 @@ func TestTLSInfoNonexist(t *testing.T) {
 
 func TestTLSInfoEmpty(t *testing.T) {
 	tests := []struct {
-		info TLSInfo
+		info *TLSInfo
 		want bool
 	}{
-		{TLSInfo{}, true},
-		{TLSInfo{TrustedCAFile: "baz"}, true},
-		{TLSInfo{CertFile: "foo"}, false},
-		{TLSInfo{KeyFile: "bar"}, false},
-		{TLSInfo{CertFile: "foo", KeyFile: "bar"}, false},
-		{TLSInfo{CertFile: "foo", TrustedCAFile: "baz"}, false},
-		{TLSInfo{KeyFile: "bar", TrustedCAFile: "baz"}, false},
-		{TLSInfo{CertFile: "foo", KeyFile: "bar", TrustedCAFile: "baz"}, false},
+		{&TLSInfo{}, true},
+		{&TLSInfo{TrustedCAFile: "baz"}, true},
+		{&TLSInfo{CertFile: "foo"}, false},
+		{&TLSInfo{KeyFile: "bar"}, false},
+		{&TLSInfo{CertFile: "foo", KeyFile: "bar"}, false},
+		{&TLSInfo{CertFile: "foo", TrustedCAFile: "baz"}, false},
+		{&TLSInfo{KeyFile: "bar", TrustedCAFile: "baz"}, false},
+		{&TLSInfo{CertFile: "foo", KeyFile: "bar", TrustedCAFile: "baz"}, false},
 	}
 
 	for i, tt := range tests {
@@ -420,7 +432,7 @@ func TestTLSInfoMissingFields(t *testing.T) {
 		t.Fatalf("unable to create cert: %v", err)
 	}
 
-	tests := []TLSInfo{
+	tests := []*TLSInfo{
 		{CertFile: tlsinfo.CertFile},
 		{KeyFile: tlsinfo.KeyFile},
 		{CertFile: tlsinfo.CertFile, TrustedCAFile: tlsinfo.TrustedCAFile},
@@ -428,8 +440,10 @@ func TestTLSInfoMissingFields(t *testing.T) {
 	}
 
 	for i, info := range tests {
-		if _, err = info.ServerConfig(); err == nil {
-			t.Errorf("#%d: expected non-nil error from ServerConfig()", i)
+		_, err = info.serverConfig()
+
+		if err == nil {
+			t.Errorf("#%d: expected non nil error from serverConfig()", i)
 		}
 
 		if _, err = info.ClientConfig(); err == nil {
@@ -445,22 +459,22 @@ func TestTLSInfoParseFuncError(t *testing.T) {
 	}
 
 	tests := []struct {
-		info TLSInfo
+		info *TLSInfo
 	}{
 		{
-			info: *tlsinfo,
+			info: tlsinfo,
 		},
 
 		{
-			info: TLSInfo{CertFile: "", KeyFile: "", TrustedCAFile: tlsinfo.CertFile, EmptyCN: true},
+			info: &TLSInfo{CertFile: "", KeyFile: "", TrustedCAFile: tlsinfo.CertFile, EmptyCN: true},
 		},
 	}
 
 	for i, tt := range tests {
 		tt.info.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, errors.New("fake"))
 
-		if _, err = tt.info.ServerConfig(); err == nil {
-			t.Errorf("#%d: expected non-nil error from ServerConfig()", i)
+		if _, err = tt.info.serverConfig(); err == nil {
+			t.Errorf("#%d: expected non-nil error from ReloadableServerConfig()", i)
 		}
 
 		if _, err = tt.info.ClientConfig(); err == nil {
@@ -477,18 +491,18 @@ func TestTLSInfoConfigFuncs(t *testing.T) {
 	}
 
 	tests := []struct {
-		info       TLSInfo
+		info       *TLSInfo
 		clientAuth tls.ClientAuthType
 		wantCAs    bool
 	}{
 		{
-			info:       TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile, Logger: ln},
+			info:       &TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile, Logger: ln},
 			clientAuth: tls.NoClientCert,
 			wantCAs:    false,
 		},
 
 		{
-			info:       TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile, TrustedCAFile: tlsinfo.CertFile, Logger: ln},
+			info:       &TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile, TrustedCAFile: tlsinfo.CertFile, Logger: ln},
 			clientAuth: tls.RequireAndVerifyClientCert,
 			wantCAs:    true,
 		},
@@ -497,9 +511,9 @@ func TestTLSInfoConfigFuncs(t *testing.T) {
 	for i, tt := range tests {
 		tt.info.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
 
-		sCfg, err := tt.info.ServerConfig()
+		sCfg, err := tt.info.serverConfig()
 		if err != nil {
-			t.Errorf("#%d: expected nil error from ServerConfig(), got non-nil: %v", i, err)
+			t.Errorf("#%d: expected nil error from ReloadableServerConfig(), got non-nil: %v", i, err)
 		}
 
 		if tt.wantCAs != (sCfg.ClientCAs != nil) {
@@ -564,6 +578,212 @@ func TestSocktOptsEmpty(t *testing.T) {
 		got := tt.sopts.Empty()
 		if tt.want != got {
 			t.Errorf("#%d: result of Empty() incorrect: want=%t got=%t", i, tt.want, got)
+		}
+	}
+}
+
+func newSerialNumber(t *testing.T) *big.Int {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		t.Fail()
+	}
+	return serialNumber
+}
+
+func createRootCertificateAuthority(rootCaPath string, oldPem []byte, t *testing.T) (*x509.Certificate, []byte, *ecdsa.PrivateKey) {
+	serialNumber := newSerialNumber(t)
+	priv, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tmpl := x509.Certificate{
+		SerialNumber:          serialNumber,
+		Subject:               pkix.Name{Organization: []string{"etcd"}},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(365 * (24 * time.Hour)),
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageContentCommitment,
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+	}
+
+	caBytes, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, &priv.PublicKey, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ca, err := x509.ParseCertificate(caBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caBlocks := [][]byte{caBytes}
+	if len(oldPem) > 0 {
+		caBlocks = append(caBlocks, oldPem)
+	}
+	marshalCerts(caBlocks, rootCaPath, t)
+	return ca, caBytes, priv
+}
+
+func generateCerts(privKey *ecdsa.PrivateKey, rootCA *x509.Certificate, dir, suffix string, t *testing.T) {
+	priv, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	serialNumber := newSerialNumber(t)
+	tmpl := x509.Certificate{
+		SerialNumber:          serialNumber,
+		Subject:               pkix.Name{Organization: []string{"etcd"}},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(365 * (24 * time.Hour)),
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageContentCommitment,
+		BasicConstraintsValid: true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	caBytes, err := x509.CreateCertificate(rand.Reader, &tmpl, rootCA, &priv.PublicKey, privKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	marshalCerts([][]byte{caBytes}, path.Join(dir, fmt.Sprintf("cert%s.pem", suffix)), t)
+	marshalKeys(priv, path.Join(dir, fmt.Sprintf("key%s.pem", suffix)), t)
+}
+
+func marshalCerts(caBytes [][]byte, certPath string, t *testing.T) {
+	var caPerm bytes.Buffer
+	for _, caBlock := range caBytes {
+		err := pem.Encode(&caPerm, &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: caBlock,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	ioutil.WriteFile(certPath, caPerm.Bytes(), 0644)
+}
+
+func marshalKeys(privKey *ecdsa.PrivateKey, keyPath string, t *testing.T) {
+	privBytes, err := x509.MarshalECPrivateKey(privKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var keyPerm bytes.Buffer
+	err = pem.Encode(&keyPerm, &pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: privBytes,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ioutil.WriteFile(keyPath, keyPerm.Bytes(), 0644)
+}
+
+func TestRootCAReload(t *testing.T) {
+	tmpdir, err := ioutil.TempDir(os.TempDir(), "tlsdir-reload")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpdir)
+	rootCAPath := path.Join(tmpdir, "ca-cert.pem")
+	logger := zap.NewExample()
+	rootCA, caBytes, privKey := createRootCertificateAuthority(rootCAPath, []byte{}, t)
+	generateCerts(privKey, rootCA, tmpdir, "_old", t)
+	tlsinfo := &TLSInfo{
+		TrustedCAFile:      rootCAPath,
+		CertFile:           path.Join(tmpdir, "cert_old.pem"),
+		KeyFile:            path.Join(tmpdir, "key_old.pem"),
+		ClientCertFile:     path.Join(tmpdir, "cert_old.pem"),
+		ClientKeyFile:      path.Join(tmpdir, "key_old.pem"),
+		Logger:             logger,
+		RefreshDuration:    100 * time.Millisecond,
+		EnableRootCAReload: true,
+	}
+
+	ln, err := NewListener("127.0.0.1:0", "https", tlsinfo)
+	if err != nil {
+		t.Fatalf("unexpected NewListener error: %v", err)
+	}
+	defer ln.Close()
+	cfg, err := tlsinfo.ClientConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := &http.Transport{TLSClientConfig: cfg}
+	cli := &http.Client{Transport: tr}
+	go func() {
+		cli.Get("https://" + ln.Addr().String())
+	}()
+
+	errChan := make(chan error)
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			errChan <- err
+		}
+		if _, ok := conn.(*tls.Conn); !ok {
+			errChan <- errors.New("failed to accept *tls.Conn")
+		}
+		conn.Close()
+		errChan <- nil
+	}()
+
+	select {
+	case <-time.After(10 * time.Second):
+		t.Fatalf("timeout accept")
+	case err := <-errChan:
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// regenerate rootCA and sign new certs
+	rootCA, _, privKey = createRootCertificateAuthority(rootCAPath, caBytes, t)
+	generateCerts(privKey, rootCA, tmpdir, "_new", t)
+
+	// give server some time to reload new CA
+	time.Sleep(time.Second)
+
+	newTlsinfo := &TLSInfo{
+		TrustedCAFile:  rootCAPath,
+		CertFile:       path.Join(tmpdir, "cert_new.pem"),
+		KeyFile:        path.Join(tmpdir, "key_new.pem"),
+		ClientCertFile: path.Join(tmpdir, "cert_new.pem"),
+		ClientKeyFile:  path.Join(tmpdir, "key_new.pem"),
+		Logger:         logger,
+	}
+
+	cfg, err = newTlsinfo.ClientConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tr = &http.Transport{TLSClientConfig: cfg}
+	cli = &http.Client{Transport: tr}
+	go func() {
+		cli.Get("https://" + ln.Addr().String())
+	}()
+
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			errChan <- err
+		}
+		if _, ok := conn.(*tls.Conn); !ok {
+			errChan <- errors.New("failed to accept *tls.Conn")
+		}
+		conn.Close()
+		errChan <- nil
+	}()
+
+	select {
+	case <-time.After(10 * time.Second):
+		t.Fatalf("timeout accept")
+	case err := <-errChan:
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 }

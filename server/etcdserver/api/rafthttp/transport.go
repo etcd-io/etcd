@@ -102,7 +102,7 @@ type Transport struct {
 	// a distinct rate limiter is created per every peer (default value: 10 events/sec)
 	DialRetryFrequency rate.Limit
 
-	TLSInfo transport.TLSInfo // TLS information used when creating connection
+	TLSInfo *transport.TLSInfo // TLS information used when creating connection
 
 	ID          types.ID   // local member ID
 	URLs        types.URLs // local peer URLs

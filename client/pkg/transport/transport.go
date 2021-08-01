@@ -24,7 +24,7 @@ import (
 
 type unixTransport struct{ *http.Transport }
 
-func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, error) {
+func NewTransport(info *TLSInfo, dialtimeoutd time.Duration) (*http.Transport, error) {
 	cfg, err := info.ClientConfig()
 	if err != nil {
 		return nil, err

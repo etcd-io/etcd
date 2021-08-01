@@ -71,7 +71,7 @@ func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate cert: %s", err)
 		}
-		return &tls, nil
+		return tls, nil
 	case config.ManualTLS:
 		return &integration.TestTLSInfo, nil
 	default:

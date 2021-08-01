@@ -1634,12 +1634,12 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 
 	certsDirExp := t.TempDir()
 
-	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
+	cloneFunc := func() *transport.TLSInfo {
+		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo.Clone(), certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfoExpired.Clone(), certsDirExp); err != nil {
 			t.Fatal(err)
 		}
 		return tlsInfo
@@ -1676,20 +1676,20 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 func TestTLSReloadCopy(t *testing.T) {
 	certsDir := t.TempDir()
 
-	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
+	cloneFunc := func() *transport.TLSInfo {
+		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo.Clone(), certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDir); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfoExpired.Clone(), certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
 	revertFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfo, certsDir); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfo.Clone(), certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1702,20 +1702,20 @@ func TestTLSReloadCopy(t *testing.T) {
 func TestTLSReloadCopyIPOnly(t *testing.T) {
 	certsDir := t.TempDir()
 
-	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfoIP, certsDir)
+	cloneFunc := func() *transport.TLSInfo {
+		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfoIP.Clone(), certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpiredIP, certsDir); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfoExpiredIP.Clone(), certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
 	revertFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoIP, certsDir); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfoIP.Clone(), certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1724,7 +1724,7 @@ func TestTLSReloadCopyIPOnly(t *testing.T) {
 
 func testTLSReload(
 	t *testing.T,
-	cloneFunc func() transport.TLSInfo,
+	cloneFunc func() *transport.TLSInfo,
 	replaceFunc func(),
 	revertFunc func(),
 	useIP bool) {
@@ -1736,8 +1736,8 @@ func testTLSReload(
 	// 2. start cluster with valid certs
 	clus := integration.NewCluster(t, &integration.ClusterConfig{
 		Size:      1,
-		PeerTLS:   &tlsInfo,
-		ClientTLS: &tlsInfo,
+		PeerTLS:   tlsInfo,
+		ClientTLS: tlsInfo,
 		UseIP:     useIP,
 	})
 	defer clus.Terminate(t)

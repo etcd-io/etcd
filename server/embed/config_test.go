@@ -72,10 +72,10 @@ func TestConfigFileOtherFields(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !ctls.equals(&cfg.ClientTLSInfo) {
+	if !ctls.equals(cfg.ClientTLSInfo) {
 		t.Errorf("ClientTLS = %v, want %v", cfg.ClientTLSInfo, ctls)
 	}
-	if !ptls.equals(&cfg.PeerTLSInfo) {
+	if !ptls.equals(cfg.PeerTLSInfo) {
 		t.Errorf("PeerTLS = %v, want %v", cfg.PeerTLSInfo, ptls)
 	}
 

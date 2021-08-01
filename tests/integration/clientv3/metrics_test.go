@@ -145,7 +145,7 @@ func sumCountersForMetricAndLabels(t *testing.T, url string, metricName string, 
 }
 
 func getHTTPBodyAsLines(t *testing.T, url string) []string {
-	cfgtls := transport.TLSInfo{}
+	cfgtls := &transport.TLSInfo{}
 	tr, err := transport.NewTransport(cfgtls, time.Second)
 	if err != nil {
 		t.Fatalf("Error getting transport: %v", err)

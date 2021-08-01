@@ -28,7 +28,7 @@ import (
 )
 
 func fetchMetrics(ep string) (lines []string, err error) {
-	tr, err := transport.NewTimeoutTransport(transport.TLSInfo{}, time.Second, time.Second, time.Second)
+	tr, err := transport.NewTimeoutTransport(&transport.TLSInfo{}, time.Second, time.Second, time.Second)
 	if err != nil {
 		return nil, err
 	}

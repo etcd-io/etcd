@@ -50,7 +50,7 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	lg := zaptest.NewLogger(t)
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	if scheme == "tcp" {
-		ln1, ln2 := listen(t, "tcp", "localhost:0", transport.TLSInfo{}), listen(t, "tcp", "localhost:0", transport.TLSInfo{})
+		ln1, ln2 := listen(t, "tcp", "localhost:0", &transport.TLSInfo{}), listen(t, "tcp", "localhost:0", &transport.TLSInfo{})
 		srcAddr, dstAddr = ln1.Addr().String(), ln2.Addr().String()
 		ln1.Close()
 		ln2.Close()
@@ -65,9 +65,10 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	defer ln.Close()
 
 	cfg := ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	}
 	if secure {
 		cfg.TLSInfo = tlsInfo
@@ -162,9 +163,9 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	}
 }
 
-func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
+func createTLSInfo(lg *zap.Logger, secure bool) *transport.TLSInfo {
 	if secure {
-		return transport.TLSInfo{
+		return &transport.TLSInfo{
 			KeyFile:        "../../tests/fixtures/server.key.insecure",
 			CertFile:       "../../tests/fixtures/server.crt",
 			TrustedCAFile:  "../../tests/fixtures/ca.crt",
@@ -172,7 +173,7 @@ func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
 			Logger:         lg,
 		}
 	}
-	return transport.TLSInfo{Logger: lg}
+	return &transport.TLSInfo{Logger: lg}
 }
 
 func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(t, false) }
@@ -190,9 +191,10 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 	defer ln.Close()
 
 	cfg := ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	}
 	if secure {
 		cfg.TLSInfo = tlsInfo
@@ -242,13 +244,14 @@ func TestServer_PauseTx(t *testing.T) {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+	ln := listen(t, scheme, dstAddr, &transport.TLSInfo{})
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	})
 
 	waitForServer(t, p)
@@ -258,7 +261,7 @@ func TestServer_PauseTx(t *testing.T) {
 	p.PauseTx()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 
 	recvc := make(chan []byte, 1)
 	go func() {
@@ -291,13 +294,14 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+	ln := listen(t, scheme, dstAddr, &transport.TLSInfo{})
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	})
 
 	waitForServer(t, p)
@@ -309,13 +313,13 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 		return d
 	})
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 	if d := receive(t, ln); bytes.Equal(d, data) {
 		t.Fatalf("expected corrupted data, got %q", string(d))
 	}
 
 	p.UnmodifyTx()
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected uncorrupted data, got %q", string(d))
 	}
@@ -329,13 +333,14 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+	ln := listen(t, scheme, dstAddr, &transport.TLSInfo{})
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	})
 
 	waitForServer(t, p)
@@ -348,13 +353,13 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 		return d[:half:half]
 	})
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 	if d := receive(t, ln); bytes.Equal(d, data) {
 		t.Fatalf("expected corrupted data, got %q", string(d))
 	}
 
 	p.UnmodifyTx()
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected uncorrupted data, got %q", string(d))
 	}
@@ -368,13 +373,14 @@ func TestServer_BlackholeTx(t *testing.T) {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+	ln := listen(t, scheme, dstAddr, &transport.TLSInfo{})
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	})
 
 	waitForServer(t, p)
@@ -384,7 +390,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 	p.BlackholeTx()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 
 	recvc := make(chan []byte, 1)
 	go func() {
@@ -401,7 +407,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 
 	// expect different data, old data dropped
 	data[0]++
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 
 	select {
 	case d := <-recvc:
@@ -421,13 +427,14 @@ func TestServer_Shutdown(t *testing.T) {
 		os.RemoveAll(srcAddr)
 		os.RemoveAll(dstAddr)
 	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+	ln := listen(t, scheme, dstAddr, &transport.TLSInfo{})
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	})
 
 	waitForServer(t, p)
@@ -439,7 +446,7 @@ func TestServer_Shutdown(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
@@ -454,13 +461,14 @@ func TestServer_ShutdownListener(t *testing.T) {
 		os.RemoveAll(dstAddr)
 	}()
 
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+	ln := listen(t, scheme, dstAddr, &transport.TLSInfo{})
 	defer ln.Close()
 
 	p := NewServer(ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	})
 
 	waitForServer(t, p)
@@ -471,11 +479,11 @@ func TestServer_ShutdownListener(t *testing.T) {
 	ln.Close()
 	time.Sleep(200 * time.Millisecond)
 
-	ln = listen(t, scheme, dstAddr, transport.TLSInfo{})
+	ln = listen(t, scheme, dstAddr, &transport.TLSInfo{})
 	defer ln.Close()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, srcAddr, &transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
@@ -488,7 +496,7 @@ func TestServerHTTP_Secure_DelayRx(t *testing.T)   { testServerHTTP(t, true, fal
 func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	lg := zaptest.NewLogger(t)
 	scheme := "tcp"
-	ln1, ln2 := listen(t, scheme, "localhost:0", transport.TLSInfo{}), listen(t, scheme, "localhost:0", transport.TLSInfo{})
+	ln1, ln2 := listen(t, scheme, "localhost:0", &transport.TLSInfo{}), listen(t, scheme, "localhost:0", &transport.TLSInfo{})
 	srcAddr, dstAddr := ln1.Addr().String(), ln2.Addr().String()
 	ln1.Close()
 	ln2.Close()
@@ -507,7 +515,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	tlsInfo := createTLSInfo(lg, secure)
 	var tlsConfig *tls.Config
 	if secure {
-		_, err := tlsInfo.ServerConfig()
+		_, err := tlsInfo.ReloadableServerConfig()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -535,9 +543,10 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	time.Sleep(200 * time.Millisecond)
 
 	cfg := ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Logger:  lg,
+		From:    url.URL{Scheme: scheme, Host: srcAddr},
+		To:      url.URL{Scheme: scheme, Host: dstAddr},
+		TLSInfo: &transport.TLSInfo{},
 	}
 	if secure {
 		cfg.TLSInfo = tlsInfo
@@ -634,10 +643,10 @@ func newUnixAddr() string {
 	return addr
 }
 
-func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln net.Listener) {
+func listen(t *testing.T, scheme, addr string, tlsInfo *transport.TLSInfo) (ln net.Listener) {
 	var err error
 	if !tlsInfo.Empty() {
-		ln, err = transport.NewListener(addr, scheme, &tlsInfo)
+		ln, err = transport.NewListener(addr, scheme, tlsInfo)
 	} else {
 		ln, err = net.Listen(scheme, addr)
 	}
@@ -647,7 +656,7 @@ func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln ne
 	return ln
 }
 
-func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSInfo) {
+func send(t *testing.T, data []byte, scheme, addr string, tlsInfo *transport.TLSInfo) {
 	var out net.Conn
 	var err error
 	if !tlsInfo.Empty() {

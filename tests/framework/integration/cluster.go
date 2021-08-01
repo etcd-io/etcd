@@ -651,7 +651,9 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.NewCluster = true
 	m.BootstrapTimeout = 10 * time.Millisecond
 	if m.PeerTLSInfo != nil {
-		m.ServerConfig.PeerTLSInfo = *m.PeerTLSInfo
+		m.ServerConfig.PeerTLSInfo = m.PeerTLSInfo.Clone()
+	} else {
+		m.ServerConfig.PeerTLSInfo = &transport.TLSInfo{}
 	}
 	m.ElectionTicks = ElectionTicks
 	m.InitialElectionTickAdvance = true
@@ -905,7 +907,7 @@ func (m *Member) Clone(t testutil.TB) *Member {
 	return mm
 }
 
-// Launch starts a member based on ServerConfig, PeerListeners
+// Launch starts a member based on ReloadableServerConfig, PeerListeners
 // and ClientListeners.
 func (m *Member) Launch() error {
 	m.Logger.Info(
@@ -924,7 +926,7 @@ func (m *Member) Launch() error {
 
 	var peerTLScfg *tls.Config
 	if m.PeerTLSInfo != nil && !m.PeerTLSInfo.Empty() {
-		if peerTLScfg, err = m.PeerTLSInfo.ServerConfig(); err != nil {
+		if peerTLScfg, err = m.PeerTLSInfo.ReloadableServerConfig(); err != nil {
 			return err
 		}
 	}
@@ -934,7 +936,7 @@ func (m *Member) Launch() error {
 			tlscfg *tls.Config
 		)
 		if m.ClientTLSInfo != nil && !m.ClientTLSInfo.Empty() {
-			tlscfg, err = m.ClientTLSInfo.ServerConfig()
+			tlscfg, err = m.ClientTLSInfo.ReloadableServerConfig()
 			if err != nil {
 				return err
 			}
@@ -1008,7 +1010,7 @@ func (m *Member) Launch() error {
 			hs.Start()
 		} else {
 			info := m.ClientTLSInfo
-			hs.TLS, err = info.ServerConfig()
+			hs.TLS, err = info.ReloadableServerConfig()
 			if err != nil {
 				return err
 			}
@@ -1271,7 +1273,7 @@ func (m *Member) Terminate(t testutil.TB) {
 // Metric gets the metric value for a member
 func (m *Member) Metric(metricName string, expectLabels ...string) (string, error) {
 	cfgtls := transport.TLSInfo{}
-	tr, err := transport.NewTimeoutTransport(cfgtls, time.Second, time.Second, time.Second)
+	tr, err := transport.NewTimeoutTransport(&cfgtls, time.Second, time.Second, time.Second)
 	if err != nil {
 		return "", err
 	}

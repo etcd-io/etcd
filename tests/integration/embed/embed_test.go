@@ -136,8 +136,8 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 
 	cfg := embed.NewConfig()
 	if secure {
-		cfg.ClientTLSInfo = testTLSInfo
-		cfg.PeerTLSInfo = testTLSInfo
+		cfg.ClientTLSInfo = testTLSInfo.Clone()
+		cfg.PeerTLSInfo = testTLSInfo.Clone()
 	}
 
 	urls := newEmbedURLs(secure, 2)

@@ -23,21 +23,21 @@ import (
 )
 
 // copyTLSFiles clones certs files to dst directory.
-func copyTLSFiles(ti transport.TLSInfo, dst string) (transport.TLSInfo, error) {
-	ci := transport.TLSInfo{
+func copyTLSFiles(ti *transport.TLSInfo, dst string) (*transport.TLSInfo, error) {
+	ci := &transport.TLSInfo{
 		KeyFile:        filepath.Join(dst, "server-key.pem"),
 		CertFile:       filepath.Join(dst, "server.pem"),
 		TrustedCAFile:  filepath.Join(dst, "etcd-root-ca.pem"),
 		ClientCertAuth: ti.ClientCertAuth,
 	}
 	if err := copyFile(ti.KeyFile, ci.KeyFile); err != nil {
-		return transport.TLSInfo{}, err
+		return nil, err
 	}
 	if err := copyFile(ti.CertFile, ci.CertFile); err != nil {
-		return transport.TLSInfo{}, err
+		return nil, err
 	}
 	if err := copyFile(ti.TrustedCAFile, ci.TrustedCAFile); err != nil {
-		return transport.TLSInfo{}, err
+		return nil, err
 	}
 	return ci, nil
 }

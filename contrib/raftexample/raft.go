@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"log"
 	"net/http"
 	"net/url"
@@ -313,6 +314,7 @@ func (rc *raftNode) startRaft() {
 		ServerStats: stats.NewServerStats("", ""),
 		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
 		ErrorC:      make(chan error),
+		TLSInfo:     &transport.TLSInfo{},
 	}
 
 	rc.transport.Start()

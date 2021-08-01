@@ -17,6 +17,7 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"net/url"
 	"os"
 	"os/exec"
@@ -227,9 +228,10 @@ func (srv *Server) startProxy() error {
 
 		srv.lg.Info("starting proxy on client traffic", zap.String("url", advertiseClientURL.String()))
 		srv.advertiseClientPortToProxy[advertiseClientURLPort] = proxy.NewServer(proxy.ServerConfig{
-			Logger: srv.lg,
-			From:   *advertiseClientURL,
-			To:     *listenClientURL,
+			Logger:  srv.lg,
+			From:    *advertiseClientURL,
+			To:      *listenClientURL,
+			TLSInfo: &transport.TLSInfo{},
 		})
 		select {
 		case err = <-srv.advertiseClientPortToProxy[advertiseClientURLPort].Error():
@@ -257,9 +259,10 @@ func (srv *Server) startProxy() error {
 
 		srv.lg.Info("starting proxy on peer traffic", zap.String("url", advertisePeerURL.String()))
 		srv.advertisePeerPortToProxy[advertisePeerURLPort] = proxy.NewServer(proxy.ServerConfig{
-			Logger: srv.lg,
-			From:   *advertisePeerURL,
-			To:     *listenPeerURL,
+			Logger:  srv.lg,
+			From:    *advertisePeerURL,
+			To:      *listenPeerURL,
+			TLSInfo: &transport.TLSInfo{},
 		})
 		select {
 		case err = <-srv.advertisePeerPortToProxy[advertisePeerURLPort].Error():

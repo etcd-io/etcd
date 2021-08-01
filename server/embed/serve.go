@@ -166,7 +166,7 @@ func (sctx *serveCtx) serve(
 	}
 
 	if sctx.secure {
-		tlscfg, tlsErr := tlsinfo.ServerConfig()
+		tlscfg, tlsErr := tlsinfo.ReloadableServerConfig()
 		if tlsErr != nil {
 			return tlsErr
 		}

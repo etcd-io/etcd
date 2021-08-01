@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 )
@@ -41,14 +41,14 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 	}
-	srvTLS, cliTLS := integration.TestTLSInfo, integration.TestTLSInfo
+	srvTLS, cliTLS := integration.TestTLSInfo.Clone(), integration.TestTLSInfo.Clone()
 	if valid {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites, cipherSuites
 	} else {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites[:2], cipherSuites[2:]
 	}
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, ClientTLS: &srvTLS})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, ClientTLS: srvTLS})
 	defer clus.Terminate(t)
 
 	cc, err := cliTLS.ClientConfig()

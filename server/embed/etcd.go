@@ -492,7 +492,7 @@ func (e *Etcd) Err() <-chan error {
 }
 
 func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
-	if err = updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {
+	if err = updateCipherSuites(cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {
 		return nil, err
 	}
 	if err = cfg.PeerSelfCert(); err != nil {
@@ -536,7 +536,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		}
 		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
 		peers[i].Listener, err = transport.NewListenerWithOpts(u.Host, u.Scheme,
-			transport.WithTLSInfo(&cfg.PeerTLSInfo),
+			transport.WithTLSInfo(cfg.PeerTLSInfo),
 			transport.WithSocketOpts(&cfg.SocketOpts),
 			transport.WithTimeout(rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout),
 		)
@@ -604,7 +604,7 @@ func (e *Etcd) servePeers() (err error) {
 }
 
 func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
-	if err = updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
+	if err = updateCipherSuites(cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
 		return nil, err
 	}
 	if err = cfg.ClientSelfCert(); err != nil {
@@ -726,7 +726,7 @@ func (e *Etcd) serveClients() (err error) {
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, gopts...))
+			e.errHandler(s.serve(e.Server, e.cfg.ClientTLSInfo, mux, e.errHandler, gopts...))
 		}(sctx)
 	}
 	return nil
@@ -743,7 +743,7 @@ func (e *Etcd) serveMetrics() (err error) {
 		etcdhttp.HandleHealth(e.cfg.logger, metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
-			tlsInfo := &e.cfg.ClientTLSInfo
+			tlsInfo := e.cfg.ClientTLSInfo
 			if murl.Scheme == "http" {
 				tlsInfo = nil
 			}

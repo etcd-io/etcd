@@ -40,10 +40,10 @@ func TestNewTransportTLSInvalidCipherSuitesTLS12(t *testing.T) {
 	}
 
 	// make server and client have unmatched cipher suites
-	srvTLS, cliTLS := *tlsInfo, *tlsInfo
+	srvTLS, cliTLS := tlsInfo.Clone(), tlsInfo.Clone()
 	srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites[:2], cipherSuites[2:]
 
-	ln, err := NewListener("127.0.0.1:0", "https", &srvTLS)
+	ln, err := NewListener("127.0.0.1:0", "https", srvTLS)
 	if err != nil {
 		t.Fatalf("unexpected NewListener error: %v", err)
 	}

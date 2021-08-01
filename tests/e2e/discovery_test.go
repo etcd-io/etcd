@@ -83,9 +83,9 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 }
 
 func MustNewHTTPClient(t testutil.TB, eps []string, tls *transport.TLSInfo) client.Client {
-	cfgtls := transport.TLSInfo{}
+	cfgtls := &transport.TLSInfo{}
 	if tls != nil {
-		cfgtls = *tls
+		cfgtls = tls
 	}
 	cfg := client.Config{Transport: mustNewTransport(t, cfgtls), Endpoints: eps}
 	c, err := client.New(cfg)
@@ -95,7 +95,7 @@ func MustNewHTTPClient(t testutil.TB, eps []string, tls *transport.TLSInfo) clie
 	return c
 }
 
-func mustNewTransport(t testutil.TB, tlsInfo transport.TLSInfo) *http.Transport {
+func mustNewTransport(t testutil.TB, tlsInfo *transport.TLSInfo) *http.Transport {
 	// tick in integration test is short, so 1s dial timeout could play well.
 	tr, err := transport.NewTimeoutTransport(tlsInfo, time.Second, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
 	if err != nil {

@@ -199,7 +199,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		tlsinfo = &autoTLS
+		tlsinfo = autoTLS
 	}
 	if tlsinfo != nil {
 		lg.Info("gRPC proxy server TLS", zap.String("tls-info", fmt.Sprintf("%+v", tlsinfo)))
@@ -514,7 +514,7 @@ func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c
 		return srvhttp, m.Match(cmux.HTTP1())
 	}
 
-	srvTLS, err := tlsinfo.ServerConfig()
+	srvTLS, err := tlsinfo.ReloadableServerConfig()
 	if err != nil {
 		lg.Fatal("failed to set up TLS", zap.Error(err))
 	}

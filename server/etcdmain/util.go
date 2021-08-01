@@ -60,7 +60,7 @@ func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, ser
 		)
 	}
 
-	endpoints, err = transport.ValidateSecureEndpoints(tlsInfo, endpoints)
+	endpoints, err = transport.ValidateSecureEndpoints(&tlsInfo, endpoints)
 	if err != nil {
 		if lg != nil {
 			lg.Warn(

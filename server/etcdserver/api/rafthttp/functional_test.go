@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"context"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"net/http/httptest"
 	"reflect"
 	"testing"
@@ -36,6 +37,7 @@ func TestSendMessage(t *testing.T) {
 		Raft:        &fakeRaft{},
 		ServerStats: newServerStats(),
 		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "1"),
+		TLSInfo:     &transport.TLSInfo{},
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -50,6 +52,7 @@ func TestSendMessage(t *testing.T) {
 		Raft:        p,
 		ServerStats: newServerStats(),
 		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "2"),
+		TLSInfo:     &transport.TLSInfo{},
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())
@@ -94,6 +97,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		Raft:        &fakeRaft{},
 		ServerStats: newServerStats(),
 		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "1"),
+		TLSInfo:     &transport.TLSInfo{},
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -108,6 +112,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		Raft:        p,
 		ServerStats: newServerStats(),
 		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "2"),
+		TLSInfo:     &transport.TLSInfo{},
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())

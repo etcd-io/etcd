@@ -133,7 +133,7 @@ func newDiscovery(lg *zap.Logger, durl, dproxyurl string, id types.ID) (*discove
 	}
 
 	// TODO: add ResponseHeaderTimeout back when watch on discovery service writes header early
-	tr, err := transport.NewTransport(transport.TLSInfo{}, 30*time.Second)
+	tr, err := transport.NewTransport(&transport.TLSInfo{}, 30*time.Second)
 	if err != nil {
 		return nil, err
 	}

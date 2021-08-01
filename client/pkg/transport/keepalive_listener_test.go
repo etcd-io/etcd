@@ -58,7 +58,7 @@ func TestNewKeepAliveListener(t *testing.T) {
 	}
 	tlsInfo := TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile}
 	tlsInfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
-	tlscfg, err := tlsInfo.ServerConfig()
+	tlscfg, err := tlsInfo.ReloadableServerConfig()
 	if err != nil {
 		t.Fatalf("unexpected serverConfig error: %v", err)
 	}
