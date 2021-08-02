@@ -177,7 +177,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd --socket-reuse-address`](https://github.com/etcd-io/etcd/pull/12702) flag
   - Setting this flag enables `SO_REUSEADDR` which allows binding to an address in `TIME_WAIT` state, improving etcd restart time.
 - Reduce [around 30% memory allocation by logging range response size without marshal](https://github.com/etcd-io/etcd/pull/12871).
-- `ETCD_VERIFY="all"` environment triggers [additional verification of consistency](https://github.com/etcd-io/etcd/pull/) of etcd data-dir files.
+- `ETCD_VERIFY="all"` environment triggers [additional verification of consistency](https://github.com/etcd-io/etcd/pull/12901) of etcd data-dir files.
 - Add [`etcd --enable-log-rotation`](https://github.com/etcd-io/etcd/pull/12774) boolean flag which enables log rotation if true.
 - Add [`etcd --log-rotation-config-json`](https://github.com/etcd-io/etcd/pull/12774) flag which allows passthrough of JSON config to configure log rotation for a file output target.
 - Add experimental distributed tracing boolean flag [`--experimental-enable-distributed-tracing`](https://github.com/etcd-io/etcd/pull/12919) which enables tracing.
