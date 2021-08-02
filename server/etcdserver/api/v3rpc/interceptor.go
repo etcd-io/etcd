@@ -33,9 +33,8 @@ import (
 )
 
 const (
-	maxNoLeaderCnt          = 3
-	warnUnaryRequestLatency = 300 * time.Millisecond
-	snapshotMethod          = "/etcdserverpb.Maintenance/Snapshot"
+	maxNoLeaderCnt = 3
+	snapshotMethod = "/etcdserverpb.Maintenance/Snapshot"
 )
 
 type streamsMap struct {
@@ -78,19 +77,19 @@ func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerIntercepto
 		resp, err := handler(ctx, req)
 		lg := s.Logger()
 		if lg != nil { // acquire stats if debug level is enabled or request is expensive
-			defer logUnaryRequestStats(ctx, lg, info, startTime, req, resp)
+			defer logUnaryRequestStats(ctx, lg, s.Cfg.WarningUnaryRequestDuration, info, startTime, req, resp)
 		}
 		return resp, err
 	}
 }
 
-func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, info *grpc.UnaryServerInfo, startTime time.Time, req interface{}, resp interface{}) {
+func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.Duration, info *grpc.UnaryServerInfo, startTime time.Time, req interface{}, resp interface{}) {
 	duration := time.Since(startTime)
 	var enabledDebugLevel, expensiveRequest bool
 	if lg.Core().Enabled(zap.DebugLevel) {
 		enabledDebugLevel = true
 	}
-	if duration > warnUnaryRequestLatency {
+	if duration > warnLatency {
 		expensiveRequest = true
 	}
 	if !enabledDebugLevel && !expensiveRequest {

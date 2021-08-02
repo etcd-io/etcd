@@ -705,6 +705,7 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 
 	m.InitialCorruptCheck = true
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
+	m.WarningUnaryRequestDuration = embed.DefaultWarningUnaryRequestDuration
 
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
 
