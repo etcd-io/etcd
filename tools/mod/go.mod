@@ -10,7 +10,7 @@ require (
 	github.com/go-openapi/loads v0.19.5 // indirect
 	github.com/go-openapi/spec v0.19.9 // indirect
 	github.com/gogo/protobuf v1.3.2
-	github.com/google/addlicense v0.0.0-20210428195630-6d92264d7170 // indirect
+	github.com/google/addlicense v0.0.0-20210428195630-6d92264d7170
 	github.com/gordonklaus/ineffassign v0.0.0-20200809085317-e36bfde3bb78
 	github.com/grpc-ecosystem/grpc-gateway v1.14.6
 	github.com/gyuho/gocovmerge v0.0.0-20171205171859-50c7e6afd535
