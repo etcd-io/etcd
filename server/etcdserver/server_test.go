@@ -51,6 +51,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
+	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -614,7 +615,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		id:      1,
 		r:       *r,
 		cluster: cl,
-		beHooks: &backendHooks{lg: lg},
+		beHooks: serverstorage.NewBackendHooks(lg, nil),
 	}
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
@@ -662,7 +663,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		cluster:      cl,
 		w:            wait.New(),
 		consistIndex: ci,
-		beHooks:      &backendHooks{lg: lg, indexer: ci},
+		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
 
 	// create EntryConfChange entry
@@ -746,7 +747,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 		cluster:      cl,
 		w:            wait.New(),
 		consistIndex: ci,
-		beHooks:      &backendHooks{lg: lg, indexer: ci},
+		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
 	ents := []raftpb.Entry{}
 	for i := 1; i <= 4; i++ {
@@ -1120,7 +1121,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		cluster:      cl,
 		SyncTicker:   &time.Ticker{},
 		consistIndex: ci,
-		beHooks:      &backendHooks{lg: lg, indexer: ci},
+		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
 	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
@@ -1273,7 +1274,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		cluster:      cl,
 		SyncTicker:   &time.Ticker{},
 		consistIndex: ci,
-		beHooks:      &backendHooks{lg: lg, indexer: ci},
+		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
 	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
@@ -1358,7 +1359,7 @@ func TestAddMember(t *testing.T) {
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
-		beHooks:      &backendHooks{lg: lg},
+		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
 	s.start()
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
@@ -1405,7 +1406,7 @@ func TestRemoveMember(t *testing.T) {
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
-		beHooks:      &backendHooks{lg: lg},
+		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
 	s.start()
 	_, err := s.RemoveMember(context.Background(), 1234)
@@ -1451,7 +1452,7 @@ func TestUpdateMember(t *testing.T) {
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
-		beHooks:      &backendHooks{lg: lg},
+		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
 	s.start()
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}

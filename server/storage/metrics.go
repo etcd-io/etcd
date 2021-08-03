@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2021 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package embed
+package storage
 
 import (
-	"path/filepath"
-
-	"go.etcd.io/etcd/server/v3/storage/wal"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-func isMemberInitialized(cfg *Config) bool {
-	waldir := cfg.WalDir
-	if waldir == "" {
-		waldir = filepath.Join(cfg.Dir, "member", "wal")
-	}
-	return wal.Exist(waldir)
+var quotaBackendBytes = prometheus.NewGauge(prometheus.GaugeOpts{
+	Namespace: "etcd",
+	Subsystem: "server",
+	Name:      "quota_backend_bytes",
+	Help:      "Current backend storage quota size in bytes.",
+})
+
+func init() {
+	prometheus.MustRegister(quotaBackendBytes)
 }

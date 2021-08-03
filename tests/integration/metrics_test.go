@@ -24,7 +24,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/storage"
 )
 
 // TestMetricDbSizeBoot checks that the db size metric is set on boot.
@@ -175,8 +175,8 @@ func TestMetricQuotaBackendBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if int64(qv) != etcdserver.DefaultQuotaBytes {
-		t.Fatalf("expected %d, got %f", etcdserver.DefaultQuotaBytes, qv)
+	if int64(qv) != storage.DefaultQuotaBytes {
+		t.Fatalf("expected %d, got %f", storage.DefaultQuotaBytes, qv)
 	}
 }
 
