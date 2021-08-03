@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"reflect"
 	"sort"
 	"time"
 
@@ -157,7 +156,10 @@ func urlsEqual(ctx context.Context, lg *zap.Logger, a []url.URL, b []url.URL) (b
 	sort.Sort(types.URLs(a))
 	sort.Sort(types.URLs(b))
 	for i := range a {
-		if !reflect.DeepEqual(a[i], b[i]) {
+		ipa:= net.ParseIP(a[i].Hostname())
+		ipb:= net.ParseIP(b[i].Hostname())
+
+		if ! ( ipa.Equal(ipb) && (a[i].Port() == b[i].Port()) && (a[i].Scheme == b[i].Scheme) ) {
 			return false, fmt.Errorf("%q(resolved from %q) != %q(resolved from %q)",
 				a[i].String(), preva[i].String(),
 				b[i].String(), prevb[i].String(),
