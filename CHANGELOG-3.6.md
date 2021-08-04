@@ -15,6 +15,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 ### etcdutl v3
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
+- Add `migrate` command for downgrading/upgrading etcd data dir files.
 
 ### Package `server`
 

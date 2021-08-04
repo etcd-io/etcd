@@ -45,6 +45,7 @@ func init() {
 		etcdutl.NewSnapshotCommand(),
 		etcdutl.NewVersionCommand(),
 		etcdutl.NewCompletionCommand(),
+		etcdutl.NewMigrateCommand(),
 	)
 }
 
