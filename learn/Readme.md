@@ -585,3 +585,51 @@ if err := tx.Commit(); err != nil {
 
 
 
+### 数据毁坏检测:
+
+- 在启动的时候，通过 --experimental-initial-corrupt-check 参数检查各个节点数据是否一致
+- 在运行过程通过指定 --experimental-corrupt-check-time 参数每隔一定时间检查数据一致性
+
+**实现原理：**
+
+​	通过遍历 treeIndex 模块中的所有 key 获取到版本号，然后再根据版本号从 boltdb 里面获取 key 的 value，使用 crc32 hash 算法，将 bucket name、key、value 组合起来计算它的 hash 值。
+
+
+
+### 为什么建议db大小不超过8G：
+
+<img src="./img/etcd db大小影响范围.png" style="zoom:50%;" />
+
+- **启动耗时**: etcd 启动的时候，需打开 boltdb db 文件，读取 db 文件所有 key-value 数据，用于重建内存 treeIndex 模块。因此在大量 key 导致 db 文件过大的场景中，这会导致 etcd 启动较慢。
+- **节点内存配置**: etcd 在启动的时候会通过 mmap 将 db 文件映射内存中，若节点可用内存不足，小于 db 文件大小时，可能会出现缺页文件中断，导致服务稳定性、性能下降。
+- **treeIndex 索引性能**:  etcd 不支持数据分片，内存中的 treeIndex 若保存了几十万到上千万的 key，这会增加查询、修改操作的整体延时。
+- **boltdb 性能**: 大 db 文件场景会导致事务提交耗时增长、抖动。
+- **集群稳定性**: 大 db 文件场景下，一旦出现 expensive request 后，很容易导致 etcd OOM、节点带宽满而丢包。
+- **快照**: 当 Follower 节点落后 Leader 较多数据的时候，会触发 Leader 生成快照重建发送给 Follower 节点，Follower 基于它进行还原重建操作。较大的 db 文件会导致 Leader 发送快照需要消耗较多的 CPU、网络带宽资源，同时 Follower 节点重建还原慢。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
