@@ -357,7 +357,7 @@ func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Back
 func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID) *bootstrappedRaft {
 	member := cl.MemberByName(cfg.Name)
 	id := member.ID
-	wal := bootstrapNewWAL(cfg, id, cl.ID())
+	bwal := bootstrapNewWAL(cfg, id, cl.ID())
 	peers := make([]raft.Peer, len(ids))
 	for i, id := range ids {
 		var ctx []byte
@@ -372,66 +372,66 @@ func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluste
 		zap.String("local-member-id", id.String()),
 		zap.String("cluster-id", cl.ID().String()),
 	)
-	s := wal.MemoryStorage()
+	s := bwal.MemoryStorage()
 	return &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		cl:        cl,
-		config:    raftConfig(cfg, uint64(wal.id), s),
+		config:    raftConfig(cfg, uint64(bwal.id), s),
 		peers:     peers,
 		storage:   s,
-		wal:       wal,
+		wal:       bwal,
 	}
 }
 
 func bootstrapRaftFromWal(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bootstrappedRaft {
-	wal := bootstrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
+	bwal := bootstrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
 
 	cfg.Logger.Info(
 		"restarting local member",
-		zap.String("cluster-id", wal.cid.String()),
-		zap.String("local-member-id", wal.id.String()),
-		zap.Uint64("commit-index", wal.st.Commit),
+		zap.String("cluster-id", bwal.cid.String()),
+		zap.String("local-member-id", bwal.id.String()),
+		zap.Uint64("commit-index", bwal.st.Commit),
 	)
 	cl := membership.NewCluster(cfg.Logger)
-	cl.SetID(wal.id, wal.cid)
-	s := wal.MemoryStorage()
+	cl.SetID(bwal.id, bwal.cid)
+	s := bwal.MemoryStorage()
 	return &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		cl:        cl,
-		config:    raftConfig(cfg, uint64(wal.id), s),
+		config:    raftConfig(cfg, uint64(bwal.id), s),
 		storage:   s,
-		wal:       wal,
+		wal:       bwal,
 	}
 }
 
 func bootstrapRaftFromWalStandalone(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bootstrappedRaft {
-	wal := bootstrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
+	bwal := bootstrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
 
 	// discard the previously uncommitted entries
-	wal.ents = wal.CommitedEntries()
-	entries := wal.ConfigChangeEntries()
+	bwal.ents = bwal.CommitedEntries()
+	entries := bwal.ConfigChangeEntries()
 	// force commit config change entries
-	wal.AppendAndCommitEntries(entries)
+	bwal.AppendAndCommitEntries(entries)
 
 	cfg.Logger.Info(
 		"forcing restart member",
-		zap.String("cluster-id", wal.cid.String()),
-		zap.String("local-member-id", wal.id.String()),
-		zap.Uint64("commit-index", wal.st.Commit),
+		zap.String("cluster-id", bwal.cid.String()),
+		zap.String("local-member-id", bwal.id.String()),
+		zap.Uint64("commit-index", bwal.st.Commit),
 	)
 
 	cl := membership.NewCluster(cfg.Logger)
-	cl.SetID(wal.id, wal.cid)
-	s := wal.MemoryStorage()
+	cl.SetID(bwal.id, bwal.cid)
+	s := bwal.MemoryStorage()
 	return &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		cl:        cl,
-		config:    raftConfig(cfg, uint64(wal.id), s),
+		config:    raftConfig(cfg, uint64(bwal.id), s),
 		storage:   s,
-		wal:       wal,
+		wal:       bwal,
 	}
 }
 
