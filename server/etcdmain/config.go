@@ -329,6 +329,7 @@ func (cfg *config) parse(arguments []string) error {
 	// because we need to determine whether to use or
 	// ignore the env variables based on if the config file is set.
 	if cfg.configFile == "" {
+		// env: ETCD_CONFIG_FILE
 		cfg.configFile = os.Getenv(flags.FlagToEnv("ETCD", "config-file"))
 	}
 

@@ -254,7 +254,11 @@ func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// 把etcd关闭的函数作为钩子hook，
 	osutil.RegisterInterruptHandler(e.Close)
+
+	// Tip: 监听两个channel，要么Ready就绪，要么Stop停止
 	select {
 	case <-e.Server.ReadyNotify(): // wait for e.Server to join the cluster
 	case <-e.Server.StopNotify(): // publish aborted from 'ErrStopped'

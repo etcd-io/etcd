@@ -39,6 +39,7 @@ var (
 
 // RegisterInterruptHandler registers a new InterruptHandler. Handlers registered
 // after interrupt handing was initiated will not be executed.
+// RegisterInterruptHandler 注册一个新的 InterruptHandler。 在中断处理启动后注册的处理程序将不会被执行。
 func RegisterInterruptHandler(h InterruptHandler) {
 	interruptRegisterMu.Lock()
 	defer interruptRegisterMu.Unlock()
