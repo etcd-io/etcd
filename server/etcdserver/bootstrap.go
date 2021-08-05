@@ -532,7 +532,7 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 	if cfg.ForceNewCluster {
 		// discard the previously uncommitted entries
 		bwal.ents = bwal.CommitedEntries()
-		entries := bwal.ConfigChangeEntries()
+		entries := bwal.NewConfigChangeEntries()
 		// force commit config change entries
 		bwal.AppendAndCommitEntries(entries)
 		cfg.Logger.Info(
@@ -657,7 +657,7 @@ func (wal *bootstrappedWAL) CommitedEntries() []raftpb.Entry {
 	return wal.ents
 }
 
-func (wal *bootstrappedWAL) ConfigChangeEntries() []raftpb.Entry {
+func (wal *bootstrappedWAL) NewConfigChangeEntries() []raftpb.Entry {
 	return serverstorage.CreateConfigChangeEnts(
 		wal.lg,
 		serverstorage.GetIDs(wal.lg, wal.snapshot, wal.ents),
