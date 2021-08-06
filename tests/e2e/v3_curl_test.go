@@ -31,8 +31,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
-// TODO: remove /v3beta tests in 3.5 release
-var apiPrefix = []string{"/v3", "/v3beta"}
+var apiPrefix = []string{"/v3"}
 
 func TestV3CurlPutGetNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {

@@ -48,8 +48,6 @@ type v3cURLTest struct {
 	expected string
 }
 
-// TODO remove /kv/lease/timetolive, /kv/lease/revoke, /kv/lease/leases tests in 3.5 release
-
 func testV3CurlLeaseGrant(cx ctlCtx) {
 	leaseID := randomLeaseID()
 
@@ -74,11 +72,6 @@ func testV3CurlLeaseGrant(cx ctlCtx) {
 			value:    gwLeaseTTLWithKeys(cx, leaseID),
 			expected: `"grantedTTL"`,
 		},
-		{
-			endpoint: "/kv/lease/timetolive",
-			value:    gwLeaseTTLWithKeys(cx, leaseID),
-			expected: `"grantedTTL"`,
-		},
 	}
 	if err := cURLWithExpected(cx, tests); err != nil {
 		cx.t.Fatalf("testV3CurlLeaseGrant: %v", err)
@@ -99,11 +92,6 @@ func testV3CurlLeaseRevoke(cx ctlCtx) {
 			value:    gwLeaseRevoke(cx, leaseID),
 			expected: `"revision":"`,
 		},
-		{
-			endpoint: "/kv/lease/revoke",
-			value:    gwLeaseRevoke(cx, leaseID),
-			expected: `etcdserver: requested lease not found`,
-		},
 	}
 	if err := cURLWithExpected(cx, tests); err != nil {
 		cx.t.Fatalf("testV3CurlLeaseRevoke: %v", err)
@@ -121,11 +109,6 @@ func testV3CurlLeaseLeases(cx ctlCtx) {
 		},
 		{
 			endpoint: "/lease/leases",
-			value:    "{}",
-			expected: gwLeaseIDExpected(leaseID),
-		},
-		{
-			endpoint: "/kv/lease/leases",
 			value:    "{}",
 			expected: gwLeaseIDExpected(leaseID),
 		},
