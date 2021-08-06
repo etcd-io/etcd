@@ -324,64 +324,10 @@ func bootstrapClusterWithWAL(cfg config.ServerConfig, storage *bootstrappedStora
 			zap.String("bwal-dir", cfg.WALDir()),
 		)
 	}
-
-	// Find a snapshot to start/restart a raft node
-	walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
+	snapshot, err := recoverSnapshot(cfg, storage, ss)
 	if err != nil {
 		return nil, err
 	}
-	// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
-	// bwal log entries
-	snapshot, err := ss.LoadNewestAvailable(walSnaps)
-	if err != nil && err != snap.ErrNoSnapshot {
-		return nil, err
-	}
-
-	if snapshot != nil {
-		if err = storage.st.Recovery(snapshot.Data); err != nil {
-			cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
-		}
-
-		if err = serverstorage.AssertNoV2StoreContent(cfg.Logger, storage.st, cfg.V2Deprecation); err != nil {
-			cfg.Logger.Error("illegal v2store content", zap.Error(err))
-			return nil, err
-		}
-
-		cfg.Logger.Info(
-			"recovered v2 store from snapshot",
-			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
-		)
-
-		if storage.be, err = serverstorage.RecoverSnapshotBackend(cfg, storage.be, *snapshot, storage.beExist, storage.beHooks); err != nil {
-			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
-		}
-		s1, s2 := storage.be.Size(), storage.be.SizeInUse()
-		cfg.Logger.Info(
-			"recovered v3 backend from snapshot",
-			zap.Int64("backend-size-bytes", s1),
-			zap.String("backend-size", humanize.Bytes(uint64(s1))),
-			zap.Int64("backend-size-in-use-bytes", s2),
-			zap.String("backend-size-in-use", humanize.Bytes(uint64(s2))),
-		)
-		if storage.beExist {
-			// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
-			// etcd from pre-3.0 release.
-			kvindex := storage.ci.ConsistentIndex()
-			if kvindex < snapshot.Metadata.Index {
-				if kvindex != 0 {
-					return nil, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", cfg.BackendPath(), kvindex, snapshot.Metadata.Index)
-				}
-				cfg.Logger.Warn(
-					"consistent index was never saved",
-					zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-				)
-			}
-		}
-	} else {
-		cfg.Logger.Info("No snapshot found. Recovering WAL from scratch!")
-	}
-
 	bwal, meta := bootstrapWALFromSnapshot(cfg.Logger, cfg.WALDir(), snapshot, cfg.UnsafeNoFsync)
 
 	b := &bootstrapedCluster{
@@ -420,6 +366,66 @@ func bootstrapClusterWithWAL(cfg config.ServerConfig, storage *bootstrappedStora
 		return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
 	}
 	return b, nil
+}
+
+func recoverSnapshot(cfg config.ServerConfig, storage *bootstrappedStorage, ss *snap.Snapshotter) (*raftpb.Snapshot, error) {
+	// Find a snapshot to start/restart a raft node
+	walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
+	if err != nil {
+		return nil, err
+	}
+	// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
+	// bwal log entries
+	snapshot, err = ss.LoadNewestAvailable(walSnaps)
+	if err != nil && err != snap.ErrNoSnapshot {
+		return nil, err
+	}
+
+	if snapshot != nil {
+		if err = storage.st.Recovery(snapshot.Data); err != nil {
+			cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
+		}
+
+		if err = serverstorage.AssertNoV2StoreContent(cfg.Logger, storage.st, cfg.V2Deprecation); err != nil {
+			cfg.Logger.Error("illegal v2store content", zap.Error(err))
+			return nil, err
+		}
+
+		cfg.Logger.Info(
+			"recovered v2 store from snapshot",
+			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
+		)
+
+		if storage.be, err = serverstorage.RecoverSnapshotBackend(cfg, storage.be, *snapshot, storage.beExist, storage.beHooks); err != nil {
+			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
+		}
+		s1, s2 := be.Size(), be.SizeInUse()
+		cfg.Logger.Info(
+			"recovered v3 backend from snapshot",
+			zap.Int64("backend-size-bytes", s1),
+			zap.String("backend-size", humanize.Bytes(uint64(s1))),
+			zap.Int64("backend-size-in-use-bytes", s2),
+			zap.String("backend-size-in-use", humanize.Bytes(uint64(s2))),
+		)
+		if storage.beExist {
+			// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
+			// etcd from pre-3.0 release.
+			kvindex := storage.ci.ConsistentIndex()
+			if kvindex < snapshot.Metadata.Index {
+				if kvindex != 0 {
+					return nil, fmt.Errorf("database file (%v index %d) does not match with snapshot (index %d)", cfg.BackendPath(), kvindex, snapshot.Metadata.Index)
+				}
+				cfg.Logger.Warn(
+					"consistent index was never saved",
+					zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+				)
+			}
+		}
+	} else {
+		cfg.Logger.Info("No snapshot found. Recovering WAL from scratch!")
+	}
+	return snapshot, nil
 }
 
 func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluster, ids []types.ID, bwal *bootstrappedWAL) *bootstrappedRaft {
