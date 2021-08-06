@@ -63,14 +63,14 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 	if terr := fileutil.TouchDirAll(cfg.DataDir); terr != nil {
 		return nil, fmt.Errorf("cannot access data directory: %v", terr)
 	}
+
+	if terr := fileutil.TouchDirAll(cfg.MemberDir()); terr != nil {
+		return nil, fmt.Errorf("cannot access member directory: %v", terr)
+	}
 	ss := bootstrapSnapshot(cfg)
 	prt, err := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.PeerDialTimeout())
 	if err != nil {
 		return nil, err
-	}
-
-	if terr := fileutil.TouchDirAll(cfg.MemberDir()); terr != nil {
-		return nil, fmt.Errorf("cannot access member directory: %v", terr)
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
@@ -92,19 +92,19 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 
 	cluster, err := bootstrapCluster(cfg, bwal, prt)
 	if err != nil {
-		backend.be.Close()
+		backend.Close()
 		return nil, err
 	}
 
 	s, err := bootstrapStorage(cfg, st, backend, bwal, cluster)
 	if err != nil {
-		backend.be.Close()
+		backend.Close()
 		return nil, err
 	}
 
 	err = cluster.Finalize(cfg, s)
 	if err != nil {
-		backend.be.Close()
+		backend.Close()
 		return nil, err
 	}
 	raft := bootstrapRaft(cfg, cluster, s.wal)
@@ -125,10 +125,18 @@ type bootstrappedServer struct {
 	ss      *snap.Snapshotter
 }
 
+func (s *bootstrappedServer) Close() {
+	s.storage.Close()
+}
+
 type bootstrappedStorage struct {
 	backend *bootstrappedBackend
 	wal     *bootstrappedWAL
 	st      v2store.Store
+}
+
+func (s *bootstrappedStorage) Close() {
+	s.backend.Close()
 }
 
 type bootstrappedBackend struct {
@@ -137,6 +145,10 @@ type bootstrappedBackend struct {
 	ci       cindex.ConsistentIndexer
 	beExist  bool
 	snapshot *raftpb.Snapshot
+}
+
+func (s *bootstrappedBackend) Close() {
+	s.be.Close()
 }
 
 type bootstrapedCluster struct {
@@ -343,7 +355,7 @@ func bootstrapClusterWithWAL(cfg config.ServerConfig, meta *snapshotMetadata) (*
 	if cfg.ShouldDiscover() {
 		cfg.Logger.Warn(
 			"discovery token is ignored since cluster already initialized; valid logs are found",
-			zap.String("bwal-dir", cfg.WALDir()),
+			zap.String("wal-dir", cfg.WALDir()),
 		)
 	}
 	cl := membership.NewCluster(cfg.Logger)

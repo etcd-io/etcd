@@ -304,7 +304,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	defer func() {
 		if err != nil {
-			b.storage.backend.be.Close()
+			b.Close()
 		}
 	}()
 
