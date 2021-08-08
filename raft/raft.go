@@ -662,7 +662,7 @@ func (r *raft) tickHeartbeat() {
 		r.electionElapsed = 0
 		if r.checkQuorum {
 			if err := r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum}); err != nil {
-				r.logger.Debugf("error occurred during checking sending hearbeat: %v", err)
+				r.logger.Debugf("error occurred during checking sending heartbeat: %v", err)
 			}
 		}
 		// If current leader cannot transfer leadership in electionTimeout, it becomes leader again.
@@ -678,7 +678,7 @@ func (r *raft) tickHeartbeat() {
 	if r.heartbeatElapsed >= r.heartbeatTimeout {
 		r.heartbeatElapsed = 0
 		if err := r.Step(pb.Message{From: r.id, Type: pb.MsgBeat}); err != nil {
-			r.logger.Debugf("error occurred during checking sending hearbeat: %v", err)
+			r.logger.Debugf("error occurred during checking sending heartbeat: %v", err)
 		}
 	}
 }
