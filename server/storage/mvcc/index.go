@@ -15,11 +15,19 @@
 package mvcc
 
 import (
+	"bytes"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/google/btree"
 	"go.uber.org/zap"
+)
+
+const (
+	cachePurgeBatchSize  = 100
+	cachePurgeTimeoutSec = 3
+	cachePurgeInterval   = time.Millisecond * 150
 )
 
 type index interface {
@@ -38,16 +46,77 @@ type index interface {
 	KeyIndex(ki *keyIndex) *keyIndex
 }
 
-type treeIndex struct {
+type rangeCache struct {
 	sync.RWMutex
-	tree *btree.BTree
-	lg   *zap.Logger
+	data map[string]rangeCacheElem
 }
 
-func newTreeIndex(lg *zap.Logger) index {
-	return &treeIndex{
+type rangeCacheElem struct {
+	end   []byte
+	atRev int64
+	total int
+	ts    int64
+}
+
+type treeIndex struct {
+	sync.RWMutex
+	tree  *btree.BTree
+	cache rangeCache
+	stopc chan struct{}
+	lg    *zap.Logger
+}
+
+func newTreeIndex(lg *zap.Logger, stopc chan struct{}) index {
+	ti := &treeIndex{
 		tree: btree.New(32),
-		lg:   lg,
+		cache: rangeCache{
+			RWMutex: sync.RWMutex{},
+			data:    map[string]rangeCacheElem{},
+		},
+		stopc: stopc,
+		lg:    lg,
+	}
+	go ti.rangeCacheRun()
+	return ti
+}
+
+func (ti *treeIndex) rangeCacheRun() {
+	t := time.NewTimer(cachePurgeInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+		case <-ti.stopc:
+			return
+		}
+		for {
+			currTs := time.Now().Unix()
+			var entriesToRemove []string
+			batch := 0
+
+			ti.cache.RLock()
+			for s, elems := range ti.cache.data {
+				if currTs-elems.ts < int64(cachePurgeTimeoutSec) {
+					continue
+				}
+				entriesToRemove = append(entriesToRemove, s)
+				batch++
+				if batch >= cachePurgeBatchSize {
+					break
+				}
+			}
+			ti.cache.RUnlock()
+
+			if len(entriesToRemove) == 0 {
+				break
+			}
+			ti.cache.Lock()
+			for _, s := range entriesToRemove {
+				delete(ti.cache.data, s)
+			}
+			ti.cache.Unlock()
+		}
+		t.Reset(cachePurgeInterval)
 	}
 }
 
@@ -114,15 +183,49 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []
 		}
 		return []revision{rev}, 1
 	}
+
+	recordCount := 0
+	cacheChecked := false
+	currTs := time.Now().Unix()
+	var currentKey []byte
 	ti.visit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			if limit <= 0 || len(revs) < limit {
 				revs = append(revs, rev)
+				recordCount++
+				currentKey = ki.key
+			} else if !cacheChecked {
+				ti.cache.RLock()
+				if val, ok := ti.cache.data[string(key)]; ok {
+					if bytes.Compare(end, val.end) == 0 &&
+						val.atRev == atRev {
+						total = val.total
+						ti.cache.RUnlock()
+						return false
+					}
+				}
+				ti.cache.RUnlock()
+				cacheChecked = true
 			}
 			total++
 		}
 		return true
 	})
+
+	if limit > 0 && total-recordCount > 1000 {
+		// next request assumption
+		newKey := string(currentKey) + "\x00"
+		newElem := rangeCacheElem{
+			end:   end,
+			atRev: atRev,
+			total: total - recordCount,
+			ts:    currTs,
+		}
+		ti.cache.Lock()
+		ti.cache.data[newKey] = newElem
+		ti.cache.Unlock()
+	}
+
 	return revs, total
 }
 

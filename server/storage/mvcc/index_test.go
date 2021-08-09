@@ -23,7 +23,11 @@ import (
 )
 
 func TestIndexGet(t *testing.T) {
-	ti := newTreeIndex(zap.NewExample())
+	stopc := make(chan struct{}, 1)
+	defer func() {
+		close(stopc)
+	}()
+	ti := newTreeIndex(zap.NewExample(), stopc)
 	ti.Put([]byte("foo"), revision{main: 2})
 	ti.Put([]byte("foo"), revision{main: 4})
 	ti.Tombstone([]byte("foo"), revision{main: 6})
@@ -62,10 +66,14 @@ func TestIndexGet(t *testing.T) {
 }
 
 func TestIndexRange(t *testing.T) {
+	stopc := make(chan struct{}, 1)
+	defer func() {
+		close(stopc)
+	}()
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
 	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}}
 
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zap.NewExample(), stopc)
 	for i := range allKeys {
 		ti.Put(allKeys[i], allRevs[i])
 	}
@@ -121,7 +129,11 @@ func TestIndexRange(t *testing.T) {
 }
 
 func TestIndexTombstone(t *testing.T) {
-	ti := newTreeIndex(zap.NewExample())
+	stopc := make(chan struct{}, 1)
+	defer func() {
+		close(stopc)
+	}()
+	ti := newTreeIndex(zap.NewExample(), stopc)
 	ti.Put([]byte("foo"), revision{main: 1})
 
 	err := ti.Tombstone([]byte("foo"), revision{main: 2})
@@ -140,10 +152,14 @@ func TestIndexTombstone(t *testing.T) {
 }
 
 func TestIndexRangeSince(t *testing.T) {
+	stopc := make(chan struct{}, 1)
+	defer func() {
+		close(stopc)
+	}()
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
 	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}, {main: 4}, {main: 5}, {main: 6}}
 
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zap.NewExample(), stopc)
 	for i := range allKeys {
 		ti.Put(allKeys[i], allRevs[i])
 	}
@@ -195,6 +211,10 @@ func TestIndexRangeSince(t *testing.T) {
 }
 
 func TestIndexCompactAndKeep(t *testing.T) {
+	stopc := make(chan struct{}, 1)
+	defer func() {
+		close(stopc)
+	}()
 	maxRev := int64(20)
 	tests := []struct {
 		key     []byte
@@ -217,7 +237,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 	}
 
 	// Continuous Compact and Keep
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zap.NewExample(), stopc)
 	for _, tt := range tests {
 		if tt.remove {
 			ti.Tombstone(tt.key, tt.rev)
@@ -248,7 +268,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 
 	// Once Compact and Keep
 	for i := int64(1); i < maxRev; i++ {
-		ti := newTreeIndex(zap.NewExample())
+		ti := newTreeIndex(zap.NewExample(), stopc)
 		for _, tt := range tests {
 			if tt.remove {
 				ti.Tombstone(tt.key, tt.rev)

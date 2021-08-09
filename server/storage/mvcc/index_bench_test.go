@@ -27,8 +27,12 @@ func BenchmarkIndexCompact100000(b *testing.B)  { benchmarkIndexCompact(b, 10000
 func BenchmarkIndexCompact1000000(b *testing.B) { benchmarkIndexCompact(b, 1000000) }
 
 func benchmarkIndexCompact(b *testing.B, size int) {
+	stopc := make(chan struct{}, 1)
+	defer func() {
+		close(stopc)
+	}()
 	log := zap.NewNop()
-	kvindex := newTreeIndex(log)
+	kvindex := newTreeIndex(log, stopc)
 
 	bytesN := 64
 	keys := createBytesSlice(bytesN, size)

@@ -99,9 +99,8 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 		cfg.CompactionSleepInterval = minimumBatchInterval
 	}
 	s := &store{
-		cfg:     cfg,
-		b:       b,
-		kvindex: newTreeIndex(lg),
+		cfg: cfg,
+		b:   b,
 
 		le: le,
 
@@ -114,6 +113,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 
 		lg: lg,
 	}
+	s.kvindex = newTreeIndex(lg, s.stopc)
 	s.ReadView = &readView{s}
 	s.WriteView = &writeView{s}
 	if s.le != nil {
@@ -304,7 +304,7 @@ func (s *store) Restore(b backend.Backend) error {
 	s.fifoSched.Stop()
 
 	s.b = b
-	s.kvindex = newTreeIndex(s.lg)
+	s.kvindex = newTreeIndex(s.lg, s.stopc)
 
 	{
 		// During restore the metrics might report 'special' values
