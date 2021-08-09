@@ -64,7 +64,7 @@ func (o *migrateOptions) AddFlags(cmd *cobra.Command) {
 	cmd.MarkFlagRequired("data-dir")
 	cmd.MarkFlagDirname("data-dir")
 
-	cmd.Flags().StringVar(&o.targetVersion, "target-version", o.targetVersion, `Target etcd version to migrate contents of data dir. Minmal value 3.5. Format "X.Y" for example 3.6.`)
+	cmd.Flags().StringVar(&o.targetVersion, "target-version", o.targetVersion, `Target etcd version to migrate contents of data dir. Minimal value 3.5. Format "X.Y" for example 3.6.`)
 	cmd.MarkFlagRequired("target-version")
 
 	cmd.Flags().BoolVar(&o.force, "force", o.force, "Ignore migration failure and forcefully override storage version. Not recommended.")
@@ -84,7 +84,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 		return nil, fmt.Errorf("failed to parse target version: %w", err)
 	}
 	if c.targetVersion.LessThan(schema.V3_5) {
-		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5".`, storageVersionToString(c.targetVersion))
+		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5"`, storageVersionToString(c.targetVersion))
 	}
 
 	dbPath := datadir.ToBackendFileName(o.dataDir)
