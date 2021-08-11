@@ -61,7 +61,6 @@ func (tw *metricsTxnWrite) End() {
 
 	ranges := float64(tw.ranges)
 	rangeCounter.Add(ranges)
-	rangeCounterDebug.Add(ranges) // TODO: remove in 3.5 release
 
 	puts := float64(tw.puts)
 	putCounter.Add(puts)

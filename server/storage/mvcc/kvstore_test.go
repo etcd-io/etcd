@@ -485,7 +485,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		revToBytes(revision{main: 2}, rbytes)
 		tx := s0.b.BatchTx()
 		tx.Lock()
-		tx.UnsafePut(schema.Meta, schema.ScheduledCompactKeyName, rbytes)
+		UnsafeSetScheduledCompact(tx, 2)
 		tx.Unlock()
 
 		s0.Close()

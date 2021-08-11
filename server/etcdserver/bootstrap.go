@@ -41,10 +41,11 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/etcd/server/v3/wal"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 )
 
 func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
@@ -117,7 +118,7 @@ type bootstrappedServer struct {
 	st      v2store.Store
 	be      backend.Backend
 	ss      *snap.Snapshotter
-	beHooks *backendHooks
+	beHooks *serverstorage.BackendHooks
 }
 
 func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
@@ -141,11 +142,11 @@ func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
 	return snap.New(cfg.Logger, cfg.SnapDir())
 }
 
-func bootstrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.ConsistentIndexer, beExist bool, beHooks *backendHooks, err error) {
+func bootstrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.ConsistentIndexer, beExist bool, beHooks *serverstorage.BackendHooks, err error) {
 	beExist = fileutil.Exist(cfg.BackendPath())
 	ci = cindex.NewConsistentIndex(nil)
-	beHooks = &backendHooks{lg: cfg.Logger, indexer: ci}
-	be = openBackend(cfg, beHooks)
+	beHooks = serverstorage.NewBackendHooks(cfg.Logger, ci)
+	be = serverstorage.OpenBackend(cfg, beHooks)
 	ci.SetBackend(be)
 	schema.CreateMetaBucket(be.BatchTx())
 	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
@@ -200,7 +201,7 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	remotes := existingCluster.Members()
 	cl.SetID(types.ID(0), existingCluster.ID())
 	cl.SetStore(st)
-	cl.SetBackend(schema.NewMembershipStore(cfg.Logger, be))
+	cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, be))
 	br := bootstrapRaftFromCluster(cfg, cl, nil)
 	cl.SetID(br.wal.id, existingCluster.ID())
 	return &bootstrappedServer{
@@ -240,7 +241,7 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st
 		}
 	}
 	cl.SetStore(st)
-	cl.SetBackend(schema.NewMembershipStore(cfg.Logger, be))
+	cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, be))
 	br := bootstrapRaftFromCluster(cfg, cl, cl.MemberIDs())
 	cl.SetID(br.wal.id, cl.ID())
 	return &bootstrappedServer{
@@ -249,7 +250,7 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper, st
 	}, nil
 }
 
-func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Backend, ss *snap.Snapshotter, beExist bool, beHooks *backendHooks, ci cindex.ConsistentIndexer) (*bootstrappedServer, error) {
+func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Backend, ss *snap.Snapshotter, beExist bool, beHooks *serverstorage.BackendHooks, ci cindex.ConsistentIndexer) (*bootstrappedServer, error) {
 	if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
 		return nil, fmt.Errorf("cannot write to member directory: %v", err)
 	}
@@ -282,7 +283,7 @@ func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Back
 			cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
 		}
 
-		if err = assertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
+		if err = serverstorage.AssertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
 			cfg.Logger.Error("illegal v2store content", zap.Error(err))
 			return nil, err
 		}
@@ -293,7 +294,7 @@ func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Back
 			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
 		)
 
-		if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
+		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 		}
 		s1, s2 := be.Size(), be.SizeInUse()
@@ -330,7 +331,7 @@ func bootstrapWithWAL(cfg config.ServerConfig, st v2store.Store, be backend.Back
 	}
 
 	r.raft.cl.SetStore(st)
-	r.raft.cl.SetBackend(schema.NewMembershipStore(cfg.Logger, be))
+	r.raft.cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, be))
 	r.raft.cl.Recover(api.UpdateCapability)
 	if r.raft.cl.Version() != nil && !r.raft.cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
 		bepath := cfg.BackendPath()
@@ -578,9 +579,9 @@ func (wal *bootstrappedWAL) CommitedEntries() []raftpb.Entry {
 }
 
 func (wal *bootstrappedWAL) ConfigChangeEntries() []raftpb.Entry {
-	return createConfigChangeEnts(
+	return serverstorage.CreateConfigChangeEnts(
 		wal.lg,
-		getIDs(wal.lg, wal.snapshot, wal.ents),
+		serverstorage.GetIDs(wal.lg, wal.snapshot, wal.ents),
 		uint64(wal.id),
 		wal.st.Term,
 		wal.st.Commit,

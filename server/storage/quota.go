@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package storage
 
 import (
 	"sync"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -50,15 +52,15 @@ func (*passthroughQuota) Available(interface{}) bool { return true }
 func (*passthroughQuota) Cost(interface{}) int       { return 0 }
 func (*passthroughQuota) Remaining() int64           { return 1 }
 
-type backendQuota struct {
-	s               *EtcdServer
+type BackendQuota struct {
+	be              backend.Backend
 	maxBackendBytes int64
 }
 
 const (
 	// leaseOverhead is an estimate for the cost of storing a lease
 	leaseOverhead = 64
-	// kvOverhead is an estimate for the cost of storing a key's metadata
+	// kvOverhead is an estimate for the cost of storing a key's Metadata
 	kvOverhead = 256
 )
 
@@ -71,23 +73,23 @@ var (
 )
 
 // NewBackendQuota creates a quota layer with the given storage limit.
-func NewBackendQuota(s *EtcdServer, name string) Quota {
-	lg := s.Logger()
-	quotaBackendBytes.Set(float64(s.Cfg.QuotaBackendBytes))
+func NewBackendQuota(cfg config.ServerConfig, be backend.Backend, name string) Quota {
+	lg := cfg.Logger
+	quotaBackendBytes.Set(float64(cfg.QuotaBackendBytes))
 
-	if s.Cfg.QuotaBackendBytes < 0 {
+	if cfg.QuotaBackendBytes < 0 {
 		// disable quotas if negative
 		quotaLogOnce.Do(func() {
 			lg.Info(
 				"disabled backend quota",
 				zap.String("quota-name", name),
-				zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
+				zap.Int64("quota-size-bytes", cfg.QuotaBackendBytes),
 			)
 		})
 		return &passthroughQuota{}
 	}
 
-	if s.Cfg.QuotaBackendBytes == 0 {
+	if cfg.QuotaBackendBytes == 0 {
 		// use default size if no quota size given
 		quotaLogOnce.Do(func() {
 			if lg != nil {
@@ -100,16 +102,16 @@ func NewBackendQuota(s *EtcdServer, name string) Quota {
 			}
 		})
 		quotaBackendBytes.Set(float64(DefaultQuotaBytes))
-		return &backendQuota{s, DefaultQuotaBytes}
+		return &BackendQuota{be, DefaultQuotaBytes}
 	}
 
 	quotaLogOnce.Do(func() {
-		if s.Cfg.QuotaBackendBytes > MaxQuotaBytes {
+		if cfg.QuotaBackendBytes > MaxQuotaBytes {
 			lg.Warn(
 				"quota exceeds the maximum value",
 				zap.String("quota-name", name),
-				zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
-				zap.String("quota-size", humanize.Bytes(uint64(s.Cfg.QuotaBackendBytes))),
+				zap.Int64("quota-size-bytes", cfg.QuotaBackendBytes),
+				zap.String("quota-size", humanize.Bytes(uint64(cfg.QuotaBackendBytes))),
 				zap.Int64("quota-maximum-size-bytes", MaxQuotaBytes),
 				zap.String("quota-maximum-size", maxQuotaSize),
 			)
@@ -117,19 +119,19 @@ func NewBackendQuota(s *EtcdServer, name string) Quota {
 		lg.Info(
 			"enabled backend quota",
 			zap.String("quota-name", name),
-			zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
-			zap.String("quota-size", humanize.Bytes(uint64(s.Cfg.QuotaBackendBytes))),
+			zap.Int64("quota-size-bytes", cfg.QuotaBackendBytes),
+			zap.String("quota-size", humanize.Bytes(uint64(cfg.QuotaBackendBytes))),
 		)
 	})
-	return &backendQuota{s, s.Cfg.QuotaBackendBytes}
+	return &BackendQuota{be, cfg.QuotaBackendBytes}
 }
 
-func (b *backendQuota) Available(v interface{}) bool {
-	// TODO: maybe optimize backend.Size()
-	return b.s.Backend().Size()+int64(b.Cost(v)) < b.maxBackendBytes
+func (b *BackendQuota) Available(v interface{}) bool {
+	// TODO: maybe optimize Backend.Size()
+	return b.be.Size()+int64(b.Cost(v)) < b.maxBackendBytes
 }
 
-func (b *backendQuota) Cost(v interface{}) int {
+func (b *BackendQuota) Cost(v interface{}) int {
 	switch r := v.(type) {
 	case *pb.PutRequest:
 		return costPut(r)
@@ -167,6 +169,6 @@ func costTxn(r *pb.TxnRequest) int {
 	return sizeSuccess
 }
 
-func (b *backendQuota) Remaining() int64 {
-	return b.maxBackendBytes - b.s.Backend().Size()
+func (b *BackendQuota) Remaining() int64 {
+	return b.maxBackendBytes - b.be.Size()
 }
