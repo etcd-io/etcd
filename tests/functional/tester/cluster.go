@@ -70,7 +70,7 @@ var dialOpts = []grpc.DialOption{
 	grpc.WithBlock(),
 }
 
-// NewCluster creates a client from a tester configuration.
+// NewCluster creates a cluster from a tester configuration.
 func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	clus, err := read(lg, fpath)
 	if err != nil {
@@ -83,21 +83,24 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	clus.agentRequests = make([]*rpcpb.Request, len(clus.Members))
 	clus.cases = make([]Case, 0)
 
+	lg.Info("creating members")
 	for i, ap := range clus.Members {
 		var err error
 		clus.agentConns[i], err = grpc.Dial(ap.AgentAddr, dialOpts...)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot dial agent %v: %w", ap.AgentAddr, err)
 		}
 		clus.agentClients[i] = rpcpb.NewTransportClient(clus.agentConns[i])
-		clus.lg.Info("connected", zap.String("agent-address", ap.AgentAddr))
+		lg.Info("connected", zap.String("agent-address", ap.AgentAddr))
 
 		clus.agentStreams[i], err = clus.agentClients[i].Transport(context.Background())
 		if err != nil {
 			return nil, err
 		}
-		clus.lg.Info("created stream", zap.String("agent-address", ap.AgentAddr))
+		lg.Info("created stream", zap.String("agent-address", ap.AgentAddr))
 	}
+
+	lg.Info("agents configured.")
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
@@ -112,6 +115,7 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		ErrorLog: log.New(ioutil.Discard, "net/http", 0),
 	}
 	go clus.serveTesterServer()
+	lg.Info("tester server started")
 
 	clus.rateLimiter = rate.NewLimiter(
 		rate.Limit(int(clus.Tester.StressQPS)),
@@ -699,7 +703,7 @@ func (clus *Cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 					"compact error is ignored",
 					zap.String("endpoint", m.EtcdClientEndpoint),
 					zap.Int64("compact-revision", rev),
-					zap.Error(cerr),
+					zap.String("expected-error-msg", cerr.Error()),
 				)
 			} else {
 				clus.lg.Warn(

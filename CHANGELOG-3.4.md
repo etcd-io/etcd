@@ -972,7 +972,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Now [`(r *raft) Step` returns `raft.ErrProposalDropped`](https://github.com/etcd-io/etcd/pull/9137) if a proposal has been ignored.
   - e.g. a node is removed from cluster, or [`raftpb.MsgProp` arrives at current leader while there is an ongoing leadership transfer](https://github.com/etcd-io/etcd/issues/8975).
 - Improve [Raft `becomeLeader` and `stepLeader`](https://github.com/etcd-io/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
-  - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
+  - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay heartbeat send.
 - Fix [missing learner nodes on `(n *node) ApplyConfChange`](https://github.com/etcd-io/etcd/pull/9116).
 - Add [`raft.Config.MaxUncommittedEntriesSize`](https://github.com/etcd-io/etcd/pull/10167) to limit the total size of the uncommitted entries in bytes.
   - Once exceeded, raft returns `raft.ErrProposalDropped` error.

@@ -249,7 +249,7 @@ func (ls *leaseStresser) createAliveLeasesWithShortTTL() {
 				)
 				return
 			}
-			ls.lg.Warn("createAliveLeasesWithShortTTL", zap.Int64("lease-id", leaseID))
+			ls.lg.Debug("createAliveLeasesWithShortTTL", zap.Int64("lease-id", leaseID))
 			ls.alivedLeasesWithShortTTL.add(leaseID, time.Now())
 			// keep track of all the keep lease alive goroutines
 			ls.aliveWg.Add(1)

@@ -57,6 +57,9 @@ var etcdFields = []string{
 	"Logger",
 	"LogOutputs",
 	"LogLevel",
+
+	"SocketReuseAddress",
+	"SocketReusePort",
 }
 
 // Flags returns etcd flags in string slice.

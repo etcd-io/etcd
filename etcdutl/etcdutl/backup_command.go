@@ -27,15 +27,15 @@ import (
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/datadir"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/etcd/server/v3/verify"
-	"go.etcd.io/etcd/server/v3/wal"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
@@ -64,6 +64,10 @@ func NewBackupCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&withV3, "with-v3", true, "Backup v3 backend data")
 	cmd.MarkFlagRequired("data-dir")
 	cmd.MarkFlagRequired("backup-dir")
+	cmd.MarkFlagDirname("data-dir")
+	cmd.MarkFlagDirname("wal-dir")
+	cmd.MarkFlagDirname("backup-dir")
+	cmd.MarkFlagDirname("backup-wal-dir")
 	return cmd
 }
 
@@ -307,22 +311,22 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 
 	be := backend.NewDefaultBackend(destDB)
 	defer be.Close()
-
-	if err := membership.TrimClusterFromBackend(be); err != nil {
+	ms := schema.NewMembershipBackend(lg, be)
+	if err := ms.TrimClusterFromBackend(); err != nil {
 		lg.Fatal("bbolt tx.Membership failed", zap.Error(err))
 	}
 
 	raftCluster := membership.NewClusterFromMembers(lg, desired.clusterId, desired.members)
 	raftCluster.SetID(desired.nodeId, desired.clusterId)
-	raftCluster.SetBackend(be)
+	raftCluster.SetBackend(ms)
 	raftCluster.PushMembershipToStorage()
 
 	if !v3 {
 		tx := be.BatchTx()
 		tx.Lock()
 		defer tx.Unlock()
-		cindex.UnsafeCreateMetaBucket(tx)
-		cindex.UnsafeUpdateConsistentIndex(tx, idx, term, false)
+		schema.UnsafeCreateMetaBucket(tx)
+		schema.UnsafeUpdateConsistentIndex(tx, idx, term, false)
 	} else {
 		// Thanks to translateWAL not moving entries, but just replacing them with
 		// 'empty', there is no need to update the consistency index.

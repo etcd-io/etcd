@@ -439,6 +439,9 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 	for {
 		stream, err := l.resetRecv()
 		if err != nil {
+			l.lg.Warn("error occurred during lease keep alive loop",
+				zap.Error(err),
+			)
 			if canceledByCaller(l.stopCtx, err) {
 				return err
 			}
@@ -571,7 +574,9 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 		for _, id := range tosend {
 			r := &pb.LeaseKeepAliveRequest{ID: int64(id)}
 			if err := stream.Send(r); err != nil {
-				// TODO do something with this error?
+				l.lg.Warn("error occurred during lease keep alive request sending",
+					zap.Error(err),
+				)
 				return
 			}
 		}

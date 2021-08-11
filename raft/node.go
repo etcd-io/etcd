@@ -223,7 +223,10 @@ func StartNode(c *Config, peers []Peer) Node {
 	if err != nil {
 		panic(err)
 	}
-	rn.Bootstrap(peers)
+	err = rn.Bootstrap(peers)
+	if err != nil {
+		c.Logger.Warningf("error occurred during starting a new node: %v", err)
+	}
 
 	n := newNode(rn)
 

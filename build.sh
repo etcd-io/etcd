@@ -100,26 +100,11 @@ tools_build() {
 }
 
 tests_build() {
-  out="bin"
-  if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
-  tools_path="
-    functional/cmd/etcd-agent
-    functional/cmd/etcd-proxy
-    functional/cmd/etcd-runner
-    functional/cmd/etcd-tester"
-  (
-    cd tests || exit 2
-    for tool in ${tools_path}; do
-      echo "Building" "'${tool}'"...
-      run rm -f "../${out}/${tool}"
-
-      # shellcheck disable=SC2086
-      run env CGO_ENABLED=0 GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" go build ${GO_BUILD_FLAGS} \
-        -installsuffix=cgo \
-        "-ldflags='${GO_LDFLAGS[*]}'" \
-        -o="../${out}/${tool}" "./${tool}" || return 2
-    done
-  ) || return 2
+  out=${BINDIR:-./bin}
+  out=$(readlink -m "$out")
+  out="${out}/functional/cmd"
+  mkdir -p "${out}"
+  BINDIR="${out}" run ./tests/functional/build.sh || return 2
 }
 
 toggle_failpoints_default

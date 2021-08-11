@@ -124,12 +124,7 @@ var (
 		Name:      "lease_expired_total",
 		Help:      "The total number of expired leases.",
 	})
-	quotaBackendBytes = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "quota_backend_bytes",
-		Help:      "Current backend storage quota size in bytes.",
-	})
+
 	currentVersion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
@@ -191,7 +186,6 @@ func init() {
 	prometheus.MustRegister(slowReadIndex)
 	prometheus.MustRegister(readIndexFailed)
 	prometheus.MustRegister(leaseExpired)
-	prometheus.MustRegister(quotaBackendBytes)
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)

@@ -31,8 +31,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
-// TODO: remove /v3beta tests in 3.5 release
-var apiPrefix = []string{"/v3", "/v3beta"}
+var apiPrefix = []string{"/v3"}
 
 func TestV3CurlPutGetNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
@@ -363,6 +362,21 @@ func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
 		expected: `{"error":"\"leader\" field must be provided","code":2,"message":"\"leader\" field must be provided"}`,
 	}); err != nil {
 		cx.t.Fatalf("failed post resign request (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
+func TestV3CurlMaintenanceAlarmMissiongAlarm(t *testing.T) {
+	for _, p := range apiPrefix {
+		testCtl(t, testV3CurlMaintenanceAlarmMissiongAlarm, withApiPrefix(p), withCfg(*newConfigNoTLS()))
+	}
+}
+
+func testV3CurlMaintenanceAlarmMissiongAlarm(cx ctlCtx) {
+	if err := cURLPost(cx.epc, cURLReq{
+		endpoint: path.Join(cx.apiPrefix, "/maintenance/alarm"),
+		value:    `{"action": "ACTIVATE"}`,
+	}); err != nil {
+		cx.t.Fatalf("failed post maintenance alarm (%s) (%v)", cx.apiPrefix, err)
 	}
 }
 

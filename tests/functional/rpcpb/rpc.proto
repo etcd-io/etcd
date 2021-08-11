@@ -1,7 +1,7 @@
 syntax = "proto3";
 package rpcpb;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
@@ -27,6 +27,7 @@ message SnapshotInfo {
   int64 SnapshotHash = 7;
   int64 SnapshotRevision = 8;
   string Took = 9;
+  string Version = 10;
 }
 
 message Response {
@@ -239,6 +240,9 @@ message Etcd {
   // LogOutputs is the log file to store current etcd server logs.
   repeated string LogOutputs = 72 [(gogoproto.moretags) = "yaml:\"log-outputs\""];
   string LogLevel = 73 [(gogoproto.moretags) = "yaml:\"log-level\""];
+
+  bool SocketReuseAddress = 81 [(gogoproto.moretags) = "yaml:\"socket-reuse-address\""];
+  bool SocketReusePort = 82 [(gogoproto.moretags) = "yaml:\"socket-reuse-port\""];
 }
 
 enum Operation {

@@ -75,6 +75,9 @@ Join Hangouts Meet: [meet.google.com/umg-nrxn-qvs](https://meet.google.com/umg-n
 
 Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
 
+## Maintainers
+
+[MAINTAINERS](MAINTAINERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. MAINTAINERS maintain productive relationships across different companies and disciplines. Read more about [MAINTAINERS role and responsibilities](GOVERNANCE.md#maintainers).
 
 ## Getting started
 
@@ -88,7 +91,7 @@ For those wanting to try the very latest version, [build the latest version of e
 
 [github-release]: https://github.com/etcd-io/etcd/releases
 [branch-management]: https://etcd.io/docs/latest/branch_management
-[dl-build]: https://etcd.io/docs/latest/dl-build#build-the-latest-version
+[dl-build]: https://etcd.io/docs/latest/install/#build-from-source
 
 ### Running etcd
 
@@ -153,6 +156,12 @@ Follow the steps in [Procfile.learner](./Procfile.learner) to add a learner node
 goreman -f ./Procfile.learner start
 ```
 
+### Install etcd client v3
+
+```bash
+go get go.etcd.io/etcd/client/v3
+```
+
 ### Next steps
 
 Now it's time to dig into the full etcd API and other guides.
@@ -186,7 +195,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 ## Reporting bugs
 
-See [reporting bugs](https://etcd.io/docs/latest/reporting-bugs) for details about reporting any issues.
+See [reporting bugs](https://etcd.io/docs/latest/reporting_bugs/) for details about reporting any issues.
 
 ## Reporting a security vulnerability
 

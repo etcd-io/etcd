@@ -246,6 +246,8 @@ Experimental feature:
     Enable the write transaction to use a shared buffer in its readonly check operations.
   --experimental-bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
+  --experimental-warning-unary-request-duration '300ms'
+    Set time duration after which a warning is generated if a unary request takes more than this duration.
 
 Unsafe feature:
   --force-new-cluster 'false'

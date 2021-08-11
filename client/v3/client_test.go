@@ -17,13 +17,15 @@ package clientv3
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"net"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"google.golang.org/grpc"
@@ -37,7 +39,7 @@ func NewClient(t *testing.T, cfg Config) (*Client, error) {
 }
 
 func TestDialCancel(t *testing.T) {
-	testutil.BeforeTest(t)
+	testutil.RegisterLeakDetection(t)
 
 	// accept first connection so client is created with dial timeout
 	ln, err := net.Listen("unix", "dialcancel:12345")
@@ -89,7 +91,7 @@ func TestDialCancel(t *testing.T) {
 }
 
 func TestDialTimeout(t *testing.T) {
-	testutil.BeforeTest(t)
+	testutil.RegisterLeakDetection(t)
 
 	wantError := context.DeadlineExceeded
 
@@ -199,4 +201,53 @@ func TestZapWithLogger(t *testing.T) {
 	if c.lg != lg {
 		t.Errorf("WithZapLogger should modify *zap.Logger")
 	}
+}
+
+func TestAuthTokenBundleNoOverwrite(t *testing.T) {
+	// Create a mock AuthServer to handle Authenticate RPCs.
+	lis, err := net.Listen("unix", filepath.Join(t.TempDir(), "etcd-auth-test:0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lis.Close()
+	addr := "unix://" + lis.Addr().String()
+	srv := grpc.NewServer()
+	etcdserverpb.RegisterAuthServer(srv, mockAuthServer{})
+	go srv.Serve(lis)
+	defer srv.Stop()
+
+	// Create a client, which should call Authenticate on the mock server to
+	// exchange username/password for an auth token.
+	c, err := NewClient(t, Config{
+		DialTimeout: 5 * time.Second,
+		Endpoints:   []string{addr},
+		Username:    "foo",
+		Password:    "bar",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	oldTokenBundle := c.authTokenBundle
+
+	// Call the public Dial again, which should preserve the original
+	// authTokenBundle.
+	gc, err := c.Dial(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gc.Close()
+	newTokenBundle := c.authTokenBundle
+
+	if oldTokenBundle != newTokenBundle {
+		t.Error("Client.authTokenBundle has been overwritten during Client.Dial")
+	}
+}
+
+type mockAuthServer struct {
+	*etcdserverpb.UnimplementedAuthServer
+}
+
+func (mockAuthServer) Authenticate(context.Context, *etcdserverpb.AuthenticateRequest) (*etcdserverpb.AuthenticateResponse, error) {
+	return &etcdserverpb.AuthenticateResponse{Token: "mock-token"}, nil
 }

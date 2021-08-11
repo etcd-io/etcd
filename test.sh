@@ -1,35 +1,35 @@
 #!/usr/bin/env bash
 #
 # Run all etcd tests
-# ./test
-# ./test -v
+# ./test.sh
+# ./test.sh -v
 #
 #
 # Run specified test pass
 #
-# $ PASSES=unit ./test
-# $ PASSES=integration ./test
+# $ PASSES=unit ./test.sh
+# $ PASSES=integration ./test.sh
 #
 #
 # Run tests for one package
 # Each pass has different default timeout, if you just run tests in one package or 1 test case then you can set TIMEOUT
 # flag for different expectation
 #
-# $ PASSES=unit PKG=./wal TIMEOUT=1m ./test
-# $ PASSES=integration PKG=./clientv3 TIMEOUT=1m ./test
+# $ PASSES=unit PKG=./wal TIMEOUT=1m ./test.sh
+# $ PASSES=integration PKG=./clientv3 TIMEOUT=1m ./test.sh
 #
 # Run specified unit tests in one package
 # To run all the tests with prefix of "TestNew", set "TESTCASE=TestNew ";
 # to run only "TestNew", set "TESTCASE="\bTestNew\b""
 #
-# $ PASSES=unit PKG=./wal TESTCASE=TestNew TIMEOUT=1m ./test
-# $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m ./test
-# $ PASSES=integration PKG=./client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./test
+# $ PASSES=unit PKG=./wal TESTCASE=TestNew TIMEOUT=1m ./test.sh
+# $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m ./test.sh
+# $ PASSES=integration PKG=./client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./test.sh
 #
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
-# $ COVERDIR=coverage PASSES="build build_cov cov" ./test
+# $ COVERDIR=coverage PASSES="build build_cov cov" ./test.sh
 # $ go tool cover -html ./coverage/cover.out
 set -e
 set -o pipefail
@@ -142,7 +142,7 @@ function generic_checker {
 }
 
 function functional_pass {
-  run ./tests/functional/build
+  run ./tests/functional/build.sh || exit 1
 
   # Clean up any data and logs from previous runs
   rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
@@ -162,11 +162,12 @@ function functional_pass {
   done
 
   log_callout "functional test START!"
-  run ./bin/etcd-tester --config ./tests/functional/functional.yaml && log_success "'etcd-tester' succeeded"
+  run ./bin/etcd-tester --config ./tests/functional/functional.yaml -test.v && log_success "'etcd-tester' succeeded"
   local etcd_tester_exit_code=$?
 
   if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
     log_error "ETCD_TESTER_EXIT_CODE:" ${etcd_tester_exit_code}
+    exit 1
   fi
 
   # shellcheck disable=SC2206
@@ -290,7 +291,7 @@ function cov_pass {
   fi
 
   if [ ! -f "bin/etcd_test" ]; then
-    log_error "etcd_test binary not found. Call: PASSES='build_cov' ./test"
+    log_error "etcd_test binary not found. Call: PASSES='build_cov' ./test.sh"
     return 255
   fi
 
@@ -472,20 +473,15 @@ function nakedret_pass {
   run_for_modules generic_checker run_go_tool "github.com/alexkohler/nakedret"
 }
 
-function license_header_pass {
+function license_header_per_module {
   # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
   local gofiles=()
   while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
-  
-  for file in "${gofiles[@]}"; do
-    if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
-      licRes="${licRes}"$(echo -e "  ${file}")
-    fi
-  done
-  if [ -n "${licRes}" ]; then
-    log_error -e "license header checking failed:\\n${licRes}"
-    return 255
-  fi
+  run_go_tool "github.com/google/addlicense" --check "${gofiles[@]}"
+}
+
+function license_header_pass {
+  run_for_modules generic_checker license_header_per_module
 }
 
 function receiver_name_for_package {
@@ -615,13 +611,13 @@ function dep_pass {
 function release_pass {
   rm -f ./bin/etcd-last-release
   # to grab latest patch release; bump this up for every minor release
-  UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.4.*" | head -1)
+  UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.5.*" | head -1 | cut -d- -f1)
   if [ -n "$MANUAL_VER" ]; then
     # in case, we need to test against different version
     UPGRADE_VER=$MANUAL_VER
   fi
   if [[ -z ${UPGRADE_VER} ]]; then
-    UPGRADE_VER="v3.3.0"
+    UPGRADE_VER="v3.5.0"
     log_warning "fallback to" ${UPGRADE_VER}
   fi
 

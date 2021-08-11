@@ -202,7 +202,9 @@ func testIssue6361(t *testing.T, etcdutl bool) {
 	fpath := filepath.Join(t.TempDir(), "test.snapshot")
 
 	t.Log("etcdctl saving snapshot...")
-	if err = spawnWithExpect(append(prefixArgs, "snapshot", "save", fpath), fmt.Sprintf("Snapshot saved at %s", fpath)); err != nil {
+	if err = spawnWithExpects(append(prefixArgs, "snapshot", "save", fpath),
+		fmt.Sprintf("Snapshot saved at %s", fpath),
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -284,4 +286,32 @@ func testIssue6361(t *testing.T, etcdutl bool) {
 		t.Fatal(err)
 	}
 	t.Log("Test logic done")
+}
+
+// For storageVersion to be stored, all fields expected 3.6 fields need to be set. This happens after first WAL snapshot.
+// In this test we lower snapshotCount to 1 to ensure WAL snapshot is triggered.
+func TestCtlV3SnapshotVersion(t *testing.T) {
+	testCtl(t, snapshotVersionTest, withCfg(etcdProcessClusterConfig{snapshotCount: 1}))
+}
+func TestCtlV3SnapshotVersionEtcdutl(t *testing.T) {
+	testCtl(t, snapshotVersionTest, withEtcdutl(), withCfg(etcdProcessClusterConfig{snapshotCount: 1}))
+}
+
+func snapshotVersionTest(cx ctlCtx) {
+	maintenanceInitKeys(cx)
+
+	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
+	defer os.RemoveAll(fpath)
+
+	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
+		cx.t.Fatalf("snapshotVersionTest ctlV3SnapshotSave error (%v)", err)
+	}
+
+	st, err := getSnapshotStatus(cx, fpath)
+	if err != nil {
+		cx.t.Fatalf("snapshotVersionTest getSnapshotStatus error (%v)", err)
+	}
+	if st.Version != "3.6.0" {
+		cx.t.Fatalf("expected %q, got %q", "3.6.0", st.Version)
+	}
 }

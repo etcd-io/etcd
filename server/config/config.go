@@ -25,7 +25,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/netutil"
-	"go.etcd.io/etcd/server/v3/datadir"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	bolt "go.etcd.io/bbolt"
@@ -114,13 +114,15 @@ type ServerConfig struct {
 	AutoCompactionRetention time.Duration
 	AutoCompactionMode      string
 	CompactionBatchLimit    int
+	CompactionSleepInterval time.Duration
 	QuotaBackendBytes       int64
 	MaxTxnOps               uint
 
 	// MaxRequestBytes is the maximum request size to send over raft.
 	MaxRequestBytes uint
 
-	WarningApplyDuration time.Duration
+	WarningApplyDuration        time.Duration
+	WarningUnaryRequestDuration time.Duration
 
 	StrictReconfigCheck bool
 

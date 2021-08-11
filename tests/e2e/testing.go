@@ -25,7 +25,7 @@ import (
 
 func BeforeTest(t testing.TB) {
 	skipInShortMode(t)
-	testutil.BeforeTest(t)
+	testutil.RegisterLeakDetection(t)
 	os.Setenv(verify.ENV_VERIFY, verify.ENV_VERIFY_ALL_VALUE)
 
 	path, err := os.Getwd()

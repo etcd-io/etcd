@@ -24,7 +24,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/mvcc"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -77,6 +77,7 @@ var toGRPCErrorMap = map[error]error{
 	auth.ErrRoleNotFound:         rpctypes.ErrGRPCRoleNotFound,
 	auth.ErrRoleEmpty:            rpctypes.ErrGRPCRoleEmpty,
 	auth.ErrAuthFailed:           rpctypes.ErrGRPCAuthFailed,
+	auth.ErrPermissionNotGiven:   rpctypes.ErrGRPCPermissionNotGiven,
 	auth.ErrPermissionDenied:     rpctypes.ErrGRPCPermissionDenied,
 	auth.ErrRoleNotGranted:       rpctypes.ErrGRPCRoleNotGranted,
 	auth.ErrPermissionNotGranted: rpctypes.ErrGRPCPermissionNotGranted,

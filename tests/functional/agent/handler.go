@@ -95,7 +95,7 @@ func (srv *Server) createEtcdLogFile() error {
 	return nil
 }
 
-func (srv *Server) creatEtcd(fromSnapshot bool, failpoints string) error {
+func (srv *Server) createEtcd(fromSnapshot bool, failpoints string) error {
 	if !fileutil.Exist(srv.Member.EtcdExec) {
 		return fmt.Errorf("unknown etcd exec path %q does not exist", srv.Member.EtcdExec)
 	}
@@ -143,6 +143,7 @@ func (srv *Server) runEtcd() error {
 		srv.lg.Info(
 			"started etcd command",
 			zap.String("command-path", srv.etcdCmd.Path),
+			zap.Strings("command-args", srv.etcdCmd.Args),
 			zap.Errors("errors", []error{err, perr}),
 		)
 		if err != nil {
@@ -488,7 +489,7 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
 	}
-	if err = srv.creatEtcd(false, req.Member.Failpoints); err != nil {
+	if err = srv.createEtcd(false, req.Member.Failpoints); err != nil {
 		return nil, err
 	}
 	if err = srv.runEtcd(); err != nil {
@@ -517,7 +518,7 @@ func (srv *Server) handle_RESTART_ETCD(req *rpcpb.Request) (*rpcpb.Response, err
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
 	}
-	if err = srv.creatEtcd(false, req.Member.Failpoints); err != nil {
+	if err = srv.createEtcd(false, req.Member.Failpoints); err != nil {
 		return nil, err
 	}
 	if err = srv.runEtcd(); err != nil {
@@ -619,7 +620,7 @@ func (srv *Server) handle_RESTART_FROM_SNAPSHOT(req *rpcpb.Request) (resp *rpcpb
 	if err = srv.saveTLSAssets(); err != nil {
 		return nil, err
 	}
-	if err = srv.creatEtcd(true, req.Member.Failpoints); err != nil {
+	if err = srv.createEtcd(true, req.Member.Failpoints); err != nil {
 		return nil, err
 	}
 	if err = srv.runEtcd(); err != nil {

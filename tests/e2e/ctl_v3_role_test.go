@@ -76,7 +76,7 @@ func rootRoleGetTest(cx ctlCtx) {
 		},
 		{
 			args:        []string{"get", "root"},
-			expectedStr: []string{"Role root\r\n", "KV Read:\r\n", "\tfoo\r\n", "KV Write:\r\n", "\tfoo\r\n"},
+			expectedStr: []string{"Role root\r\n", "KV Read:\r\n", "\t[, <open ended>\r\n", "KV Write:\r\n", "\t[, <open ended>\r\n"},
 		},
 	}
 
