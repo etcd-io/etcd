@@ -64,8 +64,8 @@ func (ti *treeIndex) Put(key []byte, rev revision) {
 	}
 	okeyi := item.(*keyIndex)
 	okeyi.mu.Lock()
-	defer okeyi.mu.Unlock()
 	ti.Unlock()
+	defer okeyi.mu.Unlock()
 	okeyi.put(ti.lg, rev.main, rev.sub)
 }
 
@@ -77,8 +77,8 @@ func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, v
 		return revision{}, revision{}, 0, ErrRevisionNotFound
 	}
 	keyi.mu.Lock()
-	defer keyi.mu.Unlock()
 	ti.RUnlock()
+	defer keyi.mu.Unlock()
 	return keyi.get(ti.lg, atRev)
 }
 
@@ -183,8 +183,8 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 
 	ki := item.(*keyIndex)
 	ki.mu.Lock()
-	defer ki.mu.Unlock()
 	ti.Unlock()
+	defer ki.mu.Unlock()
 	return ki.tombstone(ti.lg, rev.main, rev.sub)
 }
 
@@ -203,8 +203,8 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 		}
 		keyi = item.(*keyIndex)
 		keyi.mu.Lock()
-		defer keyi.mu.Unlock()
 		ti.RUnlock()
+		defer keyi.mu.Unlock()
 		return keyi.since(ti.lg, rev)
 	}
 
