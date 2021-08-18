@@ -18,49 +18,92 @@ import (
 	"fmt"
 
 	"github.com/coreos/go-semver/semver"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 var (
-	V3_5 = semver.Version{Major: 3, Minor: 5}
-	V3_6 = semver.Version{Major: 3, Minor: 6}
+	V3_5           = semver.Version{Major: 3, Minor: 5}
+	V3_6           = semver.Version{Major: 3, Minor: 6}
+	currentVersion semver.Version
 )
 
-// UpdateStorageSchema updates storage version.
+func init() {
+	v := semver.New(version.Version)
+	currentVersion = semver.Version{Major: v.Major, Minor: v.Minor}
+}
+
+// UpdateStorageSchema updates storage schema to etcd binary version.
 func UpdateStorageSchema(lg *zap.Logger, tx backend.BatchTx) error {
+	return Migrate(lg, tx, currentVersion)
+}
+
+// Migrate updates storage schema to provided target version.
+func Migrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version) error {
 	tx.Lock()
 	defer tx.Unlock()
-	v, err := DetectSchemaVersion(lg, tx)
+	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
 		return fmt.Errorf("cannot determine storage version: %w", err)
 	}
-	switch *v {
-	case V3_5:
-		lg.Warn("setting storage version", zap.String("storage-version", V3_6.String()))
-		// All meta keys introduced in v3.6 should be filled in here.
-		UnsafeSetStorageVersion(tx, &V3_6)
-	case V3_6:
-	default:
-		lg.Warn("unknown storage version", zap.String("storage-version", v.String()))
+	plan, err := newPlan(lg, current, target)
+	if err != nil {
+		return fmt.Errorf("cannot create migration plan: %w", err)
 	}
-	return nil
+	return plan.unsafeExecute(lg, tx)
 }
 
-func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (*semver.Version, error) {
-	v := UnsafeReadStorageVersion(tx)
-	if v != nil {
-		return v, nil
+// DetectSchemaVersion returns version of storage schema. Returned value depends on etcd version that created the backend. For
+// * v3.6 and newer will return storage version.
+// * v3.5 will return it's version if it includes all storage fields added in v3.5 (might require a snapshot).
+// * v3.4 and older is not supported and will return error.
+func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, err error) {
+	tx.Lock()
+	defer tx.Unlock()
+	return UnsafeDetectSchemaVersion(lg, tx)
+}
+
+// UnsafeDetectSchemaVersion non thread safe version of DetectSchemaVersion.
+func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, err error) {
+	vp := UnsafeReadStorageVersion(tx)
+	if vp != nil {
+		return *vp, nil
 	}
 	confstate := UnsafeConfStateFromBackend(lg, tx)
 	if confstate == nil {
-		return nil, fmt.Errorf("missing confstate information")
+		return v, fmt.Errorf("missing confstate information")
 	}
 	_, term := UnsafeReadConsistentIndex(tx)
 	if term == 0 {
-		return nil, fmt.Errorf("missing term information")
+		return v, fmt.Errorf("missing term information")
 	}
-	copied := V3_5
-	return &copied, nil
+	return V3_5, nil
 }
+
+func schemaChangesForVersion(v semver.Version, isUpgrade bool) ([]schemaChange, error) {
+	// changes should be taken from higher version
+	if isUpgrade {
+		v = semver.Version{Major: v.Major, Minor: v.Minor + 1}
+	}
+
+	actions, found := schemaChanges[v]
+	if !found {
+		return nil, fmt.Errorf("version %q is not supported", v.String())
+	}
+	return actions, nil
+}
+
+var (
+	// schemaChanges list changes that were introduced in perticular version.
+	// schema was introduced in v3.6 as so its changes were not tracked before.
+	schemaChanges = map[semver.Version][]schemaChange{
+		V3_6: {
+			addNewField(Meta, MetaStorageVersionName, emptyStorageVersion),
+		},
+	}
+	// emptyStorageVersion is used for v3.6 Step for the first time, in all other version StoragetVersion should be set by migrator.
+	// Adding a addNewField for StorageVersion we can reuselogic to remove it when downgrading to v3.5
+	emptyStorageVersion = []byte("")
+)
