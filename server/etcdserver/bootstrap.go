@@ -147,16 +147,29 @@ func bootstrapBackend(cfg config.ServerConfig) (be backend.Backend, ci cindex.Co
 	ci = cindex.NewConsistentIndex(nil)
 	beHooks = serverstorage.NewBackendHooks(cfg.Logger, ci)
 	be = serverstorage.OpenBackend(cfg, beHooks)
+	defer func() {
+		if err != nil && be != nil {
+			be.Close()
+		}
+	}()
 	ci.SetBackend(be)
 	schema.CreateMetaBucket(be.BatchTx())
 	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
-		err := maybeDefragBackend(cfg, be)
+		err = maybeDefragBackend(cfg, be)
 		if err != nil {
-			be.Close()
 			return nil, nil, false, nil, err
 		}
 	}
 	cfg.Logger.Debug("restore consistentIndex", zap.Uint64("index", ci.ConsistentIndex()))
+
+	// TODO(serathius): Implement schema setup in fresh storage
+	if beExist {
+		err = schema.Validate(cfg.Logger, be.BatchTx())
+		if err != nil {
+			cfg.Logger.Error("Failed to validate schema", zap.Error(err))
+			return nil, nil, false, nil, err
+		}
+	}
 	return be, ci, beExist, beHooks, nil
 }
 

@@ -291,9 +291,6 @@ type EtcdServer struct {
 	firstCommitInTerm *notify.Notifier
 
 	*AccessController
-
-	// Ensure that storage schema is updated only once.
-	updateStorageSchema sync.Once
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -516,7 +513,8 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
 	s.GoAttach(s.purgeFile)
 	s.GoAttach(func() { monitorFileDescriptor(s.Logger(), s.stopping) })
-	s.GoAttach(s.monitorVersions)
+	s.GoAttach(s.monitorClusterVersions)
+	s.GoAttach(s.monitorStorageVersion)
 	s.GoAttach(s.linearizableReadLoop)
 	s.GoAttach(s.monitorKVHash)
 	s.GoAttach(s.monitorDowngrade)
@@ -2071,12 +2069,6 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			"saved snapshot",
 			zap.Uint64("snapshot-index", snap.Metadata.Index),
 		)
-		s.updateStorageSchema.Do(func() {
-			err := schema.UpdateStorageSchema(s.lg, s.be.BatchTx())
-			if err != nil {
-				s.lg.Warn("failed to update storage version", zap.Error(err))
-			}
-		})
 
 		// When sending a snapshot, etcd will pause compaction.
 		// After receives a snapshot, the slow follower needs to get all the entries right after
@@ -2137,9 +2129,9 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 	return s.cluster.Version()
 }
 
-// monitorVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.
-func (s *EtcdServer) monitorVersions() {
-	monitor := serverversion.NewMonitor(s.Logger(), &serverVersionAdapter{s})
+// monitorClusterVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.
+func (s *EtcdServer) monitorClusterVersions() {
+	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
 	for {
 		select {
 		case <-s.firstCommitInTerm.Receive():
@@ -2152,6 +2144,19 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 		monitor.UpdateClusterVersionIfNeeded()
+	}
+}
+
+// monitorStorageVersion every monitorVersionInterval updates storage version if needed.
+func (s *EtcdServer) monitorStorageVersion() {
+	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
+	for {
+		select {
+		case <-time.After(monitorVersionInterval):
+		case <-s.stopping:
+			return
+		}
+		monitor.UpdateStorageVersionIfNeeded()
 	}
 }
 
@@ -2233,7 +2238,7 @@ func (s *EtcdServer) updateClusterVersionV3(ver string) {
 
 // monitorDowngrade every DowngradeCheckTime checks if it's the leader and cancels downgrade if needed.
 func (s *EtcdServer) monitorDowngrade() {
-	monitor := serverversion.NewMonitor(s.Logger(), &serverVersionAdapter{s})
+	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
 	t := s.Cfg.DowngradeCheckTime
 	if t == 0 {
 		return

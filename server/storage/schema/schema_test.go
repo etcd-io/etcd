@@ -31,6 +31,70 @@ var (
 	V3_7 = semver.Version{Major: 3, Minor: 7}
 )
 
+func TestValidate(t *testing.T) {
+	tcs := []struct {
+		name    string
+		version semver.Version
+		// Overrides which keys should be set (default based on version)
+		overrideKeys   func(tx backend.BatchTx)
+		expectError    bool
+		expectErrorMsg string
+	}{
+		// As storage version field was added in v3.6, for v3.5 we will not set it.
+		// For storage to be considered v3.5 it have both confstate and term key set.
+		{
+			name:    `V3.4 schema is correct`,
+			version: V3_4,
+		},
+		{
+			name:         `V3.5 schema without confstate and term fields is correct`,
+			version:      V3_5,
+			overrideKeys: func(tx backend.BatchTx) {},
+		},
+		{
+			name:    `V3.5 schema without term field is correct`,
+			version: V3_5,
+			overrideKeys: func(tx backend.BatchTx) {
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+			},
+		},
+		{
+			name:    `V3.5 schema with all fields is correct`,
+			version: V3_5,
+			overrideKeys: func(tx backend.BatchTx) {
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			},
+		},
+		{
+			name:    `V3.6 schema is correct`,
+			version: V3_6,
+		},
+		{
+			name:           `V3.7 schema is unknown and should return error`,
+			version:        V3_7,
+			expectError:    true,
+			expectErrorMsg: "downgrades are not yet supported",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zap.NewNop()
+			dataPath := setupBackendData(t, tc.version, tc.overrideKeys)
+
+			b := backend.NewDefaultBackend(dataPath)
+			defer b.Close()
+			err := Validate(lg, b.BatchTx())
+			if (err != nil) != tc.expectError {
+				t.Errorf("Validate(lg, tx) = %+v, expected error: %v", err, tc.expectError)
+			}
+			if err != nil && err.Error() != tc.expectErrorMsg {
+				t.Errorf("Validate(lg, tx) = %q, expected error message: %q", err, tc.expectErrorMsg)
+			}
+		})
+	}
+}
+
 func TestMigrate(t *testing.T) {
 	tcs := []struct {
 		name    string
@@ -52,7 +116,7 @@ func TestMigrate(t *testing.T) {
 			targetVersion:  V3_6,
 			expectVersion:  nil,
 			expectError:    true,
-			expectErrorMsg: `cannot determine storage version: missing confstate information`,
+			expectErrorMsg: `cannot detect storage schema version: missing confstate information`,
 		},
 		{
 			name:    `Upgrading v3.5 to v3.6 should be rejected if term is not set`,
@@ -63,7 +127,7 @@ func TestMigrate(t *testing.T) {
 			targetVersion:  V3_6,
 			expectVersion:  nil,
 			expectError:    true,
-			expectErrorMsg: `cannot determine storage version: missing term information`,
+			expectErrorMsg: `cannot detect storage schema version: missing term information`,
 		},
 		{
 			name:          `Upgrading v3.5 to v3.6 should be succeed all required fields are set`,
@@ -125,23 +189,9 @@ func TestMigrate(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			lg := zap.NewNop()
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			tx := be.BatchTx()
-			if tx == nil {
-				t.Fatal("batch tx is nil")
-			}
-			tx.Lock()
-			UnsafeCreateMetaBucket(tx)
-			if tc.overrideKeys != nil {
-				tc.overrideKeys(tx)
-			} else {
-				setupKeys(t, tx, tc.version)
-			}
-			tx.Unlock()
-			be.ForceCommit()
-			be.Close()
+			dataPath := setupBackendData(t, tc.version, tc.overrideKeys)
 
-			b := backend.NewDefaultBackend(tmpPath)
+			b := backend.NewDefaultBackend(dataPath)
 			defer b.Close()
 			err := Migrate(lg, b.BatchTx(), tc.targetVersion)
 			if (err != nil) != tc.expectError {
@@ -182,39 +232,31 @@ func TestMigrateIsReversible(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.initialVersion.String(), func(t *testing.T) {
 			lg := zap.NewNop()
-			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			dataPath := setupBackendData(t, tc.initialVersion, nil)
+
+			be := backend.NewDefaultBackend(dataPath)
 			defer be.Close()
 			tx := be.BatchTx()
-			if tx == nil {
-				t.Fatal("batch tx is nil")
-			}
 			tx.Lock()
-			UnsafeCreateMetaBucket(tx)
-			setupKeys(t, tx, tc.initialVersion)
+			defer tx.Unlock()
 			assertBucketState(t, tx, Meta, tc.state)
-			tx.Unlock()
 
 			// Upgrade to current version
-			tx.Lock()
-			err := testUnsafeMigrate(lg, be.BatchTx(), currentVersion)
+			ver := localBinaryVersion()
+			err := testUnsafeMigrate(lg, tx, ver)
 			if err != nil {
-				t.Errorf("Migrate(lg, tx, %q) returned error %+v", currentVersion, err)
+				t.Errorf("Migrate(lg, tx, %q) returned error %+v", ver, err)
 			}
-			assert.Equal(t, &currentVersion, UnsafeReadStorageVersion(tx))
-			tx.Unlock()
+			assert.Equal(t, &ver, UnsafeReadStorageVersion(tx))
 
 			// Downgrade back to initial version
-			tx.Lock()
-			err = testUnsafeMigrate(lg, be.BatchTx(), tc.initialVersion)
+			err = testUnsafeMigrate(lg, tx, tc.initialVersion)
 			if err != nil {
 				t.Errorf("Migrate(lg, tx, %q) returned error %+v", tc.initialVersion, err)
 			}
-			tx.Unlock()
 
 			// Assert that all changes were revered
-			tx.Lock()
 			assertBucketState(t, tx, Meta, tc.state)
-			tx.Unlock()
 		})
 	}
 }
@@ -233,23 +275,38 @@ func testUnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version
 	return plan.unsafeExecute(lg, tx)
 }
 
-func setupKeys(t *testing.T, tx backend.BatchTx, ver semver.Version) {
+func setupBackendData(t *testing.T, version semver.Version, overrideKeys func(tx backend.BatchTx)) string {
 	t.Helper()
-	switch ver {
-	case V3_4:
-	case V3_5:
-		MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-		UnsafeUpdateConsistentIndex(tx, 1, 1, false)
-	case V3_6:
-		MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-		UnsafeUpdateConsistentIndex(tx, 1, 1, false)
-		UnsafeSetStorageVersion(tx, &V3_6)
-	case V3_7:
-		MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-		UnsafeUpdateConsistentIndex(tx, 1, 1, false)
-		UnsafeSetStorageVersion(tx, &V3_7)
-		tx.UnsafePut(Meta, []byte("future-key"), []byte(""))
-	default:
-		t.Fatalf("Unsupported storage version")
+	be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+	tx := be.BatchTx()
+	if tx == nil {
+		t.Fatal("batch tx is nil")
 	}
+	tx.Lock()
+	UnsafeCreateMetaBucket(tx)
+	if overrideKeys != nil {
+		overrideKeys(tx)
+	} else {
+		switch version {
+		case V3_4:
+		case V3_5:
+			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+		case V3_6:
+			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			UnsafeSetStorageVersion(tx, &V3_6)
+		case V3_7:
+			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			UnsafeSetStorageVersion(tx, &V3_7)
+			tx.UnsafePut(Meta, []byte("future-key"), []byte(""))
+		default:
+			t.Fatalf("Unsupported storage version")
+		}
+	}
+	tx.Unlock()
+	be.ForceCommit()
+	be.Close()
+	return tmpPath
 }

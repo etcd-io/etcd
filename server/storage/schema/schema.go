@@ -25,28 +25,45 @@ import (
 )
 
 var (
-	V3_5           = semver.Version{Major: 3, Minor: 5}
-	V3_6           = semver.Version{Major: 3, Minor: 6}
-	currentVersion semver.Version
+	V3_5 = semver.Version{Major: 3, Minor: 5}
+	V3_6 = semver.Version{Major: 3, Minor: 6}
 )
 
-func init() {
-	v := semver.New(version.Version)
-	currentVersion = semver.Version{Major: v.Major, Minor: v.Minor}
+// Validate checks provided backend to confirm that schema used is supported.
+func Validate(lg *zap.Logger, tx backend.BatchTx) error {
+	tx.Lock()
+	defer tx.Unlock()
+	return unsafeValidate(lg, tx)
 }
 
-// UpdateStorageSchema updates storage schema to etcd binary version.
-func UpdateStorageSchema(lg *zap.Logger, tx backend.BatchTx) error {
-	return Migrate(lg, tx, currentVersion)
+func unsafeValidate(lg *zap.Logger, tx backend.BatchTx) error {
+	current, err := UnsafeDetectSchemaVersion(lg, tx)
+	if err != nil {
+		// v3.5 requires a wal snapshot to persist its fields, so we can assign it a schema version.
+		lg.Warn("Failed to detect storage schema version. Please wait till wal snapshot before upgrading cluster.")
+		return nil
+	}
+	_, err = newPlan(lg, current, localBinaryVersion())
+	return err
+}
+
+func localBinaryVersion() semver.Version {
+	v := semver.New(version.Version)
+	return semver.Version{Major: v.Major, Minor: v.Minor}
 }
 
 // Migrate updates storage schema to provided target version.
 func Migrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version) error {
 	tx.Lock()
 	defer tx.Unlock()
+	return UnsafeMigrate(lg, tx, target)
+}
+
+// UnsafeMigrate is non-threadsafe version of Migrate.
+func UnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
-		return fmt.Errorf("cannot determine storage version: %w", err)
+		return fmt.Errorf("cannot detect storage schema version: %w", err)
 	}
 	plan, err := newPlan(lg, current, target)
 	if err != nil {
@@ -65,7 +82,7 @@ func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, e
 	return UnsafeDetectSchemaVersion(lg, tx)
 }
 
-// UnsafeDetectSchemaVersion non thread safe version of DetectSchemaVersion.
+// UnsafeDetectSchemaVersion non-threadsafe version of DetectSchemaVersion.
 func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, err error) {
 	vp := UnsafeReadStorageVersion(tx)
 	if vp != nil {
