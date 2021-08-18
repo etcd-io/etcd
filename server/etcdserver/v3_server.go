@@ -709,7 +709,7 @@ func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
 func (s *EtcdServer) linearizableReadLoop() {
 	for {
 		requestId := s.reqIDGen.Next()
-		leaderChangedNotifier := s.LeaderChangedNotify()
+		leaderChangedNotifier := s.leaderChanged.Receive()
 		select {
 		case <-leaderChangedNotifier:
 			continue
@@ -775,7 +775,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 	retryTimer := time.NewTimer(readIndexRetryTime)
 	defer retryTimer.Stop()
 
-	firstCommitInTermNotifier := s.FirstCommitInTermNotify()
+	firstCommitInTermNotifier := s.firstCommitInTerm.Receive()
 
 	for {
 		select {
@@ -803,7 +803,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 			// return a retryable error.
 			return 0, ErrLeaderChanged
 		case <-firstCommitInTermNotifier:
-			firstCommitInTermNotifier = s.FirstCommitInTermNotify()
+			firstCommitInTermNotifier = s.firstCommitInTerm.Receive()
 			lg.Info("first commit in current term: resending ReadIndex request")
 			err := s.sendReadIndex(requestId)
 			if err != nil {
