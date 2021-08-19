@@ -434,13 +434,18 @@ func (c *bootstrapedCluster) Finalize(cfg config.ServerConfig, s *bootstrappedSt
 	c.cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, s.backend.be))
 	if s.wal.haveWAL {
 		c.cl.Recover(api.UpdateCapability)
-		if c.cl.Version() != nil && !c.cl.Version().LessThan(semver.Version{Major: 3}) && !s.backend.beExist {
+		if c.databaseFileMissing(s) {
 			bepath := cfg.BackendPath()
 			os.RemoveAll(bepath)
 			return fmt.Errorf("database file (%v) of the backend is missing", bepath)
 		}
 	}
 	return nil
+}
+
+func (c *bootstrapedCluster) databaseFileMissing(s *bootstrappedStorage) bool {
+	v3Cluster := c.cl.Version() != nil && !c.cl.Version().LessThan(semver.Version{Major: 3})
+	return v3Cluster && !s.backend.beExist
 }
 
 func bootstrapRaft(cfg config.ServerConfig, cluster *bootstrapedCluster, bwal *bootstrappedWAL) *bootstrappedRaft {
