@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/netutil"
+	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
@@ -57,7 +58,8 @@ type RaftCluster struct {
 	// removed id cannot be reused.
 	removed map[types.ID]bool
 
-	downgradeInfo *DowngradeInfo
+	downgradeInfo  *DowngradeInfo
+	versionChanged *notify.Notifier
 }
 
 // ConfigChangeContext represents a context for confChange.
@@ -245,6 +247,10 @@ func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
 func (c *RaftCluster) SetBackend(be MembershipBackend) {
 	c.be = be
 	c.be.MustCreateBackendBuckets()
+}
+
+func (c *RaftCluster) SetVersionChangedNotifier(n *notify.Notifier) {
+	c.versionChanged = n
 }
 
 func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
@@ -545,6 +551,9 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(oldVer.String())}).Set(0)
 	}
 	ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(ver.String())}).Set(1)
+	if c.versionChanged != nil {
+		c.versionChanged.Notify()
+	}
 	onSet(c.lg, ver)
 }
 

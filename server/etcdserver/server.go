@@ -288,7 +288,8 @@ type EtcdServer struct {
 	leadTimeMu      sync.RWMutex
 	leadElectedTime time.Time
 
-	firstCommitInTerm *notify.Notifier
+	firstCommitInTerm     *notify.Notifier
+	clusterVersionChanged *notify.Notifier
 
 	*AccessController
 }
@@ -312,27 +313,29 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
-		readych:           make(chan struct{}),
-		Cfg:               cfg,
-		lgMu:              new(sync.RWMutex),
-		lg:                cfg.Logger,
-		errorc:            make(chan error, 1),
-		v2store:           b.st,
-		snapshotter:       b.ss,
-		r:                 *b.raft.newRaftNode(b.ss),
-		id:                b.raft.wal.id,
-		attributes:        membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:           b.raft.cl,
-		stats:             sstats,
-		lstats:            lstats,
-		SyncTicker:        time.NewTicker(500 * time.Millisecond),
-		peerRt:            b.prt,
-		reqIDGen:          idutil.NewGenerator(uint16(b.raft.wal.id), time.Now()),
-		AccessController:  &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
-		consistIndex:      b.ci,
-		firstCommitInTerm: notify.NewNotifier(),
+		readych:               make(chan struct{}),
+		Cfg:                   cfg,
+		lgMu:                  new(sync.RWMutex),
+		lg:                    cfg.Logger,
+		errorc:                make(chan error, 1),
+		v2store:               b.st,
+		snapshotter:           b.ss,
+		r:                     *b.raft.newRaftNode(b.ss),
+		id:                    b.raft.wal.id,
+		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		cluster:               b.raft.cl,
+		stats:                 sstats,
+		lstats:                lstats,
+		SyncTicker:            time.NewTicker(500 * time.Millisecond),
+		peerRt:                b.prt,
+		reqIDGen:              idutil.NewGenerator(uint16(b.raft.wal.id), time.Now()),
+		AccessController:      &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
+		consistIndex:          b.ci,
+		firstCommitInTerm:     notify.NewNotifier(),
+		clusterVersionChanged: notify.NewNotifier(),
 	}
 	serverID.With(prometheus.Labels{"server_id": b.raft.wal.id.String()}).Set(1)
+	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = b.be
@@ -2153,6 +2156,7 @@ func (s *EtcdServer) monitorStorageVersion() {
 	for {
 		select {
 		case <-time.After(monitorVersionInterval):
+		case <-s.clusterVersionChanged.Receive():
 		case <-s.stopping:
 			return
 		}
