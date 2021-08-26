@@ -73,7 +73,7 @@ func (as ActionList) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) error {
 		revert, err := a.unsafeDo(tx)
 
 		if err != nil {
-			revertActions.unsafeExecuteInReverseOrder(lg, tx)
+			revertActions.unsafeExecuteInReversedOrder(lg, tx)
 			return err
 		}
 		revertActions = append(revertActions, revert)
@@ -81,9 +81,9 @@ func (as ActionList) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) error {
 	return nil
 }
 
-// unsafeExecuteInReverseOrder executes actions in revered order. Will panic on
+// unsafeExecuteInReversedOrder executes actions in revered order. Will panic on
 // action error. Should be used when reverting.
-func (as ActionList) unsafeExecuteInReverseOrder(lg *zap.Logger, tx backend.BatchTx) {
+func (as ActionList) unsafeExecuteInReversedOrder(lg *zap.Logger, tx backend.BatchTx) {
 	for j := len(as) - 1; j >= 0; j-- {
 		_, err := as[j].unsafeDo(tx)
 		if err != nil {

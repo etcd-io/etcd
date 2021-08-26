@@ -113,7 +113,7 @@ func schemaChangesForVersion(v semver.Version, isUpgrade bool) ([]schemaChange, 
 }
 
 var (
-	// schemaChanges list changes that were introduced in perticular version.
+	// schemaChanges list changes that were introduced in a particular version.
 	// schema was introduced in v3.6 as so its changes were not tracked before.
 	schemaChanges = map[semver.Version][]schemaChange{
 		V3_6: {
@@ -121,6 +121,6 @@ var (
 		},
 	}
 	// emptyStorageVersion is used for v3.6 Step for the first time, in all other version StoragetVersion should be set by migrator.
-	// Adding a addNewField for StorageVersion we can reuselogic to remove it when downgrading to v3.5
+	// Adding a addNewField for StorageVersion we can reuse logic to remove it when downgrading to v3.5
 	emptyStorageVersion = []byte("")
 )

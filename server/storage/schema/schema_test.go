@@ -130,7 +130,7 @@ func TestMigrate(t *testing.T) {
 			expectErrorMsg: `cannot detect storage schema version: missing term information`,
 		},
 		{
-			name:          `Upgrading v3.5 to v3.6 should be succeed all required fields are set`,
+			name:          `Upgrading v3.5 to v3.6 should succeed; all required fields are set`,
 			version:       V3_5,
 			targetVersion: V3_6,
 			expectVersion: &V3_6,
@@ -268,7 +268,7 @@ func testUnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version
 	if err != nil {
 		return fmt.Errorf("cannot determine storage version: %w", err)
 	}
-	plan, err := buildPlan(current, target)
+	plan, err := buildPlan(lg, current, target)
 	if err != nil {
 		return fmt.Errorf("cannot create migration plan: %w", err)
 	}

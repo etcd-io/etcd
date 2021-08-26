@@ -26,6 +26,61 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
+var (
+	V4_0 = semver.Version{Major: 4, Minor: 0}
+)
+
+func TestNewPlan(t *testing.T) {
+	tcs := []struct {
+		name string
+
+		current semver.Version
+		target  semver.Version
+
+		expectError    bool
+		expectErrorMsg string
+	}{
+		{
+			name:    "Update v3.5 to v3.6 should work",
+			current: V3_5,
+			target:  V3_6,
+		},
+		{
+			name:           "Downgrade v3.6 to v3.5 should fail as downgrades are not yet supported",
+			current:        V3_6,
+			target:         V3_5,
+			expectError:    true,
+			expectErrorMsg: "downgrades are not yet supported",
+		},
+		{
+			name:           "Upgrade v3.6 to v3.7 should fail as v3.7 is unknown",
+			current:        V3_6,
+			target:         V3_7,
+			expectError:    true,
+			expectErrorMsg: `version "3.7.0" is not supported`,
+		},
+		{
+			name:           "Upgrade v3.6 to v4.0 as major version changes are unsupported",
+			current:        V3_6,
+			target:         V4_0,
+			expectError:    true,
+			expectErrorMsg: "changing major storage version is not supported",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			_, err := newPlan(lg, tc.current, tc.target)
+			if (err != nil) != tc.expectError {
+				t.Errorf("newPlan(lg, %q, %q) returned unexpected error (or lack thereof), expected: %v, got: %v", tc.current, tc.target, tc.expectError, err)
+			}
+			if err != nil && err.Error() != tc.expectErrorMsg {
+				t.Errorf("newPlan(lg, %q, %q) returned unexpected error message, expected: %q, got: %q", tc.current, tc.target, tc.expectErrorMsg, err.Error())
+			}
+		})
+	}
+}
+
 func TestMigrationStepExecute(t *testing.T) {
 	recorder := &actionRecorder{}
 	errorC := fmt.Errorf("error C")

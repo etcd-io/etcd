@@ -25,26 +25,28 @@ import (
 type migrationPlan []migrationStep
 
 func newPlan(lg *zap.Logger, current semver.Version, target semver.Version) (p migrationPlan, err error) {
-	if current.Major != target.Major {
-		lg.Error("Changing major storage version is not supported",
-			zap.String("storage-version", current.String()),
-			zap.String("target-storage-version", target.String()),
-		)
-		return nil, fmt.Errorf("Changing major storage version is not supported")
-	}
 	// TODO(serathius): Implement downgrades
-	if current.Minor > target.Minor {
+	if target.LessThan(current) {
 		lg.Error("Target version is lower than the current version, downgrades are not yet supported",
 			zap.String("storage-version", current.String()),
 			zap.String("target-storage-version", target.String()),
 		)
 		return nil, fmt.Errorf("downgrades are not yet supported")
 	}
-	return buildPlan(current, target)
+	return buildPlan(lg, current, target)
 }
 
-func buildPlan(current semver.Version, target semver.Version) (plan migrationPlan, err error) {
-	for current.Minor != target.Minor {
+func buildPlan(lg *zap.Logger, current semver.Version, target semver.Version) (plan migrationPlan, err error) {
+	current = trimToMinor(current)
+	target = trimToMinor(target)
+	if current.Major != target.Major {
+		lg.Error("Changing major storage version is not supported",
+			zap.String("storage-version", current.String()),
+			zap.String("target-storage-version", target.String()),
+		)
+		return plan, fmt.Errorf("changing major storage version is not supported")
+	}
+	for !current.Equal(target) {
 		isUpgrade := current.Minor < target.Minor
 
 		changes, err := schemaChangesForVersion(current, isUpgrade)
@@ -116,4 +118,8 @@ func (s migrationStep) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) error {
 		UnsafeSetStorageVersion(tx, &s.target)
 	}
 	return nil
+}
+
+func trimToMinor(ver semver.Version) semver.Version {
+	return semver.Version{Major: ver.Major, Minor: ver.Minor}
 }
