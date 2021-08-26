@@ -12,7 +12,7 @@ ExecStart=/usr/local/bin/etcd  \
   --listen-client-urls http://{{ansible_default_ipv4.address}}:2379,http://127.0.0.1:2379 \
   --advertise-client-urls http://{{ansible_default_ipv4.address}}:2379 \
   --initial-advertise-peer-urls http://{{ansible_default_ipv4.address}}:2380 \
-  --initial-cluster-token etcd-cluster-token-f54938db9dae6035a8bffbbc9178cf67 \
+  --initial-cluster-token etcd-cluster-token-xxxxxxxxxxx \
   --initial-cluster "{%- for host in groups['etcd'] -%} {{ hostvars[host].ansible_hostname }}=http://{{ hostvars[host].ansible_default_ipv4.address }}:2380 {%- if not loop.last -%},{%- endif -%} {%- endfor -%}" \
   --initial-cluster-state new \
   --auto-compaction-mode revision \
