@@ -1,0 +1,31 @@
+#ansible-playbook -i inventory/etcd.cluster etcd.yml -e host=xxx
+- hosts: "{{host}}"
+  become_user: root
+  become_method: sudo
+  become: true  
+  tasks:
+    - name: copy etcd
+      copy:
+        src: etcd
+        dest: /usr/local/bin/etcd
+        owner: root
+        group: root
+        mode: 0755
+    - name: copy etcdctl
+      copy:
+        src: etcdctl
+        dest: /usr/local/bin/etcdctl
+        owner: root
+        group: root
+        mode: 0755
+    - name: copy etcd service
+      template: 
+        src: etcd.service.j2
+        dest: /lib/systemd/system/etcd.service
+    - name: etcd.service link 
+      file:
+        src: /lib/systemd/system/etcd.service
+        dest: /etc/systemd/system/multi-user.target.wants/etcd.service
+        state: link
+    - name: etcd start
+      systemd: name=etcd state=started daemon_reload=yes

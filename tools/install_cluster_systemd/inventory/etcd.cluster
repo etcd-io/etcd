@@ -1,0 +1,4 @@
+[etcd]
+ETCD-PROD-SRV001.my.com
+ETCD-PROD-SRV002.my.com
+ETCD-PROD-SRV003.my.com

@@ -1,0 +1,28 @@
+[Unit]
+Description=Etcd Server
+After=network.target
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/etcd  \
+  --name {{ansible_hostname}} \
+  --listen-peer-urls http://{{ansible_default_ipv4.address}}:2380 \
+  --listen-client-urls http://{{ansible_default_ipv4.address}}:2379,http://127.0.0.1:2379 \
+  --advertise-client-urls http://{{ansible_default_ipv4.address}}:2379 \
+  --initial-advertise-peer-urls http://{{ansible_default_ipv4.address}}:2380 \
+  --initial-cluster-token etcd-cluster-token-f54938db9dae6035a8bffbbc9178cf67 \
+  --initial-cluster "{%- for host in groups['etcd'] -%} {{ hostvars[host].ansible_hostname }}=http://{{ hostvars[host].ansible_default_ipv4.address }}:2380 {%- if not loop.last -%},{%- endif -%} {%- endfor -%}" \
+  --initial-cluster-state new \
+  --auto-compaction-mode revision \
+  --auto-compaction-retention 3000 \
+  --data-dir /srv/etcd/data \
+  --quota-backend-bytes 8589934592
+Restart=on-failure
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGINT
+LimitNOFILE=655360
+
+[Install]
+WantedBy=multi-user.target
