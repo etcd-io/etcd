@@ -156,7 +156,9 @@ func (c *Client) shouldRefreshToken(err error, callOpts *options) bool {
 		// which is possible when the client token is cleared somehow
 		return c.authTokenBundle != nil // equal to c.Username != "" && c.Password != ""
 	}
-	return callOpts.retryAuth && rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken
+
+	return callOpts.retryAuth &&
+		(rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken || rpctypes.Error(err) == rpctypes.ErrAuthOldRevision)
 }
 
 // type serverStreamingRetryingStream is the implementation of grpc.ClientStream that acts as a

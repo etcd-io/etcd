@@ -84,6 +84,7 @@ var toGRPCErrorMap = map[error]error{
 	auth.ErrAuthNotEnabled:       rpctypes.ErrGRPCAuthNotEnabled,
 	auth.ErrInvalidAuthToken:     rpctypes.ErrGRPCInvalidAuthToken,
 	auth.ErrInvalidAuthMgmt:      rpctypes.ErrGRPCInvalidAuthMgmt,
+	auth.ErrAuthOldRevision:      rpctypes.ErrGRPCAuthOldRevision,
 
 	// In sync with status.FromContextError
 	context.Canceled:         rpctypes.ErrGRPCCanceled,
