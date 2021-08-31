@@ -47,3 +47,13 @@ func (h *header) fill(rh *pb.ResponseHeader) {
 		rh.Revision = h.rev()
 	}
 }
+
+// fillWithoutRevision populates pb.ResponseHeader using etcdserver information
+func (h *header) fillWithoutRevision(rh *pb.ResponseHeader) {
+	if rh == nil {
+		panic("unexpected nil resp.Header")
+	}
+	rh.ClusterId = uint64(h.clusterID)
+	rh.MemberId = uint64(h.memberID)
+	rh.RaftTerm = h.sg.Term()
+}
