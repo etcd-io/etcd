@@ -53,9 +53,9 @@ func TestAuthEnabled(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			Bootstrap(be)
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 			tx := abe.BatchTx()
-			abe.CreateAuthBuckets()
 
 			tx.Lock()
 			if !tc.skipSetting {
@@ -103,8 +103,8 @@ func TestAuthRevision(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			Bootstrap(be)
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
-			abe.CreateAuthBuckets()
 
 			if tc.setRevision != 0 {
 				tx := abe.BatchTx()

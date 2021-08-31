@@ -30,7 +30,6 @@ type BackendGetter interface {
 }
 
 type AlarmBackend interface {
-	CreateAlarmBucket()
 	MustPutAlarm(member *pb.AlarmMember)
 	MustDeleteAlarm(alarm *pb.AlarmMember)
 	GetAllAlarms() ([]*pb.AlarmMember, error)
@@ -108,7 +107,6 @@ func (a *AlarmStore) Get(at pb.AlarmType) (ret []*pb.AlarmMember) {
 }
 
 func (a *AlarmStore) restore() error {
-	a.be.CreateAlarmBucket()
 	ms, err := a.be.GetAllAlarms()
 	if err != nil {
 		return err

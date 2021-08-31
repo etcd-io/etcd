@@ -165,15 +165,6 @@ func (s *membershipBackend) MustSaveDowngradeToBackend(downgrade *version.Downgr
 	tx.UnsafePut(Cluster, dkey, dvalue)
 }
 
-func (s *membershipBackend) MustCreateBackendBuckets() {
-	tx := s.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	tx.UnsafeCreateBucket(Members)
-	tx.UnsafeCreateBucket(MembersRemoved)
-	tx.UnsafeCreateBucket(Cluster)
-}
-
 func mustParseMemberIDFromBytes(lg *zap.Logger, key []byte) types.ID {
 	id, err := types.IDFromString(string(key))
 	if err != nil {

@@ -168,6 +168,7 @@ func TestMigrationStepExecute(t *testing.T) {
 
 			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			defer be.Close()
+			Bootstrap(be)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
@@ -175,7 +176,6 @@ func TestMigrationStepExecute(t *testing.T) {
 			tx.Lock()
 			defer tx.Unlock()
 
-			UnsafeCreateMetaBucket(tx)
 			UnsafeSetStorageVersion(tx, &tc.currentVersion)
 
 			step := newMigrationStep(tc.currentVersion, tc.isUpgrade, tc.changes)

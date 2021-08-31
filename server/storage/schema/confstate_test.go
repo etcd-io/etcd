@@ -26,10 +26,10 @@ import (
 func TestConfStateFromBackendInOneTx(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	Bootstrap(be)
 	defer betesting.Close(t, be)
 
 	tx := be.BatchTx()
-	CreateMetaBucket(tx)
 	tx.Lock()
 	defer tx.Unlock()
 	assert.Nil(t, UnsafeConfStateFromBackend(lg, tx))
@@ -43,13 +43,8 @@ func TestConfStateFromBackendInOneTx(t *testing.T) {
 func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	Bootstrap(be)
 	defer betesting.Close(t, be)
-
-	{
-		tx := be.BatchTx()
-		CreateMetaBucket(tx)
-		tx.Commit()
-	}
 
 	t.Run("missing", func(t *testing.T) {
 		tx := be.ReadTx()

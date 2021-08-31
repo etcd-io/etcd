@@ -49,11 +49,11 @@ func TestBackendClose(t *testing.T) {
 
 func TestBackendSnapshot(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
 	b.ForceCommit()
@@ -89,13 +89,13 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 	// start backend with super short batch interval so
 	// we do not need to wait long before commit to happen.
 	b, _ := betesting.NewTmpBackend(t, time.Nanosecond, 10000)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	pc := backend.CommitsForTest(b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
 
@@ -123,11 +123,11 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 
 func TestBackendDefrag(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Test)
 	for i := 0; i < backend.DefragLimitForTest()+100; i++ {
 		tx.UnsafePut(schema.Test, []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
 	}
@@ -172,7 +172,6 @@ func TestBackendDefrag(t *testing.T) {
 	// try put more keys after shrink.
 	tx = b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("more"), []byte("bar"))
 	tx.Unlock()
 	b.ForceCommit()
@@ -181,11 +180,11 @@ func TestBackendDefrag(t *testing.T) {
 // TestBackendWriteback ensures writes are stored to the read txn on write txn unlock.
 func TestBackendWriteback(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Key)
 	tx.UnsafePut(schema.Key, []byte("abc"), []byte("bar"))
 	tx.UnsafePut(schema.Key, []byte("def"), []byte("baz"))
 	tx.UnsafePut(schema.Key, []byte("overwrite"), []byte("1"))
@@ -257,11 +256,11 @@ func TestBackendWriteback(t *testing.T) {
 // TestConcurrentReadTx ensures that current read transaction can see all prior writes stored in read buffer
 func TestConcurrentReadTx(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	wtx1 := b.BatchTx()
 	wtx1.Lock()
-	wtx1.UnsafeCreateBucket(schema.Key)
 	wtx1.UnsafePut(schema.Key, []byte("abc"), []byte("ABC"))
 	wtx1.UnsafePut(schema.Key, []byte("overwrite"), []byte("1"))
 	wtx1.Unlock()
@@ -287,11 +286,11 @@ func TestConcurrentReadTx(t *testing.T) {
 // data is visited in the same order as fully committed data.
 func TestBackendWritebackForEach(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Key)
 	for i := 0; i < 5; i++ {
 		k := []byte(fmt.Sprintf("%04d", i))
 		tx.UnsafePut(schema.Key, k, []byte("bar"))
@@ -302,7 +301,6 @@ func TestBackendWritebackForEach(t *testing.T) {
 	b.ForceCommit()
 
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Key)
 	for i := 5; i < 20; i++ {
 		k := []byte(fmt.Sprintf("%04d", i))
 		tx.UnsafePut(schema.Key, k, []byte("bar"))

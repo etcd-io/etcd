@@ -28,7 +28,6 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/credentials"
@@ -194,7 +193,6 @@ type TokenProvider interface {
 }
 
 type AuthBackend interface {
-	CreateAuthBuckets()
 	ForceCommit()
 	BatchTx() AuthBatchTx
 
@@ -933,7 +931,6 @@ func NewAuthStore(lg *zap.Logger, be AuthBackend, tp TokenProvider, bcryptCost i
 		bcryptCost = bcrypt.DefaultCost
 	}
 
-	be.CreateAuthBuckets()
 	tx := be.BatchTx()
 	tx.Lock()
 	enabled := tx.UnsafeReadAuthEnabled()

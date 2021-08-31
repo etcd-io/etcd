@@ -650,8 +650,8 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
 
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	schema.Bootstrap(be)
 	defer betesting.Close(t, be)
-	schema.CreateMetaBucket(be.BatchTx())
 
 	ci := cindex.NewConsistentIndex(be)
 	srv := &EtcdServer{

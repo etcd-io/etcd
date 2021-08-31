@@ -110,8 +110,8 @@ func TestGetAllRoles(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			Bootstrap(be)
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
-			abe.CreateAuthBuckets()
 
 			tx := abe.BatchTx()
 			tx.Lock()
@@ -206,8 +206,8 @@ func TestGetRole(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			Bootstrap(be)
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
-			abe.CreateAuthBuckets()
 
 			tx := abe.BatchTx()
 			tx.Lock()

@@ -324,7 +324,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 		tx := be.BatchTx()
 		tx.Lock()
 		defer tx.Unlock()
-		schema.UnsafeCreateMetaBucket(tx)
+		schema.UnsafeBootstrap(tx)
 		schema.UnsafeUpdateConsistentIndex(tx, idx, term, false)
 	} else {
 		// Thanks to translateWAL not moving entries, but just replacing them with

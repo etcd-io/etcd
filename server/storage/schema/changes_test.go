@@ -38,13 +38,13 @@ func TestUpgradeDowngrade(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			defer be.Close()
+			Bootstrap(be)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
 			defer tx.Unlock()
-			UnsafeCreateMetaBucket(tx)
 
 			_, err := tc.change.upgradeAction().unsafeDo(tx)
 			if err != nil {

@@ -68,13 +68,13 @@ func TestActionIsReversible(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			defer be.Close()
+			Bootstrap(be)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
 			defer tx.Unlock()
-			UnsafeCreateMetaBucket(tx)
 			putKeyValues(tx, Meta, tc.state)
 
 			assertBucketState(t, tx, Meta, tc.state)
@@ -125,6 +125,7 @@ func TestActionListRevert(t *testing.T) {
 
 			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			defer be.Close()
+			Bootstrap(be)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
@@ -132,7 +133,6 @@ func TestActionListRevert(t *testing.T) {
 			tx.Lock()
 			defer tx.Unlock()
 
-			UnsafeCreateMetaBucket(tx)
 			err := tc.actions.unsafeExecute(lg, tx)
 			if err != tc.expectError {
 				t.Errorf("Unexpected error or lack thereof, expected: %v, got: %v", tc.expectError, err)

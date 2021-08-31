@@ -250,7 +250,6 @@ func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
 
 func (c *RaftCluster) SetBackend(be MembershipBackend) {
 	c.be = be
-	c.be.MustCreateBackendBuckets()
 }
 
 func (c *RaftCluster) SetVersionChangedNotifier(n *notify.Notifier) {

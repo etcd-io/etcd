@@ -26,15 +26,14 @@ import (
 )
 
 var (
-	bucket = schema.Test
-	key    = []byte("key")
+	key = []byte("key")
 )
 
 func TestBackendPreCommitHook(t *testing.T) {
 	be := newTestHooksBackend(t, backend.DefaultBackendConfig())
 
 	tx := be.BatchTx()
-	prepareBuckenAndKey(tx)
+	prepareKey(tx)
 	tx.Commit()
 
 	// Empty commit.
@@ -53,7 +52,7 @@ func TestBackendAutoCommitLimitHook(t *testing.T) {
 	be := newTestHooksBackend(t, cfg)
 
 	tx := be.BatchTx()
-	prepareBuckenAndKey(tx) // writes 2 entries.
+	prepareKey(tx) // writes 2 entries.
 
 	for i := 3; i <= 9; i++ {
 		write(tx, []byte("i"), []byte{byte(i)})
@@ -65,7 +64,7 @@ func TestBackendAutoCommitLimitHook(t *testing.T) {
 func write(tx backend.BatchTx, k, v []byte) {
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(bucket, k, v)
+	tx.UnsafePut(schema.Test, k, v)
 }
 
 func TestBackendAutoCommitBatchIntervalHook(t *testing.T) {
@@ -75,8 +74,8 @@ func TestBackendAutoCommitBatchIntervalHook(t *testing.T) {
 	cfg := backend.DefaultBackendConfig()
 	cfg.BatchInterval = 10 * time.Millisecond
 	be := newTestHooksBackend(t, cfg)
+	schema.Bootstrap(be)
 	tx := be.BatchTx()
-	prepareBuckenAndKey(tx)
 
 	// Edits trigger an auto-commit
 	waitUntil(ctx, t, func() bool { return getCommitsKey(t, be) == ">c" })
@@ -105,21 +104,20 @@ func waitUntil(ctx context.Context, t testing.TB, f func() bool) {
 	}
 }
 
-func prepareBuckenAndKey(tx backend.BatchTx) {
+func prepareKey(tx backend.BatchTx) {
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafeCreateBucket(bucket)
-	tx.UnsafePut(bucket, key, []byte(">"))
+	tx.UnsafePut(schema.Test, key, []byte(">"))
 }
 
 func newTestHooksBackend(t testing.TB, baseConfig backend.BackendConfig) backend.Backend {
 	cfg := baseConfig
 	cfg.Hooks = backend.NewHooks(func(tx backend.BatchTx) {
-		k, v := tx.UnsafeRange(bucket, key, nil, 1)
+		k, v := tx.UnsafeRange(schema.Test, key, nil, 1)
 		t.Logf("OnPreCommit executed: %v %v", string(k[0]), string(v[0]))
 		assert.Len(t, k, 1)
 		assert.Len(t, v, 1)
-		tx.UnsafePut(bucket, key, append(v[0], byte('c')))
+		tx.UnsafePut(schema.Test, key, append(v[0], byte('c')))
 	})
 
 	be, _ := betesting.NewTmpBackendFromCfg(t, cfg)
@@ -133,7 +131,7 @@ func getCommitsKey(t testing.TB, be backend.Backend) string {
 	rtx := be.BatchTx()
 	rtx.Lock()
 	defer rtx.Unlock()
-	_, v := rtx.UnsafeRange(bucket, key, nil, 1)
+	_, v := rtx.UnsafeRange(schema.Test, key, nil, 1)
 	assert.Len(t, v, 1)
 	return string(v[0])
 }

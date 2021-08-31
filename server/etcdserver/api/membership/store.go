@@ -28,7 +28,6 @@ type MembershipBackend interface {
 	ClusterVersionBackend
 	MemberBackend
 	DowngradeInfoBackend
-	MustCreateBackendBuckets()
 }
 
 type ClusterVersionBackend interface {

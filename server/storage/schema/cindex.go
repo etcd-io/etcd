@@ -19,18 +19,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
-// UnsafeCreateMetaBucket creates the `meta` bucket (if it does not exists yet).
-func UnsafeCreateMetaBucket(tx backend.BatchTx) {
-	tx.UnsafeCreateBucket(Meta)
-}
-
-// CreateMetaBucket creates the `meta` bucket (if it does not exists yet).
-func CreateMetaBucket(tx backend.BatchTx) {
-	tx.Lock()
-	defer tx.Unlock()
-	tx.UnsafeCreateBucket(Meta)
-}
-
 // UnsafeReadConsistentIndex loads consistent index & term from given transaction.
 // returns 0,0 if the data are not found.
 // Term is persisted since v3.5.

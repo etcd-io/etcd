@@ -40,21 +40,33 @@ var (
 )
 
 var (
-	Key     = backend.Bucket(bucket{id: 1, name: keyBucketName, safeRangeBucket: true})
-	Meta    = backend.Bucket(bucket{id: 2, name: metaBucketName, safeRangeBucket: false})
-	Lease   = backend.Bucket(bucket{id: 3, name: leaseBucketName, safeRangeBucket: false})
-	Alarm   = backend.Bucket(bucket{id: 4, name: alarmBucketName, safeRangeBucket: false})
-	Cluster = backend.Bucket(bucket{id: 5, name: clusterBucketName, safeRangeBucket: false})
+	Key     = newBucket(1, keyBucketName, true)
+	Meta    = newBucket(2, metaBucketName, false)
+	Lease   = newBucket(3, leaseBucketName, false)
+	Alarm   = newBucket(4, alarmBucketName, false)
+	Cluster = newBucket(5, clusterBucketName, false)
 
-	Members        = backend.Bucket(bucket{id: 10, name: membersBucketName, safeRangeBucket: false})
-	MembersRemoved = backend.Bucket(bucket{id: 11, name: membersRemovedBucketName, safeRangeBucket: false})
+	Members        = newBucket(10, membersBucketName, false)
+	MembersRemoved = newBucket(11, membersRemovedBucketName, false)
 
-	Auth      = backend.Bucket(bucket{id: 20, name: authBucketName, safeRangeBucket: false})
-	AuthUsers = backend.Bucket(bucket{id: 21, name: authUsersBucketName, safeRangeBucket: false})
-	AuthRoles = backend.Bucket(bucket{id: 22, name: authRolesBucketName, safeRangeBucket: false})
+	Auth      = newBucket(20, authBucketName, false)
+	AuthUsers = newBucket(21, authUsersBucketName, false)
+	AuthRoles = newBucket(22, authRolesBucketName, false)
 
-	Test = backend.Bucket(bucket{id: 100, name: testBucketName, safeRangeBucket: false})
+	Test = newBucket(100, testBucketName, false)
+
+	allBuckets = []backend.Bucket{}
 )
+
+func newBucket(id backend.BucketID, name []byte, safeRangeBucket bool) backend.Bucket {
+	b := bucket{
+		id:              id,
+		name:            name,
+		safeRangeBucket: safeRangeBucket,
+	}
+	allBuckets = append(allBuckets, b)
+	return b
+}
 
 type bucket struct {
 	id              backend.BucketID

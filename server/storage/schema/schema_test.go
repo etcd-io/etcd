@@ -300,12 +300,12 @@ func TestMigrateIsReversible(t *testing.T) {
 func setupBackendData(t *testing.T, version semver.Version, overrideKeys func(tx backend.BatchTx)) string {
 	t.Helper()
 	be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+	Bootstrap(be)
 	tx := be.BatchTx()
 	if tx == nil {
 		t.Fatal("batch tx is nil")
 	}
 	tx.Lock()
-	UnsafeCreateMetaBucket(tx)
 	if overrideKeys != nil {
 		overrideKeys(tx)
 	} else {

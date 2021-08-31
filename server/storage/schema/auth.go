@@ -47,15 +47,6 @@ func NewAuthBackend(lg *zap.Logger, be backend.Backend) *authBackend {
 	}
 }
 
-func (abe *authBackend) CreateAuthBuckets() {
-	tx := abe.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	tx.UnsafeCreateBucket(Auth)
-	tx.UnsafeCreateBucket(AuthUsers)
-	tx.UnsafeCreateBucket(AuthRoles)
-}
-
 func (abe *authBackend) ForceCommit() {
 	abe.be.ForceCommit()
 }

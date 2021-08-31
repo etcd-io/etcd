@@ -27,6 +27,7 @@ import (
 func BenchmarkBackendPut(b *testing.B) {
 	backend, _ := betesting.NewTmpBackend(b, 100*time.Millisecond, 10000)
 	defer betesting.Close(b, backend)
+	schema.Bootstrap(backend)
 
 	// prepare keys
 	keys := make([][]byte, b.N)
@@ -42,7 +43,6 @@ func BenchmarkBackendPut(b *testing.B) {
 	batchTx := backend.BatchTx()
 
 	batchTx.Lock()
-	batchTx.UnsafeCreateBucket(schema.Test)
 	batchTx.Unlock()
 
 	b.ResetTimer()

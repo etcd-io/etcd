@@ -29,6 +29,7 @@ import (
 func TestConsistentIndex(t *testing.T) {
 
 	be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+	schema.Bootstrap(be)
 	ci := NewConsistentIndex(be)
 
 	tx := be.BatchTx()
@@ -37,7 +38,6 @@ func TestConsistentIndex(t *testing.T) {
 	}
 	tx.Lock()
 
-	schema.UnsafeCreateMetaBucket(tx)
 	tx.Unlock()
 	be.ForceCommit()
 	r := uint64(7890123)

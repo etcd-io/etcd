@@ -24,7 +24,6 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-
 	"go.uber.org/zap"
 )
 
@@ -76,17 +75,12 @@ func benchmarkStoreRange(b *testing.B, n int) {
 
 func BenchmarkConsistentIndex(b *testing.B) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	ci := cindex.NewConsistentIndex(be)
 	defer betesting.Close(b, be)
+	schema.Bootstrap(be)
+	ci := cindex.NewConsistentIndex(be)
 
 	// This will force the index to be reread from scratch on each call.
 	ci.SetConsistentIndex(0, 0)
-
-	tx := be.BatchTx()
-	tx.Lock()
-	schema.UnsafeCreateMetaBucket(tx)
-	ci.UnsafeSave(tx)
-	tx.Unlock()
 
 	b.ReportAllocs()
 	b.ResetTimer()

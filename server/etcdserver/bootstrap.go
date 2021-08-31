@@ -210,7 +210,6 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 		}
 	}()
 	ci.SetBackend(be)
-	schema.CreateMetaBucket(be.BatchTx())
 	if cfg.ExperimentalBootstrapDefragThresholdMegabytes != 0 {
 		err = maybeDefragBackend(cfg, be)
 		if err != nil {
@@ -219,7 +218,6 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 	}
 	cfg.Logger.Debug("restore consistentIndex", zap.Uint64("index", ci.ConsistentIndex()))
 
-	// TODO(serathius): Implement schema setup in fresh storage
 	var (
 		snapshot *raftpb.Snapshot
 	)
@@ -235,6 +233,8 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 			cfg.Logger.Error("Failed to validate schema", zap.Error(err))
 			return nil, err
 		}
+	} else {
+		schema.Bootstrap(be)
 	}
 
 	return &bootstrappedBackend{

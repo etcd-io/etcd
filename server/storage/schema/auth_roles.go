@@ -16,13 +16,8 @@ package schema
 
 import (
 	"go.etcd.io/etcd/api/v3/authpb"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.uber.org/zap"
 )
-
-func UnsafeCreateAuthRolesBucket(tx backend.BatchTx) {
-	tx.UnsafeCreateBucket(AuthRoles)
-}
 
 func (abe *authBackend) GetRole(roleName string) *authpb.Role {
 	tx := abe.BatchTx()

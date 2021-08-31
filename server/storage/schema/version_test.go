@@ -56,12 +56,12 @@ func TestVersion(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			Bootstrap(be)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			tx.UnsafeCreateBucket(Meta)
 			UnsafeSetStorageVersion(tx, semver.New(tc.version))
 			tx.Unlock()
 			be.ForceCommit()
@@ -102,12 +102,12 @@ func TestVersionSnapshot(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			Bootstrap(be)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			tx.UnsafeCreateBucket(Meta)
 			UnsafeSetStorageVersion(tx, semver.New(tc.version))
 			tx.Unlock()
 			be.ForceCommit()

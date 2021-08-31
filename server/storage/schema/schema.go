@@ -29,6 +29,26 @@ var (
 	V3_6 = semver.Version{Major: 3, Minor: 6}
 )
 
+// Bootstrap setups backend with all base buckets and fields.
+// Should only be called on empty backend.
+func Bootstrap(be backend.Backend) {
+	bootstrapTx(be.BatchTx())
+	be.ForceCommit()
+}
+
+func bootstrapTx(tx backend.BatchTx) {
+	tx.Lock()
+	defer tx.Unlock()
+	UnsafeBootstrap(tx)
+}
+
+// UnsafeBootstrap is non thread-safe version of bootstrap.
+func UnsafeBootstrap(tx backend.BatchTx) {
+	for _, b := range allBuckets {
+		tx.UnsafeCreateBucket(b)
+	}
+}
+
 // Validate checks provided backend to confirm that schema used is supported.
 func Validate(lg *zap.Logger, tx backend.BatchTx) error {
 	tx.Lock()

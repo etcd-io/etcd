@@ -32,13 +32,6 @@ func NewAlarmBackend(lg *zap.Logger, be backend.Backend) *alarmBackend {
 	}
 }
 
-func (s *alarmBackend) CreateAlarmBucket() {
-	tx := s.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	tx.UnsafeCreateBucket(Alarm)
-}
-
 func (s *alarmBackend) MustPutAlarm(alarm *etcdserverpb.AlarmMember) {
 	tx := s.be.BatchTx()
 	tx.Lock()

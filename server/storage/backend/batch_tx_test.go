@@ -27,14 +27,12 @@ import (
 
 func TestBatchTxPut(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 
 	tx.Lock()
-
-	// create bucket
-	tx.UnsafeCreateBucket(schema.Test)
 
 	// put
 	v := []byte("bar")
@@ -56,13 +54,13 @@ func TestBatchTxPut(t *testing.T) {
 
 func TestBatchTxRange(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
 
-	tx.UnsafeCreateBucket(schema.Test)
 	// put keys
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
 	allVals := [][]byte{[]byte("bar"), []byte("bar1"), []byte("bar2")}
@@ -127,12 +125,12 @@ func TestBatchTxRange(t *testing.T) {
 
 func TestBatchTxDelete(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
 
-	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 
 	tx.UnsafeDelete(schema.Test, []byte("foo"))
@@ -153,11 +151,11 @@ func TestBatchTxDelete(t *testing.T) {
 
 func TestBatchTxCommit(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
 
@@ -182,11 +180,11 @@ func TestBatchTxBatchLimitCommit(t *testing.T) {
 	// start backend with batch limit 1 so one write can
 	// trigger a commit
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 1)
+	schema.Bootstrap(b)
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
 

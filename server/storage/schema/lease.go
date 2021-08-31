@@ -22,10 +22,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
-func UnsafeCreateLeaseBucket(tx backend.BatchTx) {
-	tx.UnsafeCreateBucket(Lease)
-}
-
 func MustUnsafeGetAllLeases(tx backend.ReadTx) []*leasepb.Lease {
 	_, vs := tx.UnsafeRange(Lease, leaseIdToBytes(0), leaseIdToBytes(math.MaxInt64), 0)
 	ls := make([]*leasepb.Lease, 0, len(vs))

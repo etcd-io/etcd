@@ -120,13 +120,6 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
 	}
 
-	tx := s.b.BatchTx()
-	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Key)
-	schema.UnsafeCreateMetaBucket(tx)
-	tx.Unlock()
-	s.b.ForceCommit()
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.restore(); err != nil {

@@ -34,12 +34,12 @@ func TestScheduledCompact(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(fmt.Sprint(tc.value), func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			schema.Bootstrap(be)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			tx.UnsafeCreateBucket(schema.Meta)
 			UnsafeSetScheduledCompact(tx, tc.value)
 			tx.Unlock()
 			be.ForceCommit()
@@ -75,12 +75,12 @@ func TestFinishedCompact(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(fmt.Sprint(tc.value), func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			schema.Bootstrap(be)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			tx.UnsafeCreateBucket(schema.Meta)
 			UnsafeSetFinishedCompact(tx, tc.value)
 			tx.Unlock()
 			be.ForceCommit()
