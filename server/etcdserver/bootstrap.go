@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/dustin/go-humanize"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -445,7 +446,7 @@ func (c *bootstrapedCluster) Finalize(cfg config.ServerConfig, s *bootstrappedSt
 		c.cl.SetID(c.nodeID, c.cl.ID())
 	}
 	c.cl.SetStore(s.st)
-	c.cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, s.backend.be))
+	c.cl.SetBackend(buckets.NewMembershipBackend(cfg.Logger, s.backend.be))
 	if s.wal.haveWAL {
 		c.cl.Recover(api.UpdateCapability)
 		if c.databaseFileMissing(s) {

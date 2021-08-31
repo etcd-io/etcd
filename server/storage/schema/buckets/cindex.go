@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package buckets
 
 import (
 	"encoding/binary"
+
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 

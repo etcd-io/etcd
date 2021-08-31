@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
@@ -143,10 +144,10 @@ func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
 	defer tx.Unlock()
 	// Storage version is only supported since v3.6
 	if target.LessThan(schema.V3_6) {
-		schema.UnsafeClearStorageVersion(tx)
+		buckets.UnsafeClearStorageVersion(tx)
 		lg.Warn("forcefully cleared storage version")
 	} else {
-		schema.UnsafeSetStorageVersion(tx, target)
+		buckets.UnsafeSetStorageVersion(tx, target)
 		lg.Warn("forcefully set storage version", zap.String("storage-version", storageVersionToString(target)))
 	}
 }

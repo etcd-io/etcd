@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package buckets
 
 import (
 	"bytes"
@@ -66,6 +66,20 @@ func newBucket(id backend.BucketID, name []byte, safeRangeBucket bool) backend.B
 	}
 	allBuckets = append(allBuckets, b)
 	return b
+}
+
+// SetupBuckets setups backend with all base buckets.
+func SetupBuckets(tx backend.BatchTx) {
+	tx.Lock()
+	defer tx.Unlock()
+	UnsafeSetupBuckets(tx)
+}
+
+// UnsafeSetupBuckets is non thread-safe version of SetupBuckets.
+func UnsafeSetupBuckets(tx backend.BatchTx) {
+	for _, b := range allBuckets {
+		tx.UnsafeCreateBucket(b)
+	}
 }
 
 type bucket struct {

@@ -34,6 +34,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -66,7 +67,6 @@ import (
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 const (
@@ -368,7 +368,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
 
-	srv.authStore = auth.NewAuthStore(srv.Logger(), schema.NewAuthBackend(srv.Logger(), srv.be), tp, int(cfg.BcryptCost))
+	srv.authStore = auth.NewAuthStore(srv.Logger(), buckets.NewAuthBackend(srv.Logger(), srv.be), tp, int(cfg.BcryptCost))
 
 	newSrv := srv // since srv == nil in defer if srv is returned as nil
 	defer func() {
@@ -1009,7 +1009,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	if s.authStore != nil {
 		lg.Info("restoring auth store")
 
-		s.authStore.Recover(schema.NewAuthBackend(lg, newbe))
+		s.authStore.Recover(buckets.NewAuthBackend(lg, newbe))
 
 		lg.Info("restored auth store")
 	}
@@ -1025,7 +1025,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	lg.Info("restored v2 store")
 
-	s.cluster.SetBackend(schema.NewMembershipBackend(lg, newbe))
+	s.cluster.SetBackend(buckets.NewMembershipBackend(lg, newbe))
 
 	lg.Info("restoring cluster configuration")
 
@@ -2305,7 +2305,7 @@ func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
 
 func (s *EtcdServer) restoreAlarms() error {
 	s.applyV3 = s.newApplierV3()
-	as, err := v3alarm.NewAlarmStore(s.lg, schema.NewAlarmBackend(s.lg, s.be))
+	as, err := v3alarm.NewAlarmStore(s.lg, buckets.NewAlarmBackend(s.lg, s.be))
 	if err != nil {
 		return err
 	}

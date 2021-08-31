@@ -21,7 +21,7 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
-	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	wal2 "go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.uber.org/zap"
@@ -109,7 +109,7 @@ func MustVerifyIfEnabled(cfg Config) {
 
 func validateConsistentIndex(cfg Config, hardstate *raftpb.HardState, snapshot *walpb.Snapshot, be backend.Backend) error {
 	tx := be.BatchTx()
-	index, term := schema.ReadConsistentIndex(tx)
+	index, term := buckets.ReadConsistentIndex(tx)
 	if cfg.ExactIndex && index != hardstate.Commit {
 		return fmt.Errorf("backend.ConsistentIndex (%v) expected == WAL.HardState.commit (%v)", index, hardstate.Commit)
 	}

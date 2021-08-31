@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap"
 )
 
@@ -103,7 +104,7 @@ func (s migrationStep) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) error {
 	}
 	// Storage version is available since v3.6, downgrading target v3.5 should clean this field.
 	if !s.target.LessThan(V3_6) {
-		UnsafeSetStorageVersion(tx, &s.target)
+		buckets.UnsafeSetStorageVersion(tx, &s.target)
 	}
 	return nil
 }

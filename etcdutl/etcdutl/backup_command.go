@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/etcd/server/v3/verify"
@@ -310,7 +311,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 
 	be := backend.NewDefaultBackend(destDB)
 	defer be.Close()
-	ms := schema.NewMembershipBackend(lg, be)
+	ms := buckets.NewMembershipBackend(lg, be)
 	if err := ms.TrimClusterFromBackend(); err != nil {
 		lg.Fatal("bbolt tx.Membership failed", zap.Error(err))
 	}
@@ -325,7 +326,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 		tx.Lock()
 		defer tx.Unlock()
 		schema.UnsafeBootstrap(tx)
-		schema.UnsafeUpdateConsistentIndex(tx, idx, term, false)
+		buckets.UnsafeUpdateConsistentIndex(tx, idx, term, false)
 	} else {
 		// Thanks to translateWAL not moving entries, but just replacing them with
 		// 'empty', there is no need to update the consistency index.

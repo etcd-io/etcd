@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -157,7 +158,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			be := backend.NewDefaultBackend(dataDirPath + "/member/snap/db")
 			defer be.Close()
 
-			ver := schema.ReadStorageVersion(be.ReadTx())
+			ver := buckets.ReadStorageVersion(be.ReadTx())
 			assert.Equal(t, tc.expectStorageVersion, ver)
 		})
 	}

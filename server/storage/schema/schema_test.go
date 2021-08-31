@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	waltesting "go.etcd.io/etcd/server/v3/storage/wal/testing"
 	"go.uber.org/zap"
@@ -59,15 +60,15 @@ func TestValidate(t *testing.T) {
 			name:    `V3.5 schema without term field is correct`,
 			version: V3_5,
 			overrideKeys: func(tx backend.BatchTx) {
-				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				buckets.MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
 			},
 		},
 		{
 			name:    `V3.5 schema with all fields is correct`,
 			version: V3_5,
 			overrideKeys: func(tx backend.BatchTx) {
-				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-				UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+				buckets.MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				buckets.UnsafeUpdateConsistentIndex(tx, 1, 1, false)
 			},
 		},
 		{
@@ -127,7 +128,7 @@ func TestMigrate(t *testing.T) {
 			name:    `Upgrading v3.5 to v3.6 should be rejected if term is not set`,
 			version: V3_5,
 			overrideKeys: func(tx backend.BatchTx) {
-				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				buckets.MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
 			},
 			targetVersion:  V3_6,
 			expectVersion:  nil,
@@ -224,7 +225,7 @@ func TestMigrate(t *testing.T) {
 			if err != nil && err.Error() != tc.expectErrorMsg {
 				t.Errorf("Migrate(lg, tx, %q) = %q, expected error message: %q", tc.targetVersion, err, tc.expectErrorMsg)
 			}
-			v := UnsafeReadStorageVersion(b.BatchTx())
+			v := buckets.UnsafeReadStorageVersion(b.BatchTx())
 			assert.Equal(t, tc.expectVersion, v)
 		})
 	}
@@ -263,7 +264,7 @@ func TestMigrateIsReversible(t *testing.T) {
 			tx := be.BatchTx()
 			tx.Lock()
 			defer tx.Unlock()
-			assertBucketState(t, tx, Meta, tc.state)
+			assertBucketState(t, tx, buckets.Meta, tc.state)
 			w, walPath := waltesting.NewTmpWAL(t, nil)
 			walVersion, err := wal.ReadWALVersion(w)
 			if err != nil {
@@ -276,7 +277,7 @@ func TestMigrateIsReversible(t *testing.T) {
 			if err != nil {
 				t.Errorf("Migrate(lg, tx, %q) returned error %+v", ver, err)
 			}
-			assert.Equal(t, &ver, UnsafeReadStorageVersion(tx))
+			assert.Equal(t, &ver, buckets.UnsafeReadStorageVersion(tx))
 
 			// Downgrade back to initial version
 			w.Close()
@@ -292,7 +293,7 @@ func TestMigrateIsReversible(t *testing.T) {
 			}
 
 			// Assert that all changes were revered
-			assertBucketState(t, tx, Meta, tc.state)
+			assertBucketState(t, tx, buckets.Meta, tc.state)
 		})
 	}
 }
@@ -312,17 +313,17 @@ func setupBackendData(t *testing.T, version semver.Version, overrideKeys func(tx
 		switch version {
 		case V3_4:
 		case V3_5:
-			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			buckets.MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+			buckets.UnsafeUpdateConsistentIndex(tx, 1, 1, false)
 		case V3_6:
-			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
-			UnsafeSetStorageVersion(tx, &V3_6)
+			buckets.MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+			buckets.UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			buckets.UnsafeSetStorageVersion(tx, &V3_6)
 		case V3_7:
-			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
-			UnsafeSetStorageVersion(tx, &V3_7)
-			tx.UnsafePut(Meta, []byte("future-key"), []byte(""))
+			buckets.MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+			buckets.UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			buckets.UnsafeSetStorageVersion(tx, &V3_7)
+			tx.UnsafePut(buckets.Meta, []byte("future-key"), []byte(""))
 		default:
 			t.Fatalf("Unsupported storage version")
 		}

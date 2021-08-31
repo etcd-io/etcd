@@ -54,6 +54,7 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
@@ -696,9 +697,9 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		tx.Lock()
 		defer tx.Unlock()
 		srv.beHooks.OnPreCommitUnsafe(tx)
-		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *schema.UnsafeConfStateFromBackend(lg, tx))
+		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *buckets.UnsafeConfStateFromBackend(lg, tx))
 	})
-	rindex, rterm := schema.ReadConsistentIndex(be.BatchTx())
+	rindex, rterm := buckets.ReadConsistentIndex(be.BatchTx())
 	assert.Equal(t, consistIndex, rindex)
 	assert.Equal(t, uint64(4), rterm)
 }
@@ -1618,7 +1619,7 @@ func TestPublishV3(t *testing.T) {
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
-		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
+		authStore:  auth.NewAuthStore(lg, buckets.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 		ctx:        ctx,
 		cancel:     cancel,
@@ -1689,7 +1690,7 @@ func TestPublishV3Retry(t *testing.T) {
 		cluster:    &membership.RaftCluster{},
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
-		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
+		authStore:  auth.NewAuthStore(lg, buckets.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 		ctx:        ctx,
 		cancel:     cancel,

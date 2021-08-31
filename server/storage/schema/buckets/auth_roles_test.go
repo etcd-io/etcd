@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package buckets
 
 import (
 	"testing"
@@ -110,7 +110,7 @@ func TestGetAllRoles(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			Bootstrap(be)
+			SetupBuckets(be.BatchTx())
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 
 			tx := abe.BatchTx()
@@ -206,7 +206,7 @@ func TestGetRole(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			Bootstrap(be)
+			SetupBuckets(be.BatchTx())
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 
 			tx := abe.BatchTx()

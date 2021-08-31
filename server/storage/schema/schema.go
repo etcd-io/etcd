@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -44,9 +45,7 @@ func bootstrapTx(tx backend.BatchTx) {
 
 // UnsafeBootstrap is non thread-safe version of bootstrap.
 func UnsafeBootstrap(tx backend.BatchTx) {
-	for _, b := range allBuckets {
-		tx.UnsafeCreateBucket(b)
-	}
+	buckets.UnsafeSetupBuckets(tx)
 }
 
 // Validate checks provided backend to confirm that schema used is supported.
@@ -116,15 +115,15 @@ func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, e
 
 // UnsafeDetectSchemaVersion non-threadsafe version of DetectSchemaVersion.
 func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, err error) {
-	vp := UnsafeReadStorageVersion(tx)
+	vp := buckets.UnsafeReadStorageVersion(tx)
 	if vp != nil {
 		return *vp, nil
 	}
-	confstate := UnsafeConfStateFromBackend(lg, tx)
+	confstate := buckets.UnsafeConfStateFromBackend(lg, tx)
 	if confstate == nil {
 		return v, fmt.Errorf("missing confstate information")
 	}
-	_, term := UnsafeReadConsistentIndex(tx)
+	_, term := buckets.UnsafeReadConsistentIndex(tx)
 	if term == 0 {
 		return v, fmt.Errorf("missing term information")
 	}
@@ -153,7 +152,7 @@ var (
 	// schema was introduced in v3.6 as so its changes were not tracked before.
 	schemaChanges = map[semver.Version][]schemaChange{
 		V3_6: {
-			addNewField(Meta, MetaStorageVersionName, emptyStorageVersion),
+			addNewField(buckets.Meta, buckets.MetaStorageVersionName, emptyStorageVersion),
 		},
 	}
 	// emptyStorageVersion is used for v3.6 Step for the first time, in all other version StoragetVersion should be set by migrator.

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package buckets
 
 import (
 	"testing"
@@ -26,8 +26,8 @@ import (
 func TestConfStateFromBackendInOneTx(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
-	Bootstrap(be)
 	defer betesting.Close(t, be)
+	SetupBuckets(be.BatchTx())
 
 	tx := be.BatchTx()
 	tx.Lock()
@@ -43,8 +43,8 @@ func TestConfStateFromBackendInOneTx(t *testing.T) {
 func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
-	Bootstrap(be)
 	defer betesting.Close(t, be)
+	SetupBuckets(be.BatchTx())
 
 	t.Run("missing", func(t *testing.T) {
 		tx := be.ReadTx()

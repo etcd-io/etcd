@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 )
 
 func BenchmarkBackendPut(b *testing.B) {
@@ -48,7 +49,7 @@ func BenchmarkBackendPut(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		batchTx.Lock()
-		batchTx.UnsafePut(schema.Test, keys[i], value)
+		batchTx.UnsafePut(buckets.Test, keys[i], value)
 		batchTx.Unlock()
 	}
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package buckets
 
 import (
 	"testing"
@@ -56,7 +56,7 @@ func TestVersion(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			Bootstrap(be)
+			SetupBuckets(be.BatchTx())
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
@@ -102,7 +102,7 @@ func TestVersionSnapshot(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			Bootstrap(be)
+			SetupBuckets(be.BatchTx())
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")

@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 )
 
 var (
@@ -64,7 +65,7 @@ func TestBackendAutoCommitLimitHook(t *testing.T) {
 func write(tx backend.BatchTx, k, v []byte) {
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(schema.Test, k, v)
+	tx.UnsafePut(buckets.Test, k, v)
 }
 
 func TestBackendAutoCommitBatchIntervalHook(t *testing.T) {
@@ -107,17 +108,17 @@ func waitUntil(ctx context.Context, t testing.TB, f func() bool) {
 func prepareKey(tx backend.BatchTx) {
 	tx.Lock()
 	defer tx.Unlock()
-	tx.UnsafePut(schema.Test, key, []byte(">"))
+	tx.UnsafePut(buckets.Test, key, []byte(">"))
 }
 
 func newTestHooksBackend(t testing.TB, baseConfig backend.BackendConfig) backend.Backend {
 	cfg := baseConfig
 	cfg.Hooks = backend.NewHooks(func(tx backend.BatchTx) {
-		k, v := tx.UnsafeRange(schema.Test, key, nil, 1)
+		k, v := tx.UnsafeRange(buckets.Test, key, nil, 1)
 		t.Logf("OnPreCommit executed: %v %v", string(k[0]), string(v[0]))
 		assert.Len(t, k, 1)
 		assert.Len(t, v, 1)
-		tx.UnsafePut(schema.Test, key, append(v[0], byte('c')))
+		tx.UnsafePut(buckets.Test, key, append(v[0], byte('c')))
 	})
 
 	be, _ := betesting.NewTmpBackendFromCfg(t, cfg)
@@ -131,7 +132,7 @@ func getCommitsKey(t testing.TB, be backend.Backend) string {
 	rtx := be.BatchTx()
 	rtx.Lock()
 	defer rtx.Unlock()
-	_, v := rtx.UnsafeRange(schema.Test, key, nil, 1)
+	_, v := rtx.UnsafeRange(buckets.Test, key, nil, 1)
 	assert.Len(t, v, 1)
 	return string(v[0])
 }

@@ -29,7 +29,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap"
 )
 
@@ -96,7 +96,7 @@ func TestLessorGrant(t *testing.T) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
+	lpb := buckets.MustUnsafeGetLease(tx, int64(l.ID))
 	if lpb == nil {
 		t.Errorf("lpb = %d, want not nil", lpb)
 	}
@@ -200,7 +200,7 @@ func TestLessorRevoke(t *testing.T) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
+	lpb := buckets.MustUnsafeGetLease(tx, int64(l.ID))
 	if lpb != nil {
 		t.Errorf("lpb = %d, want nil", lpb)
 	}

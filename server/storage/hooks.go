@@ -17,12 +17,12 @@ package storage
 import (
 	"sync"
 
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 type BackendHooks struct {
@@ -46,7 +46,7 @@ func (bh *BackendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
 	bh.confStateLock.Lock()
 	defer bh.confStateLock.Unlock()
 	if bh.confStateDirty {
-		schema.MustUnsafeSaveConfStateToBackend(bh.lg, tx, &bh.confState)
+		buckets.MustUnsafeSaveConfStateToBackend(bh.lg, tx, &bh.confState)
 		// save bh.confState
 		bh.confStateDirty = false
 	}

@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 
 	"go.uber.org/zap"
 )
@@ -101,7 +101,7 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 const snapshotSendBufferSize = 32 * 1024
 
 func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance_SnapshotServer) error {
-	ver := schema.ReadStorageVersion(ms.bg.Backend().ReadTx())
+	ver := buckets.ReadStorageVersion(ms.bg.Backend().ReadTx())
 	storageVersion := ""
 	if ver != nil {
 		storageVersion = ver.String()

@@ -22,7 +22,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 
 	"go.uber.org/zap"
 )
@@ -354,7 +354,7 @@ func (s *watchableStore) syncWatchers() int {
 	// values are actual key-value pairs in backend.
 	tx := s.store.b.ReadTx()
 	tx.RLock()
-	revs, vs := tx.UnsafeRange(schema.Key, minBytes, maxBytes, 0)
+	revs, vs := tx.UnsafeRange(buckets.Key, minBytes, maxBytes, 0)
 	evs := kvsToEvents(s.store.lg, wg, revs, vs)
 	// Must unlock after kvsToEvents, because vs (come from boltdb memory) is not deep copy.
 	// We can only unlock after Unmarshal, which will do deep copy.
