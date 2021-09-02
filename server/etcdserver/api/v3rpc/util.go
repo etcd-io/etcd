@@ -141,6 +141,10 @@ func isRPCSupportedForLearner(req interface{}) bool {
 		return true
 	case *pb.RangeRequest:
 		return r.Serializable
+	case *pb.AuthenticateRequest:
+		return true
+	case *pb.AlarmRequest:
+		return true
 	default:
 		return false
 	}

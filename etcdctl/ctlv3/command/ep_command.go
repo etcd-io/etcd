@@ -126,7 +126,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			// get a random key. As long as we can get the response without an error, the
 			// endpoint is health.
 			ctx, cancel := commandCtx(cmd)
-			_, err = cli.Get(ctx, "health")
+			_, err = cli.Get(ctx, "health", v3.WithSerializable())
 			eh := epHealth{Ep: ep, Health: false, Took: time.Since(st).String()}
 			// permission denied is OK since proposal goes through consensus to get it
 			if err == nil || err == rpctypes.ErrPermissionDenied {
