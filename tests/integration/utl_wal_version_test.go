@@ -33,7 +33,7 @@ import (
 
 func TestEtcdVersionFromWAL(t *testing.T) {
 	testutil.SkipTestIfShortMode(t,
-		"Wal creation tests are depending on embedded etcServer so are integration-level tests.")
+		"Wal creation tests are depending on embedded etcd server so are integration-level tests.")
 	cfg := NewEmbedConfig(t, "default")
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
