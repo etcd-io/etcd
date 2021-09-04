@@ -139,7 +139,8 @@ type ctlCtx struct {
 	user string
 	pass string
 
-	initialCorruptCheck bool
+	initialCorruptCheck  bool
+	unaryRequestDuration string
 
 	// for compaction
 	compactPhysical bool
@@ -166,6 +167,10 @@ func withCfg(cfg etcdProcessClusterConfig) ctlOption {
 
 func withDialTimeout(timeout time.Duration) ctlOption {
 	return func(cx *ctlCtx) { cx.dialTimeout = timeout }
+}
+
+func withUnaryRequestDuration(duration string) ctlOption {
+	return func(cx *ctlCtx) { cx.unaryRequestDuration = duration }
 }
 
 func withQuorum() ctlOption {
@@ -231,6 +236,9 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	ret.cfg.noStrictReconfig = ret.noStrictReconfig
 	if ret.initialCorruptCheck {
 		ret.cfg.initialCorruptCheck = ret.initialCorruptCheck
+	}
+	if ret.unaryRequestDuration != "" {
+		ret.cfg.unaryRequestDuration = ret.unaryRequestDuration
 	}
 	if testOfflineFunc != nil {
 		ret.cfg.keepDataDir = true

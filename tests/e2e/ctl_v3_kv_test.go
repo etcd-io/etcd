@@ -32,6 +32,9 @@ func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 }
 func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
 func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
+func TestCtlV3PutUnaryRequestDuration(t *testing.T) {
+	testCtl(t, putTestUnaryRequestDuration, withUnaryRequestDuration("1us"))
+}
 
 func TestCtlV3Get(t *testing.T)              { testCtl(t, getTest) }
 func TestCtlV3GetNoTLS(t *testing.T)         { testCtl(t, getTest, withCfg(*newConfigNoTLS())) }
@@ -127,6 +130,28 @@ func putTestIgnoreLease(cx ctlCtx) {
 	}
 	if err := ctlV3Get(cx, []string{"key"}); err != nil { // expect no output
 		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
+	}
+}
+
+func putTestUnaryRequestDuration(cx ctlCtx) {
+	if err := ctlV3Put(cx, "foo", "bar", ""); err != nil {
+		cx.t.Fatalf("getTest ctlV3Put error (%v)", err)
+	}
+
+	matchStrs := []string{"warn", "request stats", "/etcdserverpb.KV/Put", "foo"}
+	matchSet := func(l string) bool {
+		for _, s := range matchStrs {
+			if !strings.Contains(l, s) {
+				return false
+			}
+		}
+		return true
+	}
+
+	proc := cx.epc.procs[0].ExpectProc()
+	_, err := proc.ExpectFunc(matchSet)
+	if err != nil {
+		cx.t.Fatal(err)
 	}
 }
 

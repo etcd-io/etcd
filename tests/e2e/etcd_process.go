@@ -43,6 +43,7 @@ type etcdProcess interface {
 	Close() error
 	WithStopSignal(sig os.Signal) os.Signal
 	Config() *etcdServerProcessConfig
+	ExpectProc() *expect.ExpectProcess
 }
 
 type etcdServerProcess struct {
@@ -162,4 +163,5 @@ func (ep *etcdServerProcess) waitReady() error {
 	return waitReadyExpectProc(ep.proc, etcdServerReadyLines)
 }
 
-func (ep *etcdServerProcess) Config() *etcdServerProcessConfig { return ep.cfg }
+func (ep *etcdServerProcess) Config() *etcdServerProcessConfig  { return ep.cfg }
+func (ep *etcdServerProcess) ExpectProc() *expect.ExpectProcess { return ep.proc }

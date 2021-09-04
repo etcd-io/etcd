@@ -115,6 +115,8 @@ func (p *proxyEtcdProcess) WithStopSignal(sig os.Signal) os.Signal {
 	return p.etcdProc.WithStopSignal(sig)
 }
 
+func (p *proxyEtcdProcess) ExpectProc() *expect.ExpectProcess { return p.etcdProc.ExpectProc() }
+
 type proxyProc struct {
 	lg       *zap.Logger
 	execPath string

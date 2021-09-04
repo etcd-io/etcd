@@ -164,14 +164,15 @@ type etcdProcessClusterConfig struct {
 
 	cipherSuites []string
 
-	forceNewCluster     bool
-	initialToken        string
-	quotaBackendBytes   int64
-	noStrictReconfig    bool
-	enableV2            bool
-	initialCorruptCheck bool
-	authTokenOpts       string
-	v2deprecation       string
+	forceNewCluster      bool
+	initialToken         string
+	quotaBackendBytes    int64
+	noStrictReconfig     bool
+	enableV2             bool
+	initialCorruptCheck  bool
+	unaryRequestDuration string
+	authTokenOpts        string
+	v2deprecation        string
 
 	rollingStart bool
 }
@@ -294,6 +295,9 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 		}
 		if cfg.initialCorruptCheck {
 			args = append(args, "--experimental-initial-corrupt-check")
+		}
+		if cfg.unaryRequestDuration != "" {
+			args = append(args, "--experimental-warning-unary-request-duration", cfg.unaryRequestDuration)
 		}
 		var murl string
 		if cfg.metricsURLScheme != "" {
