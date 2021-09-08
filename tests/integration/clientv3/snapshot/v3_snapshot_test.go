@@ -89,7 +89,7 @@ func newEmbedConfig(t *testing.T) *embed.Config {
 // creates a snapshot file and returns the file path.
 func createSnapshotFile(t *testing.T, cfg *embed.Config, kvs []kv) (version string, dbPath string) {
 	testutil.SkipTestIfShortMode(t,
-		"Snapshot creation tests are depending on embedded etcServer so are integration-level tests.")
+		"Snapshot creation tests are depending on embedded etcd server so are integration-level tests.")
 
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
