@@ -43,7 +43,6 @@ An initial agenda will be posted to the [shared Google docs][shared-meeting-note
 
 [shared-meeting-notes]: https://docs.google.com/document/d/16XEGyPBisZvmmoIHSZzv__LoyOeluC5a4x353CX0SIM/edit
 
-
 Time:
 - [Jan 10th, 2019 11:00 AM video](https://www.youtube.com/watch?v=0Cphtbd1OSc&feature=youtu.be)
 - [Feb 7th, 2019 11:00 AM video](https://youtu.be/U80b--oAlYM)
