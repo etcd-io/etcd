@@ -361,6 +361,8 @@ type Config struct {
 	Logger string `json:"logger"`
 	// LogLevel configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.
 	LogLevel string `json:"log-level"`
+	// LogFormat set log encoding. Only supports json, console. Default is 'json'.
+	LogFormat string `json:"log-format"`
 	// LogOutputs is either:
 	//  - "default" as os.Stderr,
 	//  - "stderr" as os.Stderr,

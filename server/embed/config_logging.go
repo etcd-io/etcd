@@ -106,6 +106,7 @@ func (cfg *Config) setupLogging() error {
 			copied.ErrorOutputPaths = errOutputPaths
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
+			copied.Encoding = logutil.ConvertToZapFormat(cfg.LogFormat)
 			if cfg.ZapLoggerBuilder == nil {
 				lg, err := copied.Build()
 				if err != nil {
@@ -130,10 +131,17 @@ func (cfg *Config) setupLogging() error {
 
 			lvl := zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
 
+			var encoder zapcore.Encoder
+			if logutil.ConvertToZapFormat(cfg.LogFormat) == logutil.ConsoleLogFormat {
+				encoder = zapcore.NewConsoleEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig)
+			} else {
+				encoder = zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig)
+			}
+
 			// WARN: do not change field names in encoder config
 			// journald logging writer assumes field names of "level" and "caller"
 			cr := zapcore.NewCore(
-				zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig),
+				encoder,
 				syncer,
 				lvl,
 			)

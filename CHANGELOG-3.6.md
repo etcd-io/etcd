@@ -28,3 +28,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Package `mvcc/buckets` was moved to `storage/schema`
 - Package `wal` was moved to `storage/wal`
 - Package `datadir` was moved to `storage/datadir`
+
+### etcd server
+
+- Add [`etcd --log-format`](https://github.com/etcd-io/etcd/pull/13339) flag to support log format.
