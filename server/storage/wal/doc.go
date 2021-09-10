@@ -13,11 +13,11 @@
 // limitations under the License.
 
 /*
-Package wal provides an implementation of a write ahead log that is used by
+Package wal provides an implementation of write ahead log that is used by
 etcd.
 
 A WAL is created at a particular directory and is made up of a number of
-segmented WAL files. Inside of each file the raft state and entries are appended
+segmented WAL files. Inside each file the raft state and entries are appended
 to it with the Save method:
 
 	metadata := []byte{}
@@ -41,18 +41,18 @@ protobuf. The record protobuf contains a CRC, a type, and a data payload. The le
 record is 8-byte aligned so that the length field is never torn. The CRC contains the CRC32
 value of all record protobufs preceding the current record.
 
-WAL files are placed inside of the directory in the following format:
+WAL files are placed inside the directory in the following format:
 $seq-$index.wal
 
 The first WAL file to be created will be 0000000000000000-0000000000000000.wal
 indicating an initial sequence of 0 and an initial raft index of 0. The first
 entry written to WAL MUST have raft index 0.
 
-WAL will cut its current tail wal file if its size exceeds 64MB. This will increment an internal
+WAL will cut its current tail wal file if its size exceeds 64 MB. This will increment an internal
 sequence number and cause a new file to be created. If the last raft index saved
 was 0x20 and this is the first time cut has been called on this WAL then the sequence will
 increment from 0x0 to 0x1. The new file will be: 0000000000000001-0000000000000021.wal.
-If a second cut issues 0x10 entries with incremental index later then the file will be called:
+If a second cut issues 0x10 entries with incremental index later, then the file will be called:
 0000000000000002-0000000000000031.wal.
 
 At a later time a WAL can be opened at a particular snapshot. If there is no
@@ -63,7 +63,7 @@ snapshot, an empty snapshot should be passed in.
 
 The snapshot must have been written to the WAL.
 
-Additional items cannot be Saved to this WAL until all of the items from the given
+Additional items cannot be Saved to this WAL until all the items from the given
 snapshot to the end of the WAL are read first:
 
 	metadata, state, ents, err := w.ReadAll()

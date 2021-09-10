@@ -1874,7 +1874,7 @@ func (s *EtcdServer) apply(
 	return appliedt, appliedi, shouldStop
 }
 
-// applyEntryNormal apples an EntryNormal type raftpb request to the EtcdServer
+// applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
 	index := s.consistIndex.ConsistentIndex()

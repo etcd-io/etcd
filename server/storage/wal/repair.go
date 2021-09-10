@@ -64,9 +64,10 @@ func Repair(lg *zap.Logger, dirpath string) bool {
 			return true
 
 		case io.ErrUnexpectedEOF:
-			bf, bferr := os.Create(f.Name() + ".broken")
+			brokenName := f.Name() + ".broken"
+			bf, bferr := os.Create(brokenName)
 			if bferr != nil {
-				lg.Warn("failed to create backup file", zap.String("path", f.Name()+".broken"), zap.Error(bferr))
+				lg.Warn("failed to create backup file", zap.String("path", brokenName), zap.Error(bferr))
 				return false
 			}
 			defer bf.Close()
@@ -77,7 +78,7 @@ func Repair(lg *zap.Logger, dirpath string) bool {
 			}
 
 			if _, err = io.Copy(bf, f); err != nil {
-				lg.Warn("failed to copy", zap.String("from", f.Name()+".broken"), zap.String("to", f.Name()), zap.Error(err))
+				lg.Warn("failed to copy", zap.String("from", f.Name()), zap.String("to", brokenName), zap.Error(err))
 				return false
 			}
 

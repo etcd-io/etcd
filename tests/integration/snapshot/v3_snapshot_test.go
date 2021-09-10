@@ -170,7 +170,7 @@ type kv struct {
 // creates a snapshot file and returns the file path.
 func createSnapshotFile(t *testing.T, kvs []kv) string {
 	testutil.SkipTestIfShortMode(t,
-		"Snapshot creation tests are depending on embedded etcServer so are integration-level tests.")
+		"Snapshot creation tests are depending on embedded etcd server so are integration-level tests.")
 	clusterN := 1
 	urls := newEmbedURLs(clusterN * 2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]

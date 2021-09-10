@@ -182,6 +182,7 @@ for RATIO_STR in ${RATIO_LIST}; do
           --total=${RUN_COUNT} \
           --endpoints "http://127.0.0.1:${CLIENT_PORT}" \
           --rw-ratio ${RATIO} --limit ${RANGE_RESULT_LIMIT} \
+          --val-size ${VALUE_SIZE} \
           2>/dev/null | grep "Requests/sec" | awk "{print \$2}")
         if [ $? -ne 0 ]; then
           echo "benchmark command failed: $?"
