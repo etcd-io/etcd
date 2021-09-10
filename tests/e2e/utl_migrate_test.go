@@ -70,10 +70,10 @@ func TestEtctlutlMigrate(t *testing.T) {
 			expectLogsSubString: "storage version up-to-date\t" + `{"storage-version": "3.5"}`,
 		},
 		{
-			name:                "Upgrade v3.5 to v3.6 should fail until it's implemented",
-			binary:              lastReleaseBinary,
-			targetVersion:       "3.6",
-			expectLogsSubString: "Error: storage version migration is not yet supported",
+			name:                 "Upgrade v3.5 to v3.6 should work",
+			binary:               lastReleaseBinary,
+			targetVersion:        "3.6",
+			expectStorageVersion: &schema.V3_6,
 		},
 		{
 			name:                 "Migrate v3.6 to v3.6 is no-op",
@@ -84,7 +84,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 		{
 			name:                 "Downgrade v3.6 to v3.5 should fail until it's implemented",
 			targetVersion:        "3.5",
-			expectLogsSubString:  "Error: storage version migration is not yet supported",
+			expectLogsSubString:  "Error: cannot create migration plan: downgrades are not yet supported",
 			expectStorageVersion: &schema.V3_6,
 		},
 		{

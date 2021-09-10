@@ -13,6 +13,11 @@ import (
 
 var testLogger = zap.NewExample()
 
+var (
+	V3_5 = semver.Version{Major: 3, Minor: 5}
+	V3_6 = semver.Version{Major: 3, Minor: 6}
+)
+
 func TestDecideClusterVersion(t *testing.T) {
 	tests := []struct {
 		vers  map[string]*version.Versions
@@ -49,6 +54,55 @@ func TestDecideClusterVersion(t *testing.T) {
 		if !reflect.DeepEqual(dver, tt.wdver) {
 			t.Errorf("#%d: ver = %+v, want %+v", i, dver, tt.wdver)
 		}
+	}
+}
+
+func TestDecideStorageVersion(t *testing.T) {
+	tests := []struct {
+		name                 string
+		clusterVersion       *semver.Version
+		storageVersion       *semver.Version
+		expectStorageVersion *semver.Version
+	}{
+		{
+			name: "No action if cluster version is nil",
+		},
+		{
+			name:                 "Should set storage version if cluster version is set",
+			clusterVersion:       &V3_5,
+			expectStorageVersion: &V3_5,
+		},
+		{
+			name:                 "No action if storage version was already set",
+			storageVersion:       &V3_5,
+			expectStorageVersion: &V3_5,
+		},
+		{
+			name:                 "No action if storage version equals cluster version",
+			clusterVersion:       &V3_5,
+			storageVersion:       &V3_5,
+			expectStorageVersion: &V3_5,
+		},
+		{
+			name:                 "Should set storage version to cluster version",
+			clusterVersion:       &V3_6,
+			storageVersion:       &V3_5,
+			expectStorageVersion: &V3_6,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &storageMock{
+				clusterVersion: tt.clusterVersion,
+				storageVersion: tt.storageVersion,
+			}
+			monitor := NewMonitor(testLogger, s)
+			monitor.UpdateStorageVersionIfNeeded()
+			if !reflect.DeepEqual(s.storageVersion, tt.expectStorageVersion) {
+				t.Errorf("Unexpected storage version value, got = %+v, want %+v", s.storageVersion, tt.expectStorageVersion)
+			}
+		})
 	}
 }
 
@@ -107,7 +161,9 @@ func TestVersionMatchTarget(t *testing.T) {
 type storageMock struct {
 	versions       map[string]*version.Versions
 	clusterVersion *semver.Version
+	storageVersion *semver.Version
 	downgradeInfo  *membership.DowngradeInfo
+	locked         bool
 }
 
 var _ Server = (*storageMock)(nil)
@@ -130,4 +186,23 @@ func (s *storageMock) GetDowngradeInfo() *membership.DowngradeInfo {
 
 func (s *storageMock) GetVersions() map[string]*version.Versions {
 	return s.versions
+}
+
+func (s *storageMock) GetStorageVersion() *semver.Version {
+	return s.storageVersion
+}
+
+func (s *storageMock) UpdateStorageVersion(v semver.Version) {
+	s.storageVersion = &v
+}
+
+func (s *storageMock) Lock() {
+	if s.locked {
+		panic("Deadlock")
+	}
+	s.locked = true
+}
+
+func (s *storageMock) Unlock() {
+	s.locked = false
 }

@@ -34,6 +34,12 @@ type Server interface {
 	GetVersions() map[string]*version.Versions
 	UpdateClusterVersion(string)
 	DowngradeCancel()
+
+	GetStorageVersion() *semver.Version
+	UpdateStorageVersion(semver.Version)
+
+	Lock()
+	Unlock()
 }
 
 func NewMonitor(lg *zap.Logger, storage Server) *Monitor {
@@ -70,6 +76,24 @@ func (m *Monitor) UpdateClusterVersionIfNeeded() {
 
 	if v != nil && membership.IsValidVersionChange(m.s.GetClusterVersion(), v) {
 		m.s.UpdateClusterVersion(v.String())
+	}
+}
+
+// UpdateStorageVersionIfNeeded updates the storage version if it differs from cluster version.
+func (m *Monitor) UpdateStorageVersionIfNeeded() {
+	cv := m.s.GetClusterVersion()
+	if cv == nil {
+		return
+	}
+	m.s.Lock()
+	defer m.s.Unlock()
+	sv := m.s.GetStorageVersion()
+
+	if sv == nil || sv.Major != cv.Major || sv.Minor != cv.Minor {
+		if sv != nil {
+			m.lg.Info("storage version differs from storage version.", zap.String("cluster-version", cv.String()), zap.String("storage-version", sv.String()))
+		}
+		m.s.UpdateStorageVersion(semver.Version{Major: cv.Major, Minor: cv.Minor})
 	}
 }
 

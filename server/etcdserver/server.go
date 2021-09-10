@@ -32,6 +32,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	humanize "github.com/dustin/go-humanize"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.uber.org/zap"
 
@@ -233,8 +234,7 @@ type EtcdServer struct {
 	// done is closed when all goroutines from start() complete.
 	done chan struct{}
 	// leaderChanged is used to notify the linearizable read loop to drop the old read requests.
-	leaderChanged   chan struct{}
-	leaderChangedMu sync.RWMutex
+	leaderChanged *notify.Notifier
 
 	errorc     chan error
 	id         types.ID
@@ -288,13 +288,10 @@ type EtcdServer struct {
 	leadTimeMu      sync.RWMutex
 	leadElectedTime time.Time
 
-	firstCommitInTermMu sync.RWMutex
-	firstCommitInTermC  chan struct{}
+	firstCommitInTerm     *notify.Notifier
+	clusterVersionChanged *notify.Notifier
 
 	*AccessController
-
-	// Ensure that storage schema is updated only once.
-	updateStorageSchema sync.Once
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -316,28 +313,29 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
-		readych:            make(chan struct{}),
-		Cfg:                cfg,
-		lgMu:               new(sync.RWMutex),
-		lg:                 cfg.Logger,
-		errorc:             make(chan error, 1),
-		v2store:            b.st,
-		snapshotter:        b.ss,
-		r:                  *b.raft.newRaftNode(b.ss),
-		id:                 b.raft.wal.id,
-		attributes:         membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:            b.raft.cl,
-		stats:              sstats,
-		lstats:             lstats,
-		SyncTicker:         time.NewTicker(500 * time.Millisecond),
-		peerRt:             b.prt,
-		reqIDGen:           idutil.NewGenerator(uint16(b.raft.wal.id), time.Now()),
-		AccessController:   &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
-		consistIndex:       b.ci,
-		firstCommitInTermC: make(chan struct{}),
+		readych:               make(chan struct{}),
+		Cfg:                   cfg,
+		lgMu:                  new(sync.RWMutex),
+		lg:                    cfg.Logger,
+		errorc:                make(chan error, 1),
+		v2store:               b.st,
+		snapshotter:           b.ss,
+		r:                     *b.raft.newRaftNode(b.ss),
+		id:                    b.raft.wal.id,
+		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		cluster:               b.raft.cl,
+		stats:                 sstats,
+		lstats:                lstats,
+		SyncTicker:            time.NewTicker(500 * time.Millisecond),
+		peerRt:                b.prt,
+		reqIDGen:              idutil.NewGenerator(uint16(b.raft.wal.id), time.Now()),
+		AccessController:      &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
+		consistIndex:          b.ci,
+		firstCommitInTerm:     notify.NewNotifier(),
+		clusterVersionChanged: notify.NewNotifier(),
 	}
 	serverID.With(prometheus.Labels{"server_id": b.raft.wal.id.String()}).Set(1)
-
+	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = b.be
@@ -518,7 +516,8 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
 	s.GoAttach(s.purgeFile)
 	s.GoAttach(func() { monitorFileDescriptor(s.Logger(), s.stopping) })
-	s.GoAttach(s.monitorVersions)
+	s.GoAttach(s.monitorClusterVersions)
+	s.GoAttach(s.monitorStorageVersion)
 	s.GoAttach(s.linearizableReadLoop)
 	s.GoAttach(s.monitorKVHash)
 	s.GoAttach(s.monitorDowngrade)
@@ -555,7 +554,7 @@ func (s *EtcdServer) start() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.readwaitc = make(chan struct{}, 1)
 	s.readNotifier = newNotifier()
-	s.leaderChanged = make(chan struct{})
+	s.leaderChanged = notify.NewNotifier()
 	if s.ClusterVersion() != nil {
 		lg.Info(
 			"starting etcd server",
@@ -777,11 +776,7 @@ func (s *EtcdServer) run() {
 				}
 			}
 			if newLeader {
-				s.leaderChangedMu.Lock()
-				lc := s.leaderChanged
-				s.leaderChanged = make(chan struct{})
-				close(lc)
-				s.leaderChangedMu.Unlock()
+				s.leaderChanged.Notify()
 			}
 			// TODO: remove the nil checking
 			// current test utility does not provide the stats
@@ -1567,9 +1562,7 @@ func (s *EtcdServer) getLead() uint64 {
 }
 
 func (s *EtcdServer) LeaderChangedNotify() <-chan struct{} {
-	s.leaderChangedMu.RLock()
-	defer s.leaderChangedMu.RUnlock()
-	return s.leaderChanged
+	return s.leaderChanged.Receive()
 }
 
 // FirstCommitInTermNotify returns channel that will be unlocked on first
@@ -1577,9 +1570,7 @@ func (s *EtcdServer) LeaderChangedNotify() <-chan struct{} {
 // read-only requests (leader is not able to respond any read-only requests
 // as long as linearizable semantic is required)
 func (s *EtcdServer) FirstCommitInTermNotify() <-chan struct{} {
-	s.firstCommitInTermMu.RLock()
-	defer s.firstCommitInTermMu.RUnlock()
-	return s.firstCommitInTermC
+	return s.firstCommitInTerm.Receive()
 }
 
 // RaftStatusGetter represents etcd server and Raft progress.
@@ -1891,7 +1882,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	// raft state machine may generate noop entry when leader confirmation.
 	// skip it in advance to avoid some potential bug in the future
 	if len(e.Data) == 0 {
-		s.notifyAboutFirstCommitInTerm()
+		s.firstCommitInTerm.Notify()
 
 		// promote lessor when the local member is leader and finished
 		// applying all entries from the last term.
@@ -1963,15 +1954,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
 		s.w.Trigger(id, ar)
 	})
-}
-
-func (s *EtcdServer) notifyAboutFirstCommitInTerm() {
-	newNotifier := make(chan struct{})
-	s.firstCommitInTermMu.Lock()
-	notifierToClose := s.firstCommitInTermC
-	s.firstCommitInTermC = newNotifier
-	s.firstCommitInTermMu.Unlock()
-	close(notifierToClose)
 }
 
 // applyConfChange applies a ConfChange to the server. It is only
@@ -2090,12 +2072,6 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			"saved snapshot",
 			zap.Uint64("snapshot-index", snap.Metadata.Index),
 		)
-		s.updateStorageSchema.Do(func() {
-			err := schema.UpdateStorageSchema(s.lg, s.be.BatchTx())
-			if err != nil {
-				s.lg.Warn("failed to update storage version", zap.Error(err))
-			}
-		})
 
 		// When sending a snapshot, etcd will pause compaction.
 		// After receives a snapshot, the slow follower needs to get all the entries right after
@@ -2156,12 +2132,12 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 	return s.cluster.Version()
 }
 
-// monitorVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.
-func (s *EtcdServer) monitorVersions() {
-	monitor := serverversion.NewMonitor(s.Logger(), &serverVersionAdapter{s})
+// monitorClusterVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.
+func (s *EtcdServer) monitorClusterVersions() {
+	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
 	for {
 		select {
-		case <-s.FirstCommitInTermNotify():
+		case <-s.firstCommitInTerm.Receive():
 		case <-time.After(monitorVersionInterval):
 		case <-s.stopping:
 			return
@@ -2171,6 +2147,20 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 		monitor.UpdateClusterVersionIfNeeded()
+	}
+}
+
+// monitorStorageVersion every monitorVersionInterval updates storage version if needed.
+func (s *EtcdServer) monitorStorageVersion() {
+	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
+	for {
+		select {
+		case <-time.After(monitorVersionInterval):
+		case <-s.clusterVersionChanged.Receive():
+		case <-s.stopping:
+			return
+		}
+		monitor.UpdateStorageVersionIfNeeded()
 	}
 }
 
@@ -2252,7 +2242,7 @@ func (s *EtcdServer) updateClusterVersionV3(ver string) {
 
 // monitorDowngrade every DowngradeCheckTime checks if it's the leader and cancels downgrade if needed.
 func (s *EtcdServer) monitorDowngrade() {
-	monitor := serverversion.NewMonitor(s.Logger(), &serverVersionAdapter{s})
+	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
 	t := s.Cfg.DowngradeCheckTime
 	if t == 0 {
 		return
