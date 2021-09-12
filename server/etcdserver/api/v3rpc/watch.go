@@ -111,6 +111,7 @@ func SetProgressReportInterval(newTimeout time.Duration) {
 // A small buffer should be OK for most cases, since we expect the
 // ctrl requests are infrequent.
 const ctrlStreamBufLen = 16
+const ctrlStreamSendTimeout = 250 * time.Millisecond
 
 // serverWatchStream is an etcd server side stream. It receives requests
 // from client side gRPC stream. It receives watch events from mvcc.WatchStream,
@@ -324,11 +325,18 @@ func (sws *serverWatchStream) recvLoop() error {
 				id := uv.CancelRequest.WatchId
 				err := sws.watchStream.Cancel(mvcc.WatchID(id))
 				if err == nil {
-					sws.ctrlStream <- &pb.WatchResponse{
+					select {
+					case sws.ctrlStream <- &pb.WatchResponse{
 						Header:   sws.newResponseHeader(sws.watchStream.Rev()),
 						WatchId:  id,
 						Canceled: true,
+					}:
+					case <-time.After(ctrlStreamSendTimeout):
+						// do not block recv loop as describe in https://github.com/etcd-io/etcd/issues/13336
+						// NOTE: this may (but not likely) cause watcher leak on client side
+						sws.lg.Warn("ctrlStream is full, message dropped", zap.Int64("id", id))
 					}
+
 					sws.mu.Lock()
 					delete(sws.progress, mvcc.WatchID(id))
 					delete(sws.prevKV, mvcc.WatchID(id))
