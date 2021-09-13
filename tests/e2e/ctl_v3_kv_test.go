@@ -190,7 +190,7 @@ func getFormatTest(cx ctlCtx) {
 			cmdArgs = append(cmdArgs, "--print-value-only")
 		}
 		cmdArgs = append(cmdArgs, "abc")
-		if err := spawnWithExpect(cmdArgs, tt.wstr); err != nil {
+		if err := spawnWithExpectWithEnv(cmdArgs, cx.envMap, tt.wstr); err != nil {
 			cx.t.Errorf("#%d: error (%v), wanted %v", i, err, tt.wstr)
 		}
 	}
@@ -228,24 +228,24 @@ func getKeysOnlyTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--keys-only", "key"}...)
-	if err := spawnWithExpect(cmdArgs, "key"); err != nil {
+	if err := spawnWithExpectWithEnv(cmdArgs, cx.envMap, "key"); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := spawnWithExpects(cmdArgs, "val"); err == nil {
+	if err := spawnWithExpects(cmdArgs, cx.envMap, "val"); err == nil {
 		cx.t.Fatalf("got value but passed --keys-only")
 	}
 }
 
 func getCountOnlyTest(cx ctlCtx) {
 	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, "\"Count\" : 0"); err != nil {
+	if err := spawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 0"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key", "val", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, "\"Count\" : 1"); err != nil {
+	if err := spawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 1"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key1", "val", ""); err != nil {
@@ -255,21 +255,21 @@ func getCountOnlyTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, "\"Count\" : 2"); err != nil {
+	if err := spawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 2"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key2", "val", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, "\"Count\" : 3"); err != nil {
+	if err := spawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 3"); err != nil {
 		cx.t.Fatal(err)
 	}
 	expected := []string{
 		"\"Count\" : 3",
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key3", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, expected...); err == nil {
+	if err := spawnWithExpects(cmdArgs, cx.envMap, expected...); err == nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -348,7 +348,7 @@ func ctlV3Put(cx ctlCtx, key, value, leaseID string, flags ...string) error {
 	if len(flags) != 0 {
 		cmdArgs = append(cmdArgs, flags...)
 	}
-	return spawnWithExpect(cmdArgs, "OK")
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK")
 }
 
 type kv struct {
@@ -365,7 +365,7 @@ func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
 	for _, elem := range kvs {
 		lines = append(lines, elem.key, elem.val)
 	}
-	return spawnWithExpects(cmdArgs, lines...)
+	return spawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 // ctlV3GetWithErr runs "get" command expecting no output but error
@@ -375,11 +375,11 @@ func ctlV3GetWithErr(cx ctlCtx, args []string, errs []string) error {
 	if !cx.quorum {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
-	return spawnWithExpects(cmdArgs, errs...)
+	return spawnWithExpects(cmdArgs, cx.envMap, errs...)
 }
 
 func ctlV3Del(cx ctlCtx, args []string, num int) error {
 	cmdArgs := append(cx.PrefixArgs(), "del")
 	cmdArgs = append(cmdArgs, args...)
-	return spawnWithExpects(cmdArgs, fmt.Sprintf("%d", num))
+	return spawnWithExpects(cmdArgs, cx.envMap, fmt.Sprintf("%d", num))
 }
