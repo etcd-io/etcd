@@ -97,21 +97,22 @@ func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
 	}
 
 	tests := []struct {
-		prefixes []string
-		expect   string
+		eps    []string
+		expect string
 	}{
 		{ // request to non-leader
-			cx.prefixArgs([]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]}),
+			[]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]},
 			"no leader endpoint given at ",
 		},
 		{ // request to leader
-			cx.prefixArgs([]string{cx.epc.EndpointsV3()[leadIdx]}),
+			[]string{cx.epc.EndpointsV3()[leadIdx]},
 			fmt.Sprintf("Leadership transferred from %s to %s", types.ID(leaderID), types.ID(transferee)),
 		},
 	}
 	for i, tc := range tests {
-		cmdArgs := append(tc.prefixes, "move-leader", types.ID(transferee).String())
-		if err := spawnWithExpect(cmdArgs, tc.expect); err != nil {
+		prefix := cx.prefixArgs(tc.eps)
+		cmdArgs := append(prefix, "move-leader", types.ID(transferee).String())
+		if err := spawnWithExpectWithEnv(cmdArgs, cx.envMap, tc.expect); err != nil {
 			t.Fatalf("#%d: %v", i, err)
 		}
 	}

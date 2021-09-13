@@ -132,7 +132,7 @@ func (pp *proxyProc) start() error {
 	if pp.proc != nil {
 		panic("already started")
 	}
-	proc, err := spawnCmdWithLogger(pp.lg, append([]string{pp.execPath}, pp.args...))
+	proc, err := spawnCmdWithLogger(pp.lg, append([]string{pp.execPath}, pp.args...), nil)
 	if err != nil {
 		return err
 	}

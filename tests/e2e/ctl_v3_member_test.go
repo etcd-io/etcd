@@ -95,13 +95,13 @@ func ctlV3MemberList(cx ctlCtx) error {
 	for i := range lines {
 		lines[i] = "started"
 	}
-	return spawnWithExpects(cmdArgs, lines...)
+	return spawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func getMemberList(cx ctlCtx) (etcdserverpb.MemberListResponse, error) {
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "member", "list")
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return etcdserverpb.MemberListResponse{}, err
 	}
@@ -130,7 +130,7 @@ func memberListWithHexTest(cx ctlCtx) {
 
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "--hex", "member", "list")
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}
@@ -177,7 +177,7 @@ func memberRemoveTest(cx ctlCtx) {
 
 func ctlV3MemberRemove(cx ctlCtx, ep, memberID, clusterID string) error {
 	cmdArgs := append(cx.prefixArgs([]string{ep}), "member", "remove", memberID)
-	return spawnWithExpect(cmdArgs, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
 }
 
 func memberAddTest(cx ctlCtx) {
@@ -197,7 +197,7 @@ func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 	if isLearner {
 		cmdArgs = append(cmdArgs, "--learner")
 	}
-	return spawnWithExpect(cmdArgs, " added to cluster ")
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, " added to cluster ")
 }
 
 func memberUpdateTest(cx ctlCtx) {
@@ -215,5 +215,5 @@ func memberUpdateTest(cx ctlCtx) {
 
 func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "update", memberID, fmt.Sprintf("--peer-urls=%s", peerURL))
-	return spawnWithExpect(cmdArgs, " updated in cluster ")
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, " updated in cluster ")
 }
