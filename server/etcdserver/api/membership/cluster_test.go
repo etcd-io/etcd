@@ -20,8 +20,12 @@ import (
 	"path"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -29,8 +33,6 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
-
-	"go.uber.org/zap"
 )
 
 func TestClusterMember(t *testing.T) {
@@ -1015,6 +1017,196 @@ func TestIsVersionChangable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if ret := IsValidVersionChange(tt.currentVersion, tt.localVersion); ret != tt.expectedResult {
 				t.Errorf("Expected %v; Got %v", tt.expectedResult, ret)
+			}
+		})
+	}
+}
+
+func TestAddMemberSyncsBackendAndStoreV2(t *testing.T) {
+	now := time.Now()
+	alice := NewMember("", nil, "alice", &now)
+
+	tcs := []struct {
+		name string
+
+		storeV2Nil     bool
+		backendNil     bool
+		storeV2Members []*Member
+		backendMembers []*Member
+
+		expectPanics  bool
+		expectMembers map[types.ID]*Member
+	}{
+		{
+			name: "Adding new member should succeed",
+		},
+		{
+			name:           "Adding member should succeed if it was only in storeV2",
+			storeV2Members: []*Member{alice},
+		},
+		{
+			name:           "Adding member should succeed if it was only in backend",
+			backendMembers: []*Member{alice},
+		},
+		{
+			name:           "Adding member should fail if it exists in both",
+			storeV2Members: []*Member{alice},
+			backendMembers: []*Member{alice},
+			expectPanics:   true,
+		},
+		{
+			name:           "Adding member should fail if it exists in storeV2 and backend is nil",
+			storeV2Members: []*Member{alice},
+			backendNil:     true,
+			expectPanics:   true,
+		},
+		{
+			name:           "Adding member should succeed if it exists in backend and storageV2 is nil",
+			storeV2Nil:     true,
+			backendMembers: []*Member{alice},
+		},
+		{
+			name:           "Adding new member should succeed if backend is nil",
+			storeV2Members: []*Member{},
+			backendNil:     true,
+		},
+		{
+			name:           "Adding new member should fail if storageV2 is nil",
+			storeV2Nil:     true,
+			backendMembers: []*Member{},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			be, _ := betesting.NewDefaultTmpBackend(t)
+			defer be.Close()
+			mustCreateBackendBuckets(be)
+			st := v2store.New()
+			for _, m := range tc.backendMembers {
+				unsafeSaveMemberToBackend(lg, be, m)
+			}
+			be.ForceCommit()
+			for _, m := range tc.storeV2Members {
+				mustSaveMemberToStore(lg, st, m)
+			}
+			cluster := NewCluster(lg)
+			if !tc.backendNil {
+				cluster.SetBackend(be)
+			}
+			if !tc.storeV2Nil {
+				cluster.SetStore(st)
+			}
+			if tc.expectPanics {
+				assert.Panics(t, func() {
+					cluster.AddMember(alice, ApplyBoth)
+				})
+			} else {
+				cluster.AddMember(alice, ApplyBoth)
+			}
+			if !tc.storeV2Nil {
+				storeV2Members, _ := membersFromStore(lg, st)
+				assert.Equal(t, map[types.ID]*Member{alice.ID: alice}, storeV2Members)
+			}
+			if !tc.backendNil {
+				be.ForceCommit()
+				beMembers, _ := mustReadMembersFromBackend(lg, be)
+				assert.Equal(t, map[types.ID]*Member{alice.ID: alice}, beMembers)
+			}
+		})
+	}
+}
+
+func TestRemoveMemberSyncsBackendAndStoreV2(t *testing.T) {
+	now := time.Now()
+	alice := NewMember("", nil, "alice", &now)
+
+	tcs := []struct {
+		name string
+
+		storeV2Nil     bool
+		backendNil     bool
+		storeV2Members []*Member
+		backendMembers []*Member
+
+		expectMembers []*Member
+		expectPanics  bool
+	}{
+		{
+			name:         "Removing new member should fail",
+			expectPanics: true,
+		},
+		{
+			name:           "Removing member should succeed if it was only in storeV2",
+			storeV2Members: []*Member{alice},
+		},
+		{
+			name:           "Removing member should succeed if it was only in backend",
+			backendMembers: []*Member{alice},
+		},
+		{
+			name:           "Removing member should succeed if it exists in both",
+			storeV2Members: []*Member{alice},
+			backendMembers: []*Member{alice},
+		},
+		{
+			name:           "Removing new member should fail if backend is nil",
+			storeV2Members: []*Member{},
+			backendNil:     true,
+			expectPanics:   true,
+		},
+		{
+			name:           "Removing new member should succeed if storageV2 is nil",
+			storeV2Nil:     true,
+			backendMembers: []*Member{},
+		},
+		{
+			name:           "Removing member should succeed if it exists in v2storage and backend is nil",
+			storeV2Members: []*Member{alice},
+			backendNil:     true,
+		},
+		{
+			name:           "Removing member should succeed if it exists in backend and storageV2 is nil",
+			storeV2Nil:     true,
+			backendMembers: []*Member{alice},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			be, _ := betesting.NewDefaultTmpBackend(t)
+			defer be.Close()
+			mustCreateBackendBuckets(be)
+			st := v2store.New()
+			for _, m := range tc.backendMembers {
+				unsafeSaveMemberToBackend(lg, be, m)
+			}
+			be.ForceCommit()
+			for _, m := range tc.storeV2Members {
+				mustSaveMemberToStore(lg, st, m)
+			}
+			cluster := NewCluster(lg)
+			if !tc.backendNil {
+				cluster.SetBackend(be)
+			}
+			if !tc.storeV2Nil {
+				cluster.SetStore(st)
+			}
+			if tc.expectPanics {
+				assert.Panics(t, func() {
+					cluster.RemoveMember(alice.ID, ApplyBoth)
+				})
+			} else {
+				cluster.RemoveMember(alice.ID, ApplyBoth)
+			}
+			if !tc.storeV2Nil {
+				storeV2Members, _ := membersFromStore(lg, st)
+				assert.Equal(t, map[types.ID]*Member{}, storeV2Members)
+			}
+			if !tc.backendNil {
+				be.ForceCommit()
+				beMembers, _ := mustReadMembersFromBackend(lg, be)
+				assert.Equal(t, map[types.ID]*Member{}, beMembers)
 			}
 		})
 	}
