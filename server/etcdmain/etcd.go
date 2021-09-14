@@ -57,6 +57,10 @@ func startEtcdOrProxyV2(args []string) {
 
 	err := cfg.parse(args[1:])
 	lg := cfg.ec.GetLogger()
+	if lg != nil {
+		cfg.ec.ClientTLSInfo.Logger = lg
+		cfg.ec.PeerTLSInfo.Logger = lg
+	}
 	// If we failed to parse the whole configuration, print the error using
 	// preferably the resolved logger from the config,
 	// but if does not exists, create a new temporary logger.
