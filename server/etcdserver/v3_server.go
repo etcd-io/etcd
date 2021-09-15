@@ -710,12 +710,22 @@ func (s *EtcdServer) linearizableReadLoop() {
 	for {
 		requestId := s.reqIDGen.Next()
 		leaderChangedNotifier := s.leaderChanged.Receive()
+		// When both leaderChangedNotifier and s.readwaitc are ready, it's uncertain which case is chosen.
+		// If both of them are ready and the case s.readwaitc is chosen, then we need to get a new
+		// leaderChangedNotifier, otherwise the following readIndex request will fail for sure.
 		select {
 		case <-leaderChangedNotifier:
 			continue
 		case <-s.readwaitc:
 		case <-s.stopping:
 			return
+		}
+
+		// Get a new leaderChangedNotifier if it's closed.
+		select {
+		case <- leaderChangedNotifier:
+			leaderChangedNotifier = s.leaderChanged.Receive()
+		default:
 		}
 
 		// as a single loop is can unlock multiple reads, it is not very useful
