@@ -39,6 +39,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
@@ -602,6 +603,8 @@ type member struct {
 
 	isLearner bool
 	closed    bool
+
+	grpcServerRecorder *grpc_testing.GrpcRecorder
 }
 
 func (m *member) GRPCURL() string { return m.grpcURL }
@@ -734,7 +737,7 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.WarningUnaryRequestDuration = embed.DefaultWarningUnaryRequestDuration
 
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
-
+	m.grpcServerRecorder = &grpc_testing.GrpcRecorder{}
 	m.Logger = memberLogger(t, mcfg.name)
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
@@ -947,8 +950,8 @@ func (m *member) Launch() error {
 				return err
 			}
 		}
-		m.grpcServer = v3rpc.Server(m.s, tlscfg, m.grpcServerOpts...)
-		m.grpcServerPeer = v3rpc.Server(m.s, peerTLScfg)
+		m.grpcServer = v3rpc.Server(m.s, tlscfg, m.grpcServerRecorder.UnaryInterceptor(), m.grpcServerOpts...)
+		m.grpcServerPeer = v3rpc.Server(m.s, peerTLScfg, m.grpcServerRecorder.UnaryInterceptor())
 		m.serverClient = v3client.New(m.s)
 		lockpb.RegisterLockServer(m.grpcServer, v3lock.NewLockServer(m.serverClient))
 		epb.RegisterElectionServer(m.grpcServer, v3election.NewElectionServer(m.serverClient))
@@ -1081,6 +1084,10 @@ func (m *member) Launch() error {
 		zap.String("grpc-url", m.grpcURL),
 	)
 	return nil
+}
+
+func (m *member) RecordedRequests() []grpc_testing.RequestInfo {
+	return m.grpcServerRecorder.RecordedRequests()
 }
 
 func (m *member) WaitOK(t testutil.TB) {
@@ -1372,8 +1379,9 @@ func (p SortableMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] 
 type ClusterV3 struct {
 	*cluster
 
-	mu      sync.Mutex
-	clients []*clientv3.Client
+	mu            sync.Mutex
+	clients       []*clientv3.Client
+	clusterClient *clientv3.Client
 }
 
 // NewClusterV3 returns a launched cluster with a grpc client connection
@@ -1419,6 +1427,11 @@ func (c *ClusterV3) Terminate(t testutil.TB) {
 			t.Error(err)
 		}
 	}
+	if c.clusterClient != nil {
+		if err := c.clusterClient.Close(); err != nil {
+			t.Error(err)
+		}
+	}
 	c.mu.Unlock()
 	c.cluster.Terminate(t)
 }
@@ -1429,6 +1442,25 @@ func (c *ClusterV3) RandClient() *clientv3.Client {
 
 func (c *ClusterV3) Client(i int) *clientv3.Client {
 	return c.clients[i]
+}
+
+func (c *ClusterV3) ClusterClient() (client *clientv3.Client, err error) {
+	if c.clusterClient == nil {
+		endpoints := []string{}
+		for _, m := range c.Members {
+			endpoints = append(endpoints, m.grpcURL)
+		}
+		cfg := clientv3.Config{
+			Endpoints:   endpoints,
+			DialTimeout: 5 * time.Second,
+			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		}
+		c.clusterClient, err = newClientV3(cfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c.clusterClient, nil
 }
 
 // NewClientV3 creates a new grpc client connection to the member
