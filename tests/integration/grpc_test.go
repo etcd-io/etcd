@@ -37,57 +37,58 @@ func TestAuthority(t *testing.T) {
 		clientURLPattern string
 
 		// Pattern used to validate authority received by server. Fields filled:
-		// %s - list of endpoints concatenated with ";"
+		// %d - will be filled with first member grpc port
+		// %s - will be filled with first member name
 		expectAuthorityPattern string
 	}{
 		{
 			name:                   "unix:path",
 			clientURLPattern:       "unix:localhost:%s",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%s",
 		},
 		{
 			name:                   "unix://absolute_path",
 			clientURLPattern:       "unix://localhost:%s",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%s",
 		},
 		// "unixs" is not standard schema supported by etcd
 		{
 			name:                   "unixs:absolute_path",
 			useTLS:                 true,
 			clientURLPattern:       "unixs:localhost:%s",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%s",
 		},
 		{
 			name:                   "unixs://absolute_path",
 			useTLS:                 true,
 			clientURLPattern:       "unixs://localhost:%s",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%s",
 		},
 		{
 			name:                   "http://domain[:port]",
 			useTCP:                 true,
 			clientURLPattern:       "http://localhost:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%d",
 		},
 		{
 			name:                   "https://domain[:port]",
 			useTLS:                 true,
 			useTCP:                 true,
 			clientURLPattern:       "https://localhost:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%d",
 		},
 		{
 			name:                   "http://address[:port]",
 			useTCP:                 true,
 			clientURLPattern:       "http://127.0.0.1:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "127.0.0.1:%d",
 		},
 		{
 			name:                   "https://address[:port]",
 			useTCP:                 true,
 			useTLS:                 true,
 			clientURLPattern:       "https://127.0.0.1:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "127.0.0.1:%d",
 		},
 	}
 	for _, tc := range tcs {
@@ -102,7 +103,6 @@ func TestAuthority(t *testing.T) {
 				cfg, tlsConfig := setupTLS(t, tc.useTLS, cfg)
 				clus := NewClusterV3(t, &cfg)
 				defer clus.Terminate(t)
-				endpoints := templateEndpoints(t, tc.clientURLPattern, clus)
 
 				kv := setupClient(t, tc.clientURLPattern, clus, tlsConfig)
 				defer kv.Close()
@@ -112,7 +112,7 @@ func TestAuthority(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				assertAuthority(t, fmt.Sprintf(tc.expectAuthorityPattern, strings.Join(endpoints, ";")), clus)
+				assertAuthority(t, templateAuthority(t, tc.expectAuthorityPattern, clus.Members[0]), clus)
 			})
 		}
 	}
@@ -163,6 +163,21 @@ func templateEndpoints(t *testing.T, pattern string, clus *ClusterV3) []string {
 		endpoints = append(endpoints, ent)
 	}
 	return endpoints
+}
+
+func templateAuthority(t *testing.T, pattern string, m *member) string {
+	t.Helper()
+	authority := pattern
+	if strings.Contains(authority, "%d") {
+		authority = fmt.Sprintf(authority, GrpcPortNumber(m.UniqNumber, m.MemberNumber))
+	}
+	if strings.Contains(authority, "%s") {
+		authority = fmt.Sprintf(authority, m.Name)
+	}
+	if strings.Contains(authority, "%") {
+		t.Fatalf("Failed to template pattern, %% symbol left %q", authority)
+	}
+	return authority
 }
 
 func assertAuthority(t *testing.T, expectedAuthority string, clus *ClusterV3) {

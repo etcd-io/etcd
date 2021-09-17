@@ -37,44 +37,44 @@ func TestAuthority(t *testing.T) {
 		clientURLPattern string
 
 		// Pattern used to validate authority received by server. Fields filled:
-		// %s - list of endpoints concatenated with ";"
+		// %d - will be filled with first member grpc port
 		expectAuthorityPattern string
 	}{
 		{
 			name:                   "http://domain[:port]",
 			clientURLPattern:       "http://localhost:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%d",
 		},
 		{
 			name:                   "http://address[:port]",
 			clientURLPattern:       "http://127.0.0.1:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "127.0.0.1:%d",
 		},
 		{
 			name:                   "https://domain[:port] insecure",
 			useTLS:                 true,
 			useInsecureTLS:         true,
 			clientURLPattern:       "https://localhost:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%d",
 		},
 		{
 			name:                   "https://address[:port] insecure",
 			useTLS:                 true,
 			useInsecureTLS:         true,
 			clientURLPattern:       "https://127.0.0.1:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "127.0.0.1:%d",
 		},
 		{
 			name:                   "https://domain[:port]",
 			useTLS:                 true,
 			clientURLPattern:       "https://localhost:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "localhost:%d",
 		},
 		{
 			name:                   "https://address[:port]",
 			useTLS:                 true,
 			clientURLPattern:       "https://127.0.0.1:%d",
-			expectAuthorityPattern: "#initially=[%s]",
+			expectAuthorityPattern: "127.0.0.1:%d",
 		},
 	}
 	for _, tc := range tcs {
@@ -105,7 +105,7 @@ func TestAuthority(t *testing.T) {
 				}
 
 				executeWithTimeout(t, 5*time.Second, func() {
-					assertAuthority(t, fmt.Sprintf(tc.expectAuthorityPattern, strings.Join(endpoints, ";")), epc)
+					assertAuthority(t, fmt.Sprintf(tc.expectAuthorityPattern, 20000), epc)
 				})
 			})
 
