@@ -1083,6 +1083,47 @@ echo ${transferee_id}
 # Leadership transferred from 45ddc0e800e20b93 to c89feb932daef420
 ```
 
+### DOWNGRADE \<subcommand\>
+
+Downgrade provides commands to downgrade cluster version
+
+### DOWNGRADE VALIDATE \<TARGET_VERSION\>
+
+DOWNGRADE VALIDATE validate downgrade capability before starting downgrade
+
+#### Example
+
+```bash
+./etcdctl downgrade validate 3.5.0
+Downgrade validate success, cluster version 3.6.0
+
+./etcdctl downgrade validate 3.4.0
+Error: etcdserver: invalid downgrade target version
+
+```
+
+### DOWNGRADE ENABLE \<TARGET_VERSION\>
+
+DOWNGRADE ENABLE starts a downgrade action to cluster
+
+#### Example
+
+```bash
+./etcdctl downgrade enable 3.5.0
+Downgrade enable success, cluster version 3.6.0
+```
+
+### DOWNGRADE CANCEL \<TARGET_VERSION\>
+
+DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster
+
+#### Example
+
+```bash
+./etcdctl downgrade cancel
+Downgrade cancel success, cluster version 3.6.0
+```
+
 ## Concurrency commands
 
 ### LOCK [options] \<lockname\> [command arg1 arg2 ...]
