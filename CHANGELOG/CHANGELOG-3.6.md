@@ -76,6 +76,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [Restrict the max size of each WAL entry to the remaining size of the WAL file](https://github.com/etcd-io/etcd/pull/14122).
 - Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
 
+### gRPC Proxy
+
+- Add [listen-cipher-suites](https://github.com/etcd-io/etcd/pull/14308) flag.
+
 ### tools/benchmark
 
 - [Add etcd client autoSync flag](https://github.com/etcd-io/etcd/pull/13416)
