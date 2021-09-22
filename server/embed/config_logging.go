@@ -106,7 +106,11 @@ func (cfg *Config) setupLogging() error {
 			copied.ErrorOutputPaths = errOutputPaths
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
-			copied.Encoding = logutil.ConvertToZapFormat(cfg.LogFormat)
+			encoding, err := logutil.ConvertToZapFormat(cfg.LogFormat)
+			if err != nil {
+				return err
+			}
+			copied.Encoding = encoding
 			if cfg.ZapLoggerBuilder == nil {
 				lg, err := copied.Build()
 				if err != nil {
@@ -132,7 +136,12 @@ func (cfg *Config) setupLogging() error {
 			lvl := zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
 
 			var encoder zapcore.Encoder
-			if logutil.ConvertToZapFormat(cfg.LogFormat) == logutil.ConsoleLogFormat {
+			encoding, err := logutil.ConvertToZapFormat(cfg.LogFormat)
+			if err != nil {
+				return err
+			}
+
+			if encoding == logutil.ConsoleLogFormat {
 				encoder = zapcore.NewConsoleEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig)
 			} else {
 				encoder = zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig)

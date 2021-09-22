@@ -14,6 +14,8 @@
 
 package logutil
 
+import "fmt"
+
 const (
 	JsonLogFormat    = "json"
 	ConsoleLogFormat = "console"
@@ -21,11 +23,14 @@ const (
 
 var DefaultLogFormat = JsonLogFormat
 
-// ConvertToZapFormat converts log level string to zapcore.Level.
-func ConvertToZapFormat(format string) string {
-	if format == ConsoleLogFormat {
-		return format
+// ConvertToZapFormat converts and validated log format string.
+func ConvertToZapFormat(format string) (string, error) {
+	switch format {
+	case ConsoleLogFormat:
+		return ConsoleLogFormat, nil
+	case JsonLogFormat:
+		return DefaultLogFormat, nil
+	default:
+		return "", fmt.Errorf("unknown log format: %s, supported values json, console", format)
 	}
-
-	return DefaultLogFormat
 }

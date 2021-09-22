@@ -14,22 +14,31 @@
 
 package logutil
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestLogFormat(t *testing.T) {
 	tests := []struct {
-		given string
-		want  string
+		given       string
+		want        string
+		errExpected bool
 	}{
-		{"json", JsonLogFormat},
-		{"console", ConsoleLogFormat},
-		{"", JsonLogFormat},
+		{"json", JsonLogFormat, false},
+		{"console", ConsoleLogFormat, false},
+		{"", "", true},
 	}
 
 	for i, tt := range tests {
-		got := ConvertToZapFormat(tt.given)
+		got, err := ConvertToZapFormat(tt.given)
 		if got != tt.want {
 			t.Errorf("#%d: ConvertToZapFormat failure: want=%v, got=%v", i, tt.want, got)
+		}
+
+		if err != nil {
+			if !tt.errExpected {
+				t.Errorf("#%d: ConvertToZapFormat unexpected error: %v", i, err)
+			}
 		}
 	}
 }
