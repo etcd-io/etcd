@@ -736,18 +736,34 @@ func (m *member) listenGRPC() error {
 	if m.useIP { // for IP-only TLS certs
 		m.grpcAddr = "127.0.0.1:" + m.Name
 	}
-	l, err := transport.NewUnixListener(m.grpcAddr)
+	grpcListener, err := transport.NewUnixListener(m.grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen failed on grpc socket %s (%v)", m.grpcAddr, err)
 	}
-	m.grpcBridge, err = newBridge(m.grpcAddr)
+	bridgeAddr := m.grpcAddr + "0"
+	bridgeListener, err := transport.NewUnixListener(bridgeAddr)
 	if err != nil {
-		l.Close()
+		grpcListener.Close()
+		return fmt.Errorf("listen failed on bridge socket %s (%v)", m.grpcAddr, err)
+	}
+	m.grpcBridge, err = newBridge(dialer{network: "unix", addr: m.grpcAddr}, bridgeListener)
+	if err != nil {
+		bridgeListener.Close()
+		grpcListener.Close()
 		return err
 	}
-	m.grpcAddr = schemeFromTLSInfo(m.ClientTLSInfo) + "://" + m.grpcBridge.inaddr
-	m.grpcListener = l
+	m.grpcAddr = schemeFromTLSInfo(m.ClientTLSInfo) + "://" + bridgeAddr
+	m.grpcListener = grpcListener
 	return nil
+}
+
+type dialer struct {
+	network string
+	addr string
+}
+
+func (d dialer) Dial() (net.Conn, error) {
+	return net.Dial(d.network, d.addr)
 }
 
 func (m *member) ElectionTimeout() time.Duration {
