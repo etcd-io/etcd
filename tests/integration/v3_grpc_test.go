@@ -1777,7 +1777,7 @@ func testTLSReload(
 			}
 			cli, cerr := NewClient(t, clientv3.Config{
 				DialOptions: []grpc.DialOption{grpc.WithBlock()},
-				Endpoints:   []string{clus.Members[0].GRPCAddr()},
+				Endpoints:   []string{clus.Members[0].GRPCURL()},
 				DialTimeout: time.Second,
 				TLS:         cc,
 			})
@@ -1811,7 +1811,7 @@ func testTLSReload(
 		t.Fatal(terr)
 	}
 	cl, cerr := NewClient(t, clientv3.Config{
-		Endpoints:   []string{clus.Members[0].GRPCAddr()},
+		Endpoints:   []string{clus.Members[0].GRPCURL()},
 		DialTimeout: 5 * time.Second,
 		TLS:         tls,
 	})

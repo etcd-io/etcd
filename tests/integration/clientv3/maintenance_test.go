@@ -55,7 +55,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 		if _, err := cli.Get(context.TODO(), "foo"); err != nil {
 			t.Fatal(err)
 		}
-		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCAddr(), 0)
+		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCURL(), 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -206,7 +206,7 @@ func TestMaintenanceStatus(t *testing.T) {
 
 	eps := make([]string, 3)
 	for i := 0; i < 3; i++ {
-		eps[i] = clus.Members[i].GRPCAddr()
+		eps[i] = clus.Members[i].GRPCURL()
 	}
 
 	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
