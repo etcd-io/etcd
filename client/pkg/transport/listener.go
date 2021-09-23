@@ -172,6 +172,10 @@ type TLSInfo struct {
 	// EmptyCN indicates that the cert must have empty CN.
 	// If true, ClientConfig() will return an error for a cert with non empty CN.
 	EmptyCN bool
+
+	// CustomClientConfig and CustomServerConfig allows user to override the full tls.Config.
+	CustomClientConfig func() (*tls.Config, error)
+	CustomServerConfig func() (*tls.Config, error)
 }
 
 func (info TLSInfo) String() string {
@@ -179,7 +183,7 @@ func (info TLSInfo) String() string {
 }
 
 func (info TLSInfo) Empty() bool {
-	return info.CertFile == "" && info.KeyFile == ""
+	return info.CertFile == "" && info.KeyFile == "" && info.CustomClientConfig == nil && info.CustomServerConfig == nil
 }
 
 func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertValidity uint, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
@@ -469,6 +473,10 @@ func (info TLSInfo) cafiles() []string {
 
 // ServerConfig generates a tls.Config object for use by an HTTP server.
 func (info TLSInfo) ServerConfig() (*tls.Config, error) {
+	if info.CustomServerConfig != nil {
+		return info.CustomServerConfig()
+	}
+
 	cfg, err := info.baseConfig()
 	if err != nil {
 		return nil, err
@@ -507,6 +515,10 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 
 // ClientConfig generates a tls.Config object for use by an HTTP client.
 func (info TLSInfo) ClientConfig() (*tls.Config, error) {
+	if info.CustomClientConfig != nil {
+		return info.CustomClientConfig()
+	}
+
 	var cfg *tls.Config
 	var err error
 
