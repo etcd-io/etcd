@@ -761,9 +761,12 @@ func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo, shouldApplyV3 ShouldApp
 
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveDowngradeToBackend(d)
+		c.downgradeInfo = d
+	} else if c.be != nil && !shouldApplyV3 { // d is from raft log, but not the latest value
+		c.downgradeInfo = c.be.DowngradeInfoFromBackend()
+	} else {
+		c.downgradeInfo = d
 	}
-
-	c.downgradeInfo = d
 
 	if d.Enabled {
 		c.lg.Info(
