@@ -534,7 +534,14 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	}
 	oldVer := c.version
 	c.version = ver
-	mustDetectDowngrade(c.lg, c.version, c.downgradeInfo)
+	if c.be != nil {
+		c.downgradeInfo = c.be.DowngradeInfoFromBackend()
+	}
+	d := &DowngradeInfo{Enabled: false}
+	if c.downgradeInfo != nil {
+		d = &DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
+	}
+	mustDetectDowngrade(c.lg, c.version, d)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}
