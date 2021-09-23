@@ -29,6 +29,8 @@ func ConvertToZapFormat(format string) (string, error) {
 	case ConsoleLogFormat:
 		return ConsoleLogFormat, nil
 	case JsonLogFormat:
+		return JsonLogFormat, nil
+	case "":
 		return DefaultLogFormat, nil
 	default:
 		return "", fmt.Errorf("unknown log format: %s, supported values json, console", format)

@@ -26,7 +26,8 @@ func TestLogFormat(t *testing.T) {
 	}{
 		{"json", JsonLogFormat, false},
 		{"console", ConsoleLogFormat, false},
-		{"", "", true},
+		{"", JsonLogFormat, false},
+		{"konsole", "", true},
 	}
 
 	for i, tt := range tests {
