@@ -73,6 +73,7 @@ const (
 	basePort     = 21000
 	URLScheme    = "unix"
 	URLSchemeTLS = "unixs"
+	baseGRPCPort = 30000
 )
 
 var (
@@ -121,6 +122,10 @@ var (
 
 	defaultTokenJWT = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=1s",
 		MustAbsPath("../fixtures/server.crt"), MustAbsPath("../fixtures/server.key.insecure"))
+
+	// uniqueNumber is used to generate unique port numbers
+	// Should only be accessed via atomic package methods.
+	uniqueNumber int32
 )
 
 type ClusterConfig struct {
@@ -211,7 +216,7 @@ func newCluster(t testutil.TB, cfg *ClusterConfig) *cluster {
 	c := &cluster{cfg: cfg}
 	ms := make([]*member, cfg.Size)
 	for i := 0; i < cfg.Size; i++ {
-		ms[i] = c.mustNewMember(t)
+		ms[i] = c.mustNewMember(t, int32(i))
 	}
 	c.Members = ms
 	if err := c.fillClusterForMembers(); err != nil {
@@ -298,10 +303,11 @@ func (c *cluster) HTTPMembers() []client.Member {
 	return ms
 }
 
-func (c *cluster) mustNewMember(t testutil.TB) *member {
+func (c *cluster) mustNewMember(t testutil.TB, number int32) *member {
 	m := mustNewMember(t,
 		memberConfig{
 			name:                        c.generateMemberName(),
+			memberNumber:                number,
 			authToken:                   c.cfg.AuthToken,
 			peerTLS:                     c.cfg.PeerTLS,
 			clientTLS:                   c.cfg.ClientTLS,
@@ -332,7 +338,7 @@ func (c *cluster) mustNewMember(t testutil.TB) *member {
 
 // addMember return PeerURLs of the added member.
 func (c *cluster) addMember(t testutil.TB) types.URLs {
-	m := c.mustNewMember(t)
+	m := c.mustNewMember(t,0)
 
 	scheme := schemeFromTLSInfo(c.cfg.PeerTLS)
 
@@ -561,6 +567,8 @@ func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
 
 type member struct {
 	config.ServerConfig
+	uniqNumber                  int32
+	memberNumber                int32
 	PeerListeners, ClientListeners []net.Listener
 	grpcListener                   net.Listener
 	// PeerTLSInfo enables peer TLS when set
@@ -596,6 +604,7 @@ func (m *member) GRPCURL() string { return m.grpcURL }
 
 type memberConfig struct {
 	name                        string
+	memberNumber                int32
 	peerTLS                     *transport.TLSInfo
 	clientTLS                   *transport.TLSInfo
 	authToken                   string
@@ -620,7 +629,10 @@ type memberConfig struct {
 // set, it will use https scheme to communicate between peers.
 func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	var err error
-	m := &member{}
+	m := &member{
+		uniqNumber: atomic.AddInt32(&uniqueNumber, 1),
+		memberNumber: mcfg.memberNumber,
+	}
 
 	peerScheme := schemeFromTLSInfo(mcfg.peerTLS)
 	clientScheme := schemeFromTLSInfo(mcfg.clientTLS)
@@ -782,11 +794,11 @@ func (m *member) Bridge() *bridge {
 
 func (m *member) grpcAddr() string {
 	// prefix with localhost so cert has right domain
-	addr := "localhost:" + m.Name
+	host := "localhost"
 	if m.useIP { // for IP-only TLS certs
-		addr = "127.0.0.1:" + m.Name
+		host = "127.0.0.1"
 	}
-	return addr
+	return fmt.Sprintf("%s:%d", host, baseGRPCPort + m.uniqNumber * 10 + m.memberNumber)
 }
 
 type dialer struct {
@@ -1462,7 +1474,7 @@ func (c *ClusterV3) GetLearnerMembers() ([]*pb.Member, error) {
 // AddAndLaunchLearnerMember creates a leaner member, adds it to cluster
 // via v3 MemberAdd API, and then launches the new member.
 func (c *ClusterV3) AddAndLaunchLearnerMember(t testutil.TB) {
-	m := c.mustNewMember(t)
+	m := c.mustNewMember(t, 0)
 	m.isLearner = true
 
 	scheme := schemeFromTLSInfo(c.cfg.PeerTLS)
@@ -1563,7 +1575,7 @@ func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], 
 
 // MustNewMember creates a new member instance based on the response of V3 Member Add API.
 func (c *ClusterV3) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse) *member {
-	m := c.mustNewMember(t)
+	m := c.mustNewMember(t,0)
 	m.isLearner = resp.Member.IsLearner
 	m.NewCluster = false
 
