@@ -712,7 +712,7 @@ func TestKVGetRetry(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clusterSize := 3
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// because killing leader and following election
@@ -765,7 +765,7 @@ func TestKVGetRetry(t *testing.T) {
 func TestKVPutFailGetRetry(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -876,7 +876,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 // in the presence of network errors.
 func TestKVPutAtMostOnce(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	if _, err := clus.Client(0).Put(context.TODO(), "k", "1"); err != nil {

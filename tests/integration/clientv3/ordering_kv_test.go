@@ -30,7 +30,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	var errOrderViolation = errors.New("DetectedOrderViolation")
 
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
@@ -97,7 +97,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	var errOrderViolation = errors.New("DetectedOrderViolation")
 
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{

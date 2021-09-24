@@ -38,6 +38,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:                 2,
 		GRPCKeepAliveMinTime: time.Millisecond, // avoid too_many_pings
+		UseBridge:            true,
 	})
 	defer clus.Terminate(t)
 
@@ -170,6 +171,7 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:               2,
 		SkipCreatingClient: true,
+		UseBridge:          true,
 	})
 	defer clus.Terminate(t)
 

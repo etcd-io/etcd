@@ -142,7 +142,7 @@ func TestMaintenanceSnapshotError(t *testing.T) {
 func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// take about 1-second to read snapshot
