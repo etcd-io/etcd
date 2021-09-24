@@ -29,8 +29,8 @@ type Dialer interface {
 // to disconnect grpc network connections without closing the logical grpc connection.
 type bridge struct {
 	dialer Dialer
-	l       net.Listener
-	conns   map[*bridgeConn]struct{}
+	l      net.Listener
+	conns  map[*bridgeConn]struct{}
 
 	stopc      chan struct{}
 	pausec     chan struct{}
@@ -43,8 +43,8 @@ type bridge struct {
 func newBridge(dialer Dialer, listener net.Listener) (*bridge, error) {
 	b := &bridge{
 		// bridge "port" is ("%05d%05d0", port, pid) since go1.8 expects the port to be a number
-		dialer: dialer,
-		l: listener,
+		dialer:     dialer,
+		l:          listener,
 		conns:      make(map[*bridgeConn]struct{}),
 		stopc:      make(chan struct{}),
 		pausec:     make(chan struct{}),

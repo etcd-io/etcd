@@ -46,7 +46,7 @@ func TestPauseMember(t *testing.T) {
 
 func TestRestartMember(t *testing.T) {
 	BeforeTest(t)
-	c := NewCluster(t, 3)
+	c := newCluster(t, &ClusterConfig{Size: 3, UseBridge: true})
 	c.Launch(t)
 	defer c.Terminate(t)
 
@@ -88,7 +88,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 
 func TestSnapshotAndRestartMember(t *testing.T) {
 	BeforeTest(t)
-	m := mustNewMember(t, memberConfig{name: "snapAndRestartTest"})
+	m := mustNewMember(t, memberConfig{name: "snapAndRestartTest", useBridge: true})
 	m.SnapshotCount = 100
 	m.Launch()
 	defer m.Terminate(t)

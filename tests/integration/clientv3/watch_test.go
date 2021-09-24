@@ -47,7 +47,7 @@ type watchctx struct {
 func runWatchTest(t *testing.T, f watcherTest) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	wclientMember := rand.Intn(3)
@@ -348,7 +348,7 @@ func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
 
 func TestWatchResumeInitRev(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -404,7 +404,7 @@ func TestWatchResumeInitRev(t *testing.T) {
 func TestWatchResumeCompacted(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// create a waiting watcher at rev 1
@@ -955,7 +955,7 @@ func TestWatchWithCreatedNotification(t *testing.T) {
 func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 	integration.BeforeTest(t)
 
-	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
@@ -1063,7 +1063,7 @@ func TestWatchOverlapDropConnContextCancel(t *testing.T) {
 
 func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3)) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	n := 100
@@ -1154,7 +1154,7 @@ func TestWatchCancelAndCloseClient(t *testing.T) {
 // then closes the watcher interface to ensure correct clean up.
 func TestWatchStressResumeClose(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
 

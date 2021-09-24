@@ -153,6 +153,9 @@ type ClusterConfig struct {
 
 	// UseIP is true to use only IP for gRPC requests.
 	UseIP bool
+	// UseBridge adds bridge between client and grpc server. Should be used in tests that
+	// want to manipulate connection or require connection not breaking despite server stop/restart.
+	UseBridge bool
 
 	EnableLeaseCheckpoint   bool
 	LeaseCheckpointInterval time.Duration
@@ -313,6 +316,7 @@ func (c *cluster) mustNewMember(t testutil.TB) *member {
 			clientMaxCallSendMsgSize:    c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize:    c.cfg.ClientMaxCallRecvMsgSize,
 			useIP:                       c.cfg.UseIP,
+			useBridge:                   c.cfg.UseBridge,
 			enableLeaseCheckpoint:       c.cfg.EnableLeaseCheckpoint,
 			leaseCheckpointInterval:     c.cfg.LeaseCheckpointInterval,
 			WatchProgressNotifyInterval: c.cfg.WatchProgressNotifyInterval,
@@ -582,6 +586,7 @@ type member struct {
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
 	useIP                    bool
+	useBridge                bool
 
 	isLearner bool
 	closed    bool
@@ -605,6 +610,7 @@ type memberConfig struct {
 	clientMaxCallSendMsgSize    int
 	clientMaxCallRecvMsgSize    int
 	useIP                       bool
+	useBridge                   bool
 	enableLeaseCheckpoint       bool
 	leaseCheckpointInterval     time.Duration
 	WatchProgressNotifyInterval time.Duration
@@ -698,6 +704,7 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
 	m.useIP = mcfg.useIP
+	m.useBridge = mcfg.useBridge
 	m.EnableLeaseCheckpoint = mcfg.enableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
 
@@ -731,35 +738,53 @@ func memberLogger(t testutil.TB, name string) *zap.Logger {
 // listenGRPC starts a grpc server over a unix domain socket on the member
 func (m *member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
-	m.grpcURL = "localhost:" + m.Name
-	m.Logger.Info("LISTEN GRPC", zap.String("m.grpcURL", m.grpcURL), zap.String("m.Name", m.Name))
-	if m.useIP { // for IP-only TLS certs
-		m.grpcURL = "127.0.0.1:" + m.Name
-	}
-	grpcListener, err := transport.NewUnixListener(m.grpcURL)
+	grpcAddr := m.grpcAddr()
+	m.Logger.Info("LISTEN GRPC", zap.String("grpcAddr", grpcAddr), zap.String("m.Name", m.Name))
+	grpcListener, err := transport.NewUnixListener(grpcAddr)
 	if err != nil {
-		return fmt.Errorf("listen failed on grpc socket %s (%v)", m.grpcURL, err)
+		return fmt.Errorf("listen failed on grpc socket %s (%v)", grpcAddr, err)
 	}
-	bridgeAddr := m.grpcURL + "0"
-	bridgeListener, err := transport.NewUnixListener(bridgeAddr)
-	if err != nil {
-		grpcListener.Close()
-		return fmt.Errorf("listen failed on bridge socket %s (%v)", m.grpcURL, err)
+	m.grpcURL = schemeFromTLSInfo(m.ClientTLSInfo) + "://" + grpcAddr
+	if m.useBridge {
+		_, err = m.addBridge()
+		if err != nil {
+			grpcListener.Close()
+			return err
+		}
 	}
-	m.grpcBridge, err = newBridge(dialer{network: "unix", addr: m.grpcURL}, bridgeListener)
-	if err != nil {
-		bridgeListener.Close()
-		grpcListener.Close()
-		return err
-	}
-	m.grpcURL = schemeFromTLSInfo(m.ClientTLSInfo) + "://" + bridgeAddr
 	m.grpcListener = grpcListener
 	return nil
 }
 
+func (m *member) addBridge() (*bridge, error) {
+	grpcAddr := m.grpcAddr()
+	bridgeAddr := grpcAddr + "0"
+	m.Logger.Info("LISTEN BRIDGE", zap.String("grpc-address", bridgeAddr), zap.String("member", m.Name))
+	bridgeListener, err := transport.NewUnixListener(bridgeAddr)
+	if err != nil {
+		return nil, fmt.Errorf("listen failed on bridge socket %s (%v)", grpcAddr, err)
+	}
+	m.grpcBridge, err = newBridge(dialer{network: "unix", addr: grpcAddr}, bridgeListener)
+	if err != nil {
+		bridgeListener.Close()
+		return nil, err
+	}
+	m.grpcURL = schemeFromTLSInfo(m.ClientTLSInfo) + "://" + bridgeAddr
+	return m.grpcBridge, nil
+}
+
+func (m *member) grpcAddr() string {
+	// prefix with localhost so cert has right domain
+	addr := "localhost:" + m.Name
+	if m.useIP { // for IP-only TLS certs
+		addr = "127.0.0.1:" + m.Name
+	}
+	return addr
+}
+
 type dialer struct {
 	network string
-	addr string
+	addr    string
 }
 
 func (d dialer) Dial() (net.Conn, error) {
