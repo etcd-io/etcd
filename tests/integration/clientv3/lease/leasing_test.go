@@ -1509,11 +1509,11 @@ func TestLeasingReconnectOwnerConsistency(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		v := fmt.Sprintf("%d", i)
 		donec := make(chan struct{})
-		clus.Members[0].DropConnections()
+		clus.Members[0].Bridge().DropConnections()
 		go func() {
 			defer close(donec)
 			for i := 0; i < 20; i++ {
-				clus.Members[0].DropConnections()
+				clus.Members[0].Bridge().DropConnections()
 				time.Sleep(time.Millisecond)
 			}
 		}()
@@ -1663,9 +1663,9 @@ func TestLeasingReconnectTxn(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		clus.Members[0].DropConnections()
+		clus.Members[0].Bridge().DropConnections()
 		for i := 0; i < 10; i++ {
-			clus.Members[0].DropConnections()
+			clus.Members[0].Bridge().DropConnections()
 			time.Sleep(time.Millisecond)
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -1703,11 +1703,11 @@ func TestLeasingReconnectNonOwnerGet(t *testing.T) {
 	n := 0
 	for i := 0; i < 10; i++ {
 		donec := make(chan struct{})
-		clus.Members[0].DropConnections()
+		clus.Members[0].Bridge().DropConnections()
 		go func() {
 			defer close(donec)
 			for j := 0; j < 10; j++ {
-				clus.Members[0].DropConnections()
+				clus.Members[0].Bridge().DropConnections()
 				time.Sleep(time.Millisecond)
 			}
 		}()

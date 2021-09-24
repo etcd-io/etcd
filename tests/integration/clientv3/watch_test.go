@@ -188,7 +188,7 @@ func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
 		defer close(donec)
 		// take down watcher connection
 		for {
-			wctx.clus.Members[wctx.wclientMember].DropConnections()
+			wctx.clus.Members[wctx.wclientMember].Bridge().DropConnections()
 			select {
 			case <-timer:
 				// spinning on close may live lock reconnection
@@ -230,7 +230,7 @@ func testWatchReconnInit(t *testing.T, wctx *watchctx) {
 	if wctx.ch = wctx.w.Watch(context.TODO(), "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil channel")
 	}
-	wctx.clus.Members[wctx.wclientMember].DropConnections()
+	wctx.clus.Members[wctx.wclientMember].Bridge().DropConnections()
 	// watcher should recover
 	putAndWatch(t, wctx, "a", "a")
 }
@@ -247,7 +247,7 @@ func testWatchReconnRunning(t *testing.T, wctx *watchctx) {
 	}
 	putAndWatch(t, wctx, "a", "a")
 	// take down watcher connection
-	wctx.clus.Members[wctx.wclientMember].DropConnections()
+	wctx.clus.Members[wctx.wclientMember].Bridge().DropConnections()
 	// watcher should recover
 	putAndWatch(t, wctx, "a", "b")
 }
@@ -368,8 +368,8 @@ func TestWatchResumeInitRev(t *testing.T) {
 		t.Fatalf("got (%v, %v), expected create notification rev=4", resp, ok)
 	}
 	// pause wch
-	clus.Members[0].DropConnections()
-	clus.Members[0].PauseConnections()
+	clus.Members[0].Bridge().DropConnections()
+	clus.Members[0].Bridge().PauseConnections()
 
 	select {
 	case resp, ok := <-wch:
@@ -378,7 +378,7 @@ func TestWatchResumeInitRev(t *testing.T) {
 	}
 
 	// resume wch
-	clus.Members[0].UnpauseConnections()
+	clus.Members[0].Bridge().UnpauseConnections()
 
 	select {
 	case resp, ok := <-wch:
@@ -968,7 +968,7 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 		t.Fatalf("expected created event, got %v", resp)
 	}
 
-	cluster.Members[0].DropConnections()
+	cluster.Members[0].Bridge().DropConnections()
 
 	// check watch channel doesn't post another watch response.
 	select {
@@ -1056,7 +1056,7 @@ func TestWatchOverlapContextCancel(t *testing.T) {
 
 func TestWatchOverlapDropConnContextCancel(t *testing.T) {
 	f := func(clus *integration.ClusterV3) {
-		clus.Members[0].DropConnections()
+		clus.Members[0].Bridge().DropConnections()
 	}
 	testWatchOverlapContextCancel(t, f)
 }
@@ -1164,7 +1164,7 @@ func TestWatchStressResumeClose(t *testing.T) {
 	for i := range wchs {
 		wchs[i] = cli.Watch(ctx, "abc")
 	}
-	clus.Members[0].DropConnections()
+	clus.Members[0].Bridge().DropConnections()
 	cancel()
 	if err := cli.Close(); err != nil {
 		t.Fatal(err)
