@@ -77,7 +77,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	// give enough time for balancer resolution
 	time.Sleep(5 * time.Second)
 
-	clus.Members[0].Blackhole()
+	clus.Members[0].Bridge().Blackhole()
 
 	if _, err = clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
 		t.Fatal(err)
@@ -88,12 +88,12 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 		t.Error("took too long to receive watch events")
 	}
 
-	clus.Members[0].Unblackhole()
+	clus.Members[0].Bridge().Unblackhole()
 
 	// waiting for moving eps[0] out of unhealthy, so that it can be re-pined.
 	time.Sleep(ccfg.DialTimeout)
 
-	clus.Members[1].Blackhole()
+	clus.Members[1].Bridge().Blackhole()
 
 	// make sure client[0] can connect to eps[0] after remove the blackhole.
 	if _, err = clus.Client(0).Get(context.TODO(), "foo"); err != nil {
@@ -196,7 +196,7 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	cli.SetEndpoints(eps...)
 
 	// blackhole eps[0]
-	clus.Members[0].Blackhole()
+	clus.Members[0].Bridge().Blackhole()
 
 	// With round robin balancer, client will make a request to a healthy endpoint
 	// within a few requests.

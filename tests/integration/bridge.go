@@ -68,7 +68,7 @@ func (b *bridge) Close() {
 	b.wg.Wait()
 }
 
-func (b *bridge) Reset() {
+func (b *bridge) DropConnections() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for bc := range b.conns {
@@ -77,13 +77,13 @@ func (b *bridge) Reset() {
 	b.conns = make(map[*bridgeConn]struct{})
 }
 
-func (b *bridge) Pause() {
+func (b *bridge) PauseConnections() {
 	b.mu.Lock()
 	b.pausec = make(chan struct{})
 	b.mu.Unlock()
 }
 
-func (b *bridge) Unpause() {
+func (b *bridge) UnpauseConnections() {
 	b.mu.Lock()
 	select {
 	case <-b.pausec:

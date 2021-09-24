@@ -1062,7 +1062,7 @@ func TestV3WatchClose(t *testing.T) {
 		}()
 	}
 
-	clus.Members[0].DropConnections()
+	clus.Members[0].Bridge().DropConnections()
 	wg.Wait()
 }
 

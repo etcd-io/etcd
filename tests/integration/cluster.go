@@ -773,6 +773,13 @@ func (m *member) addBridge() (*bridge, error) {
 	return m.grpcBridge, nil
 }
 
+func (m *member) Bridge() *bridge {
+	if !m.useBridge {
+		m.Logger.Panic("Bridge not available. Please configure using bridge before creating cluster.")
+	}
+	return m.grpcBridge
+}
+
 func (m *member) grpcAddr() string {
 	// prefix with localhost so cert has right domain
 	addr := "localhost:" + m.Name
@@ -796,12 +803,6 @@ func (m *member) ElectionTimeout() time.Duration {
 }
 
 func (m *member) ID() types.ID { return m.s.ID() }
-
-func (m *member) DropConnections()    { m.grpcBridge.Reset() }
-func (m *member) PauseConnections()   { m.grpcBridge.Pause() }
-func (m *member) UnpauseConnections() { m.grpcBridge.Unpause() }
-func (m *member) Blackhole()          { m.grpcBridge.Blackhole() }
-func (m *member) Unblackhole()        { m.grpcBridge.Unblackhole() }
 
 // NewClientV3 creates a new grpc client connection to the member
 func NewClientV3(m *member) (*clientv3.Client, error) {

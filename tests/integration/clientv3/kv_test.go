@@ -884,12 +884,12 @@ func TestKVPutAtMostOnce(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		clus.Members[0].DropConnections()
+		clus.Members[0].Bridge().DropConnections()
 		donec := make(chan struct{})
 		go func() {
 			defer close(donec)
 			for i := 0; i < 10; i++ {
-				clus.Members[0].DropConnections()
+				clus.Members[0].Bridge().DropConnections()
 				time.Sleep(5 * time.Millisecond)
 			}
 		}()
