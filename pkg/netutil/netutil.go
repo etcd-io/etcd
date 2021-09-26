@@ -148,20 +148,31 @@ func urlsEqual(ctx context.Context, lg *zap.Logger, a []url.URL, b []url.URL) (b
 	if len(a) != len(b) {
 		return false, fmt.Errorf("len(%q) != len(%q)", urlsToStrings(a), urlsToStrings(b))
 	}
+
+	sort.Sort(types.URLs(a))
+	sort.Sort(types.URLs(b))
+	var needResolve bool
+	for i := range a {
+		if !reflect.DeepEqual(a[i], b[i]) {
+			needResolve = true
+			break
+		}
+	}
+	if !needResolve {
+		return true, nil
+	}
+
+	// If URLs are not equal, try to resolve it and compare again.
 	urls, err := resolveTCPAddrs(ctx, lg, [][]url.URL{a, b})
 	if err != nil {
 		return false, err
 	}
-	preva, prevb := a, b
 	a, b = urls[0], urls[1]
 	sort.Sort(types.URLs(a))
 	sort.Sort(types.URLs(b))
 	for i := range a {
 		if !reflect.DeepEqual(a[i], b[i]) {
-			return false, fmt.Errorf("%q(resolved from %q) != %q(resolved from %q)",
-				a[i].String(), preva[i].String(),
-				b[i].String(), prevb[i].String(),
-			)
+			return false, fmt.Errorf("resolved urls: %q != %q", a[i].String(), b[i].String())
 		}
 	}
 	return true, nil
@@ -188,15 +199,7 @@ func URLStringsEqual(ctx context.Context, lg *zap.Logger, a []string, b []string
 			lg = zap.NewExample()
 		}
 	}
-	sort.Sort(types.URLs(urlsA))
-	sort.Sort(types.URLs(urlsB))
-	for i := range urlsA {
-		if !reflect.DeepEqual(urlsA[i], urlsB[i]) {
-			// If URLs are not equal, try to resolve it and compare again.
-			return urlsEqual(ctx, lg, urlsA, urlsB)
-		}
-	}
-	return true, nil
+	return urlsEqual(ctx, lg, urlsA, urlsB)
 }
 
 func urlsToStrings(us []url.URL) []string {
