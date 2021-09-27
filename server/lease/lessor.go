@@ -678,7 +678,7 @@ func (le *lessor) expireExists() (l *Lease, ok bool, next bool) {
 	// recheck if revoke is complete after retry interval
 	item.time = now.Add(le.expiredLeaseRetryInterval)
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
-	return l, true, false
+	return l, true, true
 }
 
 // findExpiredLeases loops leases in the leaseMap until reaching expired limit
@@ -692,9 +692,6 @@ func (le *lessor) findExpiredLeases(limit int) []*Lease {
 			break
 		}
 		if !ok {
-			continue
-		}
-		if next {
 			continue
 		}
 
