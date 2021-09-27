@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -1594,8 +1595,10 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 
 	clus.Members[0].ClientTLSInfo = &testTLSInfo
 	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()}
+	clus.Members[0].grpcURL = strings.Replace(clus.Members[0].grpcURL, "http://", "https://", 1)
 	client, err := NewClientV3(clus.Members[0])
 	if client != nil || err == nil {
+		client.Close()
 		t.Fatalf("expected no client")
 	} else if err != context.DeadlineExceeded {
 		t.Fatalf("unexpected error (%v)", err)
