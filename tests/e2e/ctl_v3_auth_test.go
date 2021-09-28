@@ -93,7 +93,7 @@ func authEnable(cx ctlCtx) error {
 
 func ctlV3AuthEnable(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "enable")
-	return spawnWithExpect(cmdArgs, "Authentication Enabled")
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, "Authentication Enabled")
 }
 
 func authDisableTest(cx ctlCtx) {
@@ -139,12 +139,12 @@ func authDisableTest(cx ctlCtx) {
 
 func ctlV3AuthDisable(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "disable")
-	return spawnWithExpect(cmdArgs, "Authentication Disabled")
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, "Authentication Disabled")
 }
 
 func authStatusTest(cx ctlCtx) {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "status")
-	if err := spawnWithExpects(cmdArgs, "Authentication Status: false", "AuthRevision:"); err != nil {
+	if err := spawnWithExpects(cmdArgs, cx.envMap, "Authentication Status: false", "AuthRevision:"); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -155,15 +155,15 @@ func authStatusTest(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	cmdArgs = append(cx.PrefixArgs(), "auth", "status")
 
-	if err := spawnWithExpects(cmdArgs, "Authentication Status: true", "AuthRevision:"); err != nil {
+	if err := spawnWithExpects(cmdArgs, cx.envMap, "Authentication Status: true", "AuthRevision:"); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	cmdArgs = append(cx.PrefixArgs(), "auth", "status", "--write-out", "json")
-	if err := spawnWithExpect(cmdArgs, "enabled"); err != nil {
+	if err := spawnWithExpectWithEnv(cmdArgs, cx.envMap, "enabled"); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := spawnWithExpect(cmdArgs, "authRevision"); err != nil {
+	if err := spawnWithExpectWithEnv(cmdArgs, cx.envMap, "authRevision"); err != nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -381,25 +381,25 @@ func authRoleRevokeDuringOpsTest(cx ctlCtx) {
 }
 
 func ctlV3PutFailAuth(cx ctlCtx, key, val string) error {
-	return spawnWithExpect(append(cx.PrefixArgs(), "put", key, val), "authentication failed")
+	return spawnWithExpectWithEnv(append(cx.PrefixArgs(), "put", key, val), cx.envMap, "authentication failed")
 }
 
 func ctlV3PutFailPerm(cx ctlCtx, key, val string) error {
-	return spawnWithExpect(append(cx.PrefixArgs(), "put", key, val), "permission denied")
+	return spawnWithExpectWithEnv(append(cx.PrefixArgs(), "put", key, val), cx.envMap, "permission denied")
 }
 
 func authSetupTestUser(cx ctlCtx) {
 	if err := ctlV3User(cx, []string{"add", "test-user", "--interactive=false"}, "User test-user created", []string{"pass"}); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := spawnWithExpect(append(cx.PrefixArgs(), "role", "add", "test-role"), "Role test-role created"); err != nil {
+	if err := spawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, "Role test-role created"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3User(cx, []string{"grant-role", "test-user", "test-role"}, "Role test-role is granted to user test-user", nil); err != nil {
 		cx.t.Fatal(err)
 	}
 	cmd := append(cx.PrefixArgs(), "role", "grant-permission", "test-role", "readwrite", "foo")
-	if err := spawnWithExpect(cmd, "Role test-role updated"); err != nil {
+	if err := spawnWithExpectWithEnv(cmd, cx.envMap, "Role test-role updated"); err != nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -611,7 +611,7 @@ func authTestCertCN(cx ctlCtx) {
 	if err := ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := spawnWithExpect(append(cx.PrefixArgs(), "role", "add", "test-role"), "Role test-role created"); err != nil {
+	if err := spawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, "Role test-role created"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3User(cx, []string{"grant-role", "example.com", "test-role"}, "Role test-role is granted to user example.com", nil); err != nil {
@@ -921,13 +921,13 @@ func authTestRoleGet(cx ctlCtx) {
 		"KV Read:", "foo",
 		"KV Write:", "foo",
 	}
-	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), expected...); err != nil {
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), cx.envMap, expected...); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	// test-user can get the information of test-role because it belongs to the role
 	cx.user, cx.pass = "test-user", "pass"
-	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), expected...); err != nil {
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), cx.envMap, expected...); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -935,7 +935,7 @@ func authTestRoleGet(cx ctlCtx) {
 	expected = []string{
 		"Error: etcdserver: permission denied",
 	}
-	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "root"), expected...); err != nil {
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "root"), cx.envMap, expected...); err != nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -952,13 +952,13 @@ func authTestUserGet(cx ctlCtx) {
 		"Roles: test-role",
 	}
 
-	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "test-user"), expected...); err != nil {
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "test-user"), cx.envMap, expected...); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	// test-user can get the information of test-user itself
 	cx.user, cx.pass = "test-user", "pass"
-	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "test-user"), expected...); err != nil {
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "test-user"), cx.envMap, expected...); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -966,7 +966,7 @@ func authTestUserGet(cx ctlCtx) {
 	expected = []string{
 		"Error: etcdserver: permission denied",
 	}
-	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "root"), expected...); err != nil {
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "root"), cx.envMap, expected...); err != nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -977,7 +977,7 @@ func authTestRoleList(cx ctlCtx) {
 	}
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
-	if err := spawnWithExpect(append(cx.PrefixArgs(), "role", "list"), "test-role"); err != nil {
+	if err := spawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "list"), cx.envMap, "test-role"); err != nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -1088,7 +1088,7 @@ func certCNAndUsername(cx ctlCtx, noPassword bool) {
 			cx.t.Fatal(err)
 		}
 	}
-	if err := spawnWithExpect(append(cx.PrefixArgs(), "role", "add", "test-role-cn"), "Role test-role-cn created"); err != nil {
+	if err := spawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role-cn"), cx.envMap, "Role test-role-cn created"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3User(cx, []string{"grant-role", "example.com", "test-role-cn"}, "Role test-role-cn is granted to user example.com", nil); err != nil {

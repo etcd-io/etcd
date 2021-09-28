@@ -113,7 +113,7 @@ func leaseTestGrantTimeToLive(cx ctlCtx) {
 	}
 
 	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", id, "--keys")
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		cx.t.Fatalf("leaseTestGrantTimeToLive: error (%v)", err)
 	}
@@ -146,7 +146,7 @@ func leaseTestGrantLeasesList(cx ctlCtx) error {
 	}
 
 	cmdArgs := append(cx.PrefixArgs(), "lease", "list")
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return fmt.Errorf("lease list failed (%v)", err)
 	}
@@ -177,7 +177,7 @@ func leaseTestTimeToLiveExpire(cx ctlCtx, ttl int) error {
 	time.Sleep(time.Duration(ttl+1) * time.Second)
 	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", leaseID)
 	exp := fmt.Sprintf("lease %s already expired", leaseID)
-	if err = spawnWithExpect(cmdArgs, exp); err != nil {
+	if err = spawnWithExpectWithEnv(cmdArgs, cx.envMap, exp); err != nil {
 		return fmt.Errorf("lease not properly expired: (%v)", err)
 	}
 	if err := ctlV3Get(cx, []string{"key"}); err != nil {
@@ -247,7 +247,7 @@ func leaseTestRevoke(cx ctlCtx) error {
 
 func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "grant", strconv.Itoa(ttl))
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return "", err
 	}
@@ -271,7 +271,7 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", leaseID)
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 func ctlV3LeaseKeepAliveOnce(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", "--once", leaseID)
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -298,5 +298,5 @@ func ctlV3LeaseKeepAliveOnce(cx ctlCtx, leaseID string) error {
 
 func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
-	return spawnWithExpect(cmdArgs, fmt.Sprintf("lease %s revoked", leaseID))
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
 }

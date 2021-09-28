@@ -40,7 +40,7 @@ func ctlV3EndpointHealth(cx ctlCtx) error {
 	for i := range lines {
 		lines[i] = "is healthy"
 	}
-	return spawnWithExpects(cmdArgs, lines...)
+	return spawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func endpointStatusTest(cx ctlCtx) {
@@ -56,7 +56,7 @@ func ctlV3EndpointStatus(cx ctlCtx) error {
 		u, _ := url.Parse(ep)
 		eps = append(eps, u.Host)
 	}
-	return spawnWithExpects(cmdArgs, eps...)
+	return spawnWithExpects(cmdArgs, cx.envMap, eps...)
 }
 
 func endpointHashKVTest(cx ctlCtx) {
@@ -88,5 +88,5 @@ func ctlV3EndpointHashKV(cx ctlCtx) error {
 		u, _ := url.Parse(ep)
 		ss = append(ss, fmt.Sprintf("%s, %d", u.Host, hresp.Hash))
 	}
-	return spawnWithExpects(cmdArgs, ss...)
+	return spawnWithExpects(cmdArgs, cx.envMap, ss...)
 }

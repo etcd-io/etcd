@@ -101,5 +101,5 @@ func alarmTest(cx ctlCtx) {
 
 func ctlV3Alarm(cx ctlCtx, cmd string, as ...string) error {
 	cmdArgs := append(cx.PrefixArgs(), "alarm", cmd)
-	return spawnWithExpects(cmdArgs, as...)
+	return spawnWithExpects(cmdArgs, cx.envMap, as...)
 }

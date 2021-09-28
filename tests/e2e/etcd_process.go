@@ -92,7 +92,7 @@ func (ep *etcdServerProcess) Start() error {
 		panic("already started")
 	}
 	ep.cfg.lg.Info("starting server...", zap.String("name", ep.cfg.name))
-	proc, err := spawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.execPath}, ep.cfg.args...))
+	proc, err := spawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.execPath}, ep.cfg.args...), nil)
 	if err != nil {
 		return err
 	}
