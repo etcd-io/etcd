@@ -56,7 +56,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 		if _, err := cli.Get(context.TODO(), "foo"); err != nil {
 			t.Fatal(err)
 		}
-		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCAddr(), 0)
+		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCURL(), 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,7 +192,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// take about 1-second to read snapshot
@@ -279,7 +279,7 @@ func TestMaintenanceStatus(t *testing.T) {
 
 	eps := make([]string, 3)
 	for i := 0; i < 3; i++ {
-		eps[i] = clus.Members[i].GRPCAddr()
+		eps[i] = clus.Members[i].GRPCURL()
 	}
 
 	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})

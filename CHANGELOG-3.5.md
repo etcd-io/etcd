@@ -16,6 +16,13 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.5.1) and 
 
 - Fix [self-signed-cert-validity parameter cannot be specified in the config file](https://github.com/etcd-io/etcd/pull/13237).
 
+### etcd client
+
+- [Fix etcd client sends invalid :authority header](https://github.com/etcd-io/etcd/issues/13192)
+
+### package clientv3
+
+- Endpoints self identify now as `etcd-endpoints://{id}/{authority}` where authority is based on first endpoint passed, for example `etcd-endpoints://0xc0009d8540/localhost:2079`
 
 <hr>
 
