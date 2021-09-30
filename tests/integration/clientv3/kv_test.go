@@ -712,7 +712,7 @@ func TestKVGetRetry(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clusterSize := 3
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// because killing leader and following election
@@ -765,7 +765,7 @@ func TestKVGetRetry(t *testing.T) {
 func TestKVPutFailGetRetry(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -876,7 +876,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 // in the presence of network errors.
 func TestKVPutAtMostOnce(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	if _, err := clus.Client(0).Put(context.TODO(), "k", "1"); err != nil {
@@ -884,12 +884,12 @@ func TestKVPutAtMostOnce(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		clus.Members[0].DropConnections()
+		clus.Members[0].Bridge().DropConnections()
 		donec := make(chan struct{})
 		go func() {
 			defer close(donec)
 			for i := 0; i < 10; i++ {
-				clus.Members[0].DropConnections()
+				clus.Members[0].Bridge().DropConnections()
 				time.Sleep(5 * time.Millisecond)
 			}
 		}()
@@ -1027,7 +1027,7 @@ func TestKVForLearner(t *testing.T) {
 	// 1. clus.Members[3] is the newly added learner member, which was appended to clus.Members
 	// 2. we are using member's grpcAddr instead of clientURLs as the endpoint for clientv3.Config,
 	// because the implementation of integration test has diverged from embed/etcd.go.
-	learnerEp := clus.Members[3].GRPCAddr()
+	learnerEp := clus.Members[3].GRPCURL()
 	cfg := clientv3.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
@@ -1100,7 +1100,7 @@ func TestBalancerSupportLearner(t *testing.T) {
 	}
 
 	// clus.Members[3] is the newly added learner member, which was appended to clus.Members
-	learnerEp := clus.Members[3].GRPCAddr()
+	learnerEp := clus.Members[3].GRPCURL()
 	cfg := clientv3.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
@@ -1119,7 +1119,7 @@ func TestBalancerSupportLearner(t *testing.T) {
 		t.Fatalf("expect Get request to learner to fail, got no error")
 	}
 
-	eps := []string{learnerEp, clus.Members[0].GRPCAddr()}
+	eps := []string{learnerEp, clus.Members[0].GRPCURL()}
 	cli.SetEndpoints(eps...)
 	if _, err := cli.Get(context.Background(), "foo"); err != nil {
 		t.Errorf("expect no error (balancer should retry when request to learner fails), got error: %v", err)

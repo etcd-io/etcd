@@ -71,5 +71,5 @@ func ctlV3Compact(cx ctlCtx, rev int64, physical bool) error {
 	if physical {
 		cmdArgs = append(cmdArgs, "--physical")
 	}
-	return spawnWithExpect(cmdArgs, "compacted revision "+rs)
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, "compacted revision "+rs)
 }

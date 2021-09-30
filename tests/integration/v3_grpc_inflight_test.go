@@ -61,7 +61,7 @@ func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 // See https://github.com/etcd-io/etcd/issues/7322 for more detail.
 func TestV3KVInflightRangeRequests(t *testing.T) {
 	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
