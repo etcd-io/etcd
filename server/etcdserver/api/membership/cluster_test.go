@@ -278,10 +278,14 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 }
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
-	cl := NewCluster(zaptest.NewLogger(t))
+	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
-		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
+		var isLearner bool
+		if i == 1 {
+			isLearner = true
+		}
+		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}, IsLearner: isLearner}
 		cl.AddMember(&Member{ID: types.ID(i), RaftAttributes: attr}, true)
 	}
 	cl.RemoveMember(4, true)
@@ -326,6 +330,17 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 7)}, IsLearner: true}
+	ctx7, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(7), RaftAttributes: attr}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}, IsLearner: true}
+	ctx8, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(1), RaftAttributes: attr}, IsPromote: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		cc   raftpb.ConfChange
 		werr error
@@ -422,6 +437,22 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 				Context: ctx6,
 			},
 			ErrIDNotFound,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddLearnerNode,
+				NodeID:  7,
+				Context: ctx7,
+			},
+			ErrTooManyLearners,
+		},
+		{
+			raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  1,
+				Context: ctx8,
+			},
+			nil,
 		},
 	}
 	for i, tt := range tests {
