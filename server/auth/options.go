@@ -145,7 +145,7 @@ func (opts *jwtOptions) rsaKey() (interface{}, error) {
 	}
 
 	// both keys provided, make sure they match
-	if pub != nil && pub.E != priv.E && pub.N.Cmp(priv.N) != 0 {
+	if pub != nil && !pub.Equal(priv.Public()) {
 		return nil, ErrKeyMismatch
 	}
 
@@ -183,8 +183,7 @@ func (opts *jwtOptions) ecKey() (interface{}, error) {
 	}
 
 	// both keys provided, make sure they match
-	if pub != nil && pub.Curve != priv.Curve &&
-		pub.X.Cmp(priv.X) != 0 && pub.Y.Cmp(priv.Y) != 0 {
+	if pub != nil && !pub.Equal(priv.Public()) {
 		return nil, ErrKeyMismatch
 	}
 
