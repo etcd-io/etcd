@@ -8,8 +8,25 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 <hr>
 
+## v3.3.26 (2021-10-03)
 
-## v3.3.25 (2020 TBD)
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.25...v3.3.26) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
+
+### Package `clientv3`
+
+- Fix [auth token invalid after watch reconnects](https://github.com/etcd-io/etcd/pull/12264). Get AuthToken automatically when clientConn is ready.
+
+### Package `fileutil`
+
+- Fix [constant](https://github.com/etcd-io/etcd/pull/12440) for linux locking.
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+<hr>
+
+## v3.3.25 (2020-08-24)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.25) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
