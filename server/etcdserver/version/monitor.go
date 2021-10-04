@@ -31,7 +31,7 @@ type Monitor struct {
 type Server interface {
 	GetClusterVersion() *semver.Version
 	GetDowngradeInfo() *membership.DowngradeInfo
-	GetVersions() map[string]*version.Versions
+	GetMembersVersions() map[string]*version.Versions
 	UpdateClusterVersion(string)
 	DowngradeCancel()
 
@@ -99,7 +99,7 @@ func (m *Monitor) UpdateStorageVersionIfNeeded() {
 
 func (m *Monitor) CancelDowngradeIfNeeded() {
 	d := m.s.GetDowngradeInfo()
-	if !d.Enabled {
+	if d == nil || !d.Enabled {
 		return
 	}
 
@@ -115,7 +115,7 @@ func (m *Monitor) CancelDowngradeIfNeeded() {
 // The returned version is the min server version in the map, or nil if the min
 // version in unknown.
 func (m *Monitor) decideClusterVersion() *semver.Version {
-	vers := m.s.GetVersions()
+	vers := m.s.GetMembersVersions()
 	var cv *semver.Version
 	lv := semver.Must(semver.NewVersion(version.Version))
 
@@ -153,7 +153,7 @@ func (m *Monitor) decideClusterVersion() *semver.Version {
 // versionsMatchTarget returns true if all server versions are equal to target version, otherwise return false.
 // It can be used to decide the whether the cluster finishes downgrading to target version.
 func (m *Monitor) versionsMatchTarget(targetVersion *semver.Version) bool {
-	vers := m.s.GetVersions()
+	vers := m.s.GetMembersVersions()
 	for mid, ver := range vers {
 		if ver == nil {
 			return false

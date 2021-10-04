@@ -1,0 +1,175 @@
+// Copyright 2021 The etcd Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package version
+
+import (
+	"fmt"
+	"math/rand"
+	"testing"
+
+	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+)
+
+var (
+	V3_7 = semver.Version{Major: 3, Minor: 7}
+)
+
+func TestUpgradeSingleNode(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	c := newCluster(lg, 1, V3_6)
+	c.StepMonitors()
+	assert.Equal(t, newCluster(lg, 1, V3_6), c)
+
+	c.ReplaceMemberBinary(0, V3_7)
+	c.StepMonitors()
+	c.StepMonitors()
+
+	assert.Equal(t, newCluster(lg, 1, V3_7), c)
+}
+
+func TestUpgradeThreeNodes(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	c := newCluster(lg, 3, V3_6)
+	c.StepMonitors()
+	assert.Equal(t, newCluster(lg, 3, V3_6), c)
+
+	c.ReplaceMemberBinary(0, V3_7)
+	c.StepMonitors()
+	c.ReplaceMemberBinary(1, V3_7)
+	c.StepMonitors()
+	c.ReplaceMemberBinary(2, V3_7)
+	c.StepMonitors()
+	c.StepMonitors()
+
+	assert.Equal(t, newCluster(lg, 3, V3_7), c)
+}
+
+func newCluster(lg *zap.Logger, memberCount int, ver semver.Version) *clusterMock {
+	cluster := &clusterMock{
+		clusterVersion: ver,
+		members:        make([]*memberMock, 0, memberCount),
+	}
+	majorMinVer := semver.Version{Major: ver.Major, Minor: ver.Minor}
+	for i := 0; i < memberCount; i++ {
+		m := &memberMock{
+			cluster:        cluster,
+			serverVersion:  ver,
+			storageVersion: majorMinVer,
+		}
+	  m.monitor = NewMonitor(lg.Named(fmt.Sprintf("m%d", i)), m)
+		cluster.members = append(cluster.members, m)
+	}
+	cluster.members[0].isLeader = true
+	return cluster
+}
+
+func (c *clusterMock) StepMonitors() {
+	// Execute monitor functions in random order as it is not guaranteed
+	fs := []func(){}
+	for _, m := range c.members {
+		fs = append(fs, m.monitor.UpdateStorageVersionIfNeeded)
+		if m.isLeader {
+			fs = append(fs, m.monitor.CancelDowngradeIfNeeded, m.monitor.UpdateClusterVersionIfNeeded)
+		}
+	}
+	rand.Shuffle(len(fs), func(i, j int) {
+		fs[i], fs[j] = fs[j], fs[i]
+	})
+	for _, f := range fs {
+		f()
+	}
+}
+
+type clusterMock struct {
+	clusterVersion semver.Version
+	downgradeInfo  *membership.DowngradeInfo
+	members        []*memberMock
+}
+
+func (c *clusterMock) DowngradeEnable(ver semver.Version) {
+	c.downgradeInfo = &membership.DowngradeInfo{TargetVersion: ver.String(), Enabled: true}
+}
+
+func (c *clusterMock) MembersVersions() map[string]*version.Versions {
+	result := map[string]*version.Versions{}
+	for i, m := range c.members {
+		result[fmt.Sprintf("%d", i)] = &version.Versions{
+			Server:  m.serverVersion.String(),
+			Cluster: c.clusterVersion.String(),
+		}
+	}
+	return result
+}
+
+func (c *clusterMock) ReplaceMemberBinary(mid int, newServerVersion semver.Version) {
+	if newServerVersion.LessThan(c.clusterVersion) {
+		panic("Members cannot join clusters with higher version")
+	}
+	c.members[mid].serverVersion = newServerVersion
+}
+
+type memberMock struct {
+	cluster *clusterMock
+
+	isLeader       bool
+	serverVersion  semver.Version
+	storageVersion semver.Version
+	monitor        *Monitor
+}
+
+var _ Server = (*memberMock)(nil)
+
+func (m *memberMock) UpdateClusterVersion(version string) {
+	m.cluster.clusterVersion = *semver.New(version)
+}
+
+func (m *memberMock) DowngradeCancel() {
+	m.cluster.downgradeInfo = nil
+}
+
+func (m *memberMock) GetClusterVersion() *semver.Version {
+	return &m.cluster.clusterVersion
+}
+
+func (m *memberMock) GetDowngradeInfo() *membership.DowngradeInfo {
+	return m.cluster.downgradeInfo
+}
+
+func (m *memberMock) GetMembersVersions() map[string]*version.Versions {
+	return m.cluster.MembersVersions()
+}
+
+func (m *memberMock) GetStorageVersion() *semver.Version {
+	return &m.storageVersion
+}
+
+func (m *memberMock) UpdateStorageVersion(v semver.Version) {
+	m.storageVersion = v
+}
+
+func (m *memberMock) TriggerSnapshot() {
+}
+
+func (m *memberMock) Lock() {
+}
+
+func (m *memberMock) Unlock() {
+}

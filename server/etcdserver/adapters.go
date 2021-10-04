@@ -63,7 +63,7 @@ func (s *serverVersionAdapter) GetDowngradeInfo() *membership.DowngradeInfo {
 	return s.cluster.DowngradeInfo()
 }
 
-func (s *serverVersionAdapter) GetVersions() map[string]*version.Versions {
+func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions {
 	return getVersions(s.lg, s.cluster, s.id, s.peerRt)
 }
 
