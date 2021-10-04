@@ -7,6 +7,28 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 <hr>
 
+## v3.4.17 (2021-10-03)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.16...v3.4.17) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+### `etcdctl`
+
+- Fix [etcdctl check datascale command](https://github.com/etcd-io/etcd/pull/11896) to work with https endpoints.
+
+### gRPC gateway
+
+- Add [`MaxCallRecvMsgSize`](https://github.com/etcd-io/etcd/pull/13077) support for http client.
+
+### Dependency
+
+- Replace [`github.com/dgrijalva/jwt-go with github.com/golang-jwt/jwt'](https://github.com/etcd-io/etcd/pull/13378).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+<hr>
+
 ## v3.4.16 (2021-05-11)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.15...v3.4.16) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
