@@ -28,3 +28,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Package `mvcc/buckets` was moved to `storage/schema`
 - Package `wal` was moved to `storage/wal`
 - Package `datadir` was moved to `storage/datadir`
+
+
+### Metrics, Monitoring
+
+See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
+
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).
