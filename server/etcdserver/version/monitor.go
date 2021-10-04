@@ -49,34 +49,29 @@ func NewMonitor(lg *zap.Logger, storage Server) *Monitor {
 	}
 }
 
-// UpdateClusterVersionIfNeeded updates the cluster version if all members agrees on a higher one.
-// It prints out log if there is a member with a higher version than the
-// local version.
+// UpdateClusterVersionIfNeeded updates the cluster version.
 func (m *Monitor) UpdateClusterVersionIfNeeded() {
-	v := m.decideClusterVersion()
-	if v != nil {
-		// only keep major.minor version for comparison
-		v = &semver.Version{
-			Major: v.Major,
-			Minor: v.Minor,
-		}
+	newClusterVersion := m.decideClusterVersion()
+	if newClusterVersion != nil {
+		newClusterVersion = &semver.Version{Major: newClusterVersion.Major, Minor: newClusterVersion.Minor}
+		m.s.UpdateClusterVersion(newClusterVersion.String())
 	}
+}
 
-	// if the current version is nil:
-	// 1. use the decided version if possible
-	// 2. or use the min cluster version
-	if m.s.GetClusterVersion() == nil {
-		verStr := version.MinClusterVersion
-		if v != nil {
-			verStr = v.String()
+// decideClusterVersion decides the cluster version based on the members versions if all members agree on a higher one.
+func (m *Monitor) decideClusterVersion() *semver.Version {
+	clusterVersion := m.s.GetClusterVersion()
+	membersMinimalVersion := m.membersMinimalVersion()
+	if clusterVersion == nil {
+		if membersMinimalVersion != nil {
+			return membersMinimalVersion
 		}
-		m.s.UpdateClusterVersion(verStr)
-		return
+		return semver.New(version.MinClusterVersion)
 	}
-
-	if v != nil && membership.IsValidVersionChange(m.s.GetClusterVersion(), v) {
-		m.s.UpdateClusterVersion(v.String())
+	if membersMinimalVersion != nil && clusterVersion.LessThan(*membersMinimalVersion) && membership.IsValidVersionChange(clusterVersion, membersMinimalVersion) {
+		return membersMinimalVersion
 	}
+	return nil
 }
 
 // UpdateStorageVersionIfNeeded updates the storage version if it differs from cluster version.
@@ -111,12 +106,13 @@ func (m *Monitor) CancelDowngradeIfNeeded() {
 	}
 }
 
-// decideClusterVersion decides the cluster version based on the versions map.
-// The returned version is the min server version in the map, or nil if the min
+// membersMinimalVersion returns the min server version in the map, or nil if the min
 // version in unknown.
-func (m *Monitor) decideClusterVersion() *semver.Version {
+// It prints out log if there is a member with a higher version than the
+// local version.
+func (m *Monitor) membersMinimalVersion() *semver.Version {
 	vers := m.s.GetMembersVersions()
-	var cv *semver.Version
+	var minV *semver.Version
 	lv := semver.Must(semver.NewVersion(version.Version))
 
 	for mid, ver := range vers {
@@ -141,13 +137,13 @@ func (m *Monitor) decideClusterVersion() *semver.Version {
 				zap.String("remote-member-version", ver.Server),
 			)
 		}
-		if cv == nil {
-			cv = v
-		} else if v.LessThan(*cv) {
-			cv = v
+		if minV == nil {
+			minV = v
+		} else if v.LessThan(*minV) {
+			minV = v
 		}
 	}
-	return cv
+	return minV
 }
 
 // versionsMatchTarget returns true if all server versions are equal to target version, otherwise return false.

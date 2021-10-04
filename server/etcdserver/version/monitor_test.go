@@ -18,10 +18,10 @@ var (
 	V3_6 = semver.Version{Major: 3, Minor: 6}
 )
 
-func TestDecideClusterVersion(t *testing.T) {
+func TestMemberMinimalVersion(t *testing.T) {
 	tests := []struct {
-		vers  map[string]*version.Versions
-		wdver *semver.Version
+		memberVersions map[string]*version.Versions
+		wantVersion    *semver.Version
 	}{
 		{
 			map[string]*version.Versions{"a": {Server: "2.0.0"}},
@@ -48,11 +48,11 @@ func TestDecideClusterVersion(t *testing.T) {
 
 	for i, tt := range tests {
 		monitor := NewMonitor(zaptest.NewLogger(t), &storageMock{
-			memberVersions: tt.vers,
+			memberVersions: tt.memberVersions,
 		})
-		dver := monitor.decideClusterVersion()
-		if !reflect.DeepEqual(dver, tt.wdver) {
-			t.Errorf("#%d: ver = %+v, want %+v", i, dver, tt.wdver)
+		minV := monitor.membersMinimalVersion()
+		if !reflect.DeepEqual(minV, tt.wantVersion) {
+			t.Errorf("#%d: ver = %+v, want %+v", i, minV, tt.wantVersion)
 		}
 	}
 }
