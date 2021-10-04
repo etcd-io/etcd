@@ -6,7 +6,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: [1.12.17, 1.15.13]
+        go: [1.12.17, 1.15.15]
         target:
         - linux-amd64-fmt
         - linux-amd64-integration-1-cpu
@@ -22,17 +22,17 @@ jobs:
           target: linux-amd64-grpcproxy
         - go: 1.12.17
           target: linux-386-unit
-        - go: 1.15.13
+        - go: 1.15.15
           target: linux-amd64-integration-1-cpu
-        - go: 1.15.13
+        - go: 1.15.15
           target: linux-amd64-integration-2-cpu
         - go: 1.12.17
           target: linux-amd64-unit
-        - go: 1.15.13
+        - go: 1.15.15
           target: linux-amd64-coverage
         - go: 1.12.17
           target: linux-amd64-fmt
-        - go: 1.15.13
+        - go: 1.15.15
           target: linux-386-unit
     steps:
     - uses: actions/checkout@v2
@@ -44,7 +44,7 @@ jobs:
         TARGET: ${{ matrix.target }}
         GO_VERSION: ${{ matrix.go }}
       run: |
-        RACE='true'; if [[ ${GO_VERSION} == 1.15.13 ]]; then echo 'setting race off'; RACE='false'; fi
+        RACE='true'; if [[ ${GO_VERSION} == 1.15.15 ]]; then echo 'setting race off'; RACE='false'; fi
         echo "${TARGET}"
         case "${TARGET}" in
           linux-amd64-fmt)
