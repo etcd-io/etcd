@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package membership
+package version
 
 import (
 	"bytes"
@@ -122,7 +122,7 @@ func TestMustDetectDowngrade(t *testing.T) {
 		lcfg.ErrorOutputPaths = []string{logPath}
 		lg, _ := lcfg.Build()
 
-		mustDetectDowngrade(lg, tests[iint].clusterVersion, tests[iint].downgrade)
+		MustDetectDowngrade(lg, tests[iint].clusterVersion, tests[iint].downgrade)
 		return
 	}
 
@@ -189,6 +189,78 @@ func TestIsValidDowngrade(t *testing.T) {
 				semver.Must(semver.NewVersion(tt.verFrom)), semver.Must(semver.NewVersion(tt.verTo)))
 			if res != tt.result {
 				t.Errorf("Expected downgrade valid is %v; Got %v", tt.result, res)
+			}
+		})
+	}
+}
+
+func TestIsVersionChangable(t *testing.T) {
+	v0 := semver.Must(semver.NewVersion("2.4.0"))
+	v1 := semver.Must(semver.NewVersion("3.4.0"))
+	v2 := semver.Must(semver.NewVersion("3.5.0"))
+	v3 := semver.Must(semver.NewVersion("3.5.1"))
+	v4 := semver.Must(semver.NewVersion("3.6.0"))
+
+	tests := []struct {
+		name           string
+		currentVersion *semver.Version
+		localVersion   *semver.Version
+		expectedResult bool
+	}{
+		{
+			name:           "When local version is one minor lower than cluster version",
+			currentVersion: v2,
+			localVersion:   v1,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is one minor and one patch lower than cluster version",
+			currentVersion: v3,
+			localVersion:   v1,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is one minor higher than cluster version",
+			currentVersion: v1,
+			localVersion:   v2,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is two minor higher than cluster version",
+			currentVersion: v1,
+			localVersion:   v4,
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is one major higher than cluster version",
+			currentVersion: v0,
+			localVersion:   v1,
+			expectedResult: false,
+		},
+		{
+			name:           "When local version is equal to cluster version",
+			currentVersion: v1,
+			localVersion:   v1,
+			expectedResult: false,
+		},
+		{
+			name:           "When local version is one patch higher than cluster version",
+			currentVersion: v2,
+			localVersion:   v3,
+			expectedResult: false,
+		},
+		{
+			name:           "When local version is two minor lower than cluster version",
+			currentVersion: v4,
+			localVersion:   v1,
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if ret := IsValidVersionChange(tt.currentVersion, tt.localVersion); ret != tt.expectedResult {
+				t.Errorf("Expected %v; Got %v", tt.expectedResult, ret)
 			}
 		})
 	}

@@ -18,6 +18,7 @@ import (
 	"path"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/etcdserver/version"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -43,8 +44,8 @@ type MemberBackend interface {
 }
 
 type DowngradeInfoBackend interface {
-	MustSaveDowngradeToBackend(*DowngradeInfo)
-	DowngradeInfoFromBackend() *DowngradeInfo
+	MustSaveDowngradeToBackend(*version.DowngradeInfo)
+	DowngradeInfoFromBackend() *version.DowngradeInfo
 }
 
 func MustParseMemberIDFromKey(lg *zap.Logger, key string) types.ID {

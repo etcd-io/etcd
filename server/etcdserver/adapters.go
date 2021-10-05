@@ -23,7 +23,6 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 )
 
@@ -59,7 +58,7 @@ func (s *serverVersionAdapter) GetClusterVersion() *semver.Version {
 	return s.cluster.Version()
 }
 
-func (s *serverVersionAdapter) GetDowngradeInfo() *membership.DowngradeInfo {
+func (s *serverVersionAdapter) GetDowngradeInfo() *serverversion.DowngradeInfo {
 	return s.cluster.DowngradeInfo()
 }
 

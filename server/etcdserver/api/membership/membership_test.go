@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/etcdserver/version"
 
 	"go.uber.org/zap"
 )
@@ -50,5 +51,5 @@ func (b *backendMock) MustSaveMemberToBackend(*Member)      {}
 func (b *backendMock) TrimMembershipFromBackend() error     { return nil }
 func (b *backendMock) MustDeleteMemberFromBackend(types.ID) {}
 
-func (b *backendMock) MustSaveDowngradeToBackend(*DowngradeInfo) {}
-func (b *backendMock) DowngradeInfoFromBackend() *DowngradeInfo  { return nil }
+func (b *backendMock) MustSaveDowngradeToBackend(*version.DowngradeInfo) {}
+func (b *backendMock) DowngradeInfoFromBackend() *version.DowngradeInfo  { return nil }

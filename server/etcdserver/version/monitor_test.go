@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 )
 
 var (
@@ -163,7 +162,7 @@ func TestUpdateClusterVersionIfNeeded(t *testing.T) {
 		name                 string
 		clusterVersion       *semver.Version
 		memberVersions       map[string]*version.Versions
-		downgrade            *membership.DowngradeInfo
+		downgrade            *DowngradeInfo
 		expectClusterVersion *semver.Version
 	}{
 		{
@@ -228,15 +227,15 @@ func TestCancelDowngradeIfNeeded(t *testing.T) {
 	tests := []struct {
 		name            string
 		memberVersions  map[string]*version.Versions
-		downgrade       *membership.DowngradeInfo
-		expectDowngrade *membership.DowngradeInfo
+		downgrade       *DowngradeInfo
+		expectDowngrade *DowngradeInfo
 	}{
 		{
 			name: "No action if there no downgrade in progress",
 		},
 		{
 			name:            "Cancel downgrade if there are no members",
-			downgrade:       &membership.DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
+			downgrade:       &DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
 			expectDowngrade: nil,
 		},
 		// Next entries go through all states that should happen during downgrade
@@ -253,7 +252,7 @@ func TestCancelDowngradeIfNeeded(t *testing.T) {
 				"a": {Cluster: "3.5.0", Server: "3.5.1"},
 				"b": {Cluster: "3.5.0", Server: "3.5.2"},
 			},
-			downgrade:       &membership.DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
+			downgrade:       &DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
 			expectDowngrade: nil,
 		},
 	}
@@ -330,7 +329,7 @@ type storageMock struct {
 	memberVersions map[string]*version.Versions
 	clusterVersion *semver.Version
 	storageVersion *semver.Version
-	downgradeInfo  *membership.DowngradeInfo
+	downgradeInfo  *DowngradeInfo
 	locked         bool
 }
 
@@ -348,7 +347,7 @@ func (s *storageMock) GetClusterVersion() *semver.Version {
 	return s.clusterVersion
 }
 
-func (s *storageMock) GetDowngradeInfo() *membership.DowngradeInfo {
+func (s *storageMock) GetDowngradeInfo() *DowngradeInfo {
 	return s.downgradeInfo
 }
 

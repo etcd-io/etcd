@@ -17,7 +17,6 @@ package version
 import (
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +29,7 @@ type Monitor struct {
 // Server lists EtcdServer methods needed by Monitor
 type Server interface {
 	GetClusterVersion() *semver.Version
-	GetDowngradeInfo() *membership.DowngradeInfo
+	GetDowngradeInfo() *DowngradeInfo
 	GetMembersVersions() map[string]*version.Versions
 	UpdateClusterVersion(string)
 	DowngradeCancel()
@@ -68,7 +67,7 @@ func (m *Monitor) decideClusterVersion() *semver.Version {
 		}
 		return semver.New(version.MinClusterVersion)
 	}
-	if membersMinimalVersion != nil && clusterVersion.LessThan(*membersMinimalVersion) && membership.IsValidVersionChange(clusterVersion, membersMinimalVersion) {
+	if membersMinimalVersion != nil && clusterVersion.LessThan(*membersMinimalVersion) && IsValidVersionChange(clusterVersion, membersMinimalVersion) {
 		return membersMinimalVersion
 	}
 	return nil

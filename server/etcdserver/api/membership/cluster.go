@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/prometheus/client_golang/prometheus"
@@ -58,7 +59,7 @@ type RaftCluster struct {
 	// removed id cannot be reused.
 	removed map[types.ID]bool
 
-	downgradeInfo  *DowngradeInfo
+	downgradeInfo  *serverversion.DowngradeInfo
 	versionChanged *notify.Notifier
 }
 
@@ -113,7 +114,7 @@ func NewCluster(lg *zap.Logger) *RaftCluster {
 		lg:            lg,
 		members:       make(map[types.ID]*Member),
 		removed:       make(map[types.ID]bool),
-		downgradeInfo: &DowngradeInfo{Enabled: false},
+		downgradeInfo: &serverversion.DowngradeInfo{Enabled: false},
 	}
 }
 
@@ -268,11 +269,11 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	if c.be != nil {
 		c.downgradeInfo = c.be.DowngradeInfoFromBackend()
 	}
-	d := &DowngradeInfo{Enabled: false}
+	d := &serverversion.DowngradeInfo{Enabled: false}
 	if c.downgradeInfo != nil {
-		d = &DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
+		d = &serverversion.DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
 	}
-	mustDetectDowngrade(c.lg, c.version, d)
+	serverversion.MustDetectDowngrade(c.lg, c.version, d)
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
@@ -540,7 +541,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	}
 	oldVer := c.version
 	c.version = ver
-	mustDetectDowngrade(c.lg, c.version, c.downgradeInfo)
+	serverversion.MustDetectDowngrade(c.lg, c.version, c.downgradeInfo)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}
@@ -715,22 +716,6 @@ func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *R
 	return nil
 }
 
-// IsValidVersionChange checks the two scenario when version is valid to change:
-// 1. Downgrade: cluster version is 1 minor version higher than local version,
-// cluster version should change.
-// 2. Cluster start: when not all members version are available, cluster version
-// is set to MinVersion(3.0), when all members are at higher version, cluster version
-// is lower than local version, cluster version should change
-func IsValidVersionChange(cv *semver.Version, lv *semver.Version) bool {
-	cv = &semver.Version{Major: cv.Major, Minor: cv.Minor}
-	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
-
-	if isValidDowngrade(cv, lv) || (cv.Major == lv.Major && cv.LessThan(*lv)) {
-		return true
-	}
-	return false
-}
-
 // IsLocalMemberLearner returns if the local member is raft learner
 func (c *RaftCluster) IsLocalMemberLearner() bool {
 	c.Lock()
@@ -747,17 +732,17 @@ func (c *RaftCluster) IsLocalMemberLearner() bool {
 }
 
 // DowngradeInfo returns the downgrade status of the cluster
-func (c *RaftCluster) DowngradeInfo() *DowngradeInfo {
+func (c *RaftCluster) DowngradeInfo() *serverversion.DowngradeInfo {
 	c.Lock()
 	defer c.Unlock()
 	if c.downgradeInfo == nil {
-		return &DowngradeInfo{Enabled: false}
+		return &serverversion.DowngradeInfo{Enabled: false}
 	}
-	d := &DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
+	d := &serverversion.DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
 	return d
 }
 
-func (c *RaftCluster) SetDowngradeInfo(d *DowngradeInfo, shouldApplyV3 ShouldApplyV3) {
+func (c *RaftCluster) SetDowngradeInfo(d *serverversion.DowngradeInfo, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 

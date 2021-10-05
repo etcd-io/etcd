@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -932,7 +933,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 	}
 	resp.Version = cv.String()
 
-	allowedTargetVersion := membership.AllowedDowngradeVersion(cv)
+	allowedTargetVersion := version.AllowedDowngradeVersion(cv)
 	if !targetVersion.Equal(*allowedTargetVersion) {
 		return nil, ErrInvalidDowngradeTargetVersion
 	}

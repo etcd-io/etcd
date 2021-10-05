@@ -636,7 +636,7 @@ type ServerPeerV2 interface {
 	DowngradeEnabledHandler() http.Handler
 }
 
-func (s *EtcdServer) DowngradeInfo() *membership.DowngradeInfo { return s.cluster.DowngradeInfo() }
+func (s *EtcdServer) DowngradeInfo() *serverversion.DowngradeInfo { return s.cluster.DowngradeInfo() }
 
 type downgradeEnabledHandler struct {
 	lg      *zap.Logger

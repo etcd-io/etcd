@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package membership
+package version
 
 import (
 	"github.com/coreos/go-semver/semver"
@@ -37,8 +37,8 @@ func isValidDowngrade(verFrom *semver.Version, verTo *semver.Version) bool {
 	return verTo.Equal(*AllowedDowngradeVersion(verFrom))
 }
 
-// mustDetectDowngrade will detect unexpected downgrade when the local server is recovered.
-func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
+// MustDetectDowngrade will detect unexpected downgrade when the local server is recovered.
+func MustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 	lv := semver.Must(semver.NewVersion(version.Version))
 	// only keep major.minor version for comparison against cluster version
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
@@ -77,4 +77,20 @@ func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 func AllowedDowngradeVersion(ver *semver.Version) *semver.Version {
 	// Todo: handle the case that downgrading from higher major version(e.g. downgrade from v4.0 to v3.x)
 	return &semver.Version{Major: ver.Major, Minor: ver.Minor - 1}
+}
+
+// IsValidVersionChange checks the two scenario when version is valid to change:
+// 1. Downgrade: cluster version is 1 minor version higher than local version,
+// cluster version should change.
+// 2. Cluster start: when not all members version are available, cluster version
+// is set to MinVersion(3.0), when all members are at higher version, cluster version
+// is lower than local version, cluster version should change
+func IsValidVersionChange(cv *semver.Version, lv *semver.Version) bool {
+	cv = &semver.Version{Major: cv.Major, Minor: cv.Minor}
+	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
+
+	if isValidDowngrade(cv, lv) || (cv.Major == lv.Major && cv.LessThan(*lv)) {
+		return true
+	}
+	return false
 }

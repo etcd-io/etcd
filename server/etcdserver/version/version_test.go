@@ -25,7 +25,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 )
 
 var (
@@ -100,12 +99,12 @@ func (c *clusterMock) StepMonitors() {
 
 type clusterMock struct {
 	clusterVersion semver.Version
-	downgradeInfo  *membership.DowngradeInfo
+	downgradeInfo  *DowngradeInfo
 	members        []*memberMock
 }
 
 func (c *clusterMock) DowngradeEnable(ver semver.Version) {
-	c.downgradeInfo = &membership.DowngradeInfo{TargetVersion: ver.String(), Enabled: true}
+	c.downgradeInfo = &DowngradeInfo{TargetVersion: ver.String(), Enabled: true}
 }
 
 func (c *clusterMock) MembersVersions() map[string]*version.Versions {
@@ -149,7 +148,7 @@ func (m *memberMock) GetClusterVersion() *semver.Version {
 	return &m.cluster.clusterVersion
 }
 
-func (m *memberMock) GetDowngradeInfo() *membership.DowngradeInfo {
+func (m *memberMock) GetDowngradeInfo() *DowngradeInfo {
 	return m.cluster.downgradeInfo
 }
 
