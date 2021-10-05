@@ -15,18 +15,13 @@
 package version
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestMustDetectDowngrade(t *testing.T) {
@@ -112,55 +107,28 @@ func TestMustDetectDowngrade(t *testing.T) {
 		},
 	}
 
-	if os.Getenv("DETECT_DOWNGRADE") != "" {
-		i := os.Getenv("DETECT_DOWNGRADE")
-		iint, _ := strconv.Atoi(i)
-		logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-must-detect-downgrade-%v", iint))
-
-		lcfg := zap.NewProductionConfig()
-		lcfg.OutputPaths = []string{logPath}
-		lcfg.ErrorOutputPaths = []string{logPath}
-		lg, _ := lcfg.Build()
-
-		MustDetectDowngrade(lg, tests[iint].clusterVersion, tests[iint].downgrade)
-		return
-	}
-
-	for i, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-must-detect-downgrade-%d", i))
-			t.Log(logPath)
-			defer os.RemoveAll(logPath)
+			lg := zaptest.NewLogger(t)
+			err := tryMustDetectDowngrade(lg, tt.clusterVersion, tt.downgrade)
 
-			cmd := exec.Command(os.Args[0], "-test.run=TestMustDetectDowngrade")
-			cmd.Env = append(os.Environ(), fmt.Sprintf("DETECT_DOWNGRADE=%d", i))
-			if err := cmd.Start(); err != nil {
-				t.Fatal(err)
+			if tt.success != (err == nil) {
+				t.Errorf("Unexpected status, got %q, wanted: %v", err, tt.success)
+				// TODO test err
 			}
-
-			errCmd := cmd.Wait()
-
-			data, err := ioutil.ReadFile(logPath)
-			if err == nil {
-				if !bytes.Contains(data, []byte(tt.message)) {
-					t.Errorf("Expected to find %v in log", tt.message)
-				}
-			} else {
-				t.Fatal(err)
-			}
-
-			if !tt.success {
-				e, ok := errCmd.(*exec.ExitError)
-				if !ok || e.Success() {
-					t.Errorf("Expected exit with status 1; Got %v", err)
-				}
-			}
-
-			if tt.success && errCmd != nil {
-				t.Errorf("Expected not failure; Got %v", errCmd)
+			if err != nil && tt.message != fmt.Sprintf("%s", err) {
+				t.Errorf("Unexpected message, got %q, wanted: %v", err, tt.message)
 			}
 		})
 	}
+}
+
+func tryMustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) (err interface{}) {
+	defer func() {
+		err = recover()
+	}()
+	MustDetectDowngrade(lg, cv, d)
+	return err
 }
 
 func TestIsValidDowngrade(t *testing.T) {

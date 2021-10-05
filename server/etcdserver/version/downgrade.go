@@ -56,7 +56,7 @@ func MustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 			}
 			return
 		}
-		lg.Fatal(
+		lg.Panic(
 			"invalid downgrade; server version is not allowed to join when downgrade is enabled",
 			zap.String("current-server-version", version.Version),
 			zap.String("target-cluster-version", d.TargetVersion),
@@ -66,7 +66,7 @@ func MustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
 	// if the cluster disables downgrade, check local version against determined cluster version.
 	// the validation passes when local version is not less than cluster version
 	if cv != nil && lv.LessThan(*cv) {
-		lg.Fatal(
+		lg.Panic(
 			"invalid downgrade; server version is lower than determined cluster version",
 			zap.String("current-server-version", version.Version),
 			zap.String("determined-cluster-version", version.Cluster(cv.String())),
