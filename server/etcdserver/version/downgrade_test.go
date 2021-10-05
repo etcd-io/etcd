@@ -110,7 +110,8 @@ func TestMustDetectDowngrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
-			err := tryMustDetectDowngrade(lg, tt.clusterVersion, tt.downgrade)
+			sv := semver.Must(semver.NewVersion(version.Version))
+			err := tryMustDetectDowngrade(lg, sv, tt.clusterVersion, tt.downgrade)
 
 			if tt.success != (err == nil) {
 				t.Errorf("Unexpected status, got %q, wanted: %v", err, tt.success)
@@ -123,11 +124,11 @@ func TestMustDetectDowngrade(t *testing.T) {
 	}
 }
 
-func tryMustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) (err interface{}) {
+func tryMustDetectDowngrade(lg *zap.Logger, sv, cv *semver.Version, d *DowngradeInfo) (err interface{}) {
 	defer func() {
 		err = recover()
 	}()
-	MustDetectDowngrade(lg, cv, d)
+	MustDetectDowngrade(lg, sv, cv, d)
 	return err
 }
 

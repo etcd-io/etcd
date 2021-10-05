@@ -273,7 +273,8 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	if c.downgradeInfo != nil {
 		d = &serverversion.DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
 	}
-	serverversion.MustDetectDowngrade(c.lg, c.version, d)
+	sv := semver.Must(semver.NewVersion(version.Version))
+	serverversion.MustDetectDowngrade(c.lg, sv, c.version, d)
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
@@ -541,7 +542,8 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	}
 	oldVer := c.version
 	c.version = ver
-	serverversion.MustDetectDowngrade(c.lg, c.version, c.downgradeInfo)
+	sv := semver.Must(semver.NewVersion(version.Version))
+	serverversion.MustDetectDowngrade(c.lg, sv, c.version, c.downgradeInfo)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}

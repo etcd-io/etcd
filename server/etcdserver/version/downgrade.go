@@ -34,47 +34,46 @@ func (d *DowngradeInfo) GetTargetVersion() *semver.Version {
 
 // isValidDowngrade verifies whether the cluster can be downgraded from verFrom to verTo
 func isValidDowngrade(verFrom *semver.Version, verTo *semver.Version) bool {
-	return verTo.Equal(*AllowedDowngradeVersion(verFrom))
+	return verTo.Equal(*allowedDowngradeVersion(verFrom))
 }
 
 // MustDetectDowngrade will detect unexpected downgrade when the local server is recovered.
-func MustDetectDowngrade(lg *zap.Logger, cv *semver.Version, d *DowngradeInfo) {
-	lv := semver.Must(semver.NewVersion(version.Version))
+func MustDetectDowngrade(lg *zap.Logger, sv, cv *semver.Version, d *DowngradeInfo) {
 	// only keep major.minor version for comparison against cluster version
-	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
+	sv = &semver.Version{Major: sv.Major, Minor: sv.Minor}
 
 	// if the cluster enables downgrade, check local version against downgrade target version.
 	if d != nil && d.Enabled && d.TargetVersion != "" {
-		if lv.Equal(*d.GetTargetVersion()) {
+		if sv.Equal(*d.GetTargetVersion()) {
 			if cv != nil {
 				lg.Info(
 					"cluster is downgrading to target version",
 					zap.String("target-cluster-version", d.TargetVersion),
 					zap.String("determined-cluster-version", version.Cluster(cv.String())),
-					zap.String("current-server-version", version.Version),
+					zap.String("current-server-version", sv.String()),
 				)
 			}
 			return
 		}
 		lg.Panic(
 			"invalid downgrade; server version is not allowed to join when downgrade is enabled",
-			zap.String("current-server-version", version.Version),
+			zap.String("current-server-version", sv.String()),
 			zap.String("target-cluster-version", d.TargetVersion),
 		)
 	}
 
 	// if the cluster disables downgrade, check local version against determined cluster version.
 	// the validation passes when local version is not less than cluster version
-	if cv != nil && lv.LessThan(*cv) {
+	if cv != nil && sv.LessThan(*cv) {
 		lg.Panic(
 			"invalid downgrade; server version is lower than determined cluster version",
-			zap.String("current-server-version", version.Version),
+			zap.String("current-server-version", sv.String()),
 			zap.String("determined-cluster-version", version.Cluster(cv.String())),
 		)
 	}
 }
 
-func AllowedDowngradeVersion(ver *semver.Version) *semver.Version {
+func allowedDowngradeVersion(ver *semver.Version) *semver.Version {
 	// Todo: handle the case that downgrading from higher major version(e.g. downgrade from v4.0 to v3.x)
 	return &semver.Version{Major: ver.Major, Minor: ver.Minor - 1}
 }

@@ -44,7 +44,7 @@ func (m *Manager) DowngradeValidate(ctx context.Context, targetVersion *semver.V
 		return err
 	}
 	cv := m.s.GetClusterVersion()
-	allowedTargetVersion := AllowedDowngradeVersion(cv)
+	allowedTargetVersion := allowedDowngradeVersion(cv)
 	if !targetVersion.Equal(*allowedTargetVersion) {
 		return ErrInvalidDowngradeTargetVersion
 	}

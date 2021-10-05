@@ -64,6 +64,7 @@ func TestUpgradeThreeNodes(t *testing.T) {
 
 func newCluster(lg *zap.Logger, memberCount int, ver semver.Version) *clusterMock {
 	cluster := &clusterMock{
+		lg:             lg,
 		clusterVersion: ver,
 		members:        make([]*memberMock, 0, memberCount),
 	}
@@ -99,13 +100,14 @@ func (c *clusterMock) StepMonitors() {
 }
 
 type clusterMock struct {
+	lg             *zap.Logger
 	clusterVersion semver.Version
 	downgradeInfo  *DowngradeInfo
 	members        []*memberMock
 }
 
-func (c *clusterMock) DowngradeEnable(ver semver.Version) {
-	c.downgradeInfo = &DowngradeInfo{TargetVersion: ver.String(), Enabled: true}
+func (c *clusterMock) Version() *Manager {
+	return NewManager(c.lg, c.members[0])
 }
 
 func (c *clusterMock) MembersVersions() map[string]*version.Versions {
@@ -120,9 +122,7 @@ func (c *clusterMock) MembersVersions() map[string]*version.Versions {
 }
 
 func (c *clusterMock) ReplaceMemberBinary(mid int, newServerVersion semver.Version) {
-	if newServerVersion.LessThan(c.clusterVersion) {
-		panic("Members cannot join clusters with higher version")
-	}
+	MustDetectDowngrade(c.lg, &c.members[mid].serverVersion, &c.clusterVersion, c.downgradeInfo)
 	c.members[mid].serverVersion = newServerVersion
 }
 
@@ -146,7 +146,10 @@ func (m *memberMock) LinearizableReadNotify(ctx context.Context) error {
 }
 
 func (m *memberMock) DowngradeEnable(ctx context.Context, targetVersion *semver.Version) error {
-	m.cluster.downgradeInfo = nil
+	m.cluster.downgradeInfo = &DowngradeInfo{
+		TargetVersion: targetVersion.String(),
+		Enabled:       true,
+	}
 	return nil
 }
 
