@@ -2359,3 +2359,7 @@ func (s *EtcdServer) IsMemberExist(id types.ID) bool {
 func (s *EtcdServer) raftStatus() raft.Status {
 	return s.r.Node.Status()
 }
+
+func (s *EtcdServer) Version() *serverversion.Manager {
+	return serverversion.NewManager(s.Logger(), newServerVersionAdapter(s))
+}

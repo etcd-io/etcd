@@ -1,6 +1,7 @@
 package version
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -339,8 +340,17 @@ func (s *storageMock) UpdateClusterVersion(version string) {
 	s.clusterVersion = semver.New(version)
 }
 
-func (s *storageMock) DowngradeCancel() {
+func (s *storageMock) LinearizableReadNotify(ctx context.Context) error {
+	return nil
+}
+
+func (s *storageMock) DowngradeEnable(ctx context.Context, targetVersion *semver.Version) error {
+	return nil
+}
+
+func (s *storageMock) DowngradeCancel(ctx context.Context) error {
 	s.downgradeInfo = nil
+	return nil
 }
 
 func (s *storageMock) GetClusterVersion() *semver.Version {

@@ -15,6 +15,7 @@
 package version
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -73,7 +74,7 @@ func newCluster(lg *zap.Logger, memberCount int, ver semver.Version) *clusterMoc
 			serverVersion:  ver,
 			storageVersion: majorMinVer,
 		}
-	  m.monitor = NewMonitor(lg.Named(fmt.Sprintf("m%d", i)), m)
+		m.monitor = NewMonitor(lg.Named(fmt.Sprintf("m%d", i)), m)
 		cluster.members = append(cluster.members, m)
 	}
 	cluster.members[0].isLeader = true
@@ -140,8 +141,18 @@ func (m *memberMock) UpdateClusterVersion(version string) {
 	m.cluster.clusterVersion = *semver.New(version)
 }
 
-func (m *memberMock) DowngradeCancel() {
+func (m *memberMock) LinearizableReadNotify(ctx context.Context) error {
+	return nil
+}
+
+func (m *memberMock) DowngradeEnable(ctx context.Context, targetVersion *semver.Version) error {
 	m.cluster.downgradeInfo = nil
+	return nil
+}
+
+func (m *memberMock) DowngradeCancel(context.Context) error {
+	m.cluster.downgradeInfo = nil
+	return nil
 }
 
 func (m *memberMock) GetClusterVersion() *semver.Version {

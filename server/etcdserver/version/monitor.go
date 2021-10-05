@@ -15,6 +15,8 @@
 package version
 
 import (
+	"context"
+
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.uber.org/zap"
@@ -32,7 +34,9 @@ type Server interface {
 	GetDowngradeInfo() *DowngradeInfo
 	GetMembersVersions() map[string]*version.Versions
 	UpdateClusterVersion(string)
-	DowngradeCancel()
+	LinearizableReadNotify(ctx context.Context) error
+	DowngradeEnable(ctx context.Context, targetVersion *semver.Version) error
+	DowngradeCancel(ctx context.Context) error
 
 	GetStorageVersion() *semver.Version
 	UpdateStorageVersion(semver.Version)
@@ -101,7 +105,10 @@ func (m *Monitor) CancelDowngradeIfNeeded() {
 	v := semver.Must(semver.NewVersion(targetVersion))
 	if m.versionsMatchTarget(v) {
 		m.lg.Info("the cluster has been downgraded", zap.String("cluster-version", targetVersion))
-		m.s.DowngradeCancel()
+		err := m.s.DowngradeCancel(context.Background())
+		if err != nil {
+			m.lg.Warn("failed to cancel downgrade", zap.Error(err))
+		}
 	}
 }
 
