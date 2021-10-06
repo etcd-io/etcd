@@ -45,15 +45,6 @@
 		]
 	},
 	{
-		"project": "github.com/dgrijalva/jwt-go",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
 		"project": "github.com/dustin/go-humanize",
 		"licenses": [
 			{
@@ -68,6 +59,15 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9163346613545816
+			}
+		]
+	},
+	{
+		"project": "github.com/golang-jwt/jwt",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
 			}
 		]
 	},
