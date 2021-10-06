@@ -91,7 +91,7 @@ func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error
 		s.Lock()
 		defer s.Unlock()
 	}
-	return schema.UnsafeMigrate(s.lg, s.tx, target)
+	return schema.UnsafeMigrate(s.lg, s.tx, s.r.storage, target)
 }
 
 func (s *serverVersionAdapter) Lock() {

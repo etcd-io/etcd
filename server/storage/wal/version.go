@@ -28,14 +28,29 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
-// MinimalEtcdVersion returns minimal etcd able to interpret provided WAL log,
-// determined by looking at entries since the last snapshot and returning the highest
-// etcd version annotation from used messages, fields, enums and their values.
-func (w *WAL) MinimalEtcdVersion() *semver.Version {
+// ReadWALVersion reads remaining entries from opened WAL and returns struct
+// that implements schema.WAL interface.
+func ReadWALVersion(w *WAL) (*walVersion, error) {
 	_, _, ents, err := w.ReadAll()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+	return &walVersion{entries: ents}, nil
+}
+
+type walVersion struct {
+	entries []raftpb.Entry
+}
+
+// MinimalEtcdVersion returns minimal etcd able to interpret entries from  WAL log,
+func (w *walVersion) MinimalEtcdVersion() *semver.Version {
+	return MinimalEtcdVersion(w.entries)
+}
+
+// MinimalEtcdVersion returns minimal etcd able to interpret entries from  WAL log,
+// determined by looking at entries since the last snapshot and returning the highest
+// etcd version annotation from used messages, fields, enums and their values.
+func MinimalEtcdVersion(ents []raftpb.Entry) *semver.Version {
 	var maxVer *semver.Version
 	for _, ent := range ents {
 		maxVer = maxVersion(maxVer, etcdVersionFromEntry(ent))

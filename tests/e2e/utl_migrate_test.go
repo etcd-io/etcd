@@ -85,7 +85,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 		{
 			name:                 "Downgrade v3.6 to v3.5 should fail until it's implemented",
 			targetVersion:        "3.5",
-			expectLogsSubString:  "Error: cannot create migration plan: downgrades are not yet supported",
+			expectLogsSubString:  "cannot downgrade storage, WAL contains newer entries",
 			expectStorageVersion: &schema.V3_6,
 		},
 		{

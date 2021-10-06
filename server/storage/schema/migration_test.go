@@ -46,11 +46,9 @@ func TestNewPlan(t *testing.T) {
 			target:  V3_6,
 		},
 		{
-			name:           "Downgrade v3.6 to v3.5 should fail as downgrades are not yet supported",
-			current:        V3_6,
-			target:         V3_5,
-			expectError:    true,
-			expectErrorMsg: "downgrades are not yet supported",
+			name:    "Downgrade v3.6 to v3.5 should fail as downgrades are not yet supported",
+			current: V3_6,
+			target:  V3_5,
 		},
 		{
 			name:           "Upgrade v3.6 to v3.7 should fail as v3.7 is unknown",

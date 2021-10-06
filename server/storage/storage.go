@@ -15,6 +15,9 @@
 package storage
 
 import (
+	"sync"
+
+	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/wal"
@@ -34,12 +37,17 @@ type Storage interface {
 	Release(snap raftpb.Snapshot) error
 	// Sync WAL
 	Sync() error
+	// MinimalEtcdVersion returns minimal etcd storage able to interpret WAL log.
+	MinimalEtcdVersion() *semver.Version
 }
 
 type storage struct {
 	lg *zap.Logger
 	s  *snap.Snapshotter
-	w  *wal.WAL
+
+	// Mutex protected variables
+	mux sync.RWMutex
+	w   *wal.WAL
 }
 
 func NewStorage(lg *zap.Logger, w *wal.WAL, s *snap.Snapshotter) Storage {
@@ -48,6 +56,8 @@ func NewStorage(lg *zap.Logger, w *wal.WAL, s *snap.Snapshotter) Storage {
 
 // SaveSnap saves the snapshot file to disk and writes the WAL snapshot entry.
 func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
+	st.mux.RLock()
+	defer st.mux.RUnlock()
 	walsnap := walpb.Snapshot{
 		Index:     snap.Metadata.Index,
 		Term:      snap.Metadata.Term,
@@ -69,6 +79,8 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 // - releases the locks to the wal files that are older than the provided wal for the given snap.
 // - deletes any .snap.db files that are older than the given snap.
 func (st *storage) Release(snap raftpb.Snapshot) error {
+	st.mux.RLock()
+	defer st.mux.RUnlock()
 	if err := st.w.ReleaseLockTo(snap.Metadata.Index); err != nil {
 		return err
 	}
@@ -76,13 +88,46 @@ func (st *storage) Release(snap raftpb.Snapshot) error {
 }
 
 func (st *storage) Save(s raftpb.HardState, ents []raftpb.Entry) error {
+	st.mux.RLock()
+	defer st.mux.RUnlock()
 	return st.w.Save(s, ents)
 }
 
 func (st *storage) Close() error {
+	st.mux.Lock()
+	defer st.mux.Unlock()
 	return st.w.Close()
 }
 
 func (st *storage) Sync() error {
+	st.mux.RLock()
+	defer st.mux.RUnlock()
 	return st.w.Sync()
+}
+
+func (st *storage) MinimalEtcdVersion() *semver.Version {
+	st.mux.Lock()
+	defer st.mux.Unlock()
+	walsnap := walpb.Snapshot{}
+
+	sn, err := st.s.Load()
+	if err != nil && err != snap.ErrNoSnapshot {
+		panic(err)
+	}
+	if sn != nil {
+		walsnap.Index = sn.Metadata.Index
+		walsnap.Term = sn.Metadata.Term
+		walsnap.ConfState = &sn.Metadata.ConfState
+	}
+	w, err := st.w.Reopen(st.lg, walsnap)
+	if err != nil {
+		panic(err)
+	}
+	_, _, ents, err := w.ReadAll()
+	if err != nil {
+		panic(err)
+	}
+	v := wal.MinimalEtcdVersion(ents)
+	st.w = w
+	return v
 }

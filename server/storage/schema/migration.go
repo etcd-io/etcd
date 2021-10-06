@@ -24,19 +24,7 @@ import (
 
 type migrationPlan []migrationStep
 
-func newPlan(lg *zap.Logger, current semver.Version, target semver.Version) (p migrationPlan, err error) {
-	// TODO(serathius): Implement downgrades
-	if target.LessThan(current) {
-		lg.Error("Target version is lower than the current version, downgrades are not yet supported",
-			zap.String("storage-version", current.String()),
-			zap.String("target-storage-version", target.String()),
-		)
-		return nil, fmt.Errorf("downgrades are not yet supported")
-	}
-	return buildPlan(lg, current, target)
-}
-
-func buildPlan(lg *zap.Logger, current semver.Version, target semver.Version) (plan migrationPlan, err error) {
+func newPlan(lg *zap.Logger, current semver.Version, target semver.Version) (plan migrationPlan, err error) {
 	current = trimToMinor(current)
 	target = trimToMinor(target)
 	if current.Major != target.Major {

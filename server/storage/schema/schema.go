@@ -52,15 +52,21 @@ func localBinaryVersion() semver.Version {
 	return semver.Version{Major: v.Major, Minor: v.Minor}
 }
 
-// Migrate updates storage schema to provided target version.
-func Migrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version) error {
-	tx.Lock()
-	defer tx.Unlock()
-	return UnsafeMigrate(lg, tx, target)
+type WALVersion interface {
+	// MinimalEtcdVersion returns minimal etcd version able to interpret WAL log.
+	MinimalEtcdVersion() *semver.Version
 }
 
-// UnsafeMigrate is non-threadsafe version of Migrate.
-func UnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version) error {
+// Migrate updates storage schema to provided target version.
+// Downgrading requires that provided WAL doesn't contain unsupported entries.
+func Migrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Version) error {
+	tx.Lock()
+	defer tx.Unlock()
+	return UnsafeMigrate(lg, tx, w, target)
+}
+
+// UnsafeMigrate is non thread-safe version of Migrate.
+func UnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Version) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
 		return fmt.Errorf("cannot detect storage schema version: %w", err)
@@ -68,6 +74,12 @@ func UnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version) er
 	plan, err := newPlan(lg, current, target)
 	if err != nil {
 		return fmt.Errorf("cannot create migration plan: %w", err)
+	}
+	if target.LessThan(current) {
+		minVersion := w.MinimalEtcdVersion()
+		if minVersion != nil && target.LessThan(*minVersion) {
+			return fmt.Errorf("cannot downgrade storage, WAL contains newer entries")
+		}
 	}
 	return plan.unsafeExecute(lg, tx)
 }
@@ -101,12 +113,16 @@ func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Vers
 
 func schemaChangesForVersion(v semver.Version, isUpgrade bool) ([]schemaChange, error) {
 	// changes should be taken from higher version
+	var higherV = v
 	if isUpgrade {
-		v = semver.Version{Major: v.Major, Minor: v.Minor + 1}
+		higherV = semver.Version{Major: v.Major, Minor: v.Minor + 1}
 	}
 
-	actions, found := schemaChanges[v]
+	actions, found := schemaChanges[higherV]
 	if !found {
+		if isUpgrade {
+			return nil, fmt.Errorf("version %q is not supported", higherV.String())
+		}
 		return nil, fmt.Errorf("version %q is not supported", v.String())
 	}
 	return actions, nil
