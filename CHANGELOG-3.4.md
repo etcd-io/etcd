@@ -43,6 +43,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.15...v3.4.16) an
 ### Metrics
 
 - Fix [incorrect metrics generated when clients cancel watches](https://github.com/etcd-io/etcd/pull/12803) back-ported from (https://github.com/etcd-io/etcd/pull/12196).
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13393).
 
 ### Go
 
