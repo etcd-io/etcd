@@ -62,6 +62,68 @@ func TestUpgradeThreeNodes(t *testing.T) {
 	assert.Equal(t, newCluster(lg, 3, V3_7), c)
 }
 
+func TestDowngradeSingleNode(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	c := newCluster(lg, 1, V3_6)
+	c.StepMonitors()
+	assert.Equal(t, newCluster(lg, 1, V3_6), c)
+
+	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &V3_5))
+	c.StepMonitors()
+	assert.Equal(t, V3_5, c.clusterVersion)
+
+	c.ReplaceMemberBinary(0, V3_5)
+	c.StepMonitors()
+
+	assert.Equal(t, newCluster(lg, 1, V3_5), c)
+}
+
+func TestDowngradeThreeNode(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	c := newCluster(lg, 3, V3_6)
+	c.StepMonitors()
+	assert.Equal(t, newCluster(lg, 3, V3_6), c)
+
+	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &V3_5))
+	c.StepMonitors()
+	assert.Equal(t, V3_5, c.clusterVersion)
+
+	c.ReplaceMemberBinary(0, V3_5)
+	c.StepMonitors()
+	c.ReplaceMemberBinary(1, V3_5)
+	c.StepMonitors()
+	c.ReplaceMemberBinary(2, V3_5)
+	c.StepMonitors()
+
+	assert.Equal(t, newCluster(lg, 3, V3_5), c)
+}
+
+func TestNewerMemberCanReconnectDuringDowngrade(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	c := newCluster(lg, 3, V3_6)
+	c.StepMonitors()
+	assert.Equal(t, newCluster(lg, 3, V3_6), c)
+
+	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &V3_5))
+	c.StepMonitors()
+	assert.Equal(t, V3_5, c.clusterVersion)
+
+	c.ReplaceMemberBinary(0, V3_5)
+	c.StepMonitors()
+
+	c.MemberCrashes(2)
+	c.StepMonitors()
+	c.MemberReconnects(2)
+	c.StepMonitors()
+
+	c.ReplaceMemberBinary(1, V3_5)
+	c.StepMonitors()
+	c.ReplaceMemberBinary(2, V3_5)
+	c.StepMonitors()
+
+	assert.Equal(t, newCluster(lg, 3, V3_5), c)
+}
+
 func newCluster(lg *zap.Logger, memberCount int, ver semver.Version) *clusterMock {
 	cluster := &clusterMock{
 		lg:             lg,
@@ -71,6 +133,7 @@ func newCluster(lg *zap.Logger, memberCount int, ver semver.Version) *clusterMoc
 	majorMinVer := semver.Version{Major: ver.Major, Minor: ver.Minor}
 	for i := 0; i < memberCount; i++ {
 		m := &memberMock{
+			isRunning:      true,
 			cluster:        cluster,
 			serverVersion:  ver,
 			storageVersion: majorMinVer,
@@ -113,22 +176,34 @@ func (c *clusterMock) Version() *Manager {
 func (c *clusterMock) MembersVersions() map[string]*version.Versions {
 	result := map[string]*version.Versions{}
 	for i, m := range c.members {
-		result[fmt.Sprintf("%d", i)] = &version.Versions{
-			Server:  m.serverVersion.String(),
-			Cluster: c.clusterVersion.String(),
+		if m.isRunning {
+			result[fmt.Sprintf("%d", i)] = &version.Versions{
+				Server:  m.serverVersion.String(),
+				Cluster: c.clusterVersion.String(),
+			}
 		}
 	}
 	return result
 }
 
 func (c *clusterMock) ReplaceMemberBinary(mid int, newServerVersion semver.Version) {
-	MustDetectDowngrade(c.lg, &c.members[mid].serverVersion, &c.clusterVersion, c.downgradeInfo)
+	MustDetectDowngrade(c.lg, &c.members[mid].serverVersion, &c.clusterVersion)
 	c.members[mid].serverVersion = newServerVersion
+}
+
+func (c *clusterMock) MemberCrashes(mid int) {
+	c.members[mid].isRunning = false
+}
+
+func (c *clusterMock) MemberReconnects(mid int) {
+	MustDetectDowngrade(c.lg, &c.members[mid].serverVersion, &c.clusterVersion)
+	c.members[mid].isRunning = true
 }
 
 type memberMock struct {
 	cluster *clusterMock
 
+	isRunning      bool
 	isLeader       bool
 	serverVersion  semver.Version
 	storageVersion semver.Version
@@ -174,8 +249,9 @@ func (m *memberMock) GetStorageVersion() *semver.Version {
 	return &m.storageVersion
 }
 
-func (m *memberMock) UpdateStorageVersion(v semver.Version) {
+func (m *memberMock) UpdateStorageVersion(v semver.Version) error {
 	m.storageVersion = v
+	return nil
 }
 
 func (m *memberMock) TriggerSnapshot() {

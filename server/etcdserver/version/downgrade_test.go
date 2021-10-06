@@ -29,81 +29,36 @@ func TestMustDetectDowngrade(t *testing.T) {
 	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
 	oneMinorHigher := &semver.Version{Major: lv.Major, Minor: lv.Minor + 1}
 	oneMinorLower := &semver.Version{Major: lv.Major, Minor: lv.Minor - 1}
-	downgradeEnabledHigherVersion := &DowngradeInfo{Enabled: true, TargetVersion: oneMinorHigher.String()}
-	downgradeEnabledEqualVersion := &DowngradeInfo{Enabled: true, TargetVersion: lv.String()}
-	downgradeEnabledLowerVersion := &DowngradeInfo{Enabled: true, TargetVersion: oneMinorLower.String()}
-	downgradeDisabled := &DowngradeInfo{Enabled: false}
 
 	tests := []struct {
 		name           string
 		clusterVersion *semver.Version
-		downgrade      *DowngradeInfo
 		success        bool
 		message        string
 	}{
 		{
-			"Succeeded when downgrade is disabled and cluster version is nil",
+			"Succeeded when cluster version is nil",
 			nil,
-			downgradeDisabled,
 			true,
 			"",
 		},
 		{
-			"Succeeded when downgrade is disabled and cluster version is one minor lower",
+			"Succeeded when cluster version is one minor lower",
 			oneMinorLower,
-			downgradeDisabled,
 			true,
 			"",
 		},
 		{
-			"Succeeded when downgrade is disabled and cluster version is server version",
+			"Succeeded when cluster version is server version",
 			lv,
-			downgradeDisabled,
 			true,
 			"",
 		},
 		{
-			"Failed when downgrade is disabled and server version is lower than determined cluster version ",
+			"Failed when server version is lower than determined cluster version ",
 			oneMinorHigher,
-			downgradeDisabled,
 			false,
 			"invalid downgrade; server version is lower than determined cluster version",
-		},
-		{
-			"Succeeded when downgrade is enabled and cluster version is nil",
-			nil,
-			downgradeEnabledEqualVersion,
-			true,
-			"",
-		},
-		{
-			"Failed when downgrade is enabled and server version is target version",
-			lv,
-			downgradeEnabledEqualVersion,
-			true,
-			"cluster is downgrading to target version",
-		},
-		{
-			"Succeeded when downgrade to lower version and server version is cluster version ",
-			lv,
-			downgradeEnabledLowerVersion,
-			false,
-			"invalid downgrade; server version is not allowed to join when downgrade is enabled",
-		},
-		{
-			"Failed when downgrade is enabled and local version is out of range and cluster version is nil",
-			nil,
-			downgradeEnabledHigherVersion,
-			false,
-			"invalid downgrade; server version is not allowed to join when downgrade is enabled",
-		},
-
-		{
-			"Failed when downgrade is enabled and local version is out of range",
-			lv,
-			downgradeEnabledHigherVersion,
-			false,
-			"invalid downgrade; server version is not allowed to join when downgrade is enabled",
 		},
 	}
 
@@ -111,10 +66,10 @@ func TestMustDetectDowngrade(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			sv := semver.Must(semver.NewVersion(version.Version))
-			err := tryMustDetectDowngrade(lg, sv, tt.clusterVersion, tt.downgrade)
+			err := tryMustDetectDowngrade(lg, sv, tt.clusterVersion)
 
 			if tt.success != (err == nil) {
-				t.Errorf("Unexpected status, got %q, wanted: %v", err, tt.success)
+				t.Errorf("Unexpected success, got: %v, wanted: %v", err == nil, tt.success)
 				// TODO test err
 			}
 			if err != nil && tt.message != fmt.Sprintf("%s", err) {
@@ -124,11 +79,11 @@ func TestMustDetectDowngrade(t *testing.T) {
 	}
 }
 
-func tryMustDetectDowngrade(lg *zap.Logger, sv, cv *semver.Version, d *DowngradeInfo) (err interface{}) {
+func tryMustDetectDowngrade(lg *zap.Logger, sv, cv *semver.Version) (err interface{}) {
 	defer func() {
 		err = recover()
 	}()
-	MustDetectDowngrade(lg, sv, cv, d)
+	MustDetectDowngrade(lg, sv, cv)
 	return err
 }
 

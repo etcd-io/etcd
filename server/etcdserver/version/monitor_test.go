@@ -50,7 +50,7 @@ func TestMemberMinimalVersion(t *testing.T) {
 		monitor := NewMonitor(zaptest.NewLogger(t), &storageMock{
 			memberVersions: tt.memberVersions,
 		})
-		minV := monitor.membersMinimalVersion()
+		minV := monitor.membersMinimalServerVersion()
 		if !reflect.DeepEqual(minV, tt.wantVersion) {
 			t.Errorf("#%d: ver = %+v, want %+v", i, minV, tt.wantVersion)
 		}
@@ -203,6 +203,36 @@ func TestUpdateClusterVersionIfNeeded(t *testing.T) {
 			},
 			clusterVersion:       &V3_5,
 			expectClusterVersion: &V3_6,
+		},
+		{
+			name: "Should downgrade cluster version if downgrade is set to allow older members to join",
+			memberVersions: map[string]*version.Versions{
+				"a": {Cluster: "3.6.0", Server: "3.6.0"},
+				"b": {Cluster: "3.6.0", Server: "3.6.0"},
+			},
+			clusterVersion:       &V3_6,
+			downgrade:            &DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
+			expectClusterVersion: &V3_5,
+		},
+		{
+			name: "Should maintain downgrade target version to allow older members to join",
+			memberVersions: map[string]*version.Versions{
+				"a": {Cluster: "3.5.0", Server: "3.6.0"},
+				"b": {Cluster: "3.5.0", Server: "3.6.0"},
+			},
+			clusterVersion:       &V3_5,
+			downgrade:            &DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
+			expectClusterVersion: &V3_5,
+		},
+		{
+			name: "Don't downgrade below supported range",
+			memberVersions: map[string]*version.Versions{
+				"a": {Cluster: "3.5.0", Server: "3.6.0"},
+				"b": {Cluster: "3.5.0", Server: "3.6.0"},
+			},
+			clusterVersion:       &V3_5,
+			downgrade:            &DowngradeInfo{TargetVersion: "3.4.0", Enabled: true},
+			expectClusterVersion: &V3_5,
 		},
 	}
 
@@ -369,8 +399,9 @@ func (s *storageMock) GetStorageVersion() *semver.Version {
 	return s.storageVersion
 }
 
-func (s *storageMock) UpdateStorageVersion(v semver.Version) {
+func (s *storageMock) UpdateStorageVersion(v semver.Version) error {
 	s.storageVersion = &v
+	return nil
 }
 
 func (s *storageMock) Lock() {

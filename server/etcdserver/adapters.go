@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
@@ -88,15 +87,12 @@ func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
 	return &v
 }
 
-func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) {
+func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error {
 	if s.tx == nil {
 		s.Lock()
 		defer s.Unlock()
 	}
-	err := schema.UnsafeMigrate(s.lg, s.tx, target)
-	if err != nil {
-		s.lg.Error("failed migrating storage schema", zap.String("storage-version", target.String()), zap.Error(err))
-	}
+	return schema.UnsafeMigrate(s.lg, s.tx, target)
 }
 
 func (s *serverVersionAdapter) Lock() {
