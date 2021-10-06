@@ -185,11 +185,12 @@ func (m *Monitor) membersMinimalServerVersion() *semver.Version {
 // It can be used to decide the whether the cluster finishes downgrading to target version.
 func (m *Monitor) versionsMatchTarget(targetVersion *semver.Version) bool {
 	vers := m.s.GetMembersVersions()
+	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
 	for mid, ver := range vers {
 		if ver == nil {
 			return false
 		}
-		v, err := semver.NewVersion(ver.Cluster)
+		v, err := semver.NewVersion(ver.Server)
 		if err != nil {
 			m.lg.Warn(
 				"failed to parse server version of remote member",
@@ -199,6 +200,7 @@ func (m *Monitor) versionsMatchTarget(targetVersion *semver.Version) bool {
 			)
 			return false
 		}
+		v = &semver.Version{Major: v.Major, Minor: v.Minor}
 		if !targetVersion.Equal(*v) {
 			m.lg.Warn("remotes server has mismatching etcd version",
 				zap.String("remote-member-id", mid),
