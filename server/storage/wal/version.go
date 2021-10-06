@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package wal
 
 import (
 	"fmt"
@@ -26,14 +26,13 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/storage/wal"
 )
 
-// MinimalStorageVersionFromWAL returns minimal etcd storage able to interpret provided WAL log,
+// MinimalEtcdVersion returns minimal etcd able to interpret provided WAL log,
 // determined by looking at entries since the last snapshot and returning the highest
 // etcd version annotation from used messages, fields, enums and their values.
-func MinimalStorageVersionFromWAL(wal *wal.WAL) *semver.Version {
-	_, _, ents, err := wal.ReadAll()
+func (w *WAL) MinimalEtcdVersion() *semver.Version {
+	_, _, ents, err := w.ReadAll()
 	if err != nil {
 		panic(err)
 	}

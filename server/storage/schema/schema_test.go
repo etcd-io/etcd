@@ -28,6 +28,7 @@ import (
 )
 
 var (
+	V3_4 = semver.Version{Major: 3, Minor: 4}
 	V3_7 = semver.Version{Major: 3, Minor: 7}
 )
 

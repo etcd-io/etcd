@@ -26,7 +26,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 )
@@ -59,11 +58,11 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	cli.Close()
 	srv.Close()
 
-	wal, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", walpb.Snapshot{})
+	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", walpb.Snapshot{})
 	if err != nil {
 		panic(err)
 	}
-	defer wal.Close()
-	ver := schema.MinimalStorageVersionFromWAL(wal)
+	defer w.Close()
+	ver := w.MinimalEtcdVersion()
 	assert.Equal(t, &semver.Version{Major: 3, Minor: 5}, ver)
 }
