@@ -65,5 +65,5 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	}
 	defer w.Close()
 	ver := w.MinimalEtcdVersion()
-	assert.Equal(t, &semver.Version{Major: 3, Minor: 5}, ver)
+	assert.Equal(t, &semver.Version{Major: 3, Minor: 6}, ver)
 }

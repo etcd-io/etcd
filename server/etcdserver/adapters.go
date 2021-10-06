@@ -43,8 +43,7 @@ func newServerVersionAdapter(s *EtcdServer) *serverVersionAdapter {
 var _ serverversion.Server = (*serverVersionAdapter)(nil)
 
 func (s *serverVersionAdapter) UpdateClusterVersion(version string) {
-	// TODO switch to updateClusterVersionV3 in 3.6
-	s.GoAttach(func() { s.updateClusterVersionV2(version) })
+	s.GoAttach(func() { s.updateClusterVersionV3(version) })
 }
 
 func (s *serverVersionAdapter) LinearizableReadNotify(ctx context.Context) error {

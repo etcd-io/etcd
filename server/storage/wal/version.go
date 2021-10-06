@@ -51,6 +51,7 @@ func etcdVersionFromEntry(ent raftpb.Entry) *semver.Version {
 
 func etcdVersionFromData(entryType raftpb.EntryType, data []byte) *semver.Version {
 	var msg protoreflect.Message
+	var ver *semver.Version
 	switch entryType {
 	case raftpb.EntryNormal:
 		var raftReq etcdserverpb.InternalRaftRequest
@@ -59,6 +60,12 @@ func etcdVersionFromData(entryType raftpb.EntryType, data []byte) *semver.Versio
 			return nil
 		}
 		msg = proto.MessageReflect(&raftReq)
+		if raftReq.ClusterVersionSet != nil {
+			ver, err = semver.NewVersion(raftReq.ClusterVersionSet.Ver)
+			if err != nil {
+				panic(err)
+			}
+		}
 	case raftpb.EntryConfChange:
 		var confChange raftpb.ConfChange
 		err := pbutil.Unmarshaler(&confChange).Unmarshal(data)
@@ -76,7 +83,7 @@ func etcdVersionFromData(entryType raftpb.EntryType, data []byte) *semver.Versio
 	default:
 		panic("unhandled")
 	}
-	return etcdVersionFromMessage(msg)
+	return maxVersion(etcdVersionFromMessage(msg), ver)
 }
 
 func etcdVersionFromMessage(m protoreflect.Message) *semver.Version {

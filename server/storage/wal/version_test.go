@@ -40,6 +40,9 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 	raftReq := etcdserverpb.InternalRaftRequest{Header: &etcdserverpb.RequestHeader{AuthRevision: 1}}
 	normalRequestData := pbutil.MustMarshal(&raftReq)
 
+	clusterVersionV3_6Req := etcdserverpb.InternalRaftRequest{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{Ver: "3.6.0"}}
+	clusterVersionV3_6Data := pbutil.MustMarshal(&clusterVersionV3_6Req)
+
 	confChange := raftpb.ConfChange{Type: raftpb.ConfChangeAddLearnerNode}
 	confChangeData := pbutil.MustMarshal(&confChange)
 
@@ -60,6 +63,16 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 				Data:  normalRequestData,
 			},
 			expect: &V3_1,
+		},
+		{
+			name: "Setting cluster version implies version within",
+			input: raftpb.Entry{
+				Term:  1,
+				Index: 2,
+				Type:  raftpb.EntryNormal,
+				Data:  clusterVersionV3_6Data,
+			},
+			expect: &V3_6,
 		},
 		{
 			name: "Using ConfigChange implies v3.4",
