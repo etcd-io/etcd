@@ -163,6 +163,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.10...v3.4.11) an
 ### Metrics, Monitoring
 
 - Add [`os_fd_used` and `os_fd_limit` to monitor current OS file descriptors](https://github.com/etcd-io/etcd/pull/12214).
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13397).
 
 ### Go
 
