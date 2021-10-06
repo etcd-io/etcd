@@ -96,7 +96,7 @@ func ctlV3Role(cx ctlCtx, args []string, expStr string) error {
 	cmdArgs := append(cx.PrefixArgs(), "role")
 	cmdArgs = append(cmdArgs, args...)
 
-	return spawnWithExpect(cmdArgs, expStr)
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, expStr)
 }
 
 func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) error {
@@ -110,7 +110,7 @@ func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) err
 	cmdArgs = append(cmdArgs, rolename)
 	cmdArgs = append(cmdArgs, grantingPermToArgs(perm)...)
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string,
 		expStr = fmt.Sprintf("Permission of key %s is revoked from role %s", key, rolename)
 	}
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}

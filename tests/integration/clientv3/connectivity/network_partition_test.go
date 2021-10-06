@@ -112,7 +112,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	// expect pin eps[0]
 	ccfg := clientv3.Config{
@@ -168,7 +168,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 		SkipCreatingClient: true,
 	})
 	defer clus.Terminate(t)
-	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	lead := clus.WaitLeader(t)
 
@@ -224,7 +224,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	target := clus.WaitLeader(t)
 	if !isolateLeader {
@@ -285,7 +285,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	defer clus.Terminate(t)
 	leaderIndex := clus.WaitLeader(t)
 	// get a follower endpoint
-	eps := []string{clus.Members[(leaderIndex+1)%3].GRPCAddr()}
+	eps := []string{clus.Members[(leaderIndex+1)%3].GRPCURL()}
 	ccfg := clientv3.Config{
 		Endpoints:   eps,
 		DialTimeout: 10 * time.Second,
@@ -303,7 +303,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	// add other endpoints for later endpoint switch
 	cli.SetEndpoints(eps...)
 	time.Sleep(time.Second * 2)
-	conn, err := cli.Dial(clus.Members[(leaderIndex+1)%3].GRPCAddr())
+	conn, err := cli.Dial(clus.Members[(leaderIndex+1)%3].GRPCURL())
 	if err != nil {
 		t.Fatal(err)
 	}

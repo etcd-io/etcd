@@ -244,7 +244,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		)
 
 		cmdArgs = cURLPrefixArgs(cx.epc, "POST", cURLReq{endpoint: path.Join(p, "/auth/authenticate"), value: string(authreq)})
-		proc, err := spawnCmd(cmdArgs)
+		proc, err := spawnCmd(cmdArgs, cx.envMap)
 		testutil.AssertNil(cx.t, err)
 		defer proc.Close()
 
@@ -286,7 +286,7 @@ func testV3CurlCampaign(cx ctlCtx) {
 		endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
 		value:    string(cdata),
 	})
-	lines, err := spawnWithExpectLines(cargs, `"leader":{"name":"`)
+	lines, err := spawnWithExpectLines(cargs, cx.envMap, `"leader":{"name":"`)
 	if err != nil {
 		cx.t.Fatalf("failed post campaign request (%s) (%v)", cx.apiPrefix, err)
 	}

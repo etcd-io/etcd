@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -88,7 +89,7 @@ func TestV3PutOverwrite(t *testing.T) {
 // TestPutRestart checks if a put after an unrelated member restart succeeds
 func TestV3PutRestart(t *testing.T) {
 	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kvIdx := rand.Intn(3)
@@ -1207,7 +1208,7 @@ func TestV3Hash(t *testing.T) {
 // TestV3HashRestart ensures that hash stays the same after restart.
 func TestV3HashRestart(t *testing.T) {
 	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
@@ -1240,7 +1241,7 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 	BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3, UseBridge: true})
 
 	// Set a quota on one node
 	clus.Members[0].QuotaBackendBytes = quotasize
@@ -1594,8 +1595,10 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 
 	clus.Members[0].ClientTLSInfo = &testTLSInfo
 	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()}
+	clus.Members[0].grpcURL = strings.Replace(clus.Members[0].grpcURL, "http://", "https://", 1)
 	client, err := NewClientV3(clus.Members[0])
 	if client != nil || err == nil {
+		client.Close()
 		t.Fatalf("expected no client")
 	} else if err != context.DeadlineExceeded {
 		t.Fatalf("unexpected error (%v)", err)
@@ -1777,7 +1780,7 @@ func testTLSReload(
 			}
 			cli, cerr := NewClient(t, clientv3.Config{
 				DialOptions: []grpc.DialOption{grpc.WithBlock()},
-				Endpoints:   []string{clus.Members[0].GRPCAddr()},
+				Endpoints:   []string{clus.Members[0].GRPCURL()},
 				DialTimeout: time.Second,
 				TLS:         cc,
 			})
@@ -1811,7 +1814,7 @@ func testTLSReload(
 		t.Fatal(terr)
 	}
 	cl, cerr := NewClient(t, clientv3.Config{
-		Endpoints:   []string{clus.Members[0].GRPCAddr()},
+		Endpoints:   []string{clus.Members[0].GRPCURL()},
 		DialTimeout: 5 * time.Second,
 		TLS:         tls,
 	})
@@ -1851,7 +1854,7 @@ func TestGRPCRequireLeader(t *testing.T) {
 func TestGRPCStreamRequireLeader(t *testing.T) {
 	BeforeTest(t)
 
-	cfg := ClusterConfig{Size: 3}
+	cfg := ClusterConfig{Size: 3, UseBridge: true}
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 

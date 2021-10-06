@@ -1,4 +1,5 @@
-FROM k8s.gcr.io/build-image/debian-base-arm64:buster-v1.4.0
+# TODO: move to k8s.gcr.io/build-image/debian-base-arm64:bullseye-1.y.z when patched
+FROM arm64v8/debian:bullseye-20210927
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
