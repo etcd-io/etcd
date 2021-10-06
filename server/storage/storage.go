@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package storage
 
 import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.uber.org/zap"
 )
 
 type Storage interface {
@@ -36,12 +37,13 @@ type Storage interface {
 }
 
 type storage struct {
-	*wal.WAL
-	*snap.Snapshotter
+	lg *zap.Logger
+	s  *snap.Snapshotter
+	w  *wal.WAL
 }
 
-func NewStorage(w *wal.WAL, s *snap.Snapshotter) Storage {
-	return &storage{w, s}
+func NewStorage(lg *zap.Logger, w *wal.WAL, s *snap.Snapshotter) Storage {
+	return &storage{lg: lg, w: w, s: s}
 }
 
 // SaveSnap saves the snapshot file to disk and writes the WAL snapshot entry.
@@ -54,21 +56,33 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	// save the snapshot file before writing the snapshot to the wal.
 	// This makes it possible for the snapshot file to become orphaned, but prevents
 	// a WAL snapshot entry from having no corresponding snapshot file.
-	err := st.Snapshotter.SaveSnap(snap)
+	err := st.s.SaveSnap(snap)
 	if err != nil {
 		return err
 	}
 	// gofail: var raftBeforeWALSaveSnaphot struct{}
 
-	return st.WAL.SaveSnapshot(walsnap)
+	return st.w.SaveSnapshot(walsnap)
 }
 
 // Release releases resources older than the given snap and are no longer needed:
 // - releases the locks to the wal files that are older than the provided wal for the given snap.
 // - deletes any .snap.db files that are older than the given snap.
 func (st *storage) Release(snap raftpb.Snapshot) error {
-	if err := st.WAL.ReleaseLockTo(snap.Metadata.Index); err != nil {
+	if err := st.w.ReleaseLockTo(snap.Metadata.Index); err != nil {
 		return err
 	}
-	return st.Snapshotter.ReleaseSnapDBs(snap)
+	return st.s.ReleaseSnapDBs(snap)
+}
+
+func (st *storage) Save(s raftpb.HardState, ents []raftpb.Entry) error {
+	return st.w.Save(s, ents)
+}
+
+func (st *storage) Close() error {
+	return st.w.Close()
+}
+
+func (st *storage) Sync() error {
+	return st.w.Sync()
 }
