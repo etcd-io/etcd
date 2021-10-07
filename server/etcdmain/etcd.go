@@ -276,7 +276,7 @@ func startProxy(cfg *config) error {
 	}
 
 	cfg.ec.Dir = filepath.Join(cfg.ec.Dir, "proxy")
-	err = fileutil.TouchDirAll(cfg.ec.Dir)
+	err = fileutil.TouchDirAll(lg, cfg.ec.Dir)
 	if err != nil {
 		return err
 	}

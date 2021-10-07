@@ -520,7 +520,7 @@ func (clus *Cluster) sendOpWithResp(idx int, op rpcpb.Operation) (*rpcpb.Respons
 			"fixtures",
 			"client",
 		)
-		if err = fileutil.TouchDirAll(dirClient); err != nil {
+		if err = fileutil.TouchDirAll(clus.lg, dirClient); err != nil {
 			return nil, err
 		}
 
