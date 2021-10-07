@@ -60,11 +60,11 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		)
 	}
 
-	if terr := fileutil.TouchDirAll(cfg.DataDir); terr != nil {
+	if terr := fileutil.TouchDirAll(cfg.Logger, cfg.DataDir); terr != nil {
 		return nil, fmt.Errorf("cannot access data directory: %v", terr)
 	}
 
-	if terr := fileutil.TouchDirAll(cfg.MemberDir()); terr != nil {
+	if terr := fileutil.TouchDirAll(cfg.Logger, cfg.MemberDir()); terr != nil {
 		return nil, fmt.Errorf("cannot access member directory: %v", terr)
 	}
 	ss := bootstrapSnapshot(cfg)
@@ -179,7 +179,7 @@ func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappe
 }
 
 func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
-	if err := fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
+	if err := fileutil.TouchDirAll(cfg.Logger, cfg.SnapDir()); err != nil {
 		cfg.Logger.Fatal(
 			"failed to create snapshot directory",
 			zap.String("path", cfg.SnapDir()),
