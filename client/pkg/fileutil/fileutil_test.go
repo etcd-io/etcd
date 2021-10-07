@@ -67,7 +67,7 @@ func TestCreateDirAll(t *testing.T) {
 	defer os.RemoveAll(tmpdir)
 
 	tmpdir2 := filepath.Join(tmpdir, "testdir")
-	if err = CreateDirAll(tmpdir2); err != nil {
+	if err = CreateDirAll(zaptest.NewLogger(t), tmpdir2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -75,7 +75,7 @@ func TestCreateDirAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = CreateDirAll(tmpdir2); err == nil || !strings.Contains(err.Error(), "to be empty, got") {
+	if err = CreateDirAll(zaptest.NewLogger(t), tmpdir2); err == nil || !strings.Contains(err.Error(), "to be empty, got") {
 		t.Fatalf("unexpected error %v", err)
 	}
 }
@@ -186,7 +186,7 @@ func TestDirPermission(t *testing.T) {
 
 	tmpdir2 := filepath.Join(tmpdir, "testpermission")
 	// create a new dir with 0700
-	if err = CreateDirAll(tmpdir2); err != nil {
+	if err = CreateDirAll(zaptest.NewLogger(t), tmpdir2); err != nil {
 		t.Fatal(err)
 	}
 	// check dir permission with mode different than created dir

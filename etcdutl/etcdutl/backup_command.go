@@ -114,7 +114,7 @@ func HandleBackup(withV3 bool, srcDir string, destDir string, srcWAL string, des
 		destWAL = datadir.ToWalDir(destDir)
 	}
 
-	if err := fileutil.CreateDirAll(destSnap); err != nil {
+	if err := fileutil.CreateDirAll(lg, destSnap); err != nil {
 		lg.Fatal("failed creating backup snapshot dir", zap.String("dest-snap", destSnap), zap.Error(err))
 	}
 

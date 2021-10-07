@@ -322,7 +322,7 @@ func (s *v3Manager) copyAndVerifyDB() error {
 		return err
 	}
 
-	if err := fileutil.CreateDirAll(s.snapDir); err != nil {
+	if err := fileutil.CreateDirAll(s.lg, s.snapDir); err != nil {
 		return err
 	}
 
@@ -383,7 +383,7 @@ func (s *v3Manager) copyAndVerifyDB() error {
 //
 // TODO: This code ignores learners !!!
 func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
-	if err := fileutil.CreateDirAll(s.walDir); err != nil {
+	if err := fileutil.CreateDirAll(s.lg, s.walDir); err != nil {
 		return nil, err
 	}
 
