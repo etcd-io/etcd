@@ -474,7 +474,7 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 		}, nil
 	}
 
-	err := fileutil.TouchDirAll(srv.Member.BaseDir)
+	err := fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir)
 	if err != nil {
 		return nil, err
 	}
@@ -509,7 +509,7 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 func (srv *Server) handle_RESTART_ETCD(req *rpcpb.Request) (*rpcpb.Response, error) {
 	var err error
 	if !fileutil.Exist(srv.Member.BaseDir) {
-		err = fileutil.TouchDirAll(srv.Member.BaseDir)
+		err = fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir)
 		if err != nil {
 			return nil, err
 		}
@@ -580,7 +580,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error
 
 	// create a new log file for next new member restart
 	if !fileutil.Exist(srv.Member.BaseDir) {
-		err = fileutil.TouchDirAll(srv.Member.BaseDir)
+		err = fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir)
 		if err != nil {
 			return nil, err
 		}
@@ -652,6 +652,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA() (*rpcpb.Response, erro
 
 	// TODO: support separate WAL directory
 	if err = archive(
+		srv.lg,
 		srv.Member.BaseDir,
 		srv.Member.Etcd.LogOutputs[0],
 		srv.Member.Etcd.DataDir,
