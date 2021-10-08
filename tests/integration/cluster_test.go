@@ -173,7 +173,7 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 }
 
 func TestForceNewCluster(t *testing.T) {
-	c := NewCluster(t, 3)
+	c := newCluster(t, &ClusterConfig{Size: 3, UseBridge: true})
 	c.Launch(t)
 	cc := MustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
 	kapi := client.NewKeysAPI(cc)
@@ -283,7 +283,7 @@ func testIssue2746(t *testing.T, members int) {
 func TestIssue2904(t *testing.T) {
 	BeforeTest(t)
 	// start 1-member cluster to ensure member 0 is the leader of the cluster.
-	c := NewCluster(t, 1)
+	c := newCluster(t, &ClusterConfig{Size: 1, UseBridge: true})
 	c.Launch(t)
 	defer c.Terminate(t)
 
@@ -319,7 +319,7 @@ func TestIssue2904(t *testing.T) {
 func TestIssue3699(t *testing.T) {
 	// start a cluster of 3 nodes a, b, c
 	BeforeTest(t)
-	c := NewCluster(t, 3)
+	c := newCluster(t, &ClusterConfig{Size: 3, UseBridge: true})
 	c.Launch(t)
 	defer c.Terminate(t)
 
@@ -371,7 +371,7 @@ func TestIssue3699(t *testing.T) {
 // TestRejectUnhealthyAdd ensures an unhealthy cluster rejects adding members.
 func TestRejectUnhealthyAdd(t *testing.T) {
 	BeforeTest(t)
-	c := NewCluster(t, 3)
+	c := newCluster(t, &ClusterConfig{Size: 3, UseBridge: true})
 	for _, m := range c.Members {
 		m.ServerConfig.StrictReconfigCheck = true
 	}
@@ -415,7 +415,7 @@ func TestRejectUnhealthyAdd(t *testing.T) {
 // if quorum will be lost.
 func TestRejectUnhealthyRemove(t *testing.T) {
 	BeforeTest(t)
-	c := NewCluster(t, 5)
+	c := newCluster(t, &ClusterConfig{Size: 5, UseBridge: true})
 	for _, m := range c.Members {
 		m.ServerConfig.StrictReconfigCheck = true
 	}
@@ -464,7 +464,7 @@ func TestRestartRemoved(t *testing.T) {
 	BeforeTest(t)
 
 	// 1. start single-member cluster
-	c := NewCluster(t, 1)
+	c := newCluster(t, &ClusterConfig{Size: 1, UseBridge: true})
 	for _, m := range c.Members {
 		m.ServerConfig.StrictReconfigCheck = true
 	}
@@ -540,7 +540,7 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 
 func TestSpeedyTerminate(t *testing.T) {
 	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3, UseBridge: true})
 	// Stop/Restart so requests will time out on lost leaders
 	for i := 0; i < 3; i++ {
 		clus.Members[i].Stop(t)

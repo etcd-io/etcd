@@ -36,7 +36,7 @@ import (
 func TestV3LeasePromote(t *testing.T) {
 	BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// create lease
@@ -237,6 +237,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 		Size:                    3,
 		EnableLeaseCheckpoint:   true,
 		LeaseCheckpointInterval: leaseInterval,
+		UseBridge:               true,
 	})
 	defer clus.Terminate(t)
 
@@ -649,7 +650,7 @@ const fiveMinTTL int64 = 300
 func TestV3LeaseRecoverAndRevoke(t *testing.T) {
 	BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kvc := toGRPC(clus.Client(0)).KV
@@ -700,7 +701,7 @@ func TestV3LeaseRecoverAndRevoke(t *testing.T) {
 func TestV3LeaseRevokeAndRecover(t *testing.T) {
 	BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kvc := toGRPC(clus.Client(0)).KV
@@ -752,7 +753,7 @@ func TestV3LeaseRevokeAndRecover(t *testing.T) {
 func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 	BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kvc := toGRPC(clus.Client(0)).KV
@@ -808,7 +809,7 @@ func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
 	BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kvc := toGRPC(clus.Client(0)).KV

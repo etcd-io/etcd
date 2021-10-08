@@ -115,6 +115,10 @@ func (p *proxyEtcdProcess) WithStopSignal(sig os.Signal) os.Signal {
 	return p.etcdProc.WithStopSignal(sig)
 }
 
+func (p *proxyEtcdProcess) Logs() logsExpect {
+	return p.etcdProc.Logs()
+}
+
 type proxyProc struct {
 	lg       *zap.Logger
 	execPath string
@@ -132,7 +136,7 @@ func (pp *proxyProc) start() error {
 	if pp.proc != nil {
 		panic("already started")
 	}
-	proc, err := spawnCmdWithLogger(pp.lg, append([]string{pp.execPath}, pp.args...))
+	proc, err := spawnCmdWithLogger(pp.lg, append([]string{pp.execPath}, pp.args...), nil)
 	if err != nil {
 		return err
 	}

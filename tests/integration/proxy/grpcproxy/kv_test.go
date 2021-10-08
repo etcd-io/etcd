@@ -34,7 +34,7 @@ func TestKVProxyRange(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	kvts := newKVProxyServer([]string{clus.Members[0].GRPCAddr()}, t)
+	kvts := newKVProxyServer([]string{clus.Members[0].GRPCURL()}, t)
 	defer kvts.close()
 
 	// create a client and try to get key from proxy.

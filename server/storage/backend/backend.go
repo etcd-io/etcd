@@ -432,6 +432,8 @@ func (b *backend) Defrag() error {
 
 func (b *backend) defrag() error {
 	now := time.Now()
+	isDefragActive.Set(1)
+	defer isDefragActive.Set(0)
 
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then

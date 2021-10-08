@@ -35,7 +35,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 2})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 2, UseBridge: true})
 	defer clus.Terminate(t)
 	kvc0 := toGRPC(clus.Client(0)).KV
 	kvc1 := toGRPC(clus.Client(1)).KV
@@ -147,7 +147,7 @@ func TestV3AlarmDeactivate(t *testing.T) {
 
 func TestV3CorruptAlarm(t *testing.T) {
 	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	var wg sync.WaitGroup

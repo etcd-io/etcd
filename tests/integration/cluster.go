@@ -39,6 +39,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
@@ -73,6 +74,7 @@ const (
 	basePort     = 21000
 	URLScheme    = "unix"
 	URLSchemeTLS = "unixs"
+	baseGRPCPort = 30000
 )
 
 var (
@@ -121,6 +123,10 @@ var (
 
 	defaultTokenJWT = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=1s",
 		MustAbsPath("../fixtures/server.crt"), MustAbsPath("../fixtures/server.key.insecure"))
+
+	// uniqueNumber is used to generate unique port numbers
+	// Should only be accessed via atomic package methods.
+	uniqueNumber int32
 )
 
 type ClusterConfig struct {
@@ -153,6 +159,11 @@ type ClusterConfig struct {
 
 	// UseIP is true to use only IP for gRPC requests.
 	UseIP bool
+	// UseBridge adds bridge between client and grpc server. Should be used in tests that
+	// want to manipulate connection or require connection not breaking despite server stop/restart.
+	UseBridge bool
+	// UseTCP configures server listen on tcp socket. If disabled unix socket is used.
+	UseTCP bool
 
 	EnableLeaseCheckpoint   bool
 	LeaseCheckpointInterval time.Duration
@@ -208,7 +219,7 @@ func newCluster(t testutil.TB, cfg *ClusterConfig) *cluster {
 	c := &cluster{cfg: cfg}
 	ms := make([]*member, cfg.Size)
 	for i := 0; i < cfg.Size; i++ {
-		ms[i] = c.mustNewMember(t)
+		ms[i] = c.mustNewMember(t, int64(i))
 	}
 	c.Members = ms
 	if err := c.fillClusterForMembers(); err != nil {
@@ -249,7 +260,7 @@ func (c *cluster) Launch(t testutil.TB) {
 	c.waitMembersMatch(t, c.HTTPMembers())
 	c.waitVersion()
 	for _, m := range c.Members {
-		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCAddr())
+		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCURL())
 	}
 }
 
@@ -295,10 +306,11 @@ func (c *cluster) HTTPMembers() []client.Member {
 	return ms
 }
 
-func (c *cluster) mustNewMember(t testutil.TB) *member {
+func (c *cluster) mustNewMember(t testutil.TB, memberNumber int64) *member {
 	m := mustNewMember(t,
 		memberConfig{
 			name:                        c.generateMemberName(),
+			memberNumber:                memberNumber,
 			authToken:                   c.cfg.AuthToken,
 			peerTLS:                     c.cfg.PeerTLS,
 			clientTLS:                   c.cfg.ClientTLS,
@@ -313,6 +325,8 @@ func (c *cluster) mustNewMember(t testutil.TB) *member {
 			clientMaxCallSendMsgSize:    c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize:    c.cfg.ClientMaxCallRecvMsgSize,
 			useIP:                       c.cfg.UseIP,
+			useBridge:                   c.cfg.UseBridge,
+			useTCP:                      c.cfg.UseTCP,
 			enableLeaseCheckpoint:       c.cfg.EnableLeaseCheckpoint,
 			leaseCheckpointInterval:     c.cfg.LeaseCheckpointInterval,
 			WatchProgressNotifyInterval: c.cfg.WatchProgressNotifyInterval,
@@ -328,7 +342,7 @@ func (c *cluster) mustNewMember(t testutil.TB) *member {
 
 // addMember return PeerURLs of the added member.
 func (c *cluster) addMember(t testutil.TB) types.URLs {
-	m := c.mustNewMember(t)
+	m := c.mustNewMember(t, 0)
 
 	scheme := schemeFromTLSInfo(c.cfg.PeerTLS)
 
@@ -557,6 +571,8 @@ func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
 
 type member struct {
 	config.ServerConfig
+	UniqNumber                     int64
+	MemberNumber                   int64
 	PeerListeners, ClientListeners []net.Listener
 	grpcListener                   net.Listener
 	// PeerTLSInfo enables peer TLS when set
@@ -572,7 +588,7 @@ type member struct {
 	grpcServerOpts []grpc.ServerOption
 	grpcServer     *grpc.Server
 	grpcServerPeer *grpc.Server
-	grpcAddr       string
+	grpcURL        string
 	grpcBridge     *bridge
 
 	// serverClient is a clientv3 that directly calls the etcdserver.
@@ -582,15 +598,21 @@ type member struct {
 	clientMaxCallSendMsgSize int
 	clientMaxCallRecvMsgSize int
 	useIP                    bool
+	useBridge                bool
+	useTCP                   bool
 
 	isLearner bool
 	closed    bool
+
+	grpcServerRecorder *grpc_testing.GrpcRecorder
 }
 
-func (m *member) GRPCAddr() string { return m.grpcAddr }
+func (m *member) GRPCURL() string { return m.grpcURL }
 
 type memberConfig struct {
 	name                        string
+	uniqNumber                  int64
+	memberNumber                int64
 	peerTLS                     *transport.TLSInfo
 	clientTLS                   *transport.TLSInfo
 	authToken                   string
@@ -605,6 +627,8 @@ type memberConfig struct {
 	clientMaxCallSendMsgSize    int
 	clientMaxCallRecvMsgSize    int
 	useIP                       bool
+	useBridge                   bool
+	useTCP                      bool
 	enableLeaseCheckpoint       bool
 	leaseCheckpointInterval     time.Duration
 	WatchProgressNotifyInterval time.Duration
@@ -614,7 +638,10 @@ type memberConfig struct {
 // set, it will use https scheme to communicate between peers.
 func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	var err error
-	m := &member{}
+	m := &member{
+		MemberNumber: mcfg.memberNumber,
+		UniqNumber:   atomic.AddInt64(&localListenCount, 1),
+	}
 
 	peerScheme := schemeFromTLSInfo(mcfg.peerTLS)
 	clientScheme := schemeFromTLSInfo(mcfg.clientTLS)
@@ -698,6 +725,8 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
 	m.useIP = mcfg.useIP
+	m.useBridge = mcfg.useBridge
+	m.useTCP = mcfg.useTCP
 	m.EnableLeaseCheckpoint = mcfg.enableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
 
@@ -708,7 +737,7 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.WarningUnaryRequestDuration = embed.DefaultWarningUnaryRequestDuration
 
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
-
+	m.grpcServerRecorder = &grpc_testing.GrpcRecorder{}
 	m.Logger = memberLogger(t, mcfg.name)
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
@@ -731,23 +760,93 @@ func memberLogger(t testutil.TB, name string) *zap.Logger {
 // listenGRPC starts a grpc server over a unix domain socket on the member
 func (m *member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
-	m.grpcAddr = "localhost:" + m.Name
-	m.Logger.Info("LISTEN GRPC", zap.String("m.grpcAddr", m.grpcAddr), zap.String("m.Name", m.Name))
-	if m.useIP { // for IP-only TLS certs
-		m.grpcAddr = "127.0.0.1:" + m.Name
-	}
-	l, err := transport.NewUnixListener(m.grpcAddr)
+	network, host, port := m.grpcAddr()
+	grpcAddr := host + ":" + port
+	m.Logger.Info("LISTEN GRPC", zap.String("grpcAddr", grpcAddr), zap.String("m.Name", m.Name))
+	grpcListener, err := net.Listen(network, grpcAddr)
 	if err != nil {
-		return fmt.Errorf("listen failed on grpc socket %s (%v)", m.grpcAddr, err)
+		return fmt.Errorf("listen failed on grpc socket %s (%v)", grpcAddr, err)
 	}
-	m.grpcBridge, err = newBridge(m.grpcAddr)
-	if err != nil {
-		l.Close()
-		return err
+	m.grpcURL = fmt.Sprintf("%s://%s", m.clientScheme(), grpcAddr)
+	if m.useBridge {
+		_, err = m.addBridge()
+		if err != nil {
+			grpcListener.Close()
+			return err
+		}
 	}
-	m.grpcAddr = schemeFromTLSInfo(m.ClientTLSInfo) + "://" + m.grpcBridge.inaddr
-	m.grpcListener = l
+	m.grpcListener = grpcListener
 	return nil
+}
+
+func (m *member) clientScheme() string {
+	switch {
+	case m.useTCP && m.ClientTLSInfo != nil:
+		return "https"
+	case m.useTCP && m.ClientTLSInfo == nil:
+		return "http"
+	case !m.useTCP && m.ClientTLSInfo != nil:
+		return "unixs"
+	case !m.useTCP && m.ClientTLSInfo == nil:
+		return "unix"
+	}
+	m.Logger.Panic("Failed to determine client schema")
+	return ""
+}
+
+func (m *member) addBridge() (*bridge, error) {
+	network, host, port := m.grpcAddr()
+	grpcAddr := host + ":" + port
+	bridgeAddr := grpcAddr + "0"
+	m.Logger.Info("LISTEN BRIDGE", zap.String("grpc-address", bridgeAddr), zap.String("member", m.Name))
+	bridgeListener, err := transport.NewUnixListener(bridgeAddr)
+	if err != nil {
+		return nil, fmt.Errorf("listen failed on bridge socket %s (%v)", bridgeAddr, err)
+	}
+	m.grpcBridge, err = newBridge(dialer{network: network, addr: grpcAddr}, bridgeListener)
+	if err != nil {
+		bridgeListener.Close()
+		return nil, err
+	}
+	m.grpcURL = m.clientScheme() + "://" + bridgeAddr
+	return m.grpcBridge, nil
+}
+
+func (m *member) Bridge() *bridge {
+	if !m.useBridge {
+		m.Logger.Panic("Bridge not available. Please configure using bridge before creating cluster.")
+	}
+	return m.grpcBridge
+}
+
+func (m *member) grpcAddr() (network, host, port string) {
+	// prefix with localhost so cert has right domain
+	host = "localhost"
+	if m.useIP { // for IP-only TLS certs
+		host = "127.0.0.1"
+	}
+	network = "unix"
+	if m.useTCP {
+		network = "tcp"
+	}
+	port = m.Name
+	if m.useTCP {
+		port = fmt.Sprintf("%d", GrpcPortNumber(m.UniqNumber, m.MemberNumber))
+	}
+	return network, host, port
+}
+
+func GrpcPortNumber(uniqNumber, memberNumber int64) int64 {
+	return baseGRPCPort + uniqNumber*10 + memberNumber
+}
+
+type dialer struct {
+	network string
+	addr    string
+}
+
+func (d dialer) Dial() (net.Conn, error) {
+	return net.Dial(d.network, d.addr)
 }
 
 func (m *member) ElectionTimeout() time.Duration {
@@ -756,20 +855,14 @@ func (m *member) ElectionTimeout() time.Duration {
 
 func (m *member) ID() types.ID { return m.s.ID() }
 
-func (m *member) DropConnections()    { m.grpcBridge.Reset() }
-func (m *member) PauseConnections()   { m.grpcBridge.Pause() }
-func (m *member) UnpauseConnections() { m.grpcBridge.Unpause() }
-func (m *member) Blackhole()          { m.grpcBridge.Blackhole() }
-func (m *member) Unblackhole()        { m.grpcBridge.Unblackhole() }
-
 // NewClientV3 creates a new grpc client connection to the member
 func NewClientV3(m *member) (*clientv3.Client, error) {
-	if m.grpcAddr == "" {
+	if m.grpcURL == "" {
 		return nil, fmt.Errorf("member not configured for grpc")
 	}
 
 	cfg := clientv3.Config{
-		Endpoints:          []string{m.grpcAddr},
+		Endpoints:          []string{m.grpcURL},
 		DialTimeout:        5 * time.Second,
 		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
 		MaxCallSendMsgSize: m.clientMaxCallSendMsgSize,
@@ -831,7 +924,7 @@ func (m *member) Launch() error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-address", m.grpcAddr),
+		zap.String("grpc-url", m.grpcURL),
 	)
 	var err error
 	if m.s, err = etcdserver.NewServer(m.ServerConfig); err != nil {
@@ -857,8 +950,8 @@ func (m *member) Launch() error {
 				return err
 			}
 		}
-		m.grpcServer = v3rpc.Server(m.s, tlscfg, m.grpcServerOpts...)
-		m.grpcServerPeer = v3rpc.Server(m.s, peerTLScfg)
+		m.grpcServer = v3rpc.Server(m.s, tlscfg, m.grpcServerRecorder.UnaryInterceptor(), m.grpcServerOpts...)
+		m.grpcServerPeer = v3rpc.Server(m.s, peerTLScfg, m.grpcServerRecorder.UnaryInterceptor())
 		m.serverClient = v3client.New(m.s)
 		lockpb.RegisterLockServer(m.grpcServer, v3lock.NewLockServer(m.serverClient))
 		epb.RegisterElectionServer(m.grpcServer, v3election.NewElectionServer(m.serverClient))
@@ -988,9 +1081,13 @@ func (m *member) Launch() error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-address", m.grpcAddr),
+		zap.String("grpc-url", m.grpcURL),
 	)
 	return nil
+}
+
+func (m *member) RecordedRequests() []grpc_testing.RequestInfo {
+	return m.grpcServerRecorder.RecordedRequests()
 }
 
 func (m *member) WaitOK(t testutil.TB) {
@@ -1101,7 +1198,7 @@ func (m *member) Stop(_ testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-address", m.grpcAddr),
+		zap.String("grpc-url", m.grpcURL),
 	)
 	m.Close()
 	m.serverClosers = nil
@@ -1110,7 +1207,7 @@ func (m *member) Stop(_ testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-address", m.grpcAddr),
+		zap.String("grpc-url", m.grpcURL),
 	)
 }
 
@@ -1135,7 +1232,7 @@ func (m *member) Restart(t testutil.TB) error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-address", m.grpcAddr),
+		zap.String("grpc-url", m.grpcURL),
 	)
 	newPeerListeners := make([]net.Listener, 0)
 	for _, ln := range m.PeerListeners {
@@ -1160,7 +1257,7 @@ func (m *member) Restart(t testutil.TB) error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-address", m.grpcAddr),
+		zap.String("grpc-url", m.grpcURL),
 		zap.Error(err),
 	)
 	return err
@@ -1173,7 +1270,7 @@ func (m *member) Terminate(t testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-address", m.grpcAddr),
+		zap.String("grpc-url", m.grpcURL),
 	)
 	m.Close()
 	if !m.keepDataDirTerminate {
@@ -1186,7 +1283,7 @@ func (m *member) Terminate(t testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-address", m.grpcAddr),
+		zap.String("grpc-url", m.grpcURL),
 	)
 }
 
@@ -1282,8 +1379,9 @@ func (p SortableMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] 
 type ClusterV3 struct {
 	*cluster
 
-	mu      sync.Mutex
-	clients []*clientv3.Client
+	mu            sync.Mutex
+	clients       []*clientv3.Client
+	clusterClient *clientv3.Client
 }
 
 // NewClusterV3 returns a launched cluster with a grpc client connection
@@ -1329,6 +1427,11 @@ func (c *ClusterV3) Terminate(t testutil.TB) {
 			t.Error(err)
 		}
 	}
+	if c.clusterClient != nil {
+		if err := c.clusterClient.Close(); err != nil {
+			t.Error(err)
+		}
+	}
 	c.mu.Unlock()
 	c.cluster.Terminate(t)
 }
@@ -1339,6 +1442,25 @@ func (c *ClusterV3) RandClient() *clientv3.Client {
 
 func (c *ClusterV3) Client(i int) *clientv3.Client {
 	return c.clients[i]
+}
+
+func (c *ClusterV3) ClusterClient() (client *clientv3.Client, err error) {
+	if c.clusterClient == nil {
+		endpoints := []string{}
+		for _, m := range c.Members {
+			endpoints = append(endpoints, m.grpcURL)
+		}
+		cfg := clientv3.Config{
+			Endpoints:   endpoints,
+			DialTimeout: 5 * time.Second,
+			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		}
+		c.clusterClient, err = newClientV3(cfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c.clusterClient, nil
 }
 
 // NewClientV3 creates a new grpc client connection to the member
@@ -1420,7 +1542,7 @@ func (c *ClusterV3) GetLearnerMembers() ([]*pb.Member, error) {
 // AddAndLaunchLearnerMember creates a leaner member, adds it to cluster
 // via v3 MemberAdd API, and then launches the new member.
 func (c *ClusterV3) AddAndLaunchLearnerMember(t testutil.TB) {
-	m := c.mustNewMember(t)
+	m := c.mustNewMember(t, 0)
 	m.isLearner = true
 
 	scheme := schemeFromTLSInfo(c.cfg.PeerTLS)
@@ -1521,7 +1643,7 @@ func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], 
 
 // MustNewMember creates a new member instance based on the response of V3 Member Add API.
 func (c *ClusterV3) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse) *member {
-	m := c.mustNewMember(t)
+	m := c.mustNewMember(t, 0)
 	m.isLearner = resp.Member.IsLearner
 	m.NewCluster = false
 

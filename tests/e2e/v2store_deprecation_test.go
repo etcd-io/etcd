@@ -63,7 +63,7 @@ func assertVerifyCanStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
 
 func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
-	proc, err := spawnCmd([]string{binDir + "/etcd", "--v2-deprecation=write-only", "--data-dir=" + dataDirPath})
+	proc, err := spawnCmd([]string{binDir + "/etcd", "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
@@ -90,7 +90,7 @@ func TestV2Deprecation(t *testing.T) {
 
 func TestV2DeprecationWriteOnlyNoV2Api(t *testing.T) {
 	BeforeTest(t)
-	proc, err := spawnCmd([]string{binDir + "/etcd", "--v2-deprecation=write-only", "--enable-v2"})
+	proc, err := spawnCmd([]string{binDir + "/etcd", "--v2-deprecation=write-only", "--enable-v2"}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect("--enable-v2 and --v2-deprecation=write-only are mutually exclusive")
