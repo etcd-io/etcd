@@ -54,7 +54,6 @@ func newPeriodic(lg *zap.Logger, clock clockwork.Clock, h time.Duration, rg RevG
 		period: h,
 		rg:     rg,
 		c:      c,
-		revs:   make([]int64, 0),
 	}
 	// revs won't be longer than the retentions.
 	pc.revs = make([]int64, 0, pc.getRetentions())
