@@ -25,12 +25,13 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestMetricDbSizeBoot checks that the db size metric is set on boot.
 func TestMetricDbSizeBoot(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	v, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
@@ -49,12 +50,12 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 
 // testMetricDbSizeDefrag checks that the db size metric is set after defrag.
 func testMetricDbSizeDefrag(t *testing.T, name string) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	kvc := toGRPC(clus.Client(0)).KV
-	mc := toGRPC(clus.Client(0)).Maintenance
+	kvc := integration.ToGRPC(clus.Client(0)).KV
+	mc := integration.ToGRPC(clus.Client(0)).Maintenance
 
 	// expand the db size
 	numPuts := 25 // large enough to write more than 1 page
@@ -163,8 +164,8 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 }
 
 func TestMetricQuotaBackendBytes(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	qs, err := clus.Members[0].Metric("etcd_server_quota_backend_bytes")
@@ -181,8 +182,8 @@ func TestMetricQuotaBackendBytes(t *testing.T) {
 }
 
 func TestMetricsHealth(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	tr, err := transport.NewTransport(transport.TLSInfo{}, 5*time.Second)

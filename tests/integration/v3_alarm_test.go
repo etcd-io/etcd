@@ -27,24 +27,25 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.uber.org/zap/zaptest"
 )
 
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply
 func TestV3StorageQuotaApply(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 2, UseBridge: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2, UseBridge: true})
 	defer clus.Terminate(t)
-	kvc0 := toGRPC(clus.Client(0)).KV
-	kvc1 := toGRPC(clus.Client(1)).KV
+	kvc0 := integration.ToGRPC(clus.Client(0)).KV
+	kvc1 := integration.ToGRPC(clus.Client(1)).KV
 
 	// Set a quota on one node
 	clus.Members[0].QuotaBackendBytes = quotasize
 	clus.Members[0].Stop(t)
 	clus.Members[0].Restart(t)
-	clus.waitLeader(t, clus.Members)
+	clus.WaitMembersForLeader(t, clus.Members)
 	waitForRestart(t, kvc0)
 
 	key := []byte("abc")
@@ -73,7 +74,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	stopc := time.After(5 * time.Second)
 	for {
 		req := &pb.AlarmRequest{Action: pb.AlarmRequest_GET}
-		resp, aerr := clus.Members[0].s.Alarm(context.TODO(), req)
+		resp, aerr := clus.Members[0].Server.Alarm(context.TODO(), req)
 		if aerr != nil {
 			t.Fatal(aerr)
 		}
@@ -87,7 +88,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), RequestWaitTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), integration.RequestWaitTimeout)
 	defer cancel()
 
 	// small quota machine should reject put
@@ -103,7 +104,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	// reset large quota node to ensure alarm persisted
 	clus.Members[1].Stop(t)
 	clus.Members[1].Restart(t)
-	clus.waitLeader(t, clus.Members)
+	clus.WaitMembersForLeader(t, clus.Members)
 
 	if _, err := kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
 		t.Fatalf("alarmed instance should reject put after reset")
@@ -112,12 +113,12 @@ func TestV3StorageQuotaApply(t *testing.T) {
 
 // TestV3AlarmDeactivate ensures that space alarms can be deactivated so puts go through.
 func TestV3AlarmDeactivate(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-	kvc := toGRPC(clus.RandClient()).KV
-	mt := toGRPC(clus.RandClient()).Maintenance
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	mt := integration.ToGRPC(clus.RandClient()).Maintenance
 
 	alarmReq := &pb.AlarmRequest{
 		MemberID: 123,
@@ -146,8 +147,8 @@ func TestV3AlarmDeactivate(t *testing.T) {
 }
 
 func TestV3CorruptAlarm(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	var wg sync.WaitGroup

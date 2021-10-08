@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/server/v3/embed"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -78,7 +78,7 @@ func newEmbedConfig(t *testing.T) *embed.Config {
 	clusterN := 1
 	urls := newEmbedURLs(clusterN * 2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
-	cfg := integration.NewEmbedConfig(t, "default")
+	cfg := integration2.NewEmbedConfig(t, "default")
 	cfg.ClusterState = "new"
 	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
 	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
@@ -105,7 +105,7 @@ func createSnapshotFile(t *testing.T, cfg *embed.Config, kvs []kv) (version stri
 	}
 
 	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
-	cli, err := integration.NewClient(t, ccfg)
+	cli, err := integration2.NewClient(t, ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -21,15 +21,15 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2v3"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TODO: fix tests
 
 func runWithCluster(t testing.TB, runner func(testing.TB, []string)) {
-	integration.BeforeTest(t)
-	cfg := integration.ClusterConfig{Size: 1}
-	clus := integration.NewClusterV3(t, &cfg)
+	integration2.BeforeTest(t)
+	cfg := integration2.ClusterConfig{Size: 1}
+	clus := integration2.NewClusterV3(t, &cfg)
 	defer clus.Terminate(t)
 	endpoints := []string{clus.Client(0).Endpoints()[0]}
 	runner(t, endpoints)
@@ -38,7 +38,7 @@ func runWithCluster(t testing.TB, runner func(testing.TB, []string)) {
 func TestCreateKV(t *testing.T) { runWithCluster(t, testCreateKV) }
 
 func testCreateKV(t testing.TB, endpoints []string) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 	testCases := []struct {
 		key          string
 		value        string
@@ -54,7 +54,7 @@ func testCreateKV(t testing.TB, endpoints []string) {
 		//{key: "hello", value: "3", unique: true, wantKeyMatch: false},
 	}
 
-	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: endpoints})
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: endpoints})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func testSetKV(t testing.TB, endpoints []string) {
 		{key: "/sdir/set", value: "4", wantIndexMatch: false},
 	}
 
-	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: endpoints})
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: endpoints})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func testSetKV(t testing.TB, endpoints []string) {
 func TestCreateSetDir(t *testing.T) { runWithCluster(t, testCreateSetDir) }
 
 func testCreateSetDir(t testing.TB, endpoints []string) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 	testCases := []struct {
 		dir string
 	}{
@@ -138,7 +138,7 @@ func testCreateSetDir(t testing.TB, endpoints []string) {
 		{dir: "/ddir/1/2/3"},
 	}
 
-	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: endpoints})
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: endpoints})
 	if err != nil {
 		t.Fatal(err)
 	}

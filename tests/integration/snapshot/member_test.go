@@ -24,14 +24,14 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestSnapshotV3RestoreMultiMemberAdd ensures that multiple members
 // can boot into the same cluster after being restored from a same
 // snapshot file, and also be able to add another member to the cluster.
 func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
@@ -48,7 +48,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	// wait for health interval + leader election
 	time.Sleep(etcdserver.HealthInterval + 2*time.Second)
 
-	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{cURLs[0].String()}})
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{cURLs[0].String()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	// wait for membership reconfiguration apply
 	time.Sleep(testutil.ApplyTimeout)
 
-	cfg := integration.NewEmbedConfig(t, "3")
+	cfg := integration2.NewEmbedConfig(t, "3")
 	cfg.InitialClusterToken = testClusterTkn
 	cfg.ClusterState = "existing"
 	cfg.LCUrls, cfg.ACUrls = newCURLs, newCURLs
@@ -88,7 +88,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 		t.Fatalf("failed to start the newly added etcd member")
 	}
 
-	cli2, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{newCURLs[0].String()}})
+	cli2, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{newCURLs[0].String()}})
 	if err != nil {
 		t.Fatal(err)
 	}

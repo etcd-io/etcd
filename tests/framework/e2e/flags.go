@@ -19,7 +19,7 @@ import (
 	"os"
 	"runtime"
 
-	"go.etcd.io/etcd/tests/v3/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 var (

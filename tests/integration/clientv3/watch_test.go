@@ -29,14 +29,14 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc/metadata"
 )
 
 type watcherTest func(*testing.T, *watchctx)
 
 type watchctx struct {
-	clus          *integration.ClusterV3
+	clus          *integration2.ClusterV3
 	w             clientv3.Watcher
 	kv            clientv3.KV
 	wclientMember int
@@ -45,9 +45,9 @@ type watchctx struct {
 }
 
 func runWatchTest(t *testing.T, f watcherTest) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	wclientMember := rand.Intn(3)
@@ -299,7 +299,7 @@ func TestWatchCancelRunning(t *testing.T) {
 }
 
 func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	if wctx.ch = wctx.w.Watch(ctx, "a"); wctx.ch == nil {
@@ -347,8 +347,8 @@ func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
 }
 
 func TestWatchResumeInitRev(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -402,9 +402,9 @@ func TestWatchResumeInitRev(t *testing.T) {
 // either a compaction error or all keys by staying in sync before the compaction
 // is finally applied.
 func TestWatchResumeCompacted(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// create a waiting watcher at rev 1
@@ -489,9 +489,9 @@ func TestWatchResumeCompacted(t *testing.T) {
 // TestWatchCompactRevision ensures the CompactRevision error is given on a
 // compaction event ahead of a watcher.
 func TestWatchCompactRevision(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// set some keys
@@ -531,7 +531,7 @@ func TestWatchWithProgressNotify(t *testing.T)        { testWatchWithProgressNot
 func TestWatchWithProgressNotifyNoEvent(t *testing.T) { testWatchWithProgressNotify(t, false) }
 
 func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
 	// accelerate report interval so test terminates quickly
 	oldpi := v3rpc.GetProgressReportInterval()
@@ -540,7 +540,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	pi := 3 * time.Second
 	defer func() { v3rpc.SetProgressReportInterval(oldpi) }()
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	wc := clus.RandClient()
@@ -585,11 +585,11 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 }
 
 func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
 	progressInterval := 200 * time.Millisecond
-	clus := integration.NewClusterV3(t,
-		&integration.ClusterConfig{
+	clus := integration2.NewClusterV3(t,
+		&integration2.ClusterConfig{
 			Size:                        3,
 			WatchProgressNotifyInterval: progressInterval,
 		})
@@ -611,7 +611,7 @@ func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
 }
 
 func TestWatchRequestProgress(t *testing.T) {
-	if integration.ThroughProxy {
+	if integration2.ThroughProxy {
 		t.Skipf("grpc-proxy does not support WatchProgress yet")
 	}
 	testCases := []struct {
@@ -625,11 +625,11 @@ func TestWatchRequestProgress(t *testing.T) {
 
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
-			integration.BeforeTest(t)
+			integration2.BeforeTest(t)
 
 			watchTimeout := 3 * time.Second
 
-			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+			clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 			defer clus.Terminate(t)
 
 			wc := clus.RandClient()
@@ -686,9 +686,9 @@ func TestWatchRequestProgress(t *testing.T) {
 }
 
 func TestWatchEventType(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	cluster := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
@@ -760,9 +760,9 @@ func TestWatchEventType(t *testing.T) {
 }
 
 func TestWatchErrConnClosed(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -783,16 +783,16 @@ func TestWatchErrConnClosed(t *testing.T) {
 	clus.TakeClient(0)
 
 	select {
-	case <-time.After(integration.RequestWaitTimeout):
+	case <-time.After(integration2.RequestWaitTimeout):
 		t.Fatal("wc.Watch took too long")
 	case <-donec:
 	}
 }
 
 func TestWatchAfterClose(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -810,7 +810,7 @@ func TestWatchAfterClose(t *testing.T) {
 		close(donec)
 	}()
 	select {
-	case <-time.After(integration.RequestWaitTimeout):
+	case <-time.After(integration2.RequestWaitTimeout):
 		t.Fatal("wc.Watch took too long")
 	case <-donec:
 	}
@@ -818,9 +818,9 @@ func TestWatchAfterClose(t *testing.T) {
 
 // TestWatchWithRequireLeader checks the watch channel closes when no leader.
 func TestWatchWithRequireLeader(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// Put a key for the non-require leader watch to read as an event.
@@ -856,7 +856,7 @@ func TestWatchWithRequireLeader(t *testing.T) {
 		if resp.Err() != rpctypes.ErrNoLeader {
 			t.Fatalf("expected %v watch response error, got %+v", rpctypes.ErrNoLeader, resp)
 		}
-	case <-time.After(integration.RequestWaitTimeout):
+	case <-time.After(integration2.RequestWaitTimeout):
 		t.Fatal("watch without leader took too long to close")
 	}
 
@@ -865,7 +865,7 @@ func TestWatchWithRequireLeader(t *testing.T) {
 		if ok {
 			t.Fatalf("expected closed channel, got response %v", resp)
 		}
-	case <-time.After(integration.RequestWaitTimeout):
+	case <-time.After(integration2.RequestWaitTimeout):
 		t.Fatal("waited too long for channel to close")
 	}
 
@@ -892,9 +892,9 @@ func TestWatchWithRequireLeader(t *testing.T) {
 
 // TestWatchWithFilter checks that watch filtering works.
 func TestWatchWithFilter(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	cluster := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
@@ -931,9 +931,9 @@ func TestWatchWithFilter(t *testing.T) {
 // TestWatchWithCreatedNotification checks that WithCreatedNotify returns a
 // Created watch response.
 func TestWatchWithCreatedNotification(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	cluster := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
@@ -953,9 +953,9 @@ func TestWatchWithCreatedNotification(t *testing.T) {
 // a watcher with created notify does not post duplicate
 // created events from disconnect.
 func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	cluster := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
@@ -982,9 +982,9 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 
 // TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
 func TestWatchCancelOnServer(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	cluster := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
@@ -1050,20 +1050,20 @@ func TestWatchCancelOnServer(t *testing.T) {
 //     4. watcher client finishes tearing down stream on "ctx"
 //     5. w2 comes back canceled
 func TestWatchOverlapContextCancel(t *testing.T) {
-	f := func(clus *integration.ClusterV3) {}
+	f := func(clus *integration2.ClusterV3) {}
 	testWatchOverlapContextCancel(t, f)
 }
 
 func TestWatchOverlapDropConnContextCancel(t *testing.T) {
-	f := func(clus *integration.ClusterV3) {
+	f := func(clus *integration2.ClusterV3) {
 		clus.Members[0].Bridge().DropConnections()
 	}
 	testWatchOverlapContextCancel(t, f)
 }
 
-func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3)) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+func testWatchOverlapContextCancel(t *testing.T, f func(*integration2.ClusterV3)) {
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	n := 100
@@ -1123,8 +1123,8 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 // TestWatchCancelAndCloseClient ensures that canceling a watcher then immediately
 // closing the client does not return a client closing error.
 func TestWatchCancelAndCloseClient(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1153,8 +1153,8 @@ func TestWatchCancelAndCloseClient(t *testing.T) {
 // to put them in resuming mode, cancels them so some resumes by cancel fail,
 // then closes the watcher interface to ensure correct clean up.
 func TestWatchStressResumeClose(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
 
@@ -1175,8 +1175,8 @@ func TestWatchStressResumeClose(t *testing.T) {
 // TestWatchCancelDisconnected ensures canceling a watcher works when
 // its grpc stream is disconnected / reconnecting.
 func TestWatchCancelDisconnected(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
 	ctx, cancel := context.WithCancel(context.Background())

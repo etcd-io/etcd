@@ -26,7 +26,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/integration/clientv3"
 	"google.golang.org/grpc"
 )
@@ -103,9 +103,9 @@ func TestBalancerUnderNetworkPartitionSerializableGet(t *testing.T) {
 }
 
 func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
 		Size:               3,
 		SkipCreatingClient: true,
 	})
@@ -119,7 +119,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 		DialTimeout: 3 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := integration.NewClient(t, ccfg)
+	cli, err := integration2.NewClient(t, ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,9 +159,9 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 // switches endpoint when leader fails and linearizable get requests returns
 // "etcdserver: request timed out".
 func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
 		Size:               3,
 		SkipCreatingClient: true,
 	})
@@ -172,7 +172,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 
 	timeout := 3 * clus.Members[(lead+1)%2].ServerConfig.ReqTimeout()
 
-	cli, err := integration.NewClient(t, clientv3.Config{
+	cli, err := integration2.NewClient(t, clientv3.Config{
 		Endpoints:   []string{eps[(lead+1)%2]},
 		DialTimeout: 2 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
@@ -214,9 +214,9 @@ func TestBalancerUnderNetworkPartitionWatchFollower(t *testing.T) {
 // testBalancerUnderNetworkPartitionWatch ensures watch stream
 // to a partitioned node be closed when context requires leader.
 func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
 		Size:               3,
 		SkipCreatingClient: true,
 	})
@@ -230,7 +230,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	}
 
 	// pin eps[target]
-	watchCli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{eps[target]}})
+	watchCli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[target]}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	wch := watchCli.Watch(clientv3.WithRequireLeader(context.Background()), "foo", clientv3.WithCreatedNotify())
 	select {
 	case <-wch:
-	case <-time.After(integration.RequestWaitTimeout):
+	case <-time.After(integration2.RequestWaitTimeout):
 		t.Fatal("took too long to create watch")
 	}
 
@@ -268,15 +268,15 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 		if err = ev.Err(); err != rpctypes.ErrNoLeader {
 			t.Fatalf("expected %v, got %v", rpctypes.ErrNoLeader, err)
 		}
-	case <-time.After(integration.RequestWaitTimeout): // enough time to detect leader lost
+	case <-time.After(integration2.RequestWaitTimeout): // enough time to detect leader lost
 		t.Fatal("took too long to detect leader lost")
 	}
 }
 
 func TestDropReadUnderNetworkPartition(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
 		Size:               3,
 		SkipCreatingClient: true,
 	})
@@ -289,7 +289,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 		DialTimeout: 10 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := integration.NewClient(t, ccfg)
+	cli, err := integration2.NewClient(t, ccfg)
 	if err != nil {
 		t.Fatal(err)
 	}

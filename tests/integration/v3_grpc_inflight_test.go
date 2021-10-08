@@ -22,6 +22,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -30,12 +31,12 @@ import (
 // TestV3MaintenanceDefragmentInflightRange ensures inflight range requests
 // does not panic the mvcc backend while defragment is running.
 func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
-	kvc := toGRPC(cli).KV
+	kvc := integration.ToGRPC(cli).KV
 	if _, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +49,7 @@ func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 		kvc.Range(ctx, &pb.RangeRequest{Key: []byte("foo")})
 	}()
 
-	mvc := toGRPC(cli).Maintenance
+	mvc := integration.ToGRPC(cli).Maintenance
 	mvc.Defragment(context.Background(), &pb.DefragmentRequest{})
 	cancel()
 
@@ -60,12 +61,12 @@ func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 // They are either finished or canceled, but never crash the backend.
 // See https://github.com/etcd-io/etcd/issues/7322 for more detail.
 func TestV3KVInflightRangeRequests(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
-	kvc := toGRPC(cli).KV
+	kvc := integration.ToGRPC(cli).KV
 
 	if _, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
 		t.Fatal(err)

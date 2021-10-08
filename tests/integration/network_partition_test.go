@@ -18,12 +18,14 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestNetworkPartition5MembersLeaderInMinority(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 5})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5})
 	defer clus.Terminate(t)
 
 	leadIndex := clus.WaitLeader(t)
@@ -32,20 +34,20 @@ func TestNetworkPartition5MembersLeaderInMinority(t *testing.T) {
 	minority := []int{leadIndex, (leadIndex + 1) % 5}
 	majority := []int{(leadIndex + 2) % 5, (leadIndex + 3) % 5, (leadIndex + 4) % 5}
 
-	minorityMembers := getMembersByIndexSlice(clus.cluster, minority)
-	majorityMembers := getMembersByIndexSlice(clus.cluster, majority)
+	minorityMembers := getMembersByIndexSlice(clus.Cluster, minority)
+	majorityMembers := getMembersByIndexSlice(clus.Cluster, majority)
 
 	// network partition (bi-directional)
 	injectPartition(t, minorityMembers, majorityMembers)
 
 	// minority leader must be lost
-	clus.waitNoLeader(minorityMembers)
+	clus.WaitMembersNoLeader(minorityMembers)
 
 	// wait extra election timeout
 	time.Sleep(2 * majorityMembers[0].ElectionTimeout())
 
 	// new leader must be from majority
-	clus.waitLeader(t, majorityMembers)
+	clus.WaitMembersForLeader(t, majorityMembers)
 
 	// recover network partition (bi-directional)
 	recoverPartition(t, minorityMembers, majorityMembers)
@@ -69,9 +71,9 @@ func TestNetworkPartition5MembersLeaderInMajority(t *testing.T) {
 }
 
 func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 5})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5})
 	defer clus.Terminate(t)
 
 	leadIndex := clus.WaitLeader(t)
@@ -80,21 +82,21 @@ func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 	majority := []int{leadIndex, (leadIndex + 1) % 5, (leadIndex + 2) % 5}
 	minority := []int{(leadIndex + 3) % 5, (leadIndex + 4) % 5}
 
-	majorityMembers := getMembersByIndexSlice(clus.cluster, majority)
-	minorityMembers := getMembersByIndexSlice(clus.cluster, minority)
+	majorityMembers := getMembersByIndexSlice(clus.Cluster, majority)
+	minorityMembers := getMembersByIndexSlice(clus.Cluster, minority)
 
 	// network partition (bi-directional)
 	injectPartition(t, majorityMembers, minorityMembers)
 
 	// minority leader must be lost
-	clus.waitNoLeader(minorityMembers)
+	clus.WaitMembersNoLeader(minorityMembers)
 
 	// wait extra election timeout
 	time.Sleep(2 * majorityMembers[0].ElectionTimeout())
 
 	// leader must be hold in majority
-	leadIndex2 := clus.waitLeader(t, majorityMembers)
-	leadID, leadID2 := clus.Members[leadIndex].s.ID(), majorityMembers[leadIndex2].s.ID()
+	leadIndex2 := clus.WaitMembersForLeader(t, majorityMembers)
+	leadID, leadID2 := clus.Members[leadIndex].Server.ID(), majorityMembers[leadIndex2].Server.ID()
 	if leadID != leadID2 {
 		return fmt.Errorf("unexpected leader change from %s, got %s", leadID, leadID2)
 	}
@@ -108,9 +110,9 @@ func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 }
 
 func TestNetworkPartition4Members(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 4})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 4})
 	defer clus.Terminate(t)
 
 	leadIndex := clus.WaitLeader(t)
@@ -119,8 +121,8 @@ func TestNetworkPartition4Members(t *testing.T) {
 	groupA := []int{leadIndex, (leadIndex + 1) % 4}
 	groupB := []int{(leadIndex + 2) % 4, (leadIndex + 3) % 4}
 
-	leaderPartition := getMembersByIndexSlice(clus.cluster, groupA)
-	followerPartition := getMembersByIndexSlice(clus.cluster, groupB)
+	leaderPartition := getMembersByIndexSlice(clus.Cluster, groupA)
+	followerPartition := getMembersByIndexSlice(clus.Cluster, groupB)
 
 	// network partition (bi-directional)
 	injectPartition(t, leaderPartition, followerPartition)
@@ -137,21 +139,21 @@ func TestNetworkPartition4Members(t *testing.T) {
 	clusterMustProgress(t, clus.Members)
 }
 
-func getMembersByIndexSlice(clus *cluster, idxs []int) []*member {
-	ms := make([]*member, len(idxs))
+func getMembersByIndexSlice(clus *integration.Cluster, idxs []int) []*integration.Member {
+	ms := make([]*integration.Member, len(idxs))
 	for i, idx := range idxs {
 		ms[i] = clus.Members[idx]
 	}
 	return ms
 }
 
-func injectPartition(t *testing.T, src, others []*member) {
+func injectPartition(t *testing.T, src, others []*integration.Member) {
 	for _, m := range src {
 		m.InjectPartition(t, others...)
 	}
 }
 
-func recoverPartition(t *testing.T, src, others []*member) {
+func recoverPartition(t *testing.T, src, others []*integration.Member) {
 	for _, m := range src {
 		m.RecoverPartition(t, others...)
 	}

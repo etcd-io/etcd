@@ -22,20 +22,20 @@ import (
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2v3"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 type v2v3TestStore struct {
 	v2store.Store
-	clus *integration.ClusterV3
+	clus *integration2.ClusterV3
 	t    *testing.T
 }
 
 func (s *v2v3TestStore) Close() { s.clus.Terminate(s.t) }
 
 func newTestStore(t *testing.T, ns ...string) StoreCloser {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	return &v2v3TestStore{
 		v2v3.NewStore(clus.Client(0), "/v2/"),
 		clus,

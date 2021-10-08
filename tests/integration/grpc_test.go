@@ -23,6 +23,7 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 )
 
@@ -94,14 +95,14 @@ func TestAuthority(t *testing.T) {
 	for _, tc := range tcs {
 		for _, clusterSize := range []int{1, 3} {
 			t.Run(fmt.Sprintf("Size: %d, Scenario: %q", clusterSize, tc.name), func(t *testing.T) {
-				BeforeTest(t)
-				cfg := ClusterConfig{
+				integration.BeforeTest(t)
+				cfg := integration.ClusterConfig{
 					Size:   clusterSize,
 					UseTCP: tc.useTCP,
 					UseIP:  tc.useTCP,
 				}
 				cfg, tlsConfig := setupTLS(t, tc.useTLS, cfg)
-				clus := NewClusterV3(t, &cfg)
+				clus := integration.NewClusterV3(t, &cfg)
 				defer clus.Terminate(t)
 
 				kv := setupClient(t, tc.clientURLPattern, clus, tlsConfig)
@@ -118,11 +119,11 @@ func TestAuthority(t *testing.T) {
 	}
 }
 
-func setupTLS(t *testing.T, useTLS bool, cfg ClusterConfig) (ClusterConfig, *tls.Config) {
+func setupTLS(t *testing.T, useTLS bool, cfg integration.ClusterConfig) (integration.ClusterConfig, *tls.Config) {
 	t.Helper()
 	if useTLS {
-		cfg.ClientTLS = &testTLSInfo
-		tlsConfig, err := testTLSInfo.ClientConfig()
+		cfg.ClientTLS = &integration.TestTLSInfo
+		tlsConfig, err := integration.TestTLSInfo.ClientConfig()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -131,7 +132,7 @@ func setupTLS(t *testing.T, useTLS bool, cfg ClusterConfig) (ClusterConfig, *tls
 	return cfg, nil
 }
 
-func setupClient(t *testing.T, endpointPattern string, clus *ClusterV3, tlsConfig *tls.Config) *clientv3.Client {
+func setupClient(t *testing.T, endpointPattern string, clus *integration.ClusterV3, tlsConfig *tls.Config) *clientv3.Client {
 	t.Helper()
 	endpoints := templateEndpoints(t, endpointPattern, clus)
 	kv, err := clientv3.New(clientv3.Config{
@@ -146,13 +147,13 @@ func setupClient(t *testing.T, endpointPattern string, clus *ClusterV3, tlsConfi
 	return kv
 }
 
-func templateEndpoints(t *testing.T, pattern string, clus *ClusterV3) []string {
+func templateEndpoints(t *testing.T, pattern string, clus *integration.ClusterV3) []string {
 	t.Helper()
 	endpoints := []string{}
 	for _, m := range clus.Members {
 		ent := pattern
 		if strings.Contains(ent, "%d") {
-			ent = fmt.Sprintf(ent, GrpcPortNumber(m.UniqNumber, m.MemberNumber))
+			ent = fmt.Sprintf(ent, integration.GrpcPortNumber(m.UniqNumber, m.MemberNumber))
 		}
 		if strings.Contains(ent, "%s") {
 			ent = fmt.Sprintf(ent, m.Name)
@@ -165,11 +166,11 @@ func templateEndpoints(t *testing.T, pattern string, clus *ClusterV3) []string {
 	return endpoints
 }
 
-func templateAuthority(t *testing.T, pattern string, m *member) string {
+func templateAuthority(t *testing.T, pattern string, m *integration.Member) string {
 	t.Helper()
 	authority := pattern
 	if strings.Contains(authority, "%d") {
-		authority = fmt.Sprintf(authority, GrpcPortNumber(m.UniqNumber, m.MemberNumber))
+		authority = fmt.Sprintf(authority, integration.GrpcPortNumber(m.UniqNumber, m.MemberNumber))
 	}
 	if strings.Contains(authority, "%s") {
 		authority = fmt.Sprintf(authority, m.Name)
@@ -180,7 +181,7 @@ func templateAuthority(t *testing.T, pattern string, m *member) string {
 	return authority
 }
 
-func assertAuthority(t *testing.T, expectedAuthority string, clus *ClusterV3) {
+func assertAuthority(t *testing.T, expectedAuthority string, clus *integration.ClusterV3) {
 	t.Helper()
 	requestsFound := 0
 	for _, m := range clus.Members {

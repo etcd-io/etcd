@@ -23,13 +23,13 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestTxnError(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -51,9 +51,9 @@ func TestTxnError(t *testing.T) {
 }
 
 func TestTxnWriteFail(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -101,9 +101,9 @@ func TestTxnWriteFail(t *testing.T) {
 func TestTxnReadRetry(t *testing.T) {
 	t.Skipf("skipping txn read retry test: re-enable after we do retry on txn read request")
 
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -140,9 +140,9 @@ func TestTxnReadRetry(t *testing.T) {
 }
 
 func TestTxnSuccess(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -163,9 +163,9 @@ func TestTxnSuccess(t *testing.T) {
 }
 
 func TestTxnCompareRange(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -190,9 +190,9 @@ func TestTxnCompareRange(t *testing.T) {
 }
 
 func TestTxnNested(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
