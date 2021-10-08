@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/tests/v3/integration"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
@@ -32,10 +31,6 @@ import (
 const etcdProcessBasePort = 20000
 
 type clientConnType int
-
-var (
-	fixturesDir = integration.MustAbsPath("../fixtures")
-)
 
 const (
 	clientNonTLS clientConnType = iota
