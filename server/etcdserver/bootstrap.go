@@ -529,7 +529,7 @@ func (b *bootstrappedRaft) newRaftNode(ss *snap.Snapshotter, wal *wal.WAL, cl *m
 			Node:        n,
 			heartbeat:   b.heartbeat,
 			raftStorage: b.storage,
-			storage:     NewStorage(wal, ss),
+			storage:     serverstorage.NewStorage(b.lg, wal, ss),
 		},
 	)
 }

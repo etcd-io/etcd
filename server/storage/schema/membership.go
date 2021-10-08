@@ -20,6 +20,7 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 
 	"github.com/coreos/go-semver/semver"
@@ -152,7 +153,7 @@ func (s *membershipBackend) MustSaveClusterVersionToBackend(ver *semver.Version)
 
 // MustSaveDowngradeToBackend saves downgrade info to backend.
 // The field is populated since etcd v3.5.
-func (s *membershipBackend) MustSaveDowngradeToBackend(downgrade *membership.DowngradeInfo) {
+func (s *membershipBackend) MustSaveDowngradeToBackend(downgrade *version.DowngradeInfo) {
 	dkey := ClusterDowngradeKeyName
 	dvalue, err := json.Marshal(downgrade)
 	if err != nil {
@@ -203,7 +204,7 @@ func (s *membershipBackend) ClusterVersionFromBackend() *semver.Version {
 
 // DowngradeInfoFromBackend reads downgrade info from backend.
 // The field is populated since etcd v3.5.
-func (s *membershipBackend) DowngradeInfoFromBackend() *membership.DowngradeInfo {
+func (s *membershipBackend) DowngradeInfoFromBackend() *version.DowngradeInfo {
 	dkey := ClusterDowngradeKeyName
 	tx := s.be.ReadTx()
 	tx.Lock()
@@ -219,7 +220,7 @@ func (s *membershipBackend) DowngradeInfoFromBackend() *membership.DowngradeInfo
 			zap.Int("number-of-key", len(keys)),
 		)
 	}
-	var d membership.DowngradeInfo
+	var d version.DowngradeInfo
 	if err := json.Unmarshal(vals[0], &d); err != nil {
 		s.lg.Panic("failed to unmarshal downgrade information", zap.Error(err))
 	}

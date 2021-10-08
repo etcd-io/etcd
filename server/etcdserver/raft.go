@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
+	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.uber.org/zap"
 )
 
@@ -102,7 +103,7 @@ type raftNodeConfig struct {
 	isIDRemoved func(id uint64) bool
 	raft.Node
 	raftStorage *raft.MemoryStorage
-	storage     Storage
+	storage     serverstorage.Storage
 	heartbeat   time.Duration // for logging
 	// transport specifies the transport to send and receive msgs to members.
 	// Sending messages MUST NOT block. It is okay to drop messages, since

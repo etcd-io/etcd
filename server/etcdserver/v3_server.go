@@ -23,7 +23,6 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -919,48 +918,27 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 		return nil, err
 	}
 
-	// gets leaders commit index and wait for local store to finish applying that index
-	// to avoid using stale downgrade information
-	err = s.linearizableReadNotify(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	cv := s.ClusterVersion()
 	if cv == nil {
 		return nil, ErrClusterVersionUnavailable
 	}
 	resp.Version = cv.String()
-
-	allowedTargetVersion := membership.AllowedDowngradeVersion(cv)
-	if !targetVersion.Equal(*allowedTargetVersion) {
-		return nil, ErrInvalidDowngradeTargetVersion
+	err = s.Version().DowngradeValidate(ctx, targetVersion)
+	if err != nil {
+		return nil, err
 	}
 
-	downgradeInfo := s.cluster.DowngradeInfo()
-	if downgradeInfo.Enabled {
-		// Todo: return the downgrade status along with the error msg
-		return nil, ErrDowngradeInProcess
-	}
 	return resp, nil
 }
 
 func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
-	// validate downgrade capability before starting downgrade
-	v := r.Version
 	lg := s.Logger()
-	if resp, err := s.downgradeValidate(ctx, v); err != nil {
-		lg.Warn("reject downgrade request", zap.Error(err))
-		return resp, err
-	}
-	targetVersion, err := convertToClusterVersion(v)
+	targetVersion, err := convertToClusterVersion(r.Version)
 	if err != nil {
 		lg.Warn("reject downgrade request", zap.Error(err))
 		return nil, err
 	}
-
-	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: true, Ver: targetVersion.String()}
-	_, err = s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
+	err = s.Version().DowngradeEnable(ctx, targetVersion)
 	if err != nil {
 		lg.Warn("reject downgrade request", zap.Error(err))
 		return nil, err
@@ -970,21 +948,9 @@ func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest
 }
 
 func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
-	// gets leaders commit index and wait for local store to finish applying that index
-	// to avoid using stale downgrade information
-	if err := s.linearizableReadNotify(ctx); err != nil {
-		return nil, err
-	}
-
-	downgradeInfo := s.cluster.DowngradeInfo()
-	if !downgradeInfo.Enabled {
-		return nil, ErrNoInflightDowngrade
-	}
-
-	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: false}
-	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
+	err := s.Version().DowngradeCancel(ctx)
 	if err != nil {
-		return nil, err
+		s.lg.Warn("failed to cancel downgrade", zap.Error(err))
 	}
 	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
 	return &resp, nil

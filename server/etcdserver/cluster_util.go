@@ -134,11 +134,11 @@ func getRemotePeerURLs(cl *membership.RaftCluster, local string) []string {
 	return us
 }
 
-// getVersions returns the versions of the members in the given cluster.
+// getMembersVersions returns the versions of the members in the given cluster.
 // The key of the returned map is the member's ID. The value of the returned map
 // is the semver versions string, including server and cluster.
 // If it fails to get the version of a member, the key will be nil.
-func getVersions(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) map[string]*version.Versions {
+func getMembersVersions(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) map[string]*version.Versions {
 	members := cl.Members()
 	vers := make(map[string]*version.Versions)
 	for _, m := range members {
@@ -184,7 +184,7 @@ func allowedVersionRange(downgradeEnabled bool) (minV *semver.Version, maxV *sem
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
 func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
-	vers := getVersions(lg, cl, local, rt)
+	vers := getMembersVersions(lg, cl, local, rt)
 	minV, maxV := allowedVersionRange(getDowngradeEnabledFromRemotePeers(lg, cl, local, rt))
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }

@@ -18,13 +18,14 @@ import (
 	"context"
 
 	"github.com/coreos/go-semver/semver"
-	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 // serverVersionAdapter implements Server interface needed by serverversion.Monitor
@@ -47,24 +48,32 @@ func (s *serverVersionAdapter) UpdateClusterVersion(version string) {
 	s.GoAttach(func() { s.updateClusterVersionV2(version) })
 }
 
-func (s *serverVersionAdapter) DowngradeCancel() {
-	ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-	if _, err := s.downgradeCancel(ctx); err != nil {
-		s.lg.Warn("failed to cancel downgrade", zap.Error(err))
-	}
-	cancel()
+func (s *serverVersionAdapter) LinearizableReadNotify(ctx context.Context) error {
+	return s.linearizableReadNotify(ctx)
+}
+
+func (s *serverVersionAdapter) DowngradeEnable(ctx context.Context, targetVersion *semver.Version) error {
+	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: true, Ver: targetVersion.String()}
+	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
+	return err
+}
+
+func (s *serverVersionAdapter) DowngradeCancel(ctx context.Context) error {
+	raftRequest := membershippb.DowngradeInfoSetRequest{Enabled: false}
+	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeInfoSet: &raftRequest})
+	return err
 }
 
 func (s *serverVersionAdapter) GetClusterVersion() *semver.Version {
 	return s.cluster.Version()
 }
 
-func (s *serverVersionAdapter) GetDowngradeInfo() *membership.DowngradeInfo {
+func (s *serverVersionAdapter) GetDowngradeInfo() *serverversion.DowngradeInfo {
 	return s.cluster.DowngradeInfo()
 }
 
-func (s *serverVersionAdapter) GetVersions() map[string]*version.Versions {
-	return getVersions(s.lg, s.cluster, s.id, s.peerRt)
+func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions {
+	return getMembersVersions(s.lg, s.cluster, s.id, s.peerRt)
 }
 
 func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {

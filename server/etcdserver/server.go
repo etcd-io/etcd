@@ -636,7 +636,7 @@ type ServerPeerV2 interface {
 	DowngradeEnabledHandler() http.Handler
 }
 
-func (s *EtcdServer) DowngradeInfo() *membership.DowngradeInfo { return s.cluster.DowngradeInfo() }
+func (s *EtcdServer) DowngradeInfo() *serverversion.DowngradeInfo { return s.cluster.DowngradeInfo() }
 
 type downgradeEnabledHandler struct {
 	lg      *zap.Logger
@@ -2358,4 +2358,8 @@ func (s *EtcdServer) IsMemberExist(id types.ID) bool {
 // raftStatus returns the raft status of this etcd node.
 func (s *EtcdServer) raftStatus() raft.Status {
 	return s.r.Node.Status()
+}
+
+func (s *EtcdServer) Version() *serverversion.Manager {
+	return serverversion.NewManager(s.Logger(), newServerVersionAdapter(s))
 }
