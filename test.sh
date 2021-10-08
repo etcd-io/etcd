@@ -32,7 +32,6 @@
 # $ COVERDIR=coverage PASSES="build build_cov cov" ./test.sh
 # $ go tool cover -html ./coverage/cover.out
 set -e
-set -o pipefail
 
 
 # Consider command as failed when any component of the pipe fails:
