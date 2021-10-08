@@ -20,90 +20,92 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3LeaseGrantTimeToLive(t *testing.T) { testCtl(t, leaseTestGrantTimeToLive) }
 func TestCtlV3LeaseGrantTimeToLiveNoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(*newConfigNoTLS()))
+	testCtl(t, leaseTestGrantTimeToLive, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3LeaseGrantTimeToLiveClientTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(*newConfigClientTLS()))
+	testCtl(t, leaseTestGrantTimeToLive, withCfg(*e2e.NewConfigClientTLS()))
 }
 func TestCtlV3LeaseGrantTimeToLiveClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(*newConfigClientAutoTLS()))
+	testCtl(t, leaseTestGrantTimeToLive, withCfg(*e2e.NewConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseGrantTimeToLivePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(*newConfigPeerTLS()))
+	testCtl(t, leaseTestGrantTimeToLive, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
 func TestCtlV3LeaseGrantLeases(t *testing.T) { testCtl(t, leaseTestGrantLeaseListed) }
 func TestCtlV3LeaseGrantLeasesNoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(*newConfigNoTLS()))
+	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3LeaseGrantLeasesClientTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(*newConfigClientTLS()))
+	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigClientTLS()))
 }
 func TestCtlV3LeaseGrantLeasesClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(*newConfigClientAutoTLS()))
+	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseGrantLeasesPeerTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(*newConfigPeerTLS()))
+	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
 func TestCtlV3LeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, leaseTestTimeToLiveExpired) }
 func TestCtlV3LeaseTestTimeToLiveExpiredNoTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*newConfigNoTLS()))
+	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3LeaseTestTimeToLiveExpiredClientTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*newConfigClientTLS()))
+	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigClientTLS()))
 }
 func TestCtlV3LeaseTestTimeToLiveExpiredClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*newConfigClientAutoTLS()))
+	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseTestTimeToLiveExpiredPeerTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*newConfigPeerTLS()))
+	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
 func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
 func TestCtlV3LeaseKeepAliveNoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(*newConfigNoTLS()))
+	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3LeaseKeepAliveClientTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(*newConfigClientTLS()))
+	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientTLS()))
 }
 func TestCtlV3LeaseKeepAliveClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(*newConfigClientAutoTLS()))
+	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseKeepAlivePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(*newConfigPeerTLS()))
+	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
 func TestCtlV3LeaseKeepAliveOnce(t *testing.T) { testCtl(t, leaseTestKeepAliveOnce) }
 func TestCtlV3LeaseKeepAliveOnceNoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAliveOnce, withCfg(*newConfigNoTLS()))
+	testCtl(t, leaseTestKeepAliveOnce, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3LeaseKeepAliveOnceClientTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAliveOnce, withCfg(*newConfigClientTLS()))
+	testCtl(t, leaseTestKeepAliveOnce, withCfg(*e2e.NewConfigClientTLS()))
 }
 func TestCtlV3LeaseKeepAliveOnceClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAliveOnce, withCfg(*newConfigClientAutoTLS()))
+	testCtl(t, leaseTestKeepAliveOnce, withCfg(*e2e.NewConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseKeepAliveOncePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAliveOnce, withCfg(*newConfigPeerTLS()))
+	testCtl(t, leaseTestKeepAliveOnce, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
 func TestCtlV3LeaseRevoke(t *testing.T) { testCtl(t, leaseTestRevoked) }
 func TestCtlV3LeaseRevokeNoTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(*newConfigNoTLS()))
+	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3LeaseRevokeClientTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(*newConfigClientTLS()))
+	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigClientTLS()))
 }
 func TestCtlV3LeaseRevokeClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(*newConfigClientAutoTLS()))
+	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigClientAutoTLS()))
 }
 func TestCtlV3LeaseRevokePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(*newConfigPeerTLS()))
+	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
 func leaseTestGrantTimeToLive(cx ctlCtx) {
@@ -113,7 +115,7 @@ func leaseTestGrantTimeToLive(cx ctlCtx) {
 	}
 
 	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", id, "--keys")
-	proc, err := spawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		cx.t.Fatalf("leaseTestGrantTimeToLive: error (%v)", err)
 	}
@@ -146,7 +148,7 @@ func leaseTestGrantLeasesList(cx ctlCtx) error {
 	}
 
 	cmdArgs := append(cx.PrefixArgs(), "lease", "list")
-	proc, err := spawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return fmt.Errorf("lease list failed (%v)", err)
 	}
@@ -177,7 +179,7 @@ func leaseTestTimeToLiveExpire(cx ctlCtx, ttl int) error {
 	time.Sleep(time.Duration(ttl+1) * time.Second)
 	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", leaseID)
 	exp := fmt.Sprintf("lease %s already expired", leaseID)
-	if err = spawnWithExpectWithEnv(cmdArgs, cx.envMap, exp); err != nil {
+	if err = e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, exp); err != nil {
 		return fmt.Errorf("lease not properly expired: (%v)", err)
 	}
 	if err := ctlV3Get(cx, []string{"key"}); err != nil {
@@ -247,7 +249,7 @@ func leaseTestRevoke(cx ctlCtx) error {
 
 func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "grant", strconv.Itoa(ttl))
-	proc, err := spawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return "", err
 	}
@@ -271,7 +273,7 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", leaseID)
 
-	proc, err := spawnCmd(cmdArgs, nil)
+	proc, err := e2e.SpawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -285,7 +287,7 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 func ctlV3LeaseKeepAliveOnce(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", "--once", leaseID)
 
-	proc, err := spawnCmd(cmdArgs, nil)
+	proc, err := e2e.SpawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -298,7 +300,7 @@ func ctlV3LeaseKeepAliveOnce(cx ctlCtx, leaseID string) error {
 
 func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
-	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
 }
 
 func ctlV3LeaseTimeToLive(cx ctlCtx, leaseID string, withKeys bool) error {
@@ -306,5 +308,5 @@ func ctlV3LeaseTimeToLive(cx ctlCtx, leaseID string, withKeys bool) error {
 	if withKeys {
 		cmdArgs = append(cmdArgs, "--keys")
 	}
-	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s granted with", leaseID))
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s granted with", leaseID))
 }

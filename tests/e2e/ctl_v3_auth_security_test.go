@@ -21,11 +21,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 // TestAuth_CVE_2021_28235 verifies https://nvd.nist.gov/vuln/detail/CVE-2021-28235
 func TestAuth_CVE_2021_28235(t *testing.T) {
-	testCtl(t, authTest_CVE_2021_28235, withCfg(*newConfigNoTLS()), withLogLevel("debug"))
+	testCtl(t, authTest_CVE_2021_28235, withCfg(*e2e.NewConfigNoTLS()), withLogLevel("debug"))
 }
 
 func authTest_CVE_2021_28235(cx ctlCtx) {
@@ -44,9 +45,9 @@ func authTest_CVE_2021_28235(cx ctlCtx) {
 	require.NoError(cx.t, err)
 
 	// GET /debug/requests
-	httpEndpoint := cx.epc.procs[0].EndpointsHTTP()[0]
-	req := cURLReq{endpoint: "/debug/requests?fam=grpc.Recv.etcdserverpb.Auth&b=0&exp=1", timeout: 5}
-	respData, err := curl(httpEndpoint, "GET", req, clientNonTLS)
+	httpEndpoint := cx.epc.Procs[0].EndpointsHTTP()[0]
+	req := e2e.CURLReq{Endpoint: "/debug/requests?fam=grpc.Recv.etcdserverpb.Auth&b=0&exp=1", Timeout: 5}
+	respData, err := curl(httpEndpoint, "GET", req, e2e.ClientNonTLS)
 	require.NoError(cx.t, err)
 
 	if strings.Contains(respData, rootPass) {

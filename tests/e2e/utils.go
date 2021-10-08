@@ -21,6 +21,7 @@ import (
 	"time"
 
 	clientv2 "go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -31,15 +32,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/stringutil"
 )
 
-type clientConnType int
-
-const (
-	clientNonTLS clientConnType = iota
-	clientTLS
-	clientTLSAndNonTLS
-)
-
-func newClient(t *testing.T, entpoints []string, connType clientConnType, isAutoTLS bool) *clientv3.Client {
+func newClient(t *testing.T, entpoints []string, connType e2e.ClientConnType, isAutoTLS bool) *clientv3.Client {
 	tlscfg, err := tlsInfo(t, connType, isAutoTLS)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +59,7 @@ func newClient(t *testing.T, entpoints []string, connType clientConnType, isAuto
 	return c
 }
 
-func newClientV2(t *testing.T, endpoints []string, connType clientConnType, isAutoTLS bool) (clientv2.Client, error) {
+func newClientV2(t *testing.T, endpoints []string, connType e2e.ClientConnType, isAutoTLS bool) (clientv2.Client, error) {
 	tls, err := tlsInfo(t, connType, isAutoTLS)
 	if err != nil {
 		t.Fatal(err)
@@ -83,11 +76,11 @@ func newClientV2(t *testing.T, endpoints []string, connType clientConnType, isAu
 	return clientv2.New(cfg)
 }
 
-func tlsInfo(t testing.TB, connType clientConnType, isAutoTLS bool) (*transport.TLSInfo, error) {
+func tlsInfo(t testing.TB, connType e2e.ClientConnType, isAutoTLS bool) (*transport.TLSInfo, error) {
 	switch connType {
-	case clientNonTLS, clientTLSAndNonTLS:
+	case e2e.ClientNonTLS, e2e.ClientTLSAndNonTLS:
 		return nil, nil
-	case clientTLS:
+	case e2e.ClientTLS:
 		if isAutoTLS {
 			tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
 			if err != nil {
