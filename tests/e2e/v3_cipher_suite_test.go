@@ -22,14 +22,15 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestV3CurlCipherSuitesValid(t *testing.T)    { testV3CurlCipherSuites(t, true) }
 func TestV3CurlCipherSuitesMismatch(t *testing.T) { testV3CurlCipherSuites(t, false) }
 func testV3CurlCipherSuites(t *testing.T, valid bool) {
-	cc := newConfigClientTLS()
-	cc.clusterSize = 1
-	cc.cipherSuites = []string{
+	cc := e2e.NewConfigClientTLS()
+	cc.ClusterSize = 1
+	cc.CipherSuites = []string{
 		"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 		"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
@@ -45,11 +46,11 @@ func testV3CurlCipherSuites(t *testing.T, valid bool) {
 }
 
 func cipherSuiteTestValid(cx ctlCtx) {
-	if err := cURLGet(cx.epc, cURLReq{
-		endpoint:         "/metrics",
-		expected:         fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version),
-		metricsURLScheme: cx.cfg.metricsURLScheme,
-		ciphers:          "ECDHE-RSA-AES128-GCM-SHA256", // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+	if err := e2e.CURLGet(cx.epc, e2e.CURLReq{
+		Endpoint:         "/metrics",
+		Expected:         fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version),
+		MetricsURLScheme: cx.cfg.MetricsURLScheme,
+		Ciphers:          "ECDHE-RSA-AES128-GCM-SHA256", // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 	}); err != nil {
 		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
@@ -58,11 +59,11 @@ func cipherSuiteTestValid(cx ctlCtx) {
 func cipherSuiteTestMismatch(cx ctlCtx) {
 	var err error
 	for _, exp := range []string{"alert handshake failure", "failed setting cipher list"} {
-		err = cURLGet(cx.epc, cURLReq{
-			endpoint:         "/metrics",
-			expected:         exp,
-			metricsURLScheme: cx.cfg.metricsURLScheme,
-			ciphers:          "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+		err = e2e.CURLGet(cx.epc, e2e.CURLReq{
+			Endpoint:         "/metrics",
+			Expected:         exp,
+			MetricsURLScheme: cx.cfg.MetricsURLScheme,
+			Ciphers:          "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
 		})
 		if err == nil {
 			break

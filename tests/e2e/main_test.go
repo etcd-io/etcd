@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-
 func TestMain(m *testing.M) {
-	InitFlags()
+	e2e.InitFlags()
 	v := m.Run()
 	if v == 0 && testutil.CheckLeakedGoroutine() {
 		os.Exit(1)

@@ -19,27 +19,33 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3Put(t *testing.T)              { testCtl(t, putTest, withDialTimeout(7*time.Second)) }
-func TestCtlV3PutNoTLS(t *testing.T)         { testCtl(t, putTest, withCfg(*newConfigNoTLS())) }
-func TestCtlV3PutClientTLS(t *testing.T)     { testCtl(t, putTest, withCfg(*newConfigClientTLS())) }
-func TestCtlV3PutClientAutoTLS(t *testing.T) { testCtl(t, putTest, withCfg(*newConfigClientAutoTLS())) }
-func TestCtlV3PutPeerTLS(t *testing.T)       { testCtl(t, putTest, withCfg(*newConfigPeerTLS())) }
-func TestCtlV3PutTimeout(t *testing.T)       { testCtl(t, putTest, withDialTimeout(0)) }
+func TestCtlV3Put(t *testing.T)          { testCtl(t, putTest, withDialTimeout(7*time.Second)) }
+func TestCtlV3PutNoTLS(t *testing.T)     { testCtl(t, putTest, withCfg(*e2e.NewConfigNoTLS())) }
+func TestCtlV3PutClientTLS(t *testing.T) { testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS())) }
+func TestCtlV3PutClientAutoTLS(t *testing.T) {
+	testCtl(t, putTest, withCfg(*e2e.NewConfigClientAutoTLS()))
+}
+func TestCtlV3PutPeerTLS(t *testing.T) { testCtl(t, putTest, withCfg(*e2e.NewConfigPeerTLS())) }
+func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDialTimeout(0)) }
 func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
-	testCtl(t, putTest, withCfg(*newConfigClientTLS()), withFlagByEnv())
+	testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS()), withFlagByEnv())
 }
 func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
 func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
 
-func TestCtlV3Get(t *testing.T)              { testCtl(t, getTest) }
-func TestCtlV3GetNoTLS(t *testing.T)         { testCtl(t, getTest, withCfg(*newConfigNoTLS())) }
-func TestCtlV3GetClientTLS(t *testing.T)     { testCtl(t, getTest, withCfg(*newConfigClientTLS())) }
-func TestCtlV3GetClientAutoTLS(t *testing.T) { testCtl(t, getTest, withCfg(*newConfigClientAutoTLS())) }
-func TestCtlV3GetPeerTLS(t *testing.T)       { testCtl(t, getTest, withCfg(*newConfigPeerTLS())) }
-func TestCtlV3GetTimeout(t *testing.T)       { testCtl(t, getTest, withDialTimeout(0)) }
-func TestCtlV3GetQuorum(t *testing.T)        { testCtl(t, getTest, withQuorum()) }
+func TestCtlV3Get(t *testing.T)          { testCtl(t, getTest) }
+func TestCtlV3GetNoTLS(t *testing.T)     { testCtl(t, getTest, withCfg(*e2e.NewConfigNoTLS())) }
+func TestCtlV3GetClientTLS(t *testing.T) { testCtl(t, getTest, withCfg(*e2e.NewConfigClientTLS())) }
+func TestCtlV3GetClientAutoTLS(t *testing.T) {
+	testCtl(t, getTest, withCfg(*e2e.NewConfigClientAutoTLS()))
+}
+func TestCtlV3GetPeerTLS(t *testing.T) { testCtl(t, getTest, withCfg(*e2e.NewConfigPeerTLS())) }
+func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDialTimeout(0)) }
+func TestCtlV3GetQuorum(t *testing.T)  { testCtl(t, getTest, withQuorum()) }
 
 func TestCtlV3GetFormat(t *testing.T)    { testCtl(t, getFormatTest) }
 func TestCtlV3GetRev(t *testing.T)       { testCtl(t, getRevTest) }
@@ -47,18 +53,18 @@ func TestCtlV3GetKeysOnly(t *testing.T)  { testCtl(t, getKeysOnlyTest) }
 func TestCtlV3GetCountOnly(t *testing.T) { testCtl(t, getCountOnlyTest) }
 
 func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
-func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(*newConfigNoTLS())) }
-func TestCtlV3DelClientTLS(t *testing.T) { testCtl(t, delTest, withCfg(*newConfigClientTLS())) }
-func TestCtlV3DelPeerTLS(t *testing.T)   { testCtl(t, delTest, withCfg(*newConfigPeerTLS())) }
+func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(*e2e.NewConfigNoTLS())) }
+func TestCtlV3DelClientTLS(t *testing.T) { testCtl(t, delTest, withCfg(*e2e.NewConfigClientTLS())) }
+func TestCtlV3DelPeerTLS(t *testing.T)   { testCtl(t, delTest, withCfg(*e2e.NewConfigPeerTLS())) }
 func TestCtlV3DelTimeout(t *testing.T)   { testCtl(t, delTest, withDialTimeout(0)) }
 
 func TestCtlV3GetRevokedCRL(t *testing.T) {
-	cfg := etcdProcessClusterConfig{
-		clusterSize:           1,
-		initialToken:          "new",
-		clientTLS:             clientTLS,
-		isClientCRL:           true,
-		clientCertAuthEnabled: true,
+	cfg := e2e.EtcdProcessClusterConfig{
+		ClusterSize:           1,
+		InitialToken:          "new",
+		ClientTLS:             e2e.ClientTLS,
+		IsClientCRL:           true,
+		ClientCertAuthEnabled: true,
 	}
 	testCtl(t, testGetRevokedCRL, withCfg(cfg))
 }
@@ -69,7 +75,7 @@ func testGetRevokedCRL(cx ctlCtx) {
 		cx.t.Fatalf("expected reset connection on put, got %v", err)
 	}
 	// test accept
-	cx.epc.cfg.isClientCRL = false
+	cx.epc.Cfg.IsClientCRL = false
 	if err := ctlV3Put(cx, "k", "v", ""); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -190,7 +196,7 @@ func getFormatTest(cx ctlCtx) {
 			cmdArgs = append(cmdArgs, "--print-value-only")
 		}
 		cmdArgs = append(cmdArgs, "abc")
-		if err := spawnWithExpectWithEnv(cmdArgs, cx.envMap, tt.wstr); err != nil {
+		if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, tt.wstr); err != nil {
 			cx.t.Errorf("#%d: error (%v), wanted %v", i, err, tt.wstr)
 		}
 	}
@@ -228,24 +234,24 @@ func getKeysOnlyTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--keys-only", "key"}...)
-	if err := spawnWithExpectWithEnv(cmdArgs, cx.envMap, "key"); err != nil {
+	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "key"); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := spawnWithExpects(cmdArgs, cx.envMap, "val"); err == nil {
+	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "val"); err == nil {
 		cx.t.Fatalf("got value but passed --keys-only")
 	}
 }
 
 func getCountOnlyTest(cx ctlCtx) {
 	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 0"); err != nil {
+	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 0"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key", "val", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 1"); err != nil {
+	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 1"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key1", "val", ""); err != nil {
@@ -255,21 +261,21 @@ func getCountOnlyTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 2"); err != nil {
+	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 2"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key2", "val", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 3"); err != nil {
+	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 3"); err != nil {
 		cx.t.Fatal(err)
 	}
 	expected := []string{
 		"\"Count\" : 3",
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key3", "--prefix", "--write-out=fields"}...)
-	if err := spawnWithExpects(cmdArgs, cx.envMap, expected...); err == nil {
+	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, expected...); err == nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -348,7 +354,7 @@ func ctlV3Put(cx ctlCtx, key, value, leaseID string, flags ...string) error {
 	if len(flags) != 0 {
 		cmdArgs = append(cmdArgs, flags...)
 	}
-	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK")
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK")
 }
 
 type kv struct {
@@ -365,7 +371,7 @@ func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
 	for _, elem := range kvs {
 		lines = append(lines, elem.key, elem.val)
 	}
-	return spawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 // ctlV3GetWithErr runs "get" command expecting no output but error
@@ -375,11 +381,11 @@ func ctlV3GetWithErr(cx ctlCtx, args []string, errs []string) error {
 	if !cx.quorum {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
-	return spawnWithExpects(cmdArgs, cx.envMap, errs...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, errs...)
 }
 
 func ctlV3Del(cx ctlCtx, args []string, num int) error {
 	cmdArgs := append(cx.PrefixArgs(), "del")
 	cmdArgs = append(cmdArgs, args...)
-	return spawnWithExpects(cmdArgs, cx.envMap, fmt.Sprintf("%d", num))
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, fmt.Sprintf("%d", num))
 }

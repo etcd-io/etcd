@@ -25,10 +25,11 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestEtctlutlMigrate(t *testing.T) {
-	lastReleaseBinary := binDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
 
 	tcs := []struct {
 		name          string
@@ -103,20 +104,20 @@ func TestEtctlutlMigrate(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			BeforeTest(t)
+			e2e.BeforeTest(t)
 			if tc.binary != "" && !fileutil.Exist(tc.binary) {
 				t.Skipf("%q does not exist", lastReleaseBinary)
 			}
 			dataDirPath := t.TempDir()
 
-			epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
-				execPath:     tc.binary,
-				dataDirPath:  dataDirPath,
-				clusterSize:  1,
-				initialToken: "new",
-				keepDataDir:  true,
-				// Set low snapshotCount to ensure wal snapshot is done
-				snapshotCount: 1,
+			epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+				ExecPath:     tc.binary,
+				DataDirPath:  dataDirPath,
+				ClusterSize:  1,
+				InitialToken: "new",
+				KeepDataDir:  true,
+				// Set low SnapshotCount to ensure wal snapshot is done
+				SnapshotCount: 1,
 			})
 			if err != nil {
 				t.Fatalf("could not start etcd process cluster (%v)", err)
@@ -128,26 +129,26 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}()
 
 			dialTimeout := 10 * time.Second
-			prefixArgs := []string{ctlBinPath, "--endpoints", strings.Join(epc.EndpointsV3(), ","), "--dial-timeout", dialTimeout.String()}
+			prefixArgs := []string{e2e.CtlBinPath, "--endpoints", strings.Join(epc.EndpointsV3(), ","), "--dial-timeout", dialTimeout.String()}
 
 			t.Log("Write keys to ensure wal snapshot is created and all v3.5 fields are set...")
 			for i := 0; i < 10; i++ {
-				if err = spawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), "OK"); err != nil {
+				if err = e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), "OK"); err != nil {
 					t.Fatal(err)
 				}
 			}
 
 			t.Log("Stopping the server...")
-			if err = epc.procs[0].Stop(); err != nil {
+			if err = epc.Procs[0].Stop(); err != nil {
 				t.Fatal(err)
 			}
 
 			t.Log("etcdutl migrate...")
-			args := []string{utlBinPath, "migrate", "--data-dir", dataDirPath, "--target-version", tc.targetVersion}
+			args := []string{e2e.UtlBinPath, "migrate", "--data-dir", dataDirPath, "--target-version", tc.targetVersion}
 			if tc.force {
 				args = append(args, "--force")
 			}
-			err = spawnWithExpect(args, tc.expectLogsSubString)
+			err = e2e.SpawnWithExpect(args, tc.expectLogsSubString)
 			if err != nil {
 				t.Fatal(err)
 			}

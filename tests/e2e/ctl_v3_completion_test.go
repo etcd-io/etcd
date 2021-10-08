@@ -22,14 +22,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3CompletionBash(t *testing.T) { testShellCompletion(t, ctlBinPath, "bash") }
+func TestCtlV3CompletionBash(t *testing.T) { testShellCompletion(t, e2e.CtlBinPath, "bash") }
 
-func TestUtlV3CompletionBash(t *testing.T) { testShellCompletion(t, utlBinPath, "bash") }
+func TestUtlV3CompletionBash(t *testing.T) { testShellCompletion(t, e2e.UtlBinPath, "bash") }
 
 func testShellCompletion(t *testing.T, binPath, shellName string) {
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 
 	stdout := new(bytes.Buffer)
 	completionCmd := exec.Command(binPath, "completion", shellName)

@@ -19,19 +19,20 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestV3MetricsSecure(t *testing.T) {
-	cfg := newConfigTLS()
-	cfg.clusterSize = 1
-	cfg.metricsURLScheme = "https"
+	cfg := e2e.NewConfigTLS()
+	cfg.ClusterSize = 1
+	cfg.MetricsURLScheme = "https"
 	testCtl(t, metricsTest)
 }
 
 func TestV3MetricsInsecure(t *testing.T) {
-	cfg := newConfigTLS()
-	cfg.clusterSize = 1
-	cfg.metricsURLScheme = "http"
+	cfg := e2e.NewConfigTLS()
+	cfg.ClusterSize = 1
+	cfg.MetricsURLScheme = "http"
 	testCtl(t, metricsTest)
 }
 
@@ -62,7 +63,7 @@ func metricsTest(cx ctlCtx) {
 		if err := ctlV3Watch(cx, []string{"k", "--rev", "1"}, []kvExec{{key: "k", val: "v"}}...); err != nil {
 			cx.t.Fatal(err)
 		}
-		if err := cURLGet(cx.epc, cURLReq{endpoint: test.endpoint, expected: test.expected, metricsURLScheme: cx.cfg.metricsURLScheme}); err != nil {
+		if err := e2e.CURLGet(cx.epc, e2e.CURLReq{Endpoint: test.endpoint, Expected: test.expected, MetricsURLScheme: cx.cfg.MetricsURLScheme}); err != nil {
 			cx.t.Fatalf("failed get with curl (%v)", err)
 		}
 	}

@@ -21,14 +21,16 @@ package e2e
 
 import (
 	"testing"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3AuthCertCN(t *testing.T) {
-	testCtl(t, authTestCertCN, withCfg(*newConfigClientTLSCertAuth()))
+	testCtl(t, authTestCertCN, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }
 func TestCtlV3AuthCertCNAndUsername(t *testing.T) {
-	testCtl(t, authTestCertCNAndUsername, withCfg(*newConfigClientTLSCertAuth()))
+	testCtl(t, authTestCertCNAndUsername, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }
 func TestCtlV3AuthCertCNAndUsernameNoPassword(t *testing.T) {
-	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(*newConfigClientTLSCertAuth()))
+	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }

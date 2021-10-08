@@ -28,11 +28,11 @@ import (
 
 const noOutputLineCount = 0 // regular binaries emit no extra lines
 
-func spawnCmd(args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
-	return spawnCmdWithLogger(zap.NewNop(), args, envVars)
+func SpawnCmd(args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
+	return SpawnCmdWithLogger(zap.NewNop(), args, envVars)
 }
 
-func spawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
+func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func spawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string
 	if strings.HasSuffix(args[0], "/etcdctl3") {
 		env = append(env, "ETCDCTL_API=3")
 		lg.Info("spawning process with ETCDCTL_API=3", zap.Strings("args", args), zap.String("working-dir", wd), zap.Strings("environment-variables", env))
-		return expect.NewExpectWithEnv(ctlBinPath, args[1:], env)
+		return expect.NewExpectWithEnv(CtlBinPath, args[1:], env)
 	}
 	lg.Info("spawning process", zap.Strings("args", args), zap.String("working-dir", wd), zap.Strings("environment-variables", env))
 	return expect.NewExpectWithEnv(args[0], args[1:], env)
