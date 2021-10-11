@@ -124,7 +124,7 @@
           {
             alert: 'etcdGRPCRequestsSlow',
             expr: |||
-              histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{%(etcd_selector)s, grpc_type="unary"}[5m])) without(grpc_type))
+              histogram_quantile(0.99, sum(rate(grpc_server_handling_seconds_bucket{%(etcd_selector)s, grpc_method!="Defragment", grpc_type="unary"}[5m])) without(grpc_type))
               > 0.15
             ||| % $._config,
             'for': '10m',
