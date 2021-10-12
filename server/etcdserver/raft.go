@@ -559,6 +559,10 @@ func getIDs(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) ([]uint6
 		for _, id := range snap.Metadata.ConfState.Voters {
 			ids[id] = true
 		}
+		for _, id := range snap.Metadata.ConfState.Learners {
+			ids[id] = true
+			isLearnerMap[id] = true
+		}
 	}
 	for _, e := range ents {
 		if e.Type != raftpb.EntryConfChange {
