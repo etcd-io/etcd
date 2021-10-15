@@ -421,14 +421,3 @@ func (s *storageMock) UpdateStorageVersion(v semver.Version) error {
 	s.storageVersion = &v
 	return nil
 }
-
-func (s *storageMock) Lock() {
-	if s.locked {
-		panic("Deadlock")
-	}
-	s.locked = true
-}
-
-func (s *storageMock) Unlock() {
-	s.locked = false
-}

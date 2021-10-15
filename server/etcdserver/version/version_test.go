@@ -256,9 +256,3 @@ func (m *memberMock) UpdateStorageVersion(v semver.Version) error {
 
 func (m *memberMock) TriggerSnapshot() {
 }
-
-func (m *memberMock) Lock() {
-}
-
-func (m *memberMock) Unlock() {
-}

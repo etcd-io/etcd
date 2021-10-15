@@ -40,9 +40,6 @@ type Server interface {
 
 	GetStorageVersion() *semver.Version
 	UpdateStorageVersion(semver.Version) error
-
-	Lock()
-	Unlock()
 }
 
 func NewMonitor(lg *zap.Logger, storage Server) *Monitor {
@@ -100,8 +97,6 @@ func (m *Monitor) UpdateStorageVersionIfNeeded() {
 	if cv == nil {
 		return
 	}
-	m.s.Lock()
-	defer m.s.Unlock()
 	sv := m.s.GetStorageVersion()
 
 	if sv == nil || sv.Major != cv.Major || sv.Minor != cv.Minor {

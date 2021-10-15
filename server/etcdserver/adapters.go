@@ -23,20 +23,17 @@ import (
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/api/v3/version"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 // serverVersionAdapter implements Server interface needed by serverversion.Monitor
 type serverVersionAdapter struct {
 	*EtcdServer
-	tx backend.BatchTx
 }
 
 func newServerVersionAdapter(s *EtcdServer) *serverVersionAdapter {
 	return &serverVersionAdapter{
 		EtcdServer: s,
-		tx:         nil,
 	}
 }
 
@@ -75,11 +72,10 @@ func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions
 }
 
 func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
-	if s.tx == nil {
-		s.Lock()
-		defer s.Unlock()
-	}
-	v, err := schema.UnsafeDetectSchemaVersion(s.lg, s.tx)
+	tx := s.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	v, err := schema.UnsafeDetectSchemaVersion(s.lg, tx)
 	if err != nil {
 		return nil
 	}
@@ -87,19 +83,8 @@ func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
 }
 
 func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error {
-	if s.tx == nil {
-		s.Lock()
-		defer s.Unlock()
-	}
-	return schema.UnsafeMigrate(s.lg, s.tx, s.r.storage, target)
-}
-
-func (s *serverVersionAdapter) Lock() {
-	s.tx = s.be.BatchTx()
-	s.tx.Lock()
-}
-
-func (s *serverVersionAdapter) Unlock() {
-	s.tx.Unlock()
-	s.tx = nil
+	tx := s.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	return schema.UnsafeMigrate(s.lg, tx, s.r.storage, target)
 }
