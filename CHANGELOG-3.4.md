@@ -5,6 +5,26 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
 
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.17...v3.4.18) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+<hr>
+
+## v3.4.18 (2021-10-15)
+
+### Metrics, Monitoring
+
+See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
+
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13397).
+
+### Other
+
+- Updated [base image](https://github.com/etcd-io/etcd/pull/13386) from `debian:buster-v1.4.0` to `debian:bullseye-20210927` to fix the following critical CVEs:
+  - [CVE-2021-3711](https://nvd.nist.gov/vuln/detail/CVE-2021-3711): miscalculation of a buffer size in openssl's SM2 decryption
+  - [CVE-2021-35942](https://nvd.nist.gov/vuln/detail/CVE-2021-35942): integer overflow flaw in glibc
+  - [CVE-2019-9893](https://nvd.nist.gov/vuln/detail/CVE-2019-9893): incorrect syscall argument generation in libseccomp
+  - [CVE-2021-36159](https://nvd.nist.gov/vuln/detail/CVE-2021-36159): libfetch in apk-tools mishandles numeric strings in FTP and HTTP protocols to allow out of bound reads.
+
 <hr>
 
 ## v3.4.17 (2021-10-03)
