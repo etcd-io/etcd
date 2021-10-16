@@ -133,7 +133,7 @@ func (ki *keyIndex) tombstone(lg *zap.Logger, main int64, sub int64) error {
 }
 
 // get gets the modified, created revision and version of the key that satisfies the given atRev.
-// Rev must be higher than or equal to the given atRev.
+// Rev must be smaller than or equal to the given atRev.
 func (ki *keyIndex) get(lg *zap.Logger, atRev int64) (modified, created revision, ver int64, err error) {
 	if ki.isEmpty() {
 		lg.Panic(
