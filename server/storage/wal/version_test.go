@@ -237,7 +237,8 @@ func TestEtcdVersionFromFieldOptionsString(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.input, func(t *testing.T) {
-			ver := etcdVersionFromOptionsString(tc.input)
+			ver, err := EtcdVersionFromOptionsString(tc.input)
+			assert.NoError(t, err)
 			assert.Equal(t, ver, tc.expect)
 		})
 	}

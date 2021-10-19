@@ -106,7 +106,8 @@ func etcdVersionFromMessage(m protoreflect.Message) *semver.Version {
 	md := m.Descriptor()
 	opts := md.Options().(*descriptorpb.MessageOptions)
 	if opts != nil {
-		maxVer = maxVersion(maxVer, etcdVersionFromOptionsString(opts.String()))
+		ver, _ := EtcdVersionFromOptionsString(opts.String())
+		maxVer = maxVersion(maxVer, ver)
 	}
 
 	m.Range(func(field protoreflect.FieldDescriptor, value protoreflect.Value) bool {
@@ -127,12 +128,14 @@ func etcdVersionFromEnum(enum protoreflect.EnumDescriptor, value protoreflect.En
 	var maxVer *semver.Version
 	enumOpts := enum.Options().(*descriptorpb.EnumOptions)
 	if enumOpts != nil {
-		maxVer = maxVersion(maxVer, etcdVersionFromOptionsString(enumOpts.String()))
+		ver, _ := EtcdVersionFromOptionsString(enumOpts.String())
+		maxVer = maxVersion(maxVer, ver)
 	}
 	valueDesc := enum.Values().Get(int(value))
 	valueOpts := valueDesc.Options().(*descriptorpb.EnumValueOptions)
 	if valueOpts != nil {
-		maxVer = maxVersion(maxVer, etcdVersionFromOptionsString(valueOpts.String()))
+		ver, _ := EtcdVersionFromOptionsString(valueOpts.String())
+		maxVer = maxVersion(maxVer, ver)
 	}
 	return maxVer
 }
@@ -149,10 +152,11 @@ func etcdVersionFromField(fd protoreflect.FieldDescriptor) *semver.Version {
 	if opts == nil {
 		return nil
 	}
-	return etcdVersionFromOptionsString(opts.String())
+	ver, _ := EtcdVersionFromOptionsString(opts.String())
+	return ver
 }
 
-func etcdVersionFromOptionsString(opts string) *semver.Version {
+func EtcdVersionFromOptionsString(opts string) (*semver.Version, error) {
 	// TODO: Use proto.GetExtention when gogo/protobuf is usable with protoreflect
 	msgs := []string{"[versionpb.etcd_version_msg]:", "[versionpb.etcd_version_field]:", "[versionpb.etcd_version_enum]:", "[versionpb.etcd_version_enum_value]:"}
 	var end, index int
@@ -164,16 +168,19 @@ func etcdVersionFromOptionsString(opts string) *semver.Version {
 		}
 	}
 	if index == -1 {
-		return nil
+		return nil, nil
 	}
 	var verStr string
 	_, err := fmt.Sscanf(opts[end:], "%q", &verStr)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	ver, err := semver.NewVersion(verStr + ".0")
+	if strings.Count(verStr, ".") == 1 {
+		verStr = verStr + ".0"
+	}
+	ver, err := semver.NewVersion(verStr)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return ver
+	return ver, nil
 }

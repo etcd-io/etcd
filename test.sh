@@ -382,6 +382,7 @@ function fmt_pass {
       dep \
       shellcheck \
       shellws \
+      proto_annotations \
       ; do
     run_pass "${p}" "${@}"
   done
@@ -666,6 +667,10 @@ function mod_tidy_for_module {
 
 function mod_tidy_pass {
   run_for_modules mod_tidy_for_module
+}
+
+function proto_annotations_pass {
+  "${ETCD_ROOT_DIR}/scripts/verify_proto_annotations.sh"
 }
 
 ########### MAIN ###############################################################
