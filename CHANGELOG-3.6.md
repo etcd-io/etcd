@@ -29,6 +29,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Package `wal` was moved to `storage/wal`
 - Package `datadir` was moved to `storage/datadir`
 
+### etcd server
+
+- Add [`etcd --log-format`](https://github.com/etcd-io/etcd/pull/13339) flag to support log format.
 
 ### Metrics, Monitoring
 
