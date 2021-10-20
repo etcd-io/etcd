@@ -19,12 +19,11 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.uber.org/zap"
 )
 
@@ -42,23 +41,30 @@ func validateTracingConfig(samplingRate int) error {
 }
 
 func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.SpanExporter, options []otelgrpc.Option, err error) {
-	exporter, err = otlp.NewExporter(ctx,
-		otlpgrpc.NewDriver(
-			otlpgrpc.WithEndpoint(cfg.ExperimentalDistributedTracingAddress),
-			otlpgrpc.WithInsecure(),
-		))
+	exporter, err = otlptracegrpc.New(ctx,
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithEndpoint(cfg.ExperimentalDistributedTracingAddress),
+	)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	res := resource.NewWithAttributes(
-		semconv.ServiceNameKey.String(cfg.ExperimentalDistributedTracingServiceName),
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(cfg.ExperimentalDistributedTracingServiceName),
+		),
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if resWithIDKey := determineResourceWithIDKey(cfg.ExperimentalDistributedTracingServiceInstanceID); resWithIDKey != nil {
 		// Merge resources into a new
 		// resource in case of duplicates.
-		res = resource.Merge(res, resWithIDKey)
+		res, err = resource.Merge(res, resWithIDKey)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	options = append(options,
@@ -103,7 +109,7 @@ func determineSampler(samplingRate int) tracesdk.Sampler {
 // if it's a non empty string.
 func determineResourceWithIDKey(serviceInstanceID string) *resource.Resource {
 	if serviceInstanceID != "" {
-		return resource.NewWithAttributes(
+		return resource.NewSchemaless(
 			(semconv.ServiceInstanceIDKey.String(serviceInstanceID)),
 		)
 	}
