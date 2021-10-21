@@ -23,52 +23,53 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestPauseMember(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	c := NewCluster(t, 5)
+	c := integration.NewCluster(t, 5)
 	c.Launch(t)
 	defer c.Terminate(t)
 
 	for i := 0; i < 5; i++ {
 		c.Members[i].Pause()
-		membs := append([]*member{}, c.Members[:i]...)
+		membs := append([]*integration.Member{}, c.Members[:i]...)
 		membs = append(membs, c.Members[i+1:]...)
-		c.waitLeader(t, membs)
+		c.WaitMembersForLeader(t, membs)
 		clusterMustProgress(t, membs)
 		c.Members[i].Resume()
 	}
-	c.waitLeader(t, c.Members)
+	c.WaitMembersForLeader(t, c.Members)
 	clusterMustProgress(t, c.Members)
 }
 
 func TestRestartMember(t *testing.T) {
-	BeforeTest(t)
-	c := newCluster(t, &ClusterConfig{Size: 3, UseBridge: true})
+	integration.BeforeTest(t)
+	c := integration.NewClusterFromConfig(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	c.Launch(t)
 	defer c.Terminate(t)
 
 	for i := 0; i < 3; i++ {
 		c.Members[i].Stop(t)
-		membs := append([]*member{}, c.Members[:i]...)
+		membs := append([]*integration.Member{}, c.Members[:i]...)
 		membs = append(membs, c.Members[i+1:]...)
-		c.waitLeader(t, membs)
+		c.WaitMembersForLeader(t, membs)
 		clusterMustProgress(t, membs)
 		err := c.Members[i].Restart(t)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	c.waitLeader(t, c.Members)
+	c.WaitMembersForLeader(t, c.Members)
 	clusterMustProgress(t, c.Members)
 }
 
 func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 	size := 3
-	c := NewCluster(t, size)
+	c := integration.NewCluster(t, size)
 	m := c.Members[0].Clone(t)
 	var err error
 	m.DataDir, err = ioutil.TempDir(t.TempDir(), "etcd")
@@ -87,8 +88,8 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 }
 
 func TestSnapshotAndRestartMember(t *testing.T) {
-	BeforeTest(t)
-	m := mustNewMember(t, memberConfig{name: "snapAndRestartTest", useBridge: true})
+	integration.BeforeTest(t)
+	m := integration.MustNewMember(t, integration.MemberConfig{Name: "snapAndRestartTest", UseBridge: true})
 	m.SnapshotCount = 100
 	m.Launch()
 	defer m.Terminate(t)
@@ -97,9 +98,9 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 	resps := make([]*client.Response, 120)
 	var err error
 	for i := 0; i < 120; i++ {
-		cc := MustNewHTTPClient(t, []string{m.URL()}, nil)
+		cc := integration.MustNewHTTPClient(t, []string{m.URL()}, nil)
 		kapi := client.NewKeysAPI(cc)
-		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 		key := fmt.Sprintf("foo%d", i)
 		resps[i], err = kapi.Create(ctx, "/"+key, "bar")
 		if err != nil {
@@ -112,9 +113,9 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 
 	m.WaitOK(t)
 	for i := 0; i < 120; i++ {
-		cc := MustNewHTTPClient(t, []string{m.URL()}, nil)
+		cc := integration.MustNewHTTPClient(t, []string{m.URL()}, nil)
 		kapi := client.NewKeysAPI(cc)
-		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 		key := fmt.Sprintf("foo%d", i)
 		resp, err := kapi.Get(ctx, "/"+key, nil)
 		if err != nil {

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 )
 
@@ -30,7 +31,7 @@ func TestTLSClientCipherSuitesMismatch(t *testing.T) { testTLSCipherSuites(t, fa
 // testTLSCipherSuites ensures mismatching client-side cipher suite
 // fail TLS handshake with the server.
 func testTLSCipherSuites(t *testing.T, valid bool) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
 	cipherSuites := []uint16{
 		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -40,21 +41,21 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 	}
-	srvTLS, cliTLS := testTLSInfo, testTLSInfo
+	srvTLS, cliTLS := integration.TestTLSInfo, integration.TestTLSInfo
 	if valid {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites, cipherSuites
 	} else {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites[:2], cipherSuites[2:]
 	}
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1, ClientTLS: &srvTLS})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientTLS: &srvTLS})
 	defer clus.Terminate(t)
 
 	cc, err := cliTLS.ClientConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
-	cli, cerr := NewClient(t, clientv3.Config{
+	cli, cerr := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL()},
 		DialTimeout: time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},

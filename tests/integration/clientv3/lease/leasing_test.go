@@ -28,13 +28,13 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/leasing"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestLeasingPutGet(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	lKV1, closeLKV1, err := leasing.NewKV(clus.Client(0), "foo/")
@@ -91,8 +91,8 @@ func TestLeasingPutGet(t *testing.T) {
 
 // TestLeasingInterval checks the leasing KV fetches key intervals.
 func TestLeasingInterval(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -130,8 +130,8 @@ func TestLeasingInterval(t *testing.T) {
 
 // TestLeasingPutInvalidateNew checks the leasing KV updates its cache on a Put to a new key.
 func TestLeasingPutInvalidateNew(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -160,8 +160,8 @@ func TestLeasingPutInvalidateNew(t *testing.T) {
 
 // TestLeasingPutInvalidateExisting checks the leasing KV updates its cache on a Put to an existing key.
 func TestLeasingPutInvalidateExisting(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	if _, err := clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -194,8 +194,8 @@ func TestLeasingPutInvalidateExisting(t *testing.T) {
 
 // TestLeasingGetNoLeaseTTL checks a key with a TTL is not leased.
 func TestLeasingGetNoLeaseTTL(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -223,8 +223,8 @@ func TestLeasingGetNoLeaseTTL(t *testing.T) {
 // TestLeasingGetSerializable checks the leasing KV can make serialized requests
 // when the etcd cluster is partitioned.
 func TestLeasingGetSerializable(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 2, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -263,8 +263,8 @@ func TestLeasingGetSerializable(t *testing.T) {
 
 // TestLeasingPrevKey checks the cache respects WithPrevKV on puts.
 func TestLeasingPrevKey(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -289,8 +289,8 @@ func TestLeasingPrevKey(t *testing.T) {
 
 // TestLeasingRevGet checks the cache respects Get by Revision.
 func TestLeasingRevGet(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -325,8 +325,8 @@ func TestLeasingRevGet(t *testing.T) {
 
 // TestLeasingGetWithOpts checks options that can be served through the cache do not depend on the server.
 func TestLeasingGetWithOpts(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -370,8 +370,8 @@ func TestLeasingGetWithOpts(t *testing.T) {
 // TestLeasingConcurrentPut ensures that a get after concurrent puts returns
 // the recently put data.
 func TestLeasingConcurrentPut(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -417,8 +417,8 @@ func TestLeasingConcurrentPut(t *testing.T) {
 }
 
 func TestLeasingDisconnectedGet(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -446,8 +446,8 @@ func TestLeasingDisconnectedGet(t *testing.T) {
 }
 
 func TestLeasingDeleteOwner(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -480,8 +480,8 @@ func TestLeasingDeleteOwner(t *testing.T) {
 }
 
 func TestLeasingDeleteNonOwner(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -515,8 +515,8 @@ func TestLeasingDeleteNonOwner(t *testing.T) {
 }
 
 func TestLeasingOverwriteResponse(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -549,8 +549,8 @@ func TestLeasingOverwriteResponse(t *testing.T) {
 }
 
 func TestLeasingOwnerPutResponse(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -587,8 +587,8 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerGetRange(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -616,8 +616,8 @@ func TestLeasingTxnOwnerGetRange(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerGet(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	client := clus.Client(0)
@@ -702,8 +702,8 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -741,8 +741,8 @@ func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerDelete(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -772,8 +772,8 @@ func TestLeasingTxnOwnerDelete(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerIf(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -866,8 +866,8 @@ func TestLeasingTxnOwnerIf(t *testing.T) {
 }
 
 func TestLeasingTxnCancel(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -900,8 +900,8 @@ func TestLeasingTxnCancel(t *testing.T) {
 }
 
 func TestLeasingTxnNonOwnerPut(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -978,8 +978,8 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 // TestLeasingTxnRandIfThenOrElse randomly leases keys two separate clients, then
 // issues a random If/{Then,Else} transaction on those keys to one client.
 func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err1 := leasing.NewKV(clus.Client(0), "pfx/")
@@ -1084,8 +1084,8 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 }
 
 func TestLeasingOwnerPutError(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -1105,8 +1105,8 @@ func TestLeasingOwnerPutError(t *testing.T) {
 }
 
 func TestLeasingOwnerDeleteError(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -1126,8 +1126,8 @@ func TestLeasingOwnerDeleteError(t *testing.T) {
 }
 
 func TestLeasingNonOwnerPutError(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
@@ -1151,8 +1151,8 @@ func TestLeasingOwnerDeleteFrom(t *testing.T) {
 }
 
 func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "0/")
@@ -1200,8 +1200,8 @@ func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
 }
 
 func TestLeasingDeleteRangeBounds(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	delkv, closeDelKV, err := leasing.NewKV(clus.Client(0), "0/")
@@ -1258,8 +1258,8 @@ func TestLeaseDeleteRangeContendDel(t *testing.T) {
 }
 
 func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	delkv, closeDelKV, err := leasing.NewKV(clus.Client(0), "0/")
@@ -1316,8 +1316,8 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 }
 
 func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkvs := make([]clientv3.KV, 16)
@@ -1375,8 +1375,8 @@ func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
 // TestLeasingReconnectOwnerRevoke checks that revocation works if
 // disconnected when trying to submit revoke txn.
 func TestLeasingReconnectOwnerRevoke(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err1 := leasing.NewKV(clus.Client(0), "foo/")
@@ -1436,8 +1436,8 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 // TestLeasingReconnectOwnerRevokeCompact checks that revocation works if
 // disconnected and the watch is compacted.
 func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err1 := leasing.NewKV(clus.Client(0), "foo/")
@@ -1489,8 +1489,8 @@ func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
 // TestLeasingReconnectOwnerConsistency checks a write error on an owner will
 // not cause inconsistency between the server and the client.
 func TestLeasingReconnectOwnerConsistency(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
@@ -1563,8 +1563,8 @@ func TestLeasingReconnectOwnerConsistency(t *testing.T) {
 }
 
 func TestLeasingTxnAtomicCache(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
@@ -1649,8 +1649,8 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 
 // TestLeasingReconnectTxn checks that Txn is resilient to disconnects.
 func TestLeasingReconnectTxn(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
@@ -1685,8 +1685,8 @@ func TestLeasingReconnectTxn(t *testing.T) {
 // TestLeasingReconnectNonOwnerGet checks a get error on an owner will
 // not cause inconsistency between the server and the client.
 func TestLeasingReconnectNonOwnerGet(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
@@ -1736,8 +1736,8 @@ func TestLeasingReconnectNonOwnerGet(t *testing.T) {
 }
 
 func TestLeasingTxnRangeCmp(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
@@ -1771,8 +1771,8 @@ func TestLeasingTxnRangeCmp(t *testing.T) {
 }
 
 func TestLeasingDo(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
@@ -1813,8 +1813,8 @@ func TestLeasingDo(t *testing.T) {
 }
 
 func TestLeasingTxnOwnerPutBranch(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
@@ -1907,8 +1907,8 @@ func randCmps(pfx string, dat []*clientv3.PutResponse) (cmps []clientv3.Cmp, the
 }
 
 func TestLeasingSessionExpire(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/", concurrency.WithTTL(1))
@@ -1931,7 +1931,7 @@ func TestLeasingSessionExpire(t *testing.T) {
 	}
 	waitForExpireAck(t, lkv)
 	clus.Members[0].Restart(t)
-	integration.WaitClientV3(t, lkv2)
+	integration2.WaitClientV3(t, lkv2)
 	if _, err = lkv2.Put(context.TODO(), "abc", "def"); err != nil {
 		t.Fatal(err)
 	}
@@ -1983,8 +1983,8 @@ func TestLeasingSessionExpireCancel(t *testing.T) {
 	}
 	for i := range tests {
 		t.Run(fmt.Sprintf("test %d", i), func(t *testing.T) {
-			integration.BeforeTest(t)
-			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+			integration2.BeforeTest(t)
+			clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 			defer clus.Terminate(t)
 
 			lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/", concurrency.WithTTL(1))

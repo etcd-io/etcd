@@ -34,14 +34,14 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        integration.MustAbsPath("../../fixtures/server.key.insecure"),
-		CertFile:       integration.MustAbsPath("../../fixtures/server.crt"),
-		TrustedCAFile:  integration.MustAbsPath("../../fixtures/ca.crt"),
+		KeyFile:        integration2.MustAbsPath("../../fixtures/server.key.insecure"),
+		CertFile:       integration2.MustAbsPath("../../fixtures/server.crt"),
+		TrustedCAFile:  integration2.MustAbsPath("../../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 )
@@ -160,7 +160,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 			t.Fatal(err)
 		}
 	}
-	cli, err := integration.NewClient(t, clientCfg)
+	cli, err := integration2.NewClient(t, clientCfg)
 	if err != nil {
 		t.Fatal(err)
 	}

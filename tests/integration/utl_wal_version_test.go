@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -33,7 +34,7 @@ import (
 func TestEtcdVersionFromWAL(t *testing.T) {
 	testutil.SkipTestIfShortMode(t,
 		"Wal creation tests are depending on embedded etcd server so are integration-level tests.")
-	cfg := NewEmbedConfig(t, "default")
+	cfg := integration.NewEmbedConfig(t, "default")
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +46,7 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	}
 
 	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
-	cli, err := NewClient(t, ccfg)
+	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		srv.Close()
 		t.Fatal(err)

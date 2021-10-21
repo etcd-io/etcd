@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 
@@ -34,13 +35,12 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestMaintenanceHashKV(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	for i := 0; i < 3; i++ {
@@ -71,9 +71,9 @@ func TestMaintenanceHashKV(t *testing.T) {
 }
 
 func TestMaintenanceMoveLeader(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	oldLeadIdx := clus.WaitLeader(t)
@@ -102,9 +102,9 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 // TestMaintenanceSnapshotCancel ensures that context cancel
 // before snapshot reading returns corresponding context errors.
 func TestMaintenanceSnapshotCancel(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with canceled context should error out
@@ -145,9 +145,9 @@ func TestMaintenanceSnapshotTimeout(t *testing.T) {
 // testMaintenanceSnapshotTimeout given snapshot function ensures that it
 // returns corresponding context errors when context timeout happened before snapshot reading
 func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with deadline exceeded should error out
@@ -190,9 +190,9 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 // testMaintenanceSnapshotErrorInflight given snapshot function ensures that ReaderCloser returned by it
 // will fail to read with corresponding context errors on inflight context cancel timeout.
 func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// take about 1-second to read snapshot
@@ -247,10 +247,10 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 
 // TestMaintenanceSnapshotWithVersionVersion ensures that SnapshotWithVersion returns correct version value.
 func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
 	// Set SnapshotCount to 1 to force raft snapshot to ensure that storage version is set
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, SnapshotCount: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, SnapshotCount: 1})
 	defer clus.Terminate(t)
 
 	// Put some keys to ensure that wal snapshot is triggered
@@ -270,9 +270,9 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 }
 
 func TestMaintenanceStatus(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	clus.WaitLeader(t)
@@ -282,7 +282,7 @@ func TestMaintenanceStatus(t *testing.T) {
 		eps[i] = clus.Members[i].GRPCURL()
 	}
 
-	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
 	if err != nil {
 		t.Fatal(err)
 	}

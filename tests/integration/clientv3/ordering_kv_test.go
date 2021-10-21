@@ -23,14 +23,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/ordering"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestDetectKvOrderViolation(t *testing.T) {
 	var errOrderViolation = errors.New("DetectedOrderViolation")
 
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
@@ -40,7 +40,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 			clus.Members[2].GRPCURL(),
 		},
 	}
-	cli, err := integration.NewClient(t, cfg)
+	cli, err := integration2.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,8 +96,8 @@ func TestDetectKvOrderViolation(t *testing.T) {
 func TestDetectTxnOrderViolation(t *testing.T) {
 	var errOrderViolation = errors.New("DetectedOrderViolation")
 
-	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	integration2.BeforeTest(t)
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
@@ -107,7 +107,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 			clus.Members[2].GRPCURL(),
 		},
 	}
-	cli, err := integration.NewClient(t, cfg)
+	cli, err := integration2.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

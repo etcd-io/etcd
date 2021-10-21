@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 // TODO: test with embedded etcd in integration package
@@ -35,10 +36,10 @@ func TestEtcdCorruptHash(t *testing.T) {
 	// defer os.Setenv("EXPECT_DEBUG", oldenv)
 	// os.Setenv("EXPECT_DEBUG", "1")
 
-	cfg := newConfigNoTLS()
+	cfg := e2e.NewConfigNoTLS()
 
 	// trigger snapshot so that restart member can load peers from disk
-	cfg.snapshotCount = 3
+	cfg.SnapshotCount = 3
 
 	testCtl(t, corruptTest, withQuorum(),
 		withCfg(*cfg),
@@ -76,18 +77,18 @@ func corruptTest(cx ctlCtx) {
 	id0 := sresp.Header.GetMemberId()
 
 	cx.t.Log("stopping etcd[0]...")
-	cx.epc.procs[0].Stop()
+	cx.epc.Procs[0].Stop()
 
 	// corrupting first member by modifying backend offline.
-	fp := datadir.ToBackendFileName(cx.epc.procs[0].Config().dataDirPath)
+	fp := datadir.ToBackendFileName(cx.epc.Procs[0].Config().DataDirPath)
 	cx.t.Logf("corrupting backend: %v", fp)
 	if err = cx.corruptFunc(fp); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	cx.t.Log("restarting etcd[0]")
-	ep := cx.epc.procs[0]
-	proc, err := spawnCmd(append([]string{ep.Config().execPath}, ep.Config().args...), cx.envMap)
+	ep := cx.epc.Procs[0]
+	proc, err := e2e.SpawnCmd(append([]string{ep.Config().ExecPath}, ep.Config().Args...), cx.envMap)
 	if err != nil {
 		cx.t.Fatal(err)
 	}
@@ -95,7 +96,7 @@ func corruptTest(cx ctlCtx) {
 
 	cx.t.Log("waiting for etcd[0] failure...")
 	// restarting corrupted member should fail
-	waitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
+	e2e.WaitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
 }
 
 func corruptHash(fpath string) error {

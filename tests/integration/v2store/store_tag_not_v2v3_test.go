@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 type v2TestStore struct {
@@ -41,7 +41,7 @@ func newTestStore(t *testing.T, ns ...string) StoreCloser {
 
 // Ensure that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 4

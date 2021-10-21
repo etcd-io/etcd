@@ -23,8 +23,7 @@ import (
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
-	"go.etcd.io/etcd/tests/v3/integration"
-
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 	testpb "google.golang.org/grpc/test/grpc_testing"
 )
@@ -32,7 +31,7 @@ import (
 // This test mimics scenario described in grpc_naming.md doc.
 
 func TestEtcdGrpcResolver(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
 	s1PayloadBody := []byte{'1'}
 	s1 := grpc_testing.NewDummyStubServer(s1PayloadBody)
@@ -48,7 +47,7 @@ func TestEtcdGrpcResolver(t *testing.T) {
 	}
 	defer s2.Stop()
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.Client(0), "foo")

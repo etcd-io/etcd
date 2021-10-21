@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3EndpointHealth(t *testing.T) { testCtl(t, endpointHealthTest, withQuorum()) }
@@ -36,11 +37,11 @@ func endpointHealthTest(cx ctlCtx) {
 
 func ctlV3EndpointHealth(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health")
-	lines := make([]string, cx.epc.cfg.clusterSize)
+	lines := make([]string, cx.epc.Cfg.ClusterSize)
 	for i := range lines {
 		lines[i] = "is healthy"
 	}
-	return spawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func endpointStatusTest(cx ctlCtx) {
@@ -56,7 +57,7 @@ func ctlV3EndpointStatus(cx ctlCtx) error {
 		u, _ := url.Parse(ep)
 		eps = append(eps, u.Host)
 	}
-	return spawnWithExpects(cmdArgs, cx.envMap, eps...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, eps...)
 }
 
 func endpointHashKVTest(cx ctlCtx) {
@@ -88,5 +89,5 @@ func ctlV3EndpointHashKV(cx ctlCtx) error {
 		u, _ := url.Parse(ep)
 		ss = append(ss, fmt.Sprintf("%s, %d", u.Host, hresp.Hash))
 	}
-	return spawnWithExpects(cmdArgs, cx.envMap, ss...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, ss...)
 }
