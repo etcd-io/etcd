@@ -25,10 +25,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.5.1) and 
 
 - Endpoints self identify now as `etcd-endpoints://{id}/{authority}` where authority is based on first endpoint passed, for example `etcd-endpoints://0xc0009d8540/localhost:2079`
 
-### tools/benchmark
-
-- [Add etcd client autoSync flag](https://github.com/etcd-io/etcd/pull/13416)
-
 ### Other
 
 - Updated [base image](https://github.com/etcd-io/etcd/pull/13386) from `debian:buster-v1.4.0` to `debian:bullseye-20210927` to fix the following critical CVEs:

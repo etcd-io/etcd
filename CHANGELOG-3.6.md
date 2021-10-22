@@ -32,6 +32,11 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 ### etcd server
 
 - Add [`etcd --log-format`](https://github.com/etcd-io/etcd/pull/13339) flag to support log format.
+- Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/13435)
+
+### tools/benchmark
+
+- [Add etcd client autoSync flag](https://github.com/etcd-io/etcd/pull/13416)
 
 ### Metrics, Monitoring
 
