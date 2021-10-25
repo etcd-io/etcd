@@ -241,6 +241,7 @@ func (c *RaftCluster) genID() {
 func (c *RaftCluster) SetID(localID, cid types.ID) {
 	c.localID = localID
 	c.cid = cid
+	c.buildMembershipMetric()
 }
 
 func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
@@ -265,6 +266,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
 		c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	}
+	c.buildMembershipMetric()
 
 	if c.be != nil {
 		c.downgradeInfo = c.be.DowngradeInfoFromBackend()
@@ -394,6 +396,7 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 	}
 
 	c.members[m.ID] = m
+	c.updateMembershipMetric(m.ID, true)
 
 	c.lg.Info(
 		"added member",
@@ -419,6 +422,7 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	m, ok := c.members[id]
 	delete(c.members, id)
 	c.removed[id] = true
+	c.updateMembershipMetric(id, false)
 
 	if ok {
 		c.lg.Info(
@@ -477,6 +481,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	defer c.Unlock()
 
 	c.members[id].RaftAttributes.IsLearner = false
+	c.updateMembershipMetric(id, true)
 	if c.v2store != nil {
 		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
 	}
@@ -715,6 +720,7 @@ func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *R
 	for _, m := range lms {
 		local.members[m.ID] = m
 	}
+	local.buildMembershipMetric()
 	return nil
 }
 
@@ -800,4 +806,33 @@ func (c *RaftCluster) PushMembershipToStorage() {
 			mustSaveMemberToStore(c.lg, c.v2store, m)
 		}
 	}
+}
+
+// buildMembershipMetric sets the knownPeers metric based on the current
+// members of the cluster.
+func (c *RaftCluster) buildMembershipMetric() {
+	if c.localID == 0 {
+		// We don't know our own id yet.
+		return
+	}
+	for p := range c.members {
+		knownPeers.WithLabelValues(c.localID.String(), p.String()).Set(1)
+	}
+	for p := range c.removed {
+		knownPeers.WithLabelValues(c.localID.String(), p.String()).Set(0)
+	}
+}
+
+// updateMembershipMetric updates the knownPeers metric to indicate that
+// the given peer is now (un)known.
+func (c *RaftCluster) updateMembershipMetric(peer types.ID, known bool) {
+	if c.localID == 0 {
+		// We don't know our own id yet.
+		return
+	}
+	v := float64(0)
+	if known {
+		v = 1
+	}
+	knownPeers.WithLabelValues(c.localID.String(), peer.String()).Set(v)
 }
