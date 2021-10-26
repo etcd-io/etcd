@@ -21,11 +21,23 @@ log-level debug
 ----
 ok
 
+raft-state
+----
+1: StateLeader (Voter)
+2: StateFollower (Voter)
+3: StateFollower (Voter)
+
 # Start removing n1.
 propose-conf-change 1 v1=true
 r1
 ----
 ok
+
+raft-state
+----
+1: StateLeader (Voter)
+2: StateFollower (Voter)
+3: StateFollower (Voter)
 
 # Propose an extra entry which will be sent out together with the conf change.
 propose 1 foo
@@ -94,6 +106,12 @@ stabilize 1
   1->2 MsgApp Term:1 Log:1/6 Commit:5
   1->3 MsgApp Term:1 Log:1/6 Commit:5
   INFO 1 switched to configuration voters=(2 3)
+
+raft-state
+----
+1: StateLeader (Non-Voter)
+2: StateFollower (Voter)
+3: StateFollower (Voter)
 
 # n2 responds, n3 doesn't yet. Quorum for 'bar' should not be reached...
 stabilize 2
@@ -222,3 +240,10 @@ stabilize
 > 1 receiving messages
   2->1 MsgHeartbeatResp Term:1 Log:0/0
   3->1 MsgHeartbeatResp Term:1 Log:0/0
+
+# Just confirming the issue above - leader does not automatically step down.
+raft-state
+----
+1: StateLeader (Non-Voter)
+2: StateFollower (Voter)
+3: StateFollower (Voter)
