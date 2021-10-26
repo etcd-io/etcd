@@ -77,7 +77,10 @@ type store struct {
 	// currentRev is the revision of the last completed transaction.
 	currentRev int64
 	// compactMainRev is the main revision of the last compaction.
-	compactMainRev int64
+	compactMainRev     int64
+	lastCompactMainRev int64
+	lastKeep           []revision
+	keyCompactions     int64
 
 	fifoSched schedule.Scheduler
 
@@ -105,8 +108,10 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 
 		le: le,
 
-		currentRev:     1,
-		compactMainRev: -1,
+		currentRev:         1,
+		compactMainRev:     -1,
+		lastCompactMainRev: -1,
+		lastKeep:           make([]revision, 0),
 
 		fifoSched: schedule.NewFIFOScheduler(),
 

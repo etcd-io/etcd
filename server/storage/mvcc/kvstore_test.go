@@ -344,7 +344,7 @@ func TestStoreCompact(t *testing.T) {
 	binary.BigEndian.PutUint64(end, uint64(4))
 	wact := []testutil.Action{
 		{Name: "put", Params: []interface{}{schema.Meta, schema.ScheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
-		{Name: "range", Params: []interface{}{schema.Key, make([]byte, 17), end, int64(10000)}},
+		{Name: "range", Params: []interface{}{schema.Key, newTestRevBytes(revision{0, 0}), end, int64(10000)}},
 		{Name: "delete", Params: []interface{}{schema.Key, key2}},
 		{Name: "put", Params: []interface{}{schema.Meta, schema.FinishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
 	}
@@ -847,15 +847,16 @@ func newFakeStore() *store {
 		indexCompactRespc:     make(chan map[revision]struct{}, 1),
 	}
 	s := &store{
-		cfg:            StoreConfig{CompactionBatchLimit: 10000},
-		b:              b,
-		le:             &lease.FakeLessor{},
-		kvindex:        fi,
-		currentRev:     0,
-		compactMainRev: -1,
-		fifoSched:      schedule.NewFIFOScheduler(),
-		stopc:          make(chan struct{}),
-		lg:             zap.NewExample(),
+		cfg:                StoreConfig{CompactionBatchLimit: 10000},
+		b:                  b,
+		le:                 &lease.FakeLessor{},
+		kvindex:            fi,
+		currentRev:         0,
+		compactMainRev:     -1,
+		lastCompactMainRev: -1,
+		fifoSched:          schedule.NewFIFOScheduler(),
+		stopc:              make(chan struct{}),
+		lg:                 zap.NewExample(),
 	}
 	s.ReadView, s.WriteView = &readView{s}, &writeView{s}
 	return s
