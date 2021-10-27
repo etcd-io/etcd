@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path"
@@ -45,7 +44,7 @@ var (
 )
 
 func TestNew(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,12 +98,12 @@ func TestNew(t *testing.T) {
 }
 
 func TestCreateFailFromPollutedDir(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(p)
-	ioutil.WriteFile(filepath.Join(p, "test.wal"), []byte("data"), os.ModeTemporary)
+	os.WriteFile(filepath.Join(p, "test.wal"), []byte("data"), os.ModeTemporary)
 
 	_, err = Create(zap.NewExample(), p, []byte("data"))
 	if err != os.ErrExist {
@@ -113,11 +112,11 @@ func TestCreateFailFromPollutedDir(t *testing.T) {
 }
 
 func TestWalCleanup(t *testing.T) {
-	testRoot, err := ioutil.TempDir(t.TempDir(), "waltestroot")
+	testRoot, err := os.MkdirTemp(t.TempDir(), "waltestroot")
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := ioutil.TempDir(testRoot, "waltest")
+	p, err := os.MkdirTemp(testRoot, "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +143,7 @@ func TestWalCleanup(t *testing.T) {
 }
 
 func TestCreateFailFromNoSpaceLeft(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +162,7 @@ func TestCreateFailFromNoSpaceLeft(t *testing.T) {
 }
 
 func TestNewForInitedDir(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +175,7 @@ func TestNewForInitedDir(t *testing.T) {
 }
 
 func TestOpenAtIndex(t *testing.T) {
-	dir, err := ioutil.TempDir(t.TempDir(), "waltest")
+	dir, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +218,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	w.Close()
 
-	emptydir, err := ioutil.TempDir(t.TempDir(), "waltestempty")
+	emptydir, err := os.MkdirTemp(t.TempDir(), "waltestempty")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +233,7 @@ func TestOpenAtIndex(t *testing.T) {
 // it corrupts one of the files by completely truncating it.
 func TestVerify(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	walDir, err := ioutil.TempDir(t.TempDir(), "waltest")
+	walDir, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +266,7 @@ func TestVerify(t *testing.T) {
 	}
 	assert.Equal(t, hs, *hardstate)
 
-	walFiles, err := ioutil.ReadDir(walDir)
+	walFiles, err := os.ReadDir(walDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +285,7 @@ func TestVerify(t *testing.T) {
 
 // TODO: split it into smaller tests for better readability
 func TestCut(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +347,7 @@ func TestCut(t *testing.T) {
 }
 
 func TestSaveWithCut(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,7 +410,7 @@ func TestSaveWithCut(t *testing.T) {
 }
 
 func TestRecover(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -526,7 +525,7 @@ func TestScanWalName(t *testing.T) {
 }
 
 func TestRecoverAfterCut(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,7 +583,7 @@ func TestRecoverAfterCut(t *testing.T) {
 }
 
 func TestOpenAtUncommittedIndex(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,7 +617,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 // it releases the lock of part of data, and excepts that OpenForRead
 // can read out all files even if some are locked for write.
 func TestOpenForRead(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -659,7 +658,7 @@ func TestOpenForRead(t *testing.T) {
 }
 
 func TestOpenWithMaxIndex(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -702,7 +701,7 @@ func TestSaveEmpty(t *testing.T) {
 }
 
 func TestReleaseLockTo(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -774,7 +773,7 @@ func TestReleaseLockTo(t *testing.T) {
 
 // TestTailWriteNoSlackSpace ensures that tail writes append if there's no preallocated space.
 func TestTailWriteNoSlackSpace(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -840,7 +839,7 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 
 // TestRestartCreateWal ensures that an interrupted WAL initialization is clobbered on restart
 func TestRestartCreateWal(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -880,7 +879,7 @@ func TestOpenOnTornWrite(t *testing.T) {
 	clobberIdx := 20
 	overwriteEntries := 5
 
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -965,7 +964,7 @@ func TestOpenOnTornWrite(t *testing.T) {
 }
 
 func TestRenameFail(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -977,7 +976,7 @@ func TestRenameFail(t *testing.T) {
 	}()
 	SegmentSizeBytes = math.MaxInt64
 
-	tp, terr := ioutil.TempDir(t.TempDir(), "waltest")
+	tp, terr := os.MkdirTemp(t.TempDir(), "waltest")
 	if terr != nil {
 		t.Fatal(terr)
 	}
@@ -995,7 +994,7 @@ func TestRenameFail(t *testing.T) {
 
 // TestReadAllFail ensure ReadAll error if used without opening the WAL
 func TestReadAllFail(t *testing.T) {
-	dir, err := ioutil.TempDir(t.TempDir(), "waltest")
+	dir, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1017,7 +1016,7 @@ func TestReadAllFail(t *testing.T) {
 // TestValidSnapshotEntries ensures ValidSnapshotEntries returns all valid wal snapshot entries, accounting
 // for hardstate
 func TestValidSnapshotEntries(t *testing.T) {
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1074,7 +1073,7 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 	defer func() {
 		SegmentSizeBytes = oldSegmentSizeBytes
 	}()
-	p, err := ioutil.TempDir(t.TempDir(), "waltest")
+	p, err := os.MkdirTemp(t.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}

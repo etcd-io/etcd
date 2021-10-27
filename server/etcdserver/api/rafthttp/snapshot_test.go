@@ -17,7 +17,6 @@ package rafthttp
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -94,8 +93,8 @@ func TestSnapshotSend(t *testing.T) {
 	}
 }
 
-func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.FileInfo) {
-	d, err := ioutil.TempDir(os.TempDir(), "snapdir")
+func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.DirEntry) {
+	d, err := os.MkdirTemp(os.TempDir(), "snapdir")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +123,7 @@ func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.FileInfo) {
 	// wait for handler to finish accepting snapshot
 	<-ch
 
-	files, rerr := ioutil.ReadDir(d)
+	files, rerr := os.ReadDir(d)
 	if rerr != nil {
 		t.Fatal(rerr)
 	}

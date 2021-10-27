@@ -26,7 +26,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"runtime"
@@ -98,7 +98,7 @@ func write(key string, value string, version int64) error {
 		os.Exit(1)
 	}
 
-	respBytes, err := ioutil.ReadAll(httpResp.Body)
+	respBytes, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		fmt.Printf("failed to read request body: %s\n", err)
 		os.Exit(1)
@@ -136,7 +136,7 @@ func read(key string) (string, int64) {
 		os.Exit(1)
 	}
 
-	respBytes, err := ioutil.ReadAll(httpResp.Body)
+	respBytes, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		fmt.Printf("failed to read request body: %s\n", err)
 		os.Exit(1)

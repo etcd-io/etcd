@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"path/filepath"
 	"testing"
@@ -116,7 +115,7 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	defer rc1.Close()
 
 	cancel()
-	_, err = io.Copy(ioutil.Discard, rc1)
+	_, err = io.Copy(io.Discard, rc1)
 	if err != context.Canceled {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
@@ -161,7 +160,7 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 
 	time.Sleep(2 * time.Second)
 
-	_, err = io.Copy(ioutil.Discard, rc2)
+	_, err = io.Copy(io.Discard, rc2)
 	if err != nil && !IsClientTimeout(err) {
 		t.Errorf("expected client timeout, got %v", err)
 	}
@@ -222,7 +221,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 		cancel()
 		close(donec)
 	}()
-	_, err = io.Copy(ioutil.Discard, rc1)
+	_, err = io.Copy(io.Discard, rc1)
 	if err != nil && err != context.Canceled {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
@@ -239,7 +238,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 
 	// 300ms left and expect timeout while snapshot reading is in progress
 	time.Sleep(700 * time.Millisecond)
-	_, err = io.Copy(ioutil.Discard, rc2)
+	_, err = io.Copy(io.Discard, rc2)
 	if err != nil && !IsClientTimeout(err) {
 		t.Errorf("expected client timeout, got %v", err)
 	}

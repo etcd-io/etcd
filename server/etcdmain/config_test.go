@@ -16,7 +16,6 @@ package etcdmain
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"reflect"
@@ -494,7 +493,7 @@ func TestConfigFileElectionTimeout(t *testing.T) {
 }
 
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
-	tmpfile, err := ioutil.TempFile("", "servercfg")
+	tmpfile, err := os.CreateTemp("", "servercfg")
 	if err != nil {
 		t.Fatal(err)
 	}

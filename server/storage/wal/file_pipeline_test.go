@@ -15,7 +15,6 @@
 package wal
 
 import (
-	"io/ioutil"
 	"math"
 	"os"
 	"testing"
@@ -24,7 +23,7 @@ import (
 )
 
 func TestFilePipeline(t *testing.T) {
-	tdir, err := ioutil.TempDir(os.TempDir(), "wal-test")
+	tdir, err := os.MkdirTemp(os.TempDir(), "wal-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +40,7 @@ func TestFilePipeline(t *testing.T) {
 }
 
 func TestFilePipelineFailPreallocate(t *testing.T) {
-	tdir, err := ioutil.TempDir(os.TempDir(), "wal-test")
+	tdir, err := os.MkdirTemp(os.TempDir(), "wal-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +56,7 @@ func TestFilePipelineFailPreallocate(t *testing.T) {
 }
 
 func TestFilePipelineFailLockFile(t *testing.T) {
-	tdir, err := ioutil.TempDir(os.TempDir(), "wal-test")
+	tdir, err := os.MkdirTemp(os.TempDir(), "wal-test")
 	if err != nil {
 		t.Fatal(err)
 	}

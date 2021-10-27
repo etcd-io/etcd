@@ -19,7 +19,6 @@ import (
 	"errors"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"testing"
 
@@ -53,7 +52,7 @@ func TestReadRecord(t *testing.T) {
 	rec := &walpb.Record{}
 	for i, tt := range tests {
 		buf := bytes.NewBuffer(tt.data)
-		decoder := newDecoder(ioutil.NopCloser(buf))
+		decoder := newDecoder(io.NopCloser(buf))
 		e := decoder.decode(rec)
 		if !reflect.DeepEqual(rec, tt.wr) {
 			t.Errorf("#%d: block = %v, want %v", i, rec, tt.wr)
@@ -73,7 +72,7 @@ func TestWriteRecord(t *testing.T) {
 	e := newEncoder(buf, 0, 0)
 	e.encode(&walpb.Record{Type: typ, Data: d})
 	e.flush()
-	decoder := newDecoder(ioutil.NopCloser(buf))
+	decoder := newDecoder(io.NopCloser(buf))
 	err := decoder.decode(b)
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)

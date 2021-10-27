@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -127,7 +126,7 @@ func TestHealthHandler(t *testing.T) {
 
 func parseHealthOutput(body io.Reader) (Health, error) {
 	obj := Health{}
-	d, derr := ioutil.ReadAll(body)
+	d, derr := io.ReadAll(body)
 	if derr != nil {
 		return obj, derr
 	}

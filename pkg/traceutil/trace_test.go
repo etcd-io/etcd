@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -215,7 +214,7 @@ func TestLog(t *testing.T) {
 			}
 			tt.trace.lg = lg
 			tt.trace.Log()
-			data, err := ioutil.ReadFile(logPath)
+			data, err := os.ReadFile(logPath)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -293,7 +292,7 @@ func TestLogIfLong(t *testing.T) {
 
 			tt.trace.lg = lg
 			tt.trace.LogIfLong(tt.threshold)
-			data, err := ioutil.ReadFile(logPath)
+			data, err := os.ReadFile(logPath)
 			if err != nil {
 				t.Fatal(err)
 			}

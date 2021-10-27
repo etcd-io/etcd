@@ -19,7 +19,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -117,7 +117,7 @@ func endpointMemoryMetrics(host string, scfg *secureCfg) float64 {
 		fmt.Println(fmt.Sprintf("fetch error: %v", err))
 		return 0.0
 	}
-	byts, readerr := ioutil.ReadAll(resp.Body)
+	byts, readerr := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if readerr != nil {
 		fmt.Println(fmt.Sprintf("fetch error: reading %s: %v", url, readerr))

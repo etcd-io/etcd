@@ -17,7 +17,6 @@ package wal
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -44,7 +43,7 @@ func TestRepairTruncate(t *testing.T) {
 }
 
 func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expectedEnts int) {
-	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	p, err := os.MkdirTemp(os.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +183,7 @@ func TestRepairWriteTearMiddle(t *testing.T) {
 }
 
 func TestRepairFailDeleteDir(t *testing.T) {
-	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	p, err := os.MkdirTemp(os.TempDir(), "waltest")
 	if err != nil {
 		t.Fatal(err)
 	}

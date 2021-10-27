@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -654,7 +654,7 @@ func assertRequest(got http.Request, wantMethod string, wantURL *url.URL, wantHe
 		if wantBody == nil {
 			return fmt.Errorf("want.Body=%v got.Body=%s", wantBody, got.Body)
 		}
-		gotBytes, err := ioutil.ReadAll(got.Body)
+		gotBytes, err := io.ReadAll(got.Body)
 		if err != nil {
 			return err
 		}

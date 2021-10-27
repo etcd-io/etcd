@@ -21,10 +21,10 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -456,7 +456,7 @@ func unauthedRequest() *http.Request {
 }
 
 func tlsAuthedRequest(req *http.Request, certname string) *http.Request {
-	bytes, err := ioutil.ReadFile(fmt.Sprintf("testdata/%s.pem", certname))
+	bytes, err := os.ReadFile(fmt.Sprintf("testdata/%s.pem", certname))
 	if err != nil {
 		panic(err)
 	}

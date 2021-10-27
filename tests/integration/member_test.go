@@ -17,7 +17,7 @@ package integration
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
@@ -72,7 +72,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	c := integration.NewCluster(t, size)
 	m := c.Members[0].Clone(t)
 	var err error
-	m.DataDir, err = ioutil.TempDir(t.TempDir(), "etcd")
+	m.DataDir, err = os.MkdirTemp(t.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
 	}

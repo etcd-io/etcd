@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,7 +50,7 @@ func TestNewRaftLogger(t *testing.T) {
 	}
 
 	gl.Info("etcd-logutil-1")
-	data, err := ioutil.ReadFile(logPath)
+	data, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +59,7 @@ func TestNewRaftLogger(t *testing.T) {
 	}
 
 	gl.Warning("etcd-logutil-2")
-	data, err = ioutil.ReadFile(logPath)
+	data, err = os.ReadFile(logPath)
 	if err != nil {
 		t.Fatal(err)
 	}

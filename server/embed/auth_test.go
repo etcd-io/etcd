@@ -16,7 +16,6 @@ package embed
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -24,7 +23,7 @@ import (
 )
 
 func TestEnableAuth(t *testing.T) {
-	tdir, err := ioutil.TempDir(os.TempDir(), "auth-test")
+	tdir, err := os.MkdirTemp(os.TempDir(), "auth-test")
 	if err != nil {
 		t.Fatal(err)
 	}

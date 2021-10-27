@@ -17,7 +17,6 @@ package lease
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -600,7 +599,7 @@ func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
-	tmpPath, err := ioutil.TempDir("", "lease")
+	tmpPath, err := os.MkdirTemp("", "lease")
 	if err != nil {
 		t.Fatalf("failed to create tmpdir (%v)", err)
 	}

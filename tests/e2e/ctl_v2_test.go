@@ -16,7 +16,6 @@ package e2e
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -229,7 +228,7 @@ func TestUtlCtlV2Backup(t *testing.T) {
 func testUtlCtlV2Backup(t *testing.T, snapCount int, v3 bool, utl bool) {
 	BeforeTestV2(t)
 
-	backupDir, err := ioutil.TempDir(t.TempDir(), "testbackup0.etcd")
+	backupDir, err := os.MkdirTemp(t.TempDir(), "testbackup0.etcd")
 	if err != nil {
 		t.Fatal(err)
 	}

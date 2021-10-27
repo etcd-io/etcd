@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -74,7 +73,7 @@ func timeBridge(b *bridgeConn) {
 
 func blackhole(b *bridgeConn) {
 	log.Println("blackholing connection", b.String())
-	io.Copy(ioutil.Discard, b.in)
+	io.Copy(io.Discard, b.in)
 	b.Close()
 }
 

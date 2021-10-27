@@ -17,7 +17,6 @@ package snap
 import (
 	"fmt"
 	"hash/crc32"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -94,7 +93,7 @@ func TestFailback(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	large := fmt.Sprintf("%016x-%016x-%016x.snap", 0xFFFF, 0xFFFF, 0xFFFF)
-	err = ioutil.WriteFile(filepath.Join(dir, large), []byte("bad data"), 0666)
+	err = os.WriteFile(filepath.Join(dir, large), []byte("bad data"), 0666)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +233,7 @@ func TestEmptySnapshot(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	err = ioutil.WriteFile(filepath.Join(dir, "1.snap"), []byte(""), 0x700)
+	err = os.WriteFile(filepath.Join(dir, "1.snap"), []byte(""), 0x700)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +254,7 @@ func TestAllSnapshotBroken(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	err = ioutil.WriteFile(filepath.Join(dir, "1.snap"), []byte("bad"), 0x700)
+	err = os.WriteFile(filepath.Join(dir, "1.snap"), []byte("bad"), 0x700)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +277,7 @@ func TestReleaseSnapDBs(t *testing.T) {
 	snapIndices := []uint64{100, 200, 300, 400}
 	for _, index := range snapIndices {
 		filename := filepath.Join(dir, fmt.Sprintf("%016x.snap.db", index))
-		if err := ioutil.WriteFile(filename, []byte("snap file\n"), 0644); err != nil {
+		if err := os.WriteFile(filename, []byte("snap file\n"), 0644); err != nil {
 			t.Fatal(err)
 		}
 	}
