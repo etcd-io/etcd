@@ -282,6 +282,85 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 	}
 }
 
+// TestEtcdPeerURIAuth checks that the inter peer auth based on SAN URI validation is working correctly.
+func TestEtcdPeerURIAuth(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	peers, tmpdirs := make([]string, 3), make([]string, 3)
+	for i := range peers {
+		peers[i] = fmt.Sprintf("e%d=https://127.0.0.1:%d", i, e2e.EtcdProcessBasePort+i)
+		d, err := ioutil.TempDir("", fmt.Sprintf("e%d.etcd", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tmpdirs[i] = d
+	}
+	ic := strings.Join(peers, ",")
+
+	procs := make([]*expect.ExpectProcess, len(peers))
+	defer func() {
+		for i := range procs {
+			if procs[i] != nil {
+				procs[i].Stop()
+			}
+			os.RemoveAll(tmpdirs[i])
+		}
+	}()
+
+	// node 0 and 1 have a cert with the correct certificate name, node 2 doesn't
+	for i := range procs {
+		commonArgs := []string{
+			e2e.BinDir + "/etcd",
+			"--name", fmt.Sprintf("e%d", i),
+			"--listen-client-urls", "http://0.0.0.0:0",
+			"--data-dir", tmpdirs[i],
+			"--advertise-client-urls", "http://0.0.0.0:0",
+			"--listen-peer-urls", fmt.Sprintf("https://127.0.0.1:%d,https://127.0.0.1:%d", e2e.EtcdProcessBasePort+i, e2e.EtcdProcessBasePort+len(peers)+i),
+			"--initial-advertise-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", e2e.EtcdProcessBasePort+i),
+			"--initial-cluster", ic,
+		}
+
+		var args []string
+		if i <= 1 {
+			args = []string{
+				"--peer-cert-file", e2e.CertPath4,
+				"--peer-key-file", e2e.PrivateKeyPath4,
+				"--peer-trusted-ca-file", e2e.CaPath,
+				"--peer-client-cert-auth",
+				"--peer-cert-allowed-uri", "spiffe://example4.com/service",
+			}
+		} else {
+			args = []string{
+				"--peer-cert-file", e2e.CertPath,
+				"--peer-key-file", e2e.PrivateKeyPath,
+				"--peer-trusted-ca-file", e2e.CaPath,
+				"--peer-client-cert-auth",
+				"--peer-cert-allowed-uri", "spiffe://example4.com/service",
+			}
+		}
+
+		commonArgs = append(commonArgs, args...)
+
+		p, err := e2e.SpawnCmd(commonArgs, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		procs[i] = p
+	}
+
+	for i, p := range procs {
+		var expect []string
+		if i <= 1 {
+			expect = e2e.EtcdServerReadyLines
+		} else {
+			expect = []string{"client certificate authentication failed"}
+		}
+		if err := e2e.WaitReadyExpectProc(p, expect); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestGrpcproxyAndCommonName(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
