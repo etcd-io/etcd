@@ -62,6 +62,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	}
 
 	cli.SetEndpoints(eps...)
+	time.Sleep(1 * time.Second) // give enough time for the operation
 	orderingKv := ordering.NewKV(cli.KV, ordering.NewOrderViolationSwitchEndpointClosure(cli))
 	// set prevRev to the second member's revision of "foo" such that
 	// the revision is higher than the third member's revision of "foo"
@@ -72,6 +73,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 
 	t.Logf("Reconfigure client to speak only to the 'partitioned' member")
 	cli.SetEndpoints(clus.Members[2].GRPCURL())
+	time.Sleep(1 * time.Second) // give enough time for the operation
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != ordering.ErrNoGreaterRev {
 		t.Fatal("While speaking to partitioned leader, we should get ErrNoGreaterRev error")
@@ -140,6 +142,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	}
 	clus.Members[3].WaitStarted(t)
 	cli.SetEndpoints(clus.Members[3].GRPCURL())
+	time.Sleep(1 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != ordering.ErrNoGreaterRev {
