@@ -1,0 +1,21 @@
+{
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "O": "etcd",
+      "OU": "etcd Security",
+      "L": "San Francisco",
+      "ST": "California",
+      "C": "USA"
+    }
+  ],
+  "CN": "example4.com",
+  "hosts": [
+    "127.0.0.1",
+    "localhost",
+    "spiffe://example4.com/service"
+  ]
+}
