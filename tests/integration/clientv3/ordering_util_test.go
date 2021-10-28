@@ -72,8 +72,13 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	}
 
 	t.Logf("Reconfigure client to speak only to the 'partitioned' member")
-	cli.SetEndpoints(clus.Members[2].GRPCURL())
-	time.Sleep(1 * time.Second) // give enough time for the operation
+	cfg = clientv3.Config{Endpoints: []string{clus.Members[2].GRPCURL()}}
+	cliNew, err := integration2.NewClient(t, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cliNew.Close()
+	orderingKv.KV = cliNew
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != ordering.ErrNoGreaterRev {
 		t.Fatal("While speaking to partitioned leader, we should get ErrNoGreaterRev error")
