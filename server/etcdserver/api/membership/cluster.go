@@ -271,12 +271,15 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	if c.be != nil {
 		c.downgradeInfo = c.be.DowngradeInfoFromBackend()
 	}
-	d := &serverversion.DowngradeInfo{Enabled: false}
-	if c.downgradeInfo != nil {
-		d = &serverversion.DowngradeInfo{Enabled: c.downgradeInfo.Enabled, TargetVersion: c.downgradeInfo.TargetVersion}
-	}
 	sv := semver.Must(semver.NewVersion(version.Version))
-	serverversion.MustDetectDowngrade(c.lg, sv, c.version, d)
+	if c.downgradeInfo != nil && c.downgradeInfo.Enabled {
+		c.lg.Info(
+			"cluster is downgrading to target version",
+			zap.String("target-cluster-version", c.downgradeInfo.TargetVersion),
+			zap.String("current-server-version", sv.String()),
+		)
+	}
+	serverversion.MustDetectDowngrade(c.lg, sv, c.version)
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
@@ -548,7 +551,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	oldVer := c.version
 	c.version = ver
 	sv := semver.Must(semver.NewVersion(version.Version))
-	serverversion.MustDetectDowngrade(c.lg, sv, c.version, c.downgradeInfo)
+	serverversion.MustDetectDowngrade(c.lg, sv, c.version)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}
@@ -759,14 +762,6 @@ func (c *RaftCluster) SetDowngradeInfo(d *serverversion.DowngradeInfo, shouldApp
 	}
 
 	c.downgradeInfo = d
-
-	if d.Enabled {
-		c.lg.Info(
-			"The server is ready to downgrade",
-			zap.String("target-version", d.TargetVersion),
-			zap.String("server-version", version.Version),
-		)
-	}
 }
 
 // IsMemberExist returns if the member with the given id exists in cluster.

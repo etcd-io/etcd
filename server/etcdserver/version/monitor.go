@@ -39,10 +39,7 @@ type Server interface {
 	DowngradeCancel(ctx context.Context) error
 
 	GetStorageVersion() *semver.Version
-	UpdateStorageVersion(semver.Version)
-
-	Lock()
-	Unlock()
+	UpdateStorageVersion(semver.Version) error
 }
 
 func NewMonitor(lg *zap.Logger, storage Server) *Monitor {
@@ -61,18 +58,35 @@ func (m *Monitor) UpdateClusterVersionIfNeeded() {
 	}
 }
 
-// decideClusterVersion decides the cluster version based on the members versions if all members agree on a higher one.
+// decideClusterVersion decides whether to change cluster version and its next value.
+// New cluster version is based on the members versions server and whether cluster is downgrading.
+// Returns nil if cluster version should be left unchanged.
 func (m *Monitor) decideClusterVersion() *semver.Version {
 	clusterVersion := m.s.GetClusterVersion()
-	membersMinimalVersion := m.membersMinimalVersion()
+	minimalServerVersion := m.membersMinimalServerVersion()
 	if clusterVersion == nil {
-		if membersMinimalVersion != nil {
-			return membersMinimalVersion
+		if minimalServerVersion != nil {
+			return minimalServerVersion
 		}
 		return semver.New(version.MinClusterVersion)
 	}
-	if membersMinimalVersion != nil && clusterVersion.LessThan(*membersMinimalVersion) && IsValidVersionChange(clusterVersion, membersMinimalVersion) {
-		return membersMinimalVersion
+	if minimalServerVersion == nil {
+		return nil
+	}
+	downgrade := m.s.GetDowngradeInfo()
+	if downgrade != nil && downgrade.Enabled {
+		if IsValidVersionChange(clusterVersion, downgrade.GetTargetVersion()) && IsValidVersionChange(minimalServerVersion, downgrade.GetTargetVersion()) {
+			return downgrade.GetTargetVersion()
+		}
+		m.lg.Error("Cannot downgrade cluster version, version change is not valid",
+			zap.String("downgrade-version", downgrade.TargetVersion),
+			zap.String("cluster-version", clusterVersion.String()),
+			zap.String("minimal-server-version", minimalServerVersion.String()),
+		)
+		return nil
+	}
+	if clusterVersion.LessThan(*minimalServerVersion) && IsValidVersionChange(clusterVersion, minimalServerVersion) {
+		return minimalServerVersion
 	}
 	return nil
 }
@@ -83,15 +97,25 @@ func (m *Monitor) UpdateStorageVersionIfNeeded() {
 	if cv == nil {
 		return
 	}
-	m.s.Lock()
-	defer m.s.Unlock()
 	sv := m.s.GetStorageVersion()
 
 	if sv == nil || sv.Major != cv.Major || sv.Minor != cv.Minor {
 		if sv != nil {
 			m.lg.Info("storage version differs from storage version.", zap.String("cluster-version", cv.String()), zap.String("storage-version", sv.String()))
 		}
-		m.s.UpdateStorageVersion(semver.Version{Major: cv.Major, Minor: cv.Minor})
+		err := m.s.UpdateStorageVersion(semver.Version{Major: cv.Major, Minor: cv.Minor})
+		if err != nil {
+			m.lg.Error("failed update storage version", zap.String("cluster-version", cv.String()), zap.Error(err))
+			return
+		}
+		d := m.s.GetDowngradeInfo()
+		if d != nil && d.Enabled {
+			m.lg.Info(
+				"The server is ready to downgrade",
+				zap.String("target-version", d.TargetVersion),
+				zap.String("server-version", version.Version),
+			)
+		}
 	}
 }
 
@@ -112,11 +136,11 @@ func (m *Monitor) CancelDowngradeIfNeeded() {
 	}
 }
 
-// membersMinimalVersion returns the min server version in the map, or nil if the min
+// membersMinimalServerVersion returns the min server version in the map, or nil if the min
 // version in unknown.
 // It prints out log if there is a member with a higher version than the
 // local version.
-func (m *Monitor) membersMinimalVersion() *semver.Version {
+func (m *Monitor) membersMinimalServerVersion() *semver.Version {
 	vers := m.s.GetMembersVersions()
 	var minV *semver.Version
 	lv := semver.Must(semver.NewVersion(version.Version))
@@ -156,11 +180,12 @@ func (m *Monitor) membersMinimalVersion() *semver.Version {
 // It can be used to decide the whether the cluster finishes downgrading to target version.
 func (m *Monitor) versionsMatchTarget(targetVersion *semver.Version) bool {
 	vers := m.s.GetMembersVersions()
+	targetVersion = &semver.Version{Major: targetVersion.Major, Minor: targetVersion.Minor}
 	for mid, ver := range vers {
 		if ver == nil {
 			return false
 		}
-		v, err := semver.NewVersion(ver.Cluster)
+		v, err := semver.NewVersion(ver.Server)
 		if err != nil {
 			m.lg.Warn(
 				"failed to parse server version of remote member",
@@ -170,6 +195,7 @@ func (m *Monitor) versionsMatchTarget(targetVersion *semver.Version) bool {
 			)
 			return false
 		}
+		v = &semver.Version{Major: v.Major, Minor: v.Minor}
 		if !targetVersion.Equal(*v) {
 			m.lg.Warn("remotes server has mismatching etcd version",
 				zap.String("remote-member-id", mid),

@@ -28,14 +28,29 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
-// MinimalEtcdVersion returns minimal etcd able to interpret provided WAL log,
-// determined by looking at entries since the last snapshot and returning the highest
-// etcd version annotation from used messages, fields, enums and their values.
-func (w *WAL) MinimalEtcdVersion() *semver.Version {
+// ReadWALVersion reads remaining entries from opened WAL and returns struct
+// that implements schema.WAL interface.
+func ReadWALVersion(w *WAL) (*walVersion, error) {
 	_, _, ents, err := w.ReadAll()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+	return &walVersion{entries: ents}, nil
+}
+
+type walVersion struct {
+	entries []raftpb.Entry
+}
+
+// MinimalEtcdVersion returns minimal etcd able to interpret entries from  WAL log,
+func (w *walVersion) MinimalEtcdVersion() *semver.Version {
+	return MinimalEtcdVersion(w.entries)
+}
+
+// MinimalEtcdVersion returns minimal etcd able to interpret entries from  WAL log,
+// determined by looking at entries since the last snapshot and returning the highest
+// etcd version annotation from used messages, fields, enums and their values.
+func MinimalEtcdVersion(ents []raftpb.Entry) *semver.Version {
 	var maxVer *semver.Version
 	for _, ent := range ents {
 		maxVer = maxVersion(maxVer, etcdVersionFromEntry(ent))
@@ -51,6 +66,7 @@ func etcdVersionFromEntry(ent raftpb.Entry) *semver.Version {
 
 func etcdVersionFromData(entryType raftpb.EntryType, data []byte) *semver.Version {
 	var msg protoreflect.Message
+	var ver *semver.Version
 	switch entryType {
 	case raftpb.EntryNormal:
 		var raftReq etcdserverpb.InternalRaftRequest
@@ -59,6 +75,12 @@ func etcdVersionFromData(entryType raftpb.EntryType, data []byte) *semver.Versio
 			return nil
 		}
 		msg = proto.MessageReflect(&raftReq)
+		if raftReq.ClusterVersionSet != nil {
+			ver, err = semver.NewVersion(raftReq.ClusterVersionSet.Ver)
+			if err != nil {
+				panic(err)
+			}
+		}
 	case raftpb.EntryConfChange:
 		var confChange raftpb.ConfChange
 		err := pbutil.Unmarshaler(&confChange).Unmarshal(data)
@@ -76,7 +98,7 @@ func etcdVersionFromData(entryType raftpb.EntryType, data []byte) *semver.Versio
 	default:
 		panic("unhandled")
 	}
-	return etcdVersionFromMessage(msg)
+	return maxVersion(etcdVersionFromMessage(msg), ver)
 }
 
 func etcdVersionFromMessage(m protoreflect.Message) *semver.Version {

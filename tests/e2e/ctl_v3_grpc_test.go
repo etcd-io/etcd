@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -105,7 +104,7 @@ func TestAuthority(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				executeWithTimeout(t, 5*time.Second, func() {
+				e2e.ExecuteWithTimeout(t, 5*time.Second, func() {
 					assertAuthority(t, fmt.Sprintf(tc.expectAuthorityPattern, 20000), epc)
 				})
 			})
@@ -152,20 +151,6 @@ func firstMatch(t *testing.T, expectLine string, logs ...e2e.LogsExpect) string 
 		}(logs[i])
 	}
 	return <-match
-}
-
-func executeWithTimeout(t *testing.T, timeout time.Duration, f func()) {
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		f()
-	}()
-
-	select {
-	case <-time.After(timeout):
-		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
-	case <-donec:
-	}
 }
 
 type etcdctlV3 struct {

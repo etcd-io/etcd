@@ -26,6 +26,8 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 )
 
 // NewMigrateCommand prints out the version of etcd.
@@ -90,12 +92,24 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	dbPath := datadir.ToBackendFileName(o.dataDir)
 	c.be = backend.NewDefaultBackend(dbPath)
 
+	walPath := datadir.ToWalDir(o.dataDir)
+	w, err := wal.OpenForRead(GetLogger(), walPath, walpb.Snapshot{})
+	if err != nil {
+		return nil, fmt.Errorf(`failed to open wal: %v`, err)
+	}
+	defer w.Close()
+	c.walVersion, err = wal.ReadWALVersion(w)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to read wal: %v`, err)
+	}
+
 	return c, nil
 }
 
 type migrateConfig struct {
 	be            backend.Backend
 	targetVersion *semver.Version
+	walVersion    schema.WALVersion
 	force         bool
 }
 
@@ -112,7 +126,7 @@ func migrateCommandFunc(c *migrateConfig) error {
 		lg.Info("storage version up-to-date", zap.String("storage-version", storageVersionToString(&current)))
 		return nil
 	}
-	err = schema.Migrate(lg, tx, *c.targetVersion)
+	err = schema.Migrate(lg, tx, c.walVersion, *c.targetVersion)
 	if err != nil {
 		if !c.force {
 			return err

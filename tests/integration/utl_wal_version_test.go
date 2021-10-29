@@ -64,6 +64,9 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 		panic(err)
 	}
 	defer w.Close()
-	ver := w.MinimalEtcdVersion()
-	assert.Equal(t, &semver.Version{Major: 3, Minor: 5}, ver)
+	walVersion, err := wal.ReadWALVersion(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, &semver.Version{Major: 3, Minor: 6}, walVersion.MinimalEtcdVersion())
 }

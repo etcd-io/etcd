@@ -18,34 +18,29 @@ import (
 	"context"
 
 	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/api/v3/version"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 // serverVersionAdapter implements Server interface needed by serverversion.Monitor
 type serverVersionAdapter struct {
 	*EtcdServer
-	tx backend.BatchTx
 }
 
 func newServerVersionAdapter(s *EtcdServer) *serverVersionAdapter {
 	return &serverVersionAdapter{
 		EtcdServer: s,
-		tx:         nil,
 	}
 }
 
 var _ serverversion.Server = (*serverVersionAdapter)(nil)
 
 func (s *serverVersionAdapter) UpdateClusterVersion(version string) {
-	// TODO switch to updateClusterVersionV3 in 3.6
-	s.GoAttach(func() { s.updateClusterVersionV2(version) })
+	s.GoAttach(func() { s.updateClusterVersionV3(version) })
 }
 
 func (s *serverVersionAdapter) LinearizableReadNotify(ctx context.Context) error {
@@ -77,34 +72,19 @@ func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions
 }
 
 func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
-	if s.tx == nil {
-		s.Lock()
-		defer s.Unlock()
-	}
-	v, err := schema.UnsafeDetectSchemaVersion(s.lg, s.tx)
+	tx := s.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	v, err := schema.UnsafeDetectSchemaVersion(s.lg, tx)
 	if err != nil {
 		return nil
 	}
 	return &v
 }
 
-func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) {
-	if s.tx == nil {
-		s.Lock()
-		defer s.Unlock()
-	}
-	err := schema.UnsafeMigrate(s.lg, s.tx, target)
-	if err != nil {
-		s.lg.Error("failed migrating storage schema", zap.String("storage-version", target.String()), zap.Error(err))
-	}
-}
-
-func (s *serverVersionAdapter) Lock() {
-	s.tx = s.be.BatchTx()
-	s.tx.Lock()
-}
-
-func (s *serverVersionAdapter) Unlock() {
-	s.tx.Unlock()
-	s.tx = nil
+func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error {
+	tx := s.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	return schema.UnsafeMigrate(s.lg, tx, s.r.storage, target)
 }

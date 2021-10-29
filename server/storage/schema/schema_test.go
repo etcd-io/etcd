@@ -15,15 +15,18 @@
 package schema
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	waltesting "go.etcd.io/etcd/server/v3/storage/wal/testing"
 	"go.uber.org/zap"
 )
 
@@ -75,7 +78,7 @@ func TestValidate(t *testing.T) {
 			name:           `V3.7 schema is unknown and should return error`,
 			version:        V3_7,
 			expectError:    true,
-			expectErrorMsg: "downgrades are not yet supported",
+			expectErrorMsg: `version "3.7.0" is not supported`,
 		},
 	}
 	for _, tc := range tcs {
@@ -103,6 +106,7 @@ func TestMigrate(t *testing.T) {
 		// Overrides which keys should be set (default based on version)
 		overrideKeys  func(tx backend.BatchTx)
 		targetVersion semver.Version
+		walEntries    []etcdserverpb.InternalRaftRequest
 
 		expectVersion  *semver.Version
 		expectError    bool
@@ -168,33 +172,52 @@ func TestMigrate(t *testing.T) {
 			targetVersion:  V3_6,
 			expectVersion:  &V3_7,
 			expectError:    true,
-			expectErrorMsg: `cannot create migration plan: downgrades are not yet supported`,
+			expectErrorMsg: `cannot create migration plan: version "3.7.0" is not supported`,
 		},
 		{
-			name:           "Downgrading v3.6 to v3.5 is not supported",
-			version:        V3_6,
-			targetVersion:  V3_5,
+			name:          "Downgrading v3.6 to v3.5 works as there are no v3.6 wal entries",
+			version:       V3_6,
+			targetVersion: V3_5,
+			walEntries: []etcdserverpb.InternalRaftRequest{
+				{Range: &etcdserverpb.RangeRequest{Key: []byte("\x00"), RangeEnd: []byte("\xff")}},
+			},
+			expectVersion: nil,
+		},
+		{
+			name:          "Downgrading v3.6 to v3.5 fails if there are newer WAL entries",
+			version:       V3_6,
+			targetVersion: V3_5,
+			walEntries: []etcdserverpb.InternalRaftRequest{
+				{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{Ver: "3.6.0"}},
+			},
 			expectVersion:  &V3_6,
 			expectError:    true,
-			expectErrorMsg: `cannot create migration plan: downgrades are not yet supported`,
+			expectErrorMsg: "cannot downgrade storage, WAL contains newer entries",
 		},
 		{
-			name:           "Downgrading v3.5 to v3.4 is not supported",
+			name:           "Downgrading v3.5 to v3.4 is not supported as schema was introduced in v3.6",
 			version:        V3_5,
 			targetVersion:  V3_4,
 			expectVersion:  nil,
 			expectError:    true,
-			expectErrorMsg: `cannot create migration plan: downgrades are not yet supported`,
+			expectErrorMsg: `cannot create migration plan: version "3.5.0" is not supported`,
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			lg := zap.NewNop()
 			dataPath := setupBackendData(t, tc.version, tc.overrideKeys)
+			w, _ := waltesting.NewTmpWAL(t, tc.walEntries)
+			defer w.Close()
+			walVersion, err := wal.ReadWALVersion(w)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			b := backend.NewDefaultBackend(dataPath)
 			defer b.Close()
-			err := Migrate(lg, b.BatchTx(), tc.targetVersion)
+
+			err = Migrate(lg, b.BatchTx(), walVersion, tc.targetVersion)
 			if (err != nil) != tc.expectError {
 				t.Errorf("Migrate(lg, tx, %q) = %+v, expected error: %v", tc.targetVersion, err, tc.expectError)
 			}
@@ -241,17 +264,29 @@ func TestMigrateIsReversible(t *testing.T) {
 			tx.Lock()
 			defer tx.Unlock()
 			assertBucketState(t, tx, Meta, tc.state)
+			w, walPath := waltesting.NewTmpWAL(t, nil)
+			walVersion, err := wal.ReadWALVersion(w)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			// Upgrade to current version
 			ver := localBinaryVersion()
-			err := testUnsafeMigrate(lg, tx, ver)
+			err = UnsafeMigrate(lg, tx, walVersion, ver)
 			if err != nil {
 				t.Errorf("Migrate(lg, tx, %q) returned error %+v", ver, err)
 			}
 			assert.Equal(t, &ver, UnsafeReadStorageVersion(tx))
 
 			// Downgrade back to initial version
-			err = testUnsafeMigrate(lg, tx, tc.initialVersion)
+			w.Close()
+			w = waltesting.Reopen(t, walPath)
+			defer w.Close()
+			walVersion, err = wal.ReadWALVersion(w)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = UnsafeMigrate(lg, tx, walVersion, tc.initialVersion)
 			if err != nil {
 				t.Errorf("Migrate(lg, tx, %q) returned error %+v", tc.initialVersion, err)
 			}
@@ -260,20 +295,6 @@ func TestMigrateIsReversible(t *testing.T) {
 			assertBucketState(t, tx, Meta, tc.state)
 		})
 	}
-}
-
-// Does the same as UnsafeMigrate but skips version checks
-// TODO(serathius): Use UnsafeMigrate when downgrades are implemented
-func testUnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, target semver.Version) error {
-	current, err := UnsafeDetectSchemaVersion(lg, tx)
-	if err != nil {
-		return fmt.Errorf("cannot determine storage version: %w", err)
-	}
-	plan, err := buildPlan(lg, current, target)
-	if err != nil {
-		return fmt.Errorf("cannot create migration plan: %w", err)
-	}
-	return plan.unsafeExecute(lg, tx)
 }
 
 func setupBackendData(t *testing.T, version semver.Version, overrideKeys func(tx backend.BatchTx)) string {
