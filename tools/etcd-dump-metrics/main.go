@@ -18,7 +18,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
@@ -59,7 +58,7 @@ func main() {
 			ver := *downloadVer
 
 			// download release binary to temporary directory
-			d, err := ioutil.TempDir(os.TempDir(), ver)
+			d, err := os.MkdirTemp(os.TempDir(), ver)
 			if err != nil {
 				panic(err)
 			}

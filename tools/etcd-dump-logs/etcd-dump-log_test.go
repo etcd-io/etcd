@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -48,7 +47,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 	decoder_correctoutputformat := filepath.Join(binDir, "/testdecoder/decoder_correctoutputformat.sh")
 	decoder_wrongoutputformat := filepath.Join(binDir, "/testdecoder/decoder_wrongoutputformat.sh")
 
-	p, err := ioutil.TempDir(os.TempDir(), "etcddumplogstest")
+	p, err := os.MkdirTemp(os.TempDir(), "etcddumplogstest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +115,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			expected, err := ioutil.ReadFile(path.Join(binDir, argtest.fileExpected))
+			expected, err := os.ReadFile(path.Join(binDir, argtest.fileExpected))
 			if err != nil {
 				t.Fatal(err)
 			}

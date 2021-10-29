@@ -17,7 +17,6 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
@@ -311,7 +310,7 @@ func (srv *Server) saveTLSAssets() error {
 		if srv.Member.PeerCertData == "" {
 			return fmt.Errorf("got empty data for %q", srv.Member.PeerCertPath)
 		}
-		if err := ioutil.WriteFile(srv.Member.PeerCertPath, []byte(srv.Member.PeerCertData), 0644); err != nil {
+		if err := os.WriteFile(srv.Member.PeerCertPath, []byte(srv.Member.PeerCertData), 0644); err != nil {
 			return err
 		}
 	}
@@ -319,7 +318,7 @@ func (srv *Server) saveTLSAssets() error {
 		if srv.Member.PeerKeyData == "" {
 			return fmt.Errorf("got empty data for %q", srv.Member.PeerKeyPath)
 		}
-		if err := ioutil.WriteFile(srv.Member.PeerKeyPath, []byte(srv.Member.PeerKeyData), 0644); err != nil {
+		if err := os.WriteFile(srv.Member.PeerKeyPath, []byte(srv.Member.PeerKeyData), 0644); err != nil {
 			return err
 		}
 	}
@@ -327,7 +326,7 @@ func (srv *Server) saveTLSAssets() error {
 		if srv.Member.PeerTrustedCAData == "" {
 			return fmt.Errorf("got empty data for %q", srv.Member.PeerTrustedCAPath)
 		}
-		if err := ioutil.WriteFile(srv.Member.PeerTrustedCAPath, []byte(srv.Member.PeerTrustedCAData), 0644); err != nil {
+		if err := os.WriteFile(srv.Member.PeerTrustedCAPath, []byte(srv.Member.PeerTrustedCAData), 0644); err != nil {
 			return err
 		}
 	}
@@ -346,7 +345,7 @@ func (srv *Server) saveTLSAssets() error {
 		if srv.Member.ClientCertData == "" {
 			return fmt.Errorf("got empty data for %q", srv.Member.ClientCertPath)
 		}
-		if err := ioutil.WriteFile(srv.Member.ClientCertPath, []byte(srv.Member.ClientCertData), 0644); err != nil {
+		if err := os.WriteFile(srv.Member.ClientCertPath, []byte(srv.Member.ClientCertData), 0644); err != nil {
 			return err
 		}
 	}
@@ -354,7 +353,7 @@ func (srv *Server) saveTLSAssets() error {
 		if srv.Member.ClientKeyData == "" {
 			return fmt.Errorf("got empty data for %q", srv.Member.ClientKeyPath)
 		}
-		if err := ioutil.WriteFile(srv.Member.ClientKeyPath, []byte(srv.Member.ClientKeyData), 0644); err != nil {
+		if err := os.WriteFile(srv.Member.ClientKeyPath, []byte(srv.Member.ClientKeyData), 0644); err != nil {
 			return err
 		}
 	}
@@ -362,7 +361,7 @@ func (srv *Server) saveTLSAssets() error {
 		if srv.Member.ClientTrustedCAData == "" {
 			return fmt.Errorf("got empty data for %q", srv.Member.ClientTrustedCAPath)
 		}
-		if err := ioutil.WriteFile(srv.Member.ClientTrustedCAPath, []byte(srv.Member.ClientTrustedCAData), 0644); err != nil {
+		if err := os.WriteFile(srv.Member.ClientTrustedCAPath, []byte(srv.Member.ClientTrustedCAData), 0644); err != nil {
 			return err
 		}
 	}
@@ -396,7 +395,7 @@ func (srv *Server) loadAutoTLSAssets() error {
 		if !fileutil.Exist(certPath) {
 			return fmt.Errorf("cannot find %q", certPath)
 		}
-		certData, err := ioutil.ReadFile(certPath)
+		certData, err := os.ReadFile(certPath)
 		if err != nil {
 			return fmt.Errorf("cannot read %q (%v)", certPath, err)
 		}
@@ -406,7 +405,7 @@ func (srv *Server) loadAutoTLSAssets() error {
 		if !fileutil.Exist(keyPath) {
 			return fmt.Errorf("cannot find %q", keyPath)
 		}
-		keyData, err := ioutil.ReadFile(keyPath)
+		keyData, err := os.ReadFile(keyPath)
 		if err != nil {
 			return fmt.Errorf("cannot read %q (%v)", keyPath, err)
 		}
@@ -437,7 +436,7 @@ func (srv *Server) loadAutoTLSAssets() error {
 		if !fileutil.Exist(certPath) {
 			return fmt.Errorf("cannot find %q", certPath)
 		}
-		certData, err := ioutil.ReadFile(certPath)
+		certData, err := os.ReadFile(certPath)
 		if err != nil {
 			return fmt.Errorf("cannot read %q (%v)", certPath, err)
 		}
@@ -447,7 +446,7 @@ func (srv *Server) loadAutoTLSAssets() error {
 		if !fileutil.Exist(keyPath) {
 			return fmt.Errorf("cannot find %q", keyPath)
 		}
-		keyData, err := ioutil.ReadFile(keyPath)
+		keyData, err := os.ReadFile(keyPath)
 		if err != nil {
 			return fmt.Errorf("cannot read %q (%v)", keyPath, err)
 		}

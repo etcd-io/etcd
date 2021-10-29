@@ -17,7 +17,6 @@ package mockserver
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"sync"
@@ -84,7 +83,7 @@ func startMockServersUnix(count int) (ms *MockServers, err error) {
 	dir := os.TempDir()
 	addrs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		f, err := ioutil.TempFile(dir, "etcd-unix-so-")
+		f, err := os.CreateTemp(dir, "etcd-unix-so-")
 		if err != nil {
 			return nil, fmt.Errorf("failed to allocate temp file for unix socket: %v", err)
 		}

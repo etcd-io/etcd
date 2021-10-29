@@ -19,7 +19,6 @@ package etcdmain
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
@@ -429,7 +428,7 @@ func (cfg *config) configFromFile(path string) error {
 	cfg.ec = *eCfg
 
 	// load extra config information
-	b, rerr := ioutil.ReadFile(path)
+	b, rerr := os.ReadFile(path)
 	if rerr != nil {
 		return rerr
 	}

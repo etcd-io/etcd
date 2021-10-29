@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"runtime"
 	"sync"
 	"time"
@@ -154,7 +154,7 @@ func (p *pipeline) post(data []byte) (err error) {
 		return err
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		p.picker.unreachable(u)
 		return err

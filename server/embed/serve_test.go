@@ -16,7 +16,6 @@ package embed
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"testing"
@@ -26,7 +25,7 @@ import (
 
 // TestStartEtcdWrongToken ensures that StartEtcd with wrong configs returns with error.
 func TestStartEtcdWrongToken(t *testing.T) {
-	tdir, err := ioutil.TempDir(t.TempDir(), "token-test")
+	tdir, err := os.MkdirTemp(t.TempDir(), "token-test")
 
 	if err != nil {
 		t.Fatal(err)

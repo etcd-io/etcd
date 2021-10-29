@@ -16,7 +16,6 @@ package fileutil
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -27,7 +26,7 @@ import (
 )
 
 func TestPurgeFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "purgefile")
+	dir, err := os.MkdirTemp("", "purgefile")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +92,7 @@ func TestPurgeFile(t *testing.T) {
 }
 
 func TestPurgeFileHoldingLockFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "purgefile")
+	dir, err := os.MkdirTemp("", "purgefile")
 	if err != nil {
 		t.Fatal(err)
 	}

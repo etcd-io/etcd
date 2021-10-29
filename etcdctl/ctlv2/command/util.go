@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -48,7 +47,7 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 	if i < len(args) {
 		return args[i], nil
 	}
-	bytes, err := ioutil.ReadAll(stdin)
+	bytes, err := io.ReadAll(stdin)
 	if string(bytes) == "" || err != nil {
 		return "", ErrNoAvailSrc
 	}

@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -80,7 +80,7 @@ func getClusterFromRemotePeers(lg *zap.Logger, urls []string, timeout time.Durat
 			}
 			continue
 		}
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			if logerr {
@@ -256,7 +256,7 @@ func getVersion(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (*ve
 			continue
 		}
 		var b []byte
-		b, err = ioutil.ReadAll(resp.Body)
+		b, err = io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			lg.Warn(
@@ -297,7 +297,7 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 		return nil, err
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +374,7 @@ func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTrip
 			continue
 		}
 		var b []byte
-		b, err = ioutil.ReadAll(resp.Body)
+		b, err = io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			lg.Warn(

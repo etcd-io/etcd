@@ -15,7 +15,7 @@
 package httpproxy
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -92,7 +92,7 @@ func TestConfigHandlerGET(t *testing.T) {
 
 	wbody := "{\"endpoints\":[\"http://example1.com\",\"http://example2.com\",\"http://example3.com\"]}\n"
 
-	body, err := ioutil.ReadAll(rr.Body)
+	body, err := io.ReadAll(rr.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

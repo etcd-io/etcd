@@ -17,7 +17,6 @@ package etcdmain
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -283,7 +282,7 @@ func startProxy(cfg *config) error {
 	var peerURLs []string
 	clusterfile := filepath.Join(cfg.ec.Dir, "cluster")
 
-	b, err := ioutil.ReadFile(clusterfile)
+	b, err := os.ReadFile(clusterfile)
 	switch {
 	case err == nil:
 		if cfg.ec.Durl != "" {

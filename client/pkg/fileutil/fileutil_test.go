@@ -17,7 +17,6 @@ package fileutil
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/user"
@@ -31,9 +30,9 @@ import (
 )
 
 func TestIsDirWriteable(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "")
+	tmpdir, err := os.MkdirTemp("", "")
 	if err != nil {
-		t.Fatalf("unexpected ioutil.TempDir error: %v", err)
+		t.Fatalf("unexpected os.MkdirTemp error: %v", err)
 	}
 	defer os.RemoveAll(tmpdir)
 	if err = IsDirWriteable(tmpdir); err != nil {
@@ -60,7 +59,7 @@ func TestIsDirWriteable(t *testing.T) {
 }
 
 func TestCreateDirAll(t *testing.T) {
-	tmpdir, err := ioutil.TempDir(os.TempDir(), "foo")
+	tmpdir, err := os.MkdirTemp(os.TempDir(), "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +70,7 @@ func TestCreateDirAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = ioutil.WriteFile(filepath.Join(tmpdir2, "text.txt"), []byte("test text"), PrivateFileMode); err != nil {
+	if err = os.WriteFile(filepath.Join(tmpdir2, "text.txt"), []byte("test text"), PrivateFileMode); err != nil {
 		t.Fatal(err)
 	}
 
@@ -91,7 +90,7 @@ func TestExist(t *testing.T) {
 		t.Fatalf("expected Exist true, got %v", Exist(fdir))
 	}
 
-	f, err := ioutil.TempFile(os.TempDir(), "fileutil")
+	f, err := os.CreateTemp(os.TempDir(), "fileutil")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +107,7 @@ func TestExist(t *testing.T) {
 }
 
 func TestDirEmpty(t *testing.T) {
-	dir, err := ioutil.TempDir(os.TempDir(), "empty_dir")
+	dir, err := os.MkdirTemp(os.TempDir(), "empty_dir")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +117,7 @@ func TestDirEmpty(t *testing.T) {
 		t.Fatalf("expected DirEmpty true, got %v", DirEmpty(dir))
 	}
 
-	file, err := ioutil.TempFile(dir, "new_file")
+	file, err := os.CreateTemp(dir, "new_file")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +132,7 @@ func TestDirEmpty(t *testing.T) {
 }
 
 func TestZeroToEnd(t *testing.T) {
-	f, err := ioutil.TempFile(os.TempDir(), "fileutil")
+	f, err := os.CreateTemp(os.TempDir(), "fileutil")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +177,7 @@ func TestZeroToEnd(t *testing.T) {
 }
 
 func TestDirPermission(t *testing.T) {
-	tmpdir, err := ioutil.TempDir(os.TempDir(), "foo")
+	tmpdir, err := os.MkdirTemp(os.TempDir(), "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,12 +197,12 @@ func TestDirPermission(t *testing.T) {
 func TestRemoveMatchFile(t *testing.T) {
 	tmpdir := t.TempDir()
 	defer os.RemoveAll(tmpdir)
-	f, err := ioutil.TempFile(tmpdir, "tmp")
+	f, err := os.CreateTemp(tmpdir, "tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
 	f.Close()
-	f, err = ioutil.TempFile(tmpdir, "foo.tmp")
+	f, err = os.CreateTemp(tmpdir, "foo.tmp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +222,7 @@ func TestRemoveMatchFile(t *testing.T) {
 		t.Errorf("expected exist 1 files, got %d", len(fnames))
 	}
 
-	f, err = ioutil.TempFile(tmpdir, "tmp")
+	f, err = os.CreateTemp(tmpdir, "tmp")
 	if err != nil {
 		t.Fatal(err)
 	}

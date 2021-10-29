@@ -19,7 +19,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net"
@@ -476,7 +476,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request) {
-		d, err := ioutil.ReadAll(req.Body)
+		d, err := io.ReadAll(req.Body)
 		req.Body.Close()
 		if err != nil {
 			t.Fatal(err)
@@ -497,7 +497,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		Addr:      dstAddr,
 		Handler:   mux,
 		TLSConfig: tlsConfig,
-		ErrorLog:  log.New(ioutil.Discard, "net/http", 0),
+		ErrorLog:  log.New(io.Discard, "net/http", 0),
 	}
 
 	donec := make(chan struct{})
@@ -548,7 +548,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		defer http.DefaultClient.CloseIdleConnections()
 	}
 	assert.NoError(t, err)
-	d, err := ioutil.ReadAll(resp.Body)
+	d, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,7 +588,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d, err = ioutil.ReadAll(resp.Body)
+	d, err = io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

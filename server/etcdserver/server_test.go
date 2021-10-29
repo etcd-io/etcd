@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -1087,7 +1086,7 @@ func TestSnapshotOrdering(t *testing.T) {
 	cl := membership.NewCluster(lg)
 	cl.SetStore(st)
 
-	testdir, err := ioutil.TempDir(t.TempDir(), "testsnapdir")
+	testdir, err := os.MkdirTemp(t.TempDir(), "testsnapdir")
 	if err != nil {
 		t.Fatalf("couldn't open tempdir (%v)", err)
 	}
@@ -1243,7 +1242,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	cl := membership.NewCluster(lg)
 	cl.SetStore(st)
 
-	testdir, err := ioutil.TempDir(t.TempDir(), "testsnapdir")
+	testdir, err := os.MkdirTemp(t.TempDir(), "testsnapdir")
 	if err != nil {
 		t.Fatalf("Couldn't open tempdir (%v)", err)
 	}

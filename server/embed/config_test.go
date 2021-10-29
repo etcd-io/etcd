@@ -17,7 +17,6 @@ package embed
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
@@ -158,7 +157,7 @@ func (s *securityConfig) equals(t *transport.TLSInfo) bool {
 }
 
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
-	tmpfile, err := ioutil.TempFile("", "servercfg")
+	tmpfile, err := os.CreateTemp("", "servercfg")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -89,7 +89,7 @@ func handleClusterHealth(c *cli.Context) error {
 
 				result := struct{ Health string }{}
 				nresult := struct{ Health bool }{}
-				bytes, err := ioutil.ReadAll(resp.Body)
+				bytes, err := io.ReadAll(resp.Body)
 				if err != nil {
 					fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
 					continue

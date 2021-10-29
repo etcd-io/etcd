@@ -17,7 +17,7 @@ package clientv3_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -72,7 +72,7 @@ func ExampleClient_metrics() {
 		if err != nil {
 			log.Fatalf("fetch error: %v", err)
 		}
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			log.Fatalf("fetch error: reading %s: %v", url, err)

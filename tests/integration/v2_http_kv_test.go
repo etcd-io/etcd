@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -1096,7 +1095,7 @@ func (t *testHttpClient) ReadBody(resp *http.Response) []byte {
 	if resp == nil {
 		return []byte{}
 	}
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	return body
 }

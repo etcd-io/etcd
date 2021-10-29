@@ -18,7 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net"
@@ -664,7 +664,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 
 	m.Name = mcfg.Name
 
-	m.DataDir, err = ioutil.TempDir(t.TempDir(), "etcd")
+	m.DataDir, err = os.MkdirTemp(t.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -993,7 +993,7 @@ func (m *Member) Launch() error {
 			Config: &http.Server{
 				Handler:   h,
 				TLSConfig: peerTLScfg,
-				ErrorLog:  log.New(ioutil.Discard, "net/http", 0),
+				ErrorLog:  log.New(io.Discard, "net/http", 0),
 			},
 			TLS: peerTLScfg,
 		}
@@ -1021,7 +1021,7 @@ func (m *Member) Launch() error {
 					m.Server,
 					m.ServerConfig.ReqTimeout(),
 				),
-				ErrorLog: log.New(ioutil.Discard, "net/http", 0),
+				ErrorLog: log.New(io.Discard, "net/http", 0),
 			},
 		}
 		if m.ClientTLSInfo == nil {
@@ -1300,7 +1300,7 @@ func (m *Member) Metric(metricName string, expectLabels ...string) (string, erro
 		return "", err
 	}
 	defer resp.Body.Close()
-	b, rerr := ioutil.ReadAll(resp.Body)
+	b, rerr := io.ReadAll(resp.Body)
 	if rerr != nil {
 		return "", rerr
 	}

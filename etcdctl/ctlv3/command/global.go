@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -141,7 +140,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		// too many routine connection disconnects to turn on by default.
 		//
 		// See https://github.com/etcd-io/etcd/pull/9623 for background
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
 	}
 
 	cfg := &clientConfig{}
@@ -254,7 +253,7 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 	if i < len(args) {
 		return args[i], nil
 	}
-	bytes, err := ioutil.ReadAll(stdin)
+	bytes, err := io.ReadAll(stdin)
 	if string(bytes) == "" || err != nil {
 		return "", errors.New("no available argument and stdin")
 	}

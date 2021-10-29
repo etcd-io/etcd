@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 
@@ -230,7 +230,7 @@ func (cfg *Config) SetupGlobalLoggers() {
 			grpc.EnableTracing = true
 			grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
 		} else {
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+			grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, os.Stderr, os.Stderr))
 		}
 		zap.ReplaceGlobals(lg)
 	}
