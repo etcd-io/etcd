@@ -147,4 +147,7 @@ type Watchable interface {
 	// NewWatchStream returns a WatchStream that can be used to
 	// watch events happened or happening on the KV.
 	NewWatchStream() WatchStream
+	// ErrorC returns an error channel which holds errors encountered
+	// during WatchableStore execution.
+	ErrorC() <-chan error
 }

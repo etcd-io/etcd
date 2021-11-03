@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -64,6 +65,8 @@ type watchableStore struct {
 
 	stopc chan struct{}
 	wg    sync.WaitGroup
+
+	errorc chan error
 }
 
 // cancelFunc updates unsynced and synced maps when running
@@ -85,6 +88,9 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg S
 		synced:   newWatcherGroup(),
 		stopc:    make(chan struct{}),
 	}
+	if cfg.ReportKVDecodeError {
+		s.errorc = make(chan error)
+	}
 	s.store.ReadView = &readView{s}
 	s.store.WriteView = &writeView{s}
 	if s.le != nil {
@@ -99,6 +105,9 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg S
 
 func (s *watchableStore) Close() error {
 	close(s.stopc)
+	if s.errorc != nil {
+		close(s.errorc)
+	}
 	s.wg.Wait()
 	return s.store.Close()
 }
@@ -111,6 +120,11 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 		cancels:   make(map[WatchID]cancelFunc),
 		watchers:  make(map[WatchID]*watcher),
 	}
+}
+
+// ErrorC can return nil result when ReportKVDecodeError is not enabled
+func (s *watchableStore) ErrorC() <-chan error {
+	return s.errorc
 }
 
 func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
@@ -356,7 +370,15 @@ func (s *watchableStore) syncWatchers() int {
 	tx.RLock()
 	revs, vs := tx.UnsafeRange(schema.Key, minBytes, maxBytes, 0)
 	tx.RUnlock()
-	evs := kvsToEvents(s.store.lg, wg, revs, vs)
+	evs, err := s.kvsToEvents(wg, revs, vs)
+	if err != nil {
+		if s.errorc != nil {
+			s.lg.Fatal("kvsToEvents failed", zap.Error(err))
+			s.errorc <- err
+			return 0
+		}
+		s.lg.Panic("failed to run kvsToEvents", zap.Error(err))
+	}
 
 	victims := make(watcherBatch)
 	wb := newWatcherBatch(wg, evs)
@@ -404,11 +426,12 @@ func (s *watchableStore) syncWatchers() int {
 }
 
 // kvsToEvents gets all events for the watchers from all key-value pairs
-func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []mvccpb.Event) {
+func (s *watchableStore) kvsToEvents(wg *watcherGroup, revs, vals [][]byte) (evs []mvccpb.Event, err error) {
 	for i, v := range vals {
 		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(v); err != nil {
-			lg.Panic("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
+			s.store.lg.Fatal("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
+			return nil, fmt.Errorf("rev: %d, value: %#v", revs[i], v)
 		}
 
 		if !wg.contains(string(kv.Key)) {
@@ -423,7 +446,7 @@ func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []m
 		}
 		evs = append(evs, mvccpb.Event{Kv: &kv, Type: ty})
 	}
-	return evs
+	return evs, nil
 }
 
 // notify notifies the fact that given event at the given rev just happened to

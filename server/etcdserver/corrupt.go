@@ -137,6 +137,8 @@ func (s *EtcdServer) monitorKVHash() {
 		select {
 		case <-s.stopping:
 			return
+		case <-s.kv.ErrorC():
+			s.sendCorruptionAlarmRequest(uint64(s.ID()))
 		case <-time.After(t):
 		}
 		if !s.isLeader() {
@@ -146,6 +148,17 @@ func (s *EtcdServer) monitorKVHash() {
 			lg.Warn("failed to check hash KV", zap.Error(err))
 		}
 	}
+}
+
+func (s *EtcdServer) sendCorruptionAlarmRequest(id uint64) {
+	a := &pb.AlarmRequest{
+		MemberID: id,
+		Action:   pb.AlarmRequest_ACTIVATE,
+		Alarm:    pb.AlarmType_CORRUPT,
+	}
+	s.GoAttach(func() {
+		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
+	})
 }
 
 func (s *EtcdServer) checkHashKV() error {
@@ -175,14 +188,7 @@ func (s *EtcdServer) checkHashKV() error {
 			return
 		}
 		alarmed = true
-		a := &pb.AlarmRequest{
-			MemberID: id,
-			Action:   pb.AlarmRequest_ACTIVATE,
-			Alarm:    pb.AlarmType_CORRUPT,
-		}
-		s.GoAttach(func() {
-			s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
-		})
+		s.sendCorruptionAlarmRequest(id)
 	}
 
 	if h2 != h && rev2 == rev && crev == crev2 {

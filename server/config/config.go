@@ -115,6 +115,7 @@ type ServerConfig struct {
 	AutoCompactionMode      string
 	CompactionBatchLimit    int
 	CompactionSleepInterval time.Duration
+	ReportKVDecodeError     bool
 	QuotaBackendBytes       int64
 	MaxTxnOps               uint
 

@@ -329,6 +329,9 @@ type Config struct {
 	// ExperimentalWarningUnaryRequestDuration is the time duration after which a warning is generated if applying
 	// unary request takes more time than this value.
 	ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration"`
+	// ExperimentalReportKVDecodeError enables WatchableStore to report kv decode error in case of failure. Normally we
+	// treat these failures as panics.
+	ExperimentalReportKVDecodeError bool `json:"experimental-report-kv-decode-error"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`

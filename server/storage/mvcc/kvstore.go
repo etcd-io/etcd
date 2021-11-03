@@ -54,6 +54,7 @@ var minimumBatchInterval = 10 * time.Millisecond
 type StoreConfig struct {
 	CompactionBatchLimit    int
 	CompactionSleepInterval time.Duration
+	ReportKVDecodeError     bool
 }
 
 type store struct {
