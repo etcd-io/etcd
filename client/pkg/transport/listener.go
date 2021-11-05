@@ -382,12 +382,22 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 			return nil, fmt.Errorf("AllowedCN and AllowedHostname are mutually exclusive (cn=%q, hostname=%q)", info.AllowedCN, info.AllowedHostname)
 		}
 		verifyCertificate = func(cert *x509.Certificate) bool {
-			return info.AllowedCN == cert.Subject.CommonName
+			for _, allowedCN := range strings.Split(info.AllowedCN, ",") {
+				if allowedCN != "" && allowedCN == cert.Subject.CommonName {
+					return true
+				}
+			}
+			return false
 		}
 	}
 	if info.AllowedHostname != "" {
 		verifyCertificate = func(cert *x509.Certificate) bool {
-			return cert.VerifyHostname(info.AllowedHostname) == nil
+			for _, allowedHostname := range strings.Split(info.AllowedHostname, ",") {
+				if allowedHostname != "" && cert.VerifyHostname(info.AllowedHostname) == nil {
+					return true
+				}
+			}
+			return false
 		}
 	}
 	if verifyCertificate != nil {
