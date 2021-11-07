@@ -289,7 +289,7 @@ func TestEtcdPeerURIAuth(t *testing.T) {
 	peers, tmpdirs := make([]string, 3), make([]string, 3)
 	for i := range peers {
 		peers[i] = fmt.Sprintf("e%d=https://127.0.0.1:%d", i, e2e.EtcdProcessBasePort+i)
-		d, err := ioutil.TempDir("", fmt.Sprintf("e%d.etcd", i))
+		d, err := os.MkdirTemp("", fmt.Sprintf("e%d.etcd", i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -331,11 +331,11 @@ func TestEtcdPeerURIAuth(t *testing.T) {
 			}
 		} else {
 			args = []string{
-				"--peer-cert-file", e2e.CertPath,
-				"--peer-key-file", e2e.PrivateKeyPath,
+				"--peer-cert-file", e2e.CertPath4,
+				"--peer-key-file", e2e.PrivateKeyPath4,
 				"--peer-trusted-ca-file", e2e.CaPath,
 				"--peer-client-cert-auth",
-				"--peer-cert-allowed-uri", "spiffe://example4.com/service",
+				"--peer-cert-allowed-uri", "spiffe://example.com/service",
 			}
 		}
 

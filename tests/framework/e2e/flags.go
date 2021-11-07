@@ -36,7 +36,7 @@ var (
 	CertPath3       string
 	PrivateKeyPath3 string
 
-	CertPath4	string
+	CertPath4       string
 	PrivateKeyPath4 string
 
 	CrlPath               string
