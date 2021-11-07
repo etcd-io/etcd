@@ -385,11 +385,12 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	for _, restriction := range []string{info.AllowedCN, info.AllowedHostname, info.AllowedURI} {
 		if restriction != "" {
 			definedRestrictions++
+			if definedRestrictions > 1 {
+				return nil, errors.New("exactly one of AllowedCN, AllowedHostname, or AllowedURI can be defined")
+			}
 		}
 	}
 	switch {
-	case definedRestrictions > 1:
-		return nil, errors.New("exactly one of AllowedCN, AllowedHostname, or AllowedURI can be defined")
 	case info.AllowedCN != "":
 		verifyCertificate = func(cert *x509.Certificate) bool {
 			return info.AllowedCN == cert.Subject.CommonName
