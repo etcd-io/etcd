@@ -79,6 +79,12 @@ func TestHealthHandler(t *testing.T) {
 			"true",
 		},
 		{
+			[]*pb.AlarmMember{{MemberID: uint64(1), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(2), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(3), Alarm: pb.AlarmType_NOSPACE}},
+			"/health?exclude=NOSPACE",
+			http.StatusOK,
+			"true",
+		},
+		{
 			[]*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
 			"/health?exclude=NOSPACE",
 			http.StatusServiceUnavailable,
