@@ -138,8 +138,7 @@ func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms AlarmSe
 		for _, v := range as {
 			alarmName := v.Alarm.String()
 			if _, found := excludedAlarms[alarmName]; found {
-				lg.Debug("/health excluded alarm", zap.String("alarm", alarmName))
-				delete(excludedAlarms, alarmName)
+				lg.Debug("/health excluded alarm", zap.String("alarm", v.String()))
 				continue
 			}
 
@@ -155,10 +154,6 @@ func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms AlarmSe
 			lg.Warn("serving /health false due to an alarm", zap.String("alarm", v.String()))
 			return h
 		}
-	}
-
-	if len(excludedAlarms) > 0 {
-		lg.Warn("fail exclude alarms from health check", zap.String("exclude alarms", fmt.Sprintf("%+v", excludedAlarms)))
 	}
 
 	if uint64(srv.Leader()) == raft.None {
