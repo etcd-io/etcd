@@ -226,6 +226,10 @@ func (rmc *retryMaintenanceClient) Downgrade(ctx context.Context, in *pb.Downgra
 	return rmc.mc.Downgrade(ctx, in, opts...)
 }
 
+func (rmc *retryMaintenanceClient) DoSnapshotNow(ctx context.Context, in *pb.DoSnapshotNowRequest, opts ...grpc.CallOption) (resp *pb.DoSnapshotNowResponse, err error) {
+	return rmc.mc.DoSnapshotNow(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
 type retryAuthClient struct {
 	ac pb.AuthClient
 }

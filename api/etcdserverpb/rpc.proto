@@ -201,6 +201,14 @@ service Maintenance {
     };
   }
 
+  // DoSnapshotNow do an auto snapshot immediately.
+  rpc DoSnapshotNow(DoSnapshotNowRequest) returns (DoSnapshotNowResponse) {
+    option (google.api.http) = {
+      post: "/v3/maintenance/dosnapshotnow"
+      body: "*"
+    };
+  }
+
   // Hash computes the hash of whole backend keyspace,
   // including key, lease, and other buckets in storage.
   // This is designed for testing ONLY!
@@ -1057,6 +1065,13 @@ message MoveLeaderRequest {
 message MoveLeaderResponse {
   option (versionpb.etcd_version_msg) = "3.3";
 
+  ResponseHeader header = 1;
+}
+
+message DoSnapshotNowRequest {
+}
+
+message DoSnapshotNowResponse {
   ResponseHeader header = 1;
 }
 

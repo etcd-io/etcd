@@ -187,6 +187,9 @@ type ServerConfig struct {
 
 	// V2Deprecation defines a phase of v2store deprecation process.
 	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
+
+	// manual do a snapshot now
+	DoManualSnapshot bool
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

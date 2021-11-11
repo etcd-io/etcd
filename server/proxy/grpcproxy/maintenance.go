@@ -93,3 +93,8 @@ func (mp *maintenanceProxy) Downgrade(ctx context.Context, r *pb.DowngradeReques
 	conn := mp.client.ActiveConnection()
 	return pb.NewMaintenanceClient(conn).Downgrade(ctx, r)
 }
+
+func (mp *maintenanceProxy) DoSnapshotNow(ctx context.Context, r *pb.DoSnapshotNowRequest) (*pb.DoSnapshotNowResponse, error) {
+	conn := mp.client.ActiveConnection()
+	return pb.NewMaintenanceClient(conn).DoSnapshotNow(ctx, r)
+}

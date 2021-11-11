@@ -82,6 +82,9 @@ type Maintenance interface {
 	// CANCEL = 2;
 	// Supported since etcd 3.5.
 	Downgrade(ctx context.Context, action int32, version string) (*DowngradeResponse, error)
+
+	// DoSnapshotNow do snapshot immediately
+	DoSnapshotNow(ctx context.Context, endpoint string) error
 }
 
 // SnapshotResponse is aggregated response from the snapshot stream.
@@ -351,4 +354,17 @@ func (m *maintenance) Downgrade(ctx context.Context, action int32, version strin
 	}
 	resp, err := m.remote.Downgrade(ctx, &pb.DowngradeRequest{Action: actionType, Version: version}, m.callOpts...)
 	return (*DowngradeResponse)(resp), toErr(ctx, err)
+}
+
+func (m *maintenance) DoSnapshotNow(ctx context.Context, endpoint string) error {
+	remote, cancel, err := m.dial(endpoint)
+	if err != nil {
+		return toErr(ctx, err)
+	}
+	defer cancel()
+	_, err = remote.DoSnapshotNow(ctx, &pb.DoSnapshotNowRequest{}, m.callOpts...)
+	if err != nil {
+		return toErr(ctx, err)
+	}
+	return nil
 }

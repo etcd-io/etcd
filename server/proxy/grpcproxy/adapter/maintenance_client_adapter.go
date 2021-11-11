@@ -63,6 +63,10 @@ func (s *mts2mtc) Snapshot(ctx context.Context, in *pb.SnapshotRequest, opts ...
 	return &ss2scClientStream{cs}, nil
 }
 
+func (s *mts2mtc) DoSnapshotNow(ctx context.Context, r *pb.DoSnapshotNowRequest, opts ...grpc.CallOption) (*pb.DoSnapshotNowResponse, error) {
+	return s.mts.DoSnapshotNow(ctx, r)
+}
+
 // ss2scClientStream implements Maintenance_SnapshotClient
 type ss2scClientStream struct{ chanClientStream }
 

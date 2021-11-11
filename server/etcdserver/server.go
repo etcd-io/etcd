@@ -1087,7 +1087,11 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 
 func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 	if ep.appliedi-ep.snapi <= s.Cfg.SnapshotCount {
-		return
+		if s.Cfg.DoManualSnapshot {
+			s.Cfg.DoManualSnapshot = false
+		} else {
+			return
+		}
 	}
 
 	lg := s.Logger()
@@ -2309,6 +2313,11 @@ func (s *EtcdServer) Backend() backend.Backend {
 	s.bemu.Lock()
 	defer s.bemu.Unlock()
 	return s.be
+}
+
+func (s *EtcdServer) DoSnapshotNow() error {
+	s.Cfg.DoManualSnapshot = true
+	return nil
 }
 
 func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }

@@ -40,6 +40,7 @@ type KVGetter interface {
 
 type BackendGetter interface {
 	Backend() backend.Backend
+	DoSnapshotNow() error
 }
 
 type Alarmer interface {
@@ -262,6 +263,20 @@ func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeReque
 	}
 	resp.Header = &pb.ResponseHeader{}
 	ms.hdr.fill(resp.Header)
+	return resp, nil
+}
+
+func (ms *maintenanceServer) DoSnapshotNow(ctx context.Context, ar *pb.DoSnapshotNowRequest) (*pb.DoSnapshotNowResponse, error) {
+	hdr := &pb.ResponseHeader{}
+	ms.hdr.fill(hdr)
+	resp := &pb.DoSnapshotNowResponse{
+		Header: hdr,
+	}
+
+	err := ms.bg.DoSnapshotNow()
+	if err != nil {
+		return nil, err
+	}
 	return resp, nil
 }
 

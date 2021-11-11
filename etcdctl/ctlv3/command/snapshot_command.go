@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	v3 "go.etcd.io/etcd/client/v3"
 	snapshot "go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/etcdutl/v3/etcdutl"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
@@ -29,6 +30,7 @@ import (
 const (
 	defaultName                     = "default"
 	defaultInitialAdvertisePeerURLs = "http://localhost:2380"
+	defaultSnapshotKey              = "__do_etcd_snapshot"
 )
 
 var (
@@ -39,6 +41,7 @@ var (
 	restorePeerURLs     string
 	restoreName         string
 	skipHashCheck       bool
+	spClusterEndpoints  bool
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
@@ -50,6 +53,7 @@ func NewSnapshotCommand() *cobra.Command {
 	cmd.AddCommand(NewSnapshotSaveCommand())
 	cmd.AddCommand(NewSnapshotRestoreCommand())
 	cmd.AddCommand(newSnapshotStatusCommand())
+	cmd.AddCommand(NewDoSnapshotNowCommand())
 	return cmd
 }
 
@@ -94,6 +98,16 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	return cmd
 }
 
+func NewDoSnapshotNowCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "donow [options]",
+		Short: "DoSnapshotNow do an auto snapshot immediately",
+		Run:   doSnapshotNowCommandFunc,
+	}
+	cmd.PersistentFlags().BoolVar(&spClusterEndpoints, "cluster", false, "use all endpoints from the cluster member list")
+	return cmd
+}
+
 func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
 		err := fmt.Errorf("snapshot save expects one argument")
@@ -133,6 +147,81 @@ func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Fprintf(os.Stderr, "Deprecated: Use `etcdutl snapshot restore` instead.\n\n")
 	etcdutl.SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWalDir,
 		restorePeerURLs, restoreName, skipHashCheck, args)
+}
+
+func doSnapshotNowCommandFunc(cmd *cobra.Command, args []string) {
+	c := mustClientFromCmd(cmd)
+	var err error
+	for _, ep := range endpointsFromClusterForSnapshot(cmd) {
+		ctx, cancel := commandCtx(cmd)
+		serr := c.DoSnapshotNow(ctx, ep)
+		cancel()
+		if serr != nil {
+			err = serr
+			fmt.Fprintf(os.Stderr, "Failed to set doSnapshotNow conf of endpoint %s (%v)\n", ep, serr)
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "Set doSnapshotNow conf passed, endpoint: %s\n", ep)
+	}
+	if err != nil {
+		os.Exit(cobrautl.ExitError)
+	}
+
+	// put a key to trigger snapshot
+	ctx, cancel := commandCtx(cmd)
+	_, err = c.Put(ctx, defaultSnapshotKey, "")
+	cancel()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to doSnapshotNow, err: %v\n", err)
+	} else {
+		fmt.Println("doSnapshotNow success")
+	}
+}
+
+func endpointsFromClusterForSnapshot(cmd *cobra.Command) []string {
+	if !spClusterEndpoints {
+		endpoints, err := cmd.Flags().GetStringSlice("endpoints")
+		if err != nil {
+			cobrautl.ExitWithError(cobrautl.ExitError, err)
+		}
+		return endpoints
+	}
+
+	sec := secureCfgFromCmd(cmd)
+	dt := dialTimeoutFromCmd(cmd)
+	ka := keepAliveTimeFromCmd(cmd)
+	kat := keepAliveTimeoutFromCmd(cmd)
+	eps, err := endpointsFromCmd(cmd)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
+	// exclude auth for not asking needless password (MemberList() doesn't need authentication)
+
+	cfg, err := newClientCfg(eps, dt, ka, kat, sec, nil)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
+	c, err := v3.New(*cfg)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
+
+	ctx, cancel := commandCtx(cmd)
+	defer func() {
+		c.Close()
+		cancel()
+	}()
+	membs, err := c.MemberList(ctx)
+	if err != nil {
+		err = fmt.Errorf("failed to fetch endpoints from etcd cluster member list: %v", err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
+
+	ret := []string{}
+	for _, m := range membs.Members {
+		ret = append(ret, m.ClientURLs...)
+	}
+	return ret
 }
 
 func initialClusterFromName(name string) string {
