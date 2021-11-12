@@ -5,11 +5,20 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, 3.4.2+, and 3.5.1+.
 
-See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.17...v3.4.18) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+<hr>
+
+## v3.4.19 (TODO)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.18...v3.4.19) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+### etcd server
+- Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13475).
 
 <hr>
 
 ## v3.4.18 (2021-10-15)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.17...v3.4.18) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
 
 ### Metrics, Monitoring
 
