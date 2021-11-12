@@ -3,13 +3,43 @@
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/etcd/blob/main/CHANGELOG-3.2.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
-
+The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, 3.4.2+, and 3.5.1+.
 
 <hr>
 
+## v3.3.27 (2021-10-15)
 
-## v3.3.25 (2020 TBD)
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.26...v3.3.27) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
+
+### Other
+
+- Updated [base image](https://github.com/etcd-io/etcd/pull/13386) from `debian:buster-v1.4.0` to `debian:bullseye-20210927` to fix the following critical CVEs:
+  - [CVE-2021-3711](https://nvd.nist.gov/vuln/detail/CVE-2021-3711): miscalculation of a buffer size in openssl's SM2 decryption
+  - [CVE-2021-35942](https://nvd.nist.gov/vuln/detail/CVE-2021-35942): integer overflow flaw in glibc
+  - [CVE-2019-9893](https://nvd.nist.gov/vuln/detail/CVE-2019-9893): incorrect syscall argument generation in libseccomp
+  - [CVE-2021-36159](https://nvd.nist.gov/vuln/detail/CVE-2021-36159): libfetch in apk-tools mishandles numeric strings in FTP and HTTP protocols to allow out of bound reads.
+
+<hr>
+
+## v3.3.26 (2021-10-03)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.25...v3.3.26) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
+
+### Package `clientv3`
+
+- Fix [auth token invalid after watch reconnects](https://github.com/etcd-io/etcd/pull/12264). Get AuthToken automatically when clientConn is ready.
+
+### Package `fileutil`
+
+- Fix [constant](https://github.com/etcd-io/etcd/pull/12440) for linux locking.
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+<hr>
+
+## v3.3.25 (2020-08-24)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.25) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package wal
 
 import (
 	"fmt"
@@ -21,7 +21,6 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
-
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -33,11 +32,16 @@ var (
 	V3_1 = semver.Version{Major: 3, Minor: 1}
 	V3_3 = semver.Version{Major: 3, Minor: 3}
 	V3_4 = semver.Version{Major: 3, Minor: 4}
+	V3_5 = semver.Version{Major: 3, Minor: 5}
+	V3_6 = semver.Version{Major: 3, Minor: 6}
 )
 
 func TestEtcdVersionFromEntry(t *testing.T) {
 	raftReq := etcdserverpb.InternalRaftRequest{Header: &etcdserverpb.RequestHeader{AuthRevision: 1}}
 	normalRequestData := pbutil.MustMarshal(&raftReq)
+
+	clusterVersionV3_6Req := etcdserverpb.InternalRaftRequest{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{Ver: "3.6.0"}}
+	clusterVersionV3_6Data := pbutil.MustMarshal(&clusterVersionV3_6Req)
 
 	confChange := raftpb.ConfChange{Type: raftpb.ConfChangeAddLearnerNode}
 	confChangeData := pbutil.MustMarshal(&confChange)
@@ -59,6 +63,16 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 				Data:  normalRequestData,
 			},
 			expect: &V3_1,
+		},
+		{
+			name: "Setting cluster version implies version within",
+			input: raftpb.Entry{
+				Term:  1,
+				Index: 2,
+				Type:  raftpb.EntryNormal,
+				Data:  clusterVersionV3_6Data,
+			},
+			expect: &V3_6,
 		},
 		{
 			name: "Using ConfigChange implies v3.4",

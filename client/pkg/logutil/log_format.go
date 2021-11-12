@@ -1,4 +1,4 @@
-// Copyright 2021 The etcd Authors
+// Copyright 2019 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package logutil
 
-import (
-	"os"
-	"testing"
+import "fmt"
 
-	"github.com/stretchr/testify/assert"
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.etcd.io/etcd/server/v3/verify"
+const (
+	JsonLogFormat    = "json"
+	ConsoleLogFormat = "console"
 )
 
-func BeforeTest(t testing.TB) {
-	skipInShortMode(t)
-	testutil.RegisterLeakDetection(t)
-	os.Setenv(verify.ENV_VERIFY, verify.ENV_VERIFY_ALL_VALUE)
+var DefaultLogFormat = JsonLogFormat
 
-	path, err := os.Getwd()
-	assert.NoError(t, err)
-	tempDir := t.TempDir()
-	assert.NoError(t, os.Chdir(tempDir))
-	t.Logf("Changing working directory to: %s", tempDir)
-
-	t.Cleanup(func() { assert.NoError(t, os.Chdir(path)) })
+// ConvertToZapFormat converts and validated log format string.
+func ConvertToZapFormat(format string) (string, error) {
+	switch format {
+	case ConsoleLogFormat:
+		return ConsoleLogFormat, nil
+	case JsonLogFormat:
+		return JsonLogFormat, nil
+	case "":
+		return DefaultLogFormat, nil
+	default:
+		return "", fmt.Errorf("unknown log format: %s, supported values json, console", format)
+	}
 }

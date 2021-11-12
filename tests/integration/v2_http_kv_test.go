@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -27,11 +26,12 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestV2Set(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -92,8 +92,8 @@ func TestV2Set(t *testing.T) {
 }
 
 func TestV2CreateUpdate(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -228,8 +228,8 @@ func TestV2CreateUpdate(t *testing.T) {
 }
 
 func TestV2CAS(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -376,8 +376,8 @@ func TestV2CAS(t *testing.T) {
 }
 
 func TestV2Delete(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -476,8 +476,8 @@ func TestV2Delete(t *testing.T) {
 }
 
 func TestV2CAD(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -576,8 +576,8 @@ func TestV2CAD(t *testing.T) {
 }
 
 func TestV2Unique(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -643,8 +643,8 @@ func TestV2Unique(t *testing.T) {
 }
 
 func TestV2Get(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -741,8 +741,8 @@ func TestV2Get(t *testing.T) {
 }
 
 func TestV2QuorumGet(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -839,8 +839,8 @@ func TestV2QuorumGet(t *testing.T) {
 }
 
 func TestV2Watch(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -877,8 +877,8 @@ func TestV2Watch(t *testing.T) {
 }
 
 func TestV2WatchWithIndex(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -944,8 +944,8 @@ func TestV2WatchWithIndex(t *testing.T) {
 }
 
 func TestV2WatchKeyInDir(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -1005,8 +1005,8 @@ func TestV2WatchKeyInDir(t *testing.T) {
 }
 
 func TestV2Head(t *testing.T) {
-	BeforeTest(t)
-	cl := NewCluster(t, 1)
+	integration.BeforeTest(t)
+	cl := integration.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 
@@ -1095,7 +1095,7 @@ func (t *testHttpClient) ReadBody(resp *http.Response) []byte {
 	if resp == nil {
 		return []byte{}
 	}
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	return body
 }

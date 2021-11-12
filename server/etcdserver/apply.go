@@ -31,6 +31,7 @@ import (
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -387,6 +388,11 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 		// sorted by keys in lexiographically ascending order,
 		// sort ASCEND by default only when target is not 'KEY'
 		sortOrder = pb.RangeRequest_ASCEND
+	} else if r.SortTarget == pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_ASCEND {
+		// Since current mvcc.Range implementation returns results
+		// sorted by keys in lexiographically ascending order,
+		// don't re-sort when target is 'KEY' and order is ASCEND
+		sortOrder = pb.RangeRequest_NONE
 	}
 	if sortOrder != pb.RangeRequest_NONE {
 		var sorter sort.Interface
@@ -941,9 +947,9 @@ func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAtt
 }
 
 func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
-	d := membership.DowngradeInfo{Enabled: false}
+	d := version.DowngradeInfo{Enabled: false}
 	if r.Enabled {
-		d = membership.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
+		d = version.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
 	}
 	a.s.cluster.SetDowngradeInfo(&d, shouldApplyV3)
 }

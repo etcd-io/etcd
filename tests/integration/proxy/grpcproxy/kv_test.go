@@ -23,18 +23,17 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
-	"go.etcd.io/etcd/tests/v3/integration"
-
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 )
 
 func TestKVProxyRange(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	kvts := newKVProxyServer([]string{clus.Members[0].GRPCAddr()}, t)
+	kvts := newKVProxyServer([]string{clus.Members[0].GRPCURL()}, t)
 	defer kvts.close()
 
 	// create a client and try to get key from proxy.
@@ -42,7 +41,7 @@ func TestKVProxyRange(t *testing.T) {
 		Endpoints:   []string{kvts.l.Addr().String()},
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := integration.NewClient(t, cfg)
+	client, err := integration2.NewClient(t, cfg)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -71,7 +70,7 @@ func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := integration.NewClient(t, cfg)
+	client, err := integration2.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

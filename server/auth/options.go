@@ -18,7 +18,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt"
@@ -70,14 +70,14 @@ func (opts *jwtOptions) Parse(optMap map[string]string) error {
 	}
 
 	if file := optMap[optPublicKey]; file != "" {
-		opts.PublicKey, err = ioutil.ReadFile(file)
+		opts.PublicKey, err = os.ReadFile(file)
 		if err != nil {
 			return err
 		}
 	}
 
 	if file := optMap[optPrivateKey]; file != "" {
-		opts.PrivateKey, err = ioutil.ReadFile(file)
+		opts.PrivateKey, err = os.ReadFile(file)
 		if err != nil {
 			return err
 		}

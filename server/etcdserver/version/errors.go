@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Authors
+// Copyright 2021 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !v2v3
-// +build !v2v3
+package version
 
-package e2e
+import "errors"
 
-func addV2Args(args []string) []string { return args }
+var (
+	ErrInvalidDowngradeTargetVersion = errors.New("etcdserver: invalid downgrade target version")
+	ErrDowngradeInProcess            = errors.New("etcdserver: cluster has a downgrade job in progress")
+	ErrNoInflightDowngrade           = errors.New("etcdserver: no inflight downgrade job")
+)

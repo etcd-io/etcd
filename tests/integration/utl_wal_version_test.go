@@ -21,20 +21,20 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 )
 
 func TestEtcdVersionFromWAL(t *testing.T) {
 	testutil.SkipTestIfShortMode(t,
-		"Wal creation tests are depending on embedded etcServer so are integration-level tests.")
-	cfg := NewEmbedConfig(t, "default")
+		"Wal creation tests are depending on embedded etcd server so are integration-level tests.")
+	cfg := integration.NewEmbedConfig(t, "default")
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +46,7 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	}
 
 	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
-	cli, err := NewClient(t, ccfg)
+	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		srv.Close()
 		t.Fatal(err)
@@ -59,11 +59,14 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	cli.Close()
 	srv.Close()
 
-	wal, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", walpb.Snapshot{})
+	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", walpb.Snapshot{})
 	if err != nil {
 		panic(err)
 	}
-	defer wal.Close()
-	ver := schema.MinimalStorageVersionFromWAL(wal)
-	assert.Equal(t, &semver.Version{Major: 3, Minor: 5}, ver)
+	defer w.Close()
+	walVersion, err := wal.ReadWALVersion(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, &semver.Version{Major: 3, Minor: 6}, walVersion.MinimalEtcdVersion())
 }

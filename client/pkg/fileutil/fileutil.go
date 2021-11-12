@@ -17,7 +17,6 @@ package fileutil
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -36,7 +35,7 @@ func IsDirWriteable(dir string) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(f, []byte(""), PrivateFileMode); err != nil {
+	if err := os.WriteFile(f, []byte(""), PrivateFileMode); err != nil {
 		return err
 	}
 	return os.Remove(f)
@@ -44,16 +43,12 @@ func IsDirWriteable(dir string) error {
 
 // TouchDirAll is similar to os.MkdirAll. It creates directories with 0700 permission if any directory
 // does not exists. TouchDirAll also ensures the given directory is writable.
-func TouchDirAll(dir string) error {
+func TouchDirAll(lg *zap.Logger, dir string) error {
 	// If path is already a directory, MkdirAll does nothing and returns nil, so,
 	// first check if dir exist with an expected permission mode.
 	if Exist(dir) {
 		err := CheckDirPermission(dir, PrivateDirMode)
 		if err != nil {
-			lg, _ := zap.NewProduction()
-			if lg == nil {
-				lg = zap.NewExample()
-			}
 			lg.Warn("check file permission", zap.Error(err))
 		}
 	} else {
@@ -70,8 +65,8 @@ func TouchDirAll(dir string) error {
 
 // CreateDirAll is similar to TouchDirAll but returns error
 // if the deepest directory was not empty.
-func CreateDirAll(dir string) error {
-	err := TouchDirAll(dir)
+func CreateDirAll(lg *zap.Logger, dir string) error {
+	err := TouchDirAll(lg, dir)
 	if err == nil {
 		var ns []string
 		ns, err = ReadDir(dir)

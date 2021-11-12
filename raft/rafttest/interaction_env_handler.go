@@ -82,9 +82,14 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 		//
 		// raft-log 3
 		err = env.handleRaftLog(t, d)
+	case "raft-state":
+		// Print Raft state of all nodes (whether the node is leading,
+		// following, etc.). The information for node n is based on
+		// n's view.
+		err = env.handleRaftState()
 	case "stabilize":
 		// Deliver messages to and run process-ready on the set of IDs until
-		// no more work is to be done.
+		// no more work is to be done. If no ids are given, all nodes are used.
 		//
 		// Example:
 		//
@@ -104,6 +109,13 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 		//
 		// tick-heartbeat 3
 		err = env.handleTickHeartbeat(t, d)
+	case "transfer-leadership":
+		// Transfer the Raft leader.
+		//
+		// Example:
+		//
+		// transfer-leadership from=1 to=4
+		err = env.handleTransferLeadership(t, d)
 	case "propose":
 		// Propose an entry.
 		//
@@ -112,16 +124,27 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 		// propose 1 foo
 		err = env.handlePropose(t, d)
 	case "propose-conf-change":
-		// Propose a configuration change.
+		// Propose a configuration change, or transition out of a previously
+		// proposed joint configuration change that requested explicit
+		// transitions. When adding nodes, this command can be used to
+		// logically add nodes to the configuration, but add-nodes is needed
+		// to "create" the nodes.
 		//
+		// propose-conf-change node_id [v1=<bool>] [transition=<string>]
+		// command string
+		// See ConfChangesFromString for command string format.
+		// Arguments are:
+		//    node_id - the node proposing the configuration change.
+		//    v1 - make one change at a time, false by default.
+		//    transition - "auto" (the default), "explicit" or "implicit".
 		// Example:
 		//
-		// propose-conf-change transition=explicit
+		// propose-conf-change 1 transition=explicit
 		// v1 v3 l4 r5
 		//
 		// Example:
 		//
-		// propose-conf-change v1=true
+		// propose-conf-change 2 v1=true
 		// v5
 		err = env.handleProposeConfChange(t, d)
 	default:

@@ -8,6 +8,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 
+### Breaking Changes
+
+- `etcd` will no longer start on data dir created by newer versions (for example etcd v3.6 will not run on v3.7+ data dir). To downgrade data dir please check out `etcdutl migrate` command.
+
 ### etcdctl v3
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13133).
@@ -24,3 +28,18 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Package `mvcc/buckets` was moved to `storage/schema`
 - Package `wal` was moved to `storage/wal`
 - Package `datadir` was moved to `storage/datadir`
+
+### etcd server
+
+- Add [`etcd --log-format`](https://github.com/etcd-io/etcd/pull/13339) flag to support log format.
+- Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/13435)
+
+### tools/benchmark
+
+- [Add etcd client autoSync flag](https://github.com/etcd-io/etcd/pull/13416)
+
+### Metrics, Monitoring
+
+See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
+
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).

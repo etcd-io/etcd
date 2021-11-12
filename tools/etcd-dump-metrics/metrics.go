@@ -16,7 +16,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -38,7 +38,7 @@ func fetchMetrics(ep string) (lines []string, err error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	b, rerr := ioutil.ReadAll(resp.Body)
+	b, rerr := io.ReadAll(resp.Body)
 	if rerr != nil {
 		return nil, rerr
 	}

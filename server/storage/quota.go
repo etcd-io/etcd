@@ -127,8 +127,13 @@ func NewBackendQuota(cfg config.ServerConfig, be backend.Backend, name string) Q
 }
 
 func (b *BackendQuota) Available(v interface{}) bool {
+	cost := b.Cost(v)
+	// if there are no mutating requests, it's safe to pass through
+	if cost == 0 {
+		return true
+	}
 	// TODO: maybe optimize Backend.Size()
-	return b.be.Size()+int64(b.Cost(v)) < b.maxBackendBytes
+	return b.be.Size()+int64(cost) < b.maxBackendBytes
 }
 
 func (b *BackendQuota) Cost(v interface{}) int {

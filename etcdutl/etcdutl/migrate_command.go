@@ -26,6 +26,8 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 )
 
 // NewMigrateCommand prints out the version of etcd.
@@ -90,12 +92,24 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	dbPath := datadir.ToBackendFileName(o.dataDir)
 	c.be = backend.NewDefaultBackend(dbPath)
 
+	walPath := datadir.ToWalDir(o.dataDir)
+	w, err := wal.OpenForRead(GetLogger(), walPath, walpb.Snapshot{})
+	if err != nil {
+		return nil, fmt.Errorf(`failed to open wal: %v`, err)
+	}
+	defer w.Close()
+	c.walVersion, err = wal.ReadWALVersion(w)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to read wal: %v`, err)
+	}
+
 	return c, nil
 }
 
 type migrateConfig struct {
 	be            backend.Backend
 	targetVersion *semver.Version
+	walVersion    schema.WALVersion
 	force         bool
 }
 
@@ -103,29 +117,30 @@ func migrateCommandFunc(c *migrateConfig) error {
 	defer c.be.Close()
 	lg := GetLogger()
 	tx := c.be.BatchTx()
-	tx.Lock()
 	current, err := schema.DetectSchemaVersion(lg, tx)
 	if err != nil {
-		tx.Unlock()
 		lg.Error("failed to detect storage version. Please make sure you are using data dir from etcd v3.5 and older")
 		return err
 	}
-	if *current == *c.targetVersion {
-		tx.Unlock()
-		lg.Info("storage version up-to-date", zap.String("storage-version", storageVersionToString(current)))
+	if current == *c.targetVersion {
+		lg.Info("storage version up-to-date", zap.String("storage-version", storageVersionToString(&current)))
 		return nil
 	}
-	if c.force {
-		unsafeMigrateForce(lg, tx, c.targetVersion)
-		tx.Unlock()
-		c.be.ForceCommit()
-		return nil
+	err = schema.Migrate(lg, tx, c.walVersion, *c.targetVersion)
+	if err != nil {
+		if !c.force {
+			return err
+		}
+		lg.Info("normal migrate failed, trying with force", zap.Error(err))
+		migrateForce(lg, tx, c.targetVersion)
 	}
-	tx.Unlock()
-	return fmt.Errorf("storage version migration is not yet supported")
+	c.be.ForceCommit()
+	return nil
 }
 
-func unsafeMigrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
+func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
+	tx.Lock()
+	defer tx.Unlock()
 	// Storage version is only supported since v3.6
 	if target.LessThan(schema.V3_6) {
 		schema.UnsafeClearStorageVersion(tx)

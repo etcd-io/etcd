@@ -15,7 +15,6 @@
 package testutil
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 )
@@ -112,7 +111,7 @@ func (t *testingTBProthesis) Name() string {
 }
 
 func (t *testingTBProthesis) TempDir() string {
-	dir, err := ioutil.TempDir("", t.name)
+	dir, err := os.MkdirTemp("", t.name)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,7 +16,7 @@ package tester
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os/exec"
 	"syscall"
 
@@ -77,7 +77,7 @@ func (rs *runnerStresser) setupOnce() (err error) {
 
 	go func() {
 		defer close(rs.donec)
-		out, err := ioutil.ReadAll(stderr)
+		out, err := io.ReadAll(stderr)
 		if err != nil {
 			rs.errc <- err
 		} else {

@@ -18,7 +18,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -34,7 +33,7 @@ func createSelfCert(hosts ...string) (*TLSInfo, func(), error) {
 }
 
 func createSelfCertEx(host string, additionalUsages ...x509.ExtKeyUsage) (*TLSInfo, func(), error) {
-	d, terr := ioutil.TempDir("", "etcd-test-tls-")
+	d, terr := os.MkdirTemp("", "etcd-test-tls-")
 	if terr != nil {
 		return nil, nil, terr
 	}
@@ -278,7 +277,7 @@ func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientSANVerify, goodCl
 	tlsInfo.TrustedCAFile = clientTLSInfo.CertFile
 
 	rootCAs := x509.NewCertPool()
-	loaded, err := ioutil.ReadFile(tlsInfo.CertFile)
+	loaded, err := os.ReadFile(tlsInfo.CertFile)
 	if err != nil {
 		t.Fatalf("unexpected missing certfile: %v", err)
 	}
@@ -532,7 +531,7 @@ func TestNewListenerUnixSocket(t *testing.T) {
 
 // TestNewListenerTLSInfoSelfCert tests that a new certificate accepts connections.
 func TestNewListenerTLSInfoSelfCert(t *testing.T) {
-	tmpdir, err := ioutil.TempDir(os.TempDir(), "tlsdir")
+	tmpdir, err := os.MkdirTemp(os.TempDir(), "tlsdir")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -26,7 +26,7 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestWatchFragmentDisable ensures that large watch
@@ -64,16 +64,16 @@ func TestWatchFragmentEnableWithGRPCLimit(t *testing.T) {
 // testWatchFragment triggers watch response that spans over multiple
 // revisions exceeding server request limits when combined.
 func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	cfg := &integration.ClusterConfig{
+	cfg := &integration2.ClusterConfig{
 		Size:            1,
 		MaxRequestBytes: 1.5 * 1024 * 1024,
 	}
 	if exceedRecvLimit {
 		cfg.ClientMaxCallRecvMsgSize = 1.5 * 1024 * 1024
 	}
-	clus := integration.NewClusterV3(t, cfg)
+	clus := integration2.NewClusterV3(t, cfg)
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)

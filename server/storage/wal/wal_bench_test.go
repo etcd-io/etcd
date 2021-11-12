@@ -15,7 +15,6 @@
 package wal
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -37,7 +36,7 @@ func BenchmarkWrite1000EntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 
 func BenchmarkWrite1000EntryBatch1000(b *testing.B)    { benchmarkWriteEntry(b, 1000, 1000) }
 
 func benchmarkWriteEntry(b *testing.B, size int, batch int) {
-	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	p, err := os.MkdirTemp(os.TempDir(), "waltest")
 	if err != nil {
 		b.Fatal(err)
 	}

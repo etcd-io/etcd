@@ -19,7 +19,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math"
 	"net"
@@ -469,7 +469,7 @@ func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c
 	}
 	srvhttp := &http.Server{
 		Handler:  httpmux,
-		ErrorLog: log.New(ioutil.Discard, "net/http", 0),
+		ErrorLog: log.New(io.Discard, "net/http", 0),
 	}
 
 	if tlsinfo == nil {
@@ -497,7 +497,7 @@ func newHTTPTransport(ca, cert, key string) (*http.Transport, error) {
 	tr := &http.Transport{}
 
 	if ca != "" && cert != "" && key != "" {
-		caCert, err := ioutil.ReadFile(ca)
+		caCert, err := os.ReadFile(ca)
 		if err != nil {
 			return nil, err
 		}

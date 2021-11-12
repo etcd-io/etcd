@@ -3,7 +3,49 @@
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG-3.3.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
+The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, 3.4.2+, and 3.5.1+.
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.17...v3.4.18) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+<hr>
+
+## v3.4.18 (2021-10-15)
+
+### Metrics, Monitoring
+
+See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
+
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13397).
+
+### Other
+
+- Updated [base image](https://github.com/etcd-io/etcd/pull/13386) from `debian:buster-v1.4.0` to `debian:bullseye-20210927` to fix the following critical CVEs:
+  - [CVE-2021-3711](https://nvd.nist.gov/vuln/detail/CVE-2021-3711): miscalculation of a buffer size in openssl's SM2 decryption
+  - [CVE-2021-35942](https://nvd.nist.gov/vuln/detail/CVE-2021-35942): integer overflow flaw in glibc
+  - [CVE-2019-9893](https://nvd.nist.gov/vuln/detail/CVE-2019-9893): incorrect syscall argument generation in libseccomp
+  - [CVE-2021-36159](https://nvd.nist.gov/vuln/detail/CVE-2021-36159): libfetch in apk-tools mishandles numeric strings in FTP and HTTP protocols to allow out of bound reads.
+
+<hr>
+
+## v3.4.17 (2021-10-03)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.16...v3.4.17) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+### `etcdctl`
+
+- Fix [etcdctl check datascale command](https://github.com/etcd-io/etcd/pull/11896) to work with https endpoints.
+
+### gRPC gateway
+
+- Add [`MaxCallRecvMsgSize`](https://github.com/etcd-io/etcd/pull/13077) support for http client.
+
+### Dependency
+
+- Replace [`github.com/dgrijalva/jwt-go with github.com/golang-jwt/jwt'](https://github.com/etcd-io/etcd/pull/13378).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
 
 <hr>
 
@@ -141,6 +183,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.10...v3.4.11) an
 ### Metrics, Monitoring
 
 - Add [`os_fd_used` and `os_fd_limit` to monitor current OS file descriptors](https://github.com/etcd-io/etcd/pull/12214).
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13397).
 
 ### Go
 

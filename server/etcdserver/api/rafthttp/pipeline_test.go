@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sync"
 	"testing"
@@ -158,7 +157,7 @@ func TestPipelinePost(t *testing.T) {
 	if g := req.Header.Get("X-Etcd-Cluster-ID"); g != "1" {
 		t.Errorf("cluster id = %s, want %s", g, "1")
 	}
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	if err != nil {
 		t.Fatalf("unexpected ReadAll error: %v", err)
 	}

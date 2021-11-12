@@ -25,14 +25,14 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestV2NoRetryEOF tests destructive api calls won't retry on a disconnection.
 func TestV2NoRetryEOF(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 	// generate an EOF response; specify address so appears first in sorted ep list
-	lEOF := integration.NewListenerWithAddr(t, fmt.Sprintf("127.0.0.1:%05d", os.Getpid()))
+	lEOF := integration2.NewListenerWithAddr(t, fmt.Sprintf("127.0.0.1:%05d", os.Getpid()))
 	defer lEOF.Close()
 	tries := uint32(0)
 	go func() {
@@ -45,8 +45,8 @@ func TestV2NoRetryEOF(t *testing.T) {
 			conn.Close()
 		}
 	}()
-	eofURL := integration.URLScheme + "://" + lEOF.Addr().String()
-	cli := integration.MustNewHTTPClient(t, []string{eofURL, eofURL}, nil)
+	eofURL := integration2.URLScheme + "://" + lEOF.Addr().String()
+	cli := integration2.MustNewHTTPClient(t, []string{eofURL, eofURL}, nil)
 	kapi := client.NewKeysAPI(cli)
 	for i, f := range noRetryList(kapi) {
 		startTries := atomic.LoadUint32(&tries)
@@ -62,17 +62,17 @@ func TestV2NoRetryEOF(t *testing.T) {
 
 // TestV2NoRetryNoLeader tests destructive api calls won't retry if given an error code.
 func TestV2NoRetryNoLeader(t *testing.T) {
-	integration.BeforeTest(t)
-	lHTTP := integration.NewListenerWithAddr(t, fmt.Sprintf("127.0.0.1:%05d", os.Getpid()))
+	integration2.BeforeTest(t)
+	lHTTP := integration2.NewListenerWithAddr(t, fmt.Sprintf("127.0.0.1:%05d", os.Getpid()))
 	eh := &errHandler{errCode: http.StatusServiceUnavailable}
 	srv := httptest.NewUnstartedServer(eh)
 	defer lHTTP.Close()
 	defer srv.Close()
 	srv.Listener = lHTTP
 	go srv.Start()
-	lHTTPURL := integration.URLScheme + "://" + lHTTP.Addr().String()
+	lHTTPURL := integration2.URLScheme + "://" + lHTTP.Addr().String()
 
-	cli := integration.MustNewHTTPClient(t, []string{lHTTPURL, lHTTPURL}, nil)
+	cli := integration2.MustNewHTTPClient(t, []string{lHTTPURL, lHTTPURL}, nil)
 	kapi := client.NewKeysAPI(cli)
 	// test error code
 	for i, f := range noRetryList(kapi) {
@@ -88,12 +88,12 @@ func TestV2NoRetryNoLeader(t *testing.T) {
 
 // TestV2RetryRefuse tests destructive api calls will retry if a connection is refused.
 func TestV2RetryRefuse(t *testing.T) {
-	integration.BeforeTest(t)
-	cl := integration.NewCluster(t, 1)
+	integration2.BeforeTest(t)
+	cl := integration2.NewCluster(t, 1)
 	cl.Launch(t)
 	defer cl.Terminate(t)
 	// test connection refused; expect no error failover
-	cli := integration.MustNewHTTPClient(t, []string{integration.URLScheme + "://refuseconn:123", cl.URL(0)}, nil)
+	cli := integration2.MustNewHTTPClient(t, []string{integration2.URLScheme + "://refuseconn:123", cl.URL(0)}, nil)
 	kapi := client.NewKeysAPI(cli)
 	if _, err := kapi.Set(context.Background(), "/delkey", "def", nil); err != nil {
 		t.Fatal(err)

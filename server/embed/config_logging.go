@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 
@@ -106,6 +106,11 @@ func (cfg *Config) setupLogging() error {
 			copied.ErrorOutputPaths = errOutputPaths
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
+			encoding, err := logutil.ConvertToZapFormat(cfg.LogFormat)
+			if err != nil {
+				return err
+			}
+			copied.Encoding = encoding
 			if cfg.ZapLoggerBuilder == nil {
 				lg, err := copied.Build()
 				if err != nil {
@@ -130,10 +135,22 @@ func (cfg *Config) setupLogging() error {
 
 			lvl := zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
 
+			var encoder zapcore.Encoder
+			encoding, err := logutil.ConvertToZapFormat(cfg.LogFormat)
+			if err != nil {
+				return err
+			}
+
+			if encoding == logutil.ConsoleLogFormat {
+				encoder = zapcore.NewConsoleEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig)
+			} else {
+				encoder = zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig)
+			}
+
 			// WARN: do not change field names in encoder config
 			// journald logging writer assumes field names of "level" and "caller"
 			cr := zapcore.NewCore(
-				zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig),
+				encoder,
 				syncer,
 				lvl,
 			)
@@ -213,7 +230,7 @@ func (cfg *Config) SetupGlobalLoggers() {
 			grpc.EnableTracing = true
 			grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
 		} else {
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+			grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, os.Stderr, os.Stderr))
 		}
 		zap.ReplaceGlobals(lg)
 	}

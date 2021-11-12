@@ -25,18 +25,19 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3MoveLeaderSecure(t *testing.T) {
-	testCtlV3MoveLeader(t, *newConfigTLS())
+	testCtlV3MoveLeader(t, *e2e.NewConfigTLS())
 }
 
 func TestCtlV3MoveLeaderInsecure(t *testing.T) {
-	testCtlV3MoveLeader(t, *newConfigNoTLS())
+	testCtlV3MoveLeader(t, *e2e.NewConfigNoTLS())
 }
 
-func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
-	BeforeTest(t)
+func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig) {
+	e2e.BeforeTest(t)
 
 	epc := setupEtcdctlTest(t, &cfg, true)
 	defer func() {
@@ -46,11 +47,11 @@ func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
 	}()
 
 	var tcfg *tls.Config
-	if cfg.clientTLS == clientTLS {
+	if cfg.ClientTLS == e2e.ClientTLS {
 		tinfo := transport.TLSInfo{
-			CertFile:      certPath,
-			KeyFile:       privateKeyPath,
-			TrustedCAFile: caPath,
+			CertFile:      e2e.CertPath,
+			KeyFile:       e2e.PrivateKeyPath,
+			TrustedCAFile: e2e.CaPath,
 		}
 		var err error
 		tcfg, err = tinfo.ClientConfig()
@@ -91,27 +92,28 @@ func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
 	defer os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
-		cfg:         *newConfigNoTLS(),
+		cfg:         *e2e.NewConfigNoTLS(),
 		dialTimeout: 7 * time.Second,
 		epc:         epc,
 	}
 
 	tests := []struct {
-		prefixes []string
-		expect   string
+		eps    []string
+		expect string
 	}{
 		{ // request to non-leader
-			cx.prefixArgs([]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]}),
+			[]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]},
 			"no leader endpoint given at ",
 		},
 		{ // request to leader
-			cx.prefixArgs([]string{cx.epc.EndpointsV3()[leadIdx]}),
+			[]string{cx.epc.EndpointsV3()[leadIdx]},
 			fmt.Sprintf("Leadership transferred from %s to %s", types.ID(leaderID), types.ID(transferee)),
 		},
 	}
 	for i, tc := range tests {
-		cmdArgs := append(tc.prefixes, "move-leader", types.ID(transferee).String())
-		if err := spawnWithExpect(cmdArgs, tc.expect); err != nil {
+		prefix := cx.prefixArgs(tc.eps)
+		cmdArgs := append(prefix, "move-leader", types.ID(transferee).String())
+		if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, tc.expect); err != nil {
 			t.Fatalf("#%d: %v", i, err)
 		}
 	}

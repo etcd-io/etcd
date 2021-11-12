@@ -16,7 +16,6 @@ package embed
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -361,6 +360,8 @@ type Config struct {
 	Logger string `json:"logger"`
 	// LogLevel configures log level. Only supports debug, info, warn, error, panic, or fatal. Default 'info'.
 	LogLevel string `json:"log-level"`
+	// LogFormat set log encoding. Only supports json, console. Default is 'json'.
+	LogFormat string `json:"log-format"`
 	// LogOutputs is either:
 	//  - "default" as os.Stderr,
 	//  - "stderr" as os.Stderr,
@@ -518,7 +519,7 @@ func ConfigFromFile(path string) (*Config, error) {
 }
 
 func (cfg *configYAML) configFromFile(path string) error {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}

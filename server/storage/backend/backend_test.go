@@ -16,7 +16,7 @@ package backend_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -59,7 +59,7 @@ func TestBackendSnapshot(t *testing.T) {
 	b.ForceCommit()
 
 	// write snapshot to a new file
-	f, err := ioutil.TempFile(t.TempDir(), "etcd_backend_test")
+	f, err := os.CreateTemp(t.TempDir(), "etcd_backend_test")
 	if err != nil {
 		t.Fatal(err)
 	}

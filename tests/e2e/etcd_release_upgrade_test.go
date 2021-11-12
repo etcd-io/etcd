@@ -23,24 +23,25 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 // TestReleaseUpgrade ensures that changes to master branch does not affect
 // upgrade from latest etcd releases.
 func TestReleaseUpgrade(t *testing.T) {
-	lastReleaseBinary := binDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 
-	copiedCfg := newConfigNoTLS()
-	copiedCfg.execPath = lastReleaseBinary
-	copiedCfg.snapshotCount = 3
-	copiedCfg.baseScheme = "unix" // to avoid port conflict
+	copiedCfg := e2e.NewConfigNoTLS()
+	copiedCfg.ExecPath = lastReleaseBinary
+	copiedCfg.SnapshotCount = 3
+	copiedCfg.BaseScheme = "unix" // to avoid port conflict
 
-	epc, err := newEtcdProcessCluster(t, copiedCfg)
+	epc, err := e2e.NewEtcdProcessCluster(t, copiedCfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -54,7 +55,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
-		cfg:         *newConfigNoTLS(),
+		cfg:         *e2e.NewConfigNoTLS(),
 		dialTimeout: 7 * time.Second,
 		quorum:      true,
 		epc:         epc,
@@ -71,17 +72,17 @@ func TestReleaseUpgrade(t *testing.T) {
 
 	t.Log("Cluster of etcd in old version running")
 
-	for i := range epc.procs {
+	for i := range epc.Procs {
 		t.Logf("Stopping node: %v", i)
-		if err := epc.procs[i].Stop(); err != nil {
+		if err := epc.Procs[i].Stop(); err != nil {
 			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
 		}
 		t.Logf("Stopped node: %v", i)
-		epc.procs[i].Config().execPath = binDir + "/etcd"
-		epc.procs[i].Config().keepDataDir = true
+		epc.Procs[i].Config().ExecPath = e2e.BinDir + "/etcd"
+		epc.Procs[i].Config().KeepDataDir = true
 
 		t.Logf("Restarting node in the new version: %v", i)
-		if err := epc.procs[i].Restart(); err != nil {
+		if err := epc.Procs[i].Restart(); err != nil {
 			t.Fatalf("error restarting etcd process (%v)", err)
 		}
 
@@ -100,7 +101,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	// new cluster version needs more time to upgrade
 	ver := version.Cluster(version.Version)
 	for i := 0; i < 7; i++ {
-		if err = cURLGet(epc, cURLReq{endpoint: "/version", expected: `"etcdcluster":"` + ver}); err != nil {
+		if err = e2e.CURLGet(epc, e2e.CURLReq{Endpoint: "/version", Expected: `"etcdcluster":"` + ver}); err != nil {
 			t.Logf("#%d: %v is not ready yet (%v)", i, ver, err)
 			time.Sleep(time.Second)
 			continue
@@ -114,19 +115,19 @@ func TestReleaseUpgrade(t *testing.T) {
 }
 
 func TestReleaseUpgradeWithRestart(t *testing.T) {
-	lastReleaseBinary := binDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 
-	copiedCfg := newConfigNoTLS()
-	copiedCfg.execPath = lastReleaseBinary
-	copiedCfg.snapshotCount = 10
-	copiedCfg.baseScheme = "unix"
+	copiedCfg := e2e.NewConfigNoTLS()
+	copiedCfg.ExecPath = lastReleaseBinary
+	copiedCfg.SnapshotCount = 10
+	copiedCfg.BaseScheme = "unix"
 
-	epc, err := newEtcdProcessCluster(t, copiedCfg)
+	epc, err := e2e.NewEtcdProcessCluster(t, copiedCfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -140,7 +141,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
-		cfg:         *newConfigNoTLS(),
+		cfg:         *e2e.NewConfigNoTLS(),
 		dialTimeout: 7 * time.Second,
 		quorum:      true,
 		epc:         epc,
@@ -155,19 +156,19 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 		}
 	}
 
-	for i := range epc.procs {
-		if err := epc.procs[i].Stop(); err != nil {
+	for i := range epc.Procs {
+		if err := epc.Procs[i].Stop(); err != nil {
 			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
 		}
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(len(epc.procs))
-	for i := range epc.procs {
+	wg.Add(len(epc.Procs))
+	for i := range epc.Procs {
 		go func(i int) {
-			epc.procs[i].Config().execPath = binDir + "/etcd"
-			epc.procs[i].Config().keepDataDir = true
-			if err := epc.procs[i].Restart(); err != nil {
+			epc.Procs[i].Config().ExecPath = e2e.BinDir + "/etcd"
+			epc.Procs[i].Config().KeepDataDir = true
+			if err := epc.Procs[i].Restart(); err != nil {
 				t.Errorf("error restarting etcd process (%v)", err)
 			}
 			wg.Done()

@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build v2v3
-// +build v2v3
+//go:build !v2v3
+// +build !v2v3
 
 package e2e
 
-func addV2Args(args []string) []string {
-	return append(args, "--experimental-enable-v2v3", "v2/")
-}
+func AddV2Args(args []string) []string { return args }

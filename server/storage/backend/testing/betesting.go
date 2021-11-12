@@ -15,7 +15,7 @@
 package betesting
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -26,7 +26,7 @@ import (
 )
 
 func NewTmpBackendFromCfg(t testing.TB, bcfg backend.BackendConfig) (backend.Backend, string) {
-	dir, err := ioutil.TempDir(t.TempDir(), "etcd_backend_test")
+	dir, err := os.MkdirTemp(t.TempDir(), "etcd_backend_test")
 	if err != nil {
 		panic(err)
 	}

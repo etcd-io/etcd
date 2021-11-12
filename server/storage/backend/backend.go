@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -432,6 +431,8 @@ func (b *backend) Defrag() error {
 
 func (b *backend) defrag() error {
 	now := time.Now()
+	isDefragActive.Set(1)
+	defer isDefragActive.Set(0)
 
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then
@@ -454,7 +455,7 @@ func (b *backend) defrag() error {
 	// Create a temporary file to ensure we start with a clean slate.
 	// Snapshotter.cleanupSnapdir cleans up any of these that are found during startup.
 	dir := filepath.Dir(b.db.Path())
-	temp, err := ioutil.TempFile(dir, "db.tmp.*")
+	temp, err := os.CreateTemp(dir, "db.tmp.*")
 	if err != nil {
 		return err
 	}

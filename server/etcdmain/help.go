@@ -196,6 +196,8 @@ Logging:
     Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
   --log-level 'info'
     Configures log level. Only supports debug, info, warn, error, panic, or fatal.
+  --log-format 'json'
+    Configures log format. Only supports json, console.
   --enable-log-rotation 'false'
     Enable log rotation of a single log-outputs file target.
   --log-rotation-config-json '{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}'

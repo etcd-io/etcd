@@ -76,7 +76,7 @@ func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerIntercepto
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
 		lg := s.Logger()
-		if lg != nil { // acquire stats if debug level is enabled or request is expensive
+		if lg != nil { // acquire stats if debug level is enabled or RequestInfo is expensive
 			defer logUnaryRequestStats(ctx, lg, s.Cfg.WarningUnaryRequestDuration, info, startTime, req, resp)
 		}
 		return resp, err

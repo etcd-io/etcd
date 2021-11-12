@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -924,7 +924,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
-				Body:   ioutil.NopCloser(strings.NewReader("bad json")),
+				Body:   io.NopCloser(strings.NewReader("bad json")),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&resServer{},
@@ -936,7 +936,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/bad"}},
 			},
 			&errServer{},
@@ -948,7 +948,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://a"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://a"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{},
@@ -960,7 +960,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
@@ -974,7 +974,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
@@ -988,7 +988,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
@@ -1058,7 +1058,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
-				Body:   ioutil.NopCloser(strings.NewReader("bad json")),
+				Body:   io.NopCloser(strings.NewReader("bad json")),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&resServer{},
@@ -1070,7 +1070,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/bad"}},
 			},
 			&errServer{},
@@ -1082,7 +1082,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://a"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://a"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{},
@@ -1094,7 +1094,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
@@ -1108,7 +1108,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
@@ -1122,7 +1122,7 @@ func TestServeMembersFail(t *testing.T) {
 			&http.Request{
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
-				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
+				Body:   io.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{

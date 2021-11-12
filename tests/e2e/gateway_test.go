@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 var (
@@ -27,7 +28,7 @@ var (
 )
 
 func TestGateway(t *testing.T) {
-	ec, err := newEtcdProcessCluster(t, newConfigNoTLS())
+	ec, err := e2e.NewEtcdProcessCluster(t, e2e.NewConfigNoTLS())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,14 +42,14 @@ func TestGateway(t *testing.T) {
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
 
-	err = spawnWithExpect([]string{ctlBinPath, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
+	err = e2e.SpawnWithExpect([]string{e2e.CtlBinPath, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
 	if err != nil {
 		t.Errorf("failed to finish put request through gateway: %v", err)
 	}
 }
 
 func startGateway(t *testing.T, endpoints string) *expect.ExpectProcess {
-	p, err := expect.NewExpect(binPath, "gateway", "--endpoints="+endpoints, "start")
+	p, err := expect.NewExpect(e2e.BinPath, "gateway", "--endpoints="+endpoints, "start")
 	if err != nil {
 		t.Fatal(err)
 	}
