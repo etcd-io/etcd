@@ -8,6 +8,15 @@ The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.
 
 <hr>
 
+## [v3.5.2](https://github.com/etcd-io/etcd/releases/tag/v3.5.2) (TODO)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.1...v3.5.2) and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/) for any breaking changes.
+
+### etcd server
+- Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13476).
+
+<hr>
+
 ## [v3.5.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.1) (2021-10-15)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.5.1) and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/) for any breaking changes.
