@@ -219,7 +219,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ExperimentalMemoryMlock:                  cfg.ExperimentalMemoryMlock,
 		ExperimentalTxnModeWriteWithSharedBuffer: cfg.ExperimentalTxnModeWriteWithSharedBuffer,
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
-		V2Deprecation: cfg.V2DeprecationEffective(),
+		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
+		V2Deprecation:                                 cfg.V2DeprecationEffective(),
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
@@ -345,6 +346,7 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
+		zap.Int("max-learners", sc.ExperimentalMaxLearners),
 	)
 }
 
