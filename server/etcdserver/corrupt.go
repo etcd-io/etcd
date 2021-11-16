@@ -131,7 +131,10 @@ func (s *EtcdServer) monitorKVDecoding() {
 		select {
 		case <-s.stopping:
 			return
-		case <-s.kv.ErrorC():
+		case _, ok := <-s.kv.ErrorC():
+			if !ok {
+				return
+			}
 			s.sendCorruptionAlarmRequest(uint64(s.ID()))
 		}
 	}

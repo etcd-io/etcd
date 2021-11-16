@@ -372,7 +372,7 @@ func (s *watchableStore) syncWatchers() int {
 	tx.RUnlock()
 	evs, err := s.kvsToEvents(wg, revs, vs)
 	if err != nil {
-		if s.errorc != nil && cap(s.errorc) > len(s.errorc) {
+		if s.errorc != nil {
 			s.lg.Fatal("kvsToEvents failed", zap.Error(err))
 			s.errorc <- err
 			return 0
