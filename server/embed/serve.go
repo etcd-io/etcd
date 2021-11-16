@@ -91,7 +91,9 @@ func (sctx *serveCtx) serve(
 	tlsinfo *transport.TLSInfo,
 	handler http.Handler,
 	errHandler func(error),
-	gopts ...grpc.ServerOption) (err error) {
+	interceptor grpc.UnaryServerInterceptor,
+	gopts ...grpc.ServerOption,
+) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
 
@@ -110,7 +112,7 @@ func (sctx *serveCtx) serve(
 	}()
 
 	if sctx.insecure {
-		gs = v3rpc.Server(s, nil, nil, gopts...)
+		gs = v3rpc.Server(s, nil, interceptor, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
@@ -148,7 +150,7 @@ func (sctx *serveCtx) serve(
 		if tlsErr != nil {
 			return tlsErr
 		}
-		gs = v3rpc.Server(s, tlscfg, nil, gopts...)
+		gs = v3rpc.Server(s, tlscfg, interceptor, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {

@@ -254,6 +254,9 @@ type Config struct {
 	// SocketOpts are socket options passed to listener config.
 	SocketOpts transport.SocketOpts `json:"socket-options"`
 
+	// GRPCInterceptor specifies the grpc server interceptors.
+	GRPCInterceptor grpc.UnaryServerInterceptor
+
 	// PreVote is true to enable Raft Pre-Vote.
 	// If enabled, Raft runs an additional election phase
 	// to check whether it would get enough votes to win
