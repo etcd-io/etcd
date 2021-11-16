@@ -120,6 +120,23 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 	return nil
 }
 
+func (s *EtcdServer) monitorKVDecoding() {
+	lg := s.Logger()
+	lg.Info(
+		"enabled decoding error reporting",
+		zap.String("local-member-id", s.ID().String()),
+	)
+
+	for {
+		select {
+		case <-s.stopping:
+			return
+		case <-s.kv.ErrorC():
+			s.sendCorruptionAlarmRequest(uint64(s.ID()))
+		}
+	}
+}
+
 func (s *EtcdServer) monitorKVHash() {
 	t := s.Cfg.CorruptCheckTime
 	if t == 0 {
@@ -137,8 +154,6 @@ func (s *EtcdServer) monitorKVHash() {
 		select {
 		case <-s.stopping:
 			return
-		case <-s.kv.ErrorC():
-			s.sendCorruptionAlarmRequest(uint64(s.ID()))
 		case <-time.After(t):
 		}
 		if !s.isLeader() {

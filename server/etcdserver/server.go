@@ -520,6 +520,7 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(s.monitorClusterVersions)
 	s.GoAttach(s.monitorStorageVersion)
 	s.GoAttach(s.linearizableReadLoop)
+	s.GoAttach(s.monitorKVDecoding)
 	s.GoAttach(s.monitorKVHash)
 	s.GoAttach(s.monitorDowngrade)
 }

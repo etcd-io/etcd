@@ -89,7 +89,7 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg S
 		stopc:    make(chan struct{}),
 	}
 	if cfg.ReportKVDecodeError {
-		s.errorc = make(chan error)
+		s.errorc = make(chan error, 16)
 	}
 	s.store.ReadView = &readView{s}
 	s.store.WriteView = &writeView{s}
@@ -372,7 +372,7 @@ func (s *watchableStore) syncWatchers() int {
 	tx.RUnlock()
 	evs, err := s.kvsToEvents(wg, revs, vs)
 	if err != nil {
-		if s.errorc != nil {
+		if s.errorc != nil && cap(s.errorc) > len(s.errorc) {
 			s.lg.Fatal("kvsToEvents failed", zap.Error(err))
 			s.errorc <- err
 			return 0
