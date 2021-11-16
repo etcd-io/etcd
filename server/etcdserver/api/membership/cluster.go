@@ -40,8 +40,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const maxLearners = 1
-
 // RaftCluster is a list of Members that belong to the same raft cluster
 type RaftCluster struct {
 	lg *zap.Logger
@@ -60,6 +58,7 @@ type RaftCluster struct {
 	removed map[types.ID]bool
 
 	downgradeInfo  *serverversion.DowngradeInfo
+	maxLearners    int
 	versionChanged *notify.Notifier
 }
 
@@ -81,8 +80,8 @@ const (
 
 // NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
 // cluster with raft learner member.
-func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
-	c := NewCluster(lg)
+func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap, opts ...ClusterOption) (*RaftCluster, error) {
+	c := NewCluster(lg, opts...)
 	for name, urls := range urlsmap {
 		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
@@ -97,8 +96,8 @@ func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) 
 	return c, nil
 }
 
-func NewClusterFromMembers(lg *zap.Logger, id types.ID, membs []*Member) *RaftCluster {
-	c := NewCluster(lg)
+func NewClusterFromMembers(lg *zap.Logger, id types.ID, membs []*Member, opts ...ClusterOption) *RaftCluster {
+	c := NewCluster(lg, opts...)
 	c.cid = id
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -106,15 +105,18 @@ func NewClusterFromMembers(lg *zap.Logger, id types.ID, membs []*Member) *RaftCl
 	return c
 }
 
-func NewCluster(lg *zap.Logger) *RaftCluster {
+func NewCluster(lg *zap.Logger, opts ...ClusterOption) *RaftCluster {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
+	clOpts := newClusterOpts(opts...)
+
 	return &RaftCluster{
 		lg:            lg,
 		members:       make(map[types.ID]*Member),
 		removed:       make(map[types.ID]bool),
 		downgradeInfo: &serverversion.DowngradeInfo{Enabled: false},
+		maxLearners:   clOpts.maxLearners,
 	}
 }
 
@@ -289,6 +291,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 			zap.String("local-member-id", c.localID.String()),
 			zap.String("recovered-remote-peer-id", m.ID.String()),
 			zap.Strings("recovered-remote-peer-urls", m.PeerURLs),
+			zap.Bool("recovered-remote-peer-is-learner", m.IsLearner),
 		)
 	}
 	if c.version != nil {
@@ -303,9 +306,9 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	// TODO: this must be switched to backend as well.
-	members, removed := membersFromStore(c.lg, c.v2store)
+	membersMap, removedMap := membersFromStore(c.lg, c.v2store)
 	id := types.ID(cc.NodeID)
-	if removed[id] {
+	if removedMap[id] {
 		return ErrIDRemoved
 	}
 	switch cc.Type {
@@ -316,19 +319,21 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 
 		if confChangeContext.IsPromote { // promoting a learner member to voting member
-			if members[id] == nil {
+			if membersMap[id] == nil {
 				return ErrIDNotFound
 			}
-			if !members[id].IsLearner {
+			if !membersMap[id].IsLearner {
 				return ErrMemberNotLearner
 			}
 		} else { // adding a new member
-			if members[id] != nil {
+			if membersMap[id] != nil {
 				return ErrIDExists
 			}
 
+			var members []*Member
 			urls := make(map[string]bool)
-			for _, m := range members {
+			for _, m := range membersMap {
+				members = append(members, m)
 				for _, u := range m.PeerURLs {
 					urls[u] = true
 				}
@@ -339,29 +344,24 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 				}
 			}
 
-			if confChangeContext.Member.IsLearner { // the new member is a learner
-				numLearners := 0
-				for _, m := range members {
-					if m.IsLearner {
-						numLearners++
-					}
-				}
-				if numLearners+1 > maxLearners {
-					return ErrTooManyLearners
+			if confChangeContext.Member.RaftAttributes.IsLearner && cc.Type == raftpb.ConfChangeAddLearnerNode { // the new member is a learner
+				scaleUpLearners := true
+				if err := ValidateMaxLearnerConfig(c.maxLearners, members, scaleUpLearners); err != nil {
+					return err
 				}
 			}
 		}
 	case raftpb.ConfChangeRemoveNode:
-		if members[id] == nil {
+		if membersMap[id] == nil {
 			return ErrIDNotFound
 		}
 
 	case raftpb.ConfChangeUpdateNode:
-		if members[id] == nil {
+		if membersMap[id] == nil {
 			return ErrIDNotFound
 		}
 		urls := make(map[string]bool)
-		for _, m := range members {
+		for _, m := range membersMap {
 			if m.ID == id {
 				continue
 			}
@@ -407,6 +407,7 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 		zap.String("local-member-id", c.localID.String()),
 		zap.String("added-peer-id", m.ID.String()),
 		zap.Strings("added-peer-peer-urls", m.PeerURLs),
+		zap.Bool("added-peer-is-learner", m.IsLearner),
 	)
 }
 
@@ -434,6 +435,7 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 			zap.String("local-member-id", c.localID.String()),
 			zap.String("removed-remote-peer-id", id.String()),
 			zap.Strings("removed-remote-peer-urls", m.PeerURLs),
+			zap.Bool("removed-remote-peer-is-learner", m.IsLearner),
 		)
 	} else {
 		c.lg.Warn(
@@ -517,6 +519,7 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 		zap.String("local-member-id", c.localID.String()),
 		zap.String("updated-remote-peer-id", id.String()),
 		zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+		zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
 	)
 }
 
@@ -830,4 +833,25 @@ func (c *RaftCluster) updateMembershipMetric(peer types.ID, known bool) {
 		v = 1
 	}
 	knownPeers.WithLabelValues(c.localID.String(), peer.String()).Set(v)
+}
+
+// ValidateMaxLearnerConfig verifies the existing learner members in the cluster membership and an optional N+1 learner
+// scale up are not more than maxLearners.
+func ValidateMaxLearnerConfig(maxLearners int, members []*Member, scaleUpLearners bool) error {
+	numLearners := 0
+	for _, m := range members {
+		if m.IsLearner {
+			numLearners++
+		}
+	}
+	// Validate config can accommodate scale up.
+	if scaleUpLearners {
+		numLearners++
+	}
+
+	if numLearners > maxLearners {
+		return ErrTooManyLearners
+	}
+
+	return nil
 }

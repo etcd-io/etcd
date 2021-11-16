@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 
 	bolt "go.etcd.io/bbolt"
@@ -332,6 +333,8 @@ type Config struct {
 	// ExperimentalReportKVDecodeError enables WatchableStore to report kv decode error in case of failure. Normally we
 	// treat these failures as panics.
 	ExperimentalReportKVDecodeError bool `json:"experimental-report-kv-decode-error"`
+	// ExperimentalMaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
+	ExperimentalMaxLearners int `json:"experimental-max-learners"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -506,6 +509,7 @@ func NewConfig() *Config {
 		ExperimentalDowngradeCheckTime:           DefaultDowngradeCheckTime,
 		ExperimentalMemoryMlock:                  false,
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
+		ExperimentalMaxLearners:                  membership.DefaultMaxLearners,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 	}
