@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"go.etcd.io/etcd/namespacequota"
 	"hash/crc32"
 	"io"
 	"math"
@@ -85,6 +86,8 @@ type v3Manager struct {
 	walDir  string
 	snapDir string
 	cl      *membership.RaftCluster
+
+	namespaceQuotaEnforcement int
 
 	skipHashCheck bool
 }
@@ -239,6 +242,9 @@ type RestoreConfig struct {
 	// InitialClusterToken is the initial cluster token for etcd cluster during restore bootstrap.
 	InitialClusterToken string
 
+	// NamespaceQuotaEnforcement configures the namespace quote enforcement
+	NamespaceQuotaEnforcement int
+
 	// SkipHashCheck is "true" to ignore snapshot integrity hash value
 	// (required if copied from data directory).
 	SkipHashCheck bool
@@ -257,11 +263,12 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	}
 
 	srv := etcdserver.ServerConfig{
-		Logger:              s.lg,
-		Name:                cfg.Name,
-		PeerURLs:            pURLs,
-		InitialPeerURLsMap:  ics,
-		InitialClusterToken: cfg.InitialClusterToken,
+		Logger:                    s.lg,
+		Name:                      cfg.Name,
+		PeerURLs:                  pURLs,
+		InitialPeerURLsMap:        ics,
+		InitialClusterToken:       cfg.InitialClusterToken,
+		NamespaceQuotaEnforcement: cfg.NamespaceQuotaEnforcement,
 	}
 	if err = srv.VerifyBootstrap(); err != nil {
 		return err
@@ -292,6 +299,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	s.walDir = walDir
 	s.snapDir = filepath.Join(dataDir, "member", "snap")
 	s.skipHashCheck = cfg.SkipHashCheck
+	s.namespaceQuotaEnforcement = cfg.NamespaceQuotaEnforcement
 
 	s.lg.Info(
 		"restoring snapshot",
@@ -393,7 +401,10 @@ func (s *v3Manager) saveDB() error {
 	// a lessor never timeouts leases
 	lessor := lease.NewLessor(s.lg, be, lease.LessorConfig{MinLeaseTTL: math.MaxInt64})
 
-	mvs := mvcc.NewStore(s.lg, be, lessor, (*initIndex)(&commit), mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
+	// namespaceQuotaManager
+	namespaceQuotaManager := namespacequota.NewNamespaceQuotaManager(s.lg, be, namespacequota.NamespaceQuotaManagerConfig{NamespaceQuotaEnforcement: s.namespaceQuotaEnforcement})
+
+	mvs := mvcc.NewStore(s.lg, be, lessor, namespaceQuotaManager, (*initIndex)(&commit), mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
 	txn := mvs.Write(traceutil.TODO())
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {

@@ -77,6 +77,15 @@ This is a generated documentation. Please read the proto files for more.
 
 
 
+##### service `NamespaceQuota` (etcdserver/etcdserverpb/rpc.proto)
+
+| Method | Request Type | Response Type | Description |
+| ------ | ------------ | ------------- | ----------- |
+| NamespaceQuotaSet | NamespaceQuotaSetRequest | NamespaceQuotaSetResponse | NamespaceQuotaSet sets the namespace quota for a given key |
+| NamespaceQuotaGet | NamespaceQuotaGetRequest | NamespaceQuotaGetResponse | NamespaceQuotaGet gets the namespace quota for a given key |
+
+
+
 ##### service `Watch` (etcdserver/etcdserverpb/rpc.proto)
 
 | Method | Request Type | Response Type | Description |
@@ -712,6 +721,46 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+
+
+
+##### message `NamespaceQuotaGetRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| key | key key | string |
+
+
+
+##### message `NamespaceQuotaGetResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header | header response header | ResponseHeader |
+| key | key key | string |
+| quotaByteCount | quotaByteCount quota byte count represents the byte quota for respective Key | uint64 |
+| quotaKeyCount | quotaKeyCount quota key count represents the quota key quota for respective Key | uint64 |
+| UsageByteCount | usageByteCount represents the current usage of bytes for respective Key | uint64 |
+| usageKeyCount | usageKeyCount represents the current usage of bytes for respective Key | uint64 |
+
+
+
+##### message `NamespaceQuotaSetRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| quota | quota represents a NamespaceQuota | namespacequotapb.NamespaceQuota |
+
+
+
+##### message `NamespaceQuotaSetResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header | header response header | ResponseHeader |
+| key | key key | string |
+| quotaByteCount | quotaByteCount quota byte count represents the byte quota for respective Key | uint64 |
+| quotaKeyCount | quotaKeyCount quota key count represents the quota key quota for respective Key | uint64 |
 
 
 

@@ -126,23 +126,25 @@ func TestKeyIndexSince(t *testing.T) {
 
 func TestKeyIndexPut(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.put(zap.NewExample(), 5, 0)
+	ki.put(zap.NewExample(), 5, 0, 0)
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
 		modified:    revision{5, 0},
 		generations: []generation{{created: revision{5, 0}, ver: 1, revs: []revision{{main: 5}}}},
+		valueSize:   0,
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
 	}
 
-	ki.put(zap.NewExample(), 7, 0)
+	ki.put(zap.NewExample(), 7, 0, 0)
 
 	wki = &keyIndex{
 		key:         []byte("foo"),
 		modified:    revision{7, 0},
 		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}}},
+		valueSize:   0,
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -151,12 +153,13 @@ func TestKeyIndexPut(t *testing.T) {
 
 func TestKeyIndexRestore(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.restore(zap.NewExample(), revision{5, 0}, revision{7, 0}, 2)
+	ki.restore(zap.NewExample(), revision{5, 0}, revision{7, 0}, 2, 0)
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
 		modified:    revision{7, 0},
 		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 7}}}},
+		valueSize:   0,
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -165,7 +168,7 @@ func TestKeyIndexRestore(t *testing.T) {
 
 func TestKeyIndexTombstone(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.put(zap.NewExample(), 5, 0)
+	ki.put(zap.NewExample(), 5, 0, 0)
 
 	err := ki.tombstone(zap.NewExample(), 7, 0)
 	if err != nil {
@@ -176,13 +179,14 @@ func TestKeyIndexTombstone(t *testing.T) {
 		key:         []byte("foo"),
 		modified:    revision{7, 0},
 		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}}, {}},
+		valueSize:   0,
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
 	}
 
-	ki.put(zap.NewExample(), 8, 0)
-	ki.put(zap.NewExample(), 9, 0)
+	ki.put(zap.NewExample(), 8, 0, 0)
+	ki.put(zap.NewExample(), 9, 0, 0)
 	err = ki.tombstone(zap.NewExample(), 15, 0)
 	if err != nil {
 		t.Errorf("unexpected tombstone error: %v", err)
@@ -196,6 +200,7 @@ func TestKeyIndexTombstone(t *testing.T) {
 			{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 9}, {main: 15}}},
 			{},
 		},
+		valueSize: 0,
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -225,6 +230,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{},
 		},
@@ -239,6 +245,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 2}: {},
@@ -255,6 +262,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 2}: {},
@@ -271,6 +279,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 4}: {},
@@ -287,6 +296,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 4}: {},
@@ -302,6 +312,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{},
 		},
@@ -315,6 +326,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{},
 		},
@@ -328,6 +340,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 8}: {},
@@ -343,6 +356,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 8}: {},
@@ -358,6 +372,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 10}: {},
@@ -373,6 +388,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 10}: {},
@@ -387,6 +403,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{},
 		},
@@ -399,6 +416,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{},
 		},
@@ -411,6 +429,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 14, sub: 1}: {},
@@ -425,6 +444,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14, sub: 1}, {main: 16}}},
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{
 				{main: 14, sub: 1}: {},
@@ -438,6 +458,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				generations: []generation{
 					{},
 				},
+				valueSize: 0,
 			},
 			map[revision]struct{}{},
 		},
@@ -517,7 +538,7 @@ func cloneKeyIndex(ki *keyIndex) *keyIndex {
 	for i, gen := range ki.generations {
 		generations[i] = *cloneGeneration(&gen)
 	}
-	return &keyIndex{ki.key, ki.modified, generations}
+	return &keyIndex{ki.key, ki.modified, generations, 0}
 }
 
 func cloneGeneration(g *generation) *generation {
@@ -532,8 +553,8 @@ func cloneGeneration(g *generation) *generation {
 // test that compact on version that higher than last modified version works well
 func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.put(zap.NewExample(), 1, 0)
-	ki.put(zap.NewExample(), 2, 0)
+	ki.put(zap.NewExample(), 1, 0, 0)
+	ki.put(zap.NewExample(), 2, 0, 0)
 	am := make(map[revision]struct{})
 	ki.compact(zap.NewExample(), 3, am)
 
@@ -543,6 +564,7 @@ func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
 		generations: []generation{
 			{created: revision{1, 0}, ver: 2, revs: []revision{{main: 2}}},
 		},
+		valueSize: 0,
 	}
 	wam := map[revision]struct{}{
 		{main: 2}: {},
@@ -574,6 +596,7 @@ func TestKeyIndexIsEmpty(t *testing.T) {
 				generations: []generation{
 					{created: revision{1, 0}, ver: 2, revs: []revision{{main: 2}}},
 				},
+				valueSize: 0,
 			},
 			false,
 		},
@@ -687,14 +710,14 @@ func newTestKeyIndex() *keyIndex {
 	//    {{2, 0}[1], {4, 0}[2], {6, 0}(t)[3]}
 
 	ki := &keyIndex{key: []byte("foo")}
-	ki.put(zap.NewExample(), 2, 0)
-	ki.put(zap.NewExample(), 4, 0)
+	ki.put(zap.NewExample(), 2, 0, 0)
+	ki.put(zap.NewExample(), 4, 0, 0)
 	ki.tombstone(zap.NewExample(), 6, 0)
-	ki.put(zap.NewExample(), 8, 0)
-	ki.put(zap.NewExample(), 10, 0)
+	ki.put(zap.NewExample(), 8, 0, 0)
+	ki.put(zap.NewExample(), 10, 0, 0)
 	ki.tombstone(zap.NewExample(), 12, 0)
-	ki.put(zap.NewExample(), 14, 0)
-	ki.put(zap.NewExample(), 14, 1)
+	ki.put(zap.NewExample(), 14, 0, 0)
+	ki.put(zap.NewExample(), 14, 1, 0)
 	ki.tombstone(zap.NewExample(), 16, 0)
 	return ki
 }

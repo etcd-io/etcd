@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"go.etcd.io/etcd/namespacequota"
 	"math/rand"
 	"os"
 	"testing"
@@ -28,7 +29,7 @@ import (
 
 func BenchmarkWatchableStorePut(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(zap.NewExample(), be, &lease.FakeLessor{}, nil, nil, StoreConfig{})
+	s := New(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, nil, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -49,7 +50,7 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := New(zap.NewExample(), be, &lease.FakeLessor{}, nil, &i, StoreConfig{})
+	s := New(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -80,7 +81,7 @@ func BenchmarkWatchableStoreWatchPutUnsync(b *testing.B) {
 
 func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, nil, StoreConfig{})
+	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, nil, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	k := []byte("testkey")
@@ -123,7 +124,7 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore periodically calls syncWatchersLoop
@@ -180,7 +181,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, nil, StoreConfig{})
+	s := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, nil, StoreConfig{})
 
 	defer func() {
 		s.store.Close()

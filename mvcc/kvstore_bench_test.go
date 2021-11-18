@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"go.etcd.io/etcd/namespacequota"
 	"sync/atomic"
 	"testing"
 
@@ -34,7 +35,7 @@ func (i *fakeConsistentIndex) ConsistentIndex() uint64 {
 func BenchmarkStorePut(b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -54,7 +55,7 @@ func BenchmarkStoreRangeKey100(b *testing.B) { benchmarkStoreRange(b, 100) }
 func benchmarkStoreRange(b *testing.B, n int) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// 64 byte key/val
@@ -82,7 +83,7 @@ func benchmarkStoreRange(b *testing.B, n int) {
 func BenchmarkConsistentIndex(b *testing.B) {
 	fci := fakeConsistentIndex(10)
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &fci, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, &fci, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	tx := s.b.BatchTx()
@@ -101,7 +102,7 @@ func BenchmarkConsistentIndex(b *testing.B) {
 func BenchmarkStorePutUpdate(b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -120,7 +121,7 @@ func BenchmarkStorePutUpdate(b *testing.B) {
 func BenchmarkStoreTxnPut(b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, &i, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -141,7 +142,7 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, &i, StoreConfig{})
 	// use closure to capture 's' to pick up the reassignment
 	defer func() { cleanup(s, be, tmpPath) }()
 
@@ -161,7 +162,7 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	s = NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &i, StoreConfig{})
+	s = NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, &i, StoreConfig{})
 }
 
 func BenchmarkStoreRestoreRevs1(b *testing.B) {

@@ -19,6 +19,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"go.etcd.io/etcd/namespacequota"
 	"math"
 	mrand "math/rand"
 	"os"
@@ -41,7 +42,7 @@ import (
 
 func TestStoreRev(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 	defer s.Close()
 	defer os.Remove(tmpPath)
 
@@ -71,10 +72,11 @@ func TestStorePut(t *testing.T) {
 		r   indexGetResp
 		rr  *rangeResp
 
-		wrev    revision
-		wkey    []byte
-		wkv     mvccpb.KeyValue
-		wputrev revision
+		wrev      revision
+		wkey      []byte
+		wkv       mvccpb.KeyValue
+		wputrev   revision
+		valueSize int
 	}{
 		{
 			revision{1, 0},
@@ -92,6 +94,7 @@ func TestStorePut(t *testing.T) {
 				Lease:          1,
 			},
 			revision{2, 0},
+			3,
 		},
 		{
 			revision{1, 1},
@@ -109,6 +112,7 @@ func TestStorePut(t *testing.T) {
 				Lease:          2,
 			},
 			revision{2, 0},
+			3,
 		},
 		{
 			revision{2, 0},
@@ -126,6 +130,7 @@ func TestStorePut(t *testing.T) {
 				Lease:          3,
 			},
 			revision{3, 0},
+			3,
 		},
 	}
 	for i, tt := range tests {
@@ -161,7 +166,7 @@ func TestStorePut(t *testing.T) {
 		}
 		wact = []testutil.Action{
 			{Name: "get", Params: []interface{}{[]byte("foo"), tt.wputrev.main}},
-			{Name: "put", Params: []interface{}{[]byte("foo"), tt.wputrev}},
+			{Name: "put", Params: []interface{}{[]byte("foo"), tt.wputrev, tt.valueSize}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
@@ -425,7 +430,7 @@ func TestRestoreDelete(t *testing.T) {
 	defer func() { restoreChunkKeys = oldChunk }()
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	keys := make(map[string]struct{})
@@ -451,7 +456,7 @@ func TestRestoreDelete(t *testing.T) {
 	}
 	s.Close()
 
-	s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 	defer s.Close()
 	for i := 0; i < 20; i++ {
 		ks := fmt.Sprintf("foo-%d", i)
@@ -473,7 +478,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	tests := []string{"recreate", "restore"}
 	for _, test := range tests {
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+		s0 := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 		defer os.Remove(tmpPath)
 
 		s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -493,7 +498,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		var s *store
 		switch test {
 		case "recreate":
-			s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+			s = NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 		case "restore":
 			s0.Restore(b)
 			s = s0
@@ -535,7 +540,7 @@ type hashKVResult struct {
 // TestHashKVWhenCompacting ensures that HashKV returns correct hash when compacting.
 func TestHashKVWhenCompacting(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	rev := 10000
@@ -603,7 +608,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 // correct hash value with latest revision.
 func TestHashKVZeroRevision(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	rev := 10000
@@ -636,7 +641,7 @@ func TestTxnPut(t *testing.T) {
 	vals := createBytesSlice(bytesN, sliceN)
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < sliceN; i++ {
@@ -652,7 +657,7 @@ func TestTxnPut(t *testing.T) {
 // TestConcurrentReadNotBlockingWrite ensures Read does not blocking Write after its creation
 func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	// write something to read later
@@ -721,7 +726,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		mu                   sync.Mutex // mu protectes committedKVs
 	)
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, StoreConfig{})
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	var wg sync.WaitGroup
@@ -924,6 +929,16 @@ type indexRangeResp struct {
 	revs []revision
 }
 
+type indexRangeValueResp struct {
+	keys [][]byte
+	size []int
+}
+
+type indexGetValueResp struct {
+	valueSize int
+	isFound   bool
+}
+
 type indexRangeEventsResp struct {
 	revs []revision
 }
@@ -934,6 +949,8 @@ type fakeIndex struct {
 	indexRangeRespc       chan indexRangeResp
 	indexRangeEventsRespc chan indexRangeEventsResp
 	indexCompactRespc     chan map[revision]struct{}
+	indexRangeValuec      chan indexRangeValueResp
+	indexGetValuec        chan indexGetValueResp
 }
 
 func (i *fakeIndex) Revisions(key, end []byte, atRev int64) []revision {
@@ -951,8 +968,18 @@ func (i *fakeIndex) Range(key, end []byte, atRev int64) ([][]byte, []revision) {
 	r := <-i.indexRangeRespc
 	return r.keys, r.revs
 }
-func (i *fakeIndex) Put(key []byte, rev revision) {
-	i.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{key, rev}})
+func (i *fakeIndex) RangeValueSize(key, end []byte) ([][]byte, []int) {
+	i.Recorder.Record(testutil.Action{Name: "rangeValueSize", Params: []interface{}{key, end}})
+	r := <-i.indexRangeValuec
+	return r.keys, r.size
+}
+func (i *fakeIndex) GetValueSize(key []byte) (int, bool) {
+	i.Recorder.Record(testutil.Action{Name: "getValueSize", Params: []interface{}{key}})
+	r := <-i.indexGetValuec
+	return r.valueSize, r.isFound
+}
+func (i *fakeIndex) Put(key []byte, rev revision, valueSize int) {
+	i.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{key, rev, valueSize}})
 }
 func (i *fakeIndex) Tombstone(key []byte, rev revision) error {
 	i.Recorder.Record(testutil.Action{Name: "tombstone", Params: []interface{}{key, rev}})

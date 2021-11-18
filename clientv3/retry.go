@@ -152,6 +152,33 @@ func (rlc *retryLeaseClient) LeaseKeepAlive(ctx context.Context, opts ...grpc.Ca
 	return rlc.lc.LeaseKeepAlive(ctx, append(opts, withRetryPolicy(repeatable))...)
 }
 
+type retryNamespaceQuotaClient struct {
+	nqc pb.NamespaceQuotaClient
+}
+
+// RetryNamespaceQuotaClient implements a NamespaceQuotaClient.
+func RetryNamespaceQuotaClient(c *Client) pb.NamespaceQuotaClient {
+	return &retryNamespaceQuotaClient{
+		nqc: pb.NewNamespaceQuotaClient(c.conn),
+	}
+}
+
+func (rnq *retryNamespaceQuotaClient) NamespaceQuotaSet(ctx context.Context, in *pb.NamespaceQuotaSetRequest, opts ...grpc.CallOption) (*pb.NamespaceQuotaResponse, error) {
+	return rnq.nqc.NamespaceQuotaSet(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rnq *retryNamespaceQuotaClient) NamespaceQuotaGet(ctx context.Context, in *pb.NamespaceQuotaGetRequest, opts ...grpc.CallOption) (*pb.NamespaceQuotaResponse, error) {
+	return rnq.nqc.NamespaceQuotaGet(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rnq *retryNamespaceQuotaClient) NamespaceQuotaDelete(ctx context.Context, in *pb.NamespaceQuotaDeleteRequest, opts ...grpc.CallOption) (*pb.NamespaceQuotaResponse, error) {
+	return rnq.nqc.NamespaceQuotaDelete(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
+func (rnq *retryNamespaceQuotaClient) NamespaceQuotaList(ctx context.Context, in *pb.NamespaceQuotaListRequest, opts ...grpc.CallOption) (*pb.NamespaceQuotaListResponse, error) {
+	return rnq.nqc.NamespaceQuotaList(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+}
+
 type retryClusterClient struct {
 	cc pb.ClusterClient
 }

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"go.etcd.io/etcd/namespacequota"
 	"time"
 
 	"go.etcd.io/etcd/auth"
@@ -65,6 +66,17 @@ type Lessor interface {
 
 	// LeaseLeases lists all leases.
 	LeaseLeases(ctx context.Context, r *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error)
+}
+
+type NamespaceQuotaManager interface {
+	// NamespaceQuotaSet sets the NamespaceQuota on a key
+	NamespaceQuotaSet(ctx context.Context, r *pb.NamespaceQuotaSetRequest) (*pb.NamespaceQuotaResponse, error)
+	// NamespaceQuotaGet gets the NamespaceQuota for a given key if it exists
+	NamespaceQuotaGet(ctx context.Context, r *pb.NamespaceQuotaGetRequest) (*pb.NamespaceQuotaResponse, error)
+	// NamespaceQuotaDelete deletes the NamespaceQuota for a given key if it exists
+	NamespaceQuotaDelete(ctx context.Context, r *pb.NamespaceQuotaDeleteRequest) (*pb.NamespaceQuotaResponse, error)
+	// NamespaceQuotaList lists all NamespaceQuotas
+	NamespaceQuotaList(ctx context.Context, r *pb.NamespaceQuotaListRequest) (*pb.NamespaceQuotaListResponse, error)
 }
 
 type Authenticator interface {
@@ -127,19 +139,27 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
+	start := time.Now()
+	byteDiff, keyDiff := s.namespaceQuotaManager.DiffNamespaceQuotaUsage(r.Key, r.Value)
+	if s.namespaceQuotaManager.IsQuotaExceeded(r.Key, byteDiff, keyDiff) {
+		return nil, namespacequota.ErrNamespaceQuotaExceeded
+	}
 	ctx = context.WithValue(ctx, traceutil.StartTimeKey, time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
 	}
+	namespaceQuotaPutDurationSec.Observe(time.Since(start).Seconds())
 	return resp.(*pb.PutResponse), nil
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+	start := time.Now()
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
 		return nil, err
 	}
+	namespaceQuotaDeleteDurationSec.Observe(time.Since(start).Seconds())
 	return resp.(*pb.DeleteRangeResponse), nil
 }
 
@@ -352,6 +372,49 @@ func (s *EtcdServer) LeaseLeases(ctx context.Context, r *pb.LeaseLeasesRequest) 
 		lss[i] = &pb.LeaseStatus{ID: int64(ls[i].ID)}
 	}
 	return &pb.LeaseLeasesResponse{Header: newHeader(s), Leases: lss}, nil
+}
+
+func (s *EtcdServer) NamespaceQuotaSet(ctx context.Context, r *pb.NamespaceQuotaSetRequest) (*pb.NamespaceQuotaResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{NamespacequotaSetRequest: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.NamespaceQuotaResponse), nil
+}
+
+func (s *EtcdServer) NamespaceQuotaGet(ctx context.Context, r *pb.NamespaceQuotaGetRequest) (*pb.NamespaceQuotaResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{NamespacequotaGetRequest: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.NamespaceQuotaResponse), nil
+}
+
+func (s *EtcdServer) NamespaceQuotaDelete(ctx context.Context, r *pb.NamespaceQuotaDeleteRequest) (*pb.NamespaceQuotaResponse, error) {
+	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{NamespacequotaDeleteRequest: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.NamespaceQuotaResponse), nil
+}
+
+func (s *EtcdServer) NamespaceQuotaList(ctx context.Context, r *pb.NamespaceQuotaListRequest) (*pb.NamespaceQuotaListResponse, error) {
+	err := s.checkIsAdminPermitted(ctx)
+	if err != nil {
+		return nil, err
+	}
+	nql := s.namespaceQuotaManager.ListNamespaceQuotas()
+	nqlr := make([]*pb.NamespaceQuotas, len(nql))
+	for i := range nql {
+		nqlr[i] = &pb.NamespaceQuotas{
+			Key:            nql[i].Key,
+			QuotaByteCount: nql[i].QuotaByteCount,
+			QuotaKeyCount:  nql[i].QuotaKeyCount,
+			UsageByteCount: nql[i].UsageByteCount,
+			UsageKeyCount:  nql[i].UsageKeyCount,
+		}
+	}
+	return &pb.NamespaceQuotaListResponse{Header: newHeader(s), Quotas: nqlr}, nil
 }
 
 func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error) {

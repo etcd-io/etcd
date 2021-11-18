@@ -164,6 +164,20 @@ var (
 		Name:      "limit",
 		Help:      "The file descriptor limit.",
 	})
+	namespaceQuotaPutDurationSec = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "namespacequota",
+		Name:      "put_duration_seconds",
+		Help:      "The duration to perform namespace quota ops during an etcd put.",
+		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 20),
+	})
+	namespaceQuotaDeleteDurationSec = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "namespacequota",
+		Name:      "delete_duration_seconds",
+		Help:      "The duration to perform namespace quota ops during an etcd delete.",
+		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 20),
+	})
 )
 
 func init() {
@@ -189,6 +203,8 @@ func init() {
 	prometheus.MustRegister(learnerPromoteFailed)
 	prometheus.MustRegister(fdUsed)
 	prometheus.MustRegister(fdLimit)
+	prometheus.MustRegister(namespaceQuotaPutDurationSec)
+	prometheus.MustRegister(namespaceQuotaDeleteDurationSec)
 
 	currentVersion.With(prometheus.Labels{
 		"server_version": version.Version,

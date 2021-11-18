@@ -934,6 +934,72 @@
         }
       }
     },
+    "/v3/namespacequota/get": {
+      "post": {
+        "tags": [
+          "NamespaceQuota"
+        ],
+        "summary": "NamespaceQuotaGet gets the namespace quota for a given key",
+        "operationId": "NamespaceQuota_NamespaceQuotaGet",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbNamespaceQuotaGetRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbNamespaceQuotaGetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
+    "/v3/namespacequota/set": {
+      "post": {
+        "tags": [
+          "NamespaceQuota"
+        ],
+        "summary": "NamespaceQuotaSet sets the namespace quota for a given key",
+        "operationId": "NamespaceQuota_NamespaceQuotaSet",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbNamespaceQuotaSetRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbNamespaceQuotaSetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
     "/v3/maintenance/alarm": {
       "post": {
         "tags": [
@@ -1939,6 +2005,80 @@
         }
       }
     },
+    "etcdserverpbNamespaceQuotaGetRequest": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "title": "key key"
+        }
+      }
+    },
+    "etcdserverpbNamespaceQuotaGetResponse": {
+      "type": "object",
+      "properties": {
+        "UsageByteCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "usageByteCount represents the current usage of bytes for respective Key"
+        },
+        "header": {
+          "title": "header response header",
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "key": {
+          "type": "string",
+          "title": "key key"
+        },
+        "quotaByteCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "quotaByteCount quota byte count represents the byte quota for respective Key"
+        },
+        "quotaKeyCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "quotaKeyCount quota key count represents the quota key quota for respective Key"
+        },
+        "usageKeyCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "usageKeyCount represents the current usage of bytes for respective Key"
+        }
+      }
+    },
+    "etcdserverpbNamespaceQuotaSetRequest": {
+      "type": "object",
+      "properties": {
+        "quota": {
+          "title": "quota represents a NamespaceQuota",
+          "$ref": "#/definitions/namespacequotapbNamespaceQuota"
+        }
+      }
+    },
+    "etcdserverpbNamespaceQuotaSetResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "title": "header response header",
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "key": {
+          "type": "string",
+          "title": "key key"
+        },
+        "quotaByteCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "quotaByteCount quota byte count represents the byte quota for respective Key"
+        },
+        "quotaKeyCount": {
+          "type": "string",
+          "format": "uint64",
+          "title": "quotaKeyCount quota key count represents the quota key quota for respective Key"
+        }
+      }
+    },
     "etcdserverpbMemberAddRequest": {
       "type": "object",
       "properties": {
@@ -2585,6 +2725,30 @@
           "description": "version is the version of the key. A deletion resets\nthe version to zero and any modification of the key\nincreases its version.",
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "namespacequotapbNamespaceQuota": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string"
+        },
+        "QuotaByteCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "QuotaKeyCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "UsageByteCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "UsageKeyCount": {
+          "type": "string",
+          "format": "uint64"
         }
       }
     },

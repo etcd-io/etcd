@@ -214,6 +214,8 @@ Experimental feature:
     Duration of periodical watch progress notification.
   --experimental-warning-apply-duration '100ms'
     Warning is generated if requests take more than this duration.
+  --experimental-namespace-quota-enforcement 0
+	Specifies the operation mode of the Namespace Quota Enforcement feature.
 
 Unsafe feature:
   --force-new-cluster 'false'

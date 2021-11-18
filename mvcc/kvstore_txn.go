@@ -51,6 +51,14 @@ func (tr *storeTxnRead) Range(key, end []byte, ro RangeOptions) (r *RangeResult,
 	return tr.rangeKeys(key, end, tr.Rev(), ro)
 }
 
+func (tr *storeTxnRead) RangeValueSize(key, end []byte) (keys [][]byte, valueSizes []int) {
+	return tr.s.kvindex.RangeValueSize(key, end)
+}
+
+func (tr *storeTxnRead) GetValueSize(key []byte) (valueSize int, isFound bool) {
+	return tr.s.kvindex.GetValueSize(key)
+}
+
 func (tr *storeTxnRead) End() {
 	tr.tx.RUnlock() // RUnlock signals the end of concurrentReadTx.
 	tr.s.mu.RUnlock()
@@ -212,7 +220,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	tw.trace.Step("marshal mvccpb.KeyValue")
 	tw.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
-	tw.s.kvindex.Put(key, idxRev)
+	tw.s.kvindex.Put(key, idxRev, len(value))
 	tw.changes = append(tw.changes, kv)
 	tw.trace.Step("store kv pair into bolt db")
 

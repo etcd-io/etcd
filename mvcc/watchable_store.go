@@ -16,6 +16,7 @@ package mvcc
 
 import (
 	"go.etcd.io/etcd/auth"
+	"go.etcd.io/etcd/namespacequota"
 	"sync"
 	"time"
 
@@ -69,13 +70,13 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) ConsistentWatchableKV {
-	return newWatchableStore(lg, b, le, as, ig, cfg)
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, nqm namespacequota.NamespaceQuotaManager, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) ConsistentWatchableKV {
+	return newWatchableStore(lg, b, le, nqm, as, ig, cfg)
 }
 
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) *watchableStore {
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, nqm namespacequota.NamespaceQuotaManager, as auth.AuthStore, ig ConsistentIndexGetter, cfg StoreConfig) *watchableStore {
 	s := &watchableStore{
-		store:    NewStore(lg, b, le, ig, cfg),
+		store:    NewStore(lg, b, le, nqm, ig, cfg),
 		victimc:  make(chan struct{}, 1),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
@@ -86,6 +87,9 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, as au
 	if s.le != nil {
 		// use this store as the deleter so revokes trigger watch events
 		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
+	}
+	if s.nqm != nil {
+		s.nqm.SetReadView(&readView{s})
 	}
 	if as != nil {
 		// TODO: encapsulating consistentindex into a separate package

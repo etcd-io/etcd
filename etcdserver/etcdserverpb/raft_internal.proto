@@ -58,6 +58,10 @@ message InternalRaftRequest {
   AuthRoleGetRequest auth_role_get = 1202;
   AuthRoleGrantPermissionRequest auth_role_grant_permission = 1203;
   AuthRoleRevokePermissionRequest auth_role_revoke_permission = 1204;
+
+  NamespaceQuotaSetRequest namespacequota_set_request = 1300;
+  NamespaceQuotaGetRequest namespacequota_get_request = 1301;
+  NamespaceQuotaDeleteRequest namespacequota_delete_request = 1302;
 }
 
 message EmptyResponse {

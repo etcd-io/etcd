@@ -24,8 +24,8 @@ import (
 
 func TestIndexGet(t *testing.T) {
 	ti := newTreeIndex(zap.NewExample())
-	ti.Put([]byte("foo"), revision{main: 2})
-	ti.Put([]byte("foo"), revision{main: 4})
+	ti.Put([]byte("foo"), revision{main: 2}, 0)
+	ti.Put([]byte("foo"), revision{main: 4}, 0)
 	ti.Tombstone([]byte("foo"), revision{main: 6})
 
 	tests := []struct {
@@ -64,10 +64,11 @@ func TestIndexGet(t *testing.T) {
 func TestIndexRange(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
 	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}}
+	allValueSize := []int{0, 0, 0}
 
 	ti := newTreeIndex(zap.NewExample())
 	for i := range allKeys {
-		ti.Put(allKeys[i], allRevs[i])
+		ti.Put(allKeys[i], allRevs[i], allValueSize[i])
 	}
 
 	atRev := int64(3)
@@ -120,9 +121,99 @@ func TestIndexRange(t *testing.T) {
 	}
 }
 
+func TestIndexRangeValueSize(t *testing.T) {
+	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
+	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}}
+	// value sizes
+	// fooval = 6
+	// foo1val = 7
+	// foo2val = 7
+	allValueSize := []int{len([]byte("fooval")), len([]byte("foo1val")), len([]byte("foo2val"))}
+
+	ti := newTreeIndex(zap.NewExample())
+	for i := range allKeys {
+		ti.Put(allKeys[i], allRevs[i], allValueSize[i])
+	}
+
+	tests := []struct {
+		key, end  []byte
+		wkeys     [][]byte
+		valueSize []int
+	}{
+		// single key that found
+		{
+			[]byte("foo"), nil, [][]byte{[]byte("foo")}, []int{6},
+		},
+		// range keys
+		{
+			[]byte("foo"), []byte("foo1"), [][]byte{[]byte("foo")}, []int{6},
+		},
+		// range keys, return all members
+		{
+			[]byte("foo"), []byte("foo3"), [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}, []int{6, 7, 7},
+		},
+		// range keys, no key returned
+		{
+			[]byte("boo"), []byte("bop"), nil, nil,
+		},
+	}
+	for i, tt := range tests {
+		keys, valueSize := ti.RangeValueSize(tt.key, tt.end)
+		if !reflect.DeepEqual(keys, tt.wkeys) {
+			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
+		}
+		if !reflect.DeepEqual(valueSize, tt.valueSize) {
+			t.Errorf("#%d: revs = %+v, want %+v", i, valueSize, tt.valueSize)
+		}
+	}
+}
+
+func TestIndexGetValueSize(t *testing.T) {
+	allKeys := [][]byte{[]byte("foo"), []byte("foo1")}
+	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}}
+	// value sizes
+	// fooval = 6
+	// foo1val = 7
+	// foo2val = 7
+	allValueSize := []int{len([]byte("fooval")), len([]byte("foo1val")), len([]byte("foo2val"))}
+
+	ti := newTreeIndex(zap.NewExample())
+	for i := range allKeys {
+		ti.Put(allKeys[i], allRevs[i], allValueSize[i])
+	}
+
+	tests := []struct {
+		key       []byte
+		valueSize int
+		isFound   bool
+	}{
+		// positive test case where the key is found
+		{
+			[]byte("foo"), 6, true,
+		},
+		// positive test case where the key is found
+		{
+			[]byte("foo1"), 7, true,
+		},
+		// negative test case where the key is found
+		{
+			[]byte("foo2"), -1, false,
+		},
+	}
+	for i, tt := range tests {
+		valueSize, isFound := ti.GetValueSize(tt.key)
+		if valueSize != tt.valueSize {
+			t.Errorf("#%d: valueSize = %+v, want %+v", i, valueSize, tt.valueSize)
+		}
+		if isFound != tt.isFound {
+			t.Errorf("#%d: isFound = %+v, want %+v", i, isFound, tt.isFound)
+		}
+	}
+}
+
 func TestIndexTombstone(t *testing.T) {
 	ti := newTreeIndex(zap.NewExample())
-	ti.Put([]byte("foo"), revision{main: 1})
+	ti.Put([]byte("foo"), revision{main: 1}, 0)
 
 	err := ti.Tombstone([]byte("foo"), revision{main: 2})
 	if err != nil {
@@ -142,10 +233,11 @@ func TestIndexTombstone(t *testing.T) {
 func TestIndexRangeSince(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
 	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}, {main: 4}, {main: 5}, {main: 6}}
+	allValueSize := []int{0, 0, 0, 0, 0, 0}
 
 	ti := newTreeIndex(zap.NewExample())
 	for i := range allKeys {
-		ti.Put(allKeys[i], allRevs[i])
+		ti.Put(allKeys[i], allRevs[i], allValueSize[i])
 	}
 
 	atRev := int64(1)
@@ -222,7 +314,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		if tt.remove {
 			ti.Tombstone(tt.key, tt.rev)
 		} else {
-			ti.Put(tt.key, tt.rev)
+			ti.Put(tt.key, tt.rev, 0)
 		}
 	}
 	for i := int64(1); i < maxRev; i++ {
@@ -253,7 +345,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 			if tt.remove {
 				ti.Tombstone(tt.key, tt.rev)
 			} else {
-				ti.Put(tt.key, tt.rev)
+				ti.Put(tt.key, tt.rev, 0)
 			}
 		}
 		am := ti.Compact(i)
@@ -284,10 +376,10 @@ func restore(ti *treeIndex, key []byte, created, modified revision, ver int64) {
 	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		keyi.restore(ti.lg, created, modified, ver)
+		keyi.restore(ti.lg, created, modified, ver, 0)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
 	okeyi := item.(*keyIndex)
-	okeyi.put(ti.lg, modified.main, modified.sub)
+	okeyi.put(ti.lg, modified.main, modified.sub, 0)
 }

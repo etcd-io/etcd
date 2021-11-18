@@ -141,6 +141,8 @@ type ClusterConfig struct {
 	GRPCKeepAliveInterval time.Duration
 	GRPCKeepAliveTimeout  time.Duration
 
+	NamespaceQuotaEnforcement int
+
 	// SkipCreatingClient to skip creating clients for each member.
 	SkipCreatingClient bool
 
@@ -292,6 +294,7 @@ func (c *cluster) mustNewMember(t testing.TB) *member {
 			snapshotCatchUpEntries:      c.cfg.SnapshotCatchUpEntries,
 			grpcKeepAliveMinTime:        c.cfg.GRPCKeepAliveMinTime,
 			grpcKeepAliveInterval:       c.cfg.GRPCKeepAliveInterval,
+			namespaceQuotaEnforcement:   c.cfg.NamespaceQuotaEnforcement,
 			grpcKeepAliveTimeout:        c.cfg.GRPCKeepAliveTimeout,
 			clientMaxCallSendMsgSize:    c.cfg.ClientMaxCallSendMsgSize,
 			clientMaxCallRecvMsgSize:    c.cfg.ClientMaxCallRecvMsgSize,
@@ -583,6 +586,7 @@ type memberConfig struct {
 	grpcKeepAliveMinTime        time.Duration
 	grpcKeepAliveInterval       time.Duration
 	grpcKeepAliveTimeout        time.Duration
+	namespaceQuotaEnforcement   int
 	clientMaxCallSendMsgSize    int
 	clientMaxCallRecvMsgSize    int
 	useIP                       bool
@@ -676,11 +680,13 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 			Timeout: mcfg.grpcKeepAliveTimeout,
 		}))
 	}
+
 	m.clientMaxCallSendMsgSize = mcfg.clientMaxCallSendMsgSize
 	m.clientMaxCallRecvMsgSize = mcfg.clientMaxCallRecvMsgSize
 	m.useIP = mcfg.useIP
 	m.EnableLeaseCheckpoint = mcfg.enableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
+	m.NamespaceQuotaEnforcement = mcfg.namespaceQuotaEnforcement
 
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
@@ -1287,6 +1293,8 @@ type grpcAPI struct {
 	Lock lockpb.LockClient
 	// Election is the election API for the client's connection.
 	Election epb.ElectionClient
+	// NamespaceQuota is the NamespaceQuota API for the client's connection
+	NamespaceQuota pb.NamespaceQuotaClient
 }
 
 // GetLearnerMembers returns the list of learner members in cluster using MemberList API.

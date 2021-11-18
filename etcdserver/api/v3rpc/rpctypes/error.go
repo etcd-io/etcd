@@ -37,6 +37,10 @@ var (
 
 	ErrGRPCWatchCanceled = status.New(codes.Canceled, "etcdserver: watch canceled").Err()
 
+	ErrGRPCNamespaceQuotaExceeded      = status.New(codes.ResourceExhausted, "etcdserver: namespace quota exceeded").Err()
+	ErrGRPCNamespaceQuotaNotFound      = status.New(codes.NotFound, "etcdserver: namespace quota not found").Err()
+	ErrGRPCNamespaceQuotaRestoreFailed = status.New(codes.DataLoss, "etcdserver: namespace quota restore failed").Err()
+
 	ErrGRPCMemberExist            = status.New(codes.FailedPrecondition, "etcdserver: member ID already exist").Err()
 	ErrGRPCPeerURLExist           = status.New(codes.FailedPrecondition, "etcdserver: Peer URLs already exists").Err()
 	ErrGRPCMemberNotEnoughStarted = status.New(codes.FailedPrecondition, "etcdserver: re-configuration failed due to not enough started members").Err()
@@ -93,6 +97,10 @@ var (
 		ErrorDesc(ErrGRPCLeaseNotFound):    ErrGRPCLeaseNotFound,
 		ErrorDesc(ErrGRPCLeaseExist):       ErrGRPCLeaseExist,
 		ErrorDesc(ErrGRPCLeaseTTLTooLarge): ErrGRPCLeaseTTLTooLarge,
+
+		ErrorDesc(ErrGRPCNamespaceQuotaExceeded):      ErrGRPCNamespaceQuotaExceeded,
+		ErrorDesc(ErrGRPCNamespaceQuotaNotFound):      ErrGRPCNamespaceQuotaNotFound,
+		ErrorDesc(ErrGRPCNamespaceQuotaRestoreFailed): ErrGRPCNamespaceQuotaRestoreFailed,
 
 		ErrorDesc(ErrGRPCMemberExist):            ErrGRPCMemberExist,
 		ErrorDesc(ErrGRPCPeerURLExist):           ErrGRPCPeerURLExist,
@@ -152,6 +160,10 @@ var (
 	ErrLeaseNotFound    = Error(ErrGRPCLeaseNotFound)
 	ErrLeaseExist       = Error(ErrGRPCLeaseExist)
 	ErrLeaseTTLTooLarge = Error(ErrGRPCLeaseTTLTooLarge)
+
+	ErrNamespaceQuotaExceeded      = Error(ErrGRPCNamespaceQuotaExceeded)
+	ErrNamespaceQuotaNotFound      = Error(ErrGRPCNamespaceQuotaNotFound)
+	ErrNamespaceQuotaRestoreFailed = Error(ErrGRPCNamespaceQuotaRestoreFailed)
 
 	ErrMemberExist            = Error(ErrGRPCMemberExist)
 	ErrPeerURLExist           = Error(ErrGRPCPeerURLExist)

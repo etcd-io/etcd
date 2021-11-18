@@ -304,6 +304,20 @@ var (
 			Name:      "total_put_size_in_bytes",
 			Help:      "The total size of put kv pairs seen by this member.",
 		})
+	namespaceQuotaGetValueSizeDurationSec = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "namespacequota",
+		Name:      "get_value_size_duration_seconds",
+		Help:      "The duration to get value size from etcd key tree.",
+		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 20),
+	})
+	namespaceQuotaRangeValueSizeDurationSec = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "namespacequota",
+		Name:      "range_value_size_duration_seconds",
+		Help:      "The duration to range value size from etcd key tree.",
+		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 20),
+	})
 )
 
 func init() {
@@ -334,6 +348,8 @@ func init() {
 	prometheus.MustRegister(currentRev)
 	prometheus.MustRegister(compactRev)
 	prometheus.MustRegister(totalPutSizeGauge)
+	prometheus.MustRegister(namespaceQuotaGetValueSizeDurationSec)
+	prometheus.MustRegister(namespaceQuotaRangeValueSizeDurationSec)
 }
 
 // ReportEventReceived reports that an event is received.

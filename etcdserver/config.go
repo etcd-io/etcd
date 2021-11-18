@@ -159,6 +159,9 @@ type ServerConfig struct {
 	// LeaseCheckpointInterval time.Duration is the wait duration between lease checkpoints.
 	LeaseCheckpointInterval time.Duration
 
+	// NamespaceQuotaEnforcement configures the enforcement status of NamespaceQuota
+	NamespaceQuotaEnforcement int
+
 	EnableGRPCGateway bool
 
 	WatchProgressNotifyInterval time.Duration

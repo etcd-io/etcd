@@ -16,6 +16,7 @@ package mvcc
 
 import (
 	"fmt"
+	"go.etcd.io/etcd/namespacequota"
 	"testing"
 
 	"go.etcd.io/etcd/lease"
@@ -26,7 +27,7 @@ import (
 
 func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	watchable := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, nil, nil, StoreConfig{})
+	watchable := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, nil, nil, StoreConfig{})
 
 	defer cleanup(watchable, be, tmpPath)
 

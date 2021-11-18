@@ -118,6 +118,25 @@ func (s *simplePrinter) Leases(resp v3.LeaseLeasesResponse) {
 	}
 }
 
+func (s *simplePrinter) NamespaceQuotaSet(resp v3.NamespaceQuotaResponse) {
+	fmt.Printf("key %s, byte quota: %d, key quota: %d\n", resp.Key, resp.QuotaByteCount, resp.QuotaKeyCount)
+}
+
+func (s *simplePrinter) NamespaceQuotaGet(resp v3.NamespaceQuotaResponse) {
+	fmt.Printf("key %s, byte quota: %d, key quota: %d\n", resp.Key, resp.QuotaByteCount, resp.QuotaKeyCount)
+}
+
+func (s *simplePrinter) NamespaceQuotaDelete(resp v3.NamespaceQuotaResponse) {
+	fmt.Printf("key %s, byte quota: %d, key quota: %d\n", resp.Key, resp.QuotaByteCount, resp.QuotaKeyCount)
+}
+
+func (s *simplePrinter) NamespaceQuotaList(resp v3.ListNamespaceQuotaResponse) {
+	for _, value := range resp.NamespaceQuotas {
+		fmt.Printf("key %s, byte quota: %d, key quota: %d, byte usage: %d, key usage: %d\n", value.Key, value.QuotaByteCount, value.QuotaKeyCount, value.UsageByteCount, value.UsageKeyCount)
+	}
+	fmt.Printf("total: %d\n", len(resp.NamespaceQuotas))
+}
+
 func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
 	for _, e := range resp.Alarms {
 		fmt.Printf("%+v\n", e)

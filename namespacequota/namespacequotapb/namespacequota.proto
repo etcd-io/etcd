@@ -1,0 +1,18 @@
+syntax = "proto3";
+package namespacequotapb;
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_enum_prefix_all) = false;
+
+message NamespaceQuota {
+  string Key = 1;
+  uint64 QuotaByteCount = 2;
+  uint64 QuotaKeyCount = 3;
+  uint64 UsageByteCount = 4;
+  uint64 UsageKeyCount = 5;
+}

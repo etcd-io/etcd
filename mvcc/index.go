@@ -17,6 +17,7 @@ package mvcc
 import (
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/google/btree"
 	"go.uber.org/zap"
@@ -25,8 +26,10 @@ import (
 type index interface {
 	Get(key []byte, atRev int64) (rev, created revision, ver int64, err error)
 	Range(key, end []byte, atRev int64) ([][]byte, []revision)
+	GetValueSize(key []byte) (valueSize int, isFound bool)
+	RangeValueSize(key, end []byte) ([][]byte, []int)
 	Revisions(key, end []byte, atRev int64) []revision
-	Put(key []byte, rev revision)
+	Put(key []byte, rev revision, valueSize int)
 	Tombstone(key []byte, rev revision) error
 	RangeSince(key, end []byte, rev int64) []revision
 	Compact(rev int64) map[revision]struct{}
@@ -50,19 +53,19 @@ func newTreeIndex(lg *zap.Logger) index {
 	}
 }
 
-func (ti *treeIndex) Put(key []byte, rev revision) {
+func (ti *treeIndex) Put(key []byte, rev revision, valueSize int) {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
 	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		keyi.put(ti.lg, rev.main, rev.sub)
+		keyi.put(ti.lg, rev.main, rev.sub, valueSize)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
 	okeyi := item.(*keyIndex)
-	okeyi.put(ti.lg, rev.main, rev.sub)
+	okeyi.put(ti.lg, rev.main, rev.sub, valueSize)
 }
 
 func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
@@ -227,6 +230,47 @@ func (ti *treeIndex) Keep(rev int64) map[revision]struct{} {
 		return true
 	})
 	return available
+}
+
+// RangeValueSize ranges the value size
+func (ti *treeIndex) RangeValueSize(key, end []byte) (keys [][]byte, valueSizes []int) {
+	start := time.Now()
+	keyi := &keyIndex{key: key}
+
+	// Get the key and check for existence
+	item := ti.keyIndex(keyi)
+	if item == nil {
+		return nil, nil
+	}
+
+	// If end is nil, means it's not a range, return that specific key, and return value size
+	if end == nil {
+		return [][]byte{key}, []int{item.valueSize}
+	}
+
+	// visit all the keys in the range from the start to the end, append all the items
+	// while visiting each item in the range
+	ti.visit(key, end, func(ki *keyIndex) {
+		if ki != nil {
+			keys = append(keys, ki.key)
+			valueSizes = append(valueSizes, ki.valueSize)
+		}
+	})
+	namespaceQuotaRangeValueSizeDurationSec.Observe(time.Since(start).Seconds())
+	return keys, valueSizes
+}
+
+func (ti *treeIndex) GetValueSize(key []byte) (valueSize int, isFound bool) {
+	start := time.Now()
+	keyi := &keyIndex{key: key}
+
+	// Get the key and check for existence
+	item := ti.keyIndex(keyi)
+	if item == nil {
+		return -1, false
+	}
+	namespaceQuotaGetValueSizeDurationSec.Observe(time.Since(start).Seconds())
+	return item.valueSize, true
 }
 
 func (ti *treeIndex) Equal(bi index) bool {

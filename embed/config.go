@@ -62,6 +62,8 @@ const (
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
 
+	DefaultNamespaceQuotaEnforcement = 0
+
 	DefaultLogOutput = "default"
 	JournalLogOutput = "systemd/journal"
 	StdErrLogOutput  = "stderr"
@@ -290,6 +292,8 @@ type Config struct {
 	// takes more time than this value.
 	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
 
+	NamespaceQuotaEnforcement int `json:"experimental-namespace-quota-enforcement"`
+
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
 
@@ -399,6 +403,8 @@ func NewConfig() *Config {
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
 		GRPCKeepAliveTimeout:  DefaultGRPCKeepAliveTimeout,
+
+		NamespaceQuotaEnforcement: DefaultNamespaceQuotaEnforcement,
 
 		TickMs:                     100,
 		ElectionMs:                 1000,

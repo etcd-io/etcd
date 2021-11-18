@@ -55,6 +55,13 @@
 		LeaseLeasesRequest
 		LeaseStatus
 		LeaseLeasesResponse
+		NamespaceQuotas
+		NamespaceQuotaSetRequest
+		NamespaceQuotaResponse
+		NamespaceQuotaGetRequest
+		NamespaceQuotaDeleteRequest
+		NamespaceQuotaListRequest
+		NamespaceQuotaListResponse
 		Member
 		MemberAddRequest
 		MemberAddResponse
