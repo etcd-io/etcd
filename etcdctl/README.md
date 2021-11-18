@@ -1070,17 +1070,29 @@ MOVE-LEADER transfers leadership from the leader to another member in the cluste
 # to choose transferee
 transferee_id=$(./etcdctl \
   --endpoints localhost:2379,localhost:22379,localhost:32379 \
-  endpoint status | grep -m 1 "false" | awk -F', ' '{print $2}')
+  endpoint status | grep -m 1 -v "true" | awk -F', ' '{print $2}')
+transferee_ep=$(./etcdctl \
+  --endpoints localhost:2379,localhost:22379,localhost:32379 \
+  endpoint status | grep -m 1 -v "true" | awk -F', ' '{print $1}')
 echo ${transferee_id}
-# c89feb932daef420
+# 8211f1d0f64f3269
+echo ${transferee_ep}
+# localhost:2379
 
 # endpoints should include leader node
 ./etcdctl --endpoints ${transferee_ep} move-leader ${transferee_id}
-# Error:  no leader endpoint given at [localhost:22379 localhost:32379]
+# Error: no leader endpoint given at [localhost:2379]
+
+# to choose leader
+leader_ep=$(./etcdctl \
+  --endpoints localhost:2379,localhost:22379,localhost:32379 \
+  endpoint status | grep -m 1 "true" | awk -F', ' '{print $1}')
+echo ${leader_ep}
+# localhost:22379
 
 # request to leader with target node ID
 ./etcdctl --endpoints ${leader_ep} move-leader ${transferee_id}
-# Leadership transferred from 45ddc0e800e20b93 to c89feb932daef420
+# Leadership transferred from 91bc3c398fb3c146 to 8211f1d0f64f3269
 ```
 
 ## Concurrency commands
