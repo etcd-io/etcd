@@ -236,6 +236,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 		ttl                   time.Duration
 		checkpointingInterval time.Duration
 		leaderChanges         int
+		clusterSize           int
 		expectTTLIsGT         time.Duration
 		expectTTLIsLT         time.Duration
 	}{
@@ -243,6 +244,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 			name:          "Checkpointing disabled, lease TTL is reset",
 			ttl:           300 * time.Second,
 			leaderChanges: 1,
+			clusterSize:   3,
 			expectTTLIsGT: 298 * time.Second,
 		},
 		{
@@ -251,6 +253,16 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 			checkpointingEnabled:  true,
 			checkpointingInterval: 10 * time.Second,
 			leaderChanges:         1,
+			clusterSize:           3,
+			expectTTLIsLT:         290 * time.Second,
+		},
+		{
+			name:                  "Checkpointing enabled 10s, lease TTL is preserved after cluster restart",
+			ttl:                   300 * time.Second,
+			checkpointingEnabled:  true,
+			checkpointingInterval: 10 * time.Second,
+			leaderChanges:         1,
+			clusterSize:           1,
 			expectTTLIsLT:         290 * time.Second,
 		},
 		{
@@ -260,6 +272,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 			checkpointingEnabled:  true,
 			checkpointingInterval: 10 * time.Second,
 			leaderChanges:         2,
+			clusterSize:           3,
 			expectTTLIsLT:         280 * time.Second,
 		},
 	}
@@ -267,7 +280,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			integration.BeforeTest(t)
 			config := &integration.ClusterConfig{
-				Size:                    3,
+				Size:                    tc.clusterSize,
 				EnableLeaseCheckpoint:   tc.checkpointingEnabled,
 				LeaseCheckpointInterval: tc.checkpointingInterval,
 			}
