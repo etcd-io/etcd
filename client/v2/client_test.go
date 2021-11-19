@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -127,7 +126,7 @@ func TestSimpleHTTPClientDoSuccess(t *testing.T) {
 
 	tr.respchan <- &http.Response{
 		StatusCode: http.StatusTeapot,
-		Body:       ioutil.NopCloser(strings.NewReader("foo")),
+		Body:       io.NopCloser(strings.NewReader("foo")),
 	}
 
 	resp, body, err := c.Do(context.Background(), &fakeAction{})
@@ -210,7 +209,7 @@ func TestSimpleHTTPClientDoCancelContextResponseBodyClosed(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	body := &checkableReadCloser{ReadCloser: ioutil.NopCloser(strings.NewReader("foo"))}
+	body := &checkableReadCloser{ReadCloser: io.NopCloser(strings.NewReader("foo"))}
 	go func() {
 		// wait that simpleHTTPClient knows the context is already timed out,
 		// and calls CancelRequest

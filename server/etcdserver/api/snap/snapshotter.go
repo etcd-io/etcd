@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -31,7 +30,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap/snappb"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 
 	"go.uber.org/zap"
 )
@@ -160,7 +159,7 @@ func loadSnap(lg *zap.Logger, dir, name string) (*raftpb.Snapshot, error) {
 
 // Read reads the snapshot named by snapname and returns the snapshot.
 func Read(lg *zap.Logger, snapname string) (*raftpb.Snapshot, error) {
-	b, err := ioutil.ReadFile(snapname)
+	b, err := os.ReadFile(snapname)
 	if err != nil {
 		if lg != nil {
 			lg.Warn("failed to read a snap file", zap.String("path", snapname), zap.Error(err))

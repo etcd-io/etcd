@@ -17,7 +17,6 @@ package etcdmain
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -275,7 +274,7 @@ func startProxy(cfg *config) error {
 	}
 
 	cfg.ec.Dir = filepath.Join(cfg.ec.Dir, "proxy")
-	err = fileutil.TouchDirAll(cfg.ec.Dir)
+	err = fileutil.TouchDirAll(lg, cfg.ec.Dir)
 	if err != nil {
 		return err
 	}
@@ -283,7 +282,7 @@ func startProxy(cfg *config) error {
 	var peerURLs []string
 	clusterfile := filepath.Join(cfg.ec.Dir, "cluster")
 
-	b, err := ioutil.ReadFile(clusterfile)
+	b, err := os.ReadFile(clusterfile)
 	switch {
 	case err == nil:
 		if cfg.ec.Durl != "" {
@@ -463,7 +462,7 @@ func identifyDataDirOrDie(lg *zap.Logger, dir string) dirType {
 }
 
 func checkSupportArch() {
-	// to add a new platform, check https://github.com/etcd-io/website/blob/master/content/en/docs/next/op-guide/supported-platform.md
+	// to add a new platform, check https://github.com/etcd-io/website/blob/main/content/en/docs/next/op-guide/supported-platform.md
 	if runtime.GOARCH == "amd64" ||
 		runtime.GOARCH == "arm64" ||
 		runtime.GOARCH == "ppc64le" ||

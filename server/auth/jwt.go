@@ -21,7 +21,7 @@ import (
 	"errors"
 	"time"
 
-	jwt "github.com/form3tech-oss/jwt-go"
+	jwt "github.com/golang-jwt/jwt"
 	"go.uber.org/zap"
 )
 

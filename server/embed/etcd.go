@@ -18,7 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	defaultLog "log"
 	"net"
 	"net/http"
@@ -42,17 +42,11 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -211,27 +205,27 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		CorruptCheckTime:                         cfg.ExperimentalCorruptCheckTime,
 		PreVote:                                  cfg.PreVote,
 		Logger:                                   cfg.logger,
-		LoggerConfig:                             cfg.loggerConfig,
-		LoggerCore:                               cfg.loggerCore,
-		LoggerWriteSyncer:                        cfg.loggerWriteSyncer,
 		ForceNewCluster:                          cfg.ForceNewCluster,
 		EnableGRPCGateway:                        cfg.EnableGRPCGateway,
 		ExperimentalEnableDistributedTracing:     cfg.ExperimentalEnableDistributedTracing,
 		UnsafeNoFsync:                            cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:                    cfg.ExperimentalEnableLeaseCheckpoint,
 		CompactionBatchLimit:                     cfg.ExperimentalCompactionBatchLimit,
+		CompactionSleepInterval:                  cfg.ExperimentalCompactionSleepInterval,
 		WatchProgressNotifyInterval:              cfg.ExperimentalWatchProgressNotifyInterval,
 		DowngradeCheckTime:                       cfg.ExperimentalDowngradeCheckTime,
 		WarningApplyDuration:                     cfg.ExperimentalWarningApplyDuration,
+		WarningUnaryRequestDuration:              cfg.ExperimentalWarningUnaryRequestDuration,
 		ExperimentalMemoryMlock:                  cfg.ExperimentalMemoryMlock,
 		ExperimentalTxnModeWriteWithSharedBuffer: cfg.ExperimentalTxnModeWriteWithSharedBuffer,
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
-		V2Deprecation: cfg.V2DeprecationEffective(),
+		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
+		V2Deprecation:                                 cfg.V2DeprecationEffective(),
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
 		tctx := context.Background()
-		tracingExporter, opts, err := e.setupTracing(tctx)
+		tracingExporter, opts, err := setupTracingExporter(tctx, cfg)
 		if err != nil {
 			return e, err
 		}
@@ -240,6 +234,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 		e.tracingExporterShutdown = func() { tracingExporter.Shutdown(tctx) }
 		srvcfg.ExperimentalTracerOptions = opts
+
+		e.cfg.logger.Info(
+			"distributed tracing setup enabled",
+		)
 	}
 
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
@@ -304,7 +302,7 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 
 	quota := ec.QuotaBackendBytes
 	if quota == 0 {
-		quota = etcdserver.DefaultQuotaBytes
+		quota = storage.DefaultQuotaBytes
 	}
 
 	lg.Info(
@@ -348,6 +346,7 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
+		zap.Int("max-learners", sc.ExperimentalMaxLearners),
 	)
 }
 
@@ -542,13 +541,13 @@ func (e *Etcd) servePeers() (err error) {
 
 	for _, p := range e.Peers {
 		u := p.Listener.Addr().String()
-		gs := v3rpc.Server(e.Server, peerTLScfg)
+		gs := v3rpc.Server(e.Server, peerTLScfg, nil)
 		m := cmux.New(p.Listener)
 		go gs.Serve(m.Match(cmux.HTTP2()))
 		srv := &http.Server{
 			Handler:     grpcHandlerFunc(gs, ph),
 			ReadTimeout: 5 * time.Minute,
-			ErrorLog:    defaultLog.New(ioutil.Discard, "", 0), // do not log user error
+			ErrorLog:    defaultLog.New(io.Discard, "", 0), // do not log user error
 		}
 		go srv.Serve(m.Match(cmux.Any()))
 		p.serve = func() error {
@@ -810,53 +809,4 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 		}
 	}
 	return ret, nil
-}
-
-func (e *Etcd) setupTracing(ctx context.Context) (exporter tracesdk.SpanExporter, options []otelgrpc.Option, err error) {
-	exporter, err = otlp.NewExporter(ctx,
-		otlpgrpc.NewDriver(
-			otlpgrpc.WithEndpoint(e.cfg.ExperimentalDistributedTracingAddress),
-			otlpgrpc.WithInsecure(),
-		))
-	if err != nil {
-		return nil, nil, err
-	}
-	res := resource.NewWithAttributes(
-		semconv.ServiceNameKey.String(e.cfg.ExperimentalDistributedTracingServiceName),
-	)
-	// As Tracing service Instance ID must be unique, it should
-	// never use the empty default string value, so we only set it
-	// if it's a non empty string.
-	if e.cfg.ExperimentalDistributedTracingServiceInstanceID != "" {
-		resWithIDKey := resource.NewWithAttributes(
-			(semconv.ServiceInstanceIDKey.String(e.cfg.ExperimentalDistributedTracingServiceInstanceID)),
-		)
-		// Merge resources to combine into a new
-		// resource in case of duplicates.
-		res = resource.Merge(res, resWithIDKey)
-	}
-
-	options = append(options,
-		otelgrpc.WithPropagators(
-			propagation.NewCompositeTextMapPropagator(
-				propagation.TraceContext{},
-				propagation.Baggage{},
-			),
-		),
-		otelgrpc.WithTracerProvider(
-			tracesdk.NewTracerProvider(
-				tracesdk.WithBatcher(exporter),
-				tracesdk.WithResource(res),
-			),
-		),
-	)
-
-	e.cfg.logger.Info(
-		"distributed tracing enabled",
-		zap.String("distributed-tracing-address", e.cfg.ExperimentalDistributedTracingAddress),
-		zap.String("distributed-tracing-service-name", e.cfg.ExperimentalDistributedTracingServiceName),
-		zap.String("distributed-tracing-service-instance-id", e.cfg.ExperimentalDistributedTracingServiceInstanceID),
-	)
-
-	return exporter, options, err
 }

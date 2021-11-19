@@ -15,7 +15,6 @@
 package fileutil
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -23,10 +22,10 @@ import (
 )
 
 func TestReadDir(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", "")
+	tmpdir, err := os.MkdirTemp("", "")
 	defer os.RemoveAll(tmpdir)
 	if err != nil {
-		t.Fatalf("unexpected ioutil.TempDir error: %v", err)
+		t.Fatalf("unexpected os.MkdirTemp error: %v", err)
 	}
 
 	files := []string{"def", "abc", "xyz", "ghi"}

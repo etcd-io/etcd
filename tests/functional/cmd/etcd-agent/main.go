@@ -19,28 +19,30 @@ import (
 	"flag"
 
 	"go.etcd.io/etcd/tests/v3/functional/agent"
+	"go.uber.org/zap/zapcore"
 
 	"go.uber.org/zap"
 )
 
 var logger *zap.Logger
 
-func init() {
-	var err error
-	logger, err = zap.NewProduction()
-	if err != nil {
-		panic(err)
-	}
-}
-
 func main() {
 	network := flag.String("network", "tcp", "network to serve agent server")
 	address := flag.String("address", "127.0.0.1:9027", "address to serve agent server")
 	flag.Parse()
 
+	lcfg := zap.NewDevelopmentConfig()
+	lcfg.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	logger, err := lcfg.Build()
+	if err != nil {
+		panic(err)
+	}
+
+	logger = logger.Named("agent").With(zap.String("address", *address))
+
 	defer logger.Sync()
 
 	srv := agent.NewServer(logger, *network, *address)
-	err := srv.StartServe()
+	err = srv.StartServe()
 	logger.Info("agent exiting", zap.Error(err))
 }

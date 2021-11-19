@@ -10,7 +10,7 @@
 
 # MAINTAINERS
 Brandon Philips <brandon@ifup.org> (@philips) pkg:*
-Gyuho Lee <gyuhox@gmail.com> <leegyuho@amazon.com> (@gyuho) pkg:*
+Gyuho Lee <gyuhox@gmail.com> (@gyuho) pkg:*
 Hitoshi Mitake <h.mitake@gmail.com> (@mitake) pkg:*
 Jingyi Hu <jingyih@google.com> (@jingyih) pkg:*
 Joe Betz <jpbetz@google.com> (@jpbetz) pkg:*
@@ -22,3 +22,9 @@ Xiang Li <xiangli.cs@gmail.com> (@xiang90) pkg:*
 
 Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:go.etcd.io/etcd/raft
 Tobias Grieger <tobias.schottdorf@gmail.com> (@tbg) pkg:go.etcd.io/etcd/raft
+
+# REVIEWERS
+Lili Cosic <cosiclili@gmail.com> (lilic@) pkg:*
+Marek Siarkowicz <siarkowicz@google.com> (serathius@) pkg:*
+Wilson Wang <wilson.wang@bytedance.com> (wilsonwang371@) pkg:*
+

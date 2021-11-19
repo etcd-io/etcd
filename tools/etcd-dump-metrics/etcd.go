@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -44,7 +43,7 @@ func setupEmbedCfg(cfg *embed.Config, curls, purls, ics []url.URL) {
 	// []string{"stderr"} to enable server logging
 
 	var err error
-	cfg.Dir, err = ioutil.TempDir(os.TempDir(), fmt.Sprintf("%016X", time.Now().UnixNano()))
+	cfg.Dir, err = os.MkdirTemp(os.TempDir(), fmt.Sprintf("%016X", time.Now().UnixNano()))
 	if err != nil {
 		panic(err)
 	}

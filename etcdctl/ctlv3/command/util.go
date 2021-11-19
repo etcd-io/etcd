@@ -19,7 +19,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -28,6 +28,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
 )
@@ -68,7 +69,7 @@ func argify(s string) []string {
 		} else if args[i][0] == '"' {
 			// "double quoted string"
 			if _, err := fmt.Sscanf(args[i], "%q", &args[i]); err != nil {
-				ExitWithError(ExitInvalidInput, err)
+				cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
 			}
 		}
 	}
@@ -78,7 +79,7 @@ func argify(s string) []string {
 func commandCtx(cmd *cobra.Command) (context.Context, context.CancelFunc) {
 	timeOut, err := cmd.Flags().GetDuration("command-timeout")
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	return context.WithTimeout(context.Background(), timeOut)
 }
@@ -116,7 +117,7 @@ func endpointMemoryMetrics(host string, scfg *secureCfg) float64 {
 		fmt.Println(fmt.Sprintf("fetch error: %v", err))
 		return 0.0
 	}
-	byts, readerr := ioutil.ReadAll(resp.Body)
+	byts, readerr := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if readerr != nil {
 		fmt.Println(fmt.Sprintf("fetch error: reading %s: %v", url, readerr))
@@ -149,7 +150,7 @@ func compact(c *v3.Client, rev int64) {
 	_, err := c.Compact(ctx, rev, v3.WithCompactPhysical())
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	fmt.Printf("Compacted with revision %d\n", rev)
 }
@@ -161,7 +162,7 @@ func defrag(c *v3.Client, ep string) {
 	_, err := c.Defragment(ctx, ep)
 	cancel()
 	if err != nil {
-		ExitWithError(ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	fmt.Printf("Defragmented %q\n", ep)
 }

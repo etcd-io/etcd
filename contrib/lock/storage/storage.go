@@ -17,7 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -57,7 +57,7 @@ func writeResponse(resp response, w http.ResponseWriter) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	rBytes, err := ioutil.ReadAll(r.Body)
+	rBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		fmt.Printf("failed to read http request: %s\n", err)
 		os.Exit(1)

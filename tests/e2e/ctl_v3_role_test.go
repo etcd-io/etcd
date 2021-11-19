@@ -17,13 +17,18 @@ package e2e
 import (
 	"fmt"
 	"testing"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3RoleAdd(t *testing.T)          { testCtl(t, roleAddTest) }
-func TestCtlV3RoleAddNoTLS(t *testing.T)     { testCtl(t, roleAddTest, withCfg(*newConfigNoTLS())) }
-func TestCtlV3RoleAddClientTLS(t *testing.T) { testCtl(t, roleAddTest, withCfg(*newConfigClientTLS())) }
-func TestCtlV3RoleAddPeerTLS(t *testing.T)   { testCtl(t, roleAddTest, withCfg(*newConfigPeerTLS())) }
-func TestCtlV3RoleAddTimeout(t *testing.T)   { testCtl(t, roleAddTest, withDialTimeout(0)) }
+func TestCtlV3RoleAdd(t *testing.T)      { testCtl(t, roleAddTest) }
+func TestCtlV3RootRoleGet(t *testing.T)  { testCtl(t, rootRoleGetTest) }
+func TestCtlV3RoleAddNoTLS(t *testing.T) { testCtl(t, roleAddTest, withCfg(*e2e.NewConfigNoTLS())) }
+func TestCtlV3RoleAddClientTLS(t *testing.T) {
+	testCtl(t, roleAddTest, withCfg(*e2e.NewConfigClientTLS()))
+}
+func TestCtlV3RoleAddPeerTLS(t *testing.T) { testCtl(t, roleAddTest, withCfg(*e2e.NewConfigPeerTLS())) }
+func TestCtlV3RoleAddTimeout(t *testing.T) { testCtl(t, roleAddTest, withDialTimeout(0)) }
 
 func TestCtlV3RoleGrant(t *testing.T) { testCtl(t, roleGrantTest) }
 
@@ -48,6 +53,49 @@ func roleAddTest(cx ctlCtx) {
 		if err := ctlV3Role(cx, cmd.args, cmd.expectedStr); err != nil {
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Fatalf("roleAddTest #%d: ctlV3Role error (%v)", i, err)
+			}
+		}
+	}
+}
+
+func rootRoleGetTest(cx ctlCtx) {
+	cmdSet := []struct {
+		args        []string
+		expectedStr interface{}
+	}{
+		// Add a role of root .
+		{
+			args:        []string{"add", "root"},
+			expectedStr: "Role root created",
+		},
+		// get root role should always return [, <open ended>
+		{
+			args:        []string{"get", "root"},
+			expectedStr: []string{"Role root\r\n", "KV Read:\r\n", "\t[, <open ended>\r\n", "KV Write:\r\n", "\t[, <open ended>\r\n"},
+		},
+		// granting to root should be refused by server
+		{
+			args:        []string{"grant-permission", "root", "readwrite", "foo"},
+			expectedStr: "Role root updated",
+		},
+		{
+			args:        []string{"get", "root"},
+			expectedStr: []string{"Role root\r\n", "KV Read:\r\n", "\t[, <open ended>\r\n", "KV Write:\r\n", "\t[, <open ended>\r\n"},
+		},
+	}
+
+	for i, cmd := range cmdSet {
+		if _, ok := cmd.expectedStr.(string); ok {
+			if err := ctlV3Role(cx, cmd.args, cmd.expectedStr.(string)); err != nil {
+				if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
+					cx.t.Fatalf("roleAddTest #%d: ctlV3Role error (%v)", i, err)
+				}
+			}
+		} else {
+			if err := ctlV3RoleMultiExpect(cx, cmd.args, cmd.expectedStr.([]string)...); err != nil {
+				if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
+					cx.t.Fatalf("roleAddTest #%d: ctlV3Role error (%v)", i, err)
+				}
 			}
 		}
 	}
@@ -92,11 +140,17 @@ func roleGrantTest(cx ctlCtx) {
 	}
 }
 
+func ctlV3RoleMultiExpect(cx ctlCtx, args []string, expStr ...string) error {
+	cmdArgs := append(cx.PrefixArgs(), "role")
+	cmdArgs = append(cmdArgs, args...)
+
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, expStr...)
+}
 func ctlV3Role(cx ctlCtx, args []string, expStr string) error {
 	cmdArgs := append(cx.PrefixArgs(), "role")
 	cmdArgs = append(cmdArgs, args...)
 
-	return spawnWithExpect(cmdArgs, expStr)
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expStr)
 }
 
 func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) error {
@@ -110,7 +164,7 @@ func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) err
 	cmdArgs = append(cmdArgs, rolename)
 	cmdArgs = append(cmdArgs, grantingPermToArgs(perm)...)
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}
@@ -136,7 +190,7 @@ func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string,
 		expStr = fmt.Sprintf("Permission of key %s is revoked from role %s", key, rolename)
 	}
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}

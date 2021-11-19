@@ -18,7 +18,9 @@ package ctlv3
 import (
 	"time"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
 )
@@ -51,6 +53,9 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.OutputFormat, "write-out", "w", "simple", "set the output format (fields, json, protobuf, simple, table)")
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.IsHex, "hex", false, "print byte strings as hex encoded strings")
+	rootCmd.RegisterFlagCompletionFunc("write-out", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"fields", "json", "protobuf", "simple", "table"}, cobra.ShellCompDirectiveDefault
+	})
 
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.CommandTimeOut, "command-timeout", defaultCommandTimeOut, "timeout for short running command (excluding dial timeout)")
@@ -85,14 +90,18 @@ func init() {
 		command.NewMemberCommand(),
 		command.NewSnapshotCommand(),
 		command.NewMakeMirrorCommand(),
-		command.NewMigrateCommand(),
 		command.NewLockCommand(),
 		command.NewElectCommand(),
 		command.NewAuthCommand(),
 		command.NewUserCommand(),
 		command.NewRoleCommand(),
 		command.NewCheckCommand(),
+		command.NewCompletionCommand(),
 	)
+}
+
+func usageFunc(c *cobra.Command) error {
+	return cobrautl.UsageFunc(c, version.Version, version.APIVersion)
 }
 
 func Start() error {
@@ -104,7 +113,7 @@ func Start() error {
 
 func MustStart() {
 	if err := Start(); err != nil {
-		command.ExitWithError(command.ExitError, err)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 }
 

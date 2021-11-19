@@ -19,7 +19,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math"
 	"net"
@@ -41,6 +41,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
+	"go.uber.org/zap/zapgrpc"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
@@ -176,12 +177,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}
 	defer lg.Sync()
 
-	var gl grpclog.LoggerV2
-	gl, err = logutil.NewGRPCLoggerV2(lcfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	grpclog.SetLoggerV2(gl)
+	grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
 
 	// The proxy itself (ListenCert) can have not-empty CN.
 	// The empty CN is required for grpcProxyCert.
@@ -473,7 +469,7 @@ func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c
 	}
 	srvhttp := &http.Server{
 		Handler:  httpmux,
-		ErrorLog: log.New(ioutil.Discard, "net/http", 0),
+		ErrorLog: log.New(io.Discard, "net/http", 0),
 	}
 
 	if tlsinfo == nil {
@@ -501,7 +497,7 @@ func newHTTPTransport(ca, cert, key string) (*http.Transport, error) {
 	tr := &http.Transport{}
 
 	if ca != "" && cert != "" && key != "" {
-		caCert, err := ioutil.ReadFile(ca)
+		caCert, err := os.ReadFile(ca)
 		if err != nil {
 			return nil, err
 		}

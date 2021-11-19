@@ -6,13 +6,14 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/namespace"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestKVWithEmptyValue ensures that a get/delete with an empty value, and with WithFromKey/WithPrefix function will return an empty error.
 func TestKVWithEmptyValue(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	client := clus.RandClient()

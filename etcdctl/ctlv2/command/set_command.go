@@ -21,6 +21,7 @@ import (
 
 	"github.com/urfave/cli"
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 // NewSetCommand returns the CLI command for "set".
@@ -50,12 +51,12 @@ func NewSetCommand() cli.Command {
 // setCommandFunc executes the "set" command.
 func setCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		handleError(c, ExitBadArgs, errors.New("key required"))
+		handleError(c, cobrautl.ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	value, err := argOrStdin(c.Args(), os.Stdin, 1)
 	if err != nil {
-		handleError(c, ExitBadArgs, errors.New("value required"))
+		handleError(c, cobrautl.ExitBadArgs, errors.New("value required"))
 	}
 
 	ttl := c.Int("ttl")
@@ -66,7 +67,7 @@ func setCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevIndex: uint64(prevIndex), PrevValue: prevValue})
 	cancel()
 	if err != nil {
-		handleError(c, ExitServerError, err)
+		handleError(c, cobrautl.ExitServerError, err)
 	}
 
 	printResponseKey(resp, c.GlobalString("output"))

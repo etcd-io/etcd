@@ -24,13 +24,14 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestSTMConflict tests that conflicts are retried.
 func TestSTMConflict(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -96,9 +97,9 @@ func TestSTMConflict(t *testing.T) {
 
 // TestSTMPutNewKey confirms a STM put on a new key is visible after commit.
 func TestSTMPutNewKey(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -123,9 +124,9 @@ func TestSTMPutNewKey(t *testing.T) {
 
 // TestSTMAbort tests that an aborted txn does not modify any keys.
 func TestSTMAbort(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -154,9 +155,9 @@ func TestSTMAbort(t *testing.T) {
 
 // TestSTMSerialize tests that serialization is honored when serializable.
 func TestSTMSerialize(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -217,9 +218,9 @@ func TestSTMSerialize(t *testing.T) {
 // TestSTMApplyOnConcurrentDeletion ensures that concurrent key deletion
 // fails the first GET revision comparison within STM; trigger retry.
 func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -266,9 +267,9 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 }
 
 func TestSTMSerializableSnapshotPut(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)

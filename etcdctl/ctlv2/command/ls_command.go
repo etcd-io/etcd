@@ -19,6 +19,7 @@ import (
 
 	"github.com/urfave/cli"
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 func NewLsCommand() cli.Command {
@@ -54,7 +55,7 @@ func lsCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	resp, err := ki.Get(ctx, key, &client.GetOptions{Sort: sort, Recursive: recursive, Quorum: quorum})
 	cancel()
 	if err != nil {
-		handleError(c, ExitServerError, err)
+		handleError(c, cobrautl.ExitServerError, err)
 	}
 
 	printLs(c, resp)

@@ -22,20 +22,21 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestElectionWait tests if followers can correctly wait for elections.
 func TestElectionWait(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	leaders := 3
 	followers := 3
 	var clients []*clientv3.Client
-	newClient := MakeMultiNodeClients(t, clus, &clients)
+	newClient := integration.MakeMultiNodeClients(t, clus, &clients)
 	defer func() {
-		CloseClients(t, clients)
+		integration.CloseClients(t, clients)
 	}()
 
 	electedc := make(chan string)
@@ -108,8 +109,8 @@ func TestElectionWait(t *testing.T) {
 
 // TestElectionFailover tests that an election will
 func TestElectionFailover(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	cctx, cancel := context.WithCancel(context.TODO())
@@ -119,7 +120,7 @@ func TestElectionFailover(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		var err error
-		ss[i], err = concurrency.NewSession(clus.clients[i])
+		ss[i], err = concurrency.NewSession(clus.Clients[i])
 		if err != nil {
 			t.Error(err)
 		}
@@ -176,8 +177,8 @@ func TestElectionFailover(t *testing.T) {
 // TestElectionSessionRelock ensures that campaigning twice on the same election
 // with the same lock will Proclaim instead of deadlocking.
 func TestElectionSessionRecampaign(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.RandClient()
 
@@ -209,8 +210,8 @@ func TestElectionSessionRecampaign(t *testing.T) {
 // of bug #6278. https://github.com/etcd-io/etcd/issues/6278
 //
 func TestElectionOnPrefixOfExistingKey(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
@@ -236,8 +237,8 @@ func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 // in a new session with the same lease id) does not result in loss of
 // leadership.
 func TestElectionOnSessionRestart(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.RandClient()
 
@@ -283,8 +284,8 @@ func TestElectionOnSessionRestart(t *testing.T) {
 // TestElectionObserveCompacted checks that observe can tolerate
 // a leader key with a modrev less than the compaction revision.
 func TestElectionObserveCompacted(t *testing.T) {
-	BeforeTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)

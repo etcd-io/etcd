@@ -23,6 +23,7 @@ import (
 	"os/signal"
 
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/urfave/cli"
 )
@@ -50,7 +51,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	argslen := len(args)
 
 	if argslen < 2 {
-		handleError(c, ExitBadArgs, errors.New("key and command to exec required"))
+		handleError(c, cobrautl.ExitBadArgs, errors.New("key and command to exec required"))
 	}
 
 	var (
@@ -93,7 +94,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	for {
 		resp, err := w.Next(context.TODO())
 		if err != nil {
-			handleError(c, ExitServerError, err)
+			handleError(c, cobrautl.ExitServerError, err)
 		}
 		if resp.Node.Dir {
 			fmt.Fprintf(os.Stderr, "Ignored dir %s change\n", resp.Node.Key)

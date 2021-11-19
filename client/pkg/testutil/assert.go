@@ -15,30 +15,23 @@
 package testutil
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func AssertEqual(t *testing.T, e, a interface{}, msg ...string) {
-	t.Helper()
-	if (e == nil || a == nil) && (isNil(e) && isNil(a)) {
-		return
+func copyToInterface(msg ...string) []interface{} {
+	newMsg := make([]interface{}, len(msg))
+	for i, v := range msg {
+		newMsg[i] = v
 	}
-	if reflect.DeepEqual(e, a) {
-		return
-	}
-	s := ""
-	if len(msg) > 1 {
-		s = msg[0] + ": "
-	}
-	s = fmt.Sprintf("%sexpected %+v, got %+v", s, e, a)
-	FatalStack(t, s)
+	return newMsg
 }
 
 func AssertNil(t *testing.T, v interface{}) {
 	t.Helper()
-	AssertEqual(t, nil, v)
+	assert.Nil(t, v)
 }
 
 func AssertNotNil(t *testing.T, v interface{}) {
@@ -50,12 +43,14 @@ func AssertNotNil(t *testing.T, v interface{}) {
 
 func AssertTrue(t *testing.T, v bool, msg ...string) {
 	t.Helper()
-	AssertEqual(t, true, v, msg...)
+	newMsg := copyToInterface(msg...)
+	assert.Equal(t, true, v, newMsg)
 }
 
 func AssertFalse(t *testing.T, v bool, msg ...string) {
 	t.Helper()
-	AssertEqual(t, false, v, msg...)
+	newMsg := copyToInterface(msg...)
+	assert.Equal(t, false, v, newMsg)
 }
 
 func isNil(v interface{}) bool {

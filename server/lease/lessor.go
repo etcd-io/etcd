@@ -26,7 +26,8 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 )
 
@@ -38,8 +39,6 @@ const MaxLeaseTTL = 9000000000
 
 var (
 	forever = time.Time{}
-
-	leaseBucketName = []byte("lease")
 
 	// maximum number of leases to revoke per second; configurable for tests
 	leaseRevokeRate = 1000
@@ -337,7 +336,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// lease deletion needs to be in the same backend transaction with the
 	// kv deletion. Or we might end up with not executing the revoke or not
 	// deleting the keys if etcdserver fails in between.
-	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
+	schema.UnsafeDeleteLease(le.b.BatchTx(), &leasepb.Lease{ID: int64(l.ID)})
 
 	txn.End()
 
@@ -770,18 +769,12 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 
 func (le *lessor) initAndRecover() {
 	tx := le.b.BatchTx()
-	tx.Lock()
 
-	tx.UnsafeCreateBucket(leaseBucketName)
-	_, vs := tx.UnsafeRange(leaseBucketName, int64ToBytes(0), int64ToBytes(math.MaxInt64), 0)
-	// TODO: copy vs and do decoding outside tx lock if lock contention becomes an issue.
-	for i := range vs {
-		var lpb leasepb.Lease
-		err := lpb.Unmarshal(vs[i])
-		if err != nil {
-			tx.Unlock()
-			panic("failed to unmarshal lease proto item")
-		}
+	tx.Lock()
+	schema.UnsafeCreateLeaseBucket(tx)
+	lpbs := schema.MustUnsafeGetAllLeases(tx)
+	tx.Unlock()
+	for _, lpb := range lpbs {
 		ID := LeaseID(lpb.ID)
 		if lpb.TTL < le.minLeaseTTL {
 			lpb.TTL = le.minLeaseTTL
@@ -798,7 +791,6 @@ func (le *lessor) initAndRecover() {
 	}
 	le.leaseExpiredNotifier.Init()
 	heap.Init(&le.leaseCheckpointHeap)
-	tx.Unlock()
 
 	le.b.ForceCommit()
 }
@@ -823,17 +815,11 @@ func (l *Lease) expired() bool {
 }
 
 func (l *Lease) persistTo(b backend.Backend) {
-	key := int64ToBytes(int64(l.ID))
-
 	lpb := leasepb.Lease{ID: int64(l.ID), TTL: l.ttl, RemainingTTL: l.remainingTTL}
-	val, err := lpb.Marshal()
-	if err != nil {
-		panic("failed to marshal lease proto item")
-	}
-
-	b.BatchTx().Lock()
-	b.BatchTx().UnsafePut(leaseBucketName, key, val)
-	b.BatchTx().Unlock()
+	tx := b.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	schema.MustUnsafePutLease(tx, &lpb)
 }
 
 // TTL returns the TTL of the Lease.

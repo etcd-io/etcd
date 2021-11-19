@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path"
 	"strings"
@@ -111,7 +111,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Limit the data size that could be read from the request body, which ensures that read from
 	// connection will not time out accidentally due to possible blocking in underlying implementation.
 	limitedr := pioutil.NewLimitedBufferReader(r.Body, connReadLimitByte)
-	b, err := ioutil.ReadAll(limitedr)
+	b, err := io.ReadAll(limitedr)
 	if err != nil {
 		h.lg.Warn(
 			"failed to read Raft message",

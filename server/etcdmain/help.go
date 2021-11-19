@@ -196,6 +196,8 @@ Logging:
     Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd, or list of comma separated output targets.
   --log-level 'info'
     Configures log level. Only supports debug, info, warn, error, panic, or fatal.
+  --log-format 'json'
+    Configures log format. Only supports json, console.
   --enable-log-rotation 'false'
     Enable log rotation of a single log-outputs file target.
   --log-rotation-config-json '{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}'
@@ -210,6 +212,8 @@ Experimental distributed tracing:
     Distributed tracing service name, must be same across all etcd instances.
   --experimental-distributed-tracing-instance-id ''
     Distributed tracing instance ID, must be unique per each etcd instance.
+  --experimental-distributed-tracing-sampling-rate '0'
+    Number of samples to collect per million spans for distributed tracing. Disabled by default.
 
 v2 Proxy (to be deprecated in v3.6):
   --proxy 'off'
@@ -241,11 +245,15 @@ Experimental feature:
   --experimental-watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification.
   --experimental-warning-apply-duration '100ms'
-	Warning is generated if requests take more than this duration.
+    Warning is generated if requests take more than this duration.
   --experimental-txn-mode-write-with-shared-buffer 'true'
     Enable the write transaction to use a shared buffer in its readonly check operations.
   --experimental-bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
+  --experimental-warning-unary-request-duration '300ms'
+    Set time duration after which a warning is generated if a unary request takes more than this duration.
+  --experimental-max-learners '1'
+    Set the max number of learner members allowed in the cluster membership.
 
 Unsafe feature:
   --force-new-cluster 'false'

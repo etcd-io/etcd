@@ -20,13 +20,13 @@ import (
 
 	"go.etcd.io/etcd/client/v3/concurrency"
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestDoubleBarrier(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	waiters := 10
@@ -98,9 +98,9 @@ func TestDoubleBarrier(t *testing.T) {
 }
 
 func TestDoubleBarrierFailover(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	waiters := 10

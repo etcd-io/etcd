@@ -23,13 +23,13 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	"go.etcd.io/etcd/tests/v3/integration"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestResumeElection(t *testing.T) {
 	const prefix = "/resume-election/"
 
-	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	if err != nil {
 		log.Fatal(err)
 	}

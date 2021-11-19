@@ -171,7 +171,6 @@ func hashKV(cmd *cobra.Command, clients []*v3.Client) {
 	host := eps[0]
 
 	st := time.Now()
-	clients[0].HashKV(context.Background(), eps[0], 0)
 	rh, eh := clients[0].HashKV(context.Background(), host, 0)
 	if eh != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get the hashkv of endpoint %s (%v)\n", host, eh)

@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -72,7 +71,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	)
 
 	if clientreq.Body != nil {
-		proxybody, err = ioutil.ReadAll(clientreq.Body)
+		proxybody, err = io.ReadAll(clientreq.Body)
 		if err != nil {
 			msg := fmt.Sprintf("failed to read request body: %v", err)
 			p.lg.Info("failed to read request body", zap.Error(err))
@@ -144,7 +143,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 
 	for _, ep := range endpoints {
 		if proxybody != nil {
-			proxyreq.Body = ioutil.NopCloser(bytes.NewBuffer(proxybody))
+			proxyreq.Body = io.NopCloser(bytes.NewBuffer(proxybody))
 		}
 		redirectRequest(proxyreq, ep.URL)
 

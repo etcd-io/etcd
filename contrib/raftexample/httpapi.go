@@ -15,7 +15,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -32,9 +32,9 @@ type httpKVAPI struct {
 func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	key := r.RequestURI
 	defer r.Body.Close()
-	switch {
-	case r.Method == "PUT":
-		v, err := ioutil.ReadAll(r.Body)
+	switch r.Method {
+	case http.MethodPut:
+		v, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("Failed to read on PUT (%v)\n", err)
 			http.Error(w, "Failed on PUT", http.StatusBadRequest)
@@ -46,14 +46,14 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Optimistic-- no waiting for ack from raft. Value is not yet
 		// committed so a subsequent GET on the key may return old value
 		w.WriteHeader(http.StatusNoContent)
-	case r.Method == "GET":
+	case http.MethodGet:
 		if v, ok := h.store.Lookup(key); ok {
 			w.Write([]byte(v))
 		} else {
 			http.Error(w, "Failed to GET", http.StatusNotFound)
 		}
-	case r.Method == "POST":
-		url, err := ioutil.ReadAll(r.Body)
+	case http.MethodPost:
+		url, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("Failed to read on POST (%v)\n", err)
 			http.Error(w, "Failed on POST", http.StatusBadRequest)
@@ -73,10 +73,9 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Context: url,
 		}
 		h.confChangeC <- cc
-
 		// As above, optimistic that raft will apply the conf change
 		w.WriteHeader(http.StatusNoContent)
-	case r.Method == "DELETE":
+	case http.MethodDelete:
 		nodeId, err := strconv.ParseUint(key[1:], 0, 64)
 		if err != nil {
 			log.Printf("Failed to convert ID for conf change (%v)\n", err)
@@ -93,10 +92,10 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// As above, optimistic that raft will apply the conf change
 		w.WriteHeader(http.StatusNoContent)
 	default:
-		w.Header().Set("Allow", "PUT")
-		w.Header().Add("Allow", "GET")
-		w.Header().Add("Allow", "POST")
-		w.Header().Add("Allow", "DELETE")
+		w.Header().Set("Allow", http.MethodPut)
+		w.Header().Add("Allow", http.MethodGet)
+		w.Header().Add("Allow", http.MethodPost)
+		w.Header().Add("Allow", http.MethodDelete)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
