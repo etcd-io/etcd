@@ -533,6 +533,7 @@ func TestLessorCheckpointScheduling(t *testing.T) {
 	defer be.Close()
 
 	le := newLessor(lg, be, LessorConfig{MinLeaseTTL: minLeaseTTL, CheckpointInterval: 1 * time.Second})
+	defer le.Stop()
 	le.minLeaseTTL = 1
 	checkpointedC := make(chan struct{})
 	le.SetCheckpointer(func(ctx context.Context, lc *pb.LeaseCheckpointRequest) {
@@ -545,13 +546,11 @@ func TestLessorCheckpointScheduling(t *testing.T) {
 			t.Errorf("expected checkpoint to be called with Remaining_TTL=%d but got %d", 1, c.Remaining_TTL)
 		}
 	})
-	defer le.Stop()
-	le.Promote(0)
-
 	_, err := le.Grant(1, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
+	le.Promote(0)
 
 	// TODO: Is there any way to avoid doing this wait? Lease TTL granularity is in seconds.
 	select {
