@@ -2163,6 +2163,11 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp)))
 		return
 	}
+	if !shouldApplyV3 && raftReq.LeaseCheckpoint != nil {
+		shouldApplyV3 = membership.ApplyBoth
+		s.lg.Debug("flipping should-applyV3 to reapply old lease checkpoint",
+			zap.Bool("should-applyV3", bool(shouldApplyV3)))
+	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
