@@ -353,6 +353,7 @@ func (le *lessor) Checkpoint(id LeaseID, remainingTTL int64) error {
 	if l, ok := le.leaseMap[id]; ok {
 		// when checkpointing, we only update the remainingTTL, Promote is responsible for applying this to lease expiry
 		l.remainingTTL = remainingTTL
+		l.persistTo(le.b)
 		if le.isPrimary() {
 			// schedule the next checkpoint as needed
 			le.scheduleCheckpointIfNeeded(l)
@@ -786,9 +787,10 @@ func (le *lessor) initAndRecover() {
 			ttl: lpb.TTL,
 			// itemSet will be filled in when recover key-value pairs
 			// set expiry to forever, refresh when promoted
-			itemSet: make(map[LeaseItem]struct{}),
-			expiry:  forever,
-			revokec: make(chan struct{}),
+			itemSet:      make(map[LeaseItem]struct{}),
+			expiry:       forever,
+			revokec:      make(chan struct{}),
+			remainingTTL: lpb.RemainingTTL,
 		}
 	}
 	le.leaseExpiredNotifier.Init()
