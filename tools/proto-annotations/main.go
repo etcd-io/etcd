@@ -101,7 +101,7 @@ func allEtcdVersionAnnotations() (annotations []etcdVersionAnnotation, err error
 }
 
 func fileEtcdVersionAnnotations(file protoreflect.FileDescriptor) (annotations []etcdVersionAnnotation, err error) {
-	err = visitFileDescriptor(file, func(path string, ver *semver.Version) error {
+	err = wal.VisitFileDescriptor(file, func(path protoreflect.FullName, ver *semver.Version) error {
 		a := etcdVersionAnnotation{fullName: path, version: ver}
 		annotations = append(annotations, a)
 		return nil
@@ -109,80 +109,8 @@ func fileEtcdVersionAnnotations(file protoreflect.FileDescriptor) (annotations [
 	return annotations, err
 }
 
-type Visitor func(path string, ver *semver.Version) error
-
-func visitFileDescriptor(file protoreflect.FileDescriptor, visitor Visitor) error {
-	msgs := file.Messages()
-	for i := 0; i < msgs.Len(); i++ {
-		err := visitMessageDescriptor(msgs.Get(i), visitor)
-		if err != nil {
-			return err
-		}
-	}
-	enums := file.Enums()
-	for i := 0; i < enums.Len(); i++ {
-		err := visitEnumDescriptor(enums.Get(i), visitor)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func visitMessageDescriptor(md protoreflect.MessageDescriptor, visitor Visitor) error {
-	err := VisitDescriptor(md, visitor)
-	if err != nil {
-		return err
-	}
-	fields := md.Fields()
-	for i := 0; i < fields.Len(); i++ {
-		fd := fields.Get(i)
-		err = VisitDescriptor(fd, visitor)
-		if err != nil {
-			return err
-		}
-	}
-
-	enums := md.Enums()
-	for i := 0; i < enums.Len(); i++ {
-		err := visitEnumDescriptor(enums.Get(i), visitor)
-		if err != nil {
-			return err
-		}
-	}
-	return err
-}
-
-func visitEnumDescriptor(enum protoreflect.EnumDescriptor, visitor Visitor) error {
-	err := VisitDescriptor(enum, visitor)
-	if err != nil {
-		return err
-	}
-	fields := enum.Values()
-	for i := 0; i < fields.Len(); i++ {
-		fd := fields.Get(i)
-		err = VisitDescriptor(fd, visitor)
-		if err != nil {
-			return err
-		}
-	}
-	return err
-}
-
-func VisitDescriptor(md protoreflect.Descriptor, visitor Visitor) error {
-	s, ok := md.Options().(fmt.Stringer)
-	if !ok {
-		return nil
-	}
-	ver, err := wal.EtcdVersionFromOptionsString(s.String())
-	if err != nil {
-		return fmt.Errorf("%s: %s", md.FullName(), err)
-	}
-	return visitor(string(md.FullName()), ver)
-}
-
 type etcdVersionAnnotation struct {
-	fullName string
+	fullName protoreflect.FullName
 	version  *semver.Version
 }
 
