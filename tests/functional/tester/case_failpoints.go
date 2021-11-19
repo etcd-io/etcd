@@ -16,7 +16,7 @@ package tester
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -74,7 +74,7 @@ func failpointPaths(endpoint string) ([]string, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, rerr := ioutil.ReadAll(resp.Body)
+	body, rerr := io.ReadAll(resp.Body)
 	if rerr != nil {
 		return nil, rerr
 	}

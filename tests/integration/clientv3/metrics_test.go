@@ -25,17 +25,16 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/integration"
-
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.etcd.io/etcd/client/v3"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 )
 
 func TestV3ClientMetrics(t *testing.T) {
-	integration.BeforeTest(t)
+	integration2.BeforeTest(t)
 
 	var (
 		addr = "localhost:27989"
@@ -71,17 +70,17 @@ func TestV3ClientMetrics(t *testing.T) {
 
 	url := "unix://" + addr + "/metrics"
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, SkipCreatingClient: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, SkipCreatingClient: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
-		Endpoints: []string{clus.Members[0].GRPCAddr()},
+		Endpoints: []string{clus.Members[0].GRPCURL()},
 		DialOptions: []grpc.DialOption{
 			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
 			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
 		},
 	}
-	cli, cerr := integration.NewClient(t, cfg)
+	cli, cerr := integration2.NewClient(t, cfg)
 	if cerr != nil {
 		t.Fatal(cerr)
 	}

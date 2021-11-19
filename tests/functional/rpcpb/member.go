@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/etcdctl/v3/snapshot"
+	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -282,7 +282,8 @@ func (m *Member) SaveSnapshot(lg *zap.Logger) (err error) {
 	)
 	now := time.Now()
 	mgr := snapshot.NewV3(lg)
-	if err = mgr.Save(context.Background(), *ccfg, m.SnapshotPath); err != nil {
+	version, err := mgr.Save(context.Background(), *ccfg, m.SnapshotPath)
+	if err != nil {
 		return err
 	}
 	took := time.Since(now)
@@ -307,10 +308,12 @@ func (m *Member) SaveSnapshot(lg *zap.Logger) (err error) {
 		SnapshotHash:      int64(st.Hash),
 		SnapshotRevision:  st.Revision,
 		Took:              fmt.Sprintf("%v", took),
+		Version:           version,
 	}
 	lg.Info(
 		"snapshot save END",
 		zap.String("member-name", m.SnapshotInfo.MemberName),
+		zap.String("member-version", m.SnapshotInfo.Version),
 		zap.Strings("member-client-urls", m.SnapshotInfo.MemberClientURLs),
 		zap.String("snapshot-path", m.SnapshotPath),
 		zap.String("snapshot-file-size", m.SnapshotInfo.SnapshotFileSize),
@@ -357,6 +360,7 @@ func (m *Member) RestoreSnapshot(lg *zap.Logger) (err error) {
 	lg.Info(
 		"snapshot restore END",
 		zap.String("member-name", m.SnapshotInfo.MemberName),
+		zap.String("member-version", m.SnapshotInfo.Version),
 		zap.Strings("member-client-urls", m.SnapshotInfo.MemberClientURLs),
 		zap.String("snapshot-path", m.SnapshotPath),
 		zap.String("snapshot-file-size", m.SnapshotInfo.SnapshotFileSize),

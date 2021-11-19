@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -79,6 +78,12 @@ func TestHealthHandler(t *testing.T) {
 			"true",
 		},
 		{
+			[]*pb.AlarmMember{{MemberID: uint64(1), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(2), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(3), Alarm: pb.AlarmType_NOSPACE}},
+			"/health?exclude=NOSPACE",
+			http.StatusOK,
+			"true",
+		},
+		{
 			[]*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
 			"/health?exclude=NOSPACE",
 			http.StatusServiceUnavailable,
@@ -127,7 +132,7 @@ func TestHealthHandler(t *testing.T) {
 
 func parseHealthOutput(body io.Reader) (Health, error) {
 	obj := Health{}
-	d, derr := ioutil.ReadAll(body)
+	d, derr := io.ReadAll(body)
 	if derr != nil {
 		return obj, derr
 	}

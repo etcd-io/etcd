@@ -17,7 +17,6 @@ package lease
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -27,7 +26,8 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 )
 
@@ -91,12 +91,13 @@ func TestLessorGrant(t *testing.T) {
 		}
 	}
 
-	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
-	if len(vs) != 1 {
-		t.Errorf("len(vs) = %d, want 1", len(vs))
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
+	if lpb == nil {
+		t.Errorf("lpb = %d, want not nil", lpb)
 	}
-	be.BatchTx().Unlock()
 }
 
 // TestLeaseConcurrentKeys ensures Lease.Keys method calls are guarded
@@ -194,12 +195,13 @@ func TestLessorRevoke(t *testing.T) {
 		t.Errorf("deleted= %v, want %v", fd.deleted, wdeleted)
 	}
 
-	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
-	if len(vs) != 0 {
-		t.Errorf("len(vs) = %d, want 0", len(vs))
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
+	if lpb != nil {
+		t.Errorf("lpb = %d, want nil", lpb)
 	}
-	be.BatchTx().Unlock()
 }
 
 // TestLessorRenew ensures Lessor can renew an existing lease.
@@ -597,7 +599,7 @@ func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
-	tmpPath, err := ioutil.TempDir("", "lease")
+	tmpPath, err := os.MkdirTemp("", "lease")
 	if err != nil {
 		t.Fatalf("failed to create tmpdir (%v)", err)
 	}

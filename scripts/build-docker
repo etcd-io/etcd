@@ -30,7 +30,7 @@ IMAGEDIR=${BUILDDIR}/image-docker
 
 mkdir -p "${IMAGEDIR}"/var/etcd
 mkdir -p "${IMAGEDIR}"/var/lib/etcd
-cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${IMAGEDIR}"
+cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR}"
 
 cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 

@@ -21,13 +21,14 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // MustFetchNotEmptyMetric attempts to fetch given 'metric' from 'member',
 // waiting for not-empty value or 'timeout'.
-func MustFetchNotEmptyMetric(tb testing.TB, member *member, metric string, timeout <-chan time.Time) string {
+func MustFetchNotEmptyMetric(tb testing.TB, member *integration.Member, metric string, timeout <-chan time.Time) string {
 	metricValue := ""
-	tick := time.Tick(tickDuration)
+	tick := time.Tick(integration.TickDuration)
 	for metricValue == "" {
 		tb.Logf("Waiting for metric: %v", metric)
 		select {
@@ -50,9 +51,9 @@ func MustFetchNotEmptyMetric(tb testing.TB, member *member, metric string, timeo
 // that were created in synced watcher group in the first place.
 // TODO: fix panic with gRPC proxy "panic: watcher current revision should not exceed current revision"
 func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:                   3,
 		SnapshotCount:          10,
 		SnapshotCatchUpEntries: 5,
@@ -62,7 +63,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	// spawn a watcher before shutdown, and put it in synced watcher
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	wStream, errW := toGRPC(clus.Client(0)).Watch.Watch(ctx)
+	wStream, errW := integration.ToGRPC(clus.Client(0)).Watch.Watch(ctx)
 	if errW != nil {
 		t.Fatal(errW)
 	}
@@ -79,13 +80,13 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	}
 
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
-	initialLead := clus.waitLeader(t, clus.Members[1:])
-	t.Logf("elected lead: %v", clus.Members[initialLead].s.ID())
+	initialLead := clus.WaitMembersForLeader(t, clus.Members[1:])
+	t.Logf("elected lead: %v", clus.Members[initialLead].Server.ID())
 	t.Logf("sleeping for 2 seconds")
 	time.Sleep(2 * time.Second)
 	t.Logf("sleeping for 2 seconds DONE")
 
-	kvc := toGRPC(clus.Client(1)).KV
+	kvc := integration.ToGRPC(clus.Client(1)).KV
 
 	// to trigger snapshot from the leader to the stopped follower
 	for i := 0; i < 15; i++ {
@@ -98,7 +99,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	// trigger snapshot send from leader to this slow follower
 	// which then calls watchable store Restore
 	clus.Members[0].RecoverPartition(t, clus.Members[1:]...)
-	// We don't expect leadership change here, just recompute the leader's index
+	// We don't expect leadership change here, just recompute the leader'Server index
 	// within clus.Members list.
 	lead := clus.WaitLeader(t)
 

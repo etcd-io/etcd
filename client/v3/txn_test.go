@@ -23,7 +23,7 @@ import (
 )
 
 func TestTxnPanics(t *testing.T) {
-	testutil.BeforeTest(t)
+	testutil.RegisterLeakDetection(t)
 
 	kv := &kv{}
 

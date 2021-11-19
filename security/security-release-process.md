@@ -102,7 +102,7 @@ With the Fix Development underway, the PSC needs to come up with an overall comm
 
 **Fix Release Day** (Completed within 1-21 days of Disclosure)
 
-- The PSC will cherry-pick the patches onto the master branch and all relevant release branches. The Fix Team will `lgtm` and `approve`.
+- The PSC will cherry-pick the patches onto the main branch and all relevant release branches. The Fix Team will `lgtm` and `approve`.
 - The etcd maintainers will merge these PRs as quickly as possible.
 - The PSC will ensure all the binaries are built, publicly available, and functional.
 - The PSC will announce the new releases, the CVE number, severity, and impact, and the location of the binaries to get wide distribution and user action. As much as possible this announcement should be actionable, and include any mitigating steps users can take prior to upgrading to a fixed version. The recommended target time is 4pm UTC on a non-Friday weekday. This means the announcement will be seen morning Pacific, early evening Europe, and late evening Asia. The announcement will be sent via the following channels:

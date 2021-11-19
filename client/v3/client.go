@@ -54,7 +54,9 @@ type Client struct {
 	cfg      Config
 	creds    grpccredentials.TransportCredentials
 	resolver *resolver.EtcdManualResolver
-	mu       *sync.RWMutex
+
+	epMu      *sync.RWMutex
+	endpoints []string
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -160,18 +162,18 @@ func (c *Client) Ctx() context.Context { return c.ctx }
 // Endpoints lists the registered endpoints for the client.
 func (c *Client) Endpoints() []string {
 	// copy the slice; protect original endpoints from being changed
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	eps := make([]string, len(c.cfg.Endpoints))
-	copy(eps, c.cfg.Endpoints)
+	c.epMu.RLock()
+	defer c.epMu.RUnlock()
+	eps := make([]string, len(c.endpoints))
+	copy(eps, c.endpoints)
 	return eps
 }
 
 // SetEndpoints updates client's endpoints.
 func (c *Client) SetEndpoints(eps ...string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.cfg.Endpoints = eps
+	c.epMu.Lock()
+	defer c.epMu.Unlock()
+	c.endpoints = eps
 
 	c.resolver.SetEndpoints(eps)
 }
@@ -283,8 +285,7 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 	if err != nil {
 		return nil, fmt.Errorf("failed to configure dialer: %v", err)
 	}
-	if c.Username != "" && c.Password != "" {
-		c.authTokenBundle = credentials.NewBundle(credentials.Config{})
+	if c.authTokenBundle != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 	}
 
@@ -296,14 +297,26 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 		dctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
 		defer cancel() // TODO: Is this right for cases where grpc.WithBlock() is not set on the dial options?
 	}
-
-	initialEndpoints := strings.Join(c.cfg.Endpoints, ";")
-	target := fmt.Sprintf("%s://%p/#initially=[%s]", resolver.Schema, c, initialEndpoints)
+	target := fmt.Sprintf("%s://%p/%s", resolver.Schema, c, authority(c.endpoints[0]))
 	conn, err := grpc.DialContext(dctx, target, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return conn, nil
+}
+
+func authority(endpoint string) string {
+	spl := strings.SplitN(endpoint, "://", 2)
+	if len(spl) < 2 {
+		if strings.HasPrefix(endpoint, "unix:") {
+			return endpoint[len("unix:"):]
+		}
+		if strings.HasPrefix(endpoint, "unixs:") {
+			return endpoint[len("unixs:"):]
+		}
+		return endpoint
+	}
+	return spl[1]
 }
 
 func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCredentials {
@@ -345,7 +358,7 @@ func newClient(cfg *Config) (*Client, error) {
 		creds:    creds,
 		ctx:      ctx,
 		cancel:   cancel,
-		mu:       new(sync.RWMutex),
+		epMu:     new(sync.RWMutex),
 		callOpts: defaultCallOpts,
 		lgMu:     new(sync.RWMutex),
 	}
@@ -356,7 +369,7 @@ func newClient(cfg *Config) (*Client, error) {
 	} else if cfg.LogConfig != nil {
 		client.lg, err = cfg.LogConfig.Build()
 	} else {
-		client.lg, err = createDefaultZapLogger()
+		client.lg, err = CreateDefaultZapLogger()
 	}
 	if err != nil {
 		return nil, err
@@ -365,6 +378,7 @@ func newClient(cfg *Config) (*Client, error) {
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
 		client.Password = cfg.Password
+		client.authTokenBundle = credentials.NewBundle(credentials.Config{})
 	}
 	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 {
 		if cfg.MaxCallRecvMsgSize > 0 && cfg.MaxCallSendMsgSize > cfg.MaxCallRecvMsgSize {
@@ -390,6 +404,8 @@ func newClient(cfg *Config) (*Client, error) {
 		client.cancel()
 		return nil, fmt.Errorf("at least one Endpoint is required in client config")
 	}
+	client.SetEndpoints(cfg.Endpoints...)
+
 	// Use a provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
 	conn, err := client.dialWithBalancer()

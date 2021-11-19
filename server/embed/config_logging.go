@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 
@@ -87,7 +87,11 @@ func (cfg *Config) setupLogging() error {
 				var path string
 				if cfg.EnableLogRotation {
 					// append rotate scheme to logs managed by lumberjack log rotation
-					path = fmt.Sprintf("rotate:%s", v)
+					if v[0:1] == "/" {
+						path = fmt.Sprintf("rotate:/%%2F%s", v[1:])
+					} else {
+						path = fmt.Sprintf("rotate:/%s", v)
+					}
 				} else {
 					path = v
 				}
@@ -102,20 +106,17 @@ func (cfg *Config) setupLogging() error {
 			copied.ErrorOutputPaths = errOutputPaths
 			copied = logutil.MergeOutputPaths(copied)
 			copied.Level = zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
+			encoding, err := logutil.ConvertToZapFormat(cfg.LogFormat)
+			if err != nil {
+				return err
+			}
+			copied.Encoding = encoding
 			if cfg.ZapLoggerBuilder == nil {
-				cfg.ZapLoggerBuilder = func(c *Config) error {
-					var err error
-					c.logger, err = copied.Build()
-					if err != nil {
-						return err
-					}
-					c.loggerMu.Lock()
-					defer c.loggerMu.Unlock()
-					c.loggerConfig = &copied
-					c.loggerCore = nil
-					c.loggerWriteSyncer = nil
-					return nil
+				lg, err := copied.Build()
+				if err != nil {
+					return err
 				}
+				cfg.ZapLoggerBuilder = NewZapLoggerBuilder(lg)
 			}
 		} else {
 			if len(cfg.LogOutputs) > 1 {
@@ -134,24 +135,27 @@ func (cfg *Config) setupLogging() error {
 
 			lvl := zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
 
+			var encoder zapcore.Encoder
+			encoding, err := logutil.ConvertToZapFormat(cfg.LogFormat)
+			if err != nil {
+				return err
+			}
+
+			if encoding == logutil.ConsoleLogFormat {
+				encoder = zapcore.NewConsoleEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig)
+			} else {
+				encoder = zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig)
+			}
+
 			// WARN: do not change field names in encoder config
 			// journald logging writer assumes field names of "level" and "caller"
 			cr := zapcore.NewCore(
-				zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig),
+				encoder,
 				syncer,
 				lvl,
 			)
 			if cfg.ZapLoggerBuilder == nil {
-				cfg.ZapLoggerBuilder = func(c *Config) error {
-					c.logger = zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer))
-					c.loggerMu.Lock()
-					defer c.loggerMu.Unlock()
-					c.loggerConfig = nil
-					c.loggerCore = cr
-					c.loggerWriteSyncer = syncer
-
-					return nil
-				}
+				cfg.ZapLoggerBuilder = NewZapLoggerBuilder(zap.New(cr, zap.AddCaller(), zap.ErrorOutput(syncer)))
 			}
 		}
 
@@ -197,17 +201,21 @@ func (cfg *Config) setupLogging() error {
 	return nil
 }
 
-// NewZapCoreLoggerBuilder generates a zap core logger builder.
-func NewZapCoreLoggerBuilder(lg *zap.Logger) func(*Config) error {
+// NewZapLoggerBuilder generates a zap logger builder that sets given loger
+// for embedded etcd.
+func NewZapLoggerBuilder(lg *zap.Logger) func(*Config) error {
 	return func(cfg *Config) error {
 		cfg.loggerMu.Lock()
 		defer cfg.loggerMu.Unlock()
 		cfg.logger = lg
-		cfg.loggerConfig = nil
-		cfg.loggerCore = nil
-		cfg.loggerWriteSyncer = nil
 		return nil
 	}
+}
+
+// NewZapCoreLoggerBuilder - is a deprecated setter for the logger.
+// Deprecated: Use simpler NewZapLoggerBuilder. To be removed in etcd-3.6.
+func NewZapCoreLoggerBuilder(lg *zap.Logger, _ zapcore.Core, _ zapcore.WriteSyncer) func(*Config) error {
+	return NewZapLoggerBuilder(lg)
 }
 
 // SetupGlobalLoggers configures 'global' loggers (grpc, zapGlobal) based on the cfg.
@@ -222,7 +230,7 @@ func (cfg *Config) SetupGlobalLoggers() {
 			grpc.EnableTracing = true
 			grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
 		} else {
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+			grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, os.Stderr, os.Stderr))
 		}
 		zap.ReplaceGlobals(lg)
 	}
@@ -267,7 +275,7 @@ func setupLogRotation(logOutputs []string, logRotateConfigJSON string) error {
 		}
 	}
 	zap.RegisterSink("rotate", func(u *url.URL) (zap.Sink, error) {
-		logRotationConfig.Filename = u.Path
+		logRotationConfig.Filename = u.Path[1:]
 		return &logRotationConfig, nil
 	})
 	return nil

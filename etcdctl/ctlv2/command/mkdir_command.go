@@ -20,6 +20,7 @@ import (
 
 	"github.com/urfave/cli"
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 // NewMakeDirCommand returns the CLI command for "mkdir".
@@ -41,7 +42,7 @@ func NewMakeDirCommand() cli.Command {
 // mkdirCommandFunc executes the "mkdir" command.
 func mkdirCommandFunc(c *cli.Context, ki client.KeysAPI, prevExist client.PrevExistType) {
 	if len(c.Args()) == 0 {
-		handleError(c, ExitBadArgs, errors.New("key required"))
+		handleError(c, cobrautl.ExitBadArgs, errors.New("key required"))
 	}
 
 	key := c.Args()[0]
@@ -51,7 +52,7 @@ func mkdirCommandFunc(c *cli.Context, ki client.KeysAPI, prevExist client.PrevEx
 	resp, err := ki.Set(ctx, key, "", &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: prevExist})
 	cancel()
 	if err != nil {
-		handleError(c, ExitServerError, err)
+		handleError(c, cobrautl.ExitServerError, err)
 	}
 	if c.GlobalString("output") != "simple" {
 		printResponseKey(resp, c.GlobalString("output"))

@@ -1,15 +1,45 @@
 
 
-Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.2.md).
+Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/etcd/blob/main/CHANGELOG-3.2.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
-
+The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, 3.4.2+, and 3.5.1+.
 
 <hr>
 
+## v3.3.27 (2021-10-15)
 
-## v3.3.25 (2020 TBD)
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.26...v3.3.27) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
+
+### Other
+
+- Updated [base image](https://github.com/etcd-io/etcd/pull/13386) from `debian:buster-v1.4.0` to `debian:bullseye-20210927` to fix the following critical CVEs:
+  - [CVE-2021-3711](https://nvd.nist.gov/vuln/detail/CVE-2021-3711): miscalculation of a buffer size in openssl's SM2 decryption
+  - [CVE-2021-35942](https://nvd.nist.gov/vuln/detail/CVE-2021-35942): integer overflow flaw in glibc
+  - [CVE-2019-9893](https://nvd.nist.gov/vuln/detail/CVE-2019-9893): incorrect syscall argument generation in libseccomp
+  - [CVE-2021-36159](https://nvd.nist.gov/vuln/detail/CVE-2021-36159): libfetch in apk-tools mishandles numeric strings in FTP and HTTP protocols to allow out of bound reads.
+
+<hr>
+
+## v3.3.26 (2021-10-03)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.25...v3.3.26) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
+
+### Package `clientv3`
+
+- Fix [auth token invalid after watch reconnects](https://github.com/etcd-io/etcd/pull/12264). Get AuthToken automatically when clientConn is ready.
+
+### Package `fileutil`
+
+- Fix [constant](https://github.com/etcd-io/etcd/pull/12440) for linux locking.
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
+
+<hr>
+
+## v3.3.25 (2020-08-24)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.25) and [v3.3 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_3/) for any breaking changes.
 
@@ -166,7 +196,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.18...v3.3.19) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 - Add [`etcd_server_client_requests_total` with `"type"` and `"client_api_version"` labels](https://github.com/etcd-io/etcd/pull/11687).
 
@@ -186,7 +216,7 @@ See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -236,7 +266,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.15...v3.3.16) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -348,7 +378,7 @@ NOTE: This patch release had to include some new features from 3.4, while trying
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -377,9 +407,9 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 ### Package `pkg/adt`
 
 - Change [`pkg/adt.IntervalTree` from `struct` to `interface`](https://github.com/etcd-io/etcd/pull/10959).
-  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/master/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
+  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/main/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
 - Improve [`pkg/adt.IntervalTree` test coverage](https://github.com/etcd-io/etcd/pull/10959).
-  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/master/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
+  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/main/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
 - Fix [Red-Black tree to maintain black-height property](https://github.com/etcd-io/etcd/pull/10978).
   - Previously, delete operation violates [black-height property](https://github.com/etcd-io/etcd/issues/10965).
 
@@ -405,7 +435,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.12...v3.3.13) an
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -487,7 +517,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.9...v3.3.10) and
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -534,7 +564,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.8...v3.3.9) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -671,7 +701,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.3...v3.3.4) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -734,7 +764,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.2...v3.3.3) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 
@@ -866,7 +896,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.2.0...v3.3.0) and 
 
 ### Metrics, Monitoring
 
-See [List of metrics](https://github.com/etcd-io/etcd/tree/master/Documentation/metrics) for all metrics per release.
+See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/metrics) for all metrics per release.
 
 Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 

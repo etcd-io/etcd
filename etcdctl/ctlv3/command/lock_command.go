@@ -25,6 +25,7 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
 )
@@ -44,18 +45,18 @@ func NewLockCommand() *cobra.Command {
 
 func lockCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
-		ExitWithError(ExitBadArgs, errors.New("lock takes a lock name argument and an optional command to execute"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("lock takes a lock name argument and an optional command to execute"))
 	}
 	c := mustClientFromCmd(cmd)
 	if err := lockUntilSignal(c, args[0], args[1:]); err != nil {
 		code := getExitCodeFromError(err)
-		ExitWithError(code, err)
+		cobrautl.ExitWithError(code, err)
 	}
 }
 
 func getExitCodeFromError(err error) int {
 	if err == nil {
-		return ExitSuccess
+		return cobrautl.ExitSuccess
 	}
 
 	if exitErr, ok := err.(*exec.ExitError); ok {
@@ -64,7 +65,7 @@ func getExitCodeFromError(err error) int {
 		}
 	}
 
-	return ExitError
+	return cobrautl.ExitError
 }
 
 func lockUntilSignal(c *clientv3.Client, lockname string, cmdArgs []string) error {

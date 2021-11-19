@@ -20,17 +20,21 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 
 	"go.uber.org/zap"
 )
 
-var (
-	alarmBucketName = []byte("alarm")
-)
-
 type BackendGetter interface {
 	Backend() backend.Backend
+}
+
+type AlarmBackend interface {
+	CreateAlarmBucket()
+	MustPutAlarm(member *pb.AlarmMember)
+	MustDeleteAlarm(alarm *pb.AlarmMember)
+	GetAllAlarms() ([]*pb.AlarmMember, error)
+	ForceCommit()
 }
 
 type alarmSet map[types.ID]*pb.AlarmMember
@@ -41,14 +45,14 @@ type AlarmStore struct {
 	mu    sync.Mutex
 	types map[pb.AlarmType]alarmSet
 
-	bg BackendGetter
+	be AlarmBackend
 }
 
-func NewAlarmStore(lg *zap.Logger, bg BackendGetter) (*AlarmStore, error) {
+func NewAlarmStore(lg *zap.Logger, be AlarmBackend) (*AlarmStore, error) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
-	ret := &AlarmStore{lg: lg, types: make(map[pb.AlarmType]alarmSet), bg: bg}
+	ret := &AlarmStore{lg: lg, types: make(map[pb.AlarmType]alarmSet), be: be}
 	err := ret.restore()
 	return ret, err
 }
@@ -62,16 +66,7 @@ func (a *AlarmStore) Activate(id types.ID, at pb.AlarmType) *pb.AlarmMember {
 		return m
 	}
 
-	v, err := newAlarm.Marshal()
-	if err != nil {
-		a.lg.Panic("failed to marshal alarm member", zap.Error(err))
-	}
-
-	b := a.bg.Backend()
-	b.BatchTx().Lock()
-	b.BatchTx().UnsafePut(alarmBucketName, v, nil)
-	b.BatchTx().Unlock()
-
+	a.be.MustPutAlarm(newAlarm)
 	return newAlarm
 }
 
@@ -91,16 +86,7 @@ func (a *AlarmStore) Deactivate(id types.ID, at pb.AlarmType) *pb.AlarmMember {
 
 	delete(t, id)
 
-	v, err := m.Marshal()
-	if err != nil {
-		a.lg.Panic("failed to marshal alarm member", zap.Error(err))
-	}
-
-	b := a.bg.Backend()
-	b.BatchTx().Lock()
-	b.BatchTx().UnsafeDelete(alarmBucketName, v)
-	b.BatchTx().Unlock()
-
+	a.be.MustDeleteAlarm(m)
 	return m
 }
 
@@ -122,22 +108,15 @@ func (a *AlarmStore) Get(at pb.AlarmType) (ret []*pb.AlarmMember) {
 }
 
 func (a *AlarmStore) restore() error {
-	b := a.bg.Backend()
-	tx := b.BatchTx()
-
-	tx.Lock()
-	tx.UnsafeCreateBucket(alarmBucketName)
-	err := tx.UnsafeForEach(alarmBucketName, func(k, v []byte) error {
-		var m pb.AlarmMember
-		if err := m.Unmarshal(k); err != nil {
-			return err
-		}
-		a.addToMap(&m)
-		return nil
-	})
-	tx.Unlock()
-
-	b.ForceCommit()
+	a.be.CreateAlarmBucket()
+	ms, err := a.be.GetAllAlarms()
+	if err != nil {
+		return err
+	}
+	for _, m := range ms {
+		a.addToMap(m)
+	}
+	a.be.ForceCommit()
 	return err
 }
 

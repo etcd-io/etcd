@@ -1,9 +1,60 @@
 
 
-Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/master/CHANGELOG-3.3.md).
+Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG-3.3.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
+The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, 3.4.2+, and 3.5.1+.
+
+<hr>
+
+## v3.4.19 (TODO)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.18...v3.4.19) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+### etcd server
+- Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13475).
+
+<hr>
+
+## v3.4.18 (2021-10-15)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.17...v3.4.18) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+### Metrics, Monitoring
+
+See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
+
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13397).
+
+### Other
+
+- Updated [base image](https://github.com/etcd-io/etcd/pull/13386) from `debian:buster-v1.4.0` to `debian:bullseye-20210927` to fix the following critical CVEs:
+  - [CVE-2021-3711](https://nvd.nist.gov/vuln/detail/CVE-2021-3711): miscalculation of a buffer size in openssl's SM2 decryption
+  - [CVE-2021-35942](https://nvd.nist.gov/vuln/detail/CVE-2021-35942): integer overflow flaw in glibc
+  - [CVE-2019-9893](https://nvd.nist.gov/vuln/detail/CVE-2019-9893): incorrect syscall argument generation in libseccomp
+  - [CVE-2021-36159](https://nvd.nist.gov/vuln/detail/CVE-2021-36159): libfetch in apk-tools mishandles numeric strings in FTP and HTTP protocols to allow out of bound reads.
+
+<hr>
+
+## v3.4.17 (2021-10-03)
+
+See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.16...v3.4.17) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
+
+### `etcdctl`
+
+- Fix [etcdctl check datascale command](https://github.com/etcd-io/etcd/pull/11896) to work with https endpoints.
+
+### gRPC gateway
+
+- Add [`MaxCallRecvMsgSize`](https://github.com/etcd-io/etcd/pull/13077) support for http client.
+
+### Dependency
+
+- Replace [`github.com/dgrijalva/jwt-go with github.com/golang-jwt/jwt'](https://github.com/etcd-io/etcd/pull/13378).
+
+### Go
+
+- Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
 
 <hr>
 
@@ -141,6 +192,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.10...v3.4.11) an
 ### Metrics, Monitoring
 
 - Add [`os_fd_used` and `os_fd_limit` to monitor current OS file descriptors](https://github.com/etcd-io/etcd/pull/12214).
+- Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13397).
 
 ### Go
 
@@ -498,7 +550,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
 - Make etcd server return `raft.ErrProposalDropped` on internal Raft proposal drop in [v3 applier](https://github.com/etcd-io/etcd/pull/9549) and [v2 applier](https://github.com/etcd-io/etcd/pull/9558).
   - e.g. a node is removed from cluster, or [`raftpb.MsgProp` arrives at current leader while there is an ongoing leadership transfer](https://github.com/etcd-io/etcd/issues/8975).
 - Add [`snapshot`](https://github.com/etcd-io/etcd/pull/9118) package for easier snapshot workflow (see [`godoc.org/github.com/etcd/clientv3/snapshot`](https://godoc.org/github.com/etcd-io/etcd/clientv3/snapshot) for more).
-- Improve [functional tester](https://github.com/etcd-io/etcd/tree/master/functional) coverage: [proxy layer to run network fault tests in CI](https://github.com/etcd-io/etcd/pull/9081), [TLS is enabled both for server and client](https://github.com/etcd-io/etcd/pull/9534), [liveness mode](https://github.com/etcd-io/etcd/issues/9230), [shuffle test sequence](https://github.com/etcd-io/etcd/issues/9381), [membership reconfiguration failure cases](https://github.com/etcd-io/etcd/pull/9564), [disastrous quorum loss and snapshot recover from a seed member](https://github.com/etcd-io/etcd/pull/9565), [embedded etcd](https://github.com/etcd-io/etcd/pull/9572).
+- Improve [functional tester](https://github.com/etcd-io/etcd/tree/main/functional) coverage: [proxy layer to run network fault tests in CI](https://github.com/etcd-io/etcd/pull/9081), [TLS is enabled both for server and client](https://github.com/etcd-io/etcd/pull/9534), [liveness mode](https://github.com/etcd-io/etcd/issues/9230), [shuffle test sequence](https://github.com/etcd-io/etcd/issues/9381), [membership reconfiguration failure cases](https://github.com/etcd-io/etcd/pull/9564), [disastrous quorum loss and snapshot recover from a seed member](https://github.com/etcd-io/etcd/pull/9565), [embedded etcd](https://github.com/etcd-io/etcd/pull/9572).
 - Improve [index compaction blocking](https://github.com/etcd-io/etcd/pull/9511) by using a copy on write clone to avoid holding the lock for the traversal of the entire index.
 - Update [JWT methods](https://github.com/etcd-io/etcd/pull/9883) to allow for use of any supported signature method/algorithm.
 - Add [Lease checkpointing](https://github.com/etcd-io/etcd/pull/9924) to persist remaining TTLs to the consensus log periodically so that long lived leases progress toward expiry in the presence of leader elections and server restarts.
@@ -605,7 +657,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.4.0) and 
   - `"github.com/coreos/etcd/store"` to `"go.etcd.io/etcd/etcdserver/api/v2store"`.
 - Change [snapshot file permissions](https://github.com/etcd-io/etcd/pull/9977): On Linux, the snapshot file changes from readable by all (mode 0644) to readable by the user only (mode 0600).
 - Change [`pkg/adt.IntervalTree` from `struct` to `interface`](https://github.com/etcd-io/etcd/pull/10959).
-  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/master/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
+  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/main/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
 - Release branch `/version` defines version `3.4.x-pre`, instead of `3.4.y+git`.
   - Use `3.4.5-pre`, instead of `3.4.4+git`.
 
@@ -875,9 +927,9 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
 ### Package `pkg/adt`
 
 - Change [`pkg/adt.IntervalTree` from `struct` to `interface`](https://github.com/etcd-io/etcd/pull/10959).
-  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/master/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
+  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/main/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
 - Improve [`pkg/adt.IntervalTree` test coverage](https://github.com/etcd-io/etcd/pull/10959).
-  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/master/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
+  - See [`pkg/adt` README](https://github.com/etcd-io/etcd/tree/main/pkg/adt) and [`pkg/adt` godoc](https://godoc.org/go.etcd.io/etcd/pkg/adt).
 - Fix [Red-Black tree to maintain black-height property](https://github.com/etcd-io/etcd/pull/10978).
   - Previously, delete operation violates [black-height property](https://github.com/etcd-io/etcd/issues/10965).
 
@@ -972,7 +1024,7 @@ Note: **v3.5 will deprecate `etcd --log-package-levels` flag for `capnslog`**; `
   - Now [`(r *raft) Step` returns `raft.ErrProposalDropped`](https://github.com/etcd-io/etcd/pull/9137) if a proposal has been ignored.
   - e.g. a node is removed from cluster, or [`raftpb.MsgProp` arrives at current leader while there is an ongoing leadership transfer](https://github.com/etcd-io/etcd/issues/8975).
 - Improve [Raft `becomeLeader` and `stepLeader`](https://github.com/etcd-io/etcd/pull/9073) by keeping track of latest `pb.EntryConfChange` index.
-  - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay hearbeat send.
+  - Previously record `pendingConf` boolean field scanning the entire tail of the log, which can delay heartbeat send.
 - Fix [missing learner nodes on `(n *node) ApplyConfChange`](https://github.com/etcd-io/etcd/pull/9116).
 - Add [`raft.Config.MaxUncommittedEntriesSize`](https://github.com/etcd-io/etcd/pull/10167) to limit the total size of the uncommitted entries in bytes.
   - Once exceeded, raft returns `raft.ErrProposalDropped` error.

@@ -18,13 +18,14 @@ import (
 	"context"
 	"testing"
 
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func TestHealthCheck(t *testing.T) {
-	BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := healthpb.NewHealthClient(clus.RandClient().ActiveConnection())

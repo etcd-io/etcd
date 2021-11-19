@@ -1,7 +1,7 @@
-# etcd/clientv3
+# etcd/client/v3
 
 [![Docs](https://img.shields.io/badge/docs-latest-green.svg)](https://etcd.io/docs)
-[![Godoc](https://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/go.etcd.io/etcd/clientv3)
+[![Godoc](https://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/go.etcd.io/etcd/client/v3)
 
 `etcd/clientv3` is the official Go etcd client for v3.
 
@@ -11,26 +11,23 @@
 go get go.etcd.io/etcd/client/v3
 ```
 
-Warning: As etcd 3.5.0 was not yet released, the command above does not work. 
-After first pre-release of 3.5.0 [#12498](https://github.com/etcd-io/etcd/issues/12498), 
-etcd can be referenced using: 
-```
-go get go.etcd.io/etcd/client/v3@v3.5.0-pre
-```
-
 ## Get started
 
 Create client using `clientv3.New`:
 
 ```go
-cli, err := clientv3.New(clientv3.Config{
-	Endpoints:   []string{"localhost:2379", "localhost:22379", "localhost:32379"},
-	DialTimeout: 5 * time.Second,
-})
-if err != nil {
-	// handle error!
+import clientv3 "go.etcd.io/etcd/client/v3"
+
+func main() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{"localhost:2379", "localhost:22379", "localhost:32379"},
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		// handle error!
+	}
+	defer cli.Close()
 }
-defer cli.Close()
 ```
 
 etcd v3 uses [`gRPC`](https://www.grpc.io) for remote procedure calls. And `clientv3` uses
@@ -77,7 +74,7 @@ if err != nil {
 
 ## Metrics
 
-The etcd client optionally exposes RPC metrics through [go-grpc-prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus). See the [examples](https://github.com/etcd-io/etcd/blob/master/tests/integration/clientv3/examples/example_metrics_test.go).
+The etcd client optionally exposes RPC metrics through [go-grpc-prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus). See the [examples](https://github.com/etcd-io/etcd/blob/main/tests/integration/clientv3/examples/example_metrics_test.go).
 
 ## Namespacing
 
@@ -89,4 +86,4 @@ Client request size limit is configurable via `clientv3.Config.MaxCallSendMsgSiz
 
 ## Examples
 
-More code [examples](https://github.com/etcd-io/etcd/tree/master/tests/integration/clientv3/examples) can be found at [GoDoc](https://pkg.go.dev/go.etcd.io/etcd/client/v3).
+More code [examples](https://github.com/etcd-io/etcd/tree/main/tests/integration/clientv3/examples) can be found at [GoDoc](https://pkg.go.dev/go.etcd.io/etcd/client/v3).

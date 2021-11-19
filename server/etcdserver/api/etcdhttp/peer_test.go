@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -98,9 +98,9 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected http.Get error: %v", err)
 		}
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			t.Fatalf("unexpected ioutil.ReadAll error: %v", err)
+			t.Fatalf("unexpected io.ReadAll error: %v", err)
 		}
 		if w := "test data"; string(body) != w {
 			t.Errorf("#%d: body = %s, want %s", i, body, w)
@@ -267,10 +267,10 @@ func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to get http response: %v", err)
 		}
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			t.Fatalf("unexpected ioutil.ReadAll error: %v", err)
+			t.Fatalf("unexpected io.ReadAll error: %v", err)
 		}
 		if resp.StatusCode != tt.wcode {
 			t.Fatalf("#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
