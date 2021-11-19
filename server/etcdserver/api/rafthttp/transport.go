@@ -339,25 +339,29 @@ func (t *Transport) RemoveAllPeers() {
 
 // the caller of this function must have the peers mutex.
 func (t *Transport) removePeer(id types.ID) {
-	if peer, ok := t.peers[id]; ok {
+	peer, ok := t.peers[id]
+	if ok {
 		peer.stop()
-	} else {
-		if t.Logger != nil {
-			t.Logger.Warn("skipped removing already removed remote peer", zap.String("remote-peer-id", id.String()))
-		}
-		return
+		delete(t.peers, id)
+		delete(t.LeaderStats.Followers, id.String())
+		t.pipelineProber.Remove(id.String())
+		t.streamProber.Remove(id.String())
 	}
-	delete(t.peers, id)
-	delete(t.LeaderStats.Followers, id.String())
-	t.pipelineProber.Remove(id.String())
-	t.streamProber.Remove(id.String())
 
 	if t.Logger != nil {
-		t.Logger.Info(
-			"removed remote peer",
-			zap.String("local-member-id", t.ID.String()),
-			zap.String("removed-remote-peer-id", id.String()),
-		)
+		if ok {
+			t.Logger.Info(
+				"removed remote peer",
+				zap.String("local-member-id", t.ID.String()),
+				zap.String("removed-remote-peer-id", id.String()),
+			)
+		} else {
+			t.Logger.Warn(
+				"skipped removing already removed peer",
+				zap.String("local-member-id", t.ID.String()),
+				zap.String("removed-remote-peer-id", id.String()),
+			)
+		}
 	}
 }
 
