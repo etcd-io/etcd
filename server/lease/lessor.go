@@ -447,6 +447,7 @@ func (le *lessor) Promote(extend time.Duration) {
 		l.refresh(extend)
 		item := &LeaseWithTime{id: l.ID, time: l.expiry}
 		le.leaseExpiredNotifier.RegisterOrUpdate(item)
+		le.scheduleCheckpointIfNeeded(l)
 	}
 
 	if len(le.leaseMap) < leaseRevokeRate {
