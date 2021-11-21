@@ -294,7 +294,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - [Fix a data corruption bug by saving consistent index](https://github.com/etcd-io/etcd/pull/11652).
 - [Improve checkPassword performance](https://github.com/etcd-io/etcd/pull/11735).
 - [Add authRevision field in AuthStatus](https://github.com/etcd-io/etcd/pull/11659).
-
+- Fix [a bug of not refreshing expired tokens](https://github.com/etcd-io/etcd/pull/13308).
+- 
 ### API
 
 - Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled
