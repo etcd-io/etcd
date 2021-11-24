@@ -92,7 +92,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 	tx := s.be.ReadTx()
 	tx.RLock()
 	defer tx.RUnlock()
-	err := tx.UnsafeForEach(Members, func(k, v []byte) error {
+	err := tx.UnsafeForEach(Members, func(k, v []byte, fromTxBuf bool) error {
 		memberId := mustParseMemberIDFromBytes(s.lg, k)
 		m := &membership.Member{ID: memberId}
 		if err := json.Unmarshal(v, &m); err != nil {
@@ -105,7 +105,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 		return nil, nil, fmt.Errorf("couldn't read members from backend: %w", err)
 	}
 
-	err = tx.UnsafeForEach(MembersRemoved, func(k, v []byte) error {
+	err = tx.UnsafeForEach(MembersRemoved, func(k, v []byte, fromTxBuf bool) error {
 		memberId := mustParseMemberIDFromBytes(s.lg, k)
 		removed[memberId] = true
 		return nil
@@ -123,7 +123,7 @@ func (s *membershipBackend) TrimMembershipFromBackend() error {
 	tx := s.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-	err := tx.UnsafeForEach(Members, func(k, v []byte) error {
+	err := tx.UnsafeForEach(Members, func(k, v []byte, fromTxBuf bool) error {
 		tx.UnsafeDelete(Members, k)
 		s.lg.Debug("Removed member from the backend",
 			zap.Stringer("member", mustParseMemberIDFromBytes(s.lg, k)))
@@ -132,7 +132,7 @@ func (s *membershipBackend) TrimMembershipFromBackend() error {
 	if err != nil {
 		return err
 	}
-	return tx.UnsafeForEach(MembersRemoved, func(k, v []byte) error {
+	return tx.UnsafeForEach(MembersRemoved, func(k, v []byte, fromTxBuf bool) error {
 		tx.UnsafeDelete(MembersRemoved, k)
 		s.lg.Debug("Removed removed_member from the backend",
 			zap.Stringer("member", mustParseMemberIDFromBytes(s.lg, k)))

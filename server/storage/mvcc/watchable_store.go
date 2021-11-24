@@ -356,7 +356,27 @@ func (s *watchableStore) syncWatchers() int {
 	tx.RLock()
 	revs, vs := tx.UnsafeRange(schema.Key, minBytes, maxBytes, 0)
 	tx.RUnlock()
-	evs := kvsToEvents(s.store.lg, wg, revs, vs)
+	evs, err := kvsToEvents(s.store.lg, wg, revs, vs)
+	if err != nil {
+		var failedK, failedV []byte
+		var failedFromTxBuf bool
+		tx.RLock()
+		tx.UnsafeForEach(schema.Key, func(k, v []byte, fromTxBuf bool) error {
+			var kv mvccpb.KeyValue
+			if err := kv.Unmarshal(v); err != nil {
+				failedK = k
+				failedV = v
+				failedFromTxBuf = fromTxBuf
+				return err
+			}
+			return nil
+		})
+		tx.RUnlock()
+		s.lg.Panic("failed to unmarshal mvccpb.KeyValue", zap.Error(err),
+			zap.ByteString("Key", failedK),
+			zap.ByteString("KeyValue", failedV),
+			zap.Bool("fromTxBuf", failedFromTxBuf))
+	}
 
 	victims := make(watcherBatch)
 	wb := newWatcherBatch(wg, evs)
@@ -404,11 +424,11 @@ func (s *watchableStore) syncWatchers() int {
 }
 
 // kvsToEvents gets all events for the watchers from all key-value pairs
-func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []mvccpb.Event) {
+func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []mvccpb.Event, err error) {
 	for i, v := range vals {
 		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(v); err != nil {
-			lg.Panic("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
+			return nil, err
 		}
 
 		if !wg.contains(string(kv.Key)) {
@@ -423,7 +443,7 @@ func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []m
 		}
 		evs = append(evs, mvccpb.Event{Kv: &kv, Type: ty})
 	}
-	return evs
+	return evs, nil
 }
 
 // notify notifies the fact that given event at the given rev just happened to

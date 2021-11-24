@@ -32,7 +32,7 @@ type ReadTx interface {
 	RUnlock()
 
 	UnsafeRange(bucket Bucket, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte)
-	UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error
+	UnsafeForEach(bucket Bucket, visitor func(k, v []byte, fromTxBuf bool) error) error
 }
 
 // Base type for readTx and concurrentReadTx to eliminate duplicate functions between these
@@ -50,7 +50,7 @@ type baseReadTx struct {
 	txWg *sync.WaitGroup
 }
 
-func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error {
+func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte, fromTxBuf bool) error) error {
 	dups := make(map[string]struct{})
 	getDups := func(k, v []byte) error {
 		dups[string(k)] = struct{}{}
@@ -60,7 +60,7 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []b
 		if _, ok := dups[string(k)]; ok {
 			return nil
 		}
-		return visitor(k, v)
+		return visitor(k, v, false)
 	}
 	if err := baseReadTx.buf.ForEach(bucket, getDups); err != nil {
 		return err
@@ -71,7 +71,9 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []b
 	if err != nil {
 		return err
 	}
-	return baseReadTx.buf.ForEach(bucket, visitor)
+	return baseReadTx.buf.ForEach(bucket, func(k, v []byte) error {
+		return visitor(k, v, true)
+	})
 }
 
 func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {

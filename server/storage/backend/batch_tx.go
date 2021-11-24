@@ -201,8 +201,10 @@ func (t *batchTx) UnsafeDelete(bucketType Bucket, key []byte) {
 }
 
 // UnsafeForEach must be called holding the lock on the tx.
-func (t *batchTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error {
-	return unsafeForEach(t.tx, bucket, visitor)
+func (t *batchTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte, fromTxBuf bool) error) error {
+	return unsafeForEach(t.tx, bucket, func(k, v []byte) error {
+		return visitor(k, v, false)
+	})
 }
 
 func unsafeForEach(tx *bolt.Tx, bucket Bucket, visitor func(k, v []byte) error) error {

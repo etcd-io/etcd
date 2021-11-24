@@ -198,7 +198,7 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
 	h.Write(schema.Key.Name())
-	err = tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
+	err = tx.UnsafeForEach(schema.Key, func(k, v []byte, fromTxBuf bool) error {
 		kr := bytesToRev(k)
 		if !upper.GreaterThan(kr) {
 			return nil

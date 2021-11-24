@@ -310,7 +310,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	tx.Unlock()
 
 	seq := ""
-	getSeq := func(k, v []byte) error {
+	getSeq := func(k, v []byte, fromTxBuf bool) error {
 		seq += string(k)
 		return nil
 	}
