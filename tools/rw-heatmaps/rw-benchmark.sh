@@ -19,7 +19,7 @@ COMMIT=
 ETCD_ROOT_DIR="$(cd $(dirname $0) && pwd)/../.."
 ETCD_BIN_DIR="${ETCD_ROOT_DIR}/bin"
 ETCD_BIN="${ETCD_BIN_DIR}/etcd"
-ETCD_BM_BIN="${ETCD_ROOT_DIR}/tools/benchmark/benchmark"
+ETCD_BM_BIN="${ETCD_BIN_DIR}/tools/benchmark"
 
 WORKING_DIR="$(mktemp -d)"
 CURRENT_DIR="$(pwd -P)"
