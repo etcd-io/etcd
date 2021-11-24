@@ -37,17 +37,22 @@ var ErrUnavailable = errors.New("requested entry at index is unavailable")
 // snapshot is temporarily unavailable.
 var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unavailable")
 
-// Storage is an interface that may be implemented by the application
-// to retrieve log entries from storage.
-//
-// If any Storage method returns an error, the raft instance will
-// become inoperable and refuse to participate in elections; the
-// application is responsible for cleanup and recovery in this case.
-type Storage interface {
-	// TODO(tbg): split this into two interfaces, LogStorage and StateStorage.
-
+// StateStorage is an interface that may be implemented by the
+// application to retrieve state information from storage.
+type StateStorage interface {
 	// InitialState returns the saved HardState and ConfState information.
 	InitialState() (pb.HardState, pb.ConfState, error)
+	// Snapshot returns the most recent snapshot.
+	// If snapshot is temporarily unavailable, it should return ErrSnapshotTemporarilyUnavailable,
+	// so raft state machine could know that Storage needs some time to prepare
+	// snapshot and call Snapshot later.
+	Snapshot() (pb.Snapshot, error)
+}
+
+// LogStorage is an interface that may be implemented by the application
+// to retrieve log entries and other log entry related information from
+// storage.
+type LogStorage interface {
 	// Entries returns a slice of log entries in the range [lo,hi).
 	// MaxSize limits the total size of the log entries returned, but
 	// Entries returns at least one entry if any.
@@ -64,11 +69,17 @@ type Storage interface {
 	// into the latest Snapshot; if storage only contains the dummy entry the
 	// first log entry is not available).
 	FirstIndex() (uint64, error)
-	// Snapshot returns the most recent snapshot.
-	// If snapshot is temporarily unavailable, it should return ErrSnapshotTemporarilyUnavailable,
-	// so raft state machine could know that Storage needs some time to prepare
-	// snapshot and call Snapshot later.
-	Snapshot() (pb.Snapshot, error)
+}
+
+// Storage is an interface that may be implemented by the application
+// to retrieve log entries from storage.
+//
+// If any Storage method returns an error, the raft instance will
+// become inoperable and refuse to participate in elections; the
+// application is responsible for cleanup and recovery in this case.
+type Storage interface {
+	LogStorage
+	StateStorage
 }
 
 // MemoryStorage implements the Storage interface backed by an
