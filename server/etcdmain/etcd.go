@@ -465,6 +465,7 @@ func checkSupportArch() {
 	// to add a new platform, check https://github.com/etcd-io/website/blob/main/content/en/docs/next/op-guide/supported-platform.md
 	if runtime.GOARCH == "amd64" ||
 		runtime.GOARCH == "arm64" ||
+		runtime.GOARCH == "riscv64" ||
 		runtime.GOARCH == "ppc64le" ||
 		runtime.GOARCH == "s390x" {
 		return
