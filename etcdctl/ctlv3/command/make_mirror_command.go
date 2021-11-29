@@ -130,6 +130,11 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) error {
 	total := int64(0)
 
+	// if destination prefix is specified and remove destination prefix is true return error
+	if mmnodestprefix && len(mmdestprefix) > 0 {
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one"))
+	}
+
 	go func() {
 		for {
 			time.Sleep(30 * time.Second)
@@ -140,11 +145,6 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 	s := mirror.NewSyncer(c, mmprefix, 0)
 
 	rc, errc := s.SyncBase(ctx)
-
-	// if destination prefix is specified and remove destination prefix is true return error
-	if mmnodestprefix && len(mmdestprefix) > 0 {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one"))
-	}
 
 	// if remove destination prefix is false and destination prefix is empty set the value of destination prefix same as prefix
 	if !mmnodestprefix && len(mmdestprefix) == 0 {
