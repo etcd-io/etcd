@@ -543,9 +543,11 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	srv.lessor = lease.NewLessor(
 		srv.getLogger(),
 		srv.be,
+		srv.cluster,
 		lease.LessorConfig{
 			MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
 			CheckpointInterval:         cfg.LeaseCheckpointInterval,
+			CheckpointPersist:          cfg.LeaseCheckpointPersist,
 			ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
 		})
 

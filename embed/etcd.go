@@ -208,6 +208,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		EnableGRPCGateway:           cfg.EnableGRPCGateway,
 		UnsafeNoFsync:               cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:       cfg.ExperimentalEnableLeaseCheckpoint,
+		LeaseCheckpointPersist:      cfg.ExperimentalEnableLeaseCheckpointPersist,
 		CompactionBatchLimit:        cfg.ExperimentalCompactionBatchLimit,
 		WatchProgressNotifyInterval: cfg.ExperimentalWatchProgressNotifyInterval,
 		WarningApplyDuration:        cfg.ExperimentalWarningApplyDuration,

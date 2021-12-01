@@ -318,6 +318,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 		checkpointingEnabled  bool
 		ttl                   time.Duration
 		checkpointingInterval time.Duration
+		checkpointingPersist  bool
 		leaderChanges         int
 		clusterSize           int
 		expectTTLIsGT         time.Duration
@@ -340,13 +341,23 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 			expectTTLIsLT:         290 * time.Second,
 		},
 		{
-			name:                  "Checkpointing enabled 10s, lease TTL is preserved after cluster restart",
+			name:                  "Checkpointing enabled 10s with persist, lease TTL is preserved after cluster restart",
+			ttl:                   300 * time.Second,
+			checkpointingEnabled:  true,
+			checkpointingInterval: 10 * time.Second,
+			checkpointingPersist:  true,
+			leaderChanges:         1,
+			clusterSize:           1,
+			expectTTLIsLT:         290 * time.Second,
+		},
+		{
+			name:                  "Checkpointing enabled 10s, lease TTL is reset after restart",
 			ttl:                   300 * time.Second,
 			checkpointingEnabled:  true,
 			checkpointingInterval: 10 * time.Second,
 			leaderChanges:         1,
 			clusterSize:           1,
-			expectTTLIsLT:         290 * time.Second,
+			expectTTLIsGT:         298 * time.Second,
 		},
 		{
 			// Checking if checkpointing continues after the first leader change.
@@ -365,6 +376,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 				Size:                    tc.clusterSize,
 				EnableLeaseCheckpoint:   tc.checkpointingEnabled,
 				LeaseCheckpointInterval: tc.checkpointingInterval,
+				LeaseCheckpointPersist:  tc.checkpointingPersist,
 			}
 			clus := NewClusterV3(t, config)
 			defer clus.Terminate(t)

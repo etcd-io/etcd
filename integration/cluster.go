@@ -152,6 +152,7 @@ type ClusterConfig struct {
 
 	EnableLeaseCheckpoint   bool
 	LeaseCheckpointInterval time.Duration
+	LeaseCheckpointPersist  bool
 
 	WatchProgressNotifyInterval time.Duration
 	CorruptCheckTime            time.Duration
@@ -298,6 +299,7 @@ func (c *cluster) mustNewMember(t testing.TB) *member {
 			clientMaxCallRecvMsgSize:    c.cfg.ClientMaxCallRecvMsgSize,
 			useIP:                       c.cfg.UseIP,
 			enableLeaseCheckpoint:       c.cfg.EnableLeaseCheckpoint,
+			leaseCheckpointPersist:      c.cfg.LeaseCheckpointPersist,
 			leaseCheckpointInterval:     c.cfg.LeaseCheckpointInterval,
 			WatchProgressNotifyInterval: c.cfg.WatchProgressNotifyInterval,
 			CorruptCheckTime:            c.cfg.CorruptCheckTime,
@@ -590,6 +592,7 @@ type memberConfig struct {
 	useIP                       bool
 	enableLeaseCheckpoint       bool
 	leaseCheckpointInterval     time.Duration
+	leaseCheckpointPersist      bool
 	WatchProgressNotifyInterval time.Duration
 	CorruptCheckTime            time.Duration
 }
@@ -684,6 +687,7 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 	m.useIP = mcfg.useIP
 	m.EnableLeaseCheckpoint = mcfg.enableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
+	m.LeaseCheckpointPersist = mcfg.leaseCheckpointPersist
 
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
