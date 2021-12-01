@@ -14,6 +14,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.1...v3.5.2) and 
 
 ### etcd server
 - Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13476).
+- Add [`etcd --experimental-enable-lease-checkpoint-persist`](https://github.com/etcd-io/etcd/pull/13508) flag to enable checkpoint persisting.
+- Fix [Lease checkpoints don't prevent to reset ttl on leader change](https://github.com/etcd-io/etcd/pull/13508), requires enabling checkpoint persisting.
 
 <hr>
 
