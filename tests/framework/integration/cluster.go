@@ -168,6 +168,7 @@ type ClusterConfig struct {
 
 	EnableLeaseCheckpoint   bool
 	LeaseCheckpointInterval time.Duration
+	LeaseCheckpointPersist  bool
 
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
@@ -331,6 +332,7 @@ func (c *Cluster) mustNewMember(t testutil.TB, memberNumber int64) *Member {
 			UseTCP:                      c.Cfg.UseTCP,
 			EnableLeaseCheckpoint:       c.Cfg.EnableLeaseCheckpoint,
 			LeaseCheckpointInterval:     c.Cfg.LeaseCheckpointInterval,
+			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
 			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
 		})
@@ -634,6 +636,7 @@ type MemberConfig struct {
 	UseTCP                      bool
 	EnableLeaseCheckpoint       bool
 	LeaseCheckpointInterval     time.Duration
+	LeaseCheckpointPersist      bool
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
 }
@@ -733,6 +736,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.UseTCP = mcfg.UseTCP
 	m.EnableLeaseCheckpoint = mcfg.EnableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.LeaseCheckpointInterval
+	m.LeaseCheckpointPersist = mcfg.LeaseCheckpointPersist
 
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
