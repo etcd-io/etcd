@@ -291,6 +291,56 @@ func TestPeerURLsMapAndTokenFromSRV(t *testing.T) {
 	}
 }
 
+func TestLeaseCheckpointValidate(t *testing.T) {
+	tcs := []struct {
+		name        string
+		configFunc  func() Config
+		expectError bool
+	}{
+		{
+			name: "Default config should pass",
+			configFunc: func() Config {
+				return *NewConfig()
+			},
+		},
+		{
+			name: "Enabling checkpoint leases should pass",
+			configFunc: func() Config {
+				cfg := *NewConfig()
+				cfg.ExperimentalEnableLeaseCheckpoint = true
+				return cfg
+			},
+		},
+		{
+			name: "Enabling checkpoint leases and persist should pass",
+			configFunc: func() Config {
+				cfg := *NewConfig()
+				cfg.ExperimentalEnableLeaseCheckpoint = true
+				cfg.ExperimentalEnableLeaseCheckpointPersist = true
+				return cfg
+			},
+		},
+		{
+			name: "Enabling checkpoint leases persist without checkpointing itself should fail",
+			configFunc: func() Config {
+				cfg := *NewConfig()
+				cfg.ExperimentalEnableLeaseCheckpointPersist = true
+				return cfg
+			},
+			expectError: true,
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := tc.configFunc()
+			err := cfg.Validate()
+			if (err != nil) != tc.expectError {
+				t.Errorf("config.Validate() = %q, expected error: %v", err, tc.expectError)
+			}
+		})
+	}
+}
+
 func TestLogRotation(t *testing.T) {
 	tests := []struct {
 		name              string
