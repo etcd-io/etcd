@@ -60,6 +60,7 @@ const (
 	DefaultGRPCKeepAliveInterval       = 2 * time.Hour
 	DefaultGRPCKeepAliveTimeout        = 20 * time.Second
 	DefaultDowngradeCheckTime          = 5 * time.Second
+	DefaultWaitClusterReadyTimeout     = 5 * time.Second
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
@@ -212,14 +213,15 @@ type Config struct {
 	// Note that cipher suites are prioritized in the given order.
 	CipherSuites []string `json:"cipher-suites"`
 
-	ClusterState          string `json:"initial-cluster-state"`
-	DNSCluster            string `json:"discovery-srv"`
-	DNSClusterServiceName string `json:"discovery-srv-name"`
-	Dproxy                string `json:"discovery-proxy"`
-	Durl                  string `json:"discovery"`
-	InitialCluster        string `json:"initial-cluster"`
-	InitialClusterToken   string `json:"initial-cluster-token"`
-	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
+	ClusterState                        string        `json:"initial-cluster-state"`
+	DNSCluster                          string        `json:"discovery-srv"`
+	DNSClusterServiceName               string        `json:"discovery-srv-name"`
+	Dproxy                              string        `json:"discovery-proxy"`
+	Durl                                string        `json:"discovery"`
+	InitialCluster                      string        `json:"initial-cluster"`
+	InitialClusterToken                 string        `json:"initial-cluster-token"`
+	StrictReconfigCheck                 bool          `json:"strict-reconfig-check"`
+	ExperimentalWaitClusterReadyTimeout time.Duration `json:"wait-cluster-ready-timeout"`
 
 	// AutoCompactionMode is either 'periodic' or 'revision'.
 	AutoCompactionMode string `json:"auto-compaction-mode"`
@@ -471,8 +473,9 @@ func NewConfig() *Config {
 		APUrls: []url.URL{*apurl},
 		ACUrls: []url.URL{*acurl},
 
-		ClusterState:        ClusterStateFlagNew,
-		InitialClusterToken: "etcd-cluster",
+		ClusterState:                        ClusterStateFlagNew,
+		InitialClusterToken:                 "etcd-cluster",
+		ExperimentalWaitClusterReadyTimeout: DefaultWaitClusterReadyTimeout,
 
 		StrictReconfigCheck: DefaultStrictReconfigCheck,
 		Metrics:             "basic",

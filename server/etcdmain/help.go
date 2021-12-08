@@ -250,6 +250,8 @@ Experimental feature:
     Set time duration after which a warning is generated if a unary request takes more than this duration.
   --experimental-max-learners '1'
     Set the max number of learner members allowed in the cluster membership.
+  --experimental-wait-cluster-ready-timeout '5s'
+    Set the maximum time duration to wait for the cluster to be ready.
 
 Unsafe feature:
   --force-new-cluster 'false'
