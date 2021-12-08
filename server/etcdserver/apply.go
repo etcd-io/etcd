@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -642,7 +643,12 @@ func (a *applierV3backend) applyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *
 				traceutil.Field{Key: "range_end", Value: string(tv.RequestRange.RangeEnd)})
 			resp, err := a.Range(ctx, txn, tv.RequestRange)
 			if err != nil {
-				lg.Panic("unexpected error during txn", zap.Error(err))
+				if errors.Is(err, context.Canceled) {
+					lg.Warn("Canceled context during txn", zap.Error(err))
+					continue
+				} else {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				}
 			}
 			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
 			trace.StopSubTrace()
@@ -653,14 +659,24 @@ func (a *applierV3backend) applyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *
 				traceutil.Field{Key: "req_size", Value: tv.RequestPut.Size()})
 			resp, _, err := a.Put(ctx, txn, tv.RequestPut)
 			if err != nil {
-				lg.Panic("unexpected error during txn", zap.Error(err))
+				if errors.Is(err, context.Canceled) {
+					lg.Warn("Canceled context during txn", zap.Error(err))
+					continue
+				} else {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				}
 			}
 			respi.(*pb.ResponseOp_ResponsePut).ResponsePut = resp
 			trace.StopSubTrace()
 		case *pb.RequestOp_RequestDeleteRange:
 			resp, err := a.DeleteRange(txn, tv.RequestDeleteRange)
 			if err != nil {
-				lg.Panic("unexpected error during txn", zap.Error(err))
+				if errors.Is(err, context.Canceled) {
+					lg.Warn("Canceled context during txn", zap.Error(err))
+					continue
+				} else {
+					lg.Panic("unexpected error during txn", zap.Error(err))
+				}
 			}
 			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
 		case *pb.RequestOp_RequestTxn:
