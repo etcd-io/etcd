@@ -15,6 +15,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -48,12 +49,17 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 		if err != nil {
 			cobrautl.ExitWithError(cobrautl.ExitError, err)
 		}
+		return
 	}
 
 	failures := 0
 	c := mustClientFromCmd(cmd)
 	for _, ep := range endpointsFromCluster(cmd) {
-		ctx, cancel := commandCtx(cmd)
+		// if user does not specify "--command-timeout" flag, there will be no timeout for defrag command
+		ctx, cancel := context.WithCancel(context.Background())
+		if isCommandTimeoutFlagSet(cmd) {
+			ctx, cancel = commandCtx(cmd)
+		}
 		start := time.Now()
 		_, err := c.Defragment(ctx, ep)
 		d := time.Now().Sub(start)
