@@ -52,6 +52,10 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 
 	failures := 0
 	c := mustClientFromCmd(cmd)
+	timeOut, err := cmd.Flags().GetDuration("command-timeout")
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
 	for _, ep := range endpointsFromCluster(cmd) {
 		ctx, cancel := commandCtx(cmd)
 		start := time.Now()
@@ -59,7 +63,11 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 		d := time.Now().Sub(start)
 		cancel()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s]. took %s. (%v)\n", ep, d.String(), err)
+			if d >= timeOut {
+				fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s]. Option: --command-timeout %s exceeded. (%v)\n", ep, timeOut.String(), err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s]. took %s. (%v)\n", ep, d.String(), err)
+			}
 			failures++
 		} else {
 			fmt.Printf("Finished defragmenting etcd member[%s]. took %s\n", ep, d.String())
