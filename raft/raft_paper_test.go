@@ -645,7 +645,8 @@ func TestFollowerCheckMsgApp(t *testing.T) {
 // Reference: section 5.3
 func TestFollowerAppendEntries(t *testing.T) {
 	tests := []struct {
-		index, term uint64
+		// prevIndex and prevTerm in raft paper
+		index, lterm uint64
 		ents        []pb.Entry
 		wents       []pb.Entry
 		wunstable   []pb.Entry
