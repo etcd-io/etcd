@@ -66,6 +66,9 @@ func MinimalEtcdVersion(ents []raftpb.Entry) *semver.Version {
 
 type Visitor func(path protoreflect.FullName, ver *semver.Version) error
 
+// VisitFileDescriptor calls visitor on each field and enum value with etcd version read from proto definition.
+// If field/enum value is not annotated, visitor will be called with nil.
+// Upon encountering invalid annotation, will immediately exit with error.
 func VisitFileDescriptor(file protoreflect.FileDescriptor, visitor Visitor) error {
 	msgs := file.Messages()
 	for i := 0; i < msgs.Len(); i++ {
