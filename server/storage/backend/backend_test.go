@@ -32,7 +32,7 @@ func TestBackendClose(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 
 	// check close could work
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 	go func() {
 		err := b.Close()
 		if err != nil {
