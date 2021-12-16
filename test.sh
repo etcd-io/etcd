@@ -32,8 +32,6 @@
 # $ COVERDIR=coverage PASSES="build build_cov cov" ./test.sh
 # $ go tool cover -html ./coverage/cover.out
 set -e
-set -o pipefail
-
 
 # Consider command as failed when any component of the pipe fails:
 # https://stackoverflow.com/questions/1221833/pipe-output-and-capture-exit-status-in-bash
