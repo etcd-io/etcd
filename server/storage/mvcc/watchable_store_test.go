@@ -35,6 +35,8 @@ func TestWatch(t *testing.T) {
 	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
+		b.Close()
+		s.Close()
 		s.store.Close()
 		os.Remove(tmpPath)
 	}()
@@ -536,6 +538,8 @@ func TestWatchVictims(t *testing.T) {
 	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
+		b.Close()
+		s.Close()
 		s.store.Close()
 		os.Remove(tmpPath)
 		chanBufLen, maxWatchersPerSync = oldChanBufLen, oldMaxWatchersPerSync
