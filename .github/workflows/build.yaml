@@ -10,6 +10,7 @@ jobs:
           - linux-amd64
           - linux-386
           - darwin-amd64
+          - darwin-arm64
           - windows-amd64
           - linux-arm
           - linux-arm64
@@ -33,6 +34,9 @@ jobs:
               ;;
             darwin-amd64)
               ARCH=amd64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ;;
+            darwin-arm64)
+              ARCH=arm64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
               ;;
             windows-amd64)
               ARCH=amd64 GOOS=windows GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
