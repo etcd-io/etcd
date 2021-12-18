@@ -37,7 +37,6 @@ func TestWatch(t *testing.T) {
 	defer func() {
 		b.Close()
 		s.Close()
-		s.store.Close()
 		os.Remove(tmpPath)
 	}()
 
@@ -540,7 +539,6 @@ func TestWatchVictims(t *testing.T) {
 	defer func() {
 		b.Close()
 		s.Close()
-		s.store.Close()
 		os.Remove(tmpPath)
 		chanBufLen, maxWatchersPerSync = oldChanBufLen, oldMaxWatchersPerSync
 	}()
