@@ -536,8 +536,8 @@ func TestWatchVictims(t *testing.T) {
 	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
-		s.Close()
 		b.Close()
+		s.Close()
 		os.Remove(tmpPath)
 		chanBufLen, maxWatchersPerSync = oldChanBufLen, oldMaxWatchersPerSync
 	}()
