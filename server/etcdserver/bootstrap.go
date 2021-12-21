@@ -408,6 +408,10 @@ func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 		}
+		// A snapshot db may have already been recovered, and the old db should have
+		// already been closed in this case, so we should set the backend again.
+		ci.SetBackend(be)
+
 		s1, s2 := be.Size(), be.SizeInUse()
 		cfg.Logger.Info(
 			"recovered v3 backend from snapshot",
