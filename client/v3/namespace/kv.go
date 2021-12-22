@@ -51,7 +51,11 @@ func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOpti
 	if len(key) == 0 && !(clientv3.IsOptsWithFromKey(opts) || clientv3.IsOptsWithPrefix(opts)) {
 		return nil, rpctypes.ErrEmptyKey
 	}
-	r, err := kv.KV.Do(ctx, kv.prefixOp(clientv3.OpGet(key, opts...)))
+	getOp := clientv3.OpGet(key, opts...)
+	if !getOp.IsSortOptionValid() {
+		return nil, rpctypes.ErrInvalidSortOption
+	}
+	r, err := kv.KV.Do(ctx, kv.prefixOp(getOp))
 	if err != nil {
 		return nil, err
 	}

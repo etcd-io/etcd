@@ -337,6 +337,8 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
 
+	lg := a.s.Logger()
+
 	if txn == nil {
 		txn = a.s.kv.Read(mvcc.ConcurrentReadTxMode, trace)
 		defer txn.End()
@@ -407,6 +409,8 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 			sorter = &kvSortByMod{&kvSort{rr.KVs}}
 		case r.SortTarget == pb.RangeRequest_VALUE:
 			sorter = &kvSortByValue{&kvSort{rr.KVs}}
+		default:
+			lg.Panic("unexpected sort target", zap.Int32("sort-target", int32(r.SortTarget)))
 		}
 		switch {
 		case sortOrder == pb.RangeRequest_ASCEND:
