@@ -19,6 +19,7 @@ import (
 	"io"
 	"math/rand"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -69,13 +70,29 @@ type TCPProxy struct {
 	pickCount int // for round robin
 }
 
+// The parameter host is returned by net.SplitHostPort previously,
+// so it must be a valid host. This function is only to check whether
+// it's an IPv6 IP address.
+func isIPv6(host string) bool {
+	return strings.IndexRune(host, ':') != -1
+}
+
+// A literal IPv6 address in hostport must be enclosed in square
+// brackets, as in "[::1]:80", "[::1%lo0]:80".
+func formatAddr(host string, port uint16) string {
+	if isIPv6(host) {
+		return fmt.Sprintf("[%s]:%d", host, port)
+	}
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
 func (tp *TCPProxy) Run() error {
 	tp.donec = make(chan struct{})
 	if tp.MonitorInterval == 0 {
 		tp.MonitorInterval = 5 * time.Minute
 	}
 	for _, srv := range tp.Endpoints {
-		addr := fmt.Sprintf("%s:%d", srv.Target, srv.Port)
+		addr := formatAddr(srv.Target, srv.Port)
 		tp.remotes = append(tp.remotes, &remote{srv: srv, addr: addr})
 	}
 
