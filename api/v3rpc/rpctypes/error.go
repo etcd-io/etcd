@@ -21,15 +21,16 @@ import (
 
 // server-side error
 var (
-	ErrGRPCEmptyKey      = status.New(codes.InvalidArgument, "etcdserver: key is not provided").Err()
-	ErrGRPCKeyNotFound   = status.New(codes.InvalidArgument, "etcdserver: key not found").Err()
-	ErrGRPCValueProvided = status.New(codes.InvalidArgument, "etcdserver: value is provided").Err()
-	ErrGRPCLeaseProvided = status.New(codes.InvalidArgument, "etcdserver: lease is provided").Err()
-	ErrGRPCTooManyOps    = status.New(codes.InvalidArgument, "etcdserver: too many operations in txn request").Err()
-	ErrGRPCDuplicateKey  = status.New(codes.InvalidArgument, "etcdserver: duplicate key given in txn request").Err()
-	ErrGRPCCompacted     = status.New(codes.OutOfRange, "etcdserver: mvcc: required revision has been compacted").Err()
-	ErrGRPCFutureRev     = status.New(codes.OutOfRange, "etcdserver: mvcc: required revision is a future revision").Err()
-	ErrGRPCNoSpace       = status.New(codes.ResourceExhausted, "etcdserver: mvcc: database space exceeded").Err()
+	ErrGRPCEmptyKey                = status.New(codes.InvalidArgument, "etcdserver: key is not provided").Err()
+	ErrGRPCKeyNotFound             = status.New(codes.InvalidArgument, "etcdserver: key not found").Err()
+	ErrGRPCValueProvided           = status.New(codes.InvalidArgument, "etcdserver: value is provided").Err()
+	ErrGRPCLeaseProvided           = status.New(codes.InvalidArgument, "etcdserver: lease is provided").Err()
+	ErrGRPCTooManyOps              = status.New(codes.InvalidArgument, "etcdserver: too many operations in txn request").Err()
+	ErrGRPCDuplicateKey            = status.New(codes.InvalidArgument, "etcdserver: duplicate key given in txn request").Err()
+	ErrGRPCInvalidClientAPIVersion = status.New(codes.InvalidArgument, "etcdserver: invalid client api version").Err()
+	ErrGRPCCompacted               = status.New(codes.OutOfRange, "etcdserver: mvcc: required revision has been compacted").Err()
+	ErrGRPCFutureRev               = status.New(codes.OutOfRange, "etcdserver: mvcc: required revision is a future revision").Err()
+	ErrGRPCNoSpace                 = status.New(codes.ResourceExhausted, "etcdserver: mvcc: database space exceeded").Err()
 
 	ErrGRPCLeaseNotFound    = status.New(codes.NotFound, "etcdserver: requested lease not found").Err()
 	ErrGRPCLeaseExist       = status.New(codes.FailedPrecondition, "etcdserver: lease already exists").Err()
