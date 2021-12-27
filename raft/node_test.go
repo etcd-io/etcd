@@ -860,6 +860,7 @@ func TestNodeProposeAddLearnerNode(t *testing.T) {
 	<-applyConfChan
 	close(stop)
 	<-done
+	n.Stop()
 }
 
 func TestAppendPagination(t *testing.T) {
