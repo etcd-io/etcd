@@ -285,9 +285,9 @@ func (s *watchableStore) moveVictims() (moved int) {
 					newVictim = make(watcherBatch)
 				}
 				newVictim[w] = eb
+				moved++
 				continue
 			}
-			moved++
 		}
 
 		// assign completed victim watchers to unsync/sync
