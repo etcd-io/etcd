@@ -285,7 +285,7 @@ func (wg *watcherGroup) watcherSetByKey(key string) watcherSet {
 
 	// copy case
 	ret := make(watcherSet)
-	ret.union(wg.keyWatchers[key])
+	ret.union(wkeys)
 	for _, item := range wranges {
 		ret.union(item.Val.(watcherSet))
 	}
