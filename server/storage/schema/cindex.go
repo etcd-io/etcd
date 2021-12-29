@@ -70,6 +70,17 @@ func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, 
 		if term == oldTerm && index <= oldi {
 			return
 		}
+		bs1 := make([]byte, 8)
+		binary.BigEndian.PutUint64(bs1, index)
+		// put the index into the underlying backend
+		// tx has been locked in TxnBegin, so there is no need to lock it again
+		tx.UnsafePut(Meta, MetaConsistentIndexKeyName, bs1)
+		if term > 0 && term > oldTerm {
+			bs2 := make([]byte, 8)
+			binary.BigEndian.PutUint64(bs2, term)
+			tx.UnsafePut(Meta, MetaTermKeyName, bs2)
+		}
+		return
 	}
 
 	bs1 := make([]byte, 8)
