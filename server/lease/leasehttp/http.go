@@ -236,7 +236,7 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 		return nil, fmt.Errorf(`lease: %v. data = "%s"`, err, string(b))
 	}
 	if lresp.LeaseTimeToLiveResponse.ID != int64(id) {
-		return nil, fmt.Errorf("lease: renew id mismatch")
+		return nil, fmt.Errorf("lease: TTL id mismatch")
 	}
 	return lresp, nil
 }
