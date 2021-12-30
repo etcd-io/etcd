@@ -176,6 +176,11 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 		}, nil
 	}
 	if (req.Method == "GET" || req.Method == "QGET") && td.get != nil {
+		if td.getindex >= len(td.get) {
+			return etcdserver.Response{}, &v2error.Error{
+				ErrorCode: v2error.EcodeKeyNotFound,
+			}
+		}
 		res := td.get[td.getindex]
 		if res.Event == nil {
 			td.getindex++
@@ -187,6 +192,11 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 		return res, nil
 	}
 	if req.Method == "PUT" && td.put != nil {
+		if td.putindex >= len(td.put) {
+			return etcdserver.Response{}, &v2error.Error{
+				ErrorCode: v2error.EcodeKeyNotFound,
+			}
+		}
 		res := td.put[td.putindex]
 		if res.Event == nil {
 			td.putindex++
