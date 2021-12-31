@@ -66,7 +66,8 @@ func TestCtlV3LeaseTestTimeToLiveExpiredPeerTLS(t *testing.T) {
 	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
-func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
+func TestCtlV3LeaseKeepAlive(t *testing.T)        { testCtl(t, leaseTestKeepAlive) }
+func TestCtlV3LeaseKeepAliveTimeout(t *testing.T) { ctlV3LeaseKeepAliveTimeout(t, "32697e065bb41204") }
 func TestCtlV3LeaseKeepAliveNoTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigNoTLS()))
 }
@@ -81,6 +82,9 @@ func TestCtlV3LeaseKeepAlivePeerTLS(t *testing.T) {
 }
 
 func TestCtlV3LeaseKeepAliveOnce(t *testing.T) { testCtl(t, leaseTestKeepAliveOnce) }
+func TestCtlV3LeaseKeepAliveOnceTimeout(t *testing.T) {
+	ctlV3LeaseKeepAliveOnceTimeout(t, "32697e065bb41204")
+}
 func TestCtlV3LeaseKeepAliveOnceNoTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAliveOnce, withCfg(*e2e.NewConfigNoTLS()))
 }
@@ -273,29 +277,50 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", leaseID)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, nil)
-	if err != nil {
-		return err
-	}
+	return checkResultWithExpect(cmdArgs, fmt.Sprintf("lease %s keepalived with TTL(", leaseID), "")
+}
 
-	if _, err = proc.Expect(fmt.Sprintf("lease %s keepalived with TTL(", leaseID)); err != nil {
-		return err
+func ctlV3LeaseKeepAliveTimeout(t *testing.T, leaseID string) {
+	e2e.BeforeTest(t)
+	cmdArgs := append([]string{getCtlBinPath()}, "lease", "keep-alive", leaseID)
+
+	// The program exits with status code `cobrautl.ExitBadConnection` (2) in this case.
+	if err := checkResultWithExpect(cmdArgs, "request timed out", "exit status 2"); err != nil {
+		t.Fatalf("ctlV3LeaseKeepAliveTimedout error (%v)", err)
 	}
-	return proc.Stop()
 }
 
 func ctlV3LeaseKeepAliveOnce(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", "--once", leaseID)
 
+	return checkResultWithExpect(cmdArgs, fmt.Sprintf("lease %s keepalived with TTL(", leaseID), "")
+}
+
+func ctlV3LeaseKeepAliveOnceTimeout(t *testing.T, leaseID string) {
+	e2e.BeforeTest(t)
+	cmdArgs := append([]string{getCtlBinPath()}, "lease", "keep-alive", "--once", leaseID)
+
+	// The program exits with status code `cobrautl.ExitBadConnection` (2) in this case.
+	if err := checkResultWithExpect(cmdArgs, "context deadline exceeded", "exit status 2"); err != nil {
+		t.Fatalf("ctlV3LeaseKeepAliveOnceTimedout error (%v)", err)
+	}
+}
+
+func checkResultWithExpect(cmdArgs []string, expectedOutput string, expectedStopErr string) error {
 	proc, err := e2e.SpawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}
 
-	if _, err = proc.Expect(fmt.Sprintf("lease %s keepalived with TTL(", leaseID)); err != nil {
+	if _, err = proc.Expect(expectedOutput); err != nil {
 		return err
 	}
-	return proc.Stop()
+
+	err = proc.Stop()
+	if err != nil && expectedStopErr != "" && strings.Contains(err.Error(), expectedStopErr) {
+		return nil
+	}
+	return err
 }
 
 func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {

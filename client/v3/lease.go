@@ -295,25 +295,44 @@ func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAl
 	l.mu.Unlock()
 
 	go l.keepAliveCtxCloser(ctx, id, ka.donec)
+
+	var err error
 	l.firstKeepAliveOnce.Do(func() {
-		go l.recvKeepAliveLoop()
+		errorC := make(chan error, 1)
+		go l.recvKeepAliveLoop(errorC)
 		go l.deadlineLoop()
+
+		select {
+		case err = <-errorC:
+		case <-time.After(l.firstKeepAliveTimeout):
+			err = rpctypes.ErrTimeoutDueToConnectionLost
+		}
 	})
 
-	return ch, nil
+	return ch, err
 }
 
 func (l *lessor) KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAliveResponse, error) {
-	for {
-		resp, err := l.keepAliveOnce(ctx, id)
+	keepAliveOnceFunc := func() (*LeaseKeepAliveResponse, error, bool) {
+		newCtx, cancel := context.WithTimeout(ctx, l.firstKeepAliveTimeout)
+		defer cancel()
+		resp, err := l.keepAliveOnce(newCtx, id)
+
 		if err == nil {
 			if resp.TTL <= 0 {
 				err = rpctypes.ErrLeaseNotFound
 			}
-			return resp, err
+			return resp, err, true
 		}
-		if isHaltErr(ctx, err) {
-			return nil, toErr(ctx, err)
+		if isHaltErr(newCtx, err) {
+			return nil, toErr(newCtx, err), true
+		}
+		return nil, nil, false
+	}
+
+	for {
+		if resp, err, done := keepAliveOnceFunc(); done {
+			return resp, err
 		}
 	}
 }
@@ -424,7 +443,7 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 	return karesp, nil
 }
 
-func (l *lessor) recvKeepAliveLoop() (gerr error) {
+func (l *lessor) recvKeepAliveLoop(errorC chan error) (gerr error) {
 	defer func() {
 		l.mu.Lock()
 		close(l.donec)
@@ -436,6 +455,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 		l.mu.Unlock()
 	}()
 
+	var once sync.Once
 	for {
 		stream, err := l.resetRecv()
 		if err != nil {
@@ -443,9 +463,11 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 				zap.Error(err),
 			)
 			if canceledByCaller(l.stopCtx, err) {
+				once.Do(func() { errorC <- err })
 				return err
 			}
 		} else {
+			once.Do(func() { errorC <- nil })
 			for {
 				resp, err := stream.Recv()
 				if err != nil {
@@ -466,6 +488,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 		select {
 		case <-time.After(retryConnWait):
 		case <-l.stopCtx.Done():
+			once.Do(func() { errorC <- l.stopCtx.Err() })
 			return l.stopCtx.Err()
 		}
 	}

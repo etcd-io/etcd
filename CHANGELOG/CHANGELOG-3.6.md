@@ -46,6 +46,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [etcd gateway doesn't format the endpoint of IPv6 address correctly](https://github.com/etcd-io/etcd/pull/13551)
 - Fix [A client can cause a nil dereference in etcd by passing an invalid SortTarget](https://github.com/etcd-io/etcd/pull/13555)
 - Fix [Grant lease with negative ID can possibly cause db out of sync](https://github.com/etcd-io/etcd/pull/13676)
+- Fix [Enhance `etcdctl lease keep-alive` command for the case when the etcd server isn't reachable](https://github.com/etcd-io/etcd/pull/13576)
 
 ### tools/benchmark
 

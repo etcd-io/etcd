@@ -293,6 +293,10 @@ func runCtlTest(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx
 	}
 }
 
+func getCtlBinPath() string {
+	return e2e.CtlBinPath + "3"
+}
+
 func (cx *ctlCtx) prefixArgs(eps []string) []string {
 	fmap := make(map[string]string)
 	fmap["endpoints"] = strings.Join(eps, ",")
@@ -317,7 +321,7 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 
 	useEnv := cx.envMap != nil
 
-	cmdArgs := []string{e2e.CtlBinPath + "3"}
+	cmdArgs := []string{getCtlBinPath()}
 	for k, v := range fmap {
 		if useEnv {
 			ek := flags.FlagToEnv("ETCDCTL", k)

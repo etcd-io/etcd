@@ -19,12 +19,13 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -472,19 +473,26 @@ func TestLeaseKeepAliveInitTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// keep client disconnected
 	clus.Members[0].Stop(t)
+
 	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
-	if kerr != nil {
-		t.Fatal(kerr)
-	}
-	select {
-	case ka, ok := <-rc:
-		if ok {
-			t.Fatalf("unexpected keepalive %v, expected closed channel", ka)
+	if kerr != nil && strings.Contains(kerr.Error(), "request timed out") {
+		// In cluster_direct mode, it is expected to get an error like
+		// "etcdserver: request timed out, possibly due to connection lost"
+	} else if kerr == nil {
+		// In cluster_proxy mode, cli.KeepAlive will never return error.
+		select {
+		case ka, ok := <-rc:
+			if ok {
+				t.Fatalf("unexpected keepalive %v, expected closed channel", ka)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("keepalive channel did not close")
 		}
-	case <-time.After(10 * time.Second):
-		t.Fatalf("keepalive channel did not close")
+	} else {
+		t.Fatal(kerr)
 	}
 
 	clus.Members[0].Restart(t)
