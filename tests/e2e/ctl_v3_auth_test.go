@@ -30,6 +30,7 @@ func TestCtlV3AuthEnable(t *testing.T) {
 	testCtl(t, authEnableTest)
 }
 func TestCtlV3AuthDisable(t *testing.T)             { testCtl(t, authDisableTest) }
+func TestCtlV3AuthGracefulDisable(t *testing.T)     { testCtl(t, authGracefulDisableTest) }
 func TestCtlV3AuthStatus(t *testing.T)              { testCtl(t, authStatusTest) }
 func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKeyTest) }
 func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateTest) }
@@ -140,6 +141,50 @@ func authDisableTest(cx ctlCtx) {
 	if err := ctlV3Get(cx, []string{"hoo"}, []kv{{"hoo", "bar"}}...); err != nil {
 		cx.t.Fatal(err)
 	}
+}
+
+func authGracefulDisableTest(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+
+	donec := make(chan struct{})
+
+	go func() {
+		defer close(donec)
+
+		// sleep a bit to let the watcher connects while auth is still enabled
+		time.Sleep(1000 * time.Millisecond)
+
+		// now disable auth...
+		if err := ctlV3AuthDisable(cx); err != nil {
+			cx.t.Fatalf("authGracefulDisableTest ctlV3AuthDisable error (%v)", err)
+		}
+
+		// ...and restart the node
+		node0 := cx.epc.Procs[0]
+		node0.WithStopSignal(syscall.SIGINT)
+		if rerr := node0.Restart(); rerr != nil {
+			cx.t.Fatal(rerr)
+		}
+
+		// the watcher should still work after reconnecting
+		if perr := ctlV3Put(cx, "key", "value", ""); perr != nil {
+			cx.t.Errorf("authGracefulDisableTest ctlV3Put error (%v)", perr)
+		}
+	}()
+
+	err := ctlV3Watch(cx, []string{"key"}, kvExec{key: "key", val: "value"})
+
+	if err != nil {
+		if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
+			cx.t.Errorf("authGracefulDisableTest ctlV3Watch error (%v)", err)
+		}
+	}
+
+	<-donec
 }
 
 func ctlV3AuthDisable(cx ctlCtx) error {
