@@ -154,6 +154,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 		return nil, true
 	}
 
+	var isTrigger bool
 	data := make([]string, 0, len(ents))
 	for i := range ents {
 		switch ents[i].Type {
@@ -172,6 +173,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 			case raftpb.ConfChangeAddNode:
 				if len(cc.Context) > 0 {
 					rc.transport.AddPeer(types.ID(cc.NodeID), []string{string(cc.Context)})
+					isTrigger = true
 				}
 			case raftpb.ConfChangeRemoveNode:
 				if cc.NodeID == uint64(rc.id) {
@@ -181,6 +183,11 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 				rc.transport.RemovePeer(types.ID(cc.NodeID))
 			}
 		}
+	}
+
+	if isTrigger {
+		// trigger snapshot for new peers
+		rc.triggerSnapshot()
 	}
 
 	var applyDoneC chan struct{}
@@ -360,18 +367,9 @@ func (rc *raftNode) publishSnapshot(snapshotToSave raftpb.Snapshot) {
 
 var snapshotCatchUpEntriesN uint64 = 10000
 
-func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
-	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
+func (rc *raftNode) triggerSnapshot() {
+	if rc.appliedIndex <= rc.snapshotIndex {
 		return
-	}
-
-	// wait until all committed entries are applied (or server is closed)
-	if applyDoneC != nil {
-		select {
-		case <-applyDoneC:
-		case <-rc.stopc:
-			return
-		}
 	}
 
 	log.Printf("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
@@ -397,6 +395,23 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 
 	log.Printf("compacted log at index %d", compactIndex)
 	rc.snapshotIndex = rc.appliedIndex
+}
+
+func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
+	if rc.appliedIndex-rc.snapshotIndex <= rc.snapCount {
+		return
+	}
+
+	// wait until all committed entries are applied (or server is closed)
+	if applyDoneC != nil {
+		select {
+		case <-applyDoneC:
+		case <-rc.stopc:
+			return
+		}
+	}
+
+	rc.triggerSnapshot()
 }
 
 func (rc *raftNode) serveChannels() {
