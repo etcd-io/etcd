@@ -263,6 +263,7 @@ func (c *Client) getToken(ctx context.Context) error {
 	resp, err := c.Auth.Authenticate(ctx, c.Username, c.Password)
 	if err != nil {
 		if err == rpctypes.ErrAuthNotEnabled {
+			c.authTokenBundle.UpdateAuthToken("")
 			return nil
 		}
 		return err
