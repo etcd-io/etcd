@@ -127,9 +127,9 @@ func NewMaintenance(c *Client) Maintenance {
 				return nil, nil, fmt.Errorf("failed to getToken from endpoint %s with maintenance client: %v", endpoint, err)
 			}
 			cancel = func() { conn.Close() }
-			return RetryMaintenanceClient(c, conn), cancel, nil
+			return RetryMaintenanceClient(c), cancel, nil
 		},
-		remote: RetryMaintenanceClient(c, c.conn),
+		remote: RetryMaintenanceClient(c),
 	}
 	if c != nil {
 		api.callOpts = c.callOpts

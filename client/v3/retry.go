@@ -188,9 +188,9 @@ type retryMaintenanceClient struct {
 }
 
 // RetryMaintenanceClient implements a Maintenance.
-func RetryMaintenanceClient(c *Client, conn *grpc.ClientConn) pb.MaintenanceClient {
+func RetryMaintenanceClient(c *Client) pb.MaintenanceClient {
 	return &retryMaintenanceClient{
-		mc: pb.NewMaintenanceClient(conn),
+		mc: pb.NewMaintenanceClient(c.conn),
 	}
 }
 
