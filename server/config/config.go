@@ -110,6 +110,7 @@ type ServerConfig struct {
 	InitialElectionTickAdvance bool
 
 	BootstrapTimeout time.Duration
+	OpenBackendTimeout time.Duration
 
 	AutoCompactionRetention time.Duration
 	AutoCompactionMode      string

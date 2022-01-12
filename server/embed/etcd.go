@@ -155,6 +155,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 	}
 
+	// OpenBackendTimeout defaults to "0" if not set.
+	if len(cfg.OpenBackendTimeout) == 0 {
+		cfg.OpenBackendTimeout = 10 * time.Second
+	}
+
 	// AutoCompactionRetention defaults to "0" if not set.
 	if len(cfg.AutoCompactionRetention) == 0 {
 		cfg.AutoCompactionRetention = "0"
@@ -185,6 +190,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		TickMs:                                   cfg.TickMs,
 		ElectionTicks:                            cfg.ElectionTicks(),
 		InitialElectionTickAdvance:               cfg.InitialElectionTickAdvance,
+		OpenBackendTimeout						  cfg.OpenBackendTimeout,
 		AutoCompactionRetention:                  autoCompactionRetention,
 		AutoCompactionMode:                       cfg.AutoCompactionMode,
 		QuotaBackendBytes:                        cfg.QuotaBackendBytes,
@@ -342,6 +348,7 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Bool("initial-corrupt-check", sc.InitialCorruptCheck),
 		zap.String("corrupt-check-time-interval", sc.CorruptCheckTime.String()),
 		zap.String("auto-compaction-mode", sc.AutoCompactionMode),
+		zap.Duration("open-backend-timeout", sc.OpenBackendTimeout),
 		zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention),
 		zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
 		zap.String("discovery-url", sc.DiscoveryURL),

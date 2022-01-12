@@ -229,6 +229,10 @@ type Config struct {
 	// Deprecated in 3.5.
 	EnableV2 bool `json:"enable-v2"`
 
+	// OpenBackendTimeout is duration string with time unit
+	// (e.g. '5m' for 5-minute)
+	OpenBackendTimeout string `json:"open-backend-timeout"`
+
 	// AutoCompactionMode is either 'periodic' or 'revision'.
 	AutoCompactionMode string `json:"auto-compaction-mode"`
 	// AutoCompactionRetention is either duration string with time unit

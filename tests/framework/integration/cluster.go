@@ -683,6 +683,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.InitialClusterToken = ClusterName
 	m.NewCluster = true
 	m.BootstrapTimeout = 10 * time.Millisecond
+	m.OpenBackendTimeout = 10 * time.Second
 	if m.PeerTLSInfo != nil {
 		m.ServerConfig.PeerTLSInfo = *m.PeerTLSInfo
 	}

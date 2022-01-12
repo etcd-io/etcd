@@ -81,7 +81,7 @@ func OpenBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 		cfg.Logger.Info("opened backend db", zap.String("path", fn), zap.Duration("took", time.Since(now)))
 		return be
 
-	case <-time.After(10 * time.Second):
+	case <-time.After(cfg.OpenBackendTimeout):
 		cfg.Logger.Info(
 			"db file is flocked by another process, or taking too long",
 			zap.String("path", fn),
