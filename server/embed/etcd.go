@@ -194,7 +194,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		TickMs:                                   cfg.TickMs,
 		ElectionTicks:                            cfg.ElectionTicks(),
 		InitialElectionTickAdvance:               cfg.InitialElectionTickAdvance,
-		OpenBackendTimeout:						  openBackendTimeout,
+		OpenBackendTimeout:                       openBackendTimeout,
 		AutoCompactionRetention:                  autoCompactionRetention,
 		AutoCompactionMode:                       cfg.AutoCompactionMode,
 		QuotaBackendBytes:                        cfg.QuotaBackendBytes,

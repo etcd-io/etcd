@@ -119,6 +119,8 @@ Clustering:
     Reject reconfiguration requests that would cause quorum loss.
   --pre-vote 'true'
     Enable to run an additional Raft election phase.
+  --open-backend-timeout '10s'
+    Time allowed to spend loading the backend db file at start.
   --auto-compaction-retention '0'
     Auto compaction retention length. 0 means disable auto compaction.
   --auto-compaction-mode 'periodic'
