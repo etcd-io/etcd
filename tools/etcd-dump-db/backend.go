@@ -95,7 +95,7 @@ func leaseDecoder(k, v []byte) {
 	if err := lpb.Unmarshal(v); err != nil {
 		panic(err)
 	}
-	fmt.Printf("lease ID=%016x, TTL=%ds\n", leaseID, lpb.TTL)
+	fmt.Printf("lease ID=%016x, TTL=%ds, remaining TTL=%ds\n", leaseID, lpb.TTL, lpb.RemainingTTL)
 }
 
 func authDecoder(k, v []byte) {

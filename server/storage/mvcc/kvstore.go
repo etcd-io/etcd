@@ -142,7 +142,7 @@ func (s *store) compactBarrier(ctx context.Context, ch chan struct{}) {
 		select {
 		case <-s.stopc:
 		default:
-			// fix deadlock in mvcc,for more information, please refer to pr 11817.
+			// fix deadlock in mvcc, for more information, please refer to pr 11817.
 			// s.stopc is only updated in restore operation, which is called by apply
 			// snapshot call, compaction and apply snapshot requests are serialized by
 			// raft, and do not happen at the same time.
