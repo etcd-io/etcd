@@ -255,7 +255,7 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")
 
 	// open backend db timeout
-	fs.StringVar(&cfg.ec.OpenBackendTimeout, "open-backend-timeout", "10s", "Time allowed to spend loading the backend db file.")
+	fs.StringVar(&cfg.ec.OpenBackendTimeout, "open-backend-timeout", "10s", "Time allowed to spend loading the backend db file at start.")
 
 	fs.StringVar(&cfg.ec.AutoCompactionRetention, "auto-compaction-retention", "0", "Auto compaction retention for mvcc key value store. 0 means disable auto compaction.")
 	fs.StringVar(&cfg.ec.AutoCompactionMode, "auto-compaction-mode", "periodic", "interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.")
