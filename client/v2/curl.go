@@ -60,7 +60,7 @@ func printcURL(req *http.Request) error {
 		command += fmt.Sprintf(" -d %q", string(b))
 	}
 
-	fmt.Fprintf(os.Stderr, "cURL Command: %s\n", command)
+	fmt.Fprintf(os.Stderr, "cURL Command: %q\n", command)
 
 	// reset body
 	body := bytes.NewBuffer(b)

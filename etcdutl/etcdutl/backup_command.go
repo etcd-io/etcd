@@ -286,7 +286,6 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 		case src = <-ch:
 		case <-time.After(time.Second):
 			lg.Fatal("timed out waiting to acquire lock on", zap.String("srcDB", srcDB))
-			src = <-ch
 		}
 		defer src.Close()
 
