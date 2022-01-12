@@ -155,7 +155,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 	}
 
-	// OpenBackendTimeout defaults to "0" if not set.
+	// OpenBackendTimeout defaults to "10s" if not set.
 	if len(cfg.OpenBackendTimeout) == 0 {
 		cfg.OpenBackendTimeout = "10s"
 	}
