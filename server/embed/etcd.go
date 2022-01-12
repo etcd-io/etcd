@@ -157,7 +157,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	// OpenBackendTimeout defaults to "0" if not set.
 	if len(cfg.OpenBackendTimeout) == 0 {
-		cfg.OpenBackendTimeout = 10 * time.Second
+		cfg.OpenBackendTimeout = "10s"
+	}
+	openBackendTimeout, err := parseOpenBackendTimeout(cfg.OpenBackendTimeout)
+	if err != nil {
+		return e, err
 	}
 
 	// AutoCompactionRetention defaults to "0" if not set.
@@ -190,7 +194,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		TickMs:                                   cfg.TickMs,
 		ElectionTicks:                            cfg.ElectionTicks(),
 		InitialElectionTickAdvance:               cfg.InitialElectionTickAdvance,
-		OpenBackendTimeout:						  cfg.OpenBackendTimeout,
+		OpenBackendTimeout:						  openBackendTimeout,
 		AutoCompactionRetention:                  autoCompactionRetention,
 		AutoCompactionMode:                       cfg.AutoCompactionMode,
 		QuotaBackendBytes:                        cfg.QuotaBackendBytes,
@@ -815,6 +819,14 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 		if err != nil {
 			return 0, fmt.Errorf("error parsing CompactionRetention: %v", err)
 		}
+	}
+	return ret, nil
+}
+
+func parseOpenBackendTimeout(retention string) (ret time.Duration, err error) {
+	ret, err = time.ParseDuration(retention)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing CompactionRetention: %v", err)
 	}
 	return ret, nil
 }
