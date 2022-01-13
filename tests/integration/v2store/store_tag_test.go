@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !v2v3
-// +build !v2v3
-
 package v2store_test
 
 import (
@@ -26,24 +23,10 @@ import (
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-type v2TestStore struct {
-	v2store.Store
-}
-
-func (s *v2TestStore) Close() {}
-
-func newTestStore(t *testing.T, ns ...string) StoreCloser {
-	if len(ns) == 0 {
-		t.Logf("new v2 store with no namespace")
-	}
-	return &v2TestStore{v2store.New(ns...)}
-}
-
 // Ensure that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
 	integration2.BeforeTest(t)
-	s := newTestStore(t)
-	defer s.Close()
+	s := v2store.New()
 	var eidx uint64 = 4
 	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	s.Create("/foo/x", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
@@ -52,7 +35,7 @@ func TestStoreRecover(t *testing.T) {
 	b, err := s.Save()
 	testutil.AssertNil(t, err)
 
-	s2 := newTestStore(t)
+	s2 := v2store.New()
 	s2.Recovery(b)
 
 	e, err := s.Get("/foo/x", false, false)

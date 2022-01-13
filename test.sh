@@ -100,7 +100,7 @@ function unit_pass {
 function integration_extra {
   if [ -z "${PKG}" ] ; then
     run_for_module "."  go_test "./contrib/raftexample" "keep_going" :  -timeout="${TIMEOUT:-5m}" "${RUN_ARG[@]}" "${COMMON_TEST_FLAGS[@]}" "$@" || return $?
-    run_for_module "tests"  go_test "./integration/v2store/..." "keep_going" : -tags v2v3 -timeout="${TIMEOUT:-5m}" "${RUN_ARG[@]}" "${COMMON_TEST_FLAGS[@]}" "$@" || return $?
+    run_for_module "tests"  go_test "./integration/v2store/..." "keep_going" : -timeout="${TIMEOUT:-5m}" "${RUN_ARG[@]}" "${COMMON_TEST_FLAGS[@]}" "$@" || return $?
   else
     log_warning "integration_extra ignored when PKG is specified"
   fi
@@ -317,7 +317,7 @@ function cov_pass {
       -timeout=30m "${gocov_build_flags[@]}" "$@" || failed="$failed integration"
   # integration-store-v2
   run_for_module "tests" go_test "./integration/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
-      -tags v2v3 -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_v2v3"
+      -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_v2"
   # integration_cluster_proxy
   run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
       -tags cluster_proxy -timeout=5m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"

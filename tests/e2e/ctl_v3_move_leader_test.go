@@ -118,3 +118,14 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig) {
 		}
 	}
 }
+
+func setupEtcdctlTest(t *testing.T, cfg *e2e.EtcdProcessClusterConfig, quorum bool) *e2e.EtcdProcessCluster {
+	if !quorum {
+		cfg = e2e.ConfigStandalone(*cfg)
+	}
+	epc, err := e2e.NewEtcdProcessCluster(t, cfg)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	return epc
+}

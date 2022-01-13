@@ -1718,8 +1718,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 // or its server is stopped.
 //
 // Use v2 store to encode member attributes, and apply through Raft
-// but does not go through v2 API endpoint, which means even with v2
-// client handler disabled (e.g. --enable-v2=false), cluster can still
+// but does not go through v2 API endpoint, which means cluster can still
 // process publish requests through rafthttp
 // TODO: Remove in 3.6 (start using publishV3)
 func (s *EtcdServer) publish(timeout time.Duration) {
