@@ -232,6 +232,10 @@ type EntryPrinter func(e raftpb.Entry)
 func printInternalRaftRequest(entry raftpb.Entry) {
 	var rr etcdserverpb.InternalRaftRequest
 	if err := rr.Unmarshal(entry.Data); err == nil {
+		// Ensure we don't log user password
+		if rr.AuthUserChangePassword != nil && rr.AuthUserChangePassword.Password != "" {
+			rr.AuthUserChangePassword.Password = "<value removed>"
+		}
 		fmt.Printf("%4d\t%10d\tnorm\t%s", entry.Term, entry.Index, rr.String())
 	}
 }
