@@ -945,6 +945,7 @@ func TestCommitPagination(t *testing.T) {
 	}
 	s.Append(rd.Entries)
 	n.Advance()
+	n.Stop()
 }
 
 type ignoreSizeHintMemStorage struct {
