@@ -110,6 +110,9 @@ func (p *printerRPC) MemberRemove(id uint64, r v3.MemberRemoveResponse) {
 func (p *printerRPC) MemberUpdate(id uint64, r v3.MemberUpdateResponse) {
 	p.p((*pb.MemberUpdateResponse)(&r))
 }
+func (p *printerRPC) MemberPromote(id uint64, r v3.MemberPromoteResponse) {
+	p.p((*pb.MemberPromoteResponse)(&r))
+}
 func (p *printerRPC) MemberList(r v3.MemberListResponse) { p.p((*pb.MemberListResponse)(&r)) }
 func (p *printerRPC) Alarm(r v3.AlarmResponse)           { p.p((*pb.AlarmResponse)(&r)) }
 func (p *printerRPC) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) {
