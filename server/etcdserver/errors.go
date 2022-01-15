@@ -41,6 +41,7 @@ var (
 	ErrBadLeaderTransferee         = errors.New("etcdserver: bad leader transferee")
 	ErrClusterVersionUnavailable   = errors.New("etcdserver: cluster version not found during downgrade")
 	ErrWrongDowngradeVersionFormat = errors.New("etcdserver: wrong downgrade target version format")
+	ErrSortTargetNotSuppoted       = errors.New("etcdserver: badrequest: SortTarget not supported")
 )
 
 type DiscoveryError struct {

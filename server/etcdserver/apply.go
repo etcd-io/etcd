@@ -412,6 +412,9 @@ func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.Ra
 		default:
 			lg.Panic("unexpected sort target", zap.Int32("sort-target", int32(r.SortTarget)))
 		}
+		if sorter == nil {
+			return nil, ErrSortTargetNotSuppoted
+		}
 		switch {
 		case sortOrder == pb.RangeRequest_ASCEND:
 			sort.Sort(sorter)
