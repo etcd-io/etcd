@@ -216,7 +216,8 @@ func TestWatchDeleteRange(t *testing.T) {
 	s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
-		s.store.Close()
+		b.Close()
+		s.Close()
 		os.Remove(tmpPath)
 	}()
 

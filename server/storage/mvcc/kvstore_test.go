@@ -724,6 +724,8 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 	)
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
+	defer b.Close()
+	defer s.Close()
 	defer os.Remove(tmpPath)
 
 	var wg sync.WaitGroup
