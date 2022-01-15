@@ -86,9 +86,6 @@ const (
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
-	// DefaultEnableV2 is the default value for "--enable-v2" flag.
-	// v2 API is disabled by default.
-	DefaultEnableV2 = false
 
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
@@ -224,11 +221,6 @@ type Config struct {
 	InitialClusterToken   string `json:"initial-cluster-token"`
 	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
 
-	// EnableV2 exposes the deprecated V2 API surface.
-	// TODO: Delete in 3.6 (https://github.com/etcd-io/etcd/issues/12913)
-	// Deprecated in 3.5.
-	EnableV2 bool `json:"enable-v2"`
-
 	// AutoCompactionMode is either 'periodic' or 'revision'.
 	AutoCompactionMode string `json:"auto-compaction-mode"`
 	// AutoCompactionRetention is either duration string with time unit
@@ -311,10 +303,6 @@ type Config struct {
 
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
-	// ExperimentalEnableV2V3 configures URLs that expose deprecated V2 API working on V3 store.
-	// Deprecated in v3.5.
-	// TODO: Delete in v3.6 (https://github.com/etcd-io/etcd/issues/12913)
-	ExperimentalEnableV2V3 string `json:"experimental-enable-v2v3"`
 	// ExperimentalEnableLeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
 	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
 	// ExperimentalEnableLeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
@@ -488,7 +476,6 @@ func NewConfig() *Config {
 
 		StrictReconfigCheck: DefaultStrictReconfigCheck,
 		Metrics:             "basic",
-		EnableV2:            DefaultEnableV2,
 
 		CORS:          map[string]struct{}{"*": {}},
 		HostWhitelist: map[string]struct{}{"*": {}},

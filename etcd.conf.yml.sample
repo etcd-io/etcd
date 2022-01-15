@@ -69,9 +69,6 @@ initial-cluster-state: 'new'
 # Reject reconfiguration requests that would cause quorum loss.
 strict-reconfig-check: false
 
-# Accept etcd V2 client requests
-enable-v2: true
-
 # Enable runtime profiling data via HTTP server
 enable-pprof: true
 
