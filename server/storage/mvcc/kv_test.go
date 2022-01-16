@@ -360,6 +360,40 @@ func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 	}
 }
 
+func TestKVPutWithSameLease(t *testing.T)    { testKVPutWithSameLease(t, normalPutFunc) }
+func TestKVTxnPutWithSameLease(t *testing.T) { testKVPutWithSameLease(t, txnPutFunc) }
+
+func testKVPutWithSameLease(t *testing.T, f putFunc) {
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b, tmpPath)
+	leaseID := int64(1)
+
+	// put foo
+	rev := f(s, []byte("foo"), []byte("bar"), lease.LeaseID(leaseID))
+	if rev != 2 {
+		t.Errorf("rev = %d, want %d", 2, rev)
+	}
+
+	// put foo with same lease again
+	rev2 := f(s, []byte("foo"), []byte("bar"), lease.LeaseID(leaseID))
+	if rev2 != 3 {
+		t.Errorf("rev = %d, want %d", 3, rev2)
+	}
+
+	// check leaseID
+	r, err := s.Range(context.TODO(), []byte("foo"), nil, RangeOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wkvs := []mvccpb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 3, Version: 2, Lease: leaseID},
+	}
+	if !reflect.DeepEqual(r.KVs, wkvs) {
+		t.Errorf("kvs = %+v, want %+v", r.KVs, wkvs)
+	}
+}
+
 // test that range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVOperationInSequence(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
