@@ -44,24 +44,21 @@ func createV2store(t testing.TB, lastReleaseBinary string, dataDirPath string) {
 	}
 }
 
-func assertVerifyCanStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
-	t.Log("verify: possible to start etcd with --v2-deprecation=not-yet mode")
-
-	cfg := e2e.ConfigStandalone(e2e.EtcdProcessClusterConfig{DataDirPath: dataDirPath, V2deprecation: "not-yet", KeepDataDir: true})
-	epc, err := e2e.NewEtcdProcessCluster(t, cfg)
-	assert.NoError(t, err)
-
-	defer func() {
-		assert.NoError(t, epc.Stop())
-	}()
-}
-
 func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
 	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
+	assert.NoError(t, err)
+}
+
+func assertVerifyCannotStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
+	t.Log("Verify its infeasible to start etcd with --v2-deprecation=not-yet mode")
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
+	assert.NoError(t, err)
+
+	_, err = proc.Expect(`invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
 	assert.NoError(t, err)
 }
 
@@ -78,12 +75,12 @@ func TestV2Deprecation(t *testing.T) {
 		createV2store(t, lastReleaseBinary, dataDirPath)
 	})
 
-	t.Run("--v2-deprecation=write-only fails", func(t *testing.T) {
-		assertVerifyCannotStartV2deprecationWriteOnly(t, dataDirPath)
+	t.Run("--v2-deprecation=not-yet fails", func(t *testing.T) {
+		assertVerifyCannotStartV2deprecationNotYet(t, dataDirPath)
 	})
 
-	t.Run("--v2-deprecation=not-yet succeeds", func(t *testing.T) {
-		assertVerifyCanStartV2deprecationNotYet(t, dataDirPath)
+	t.Run("--v2-deprecation=write-only fails", func(t *testing.T) {
+		assertVerifyCannotStartV2deprecationWriteOnly(t, dataDirPath)
 	})
 
 }

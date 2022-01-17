@@ -17,7 +17,7 @@ package config
 type V2DeprecationEnum string
 
 const (
-	// Default in v3.5.  Issues a warning if v2store have meaningful content.
+	// No longer supported in v3.6
 	V2_DEPR_0_NOT_YET = V2DeprecationEnum("not-yet")
 	// Default in v3.6.  Meaningful v2 state is not allowed.
 	// The V2 files are maintained for v3.5 rollback.
@@ -28,7 +28,7 @@ const (
 	// ability to rollback to etcd v3.5.
 	V2_DEPR_2_GONE = V2DeprecationEnum("gone")
 
-	V2_DEPR_DEFAULT = V2_DEPR_0_NOT_YET
+	V2_DEPR_DEFAULT = V2_DEPR_1_WRITE_ONLY
 )
 
 func (e V2DeprecationEnum) IsAtLeast(v2d V2DeprecationEnum) bool {
