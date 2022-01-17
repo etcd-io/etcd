@@ -9,6 +9,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 	google.golang.org/grpc v1.38.0
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 // Bad imports are sometimes causing attempts to pull that code.
