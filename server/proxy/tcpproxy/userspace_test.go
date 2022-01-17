@@ -129,3 +129,34 @@ func TestUserspaceProxyPriority(t *testing.T) {
 		t.Errorf("got = %s, want %s", got, want)
 	}
 }
+
+func TestFormatAddr(t *testing.T) {
+	addrs := []struct {
+		host         string
+		port         uint16
+		expectedAddr string
+	}{
+		{
+			"192.168.1.10",
+			2379,
+			"192.168.1.10:2379",
+		},
+		{
+			"::1",
+			2379,
+			"[::1]:2379",
+		},
+		{
+			"2001:db8::ff00:42:8329",
+			80,
+			"[2001:db8::ff00:42:8329]:80",
+		},
+	}
+
+	for _, addr := range addrs {
+		actualAddr := formatAddr(addr.host, addr.port)
+		if actualAddr != addr.expectedAddr {
+			t.Errorf("actualAddr: %s, expectedAddr: %s", actualAddr, addr.expectedAddr)
+		}
+	}
+}
