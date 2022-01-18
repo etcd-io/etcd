@@ -27,7 +27,7 @@ import (
 func TestPauseMember(t *testing.T) {
 	integration.BeforeTest(t)
 
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5})
 	defer c.Terminate(t)
 
 	for i := 0; i < 5; i++ {
@@ -44,7 +44,7 @@ func TestPauseMember(t *testing.T) {
 
 func TestRestartMember(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer c.Terminate(t)
 
 	for i := 0; i < 3; i++ {
@@ -65,7 +65,7 @@ func TestRestartMember(t *testing.T) {
 func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	integration.BeforeTest(t)
 	size := 3
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: size})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size})
 	m := c.Members[0].Clone(t)
 	var err error
 	m.DataDir, err = os.MkdirTemp(t.TempDir(), "etcd")

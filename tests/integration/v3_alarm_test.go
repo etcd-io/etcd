@@ -36,7 +36,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	integration.BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 	kvc1 := integration.ToGRPC(clus.Client(1)).KV
 
@@ -139,7 +139,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 func TestV3AlarmDeactivate(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	mt := integration.ToGRPC(clus.RandClient()).Maintenance
@@ -172,7 +172,7 @@ func TestV3AlarmDeactivate(t *testing.T) {
 
 func TestV3CorruptAlarm(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	var wg sync.WaitGroup

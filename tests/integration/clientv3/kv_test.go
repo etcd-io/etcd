@@ -42,7 +42,7 @@ func TestKVPutError(t *testing.T) {
 		maxReqBytes = 1.5 * 1024 * 1024                                // hard coded max in v3_server.go
 		quota       = int64(int(maxReqBytes*1.2) + 8*os.Getpagesize()) // make sure we have enough overhead in backend quota. See discussion in #6486.
 	)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, QuotaBackendBytes: quota, ClientMaxCallSendMsgSize: 100 * 1024 * 1024})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, QuotaBackendBytes: quota, ClientMaxCallSendMsgSize: 100 * 1024 * 1024})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -74,7 +74,7 @@ func TestKVPutError(t *testing.T) {
 func TestKVPut(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	lapi := clus.RandClient()
@@ -119,7 +119,7 @@ func TestKVPut(t *testing.T) {
 func TestKVPutWithIgnoreValue(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -152,7 +152,7 @@ func TestKVPutWithIgnoreValue(t *testing.T) {
 func TestKVPutWithIgnoreLease(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -191,7 +191,7 @@ func TestKVPutWithIgnoreLease(t *testing.T) {
 func TestKVPutWithRequireLeader(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	clus.Members[1].Stop(t)
@@ -237,7 +237,7 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 func TestKVRange(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -466,7 +466,7 @@ func TestKVRange(t *testing.T) {
 func TestKVGetErrConnClosed(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -495,7 +495,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 func TestKVNewAfterClose(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -522,7 +522,7 @@ func TestKVNewAfterClose(t *testing.T) {
 func TestKVDeleteRange(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -594,7 +594,7 @@ func TestKVDeleteRange(t *testing.T) {
 func TestKVDelete(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -626,7 +626,7 @@ func TestKVDelete(t *testing.T) {
 func TestKVCompactError(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -656,7 +656,7 @@ func TestKVCompactError(t *testing.T) {
 func TestKVCompact(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -712,7 +712,7 @@ func TestKVGetRetry(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	clusterSize := 3
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: clusterSize, UseBridge: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: clusterSize, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// because killing leader and following election
@@ -765,7 +765,7 @@ func TestKVGetRetry(t *testing.T) {
 func TestKVPutFailGetRetry(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -805,7 +805,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 func TestKVGetCancel(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	oldconn := clus.Client(0).ActiveConnection()
@@ -828,7 +828,7 @@ func TestKVGetCancel(t *testing.T) {
 func TestKVGetStoppedServerAndClose(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -846,7 +846,7 @@ func TestKVGetStoppedServerAndClose(t *testing.T) {
 func TestKVPutStoppedServerAndClose(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -876,7 +876,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 // in the presence of network errors.
 func TestKVPutAtMostOnce(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	if _, err := clus.Client(0).Put(context.TODO(), "k", "1"); err != nil {
@@ -970,7 +970,7 @@ func TestKVLargeRequests(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		clus := integration2.NewClusterV3(t,
+		clus := integration2.NewCluster(t,
 			&integration2.ClusterConfig{
 				Size:                     1,
 				MaxRequestBytes:          test.maxRequestBytesServer,
@@ -1005,7 +1005,7 @@ func TestKVLargeRequests(t *testing.T) {
 func TestKVForLearner(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// we have to add and launch learner member after initial cluster was created, because
@@ -1084,7 +1084,7 @@ func TestKVForLearner(t *testing.T) {
 func TestBalancerSupportLearner(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// we have to add and launch learner member after initial cluster was created, because

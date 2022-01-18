@@ -27,7 +27,7 @@ import (
 func TestEndpointManager(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.RandClient(), "foo")
@@ -89,7 +89,7 @@ func TestEndpointManager(t *testing.T) {
 func TestEndpointManagerAtomicity(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	c := clus.RandClient()
@@ -131,7 +131,7 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 func TestEndpointManagerCRUD(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.RandClient(), "foo")

@@ -28,7 +28,7 @@ import (
 )
 
 func TestRevisionMonotonicWithLeaderPartitions(t *testing.T) {
-	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.ClusterV3) {
+	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.Cluster) {
 		for i := 0; i < 5; i++ {
 			leader := clus.WaitLeader(t)
 			time.Sleep(time.Second)
@@ -40,7 +40,7 @@ func TestRevisionMonotonicWithLeaderPartitions(t *testing.T) {
 }
 
 func TestRevisionMonotonicWithPartitions(t *testing.T) {
-	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.ClusterV3) {
+	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.Cluster) {
 		for i := 0; i < 5; i++ {
 			time.Sleep(time.Second)
 			clus.Members[i%3].InjectPartition(t, clus.Members[(i+1)%3], clus.Members[(i+2)%3])
@@ -51,7 +51,7 @@ func TestRevisionMonotonicWithPartitions(t *testing.T) {
 }
 
 func TestRevisionMonotonicWithLeaderRestarts(t *testing.T) {
-	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.ClusterV3) {
+	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.Cluster) {
 		for i := 0; i < 5; i++ {
 			leader := clus.WaitLeader(t)
 			time.Sleep(time.Second)
@@ -63,7 +63,7 @@ func TestRevisionMonotonicWithLeaderRestarts(t *testing.T) {
 }
 
 func TestRevisionMonotonicWithRestarts(t *testing.T) {
-	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.ClusterV3) {
+	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.Cluster) {
 		for i := 0; i < 5; i++ {
 			time.Sleep(time.Second)
 			clus.Members[i%3].Stop(t)
@@ -73,9 +73,9 @@ func TestRevisionMonotonicWithRestarts(t *testing.T) {
 	})
 }
 
-func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration, injectFailures func(clus *integration.ClusterV3)) {
+func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration, injectFailures func(clus *integration.Cluster)) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), testDuration)
@@ -108,7 +108,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 	t.Logf("Revision %d", resp.Header.Revision)
 }
 
-func putWorker(t *testing.T, ctx context.Context, clus *integration.ClusterV3) {
+func putWorker(t *testing.T, ctx context.Context, clus *integration.Cluster) {
 	for i := 0; ; i++ {
 		kv := clus.Client(i % 3)
 		_, err := kv.Put(ctx, "foo", fmt.Sprintf("%d", i))
@@ -121,7 +121,7 @@ func putWorker(t *testing.T, ctx context.Context, clus *integration.ClusterV3) {
 	}
 }
 
-func getWorker(t *testing.T, ctx context.Context, clus *integration.ClusterV3) {
+func getWorker(t *testing.T, ctx context.Context, clus *integration.Cluster) {
 	var prevRev int64
 	for i := 0; ; i++ {
 		kv := clus.Client(i % 3)

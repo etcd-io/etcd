@@ -32,7 +32,7 @@ import (
 func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
 		Size:      3,
 		UseBridge: true,
 	})
@@ -144,7 +144,7 @@ func TestBalancerUnderServerShutdownTxn(t *testing.T) {
 func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Client, context.Context) error) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
 		Size: 3,
 	})
 	defer clus.Terminate(t)
@@ -201,7 +201,7 @@ func TestBalancerUnderServerShutdownGetSerializable(t *testing.T) {
 func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
 		Size: 3,
 	})
 	defer clus.Terminate(t)
@@ -281,7 +281,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 		cfg.Size = 3
 	}
 
-	clus := integration2.NewClusterV3(t, cfg)
+	clus := integration2.NewCluster(t, cfg)
 	defer clus.Terminate(t)
 	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL()}
 	if linearizable {

@@ -41,7 +41,7 @@ import (
 // overwrites it, then checks that the change was applied.
 func TestV3PutOverwrite(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -89,7 +89,7 @@ func TestV3PutOverwrite(t *testing.T) {
 // TestPutRestart checks if a put after an unrelated member restart succeeds
 func TestV3PutRestart(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kvIdx := rand.Intn(3)
@@ -121,7 +121,7 @@ func TestV3PutRestart(t *testing.T) {
 // TestV3CompactCurrentRev ensures keys are present when compacting on current revision.
 func TestV3CompactCurrentRev(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -155,7 +155,7 @@ func TestV3CompactCurrentRev(t *testing.T) {
 // TestV3HashKV ensures that multiple calls of HashKV on same node return same hash and compact rev.
 func TestV3HashKV(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -204,7 +204,7 @@ func TestV3HashKV(t *testing.T) {
 func TestV3TxnTooManyOps(t *testing.T) {
 	integration.BeforeTest(t)
 	maxTxnOps := uint(128)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, MaxTxnOps: maxTxnOps})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, MaxTxnOps: maxTxnOps})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -279,7 +279,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 
 func TestV3TxnDuplicateKeys(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	putreq := &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("def")}}}
@@ -397,7 +397,7 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 // Testv3TxnRevision tests that the transaction header revision is set as expected.
 func TestV3TxnRevision(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -448,7 +448,7 @@ func TestV3TxnRevision(t *testing.T) {
 // when compared to the Succeeded field in the txn response.
 func TestV3TxnCmpHeaderRev(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -504,7 +504,7 @@ func TestV3TxnCmpHeaderRev(t *testing.T) {
 // TestV3TxnRangeCompare tests range comparisons in txns
 func TestV3TxnRangeCompare(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// put keys, named by expected revision
@@ -615,7 +615,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 // TestV3TxnNested tests nested txns follow paths as expected.
 func TestV3TxnNestedPath(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -669,7 +669,7 @@ func TestV3TxnNestedPath(t *testing.T) {
 func TestV3PutIgnoreValue(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -802,7 +802,7 @@ func TestV3PutIgnoreValue(t *testing.T) {
 func TestV3PutIgnoreLease(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -941,7 +941,7 @@ func TestV3PutIgnoreLease(t *testing.T) {
 // TestV3PutMissingLease ensures that a Put on a key with a bogus lease fails.
 func TestV3PutMissingLease(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -1069,7 +1069,7 @@ func TestV3DeleteRange(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 			kvc := integration.ToGRPC(clus.RandClient()).KV
 			defer clus.Terminate(t)
 
@@ -1124,7 +1124,7 @@ func TestV3DeleteRange(t *testing.T) {
 // TestV3TxnInvalidRange tests that invalid ranges are rejected in txns.
 func TestV3TxnInvalidRange(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -1168,7 +1168,7 @@ func TestV3TxnInvalidRange(t *testing.T) {
 func TestV3TooLargeRequest(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -1186,7 +1186,7 @@ func TestV3TooLargeRequest(t *testing.T) {
 // TestV3Hash tests hash.
 func TestV3Hash(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
@@ -1211,7 +1211,7 @@ func TestV3Hash(t *testing.T) {
 // TestV3HashRestart ensures that hash stays the same after restart.
 func TestV3HashRestart(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
@@ -1244,7 +1244,7 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 	integration.BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 
 	// Set a quota on one node
 	clus.Members[0].QuotaBackendBytes = quotasize
@@ -1508,7 +1508,7 @@ func TestV3RangeRequest(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 			defer clus.Terminate(t)
 			for _, k := range tt.putKeys {
 				kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -1554,7 +1554,7 @@ func TestV3RangeRequest(t *testing.T) {
 func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
 	defer clus.Terminate(t)
 
 	// nil out TLS field so client will use an insecure connection
@@ -1588,7 +1588,7 @@ func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	clus.Members[0].ClientTLSInfo = &integration.TestTLSInfo
@@ -1607,7 +1607,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
 	defer clus.Terminate(t)
 
 	client, err := integration.NewClientV3(clus.Members[0])
@@ -1753,7 +1753,7 @@ func testTLSReload(
 	tlsInfo := cloneFunc()
 
 	// 2. start cluster with valid certs
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
 		Size:      1,
 		PeerTLS:   &tlsInfo,
 		ClientTLS: &tlsInfo,
@@ -1824,7 +1824,7 @@ func testTLSReload(
 func TestGRPCRequireLeader(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	clus.Members[1].Stop(t)
@@ -1850,7 +1850,7 @@ func TestGRPCRequireLeader(t *testing.T) {
 func TestGRPCStreamRequireLeader(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	client, err := integration.NewClientV3(clus.Members[0])
@@ -1924,7 +1924,7 @@ func TestV3LargeRequests(t *testing.T) {
 	}
 	for i, test := range tests {
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, MaxRequestBytes: test.maxRequestBytes})
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, MaxRequestBytes: test.maxRequestBytes})
 			defer clus.Terminate(t)
 			kvcli := integration.ToGRPC(clus.Client(0)).KV
 			reqput := &pb.PutRequest{Key: []byte("foo"), Value: make([]byte, test.valueSize)}

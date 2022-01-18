@@ -29,7 +29,7 @@ import (
 // simultaneous leadership to multiple campaigners.
 func TestV3ElectionCampaign(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lease1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
@@ -91,7 +91,7 @@ func TestV3ElectionCampaign(t *testing.T) {
 // proclamations from different leaders uninterrupted.
 func TestV3ElectionObserve(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	lc := integration.ToGRPC(clus.Client(0)).Election

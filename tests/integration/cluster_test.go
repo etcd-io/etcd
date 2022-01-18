@@ -46,14 +46,14 @@ func TestClusterOf3(t *testing.T) { testCluster(t, 3) }
 
 func testCluster(t *testing.T, size int) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: size})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size})
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
 }
 
 func TestTLSClusterOf3(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, PeerTLS: &integration.TestTLSInfo})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, PeerTLS: &integration.TestTLSInfo})
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
 }
@@ -62,7 +62,7 @@ func TestTLSClusterOf3(t *testing.T) {
 // authorities that don't issue dual-usage certificates.
 func TestTLSClusterOf3WithSpecificUsage(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, PeerTLS: &integration.TestTLSInfoWithSpecificUsage})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, PeerTLS: &integration.TestTLSInfoWithSpecificUsage})
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
 }
@@ -72,7 +72,7 @@ func TestClusterOf3UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t, 3
 
 func testClusterUsingDiscovery(t *testing.T, size int) {
 	integration.BeforeTest(t)
-	dc := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseIP: true})
+	dc := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseIP: true})
 	defer dc.Terminate(t)
 	// init discovery token space
 	dcc := integration.MustNewHTTPClient(t, dc.URLs(), nil)
@@ -83,14 +83,14 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	}
 	cancel()
 
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: size, DiscoveryURL: dc.URL(0) + "/v2/keys"})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size, DiscoveryURL: dc.URL(0) + "/v2/keys"})
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
 }
 
 func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
 	integration.BeforeTest(t)
-	dc := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseIP: true})
+	dc := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseIP: true})
 	defer dc.Terminate(t)
 	// init discovery token space
 	dcc := integration.MustNewHTTPClient(t, dc.URLs(), nil)
@@ -101,7 +101,7 @@ func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
 	}
 	cancel()
 
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{
+	c := integration.NewCluster(t, &integration.ClusterConfig{
 		Size:         3,
 		PeerTLS:      &integration.TestTLSInfo,
 		DiscoveryURL: dc.URL(0) + "/v2/keys"},
@@ -115,7 +115,7 @@ func TestDoubleClusterSizeOf3(t *testing.T) { testDoubleClusterSize(t, 3) }
 
 func testDoubleClusterSize(t *testing.T, size int) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: size})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size})
 	defer c.Terminate(t)
 
 	for i := 0; i < size; i++ {
@@ -126,7 +126,7 @@ func testDoubleClusterSize(t *testing.T, size int) {
 
 func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, PeerTLS: &integration.TestTLSInfo})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, PeerTLS: &integration.TestTLSInfo})
 	defer c.Terminate(t)
 
 	for i := 0; i < 3; i++ {
@@ -140,7 +140,7 @@ func TestDecreaseClusterSizeOf5(t *testing.T) { testDecreaseClusterSize(t, 5) }
 
 func testDecreaseClusterSize(t *testing.T, size int) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: size})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size})
 	defer c.Terminate(t)
 
 	// TODO: remove the last but one member
@@ -162,7 +162,7 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 
 func TestForceNewCluster(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer c.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
@@ -218,7 +218,7 @@ func TestForceNewCluster(t *testing.T) {
 
 func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer c.Terminate(t)
 
 	// remove all the previous three members and add in three new members.
@@ -239,7 +239,7 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 // Ensure we can remove a member then add a new one back immediately.
 func TestIssue2681(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5})
 	defer c.Terminate(t)
 
 	c.MustRemoveMember(t, uint64(c.Members[4].Server.ID()))
@@ -258,7 +258,7 @@ func TestIssue2746WithThree(t *testing.T) { testIssue2746(t, 3) }
 
 func testIssue2746(t *testing.T, members int) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: members, SnapshotCount: 10})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: members, SnapshotCount: 10})
 	defer c.Terminate(t)
 
 	// force a snapshot
@@ -278,7 +278,7 @@ func testIssue2746(t *testing.T, members int) {
 func TestIssue2904(t *testing.T) {
 	integration.BeforeTest(t)
 	// start 1-member Cluster to ensure member 0 is the leader of the Cluster.
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer c.Terminate(t)
 
 	c.AddMember(t)
@@ -314,7 +314,7 @@ func TestIssue2904(t *testing.T) {
 func TestIssue3699(t *testing.T) {
 	// start a Cluster of 3 nodes a, b, c
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer c.Terminate(t)
 
 	// make node a unavailable
@@ -363,7 +363,7 @@ func TestIssue3699(t *testing.T) {
 // TestRejectUnhealthyAdd ensures an unhealthy cluster rejects adding members.
 func TestRejectUnhealthyAdd(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true, StrictReconfigCheck: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true, StrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	// make Cluster unhealthy and wait for downed peer
@@ -403,7 +403,7 @@ func TestRejectUnhealthyAdd(t *testing.T) {
 // if quorum will be lost.
 func TestRejectUnhealthyRemove(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5, UseBridge: true, StrictReconfigCheck: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5, UseBridge: true, StrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	// make cluster unhealthy and wait for downed peer; (3 up, 2 down)
@@ -448,7 +448,7 @@ func TestRestartRemoved(t *testing.T) {
 	integration.BeforeTest(t)
 
 	// 1. start single-member Cluster
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, StrictReconfigCheck: true, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, StrictReconfigCheck: true, UseBridge: true})
 	defer c.Terminate(t)
 
 	// 2. add a new member
@@ -525,7 +525,7 @@ func clusterMustProgress(t *testing.T, members []*integration.Member) {
 
 func TestSpeedyTerminate(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	// Stop/Restart so requests will time out on lost leaders
 	for i := 0; i < 3; i++ {
 		clus.Members[i].Stop(t)
