@@ -89,8 +89,7 @@ func TestV2NoRetryNoLeader(t *testing.T) {
 // TestV2RetryRefuse tests destructive api calls will retry if a connection is refused.
 func TestV2RetryRefuse(t *testing.T) {
 	integration2.BeforeTest(t)
-	cl := integration2.NewCluster(t, 1)
-	cl.Launch(t)
+	cl := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
 	defer cl.Terminate(t)
 	// test connection refused; expect no error failover
 	cli := integration2.MustNewHTTPClient(t, []string{integration2.URLScheme + "://refuseconn:123", cl.URL(0)}, nil)

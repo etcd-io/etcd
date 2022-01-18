@@ -1552,8 +1552,7 @@ func TestV3RangeRequest(t *testing.T) {
 
 func newClusterV3NoClients(t *testing.T, cfg *integration.ClusterConfig) *integration.ClusterV3 {
 	cfg.UseGRPC = true
-	clus := &integration.ClusterV3{Cluster: integration.NewClusterByConfig(t, cfg)}
-	clus.Launch(t)
+	clus := integration.NewClusterV3(t, cfg)
 	return clus
 }
 
@@ -1561,8 +1560,7 @@ func newClusterV3NoClients(t *testing.T, cfg *integration.ClusterConfig) *integr
 func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	integration.BeforeTest(t)
 
-	cfg := integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo}
-	clus := newClusterV3NoClients(t, &cfg)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
 	defer clus.Terminate(t)
 
 	// nil out TLS field so client will use an insecure connection
@@ -1596,8 +1594,7 @@ func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	integration.BeforeTest(t)
 
-	cfg := integration.ClusterConfig{Size: 3}
-	clus := newClusterV3NoClients(t, &cfg)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	clus.Members[0].ClientTLSInfo = &integration.TestTLSInfo
@@ -1616,8 +1613,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 	integration.BeforeTest(t)
 
-	cfg := integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo}
-	clus := newClusterV3NoClients(t, &cfg)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
 	defer clus.Terminate(t)
 
 	client, err := integration.NewClientV3(clus.Members[0])
@@ -1834,8 +1830,7 @@ func testTLSReload(
 func TestGRPCRequireLeader(t *testing.T) {
 	integration.BeforeTest(t)
 
-	cfg := integration.ClusterConfig{Size: 3}
-	clus := newClusterV3NoClients(t, &cfg)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	clus.Members[1].Stop(t)
@@ -1861,8 +1856,7 @@ func TestGRPCRequireLeader(t *testing.T) {
 func TestGRPCStreamRequireLeader(t *testing.T) {
 	integration.BeforeTest(t)
 
-	cfg := integration.ClusterConfig{Size: 3, UseBridge: true}
-	clus := newClusterV3NoClients(t, &cfg)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	client, err := integration.NewClientV3(clus.Members[0])

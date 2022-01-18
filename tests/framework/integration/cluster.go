@@ -209,7 +209,7 @@ func (c *Cluster) fillClusterForMembers() error {
 	return nil
 }
 
-func NewClusterFromConfig(t testutil.TB, cfg *ClusterConfig) *Cluster {
+func newClusterFromConfig(t testutil.TB, cfg *ClusterConfig) *Cluster {
 	testutil.SkipTestIfShortMode(t, "Cannot start etcd Cluster in --short tests")
 
 	c := &Cluster{Cfg: cfg}
@@ -223,18 +223,6 @@ func NewClusterFromConfig(t testutil.TB, cfg *ClusterConfig) *Cluster {
 	}
 
 	return c
-}
-
-// NewCluster returns an unlaunched Cluster of the given size which has been
-// set to use static bootstrap.
-func NewCluster(t testutil.TB, size int) *Cluster {
-	t.Helper()
-	return NewClusterFromConfig(t, &ClusterConfig{Size: size})
-}
-
-// NewClusterByConfig returns an unlaunched Cluster defined by a Cluster configuration
-func NewClusterByConfig(t testutil.TB, cfg *ClusterConfig) *Cluster {
-	return NewClusterFromConfig(t, cfg)
 }
 
 func (c *Cluster) Launch(t testutil.TB) {
@@ -1416,7 +1404,7 @@ func NewClusterV3(t testutil.TB, cfg *ClusterConfig) *ClusterV3 {
 	cfg.UseGRPC = true
 
 	clus := &ClusterV3{
-		Cluster: NewClusterByConfig(t, cfg),
+		Cluster: newClusterFromConfig(t, cfg),
 	}
 	clus.Launch(t)
 
