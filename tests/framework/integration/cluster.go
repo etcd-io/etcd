@@ -83,7 +83,7 @@ var (
 
 	// LocalListenCount integration test uses unique ports, counting up, to listen for each
 	// member, ensuring restarted members can listen on the same port again.
-	LocalListenCount = int64(0)
+	LocalListenCount = int32(0)
 
 	TestTLSInfo = transport.TLSInfo{
 		KeyFile:        MustAbsPath("../fixtures/server.key.insecure"),
@@ -177,11 +177,6 @@ type Cluster struct {
 	LastMemberNum int
 }
 
-func (c *Cluster) generateMemberName() string {
-	c.LastMemberNum++
-	return fmt.Sprintf("m%v", c.LastMemberNum-1)
-}
-
 func SchemeFromTLSInfo(tls *transport.TLSInfo) string {
 	if tls == nil {
 		return URLScheme
@@ -219,7 +214,7 @@ func NewClusterFromConfig(t testutil.TB, cfg *ClusterConfig) *Cluster {
 	c := &Cluster{Cfg: cfg}
 	ms := make([]*Member, cfg.Size)
 	for i := 0; i < cfg.Size; i++ {
-		ms[i] = c.mustNewMember(t, int64(i))
+		ms[i] = c.mustNewMember(t)
 	}
 	c.Members = ms
 	if err := c.fillClusterForMembers(); err != nil {
@@ -306,10 +301,12 @@ func (c *Cluster) HTTPMembers() []client.Member {
 	return ms
 }
 
-func (c *Cluster) mustNewMember(t testutil.TB, memberNumber int64) *Member {
+func (c *Cluster) mustNewMember(t testutil.TB) *Member {
+	memberNumber := c.LastMemberNum
+	c.LastMemberNum++
 	m := MustNewMember(t,
 		MemberConfig{
-			Name:                        c.generateMemberName(),
+			Name:                        fmt.Sprintf("m%v", memberNumber-1),
 			MemberNumber:                memberNumber,
 			AuthToken:                   c.Cfg.AuthToken,
 			PeerTLS:                     c.Cfg.PeerTLS,
@@ -344,7 +341,7 @@ func (c *Cluster) mustNewMember(t testutil.TB, memberNumber int64) *Member {
 
 // addMember return PeerURLs of the added member.
 func (c *Cluster) addMember(t testutil.TB) types.URLs {
-	m := c.mustNewMember(t, 0)
+	m := c.mustNewMember(t)
 
 	scheme := SchemeFromTLSInfo(c.Cfg.PeerTLS)
 
@@ -563,7 +560,7 @@ func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {
 }
 
 func newLocalListener(t testutil.TB) net.Listener {
-	c := atomic.AddInt64(&LocalListenCount, 1)
+	c := atomic.AddInt32(&LocalListenCount, 1)
 	// Go 1.8+ allows only numbers in port
 	addr := fmt.Sprintf("127.0.0.1:%05d%05d", c+BasePort, os.Getpid())
 	return NewListenerWithAddr(t, addr)
@@ -579,8 +576,8 @@ func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
 
 type Member struct {
 	config.ServerConfig
-	UniqNumber                     int64
-	MemberNumber                   int64
+	UniqNumber                     int
+	MemberNumber                   int
 	PeerListeners, ClientListeners []net.Listener
 	GrpcListener                   net.Listener
 	// PeerTLSInfo enables peer TLS when set
@@ -622,7 +619,7 @@ func (m *Member) GRPCURL() string { return m.GrpcURL }
 type MemberConfig struct {
 	Name                        string
 	UniqNumber                  int64
-	MemberNumber                int64
+	MemberNumber                int
 	PeerTLS                     *transport.TLSInfo
 	ClientTLS                   *transport.TLSInfo
 	AuthToken                   string
@@ -652,7 +649,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	var err error
 	m := &Member{
 		MemberNumber: mcfg.MemberNumber,
-		UniqNumber:   atomic.AddInt64(&LocalListenCount, 1),
+		UniqNumber:   int(atomic.AddInt32(&LocalListenCount, 1)),
 	}
 
 	peerScheme := SchemeFromTLSInfo(mcfg.PeerTLS)
@@ -852,7 +849,7 @@ func (m *Member) grpcAddr() (network, host, port string) {
 	return network, host, port
 }
 
-func GrpcPortNumber(uniqNumber, memberNumber int64) int64 {
+func GrpcPortNumber(uniqNumber, memberNumber int) int {
 	return BaseGRPCPort + uniqNumber*10 + memberNumber
 }
 
@@ -1545,7 +1542,7 @@ func (c *ClusterV3) GetLearnerMembers() ([]*pb.Member, error) {
 // AddAndLaunchLearnerMember creates a leaner member, adds it to Cluster
 // via v3 MemberAdd API, and then launches the new member.
 func (c *ClusterV3) AddAndLaunchLearnerMember(t testutil.TB) {
-	m := c.mustNewMember(t, 0)
+	m := c.mustNewMember(t)
 	m.IsLearner = true
 
 	scheme := SchemeFromTLSInfo(c.Cfg.PeerTLS)
@@ -1646,7 +1643,7 @@ func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], 
 
 // MustNewMember creates a new member instance based on the response of V3 Member Add API.
 func (c *ClusterV3) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse) *Member {
-	m := c.mustNewMember(t, 0)
+	m := c.mustNewMember(t)
 	m.IsLearner = resp.Member.IsLearner
 	m.NewCluster = false
 
