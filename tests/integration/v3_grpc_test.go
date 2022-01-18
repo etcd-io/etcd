@@ -1550,12 +1550,6 @@ func TestV3RangeRequest(t *testing.T) {
 	}
 }
 
-func newClusterV3NoClients(t *testing.T, cfg *integration.ClusterConfig) *integration.ClusterV3 {
-	cfg.UseGRPC = true
-	clus := integration.NewClusterV3(t, cfg)
-	return clus
-}
-
 // TestTLSGRPCRejectInsecureClient checks that connection is rejected if server is TLS but not client.
 func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	integration.BeforeTest(t)

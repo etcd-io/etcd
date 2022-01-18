@@ -162,7 +162,7 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 
 func TestForceNewCluster(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true, UseGRPC: true})
+	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	cc := integration.MustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
