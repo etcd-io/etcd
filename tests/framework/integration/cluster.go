@@ -169,6 +169,7 @@ type ClusterConfig struct {
 
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
+	StrictReconfigCheck         bool
 }
 
 type Cluster struct {
@@ -329,6 +330,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
 			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
+			StrictReconfigCheck:         c.Cfg.StrictReconfigCheck,
 		})
 	m.DiscoveryURL = c.Cfg.DiscoveryURL
 	if c.Cfg.UseGRPC {
@@ -641,6 +643,7 @@ type MemberConfig struct {
 	LeaseCheckpointPersist      bool
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
+	StrictReconfigCheck         bool
 }
 
 // MustNewMember return an inited member with the given name. If peerTLS is
@@ -752,6 +755,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
 	m.GrpcServerRecorder = &grpc_testing.GrpcRecorder{}
 	m.Logger = memberLogger(t, mcfg.Name)
+	m.StrictReconfigCheck = mcfg.StrictReconfigCheck
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
 		// might reuse this (t).
