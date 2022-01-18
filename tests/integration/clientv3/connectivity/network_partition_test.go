@@ -106,8 +106,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
-		Size:               3,
-		SkipCreatingClient: true,
+		Size: 3,
 	})
 	defer clus.Terminate(t)
 
@@ -162,8 +161,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
-		Size:               3,
-		SkipCreatingClient: true,
+		Size: 3,
 	})
 	defer clus.Terminate(t)
 	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
@@ -217,8 +215,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
-		Size:               3,
-		SkipCreatingClient: true,
+		Size: 3,
 	})
 	defer clus.Terminate(t)
 
@@ -277,8 +274,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
-		Size:               3,
-		SkipCreatingClient: true,
+		Size: 3,
 	})
 	defer clus.Terminate(t)
 	leaderIndex := clus.WaitLeader(t)

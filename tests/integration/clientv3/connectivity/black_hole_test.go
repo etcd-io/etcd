@@ -169,9 +169,8 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
-		Size:               2,
-		SkipCreatingClient: true,
-		UseBridge:          true,
+		Size:      2,
+		UseBridge: true,
 	})
 	defer clus.Terminate(t)
 

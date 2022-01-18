@@ -120,7 +120,7 @@ func TestElectionFailover(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		var err error
-		ss[i], err = concurrency.NewSession(clus.Clients[i])
+		ss[i], err = concurrency.NewSession(clus.Client(i))
 		if err != nil {
 			t.Error(err)
 		}

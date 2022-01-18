@@ -522,12 +522,12 @@ func TestV3GetNonExistLease(t *testing.T) {
 		Keys: true,
 	}
 
-	for _, client := range clus.Clients {
+	for _, m := range clus.Members {
 		// quorum-read to ensure revoke completes before TimeToLive
-		if _, err := integration.ToGRPC(client).KV.Range(ctx, &pb.RangeRequest{Key: []byte("_")}); err != nil {
+		if _, err := integration.ToGRPC(m.Client).KV.Range(ctx, &pb.RangeRequest{Key: []byte("_")}); err != nil {
 			t.Fatal(err)
 		}
-		resp, err := integration.ToGRPC(client).Lease.LeaseTimeToLive(ctx, leaseTTLr)
+		resp, err := integration.ToGRPC(m.Client).Lease.LeaseTimeToLive(ctx, leaseTTLr)
 		if err != nil {
 			t.Fatalf("expected non nil error, but go %v", err)
 		}

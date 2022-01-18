@@ -152,9 +152,6 @@ type ClusterConfig struct {
 	GRPCKeepAliveInterval time.Duration
 	GRPCKeepAliveTimeout  time.Duration
 
-	// SkipCreatingClient to skip creating clients for each member.
-	SkipCreatingClient bool
-
 	ClientMaxCallSendMsgSize int
 	ClientMaxCallRecvMsgSize int
 
@@ -421,6 +418,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, id uint64) error {
 		if uint64(m.Server.ID()) != id {
 			newMembers = append(newMembers, m)
 		} else {
+			m.Client.Close()
 			select {
 			case <-m.Server.StopNotify():
 				m.Terminate(t)
@@ -438,6 +436,11 @@ func (c *Cluster) RemoveMember(t testutil.TB, id uint64) error {
 }
 
 func (c *Cluster) Terminate(t testutil.TB) {
+	for _, m := range c.Members {
+		if m.Client != nil {
+			m.Client.Close()
+		}
+	}
 	var wg sync.WaitGroup
 	wg.Add(len(c.Members))
 	for _, m := range c.Members {
@@ -598,6 +601,8 @@ type Member struct {
 
 	// ServerClient is a clientv3 that directly calls the etcdserver.
 	ServerClient *clientv3.Client
+	// Client is a clientv3 that communicates via socket, either UNIX or TCP.
+	Client       *clientv3.Client
 
 	KeepDataDirTerminate     bool
 	ClientMaxCallSendMsgSize int
@@ -1086,6 +1091,12 @@ func (m *Member) Launch() error {
 		}
 		m.ServerClosers = append(m.ServerClosers, closer)
 	}
+	if m.GrpcURL != "" && m.Client == nil {
+		m.Client, err = NewClientV3(m)
+		if err != nil {
+			return err
+		}
+	}
 
 	m.Logger.Info(
 		"launched a member",
@@ -1391,7 +1402,6 @@ type ClusterV3 struct {
 	*Cluster
 
 	mu            sync.Mutex
-	Clients       []*clientv3.Client
 	clusterClient *clientv3.Client
 }
 
@@ -1409,35 +1419,17 @@ func NewClusterV3(t testutil.TB, cfg *ClusterConfig) *ClusterV3 {
 	}
 	clus.Launch(t)
 
-	if !cfg.SkipCreatingClient {
-		for _, m := range clus.Members {
-			client, err := NewClientV3(m)
-			if err != nil {
-				t.Fatalf("cannot create client: %v", err)
-			}
-			clus.Clients = append(clus.Clients, client)
-		}
-	}
-
 	return clus
 }
 
 func (c *ClusterV3) TakeClient(idx int) {
 	c.mu.Lock()
-	c.Clients[idx] = nil
+	c.Members[idx].Client = nil
 	c.mu.Unlock()
 }
 
 func (c *ClusterV3) Terminate(t testutil.TB) {
 	c.mu.Lock()
-	for _, client := range c.Clients {
-		if client == nil {
-			continue
-		}
-		if err := client.Close(); err != nil {
-			t.Error(err)
-		}
-	}
 	if c.clusterClient != nil {
 		if err := c.clusterClient.Close(); err != nil {
 			t.Error(err)
@@ -1448,11 +1440,11 @@ func (c *ClusterV3) Terminate(t testutil.TB) {
 }
 
 func (c *ClusterV3) RandClient() *clientv3.Client {
-	return c.Clients[rand.Intn(len(c.Clients))]
+	return c.Members[rand.Intn(len(c.Members))].Client
 }
 
 func (c *ClusterV3) Client(i int) *clientv3.Client {
-	return c.Clients[i]
+	return c.Members[i].Client
 }
 
 func (c *ClusterV3) ClusterClient() (client *clientv3.Client, err error) {

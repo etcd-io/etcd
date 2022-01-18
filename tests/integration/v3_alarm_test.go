@@ -36,9 +36,8 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	integration.BeforeTest(t)
 	quotasize := int64(16 * os.Getpagesize())
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2, UseBridge: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
-	kvc0 := integration.ToGRPC(clus.Client(0)).KV
 	kvc1 := integration.ToGRPC(clus.Client(1)).KV
 
 	// Set a quota on one node
@@ -46,6 +45,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	clus.Members[0].Stop(t)
 	clus.Members[0].Restart(t)
 	clus.WaitMembersForLeader(t, clus.Members)
+	kvc0 := integration.ToGRPC(clus.Client(0)).KV
 	waitForRestart(t, kvc0)
 
 	key := []byte("abc")

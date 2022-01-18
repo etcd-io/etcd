@@ -33,9 +33,8 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
-		Size:               3,
-		SkipCreatingClient: true,
-		UseBridge:          true,
+		Size:      3,
+		UseBridge: true,
 	})
 	defer clus.Terminate(t)
 
@@ -146,8 +145,7 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
-		Size:               3,
-		SkipCreatingClient: true,
+		Size: 3,
 	})
 	defer clus.Terminate(t)
 
@@ -204,8 +202,7 @@ func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Cl
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{
-		Size:               3,
-		SkipCreatingClient: true,
+		Size: 3,
 	})
 	defer clus.Terminate(t)
 
@@ -277,9 +274,8 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	integration2.BeforeTest(t)
 
 	cfg := &integration2.ClusterConfig{
-		Size:               2,
-		SkipCreatingClient: true,
-		UseBridge:          true,
+		Size:      2,
+		UseBridge: true,
 	}
 	if linearizable {
 		cfg.Size = 3

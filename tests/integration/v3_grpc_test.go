@@ -100,14 +100,14 @@ func TestV3PutRestart(t *testing.T) {
 		stopIdx = rand.Intn(3)
 	}
 
-	clus.Clients[stopIdx].Close()
+	clus.Client(stopIdx).Close()
 	clus.Members[stopIdx].Stop(t)
 	clus.Members[stopIdx].Restart(t)
 	c, cerr := integration.NewClientV3(clus.Members[stopIdx])
 	if cerr != nil {
 		t.Fatalf("cannot create client: %v", cerr)
 	}
-	clus.Clients[stopIdx] = c
+	clus.Members[stopIdx].ServerClient = c
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	defer cancel()

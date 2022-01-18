@@ -309,6 +309,7 @@ func TestIssue2904(t *testing.T) {
 	<-c.Members[1].Server.StopNotify()
 
 	// terminate removed member
+	c.Members[1].Client.Close()
 	c.Members[1].Terminate(t)
 	c.Members = c.Members[:1]
 	// wait member to be removed.

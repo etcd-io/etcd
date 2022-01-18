@@ -48,7 +48,7 @@ var (
 // TestDialTLSExpired tests client with expired certs fails to dial.
 func TestDialTLSExpired(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, PeerTLS: &testTLSInfo, ClientTLS: &testTLSInfo, SkipCreatingClient: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, PeerTLS: &testTLSInfo, ClientTLS: &testTLSInfo})
 	defer clus.Terminate(t)
 
 	tls, err := testTLSInfoExpired.ClientConfig()
@@ -71,7 +71,7 @@ func TestDialTLSExpired(t *testing.T) {
 // when TLS endpoints (https, unixs) are given but no tls config.
 func TestDialTLSNoConfig(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, ClientTLS: &testTLSInfo, SkipCreatingClient: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, ClientTLS: &testTLSInfo})
 	defer clus.Terminate(t)
 	// expect "signed by unknown authority"
 	c, err := integration2.NewClient(t, clientv3.Config{
@@ -102,7 +102,7 @@ func TestDialSetEndpointsAfterFail(t *testing.T) {
 // testDialSetEndpoints ensures SetEndpoints can replace unavailable endpoints with available ones.
 func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, SkipCreatingClient: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// get endpoint list
@@ -166,7 +166,7 @@ func TestSwitchSetEndpoints(t *testing.T) {
 func TestRejectOldCluster(t *testing.T) {
 	integration2.BeforeTest(t)
 	// 2 endpoints to test multi-endpoint Status
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 2, SkipCreatingClient: true})
+	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
