@@ -319,13 +319,9 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
 			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
 			StrictReconfigCheck:         c.Cfg.StrictReconfigCheck,
+			UseGRPC:                     c.Cfg.UseGRPC,
 		})
 	m.DiscoveryURL = c.Cfg.DiscoveryURL
-	if c.Cfg.UseGRPC {
-		if err := m.listenGRPC(); err != nil {
-			t.Fatal(err)
-		}
-	}
 	return m
 }
 
@@ -632,6 +628,7 @@ type MemberConfig struct {
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
 	StrictReconfigCheck         bool
+	UseGRPC                     bool
 }
 
 // MustNewMember return an inited member with the given name. If peerTLS is
@@ -744,6 +741,11 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.GrpcServerRecorder = &grpc_testing.GrpcRecorder{}
 	m.Logger = memberLogger(t, mcfg.Name)
 	m.StrictReconfigCheck = mcfg.StrictReconfigCheck
+	if mcfg.UseGRPC {
+		if err := m.listenGRPC(); err != nil {
+			t.Fatal(err)
+		}
+	}
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
 		// might reuse this (t).
