@@ -163,18 +163,27 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 func TestForceNewCluster(t *testing.T) {
 	integration.BeforeTest(t)
 	c := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
-	cc := integration.MustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
-	kapi := client.NewKeysAPI(cc)
+	defer c.Terminate(t)
+
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
-	resp, err := kapi.Create(ctx, "/foo", "bar")
+	resp, err := c.Members[0].Client.Put(ctx, "/foo", "bar")
 	if err != nil {
 		t.Fatalf("unexpected create error: %v", err)
 	}
 	cancel()
 	// ensure create has been applied in this machine
 	ctx, cancel = context.WithTimeout(context.Background(), integration.RequestTimeout)
-	if _, err = kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
-		t.Fatalf("unexpected watch error: %v", err)
+	watch := c.Members[0].Client.Watcher.Watch(ctx, "/foo", clientv3.WithRev(resp.Header.Revision-1))
+	for resp := range watch {
+		if len(resp.Events) != 0 {
+			break
+		}
+		if resp.Err() != nil {
+			t.Fatalf("unexpected watch error: %q", resp.Err())
+		}
+		if resp.Canceled {
+			t.Fatalf("watch  cancelled")
+		}
 	}
 	cancel()
 
@@ -186,16 +195,22 @@ func TestForceNewCluster(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected ForceRestart error: %v", err)
 	}
-	defer c.Members[0].Terminate(t)
 	c.WaitMembersForLeader(t, c.Members[:1])
 
 	// use new http client to init new connection
-	cc = integration.MustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
-	kapi = client.NewKeysAPI(cc)
 	// ensure force restart keep the old data, and new Cluster can make progress
 	ctx, cancel = context.WithTimeout(context.Background(), integration.RequestTimeout)
-	if _, err := kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
-		t.Fatalf("unexpected watch error: %v", err)
+	watch = c.Members[0].Client.Watcher.Watch(ctx, "/foo", clientv3.WithRev(resp.Header.Revision-1))
+	for resp := range watch {
+		if len(resp.Events) != 0 {
+			break
+		}
+		if resp.Err() != nil {
+			t.Fatalf("unexpected watch error: %q", resp.Err())
+		}
+		if resp.Canceled {
+			t.Fatalf("watch  cancelled")
+		}
 	}
 	cancel()
 	clusterMustProgress(t, c.Members[:1])
@@ -338,10 +353,8 @@ func TestIssue3699(t *testing.T) {
 	c.WaitMembersForLeader(t, c.Members)
 
 	// try to participate in Cluster
-	cc := integration.MustNewHTTPClient(t, []string{c.URL(0)}, c.Cfg.ClientTLS)
-	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
-	if _, err := kapi.Set(ctx, "/foo", "bar", nil); err != nil {
+	if _, err := c.Members[0].Client.Put(ctx, "/foo", "bar"); err != nil {
 		t.Fatalf("unexpected error on Set (%v)", err)
 	}
 	cancel()
