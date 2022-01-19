@@ -220,6 +220,11 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	tw.changes = append(tw.changes, kv)
 	tw.trace.Step("store kv pair into bolt db")
 
+	if oldLease == leaseID {
+		tw.trace.Step("attach lease to kv pair")
+		return
+	}
+
 	if oldLease != lease.NoLease {
 		if tw.s.le == nil {
 			panic("no lessor to detach lease")
