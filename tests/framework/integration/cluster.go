@@ -552,7 +552,7 @@ type Member struct {
 	// ServerClient is a clientv3 that directly calls the etcdserver.
 	ServerClient *clientv3.Client
 	// Client is a clientv3 that communicates via socket, either UNIX or TCP.
-	Client       *clientv3.Client
+	Client *clientv3.Client
 
 	KeepDataDirTerminate     bool
 	ClientMaxCallSendMsgSize int
