@@ -188,6 +188,7 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 
 * Fanmin Shi
 * Anthony Romano
+* Brandon Philips
 
 ### License
 
