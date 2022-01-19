@@ -192,6 +192,7 @@
             },
             annotations: {
               description: 'etcd cluster "{{ $labels.%s }}": 99th percentile fsync durations are {{ $value }}s on etcd instance {{ $labels.instance }}.' % $._config.clusterLabel,
+              summary: 'etcd cluster 99th percentile fsync durations are too high.',
             },
           },
           {
@@ -220,6 +221,7 @@
             },
             annotations: {
               description: 'etcd cluster "{{ $labels.%s }}": database size exceeds the defined quota on etcd instance {{ $labels.instance }}, please defrag or increase the quota as the writes to etcd will be disabled when it is full.' % $._config.clusterLabel,
+              summary: 'etcd cluster database is running full.',
             },
           },
           {
@@ -233,6 +235,7 @@
             },
             annotations: {
               description: 'etcd cluster "{{ $labels.%s }}": Observed surge in etcd writes leading to 50%% increase in database size over the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.' % $._config.clusterLabel,
+              summary: 'etcd cluster database growing very fast.',
             },
           },
         ],
