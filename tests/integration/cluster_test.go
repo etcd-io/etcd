@@ -25,7 +25,6 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/v2"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -104,7 +103,7 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 	for i := 0; i < size-1; i++ {
 		id := c.Members[len(c.Members)-1].Server.ID()
 		// may hit second leader election on slow machines
-		if err := c.RemoveMember(t, uint64(id)); err != nil {
+		if err := c.RemoveMember(t, c.Members[0].Client, uint64(id)); err != nil {
 			if strings.Contains(err.Error(), "no leader") {
 				t.Logf("got leader error (%v)", err)
 				i--
@@ -180,7 +179,9 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 
 	// remove all the previous three members and add in three new members.
 	for i := 0; i < 3; i++ {
-		c.MustRemoveMember(t, uint64(c.Members[0].Server.ID()))
+		if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[1].Server.ID())); err != nil {
+			t.Fatal(err)
+		}
 		c.WaitMembersForLeader(t, c.Members)
 
 		c.AddMember(t)
@@ -199,7 +200,9 @@ func TestIssue2681(t *testing.T) {
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5})
 	defer c.Terminate(t)
 
-	c.MustRemoveMember(t, uint64(c.Members[4].Server.ID()))
+	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[4].Server.ID())); err != nil {
+		t.Fatal(err)
+	}
 	c.WaitMembersForLeader(t, c.Members)
 
 	c.AddMember(t)
@@ -223,7 +226,9 @@ func testIssue2746(t *testing.T, members int) {
 		clusterMustProgress(t, c.Members)
 	}
 
-	c.MustRemoveMember(t, uint64(c.Members[members-1].Server.ID()))
+	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[members-1].Server.ID())); err != nil {
+		t.Fatal(err)
+	}
 	c.WaitMembersForLeader(t, c.Members)
 
 	c.AddMember(t)
@@ -235,33 +240,32 @@ func testIssue2746(t *testing.T, members int) {
 func TestIssue2904(t *testing.T) {
 	integration.BeforeTest(t)
 	// start 1-member Cluster to ensure member 0 is the leader of the Cluster.
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 2, UseBridge: true})
 	defer c.Terminate(t)
+	c.WaitLeader(t)
 
 	c.AddMember(t)
-	c.Members[1].Stop(t)
+	c.Members[2].Stop(t)
 
 	// send remove member-1 request to the Cluster.
-	cc := integration.MustNewHTTPClient(t, c.URLs(), nil)
-	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 	// the proposal is not committed because member 1 is stopped, but the
 	// proposal is appended to leader'Server raft log.
-	ma.Remove(ctx, c.Members[1].Server.ID().String())
+	c.Members[0].Client.MemberRemove(ctx, uint64(c.Members[2].Server.ID()))
 	cancel()
 
 	// restart member, and expect it to send UpdateAttributes request.
 	// the log in the leader is like this:
 	// [..., remove 1, ..., update attr 1, ...]
-	c.Members[1].Restart(t)
+	c.Members[2].Restart(t)
 	// when the member comes back, it ack the proposal to remove itself,
 	// and apply it.
-	<-c.Members[1].Server.StopNotify()
+	<-c.Members[2].Server.StopNotify()
 
 	// terminate removed member
-	c.Members[1].Client.Close()
-	c.Members[1].Terminate(t)
-	c.Members = c.Members[:1]
+	c.Members[2].Client.Close()
+	c.Members[2].Terminate(t)
+	c.Members = c.Members[:2]
 	// wait member to be removed.
 	c.WaitMembersMatch(t, c.HTTPMembers())
 }
@@ -329,12 +333,12 @@ func TestRejectUnhealthyAdd(t *testing.T) {
 
 	// all attempts to add member should fail
 	for i := 1; i < len(c.Members); i++ {
-		err := c.AddMemberByURL(t, c.URL(i), "unix://foo:12345")
+		err := c.AddMemberByURL(t, c.Members[i].Client, "unix://foo:12345")
 		if err == nil {
 			t.Fatalf("should have failed adding peer")
 		}
 		// TODO: client should return descriptive error codes for internal errors
-		if !strings.Contains(err.Error(), "has no leader") {
+		if !strings.Contains(err.Error(), "unhealthy cluster") {
 			t.Errorf("unexpected error (%v)", err)
 		}
 	}
@@ -347,7 +351,7 @@ func TestRejectUnhealthyAdd(t *testing.T) {
 	// add member should succeed now that it'Server healthy
 	var err error
 	for i := 1; i < len(c.Members); i++ {
-		if err = c.AddMemberByURL(t, c.URL(i), "unix://foo:12345"); err == nil {
+		if err = c.AddMemberByURL(t, c.Members[i].Client, "unix://foo:12345"); err == nil {
 			break
 		}
 	}
@@ -366,15 +370,15 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	// make cluster unhealthy and wait for downed peer; (3 up, 2 down)
 	c.Members[0].Stop(t)
 	c.Members[1].Stop(t)
-	c.WaitLeader(t)
+	leader := c.WaitLeader(t)
 
 	// reject remove active member since (3,2)-(1,0) => (2,2) lacks quorum
-	err := c.RemoveMember(t, uint64(c.Members[2].Server.ID()))
+	err := c.RemoveMember(t, c.Members[leader].Client, uint64(c.Members[2].Server.ID()))
 	if err == nil {
-		t.Fatalf("should reject quorum breaking remove")
+		t.Fatalf("should reject quorum breaking remove: %s", err)
 	}
 	// TODO: client should return more descriptive error codes for internal errors
-	if !strings.Contains(err.Error(), "has no leader") {
+	if !strings.Contains(err.Error(), "unhealthy cluster") {
 		t.Errorf("unexpected error (%v)", err)
 	}
 
@@ -382,8 +386,8 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	time.Sleep(time.Duration(integration.ElectionTicks * int(integration.TickDuration)))
 
 	// permit remove dead member since (3,2) - (0,1) => (3,1) has quorum
-	if err = c.RemoveMember(t, uint64(c.Members[0].Server.ID())); err != nil {
-		t.Fatalf("should accept removing down member")
+	if err = c.RemoveMember(t, c.Members[2].Client, uint64(c.Members[0].Server.ID())); err != nil {
+		t.Fatalf("should accept removing down member: %s", err)
 	}
 
 	// bring cluster to (4,1)
@@ -393,7 +397,7 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	time.Sleep((3 * etcdserver.HealthInterval) / 2)
 
 	// accept remove member since (4,1)-(1,0) => (3,1) has quorum
-	if err = c.RemoveMember(t, uint64(c.Members[0].Server.ID())); err != nil {
+	if err = c.RemoveMember(t, c.Members[1].Client, uint64(c.Members[0].Server.ID())); err != nil {
 		t.Fatalf("expected to remove member, got error %v", err)
 	}
 }
@@ -405,7 +409,7 @@ func TestRestartRemoved(t *testing.T) {
 	integration.BeforeTest(t)
 
 	// 1. start single-member Cluster
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, StrictReconfigCheck: true, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, StrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	// 2. add a new member
@@ -417,7 +421,7 @@ func TestRestartRemoved(t *testing.T) {
 	firstMember.KeepDataDirTerminate = true
 
 	// 3. remove first member, shut down without deleting data
-	if err := c.RemoveMember(t, uint64(firstMember.Server.ID())); err != nil {
+	if err := c.RemoveMember(t, c.Members[1].Client, uint64(firstMember.Server.ID())); err != nil {
 		t.Fatalf("expected to remove member, got error %v", err)
 	}
 	c.WaitLeader(t)

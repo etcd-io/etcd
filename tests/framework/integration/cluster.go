@@ -318,9 +318,8 @@ func (c *Cluster) addMember(t testutil.TB) types.URLs {
 	// send add request to the Cluster
 	var err error
 	for i := 0; i < len(c.Members); i++ {
-		clientURL := c.URL(i)
 		peerURL := scheme + "://" + m.PeerListeners[0].Addr().String()
-		if err = c.AddMemberByURL(t, clientURL, peerURL); err == nil {
+		if err = c.AddMemberByURL(t, c.Members[i].Client, peerURL); err == nil {
 			break
 		}
 	}
@@ -343,11 +342,9 @@ func (c *Cluster) addMember(t testutil.TB) types.URLs {
 	return m.PeerURLs
 }
 
-func (c *Cluster) AddMemberByURL(t testutil.TB, clientURL, peerURL string) error {
-	cc := MustNewHTTPClient(t, []string{clientURL}, c.Cfg.ClientTLS)
-	ma := client.NewMembersAPI(cc)
+func (c *Cluster) AddMemberByURL(t testutil.TB, cc *clientv3.Client, peerURL string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	_, err := ma.Add(ctx, peerURL)
+	_, err := cc.MemberAdd(ctx, []string{peerURL})
 	cancel()
 	if err != nil {
 		return err
@@ -364,18 +361,11 @@ func (c *Cluster) AddMember(t testutil.TB) types.URLs {
 	return c.addMember(t)
 }
 
-func (c *Cluster) MustRemoveMember(t testutil.TB, id uint64) {
-	if err := c.RemoveMember(t, id); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func (c *Cluster) RemoveMember(t testutil.TB, id uint64) error {
+func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) error {
 	// send remove request to the Cluster
-	cc := MustNewHTTPClient(t, c.URLs(), c.Cfg.ClientTLS)
-	ma := client.NewMembersAPI(cc)
+
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-	err := ma.Remove(ctx, types.ID(id).String())
+	_, err := cc.MemberRemove(ctx, id)
 	cancel()
 	if err != nil {
 		return err
