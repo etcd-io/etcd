@@ -1065,11 +1065,9 @@ func (m *Member) WaitOK(t testutil.TB) {
 }
 
 func (m *Member) WaitStarted(t testutil.TB) {
-	cc := MustNewHTTPClient(t, []string{m.URL()}, m.ClientTLSInfo)
-	kapi := client.NewKeysAPI(cc)
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-		_, err := kapi.Get(ctx, "/", nil)
+		_, err := m.Client.Get(ctx, "/", clientv3.WithSerializable())
 		if err != nil {
 			time.Sleep(TickDuration)
 			continue
