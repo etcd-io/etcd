@@ -24,6 +24,7 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    # add permission if needed per discussion in the issue 13588
 
     strategy:
       fail-fast: false
