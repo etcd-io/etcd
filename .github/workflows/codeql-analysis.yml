@@ -24,6 +24,9 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    permissions:
+      # required for all workflows
+      security-events: write
 
     strategy:
       fail-fast: false
