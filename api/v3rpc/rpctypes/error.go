@@ -28,6 +28,7 @@ var (
 	ErrGRPCTooManyOps              = status.New(codes.InvalidArgument, "etcdserver: too many operations in txn request").Err()
 	ErrGRPCDuplicateKey            = status.New(codes.InvalidArgument, "etcdserver: duplicate key given in txn request").Err()
 	ErrGRPCInvalidClientAPIVersion = status.New(codes.InvalidArgument, "etcdserver: invalid client api version").Err()
+	ErrGRPCInvalidSortOption       = status.New(codes.InvalidArgument, "etcdserver: invalid sort option").Err()
 	ErrGRPCCompacted               = status.New(codes.OutOfRange, "etcdserver: mvcc: required revision has been compacted").Err()
 	ErrGRPCFutureRev               = status.New(codes.OutOfRange, "etcdserver: mvcc: required revision is a future revision").Err()
 	ErrGRPCNoSpace                 = status.New(codes.ResourceExhausted, "etcdserver: mvcc: database space exceeded").Err()
@@ -96,11 +97,12 @@ var (
 		ErrorDesc(ErrGRPCValueProvided): ErrGRPCValueProvided,
 		ErrorDesc(ErrGRPCLeaseProvided): ErrGRPCLeaseProvided,
 
-		ErrorDesc(ErrGRPCTooManyOps):   ErrGRPCTooManyOps,
-		ErrorDesc(ErrGRPCDuplicateKey): ErrGRPCDuplicateKey,
-		ErrorDesc(ErrGRPCCompacted):    ErrGRPCCompacted,
-		ErrorDesc(ErrGRPCFutureRev):    ErrGRPCFutureRev,
-		ErrorDesc(ErrGRPCNoSpace):      ErrGRPCNoSpace,
+		ErrorDesc(ErrGRPCTooManyOps):        ErrGRPCTooManyOps,
+		ErrorDesc(ErrGRPCDuplicateKey):      ErrGRPCDuplicateKey,
+		ErrorDesc(ErrGRPCInvalidSortOption): ErrGRPCInvalidSortOption,
+		ErrorDesc(ErrGRPCCompacted):         ErrGRPCCompacted,
+		ErrorDesc(ErrGRPCFutureRev):         ErrGRPCFutureRev,
+		ErrorDesc(ErrGRPCNoSpace):           ErrGRPCNoSpace,
 
 		ErrorDesc(ErrGRPCLeaseNotFound):    ErrGRPCLeaseNotFound,
 		ErrorDesc(ErrGRPCLeaseExist):       ErrGRPCLeaseExist,
@@ -158,15 +160,16 @@ var (
 
 // client-side error
 var (
-	ErrEmptyKey      = Error(ErrGRPCEmptyKey)
-	ErrKeyNotFound   = Error(ErrGRPCKeyNotFound)
-	ErrValueProvided = Error(ErrGRPCValueProvided)
-	ErrLeaseProvided = Error(ErrGRPCLeaseProvided)
-	ErrTooManyOps    = Error(ErrGRPCTooManyOps)
-	ErrDuplicateKey  = Error(ErrGRPCDuplicateKey)
-	ErrCompacted     = Error(ErrGRPCCompacted)
-	ErrFutureRev     = Error(ErrGRPCFutureRev)
-	ErrNoSpace       = Error(ErrGRPCNoSpace)
+	ErrEmptyKey          = Error(ErrGRPCEmptyKey)
+	ErrKeyNotFound       = Error(ErrGRPCKeyNotFound)
+	ErrValueProvided     = Error(ErrGRPCValueProvided)
+	ErrLeaseProvided     = Error(ErrGRPCLeaseProvided)
+	ErrTooManyOps        = Error(ErrGRPCTooManyOps)
+	ErrDuplicateKey      = Error(ErrGRPCDuplicateKey)
+	ErrInvalidSortOption = Error(ErrGRPCInvalidSortOption)
+	ErrCompacted         = Error(ErrGRPCCompacted)
+	ErrFutureRev         = Error(ErrGRPCFutureRev)
+	ErrNoSpace           = Error(ErrGRPCNoSpace)
 
 	ErrLeaseNotFound    = Error(ErrGRPCLeaseNotFound)
 	ErrLeaseExist       = Error(ErrGRPCLeaseExist)

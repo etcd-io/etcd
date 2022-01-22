@@ -36,3 +36,42 @@ func TestOpWithSort(t *testing.T) {
 		t.Fatalf("expected %+v, got %+v", wreq, req)
 	}
 }
+
+func TestIsSortOptionValid(t *testing.T) {
+	rangeReqs := []struct {
+		sortOrder     pb.RangeRequest_SortOrder
+		sortTarget    pb.RangeRequest_SortTarget
+		expectedValid bool
+	}{
+		{
+			sortOrder:     pb.RangeRequest_ASCEND,
+			sortTarget:    pb.RangeRequest_CREATE,
+			expectedValid: true,
+		},
+		{
+			sortOrder:     pb.RangeRequest_ASCEND,
+			sortTarget:    100,
+			expectedValid: false,
+		},
+		{
+			sortOrder:     200,
+			sortTarget:    pb.RangeRequest_MOD,
+			expectedValid: false,
+		},
+	}
+
+	for _, req := range rangeReqs {
+		getOp := Op{
+			sort: &SortOption{
+				Order:  SortOrder(req.sortOrder),
+				Target: SortTarget(req.sortTarget),
+			},
+		}
+
+		actualRet := getOp.IsSortOptionValid()
+		if actualRet != req.expectedValid {
+			t.Errorf("expected sortOrder (%d) and sortTarget (%d) to be %t, but got %t",
+				req.sortOrder, req.sortTarget, req.expectedValid, actualRet)
+		}
+	}
+}

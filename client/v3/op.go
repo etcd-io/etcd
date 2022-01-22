@@ -581,3 +581,19 @@ func IsOptsWithFromKey(opts []OpOption) bool {
 
 	return ret.isOptsWithFromKey
 }
+
+func (op Op) IsSortOptionValid() bool {
+	if op.sort != nil {
+		sortOrder := int32(op.sort.Order)
+		sortTarget := int32(op.sort.Target)
+
+		if _, ok := pb.RangeRequest_SortOrder_name[sortOrder]; !ok {
+			return false
+		}
+
+		if _, ok := pb.RangeRequest_SortTarget_name[sortTarget]; !ok {
+			return false
+		}
+	}
+	return true
+}
