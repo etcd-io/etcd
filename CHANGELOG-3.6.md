@@ -53,4 +53,8 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 
 - Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).
 
+### Other
+
+- Use Distroless as base image to make the image less vulnerable and reduce image size.
+
 <hr>

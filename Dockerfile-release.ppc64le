@@ -1,5 +1,8 @@
-# base image source: https://git.k8s.io/release/images/build/debian-base
-FROM --platform=linux/ppc64le k8s.gcr.io/build-image/debian-base:bullseye-v1.1.0
+FROM --platform=linux/ppc64le busybox:1.34.1 as source
+FROM --platform=linux/ppc64le gcr.io/distroless/base-debian11
+
+COPY --from=source /bin/sh /bin/sh
+COPY --from=source /bin/mkdir /bin/mkdir
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
