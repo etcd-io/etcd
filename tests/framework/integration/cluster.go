@@ -588,6 +588,8 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	peerScheme := SchemeFromTLSInfo(mcfg.PeerTLS)
 	clientScheme := SchemeFromTLSInfo(mcfg.ClientTLS)
 
+	m.EnableV2Discovery = embed.DefaultEnableV2Discovery
+
 	pln := newLocalListener(t)
 	m.PeerListeners = []net.Listener{pln}
 	m.PeerURLs, err = types.NewURLs([]string{peerScheme + "://" + pln.Addr().String()})
