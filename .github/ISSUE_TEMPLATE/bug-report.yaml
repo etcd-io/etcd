@@ -1,0 +1,92 @@
+name: Bug Report
+description: Report a bug encountered while operating Etcd
+labels:
+- area/bug
+body:
+- type: markdown
+  attributes:
+    value: |
+      Please read https://etcd.io/docs/latest/reporting_bugs/
+      If this matter is security related, please disclose it privately via security@etcd.io.
+      Please fill the form below and provide as much information as possible.
+      Not doing so may result in your bug not being addressed in a timely manner.
+
+- type: textarea
+  id: problem
+  attributes:
+    label: What happened?
+  validations:
+    required: true
+
+- type: textarea
+  id: expected
+  attributes:
+    label: What did you expect to happen?
+  validations:
+    required: true
+
+- type: textarea
+  id: repro
+  attributes:
+    label: How can we reproduce it (as minimally and precisely as possible)?
+  validations:
+    required: true
+
+- type: textarea
+  id: additional
+  attributes:
+    label: Anything else we need to know?
+
+- type: textarea
+  id: etcdVersion
+  attributes:
+    label: Etcd version (please run commands below)
+    value: |
+      <details>
+
+      ```console
+      $ etcd --version
+      # paste output here
+
+      $ etcdctl version
+      # paste output here
+      ```
+
+      </details>
+  validations:
+    required: true
+
+- type: textarea
+  id: config
+  attributes:
+    label: Etcd configuration (command line flags or environment variables)
+    value: |
+      <details>
+
+      # paste your configuration here
+
+      </details>
+
+- type: textarea
+  id: etcdDebugInformation
+  attributes:
+    label: Etcd debug information (please run commands blow, feel free to obfuscate the IP address or FQDN in the output)
+    value: |
+      <details>
+
+      ```console
+      $ etcdctl member list -w table
+      # paste output here
+
+      $ etcdctl --endpoints=<member list> endpoint status -w table
+      # paste output here
+      ```
+
+      </details>
+
+- type: textarea
+  id: logs
+  attributes:
+    label: Relevant log output
+    description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+    render: shell
