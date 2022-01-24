@@ -419,13 +419,14 @@ func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
 	for _, m := range membs {
 		possibleLead[uint64(m.Server.ID())] = true
 	}
-	cc := MustNewHTTPClient(t, getMembersURLs(membs), nil)
-	kapi := client.NewKeysAPI(cc)
-
+	cc, err := c.ClusterClient()
+	if err != nil {
+		t.Fatal(err)
+	}
 	// ensure leader is up via linearizable get
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*TickDuration+time.Second)
-		_, err := kapi.Get(ctx, "0", &client.GetOptions{Quorum: true})
+		_, err := cc.Get(ctx, "0")
 		cancel()
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
