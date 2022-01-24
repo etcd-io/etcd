@@ -47,7 +47,7 @@ func TestEtcdGrpcResolver(t *testing.T) {
 	}
 	defer s2.Stop()
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.Client(0), "foo")

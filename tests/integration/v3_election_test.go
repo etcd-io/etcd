@@ -28,7 +28,7 @@ import (
 // TestElectionWait tests if followers can correctly wait for elections.
 func TestElectionWait(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	leaders := 3
@@ -110,7 +110,7 @@ func TestElectionWait(t *testing.T) {
 // TestElectionFailover tests that an election will
 func TestElectionFailover(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	cctx, cancel := context.WithCancel(context.TODO())
@@ -120,7 +120,7 @@ func TestElectionFailover(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		var err error
-		ss[i], err = concurrency.NewSession(clus.Clients[i])
+		ss[i], err = concurrency.NewSession(clus.Client(i))
 		if err != nil {
 			t.Error(err)
 		}
@@ -178,7 +178,7 @@ func TestElectionFailover(t *testing.T) {
 // with the same lock will Proclaim instead of deadlocking.
 func TestElectionSessionRecampaign(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.RandClient()
 
@@ -211,7 +211,7 @@ func TestElectionSessionRecampaign(t *testing.T) {
 //
 func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
@@ -238,7 +238,7 @@ func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 // leadership.
 func TestElectionOnSessionRestart(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.RandClient()
 
@@ -285,7 +285,7 @@ func TestElectionOnSessionRestart(t *testing.T) {
 // a leader key with a modrev less than the compaction revision.
 func TestElectionObserveCompacted(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)

@@ -17,8 +17,9 @@ package membership
 import (
 	"encoding/json"
 	"fmt"
-	"go.etcd.io/etcd/client/pkg/v3/types"
 	"path"
+
+	"go.etcd.io/etcd/client/pkg/v3/types"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 

@@ -18,19 +18,16 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestPauseMember(t *testing.T) {
 	integration.BeforeTest(t)
 
-	c := integration.NewCluster(t, 5)
-	c.Launch(t)
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5})
 	defer c.Terminate(t)
 
 	for i := 0; i < 5; i++ {
@@ -47,8 +44,7 @@ func TestPauseMember(t *testing.T) {
 
 func TestRestartMember(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewClusterFromConfig(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
-	c.Launch(t)
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer c.Terminate(t)
 
 	for i := 0; i < 3; i++ {
@@ -69,14 +65,13 @@ func TestRestartMember(t *testing.T) {
 func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	integration.BeforeTest(t)
 	size := 3
-	c := integration.NewCluster(t, size)
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size})
 	m := c.Members[0].Clone(t)
 	var err error
 	m.DataDir, err = os.MkdirTemp(t.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.Launch(t)
 	defer c.Terminate(t)
 
 	if err := m.Launch(); err == nil {
@@ -93,16 +88,14 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 	m.SnapshotCount = 100
 	m.Launch()
 	defer m.Terminate(t)
+	defer m.Client.Close()
 	m.WaitOK(t)
 
-	resps := make([]*client.Response, 120)
 	var err error
 	for i := 0; i < 120; i++ {
-		cc := integration.MustNewHTTPClient(t, []string{m.URL()}, nil)
-		kapi := client.NewKeysAPI(cc)
 		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 		key := fmt.Sprintf("foo%d", i)
-		resps[i], err = kapi.Create(ctx, "/"+key, "bar")
+		_, err = m.Client.Put(ctx, "/"+key, "bar")
 		if err != nil {
 			t.Fatalf("#%d: create on %s error: %v", i, m.URL(), err)
 		}
@@ -113,18 +106,16 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 
 	m.WaitOK(t)
 	for i := 0; i < 120; i++ {
-		cc := integration.MustNewHTTPClient(t, []string{m.URL()}, nil)
-		kapi := client.NewKeysAPI(cc)
 		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 		key := fmt.Sprintf("foo%d", i)
-		resp, err := kapi.Get(ctx, "/"+key, nil)
+		resp, err := m.Client.Get(ctx, "/"+key)
 		if err != nil {
 			t.Fatalf("#%d: get on %s error: %v", i, m.URL(), err)
 		}
 		cancel()
 
-		if !reflect.DeepEqual(resp.Node, resps[i].Node) {
-			t.Errorf("#%d: node = %v, want %v", i, resp.Node, resps[i].Node)
+		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "bar" {
+			t.Errorf("#%d: got = %v, want %v", i, resp.Kvs[0], "bar")
 		}
 	}
 }

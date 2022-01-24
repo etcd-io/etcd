@@ -83,7 +83,7 @@ var (
 
 	// LocalListenCount integration test uses unique ports, counting up, to listen for each
 	// member, ensuring restarted members can listen on the same port again.
-	LocalListenCount = int64(0)
+	LocalListenCount = int32(0)
 
 	TestTLSInfo = transport.TLSInfo{
 		KeyFile:        MustAbsPath("../fixtures/server.key.insecure"),
@@ -139,8 +139,6 @@ type ClusterConfig struct {
 
 	AuthToken string
 
-	UseGRPC bool
-
 	QuotaBackendBytes int64
 
 	MaxTxnOps              uint
@@ -151,9 +149,6 @@ type ClusterConfig struct {
 	GRPCKeepAliveMinTime  time.Duration
 	GRPCKeepAliveInterval time.Duration
 	GRPCKeepAliveTimeout  time.Duration
-
-	// SkipCreatingClient to skip creating clients for each member.
-	SkipCreatingClient bool
 
 	ClientMaxCallSendMsgSize int
 	ClientMaxCallRecvMsgSize int
@@ -172,17 +167,16 @@ type ClusterConfig struct {
 
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
+	StrictReconfigCheck         bool
 }
 
 type Cluster struct {
 	Cfg           *ClusterConfig
 	Members       []*Member
 	LastMemberNum int
-}
 
-func (c *Cluster) generateMemberName() string {
-	c.LastMemberNum++
-	return fmt.Sprintf("m%v", c.LastMemberNum-1)
+	mu            sync.Mutex
+	clusterClient *clientv3.Client
 }
 
 func SchemeFromTLSInfo(tls *transport.TLSInfo) string {
@@ -214,34 +208,6 @@ func (c *Cluster) fillClusterForMembers() error {
 		}
 	}
 	return nil
-}
-
-func NewClusterFromConfig(t testutil.TB, cfg *ClusterConfig) *Cluster {
-	testutil.SkipTestIfShortMode(t, "Cannot start etcd Cluster in --short tests")
-
-	c := &Cluster{Cfg: cfg}
-	ms := make([]*Member, cfg.Size)
-	for i := 0; i < cfg.Size; i++ {
-		ms[i] = c.mustNewMember(t, int64(i))
-	}
-	c.Members = ms
-	if err := c.fillClusterForMembers(); err != nil {
-		t.Fatal(err)
-	}
-
-	return c
-}
-
-// NewCluster returns an unlaunched Cluster of the given size which has been
-// set to use static bootstrap.
-func NewCluster(t testutil.TB, size int) *Cluster {
-	t.Helper()
-	return NewClusterFromConfig(t, &ClusterConfig{Size: size})
-}
-
-// NewClusterByConfig returns an unlaunched Cluster defined by a Cluster configuration
-func NewClusterByConfig(t testutil.TB, cfg *ClusterConfig) *Cluster {
-	return NewClusterFromConfig(t, cfg)
 }
 
 func (c *Cluster) Launch(t testutil.TB) {
@@ -309,10 +275,12 @@ func (c *Cluster) HTTPMembers() []client.Member {
 	return ms
 }
 
-func (c *Cluster) mustNewMember(t testutil.TB, memberNumber int64) *Member {
+func (c *Cluster) mustNewMember(t testutil.TB) *Member {
+	memberNumber := c.LastMemberNum
+	c.LastMemberNum++
 	m := MustNewMember(t,
 		MemberConfig{
-			Name:                        c.generateMemberName(),
+			Name:                        fmt.Sprintf("m%v", memberNumber-1),
 			MemberNumber:                memberNumber,
 			AuthToken:                   c.Cfg.AuthToken,
 			PeerTLS:                     c.Cfg.PeerTLS,
@@ -335,19 +303,15 @@ func (c *Cluster) mustNewMember(t testutil.TB, memberNumber int64) *Member {
 			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
 			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
+			StrictReconfigCheck:         c.Cfg.StrictReconfigCheck,
 		})
 	m.DiscoveryURL = c.Cfg.DiscoveryURL
-	if c.Cfg.UseGRPC {
-		if err := m.listenGRPC(); err != nil {
-			t.Fatal(err)
-		}
-	}
 	return m
 }
 
 // addMember return PeerURLs of the added member.
 func (c *Cluster) addMember(t testutil.TB) types.URLs {
-	m := c.mustNewMember(t, 0)
+	m := c.mustNewMember(t)
 
 	scheme := SchemeFromTLSInfo(c.Cfg.PeerTLS)
 
@@ -421,6 +385,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, id uint64) error {
 		if uint64(m.Server.ID()) != id {
 			newMembers = append(newMembers, m)
 		} else {
+			m.Client.Close()
 			select {
 			case <-m.Server.StopNotify():
 				m.Terminate(t)
@@ -435,18 +400,6 @@ func (c *Cluster) RemoveMember(t testutil.TB, id uint64) error {
 	c.Members = newMembers
 	c.WaitMembersMatch(t, c.HTTPMembers())
 	return nil
-}
-
-func (c *Cluster) Terminate(t testutil.TB) {
-	var wg sync.WaitGroup
-	wg.Add(len(c.Members))
-	for _, m := range c.Members {
-		go func(mm *Member) {
-			defer wg.Done()
-			mm.Terminate(t)
-		}(m)
-	}
-	wg.Wait()
 }
 
 func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []client.Member) {
@@ -560,7 +513,7 @@ func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {
 }
 
 func newLocalListener(t testutil.TB) net.Listener {
-	c := atomic.AddInt64(&LocalListenCount, 1)
+	c := atomic.AddInt32(&LocalListenCount, 1)
 	// Go 1.8+ allows only numbers in port
 	addr := fmt.Sprintf("127.0.0.1:%05d%05d", c+BasePort, os.Getpid())
 	return NewListenerWithAddr(t, addr)
@@ -576,8 +529,8 @@ func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
 
 type Member struct {
 	config.ServerConfig
-	UniqNumber                     int64
-	MemberNumber                   int64
+	UniqNumber                     int
+	MemberNumber                   int
 	PeerListeners, ClientListeners []net.Listener
 	GrpcListener                   net.Listener
 	// PeerTLSInfo enables peer TLS when set
@@ -598,6 +551,8 @@ type Member struct {
 
 	// ServerClient is a clientv3 that directly calls the etcdserver.
 	ServerClient *clientv3.Client
+	// Client is a clientv3 that communicates via socket, either UNIX or TCP.
+	Client *clientv3.Client
 
 	KeepDataDirTerminate     bool
 	ClientMaxCallSendMsgSize int
@@ -617,7 +572,7 @@ func (m *Member) GRPCURL() string { return m.GrpcURL }
 type MemberConfig struct {
 	Name                        string
 	UniqNumber                  int64
-	MemberNumber                int64
+	MemberNumber                int
 	PeerTLS                     *transport.TLSInfo
 	ClientTLS                   *transport.TLSInfo
 	AuthToken                   string
@@ -639,6 +594,7 @@ type MemberConfig struct {
 	LeaseCheckpointPersist      bool
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
+	StrictReconfigCheck         bool
 }
 
 // MustNewMember return an inited member with the given name. If peerTLS is
@@ -647,7 +603,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	var err error
 	m := &Member{
 		MemberNumber: mcfg.MemberNumber,
-		UniqNumber:   atomic.AddInt64(&LocalListenCount, 1),
+		UniqNumber:   int(atomic.AddInt32(&LocalListenCount, 1)),
 	}
 
 	peerScheme := SchemeFromTLSInfo(mcfg.PeerTLS)
@@ -750,6 +706,10 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
 	m.GrpcServerRecorder = &grpc_testing.GrpcRecorder{}
 	m.Logger = memberLogger(t, mcfg.Name)
+	m.StrictReconfigCheck = mcfg.StrictReconfigCheck
+	if err := m.listenGRPC(); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
 		// might reuse this (t).
@@ -847,7 +807,7 @@ func (m *Member) grpcAddr() (network, host, port string) {
 	return network, host, port
 }
 
-func GrpcPortNumber(uniqNumber, memberNumber int64) int64 {
+func GrpcPortNumber(uniqNumber, memberNumber int) int {
 	return BaseGRPCPort + uniqNumber*10 + memberNumber
 }
 
@@ -1085,6 +1045,12 @@ func (m *Member) Launch() error {
 			hs.Close()
 		}
 		m.ServerClosers = append(m.ServerClosers, closer)
+	}
+	if m.GrpcURL != "" && m.Client == nil {
+		m.Client, err = NewClientV3(m)
+		if err != nil {
+			return err
+		}
 	}
 
 	m.Logger.Info(
@@ -1387,75 +1353,68 @@ func (p SortableMemberSliceByPeerURLs) Less(i, j int) bool {
 }
 func (p SortableMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
-type ClusterV3 struct {
-	*Cluster
-
-	mu            sync.Mutex
-	Clients       []*clientv3.Client
-	clusterClient *clientv3.Client
-}
-
-// NewClusterV3 returns a launched Cluster with a grpc client connection
+// NewCluster returns a launched Cluster with a grpc client connection
 // for each Cluster member.
-func NewClusterV3(t testutil.TB, cfg *ClusterConfig) *ClusterV3 {
+func NewCluster(t testutil.TB, cfg *ClusterConfig) *Cluster {
 	t.Helper()
 
 	assertInTestContext(t)
 
-	cfg.UseGRPC = true
+	testutil.SkipTestIfShortMode(t, "Cannot start etcd Cluster in --short tests")
 
-	clus := &ClusterV3{
-		Cluster: NewClusterByConfig(t, cfg),
+	c := &Cluster{Cfg: cfg}
+	ms := make([]*Member, cfg.Size)
+	for i := 0; i < cfg.Size; i++ {
+		ms[i] = c.mustNewMember(t)
 	}
-	clus.Launch(t)
-
-	if !cfg.SkipCreatingClient {
-		for _, m := range clus.Members {
-			client, err := NewClientV3(m)
-			if err != nil {
-				t.Fatalf("cannot create client: %v", err)
-			}
-			clus.Clients = append(clus.Clients, client)
-		}
+	c.Members = ms
+	if err := c.fillClusterForMembers(); err != nil {
+		t.Fatal(err)
 	}
+	c.Launch(t)
 
-	return clus
+	return c
 }
 
-func (c *ClusterV3) TakeClient(idx int) {
+func (c *Cluster) TakeClient(idx int) {
 	c.mu.Lock()
-	c.Clients[idx] = nil
+	c.Members[idx].Client = nil
 	c.mu.Unlock()
 }
 
-func (c *ClusterV3) Terminate(t testutil.TB) {
+func (c *Cluster) Terminate(t testutil.TB) {
 	c.mu.Lock()
-	for _, client := range c.Clients {
-		if client == nil {
-			continue
-		}
-		if err := client.Close(); err != nil {
-			t.Error(err)
-		}
-	}
 	if c.clusterClient != nil {
 		if err := c.clusterClient.Close(); err != nil {
 			t.Error(err)
 		}
 	}
 	c.mu.Unlock()
-	c.Cluster.Terminate(t)
+	for _, m := range c.Members {
+		if m.Client != nil {
+			m.Client.Close()
+		}
+	}
+	var wg sync.WaitGroup
+	wg.Add(len(c.Members))
+	for _, m := range c.Members {
+		go func(mm *Member) {
+			defer wg.Done()
+			mm.Terminate(t)
+		}(m)
+	}
+	wg.Wait()
 }
 
-func (c *ClusterV3) RandClient() *clientv3.Client {
-	return c.Clients[rand.Intn(len(c.Clients))]
+func (c *Cluster) RandClient() *clientv3.Client {
+	return c.Members[rand.Intn(len(c.Members))].Client
 }
 
-func (c *ClusterV3) Client(i int) *clientv3.Client {
-	return c.Clients[i]
+func (c *Cluster) Client(i int) *clientv3.Client {
+	return c.Members[i].Client
 }
 
-func (c *ClusterV3) ClusterClient() (client *clientv3.Client, err error) {
+func (c *Cluster) ClusterClient() (client *clientv3.Client, err error) {
 	if c.clusterClient == nil {
 		endpoints := []string{}
 		for _, m := range c.Members {
@@ -1475,11 +1434,11 @@ func (c *ClusterV3) ClusterClient() (client *clientv3.Client, err error) {
 }
 
 // NewClientV3 creates a new grpc client connection to the member
-func (c *ClusterV3) NewClientV3(memberIndex int) (*clientv3.Client, error) {
+func (c *Cluster) NewClientV3(memberIndex int) (*clientv3.Client, error) {
 	return NewClientV3(c.Members[memberIndex])
 }
 
-func makeClients(t testutil.TB, clus *ClusterV3, clients *[]*clientv3.Client, chooseMemberIndex func() int) func() *clientv3.Client {
+func makeClients(t testutil.TB, clus *Cluster, clients *[]*clientv3.Client, chooseMemberIndex func() int) func() *clientv3.Client {
 	var mu sync.Mutex
 	*clients = nil
 	return func() *clientv3.Client {
@@ -1496,13 +1455,13 @@ func makeClients(t testutil.TB, clus *ClusterV3, clients *[]*clientv3.Client, ch
 
 // MakeSingleNodeClients creates factory of clients that all connect to member 0.
 // All the created clients are put on the 'clients' list. The factory is thread-safe.
-func MakeSingleNodeClients(t testutil.TB, clus *ClusterV3, clients *[]*clientv3.Client) func() *clientv3.Client {
+func MakeSingleNodeClients(t testutil.TB, clus *Cluster, clients *[]*clientv3.Client) func() *clientv3.Client {
 	return makeClients(t, clus, clients, func() int { return 0 })
 }
 
 // MakeMultiNodeClients creates factory of clients that all connect to random members.
 // All the created clients are put on the 'clients' list. The factory is thread-safe.
-func MakeMultiNodeClients(t testutil.TB, clus *ClusterV3, clients *[]*clientv3.Client) func() *clientv3.Client {
+func MakeMultiNodeClients(t testutil.TB, clus *Cluster, clients *[]*clientv3.Client) func() *clientv3.Client {
 	return makeClients(t, clus, clients, func() int { return rand.Intn(len(clus.Members)) })
 }
 
@@ -1535,7 +1494,7 @@ type GrpcAPI struct {
 }
 
 // GetLearnerMembers returns the list of learner members in Cluster using MemberList API.
-func (c *ClusterV3) GetLearnerMembers() ([]*pb.Member, error) {
+func (c *Cluster) GetLearnerMembers() ([]*pb.Member, error) {
 	cli := c.Client(0)
 	resp, err := cli.MemberList(context.Background())
 	if err != nil {
@@ -1552,8 +1511,8 @@ func (c *ClusterV3) GetLearnerMembers() ([]*pb.Member, error) {
 
 // AddAndLaunchLearnerMember creates a leaner member, adds it to Cluster
 // via v3 MemberAdd API, and then launches the new member.
-func (c *ClusterV3) AddAndLaunchLearnerMember(t testutil.TB) {
-	m := c.mustNewMember(t, 0)
+func (c *Cluster) AddAndLaunchLearnerMember(t testutil.TB) {
+	m := c.mustNewMember(t)
 	m.IsLearner = true
 
 	scheme := SchemeFromTLSInfo(c.Cfg.PeerTLS)
@@ -1582,7 +1541,7 @@ func (c *ClusterV3) AddAndLaunchLearnerMember(t testutil.TB) {
 }
 
 // getMembers returns a list of members in Cluster, in format of etcdserverpb.Member
-func (c *ClusterV3) getMembers() []*pb.Member {
+func (c *Cluster) getMembers() []*pb.Member {
 	var mems []*pb.Member
 	for _, m := range c.Members {
 		mem := &pb.Member{
@@ -1619,7 +1578,7 @@ func (c *ClusterV3) getMembers() []*pb.Member {
 // indicate that the new learner member has applied the raftpb.ConfChangeAddLearnerNode entry
 // which was used to add the learner itself to the Cluster, and therefore it has the correct info
 // on learner.
-func (c *ClusterV3) waitMembersMatch(t testutil.TB) {
+func (c *Cluster) waitMembersMatch(t testutil.TB) {
 	wMembers := c.getMembers()
 	sort.Sort(SortableProtoMemberSliceByPeerURLs(wMembers))
 	cli := c.Client(0)
@@ -1653,8 +1612,8 @@ func (p SortableProtoMemberSliceByPeerURLs) Less(i, j int) bool {
 func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 // MustNewMember creates a new member instance based on the response of V3 Member Add API.
-func (c *ClusterV3) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse) *Member {
-	m := c.mustNewMember(t, 0)
+func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse) *Member {
+	m := c.mustNewMember(t)
 	m.IsLearner = resp.Member.IsLearner
 	m.NewCluster = false
 

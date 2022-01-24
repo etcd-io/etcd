@@ -31,7 +31,7 @@ import (
 func TestSTMConflict(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -99,7 +99,7 @@ func TestSTMConflict(t *testing.T) {
 func TestSTMPutNewKey(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -126,7 +126,7 @@ func TestSTMPutNewKey(t *testing.T) {
 func TestSTMAbort(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -157,7 +157,7 @@ func TestSTMAbort(t *testing.T) {
 func TestSTMSerialize(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -220,7 +220,7 @@ func TestSTMSerialize(t *testing.T) {
 func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -269,7 +269,7 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 func TestSTMSerializableSnapshotPut(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)

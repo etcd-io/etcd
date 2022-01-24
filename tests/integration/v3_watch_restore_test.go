@@ -53,7 +53,7 @@ func MustFetchNotEmptyMetric(tb testing.TB, member *integration.Member, metric s
 func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
 		Size:                   3,
 		SnapshotCount:          10,
 		SnapshotCatchUpEntries: 5,

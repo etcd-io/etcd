@@ -207,7 +207,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 			defer clus.Terminate(t)
 
 			wAPI := integration.ToGRPC(clus.RandClient()).Watch
@@ -294,7 +294,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 func TestV3WatchFutureRevision(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	wAPI := integration.ToGRPC(clus.RandClient()).Watch
@@ -355,7 +355,7 @@ func TestV3WatchFutureRevision(t *testing.T) {
 func TestV3WatchWrongRange(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	wAPI := integration.ToGRPC(clus.RandClient()).Watch
@@ -409,7 +409,7 @@ func TestV3WatchCancelUnsynced(t *testing.T) {
 }
 
 func testV3WatchCancel(t *testing.T, startRev int64) {
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -465,7 +465,7 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 // overlapping puts.
 func TestV3WatchCurrentPutOverlap(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -550,7 +550,7 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 func TestV3WatchEmptyKey(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -608,7 +608,7 @@ func TestV3WatchMultipleWatchersUnsynced(t *testing.T) {
 // that matches all watchers, and another key that matches only
 // one watcher to test if it receives expected events.
 func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -710,7 +710,7 @@ func TestV3WatchMultipleEventsTxnUnsynced(t *testing.T) {
 
 // testV3WatchMultipleEventsTxn tests Watch APIs when it receives multiple events.
 func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -793,7 +793,7 @@ func (evs eventsSortByKey) Less(i, j int) bool {
 
 func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
@@ -882,7 +882,7 @@ func TestV3WatchMultipleStreamsUnsynced(t *testing.T) {
 
 // testV3WatchMultipleStreams tests multiple watchers on the same key on multiple streams.
 func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	wAPI := integration.ToGRPC(clus.RandClient()).Watch
@@ -985,7 +985,7 @@ func TestWatchWithProgressNotify(t *testing.T) {
 	defer func() { v3rpc.SetProgressReportInterval(oldpi) }()
 
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -1035,7 +1035,7 @@ func TestWatchWithProgressNotify(t *testing.T) {
 // TestV3WatcMultiOpenhClose opens many watchers concurrently on multiple streams.
 func TestV3WatchClose(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	c := clus.Client(0)
@@ -1071,7 +1071,7 @@ func TestV3WatchClose(t *testing.T) {
 func TestV3WatchWithFilter(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -1139,7 +1139,7 @@ func TestV3WatchWithFilter(t *testing.T) {
 
 func TestV3WatchWithPrevKV(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	wctx, wcancel := context.WithCancel(context.Background())
@@ -1214,7 +1214,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 func TestV3WatchCancellation(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -1256,7 +1256,7 @@ func TestV3WatchCancellation(t *testing.T) {
 func TestV3WatchCloseCancelRace(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -30,7 +30,7 @@ import (
 func TestMemberList(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
@@ -48,7 +48,7 @@ func TestMemberList(t *testing.T) {
 func TestMemberAdd(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
@@ -67,7 +67,7 @@ func TestMemberAdd(t *testing.T) {
 func TestMemberAddWithExistingURLs(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
@@ -91,7 +91,7 @@ func TestMemberAddWithExistingURLs(t *testing.T) {
 func TestMemberRemove(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.Client(1)
@@ -129,7 +129,7 @@ func TestMemberRemove(t *testing.T) {
 func TestMemberUpdate(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
@@ -157,7 +157,7 @@ func TestMemberUpdate(t *testing.T) {
 func TestMemberAddUpdateWrongURLs(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
@@ -190,7 +190,7 @@ func TestMemberAddUpdateWrongURLs(t *testing.T) {
 func TestMemberAddForLearner(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
@@ -219,7 +219,7 @@ func TestMemberAddForLearner(t *testing.T) {
 func TestMemberPromote(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// member promote request can be sent to any server in cluster,
@@ -296,7 +296,7 @@ func TestMemberPromote(t *testing.T) {
 func TestMemberPromoteMemberNotLearner(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// member promote request can be sent to any server in cluster,
@@ -332,7 +332,7 @@ func TestMemberPromoteMemberNotLearner(t *testing.T) {
 func TestMemberPromoteMemberNotExist(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// member promote request can be sent to any server in cluster,
@@ -382,7 +382,7 @@ func TestMaxLearnerInCluster(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	// 1. start with a cluster with 3 voting member and max learner 2
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, ExperimentalMaxLearners: 2})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, ExperimentalMaxLearners: 2})
 	defer clus.Terminate(t)
 
 	// 2. adding 2 learner members should succeed

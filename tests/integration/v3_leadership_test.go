@@ -33,7 +33,7 @@ func TestMoveLeaderService(t *testing.T) { testMoveLeader(t, false) }
 func testMoveLeader(t *testing.T, auto bool) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	oldLeadIdx := clus.WaitLeader(t)
@@ -101,7 +101,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 func TestMoveLeaderError(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	oldLeadIdx := clus.WaitLeader(t)
@@ -120,7 +120,7 @@ func TestMoveLeaderError(t *testing.T) {
 func TestMoveLeaderToLearnerError(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// we have to add and launch learner member after initial cluster was created, because
@@ -153,7 +153,7 @@ func TestMoveLeaderToLearnerError(t *testing.T) {
 func TestTransferLeadershipWithLearner(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	clus.AddAndLaunchLearnerMember(t)
@@ -187,7 +187,7 @@ func TestFirstCommitNotification(t *testing.T) {
 	integration.BeforeTest(t)
 	ctx := context.Background()
 	clusterSize := 3
-	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
+	cluster := integration.NewCluster(t, &integration.ClusterConfig{Size: clusterSize})
 	defer cluster.Terminate(t)
 
 	oldLeaderIdx := cluster.WaitLeader(t)

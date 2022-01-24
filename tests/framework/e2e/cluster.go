@@ -170,6 +170,7 @@ type EtcdProcessClusterConfig struct {
 	V2deprecation       string
 
 	RollingStart bool
+	Discovery    string
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -273,6 +274,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 			"--data-dir", dataDirPath,
 			"--snapshot-count", fmt.Sprintf("%d", cfg.SnapshotCount),
 		}
+
 		if cfg.ForceNewCluster {
 			args = append(args, "--force-new-cluster")
 		}
@@ -309,6 +311,10 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 			args = append(args, "--v2-deprecation", cfg.V2deprecation)
 		}
 
+		if cfg.Discovery != "" {
+			args = append(args, "--discovery", cfg.Discovery)
+		}
+
 		etcdCfgs[i] = &EtcdServerProcessConfig{
 			lg:           lg,
 			ExecPath:     cfg.ExecPath,
@@ -325,10 +331,12 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 	}
 
-	initialClusterArgs := []string{"--initial-cluster", strings.Join(initialCluster, ",")}
-	for i := range etcdCfgs {
-		etcdCfgs[i].InitialCluster = strings.Join(initialCluster, ",")
-		etcdCfgs[i].Args = append(etcdCfgs[i].Args, initialClusterArgs...)
+	if cfg.Discovery == "" {
+		for i := range etcdCfgs {
+			initialClusterArgs := []string{"--initial-cluster", strings.Join(initialCluster, ",")}
+			etcdCfgs[i].InitialCluster = strings.Join(initialCluster, ",")
+			etcdCfgs[i].Args = append(etcdCfgs[i].Args, initialClusterArgs...)
+		}
 	}
 
 	return etcdCfgs

@@ -25,7 +25,7 @@ import (
 func TestHealthCheck(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := healthpb.NewHealthClient(clus.RandClient().ActiveConnection())

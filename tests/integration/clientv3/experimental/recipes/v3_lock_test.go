@@ -30,7 +30,7 @@ import (
 func TestMutexLockSingleNode(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	var clients []*clientv3.Client
@@ -41,7 +41,7 @@ func TestMutexLockSingleNode(t *testing.T) {
 func TestMutexLockMultiNode(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	var clients []*clientv3.Client
@@ -94,7 +94,7 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 
 func TestMutexTryLockSingleNode(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	var clients []*clientv3.Client
@@ -104,7 +104,7 @@ func TestMutexTryLockSingleNode(t *testing.T) {
 
 func TestMutexTryLockMultiNode(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	var clients []*clientv3.Client
@@ -165,7 +165,7 @@ func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.C
 func TestMutexSessionRelock(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	session, err := concurrency.NewSession(clus.RandClient())
 	if err != nil {
@@ -189,7 +189,7 @@ func TestMutexSessionRelock(t *testing.T) {
 func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cctx := context.Background()
@@ -297,7 +297,7 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 func BenchmarkMutex4Waiters(b *testing.B) {
 	integration2.BeforeTest(b)
 	// XXX switch tests to use TB interface
-	clus := integration2.NewClusterV3(nil, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(nil, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
 	for i := 0; i < b.N; i++ {
 		testMutexLock(nil, 4, func() *clientv3.Client { return clus.RandClient() })
@@ -306,14 +306,14 @@ func BenchmarkMutex4Waiters(b *testing.B) {
 
 func TestRWMutexSingleNode(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testRWMutex(t, 5, func() *clientv3.Client { return clus.Client(0) })
 }
 
 func TestRWMutexMultiNode(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testRWMutex(t, 5, func() *clientv3.Client { return clus.RandClient() })
 }
