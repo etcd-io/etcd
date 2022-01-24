@@ -17,7 +17,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,11 +66,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 	size := 3
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size})
 	m := c.Members[0].Clone(t)
-	var err error
-	m.DataDir, err = os.MkdirTemp(t.TempDir(), "etcd")
-	if err != nil {
-		t.Fatal(err)
-	}
+	m.DataDir = t.TempDir()
 	defer c.Terminate(t)
 
 	if err := m.Launch(); err == nil {

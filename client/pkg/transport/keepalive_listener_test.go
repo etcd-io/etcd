@@ -49,11 +49,10 @@ func TestNewKeepAliveListener(t *testing.T) {
 	}
 
 	// tls
-	tlsinfo, del, err := createSelfCert()
+	tlsinfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create tmpfile: %v", err)
 	}
-	defer del()
 	tlsInfo := TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile}
 	tlsInfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
 	tlscfg, err := tlsInfo.ServerConfig()

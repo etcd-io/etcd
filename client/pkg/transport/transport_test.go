@@ -25,11 +25,10 @@ import (
 // TestNewTransportTLSInvalidCipherSuitesTLS12 expects a client with invalid
 // cipher suites fail to handshake with the server.
 func TestNewTransportTLSInvalidCipherSuitesTLS12(t *testing.T) {
-	tlsInfo, del, err := createSelfCert()
+	tlsInfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 
 	cipherSuites := []uint16{
 		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,

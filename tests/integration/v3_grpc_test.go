@@ -1626,40 +1626,28 @@ func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 // when all certs are atomically replaced by directory renaming.
 // And expects server to reject client requests, and vice versa.
 func TestTLSReloadAtomicReplace(t *testing.T) {
-	tmpDir, err := os.MkdirTemp(t.TempDir(), "fixtures-tmp")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tmpDir := t.TempDir()
 	os.RemoveAll(tmpDir)
-	defer os.RemoveAll(tmpDir)
 
-	certsDir, err := os.MkdirTemp(t.TempDir(), "fixtures-to-load")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(certsDir)
+	certsDir := t.TempDir()
 
-	certsDirExp, err := os.MkdirTemp(t.TempDir(), "fixtures-expired")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(certsDirExp)
+	certsDirExp := t.TempDir()
 
 	cloneFunc := func() transport.TLSInfo {
 		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
-		if _, err = copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp); err != nil {
 			t.Fatal(err)
 		}
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if err = os.Rename(certsDir, tmpDir); err != nil {
+		if err := os.Rename(certsDir, tmpDir); err != nil {
 			t.Fatal(err)
 		}
-		if err = os.Rename(certsDirExp, certsDir); err != nil {
+		if err := os.Rename(certsDirExp, certsDir); err != nil {
 			t.Fatal(err)
 		}
 		// after rename,
@@ -1668,13 +1656,13 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 		// 'certsDirExp' does not exist
 	}
 	revertFunc := func() {
-		if err = os.Rename(tmpDir, certsDirExp); err != nil {
+		if err := os.Rename(tmpDir, certsDirExp); err != nil {
 			t.Fatal(err)
 		}
-		if err = os.Rename(certsDir, tmpDir); err != nil {
+		if err := os.Rename(certsDir, tmpDir); err != nil {
 			t.Fatal(err)
 		}
-		if err = os.Rename(certsDirExp, certsDir); err != nil {
+		if err := os.Rename(certsDirExp, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1685,11 +1673,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 // when new certs are copied over, one by one. And expects server
 // to reject client requests, and vice versa.
 func TestTLSReloadCopy(t *testing.T) {
-	certsDir, err := os.MkdirTemp(t.TempDir(), "fixtures-to-load")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(certsDir)
+	certsDir := t.TempDir()
 
 	cloneFunc := func() transport.TLSInfo {
 		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
@@ -1699,12 +1683,12 @@ func TestTLSReloadCopy(t *testing.T) {
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if _, err = copyTLSFiles(integration.TestTLSInfoExpired, certsDir); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
 	revertFunc := func() {
-		if _, err = copyTLSFiles(integration.TestTLSInfo, certsDir); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfo, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1715,11 +1699,7 @@ func TestTLSReloadCopy(t *testing.T) {
 // when new certs are copied over, one by one. And expects server
 // to reject client requests, and vice versa.
 func TestTLSReloadCopyIPOnly(t *testing.T) {
-	certsDir, err := os.MkdirTemp(t.TempDir(), "fixtures-to-load")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(certsDir)
+	certsDir := t.TempDir()
 
 	cloneFunc := func() transport.TLSInfo {
 		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfoIP, certsDir)
@@ -1729,12 +1709,12 @@ func TestTLSReloadCopyIPOnly(t *testing.T) {
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if _, err = copyTLSFiles(integration.TestTLSInfoExpiredIP, certsDir); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfoExpiredIP, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
 	revertFunc := func() {
-		if _, err = copyTLSFiles(integration.TestTLSInfoIP, certsDir); err != nil {
+		if _, err := copyTLSFiles(integration.TestTLSInfoIP, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
