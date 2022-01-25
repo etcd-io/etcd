@@ -16,15 +16,7 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"go.etcd.io/etcd/etcdctl/v3/ctlv2"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3"
-)
-
-const (
-	apiEnv = "ETCDCTL_API"
 )
 
 /**
@@ -33,38 +25,10 @@ by os.Exit, it exposes the error explicitly, such that test-logic can intercept
 control to e.g. dump coverage data (even for test-for-failure scenarios).
 */
 func mainWithError() error {
-	apiv := os.Getenv(apiEnv)
-
-	// unset apiEnv to avoid side-effect for future env and flag parsing.
-	os.Unsetenv(apiEnv)
-
-	if len(apiv) == 0 || apiv == "3" {
-		return ctlv3.Start()
-	}
-
-	if apiv == "2" {
-		return ctlv2.Start()
-	}
-
-	fmt.Fprintf(os.Stderr, "unsupported API version: %s\n", apiv)
-	return fmt.Errorf("unsupported API version: %s", apiv)
+	return ctlv3.Start()
 }
 
 func main() {
-	apiv := os.Getenv(apiEnv)
-
-	// unset apiEnv to avoid side-effect for future env and flag parsing.
-	os.Unsetenv(apiEnv)
-	if len(apiv) == 0 || apiv == "3" {
-		ctlv3.MustStart()
-		return
-	}
-
-	if apiv == "2" {
-		ctlv2.MustStart()
-		return
-	}
-
-	fmt.Fprintf(os.Stderr, "unsupported API version: %v\n", apiv)
-	os.Exit(1)
+	ctlv3.MustStart()
+	return
 }

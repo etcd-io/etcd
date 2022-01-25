@@ -90,15 +90,6 @@
 		]
 	},
 	{
-		"project": "github.com/cpuguy83/go-md2man/v2/md2man",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/creack/pty",
 		"licenses": [
 			{
@@ -324,15 +315,6 @@
 		]
 	},
 	{
-		"project": "github.com/russross/blackfriday/v2",
-		"licenses": [
-			{
-				"type": "BSD 2-clause \"Simplified\" License",
-				"confidence": 0.9626168224299065
-			}
-		]
-	},
-	{
 		"project": "github.com/sirupsen/logrus",
 		"licenses": [
 			{
@@ -383,15 +365,6 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
-		"project": "github.com/urfave/cli",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
 			}
 		]
 	},
