@@ -17,11 +17,16 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -49,7 +54,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	}
 	defer dc.Close()
 
-	dcc := integration.MustNewHTTPClient(t, dc.EndpointsV2(), nil)
+	dcc := MustNewHTTPClient(t, dc.EndpointsV2(), nil)
 	dkapi := client.NewKeysAPI(dcc)
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size)); err != nil {
@@ -75,4 +80,26 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	if err := e2e.SpawnWithExpect(append(kubectl, "get", "key"), "value"); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func MustNewHTTPClient(t testutil.TB, eps []string, tls *transport.TLSInfo) client.Client {
+	cfgtls := transport.TLSInfo{}
+	if tls != nil {
+		cfgtls = *tls
+	}
+	cfg := client.Config{Transport: mustNewTransport(t, cfgtls), Endpoints: eps}
+	c, err := client.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+func mustNewTransport(t testutil.TB, tlsInfo transport.TLSInfo) *http.Transport {
+	// tick in integration test is short, so 1s dial timeout could play well.
+	tr, err := transport.NewTimeoutTransport(tlsInfo, time.Second, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tr
 }

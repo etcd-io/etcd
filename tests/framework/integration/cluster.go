@@ -38,7 +38,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	"go.etcd.io/etcd/raft/v3"
@@ -1303,28 +1302,6 @@ func (m *Member) RecoverPartition(t testutil.TB, others ...*Member) {
 
 func (m *Member) ReadyNotify() <-chan struct{} {
 	return m.Server.ReadyNotify()
-}
-
-func MustNewHTTPClient(t testutil.TB, eps []string, tls *transport.TLSInfo) client.Client {
-	cfgtls := transport.TLSInfo{}
-	if tls != nil {
-		cfgtls = *tls
-	}
-	cfg := client.Config{Transport: mustNewTransport(t, cfgtls), Endpoints: eps}
-	c, err := client.New(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return c
-}
-
-func mustNewTransport(t testutil.TB, tlsInfo transport.TLSInfo) *http.Transport {
-	// tick in integration test is short, so 1s dial timeout could play well.
-	tr, err := transport.NewTimeoutTransport(tlsInfo, time.Second, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return tr
 }
 
 type SortableMemberSliceByPeerURLs []*pb.Member

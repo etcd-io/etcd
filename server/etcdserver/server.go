@@ -142,7 +142,6 @@ type ServerV2 interface {
 
 	// Do takes a V2 request and attempts to fulfill it, returning a Response.
 	Do(ctx context.Context, r pb.Request) (Response, error)
-	stats.Stats
 	ClientCertAuthEnabled() bool
 }
 
@@ -1223,18 +1222,6 @@ func (s *EtcdServer) StopNotify() <-chan struct{} { return s.done }
 // StoppingNotify returns a channel that receives a empty struct
 // when the server is being stopped.
 func (s *EtcdServer) StoppingNotify() <-chan struct{} { return s.stopping }
-
-func (s *EtcdServer) SelfStats() []byte { return s.stats.JSON() }
-
-func (s *EtcdServer) LeaderStats() []byte {
-	lead := s.getLead()
-	if lead != uint64(s.id) {
-		return nil
-	}
-	return s.lstats.JSON()
-}
-
-func (s *EtcdServer) StoreStats() []byte { return s.v2store.JsonStats() }
 
 func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) error {
 	if s.authStore == nil {
