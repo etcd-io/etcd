@@ -186,6 +186,9 @@ func assertAuthority(t *testing.T, expectedAuthority string, clus *integration.C
 	requestsFound := 0
 	for _, m := range clus.Members {
 		for _, r := range m.RecordedRequests() {
+			if r.FullMethod != "/etcdserverpb.KV/Put" {
+				continue
+			}
 			requestsFound++
 			if r.Authority != expectedAuthority {
 				t.Errorf("Got unexpected authority header, member: %q, request: %q, got authority: %q, expected %q", m.Name, r.FullMethod, r.Authority, expectedAuthority)

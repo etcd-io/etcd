@@ -267,7 +267,7 @@ func TestIssue2904(t *testing.T) {
 	c.Members[2].Terminate(t)
 	c.Members = c.Members[:2]
 	// wait member to be removed.
-	c.WaitMembersMatch(t, c.HTTPMembers())
+	c.WaitMembersMatch(t, c.ProtoMembers())
 }
 
 // TestIssue3699 tests minority failure during cluster configuration; it was

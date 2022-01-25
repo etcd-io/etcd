@@ -17,6 +17,7 @@ package integration
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -226,44 +227,20 @@ func (c *Cluster) Launch(t testutil.TB) {
 		}
 	}
 	// wait Cluster to be stable to receive future client requests
-	c.WaitMembersMatch(t, c.HTTPMembers())
+	c.WaitMembersMatch(t, c.ProtoMembers())
 	c.waitVersion()
 	for _, m := range c.Members {
 		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCURL())
 	}
 }
 
-func (c *Cluster) URL(i int) string {
-	return c.Members[i].ClientURLs[0].String()
-}
-
-// URLs returns a list of all active client URLs in the Cluster
-func (c *Cluster) URLs() []string {
-	return getMembersURLs(c.Members)
-}
-
-func getMembersURLs(members []*Member) []string {
-	urls := make([]string, 0)
-	for _, m := range members {
-		select {
-		case <-m.Server.StopNotify():
-			continue
-		default:
-		}
-		for _, u := range m.ClientURLs {
-			urls = append(urls, u.String())
-		}
-	}
-	return urls
-}
-
-// HTTPMembers returns a list of all active members as client.Members
-func (c *Cluster) HTTPMembers() []client.Member {
-	ms := []client.Member{}
+// ProtoMembers returns a list of all active members as client.Members
+func (c *Cluster) ProtoMembers() []*pb.Member {
+	ms := []*pb.Member{}
 	for _, m := range c.Members {
 		pScheme := SchemeFromTLSInfo(m.PeerTLSInfo)
 		cScheme := SchemeFromTLSInfo(m.ClientTLSInfo)
-		cm := client.Member{Name: m.Name}
+		cm := &pb.Member{Name: m.Name}
 		for _, ln := range m.PeerListeners {
 			cm.PeerURLs = append(cm.PeerURLs, pScheme+"://"+ln.Addr().String())
 		}
@@ -338,7 +315,7 @@ func (c *Cluster) addMember(t testutil.TB) types.URLs {
 	}
 	c.Members = append(c.Members, m)
 	// wait Cluster to be stable to receive future client requests
-	c.WaitMembersMatch(t, c.HTTPMembers())
+	c.WaitMembersMatch(t, c.ProtoMembers())
 	return m.PeerURLs
 }
 
@@ -351,7 +328,7 @@ func (c *Cluster) AddMemberByURL(t testutil.TB, cc *clientv3.Client, peerURL str
 	}
 
 	// wait for the add node entry applied in the Cluster
-	members := append(c.HTTPMembers(), client.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
+	members := append(c.ProtoMembers(), &pb.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
 	c.WaitMembersMatch(t, members)
 	return nil
 }
@@ -388,19 +365,29 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 		}
 	}
 	c.Members = newMembers
-	c.WaitMembersMatch(t, c.HTTPMembers())
+	c.WaitMembersMatch(t, c.ProtoMembers())
 	return nil
 }
 
-func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []client.Member) {
-	for _, u := range c.URLs() {
-		cc := MustNewHTTPClient(t, []string{u}, c.Cfg.ClientTLS)
-		ma := client.NewMembersAPI(cc)
+func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
+	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
+	defer cancel()
+	for _, m := range c.Members {
+		cc := ToGRPC(m.Client)
+		select {
+		case <-m.Server.StopNotify():
+			continue
+		default:
+		}
 		for {
-			ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-			ms, err := ma.List(ctx)
-			cancel()
-			if err == nil && isMembersEqual(ms, membs) {
+			resp, err := cc.Cluster.MemberList(ctx, &pb.MemberListRequest{Linearizable: false})
+			if errors.Is(err, context.DeadlineExceeded) {
+				t.Fatal(err)
+			}
+			if err != nil {
+				continue
+			}
+			if isMembersEqual(resp.Members, membs) {
 				break
 			}
 			time.Sleep(TickDuration)
@@ -494,11 +481,17 @@ func (c *Cluster) waitVersion() {
 
 // isMembersEqual checks whether two members equal except ID field.
 // The given wmembs should always set ID field to empty string.
-func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {
+func isMembersEqual(membs []*pb.Member, wmembs []*pb.Member) bool {
 	sort.Sort(SortableMemberSliceByPeerURLs(membs))
 	sort.Sort(SortableMemberSliceByPeerURLs(wmembs))
 	for i := range membs {
-		membs[i].ID = ""
+		membs[i].ID = 0
+		if membs[i].PeerURLs == nil {
+			membs[i].PeerURLs = []string{}
+		}
+		if membs[i].ClientURLs == nil {
+			membs[i].ClientURLs = []string{}
+		}
 	}
 	return reflect.DeepEqual(membs, wmembs)
 }
@@ -1334,7 +1327,7 @@ func mustNewTransport(t testutil.TB, tlsInfo transport.TLSInfo) *http.Transport 
 	return tr
 }
 
-type SortableMemberSliceByPeerURLs []client.Member
+type SortableMemberSliceByPeerURLs []*pb.Member
 
 func (p SortableMemberSliceByPeerURLs) Len() int { return len(p) }
 func (p SortableMemberSliceByPeerURLs) Less(i, j int) bool {
