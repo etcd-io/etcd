@@ -27,31 +27,31 @@ jobs:
           echo "${TARGET}"
           case "${TARGET}" in
             linux-amd64)
-              ARCH=amd64 PASSES='build' ./test.sh
+              ARCH=amd64 PASSES='build' ./scripts/test.sh
               ;;
             linux-386)
-              ARCH=386 PASSES='build' ./test.sh
+              ARCH=386 PASSES='build' ./scripts/test.sh
               ;;
             darwin-amd64)
-              ARCH=amd64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ARCH=amd64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             darwin-arm64)
-              ARCH=arm64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ARCH=arm64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             windows-amd64)
-              ARCH=amd64 GOOS=windows GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ARCH=amd64 GOOS=windows GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             linux-arm)
-              ARCH=arm GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ARCH=arm GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             linux-arm64)
-              ARCH=arm64 GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ARCH=arm64 GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             linux-ppc64le)
-              ARCH=ppc64le GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ARCH=ppc64le GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             linux-s390x)
-              ARCH=s390x GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+              ARCH=s390x GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             *)
               echo "Failed to find target"

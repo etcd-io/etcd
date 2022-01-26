@@ -8,7 +8,7 @@ set -o pipefail
 LOG_FILE=${1:-test-coverage.log}
 
 # We collect the coverage
-COVERDIR=covdir PASSES='build build_cov cov' ./test.sh 2>&1 | tee "${LOG_FILE}"
+COVERDIR=covdir PASSES='build build_cov cov' ./scripts/test.sh 2>&1 | tee "${LOG_FILE}"
 test_success="$?"
 
 # We try to upload whatever we have:

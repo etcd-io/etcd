@@ -25,19 +25,19 @@ jobs:
         export JUNIT_REPORT_DIR=$(realpath ${TARGET})
         case "${TARGET}" in
           linux-amd64-integration-1-cpu)
-            GOARCH=amd64 CPU=1 PASSES='integration' RACE='false' ./test.sh
+            GOARCH=amd64 CPU=1 PASSES='integration' RACE='false' ./scripts/test.sh
             ;;
           linux-amd64-integration-2-cpu)
-            GOARCH=amd64 CPU=2 PASSES='integration' RACE='false' ./test.sh
+            GOARCH=amd64 CPU=2 PASSES='integration' RACE='false' ./scripts/test.sh
             ;;
           linux-amd64-integration-4-cpu)
-            GOARCH=amd64 CPU=4 PASSES='integration' RACE='false' ./test.sh
+            GOARCH=amd64 CPU=4 PASSES='integration' RACE='false' ./scripts/test.sh
             ;;
           linux-amd64-unit-4-cpu-race)
-            GOARCH=amd64 PASSES='unit' RACE='true' CPU='4' ./test.sh -p=2
+            GOARCH=amd64 PASSES='unit' RACE='true' CPU='4' ./scripts/test.sh -p=2
             ;;
           linux-386-unit-1-cpu)
-            GOARCH=386 PASSES='unit' RACE='false' CPU='1' ./test.sh -p=4
+            GOARCH=386 PASSES='unit' RACE='false' CPU='1' ./scripts/test.sh -p=4
             ;;
           *)
             echo "Failed to find target"
