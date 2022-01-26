@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -33,7 +34,9 @@ func NewTmpBackendFromCfg(t testing.TB, bcfg backend.BackendConfig) (backend.Bac
 	tmpPath := filepath.Join(dir, "database")
 	bcfg.Path = tmpPath
 	bcfg.Logger = zaptest.NewLogger(t)
-	return backend.New(bcfg), tmpPath
+	be := backend.New(bcfg)
+	buckets.SetupBuckets(be.BatchTx())
+	return be, tmpPath
 }
 
 // NewTmpBackend creates a backend implementation for testing.

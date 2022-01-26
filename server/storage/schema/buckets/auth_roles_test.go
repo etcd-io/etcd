@@ -15,8 +15,9 @@
 package buckets
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
@@ -24,7 +25,6 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
 func TestGetAllRoles(t *testing.T) {
@@ -109,7 +109,7 @@ func TestGetAllRoles(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			be, tmpPath := tmpBackend(t)
 			SetupBuckets(be.BatchTx())
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 
@@ -205,7 +205,7 @@ func TestGetRole(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			be, tmpPath := tmpBackend(t)
 			SetupBuckets(be.BatchTx())
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 
@@ -225,4 +225,18 @@ func TestGetRole(t *testing.T) {
 			assert.Equal(t, tc.want, users)
 		})
 	}
+}
+
+func tmpBackend(t testing.TB) (backend.Backend, string) {
+	dir, err := os.MkdirTemp(t.TempDir(), "etcd_backend_test")
+	if err != nil {
+		panic(err)
+	}
+	tmpPath := filepath.Join(dir, "database")
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = tmpPath
+	bcfg.Logger = zaptest.NewLogger(t)
+	be := backend.New(bcfg)
+	SetupBuckets(be.BatchTx())
+	return be, tmpPath
 }

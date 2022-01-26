@@ -16,14 +16,11 @@ package buckets
 
 import (
 	"testing"
-	"time"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/bbolt"
-
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
 // TestVersion ensures that UnsafeSetStorageVersion/UnsafeReadStorageVersion work well together.
@@ -55,8 +52,7 @@ func TestVersion(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			SetupBuckets(be.BatchTx())
+			be, tmpPath := tmpBackend(t)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")
@@ -101,8 +97,7 @@ func TestVersionSnapshot(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			SetupBuckets(be.BatchTx())
+			be, tmpPath := tmpBackend(t)
 			tx := be.BatchTx()
 			if tx == nil {
 				t.Fatal("batch tx is nil")

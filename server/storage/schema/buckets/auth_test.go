@@ -17,13 +17,11 @@ package buckets
 import (
 	"math"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
 // TestAuthEnabled ensures that UnsafeSaveAuthEnabled&UnsafeReadAuthEnabled work well together.
@@ -52,8 +50,7 @@ func TestAuthEnabled(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			SetupBuckets(be.BatchTx())
+			be, tmpPath := tmpBackend(t)
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 			tx := abe.BatchTx()
 
@@ -102,8 +99,7 @@ func TestAuthRevision(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			SetupBuckets(be.BatchTx())
+			be, tmpPath := tmpBackend(t)
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 
 			if tc.setRevision != 0 {

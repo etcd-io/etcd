@@ -19,14 +19,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/raft/v3/raftpb"
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.uber.org/zap/zaptest"
 )
 
 func TestConfStateFromBackendInOneTx(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
+	be, _ := tmpBackend(t)
+	defer be.Close()
 	SetupBuckets(be.BatchTx())
 
 	tx := be.BatchTx()
@@ -42,8 +41,8 @@ func TestConfStateFromBackendInOneTx(t *testing.T) {
 
 func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
+	be, _ := tmpBackend(t)
+	defer be.Close()
 	SetupBuckets(be.BatchTx())
 
 	t.Run("missing", func(t *testing.T) {

@@ -16,14 +16,16 @@ package backend_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
+	"go.uber.org/zap/zaptest"
 )
 
 var (
@@ -121,9 +123,16 @@ func newTestHooksBackend(t testing.TB, baseConfig backend.BackendConfig) backend
 		tx.UnsafePut(buckets.Test, key, append(v[0], byte('c')))
 	})
 
-	be, _ := betesting.NewTmpBackendFromCfg(t, cfg)
+	dir, err := os.MkdirTemp(t.TempDir(), "etcd_backend_test")
+	if err != nil {
+		panic(err)
+	}
+	cfg.Path = filepath.Join(dir, "database")
+	cfg.Logger = zaptest.NewLogger(t)
+	be := backend.New(cfg)
+	be.BatchTx().UnsafeCreateBucket(buckets.Test)
 	t.Cleanup(func() {
-		betesting.Close(t, be)
+		be.Close()
 	})
 	return be
 }

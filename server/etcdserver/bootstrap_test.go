@@ -20,17 +20,18 @@ package etcdserver
 import (
 	"encoding/json"
 	"fmt"
-	bolt "go.etcd.io/bbolt"
-	"go.etcd.io/etcd/server/v3/storage/datadir"
-	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/storage/schema/buckets"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
@@ -286,9 +287,10 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 
 	// create snapshot db file: "%016x.snap.db"
 	be := serverstorage.OpenBackend(cfg, nil)
-	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm, false)
-	schema.MustUnsafeSaveConfStateToBackend(cfg.Logger, be.BatchTx(), &confState)
+	be.BatchTx().UnsafeCreateBucket(buckets.Meta)
+	buckets.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm, false)
+	buckets.MustUnsafeSaveConfStateToBackend(cfg.Logger, be.BatchTx(), &confState)
+	be.ForceCommit()
 	if err = be.Close(); err != nil {
 		return
 	}
@@ -299,7 +301,8 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 
 	// create backend db file
 	be = serverstorage.OpenBackend(cfg, nil)
-	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1, false)
+	be.BatchTx().UnsafeCreateBucket(buckets.Meta)
+	buckets.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1, false)
+	be.ForceCommit()
 	return be.Close()
 }

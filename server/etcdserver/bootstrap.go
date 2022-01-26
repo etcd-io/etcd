@@ -205,6 +205,10 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 	ci := cindex.NewConsistentIndex(nil)
 	beHooks := serverstorage.NewBackendHooks(cfg.Logger, ci)
 	be := serverstorage.OpenBackend(cfg, beHooks)
+	if !beExist {
+		schema.Bootstrap(be)
+	}
+	be.BatchTx().UnsafeCreateBucket(buckets.Meta)
 	defer func() {
 		if err != nil && be != nil {
 			be.Close()
@@ -234,8 +238,6 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 			cfg.Logger.Error("Failed to validate schema", zap.Error(err))
 			return nil, err
 		}
-	} else {
-		schema.Bootstrap(be)
 	}
 
 	return &bootstrappedBackend{

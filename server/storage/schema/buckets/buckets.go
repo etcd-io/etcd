@@ -55,17 +55,27 @@ var (
 
 	Test = newBucket(100, testBucketName, false)
 
-	allBuckets = []backend.Bucket{}
+	allBuckets = []backend.Bucket{
+		Key,
+		Meta,
+		Lease,
+		Alarm,
+		Cluster,
+		Members,
+		MembersRemoved,
+		Auth,
+		AuthUsers,
+		AuthRoles,
+		Test,
+	}
 )
 
 func newBucket(id backend.BucketID, name []byte, safeRangeBucket bool) backend.Bucket {
-	b := bucket{
+	return bucket{
 		id:              id,
 		name:            name,
 		safeRangeBucket: safeRangeBucket,
 	}
-	allBuckets = append(allBuckets, b)
-	return b
 }
 
 // SetupBuckets setups backend with all base buckets.

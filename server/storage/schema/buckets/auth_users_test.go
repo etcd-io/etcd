@@ -16,7 +16,6 @@ package buckets
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
@@ -24,7 +23,6 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
 func TestGetAllUsers(t *testing.T) {
@@ -97,8 +95,7 @@ func TestGetAllUsers(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			SetupBuckets(be.BatchTx())
+			be, tmpPath := tmpBackend(t)
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 
 			tx := abe.BatchTx()
@@ -181,7 +178,7 @@ func TestGetUser(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
+			be, tmpPath := tmpBackend(t)
 			SetupBuckets(be.BatchTx())
 			abe := NewAuthBackend(zaptest.NewLogger(t), be)
 
