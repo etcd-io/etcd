@@ -320,7 +320,7 @@ function cov_pass {
       -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_v2"
   # integration_cluster_proxy
   run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
-      -tags cluster_proxy -timeout=5m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
+      -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
 
   log_callout "[$(date)] Collecting coverage from e2e tests ..."
   # We don't pass 'gocov_build_flags' nor 'pkg_to_coverprofileflag' here,

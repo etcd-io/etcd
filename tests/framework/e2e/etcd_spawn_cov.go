@@ -36,13 +36,9 @@ var (
 	coverDir = integration.MustAbsPath(os.Getenv("COVERDIR"))
 )
 
-func SpawnCmd(args []string) (*expect.ExpectProcess, error) {
-	return SpawnCmdWithLogger(zap.NewNop(), args)
-}
-
-func SpawnCmdWithLogger(lg *zap.Logger, args []string) (*expect.ExpectProcess, error) {
+func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
 	cmd := args[0]
-	env := make([]string, 0)
+	env := mergeEnvVariables(envVars)
 	switch {
 	case strings.HasSuffix(cmd, "/etcd"):
 		cmd = cmd + "_test"
@@ -66,7 +62,7 @@ func SpawnCmdWithLogger(lg *zap.Logger, args []string) (*expect.ExpectProcess, e
 	}
 	// when withFlagByEnv() is used in testCtl(), env variables for ctl is set to os.env.
 	// they must be included in ctl_cov_env.
-	env = append(env, os.Environ()...)
+
 	all_args := append(args[1:], covArgs...)
 	lg.Info("spawning process", zap.Strings("args", all_args), zap.String("working-dir", wd))
 	ep, err := expect.NewExpectWithEnv(cmd, all_args, env)
