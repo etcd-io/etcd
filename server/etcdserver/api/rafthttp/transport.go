@@ -339,6 +339,8 @@ func (t *Transport) RemoveAllPeers() {
 
 // the caller of this function must have the peers mutex.
 func (t *Transport) removePeer(id types.ID) {
+	// etcd may remove a member again on startup due to WAL files replaying.
+	// (see: https://github.com/etcd-io/etcd/pull/13479)
 	peer, ok := t.peers[id]
 	if ok {
 		peer.stop()
