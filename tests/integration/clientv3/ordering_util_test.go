@@ -26,7 +26,7 @@ import (
 
 func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	eps := []string{
 		clus.Members[0].GRPCURL(),
@@ -82,7 +82,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 
 func TestUnresolvableOrderViolation(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 5, SkipCreatingClient: true, UseBridge: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 5, UseBridge: true})
 	defer clus.Terminate(t)
 	cfg := clientv3.Config{
 		Endpoints: []string{

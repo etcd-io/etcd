@@ -48,7 +48,7 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites[:2], cipherSuites[2:]
 	}
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientTLS: &srvTLS})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, ClientTLS: &srvTLS})
 	defer clus.Terminate(t)
 
 	cc, err := cliTLS.ClientConfig()

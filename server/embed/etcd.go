@@ -38,9 +38,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2http"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2v3"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
@@ -210,6 +207,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ExperimentalEnableDistributedTracing:     cfg.ExperimentalEnableDistributedTracing,
 		UnsafeNoFsync:                            cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:                    cfg.ExperimentalEnableLeaseCheckpoint,
+		LeaseCheckpointPersist:                   cfg.ExperimentalEnableLeaseCheckpointPersist,
 		CompactionBatchLimit:                     cfg.ExperimentalCompactionBatchLimit,
 		CompactionSleepInterval:                  cfg.ExperimentalCompactionSleepInterval,
 		WatchProgressNotifyInterval:              cfg.ExperimentalWatchProgressNotifyInterval,
@@ -219,7 +217,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ExperimentalMemoryMlock:                  cfg.ExperimentalMemoryMlock,
 		ExperimentalTxnModeWriteWithSharedBuffer: cfg.ExperimentalTxnModeWriteWithSharedBuffer,
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
-		V2Deprecation: cfg.V2DeprecationEffective(),
+		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
+		V2Deprecation:                                 cfg.V2DeprecationEffective(),
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
@@ -345,6 +344,7 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
+		zap.Int("max-learners", sc.ExperimentalMaxLearners),
 	)
 }
 
@@ -692,25 +692,9 @@ func (e *Etcd) serveClients() (err error) {
 	}
 
 	// Start a client server goroutine for each listen address
-	var h http.Handler
-	if e.Config().EnableV2 {
-		if e.Config().V2DeprecationEffective().IsAtLeast(config.V2_DEPR_1_WRITE_ONLY) {
-			return fmt.Errorf("--enable-v2 and --v2-deprecation=%s are mutually exclusive", e.Config().V2DeprecationEffective())
-		}
-		e.cfg.logger.Warn("Flag `enable-v2` is deprecated and will get removed in etcd 3.6.")
-		if len(e.Config().ExperimentalEnableV2V3) > 0 {
-			e.cfg.logger.Warn("Flag `experimental-enable-v2v3` is deprecated and will get removed in etcd 3.6.")
-			srv := v2v3.NewServer(e.cfg.logger, v3client.New(e.Server), e.cfg.ExperimentalEnableV2V3)
-			h = v2http.NewClientHandler(e.GetLogger(), srv, e.Server.Cfg.ReqTimeout())
-		} else {
-			h = v2http.NewClientHandler(e.GetLogger(), e.Server, e.Server.Cfg.ReqTimeout())
-		}
-	} else {
-		mux := http.NewServeMux()
-		etcdhttp.HandleBasic(e.cfg.logger, mux, e.Server)
-		etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, mux, e.Server)
-		h = mux
-	}
+	mux := http.NewServeMux()
+	etcdhttp.HandleBasic(e.cfg.logger, mux, e.Server)
+	etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, mux, e.Server)
 
 	gopts := []grpc.ServerOption{}
 	if e.cfg.GRPCKeepAliveMinTime > time.Duration(0) {
@@ -730,7 +714,7 @@ func (e *Etcd) serveClients() (err error) {
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, h, e.errHandler, gopts...))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, gopts...))
 		}(sctx)
 	}
 	return nil

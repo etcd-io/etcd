@@ -32,7 +32,7 @@ import (
 // does not panic the mvcc backend while defragment is running.
 func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
@@ -62,7 +62,7 @@ func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 // See https://github.com/etcd-io/etcd/issues/7322 for more detail.
 func TestV3KVInflightRangeRequests(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()

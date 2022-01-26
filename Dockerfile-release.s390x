@@ -1,5 +1,9 @@
-# TODO: move to k8s.gcr.io/build-image/debian-base-s390x:bullseye-1.y.z when patched
-FROM s390x/debian:bullseye-20210927
+FROM --platform=linux/s390x busybox:1.34.1 as source
+FROM --platform=linux/s390x gcr.io/distroless/base-debian11
+
+COPY --from=source /bin/sh /bin/sh
+COPY --from=source /bin/mkdir /bin/mkdir
+
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/

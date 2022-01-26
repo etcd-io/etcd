@@ -32,8 +32,17 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 ### etcd server
 
 - Add [`etcd --log-format`](https://github.com/etcd-io/etcd/pull/13339) flag to support log format.
+- Add [`etcd --experimental-max-learners`](https://github.com/etcd-io/etcd/pull/13377) flag to allow configuration of learner max membership.
+- Add [`etcd --experimental-enable-lease-checkpoint-persist`](https://github.com/etcd-io/etcd/pull/13508) flag to handle upgrade from v3.5.2 clusters with this feature enabled.
+- Add [`etcdctl make-mirror --rev`](https://github.com/etcd-io/etcd/pull/13519) flag to support incremental mirror.
 - Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/13435)
 - Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13467).
+- Fix [Provide a better liveness probe for when etcd runs as a Kubernetes pod](https://github.com/etcd-io/etcd/pull/13399)
+- Fix [Lease checkpoints don't prevent to reset ttl on leader change](https://github.com/etcd-io/etcd/pull/13508).
+- Fix [assertion failed due to tx closed when recovering v3 backend from a snapshot db](https://github.com/etcd-io/etcd/pull/13500)
+- Fix [A client can panic etcd by passing invalid utf-8 in the client-api-version header](https://github.com/etcd-io/etcd/pull/13560)
+- Fix [etcd gateway doesn't format the endpoint of IPv6 address correctly](https://github.com/etcd-io/etcd/pull/13551)
+- Fix [A client can cause a nil dereference in etcd by passing an invalid SortTarget](https://github.com/etcd-io/etcd/pull/13555)
 
 ### tools/benchmark
 
@@ -44,3 +53,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
 
 - Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).
+
+### Other
+
+- Use Distroless as base image to make the image less vulnerable and reduce image size.
+
+<hr>

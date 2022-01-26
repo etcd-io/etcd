@@ -149,10 +149,12 @@ type ServerConfig struct {
 
 	ForceNewCluster bool
 
-	// EnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+	// EnableLeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
 	EnableLeaseCheckpoint bool
 	// LeaseCheckpointInterval time.Duration is the wait duration between lease checkpoints.
 	LeaseCheckpointInterval time.Duration
+	// LeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
+	LeaseCheckpointPersist bool
 
 	EnableGRPCGateway bool
 
@@ -184,6 +186,9 @@ type ServerConfig struct {
 	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
 	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
+
+	// ExperimentalMaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
+	ExperimentalMaxLearners int `json:"experimental-max-learners"`
 
 	// V2Deprecation defines a phase of v2store deprecation process.
 	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`

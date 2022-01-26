@@ -39,7 +39,7 @@ import (
 func TestMaintenanceHashKV(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	for i := 0; i < 3; i++ {
@@ -72,7 +72,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 func TestMaintenanceMoveLeader(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	oldLeadIdx := clus.WaitLeader(t)
@@ -103,7 +103,7 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 func TestMaintenanceSnapshotCancel(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with canceled context should error out
@@ -146,7 +146,7 @@ func TestMaintenanceSnapshotTimeout(t *testing.T) {
 func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with deadline exceeded should error out
@@ -191,7 +191,7 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// take about 1-second to read snapshot
@@ -249,7 +249,7 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	// Set SnapshotCount to 1 to force raft snapshot to ensure that storage version is set
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, SnapshotCount: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, SnapshotCount: 1})
 	defer clus.Terminate(t)
 
 	// Put some keys to ensure that wal snapshot is triggered
@@ -271,7 +271,7 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 func TestMaintenanceStatus(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	clus.WaitLeader(t)

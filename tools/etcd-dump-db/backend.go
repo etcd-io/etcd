@@ -95,7 +95,7 @@ func leaseDecoder(k, v []byte) {
 	if err := lpb.Unmarshal(v); err != nil {
 		panic(err)
 	}
-	fmt.Printf("lease ID=%016x, TTL=%ds\n", leaseID, lpb.TTL)
+	fmt.Printf("lease ID=%016x, TTL=%ds, remaining TTL=%ds\n", leaseID, lpb.TTL, lpb.RemainingTTL)
 }
 
 func authDecoder(k, v []byte) {
@@ -122,7 +122,7 @@ func authUsersDecoder(k, v []byte) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("user=%q, roles=%q, password=%q, option=%v\n", user.Name, user.Roles, string(user.Password), user.Options)
+	fmt.Printf("user=%q, roles=%q, option=%v\n", user.Name, user.Roles, user.Options)
 }
 
 func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error) {

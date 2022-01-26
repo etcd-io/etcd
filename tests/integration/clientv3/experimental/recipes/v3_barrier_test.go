@@ -25,14 +25,14 @@ import (
 
 func TestBarrierSingleNode(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	testBarrier(t, 5, func() *clientv3.Client { return clus.Client(0) })
 }
 
 func TestBarrierMultiNode(t *testing.T) {
 	integration2.BeforeTest(t)
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testBarrier(t, 5, func() *clientv3.Client { return clus.RandClient() })
 }

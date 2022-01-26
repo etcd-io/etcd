@@ -344,9 +344,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
-	srv.lessor = lease.NewLessor(srv.Logger(), srv.be, lease.LessorConfig{
+	srv.lessor = lease.NewLessor(srv.Logger(), srv.be, srv.cluster, lease.LessorConfig{
 		MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
 		CheckpointInterval:         cfg.LeaseCheckpointInterval,
+		CheckpointPersist:          cfg.LeaseCheckpointPersist,
 		ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
 	})
 
@@ -1717,8 +1718,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 // or its server is stopped.
 //
 // Use v2 store to encode member attributes, and apply through Raft
-// but does not go through v2 API endpoint, which means even with v2
-// client handler disabled (e.g. --enable-v2=false), cluster can still
+// but does not go through v2 API endpoint, which means cluster can still
 // process publish requests through rafthttp
 // TODO: Remove in 3.6 (start using publishV3)
 func (s *EtcdServer) publish(timeout time.Duration) {

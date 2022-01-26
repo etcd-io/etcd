@@ -73,7 +73,7 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 	if exceedRecvLimit {
 		cfg.ClientMaxCallRecvMsgSize = 1.5 * 1024 * 1024
 	}
-	clus := integration2.NewClusterV3(t, cfg)
+	clus := integration2.NewCluster(t, cfg)
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)

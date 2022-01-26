@@ -607,7 +607,9 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 
 	select {
 	case <-ctx.Done():
-		resp.Body.Close()
+		if resp != nil {
+			resp.Body.Close()
+		}
 		<-done
 		return nil, nil, ctx.Err()
 	case <-done:

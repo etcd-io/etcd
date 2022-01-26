@@ -25,7 +25,7 @@ import (
 func TestNetworkPartition5MembersLeaderInMinority(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 5})
 	defer clus.Terminate(t)
 
 	leadIndex := clus.WaitLeader(t)
@@ -34,8 +34,8 @@ func TestNetworkPartition5MembersLeaderInMinority(t *testing.T) {
 	minority := []int{leadIndex, (leadIndex + 1) % 5}
 	majority := []int{(leadIndex + 2) % 5, (leadIndex + 3) % 5, (leadIndex + 4) % 5}
 
-	minorityMembers := getMembersByIndexSlice(clus.Cluster, minority)
-	majorityMembers := getMembersByIndexSlice(clus.Cluster, majority)
+	minorityMembers := getMembersByIndexSlice(clus, minority)
+	majorityMembers := getMembersByIndexSlice(clus, majority)
 
 	// network partition (bi-directional)
 	injectPartition(t, minorityMembers, majorityMembers)
@@ -73,7 +73,7 @@ func TestNetworkPartition5MembersLeaderInMajority(t *testing.T) {
 func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 5})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 5})
 	defer clus.Terminate(t)
 
 	leadIndex := clus.WaitLeader(t)
@@ -82,8 +82,8 @@ func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 	majority := []int{leadIndex, (leadIndex + 1) % 5, (leadIndex + 2) % 5}
 	minority := []int{(leadIndex + 3) % 5, (leadIndex + 4) % 5}
 
-	majorityMembers := getMembersByIndexSlice(clus.Cluster, majority)
-	minorityMembers := getMembersByIndexSlice(clus.Cluster, minority)
+	majorityMembers := getMembersByIndexSlice(clus, majority)
+	minorityMembers := getMembersByIndexSlice(clus, minority)
 
 	// network partition (bi-directional)
 	injectPartition(t, majorityMembers, minorityMembers)
@@ -112,7 +112,7 @@ func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 func TestNetworkPartition4Members(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 4})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 4})
 	defer clus.Terminate(t)
 
 	leadIndex := clus.WaitLeader(t)
@@ -121,8 +121,8 @@ func TestNetworkPartition4Members(t *testing.T) {
 	groupA := []int{leadIndex, (leadIndex + 1) % 4}
 	groupB := []int{(leadIndex + 2) % 4, (leadIndex + 3) % 4}
 
-	leaderPartition := getMembersByIndexSlice(clus.Cluster, groupA)
-	followerPartition := getMembersByIndexSlice(clus.Cluster, groupB)
+	leaderPartition := getMembersByIndexSlice(clus, groupA)
+	followerPartition := getMembersByIndexSlice(clus, groupB)
 
 	// network partition (bi-directional)
 	injectPartition(t, leaderPartition, followerPartition)

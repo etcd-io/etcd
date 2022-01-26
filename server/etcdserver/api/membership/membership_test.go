@@ -15,12 +15,14 @@ func TestAddRemoveMember(t *testing.T) {
 	c := newTestCluster(t, nil)
 	be := &backendMock{}
 	c.SetBackend(be)
-	c.AddMember(newTestMember(17, nil, "node17", nil), true)
+	c.AddMember(newTestMemberAsLearner(17, nil, "node17", nil), true)
 	c.RemoveMember(17, true)
 	c.AddMember(newTestMember(18, nil, "node18", nil), true)
+	c.RemoveMember(18, true)
 
 	// Skipping removal of already removed member
 	c.RemoveMember(17, true)
+	c.RemoveMember(18, true)
 
 	if false {
 		// TODO: Enable this code when Recover is reading membership from the backend.

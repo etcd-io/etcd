@@ -47,8 +47,8 @@
 // To specify a client request timeout, wrap the context with context.WithTimeout:
 //
 //	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+//	defer cancel()
 //	resp, err := kvc.Put(ctx, "sample_key", "sample_value")
-//	cancel()
 //	if err != nil {
 //	    // handle error!
 //	}

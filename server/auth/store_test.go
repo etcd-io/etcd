@@ -33,7 +33,7 @@ import (
 )
 
 func dummyIndexWaiter(index uint64) <-chan struct{} {
-	ch := make(chan struct{})
+	ch := make(chan struct{}, 1)
 	go func() {
 		ch <- struct{}{}
 	}()

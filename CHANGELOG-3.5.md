@@ -3,8 +3,7 @@
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG-3.4.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, 3.4.2+, and 3.5.1+.
-
+The minimum recommended etcd versions to run in **production** are 3.3.18+, 3.4.2+, and 3.5.1+. Refer to the [versioning policy](https://etcd.io/docs/v3.5/op-guide/versioning/) for more details.
 
 <hr>
 
@@ -14,6 +13,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.1...v3.5.2) and 
 
 ### etcd server
 - Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13476).
+- Add [`etcd --experimental-enable-lease-checkpoint-persist`](https://github.com/etcd-io/etcd/pull/13508) flag to enable checkpoint persisting.
+- Fix [Lease checkpoints don't prevent to reset ttl on leader change](https://github.com/etcd-io/etcd/pull/13508), requires enabling checkpoint persisting.
+- Fix [assertion failed due to tx closed when recovering v3 backend from a snapshot db](https://github.com/etcd-io/etcd/pull/13501)
 
 <hr>
 
@@ -294,7 +296,8 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - [Fix a data corruption bug by saving consistent index](https://github.com/etcd-io/etcd/pull/11652).
 - [Improve checkPassword performance](https://github.com/etcd-io/etcd/pull/11735).
 - [Add authRevision field in AuthStatus](https://github.com/etcd-io/etcd/pull/11659).
-
+- Fix [a bug of not refreshing expired tokens](https://github.com/etcd-io/etcd/pull/13308).
+- 
 ### API
 
 - Add [`/v3/auth/status`](https://github.com/etcd-io/etcd/pull/11536) endpoint to check if authentication is enabled

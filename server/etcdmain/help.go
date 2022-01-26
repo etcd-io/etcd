@@ -123,8 +123,6 @@ Clustering:
     Auto compaction retention length. 0 means disable auto compaction.
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
-  --enable-v2 '` + strconv.FormatBool(embed.DefaultEnableV2) + `'
-    Accept etcd V2 client requests. Deprecated and to be decommissioned in v3.6.
   --v2-deprecation '` + string(cconfig.V2_DEPR_DEFAULT) + `'
     Phase of v2store deprecation. Allows to opt-in for higher compatibility mode.
     Supported values:
@@ -234,8 +232,6 @@ Experimental feature:
     Enable to check data corruption before serving any client/peer traffic.
   --experimental-corrupt-check-time '0s'
     Duration of time between cluster corruption check passes.
-  --experimental-enable-v2v3 ''
-    Serve v2 requests through the v3 backend under a given prefix. Deprecated and to be decommissioned in v3.6.
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
   --experimental-compaction-batch-limit 1000
@@ -245,13 +241,15 @@ Experimental feature:
   --experimental-watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification.
   --experimental-warning-apply-duration '100ms'
-	Warning is generated if requests take more than this duration.
+    Warning is generated if requests take more than this duration.
   --experimental-txn-mode-write-with-shared-buffer 'true'
     Enable the write transaction to use a shared buffer in its readonly check operations.
   --experimental-bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
   --experimental-warning-unary-request-duration '300ms'
     Set time duration after which a warning is generated if a unary request takes more than this duration.
+  --experimental-max-learners '1'
+    Set the max number of learner members allowed in the cluster membership.
 
 Unsafe feature:
   --force-new-cluster 'false'

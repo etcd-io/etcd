@@ -236,6 +236,7 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 			return nil, err
 		}
 	}
+
 	return &bootstrappedBackend{
 		beHooks:  beHooks,
 		be:       be,
@@ -285,7 +286,7 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	if err := cfg.VerifyJoinExisting(); err != nil {
 		return nil, err
 	}
-	cl, err := membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+	cl, err := membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap, membership.WithMaxLearners(cfg.ExperimentalMaxLearners))
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +300,10 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt) {
 		return nil, fmt.Errorf("incompatible with current running cluster")
 	}
-
+	scaleUpLearners := false
+	if err := membership.ValidateMaxLearnerConfig(cfg.ExperimentalMaxLearners, existingCluster.Members(), scaleUpLearners); err != nil {
+		return nil, err
+	}
 	remotes := existingCluster.Members()
 	cl.SetID(types.ID(0), existingCluster.ID())
 	member := cl.MemberByName(cfg.Name)
@@ -314,7 +318,7 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*
 	if err := cfg.VerifyBootstrap(); err != nil {
 		return nil, err
 	}
-	cl, err := membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+	cl, err := membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap, membership.WithMaxLearners(cfg.ExperimentalMaxLearners))
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +340,7 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*
 		if config.CheckDuplicateURL(urlsmap) {
 			return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
 		}
-		if cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, urlsmap); err != nil {
+		if cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, urlsmap, membership.WithMaxLearners(cfg.ExperimentalMaxLearners)); err != nil {
 			return nil, err
 		}
 	}
@@ -358,7 +362,13 @@ func bootstrapClusterWithWAL(cfg config.ServerConfig, meta *snapshotMetadata) (*
 			zap.String("wal-dir", cfg.WALDir()),
 		)
 	}
-	cl := membership.NewCluster(cfg.Logger)
+	cl := membership.NewCluster(cfg.Logger, membership.WithMaxLearners(cfg.ExperimentalMaxLearners))
+
+	scaleUpLearners := false
+	if err := membership.ValidateMaxLearnerConfig(cfg.ExperimentalMaxLearners, cl.Members(), scaleUpLearners); err != nil {
+		return nil, err
+	}
+
 	cl.SetID(meta.nodeID, meta.clusterID)
 	return &bootstrapedCluster{
 		cl:     cl,
@@ -398,6 +408,10 @@ func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 		}
+		// A snapshot db may have already been recovered, and the old db should have
+		// already been closed in this case, so we should set the backend again.
+		ci.SetBackend(be)
+
 		s1, s2 := be.Size(), be.SizeInUse()
 		cfg.Logger.Info(
 			"recovered v3 backend from snapshot",
@@ -440,7 +454,8 @@ func (c *bootstrapedCluster) Finalize(cfg config.ServerConfig, s *bootstrappedSt
 			return fmt.Errorf("database file (%v) of the backend is missing", bepath)
 		}
 	}
-	return nil
+	scaleUpLearners := false
+	return membership.ValidateMaxLearnerConfig(cfg.ExperimentalMaxLearners, c.cl.Members(), scaleUpLearners)
 }
 
 func (c *bootstrapedCluster) databaseFileMissing(s *bootstrappedStorage) bool {

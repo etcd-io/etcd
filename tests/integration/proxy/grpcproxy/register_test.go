@@ -28,7 +28,7 @@ import (
 func TestRegister(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
 	paddr := clus.Members[0].GRPCURL()

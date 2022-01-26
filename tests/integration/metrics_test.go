@@ -31,7 +31,7 @@ import (
 // TestMetricDbSizeBoot checks that the db size metric is set on boot.
 func TestMetricDbSizeBoot(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	v, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
@@ -51,7 +51,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 // testMetricDbSizeDefrag checks that the db size metric is set after defrag.
 func testMetricDbSizeDefrag(t *testing.T, name string) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvc := integration.ToGRPC(clus.Client(0)).KV
@@ -165,7 +165,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 
 func TestMetricQuotaBackendBytes(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	qs, err := clus.Members[0].Metric("etcd_server_quota_backend_bytes")
@@ -183,7 +183,7 @@ func TestMetricQuotaBackendBytes(t *testing.T) {
 
 func TestMetricsHealth(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	tr, err := transport.NewTransport(transport.TLSInfo{}, 5*time.Second)

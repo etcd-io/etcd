@@ -70,7 +70,7 @@ func TestV3ClientMetrics(t *testing.T) {
 
 	url := "unix://" + addr + "/metrics"
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1, SkipCreatingClient: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{

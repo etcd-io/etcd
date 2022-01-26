@@ -28,7 +28,7 @@ import (
 func TestUserError(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	authapi := clus.RandClient()
@@ -57,7 +57,7 @@ func TestUserError(t *testing.T) {
 func TestUserErrorAuth(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	authapi := clus.RandClient()
@@ -114,7 +114,7 @@ func authSetupRoot(t *testing.T, auth clientv3.Auth) {
 func TestGetTokenWithoutAuth(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 2})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
 	authapi := clus.RandClient()

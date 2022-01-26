@@ -536,6 +536,8 @@ type hashKVResult struct {
 func TestHashKVWhenCompacting(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
+	defer s.Close()
+	defer b.Close()
 	defer os.Remove(tmpPath)
 
 	rev := 10000
@@ -722,6 +724,8 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 	)
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
+	defer b.Close()
+	defer s.Close()
 	defer os.Remove(tmpPath)
 
 	var wg sync.WaitGroup

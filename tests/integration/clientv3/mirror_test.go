@@ -30,7 +30,7 @@ import (
 func TestMirrorSync(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	c := clus.Client(0)
@@ -74,7 +74,7 @@ func TestMirrorSync(t *testing.T) {
 func TestMirrorSyncBase(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	cluster := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	cluster := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	cli := cluster.Client(0)

@@ -29,7 +29,7 @@ import (
 func TestTxnError(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
@@ -53,7 +53,7 @@ func TestTxnError(t *testing.T) {
 func TestTxnWriteFail(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -103,7 +103,7 @@ func TestTxnReadRetry(t *testing.T) {
 
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -142,7 +142,7 @@ func TestTxnReadRetry(t *testing.T) {
 func TestTxnSuccess(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -165,7 +165,7 @@ func TestTxnSuccess(t *testing.T) {
 func TestTxnCompareRange(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -192,7 +192,7 @@ func TestTxnCompareRange(t *testing.T) {
 func TestTxnNested(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)

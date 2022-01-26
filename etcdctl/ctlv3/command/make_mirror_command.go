@@ -43,6 +43,7 @@ var (
 	mmuser         string
 	mmpassword     string
 	mmnodestprefix bool
+	mmrev          int64
 )
 
 // NewMakeMirrorCommand returns the cobra command for "makeMirror".
@@ -54,6 +55,7 @@ func NewMakeMirrorCommand() *cobra.Command {
 	}
 
 	c.Flags().StringVar(&mmprefix, "prefix", "", "Key-value prefix to mirror")
+	c.Flags().Int64Var(&mmrev, "rev", 0, "Specify the kv revision to start to mirror")
 	c.Flags().StringVar(&mmdestprefix, "dest-prefix", "", "destination prefix to mirror a prefix to a different prefix in the destination cluster")
 	c.Flags().BoolVar(&mmnodestprefix, "no-dest-prefix", false, "mirror key-values to the root of the destination cluster")
 	c.Flags().StringVar(&mmcert, "dest-cert", "", "Identify secure client using this TLS certificate file for the destination cluster")
@@ -130,6 +132,11 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) error {
 	total := int64(0)
 
+	// if destination prefix is specified and remove destination prefix is true return error
+	if mmnodestprefix && len(mmdestprefix) > 0 {
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one"))
+	}
+
 	go func() {
 		for {
 			time.Sleep(30 * time.Second)
@@ -137,33 +144,37 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 		}
 	}()
 
-	s := mirror.NewSyncer(c, mmprefix, 0)
-
-	rc, errc := s.SyncBase(ctx)
-
-	// if destination prefix is specified and remove destination prefix is true return error
-	if mmnodestprefix && len(mmdestprefix) > 0 {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one"))
+	startRev := mmrev - 1
+	if startRev < 0 {
+		startRev = 0
 	}
 
-	// if remove destination prefix is false and destination prefix is empty set the value of destination prefix same as prefix
-	if !mmnodestprefix && len(mmdestprefix) == 0 {
-		mmdestprefix = mmprefix
-	}
+	s := mirror.NewSyncer(c, mmprefix, startRev)
 
-	for r := range rc {
-		for _, kv := range r.Kvs {
-			_, err := dc.Put(ctx, modifyPrefix(string(kv.Key)), string(kv.Value))
-			if err != nil {
-				return err
-			}
-			atomic.AddInt64(&total, 1)
+	// If a rev is provided, then do not sync the whole key space.
+	// Instead, just start watching the key space starting from the rev
+	if startRev == 0 {
+		rc, errc := s.SyncBase(ctx)
+
+		// if remove destination prefix is false and destination prefix is empty set the value of destination prefix same as prefix
+		if !mmnodestprefix && len(mmdestprefix) == 0 {
+			mmdestprefix = mmprefix
 		}
-	}
 
-	err := <-errc
-	if err != nil {
-		return err
+		for r := range rc {
+			for _, kv := range r.Kvs {
+				_, err := dc.Put(ctx, modifyPrefix(string(kv.Key)), string(kv.Value))
+				if err != nil {
+					return err
+				}
+				atomic.AddInt64(&total, 1)
+			}
+		}
+
+		err := <-errc
+		if err != nil {
+			return err
+		}
 	}
 
 	wc := s.SyncUpdates(ctx)

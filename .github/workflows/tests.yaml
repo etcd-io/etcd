@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
       with:
-        go-version: "1.17.2"
+        go-version: "1.17.6"
     - run: date
     - env:
         TARGET: ${{ matrix.target }}
@@ -37,7 +37,7 @@ jobs:
             GOARCH=amd64 PASSES='unit' RACE='true' CPU='4' ./test.sh -p=2
             ;;
           linux-386-unit-1-cpu)
-            GOARCH=386 PASSES='unit' RACE='false' CPU='1' ./test -p=4
+            GOARCH=386 PASSES='unit' RACE='false' CPU='1' ./test.sh -p=4
             ;;
           *)
             echo "Failed to find target"

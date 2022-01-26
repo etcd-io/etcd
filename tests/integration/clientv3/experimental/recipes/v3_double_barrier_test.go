@@ -26,7 +26,7 @@ import (
 func TestDoubleBarrier(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	waiters := 10
@@ -100,7 +100,7 @@ func TestDoubleBarrier(t *testing.T) {
 func TestDoubleBarrierFailover(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewClusterV3(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	waiters := 10

@@ -32,7 +32,7 @@ import (
 // TestV3AuthEmptyUserGet ensures that a get with an empty user will return an empty user error.
 func TestV3AuthEmptyUserGet(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
@@ -51,7 +51,7 @@ func TestV3AuthEmptyUserGet(t *testing.T) {
 // given a valid token when authentication is disabled
 func TestV3AuthTokenWithDisable(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
@@ -83,7 +83,7 @@ func TestV3AuthTokenWithDisable(t *testing.T) {
 
 func TestV3AuthRevision(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	api := integration.ToGRPC(clus.Client(0))
@@ -122,7 +122,7 @@ func TestV3AuthWithLeaseRevokeWithRootJWT(t *testing.T) {
 func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg integration.ClusterConfig) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewClusterV3(t, &ccfg)
+	clus := integration.NewCluster(t, &ccfg)
 	defer clus.Terminate(t)
 
 	api := integration.ToGRPC(clus.Client(0))
@@ -179,7 +179,7 @@ type user struct {
 
 func TestV3AuthWithLeaseRevoke(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	users := []user{
@@ -225,7 +225,7 @@ func TestV3AuthWithLeaseRevoke(t *testing.T) {
 
 func TestV3AuthWithLeaseAttach(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	users := []user{
@@ -337,7 +337,7 @@ func authSetupRoot(t *testing.T, auth pb.AuthClient) {
 
 func TestV3AuthNonAuthorizedRPCs(t *testing.T) {
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	nonAuthedKV := clus.Client(0).KV
@@ -360,7 +360,7 @@ func TestV3AuthNonAuthorizedRPCs(t *testing.T) {
 func TestV3AuthOldRevConcurrent(t *testing.T) {
 	t.Skip() // TODO(jingyih): re-enable the test when #10408 is fixed.
 	integration.BeforeTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
