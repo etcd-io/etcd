@@ -40,7 +40,15 @@ const (
 // HandleMetricsHealth registers metrics and health handlers.
 func HandleMetricsHealth(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.ServerV2) {
 	mux.Handle(PathMetrics, promhttp.Handler())
-	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool) Health { return checkV2Health(lg, srv, excludedAlarms) }))
+	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool) Health {
+		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
+			return h
+		}
+		if h := checkLeader(lg, srv, serializable); h.Health != "true" {
+			return h
+		}
+		return checkV2API(lg, srv)
+	}))
 }
 
 // HandleMetricsHealthForV3 registers metrics and health handlers. it checks health by using v3 range request
@@ -48,7 +56,13 @@ func HandleMetricsHealth(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.Serv
 func HandleMetricsHealthForV3(lg *zap.Logger, mux *http.ServeMux, srv *etcdserver.EtcdServer) {
 	mux.Handle(PathMetrics, promhttp.Handler())
 	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool) Health {
-		return checkV3Health(lg, srv, excludedAlarms, serializable)
+		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
+			return h
+		}
+		if h := checkLeader(lg, srv, serializable); h.Health != "true" {
+			return h
+		}
+		return checkV3API(lg, srv, serializable)
 	}))
 }
 
@@ -141,9 +155,8 @@ func getSerializableFlag(r *http.Request) bool {
 
 // TODO: etcdserver.ErrNoLeader in health API
 
-func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms AlarmSet, serializable bool) Health {
-	h := Health{}
-	h.Health = "true"
+func checkAlarms(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
+	h := Health{Health: "true"}
 	as := srv.Alarms()
 	if len(as) > 0 {
 		for _, v := range as {
@@ -167,19 +180,21 @@ func checkHealth(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms AlarmSe
 		}
 	}
 
-	if !serializable && uint64(srv.Leader()) == raft.None {
+	return h
+}
+
+func checkLeader(lg *zap.Logger, srv etcdserver.ServerV2, serializable bool) Health {
+	h := Health{Health: "true"}
+	if !serializable && (uint64(srv.Leader()) == raft.None) {
 		h.Health = "false"
 		h.Reason = "RAFT NO LEADER"
 		lg.Warn("serving /health false; no leader")
-		return h
 	}
 	return h
 }
 
-func checkV2Health(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms AlarmSet) (h Health) {
-	if h = checkHealth(lg, srv, excludedAlarms, false); h.Health != "true" {
-		return
-	}
+func checkV2API(lg *zap.Logger, srv etcdserver.ServerV2) Health {
+	h := Health{Health: "true"}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
 	cancel()
@@ -187,16 +202,14 @@ func checkV2Health(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms Alarm
 		h.Health = "false"
 		h.Reason = fmt.Sprintf("QGET ERROR:%s", err)
 		lg.Warn("serving /health false; QGET fails", zap.Error(err))
-		return
+		return h
 	}
 	lg.Debug("serving /health true")
-	return
+	return h
 }
 
-func checkV3Health(lg *zap.Logger, srv *etcdserver.EtcdServer, excludedAlarms AlarmSet, serializable bool) (h Health) {
-	if h = checkHealth(lg, srv, excludedAlarms, serializable); h.Health != "true" {
-		return
-	}
+func checkV3API(lg *zap.Logger, srv *etcdserver.EtcdServer, serializable bool) Health {
+	h := Health{Health: "true"}
 	ctx, cancel := context.WithTimeout(context.Background(), srv.Cfg.ReqTimeout())
 	_, err := srv.Range(ctx, &etcdserverpb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
 	cancel()
@@ -204,8 +217,8 @@ func checkV3Health(lg *zap.Logger, srv *etcdserver.EtcdServer, excludedAlarms Al
 		h.Health = "false"
 		h.Reason = fmt.Sprintf("RANGE ERROR:%s", err)
 		lg.Warn("serving /health false; Range fails", zap.Error(err))
-		return
+		return h
 	}
 	lg.Debug("serving /health true")
-	return
+	return h
 }
