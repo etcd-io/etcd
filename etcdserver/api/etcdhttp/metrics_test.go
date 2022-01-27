@@ -62,6 +62,7 @@ func TestHealthHandler(t *testing.T) {
 	// define the input and expected output
 	// input: alarms, and healthCheckURL
 	tests := []struct {
+		name           string
 		alarms         []*pb.AlarmMember
 		healthCheckURL string
 
@@ -69,42 +70,49 @@ func TestHealthHandler(t *testing.T) {
 		expectHealth     string
 	}{
 		{
+			name:             "Healthy if no alarm",
 			alarms:           []*pb.AlarmMember{},
 			healthCheckURL:   "/health",
 			expectStatusCode: http.StatusOK,
 			expectHealth:     "true",
 		},
 		{
+			name:             "Unhealthy if NOSPACE alarm is on",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
 			healthCheckURL:   "/health",
 			expectStatusCode: http.StatusServiceUnavailable,
 			expectHealth:     "false",
 		},
 		{
+			name:             "Healthy if NOSPACE alarm is on and excluded",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
 			healthCheckURL:   "/health?exclude=NOSPACE",
 			expectStatusCode: http.StatusOK,
 			expectHealth:     "true",
 		},
 		{
+			name:             "Healthy if NOSPACE alarm is excluded",
 			alarms:           []*pb.AlarmMember{},
 			healthCheckURL:   "/health?exclude=NOSPACE",
 			expectStatusCode: http.StatusOK,
 			expectHealth:     "true",
 		},
 		{
+			name:             "Healthy if multiple NOSPACE alarms are on and excluded",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(1), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(2), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(3), Alarm: pb.AlarmType_NOSPACE}},
 			healthCheckURL:   "/health?exclude=NOSPACE",
 			expectStatusCode: http.StatusOK,
 			expectHealth:     "true",
 		},
 		{
+			name:             "Unhealthy if NOSPACE alarms is excluded and CORRUPT is on",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
 			healthCheckURL:   "/health?exclude=NOSPACE",
 			expectStatusCode: http.StatusServiceUnavailable,
 			expectHealth:     "false",
 		},
 		{
+			name:             "Unhealthy if both NOSPACE and CORRUPT are on and excluded",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
 			healthCheckURL:   "/health?exclude=NOSPACE&exclude=CORRUPT",
 			expectStatusCode: http.StatusOK,
@@ -113,7 +121,7 @@ func TestHealthHandler(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		func() {
+		t.Run(tt.name, func(t *testing.T) {
 			mux := http.NewServeMux()
 			HandleMetricsHealth(mux, &fakeServerV2{
 				fakeServer: fakeServer{alarms: tt.alarms},
@@ -141,7 +149,7 @@ func TestHealthHandler(t *testing.T) {
 			if health.Health != tt.expectHealth {
 				t.Errorf("want health %s but got %s", tt.expectHealth, health.Health)
 			}
-		}()
+		})
 	}
 }
 
