@@ -542,7 +542,7 @@ func startProxy(cfg *config) error {
 				plog.Infof("v2 proxy started listening on client requests on %q", host)
 			}
 			mux := http.NewServeMux()
-			etcdhttp.HandlePrometheus(mux) // v2 proxy just uses the same port
+			etcdhttp.HandleMetrics(mux) // v2 proxy just uses the same port
 			mux.Handle("/", ph)
 			plog.Fatal(http.Serve(l, mux))
 		}()

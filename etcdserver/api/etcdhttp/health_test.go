@@ -19,29 +19,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver"
-	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/testutil"
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/raft"
 )
 
-type fakeStats struct{}
-
-func (s *fakeStats) SelfStats() []byte   { return nil }
-func (s *fakeStats) LeaderStats() []byte { return nil }
-func (s *fakeStats) StoreStats() []byte  { return nil }
-
 type fakeHealthServer struct {
 	fakeServer
-	stats.Stats
 	health   string
 	apiError error
 }
@@ -130,18 +121,21 @@ func TestHealthHandler(t *testing.T) {
 			expectHealth:     "true",
 		},
 		{
+			name:             "Healthy even if authentication failed",
 			healthCheckURL:   "/health",
 			apiError:         auth.ErrUserEmpty,
 			expectStatusCode: http.StatusOK,
 			expectHealth:     "true",
 		},
 		{
+			name:             "Healthy even if authorization failed",
 			healthCheckURL:   "/health",
 			apiError:         auth.ErrPermissionDenied,
 			expectStatusCode: http.StatusOK,
 			expectHealth:     "true",
 		},
 		{
+			name:             "Unhealthy if api is not available",
 			healthCheckURL:   "/health",
 			apiError:         fmt.Errorf("Unexpected error"),
 			expectStatusCode: http.StatusServiceUnavailable,
@@ -149,12 +143,11 @@ func TestHealthHandler(t *testing.T) {
 		},
 	}
 
-	for i, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mux := http.NewServeMux()
-			HandleMetricsHealth(mux, &fakeHealthServer{
+			HandleHealth(mux, &fakeHealthServer{
 				fakeServer: fakeServer{alarms: tt.alarms},
-				Stats:      &fakeStats{},
 				health:     tt.expectHealth,
 				apiError:   tt.apiError,
 			})
@@ -163,14 +156,14 @@ func TestHealthHandler(t *testing.T) {
 
 			res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+tt.healthCheckURL)})
 			if err != nil {
-				t.Errorf("fail serve http request %s %v in test case #%d", tt.healthCheckURL, err, i+1)
+				t.Errorf("fail serve http request %s %v", tt.healthCheckURL, err)
 			}
 			if res == nil {
-				t.Errorf("got nil http response with http request %s in test case #%d", tt.healthCheckURL, i+1)
+				t.Errorf("got nil http response with http request %s", tt.healthCheckURL)
 				return
 			}
 			if res.StatusCode != tt.expectStatusCode {
-				t.Errorf("want statusCode %d but got %d in test case #%d", tt.expectStatusCode, res.StatusCode, i+1)
+				t.Errorf("want statusCode %d but got %d", tt.expectStatusCode, res.StatusCode)
 			}
 			health, err := parseHealthOutput(res.Body)
 			if err != nil {
@@ -185,7 +178,7 @@ func TestHealthHandler(t *testing.T) {
 
 func parseHealthOutput(body io.Reader) (Health, error) {
 	obj := Health{}
-	d, derr := ioutil.ReadAll(body)
+	d, derr := io.ReadAll(body)
 	if derr != nil {
 		return obj, derr
 	}
