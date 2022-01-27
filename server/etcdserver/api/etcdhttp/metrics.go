@@ -19,14 +19,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
-	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.uber.org/zap"
 )
 
@@ -37,23 +38,16 @@ const (
 	PathProxyHealth  = "/proxy/health"
 )
 
-// HandleMetricsHealth registers metrics and health handlers.
-func HandleMetricsHealth(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.ServerV2) {
-	mux.Handle(PathMetrics, promhttp.Handler())
-	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool) Health {
-		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
-			return h
-		}
-		if h := checkLeader(lg, srv, serializable); h.Health != "true" {
-			return h
-		}
-		return checkV2API(lg, srv)
-	}))
+type ServerHealth interface {
+	Alarms() []*pb.AlarmMember
+	Leader() types.ID
+	Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error)
+	Config() config.ServerConfig
 }
 
-// HandleMetricsHealthForV3 registers metrics and health handlers. it checks health by using v3 range request
+// HandleMetricsHealth registers metrics and health handlers. it checks health by using v3 range request
 // and its corresponding timeout.
-func HandleMetricsHealthForV3(lg *zap.Logger, mux *http.ServeMux, srv *etcdserver.EtcdServer) {
+func HandleMetricsHealth(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
 	mux.Handle(PathMetrics, promhttp.Handler())
 	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool) Health {
 		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
@@ -62,7 +56,7 @@ func HandleMetricsHealthForV3(lg *zap.Logger, mux *http.ServeMux, srv *etcdserve
 		if h := checkLeader(lg, srv, serializable); h.Health != "true" {
 			return h
 		}
-		return checkV3API(lg, srv, serializable)
+		return checkAPI(lg, srv, serializable)
 	}))
 }
 
@@ -155,7 +149,7 @@ func getSerializableFlag(r *http.Request) bool {
 
 // TODO: etcdserver.ErrNoLeader in health API
 
-func checkAlarms(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
+func checkAlarms(lg *zap.Logger, srv ServerHealth, excludedAlarms AlarmSet) Health {
 	h := Health{Health: "true"}
 	as := srv.Alarms()
 	if len(as) > 0 {
@@ -183,7 +177,7 @@ func checkAlarms(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms AlarmSe
 	return h
 }
 
-func checkLeader(lg *zap.Logger, srv etcdserver.ServerV2, serializable bool) Health {
+func checkLeader(lg *zap.Logger, srv ServerHealth, serializable bool) Health {
 	h := Health{Health: "true"}
 	if !serializable && (uint64(srv.Leader()) == raft.None) {
 		h.Health = "false"
@@ -193,24 +187,10 @@ func checkLeader(lg *zap.Logger, srv etcdserver.ServerV2, serializable bool) Hea
 	return h
 }
 
-func checkV2API(lg *zap.Logger, srv etcdserver.ServerV2) Health {
+func checkAPI(lg *zap.Logger, srv ServerHealth, serializable bool) Health {
 	h := Health{Health: "true"}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
-	cancel()
-	if err != nil {
-		h.Health = "false"
-		h.Reason = fmt.Sprintf("QGET ERROR:%s", err)
-		lg.Warn("serving /health false; QGET fails", zap.Error(err))
-		return h
-	}
-	lg.Debug("serving /health true")
-	return h
-}
-
-func checkV3API(lg *zap.Logger, srv *etcdserver.EtcdServer, serializable bool) Health {
-	h := Health{Health: "true"}
-	ctx, cancel := context.WithTimeout(context.Background(), srv.Cfg.ReqTimeout())
+	cfg := srv.Config()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ReqTimeout())
 	_, err := srv.Range(ctx, &etcdserverpb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
 	cancel()
 	if err != nil && err != auth.ErrUserEmpty && err != auth.ErrPermissionDenied {

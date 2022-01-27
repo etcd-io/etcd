@@ -993,7 +993,7 @@ func (m *Member) Launch() error {
 	for _, ln := range m.ClientListeners {
 		handler := http.NewServeMux()
 		etcdhttp.HandleBasic(m.Logger, handler, m.Server)
-		etcdhttp.HandleMetricsHealthForV3(m.Logger, handler, m.Server)
+		etcdhttp.HandleMetricsHealth(m.Logger, handler, m.Server)
 		hs := &httptest.Server{
 			Listener: ln,
 			Config: &http.Server{

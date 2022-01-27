@@ -702,7 +702,7 @@ func (e *Etcd) serveClients() (err error) {
 	// Start a client server goroutine for each listen address
 	mux := http.NewServeMux()
 	etcdhttp.HandleBasic(e.cfg.logger, mux, e.Server)
-	etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, mux, e.Server)
+	etcdhttp.HandleMetricsHealth(e.cfg.logger, mux, e.Server)
 
 	gopts := []grpc.ServerOption{}
 	if e.cfg.GRPCKeepAliveMinTime > time.Duration(0) {
@@ -735,7 +735,7 @@ func (e *Etcd) serveMetrics() (err error) {
 
 	if len(e.cfg.ListenMetricsUrls) > 0 {
 		metricsMux := http.NewServeMux()
-		etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, metricsMux, e.Server)
+		etcdhttp.HandleMetricsHealth(e.cfg.logger, metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
 			tlsInfo := &e.cfg.ClientTLSInfo
