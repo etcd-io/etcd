@@ -137,7 +137,7 @@ func TestHealthHandler(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mux := http.NewServeMux()
-			HandleMetricsHealth(zaptest.NewLogger(t), mux, &fakeHealthServer{
+			HandleHealth(zaptest.NewLogger(t), mux, &fakeHealthServer{
 				fakeServer: fakeServer{alarms: tt.alarms},
 				health:     tt.expectHealth,
 				apiError:   tt.apiError,
