@@ -64,50 +64,51 @@ func TestHealthHandler(t *testing.T) {
 	tests := []struct {
 		alarms         []*pb.AlarmMember
 		healthCheckURL string
-		statusCode     int
-		health         string
+
+		expectStatusCode int
+		expectHealth     string
 	}{
 		{
-			alarms:         []*pb.AlarmMember{},
-			healthCheckURL: "/health",
-			statusCode:     http.StatusOK,
-			health:         "true",
+			alarms:           []*pb.AlarmMember{},
+			healthCheckURL:   "/health",
+			expectStatusCode: http.StatusOK,
+			expectHealth:     "true",
 		},
 		{
-			alarms:         []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
-			healthCheckURL: "/health",
-			statusCode:     http.StatusServiceUnavailable,
-			health:         "false",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
+			healthCheckURL:   "/health",
+			expectStatusCode: http.StatusServiceUnavailable,
+			expectHealth:     "false",
 		},
 		{
-			alarms:         []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
-			healthCheckURL: "/health?exclude=NOSPACE",
-			statusCode:     http.StatusOK,
-			health:         "true",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
+			healthCheckURL:   "/health?exclude=NOSPACE",
+			expectStatusCode: http.StatusOK,
+			expectHealth:     "true",
 		},
 		{
-			alarms:         []*pb.AlarmMember{},
-			healthCheckURL: "/health?exclude=NOSPACE",
-			statusCode:     http.StatusOK,
-			health:         "true",
+			alarms:           []*pb.AlarmMember{},
+			healthCheckURL:   "/health?exclude=NOSPACE",
+			expectStatusCode: http.StatusOK,
+			expectHealth:     "true",
 		},
 		{
-			alarms:         []*pb.AlarmMember{{MemberID: uint64(1), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(2), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(3), Alarm: pb.AlarmType_NOSPACE}},
-			healthCheckURL: "/health?exclude=NOSPACE",
-			statusCode:     http.StatusOK,
-			health:         "true",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(1), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(2), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(3), Alarm: pb.AlarmType_NOSPACE}},
+			healthCheckURL:   "/health?exclude=NOSPACE",
+			expectStatusCode: http.StatusOK,
+			expectHealth:     "true",
 		},
 		{
-			alarms:         []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
-			healthCheckURL: "/health?exclude=NOSPACE",
-			statusCode:     http.StatusServiceUnavailable,
-			health:         "false",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
+			healthCheckURL:   "/health?exclude=NOSPACE",
+			expectStatusCode: http.StatusServiceUnavailable,
+			expectHealth:     "false",
 		},
 		{
-			alarms:         []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
-			healthCheckURL: "/health?exclude=NOSPACE&exclude=CORRUPT",
-			statusCode:     http.StatusOK,
-			health:         "true",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
+			healthCheckURL:   "/health?exclude=NOSPACE&exclude=CORRUPT",
+			expectStatusCode: http.StatusOK,
+			expectHealth:     "true",
 		},
 	}
 
@@ -117,7 +118,7 @@ func TestHealthHandler(t *testing.T) {
 			HandleMetricsHealth(mux, &fakeServerV2{
 				fakeServer: fakeServer{alarms: tt.alarms},
 				Stats:      &fakeStats{},
-				health:     tt.health,
+				health:     tt.expectHealth,
 			})
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
@@ -130,15 +131,15 @@ func TestHealthHandler(t *testing.T) {
 				t.Errorf("got nil http response with http request %s in test case #%d", tt.healthCheckURL, i+1)
 				return
 			}
-			if res.StatusCode != tt.statusCode {
-				t.Errorf("want statusCode %d but got %d in test case #%d", tt.statusCode, res.StatusCode, i+1)
+			if res.StatusCode != tt.expectStatusCode {
+				t.Errorf("want statusCode %d but got %d in test case #%d", tt.expectStatusCode, res.StatusCode, i+1)
 			}
 			health, err := parseHealthOutput(res.Body)
 			if err != nil {
 				t.Errorf("fail parse health check output %v", err)
 			}
-			if health.Health != tt.health {
-				t.Errorf("want health %s but got %s", tt.health, health.Health)
+			if health.Health != tt.expectHealth {
+				t.Errorf("want health %s but got %s", tt.expectHealth, health.Health)
 			}
 		}()
 	}
