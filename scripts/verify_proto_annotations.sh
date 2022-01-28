@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Verifies proto annotations to ensure all new proto fields and messages are annotated by comparing it with etcd_version_annotations.txt file.
+# This scripts is automatically run by CI to prevent pull requests missing adding a proto annotation.
 
 set -o errexit
 set -o nounset
