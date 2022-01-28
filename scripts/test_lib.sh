@@ -426,3 +426,41 @@ function git_assert_branch_in_sync {
     log_warning "Cannot verify consistency with the origin, as git is on detached branch."
   fi
 }
+
+# merge_cov_files [covdir] [outfile]
+# merges all coverprofile files into a single file in the given directory.
+function merge_cov_files {
+  local covdir="${1}"
+  local cover_out_file="${2}"
+  log_callout "Merging coverage results in: ${covdir}"
+  # gocovmerge requires not-empty test to start with:
+  echo "mode: set" > "${cover_out_file}"
+
+  local i=0
+  local count
+  count=$(find "${covdir}"/*.coverprofile | wc -l)
+  for f in "${covdir}"/*.coverprofile; do
+    # print once per 20 files
+    if ! (( "${i}" % 20 )); then
+      log_callout "${i} of ${count}: Merging file: ${f}"
+    fi
+    run_go_tool "github.com/gyuho/gocovmerge" "${f}" "${cover_out_file}"  > "${covdir}/cover.tmp" 2>/dev/null
+    if [ -s "${covdir}"/cover.tmp ]; then
+      mv "${covdir}/cover.tmp" "${cover_out_file}"
+    fi
+    (( i++ ))
+  done
+}
+
+# merge_cov [covdir] [cover_out_files]
+function merge_cov {
+  log_callout "[$(date)] Merging coverage files ..."
+  covdir="${1}"
+  cover_out_file="${2}"
+  for d in "${covdir}"/*/; do
+    d=${d%*/}  # remove the trailing "/"
+    merge_cov_files "${d}" "${d}.coverprofile" &
+  done
+  wait
+  merge_cov_files "${covdir}" "${cover_out_file}"
+}

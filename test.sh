@@ -215,6 +215,7 @@ function build_cov_pass {
 # pkg_to_coverflag [prefix] [pkgs]
 # produces name of .coverprofile file to be used for tests of this package
 function pkg_to_coverprofileflag {
+  covdir=$(readlink -f "${COVERDIR}")
   local prefix="${1}"
   local pkgs="${2}"
   local pkgs_normalized
@@ -224,8 +225,8 @@ function pkg_to_coverprofileflag {
   else
     pkgs_normalized=$(echo "${pkgs}" | tr "./ " "__+")
   fi
-  mkdir -p "${coverdir}/${prefix_normalized}"
-  echo -n "-coverprofile=${coverdir}/${prefix_normalized}/${pkgs_normalized}.coverprofile"
+  mkdir -p "${covdir}/${prefix_normalized}"
+  echo -n "-coverprofile=${covdir}/${prefix_normalized}/${pkgs_normalized}.coverprofile"
 }
 
 function not_test_packages {
@@ -253,113 +254,83 @@ function split_dir_pass {
   split_dir ./covdir/integration 4
 }
 
+function unit_cov_pass {
+  local failed=""
+  setup_cov
 
-# merge_cov_files [coverdir] [outfile]
-# merges all coverprofile files into a single file in the given directory.
-function merge_cov_files {
-  local coverdir="${1}"
-  local cover_out_file="${2}"
-  log_callout "Merging coverage results in: ${coverdir}"
-  # gocovmerge requires not-empty test to start with:
-  echo "mode: set" > "${cover_out_file}"
-
-  local i=0
-  local count
-  count=$(find "${coverdir}"/*.coverprofile | wc -l)
-  for f in "${coverdir}"/*.coverprofile; do
-    # print once per 20 files
-    if ! (( "${i}" % 20 )); then
-      log_callout "${i} of ${count}: Merging file: ${f}"
-    fi
-    run_go_tool "github.com/gyuho/gocovmerge" "${f}" "${cover_out_file}"  > "${coverdir}/cover.tmp" 2>/dev/null
-    if [ -s "${coverdir}"/cover.tmp ]; then
-      mv "${coverdir}/cover.tmp" "${cover_out_file}"
-    fi
-    (( i++ ))
+  log_callout "[$(date)] Collecting coverage from unit tests ..."
+  for m in $(module_dirs); do
+    GOLANG_TEST_SHORT=true run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
+        -covermode=set "$(covpkgs_flag)"  "$@" || failed="$failed unit"
   done
+
+  # held failures to generate the full coverage file, now fail
+  cov_exit "${failed}"
 }
 
-# merge_cov [coverdir]
-function merge_cov {
-  log_callout "[$(date)] Merging coverage files ..."
-  coverdir="${1}"
-  for d in "${coverdir}"/*/; do
-    d=${d%*/}  # remove the trailing "/"
-    merge_cov_files "${d}" "${d}.coverprofile" &
-  done
-  wait
-  merge_cov_files "${coverdir}" "${coverdir}/all.coverprofile"
+function integration_cov_pass {
+  local failed=""
+  setup_cov
+
+  log_callout "[$(date)] Collecting coverage from integration tests ..."
+  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration" \
+      -timeout=30m -covermode=set "$(covpkgs_flag)"  "$@" || failed="$failed integration"
+  # integration-store-v2
+  run_for_module "tests" go_test "./integration/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
+      -timeout=5m -covermode=set "$(covpkgs_flag)"  "$@" || failed="$failed integration_v2"
+  # integration_cluster_proxy
+  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
+      -tags cluster_proxy -timeout=30m -covermode=set "$(covpkgs_flag)" || failed="$failed integration_cluster_proxy"
+
+  # held failures to generate the full coverage file, now fail
+  cov_exit "${failed}"
 }
 
-function cov_pass {
+function e2e_cov_pass {
+  local failed=""
+  covdir=$(readlink -f "${COVERDIR}")
+  setup_cov
+
   # shellcheck disable=SC2153
-  if [ -z "$COVERDIR" ]; then
-    log_error "COVERDIR undeclared"
-    return 255
-  fi
-
   if [ ! -f "bin/etcd_test" ]; then
     log_error "etcd_test binary not found. Call: PASSES='build_cov' ./test.sh"
     return 255
   fi
 
-  local coverdir
-  coverdir=$(readlink -f "${COVERDIR}")
-  mkdir -p "${coverdir}"
-  find "${coverdir}" -print0 -name '*.coverprofile' | xargs -0 rm
+  log_callout "[$(date)] Collecting coverage from e2e tests ..."
+  # We don't pass 'gocov_build_flags' nor 'pkg_to_coverprofileflag' here,
+  # as the coverage is collected from the ./bin/etcd_test & ./bin/etcdctl_test internally spawned.
+  mkdir -p "${covdir}/e2e"
+  COVERDIR="${covdir}/e2e" run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags=cov -timeout 30m "$@" || failed="$failed tests_e2e"
+  split_dir "${covdir}/e2e" 10
 
+  log_callout "[$(date)] Collecting coverage from e2e tests with proxy ..."
+  mkdir -p "${covdir}/e2e_proxy"
+  COVERDIR="${covdir}/e2e_proxy" run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags="cov cluster_proxy" -timeout 30m "$@" || failed="$failed tests_e2e_proxy"
+  split_dir "${covdir}/e2e_proxy" 10V
+
+  # held failures to generate the full coverage file, now fail
+  cov_exit "${failed}"
+}
+
+function setup_cov {
+  : "${COVERDIR?"Need to set COVERDIR"}"
+  local covdir
+  covdir=$(readlink -f "${COVERDIR}")
+  mkdir -p "${covdir}"
+  find "${covdir}" -print0 -name '*.coverprofile' | xargs -0 rm -rf
+}
+
+function covpkgs_flag {
   local covpkgs
   covpkgs=$(not_test_packages)
   local coverpkg_comma
   coverpkg_comma=$(echo "${covpkgs[@]}" | xargs | tr ' ' ',')
-  local gocov_build_flags=("-covermode=set" "-coverpkg=$coverpkg_comma")
+  echo "-coverpkg=$coverpkg_comma"
+}
 
-  local failed=""
-
-  log_callout "[$(date)] Collecting coverage from unit tests ..."
-  for m in $(module_dirs); do
-    GOLANG_TEST_SHORT=true run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
-       "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
-  done
-
-  log_callout "[$(date)] Collecting coverage from integration tests ..."
-  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration" \
-      -timeout=30m "${gocov_build_flags[@]}" "$@" || failed="$failed integration"
-  # integration-store-v2
-  run_for_module "tests" go_test "./integration/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
-      -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_v2"
-  # integration_cluster_proxy
-  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
-      -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
-
-  log_callout "[$(date)] Collecting coverage from e2e tests ..."
-  # We don't pass 'gocov_build_flags' nor 'pkg_to_coverprofileflag' here,
-  # as the coverage is collected from the ./bin/etcd_test & ./bin/etcdctl_test internally spawned.
-  mkdir -p "${coverdir}/e2e"
-  COVERDIR="${coverdir}/e2e" run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags=cov -timeout 30m "$@" || failed="$failed tests_e2e"
-  split_dir "${coverdir}/e2e" 10
-
-  log_callout "[$(date)] Collecting coverage from e2e tests with proxy ..."
-  mkdir -p "${coverdir}/e2e_proxy"
-  COVERDIR="${coverdir}/e2e_proxy" run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags="cov cluster_proxy" -timeout 30m "$@" || failed="$failed tests_e2e_proxy"
-  split_dir "${coverdir}/e2e_proxy" 10
-
-  local cover_out_file="${coverdir}/all.coverprofile"
-  merge_cov "${coverdir}"
-
-  # strip out generated files (using GNU-style sed)
-  sed --in-place -E "/[.]pb[.](gw[.])?go/d" "${cover_out_file}" || true
-
-  sed --in-place -E "s|go.etcd.io/etcd/api/v3/|api/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/client/v3/|client/v3/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/client/v2/|client/v2/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/client/pkg/v3|client/pkg/v3/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/etcdctl/v3/|etcdctl/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/etcdutl/v3/|etcdutl/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/pkg/v3/|pkg/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/raft/v3/|raft/|g" "${cover_out_file}" || true
-  sed --in-place -E "s|go.etcd.io/etcd/server/v3/|server/|g" "${cover_out_file}" || true
-
+function cov_exit {
+  failed=${1}
   # held failures to generate the full coverage file, now fail
   if [ -n "$failed" ]; then
     for f in $failed; do
@@ -367,9 +338,8 @@ function cov_pass {
     done
     log_warning "Despite failures, you can see partial report:"
     log_warning "  go tool cover -html ${cover_out_file}"
-    return 255
+    exit 255
   fi
-
   log_success "done :) [see report: go tool cover -html ${cover_out_file}]"
 }
 
