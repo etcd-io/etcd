@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -130,4 +131,24 @@ func ExecuteWithTimeout(t *testing.T, timeout time.Duration, f func()) {
 		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
 	case <-donec:
 	}
+}
+
+func mergeEnvVariables(envVars map[string]string) []string {
+	var env []string
+	// Environment variables are passed as parameter have higher priority
+	// than os environment variables.
+	for k, v := range envVars {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Now, we can set os environment variables not passed as parameter.
+	currVars := os.Environ()
+	for _, v := range currVars {
+		p := strings.Split(v, "=")
+		if _, ok := envVars[p[0]]; !ok {
+			env = append(env, fmt.Sprintf("%s=%s", p[0], p[1]))
+		}
+	}
+
+	return env
 }

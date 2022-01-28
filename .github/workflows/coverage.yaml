@@ -1,0 +1,28 @@
+name: Coverage
+on: [push, pull_request]
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+        - linux-amd64-coverage
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.17.6"
+    - env:
+        TARGET: ${{ matrix.target }}
+      run: |
+        mkdir "${TARGET}"
+        case "${TARGET}" in
+          linux-amd64-coverage)
+            GOARCH=amd64 ./scripts/codecov_upload.sh
+            ;;
+          *)
+            echo "Failed to find target"
+            exit 1
+            ;;
+        esac
