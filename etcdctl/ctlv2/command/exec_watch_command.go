@@ -89,7 +89,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 		os.Exit(0)
 	}()
 
-	w := ki.Watcher(key, &client.WatcherOptions{AfterIndex: uint64(index), Recursive: recursive})
+	w := ki.Watcher(key, &client.WatcherOptions{AfterIndex: index, Recursive: recursive})
 
 	for {
 		resp, err := w.Next(context.TODO())
