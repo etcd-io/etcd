@@ -27,6 +27,11 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
+var (
+	// externalPackages that are not expected to have etcd version annotation.
+	externalPackages = []string{"io.prometheus.client", "grpc.binarylog.v1", "google.protobuf", "google.rpc", "google.api"}
+)
+
 // printEtcdVersion writes etcd_version proto annotation to stdout and returns any errors encountered when reading annotation.
 func printEtcdVersion() []error {
 	var errs []error
@@ -59,10 +64,11 @@ func printEtcdVersion() []error {
 func allEtcdVersionAnnotations() (annotations []etcdVersionAnnotation, err error) {
 	var fileAnnotations []etcdVersionAnnotation
 	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
-		switch string(file.Package()) {
-		// Skip external packages that are not expected to have etcd version annotation.
-		case "io.prometheus.client", "grpc.binarylog.v1", "google.protobuf", "google.rpc", "google.api":
-			return true
+		pkg := string(file.Package())
+		for _, externalPkg := range externalPackages {
+			if pkg == externalPkg {
+				return true
+			}
 		}
 		fileAnnotations, err = fileEtcdVersionAnnotations(file)
 		if err != nil {
