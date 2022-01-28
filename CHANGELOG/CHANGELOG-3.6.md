@@ -15,6 +15,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 ### etcdctl v3
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13133).
+- When print endpoint status, [show db size in use](https://github.com/etcd-io/etcd/pull/13639)
 
 ### etcdutl v3
 
