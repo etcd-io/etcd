@@ -189,7 +189,17 @@ function functional_pass {
 }
 
 function grpcproxy_pass {
-  run_for_module "tests" go_test "./integration/... ./e2e" "fail_fast" : \
+  run_pass "grpcproxy_integration" "${@}"
+  run_pass "grpcproxy_e2e" "${@}"
+}
+
+function grpcproxy_integration_pass {
+  run_for_module "tests" go_test "./integration/..." "fail_fast" : \
+      -timeout=30m -tags cluster_proxy "${COMMON_TEST_FLAGS[@]}" "$@"
+}
+
+function grpcproxy_e2e_pass {
+  run_for_module "tests" go_test "./e2e" "fail_fast" : \
       -timeout=30m -tags cluster_proxy "${COMMON_TEST_FLAGS[@]}" "$@"
 }
 
