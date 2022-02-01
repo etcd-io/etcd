@@ -108,12 +108,13 @@ func TestAuthority(t *testing.T) {
 				kv := setupClient(t, tc.clientURLPattern, clus, tlsConfig)
 				defer kv.Close()
 
+				putRequestMethod := "/etcdserverpb.KV/Put"
 				_, err := kv.Put(context.TODO(), "foo", "bar")
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				assertAuthority(t, templateAuthority(t, tc.expectAuthorityPattern, clus.Members[0]), clus)
+				assertAuthority(t, templateAuthority(t, tc.expectAuthorityPattern, clus.Members[0]), clus, putRequestMethod)
 			})
 		}
 	}
@@ -181,12 +182,12 @@ func templateAuthority(t *testing.T, pattern string, m *integration.Member) stri
 	return authority
 }
 
-func assertAuthority(t *testing.T, expectedAuthority string, clus *integration.Cluster) {
+func assertAuthority(t *testing.T, expectedAuthority string, clus *integration.Cluster, filterMethod string) {
 	t.Helper()
 	requestsFound := 0
 	for _, m := range clus.Members {
 		for _, r := range m.RecordedRequests() {
-			if r.FullMethod != "/etcdserverpb.KV/Put" {
+			if filterMethod != "" && r.FullMethod != filterMethod {
 				continue
 			}
 			requestsFound++
