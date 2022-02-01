@@ -3,11 +3,11 @@
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.3.18+, 3.4.2+, and 3.5.1+. Refer to the [versioning policy](https://etcd.io/docs/v3.5/op-guide/versioning/) for more details.
+The minimum recommended etcd versions to run in **production** are 3.3.18+, 3.4.2+, and 3.5.2+. Refer to the [versioning policy](https://etcd.io/docs/v3.5/op-guide/versioning/) for more details.
 
 <hr>
 
-## [v3.5.2](https://github.com/etcd-io/etcd/releases/tag/v3.5.2) (TODO)
+## [v3.5.2](https://github.com/etcd-io/etcd/releases/tag/v3.5.2) (2022-02-01)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.1...v3.5.2) and [v3.5 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_5/) for any breaking changes.
 
