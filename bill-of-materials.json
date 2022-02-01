@@ -180,6 +180,15 @@
 		]
 	},
 	{
+		"project": "github.com/google/go-cmp/cmp",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
 		"project": "github.com/gorilla/websocket",
 		"licenses": [
 			{

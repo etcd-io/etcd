@@ -58,6 +58,8 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -483,16 +485,7 @@ func (c *Cluster) waitVersion() {
 func isMembersEqual(membs []*pb.Member, wmembs []*pb.Member) bool {
 	sort.Sort(SortableMemberSliceByPeerURLs(membs))
 	sort.Sort(SortableMemberSliceByPeerURLs(wmembs))
-	for i := range membs {
-		membs[i].ID = 0
-		if membs[i].PeerURLs == nil {
-			membs[i].PeerURLs = []string{}
-		}
-		if membs[i].ClientURLs == nil {
-			membs[i].ClientURLs = []string{}
-		}
-	}
-	return reflect.DeepEqual(membs, wmembs)
+	return cmp.Equal(membs, wmembs, cmpopts.IgnoreFields(pb.Member{}, "ID", "PeerURLs", "ClientURLs"))
 }
 
 func newLocalListener(t testutil.TB) net.Listener {
