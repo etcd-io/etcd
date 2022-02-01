@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2021 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build libs
-// +build libs
-
-// This file implements that pattern:
-// https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
-// for etcd. Thanks to this file 'go mod tidy' does not removes dependencies.
-
-package libs
+package main
 
 import (
-	_ "github.com/gogo/protobuf/proto"
+	"fmt"
+	"os"
+
+	"go.etcd.io/etcd/v3/tools/proto-annotations/cmd"
 )
+
+func main() {
+	if err := cmd.RootCmd().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}

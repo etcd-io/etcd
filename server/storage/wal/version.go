@@ -53,32 +53,72 @@ func (w *walVersion) MinimalEtcdVersion() *semver.Version {
 func MinimalEtcdVersion(ents []raftpb.Entry) *semver.Version {
 	var maxVer *semver.Version
 	for _, ent := range ents {
-		maxVer = maxVersion(maxVer, etcdVersionFromEntry(ent))
+		err := visitEntry(ent, func(path protoreflect.FullName, ver *semver.Version) error {
+			maxVer = maxVersion(maxVer, ver)
+			return nil
+		})
+		if err != nil {
+			panic(err)
+		}
 	}
 	return maxVer
 }
 
-func etcdVersionFromEntry(ent raftpb.Entry) *semver.Version {
-	msgVer := etcdVersionFromMessage(proto.MessageReflect(&ent))
-	dataVer := etcdVersionFromData(ent.Type, ent.Data)
-	return maxVersion(msgVer, dataVer)
+type Visitor func(path protoreflect.FullName, ver *semver.Version) error
+
+// VisitFileDescriptor calls visitor on each field and enum value with etcd version read from proto definition.
+// If field/enum value is not annotated, visitor will be called with nil.
+// Upon encountering invalid annotation, will immediately exit with error.
+func VisitFileDescriptor(file protoreflect.FileDescriptor, visitor Visitor) error {
+	msgs := file.Messages()
+	for i := 0; i < msgs.Len(); i++ {
+		err := visitMessageDescriptor(msgs.Get(i), visitor)
+		if err != nil {
+			return err
+		}
+	}
+	enums := file.Enums()
+	for i := 0; i < enums.Len(); i++ {
+		err := visitEnumDescriptor(enums.Get(i), visitor)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func etcdVersionFromData(entryType raftpb.EntryType, data []byte) *semver.Version {
+func visitEntry(ent raftpb.Entry, visitor Visitor) error {
+	err := visitMessage(proto.MessageReflect(&ent), visitor)
+	if err != nil {
+		return err
+	}
+	return visitEntryData(ent.Type, ent.Data, visitor)
+}
+
+func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) error {
 	var msg protoreflect.Message
-	var ver *semver.Version
 	switch entryType {
 	case raftpb.EntryNormal:
 		var raftReq etcdserverpb.InternalRaftRequest
-		err := pbutil.Unmarshaler(&raftReq).Unmarshal(data)
-		if err != nil {
-			return nil
+		if err := pbutil.Unmarshaler(&raftReq).Unmarshal(data); err != nil {
+			// try V2 Request
+			var r etcdserverpb.Request
+			if pbutil.Unmarshaler(&r).Unmarshal(data) != nil {
+				// return original error
+				return err
+			}
+			msg = proto.MessageReflect(&r)
+			break
 		}
 		msg = proto.MessageReflect(&raftReq)
 		if raftReq.ClusterVersionSet != nil {
-			ver, err = semver.NewVersion(raftReq.ClusterVersionSet.Ver)
+			ver, err := semver.NewVersion(raftReq.ClusterVersionSet.Ver)
 			if err != nil {
-				panic(err)
+				return err
+			}
+			err = visitor(msg.Descriptor().FullName(), ver)
+			if err != nil {
+				return err
 			}
 		}
 	case raftpb.EntryConfChange:
@@ -98,43 +138,106 @@ func etcdVersionFromData(entryType raftpb.EntryType, data []byte) *semver.Versio
 	default:
 		panic("unhandled")
 	}
-	return maxVersion(etcdVersionFromMessage(msg), ver)
+	return visitMessage(msg, visitor)
 }
 
-func etcdVersionFromMessage(m protoreflect.Message) *semver.Version {
-	var maxVer *semver.Version
-	md := m.Descriptor()
-	opts := md.Options().(*descriptorpb.MessageOptions)
-	if opts != nil {
-		maxVer = maxVersion(maxVer, etcdVersionFromOptionsString(opts.String()))
+func visitMessageDescriptor(md protoreflect.MessageDescriptor, visitor Visitor) error {
+	err := visitDescriptor(md, visitor)
+	if err != nil {
+		return err
+	}
+	fields := md.Fields()
+	for i := 0; i < fields.Len(); i++ {
+		fd := fields.Get(i)
+		err = visitDescriptor(fd, visitor)
+		if err != nil {
+			return err
+		}
 	}
 
+	enums := md.Enums()
+	for i := 0; i < enums.Len(); i++ {
+		err := visitEnumDescriptor(enums.Get(i), visitor)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func visitMessage(m protoreflect.Message, visitor Visitor) error {
+	md := m.Descriptor()
+	err := visitDescriptor(md, visitor)
+	if err != nil {
+		return err
+	}
 	m.Range(func(field protoreflect.FieldDescriptor, value protoreflect.Value) bool {
 		fd := md.Fields().Get(field.Index())
-		maxVer = maxVersion(maxVer, etcdVersionFromField(fd))
+		err = visitDescriptor(fd, visitor)
+		if err != nil {
+			return false
+		}
+
 		switch m := value.Interface().(type) {
 		case protoreflect.Message:
-			maxVer = maxVersion(maxVer, etcdVersionFromMessage(m))
+			err = visitMessage(m, visitor)
 		case protoreflect.EnumNumber:
-			maxVer = maxVersion(maxVer, etcdVersionFromEnum(field.Enum(), m))
+			err = visitEnumNumber(fd.Enum(), m, visitor)
+		}
+		if err != nil {
+			return false
 		}
 		return true
 	})
-	return maxVer
+	return err
 }
 
-func etcdVersionFromEnum(enum protoreflect.EnumDescriptor, value protoreflect.EnumNumber) *semver.Version {
-	var maxVer *semver.Version
-	enumOpts := enum.Options().(*descriptorpb.EnumOptions)
-	if enumOpts != nil {
-		maxVer = maxVersion(maxVer, etcdVersionFromOptionsString(enumOpts.String()))
+func visitEnumDescriptor(enum protoreflect.EnumDescriptor, visitor Visitor) error {
+	err := visitDescriptor(enum, visitor)
+	if err != nil {
+		return err
 	}
-	valueDesc := enum.Values().Get(int(value))
-	valueOpts := valueDesc.Options().(*descriptorpb.EnumValueOptions)
+	fields := enum.Values()
+	for i := 0; i < fields.Len(); i++ {
+		fd := fields.Get(i)
+		err = visitDescriptor(fd, visitor)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func visitEnumNumber(enum protoreflect.EnumDescriptor, number protoreflect.EnumNumber, visitor Visitor) error {
+	err := visitDescriptor(enum, visitor)
+	if err != nil {
+		return err
+	}
+	return visitEnumValue(enum.Values().Get(int(number)), visitor)
+}
+
+func visitEnumValue(enum protoreflect.EnumValueDescriptor, visitor Visitor) error {
+	valueOpts := enum.Options().(*descriptorpb.EnumValueOptions)
 	if valueOpts != nil {
-		maxVer = maxVersion(maxVer, etcdVersionFromOptionsString(valueOpts.String()))
+		ver, _ := etcdVersionFromOptionsString(valueOpts.String())
+		err := visitor(enum.FullName(), ver)
+		if err != nil {
+			return err
+		}
 	}
-	return maxVer
+	return nil
+}
+
+func visitDescriptor(md protoreflect.Descriptor, visitor Visitor) error {
+	opts, ok := md.Options().(fmt.Stringer)
+	if !ok {
+		return nil
+	}
+	ver, err := etcdVersionFromOptionsString(opts.String())
+	if err != nil {
+		return fmt.Errorf("%s: %s", md.FullName(), err)
+	}
+	return visitor(md.FullName(), ver)
 }
 
 func maxVersion(a *semver.Version, b *semver.Version) *semver.Version {
@@ -144,15 +247,7 @@ func maxVersion(a *semver.Version, b *semver.Version) *semver.Version {
 	return b
 }
 
-func etcdVersionFromField(fd protoreflect.FieldDescriptor) *semver.Version {
-	opts := fd.Options().(*descriptorpb.FieldOptions)
-	if opts == nil {
-		return nil
-	}
-	return etcdVersionFromOptionsString(opts.String())
-}
-
-func etcdVersionFromOptionsString(opts string) *semver.Version {
+func etcdVersionFromOptionsString(opts string) (*semver.Version, error) {
 	// TODO: Use proto.GetExtention when gogo/protobuf is usable with protoreflect
 	msgs := []string{"[versionpb.etcd_version_msg]:", "[versionpb.etcd_version_field]:", "[versionpb.etcd_version_enum]:", "[versionpb.etcd_version_enum_value]:"}
 	var end, index int
@@ -164,16 +259,19 @@ func etcdVersionFromOptionsString(opts string) *semver.Version {
 		}
 	}
 	if index == -1 {
-		return nil
+		return nil, nil
 	}
 	var verStr string
 	_, err := fmt.Sscanf(opts[end:], "%q", &verStr)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	ver, err := semver.NewVersion(verStr + ".0")
+	if strings.Count(verStr, ".") == 1 {
+		verStr = verStr + ".0"
+	}
+	ver, err := semver.NewVersion(verStr)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return ver
+	return ver, nil
 }

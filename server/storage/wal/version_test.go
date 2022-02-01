@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 var (
@@ -97,8 +98,13 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ver := etcdVersionFromEntry(tc.input)
-			assert.Equal(t, tc.expect, ver)
+			var maxVer *semver.Version
+			err := visitEntry(tc.input, func(path protoreflect.FullName, ver *semver.Version) error {
+				maxVer = maxVersion(maxVer, ver)
+				return nil
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expect, maxVer)
 		})
 	}
 }
@@ -162,8 +168,13 @@ func TestEtcdVersionFromMessage(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ver := etcdVersionFromMessage(proto.MessageReflect(tc.input))
-			assert.Equal(t, tc.expect, ver)
+			var maxVer *semver.Version
+			err := visitMessage(proto.MessageReflect(tc.input), func(path protoreflect.FullName, ver *semver.Version) error {
+				maxVer = maxVersion(maxVer, ver)
+				return nil
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expect, maxVer)
 		})
 	}
 }
@@ -237,7 +248,8 @@ func TestEtcdVersionFromFieldOptionsString(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.input, func(t *testing.T) {
-			ver := etcdVersionFromOptionsString(tc.input)
+			ver, err := etcdVersionFromOptionsString(tc.input)
+			assert.NoError(t, err)
 			assert.Equal(t, ver, tc.expect)
 		})
 	}
