@@ -11,11 +11,10 @@ jobs:
     - run: |
         export COVERDIR=$(readlink -f "./covdir")
         PASSES='unit_cov' ./test.sh
-        TAG=unit ./scripts/codecov_merge.sh
     - uses: actions/upload-artifact@v2
       with:
         name: unit-coverage
-        path: covdir/unit.coverprofile
+        path: covdir/
   integration:
     runs-on: ubuntu-latest
     steps:
@@ -26,11 +25,10 @@ jobs:
     - run: |
         export COVERDIR=$(readlink -f "./covdir")
         PASSES='integration_cov' ./test.sh
-        TAG=integration ./scripts/codecov_merge.sh
     - uses: actions/upload-artifact@v2
       with:
         name: integration-coverage
-        path: covdir/integration.coverprofile
+        path: covdir/
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -41,11 +39,10 @@ jobs:
     - run: |
         export COVERDIR=$(readlink -f "./covdir")
         PASSES='build build_cov e2e_cov' ./test.sh
-        TAG=e2e ./scripts/codecov_merge.sh
     - uses: actions/upload-artifact@v2
       with:
         name: e2e-coverage
-        path: covdir/e2e.coverprofile
+        path: covdir/
   upload:
     needs:
     - unit
@@ -57,15 +54,15 @@ jobs:
     - uses: actions/download-artifact@v2
       with:
         name: unit-coverage
-        path: covdir/unit.coverprofile
+        path: covdir/
     - uses: actions/download-artifact@v2
       with:
         name: integration-coverage
-        path: covdir/integration.coverprofile
+        path: covdir/
     - uses: actions/download-artifact@v2
       with:
         name: e2e-coverage
-        path: covdir/e2e.coverprofile
+        path: covdir/
     - run: |
         export COVERDIR=$(readlink -f "./covdir")
         TAG=all ./scripts/codecov_merge.sh
