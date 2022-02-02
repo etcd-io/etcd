@@ -34,7 +34,7 @@ const resolveRetryRate = 1
 
 type clusterProxy struct {
 	lg   *zap.Logger
-	clus clientv3.Cluster
+	clus pb.ClusterClient
 	ctx  context.Context
 
 	// advertise client URL
@@ -67,7 +67,7 @@ func NewClusterProxy(lg *zap.Logger, c *clientv3.Client, advaddr string, prefix 
 
 	cp := &clusterProxy{
 		lg:   lg,
-		clus: c.Cluster,
+		clus: pb.NewClusterClient(c.ActiveConnection()),
 		ctx:  c.Ctx(),
 
 		advaddr: advaddr,
@@ -123,46 +123,15 @@ func (cp *clusterProxy) monitor(wa endpoints.WatchChannel) {
 }
 
 func (cp *clusterProxy) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) (*pb.MemberAddResponse, error) {
-	if r.IsLearner {
-		return cp.memberAddAsLearner(ctx, r.PeerURLs)
-	}
-	return cp.memberAdd(ctx, r.PeerURLs)
-}
-
-func (cp *clusterProxy) memberAdd(ctx context.Context, peerURLs []string) (*pb.MemberAddResponse, error) {
-	mresp, err := cp.clus.MemberAdd(ctx, peerURLs)
-	if err != nil {
-		return nil, err
-	}
-	resp := (pb.MemberAddResponse)(*mresp)
-	return &resp, err
-}
-
-func (cp *clusterProxy) memberAddAsLearner(ctx context.Context, peerURLs []string) (*pb.MemberAddResponse, error) {
-	mresp, err := cp.clus.MemberAddAsLearner(ctx, peerURLs)
-	if err != nil {
-		return nil, err
-	}
-	resp := (pb.MemberAddResponse)(*mresp)
-	return &resp, err
+	return cp.clus.MemberAdd(ctx, r)
 }
 
 func (cp *clusterProxy) MemberRemove(ctx context.Context, r *pb.MemberRemoveRequest) (*pb.MemberRemoveResponse, error) {
-	mresp, err := cp.clus.MemberRemove(ctx, r.ID)
-	if err != nil {
-		return nil, err
-	}
-	resp := (pb.MemberRemoveResponse)(*mresp)
-	return &resp, err
+	return cp.clus.MemberRemove(ctx, r)
 }
 
 func (cp *clusterProxy) MemberUpdate(ctx context.Context, r *pb.MemberUpdateRequest) (*pb.MemberUpdateResponse, error) {
-	mresp, err := cp.clus.MemberUpdate(ctx, r.ID, r.PeerURLs)
-	if err != nil {
-		return nil, err
-	}
-	resp := (pb.MemberUpdateResponse)(*mresp)
-	return &resp, err
+	return cp.clus.MemberUpdate(ctx, r)
 }
 
 func (cp *clusterProxy) membersFromUpdates() ([]*pb.Member, error) {
@@ -199,12 +168,7 @@ func (cp *clusterProxy) MemberList(ctx context.Context, r *pb.MemberListRequest)
 		hostname, _ := os.Hostname()
 		return &pb.MemberListResponse{Members: []*pb.Member{{Name: hostname, ClientURLs: []string{cp.advaddr}}}}, nil
 	}
-	mresp, err := cp.clus.MemberList(ctx)
-	if err != nil {
-		return nil, err
-	}
-	resp := (pb.MemberListResponse)(*mresp)
-	return &resp, err
+	return cp.clus.MemberList(ctx, r)
 }
 
 func (cp *clusterProxy) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {

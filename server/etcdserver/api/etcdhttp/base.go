@@ -29,7 +29,6 @@ import (
 )
 
 const (
-	configPath  = "/config"
 	varsPath    = "/debug/vars"
 	versionPath = "/version"
 )
