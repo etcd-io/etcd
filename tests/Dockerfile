@@ -44,7 +44,6 @@ WORKDIR ${GOPATH}/src/go.etcd.io/etcd
 
 ADD ./scripts/install-marker.sh /tmp/install-marker.sh
 
-RUN GO111MODULE=off go get github.com/myitcv/gobin
 RUN /tmp/install-marker.sh amd64 \
   && rm -f /tmp/install-marker.sh \
   && curl -s https://codecov.io/bash >/codecov \
