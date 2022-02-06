@@ -12,11 +12,15 @@ Instructions for use are the same as the [kubernetes-mixin](https://github.com/k
 
 ## Testing alerts
 
-Make sure to have [jsonnet](https://jsonnet.org/) and [gojsontoyaml](https://github.com/brancz/gojsontoyaml) installed.
+Make sure to have [jsonnet](https://jsonnet.org/) and [gojsontoyaml](https://github.com/brancz/gojsontoyaml) installed. You can fetch it via
+
+```
+make tools
+```
 
 First compile the mixin to a YAML file, which the promtool will read:
 ```
-jsonnet -e '(import "mixin.libsonnet").prometheusAlerts' | gojsontoyaml > mixin.yaml
+make manifests
 ```
 
 Then run the unit test:
