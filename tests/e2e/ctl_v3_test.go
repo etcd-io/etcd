@@ -213,14 +213,18 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	testCtlWithOffline(t, testFunc, nil, opts...)
 }
 
-func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx), opts ...ctlOption) {
-	e2e.BeforeTest(t)
-
-	ret := ctlCtx{
+func getDefaultCtlCtx(t *testing.T) ctlCtx {
+	return ctlCtx{
 		t:           t,
 		cfg:         *e2e.NewConfigAutoTLS(),
 		dialTimeout: 7 * time.Second,
 	}
+}
+
+func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx), opts ...ctlOption) {
+	e2e.BeforeTest(t)
+
+	ret := getDefaultCtlCtx(t)
 	ret.applyOpts(opts)
 
 	if !ret.quorum {
@@ -244,15 +248,19 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	ret.epc = epc
 	ret.dataDir = epc.Procs[0].Config().DataDirPath
 
+	runCtlTest(t, testFunc, testOfflineFunc, ret)
+}
+
+func runCtlTest(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx), cx ctlCtx) {
 	defer func() {
-		if ret.envMap != nil {
-			for k := range ret.envMap {
+		if cx.envMap != nil {
+			for k := range cx.envMap {
 				os.Unsetenv(k)
 			}
-			ret.envMap = make(map[string]string)
+			cx.envMap = make(map[string]string)
 		}
-		if ret.epc != nil {
-			if errC := ret.epc.Close(); errC != nil {
+		if cx.epc != nil {
+			if errC := cx.epc.Close(); errC != nil {
 				t.Fatalf("error closing etcd processes (%v)", errC)
 			}
 		}
@@ -261,12 +269,12 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		testFunc(ret)
+		testFunc(cx)
 		t.Log("---testFunc logic DONE")
 	}()
 
-	timeout := 2*ret.dialTimeout + time.Second
-	if ret.dialTimeout == 0 {
+	timeout := 2*cx.dialTimeout + time.Second
+	if cx.dialTimeout == 0 {
 		timeout = 30 * time.Second
 	}
 	select {
@@ -276,12 +284,12 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	}
 
 	t.Log("closing test cluster...")
-	assert.NoError(t, epc.Close())
-	epc = nil
+	assert.NoError(t, cx.epc.Close())
+	cx.epc = nil
 	t.Log("closed test cluster...")
 
 	if testOfflineFunc != nil {
-		testOfflineFunc(ret)
+		testOfflineFunc(cx)
 	}
 }
 
