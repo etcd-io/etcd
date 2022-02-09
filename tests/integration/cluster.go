@@ -170,6 +170,7 @@ type ClusterConfig struct {
 	LeaseCheckpointPersist  bool
 
 	WatchProgressNotifyInterval time.Duration
+	CorruptCheckTime            time.Duration
 }
 
 type cluster struct {
@@ -332,6 +333,7 @@ func (c *cluster) mustNewMember(t testutil.TB, memberNumber int64) *member {
 			leaseCheckpointPersist:      c.cfg.LeaseCheckpointPersist,
 			leaseCheckpointInterval:     c.cfg.LeaseCheckpointInterval,
 			WatchProgressNotifyInterval: c.cfg.WatchProgressNotifyInterval,
+			CorruptCheckTime:            c.cfg.CorruptCheckTime,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -635,6 +637,7 @@ type memberConfig struct {
 	leaseCheckpointInterval     time.Duration
 	leaseCheckpointPersist      bool
 	WatchProgressNotifyInterval time.Duration
+	CorruptCheckTime            time.Duration
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -737,6 +740,9 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
 	m.InitialCorruptCheck = true
+	if mcfg.CorruptCheckTime > time.Duration(0) {
+		m.CorruptCheckTime = mcfg.CorruptCheckTime
+	}
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
