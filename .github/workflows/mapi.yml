@@ -1,0 +1,50 @@
+name: 'Mayhem for API'
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.17.6"
+
+    - run: |
+        GO_BUILD_FLAGS='-v -mod=readonly' ./build.sh
+        ./bin/etcd --version
+
+    # Run Mayhem for API
+    - name: Run Mayhem for API
+      uses: ForAllSecure/mapi-action@v1
+      continue-on-error: true
+      with:
+        mapi-token: ${{ secrets.MAPI_TOKEN }}
+        api-url: http://localhost:8080/
+        api-spec: Documentation/dev-guide/apispec/swagger/rpc.swagger.json
+        target: forallsecure/etcd
+        duration: 1min
+        sarif-report: mapi.sarif
+        html-report: mapi.html
+        run-args: |
+          --ignore-rule
+          AuthenticationBypass
+          --ignore-endpoint
+          POST v3/lease/revoke
+          --ignore-endpoint
+          POST v3/watch
+
+    # Archive HTML report
+    - name: Archive Mayhem for API report
+      uses: actions/upload-artifact@v2
+      with:
+        name: mapi-report
+        path: mapi.html
+
+    # Upload SARIF file (only available on public repos or github enterprise)
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        sarif_file: mapi.sarif
