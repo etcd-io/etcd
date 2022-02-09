@@ -99,8 +99,9 @@ type backend struct {
 	// mlock prevents backend database file to be swapped
 	mlock bool
 
-	mu sync.RWMutex
-	db *bolt.DB
+	mu    sync.RWMutex
+	bopts *bolt.Options
+	db    *bolt.DB
 
 	batchInterval time.Duration
 	batchLimit    int
@@ -184,7 +185,8 @@ func newBackend(bcfg BackendConfig) *backend {
 	// In future, may want to make buffering optional for low-concurrency systems
 	// or dynamically swap between buffered/non-buffered depending on workload.
 	b := &backend{
-		db: db,
+		bopts: bopts,
+		db:    db,
 
 		batchInterval: bcfg.BatchInterval,
 		batchLimit:    bcfg.BatchLimit,
@@ -510,13 +512,7 @@ func (b *backend) defrag() error {
 		b.lg.Fatal("failed to rename tmp database", zap.Error(err))
 	}
 
-	defragmentedBoltOptions := bolt.Options{}
-	if boltOpenOptions != nil {
-		defragmentedBoltOptions = *boltOpenOptions
-	}
-	defragmentedBoltOptions.Mlock = b.mlock
-
-	b.db, err = bolt.Open(dbp, 0600, &defragmentedBoltOptions)
+	b.db, err = bolt.Open(dbp, 0600, b.bopts)
 	if err != nil {
 		b.lg.Fatal("failed to open database", zap.String("path", dbp), zap.Error(err))
 	}
