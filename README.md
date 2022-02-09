@@ -5,6 +5,7 @@
 [![Tests](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml)
 [![asset-transparency](https://github.com/etcd-io/etcd/actions/workflows/asset-transparency.yaml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/asset-transparency.yaml)
 [![codeql-analysis](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml)
+[![Mayhem for API](https://mayhem4api.forallsecure.com/api/v1/api-target/makesoftwaresafe/etcd/badge/icon.svg)](https://mayhem4api.forallsecure.com/makesoftwaresafe/etcd/latest-job?scm_branch=main)
 [![Docs](https://img.shields.io/badge/docs-latest-green.svg)](https://etcd.io/docs)
 [![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/etcd-io/etcd)
 [![Releases](https://img.shields.io/github/release/etcd-io/etcd/all.svg?style=flat-square)](https://github.com/etcd-io/etcd/releases)
