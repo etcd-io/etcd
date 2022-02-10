@@ -823,6 +823,9 @@ func (a *applierV3backend) AuthStatus() (*pb.AuthStatusResponse, error) {
 }
 
 func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {
+	if a.s.ctx == nil {
+		return nil, fmt.Errorf("parent context is nil")
+	}
 	ctx := context.WithValue(context.WithValue(a.s.ctx, auth.AuthenticateParamIndex{}, a.s.consistIndex.ConsistentIndex()), auth.AuthenticateParamSimpleTokenPrefix{}, r.SimpleToken)
 	resp, err := a.s.AuthStore().Authenticate(ctx, r.Name, r.Password)
 	if resp != nil {
