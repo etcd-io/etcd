@@ -17,7 +17,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -66,8 +65,6 @@ func startEtcd(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessClust
 		ClusterSize:  1,
 		InitialToken: "new",
 		KeepDataDir:  true,
-		// TODO: REMOVE snapshot override when snapshotting is automated after lowering storage versiont l
-		SnapshotCount: 5,
 	})
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
@@ -75,16 +72,6 @@ func startEtcd(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessClust
 	t.Cleanup(func() {
 		if errC := epc.Close(); errC != nil {
 			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
-	})
-
-	prefixArgs := []string{e2e.CtlBinPath, "--endpoints", strings.Join(epc.EndpointsV3(), ",")}
-	t.Log("Write keys to ensure wal snapshot is created so cluster version set is snapshotted")
-	e2e.ExecuteWithTimeout(t, 20*time.Second, func() {
-		for i := 0; i < 10; i++ {
-			if err := e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), "OK"); err != nil {
-				t.Fatal(err)
-			}
 		}
 	})
 	return epc
