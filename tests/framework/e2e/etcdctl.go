@@ -32,16 +32,19 @@ func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string) *etcdctlV3 {
 }
 
 func (ctl *etcdctlV3) Put(key, value string) error {
-	return ctl.runCmd("put", key, value)
+	return SpawnWithExpect(ctl.cmdArgs("put", key, value), "OK")
 }
 
-func (ctl *etcdctlV3) runCmd(args ...string) error {
+func (ctl *etcdctlV3) DowngradeEnable(version string) error {
+	return SpawnWithExpect(ctl.cmdArgs("downgrade", "enable", version), "Downgrade enable success")
+}
+
+func (ctl *etcdctlV3) cmdArgs(args ...string) []string {
 	cmdArgs := []string{CtlBinPath + "3"}
 	for k, v := range ctl.flags() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%s", k, v))
 	}
-	cmdArgs = append(cmdArgs, args...)
-	return SpawnWithExpect(cmdArgs, "OK")
+	return append(cmdArgs, args...)
 }
 
 func (ctl *etcdctlV3) flags() map[string]string {
