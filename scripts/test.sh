@@ -1,35 +1,35 @@
 #!/usr/bin/env bash
 #
 # Run all etcd tests
-# ./test.sh
-# ./test.sh -v
+# ./scripts/test.sh
+# ./scripts/test.sh -v
 #
 #
 # Run specified test pass
 #
-# $ PASSES=unit ./test.sh
-# $ PASSES=integration ./test.sh
+# $ PASSES=unit ./scripts/test.sh
+# $ PASSES=integration ./scripts/test.sh
 #
 #
 # Run tests for one package
 # Each pass has different default timeout, if you just run tests in one package or 1 test case then you can set TIMEOUT
 # flag for different expectation
 #
-# $ PASSES=unit PKG=./wal TIMEOUT=1m ./test.sh
-# $ PASSES=integration PKG=./clientv3 TIMEOUT=1m ./test.sh
+# $ PASSES=unit PKG=./wal TIMEOUT=1m ./scripts/test.sh
+# $ PASSES=integration PKG=./clientv3 TIMEOUT=1m ./scripts/test.sh
 #
 # Run specified unit tests in one package
 # To run all the tests with prefix of "TestNew", set "TESTCASE=TestNew ";
 # to run only "TestNew", set "TESTCASE="\bTestNew\b""
 #
-# $ PASSES=unit PKG=./wal TESTCASE=TestNew TIMEOUT=1m ./test.sh
-# $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m ./test.sh
-# $ PASSES=integration PKG=./client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./test.sh
+# $ PASSES=unit PKG=./wal TESTCASE=TestNew TIMEOUT=1m ./scripts/test.sh
+# $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m ./scripts/test.sh
+# $ PASSES=integration PKG=./client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./scripts/test.sh
 #
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
-# $ COVERDIR=coverage PASSES="build build_cov cov" ./test.sh
+# $ COVERDIR=coverage PASSES="build build_cov cov" ./scripts/test.sh
 # $ go tool cover -html ./coverage/cover.out
 set -e
 
@@ -43,7 +43,7 @@ set -o pipefail
 export GOFLAGS=-mod=readonly
 
 source ./scripts/test_lib.sh
-source ./build.sh
+source ./scripts/build.sh
 
 PASSES=${PASSES:-"fmt bom dep build unit"}
 PKG=${PKG:-}
@@ -299,7 +299,7 @@ function cov_pass {
   fi
 
   if [ ! -f "bin/etcd_test" ]; then
-    log_error "etcd_test binary not found. Call: PASSES='build_cov' ./test.sh"
+    log_error "etcd_test binary not found. Call: PASSES='build_cov' ./scripts/test.sh"
     return 255
   fi
 
@@ -400,7 +400,7 @@ function fmt_pass {
 
 function shellcheck_pass {
   if tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
-    generic_checker run shellcheck -fgcc build test scripts/*.sh ./*.sh
+    generic_checker run shellcheck -fgcc scripts/*.sh
   fi
 }
 
@@ -410,7 +410,7 @@ function shellws_pass {
   local files
   files=$(find ./ -name '*.sh' -print0 | xargs -0 )
   # shellcheck disable=SC2206
-  files=( ${files[@]} "./scripts/build-binary" "./scripts/build-docker" "./scripts/release" )
+  files=( ${files[@]} "./scripts/build-binary.sh" "./scripts/build-docker.sh" "./scripts/release.sh" )
   log_cmd "grep -E -n $'^ *${TAB}' ${files[*]}"
   # shellcheck disable=SC2086
   if grep -E -n $'^ *${TAB}' "${files[@]}" | sed $'s|${TAB}|[\\\\tab]|g'; then

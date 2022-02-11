@@ -140,7 +140,8 @@ main() {
     if [[ -n $(git status -s) ]]; then
       log_callout "Committing mods & api/version/version.go update."
       run git add api/version/version.go
-      run git add $(find -name go.mod ! -path './release/*'| xargs)
+      # shellcheck disable=SC2038,SC2046
+      run git add $(find . -name go.mod ! -path './release/*'| xargs)
       run git diff --staged | cat
       run git commit -m "version: bump up to ${VERSION}"
       run git diff --staged | cat
@@ -162,6 +163,7 @@ main() {
     fi
 
     # Verify the latest commit has the version tag
+    # shellcheck disable=SC2155
     local tag="$(git describe --exact-match HEAD)"
     if [ "${tag}" != "${RELEASE_VERSION}" ]; then
       log_error "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
@@ -169,6 +171,7 @@ main() {
     fi
 
     # Verify the version tag is on the right branch
+    # shellcheck disable=SC2155
     local branch=$(git for-each-ref --contains "${RELEASE_VERSION}" --format="%(refname)" 'refs/heads' | cut -d '/' -f 3)
     if [ "${branch}" != "${BRANCH}" ]; then
       log_error "Error: Git tag ${RELEASE_VERSION} should be on branch '${BRANCH}' but is on '${branch}'"
@@ -198,6 +201,7 @@ main() {
   # Generate SHA256SUMS
   log_callout "Generating sha256sums of release artifacts."
   pushd ./release
+  # shellcheck disable=SC2010
   ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUMS
   popd
   if [ -s ./release/SHA256SUMS ]; then
@@ -263,6 +267,7 @@ main() {
 
   # Check image versions
   for IMAGE in "quay.io/coreos/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"; do
+    # shellcheck disable=SC2155
     local image_version=$(docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
     if [ "${image_version}" != "${VERSION}" ]; then
       log_error "Check failed: etcd --version output for ${IMAGE} is incorrect: ${image_version}"
@@ -271,9 +276,11 @@ main() {
   done
 
   # Check gsutil binary versions
+  # shellcheck disable=SC2155
   local BINARY_TGZ="etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64.tar.gz"
   gsutil cp "gs://etcd/${RELEASE_VERSION}/${BINARY_TGZ}" downloads
   tar -zx -C downloads -f "downloads/${BINARY_TGZ}"
+  # shellcheck disable=SC2155
   local binary_version=$("./downloads/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
   if [ "${binary_version}" != "${VERSION}" ]; then
     log_error "Check failed: etcd --version output for ${BINARY_TGZ} from gs://etcd/${RELEASE_VERSION} is incorrect: ${binary_version}"
