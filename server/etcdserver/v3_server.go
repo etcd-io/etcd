@@ -275,6 +275,18 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 	return resp.(*pb.LeaseGrantResponse), nil
 }
 
+func (s *EtcdServer) waitAppliedIndex(ctx context.Context) error {
+	select {
+	case <-s.ApplyWait():
+	case <-s.stopping:
+		return ErrStopped
+	case <-ctx.Done():
+		return ErrTimeout
+	}
+
+	return nil
+}
+
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
 	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
@@ -284,6 +296,15 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 }
 
 func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
+
+	if s.isLeader() {
+		if err := s.waitAppliedIndex(cctx); err != nil {
+			return 0, err
+		}
+	}
+
 	ttl, err := s.lessor.Renew(id)
 	if err == nil { // already requested to primary lessor(leader)
 		return ttl, nil
@@ -291,9 +312,6 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 	if err != lease.ErrNotPrimary {
 		return -1, err
 	}
-
-	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
-	defer cancel()
 
 	// renewals don't go through raft; forward to leader manually
 	for cctx.Err() == nil {
@@ -319,7 +337,13 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 }
 
 func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
-	if s.Leader() == s.ID() {
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
+
+	if s.isLeader() {
+		if err := s.waitAppliedIndex(cctx); err != nil {
+			return nil, err
+		}
 		// primary; timetolive directly from leader
 		le := s.lessor.Lookup(lease.LeaseID(r.ID))
 		if le == nil {
@@ -337,9 +361,6 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 		}
 		return resp, nil
 	}
-
-	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
-	defer cancel()
 
 	// forward to leader
 	for cctx.Err() == nil {
