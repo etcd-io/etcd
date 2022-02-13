@@ -38,9 +38,8 @@ func TestDowngradeUpgrade(t *testing.T) {
 	lastVersionStr := fmt.Sprintf("%d.%d", lastVersion.Major, lastVersion.Minor)
 
 	e2e.BeforeTest(t)
-	dataDirPath := t.TempDir()
 
-	epc := newCluster(t, currentEtcdBinary, dataDirPath)
+	epc := newCluster(t, currentEtcdBinary)
 	validateVersion(t, epc, version.Versions{Cluster: currentVersionStr, Server: currentVersionStr})
 
 	downgradeEnable(t, epc, lastVersion)
@@ -57,10 +56,9 @@ func TestDowngradeUpgrade(t *testing.T) {
 	validateVersion(t, epc, version.Versions{Cluster: currentVersionStr, Server: currentVersionStr})
 }
 
-func newCluster(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessCluster {
+func newCluster(t *testing.T, execPath string) *e2e.EtcdProcessCluster {
 	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
 		ExecPath:     execPath,
-		DataDirPath:  dataDirPath,
 		ClusterSize:  1,
 		InitialToken: "new",
 		KeepDataDir:  true,
