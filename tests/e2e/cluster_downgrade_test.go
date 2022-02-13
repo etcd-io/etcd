@@ -27,7 +27,7 @@ import (
 )
 
 func TestDowngradeUpgrade(t *testing.T) {
-	currentEtcdBinary := ""
+	currentEtcdBinary := e2e.BinDir + "/etcd"
 	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
@@ -40,24 +40,24 @@ func TestDowngradeUpgrade(t *testing.T) {
 	e2e.BeforeTest(t)
 	dataDirPath := t.TempDir()
 
-	epc := startEtcd(t, currentEtcdBinary, dataDirPath)
+	epc := newCluster(t, currentEtcdBinary, dataDirPath)
 	validateVersion(t, epc, version.Versions{Cluster: currentVersionStr, Server: currentVersionStr})
 
 	downgradeEnable(t, epc, lastVersion)
 	expectLog(t, epc, "The server is ready to downgrade")
 	validateVersion(t, epc, version.Versions{Cluster: lastVersionStr, Server: currentVersionStr})
 
-	stopEtcd(t, epc)
-	epc = startEtcd(t, lastReleaseBinary, dataDirPath)
+	stopEtcd(t, epc.Procs[0])
+	startEtcd(t, epc, lastReleaseBinary)
 	expectLog(t, epc, "the cluster has been downgraded")
 	validateVersion(t, epc, version.Versions{Cluster: lastVersionStr, Server: lastVersionStr})
 
-	stopEtcd(t, epc)
-	epc = startEtcd(t, currentEtcdBinary, dataDirPath)
+	stopEtcd(t, epc.Procs[0])
+	startEtcd(t, epc, currentEtcdBinary)
 	validateVersion(t, epc, version.Versions{Cluster: currentVersionStr, Server: currentVersionStr})
 }
 
-func startEtcd(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessCluster {
+func newCluster(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessCluster {
 	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
 		ExecPath:     execPath,
 		DataDirPath:  dataDirPath,
@@ -76,6 +76,14 @@ func startEtcd(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessClust
 	return epc
 }
 
+func startEtcd(t *testing.T, epc *e2e.EtcdProcessCluster, execPath string) {
+	epc.Procs[0].Config().ExecPath = execPath
+	err := epc.Procs[0].Restart()
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+}
+
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Version) {
 	t.Log("etcdctl downgrade...")
 	c := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
@@ -87,9 +95,9 @@ func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Versi
 	})
 }
 
-func stopEtcd(t *testing.T, epc *e2e.EtcdProcessCluster) {
+func stopEtcd(t *testing.T, ep e2e.EtcdProcess) {
 	t.Log("Stopping the server...")
-	if err := epc.Procs[0].Stop(); err != nil {
+	if err := ep.Stop(); err != nil {
 		t.Fatal(err)
 	}
 }
