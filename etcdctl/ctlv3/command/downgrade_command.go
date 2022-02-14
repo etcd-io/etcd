@@ -16,6 +16,7 @@ package command
 
 import (
 	"errors"
+
 	"github.com/spf13/cobra"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
@@ -79,7 +80,7 @@ func downgradeValidateCommandFunc(cmd *cobra.Command, args []string) {
 	targetVersion := args[0]
 
 	if len(targetVersion) == 0 {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("member peer urls not provided"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("target version not provided"))
 	}
 
 	ctx, cancel := commandCtx(cmd)
@@ -105,7 +106,7 @@ func downgradeEnableCommandFunc(cmd *cobra.Command, args []string) {
 	targetVersion := args[0]
 
 	if len(targetVersion) == 0 {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("member peer urls not provided"))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("target version not provided"))
 	}
 
 	ctx, cancel := commandCtx(cmd)
