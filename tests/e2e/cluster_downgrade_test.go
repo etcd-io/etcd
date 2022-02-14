@@ -104,28 +104,33 @@ func stopEtcd(t *testing.T, ep e2e.EtcdProcess) {
 func validateVersion(t *testing.T, epc *e2e.EtcdProcessCluster, expect version.Versions) {
 	t.Log("Validate version")
 	// Two separate calls to expect as it doesn't support multiple matches on the same line
+	var err error
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		if expect.Server != "" {
-			err := e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc.Cfg, epc.Procs[rand.Intn(epc.Cfg.ClusterSize)], "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdserver":"`+expect.Server)
+			err = e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc.Cfg, epc.Procs[rand.Intn(epc.Cfg.ClusterSize)], "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdserver":"`+expect.Server)
 			if err != nil {
-				t.Fatal(err)
+				return
 			}
 		}
 		if expect.Cluster != "" {
-			err := e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc.Cfg, epc.Procs[rand.Intn(epc.Cfg.ClusterSize)], "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdcluster":"`+expect.Cluster)
+			err = e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc.Cfg, epc.Procs[rand.Intn(epc.Cfg.ClusterSize)], "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdcluster":"`+expect.Cluster)
 			if err != nil {
-				t.Fatal(err)
+				return
 			}
 		}
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func expectLog(t *testing.T, epc *e2e.EtcdProcessCluster, expectLog string) {
 	t.Helper()
+	var err error
 	testutils.ExecuteWithTimeout(t, 30*time.Second, func() {
-		_, err := epc.Procs[0].Logs().Expect(expectLog)
-		if err != nil {
-			t.Fatal(err)
-		}
+		_, err = epc.Procs[0].Logs().Expect(expectLog)
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
