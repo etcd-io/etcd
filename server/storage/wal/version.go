@@ -213,7 +213,12 @@ func visitEnumNumber(enum protoreflect.EnumDescriptor, number protoreflect.EnumN
 	if err != nil {
 		return err
 	}
-	return visitEnumValue(enum.Values().Get(int(number)), visitor)
+	intNumber := int(number)
+	fields := enum.Values()
+	if intNumber >= fields.Len() || intNumber < 0 {
+		return fmt.Errorf("could not visit EnumNumber [%d]", intNumber)
+	}
+	return visitEnumValue(fields.Get(intNumber), visitor)
 }
 
 func visitEnumValue(enum protoreflect.EnumValueDescriptor, visitor Visitor) error {
