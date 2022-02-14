@@ -122,7 +122,6 @@ func newConfig() *config {
 			proxyFlagOn,
 		),
 		v2deprecation: flags.NewSelectiveStringsValue(
-			string(cconfig.V2_DEPR_0_NOT_YET),
 			string(cconfig.V2_DEPR_1_WRITE_ONLY),
 			string(cconfig.V2_DEPR_1_WRITE_ONLY_DROP),
 			string(cconfig.V2_DEPR_2_GONE)),
