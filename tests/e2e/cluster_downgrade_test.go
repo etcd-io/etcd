@@ -40,21 +40,33 @@ func TestDowngradeUpgrade(t *testing.T) {
 
 	e2e.BeforeTest(t)
 
+	t.Logf("Create cluster with version %s", currentVersionStr)
 	epc := newCluster(t, currentEtcdBinary)
 	validateVersion(t, epc, version.Versions{Cluster: currentVersionStr, Server: currentVersionStr})
+	t.Logf("Cluster created")
 
+	t.Logf("etcdctl downgrade enable %s", lastVersion)
 	downgradeEnable(t, epc, lastVersion)
+
+	t.Log("Downgrade enabled, validating if cluster is ready for downgrade")
 	expectLog(t, epc, "The server is ready to downgrade")
 	validateVersion(t, epc, version.Versions{Cluster: lastVersionStr, Server: currentVersionStr})
+	t.Log("Cluster is ready for downgrade")
 
+	t.Log("Starting downgrade process")
 	stopEtcd(t, epc.Procs[0])
 	startEtcd(t, epc, lastReleaseBinary)
 	expectLog(t, epc, "the cluster has been downgraded")
+	t.Log("All members downgraded, validating downgrade")
 	validateVersion(t, epc, version.Versions{Cluster: lastVersionStr, Server: lastVersionStr})
+	t.Log("Downgrade complete")
 
+	t.Log("Starting upgrade process")
 	stopEtcd(t, epc.Procs[0])
 	startEtcd(t, epc, currentEtcdBinary)
+	t.Log("All members upgraded, validating upgrade")
 	validateVersion(t, epc, version.Versions{Cluster: currentVersionStr, Server: currentVersionStr})
+	t.Log("Upgrade complete")
 }
 
 func newCluster(t *testing.T, execPath string) *e2e.EtcdProcessCluster {
@@ -84,7 +96,6 @@ func startEtcd(t *testing.T, epc *e2e.EtcdProcessCluster, execPath string) {
 }
 
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Version) {
-	t.Log("etcdctl downgrade...")
 	c := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		err := c.DowngradeEnable(ver.String())
@@ -95,14 +106,12 @@ func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Versi
 }
 
 func stopEtcd(t *testing.T, ep e2e.EtcdProcess) {
-	t.Log("Stopping the server...")
 	if err := ep.Stop(); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func validateVersion(t *testing.T, epc *e2e.EtcdProcessCluster, expect version.Versions) {
-	t.Log("Validate version")
 	// Two separate calls to expect as it doesn't support multiple matches on the same line
 	var err error
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
