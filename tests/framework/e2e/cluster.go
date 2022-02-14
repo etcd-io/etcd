@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -23,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -512,4 +514,26 @@ func (epc *EtcdProcessCluster) WithStopSignal(sig os.Signal) (ret os.Signal) {
 		ret = p.WithStopSignal(sig)
 	}
 	return ret
+}
+func (epc *EtcdProcessCluster) Leader(ctx context.Context) (EtcdProcess, error) {
+	for i := 0; i < len(epc.Procs); i++ {
+		endpoints := epc.Procs[i].EndpointsV3()
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   endpoints,
+			DialTimeout: 3 * time.Second,
+		})
+		if err != nil {
+			return nil, err
+		}
+		defer cli.Close()
+		resp, err := cli.Status(ctx, endpoints[0])
+		if err != nil {
+			return nil, err
+		}
+		if resp.Header.GetMemberId() == resp.Leader {
+			return epc.Procs[i], nil
+		}
+	}
+
+	return nil, fmt.Errorf("Leader not found")
 }
