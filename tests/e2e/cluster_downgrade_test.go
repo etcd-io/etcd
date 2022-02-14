@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -105,13 +106,13 @@ func validateVersion(t *testing.T, epc *e2e.EtcdProcessCluster, expect version.V
 	// Two separate calls to expect as it doesn't support multiple matches on the same line
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		if expect.Server != "" {
-			err := e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc, "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdserver":"`+expect.Server)
+			err := e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc.Cfg, epc.Procs[rand.Intn(epc.Cfg.ClusterSize)], "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdserver":"`+expect.Server)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 		if expect.Cluster != "" {
-			err := e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc, "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdcluster":"`+expect.Cluster)
+			err := e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc.Cfg, epc.Procs[rand.Intn(epc.Cfg.ClusterSize)], "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdcluster":"`+expect.Cluster)
 			if err != nil {
 				t.Fatal(err)
 			}
