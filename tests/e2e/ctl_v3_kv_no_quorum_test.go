@@ -31,29 +31,41 @@ import (
 )
 
 func TestSerializableReadWithoutQuorum(t *testing.T) {
-	// Initialize a cluster with 3 members
-	epc, err := e2e.InitEtcdProcessCluster(t, e2e.NewConfigAutoTLS())
-	if err != nil {
-		t.Fatalf("Failed to initilize the etcd cluster: %v", err)
+	tcs := []struct {
+		name     string
+		testFunc func(cx ctlCtx)
+	}{
+		{
+			name:     "serializableReadTest",
+			testFunc: serializableReadTest,
+		},
+		{
+			name:     "linearizableReadTest",
+			testFunc: linearizableReadTest,
+		},
 	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			// Initialize a cluster with 3 members
+			epc, err := e2e.InitEtcdProcessCluster(t, e2e.NewConfigAutoTLS())
+			if err != nil {
+				t.Fatalf("Failed to initilize the etcd cluster: %v", err)
+			}
 
-	// Remove two members, so that only one etcd will get started
-	epc.Procs = epc.Procs[:1]
+			// Remove two members, so that only one etcd will get started
+			epc.Procs = epc.Procs[:1]
 
-	// Start the etcd cluster with only one member
-	if err := epc.Start(); err != nil {
-		t.Fatalf("Failed to start the etcd cluster: %v", err)
+			// Start the etcd cluster with only one member
+			if err := epc.Start(); err != nil {
+				t.Fatalf("Failed to start the etcd cluster: %v", err)
+			}
+
+			// construct the ctl context
+			cx := getDefaultCtlCtx(t)
+			cx.epc = epc
+			runCtlTest(t, tc.testFunc, nil, cx)
+		})
 	}
-
-	// construct the ctl context
-	cx := getDefaultCtlCtx(t)
-	cx.epc = epc
-
-	// run serializable test and wait for result
-	runCtlTest(t, serializableReadTest, nil, cx)
-
-	// run linearizable test and wait for result
-	runCtlTest(t, linearizableReadTest, nil, cx)
 }
 
 func serializableReadTest(cx ctlCtx) {
@@ -65,7 +77,7 @@ func serializableReadTest(cx ctlCtx) {
 
 func linearizableReadTest(cx ctlCtx) {
 	cx.quorum = true
-	if err := ctlV3Get(cx, []string{"key1"}, []kv{}...); err == nil {
-		cx.t.Error("linearizableReadTest is expected to fail, but it succeeded")
+	if err := ctlV3GetWithErr(cx, []string{"key"}, []string{"retrying of unary invoker failed"}); err != nil { // expect errors
+		cx.t.Fatalf("ctlV3GetWithErr error (%v)", err)
 	}
 }

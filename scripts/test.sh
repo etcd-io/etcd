@@ -242,7 +242,7 @@ function split_dir {
   local num="${2}"
   local i=0
   for f in "${d}/"*; do
-    local g=$(( "${i}" % "${num}" ))
+    local g=$(( i % num ))
     mkdir -p "${d}_${g}"
     mv "${f}" "${d}_${g}/"
     (( i++ ))
