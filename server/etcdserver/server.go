@@ -1898,6 +1898,9 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 
 	id := raftReq.ID
 	if id == 0 {
+		if raftReq.Header == nil {
+			s.lg.Panic("applyEntryNormal, could not find a header")
+		}
 		id = raftReq.Header.ID
 	}
 
