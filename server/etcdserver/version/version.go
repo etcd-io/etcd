@@ -64,7 +64,7 @@ func (m *Manager) DowngradeEnable(ctx context.Context, targetVersion *semver.Ver
 	if err != nil {
 		return err
 	}
-	return m.s.DowngradeEnable(context.Background(), targetVersion)
+	return m.s.DowngradeEnable(ctx, targetVersion)
 }
 
 // DowngradeCancel cancels ongoing downgrade process.

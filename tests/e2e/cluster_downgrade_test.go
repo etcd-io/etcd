@@ -46,17 +46,17 @@ func TestDowngradeUpgrade(t *testing.T) {
 	validateVersion(t, epc, version.Versions{Cluster: currentVersionStr, Server: currentVersionStr})
 
 	downgradeEnable(t, epc, lastVersion)
+	expectLog(t, epc, "The server is ready to downgrade")
 	validateVersion(t, epc, version.Versions{Cluster: lastVersionStr, Server: currentVersionStr})
 
 	stopEtcd(t, epc)
 	epc = startEtcd(t, lastReleaseBinary, dataDirPath)
-	validateVersion(t, epc, version.Versions{Cluster: lastVersionStr, Server: lastVersionStr})
 	expectLog(t, epc, "the cluster has been downgraded")
+	validateVersion(t, epc, version.Versions{Cluster: lastVersionStr, Server: lastVersionStr})
 
 	stopEtcd(t, epc)
 	epc = startEtcd(t, currentEtcdBinary, dataDirPath)
-	// TODO: Verify cluster version after upgrade when we fix cluster version set timeout
-	validateVersion(t, epc, version.Versions{Server: currentVersionStr})
+	validateVersion(t, epc, version.Versions{Cluster: currentVersionStr, Server: currentVersionStr})
 }
 
 func startEtcd(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessCluster {
@@ -100,11 +100,12 @@ func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Versi
 	}
 	defer c.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	// TODO: Fix request always timing out even thou it succeeds
-	c.Downgrade(ctx, 1, ver.String())
+	_, err = c.Downgrade(ctx, 1, ver.String())
+	if err != nil {
+		t.Fatal(err)
+	}
 	cancel()
 
-	expectLog(t, epc, "The server is ready to downgrade")
 }
 
 func stopEtcd(t *testing.T, epc *e2e.EtcdProcessCluster) {
