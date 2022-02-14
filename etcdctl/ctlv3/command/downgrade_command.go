@@ -18,7 +18,7 @@ import (
 	"errors"
 
 	"github.com/spf13/cobra"
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -86,7 +86,7 @@ func downgradeValidateCommandFunc(cmd *cobra.Command, args []string) {
 	ctx, cancel := commandCtx(cmd)
 	cli := mustClientFromCmd(cmd)
 
-	resp, err := cli.Downgrade(ctx, int32(pb.DowngradeRequest_VALIDATE), targetVersion)
+	resp, err := cli.Downgrade(ctx, clientv3.DowngradeValidate, targetVersion)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -112,7 +112,7 @@ func downgradeEnableCommandFunc(cmd *cobra.Command, args []string) {
 	ctx, cancel := commandCtx(cmd)
 	cli := mustClientFromCmd(cmd)
 
-	resp, err := cli.Downgrade(ctx, int32(pb.DowngradeRequest_ENABLE), targetVersion)
+	resp, err := cli.Downgrade(ctx, clientv3.DowngradeEnable, targetVersion)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -126,7 +126,7 @@ func downgradeCancelCommandFunc(cmd *cobra.Command, args []string) {
 	ctx, cancel := commandCtx(cmd)
 	cli := mustClientFromCmd(cmd)
 
-	resp, err := cli.Downgrade(ctx, int32(pb.DowngradeRequest_CANCEL), "")
+	resp, err := cli.Downgrade(ctx, clientv3.DowngradeCancel, "")
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
