@@ -134,6 +134,40 @@ service Lease {
   }
 }
 
+service NamespaceQuota {
+  // NamespaceQuotaSet sets the namespace quota for a given key
+  rpc NamespaceQuotaSet(NamespaceQuotaSetRequest) returns (NamespaceQuotaResponse) {
+    option (google.api.http) = {
+      post: "/v3/namespacequota/set"
+      body: "*"
+    };
+  }
+
+  // NamespaceQuotaGet gets the namespace quota for a given key
+  rpc NamespaceQuotaGet(NamespaceQuotaGetRequest) returns (NamespaceQuotaResponse) {
+    option (google.api.http) = {
+      post: "/v3/namespacequota/get"
+      body: "*"
+    };
+  }
+
+  // NamespaceQuotaDelete delete the namespace quota for a given key
+  rpc NamespaceQuotaDelete(NamespaceQuotaDeleteRequest) returns (NamespaceQuotaResponse) {
+    option (google.api.http) = {
+      post: "/v3/namespacequota/delete"
+      body: "*"
+    };
+  }
+
+  // NamespaceQuotaList list the namespace quotas
+  rpc NamespaceQuotaList(NamespaceQuotaListRequest) returns (NamespaceQuotaListResponse) {
+    option (google.api.http) = {
+      post: "/v3/namespacequota/list"
+      body: "*"
+    };
+  }
+}
+
 service Cluster {
   // MemberAdd adds a member into the cluster.
   rpc MemberAdd(MemberAddRequest) returns (MemberAddResponse) {
@@ -943,6 +977,58 @@ message LeaseLeasesResponse {
 
   ResponseHeader header = 1;
   repeated LeaseStatus leases = 2;
+}
+
+message NamespaceQuotas {
+  // key key
+  bytes key = 1;
+  // quotaByteCount quota byte count represents the byte quota for respective Key
+  uint64 quotaByteCount = 2;
+  // quotaKeyCount quota key count represents the quota key quota for respective Key
+  uint64 quotaKeyCount = 3;
+  // usageByteCount usage byte count represents the byte usage for respective key
+  uint64 usageByteCount = 4;
+  // usageKeyCount usage key count represents the key usage for respective key
+  uint64 usageKeyCount = 5;
+}
+
+message NamespaceQuotaSetRequest {
+  // key key
+  bytes key = 1;
+  // quotaByteCount quota byte count represents the byte quota for respective Key
+  uint64 quotaByteCount = 2;
+  // quotaKeyCount quota key count represents the quota key quota for respective Key
+  uint64 quotaKeyCount = 3;
+}
+
+message NamespaceQuotaResponse {
+  // header response header
+  ResponseHeader header = 1;
+  // quota Namespace Quota
+  NamespaceQuotas quota = 2;
+}
+
+message NamespaceQuotaGetRequest {
+  // key key
+  bytes key = 1;
+}
+
+// TODO: A separate DELETE/GET request, both look same?
+message NamespaceQuotaDeleteRequest {
+  // key key
+  bytes key = 1;
+}
+
+message NamespaceQuotaListRequest {
+  // header response header
+  ResponseHeader header = 1;
+}
+
+message NamespaceQuotaListResponse {
+  // header response header
+  ResponseHeader header = 1;
+  // quotas Namespace Quotas
+  repeated NamespaceQuotas quotas = 2;
 }
 
 message Member {

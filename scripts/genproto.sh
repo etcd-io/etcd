@@ -34,7 +34,7 @@ echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 
 # directories containing protos to be built
-DIRS="./server/storage/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./raft/raftpb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./tests/functional ./api/versionpb"
+DIRS="./server/storage/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./raft/raftpb ./api/mvccpb ./server/lease/leasepb ./server/namespacequota/namespacequotapb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./tests/functional ./api/versionpb"
 
 log_callout -e "\\nRunning gofast (gogo) proto generation..."
 
@@ -101,7 +101,7 @@ if [ "$1" != "--skip-protodoc" ]; then
   # API reference
   API_REFERENCE_FILE="Documentation/dev-guide/api_reference_v3.md"
   run rm -rf ${API_REFERENCE_FILE}
-  run_go_tool go.etcd.io/protodoc --directories="api/etcdserverpb=service_message,api/mvccpb=service_message,server/lease/leasepb=service_message,api/authpb=service_message" \
+  run_go_tool go.etcd.io/protodoc --directories="api/etcdserverpb=service_message,api/mvccpb=service_message,server/lease/leasepb=service_message,server/namespacequota/namespacequotapb=service_message,api/authpb=service_message" \
     --output="${API_REFERENCE_FILE}" \
     --message-only-from-this-file="api/etcdserverpb/rpc.proto" \
     --disclaimer="---
