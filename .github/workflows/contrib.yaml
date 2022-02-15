@@ -1,0 +1,11 @@
+name: Test contrib/mixin
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.17.6"
+    - run: make -C contrib/mixin tools test

@@ -1,5 +1,5 @@
 rule_files:
-  - mixin.yaml
+  - manifests/etcd-prometheusRules.yaml
 
 evaluation_interval: 1m
 
@@ -86,14 +86,15 @@ tests:
             exp_annotations:
               description: 'etcd cluster "etcd": members are down (1).'
               summary: 'etcd cluster members are down.'
+
   - interval: 1m
     input_series:
       - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.0"}'
         values: '0 0 2 0 0 1 0 0 0 0 0 0 0 0 0 0'
       - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}'
-        values: '0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0'
+        values: '0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0'
       - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}'
-        values: '0 0 0 0 0 0 0 0'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
     alert_rule_test:
       - eval_time: 10m
         alertname: etcdHighNumberOfLeaderChanges
@@ -111,25 +112,34 @@ tests:
       - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.1"}'
         values: '0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0'
       - series: 'etcd_server_leader_changes_seen_total{job="etcd",instance="10.10.10.2"}'
-        values: '0 0 0 0 0 0 0 0'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
     alert_rule_test:
       - eval_time: 10m
         alertname: etcdHighNumberOfLeaderChanges
         exp_alerts:
+
   - interval: 1m
     input_series:
-      - series: '((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100){job="etcd",instance="10.10.10.0"}'
-        values: '0 10 20 0 0 10 0 0 30 0 0 0 0 0 0 0'
-      - series: '((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100){job="etcd",instance="10.10.10.1"}'
-        values: '0 0 10 0 20 0 0 0 0 0 0 0 0 0 0 0'
-      - series: '((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100){job="etcd",instance="10.10.10.2"}'
-        values: '0 0 0 0 0 0 0 0'
+      - series: 'etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.0"}'
+        values: '0 1 2 0 0 1 0 3 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_quota_backend_bytes{job="etcd",instance="10.10.10.0"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.1"}'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_quota_backend_bytes{job="etcd",instance="10.10.10.1"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.2"}'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'etcd_server_quota_backend_bytes{job="etcd",instance="10.10.10.2"}'
+        values: '1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
     alert_rule_test:
-      - eval_time: 10m
+      - eval_time: 11m
         alertname: etcdExcessiveDatabaseGrowth
         exp_alerts:
           - exp_labels:
+              instance: '10.10.10.0'
               job: etcd
               severity: warning
             exp_annotations:
-              message: 'etcd cluster "etcd": Observed surge in etcd writes leading to 50% increase in database size over the past four hours, please check as it might be disruptive.'
+              description: 'etcd cluster "etcd": Observed surge in etcd writes leading to 50% increase in database size over the past four hours on etcd instance 10.10.10.0, please check as it might be disruptive.'
+              summary: 'etcd cluster database growing very fast.'
