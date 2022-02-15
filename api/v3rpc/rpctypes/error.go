@@ -51,6 +51,10 @@ var (
 	ErrGRPCRequestTooLarge        = status.New(codes.InvalidArgument, "etcdserver: request is too large").Err()
 	ErrGRPCRequestTooManyRequests = status.New(codes.ResourceExhausted, "etcdserver: too many requests").Err()
 
+	ErrGRPCNamespaceQuotaExceeded      = status.New(codes.ResourceExhausted, "etcdserver: namespace quota exceeded").Err()
+	ErrGRPCNamespaceQuotaNotFound      = status.New(codes.NotFound, "etcdserver: namespace quota not found").Err()
+	ErrGRPCNamespaceQuotaRestoreFailed = status.New(codes.DataLoss, "etcdserver: namespace quota restore failed").Err()
+
 	ErrGRPCRootUserNotExist     = status.New(codes.FailedPrecondition, "etcdserver: root user does not exist").Err()
 	ErrGRPCRootRoleNotExist     = status.New(codes.FailedPrecondition, "etcdserver: root user does not have root role").Err()
 	ErrGRPCUserAlreadyExist     = status.New(codes.FailedPrecondition, "etcdserver: user name already exists").Err()
