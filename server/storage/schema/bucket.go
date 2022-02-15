@@ -37,6 +37,8 @@ var (
 	authRolesBucketName = []byte("authRoles")
 
 	testBucketName = []byte("test")
+
+	namespaceQuotaName = []byte("namespacequota")
 )
 
 var (
@@ -45,6 +47,8 @@ var (
 	Lease   = backend.Bucket(bucket{id: 3, name: leaseBucketName, safeRangeBucket: false})
 	Alarm   = backend.Bucket(bucket{id: 4, name: alarmBucketName, safeRangeBucket: false})
 	Cluster = backend.Bucket(bucket{id: 5, name: clusterBucketName, safeRangeBucket: false})
+
+	NamespaceQuota = backend.Bucket(bucket{id: 6, name: namespaceQuotaName, safeRangeBucket: false})
 
 	Members        = backend.Bucket(bucket{id: 10, name: membersBucketName, safeRangeBucket: false})
 	MembersRemoved = backend.Bucket(bucket{id: 11, name: membersRemovedBucketName, safeRangeBucket: false})
