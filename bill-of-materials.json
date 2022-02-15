@@ -216,6 +216,24 @@
 		]
 	},
 	{
+		"project": "github.com/hashicorp/go-immutable-radix",
+		"licenses": [
+			{
+				"type": "Mozilla Public License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/hashicorp/golang-lru/simplelru",
+		"licenses": [
+			{
+				"type": "Mozilla Public License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/inconshreveable/mousetrap",
 		"licenses": [
 			{

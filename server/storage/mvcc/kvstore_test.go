@@ -942,12 +942,24 @@ type indexRangeEventsResp struct {
 	revs []revision
 }
 
+type indexRangeValueResp struct {
+	keys [][]byte
+	size []int
+}
+
+type indexGetValueResp struct {
+	valueSize int
+	isFound   bool
+}
+
 type fakeIndex struct {
 	testutil.Recorder
 	indexGetRespc         chan indexGetResp
 	indexRangeRespc       chan indexRangeResp
 	indexRangeEventsRespc chan indexRangeEventsResp
 	indexCompactRespc     chan map[revision]struct{}
+	indexRangeValuec      chan indexRangeValueResp
+	indexGetValuec        chan indexGetValueResp
 }
 
 func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int) ([]revision, int) {
@@ -973,8 +985,18 @@ func (i *fakeIndex) Range(key, end []byte, atRev int64) ([][]byte, []revision) {
 	r := <-i.indexRangeRespc
 	return r.keys, r.revs
 }
-func (i *fakeIndex) Put(key []byte, rev revision) {
-	i.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{key, rev}})
+func (i *fakeIndex) RangeValueSize(key, end []byte) ([][]byte, []int) {
+	i.Recorder.Record(testutil.Action{Name: "rangeValueSize", Params: []interface{}{key, end}})
+	r := <-i.indexRangeValuec
+	return r.keys, r.size
+}
+func (i *fakeIndex) GetValueSize(key []byte) (int, bool) {
+	i.Recorder.Record(testutil.Action{Name: "getValueSize", Params: []interface{}{key}})
+	r := <-i.indexGetValuec
+	return r.valueSize, r.isFound
+}
+func (i *fakeIndex) Put(key []byte, rev revision, valueSize int) {
+	i.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{key, rev, valueSize}})
 }
 func (i *fakeIndex) Tombstone(key []byte, rev revision) error {
 	i.Recorder.Record(testutil.Action{Name: "tombstone", Params: []interface{}{key, rev}})

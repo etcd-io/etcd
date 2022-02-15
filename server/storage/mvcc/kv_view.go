@@ -41,6 +41,18 @@ func (rv *readView) Range(ctx context.Context, key, end []byte, ro RangeOptions)
 	return tr.Range(ctx, key, end, ro)
 }
 
+func (rv *readView) RangeValueSize(key, end []byte) (keys [][]byte, valueSizes []int) {
+	tr := rv.kv.Read(ConcurrentReadTxMode, traceutil.TODO())
+	defer tr.End()
+	return tr.RangeValueSize(key, end)
+}
+
+func (rv *readView) GetValueSize(key []byte) (valueSize int, isFound bool) {
+	tr := rv.kv.Read(ConcurrentReadTxMode, traceutil.TODO())
+	defer tr.End()
+	return tr.GetValueSize(key)
+}
+
 type writeView struct{ kv KV }
 
 func (wv *writeView) DeleteRange(key, end []byte) (n, rev int64) {

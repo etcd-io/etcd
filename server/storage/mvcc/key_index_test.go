@@ -127,7 +127,7 @@ func TestKeyIndexSince(t *testing.T) {
 
 func TestKeyIndexPut(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.put(zaptest.NewLogger(t), 5, 0)
+	ki.put(zaptest.NewLogger(t), 5, 0, 0)
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
@@ -138,12 +138,13 @@ func TestKeyIndexPut(t *testing.T) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
 	}
 
-	ki.put(zaptest.NewLogger(t), 7, 0)
+	ki.put(zaptest.NewLogger(t), 7, 0, 0)
 
 	wki = &keyIndex{
 		key:         []byte("foo"),
 		modified:    revision{7, 0},
 		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}}},
+		valueSize:   0,
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -152,7 +153,7 @@ func TestKeyIndexPut(t *testing.T) {
 
 func TestKeyIndexRestore(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.restore(zaptest.NewLogger(t), revision{5, 0}, revision{7, 0}, 2)
+	ki.restore(zaptest.NewLogger(t), revision{5, 0}, revision{7, 0}, 2, 0)
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
@@ -166,7 +167,7 @@ func TestKeyIndexRestore(t *testing.T) {
 
 func TestKeyIndexTombstone(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.put(zaptest.NewLogger(t), 5, 0)
+	ki.put(zaptest.NewLogger(t), 5, 0, 0)
 
 	err := ki.tombstone(zaptest.NewLogger(t), 7, 0)
 	if err != nil {
@@ -182,8 +183,8 @@ func TestKeyIndexTombstone(t *testing.T) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
 	}
 
-	ki.put(zaptest.NewLogger(t), 8, 0)
-	ki.put(zaptest.NewLogger(t), 9, 0)
+	ki.put(zaptest.NewLogger(t), 8, 0, 0)
+	ki.put(zaptest.NewLogger(t), 9, 0, 0)
 	err = ki.tombstone(zaptest.NewLogger(t), 15, 0)
 	if err != nil {
 		t.Errorf("unexpected tombstone error: %v", err)
@@ -518,7 +519,7 @@ func cloneKeyIndex(ki *keyIndex) *keyIndex {
 	for i, gen := range ki.generations {
 		generations[i] = *cloneGeneration(&gen)
 	}
-	return &keyIndex{ki.key, ki.modified, generations}
+	return &keyIndex{ki.key, ki.modified, generations, ki.valueSize}
 }
 
 func cloneGeneration(g *generation) *generation {
@@ -533,8 +534,8 @@ func cloneGeneration(g *generation) *generation {
 // test that compact on version that higher than last modified version works well
 func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
-	ki.put(zaptest.NewLogger(t), 1, 0)
-	ki.put(zaptest.NewLogger(t), 2, 0)
+	ki.put(zaptest.NewLogger(t), 1, 0, 0)
+	ki.put(zaptest.NewLogger(t), 2, 0, 0)
 	am := make(map[revision]struct{})
 	ki.compact(zaptest.NewLogger(t), 3, am)
 
@@ -688,14 +689,14 @@ func newTestKeyIndex(lg *zap.Logger) *keyIndex {
 	//    {{2, 0}[1], {4, 0}[2], {6, 0}(t)[3]}
 
 	ki := &keyIndex{key: []byte("foo")}
-	ki.put(lg, 2, 0)
-	ki.put(lg, 4, 0)
+	ki.put(lg, 2, 0, 0)
+	ki.put(lg, 4, 0, 0)
 	ki.tombstone(lg, 6, 0)
-	ki.put(lg, 8, 0)
-	ki.put(lg, 10, 0)
+	ki.put(lg, 8, 0, 0)
+	ki.put(lg, 10, 0, 0)
 	ki.tombstone(lg, 12, 0)
-	ki.put(lg, 14, 0)
-	ki.put(lg, 14, 1)
+	ki.put(lg, 14, 0, 0)
+	ki.put(lg, 14, 1, 0)
 	ki.tombstone(lg, 16, 0)
 	return ki
 }

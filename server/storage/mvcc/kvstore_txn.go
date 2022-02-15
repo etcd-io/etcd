@@ -62,6 +62,14 @@ func (tr *storeTxnRead) Range(ctx context.Context, key, end []byte, ro RangeOpti
 	return tr.rangeKeys(ctx, key, end, tr.Rev(), ro)
 }
 
+func (tr *storeTxnRead) RangeValueSize(key, end []byte) (keys [][]byte, valueSizes []int) {
+	return tr.s.kvindex.RangeValueSize(key, end)
+}
+
+func (tr *storeTxnRead) GetValueSize(key []byte) (valueSize int, isFound bool) {
+	return tr.s.kvindex.GetValueSize(key)
+}
+
 func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev int64, ro RangeOptions) (*RangeResult, error) {
 	rev := ro.Rev
 	if rev > curRev {
@@ -216,7 +224,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	tw.trace.Step("marshal mvccpb.KeyValue")
 	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
-	tw.s.kvindex.Put(key, idxRev)
+	tw.s.kvindex.Put(key, idxRev, len(value))
 	tw.changes = append(tw.changes, kv)
 	tw.trace.Step("store kv pair into bolt db")
 

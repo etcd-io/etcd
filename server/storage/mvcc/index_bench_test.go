@@ -31,9 +31,10 @@ func benchmarkIndexCompact(b *testing.B, size int) {
 	kvindex := newTreeIndex(log)
 
 	bytesN := 64
+	valueSize := 0
 	keys := createBytesSlice(bytesN, size)
 	for i := 1; i < size; i++ {
-		kvindex.Put(keys[i], revision{main: int64(i), sub: int64(i)})
+		kvindex.Put(keys[i], revision{main: int64(i), sub: int64(i)}, valueSize)
 	}
 	b.ResetTimer()
 	for i := 1; i < b.N; i++ {

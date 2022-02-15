@@ -53,6 +53,12 @@ type ReadView interface {
 	// Limit limits the number of keys returned.
 	// If the required rev is compacted, ErrCompacted will be returned.
 	Range(ctx context.Context, key, end []byte, ro RangeOptions) (r *RangeResult, err error)
+
+	// RangeValueSize range value size
+	RangeValueSize(key, end []byte) (keys [][]byte, valueSizes []int)
+
+	// GetValueSize range value size
+	GetValueSize(key []byte) (valueSize int, isFound bool)
 }
 
 // TxnRead represents a read-only transaction with operations that will not

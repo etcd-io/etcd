@@ -71,10 +71,11 @@ type keyIndex struct {
 	key         []byte
 	modified    revision // the main rev of the last modification
 	generations []generation
+	valueSize   int
 }
 
 // put puts a revision to the keyIndex.
-func (ki *keyIndex) put(lg *zap.Logger, main int64, sub int64) {
+func (ki *keyIndex) put(lg *zap.Logger, main int64, sub int64, valueSize int) {
 	rev := revision{main: main, sub: sub}
 
 	if !rev.GreaterThan(ki.modified) {
@@ -97,9 +98,10 @@ func (ki *keyIndex) put(lg *zap.Logger, main int64, sub int64) {
 	g.revs = append(g.revs, rev)
 	g.ver++
 	ki.modified = rev
+	ki.valueSize = valueSize
 }
 
-func (ki *keyIndex) restore(lg *zap.Logger, created, modified revision, ver int64) {
+func (ki *keyIndex) restore(lg *zap.Logger, created, modified revision, ver int64, valueSize int) {
 	if len(ki.generations) != 0 {
 		lg.Panic(
 			"'restore' got an unexpected non-empty generations",
@@ -110,6 +112,8 @@ func (ki *keyIndex) restore(lg *zap.Logger, created, modified revision, ver int6
 	ki.modified = modified
 	g := generation{created: created, ver: ver, revs: []revision{modified}}
 	ki.generations = append(ki.generations, g)
+	// will set the current size, previous size is unknown
+	ki.valueSize = valueSize
 	keysGauge.Inc()
 }
 
@@ -126,7 +130,7 @@ func (ki *keyIndex) tombstone(lg *zap.Logger, main int64, sub int64) error {
 	if ki.generations[len(ki.generations)-1].isEmpty() {
 		return ErrRevisionNotFound
 	}
-	ki.put(lg, main, sub)
+	ki.put(lg, main, sub, 0)
 	ki.generations = append(ki.generations, generation{})
 	keysGauge.Dec()
 	return nil
