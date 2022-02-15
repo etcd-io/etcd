@@ -278,6 +278,8 @@ Experimental feature:
     Set the max number of learner members allowed in the cluster membership.
   --experimental-wait-cluster-ready-timeout '5s'
     Set the maximum time duration to wait for the cluster to be ready.
+  --experimental-namespace-quota-enforcement 0
+ 	Specifies the operation mode of the Namespace Quota Enforcement feature.
 
 Unsafe feature:
   --force-new-cluster 'false'

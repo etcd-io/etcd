@@ -101,6 +101,8 @@ const (
 	maxElectionMs = 50000
 	// backend freelist map type
 	freelistArrayType = "array"
+
+	DefaultNamespaceQuotaEnforcement = 0
 )
 
 var (
@@ -411,6 +413,8 @@ type Config struct {
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 
+	NamespaceQuotaEnforcement int `json:"experimental-namespace-quota-enforcement"`
+
 	// V2Deprecation describes phase of API & Storage V2 support
 	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 }
@@ -513,6 +517,8 @@ func NewConfig() *Config {
 		ExperimentalMemoryMlock:                  false,
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
 		ExperimentalMaxLearners:                  membership.DefaultMaxLearners,
+
+		NamespaceQuotaEnforcement: DefaultNamespaceQuotaEnforcement,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 

@@ -219,6 +219,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ExperimentalTxnModeWriteWithSharedBuffer: cfg.ExperimentalTxnModeWriteWithSharedBuffer,
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
 		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
+		NamespaceQuotaEnforcement:                     cfg.NamespaceQuotaEnforcement,
 		V2Deprecation:                                 cfg.V2DeprecationEffective(),
 	}
 
