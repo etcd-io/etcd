@@ -125,7 +125,8 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 	}
 	defer func(start time.Time) {
 		if !utf8.ValidString(r.Method) {
-			s.lg.Panic("method is not valid utf-8")
+			s.lg.Info("method is not valid utf-8")
+			return
 		}
 		success := resp.Err == nil
 		applySec.WithLabelValues(v2Version, r.Method, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
