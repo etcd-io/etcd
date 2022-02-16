@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/server/v3/namespacequota"
 	"sort"
 	"strconv"
 	"time"
@@ -75,6 +76,10 @@ type applierV3 interface {
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 
 	LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.LeaseCheckpointResponse, error)
+
+	NamespaceQuotaSet(nq *pb.NamespaceQuotaSetRequest) (*pb.NamespaceQuotaResponse, error)
+	NamespaceQuotaGet(nq *pb.NamespaceQuotaGetRequest) (*pb.NamespaceQuotaResponse, error)
+	NamespaceQuotaDelete(nq *pb.NamespaceQuotaDeleteRequest) (*pb.NamespaceQuotaResponse, error)
 
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 
@@ -189,6 +194,15 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 member
 	case r.LeaseCheckpoint != nil:
 		op = "LeaseCheckpoint"
 		ar.resp, ar.err = a.s.applyV3.LeaseCheckpoint(r.LeaseCheckpoint)
+	case r.NamespacequotaSetRequest != nil:
+		op = "NamespaceQuotaSetRequest"
+		ar.resp, ar.err = a.s.applyV3.NamespaceQuotaSet(r.NamespacequotaSetRequest)
+	case r.NamespacequotaGetRequest != nil:
+		op = "NamespaceQuotaGetRequest"
+		ar.resp, ar.err = a.s.applyV3.NamespaceQuotaGet(r.NamespacequotaGetRequest)
+	case r.NamespacequotaDeleteRequest != nil:
+		op = "NamespaceQuotaDeleteRequest"
+		ar.resp, ar.err = a.s.applyV3.NamespaceQuotaDelete(r.NamespacequotaDeleteRequest)
 	case r.Alarm != nil:
 		op = "Alarm"
 		ar.resp, ar.err = a.s.applyV3.Alarm(r.Alarm)
@@ -260,6 +274,15 @@ func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.Put
 			traceutil.Field{Key: "req_size", Value: p.Size()},
 		)
 	}
+
+	byteDiff, keyDiff := a.s.namespaceQuotaManager.DiffNamespaceQuotaUsage(p.Key, p.Value)
+	if a.s.namespaceQuotaManager.IsQuotaExceeded(p.Key, byteDiff, keyDiff) {
+		return nil, nil, namespacequota.ErrNamespaceQuotaExceeded
+	}
+	if keyDiff == 1 {
+		byteDiff += len(p.Key)
+	}
+
 	val, leaseID := p.Value, lease.LeaseID(p.Lease)
 	if txn == nil {
 		if leaseID != lease.NoLease {
@@ -301,6 +324,7 @@ func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.Put
 
 	resp.Header.Revision = txn.Put(p.Key, val, leaseID)
 	trace.AddField(traceutil.Field{Key: "response_revision", Value: resp.Header.Revision})
+	a.s.namespaceQuotaManager.UpdateNamespaceQuotaUsage(p.Key, byteDiff, keyDiff)
 	return resp, trace, nil
 }
 
@@ -313,6 +337,8 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 		txn = a.s.kv.Write(traceutil.TODO())
 		defer txn.End()
 	}
+
+	keys, valueSizes := txn.RangeValueSize(dr.Key, end)
 
 	if dr.PrevKv {
 		rr, err := txn.Range(context.TODO(), dr.Key, end, mvcc.RangeOptions{})
@@ -328,6 +354,7 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 	}
 
 	resp.Deleted, resp.Header.Revision = txn.DeleteRange(dr.Key, end)
+	a.s.namespaceQuotaManager.DeleteRangeUpdateUsage(keys, valueSizes)
 	return resp, nil
 }
 
@@ -723,6 +750,54 @@ func (a *applierV3backend) LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.L
 	return &pb.LeaseCheckpointResponse{Header: newHeader(a.s)}, nil
 }
 
+func (a *applierV3backend) NamespaceQuotaSet(nq *pb.NamespaceQuotaSetRequest) (*pb.NamespaceQuotaResponse, error) {
+	n, err := a.s.namespaceQuotaManager.SetNamespaceQuota(nq.Key, nq.QuotaByteCount, nq.QuotaKeyCount)
+	resp := &pb.NamespaceQuotaResponse{}
+	if err == nil {
+		resp.Header = newHeader(a.s)
+		resp.Quota = &pb.NamespaceQuotas{
+			Key:            n.Key,
+			QuotaByteCount: n.QuotaByteCount,
+			QuotaKeyCount:  n.QuotaKeyCount,
+			UsageByteCount: n.UsageByteCount,
+			UsageKeyCount:  n.UsageKeyCount,
+		}
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) NamespaceQuotaGet(nq *pb.NamespaceQuotaGetRequest) (*pb.NamespaceQuotaResponse, error) {
+	n, err := a.s.namespaceQuotaManager.GetNamespaceQuota(nq.Key)
+	resp := &pb.NamespaceQuotaResponse{}
+	if err == nil {
+		resp.Header = newHeader(a.s)
+		resp.Quota = &pb.NamespaceQuotas{
+			Key:            n.Key,
+			QuotaByteCount: n.QuotaByteCount,
+			QuotaKeyCount:  n.QuotaKeyCount,
+			UsageByteCount: n.UsageByteCount,
+			UsageKeyCount:  n.UsageKeyCount,
+		}
+	}
+	return resp, err
+}
+
+func (a *applierV3backend) NamespaceQuotaDelete(nq *pb.NamespaceQuotaDeleteRequest) (*pb.NamespaceQuotaResponse, error) {
+	n, err := a.s.namespaceQuotaManager.DeleteNamespaceQuota(nq.Key)
+	resp := &pb.NamespaceQuotaResponse{}
+	if err == nil {
+		resp.Header = newHeader(a.s)
+		resp.Quota = &pb.NamespaceQuotas{
+			Key:            n.Key,
+			QuotaByteCount: n.QuotaByteCount,
+			QuotaKeyCount:  n.QuotaKeyCount,
+			UsageByteCount: n.UsageByteCount,
+			UsageKeyCount:  n.UsageKeyCount,
+		}
+	}
+	return resp, err
+}
+
 func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
 	resp := &pb.AlarmResponse{}
 	oldCount := len(a.s.alarmStore.Get(ar.Alarm))
@@ -973,11 +1048,12 @@ func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequ
 
 type quotaApplierV3 struct {
 	applierV3
-	q serverstorage.Quota
+	q   serverstorage.Quota
+	nqm namespacequota.NamespaceQuotaManager
 }
 
 func newQuotaApplierV3(s *EtcdServer, app applierV3) applierV3 {
-	return &quotaApplierV3{app, serverstorage.NewBackendQuota(s.Cfg, s.Backend(), "v3-applier")}
+	return &quotaApplierV3{app, serverstorage.NewBackendQuota(s.Cfg, s.Backend(), "v3-applier"), s.namespaceQuotaManager}
 }
 
 func (a *quotaApplierV3) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {

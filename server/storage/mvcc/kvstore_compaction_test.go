@@ -16,6 +16,7 @@ package mvcc
 
 import (
 	"context"
+	"go.etcd.io/etcd/server/v3/namespacequota"
 	"os"
 	"reflect"
 	"testing"
@@ -68,7 +69,7 @@ func TestScheduleCompaction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b, tmpPath := betesting.NewDefaultTmpBackend(t)
-		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 		tx := s.b.BatchTx()
 
 		tx.Lock()
@@ -101,7 +102,7 @@ func TestScheduleCompaction(t *testing.T) {
 
 func TestCompactAllAndRestore(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer os.Remove(tmpPath)
 
 	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -127,7 +128,7 @@ func TestCompactAllAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s1 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s1 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	if s1.Rev() != rev {
 		t.Errorf("rev = %v, want %v", s1.Rev(), rev)
 	}

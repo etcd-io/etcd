@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"go.etcd.io/etcd/server/v3/namespacequota"
 	"math/rand"
 	"os"
 	"testing"
@@ -27,7 +28,7 @@ import (
 
 func BenchmarkWatchableStorePut(b *testing.B) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -47,7 +48,7 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 // some synchronization operations, such as mutex locking.
 func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -78,7 +79,7 @@ func BenchmarkWatchableStoreWatchPutUnsync(b *testing.B) {
 
 func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, be, tmpPath)
 
 	k := []byte("testkey")
@@ -121,7 +122,7 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore periodically calls syncWatchersLoop
@@ -178,7 +179,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	s := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 
 	defer func() {
 		s.store.Close()

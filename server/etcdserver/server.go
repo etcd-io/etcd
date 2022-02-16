@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
+	"go.etcd.io/etcd/server/v3/namespacequota"
 	"math"
 	"math/rand"
 	"net/http"
@@ -254,13 +255,14 @@ type EtcdServer struct {
 	applyV3Internal applierV3Internal
 	applyWait       wait.WaitTime
 
-	kv         mvcc.WatchableKV
-	lessor     lease.Lessor
-	bemu       sync.RWMutex
-	be         backend.Backend
-	beHooks    *serverstorage.BackendHooks
-	authStore  auth.AuthStore
-	alarmStore *v3alarm.AlarmStore
+	kv                    mvcc.WatchableKV
+	lessor                lease.Lessor
+	namespaceQuotaManager namespacequota.NamespaceQuotaManager
+	bemu                  sync.Mutex
+	be                    backend.Backend
+	beHooks               *serverstorage.BackendHooks
+	authStore             auth.AuthStore
+	alarmStore            *v3alarm.AlarmStore
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -353,6 +355,13 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
 	})
 
+	srv.namespaceQuotaManager = namespacequota.NewNamespaceQuotaManager(
+		srv.Logger(),
+		srv.be,
+		namespacequota.NamespaceQuotaManagerConfig{
+			NamespaceQuotaEnforcement: cfg.NamespaceQuotaEnforcement,
+		})
+
 	tp, err := auth.NewTokenProvider(cfg.Logger, cfg.AuthToken,
 		func(index uint64) <-chan struct{} {
 			return srv.applyWait.Wait(index)
@@ -368,7 +377,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		CompactionBatchLimit:    cfg.CompactionBatchLimit,
 		CompactionSleepInterval: cfg.CompactionSleepInterval,
 	}
-	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
+	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, srv.namespaceQuotaManager, mvccStoreConfig)
 
 	srv.authStore = auth.NewAuthStore(srv.Logger(), schema.NewAuthBackend(srv.Logger(), srv.be), tp, int(cfg.BcryptCost))
 
@@ -764,6 +773,9 @@ func (s *EtcdServer) run() {
 				if s.lessor != nil {
 					s.lessor.Demote()
 				}
+				if s.namespaceQuotaManager != nil {
+					s.namespaceQuotaManager.Demote()
+				}
 				if s.compactor != nil {
 					s.compactor.Pause()
 				}
@@ -980,6 +992,12 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		s.lessor.Recover(newbe, func() lease.TxnDelete { return s.kv.Write(traceutil.TODO()) })
 
 		lg.Info("restored lease store")
+	}
+
+	if s.namespaceQuotaManager != nil {
+		lg.Info("restoring namespace quota manager store")
+		s.namespaceQuotaManager.Recover(newbe, s.kv)
+		lg.Info("restored namespace quota manager store")
 	}
 
 	lg.Info("restoring mvcc store")
@@ -1241,7 +1259,7 @@ func (s *EtcdServer) StopNotify() <-chan struct{} { return s.done }
 // when the server is being stopped.
 func (s *EtcdServer) StoppingNotify() <-chan struct{} { return s.stopping }
 
-func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) error {
+func (s *EtcdServer) IsAdminPermitted(ctx context.Context) error {
 	if s.authStore == nil {
 		// In the context of ordinary etcd process, s.authStore will never be nil.
 		// This branch is for handling cases in server_test.go
@@ -1263,7 +1281,7 @@ func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) err
 }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) ([]*membership.Member, error) {
-	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+	if err := s.IsAdminPermitted(ctx); err != nil {
 		return nil, err
 	}
 
@@ -1322,7 +1340,7 @@ func (s *EtcdServer) mayAddMember(memb membership.Member) error {
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
-	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+	if err := s.IsAdminPermitted(ctx); err != nil {
 		return nil, err
 	}
 
@@ -1386,7 +1404,7 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 // local node is leader (therefore has enough information) but decided the learner node is not ready
 // to be promoted.
 func (s *EtcdServer) promoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
-	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+	if err := s.IsAdminPermitted(ctx); err != nil {
 		return nil, err
 	}
 
@@ -1524,7 +1542,7 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) (
 		return nil, merr
 	}
 
-	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+	if err := s.IsAdminPermitted(ctx); err != nil {
 		return nil, err
 	}
 	cc := raftpb.ConfChange{
@@ -1839,6 +1857,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		// applying all entries from the last term.
 		if s.isLeader() {
 			s.lessor.Promote(s.Cfg.ElectionTimeout())
+			s.namespaceQuotaManager.Promote()
 		}
 		return
 	}

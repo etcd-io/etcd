@@ -78,6 +78,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	pb.RegisterClusterServer(grpcServer, NewClusterServer(s))
 	pb.RegisterAuthServer(grpcServer, NewAuthServer(s))
 	pb.RegisterMaintenanceServer(grpcServer, NewMaintenanceServer(s))
+	pb.RegisterNamespaceQuotaServer(grpcServer, NewNamespaceQuotaServer(s))
 
 	// server should register all the services manually
 	// use empty service name for all etcd services' health status,

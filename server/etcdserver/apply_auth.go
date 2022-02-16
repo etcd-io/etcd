@@ -241,6 +241,10 @@ func needAdminPermission(r *pb.InternalRaftRequest) bool {
 		return true
 	case r.AuthRoleList != nil:
 		return true
+	case r.NamespacequotaSetRequest != nil:
+		return true
+	case r.NamespacequotaDeleteRequest != nil:
+		return true
 	default:
 		return false
 	}

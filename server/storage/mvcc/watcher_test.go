@@ -17,6 +17,7 @@ package mvcc
 import (
 	"bytes"
 	"fmt"
+	"go.etcd.io/etcd/server/v3/namespacequota"
 	"os"
 	"reflect"
 	"testing"
@@ -32,7 +33,7 @@ import (
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -82,7 +83,7 @@ func TestWatcherWatchID(t *testing.T) {
 
 func TestWatcherRequestsCustomID(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -119,7 +120,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 // and returns events with matching prefixes.
 func TestWatcherWatchPrefix(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -193,7 +194,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 // does not create watcher, which panics when canceling in range tree.
 func TestWatcherWatchWrongRange(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -213,7 +214,7 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 
 func TestWatchDeleteRange(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 
 	defer func() {
 		b.Close()
@@ -253,7 +254,7 @@ func TestWatchDeleteRange(t *testing.T) {
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -296,7 +297,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
-		store:    NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}),
+		store:    NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{}),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
 	}
@@ -345,7 +346,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 
 func TestWatcherWatchWithFilter(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
