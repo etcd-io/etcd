@@ -125,6 +125,10 @@ var (
 		ErrorDesc(ErrGRPCRequestTooLarge):        ErrGRPCRequestTooLarge,
 		ErrorDesc(ErrGRPCRequestTooManyRequests): ErrGRPCRequestTooManyRequests,
 
+		ErrorDesc(ErrGRPCNamespaceQuotaExceeded):      ErrGRPCNamespaceQuotaExceeded,
+		ErrorDesc(ErrGRPCNamespaceQuotaNotFound):      ErrGRPCNamespaceQuotaNotFound,
+		ErrorDesc(ErrGRPCNamespaceQuotaRestoreFailed): ErrGRPCNamespaceQuotaRestoreFailed,
+
 		ErrorDesc(ErrGRPCRootUserNotExist):     ErrGRPCRootUserNotExist,
 		ErrorDesc(ErrGRPCRootRoleNotExist):     ErrGRPCRootRoleNotExist,
 		ErrorDesc(ErrGRPCUserAlreadyExist):     ErrGRPCUserAlreadyExist,
@@ -191,6 +195,10 @@ var (
 
 	ErrRequestTooLarge = Error(ErrGRPCRequestTooLarge)
 	ErrTooManyRequests = Error(ErrGRPCRequestTooManyRequests)
+
+	ErrNamespaceQuotaExceeded      = Error(ErrGRPCNamespaceQuotaExceeded)
+	ErrNamespaceQuotaNotFound      = Error(ErrGRPCNamespaceQuotaNotFound)
+	ErrNamespaceQuotaRestoreFailed = Error(ErrGRPCNamespaceQuotaRestoreFailed)
 
 	ErrRootUserNotExist     = Error(ErrGRPCRootUserNotExist)
 	ErrRootRoleNotExist     = Error(ErrGRPCRootRoleNotExist)

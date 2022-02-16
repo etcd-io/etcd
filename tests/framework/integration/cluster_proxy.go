@@ -43,6 +43,7 @@ type grpcClientProxy struct {
 	wdonec    <-chan struct{}
 	kvdonec   <-chan struct{}
 	lpdonec   <-chan struct{}
+	nqpdonec  <-chan struct{}
 }
 
 func ToGRPC(c *clientv3.Client) GrpcAPI {
@@ -68,6 +69,7 @@ func ToGRPC(c *clientv3.Client) GrpcAPI {
 	kvp, kvpch := grpcproxy.NewKvProxy(c)
 	wp, wpch := grpcproxy.NewWatchProxy(ctx, lg, c)
 	lp, lpch := grpcproxy.NewLeaseProxy(ctx, c)
+	nqp, nqpch := grpcproxy.NewNamespaceQuotaProxy(ctx, c)
 	mp := grpcproxy.NewMaintenanceProxy(c)
 	clp, _ := grpcproxy.NewClusterProxy(lg, c, "", "") // without registering proxy URLs
 	authp := grpcproxy.NewAuthProxy(c)
@@ -83,8 +85,9 @@ func ToGRPC(c *clientv3.Client) GrpcAPI {
 		adapter.AuthServerToAuthClient(authp),
 		adapter.LockServerToLockClient(lockp),
 		adapter.ElectionServerToElectionClient(electp),
+		adapter.NamespaceQuotaServerToNamespaceQuotaClient(nqp),
 	}
-	proxies[c] = grpcClientProxy{ctx: ctx, ctxCancel: ctxCancel, grpc: grpc, wdonec: wpch, kvdonec: kvpch, lpdonec: lpch}
+	proxies[c] = grpcClientProxy{ctx: ctx, ctxCancel: ctxCancel, grpc: grpc, wdonec: wpch, kvdonec: kvpch, lpdonec: lpch, nqpdonec: nqpch}
 	return grpc
 }
 
@@ -95,6 +98,7 @@ type proxyCloser struct {
 	kvdonec        <-chan struct{}
 	lclose         func()
 	lpdonec        <-chan struct{}
+	nqpdonec       <-chan struct{}
 }
 
 func (pc *proxyCloser) Close() error {
@@ -104,6 +108,7 @@ func (pc *proxyCloser) Close() error {
 	<-pc.wdonec
 	pc.lclose()
 	<-pc.lpdonec
+	<-pc.nqpdonec
 	return err
 }
 

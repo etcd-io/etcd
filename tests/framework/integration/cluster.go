@@ -577,8 +577,7 @@ type Member struct {
 	IsLearner bool
 	Closed    bool
 
-	GrpcServerRecorder        *grpc_testing.GrpcRecorder
-	NamespaceQuotaEnforcement int
+	GrpcServerRecorder *grpc_testing.GrpcRecorder
 }
 
 func (m *Member) GRPCURL() string { return m.GrpcURL }
