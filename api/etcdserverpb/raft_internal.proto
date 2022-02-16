@@ -66,9 +66,9 @@ message InternalRaftRequest {
   AuthRoleGrantPermissionRequest auth_role_grant_permission = 1203;
   AuthRoleRevokePermissionRequest auth_role_revoke_permission = 1204;
 
-  NamespaceQuotaSetRequest namespacequota_set_request = 1400;
-  NamespaceQuotaGetRequest namespacequota_get_request = 1401;
-  NamespaceQuotaDeleteRequest namespacequota_delete_request = 1402;
+  NamespaceQuotaSetRequest namespacequota_set_request = 1400 [(versionpb.etcd_version_field) = "3.6"];
+  NamespaceQuotaGetRequest namespacequota_get_request = 1401 [(versionpb.etcd_version_field) = "3.6"];
+  NamespaceQuotaDeleteRequest namespacequota_delete_request = 1402 [(versionpb.etcd_version_field) = "3.6"];
 
   membershippb.ClusterVersionSetRequest cluster_version_set = 1300 [(versionpb.etcd_version_field) = "3.5"];
   membershippb.ClusterMemberAttrSetRequest cluster_member_attr_set = 1301 [(versionpb.etcd_version_field) = "3.5"];

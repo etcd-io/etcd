@@ -76,10 +76,11 @@ func TestStorePut(t *testing.T) {
 		r   indexGetResp
 		rr  *rangeResp
 
-		wrev    revision
-		wkey    []byte
-		wkv     mvccpb.KeyValue
-		wputrev revision
+		wrev      revision
+		wkey      []byte
+		wkv       mvccpb.KeyValue
+		wputrev   revision
+		valueSize int
 	}{
 		{
 			revision{1, 0},
@@ -97,6 +98,7 @@ func TestStorePut(t *testing.T) {
 				Lease:          1,
 			},
 			revision{2, 0},
+			3,
 		},
 		{
 			revision{1, 1},
@@ -114,6 +116,7 @@ func TestStorePut(t *testing.T) {
 				Lease:          2,
 			},
 			revision{2, 0},
+			3,
 		},
 		{
 			revision{2, 0},
@@ -131,6 +134,7 @@ func TestStorePut(t *testing.T) {
 				Lease:          3,
 			},
 			revision{3, 0},
+			3,
 		},
 	}
 	for i, tt := range tests {
@@ -166,7 +170,7 @@ func TestStorePut(t *testing.T) {
 		}
 		wact = []testutil.Action{
 			{Name: "get", Params: []interface{}{[]byte("foo"), tt.wputrev.main}},
-			{Name: "put", Params: []interface{}{[]byte("foo"), tt.wputrev}},
+			{Name: "put", Params: []interface{}{[]byte("foo"), tt.wputrev, tt.valueSize}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)

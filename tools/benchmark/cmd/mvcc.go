@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"go.etcd.io/etcd/server/v3/namespacequota"
 	"os"
 	"time"
 
@@ -38,7 +39,7 @@ func initMVCC() {
 	bcfg := backend.DefaultBackendConfig(zap.NewNop())
 	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = "mvcc-bench", time.Duration(batchInterval)*time.Millisecond, batchLimit
 	be := backend.New(bcfg)
-	s = mvcc.NewStore(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	s = mvcc.NewStore(zap.NewExample(), be, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, mvcc.StoreConfig{})
 	os.Remove("mvcc-bench") // boltDB has an opened fd, so removing the file is ok
 }
 

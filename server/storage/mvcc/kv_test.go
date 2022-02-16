@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
+	"go.etcd.io/etcd/server/v3/namespacequota"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.uber.org/zap/zaptest"
@@ -79,7 +80,7 @@ func TestKVTxnRange(t *testing.T) { testKVRange(t, txnRangeFunc) }
 
 func testKVRange(t *testing.T, f rangeFunc) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	kvs := put3TestKVs(s)
@@ -145,7 +146,7 @@ func TestKVTxnRangeRev(t *testing.T) { testKVRangeRev(t, txnRangeFunc) }
 
 func testKVRangeRev(t *testing.T, f rangeFunc) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	kvs := put3TestKVs(s)
@@ -181,7 +182,7 @@ func TestKVTxnRangeBadRev(t *testing.T) { testKVRangeBadRev(t, txnRangeFunc) }
 
 func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	put3TestKVs(s)
@@ -214,7 +215,7 @@ func TestKVTxnRangeLimit(t *testing.T) { testKVRangeLimit(t, txnRangeFunc) }
 
 func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	kvs := put3TestKVs(s)
@@ -260,7 +261,7 @@ func TestKVTxnPutMultipleTimes(t *testing.T) { testKVPutMultipleTimes(t, txnPutF
 
 func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -322,7 +323,7 @@ func testKVDeleteRange(t *testing.T, f deleteRangeFunc) {
 
 	for i, tt := range tests {
 		b, tmpPath := betesting.NewDefaultTmpBackend(t)
-		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 
 		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 		s.Put([]byte("foo1"), []byte("bar1"), lease.NoLease)
@@ -342,7 +343,7 @@ func TestKVTxnDeleteMultipleTimes(t *testing.T) { testKVDeleteMultipleTimes(t, t
 
 func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -365,7 +366,7 @@ func TestKVTxnPutWithSameLease(t *testing.T) { testKVPutWithSameLease(t, txnPutF
 
 func testKVPutWithSameLease(t *testing.T, f putFunc) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 	leaseID := int64(1)
 
@@ -397,7 +398,7 @@ func testKVPutWithSameLease(t *testing.T, f putFunc) {
 // test that range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVOperationInSequence(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -444,7 +445,7 @@ func TestKVOperationInSequence(t *testing.T) {
 
 func TestKVTxnBlockWriteOperations(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 
 	tests := []func(){
 		func() { s.Put([]byte("foo"), nil, lease.NoLease) },
@@ -478,7 +479,7 @@ func TestKVTxnBlockWriteOperations(t *testing.T) {
 
 func TestKVTxnNonBlockRange(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	txn := s.Write(traceutil.TODO())
@@ -499,7 +500,7 @@ func TestKVTxnNonBlockRange(t *testing.T) {
 // test that txn range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVTxnOperationInSequence(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -549,7 +550,7 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 
 func TestKVCompactReserveLastValue(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar0"), 1)
@@ -603,7 +604,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 
 func TestKVCompactBad(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar0"), lease.NoLease)
@@ -636,7 +637,7 @@ func TestKVHash(t *testing.T) {
 	for i := 0; i < len(hashes); i++ {
 		var err error
 		b, tmpPath := betesting.NewDefaultTmpBackend(t)
-		kv := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		kv := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 		kv.Put([]byte("foo0"), []byte("bar0"), lease.NoLease)
 		kv.Put([]byte("foo1"), []byte("bar0"), lease.NoLease)
 		hashes[i], _, err = kv.Hash()
@@ -674,7 +675,7 @@ func TestKVRestore(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b, tmpPath := betesting.NewDefaultTmpBackend(t)
-		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 		tt(s)
 		var kvss [][]mvccpb.KeyValue
 		for k := int64(0); k < 10; k++ {
@@ -686,7 +687,7 @@ func TestKVRestore(t *testing.T) {
 		s.Close()
 
 		// ns should recover the the previous state from backend.
-		ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 
 		if keysRestore := readGaugeInt(keysGauge); keysBefore != keysRestore {
 			t.Errorf("#%d: got %d key count, expected %d", i, keysRestore, keysBefore)
@@ -718,7 +719,7 @@ func readGaugeInt(g prometheus.Gauge) int {
 
 func TestKVSnapshot(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer cleanup(s, b, tmpPath)
 
 	wkvs := put3TestKVs(s)
@@ -738,7 +739,7 @@ func TestKVSnapshot(t *testing.T) {
 	}
 	f.Close()
 
-	ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{})
 	defer ns.Close()
 	r, err := ns.Range(context.TODO(), []byte("a"), []byte("z"), RangeOptions{})
 	if err != nil {
@@ -754,7 +755,7 @@ func TestKVSnapshot(t *testing.T) {
 
 func TestWatchableKVWatch(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}))
+	s := WatchableKV(newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, &namespacequota.FakeNamespaceQuotaManager{}, StoreConfig{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()

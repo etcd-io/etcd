@@ -980,6 +980,7 @@ message LeaseLeasesResponse {
 }
 
 message NamespaceQuotas {
+  option (versionpb.etcd_version_msg) = "3.6";
   // key key
   bytes key = 1;
   // quotaByteCount quota byte count represents the byte quota for respective Key
@@ -993,6 +994,7 @@ message NamespaceQuotas {
 }
 
 message NamespaceQuotaSetRequest {
+  option (versionpb.etcd_version_msg) = "3.6";
   // key key
   bytes key = 1;
   // quotaByteCount quota byte count represents the byte quota for respective Key
@@ -1002,6 +1004,7 @@ message NamespaceQuotaSetRequest {
 }
 
 message NamespaceQuotaResponse {
+  option (versionpb.etcd_version_msg) = "3.6";
   // header response header
   ResponseHeader header = 1;
   // quota Namespace Quota
@@ -1009,22 +1012,26 @@ message NamespaceQuotaResponse {
 }
 
 message NamespaceQuotaGetRequest {
+  option (versionpb.etcd_version_msg) = "3.6";
   // key key
   bytes key = 1;
 }
 
 // TODO: A separate DELETE/GET request, both look same?
 message NamespaceQuotaDeleteRequest {
+  option (versionpb.etcd_version_msg) = "3.6";
   // key key
   bytes key = 1;
 }
 
 message NamespaceQuotaListRequest {
+  option (versionpb.etcd_version_msg) = "3.6";
   // header response header
   ResponseHeader header = 1;
 }
 
 message NamespaceQuotaListResponse {
+  option (versionpb.etcd_version_msg) = "3.6";
   // header response header
   ResponseHeader header = 1;
   // quotas Namespace Quotas
