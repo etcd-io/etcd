@@ -125,6 +125,25 @@ func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
 	}
 }
 
+func (s *simplePrinter) NamespaceQuotaSet(resp v3.NamespaceQuotaResponse) {
+	fmt.Printf("key %s, byte quota: %d, key quota: %d\n", resp.Key, resp.QuotaByteCount, resp.QuotaKeyCount)
+}
+
+func (s *simplePrinter) NamespaceQuotaGet(resp v3.NamespaceQuotaResponse) {
+	fmt.Printf("key %s, byte quota: %d, key quota: %d\n", resp.Key, resp.QuotaByteCount, resp.QuotaKeyCount)
+}
+
+func (s *simplePrinter) NamespaceQuotaDelete(resp v3.NamespaceQuotaResponse) {
+	fmt.Printf("key %s, byte quota: %d, key quota: %d\n", resp.Key, resp.QuotaByteCount, resp.QuotaKeyCount)
+}
+
+func (s *simplePrinter) NamespaceQuotaList(resp v3.ListNamespaceQuotaResponse) {
+	for _, value := range resp.NamespaceQuotas {
+		fmt.Printf("key %s, byte quota: %d, key quota: %d, byte usage: %d, key usage: %d\n", value.Key, value.QuotaByteCount, value.QuotaKeyCount, value.UsageByteCount, value.UsageKeyCount)
+	}
+	fmt.Printf("total: %d\n", len(resp.NamespaceQuotas))
+}
+
 func (s *simplePrinter) MemberAdd(r v3.MemberAddResponse) {
 	fmt.Printf("Member %16x added to cluster %16x\n", r.Member.ID, r.Header.ClusterId)
 }

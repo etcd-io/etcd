@@ -46,6 +46,7 @@ type Client struct {
 	Cluster
 	KV
 	Lease
+	NamespaceQuota
 	Watcher
 	Auth
 	Maintenance
@@ -427,6 +428,7 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Cluster = NewCluster(client)
 	client.KV = NewKV(client)
 	client.Lease = NewLease(client)
+	client.NamespaceQuota = NewNamespaceQuota(client)
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
 	client.Maintenance = NewMaintenance(client)
