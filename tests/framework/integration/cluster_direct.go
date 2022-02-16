@@ -36,6 +36,7 @@ func ToGRPC(c *clientv3.Client) GrpcAPI {
 		pb.NewAuthClient(c.ActiveConnection()),
 		v3lockpb.NewLockClient(c.ActiveConnection()),
 		v3electionpb.NewElectionClient(c.ActiveConnection()),
+		pb.NewNamespaceQuotaClient(c.ActiveConnection()),
 	}
 }
 
