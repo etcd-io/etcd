@@ -787,6 +787,7 @@ func (r *raft) campaign(t CampaignType) {
 		// This path should not be hit (callers are supposed to check), but
 		// better safe than sorry.
 		r.logger.Warningf("%x is unpromotable; campaign() should have been called", r.id)
+		return
 	}
 	var term uint64
 	var voteMsg pb.MessageType
