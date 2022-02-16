@@ -112,7 +112,7 @@ func startEtcdOrProxyV2(args []string) {
 	which := identifyDataDirOrDie(cfg.ec.GetLogger(), cfg.ec.Dir)
 	if which != dirEmpty {
 		lg.Info(
-			"server has been already initialized",
+			"server has already been initialized",
 			zap.String("data-dir", cfg.ec.Dir),
 			zap.String("dir-type", string(which)),
 		)
