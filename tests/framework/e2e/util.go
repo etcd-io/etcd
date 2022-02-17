@@ -119,20 +119,6 @@ func SkipInShortMode(t testing.TB) {
 	testutil.SkipTestIfShortMode(t, "e2e tests are not running in --short mode")
 }
 
-func ExecuteWithTimeout(t *testing.T, timeout time.Duration, f func()) {
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		f()
-	}()
-
-	select {
-	case <-time.After(timeout):
-		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
-	case <-donec:
-	}
-}
-
 func mergeEnvVariables(envVars map[string]string) []string {
 	var env []string
 	// Environment variables are passed as parameter have higher priority

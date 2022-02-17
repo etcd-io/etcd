@@ -71,7 +71,7 @@ func TestKVPutError(t *testing.T) {
 	}
 }
 
-func TestKVPut(t *testing.T) {
+func TestKVPutWithLease(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
@@ -82,36 +82,28 @@ func TestKVPut(t *testing.T) {
 	kv := clus.RandClient()
 	ctx := context.TODO()
 
-	resp, err := lapi.Grant(context.Background(), 10)
+	lease, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Fatalf("failed to create lease %v", err)
 	}
 
-	tests := []struct {
-		key, val string
-		leaseID  clientv3.LeaseID
-	}{
-		{"foo", "bar", clientv3.NoLease},
-		{"hello", "world", resp.ID},
+	key := "hello"
+	val := "world"
+	if _, err := kv.Put(ctx, key, val, clientv3.WithLease(lease.ID)); err != nil {
+		t.Fatalf("couldn't put %q (%v)", key, err)
 	}
-
-	for i, tt := range tests {
-		if _, err := kv.Put(ctx, tt.key, tt.val, clientv3.WithLease(tt.leaseID)); err != nil {
-			t.Fatalf("#%d: couldn't put %q (%v)", i, tt.key, err)
-		}
-		resp, err := kv.Get(ctx, tt.key)
-		if err != nil {
-			t.Fatalf("#%d: couldn't get key (%v)", i, err)
-		}
-		if len(resp.Kvs) != 1 {
-			t.Fatalf("#%d: expected 1 key, got %d", i, len(resp.Kvs))
-		}
-		if !bytes.Equal([]byte(tt.val), resp.Kvs[0].Value) {
-			t.Errorf("#%d: val = %s, want %s", i, tt.val, resp.Kvs[0].Value)
-		}
-		if tt.leaseID != clientv3.LeaseID(resp.Kvs[0].Lease) {
-			t.Errorf("#%d: val = %d, want %d", i, tt.leaseID, resp.Kvs[0].Lease)
-		}
+	resp, err := kv.Get(ctx, key)
+	if err != nil {
+		t.Fatalf("couldn't get key (%v)", err)
+	}
+	if len(resp.Kvs) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(resp.Kvs))
+	}
+	if !bytes.Equal([]byte(val), resp.Kvs[0].Value) {
+		t.Errorf("val = %s, want %s", val, resp.Kvs[0].Value)
+	}
+	if lease.ID != clientv3.LeaseID(resp.Kvs[0].Lease) {
+		t.Errorf("val = %d, want %d", lease.ID, resp.Kvs[0].Lease)
 	}
 }
 

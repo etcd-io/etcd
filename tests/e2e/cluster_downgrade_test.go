@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 func TestDowngradeUpgrade(t *testing.T) {
@@ -78,7 +79,7 @@ func startEtcd(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessClust
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Version) {
 	t.Log("etcdctl downgrade...")
 	c := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
-	e2e.ExecuteWithTimeout(t, 20*time.Second, func() {
+	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		err := c.DowngradeEnable(ver.String())
 		if err != nil {
 			t.Fatal(err)
@@ -96,7 +97,7 @@ func stopEtcd(t *testing.T, epc *e2e.EtcdProcessCluster) {
 func validateVersion(t *testing.T, epc *e2e.EtcdProcessCluster, expect version.Versions) {
 	t.Log("Validate version")
 	// Two separate calls to expect as it doesn't support multiple matches on the same line
-	e2e.ExecuteWithTimeout(t, 20*time.Second, func() {
+	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		if expect.Server != "" {
 			err := e2e.SpawnWithExpects(e2e.CURLPrefixArgs(epc, "GET", e2e.CURLReq{Endpoint: "/version"}), nil, `"etcdserver":"`+expect.Server)
 			if err != nil {
@@ -114,7 +115,7 @@ func validateVersion(t *testing.T, epc *e2e.EtcdProcessCluster, expect version.V
 
 func expectLog(t *testing.T, epc *e2e.EtcdProcessCluster, expectLog string) {
 	t.Helper()
-	e2e.ExecuteWithTimeout(t, 30*time.Second, func() {
+	testutils.ExecuteWithTimeout(t, 30*time.Second, func() {
 		_, err := epc.Procs[0].Logs().Expect(expectLog)
 		if err != nil {
 			t.Fatal(err)
