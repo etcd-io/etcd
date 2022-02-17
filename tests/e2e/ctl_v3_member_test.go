@@ -160,15 +160,20 @@ func memberListWithHexTest(cx ctlCtx) {
 	if num == 0 {
 		cx.t.Fatal("member number is 0")
 	}
+
+	if resp.Header.RaftTerm != hexResp.Header.RaftTerm {
+		cx.t.Fatalf("Unexpected raft_term, expected %d, got %d", resp.Header.RaftTerm, hexResp.Header.RaftTerm)
+	}
+
 	for i := 0; i < num; i++ {
 		if resp.Members[i].Name != hexResp.Members[i].Name {
-			cx.t.Fatalf("member name,expected %v,got %v", resp.Members[i].Name, hexResp.Members[i].Name)
+			cx.t.Fatalf("Unexpected member name,expected %v, got %v", resp.Members[i].Name, hexResp.Members[i].Name)
 		}
 		if !reflect.DeepEqual(resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs) {
-			cx.t.Fatalf("member peerURLs,expected %v,got %v", resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs)
+			cx.t.Fatalf("Unexpected member peerURLs, expected %v, got %v", resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs)
 		}
 		if !reflect.DeepEqual(resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs) {
-			cx.t.Fatalf("member clientURLS,expected %v,got %v", resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs)
+			cx.t.Fatalf("Unexpected member clientURLS, expected %v, got %v", resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs)
 		}
 	}
 }
