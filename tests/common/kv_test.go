@@ -24,28 +24,41 @@ import (
 
 func TestKVPut(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 1, PeerTLS: config.AutoTLS})
-	defer clus.Close()
-	cc := clus.Client()
+	tcs := []struct {
+		name   string
+		config config.ClusterConfig
+	}{
+		{
+			name:   "PeerAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.AutoTLS},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			clus := testRunner.NewCluster(t, tc.config)
+			defer clus.Close()
+			cc := clus.Client()
 
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
-		key, value := "foo", "bar"
+			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				key, value := "foo", "bar"
 
-		if err := cc.Put(key, value); err != nil {
-			t.Fatalf("count not put key %q, err: %s", key, err)
-		}
-		resp, err := cc.Get(key, config.GetOptions{Serializable: true})
-		if err != nil {
-			t.Fatalf("count not get key %q, err: %s", key, err)
-		}
-		if len(resp.Kvs) != 1 {
-			t.Errorf("Unexpected lenth of response, got %d", len(resp.Kvs))
-		}
-		if string(resp.Kvs[0].Key) != key {
-			t.Errorf("Unexpected key, want %q, got %q", key, resp.Kvs[0].Key)
-		}
-		if string(resp.Kvs[0].Value) != value {
-			t.Errorf("Unexpected value, want %q, got %q", value, resp.Kvs[0].Value)
-		}
-	})
+				if err := cc.Put(key, value); err != nil {
+					t.Fatalf("count not put key %q, err: %s", key, err)
+				}
+				resp, err := cc.Get(key, config.GetOptions{Serializable: true})
+				if err != nil {
+					t.Fatalf("count not get key %q, err: %s", key, err)
+				}
+				if len(resp.Kvs) != 1 {
+					t.Errorf("Unexpected lenth of response, got %d", len(resp.Kvs))
+				}
+				if string(resp.Kvs[0].Key) != key {
+					t.Errorf("Unexpected key, want %q, got %q", key, resp.Kvs[0].Key)
+				}
+				if string(resp.Kvs[0].Value) != value {
+					t.Errorf("Unexpected value, want %q, got %q", value, resp.Kvs[0].Value)
+				}
+			})
+		})
+	}
 }
