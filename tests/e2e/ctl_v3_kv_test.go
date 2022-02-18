@@ -30,7 +30,6 @@ func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
 func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
 
 func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDialTimeout(0)) }
-func TestCtlV3GetQuorum(t *testing.T)  { testCtl(t, getTest, withQuorum()) }
 
 func TestCtlV3GetFormat(t *testing.T)    { testCtl(t, getFormatTest) }
 func TestCtlV3GetRev(t *testing.T)       { testCtl(t, getRevTest) }

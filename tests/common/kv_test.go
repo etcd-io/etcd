@@ -36,11 +36,11 @@ func TestKVPut(t *testing.T) {
 		},
 		{
 			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.ManualTLS},
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
 		},
 		{
 			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.AutoTLS},
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
 		},
 		{
 			name:   "ClientTLS",
@@ -93,11 +93,11 @@ func TestKVGet(t *testing.T) {
 		},
 		{
 			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.ManualTLS},
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
 		},
 		{
 			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.AutoTLS},
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
 		},
 		{
 			name:   "ClientTLS",
