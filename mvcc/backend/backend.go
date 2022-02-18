@@ -95,8 +95,9 @@ type backend struct {
 	// openReadTxN is the number of currently open read transactions in the backend
 	openReadTxN int64
 
-	mu sync.RWMutex
-	db *bolt.DB
+	mu    sync.RWMutex
+	bopts *bolt.Options
+	db    *bolt.DB
 
 	batchInterval time.Duration
 	batchLimit    int
@@ -167,7 +168,8 @@ func newBackend(bcfg BackendConfig) *backend {
 	// In future, may want to make buffering optional for low-concurrency systems
 	// or dynamically swap between buffered/non-buffered depending on workload.
 	b := &backend{
-		db: db,
+		bopts: bopts,
+		db:    db,
 
 		batchInterval: bcfg.BatchInterval,
 		batchLimit:    bcfg.BatchLimit,
@@ -447,7 +449,7 @@ func (b *backend) defrag() error {
 		}
 	}
 
-	b.db, err = bolt.Open(dbp, 0600, boltOpenOptions)
+	b.db, err = bolt.Open(dbp, 0600, b.bopts)
 	if err != nil {
 		if b.lg != nil {
 			b.lg.Fatal("failed to open database", zap.String("path", dbp), zap.Error(err))
@@ -568,16 +570,22 @@ func (b *backend) OpenReadTxN() int64 {
 	return atomic.LoadInt64(&b.openReadTxN)
 }
 
-// NewTmpBackend creates a backend implementation for testing.
-func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
+// NewTmpBackendFromCfg creates a backend implementation for testing with custom BackendConfig.
+func NewTmpBackendFromCfg(bcfg BackendConfig) (*backend, string) {
 	dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
 	if err != nil {
 		panic(err)
 	}
 	tmpPath := filepath.Join(dir, "database")
-	bcfg := DefaultBackendConfig()
-	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = tmpPath, batchInterval, batchLimit
+	bcfg.Path = tmpPath
 	return newBackend(bcfg), tmpPath
+}
+
+// NewTmpBackend creates a backend implementation for testing.
+func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
+	bcfg := DefaultBackendConfig()
+	bcfg.BatchInterval, bcfg.BatchLimit = batchInterval, batchLimit
+	return NewTmpBackendFromCfg(bcfg)
 }
 
 func NewDefaultTmpBackend() (*backend, string) {
