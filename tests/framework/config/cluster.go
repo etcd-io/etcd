@@ -12,27 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package framework
+package config
 
-import (
-	"testing"
+type TLSConfig string
 
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/framework/config"
+const (
+	NoTLS     TLSConfig = ""
+	AutoTLS   TLSConfig = "auto-tls"
+	ManualTLS TLSConfig = "manual-tls"
 )
 
-type testRunner interface {
-	TestMain(m *testing.M)
-	BeforeTest(testing.TB)
-	NewCluster(testing.TB, config.ClusterConfig) Cluster
-}
-
-type Cluster interface {
-	Close() error
-	Client() Client
-}
-
-type Client interface {
-	Put(key, value string) error
-	Get(key string, opts config.GetOptions) (*clientv3.GetResponse, error)
+type ClusterConfig struct {
+	ClusterSize int
+	PeerTLS     TLSConfig
+	ClientTLS   TLSConfig
 }

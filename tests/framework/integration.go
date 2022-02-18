@@ -16,12 +16,15 @@ package framework
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	"go.uber.org/zap"
 )
 
 type integrationRunner struct{}
@@ -34,10 +37,38 @@ func (e integrationRunner) BeforeTest(t testing.TB) {
 	integration.BeforeTest(t)
 }
 
-func (e integrationRunner) NewCluster(t testing.TB) Cluster {
+func (e integrationRunner) NewCluster(t testing.TB, cfg config.ClusterConfig) Cluster {
+	var err error
+	var integrationCfg integration.ClusterConfig
+	integrationCfg.Size = cfg.ClusterSize
+	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
+	if err != nil {
+		t.Fatalf("ClientTLS: %s", err)
+	}
+	integrationCfg.PeerTLS, err = tlsInfo(t, cfg.PeerTLS)
+	if err != nil {
+		t.Fatalf("PeerTLS: %s", err)
+	}
 	return &integrationCluster{
-		Cluster: integration.NewCluster(t, &integration.ClusterConfig{Size: 1}),
+		Cluster: integration.NewCluster(t, &integrationCfg),
 		t:       t,
+	}
+}
+
+func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
+	switch cfg {
+	case config.NoTLS:
+		return nil, nil
+	case config.AutoTLS:
+		tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate cert: %s", err)
+		}
+		return &tls, nil
+	case config.ManualTLS:
+		return &integration.TestTLSInfo, nil
+	default:
+		return nil, fmt.Errorf("config %q not supported", cfg)
 	}
 }
 
@@ -63,7 +94,7 @@ type integrationClient struct {
 	*clientv3.Client
 }
 
-func (c integrationClient) Get(key string, o testutils.GetOptions) (*clientv3.GetResponse, error) {
+func (c integrationClient) Get(key string, o config.GetOptions) (*clientv3.GetResponse, error) {
 	clientOpts := []clientv3.OpOption{}
 	if o.Revision != 0 {
 		clientOpts = append(clientOpts, clientv3.WithRev(int64(o.Revision)))
