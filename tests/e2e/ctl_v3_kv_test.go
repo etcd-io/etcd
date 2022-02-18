@@ -22,12 +22,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3PutNoTLS(t *testing.T)     { testCtl(t, putTest, withCfg(*e2e.NewConfigNoTLS())) }
-func TestCtlV3PutClientTLS(t *testing.T) { testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS())) }
-func TestCtlV3PutClientAutoTLS(t *testing.T) {
-	testCtl(t, putTest, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3PutPeerTLS(t *testing.T) { testCtl(t, putTest, withCfg(*e2e.NewConfigPeerTLS())) }
 func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDialTimeout(0)) }
 func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 	testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS()), withFlagByEnv())

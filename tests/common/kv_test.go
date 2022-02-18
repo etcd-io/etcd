@@ -29,8 +29,24 @@ func TestKVPut(t *testing.T) {
 		config config.ClusterConfig
 	}{
 		{
+			name:   "NoTLS",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "PeerTLS",
+			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.ManualTLS},
+		},
+		{
 			name:   "PeerAutoTLS",
 			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.AutoTLS},
+		},
+		{
+			name:   "ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
 		},
 	}
 	for _, tc := range tcs {
