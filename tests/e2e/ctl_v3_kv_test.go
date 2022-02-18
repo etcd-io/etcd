@@ -29,13 +29,6 @@ func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
 func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
 
-func TestCtlV3Get(t *testing.T)          { testCtl(t, getTest) }
-func TestCtlV3GetNoTLS(t *testing.T)     { testCtl(t, getTest, withCfg(*e2e.NewConfigNoTLS())) }
-func TestCtlV3GetClientTLS(t *testing.T) { testCtl(t, getTest, withCfg(*e2e.NewConfigClientTLS())) }
-func TestCtlV3GetClientAutoTLS(t *testing.T) {
-	testCtl(t, getTest, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3GetPeerTLS(t *testing.T) { testCtl(t, getTest, withCfg(*e2e.NewConfigPeerTLS())) }
 func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDialTimeout(0)) }
 func TestCtlV3GetQuorum(t *testing.T)  { testCtl(t, getTest, withQuorum()) }
 

@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -73,6 +75,79 @@ func TestKVPut(t *testing.T) {
 				}
 				if string(resp.Kvs[0].Value) != value {
 					t.Errorf("Unexpected value, want %q, got %q", value, resp.Kvs[0].Value)
+				}
+			})
+		})
+	}
+}
+
+func TestKVGet(t *testing.T) {
+	testRunner.BeforeTest(t)
+	tcs := []struct {
+		name   string
+		config config.ClusterConfig
+	}{
+		{
+			name:   "NoTLS",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "PeerTLS",
+			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.ManualTLS},
+		},
+		{
+			name:   "PeerAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, PeerTLS: config.AutoTLS},
+		},
+		{
+			name:   "ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			clus := testRunner.NewCluster(t, tc.config)
+			defer clus.Close()
+			cc := clus.Client()
+
+			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				var (
+					kvs    = []testutils.KeyValue{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
+					revkvs = []testutils.KeyValue{{"key3", "val3"}, {"key2", "val2"}, {"key1", "val1"}}
+				)
+				for i := range kvs {
+					if err := cc.Put(kvs[i].Key, kvs[i].Value); err != nil {
+						t.Fatalf("count not put key %q, err: %s", kvs[i].Key, err)
+					}
+				}
+				tests := []struct {
+					key     string
+					options config.GetOptions
+
+					wkv []testutils.KeyValue
+				}{
+					{key: "key1", wkv: []testutils.KeyValue{{"key1", "val1"}}},
+					{key: "", options: config.GetOptions{Prefix: true}, wkv: kvs},
+					{key: "", options: config.GetOptions{FromKey: true}, wkv: kvs},
+					{key: "key", options: config.GetOptions{Prefix: true}, wkv: kvs},
+					{key: "key", options: config.GetOptions{Prefix: true, Limit: 2}, wkv: kvs[:2]},
+					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wkv: kvs},
+					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wkv: kvs},
+					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wkv: kvs},
+					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wkv: revkvs},
+					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wkv: revkvs},
+				}
+				for _, tt := range tests {
+					resp, err := cc.Get(tt.key, tt.options)
+					if err != nil {
+						t.Fatalf("count not get key %q, err: %s", tt.key[0], err)
+					}
+					kvs := testutils.FromGetResponse(resp)
+					assert.Equal(t, tt.wkv, kvs)
 				}
 			})
 		})
