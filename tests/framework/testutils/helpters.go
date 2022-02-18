@@ -16,13 +16,9 @@ package testutils
 
 import clientv3 "go.etcd.io/etcd/client/v3"
 
-type KeyValue struct {
-	Key, Value string
-}
-
-func FromGetResponse(resp *clientv3.GetResponse) (kvs []KeyValue) {
+func KeysFromGetResponse(resp *clientv3.GetResponse) (kvs []string) {
 	for _, kv := range resp.Kvs {
-		kvs = append(kvs, KeyValue{Key: string(kv.Key), Value: string(kv.Value)})
+		kvs = append(kvs, string(kv.Key))
 	}
 	return kvs
 }

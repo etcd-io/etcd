@@ -116,37 +116,47 @@ func TestKVGet(t *testing.T) {
 
 			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
 				var (
-					kvs    = []testutils.KeyValue{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
-					revkvs = []testutils.KeyValue{{"key3", "val3"}, {"key2", "val2"}, {"key1", "val1"}}
+					kvs          = []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
+					wantKvs      = []string{"a", "b", "c", "foo", "foo/abc", "fop"}
+					kvsByVersion = []string{"a", "b", "foo", "foo/abc", "fop", "c"}
+					reversedKvs  = []string{"fop", "foo/abc", "foo", "c", "b", "a"}
 				)
+
 				for i := range kvs {
-					if err := cc.Put(kvs[i].Key, kvs[i].Value); err != nil {
-						t.Fatalf("count not put key %q, err: %s", kvs[i].Key, err)
+					if err := cc.Put(kvs[i], "bar"); err != nil {
+						t.Fatalf("count not put key %q, err: %s", kvs[i], err)
 					}
 				}
 				tests := []struct {
-					key     string
+					begin   string
+					end     string
 					options config.GetOptions
 
-					wkv []testutils.KeyValue
+					wkv []string
 				}{
-					{key: "key1", wkv: []testutils.KeyValue{{"key1", "val1"}}},
-					{key: "", options: config.GetOptions{Prefix: true}, wkv: kvs},
-					{key: "", options: config.GetOptions{FromKey: true}, wkv: kvs},
-					{key: "key", options: config.GetOptions{Prefix: true}, wkv: kvs},
-					{key: "key", options: config.GetOptions{Prefix: true, Limit: 2}, wkv: kvs[:2]},
-					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wkv: kvs},
-					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wkv: kvs},
-					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wkv: kvs},
-					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wkv: revkvs},
-					{key: "key", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wkv: revkvs},
+					{begin: "a", wkv: wantKvs[:1]},
+					{begin: "a", options: config.GetOptions{Serializable: true}, wkv: wantKvs[:1]},
+					{begin: "a", options: config.GetOptions{End: "c"}, wkv: wantKvs[:2]},
+					{begin: "", options: config.GetOptions{Prefix: true}, wkv: wantKvs},
+					{begin: "", options: config.GetOptions{FromKey: true}, wkv: wantKvs},
+					{begin: "a", options: config.GetOptions{End: "x"}, wkv: wantKvs},
+					{begin: "", options: config.GetOptions{Prefix: true, Revision: 4}, wkv: kvs[:3]},
+					{begin: "a", options: config.GetOptions{CountOnly: true}, wkv: nil},
+					{begin: "foo", options: config.GetOptions{Prefix: true}, wkv: []string{"foo", "foo/abc"}},
+					{begin: "foo", options: config.GetOptions{FromKey: true}, wkv: []string{"foo", "foo/abc", "fop"}},
+					{begin: "", options: config.GetOptions{Prefix: true, Limit: 2}, wkv: wantKvs[:2]},
+					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wkv: wantKvs},
+					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wkv: kvsByVersion},
+					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wkv: wantKvs},
+					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wkv: reversedKvs},
+					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wkv: reversedKvs},
 				}
 				for _, tt := range tests {
-					resp, err := cc.Get(tt.key, tt.options)
+					resp, err := cc.Get(tt.begin, tt.options)
 					if err != nil {
-						t.Fatalf("count not get key %q, err: %s", tt.key[0], err)
+						t.Fatalf("count not get key %q, err: %s", tt.begin, err)
 					}
-					kvs := testutils.FromGetResponse(resp)
+					kvs := testutils.KeysFromGetResponse(resp)
 					assert.Equal(t, tt.wkv, kvs)
 				}
 			})
