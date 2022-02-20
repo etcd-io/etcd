@@ -18,9 +18,10 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.19.4" ]]; then
   exit 255
 fi
 
-GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)
 GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)
 SWAGGER_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger)
+PROTOC_VTPROTO_BIN=$(tool_get_bin github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto)
+PROTOC_GO_BIN=$(tool_get_bin github.com/golang/protobuf/protoc-gen-go)
 GOGOPROTO_ROOT="$(tool_pkg_dir github.com/gogo/protobuf/proto)/.."
 GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)/.."
 
@@ -31,6 +32,8 @@ echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
 echo "  - swagger:                 ${SWAGGER_BIN}"
 echo "  - gogoproto-root:          ${GOGOPROTO_ROOT}"
 echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
+echo "  - protoc-gen-go-vtproto:   ${PROTOC_VTPROTO_BIN}"
+echo "  - protoc-gen-go:           ${PROTOC_GO_BIN}"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 
 # directories containing protos to be built
@@ -39,18 +42,18 @@ DIRS="./server/storage/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap
 log_callout -e "\\nRunning gofast (gogo) proto generation..."
 
 for dir in ${DIRS}; do
-  run pushd "${dir}"
-    run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${ETCD_ROOT_DIR}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
-      --plugin="${GOFAST_BIN}" ./**/*.proto
+  run protoc \
+    -I ".:/usr/local/include/:${GRPC_GATEWAY_ROOT}/third_party/googleapis/" \
+    --go_out=${GOPATH}/src --plugin protoc-gen-go="${PROTOC_GO_BIN}" \
+    --go-vtproto_out=${GOPATH}/src --plugin protoc-gen-go-vtproto="${PROTOC_VTPROTO_BIN}" \
+    ${dir}/**/*.proto
 
-    run sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./**/*.pb.go
-    run sed -i.bak -E 's|"raft/raftpb"|"go.etcd.io/etcd/raft/v3/raftpb"|g' ./**/*.pb.go
-    run sed -i.bak -E 's|"google/protobuf"|"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"|g' ./**/*.pb.go
+  run sed -i.bak -E 's|"go.etcd.io/etcd/api/|"go.etcd.io/etcd/api/v3/|g' ${dir}/**/*.pb.go
+  run sed -i.bak -E 's|"go.etcd.io/etcd/raft/|"go.etcd.io/etcd/raft/v3/|g' ${dir}/**/*.pb.go
 
-    rm -f ./**/*.bak
-    run gofmt -s -w ./**/*.pb.go
-    run goimports -w ./**/*.pb.go
-  run popd
+  rm -f ${dir}/**/*.bak
+  run gofmt -s -w ${dir}/**/*.pb.go
+  run goimports -w ${dir}/**/*.pb.go
 done
 
 log_callout -e "\\nRunning swagger & grpc_gateway proto generation..."

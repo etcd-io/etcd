@@ -1,16 +1,12 @@
 syntax = "proto3";
 package etcdserverpb;
 
-import "gogoproto/gogo.proto";
-import "etcdserver.proto";
-import "rpc.proto";
-import "etcd/api/versionpb/version.proto";
-import "etcd/api/membershippb/membership.proto";
+import "api/etcdserverpb/etcdserver.proto";
+import "api/etcdserverpb/rpc.proto";
+import "api/versionpb/version.proto";
+import "api/membershippb/membership.proto";
 
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.sizer_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-option (gogoproto.goproto_getters_all) = false;
+option go_package = "go.etcd.io/etcd/api/etcdserverpb";
 
 message RequestHeader {
   option (versionpb.etcd_version_msg) = "3.0";

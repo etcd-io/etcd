@@ -1,16 +1,14 @@
 syntax = "proto3";
 package etcdserverpb;
 
-import "gogoproto/gogo.proto";
-import "etcd/api/mvccpb/kv.proto";
-import "etcd/api/authpb/auth.proto";
-import "etcd/api/versionpb/version.proto";
+import "api/mvccpb/kv.proto";
+import "api/authpb/auth.proto";
+import "api/versionpb/version.proto";
+
+option go_package = "go.etcd.io/etcd/api/etcdserverpb";
 
 // for grpc-gateway
 import "google/api/annotations.proto";
-
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.unmarshaler_all) = true;
 
 service KV {
   // Range gets the keys in the range from the key-value store.

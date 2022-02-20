@@ -1,17 +1,8 @@
 syntax = "proto2";
 package raftpb;
 
-import "gogoproto/gogo.proto";
-import "etcd/api/versionpb/version.proto";
-
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.sizer_all) = true;
-option (gogoproto.unmarshaler_all) = true;
-option (gogoproto.goproto_getters_all) = false;
-option (gogoproto.goproto_enum_prefix_all) = false;
-option (gogoproto.goproto_unkeyed_all) = false;
-option (gogoproto.goproto_unrecognized_all) = false;
-option (gogoproto.goproto_sizecache_all) = false;
+import "api/versionpb/version.proto";
+option go_package = "go.etcd.io/etcd/raft/raftpb";
 
 enum EntryType {
 	option (versionpb.etcd_version_enum) = "3.0";
@@ -24,21 +15,21 @@ enum EntryType {
 message Entry {
 	option (versionpb.etcd_version_msg) = "3.0";
 
-	optional uint64     Term  = 2 [(gogoproto.nullable) = false]; // must be 64-bit aligned for atomic operations
-	optional uint64     Index = 3 [(gogoproto.nullable) = false]; // must be 64-bit aligned for atomic operations
-	optional EntryType  Type  = 1 [(gogoproto.nullable) = false];
+	optional uint64     Term  = 2; // must be 64-bit aligned for atomic operations
+	optional uint64     Index = 3; // must be 64-bit aligned for atomic operations
+	optional EntryType  Type  = 1;
 	optional bytes      Data  = 4;
 }
 
 message SnapshotMetadata {
-	optional ConfState conf_state = 1 [(gogoproto.nullable) = false];
-	optional uint64    index      = 2 [(gogoproto.nullable) = false];
-	optional uint64    term       = 3 [(gogoproto.nullable) = false];
+	optional ConfState conf_state = 1;
+	optional uint64    index      = 2;
+	optional uint64    term       = 3;
 }
 
 message Snapshot {
 	optional bytes            data     = 1;
-	optional SnapshotMetadata metadata = 2 [(gogoproto.nullable) = false];
+	optional SnapshotMetadata metadata = 2;
 }
 
 // For description of different message types, see:
@@ -66,29 +57,29 @@ enum MessageType {
 }
 
 message Message {
-	optional MessageType type        = 1  [(gogoproto.nullable) = false];
-	optional uint64      to          = 2  [(gogoproto.nullable) = false];
-	optional uint64      from        = 3  [(gogoproto.nullable) = false];
-	optional uint64      term        = 4  [(gogoproto.nullable) = false];
+	optional MessageType type        = 1 ;
+	optional uint64      to          = 2 ;
+	optional uint64      from        = 3 ;
+	optional uint64      term        = 4 ;
 	// logTerm is generally used for appending Raft logs to followers. For example,
 	// (type=MsgApp,index=100,logTerm=5) means leader appends entries starting at
 	// index=101, and the term of entry at index 100 is 5.
 	// (type=MsgAppResp,reject=true,index=100,logTerm=5) means follower rejects some
 	// entries from its leader as it already has an entry with term 5 at index 100.
-	optional uint64      logTerm     = 5  [(gogoproto.nullable) = false];
-	optional uint64      index       = 6  [(gogoproto.nullable) = false];
-	repeated Entry       entries     = 7  [(gogoproto.nullable) = false];
-	optional uint64      commit      = 8  [(gogoproto.nullable) = false];
-	optional Snapshot    snapshot    = 9  [(gogoproto.nullable) = false];
-	optional bool        reject      = 10 [(gogoproto.nullable) = false];
-	optional uint64      rejectHint  = 11 [(gogoproto.nullable) = false];
+	optional uint64      logTerm     = 5 ;
+	optional uint64      index       = 6 ;
+	repeated Entry       entries     = 7 ;
+	optional uint64      commit      = 8 ;
+	optional Snapshot    snapshot    = 9 ;
+	optional bool        reject      = 10;
+	optional uint64      rejectHint  = 11;
 	optional bytes       context     = 12;
 }
 
 message HardState {
-	optional uint64 term   = 1 [(gogoproto.nullable) = false];
-	optional uint64 vote   = 2 [(gogoproto.nullable) = false];
-	optional uint64 commit = 3 [(gogoproto.nullable) = false];
+	optional uint64 term   = 1;
+	optional uint64 vote   = 2;
+	optional uint64 commit = 3;
 }
 
 // ConfChangeTransition specifies the behavior of a configuration change with
@@ -126,7 +117,7 @@ message ConfState {
 	repeated uint64 learners_next     = 4;
 	// If set, the config is joint and Raft will automatically transition into
 	// the final config (i.e. remove the outgoing config) when this is safe.
-	optional bool   auto_leave        = 5 [(gogoproto.nullable) = false];
+	optional bool   auto_leave        = 5;
 }
 
 enum ConfChangeType {
@@ -139,21 +130,21 @@ enum ConfChangeType {
 message ConfChange {
 	option (versionpb.etcd_version_msg) = "3.0";
 
-	optional ConfChangeType  type    = 2 [(gogoproto.nullable) = false];
-	optional uint64          node_id = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "NodeID"];
+	optional ConfChangeType  type    = 2;
+	optional uint64          node_id = 3;
 	optional bytes           context = 4;
 
 	// NB: this is used only by etcd to thread through a unique identifier.
 	// Ideally it should really use the Context instead. No counterpart to
 	// this field exists in ConfChangeV2.
-	optional uint64          id      = 1 [(gogoproto.nullable) = false, (gogoproto.customname) = "ID"];
+	optional uint64          id      = 1;
 }
 
 // ConfChangeSingle is an individual configuration change operation. Multiple
 // such operations can be carried out atomically via a ConfChangeV2.
 message ConfChangeSingle {
-	optional ConfChangeType  type    = 1 [(gogoproto.nullable) = false];
-	optional uint64          node_id = 2 [(gogoproto.nullable) = false, (gogoproto.customname) = "NodeID"];
+	optional ConfChangeType  type    = 1;
+	optional uint64          node_id = 2;
 }
 
 // ConfChangeV2 messages initiate configuration changes. They support both the
@@ -191,7 +182,7 @@ message ConfChangeSingle {
 message ConfChangeV2 {
 	option (versionpb.etcd_version_msg) = "3.4";
 
-	optional ConfChangeTransition transition = 1 [(gogoproto.nullable) = false];
-	repeated ConfChangeSingle     changes =    2 [(gogoproto.nullable) = false];
+	optional ConfChangeTransition transition = 1;
+	repeated ConfChangeSingle     changes =    2;
 	optional bytes                context =    3;
 }
