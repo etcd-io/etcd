@@ -13,8 +13,8 @@ fi
 
 source ./scripts/test_lib.sh
 
-if [[ $(protoc --version | cut -f2 -d' ') != "3.14.0" ]]; then
-  echo "could not find protoc 3.14.0, is it installed + in PATH?"
+if [[ $(protoc --version | cut -f2 -d' ') != "3.19.4" ]]; then
+  echo "could not find protoc 3.19.4, is it installed + in PATH?"
   exit 255
 fi
 
