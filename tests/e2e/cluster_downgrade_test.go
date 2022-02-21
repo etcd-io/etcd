@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -54,7 +56,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 	}
 	t.Logf("Cluster created")
 
-	t.Logf("etcdctl downgrade enable %s", lastVersion)
+	t.Logf("etcdctl downgrade enable %s", lastVersionStr)
 	downgradeEnable(t, epc, lastVersion)
 
 	t.Log("Downgrade enabled, validating if cluster is ready for downgrade")
@@ -64,9 +66,9 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 	}
 	t.Log("Cluster is ready for downgrade")
 
-	t.Log("Starting downgrade process")
+	t.Logf("Starting downgrade process to %q", lastVersionStr)
 	for i := 0; i < len(epc.Procs); i++ {
-		t.Logf("Downgrading member %d", i)
+		t.Logf("Downgrading member %d by running %s binary", i, lastReleaseBinary)
 		stopEtcd(t, epc.Procs[i])
 		startEtcd(t, epc.Procs[i], lastReleaseBinary)
 	}
@@ -77,11 +79,14 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 	}
 	t.Log("Downgrade complete")
 
-	t.Log("Starting upgrade process")
+	t.Logf("Starting upgrade process to %q", currentVersionStr)
 	for i := 0; i < len(epc.Procs); i++ {
 		t.Logf("Upgrading member %d", i)
 		stopEtcd(t, epc.Procs[i])
 		startEtcd(t, epc.Procs[i], currentEtcdBinary)
+		if i+1 < len(epc.Procs) {
+			validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{Cluster: lastVersionStr, Server: currentVersionStr})
+		}
 	}
 	t.Log("All members upgraded, validating upgrade")
 	for i := 0; i < len(epc.Procs); i++ {
@@ -172,10 +177,25 @@ func expectLog(t *testing.T, ep e2e.EtcdProcess, expectLog string) {
 
 func leader(t *testing.T, epc *e2e.EtcdProcessCluster) e2e.EtcdProcess {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	leader, err := epc.Leader(ctx)
-	cancel()
-	if err != nil {
-		t.Fatal(err)
+	defer cancel()
+	for i := 0; i < len(epc.Procs); i++ {
+		endpoints := epc.Procs[i].EndpointsV3()
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   endpoints,
+			DialTimeout: 3 * time.Second,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer cli.Close()
+		resp, err := cli.Status(ctx, endpoints[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.Header.GetMemberId() == resp.Leader {
+			return epc.Procs[i]
+		}
 	}
-	return leader
+	t.Fatal("Leader not found")
+	return nil
 }
