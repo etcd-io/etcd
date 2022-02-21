@@ -16,18 +16,13 @@ package embed
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 )
 
 func TestEnableAuth(t *testing.T) {
-	tdir, err := os.MkdirTemp(os.TempDir(), "auth-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := t.TempDir()
 	cfg := NewConfig()
 	cfg.Dir = tdir
 	e, err := StartEtcd(cfg)

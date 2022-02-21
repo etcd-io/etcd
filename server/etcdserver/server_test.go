@@ -1086,11 +1086,7 @@ func TestSnapshotOrdering(t *testing.T) {
 	cl := membership.NewCluster(lg)
 	cl.SetStore(st)
 
-	testdir, err := os.MkdirTemp(t.TempDir(), "testsnapdir")
-	if err != nil {
-		t.Fatalf("couldn't open tempdir (%v)", err)
-	}
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 
 	snapdir := filepath.Join(testdir, "member", "snap")
 	if err := os.MkdirAll(snapdir, 0755); err != nil {
@@ -1242,11 +1238,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	cl := membership.NewCluster(lg)
 	cl.SetStore(st)
 
-	testdir, err := os.MkdirTemp(t.TempDir(), "testsnapdir")
-	if err != nil {
-		t.Fatalf("Couldn't open tempdir (%v)", err)
-	}
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 	if err := os.MkdirAll(testdir+"/member/snap", 0755); err != nil {
 		t.Fatalf("Couldn't make snap dir (%v)", err)
 	}

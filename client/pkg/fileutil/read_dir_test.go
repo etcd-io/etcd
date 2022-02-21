@@ -22,11 +22,7 @@ import (
 )
 
 func TestReadDir(t *testing.T) {
-	tmpdir, err := os.MkdirTemp("", "")
-	defer os.RemoveAll(tmpdir)
-	if err != nil {
-		t.Fatalf("unexpected os.MkdirTemp error: %v", err)
-	}
+	tmpdir := t.TempDir()
 
 	files := []string{"def", "abc", "xyz", "ghi"}
 	for _, f := range files {
