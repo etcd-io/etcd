@@ -324,7 +324,7 @@ func isSafeRetry(c *Client, err error, callOpts *options) bool {
 	// customer provides mix of learners (not yet voters) and voters with an
 	// expectation to pick voter in the next attempt.
 	// TODO: Ideally client should be 'aware' which endpoint represents: leader/voter/learner with high probability.
-	if errors.Is(err, rpctypes.ErrGPRCNotSupportedForLearner) && len(c.Endpoints()) > 1 {
+	if errors.Is(err, rpctypes.ErrGRPCNotSupportedForLearner) && len(c.Endpoints()) > 1 {
 		return true
 	}
 
