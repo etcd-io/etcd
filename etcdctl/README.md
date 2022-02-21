@@ -1085,11 +1085,11 @@ echo ${transferee_id}
 
 ### DOWNGRADE \<subcommand\>
 
-Downgrade provides commands to downgrade cluster version
+Downgrade provides commands to downgrade cluster version.
 
 ### DOWNGRADE VALIDATE \<TARGET_VERSION\>
 
-DOWNGRADE VALIDATE validate downgrade capability before starting downgrade
+DOWNGRADE VALIDATE validate downgrade capability before starting downgrade.
 
 #### Example
 
@@ -1104,7 +1104,7 @@ Error: etcdserver: invalid downgrade target version
 
 ### DOWNGRADE ENABLE \<TARGET_VERSION\>
 
-DOWNGRADE ENABLE starts a downgrade action to cluster
+DOWNGRADE ENABLE starts a downgrade action to cluster.
 
 #### Example
 
@@ -1115,7 +1115,7 @@ Downgrade enable success, cluster version 3.6.0
 
 ### DOWNGRADE CANCEL \<TARGET_VERSION\>
 
-DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster
+DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
 
 #### Example
 
