@@ -16,12 +16,14 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13133).
 - When print endpoint status, [show db size in use](https://github.com/etcd-io/etcd/pull/13639)
-- [Trim the suffix dot from the target](https://github.com/etcd-io/etcd/pull/13712) in SRV records returned by DNS lookup.
 
 ### etcdutl v3
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
 - Add `migrate` command for downgrading/upgrading etcd data dir files.
+
+### package `client/pkg/v3`
+- [Trim the suffix dot from the target](https://github.com/etcd-io/etcd/pull/13712) in SRV records returned by DNS lookup
 
 ### Package `server`
 

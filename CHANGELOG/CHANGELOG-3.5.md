@@ -6,6 +6,12 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 The minimum recommended etcd versions to run in **production** are 3.3.18+, 3.4.2+, and 3.5.2+. Refer to the [versioning policy](https://etcd.io/docs/v3.5/op-guide/versioning/) for more details.
 
 <hr>
+## v3.5.3 (TBD)
+
+### package `client/pkg/v3`
+- [Trim the suffix dot from the target](https://github.com/etcd-io/etcd/pull/13714) in SRV records returned by DNS lookup
+
+<hr>
 
 ## [v3.5.2](https://github.com/etcd-io/etcd/releases/tag/v3.5.2) (2022-02-01)
 
