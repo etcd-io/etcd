@@ -17,6 +17,7 @@ package etcdmain
 import (
 	"encoding/json"
 	"fmt"
+
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,6 +35,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2discovery"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/proxy/httpproxy"
 
 	"go.uber.org/zap"
@@ -318,7 +320,12 @@ func startProxy(cfg *config) error {
 
 		if cfg.ec.Durl != "" {
 			var s string
-			s, err = v2discovery.GetCluster(lg, cfg.ec.Durl, cfg.ec.Dproxy)
+			if cfg.ec.EnableV2Discovery {
+				lg.Warn("V2 discovery is deprecated!")
+				s, err = v2discovery.GetCluster(lg, cfg.ec.Durl, cfg.ec.Dproxy)
+			} else {
+				s, err = v3discovery.GetCluster(lg, cfg.ec.Durl, &cfg.ec.DiscoveryCfg)
+			}
 			if err != nil {
 				return err
 			}

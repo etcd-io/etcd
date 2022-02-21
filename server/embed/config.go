@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -36,6 +37,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/multierr"
@@ -62,6 +64,11 @@ const (
 	DefaultDowngradeCheckTime          = 5 * time.Second
 	DefaultWaitClusterReadyTimeout     = 5 * time.Second
 
+	DefaultDiscoveryDialTimeout      = 2 * time.Second
+	DefaultDiscoveryRequestTimeOut   = 5 * time.Second
+	DefaultDiscoveryKeepAliveTime    = 2 * time.Second
+	DefaultDiscoveryKeepAliveTimeOut = 6 * time.Second
+
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
 
@@ -87,6 +94,8 @@ const (
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
+
+	DefaultEnableV2Discovery = true
 
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
@@ -213,11 +222,15 @@ type Config struct {
 	// Note that cipher suites are prioritized in the given order.
 	CipherSuites []string `json:"cipher-suites"`
 
-	ClusterState                        string        `json:"initial-cluster-state"`
-	DNSCluster                          string        `json:"discovery-srv"`
-	DNSClusterServiceName               string        `json:"discovery-srv-name"`
-	Dproxy                              string        `json:"discovery-proxy"`
-	Durl                                string        `json:"discovery"`
+	ClusterState          string `json:"initial-cluster-state"`
+	DNSCluster            string `json:"discovery-srv"`
+	DNSClusterServiceName string `json:"discovery-srv-name"`
+	Dproxy                string `json:"discovery-proxy"`
+
+	EnableV2Discovery bool                        `json:"enable-v2-discovery"`
+	Durl              string                      `json:"discovery"`
+	DiscoveryCfg      v3discovery.DiscoveryConfig `json:"discovery-config"`
+
 	InitialCluster                      string        `json:"initial-cluster"`
 	InitialClusterToken                 string        `json:"initial-cluster-token"`
 	StrictReconfigCheck                 bool          `json:"strict-reconfig-check"`
@@ -504,6 +517,14 @@ func NewConfig() *Config {
 		ExperimentalMaxLearners:                  membership.DefaultMaxLearners,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
+
+		EnableV2Discovery: DefaultEnableV2Discovery,
+		DiscoveryCfg: v3discovery.DiscoveryConfig{
+			DialTimeout:      DefaultDiscoveryDialTimeout,
+			RequestTimeOut:   DefaultDiscoveryRequestTimeOut,
+			KeepAliveTime:    DefaultDiscoveryKeepAliveTime,
+			KeepAliveTimeout: DefaultDiscoveryKeepAliveTimeOut,
+		},
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -665,6 +686,22 @@ func (cfg *Config) Validate() error {
 
 	if nSet > 1 {
 		return ErrConflictBootstrapFlags
+	}
+
+	// Check if both v2 discovery and v3 discovery flags are passed.
+	v2discoveryFlagsExist := cfg.Dproxy != ""
+	v3discoveryFlagsExist := cfg.DiscoveryCfg.CertFile != "" ||
+		cfg.DiscoveryCfg.KeyFile != "" ||
+		cfg.DiscoveryCfg.TrustedCAFile != "" ||
+		cfg.DiscoveryCfg.User != "" ||
+		cfg.DiscoveryCfg.Password != ""
+	if cfg.EnableV2Discovery && v3discoveryFlagsExist {
+		return errors.New("v2 discovery is enabled, but some v3 discovery " +
+			"settings (discovery-cert, discovery-key, discovery-cacert, " +
+			"discovery-user, discovery-password) are set")
+	}
+	if !cfg.EnableV2Discovery && v2discoveryFlagsExist {
+		return errors.New("v3 discovery is enabled, but --discovery-proxy is set")
 	}
 
 	if cfg.TickMs == 0 {
