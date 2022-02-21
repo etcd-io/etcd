@@ -502,7 +502,7 @@ func (sws *serverWatchStream) sendLoop() {
 }
 
 func IsCreateEvent(e mvccpb.Event) bool {
-	return e.Type == mvccpb.PUT && e.Kv.CreateRevision == e.Kv.ModRevision
+	return e.Type == mvccpb.Event_PUT && e.Kv.CreateRevision == e.Kv.ModRevision
 }
 
 func sendFragments(
@@ -511,7 +511,7 @@ func sendFragments(
 	sendFunc func(*pb.WatchResponse) error) error {
 	// no need to fragment if total request size is smaller
 	// than max request limit or response contains only one event
-	if wr.Size() < maxRequestBytes || len(wr.Events) < 2 {
+	if wr.SizeVT() < maxRequestBytes || len(wr.Events) < 2 {
 		return sendFunc(wr)
 	}
 
@@ -524,7 +524,7 @@ func sendFragments(
 		cur := ow
 		for _, ev := range wr.Events[idx:] {
 			cur.Events = append(cur.Events, ev)
-			if len(cur.Events) > 1 && cur.Size() >= maxRequestBytes {
+			if len(cur.Events) > 1 && cur.SizeVT() >= maxRequestBytes {
 				cur.Events = cur.Events[:len(cur.Events)-1]
 				break
 			}
@@ -560,11 +560,11 @@ func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
 }
 
 func filterNoDelete(e mvccpb.Event) bool {
-	return e.Type == mvccpb.DELETE
+	return e.Type == mvccpb.Event_DELETE
 }
 
 func filterNoPut(e mvccpb.Event) bool {
-	return e.Type == mvccpb.PUT
+	return e.Type == mvccpb.Event_PUT
 }
 
 // FiltersFromRequest returns "mvcc.FilterFunc" from a given watch create request.

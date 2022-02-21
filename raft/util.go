@@ -41,30 +41,32 @@ func max(a, b uint64) uint64 {
 }
 
 func IsLocalMsg(msgt pb.MessageType) bool {
-	return msgt == pb.MsgHup || msgt == pb.MsgBeat || msgt == pb.MsgUnreachable ||
-		msgt == pb.MsgSnapStatus || msgt == pb.MsgCheckQuorum
+	return msgt == pb.MessageType_MsgHup || msgt == pb.MessageType_MsgBeat || msgt == pb.MessageType_MsgUnreachable ||
+		msgt == pb.MessageType_MsgSnapStatus || msgt == pb.MessageType_MsgCheckQuorum
 }
 
 func IsResponseMsg(msgt pb.MessageType) bool {
-	return msgt == pb.MsgAppResp || msgt == pb.MsgVoteResp || msgt == pb.MsgHeartbeatResp || msgt == pb.MsgUnreachable || msgt == pb.MsgPreVoteResp
+	return msgt == pb.MessageType_MsgAppResp || msgt == pb.MessageType_MsgVoteResp || msgt == pb.MessageType_MsgHeartbeatResp || msgt == pb.MessageType_MsgUnreachable || msgt == pb.MessageType_MsgPreVoteResp
 }
 
 // voteResponseType maps vote and prevote message types to their corresponding responses.
-func voteRespMsgType(msgt pb.MessageType) pb.MessageType {
+func voteRespMsgType(msgt pb.MessageType) *pb.MessageType {
+	var t pb.MessageType
 	switch msgt {
-	case pb.MsgVote:
-		return pb.MsgVoteResp
-	case pb.MsgPreVote:
-		return pb.MsgPreVoteResp
+	case pb.MessageType_MsgVote:
+		t = pb.MessageType_MsgVoteResp
+	case pb.MessageType_MsgPreVote:
+		t = pb.MessageType_MsgPreVoteResp
 	default:
 		panic(fmt.Sprintf("not a vote message: %s", msgt))
 	}
+	return &t
 }
 
 func DescribeHardState(hs pb.HardState) string {
 	var buf strings.Builder
 	fmt.Fprintf(&buf, "Term:%d", hs.Term)
-	if hs.Vote != 0 {
+	if *hs.Vote != 0 {
 		fmt.Fprintf(&buf, " Vote:%d", hs.Vote)
 	}
 	fmt.Fprintf(&buf, " Commit:%d", hs.Commit)
@@ -84,7 +86,7 @@ func DescribeConfState(state pb.ConfState) string {
 
 func DescribeSnapshot(snap pb.Snapshot) string {
 	m := snap.Metadata
-	return fmt.Sprintf("Index:%d Term:%d ConfState:%s", m.Index, m.Term, DescribeConfState(m.ConfState))
+	return fmt.Sprintf("Index:%d Term:%d ConfState:%s", m.Index, m.Term, DescribeConfState(*m.ConfState))
 }
 
 func DescribeReady(rd Ready, f EntryFormatter) string {
@@ -114,7 +116,7 @@ func DescribeReady(rd Ready, f EntryFormatter) string {
 	if len(rd.Messages) > 0 {
 		buf.WriteString("Messages:\n")
 		for _, msg := range rd.Messages {
-			fmt.Fprint(&buf, DescribeMessage(msg, f))
+			fmt.Fprint(&buf, DescribeMessage(*msg, f))
 			buf.WriteByte('\n')
 		}
 	}
@@ -133,10 +135,10 @@ type EntryFormatter func([]byte) string
 func DescribeMessage(m pb.Message, f EntryFormatter) string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "%x->%x %v Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
-	if m.Reject {
+	if *m.Reject {
 		fmt.Fprintf(&buf, " Rejected (Hint: %d)", m.RejectHint)
 	}
-	if m.Commit != 0 {
+	if *m.Commit != 0 {
 		fmt.Fprintf(&buf, " Commit:%d", m.Commit)
 	}
 	if len(m.Entries) > 0 {
@@ -145,12 +147,12 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 			if i != 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(DescribeEntry(e, f))
+			buf.WriteString(DescribeEntry(*e, f))
 		}
 		fmt.Fprintf(&buf, "]")
 	}
-	if !IsEmptySnap(m.Snapshot) {
-		fmt.Fprintf(&buf, " Snapshot: %s", DescribeSnapshot(m.Snapshot))
+	if !IsEmptySnap(*m.Snapshot) {
+		fmt.Fprintf(&buf, " Snapshot: %s", DescribeSnapshot(*m.Snapshot))
 	}
 	return buf.String()
 }
@@ -175,19 +177,19 @@ func DescribeEntry(e pb.Entry, f EntryFormatter) string {
 	}
 
 	var formatted string
-	switch e.Type {
-	case pb.EntryNormal:
+	switch *e.Type {
+	case pb.EntryType_EntryNormal:
 		formatted = f(e.Data)
-	case pb.EntryConfChange:
+	case pb.EntryType_EntryConfChange:
 		var cc pb.ConfChange
-		if err := cc.Unmarshal(e.Data); err != nil {
+		if err := cc.UnmarshalVT(e.Data); err != nil {
 			formatted = err.Error()
 		} else {
 			formatted = formatConfChange(cc)
 		}
-	case pb.EntryConfChangeV2:
+	case pb.EntryType_EntryConfChangeV2:
 		var cc pb.ConfChangeV2
-		if err := cc.Unmarshal(e.Data); err != nil {
+		if err := cc.UnmarshalVT(e.Data); err != nil {
 			formatted = err.Error()
 		} else {
 			formatted = formatConfChange(cc)
@@ -201,22 +203,22 @@ func DescribeEntry(e pb.Entry, f EntryFormatter) string {
 
 // DescribeEntries calls DescribeEntry for each Entry, adding a newline to
 // each.
-func DescribeEntries(ents []pb.Entry, f EntryFormatter) string {
+func DescribeEntries(ents []*pb.Entry, f EntryFormatter) string {
 	var buf bytes.Buffer
 	for _, e := range ents {
-		_, _ = buf.WriteString(DescribeEntry(e, f) + "\n")
+		_, _ = buf.WriteString(DescribeEntry(*e, f) + "\n")
 	}
 	return buf.String()
 }
 
-func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
+func limitSize(ents []*pb.Entry, maxSize uint64) []*pb.Entry {
 	if len(ents) == 0 {
 		return ents
 	}
-	size := ents[0].Size()
+	size := ents[0].SizeVT()
 	var limit int
 	for limit = 1; limit < len(ents); limit++ {
-		size += ents[limit].Size()
+		size += ents[limit].SizeVT()
 		if uint64(size) > maxSize {
 			break
 		}

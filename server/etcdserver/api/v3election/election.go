@@ -31,6 +31,10 @@ type electionServer struct {
 	c *clientv3.Client
 }
 
+func (es *electionServer) mustEmbedUnimplementedElectionServer() {
+	panic("implement me")
+}
+
 func NewElectionServer(c *clientv3.Client) epb.ElectionServer {
 	return &electionServer{c}
 }

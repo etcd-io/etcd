@@ -63,7 +63,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case LeasePrefix:
 		lreq := pb.LeaseKeepAliveRequest{}
-		if uerr := lreq.Unmarshal(b); uerr != nil {
+		if uerr := lreq.UnmarshalVT(b); uerr != nil {
 			http.Error(w, "error unmarshalling request", http.StatusBadRequest)
 			return
 		}
@@ -85,7 +85,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		// TODO: fill out ResponseHeader
 		resp := &pb.LeaseKeepAliveResponse{ID: lreq.ID, TTL: ttl}
-		v, err = resp.Marshal()
+		v, err = resp.MarshalVT()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -93,7 +93,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case LeaseInternalPrefix:
 		lreq := leasepb.LeaseInternalRequest{}
-		if lerr := lreq.Unmarshal(b); lerr != nil {
+		if lerr := lreq.UnmarshalVT(b); lerr != nil {
 			http.Error(w, "error unmarshalling request", http.StatusBadRequest)
 			return
 		}
@@ -126,7 +126,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			resp.LeaseTimeToLiveResponse.Keys = kbs
 		}
 
-		v, err = resp.Marshal()
+		v, err = resp.MarshalVT()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -145,7 +145,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // TODO: Batch request in future?
 func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundTripper) (int64, error) {
 	// will post lreq protobuf to leader
-	lreq, err := (&pb.LeaseKeepAliveRequest{ID: int64(id)}).Marshal()
+	lreq, err := (&pb.LeaseKeepAliveRequest{ID: int64(id)}).MarshalVT()
 	if err != nil {
 		return -1, err
 	}
@@ -180,7 +180,7 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 	}
 
 	lresp := &pb.LeaseKeepAliveResponse{}
-	if err := lresp.Unmarshal(b); err != nil {
+	if err := lresp.UnmarshalVT(b); err != nil {
 		return -1, fmt.Errorf(`lease: %v. data = "%s"`, err, string(b))
 	}
 	if lresp.ID != int64(id) {
@@ -197,7 +197,7 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 			ID:   int64(id),
 			Keys: keys,
 		},
-	}).Marshal()
+	}).MarshalVT()
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 	}
 
 	lresp := &leasepb.LeaseInternalResponse{}
-	if err := lresp.Unmarshal(b); err != nil {
+	if err := lresp.UnmarshalVT(b); err != nil {
 		return nil, fmt.Errorf(`lease: %v. data = "%s"`, err, string(b))
 	}
 	if lresp.LeaseTimeToLiveResponse.ID != int64(id) {

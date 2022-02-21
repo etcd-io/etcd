@@ -30,7 +30,7 @@ type messageEncoder struct {
 }
 
 func (enc *messageEncoder) encode(m *raftpb.Message) error {
-	if err := binary.Write(enc.w, binary.BigEndian, uint64(m.Size())); err != nil {
+	if err := binary.Write(enc.w, binary.BigEndian, uint64(m.SizeVT())); err != nil {
 		return err
 	}
 	_, err := enc.w.Write(pbutil.MustMarshal(m))
@@ -64,5 +64,5 @@ func (dec *messageDecoder) decodeLimit(numBytes uint64) (raftpb.Message, error) 
 	if _, err := io.ReadFull(dec.r, buf); err != nil {
 		return m, err
 	}
-	return m, m.Unmarshal(buf)
+	return m, m.UnmarshalVT(buf)
 }

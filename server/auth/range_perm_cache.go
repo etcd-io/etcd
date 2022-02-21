@@ -50,14 +50,14 @@ func getMergedPerms(tx AuthBatchTx, userName string) *unifiedRangePermissions {
 			}
 
 			switch perm.PermType {
-			case authpb.READWRITE:
+			case authpb.Permission_READWRITE:
 				readPerms.Insert(ivl, struct{}{})
 				writePerms.Insert(ivl, struct{}{})
 
-			case authpb.READ:
+			case authpb.Permission_READ:
 				readPerms.Insert(ivl, struct{}{})
 
-			case authpb.WRITE:
+			case authpb.Permission_WRITE:
 				writePerms.Insert(ivl, struct{}{})
 			}
 		}
@@ -80,9 +80,9 @@ func checkKeyInterval(
 
 	ivl := adt.NewBytesAffineInterval(key, rangeEnd)
 	switch permtyp {
-	case authpb.READ:
+	case authpb.Permission_READ:
 		return cachedPerms.readPerms.Contains(ivl)
-	case authpb.WRITE:
+	case authpb.Permission_WRITE:
 		return cachedPerms.writePerms.Contains(ivl)
 	default:
 		lg.Panic("unknown auth type", zap.String("auth-type", permtyp.String()))
@@ -93,9 +93,9 @@ func checkKeyInterval(
 func checkKeyPoint(lg *zap.Logger, cachedPerms *unifiedRangePermissions, key []byte, permtyp authpb.Permission_Type) bool {
 	pt := adt.NewBytesAffinePoint(key)
 	switch permtyp {
-	case authpb.READ:
+	case authpb.Permission_READ:
 		return cachedPerms.readPerms.Intersects(pt)
-	case authpb.WRITE:
+	case authpb.Permission_WRITE:
 		return cachedPerms.writePerms.Intersects(pt)
 	default:
 		lg.Panic("unknown auth type", zap.String("auth-type", permtyp.String()))

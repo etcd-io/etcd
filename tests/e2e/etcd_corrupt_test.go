@@ -121,7 +121,7 @@ func corruptHash(fpath string) error {
 			}
 			kv.Key[0]++
 			kv.Value[0]++
-			v2, v2err := kv.Marshal()
+			v2, v2err := kv.MarshalVT()
 			if v2err != nil {
 				return v2err
 			}

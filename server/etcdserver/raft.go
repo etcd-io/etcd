@@ -66,7 +66,7 @@ func init() {
 // to raft storage concurrently; the application must read
 // raftDone before assuming the raft messages are stable.
 type apply struct {
-	entries  []raftpb.Entry
+	entries  []*raftpb.Entry
 	snapshot raftpb.Snapshot
 	// notifyc synchronizes etcd server applies with the raft node
 	notifyc chan struct{}
@@ -238,7 +238,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
 				}
 				if !raft.IsEmptyHardState(rd.HardState) {
-					proposalsCommitted.Set(float64(rd.HardState.Commit))
+					proposalsCommitted.Set(float64(*rd.HardState.Commit))
 				}
 				// gofail: var raftAfterSave struct{}
 
@@ -256,7 +256,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 					// gofail: var raftBeforeApplySnap struct{}
 					r.raftStorage.ApplySnapshot(rd.Snapshot)
-					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", rd.Snapshot.Metadata.Index))
+					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", *rd.Snapshot.Metadata.Index))
 					// gofail: var raftAfterApplySnap struct{}
 
 					if err := r.storage.Release(rd.Snapshot); err != nil {
@@ -283,7 +283,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// We might improve this later on if it causes unnecessary long blocking issues.
 					waitApply := false
 					for _, ent := range rd.CommittedEntries {
-						if ent.Type == raftpb.EntryConfChange {
+						if *ent.Type == raftpb.EntryType_EntryConfChange {
 							waitApply = true
 							break
 						}
@@ -317,45 +317,45 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 func updateCommittedIndex(ap *apply, rh *raftReadyHandler) {
 	var ci uint64
 	if len(ap.entries) != 0 {
-		ci = ap.entries[len(ap.entries)-1].Index
+		ci = *ap.entries[len(ap.entries)-1].Index
 	}
-	if ap.snapshot.Metadata.Index > ci {
-		ci = ap.snapshot.Metadata.Index
+	if *ap.snapshot.Metadata.Index > ci {
+		ci = *ap.snapshot.Metadata.Index
 	}
 	if ci != 0 {
 		rh.updateCommittedIndex(ci)
 	}
 }
 
-func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
+func (r *raftNode) processMessages(ms []*raftpb.Message) []*raftpb.Message {
 	sentAppResp := false
 	for i := len(ms) - 1; i >= 0; i-- {
-		if r.isIDRemoved(ms[i].To) {
-			ms[i].To = 0
+		if r.isIDRemoved(*ms[i].To) {
+			*ms[i].To = 0
 		}
 
-		if ms[i].Type == raftpb.MsgAppResp {
+		if *ms[i].Type == raftpb.MessageType_MsgAppResp {
 			if sentAppResp {
-				ms[i].To = 0
+				*ms[i].To = 0
 			} else {
 				sentAppResp = true
 			}
 		}
 
-		if ms[i].Type == raftpb.MsgSnap {
+		if *ms[i].Type == raftpb.MessageType_MsgSnap {
 			// There are two separate data store: the store for v2, and the KV for v3.
 			// The msgSnap only contains the most recent snapshot of store without KV.
 			// So we need to redirect the msgSnap to etcd server main loop for merging in the
 			// current store snapshot and KV snapshot.
 			select {
-			case r.msgSnapC <- ms[i]:
+			case r.msgSnapC <- *ms[i]:
 			default:
 				// drop msgSnap if the inflight chan if full.
 			}
-			ms[i].To = 0
+			*ms[i].To = 0
 		}
-		if ms[i].Type == raftpb.MsgHeartbeat {
-			ok, exceed := r.td.Observe(ms[i].To)
+		if *ms[i].Type == raftpb.MessageType_MsgHeartbeat {
+			ok, exceed := r.td.Observe(*ms[i].To)
 			if !ok {
 				// TODO: limit request rate.
 				r.lg.Warn(

@@ -28,7 +28,7 @@ import (
 type Storage interface {
 	// Save function saves ents and state to the underlying stable storage.
 	// Save MUST block until st and ents are on stable storage.
-	Save(st raftpb.HardState, ents []raftpb.Entry) error
+	Save(st raftpb.HardState, ents []*raftpb.Entry) error
 	// SaveSnap function saves snapshot to the underlying stable storage.
 	SaveSnap(snap raftpb.Snapshot) error
 	// Close closes the Storage and performs finalization.
@@ -61,7 +61,7 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	walsnap := walpb.Snapshot{
 		Index:     snap.Metadata.Index,
 		Term:      snap.Metadata.Term,
-		ConfState: &snap.Metadata.ConfState,
+		ConfState: snap.Metadata.ConfState,
 	}
 	// save the snapshot file before writing the snapshot to the wal.
 	// This makes it possible for the snapshot file to become orphaned, but prevents
@@ -81,13 +81,13 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 func (st *storage) Release(snap raftpb.Snapshot) error {
 	st.mux.RLock()
 	defer st.mux.RUnlock()
-	if err := st.w.ReleaseLockTo(snap.Metadata.Index); err != nil {
+	if err := st.w.ReleaseLockTo(*snap.Metadata.Index); err != nil {
 		return err
 	}
 	return st.s.ReleaseSnapDBs(snap)
 }
 
-func (st *storage) Save(s raftpb.HardState, ents []raftpb.Entry) error {
+func (st *storage) Save(s raftpb.HardState, ents []*raftpb.Entry) error {
 	st.mux.RLock()
 	defer st.mux.RUnlock()
 	return st.w.Save(s, ents)
@@ -117,7 +117,7 @@ func (st *storage) MinimalEtcdVersion() *semver.Version {
 	if sn != nil {
 		walsnap.Index = sn.Metadata.Index
 		walsnap.Term = sn.Metadata.Term
-		walsnap.ConfState = &sn.Metadata.ConfState
+		walsnap.ConfState = sn.Metadata.ConfState
 	}
 	w, err := st.w.Reopen(st.lg, walsnap)
 	if err != nil {

@@ -131,7 +131,6 @@ type KVServer interface {
 	// store should be periodically compacted or the event history will continue to grow
 	// indefinitely.
 	Compact(context.Context, *CompactionRequest) (*CompactionResponse, error)
-	mustEmbedUnimplementedKVServer()
 }
 
 // UnimplementedKVServer must be embedded to have forward compatible implementations.
@@ -349,7 +348,6 @@ type WatchServer interface {
 	// for several watches at once. The entire event history can be watched starting from the
 	// last compaction revision.
 	Watch(Watch_WatchServer) error
-	mustEmbedUnimplementedWatchServer()
 }
 
 // UnimplementedWatchServer must be embedded to have forward compatible implementations.
@@ -527,7 +525,6 @@ type LeaseServer interface {
 	LeaseTimeToLive(context.Context, *LeaseTimeToLiveRequest) (*LeaseTimeToLiveResponse, error)
 	// LeaseLeases lists all existing leases.
 	LeaseLeases(context.Context, *LeaseLeasesRequest) (*LeaseLeasesResponse, error)
-	mustEmbedUnimplementedLeaseServer()
 }
 
 // UnimplementedLeaseServer must be embedded to have forward compatible implementations.
@@ -778,7 +775,6 @@ type ClusterServer interface {
 	MemberList(context.Context, *MemberListRequest) (*MemberListResponse, error)
 	// MemberPromote promotes a member from raft learner (non-voting) to raft voting member.
 	MemberPromote(context.Context, *MemberPromoteRequest) (*MemberPromoteResponse, error)
-	mustEmbedUnimplementedClusterServer()
 }
 
 // UnimplementedClusterServer must be embedded to have forward compatible implementations.
@@ -1096,7 +1092,6 @@ type MaintenanceServer interface {
 	// on the cluster version.
 	// Supported since etcd 3.5.
 	Downgrade(context.Context, *DowngradeRequest) (*DowngradeResponse, error)
-	mustEmbedUnimplementedMaintenanceServer()
 }
 
 // UnimplementedMaintenanceServer must be embedded to have forward compatible implementations.
@@ -1572,7 +1567,6 @@ type AuthServer interface {
 	RoleGrantPermission(context.Context, *AuthRoleGrantPermissionRequest) (*AuthRoleGrantPermissionResponse, error)
 	// RoleRevokePermission revokes a key or range permission of a specified role.
 	RoleRevokePermission(context.Context, *AuthRoleRevokePermissionRequest) (*AuthRoleRevokePermissionResponse, error)
-	mustEmbedUnimplementedAuthServer()
 }
 
 // UnimplementedAuthServer must be embedded to have forward compatible implementations.

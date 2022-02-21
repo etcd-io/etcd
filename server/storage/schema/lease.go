@@ -30,7 +30,7 @@ func MustUnsafeGetAllLeases(tx backend.ReadTx) []*leasepb.Lease {
 	ls := make([]*leasepb.Lease, 0)
 	err := tx.UnsafeForEach(Lease, func(k, v []byte) error {
 		var lpb leasepb.Lease
-		err := lpb.Unmarshal(v)
+		err := lpb.UnmarshalVT(v)
 		if err != nil {
 			return fmt.Errorf("failed to Unmarshal lease proto item; lease ID=%016x", bytesToLeaseID(k))
 		}
@@ -46,7 +46,7 @@ func MustUnsafeGetAllLeases(tx backend.ReadTx) []*leasepb.Lease {
 func MustUnsafePutLease(tx backend.BatchTx, lpb *leasepb.Lease) {
 	key := leaseIdToBytes(lpb.ID)
 
-	val, err := lpb.Marshal()
+	val, err := lpb.MarshalVT()
 	if err != nil {
 		panic("failed to marshal lease proto item")
 	}
@@ -63,7 +63,7 @@ func MustUnsafeGetLease(tx backend.BatchTx, leaseID int64) *leasepb.Lease {
 		return nil
 	}
 	var lpb leasepb.Lease
-	err := lpb.Unmarshal(vs[0])
+	err := lpb.UnmarshalVT(vs[0])
 	if err != nil {
 		panic("failed to unmarshal lease proto item")
 	}

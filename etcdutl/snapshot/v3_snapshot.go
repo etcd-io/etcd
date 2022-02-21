@@ -273,7 +273,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		return err
 	}
 
-	if err := s.updateCIndex(hardstate.Commit, hardstate.Term); err != nil {
+	if err := s.updateCIndex(*hardstate.Commit, *hardstate.Term); err != nil {
 		return err
 	}
 
@@ -409,8 +409,10 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	}
 
 	m := s.cl.MemberByName(s.name)
-	md := &etcdserverpb.Metadata{NodeID: uint64(m.ID), ClusterID: uint64(s.cl.ID())}
-	metadata, merr := md.Marshal()
+	nodeId := uint64(m.ID)
+	clusterId := uint64(s.cl.ID())
+	md := &etcdserverpb.Metadata{NodeID: &nodeId, ClusterID: &clusterId}
+	metadata, merr := md.MarshalVT()
 	if merr != nil {
 		return nil, merr
 	}
@@ -429,32 +431,36 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
 
-	ents := make([]raftpb.Entry, len(peers))
+	ents := make([]*raftpb.Entry, len(peers))
 	nodeIDs := make([]uint64, len(peers))
 	for i, p := range peers {
 		nodeIDs[i] = p.ID
+		t := raftpb.ConfChangeType_ConfChangeAddNode
 		cc := raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  p.ID,
+			Type:    &t,
+			NodeId:  &p.ID,
 			Context: p.Context,
 		}
-		d, err := cc.Marshal()
+		d, err := cc.MarshalVT()
 		if err != nil {
 			return nil, err
 		}
-		ents[i] = raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
-			Term:  1,
-			Index: uint64(i + 1),
+		entryType := raftpb.EntryType_EntryConfChange
+		var term uint64 = 1
+		index := uint64(i + 1)
+		ents[i] = &raftpb.Entry{
+			Type:  &entryType,
+			Term:  &term,
+			Index: &index,
 			Data:  d,
 		}
 	}
 
 	commit, term := uint64(len(ents)), uint64(1)
 	hardState := raftpb.HardState{
-		Term:   term,
-		Vote:   peers[0].ID,
-		Commit: commit,
+		Term:   &term,
+		Vote:   &peers[0].ID,
+		Commit: &commit,
 	}
 	if err := w.Save(hardState, ents); err != nil {
 		return nil, err
@@ -469,17 +475,17 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	}
 	raftSnap := raftpb.Snapshot{
 		Data: b,
-		Metadata: raftpb.SnapshotMetadata{
-			Index:     commit,
-			Term:      term,
-			ConfState: confState,
+		Metadata: &raftpb.SnapshotMetadata{
+			Index:     &commit,
+			Term:      &term,
+			ConfState: &confState,
 		},
 	}
 	sn := snap.New(s.lg, s.snapDir)
 	if err := sn.SaveSnap(raftSnap); err != nil {
 		return nil, err
 	}
-	snapshot := walpb.Snapshot{Index: commit, Term: term, ConfState: &confState}
+	snapshot := walpb.Snapshot{Index: &commit, Term: &term, ConfState: &confState}
 	return &hardState, w.SaveSnapshot(snapshot)
 }
 

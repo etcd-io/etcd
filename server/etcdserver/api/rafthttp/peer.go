@@ -246,22 +246,22 @@ func (p *peer) send(m raftpb.Message) {
 	select {
 	case writec <- m:
 	default:
-		p.r.ReportUnreachable(m.To)
+		p.r.ReportUnreachable(*m.To)
 		if isMsgSnap(m) {
-			p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
+			p.r.ReportSnapshot(*m.To, raft.SnapshotFailure)
 		}
 		if p.lg != nil {
 			p.lg.Warn(
 				"dropped internal Raft message since sending buffer is full",
 				zap.String("message-type", m.Type.String()),
 				zap.String("local-member-id", p.localID.String()),
-				zap.String("from", types.ID(m.From).String()),
+				zap.String("from", types.ID(*m.From).String()),
 				zap.String("remote-peer-id", p.id.String()),
 				zap.String("remote-peer-name", name),
 				zap.Bool("remote-peer-active", p.status.isActive()),
 			)
 		}
-		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
+		sentFailures.WithLabelValues(types.ID(*m.To).String()).Inc()
 	}
 }
 
@@ -348,6 +348,6 @@ func (p *peer) pick(m raftpb.Message) (writec chan<- raftpb.Message, picked stri
 	return p.pipeline.msgc, pipelineMsg
 }
 
-func isMsgApp(m raftpb.Message) bool { return m.Type == raftpb.MsgApp }
+func isMsgApp(m raftpb.Message) bool { return *m.Type == raftpb.MessageType_MsgApp }
 
-func isMsgSnap(m raftpb.Message) bool { return m.Type == raftpb.MsgSnap }
+func isMsgSnap(m raftpb.Message) bool { return *m.Type == raftpb.MessageType_MsgSnap }

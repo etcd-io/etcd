@@ -69,7 +69,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 	start := time.Now()
 
 	m := merged.Message
-	to := types.ID(m.To).String()
+	to := types.ID(*m.To).String()
 
 	body := createSnapBody(s.tr.Logger, merged)
 	defer body.Close()
@@ -82,7 +82,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 	if s.tr.Logger != nil {
 		s.tr.Logger.Info(
 			"sending database snapshot",
-			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
+			zap.Uint64("snapshot-index", *m.Snapshot.Metadata.Index),
 			zap.String("remote-peer-id", to),
 			zap.Uint64("bytes", snapshotSizeVal),
 			zap.String("size", snapshotSize),
@@ -100,7 +100,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 		if s.tr.Logger != nil {
 			s.tr.Logger.Warn(
 				"failed to send database snapshot",
-				zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
+				zap.Uint64("snapshot-index", *m.Snapshot.Metadata.Index),
 				zap.String("remote-peer-id", to),
 				zap.Uint64("bytes", snapshotSizeVal),
 				zap.String("size", snapshotSize),
@@ -116,22 +116,22 @@ func (s *snapshotSender) send(merged snap.Message) {
 
 		s.picker.unreachable(u)
 		s.status.deactivate(failureType{source: sendSnap, action: "post"}, err.Error())
-		s.r.ReportUnreachable(m.To)
+		s.r.ReportUnreachable(*m.To)
 		// report SnapshotFailure to raft state machine. After raft state
 		// machine knows about it, it would pause a while and retry sending
 		// new snapshot message.
-		s.r.ReportSnapshot(m.To, raft.SnapshotFailure)
+		s.r.ReportSnapshot(*m.To, raft.SnapshotFailure)
 		sentFailures.WithLabelValues(to).Inc()
 		snapshotSendFailures.WithLabelValues(to).Inc()
 		return
 	}
 	s.status.activate()
-	s.r.ReportSnapshot(m.To, raft.SnapshotFinish)
+	s.r.ReportSnapshot(*m.To, raft.SnapshotFinish)
 
 	if s.tr.Logger != nil {
 		s.tr.Logger.Info(
 			"sent database snapshot",
-			zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index),
+			zap.Uint64("snapshot-index", *m.Snapshot.Metadata.Index),
 			zap.String("remote-peer-id", to),
 			zap.Uint64("bytes", snapshotSizeVal),
 			zap.String("size", snapshotSize),

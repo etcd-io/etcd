@@ -267,14 +267,14 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 						t.Fatal(err)
 					}
 					if ccv1, ok := tc.cc.AsV1(); ok {
-						ccdata, err = ccv1.Marshal()
+						ccdata, err = ccv1.MarshalVT()
 						if err != nil {
 							t.Fatal(err)
 						}
 						rawNode.ProposeConfChange(ccv1)
 					} else {
 						ccv2 := tc.cc.AsV2()
-						ccdata, err = ccv2.Marshal()
+						ccdata, err = ccv2.MarshalVT()
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -428,7 +428,7 @@ func TestRawNodeJointAutoLeave(t *testing.T) {
 				if err = rawNode.Propose([]byte("somedata")); err != nil {
 					t.Fatal(err)
 				}
-				ccdata, err = testCc.Marshal()
+				ccdata, err = testCc.MarshalVT()
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -544,7 +544,7 @@ func TestRawNodeProposeAddDuplicateNode(t *testing.T) {
 	}
 
 	cc1 := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: 1}
-	ccdata1, err := cc1.Marshal()
+	ccdata1, err := cc1.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -555,7 +555,7 @@ func TestRawNodeProposeAddDuplicateNode(t *testing.T) {
 
 	// the new node join should be ok
 	cc2 := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: 2}
-	ccdata2, err := cc2.Marshal()
+	ccdata2, err := cc2.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}

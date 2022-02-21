@@ -61,7 +61,7 @@ func (g *remote) send(m raftpb.Message) {
 					"dropped internal Raft message since sending buffer is full (overloaded network)",
 					zap.String("message-type", m.Type.String()),
 					zap.String("local-member-id", g.localID.String()),
-					zap.String("from", types.ID(m.From).String()),
+					zap.String("from", types.ID(*m.From).String()),
 					zap.String("remote-peer-id", g.id.String()),
 					zap.Bool("remote-peer-active", g.status.isActive()),
 				)
@@ -72,13 +72,13 @@ func (g *remote) send(m raftpb.Message) {
 					"dropped Raft message since sending buffer is full (overloaded network)",
 					zap.String("message-type", m.Type.String()),
 					zap.String("local-member-id", g.localID.String()),
-					zap.String("from", types.ID(m.From).String()),
+					zap.String("from", types.ID(*m.From).String()),
 					zap.String("remote-peer-id", g.id.String()),
 					zap.Bool("remote-peer-active", g.status.isActive()),
 				)
 			}
 		}
-		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
+		sentFailures.WithLabelValues(types.ID(*m.To).String()).Inc()
 	}
 }
 

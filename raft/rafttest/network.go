@@ -90,13 +90,13 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 	}
 
 	// use marshal/unmarshal to copy message to avoid data race.
-	b, err := m.Marshal()
+	b, err := m.MarshalVT()
 	if err != nil {
 		panic(err)
 	}
 
 	var cm raftpb.Message
-	err = cm.Unmarshal(b)
+	err = cm.UnmarshalVT(b)
 	if err != nil {
 		panic(err)
 	}

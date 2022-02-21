@@ -103,25 +103,25 @@ func (p *pipeline) handle() {
 			if err != nil {
 				p.status.deactivate(failureType{source: pipelineMsg, action: "write"}, err.Error())
 
-				if m.Type == raftpb.MsgApp && p.followerStats != nil {
+				if *m.Type == raftpb.MessageType_MsgApp && p.followerStats != nil {
 					p.followerStats.Fail()
 				}
-				p.raft.ReportUnreachable(m.To)
+				p.raft.ReportUnreachable(*m.To)
 				if isMsgSnap(m) {
-					p.raft.ReportSnapshot(m.To, raft.SnapshotFailure)
+					p.raft.ReportSnapshot(*m.To, raft.SnapshotFailure)
 				}
-				sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
+				sentFailures.WithLabelValues(types.ID(*m.To).String()).Inc()
 				continue
 			}
 
 			p.status.activate()
-			if m.Type == raftpb.MsgApp && p.followerStats != nil {
+			if *m.Type == raftpb.MessageType_MsgApp && p.followerStats != nil {
 				p.followerStats.Succ(end.Sub(start))
 			}
 			if isMsgSnap(m) {
-				p.raft.ReportSnapshot(m.To, raft.SnapshotFinish)
+				p.raft.ReportSnapshot(*m.To, raft.SnapshotFinish)
 			}
-			sentBytes.WithLabelValues(types.ID(m.To).String()).Add(float64(m.Size()))
+			sentBytes.WithLabelValues(types.ID(*m.To).String()).Add(float64(m.SizeVT()))
 		case <-p.stopc:
 			return
 		}

@@ -51,7 +51,7 @@ func AssertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage c
 // `self` is _not_ removed, even if present in the set.
 // If `self` is not inside the given ids, it creates a Raft entry to add a
 // default member with the given `self`.
-func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
+func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, index uint64) []*raftpb.Entry {
 	found := false
 	for _, id := range ids {
 		if id == self {
@@ -59,7 +59,7 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 		}
 	}
 
-	var ents []raftpb.Entry
+	var ents []*raftpb.Entry
 	next := index + 1
 
 	// NB: always add self first, then remove other nodes. Raft will panic if the
@@ -74,17 +74,17 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 			lg.Panic("failed to marshal member", zap.Error(err))
 		}
 		cc := &raftpb.ConfChange{
-			Type:    raftpb.ConfChangeAddNode,
-			NodeID:  self,
+			NodeId:  &self,
 			Context: ctx,
 		}
+		*cc.Type = raftpb.ConfChangeType_ConfChangeAddNode
 		e := raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
 			Data:  pbutil.MustMarshal(cc),
-			Term:  term,
-			Index: next,
+			Term:  &term,
+			Index: &next,
 		}
-		ents = append(ents, e)
+		*e.Type = raftpb.EntryType_EntryConfChange
+		ents = append(ents, &e)
 		next++
 	}
 
@@ -93,16 +93,16 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 			continue
 		}
 		cc := &raftpb.ConfChange{
-			Type:   raftpb.ConfChangeRemoveNode,
-			NodeID: id,
+			NodeId: &id,
 		}
+		*cc.Type = raftpb.ConfChangeType_ConfChangeRemoveNode
 		e := raftpb.Entry{
-			Type:  raftpb.EntryConfChange,
 			Data:  pbutil.MustMarshal(cc),
-			Term:  term,
-			Index: next,
+			Term:  &term,
+			Index: &next,
 		}
-		ents = append(ents, e)
+		*e.Type = raftpb.EntryType_EntryConfChange
+		ents = append(ents, &e)
 		next++
 	}
 
@@ -115,7 +115,7 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 // - ConfChangeAddNode, in which case the contained ID will Be added into the set.
 // - ConfChangeRemoveNode, in which case the contained ID will Be removed from the set.
 // - ConfChangeAddLearnerNode, in which the contained ID will Be added into the set.
-func GetEffectiveNodeIDsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
+func GetEffectiveNodeIDsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []*raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
 		for _, id := range snap.Metadata.ConfState.Voters {
@@ -123,19 +123,19 @@ func GetEffectiveNodeIDsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, en
 		}
 	}
 	for _, e := range ents {
-		if e.Type != raftpb.EntryConfChange {
+		if *e.Type != raftpb.EntryType_EntryConfChange {
 			continue
 		}
 		var cc raftpb.ConfChange
 		pbutil.MustUnmarshal(&cc, e.Data)
-		switch cc.Type {
-		case raftpb.ConfChangeAddLearnerNode:
-			ids[cc.NodeID] = true
-		case raftpb.ConfChangeAddNode:
-			ids[cc.NodeID] = true
-		case raftpb.ConfChangeRemoveNode:
-			delete(ids, cc.NodeID)
-		case raftpb.ConfChangeUpdateNode:
+		switch *cc.Type {
+		case raftpb.ConfChangeType_ConfChangeAddLearnerNode:
+			ids[*cc.NodeId] = true
+		case raftpb.ConfChangeType_ConfChangeAddNode:
+			ids[*cc.NodeId] = true
+		case raftpb.ConfChangeType_ConfChangeRemoveNode:
+			delete(ids, *cc.NodeId)
+		case raftpb.ConfChangeType_ConfChangeUpdateNode:
 			// do nothing
 		default:
 			lg.Panic("unknown ConfChange Type", zap.String("type", cc.Type.String()))

@@ -40,7 +40,7 @@ func NewMessage(rs raftpb.Message, rc io.ReadCloser, rcSize int64) *Message {
 	return &Message{
 		Message:    rs,
 		ReadCloser: ioutil.NewExactReadCloser(rc, rcSize),
-		TotalSize:  int64(rs.Size()) + rcSize,
+		TotalSize:  int64(rs.SizeVT()) + rcSize,
 		closeC:     make(chan bool, 1),
 	}
 }

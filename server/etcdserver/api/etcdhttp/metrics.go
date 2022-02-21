@@ -181,7 +181,8 @@ func checkV2Health(lg *zap.Logger, srv etcdserver.ServerV2, excludedAlarms Alarm
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
+	method := "QGET"
+	_, err := srv.Do(ctx, etcdserverpb.Request{Method: &method})
 	cancel()
 	if err != nil {
 		h.Health = "false"

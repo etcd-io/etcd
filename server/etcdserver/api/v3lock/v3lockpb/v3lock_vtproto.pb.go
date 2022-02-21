@@ -88,7 +88,6 @@ type LockServer interface {
 	// next Lock caller waiting for the lock will then be woken up and given
 	// ownership of the lock.
 	Unlock(context.Context, *UnlockRequest) (*UnlockResponse, error)
-	mustEmbedUnimplementedLockServer()
 }
 
 // UnimplementedLockServer must be embedded to have forward compatible implementations.

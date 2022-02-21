@@ -65,16 +65,16 @@ func (a *reqV2HandlerStore) QGet(ctx context.Context, r *RequestV2) (Response, e
 }
 
 func (a *reqV2HandlerStore) Get(ctx context.Context, r *RequestV2) (Response, error) {
-	if r.Wait {
-		wc, err := a.store.Watch(r.Path, r.Recursive, r.Stream, r.Since)
+	if *r.Wait {
+		wc, err := a.store.Watch(*r.Path, *r.Recursive, *r.Stream, *r.Since)
 		return Response{Watcher: wc}, err
 	}
-	ev, err := a.store.Get(r.Path, r.Recursive, r.Sorted)
+	ev, err := a.store.Get(*r.Path, *r.Recursive, *r.Sorted)
 	return Response{Event: ev}, err
 }
 
 func (a *reqV2HandlerStore) Head(ctx context.Context, r *RequestV2) (Response, error) {
-	ev, err := a.store.Get(r.Path, r.Recursive, r.Sorted)
+	ev, err := a.store.Get(*r.Path, *r.Recursive, *r.Sorted)
 	return Response{Event: ev}, err
 }
 
@@ -95,11 +95,11 @@ func (a *reqV2HandlerEtcdServer) QGet(ctx context.Context, r *RequestV2) (Respon
 }
 
 func (a *reqV2HandlerEtcdServer) processRaftRequest(ctx context.Context, r *RequestV2) (Response, error) {
-	data, err := ((*pb.Request)(r)).Marshal()
+	data, err := ((*pb.Request)(r)).MarshalVT()
 	if err != nil {
 		return Response{}, err
 	}
-	ch := a.s.w.Register(r.ID)
+	ch := a.s.w.Register(*r.ID)
 
 	start := time.Now()
 	a.s.r.Propose(ctx, data)
@@ -112,7 +112,7 @@ func (a *reqV2HandlerEtcdServer) processRaftRequest(ctx context.Context, r *Requ
 		return resp, resp.Err
 	case <-ctx.Done():
 		proposalsFailed.Inc()
-		a.s.w.Trigger(r.ID, nil) // GC wait
+		a.s.w.Trigger(*r.ID, nil) // GC wait
 		return Response{}, a.s.parseProposeCtxErr(ctx.Err(), start)
 	case <-a.s.stopping:
 	}
@@ -120,7 +120,7 @@ func (a *reqV2HandlerEtcdServer) processRaftRequest(ctx context.Context, r *Requ
 }
 
 func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
-	r.ID = s.reqIDGen.Next()
+	*r.ID = s.reqIDGen.Next()
 	h := &reqV2HandlerEtcdServer{
 		reqV2HandlerStore: reqV2HandlerStore{
 			store:   s.v2store,
@@ -140,10 +140,11 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 // respective operation. Do will block until an action is performed or there is
 // an error.
 func (r *RequestV2) Handle(ctx context.Context, v2api RequestV2Handler) (Response, error) {
-	if r.Method == "GET" && r.Quorum {
-		r.Method = "QGET"
+	if *r.Method == "GET" && *r.Quorum {
+		method := "QGET"
+		r.Method = &method
 	}
-	switch r.Method {
+	switch *r.Method {
 	case "POST":
 		return v2api.Post(ctx, r)
 	case "PUT":

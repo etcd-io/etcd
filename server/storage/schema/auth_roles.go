@@ -38,7 +38,7 @@ func (atx *authBatchTx) UnsafeGetRole(roleName string) *authpb.Role {
 	}
 
 	role := &authpb.Role{}
-	err := role.Unmarshal(vs[0])
+	err := role.UnmarshalVT(vs[0])
 	if err != nil {
 		atx.lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
 	}
@@ -61,7 +61,7 @@ func (atx *authBatchTx) UnsafeGetAllRoles() []*authpb.Role {
 	roles := make([]*authpb.Role, len(vs))
 	for i := range vs {
 		role := &authpb.Role{}
-		err := role.Unmarshal(vs[i])
+		err := role.UnmarshalVT(vs[i])
 		if err != nil {
 			atx.lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
 		}
@@ -71,7 +71,7 @@ func (atx *authBatchTx) UnsafeGetAllRoles() []*authpb.Role {
 }
 
 func (atx *authBatchTx) UnsafePutRole(role *authpb.Role) {
-	b, err := role.Marshal()
+	b, err := role.MarshalVT()
 	if err != nil {
 		atx.lg.Panic(
 			"failed to marshal 'authpb.Role'",

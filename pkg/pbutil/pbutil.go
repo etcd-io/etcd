@@ -18,15 +18,15 @@ package pbutil
 import "fmt"
 
 type Marshaler interface {
-	Marshal() (data []byte, err error)
+	MarshalVT() (data []byte, err error)
 }
 
 type Unmarshaler interface {
-	Unmarshal(data []byte) error
+	UnmarshalVT(data []byte) error
 }
 
 func MustMarshal(m Marshaler) []byte {
-	d, err := m.Marshal()
+	d, err := m.MarshalVT()
 	if err != nil {
 		panic(fmt.Sprintf("marshal should never fail (%v)", err))
 	}
@@ -34,13 +34,13 @@ func MustMarshal(m Marshaler) []byte {
 }
 
 func MustUnmarshal(um Unmarshaler, data []byte) {
-	if err := um.Unmarshal(data); err != nil {
+	if err := um.UnmarshalVT(data); err != nil {
 		panic(fmt.Sprintf("unmarshal should never fail (%v)", err))
 	}
 }
 
 func MaybeUnmarshal(um Unmarshaler, data []byte) bool {
-	if err := um.Unmarshal(data); err != nil {
+	if err := um.UnmarshalVT(data); err != nil {
 		return false
 	}
 	return true

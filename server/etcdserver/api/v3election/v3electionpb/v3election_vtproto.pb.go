@@ -147,7 +147,6 @@ type ElectionServer interface {
 	// Resign releases election leadership so other campaigners may acquire
 	// leadership on the election.
 	Resign(context.Context, *ResignRequest) (*ResignResponse, error)
-	mustEmbedUnimplementedElectionServer()
 }
 
 // UnimplementedElectionServer must be embedded to have forward compatible implementations.

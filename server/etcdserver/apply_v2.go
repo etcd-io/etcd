@@ -56,15 +56,15 @@ type applierV2store struct {
 
 func (a *applierV2store) Delete(r *RequestV2) Response {
 	switch {
-	case r.PrevIndex > 0 || r.PrevValue != "":
-		return toResponse(a.store.CompareAndDelete(r.Path, r.PrevValue, r.PrevIndex))
+	case *r.PrevIndex > 0 || *r.PrevValue != "":
+		return toResponse(a.store.CompareAndDelete(*r.Path, *r.PrevValue, *r.PrevIndex))
 	default:
-		return toResponse(a.store.Delete(r.Path, r.Dir, r.Recursive))
+		return toResponse(a.store.Delete(*r.Path, *r.Dir, *r.Recursive))
 	}
 }
 
 func (a *applierV2store) Post(r *RequestV2) Response {
-	return toResponse(a.store.Create(r.Path, r.Dir, r.Val, true, r.TTLOptions()))
+	return toResponse(a.store.Create(*r.Path, *r.Dir, *r.Val, true, r.TTLOptions()))
 }
 
 func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) Response {
@@ -73,20 +73,20 @@ func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV
 	switch {
 	case existsSet:
 		if exists {
-			if r.PrevIndex == 0 && r.PrevValue == "" {
-				return toResponse(a.store.Update(r.Path, r.Val, ttlOptions))
+			if *r.PrevIndex == 0 && *r.PrevValue == "" {
+				return toResponse(a.store.Update(*r.Path, *r.Val, ttlOptions))
 			}
-			return toResponse(a.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
+			return toResponse(a.store.CompareAndSwap(*r.Path, *r.PrevValue, *r.PrevIndex, *r.Val, ttlOptions))
 		}
-		return toResponse(a.store.Create(r.Path, r.Dir, r.Val, false, ttlOptions))
-	case r.PrevIndex > 0 || r.PrevValue != "":
-		return toResponse(a.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
+		return toResponse(a.store.Create(*r.Path, *r.Dir, *r.Val, false, ttlOptions))
+	case *r.PrevIndex > 0 || *r.PrevValue != "":
+		return toResponse(a.store.CompareAndSwap(*r.Path, *r.PrevValue, *r.PrevIndex, *r.Val, ttlOptions))
 	default:
-		if storeMemberAttributeRegexp.MatchString(r.Path) {
-			id := membership.MustParseMemberIDFromKey(a.lg, path.Dir(r.Path))
+		if storeMemberAttributeRegexp.MatchString(*r.Path) {
+			id := membership.MustParseMemberIDFromKey(a.lg, path.Dir(*r.Path))
 			var attr membership.Attributes
-			if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
-				a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
+			if err := json.Unmarshal([]byte(*r.Val), &attr); err != nil {
+				a.lg.Panic("failed to unmarshal", zap.String("value", *r.Val), zap.Error(err))
 			}
 			if a.cluster != nil {
 				a.cluster.UpdateAttributes(id, attr, shouldApplyV3)
@@ -95,23 +95,23 @@ func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV
 			return Response{}
 		}
 		// TODO remove v2 version set to avoid the conflict between v2 and v3 in etcd 3.6
-		if r.Path == membership.StoreClusterVersionKey() {
+		if *r.Path == membership.StoreClusterVersionKey() {
 			if a.cluster != nil {
 				// persist to backend given v2store can be very stale
-				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability, shouldApplyV3)
+				a.cluster.SetVersion(semver.Must(semver.NewVersion(*r.Val)), api.UpdateCapability, shouldApplyV3)
 			}
 			return Response{}
 		}
-		return toResponse(a.store.Set(r.Path, r.Dir, r.Val, ttlOptions))
+		return toResponse(a.store.Set(*r.Path, *r.Dir, *r.Val, ttlOptions))
 	}
 }
 
 func (a *applierV2store) QGet(r *RequestV2) Response {
-	return toResponse(a.store.Get(r.Path, r.Recursive, r.Sorted))
+	return toResponse(a.store.Get(*r.Path, *r.Recursive, *r.Sorted))
 }
 
 func (a *applierV2store) Sync(r *RequestV2) Response {
-	a.store.DeleteExpiredKeys(time.Unix(0, r.Time))
+	a.store.DeleteExpiredKeys(time.Unix(0, *r.Time))
 	return Response{}
 }
 
@@ -124,11 +124,11 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 	}
 	defer func(start time.Time) {
 		success := resp.Err == nil
-		applySec.WithLabelValues(v2Version, r.Method, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
+		applySec.WithLabelValues(v2Version, *r.Method, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
 		warnOfExpensiveRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, stringer, nil, nil)
 	}(time.Now())
 
-	switch r.Method {
+	switch *r.Method {
 	case "POST":
 		return s.applyV2.Post(r)
 	case "PUT":
@@ -148,8 +148,8 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 func (r *RequestV2) TTLOptions() v2store.TTLOptionSet {
 	refresh, _ := pbutil.GetBool(r.Refresh)
 	ttlOptions := v2store.TTLOptionSet{Refresh: refresh}
-	if r.Expiration != 0 {
-		ttlOptions.ExpireTime = time.Unix(0, r.Expiration)
+	if *r.Expiration != 0 {
+		ttlOptions.ExpireTime = time.Unix(0, *r.Expiration)
 	}
 	return ttlOptions
 }

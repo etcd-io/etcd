@@ -21,7 +21,7 @@ var (
 )
 
 func (rec *Record) Validate(crc uint32) error {
-	if rec.Crc == crc {
+	if rec.Crc != nil && *rec.Crc == crc {
 		return nil
 	}
 	rec.Reset()
@@ -34,7 +34,7 @@ func (rec *Record) Validate(crc uint32) error {
 // to the requirements.
 func ValidateSnapshotForWrite(e *Snapshot) error {
 	// Since etcd>=3.5.0
-	if e.ConfState == nil && e.Index > 0 {
+	if e != nil && e.ConfState == nil && (e.Index == nil || *e.Index > 0) {
 		return errors.New("Saved (not-initial) snapshot is missing ConfState: " + e.String())
 	}
 	return nil

@@ -128,7 +128,7 @@ func HandleBackup(withV3 bool, srcDir string, destDir string, srcWAL string, des
 
 	walsnap := saveSnap(lg, destSnap, srcSnap, &desired)
 	metadata, state, ents := translateWAL(lg, srcWAL, walsnap, withV3)
-	saveDB(lg, destDbPath, srcDbPath, state.Commit, state.Term, &desired, withV3)
+	saveDB(lg, destDbPath, srcDbPath, *state.Commit, *state.Term, &desired, withV3)
 
 	neww, err := wal.Create(lg, destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {
@@ -160,7 +160,7 @@ func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster)
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term, walsnap.ConfState = snapshot.Metadata.Index, snapshot.Metadata.Term, &desired.confState
 		newss := snap.New(lg, destSnap)
-		snapshot.Metadata.ConfState = desired.confState
+		*snapshot.Metadata.ConfState = desired.confState
 		snapshot.Data = mustTranslateV2store(lg, snapshot.Data, desired)
 		if err = newss.SaveSnap(*snapshot); err != nil {
 			lg.Fatal("saveSnap(Snapshoter.SaveSnap) failed", zap.Error(err))
@@ -189,7 +189,7 @@ func mustTranslateV2store(lg *zap.Logger, storeData []byte, desired *desiredClus
 	return outputData
 }
 
-func translateWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
+func translateWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool) (etcdserverpb.Metadata, raftpb.HardState, []*raftpb.Entry) {
 	w, err := wal.OpenForRead(lg, srcWAL, walsnap)
 	if err != nil {
 		lg.Fatal("wal.OpenForRead failed", zap.Error(err))
@@ -216,9 +216,9 @@ func translateWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool
 		// Also moving entries and computing offsets would get complicated if
 		// TERM changes (so there are superflous entries from previous term).
 
-		if ents[i].Type == raftpb.EntryConfChange {
+		if *ents[i].Type == raftpb.EntryType_EntryConfChange {
 			lg.Info("ignoring EntryConfChange raft entry")
-			raftEntryToNoOp(&ents[i])
+			raftEntryToNoOp(ents[i])
 			continue
 		}
 
@@ -231,30 +231,30 @@ func translateWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot, v3 bool
 			pbutil.MustUnmarshal(v2Req, ents[i].Data)
 		}
 
-		if v2Req != nil && v2Req.Method == "PUT" && memberAttrRE.MatchString(v2Req.Path) {
+		if v2Req != nil && *v2Req.Method == "PUT" && memberAttrRE.MatchString(*v2Req.Path) {
 			lg.Info("ignoring member attribute update on",
-				zap.Stringer("entry", &ents[i]),
-				zap.String("v2Req.Path", v2Req.Path))
-			raftEntryToNoOp(&ents[i])
+				zap.Stringer("entry", ents[i]),
+				zap.String("v2Req.Path", *v2Req.Path))
+			raftEntryToNoOp(ents[i])
 			continue
 		}
 
 		if v2Req != nil {
-			lg.Debug("preserving log entry", zap.Stringer("entry", &ents[i]))
+			lg.Debug("preserving log entry", zap.Stringer("entry", ents[i]))
 		}
 
 		if raftReq.ClusterMemberAttrSet != nil {
 			lg.Info("ignoring cluster_member_attr_set")
-			raftEntryToNoOp(&ents[i])
+			raftEntryToNoOp(ents[i])
 			continue
 		}
 
 		if v3 || raftReq.Header == nil {
-			lg.Debug("preserving log entry", zap.Stringer("entry", &ents[i]))
+			lg.Debug("preserving log entry", zap.Stringer("entry", ents[i]))
 			continue
 		}
 		lg.Info("ignoring v3 raft entry")
-		raftEntryToNoOp(&ents[i])
+		raftEntryToNoOp(ents[i])
 	}
 	var metadata etcdserverpb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
@@ -265,7 +265,8 @@ func raftEntryToNoOp(entry *raftpb.Entry) {
 	// Empty (dummy) entries are send by RAFT when new leader is getting elected.
 	// They do not cary any change to data-model so its safe to replace entries
 	// to be ignored with them.
-	*entry = raftpb.Entry{Term: entry.Term, Index: entry.Index, Type: raftpb.EntryNormal, Data: nil}
+	t := raftpb.EntryType_EntryNormal
+	*entry = raftpb.Entry{Term: entry.Term, Index: entry.Index, Type: &t, Data: nil}
 }
 
 // saveDB copies the v3 backend and strips cluster information.

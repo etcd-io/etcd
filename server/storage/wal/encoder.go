@@ -64,20 +64,21 @@ func (e *encoder) encode(rec *walpb.Record) error {
 	defer e.mu.Unlock()
 
 	e.crc.Write(rec.Data)
-	rec.Crc = e.crc.Sum32()
+	sum := e.crc.Sum32()
+	rec.Crc = &sum
 	var (
 		data []byte
 		err  error
 		n    int
 	)
 
-	if rec.Size() > len(e.buf) {
-		data, err = rec.Marshal()
+	if rec.SizeVT() > len(e.buf) {
+		data, err = rec.MarshalVT()
 		if err != nil {
 			return err
 		}
 	} else {
-		n, err = rec.MarshalTo(e.buf)
+		n, err = rec.MarshalToVT(e.buf)
 		if err != nil {
 			return err
 		}

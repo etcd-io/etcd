@@ -63,7 +63,7 @@ func TestStorePut(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := kv.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestStorePut(t *testing.T) {
 
 		s.Put([]byte("foo"), []byte("bar"), lease.LeaseID(i+1))
 
-		data, err := tt.wkv.Marshal()
+		data, err := tt.wkv.MarshalVT()
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
@@ -185,7 +185,7 @@ func TestStoreRange(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := kv.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	kvb, err := kv.Marshal()
+	kvb, err := kv.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ func TestStoreDeleteRange(t *testing.T) {
 
 		data, err := (&mvccpb.KeyValue{
 			Key: []byte("foo"),
-		}).Marshal()
+		}).MarshalVT()
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
@@ -372,7 +372,7 @@ func TestStoreRestore(t *testing.T) {
 		ModRevision:    4,
 		Version:        1,
 	}
-	putkvb, err := putkv.Marshal()
+	putkvb, err := putkv.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,7 +380,7 @@ func TestStoreRestore(t *testing.T) {
 	delkv := mvccpb.KeyValue{
 		Key: []byte("foo"),
 	}
-	delkvb, err := delkv.Marshal()
+	delkvb, err := delkv.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}

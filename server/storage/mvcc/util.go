@@ -26,7 +26,7 @@ func WriteKV(be backend.Backend, kv mvccpb.KeyValue) {
 	ibytes := newRevBytes()
 	revToBytes(revision{main: kv.ModRevision}, ibytes)
 
-	d, err := kv.Marshal()
+	d, err := kv.MarshalVT()
 	if err != nil {
 		panic(fmt.Errorf("cannot marshal event: %v", err))
 	}

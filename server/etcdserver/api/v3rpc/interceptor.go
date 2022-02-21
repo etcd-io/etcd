@@ -113,35 +113,35 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.
 		_req, ok := req.(*pb.RangeRequest)
 		if ok {
 			reqCount = 0
-			reqSize = _req.Size()
+			reqSize = _req.SizeVT()
 			reqContent = _req.String()
 		}
 		if _resp != nil {
 			respCount = _resp.GetCount()
-			respSize = _resp.Size()
+			respSize = _resp.SizeVT()
 		}
 	case *pb.PutResponse:
 		_req, ok := req.(*pb.PutRequest)
 		if ok {
 			reqCount = 1
-			reqSize = _req.Size()
+			reqSize = _req.SizeVT()
 			reqContent = pb.NewLoggablePutRequest(_req).String()
 			// redact value field from request content, see PR #9821
 		}
 		if _resp != nil {
 			respCount = 0
-			respSize = _resp.Size()
+			respSize = _resp.SizeVT()
 		}
 	case *pb.DeleteRangeResponse:
 		_req, ok := req.(*pb.DeleteRangeRequest)
 		if ok {
 			reqCount = 0
-			reqSize = _req.Size()
+			reqSize = _req.SizeVT()
 			reqContent = _req.String()
 		}
 		if _resp != nil {
 			respCount = _resp.GetDeleted()
-			respSize = _resp.Size()
+			respSize = _resp.SizeVT()
 		}
 	case *pb.TxnResponse:
 		_req, ok := req.(*pb.TxnRequest)
@@ -150,13 +150,13 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.
 				reqCount = int64(len(_req.GetSuccess()))
 				reqSize = 0
 				for _, r := range _req.GetSuccess() {
-					reqSize += r.Size()
+					reqSize += r.SizeVT()
 				}
 			} else {
 				reqCount = int64(len(_req.GetFailure()))
 				reqSize = 0
 				for _, r := range _req.GetFailure() {
-					reqSize += r.Size()
+					reqSize += r.SizeVT()
 				}
 			}
 			reqContent = pb.NewLoggableTxnRequest(_req).String()
@@ -164,7 +164,7 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.
 		}
 		if _resp != nil {
 			respCount = 0
-			respSize = _resp.Size()
+			respSize = _resp.SizeVT()
 		}
 	default:
 		reqCount = -1

@@ -198,10 +198,10 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 			}
 			lastRev = nextRev
 			switch ev.Type {
-			case mvccpb.PUT:
+			case mvccpb.Event_PUT:
 				ops = append(ops, clientv3.OpPut(modifyPrefix(string(ev.Kv.Key)), string(ev.Kv.Value)))
 				atomic.AddInt64(&total, 1)
-			case mvccpb.DELETE:
+			case mvccpb.Event_DELETE:
 				ops = append(ops, clientv3.OpDelete(modifyPrefix(string(ev.Kv.Key))))
 				atomic.AddInt64(&total, 1)
 			default:

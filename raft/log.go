@@ -85,7 +85,7 @@ func (l *raftLog) String() string {
 
 // maybeAppend returns (0, false) if the entries cannot be appended. Otherwise,
 // it returns (last index of new entries, true).
-func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry) (lastnewi uint64, ok bool) {
+func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...*pb.Entry) (lastnewi uint64, ok bool) {
 	if l.matchTerm(index, logTerm) {
 		lastnewi = index + uint64(len(ents))
 		ci := l.findConflict(ents)
@@ -106,11 +106,11 @@ func (l *raftLog) maybeAppend(index, logTerm, committed uint64, ents ...pb.Entry
 	return 0, false
 }
 
-func (l *raftLog) append(ents ...pb.Entry) uint64 {
+func (l *raftLog) append(ents ...*pb.Entry) uint64 {
 	if len(ents) == 0 {
 		return l.lastIndex()
 	}
-	if after := ents[0].Index - 1; after < l.committed {
+	if after := *ents[0].Index - 1; after < l.committed {
 		l.logger.Panicf("after(%d) is out of range [committed(%d)]", after, l.committed)
 	}
 	l.unstable.truncateAndAppend(ents)
@@ -127,14 +127,14 @@ func (l *raftLog) append(ents ...pb.Entry) uint64 {
 // An entry is considered to be conflicting if it has the same index but
 // a different term.
 // The index of the given entries MUST be continuously increasing.
-func (l *raftLog) findConflict(ents []pb.Entry) uint64 {
+func (l *raftLog) findConflict(ents []*pb.Entry) uint64 {
 	for _, ne := range ents {
-		if !l.matchTerm(ne.Index, ne.Term) {
-			if ne.Index <= l.lastIndex() {
+		if !l.matchTerm(*ne.Index, *ne.Term) {
+			if *ne.Index <= l.lastIndex() {
 				l.logger.Infof("found conflict at index %d [existing term: %d, conflicting term: %d]",
-					ne.Index, l.zeroTermOnErrCompacted(l.term(ne.Index)), ne.Term)
+					ne.Index, l.zeroTermOnErrCompacted(l.term(*ne.Index)), ne.Term)
 			}
-			return ne.Index
+			return *ne.Index
 		}
 	}
 	return 0
@@ -170,7 +170,7 @@ func (l *raftLog) findConflictByTerm(index uint64, term uint64) uint64 {
 	return index
 }
 
-func (l *raftLog) unstableEntries() []pb.Entry {
+func (l *raftLog) unstableEntries() []*pb.Entry {
 	if len(l.unstable.entries) == 0 {
 		return nil
 	}
@@ -180,7 +180,7 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 // nextEnts returns all the available entries for execution.
 // If applied is smaller than the index of snapshot, it returns all committed
 // entries after the index of snapshot.
-func (l *raftLog) nextEnts() (ents []pb.Entry) {
+func (l *raftLog) nextEnts() (ents []*pb.Entry) {
 	off := max(l.applied+1, l.firstIndex())
 	if l.committed+1 > off {
 		ents, err := l.slice(off, l.committed+1, l.maxNextEntsSize)
@@ -287,7 +287,7 @@ func (l *raftLog) term(i uint64) (uint64, error) {
 	panic(err) // TODO(bdarnell)
 }
 
-func (l *raftLog) entries(i, maxsize uint64) ([]pb.Entry, error) {
+func (l *raftLog) entries(i, maxsize uint64) ([]*pb.Entry, error) {
 	if i > l.lastIndex() {
 		return nil, nil
 	}
@@ -295,7 +295,7 @@ func (l *raftLog) entries(i, maxsize uint64) ([]pb.Entry, error) {
 }
 
 // allEntries returns all entries in the log.
-func (l *raftLog) allEntries() []pb.Entry {
+func (l *raftLog) allEntries() []*pb.Entry {
 	ents, err := l.entries(l.firstIndex(), noLimit)
 	if err == nil {
 		return ents
@@ -335,12 +335,12 @@ func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
 
 func (l *raftLog) restore(s pb.Snapshot) {
 	l.logger.Infof("log [%s] starts to restore snapshot [index: %d, term: %d]", l, s.Metadata.Index, s.Metadata.Term)
-	l.committed = s.Metadata.Index
+	l.committed = *s.Metadata.Index
 	l.unstable.restore(s)
 }
 
 // slice returns a slice of log entries from lo through hi-1, inclusive.
-func (l *raftLog) slice(lo, hi, maxSize uint64) ([]pb.Entry, error) {
+func (l *raftLog) slice(lo, hi, maxSize uint64) ([]*pb.Entry, error) {
 	err := l.mustCheckOutOfBounds(lo, hi)
 	if err != nil {
 		return nil, err
@@ -348,7 +348,7 @@ func (l *raftLog) slice(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 	if lo == hi {
 		return nil, nil
 	}
-	var ents []pb.Entry
+	var ents []*pb.Entry
 	if lo < l.unstable.offset {
 		storedEnts, err := l.storage.Entries(lo, min(hi, l.unstable.offset), maxSize)
 		if err == ErrCompacted {
@@ -369,7 +369,7 @@ func (l *raftLog) slice(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 	if hi > l.unstable.offset {
 		unstable := l.unstable.slice(max(lo, l.unstable.offset), hi)
 		if len(ents) > 0 {
-			combined := make([]pb.Entry, len(ents)+len(unstable))
+			combined := make([]*pb.Entry, len(ents)+len(unstable))
 			n := copy(combined, ents)
 			copy(combined[n:], unstable)
 			ents = combined

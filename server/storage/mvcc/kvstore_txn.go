@@ -106,7 +106,7 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 				zap.Int64("revision-sub", revpair.sub),
 			)
 		}
-		if err := kvs[i].Unmarshal(vs[0]); err != nil {
+		if err := kvs[i].UnmarshalVT(vs[0]); err != nil {
 			tr.s.lg.Fatal(
 				"failed to unmarshal mvccpb.KeyValue",
 				zap.Error(err),
@@ -206,7 +206,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		Lease:          int64(leaseID),
 	}
 
-	d, err := kv.Marshal()
+	d, err := kv.MarshalVT()
 	if err != nil {
 		tw.storeTxnRead.s.lg.Fatal(
 			"failed to marshal mvccpb.KeyValue",
@@ -273,7 +273,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 
 	kv := mvccpb.KeyValue{Key: key}
 
-	d, err := kv.Marshal()
+	d, err := kv.MarshalVT()
 	if err != nil {
 		tw.storeTxnRead.s.lg.Fatal(
 			"failed to marshal mvccpb.KeyValue",

@@ -97,7 +97,7 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 		}
 		return err
 	}
-	if err := rec.Unmarshal(data[:recBytes]); err != nil {
+	if err := rec.UnmarshalVT(data[:recBytes]); err != nil {
 		if d.isTornEntry(data) {
 			return io.ErrUnexpectedEOF
 		}
@@ -105,7 +105,7 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 	}
 
 	// skip crc checking if the record type is crcType
-	if rec.Type != crcType {
+	if *rec.Type != crcType {
 		d.crc.Write(rec.Data)
 		if err := rec.Validate(d.crc.Sum32()); err != nil {
 			if d.isTornEntry(data) {

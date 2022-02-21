@@ -662,7 +662,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		}
 	}
 
-	data, err := r.Marshal()
+	data, err := r.MarshalVT()
 	if err != nil {
 		return nil, err
 	}

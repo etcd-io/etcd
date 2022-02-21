@@ -684,16 +684,16 @@ func (h *downgradeEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 // machine, respecting any timeout of the given context.
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	lg := s.Logger()
-	if s.cluster.IsIDRemoved(types.ID(m.From)) {
+	if s.cluster.IsIDRemoved(types.ID(*m.From)) {
 		lg.Warn(
 			"rejected Raft message from removed member",
 			zap.String("local-member-id", s.ID().String()),
-			zap.String("removed-member-id", types.ID(m.From).String()),
+			zap.String("removed-member-id", types.ID(*m.From).String()),
 		)
 		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message from removed member")
 	}
-	if m.Type == raftpb.MsgApp {
-		s.stats.RecvAppendReq(types.ID(m.From).String(), m.Size())
+	if *m.Type == raftpb.MessageType_MsgApp {
+		s.stats.RecvAppendReq(types.ID(*m.From).String(), m.SizeVT())
 	}
 	return s.r.Step(ctx, m)
 }
@@ -794,10 +794,10 @@ func (s *EtcdServer) run() {
 	s.r.start(rh)
 
 	ep := etcdProgress{
-		confState: sn.Metadata.ConfState,
-		snapi:     sn.Metadata.Index,
-		appliedt:  sn.Metadata.Term,
-		appliedi:  sn.Metadata.Index,
+		confState: *sn.Metadata.ConfState,
+		snapi:     *sn.Metadata.Index,
+		appliedt:  *sn.Metadata.Term,
+		appliedi:  *sn.Metadata.Index,
 	}
 
 	defer func() {
@@ -928,27 +928,27 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		"applying snapshot",
 		zap.Uint64("current-snapshot-index", ep.snapi),
 		zap.Uint64("current-applied-index", ep.appliedi),
-		zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
-		zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
+		zap.Uint64("incoming-leader-snapshot-index", *apply.snapshot.Metadata.Index),
+		zap.Uint64("incoming-leader-snapshot-term", *apply.snapshot.Metadata.Term),
 	)
 	defer func() {
 		lg.Info(
 			"applied snapshot",
 			zap.Uint64("current-snapshot-index", ep.snapi),
 			zap.Uint64("current-applied-index", ep.appliedi),
-			zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
-			zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
+			zap.Uint64("incoming-leader-snapshot-index", *apply.snapshot.Metadata.Index),
+			zap.Uint64("incoming-leader-snapshot-term", *apply.snapshot.Metadata.Term),
 		)
 		applySnapshotInProgress.Dec()
 	}()
 
-	if apply.snapshot.Metadata.Index <= ep.appliedi {
+	if *apply.snapshot.Metadata.Index <= ep.appliedi {
 		lg.Panic(
 			"unexpected leader snapshot from outdated index",
 			zap.Uint64("current-snapshot-index", ep.snapi),
 			zap.Uint64("current-applied-index", ep.appliedi),
-			zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
-			zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
+			zap.Uint64("incoming-leader-snapshot-index", *apply.snapshot.Metadata.Index),
+			zap.Uint64("incoming-leader-snapshot-term", *apply.snapshot.Metadata.Term),
 		)
 	}
 
@@ -1048,17 +1048,17 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	lg.Info("added peers from new cluster configuration")
 
-	ep.appliedt = apply.snapshot.Metadata.Term
-	ep.appliedi = apply.snapshot.Metadata.Index
+	ep.appliedt = *apply.snapshot.Metadata.Term
+	ep.appliedi = *apply.snapshot.Metadata.Index
 	ep.snapi = ep.appliedi
-	ep.confState = apply.snapshot.Metadata.ConfState
+	ep.confState = *apply.snapshot.Metadata.ConfState
 }
 
 func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 	if len(apply.entries) == 0 {
 		return
 	}
-	firsti := apply.entries[0].Index
+	firsti := *apply.entries[0].Index
 	if firsti > ep.appliedi+1 {
 		lg := s.Logger()
 		lg.Panic(
@@ -1067,7 +1067,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 			zap.Uint64("first-committed-entry-index", firsti),
 		)
 	}
-	var ents []raftpb.Entry
+	var ents []*raftpb.Entry
 	if ep.appliedi+1-firsti < uint64(len(apply.entries)) {
 		ents = apply.entries[ep.appliedi+1-firsti:]
 	}
@@ -1261,13 +1261,13 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) ([]*
 	}
 
 	cc := raftpb.ConfChange{
-		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  uint64(memb.ID),
 		Context: b,
 	}
+	*cc.Type = raftpb.ConfChangeType_ConfChangeAddNode
+	*cc.NodeId = uint64(memb.ID)
 
 	if memb.IsLearner {
-		cc.Type = raftpb.ConfChangeAddLearnerNode
+		*cc.Type = raftpb.ConfChangeType_ConfChangeAddLearnerNode
 	}
 
 	return s.configure(ctx, cc)
@@ -1313,10 +1313,9 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) ([]*membership
 		return nil, err
 	}
 
-	cc := raftpb.ConfChange{
-		Type:   raftpb.ConfChangeRemoveNode,
-		NodeID: id,
-	}
+	cc := raftpb.ConfChange{}
+	*cc.Type = raftpb.ConfChangeType_ConfChangeRemoveNode
+	cc.NodeId = &id
 	return s.configure(ctx, cc)
 }
 
@@ -1391,10 +1390,10 @@ func (s *EtcdServer) promoteMember(ctx context.Context, id uint64) ([]*membershi
 	}
 
 	cc := raftpb.ConfChange{
-		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  id,
 		Context: b,
 	}
+	*cc.Type = raftpb.ConfChangeType_ConfChangeAddNode
+	cc.NodeId = &id
 
 	return s.configure(ctx, cc)
 }
@@ -1510,10 +1509,10 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) (
 		return nil, err
 	}
 	cc := raftpb.ConfChange{
-		Type:    raftpb.ConfChangeUpdateNode,
-		NodeID:  uint64(memb.ID),
 		Context: b,
 	}
+	*cc.Type = raftpb.ConfChangeType_ConfChangeUpdateNode
+	*cc.NodeId = uint64(memb.ID)
 	return s.configure(ctx, cc)
 }
 
@@ -1592,12 +1591,12 @@ type confChangeResponse struct {
 // will block until the change is performed or there is an error.
 func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*membership.Member, error) {
 	lg := s.Logger()
-	cc.ID = s.reqIDGen.Next()
-	ch := s.w.Register(cc.ID)
+	*cc.Id = s.reqIDGen.Next()
+	ch := s.w.Register(*cc.Id)
 
 	start := time.Now()
 	if err := s.r.ProposeConfChange(ctx, cc); err != nil {
-		s.w.Trigger(cc.ID, nil)
+		s.w.Trigger(*cc.Id, nil)
 		return nil, err
 	}
 
@@ -1611,12 +1610,12 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 			"applied a configuration change through raft",
 			zap.String("local-member-id", s.ID().String()),
 			zap.String("raft-conf-change", cc.Type.String()),
-			zap.String("raft-conf-change-node-id", types.ID(cc.NodeID).String()),
+			zap.String("raft-conf-change-node-id", types.ID(*cc.NodeId).String()),
 		)
 		return resp.membs, resp.err
 
 	case <-ctx.Done():
-		s.w.Trigger(cc.ID, nil) // GC wait
+		s.w.Trigger(*cc.Id, nil) // GC wait
 		return nil, s.parseProposeCtxErr(ctx.Err(), start)
 
 	case <-s.stopping:
@@ -1628,10 +1627,13 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 // This makes no guarantee that the request will be proposed or performed.
 // The request will be canceled after the given timeout.
 func (s *EtcdServer) sync(timeout time.Duration) {
+	sync := "SYNC"
+	id := s.reqIDGen.Next()
+	time := time.Now().UnixNano()
 	req := pb.Request{
-		Method: "SYNC",
-		ID:     s.reqIDGen.Next(),
-		Time:   time.Now().UnixNano(),
+		Method: &sync,
+		ID:     &id,
+		Time:   &time,
 	}
 	data := pbutil.MustMarshal(&req)
 	// There is no promise that node has leader when do SYNC request,
@@ -1715,10 +1717,13 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 		lg.Panic("failed to marshal JSON", zap.Error(err))
 		return
 	}
+	put := "PUT"
+	path := membership.MemberAttributesStorePath(s.id)
+	val := string(b)
 	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.MemberAttributesStorePath(s.id),
-		Val:    string(b),
+		Method: &put,
+		Path:   &path,
+		Val:    &val,
 	}
 
 	for {
@@ -1732,7 +1737,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 				"published local member to cluster through raft",
 				zap.String("local-member-id", s.ID().String()),
 				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
-				zap.String("request-path", req.Path),
+				zap.String("request-path", *req.Path),
 				zap.String("cluster-id", s.cluster.ID().String()),
 				zap.Duration("publish-timeout", timeout),
 			)
@@ -1753,7 +1758,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 				"failed to publish local member to cluster through raft",
 				zap.String("local-member-id", s.ID().String()),
 				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
-				zap.String("request-path", req.Path),
+				zap.String("request-path", *req.Path),
 				zap.Duration("publish-timeout", timeout),
 				zap.Error(err),
 			)
@@ -1767,7 +1772,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 	lg := s.Logger()
 	fields := []zap.Field{
 		zap.String("from", s.ID().String()),
-		zap.String("to", types.ID(merged.To).String()),
+		zap.String("to", types.ID(*merged.To).String()),
 		zap.Int64("bytes", merged.TotalSize),
 		zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
 	}
@@ -1805,40 +1810,40 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 // applies them to the current state of the EtcdServer.
 // The given entries should not be empty.
 func (s *EtcdServer) apply(
-	es []raftpb.Entry,
+	es []*raftpb.Entry,
 	confState *raftpb.ConfState,
 ) (appliedt uint64, appliedi uint64, shouldStop bool) {
 	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
 	for i := range es {
 		e := es[i]
 		s.lg.Debug("Applying entry",
-			zap.Uint64("index", e.Index),
-			zap.Uint64("term", e.Term),
+			zap.Uint64("index", *e.Index),
+			zap.Uint64("term", *e.Term),
 			zap.Stringer("type", e.Type))
-		switch e.Type {
-		case raftpb.EntryNormal:
-			s.applyEntryNormal(&e)
-			s.setAppliedIndex(e.Index)
-			s.setTerm(e.Term)
+		switch *e.Type {
+		case raftpb.EntryType_EntryNormal:
+			s.applyEntryNormal(e)
+			s.setAppliedIndex(*e.Index)
+			s.setTerm(*e.Term)
 
-		case raftpb.EntryConfChange:
+		case raftpb.EntryType_EntryConfChange:
 			// We need to apply all WAL entries on top of v2store
 			// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
 			shouldApplyV3 := membership.ApplyV2storeOnly
 
 			// set the consistent index of current executing entry
-			if e.Index > s.consistIndex.ConsistentIndex() {
-				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+			if *e.Index > s.consistIndex.ConsistentIndex() {
+				s.consistIndex.SetConsistentIndex(*e.Index, *e.Term)
 				shouldApplyV3 = membership.ApplyBoth
 			}
 
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
-			s.setAppliedIndex(e.Index)
-			s.setTerm(e.Term)
+			s.setAppliedIndex(*e.Index)
+			s.setTerm(*e.Term)
 			shouldStop = shouldStop || removedSelf
-			s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), err})
+			s.w.Trigger(*cc.Id, &confChangeResponse{s.cluster.Members(), err})
 
 		default:
 			lg := s.Logger()
@@ -1847,7 +1852,7 @@ func (s *EtcdServer) apply(
 				zap.String("type", e.Type.String()),
 			)
 		}
-		appliedi, appliedt = e.Index, e.Term
+		appliedi, appliedt = *e.Index, *e.Term
 	}
 	return appliedt, appliedi, shouldStop
 }
@@ -1856,14 +1861,14 @@ func (s *EtcdServer) apply(
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
 	index := s.consistIndex.ConsistentIndex()
-	if e.Index > index {
+	if *e.Index > index {
 		// set the consistent index of current executing entry
-		s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+		s.consistIndex.SetConsistentIndex(*e.Index, *e.Term)
 		shouldApplyV3 = membership.ApplyBoth
 	}
 	s.lg.Debug("apply entry normal",
 		zap.Uint64("consistent-index", index),
-		zap.Uint64("entry-index", e.Index),
+		zap.Uint64("entry-index", *e.Index),
 		zap.Bool("should-applyV3", bool(shouldApplyV3)))
 
 	// raft state machine may generate noop entry when leader confirmation.
@@ -1885,14 +1890,14 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
 		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
+		s.w.Trigger(*r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
-		s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
+		s.w.Trigger(*req.ID, s.applyV2Request(req, shouldApplyV3))
 		return
 	}
 
@@ -1950,7 +1955,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
 	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
-		cc.NodeID = raft.None
+		*cc.NodeId = raft.None
 		s.r.ApplyConfChange(cc)
 		return false, err
 	}
@@ -1958,16 +1963,16 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	lg := s.Logger()
 	*confState = *s.r.ApplyConfChange(cc)
 	s.beHooks.SetConfState(confState)
-	switch cc.Type {
-	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
+	switch *cc.Type {
+	case raftpb.ConfChangeType_ConfChangeAddNode, raftpb.ConfChangeType_ConfChangeAddLearnerNode:
 		confChangeContext := new(membership.ConfigChangeContext)
 		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
 			lg.Panic("failed to unmarshal member", zap.Error(err))
 		}
-		if cc.NodeID != uint64(confChangeContext.Member.ID) {
+		if *cc.NodeId != uint64(confChangeContext.Member.ID) {
 			lg.Panic(
 				"got different member ID",
-				zap.String("member-id-from-config-change-entry", types.ID(cc.NodeID).String()),
+				zap.String("member-id-from-config-change-entry", types.ID(*cc.NodeId).String()),
 				zap.String("member-id-from-message", confChangeContext.Member.ID.String()),
 			)
 		}
@@ -1983,30 +1988,30 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 		// update the isLearner metric when this server id is equal to the id in raft member confChange
 		if confChangeContext.Member.ID == s.id {
-			if cc.Type == raftpb.ConfChangeAddLearnerNode {
+			if *cc.Type == raftpb.ConfChangeType_ConfChangeAddLearnerNode {
 				isLearner.Set(1)
 			} else {
 				isLearner.Set(0)
 			}
 		}
 
-	case raftpb.ConfChangeRemoveNode:
-		id := types.ID(cc.NodeID)
+	case raftpb.ConfChangeType_ConfChangeRemoveNode:
+		id := types.ID(*cc.NodeId)
 		s.cluster.RemoveMember(id, shouldApplyV3)
 		if id == s.id {
 			return true, nil
 		}
 		s.r.transport.RemovePeer(id)
 
-	case raftpb.ConfChangeUpdateNode:
+	case raftpb.ConfChangeType_ConfChangeUpdateNode:
 		m := new(membership.Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
 			lg.Panic("failed to unmarshal member", zap.Error(err))
 		}
-		if cc.NodeID != uint64(m.ID) {
+		if *cc.NodeId != uint64(m.ID) {
 			lg.Panic(
 				"got different member ID",
-				zap.String("member-id-from-config-change-entry", types.ID(cc.NodeID).String()),
+				zap.String("member-id-from-config-change-entry", types.ID(*cc.NodeId).String()),
 				zap.String("member-id-from-message", m.ID.String()),
 			)
 		}
@@ -2060,7 +2065,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 
 		lg.Info(
 			"saved snapshot",
-			zap.Uint64("snapshot-index", snap.Metadata.Index),
+			zap.Uint64("snapshot-index", *snap.Metadata.Index),
 		)
 
 		// When sending a snapshot, etcd will pause compaction.
@@ -2169,11 +2174,12 @@ func (s *EtcdServer) updateClusterVersionV2(ver string) {
 			zap.String("to", version.Cluster(ver)),
 		)
 	}
-
+	put := "PUT"
+	path := membership.StoreClusterVersionKey()
 	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    ver,
+		Method: &put,
+		Path:   &path,
+		Val:    &ver,
 	}
 
 	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())

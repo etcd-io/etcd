@@ -47,7 +47,7 @@ func (s *alarmBackend) MustPutAlarm(alarm *etcdserverpb.AlarmMember) {
 }
 
 func (s *alarmBackend) mustUnsafePutAlarm(tx backend.BatchTx, alarm *etcdserverpb.AlarmMember) {
-	v, err := alarm.Marshal()
+	v, err := alarm.MarshalVT()
 	if err != nil {
 		s.lg.Panic("failed to marshal alarm member", zap.Error(err))
 	}
@@ -63,7 +63,7 @@ func (s *alarmBackend) MustDeleteAlarm(alarm *etcdserverpb.AlarmMember) {
 }
 
 func (s *alarmBackend) mustUnsafeDeleteAlarm(tx backend.BatchTx, alarm *etcdserverpb.AlarmMember) {
-	v, err := alarm.Marshal()
+	v, err := alarm.MarshalVT()
 	if err != nil {
 		s.lg.Panic("failed to marshal alarm member", zap.Error(err))
 	}
@@ -82,7 +82,7 @@ func (s *alarmBackend) unsafeGetAllAlarms(tx backend.ReadTx) ([]*etcdserverpb.Al
 	ms := []*etcdserverpb.AlarmMember{}
 	err := tx.UnsafeForEach(Alarm, func(k, v []byte) error {
 		var m etcdserverpb.AlarmMember
-		if err := m.Unmarshal(k); err != nil {
+		if err := m.UnmarshalVT(k); err != nil {
 			return err
 		}
 		ms = append(ms, &m)

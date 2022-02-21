@@ -124,7 +124,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var m raftpb.Message
-	if err := m.Unmarshal(b); err != nil {
+	if err := m.UnmarshalVT(b); err != nil {
 		h.lg.Warn(
 			"failed to unmarshal Raft message",
 			zap.String("local-member-id", h.localID.String()),
@@ -135,7 +135,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(len(b)))
+	receivedBytes.WithLabelValues(types.ID(*m.From).String()).Add(float64(len(b)))
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
 		switch v := err.(type) {
@@ -219,7 +219,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	dec := &messageDecoder{r: r.Body}
 	// let snapshots be very large since they can exceed 512MB for large installations
 	m, err := dec.decodeLimit(snapshotLimitByte)
-	from := types.ID(m.From).String()
+	from := types.ID(*m.From).String()
 	if err != nil {
 		msg := fmt.Sprintf("failed to decode raft message (%v)", err)
 		h.lg.Warn(
@@ -234,10 +234,10 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msgSize := m.Size()
+	msgSize := m.SizeVT()
 	receivedBytes.WithLabelValues(from).Add(float64(msgSize))
 
-	if m.Type != raftpb.MsgSnap {
+	if *m.Type != raftpb.MessageType_MsgSnap {
 		h.lg.Warn(
 			"unexpected Raft message type",
 			zap.String("local-member-id", h.localID.String()),
@@ -258,21 +258,21 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"receiving database snapshot",
 		zap.String("local-member-id", h.localID.String()),
 		zap.String("remote-snapshot-sender-id", from),
-		zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
+		zap.Uint64("incoming-snapshot-index", *m.Snapshot.Metadata.Index),
 		zap.Int("incoming-snapshot-message-size-bytes", msgSize),
 		zap.String("incoming-snapshot-message-size", humanize.Bytes(uint64(msgSize))),
 	)
 
 	// save incoming database snapshot.
 
-	n, err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.Index)
+	n, err := h.snapshotter.SaveDBFrom(r.Body, *m.Snapshot.Metadata.Index)
 	if err != nil {
 		msg := fmt.Sprintf("failed to save KV snapshot (%v)", err)
 		h.lg.Warn(
 			"failed to save incoming database snapshot",
 			zap.String("local-member-id", h.localID.String()),
 			zap.String("remote-snapshot-sender-id", from),
-			zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
+			zap.Uint64("incoming-snapshot-index", *m.Snapshot.Metadata.Index),
 			zap.Error(err),
 		)
 		http.Error(w, msg, http.StatusInternalServerError)
@@ -287,7 +287,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"received and saved database snapshot",
 		zap.String("local-member-id", h.localID.String()),
 		zap.String("remote-snapshot-sender-id", from),
-		zap.Uint64("incoming-snapshot-index", m.Snapshot.Metadata.Index),
+		zap.Uint64("incoming-snapshot-index", *m.Snapshot.Metadata.Index),
 		zap.Int64("incoming-snapshot-size-bytes", n),
 		zap.String("incoming-snapshot-size", humanize.Bytes(uint64(n))),
 		zap.String("download-took", downloadTook.String()),

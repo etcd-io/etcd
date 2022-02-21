@@ -39,7 +39,7 @@ func ReadWALVersion(w *WAL) (*walVersion, error) {
 }
 
 type walVersion struct {
-	entries []raftpb.Entry
+	entries []*raftpb.Entry
 }
 
 // MinimalEtcdVersion returns minimal etcd able to interpret entries from  WAL log,
@@ -50,10 +50,10 @@ func (w *walVersion) MinimalEtcdVersion() *semver.Version {
 // MinimalEtcdVersion returns minimal etcd able to interpret entries from  WAL log,
 // determined by looking at entries since the last snapshot and returning the highest
 // etcd version annotation from used messages, fields, enums and their values.
-func MinimalEtcdVersion(ents []raftpb.Entry) *semver.Version {
+func MinimalEtcdVersion(ents []*raftpb.Entry) *semver.Version {
 	var maxVer *semver.Version
 	for _, ent := range ents {
-		err := visitEntry(ent, func(path protoreflect.FullName, ver *semver.Version) error {
+		err := visitEntry(*ent, func(path protoreflect.FullName, ver *semver.Version) error {
 			maxVer = maxVersion(maxVer, ver)
 			return nil
 		})
@@ -92,18 +92,18 @@ func visitEntry(ent raftpb.Entry, visitor Visitor) error {
 	if err != nil {
 		return err
 	}
-	return visitEntryData(ent.Type, ent.Data, visitor)
+	return visitEntryData(*ent.Type, ent.Data, visitor)
 }
 
 func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) error {
 	var msg protoreflect.Message
 	switch entryType {
-	case raftpb.EntryNormal:
+	case raftpb.EntryType_EntryNormal:
 		var raftReq etcdserverpb.InternalRaftRequest
-		if err := pbutil.Unmarshaler(&raftReq).Unmarshal(data); err != nil {
+		if err := pbutil.Unmarshaler(&raftReq).UnmarshalVT(data); err != nil {
 			// try V2 Request
 			var r etcdserverpb.Request
-			if pbutil.Unmarshaler(&r).Unmarshal(data) != nil {
+			if pbutil.Unmarshaler(&r).UnmarshalVT(data) != nil {
 				// return original error
 				return err
 			}
@@ -121,16 +121,16 @@ func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) er
 				return err
 			}
 		}
-	case raftpb.EntryConfChange:
+	case raftpb.EntryType_EntryConfChange:
 		var confChange raftpb.ConfChange
-		err := pbutil.Unmarshaler(&confChange).Unmarshal(data)
+		err := pbutil.Unmarshaler(&confChange).UnmarshalVT(data)
 		if err != nil {
 			return nil
 		}
 		msg = proto.MessageReflect(&confChange)
-	case raftpb.EntryConfChangeV2:
+	case raftpb.EntryType_EntryConfChangeV2:
 		var confChange raftpb.ConfChangeV2
-		err := pbutil.Unmarshaler(&confChange).Unmarshal(data)
+		err := pbutil.Unmarshaler(&confChange).UnmarshalVT(data)
 		if err != nil {
 			return nil
 		}

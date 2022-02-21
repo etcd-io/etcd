@@ -57,7 +57,7 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 
 // OpenSnapshotBackend renames a snapshot db to the current etcd db and opens it.
 func OpenSnapshotBackend(cfg config.ServerConfig, ss *snap.Snapshotter, snapshot raftpb.Snapshot, hooks *BackendHooks) (backend.Backend, error) {
-	snapPath, err := ss.DBFilePath(snapshot.Metadata.Index)
+	snapPath, err := ss.DBFilePath(*snapshot.Metadata.Index)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find database snapshot file (%v)", err)
 	}
@@ -101,7 +101,7 @@ func RecoverSnapshotBackend(cfg config.ServerConfig, oldbe backend.Backend, snap
 	if beExist {
 		consistentIndex, _ = schema.ReadConsistentIndex(oldbe.BatchTx())
 	}
-	if snapshot.Metadata.Index <= consistentIndex {
+	if *snapshot.Metadata.Index <= consistentIndex {
 		return oldbe, nil
 	}
 	oldbe.Close()

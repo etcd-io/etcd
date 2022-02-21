@@ -200,7 +200,7 @@ func writeEntryTo(w io.Writer, ent *raftpb.Entry) error {
 	if err := binary.Write(w, binary.BigEndian, uint64(size)); err != nil {
 		return err
 	}
-	b, err := ent.Marshal()
+	b, err := ent.MarshalVT()
 	if err != nil {
 		return err
 	}

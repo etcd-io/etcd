@@ -410,7 +410,7 @@ func (s *watchableStore) syncWatchers() int {
 func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []mvccpb.Event) {
 	for i, v := range vals {
 		var kv mvccpb.KeyValue
-		if err := kv.Unmarshal(v); err != nil {
+		if err := kv.UnmarshalVT(v); err != nil {
 			lg.Panic("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
 		}
 
@@ -418,9 +418,9 @@ func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []m
 			continue
 		}
 
-		ty := mvccpb.PUT
+		ty := mvccpb.Event_PUT
 		if isTombstone(revs[i]) {
-			ty = mvccpb.DELETE
+			ty = mvccpb.Event_DELETE
 			// patch in mod revision so watchers won't skip
 			kv.ModRevision = bytesToRev(revs[i]).main
 		}

@@ -202,7 +202,7 @@ func Read(lg *zap.Logger, snapname string) (*raftpb.Snapshot, error) {
 	}
 
 	var snap raftpb.Snapshot
-	if err = snap.Unmarshal(serializedSnap.Data); err != nil {
+	if err = snap.UnmarshalVT(serializedSnap.Data); err != nil {
 		if lg != nil {
 			lg.Warn("failed to unmarshal raftpb.Snapshot", zap.String("path", snapname), zap.Error(err))
 		}
@@ -288,7 +288,7 @@ func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
 				s.lg.Error("failed to parse index from filename", zap.String("path", filename), zap.String("error", err.Error()))
 				continue
 			}
-			if index < snap.Metadata.Index {
+			if index < *snap.Metadata.Index {
 				s.lg.Info("found orphaned .snap.db file; deleting", zap.String("path", filename))
 				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
 					s.lg.Error("failed to remove orphaned .snap.db file", zap.String("path", filename), zap.String("error", rmErr.Error()))

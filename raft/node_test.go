@@ -330,7 +330,7 @@ func TestNodeProposeConfig(t *testing.T) {
 		n.Advance()
 	}
 	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
-	ccdata, err := cc.Marshal()
+	ccdata, err := cc.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	}()
 
 	cc1 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
-	ccdata1, _ := cc1.Marshal()
+	ccdata1, _ := cc1.MarshalVT()
 	n.ProposeConfChange(context.TODO(), cc1)
 	<-applyConfChan
 
@@ -404,7 +404,7 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 
 	// the new node join should be ok
 	cc2 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
-	ccdata2, _ := cc2.Marshal()
+	ccdata2, _ := cc2.MarshalVT()
 	n.ProposeConfChange(context.TODO(), cc2)
 	<-applyConfChan
 
@@ -584,7 +584,7 @@ func TestNodeStart(t *testing.T) {
 	defer cancel()
 
 	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
-	ccdata, err := cc.Marshal()
+	ccdata, err := cc.MarshalVT()
 	if err != nil {
 		t.Fatalf("unexpected marshal error: %v", err)
 	}

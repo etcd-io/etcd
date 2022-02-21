@@ -3379,7 +3379,7 @@ func TestCommitAfterRemoveNode(t *testing.T) {
 		Type:   pb.ConfChangeRemoveNode,
 		NodeID: 2,
 	}
-	ccData, err := cc.Marshal()
+	ccData, err := cc.MarshalVT()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -4243,10 +4243,10 @@ func testConfChangeCheckBeforeCampaign(t *testing.T, v2 bool) {
 	var ty pb.EntryType
 	if v2 {
 		ccv2 := cc.AsV2()
-		ccData, err = ccv2.Marshal()
+		ccData, err = ccv2.MarshalVT()
 		ty = pb.EntryConfChangeV2
 	} else {
-		ccData, err = cc.Marshal()
+		ccData, err = cc.MarshalVT()
 		ty = pb.EntryConfChange
 	}
 	if err != nil {

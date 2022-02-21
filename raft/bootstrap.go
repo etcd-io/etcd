@@ -48,15 +48,18 @@ func (rn *RawNode) Bootstrap(peers []Peer) error {
 	// TODO(tbg): remove StartNode and give the application the right tools to
 	// bootstrap the initial membership in a cleaner way.
 	rn.raft.becomeFollower(1, None)
-	ents := make([]pb.Entry, len(peers))
+	ents := make([]*pb.Entry, len(peers))
+	addType := pb.ConfChangeType_ConfChangeAddNode
+	entryType := pb.EntryType_EntryConfChange
+	var term uint64 = 1
 	for i, peer := range peers {
-		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
-		data, err := cc.Marshal()
+		cc := pb.ConfChange{Type: &addType, NodeId: &peer.ID, Context: peer.Context}
+		data, err := cc.MarshalVT()
 		if err != nil {
 			return err
 		}
-
-		ents[i] = pb.Entry{Type: pb.EntryConfChange, Term: 1, Index: uint64(i + 1), Data: data}
+		indx := uint64(i + 1)
+		ents[i] = &pb.Entry{Type: &entryType, Term: &term, Index: &indx, Data: data}
 	}
 	rn.raft.raftLog.append(ents...)
 
@@ -74,7 +77,7 @@ func (rn *RawNode) Bootstrap(peers []Peer) error {
 	// the invariant that committed < unstable?
 	rn.raft.raftLog.committed = uint64(len(ents))
 	for _, peer := range peers {
-		rn.raft.applyConfChange(pb.ConfChange{NodeID: peer.ID, Type: pb.ConfChangeAddNode}.AsV2())
+		rn.raft.applyConfChange(pb.ConfChange{NodeId: &peer.ID, Type: &addType}.AsV2())
 	}
 	return nil
 }

@@ -307,12 +307,12 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	// TODO: this must be switched to backend as well.
 	membersMap, removedMap := membersFromStore(c.lg, c.v2store)
-	id := types.ID(cc.NodeID)
+	id := types.ID(*cc.NodeId)
 	if removedMap[id] {
 		return ErrIDRemoved
 	}
-	switch cc.Type {
-	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
+	switch *cc.Type {
+	case raftpb.ConfChangeType_ConfChangeAddNode, raftpb.ConfChangeType_ConfChangeAddLearnerNode:
 		confChangeContext := new(ConfigChangeContext)
 		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
 			c.lg.Panic("failed to unmarshal confChangeContext", zap.Error(err))
@@ -344,19 +344,19 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 				}
 			}
 
-			if confChangeContext.Member.RaftAttributes.IsLearner && cc.Type == raftpb.ConfChangeAddLearnerNode { // the new member is a learner
+			if confChangeContext.Member.RaftAttributes.IsLearner && *cc.Type == raftpb.ConfChangeType_ConfChangeAddLearnerNode { // the new member is a learner
 				scaleUpLearners := true
 				if err := ValidateMaxLearnerConfig(c.maxLearners, members, scaleUpLearners); err != nil {
 					return err
 				}
 			}
 		}
-	case raftpb.ConfChangeRemoveNode:
+	case raftpb.ConfChangeType_ConfChangeRemoveNode:
 		if membersMap[id] == nil {
 			return ErrIDNotFound
 		}
 
-	case raftpb.ConfChangeUpdateNode:
+	case raftpb.ConfChangeType_ConfChangeUpdateNode:
 		if membersMap[id] == nil {
 			return ErrIDNotFound
 		}

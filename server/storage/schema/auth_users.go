@@ -33,7 +33,7 @@ func (atx *authBatchTx) UnsafeGetUser(username string) *authpb.User {
 	}
 
 	user := &authpb.User{}
-	err := user.Unmarshal(vs[0])
+	err := user.UnmarshalVT(vs[0])
 	if err != nil {
 		atx.lg.Panic(
 			"failed to unmarshal 'authpb.User'",
@@ -60,7 +60,7 @@ func (atx *authBatchTx) UnsafeGetAllUsers() []*authpb.User {
 	users := make([]*authpb.User, len(vs))
 	for i := range vs {
 		user := &authpb.User{}
-		err := user.Unmarshal(vs[i])
+		err := user.UnmarshalVT(vs[i])
 		if err != nil {
 			atx.lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
 		}
@@ -70,7 +70,7 @@ func (atx *authBatchTx) UnsafeGetAllUsers() []*authpb.User {
 }
 
 func (atx *authBatchTx) UnsafePutUser(user *authpb.User) {
-	b, err := user.Marshal()
+	b, err := user.MarshalVT()
 	if err != nil {
 		atx.lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
 	}
