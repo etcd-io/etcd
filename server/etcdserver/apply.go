@@ -936,7 +936,20 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 }
 
 func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
-	a.s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Ver)), api.UpdateCapability, shouldApplyV3)
+	prevVersion := a.s.Cluster().Version()
+	newVersion := semver.Must(semver.NewVersion(r.Ver))
+	a.s.cluster.SetVersion(newVersion, api.UpdateCapability, shouldApplyV3)
+	// Force snapshot after cluster version downgrade.
+	if prevVersion != nil && newVersion.LessThan(*prevVersion) {
+		lg := a.s.Logger()
+		if lg != nil {
+			lg.Info("Cluster version downgrade detected, forcing snapshot",
+				zap.String("prev-cluster-version", prevVersion.String()),
+				zap.String("new-cluster-version", newVersion.String()),
+			)
+		}
+		a.s.forceSnapshot = true
+	}
 }
 
 func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
