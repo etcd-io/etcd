@@ -177,13 +177,13 @@ func (s *simplePrinter) MoveLeader(leader, target uint64, r v3.MoveLeaderRespons
 }
 
 func (s *simplePrinter) DowngradeValidate(r v3.DowngradeResponse) {
-	fmt.Printf("Downgrade validate success, cluster version %s", r.Version)
+	fmt.Printf("Downgrade validate success, cluster version %s\n", r.Version)
 }
 func (s *simplePrinter) DowngradeEnable(r v3.DowngradeResponse) {
-	fmt.Printf("Downgrade enable success, cluster version %s", r.Version)
+	fmt.Printf("Downgrade enable success, cluster version %s\n", r.Version)
 }
 func (s *simplePrinter) DowngradeCancel(r v3.DowngradeResponse) {
-	fmt.Printf("Downgrade cancel success, cluster version %s", r.Version)
+	fmt.Printf("Downgrade cancel success, cluster version %s\n", r.Version)
 }
 
 func (s *simplePrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) {

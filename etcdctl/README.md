@@ -1116,10 +1116,10 @@ DOWNGRADE VALIDATE validate downgrade capability before starting downgrade.
 #### Example
 
 ```bash
-./etcdctl downgrade validate 3.5.0
-Downgrade validate success, cluster version 3.6.0
+./etcdctl downgrade validate 3.5
+Downgrade validate success, cluster version 3.6
 
-./etcdctl downgrade validate 3.4.0
+./etcdctl downgrade validate 3.4
 Error: etcdserver: invalid downgrade target version
 
 ```
@@ -1131,8 +1131,8 @@ DOWNGRADE ENABLE starts a downgrade action to cluster.
 #### Example
 
 ```bash
-./etcdctl downgrade enable 3.5.0
-Downgrade enable success, cluster version 3.6.0
+./etcdctl downgrade enable 3.5
+Downgrade enable success, cluster version 3.6
 ```
 
 ### DOWNGRADE CANCEL \<TARGET_VERSION\>
@@ -1143,7 +1143,7 @@ DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
 
 ```bash
 ./etcdctl downgrade cancel
-Downgrade cancel success, cluster version 3.6.0
+Downgrade cancel success, cluster version 3.5
 ```
 
 ## Concurrency commands
