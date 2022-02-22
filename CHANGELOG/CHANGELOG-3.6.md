@@ -20,6 +20,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13133).
 - When print endpoint status, [show db size in use](https://github.com/etcd-io/etcd/pull/13639)
+- [Always print the raft_term in decimal](https://github.com/etcd-io/etcd/pull/13711) when displaying member list in json.
 
 ### etcdutl v3
 
