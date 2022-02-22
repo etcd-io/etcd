@@ -110,7 +110,7 @@ func (p *proxyEtcdProcess) Close() error {
 }
 
 func (p *proxyEtcdProcess) WithStopSignal(sig os.Signal) os.Signal {
-	p.proxyV3.WithStopSignal(sig)
+	p.proxyV2.WithStopSignal(sig)
 	p.proxyV3.WithStopSignal(sig)
 	return p.etcdProc.WithStopSignal(sig)
 }
