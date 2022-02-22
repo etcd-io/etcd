@@ -1085,7 +1085,29 @@ echo ${transferee_id}
 
 ### DOWNGRADE \<subcommand\>
 
-Downgrade provides commands to downgrade cluster version.
+NOTICE: Downgrades is an experimental feature in v3.6 and is not recommended for production clusters.
+
+Downgrade provides commands to downgrade cluster.
+Normally etcd members cannot be downgraded due to cluster version mechanism.
+
+After initial bootstrap, cluster members agree on the cluster version. Every 5 seconds, leader checks versions of all members and picks lowers minor version.
+New members will refuse joining cluster with cluster version newer than theirs, thus preventing cluster from downgrading.
+Downgrade commands allow cluster administrator to force cluster version to be lowered to previous minor version, thus allowing to downgrade the cluster.
+
+Downgrade should be is executed in stages:
+1. Verify that cluster is ready be downgraded by running `etcdctl downgrade validate <TARGET_VERSION>`
+2. Start the downgrade process by running `etcdctl downgrade enable <TARGET_VERSION>`
+3. For each cluster member:
+   1. Ensure that member is ready for downgrade by confirming that it wrote `The server is ready to downgrade` log.
+   2. Replace member binary with one with older version.
+   3. Confirm that member has correctly started and joined the cluster.
+4. Ensure that downgrade process has succeeded by checking leader log for `the cluster has been downgraded`
+
+Downgrade can be canceled by running `etcdctl downgrade cancel` command.
+
+In case of downgrade being canceled, cluster version will return to its normal behavior (pick the lowest member minor version).
+If no members were downgraded, cluster version will return to original value.
+If at least one member was downgraded, cluster version will stay at the `<TARGET_VALUE>` until downgraded members are upgraded back.
 
 ### DOWNGRADE VALIDATE \<TARGET_VERSION\>
 
