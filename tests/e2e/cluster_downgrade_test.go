@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -23,7 +22,6 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -79,20 +77,13 @@ func startEtcd(t *testing.T, execPath, dataDirPath string) *e2e.EtcdProcessClust
 
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Version) {
 	t.Log("etcdctl downgrade...")
-	c, err := clientv3.New(clientv3.Config{
-		Endpoints: epc.EndpointsV3(),
+	c := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	e2e.ExecuteWithTimeout(t, 20*time.Second, func() {
+		err := c.DowngradeEnable(ver.String())
+		if err != nil {
+			t.Fatal(err)
+		}
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	_, err = c.Downgrade(ctx, 1, ver.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	cancel()
-
 }
 
 func stopEtcd(t *testing.T, epc *e2e.EtcdProcessCluster) {

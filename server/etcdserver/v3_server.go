@@ -23,6 +23,7 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -922,7 +923,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 	if cv == nil {
 		return nil, ErrClusterVersionUnavailable
 	}
-	resp.Version = cv.String()
+	resp.Version = version.Cluster(cv.String())
 	err = s.Version().DowngradeValidate(ctx, targetVersion)
 	if err != nil {
 		return nil, err
@@ -943,7 +944,7 @@ func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest
 		lg.Warn("reject downgrade request", zap.Error(err))
 		return nil, err
 	}
-	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	resp := pb.DowngradeResponse{Version: version.Cluster(s.ClusterVersion().String())}
 	return &resp, nil
 }
 
@@ -952,6 +953,6 @@ func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse
 	if err != nil {
 		s.lg.Warn("failed to cancel downgrade", zap.Error(err))
 	}
-	resp := pb.DowngradeResponse{Version: s.ClusterVersion().String()}
+	resp := pb.DowngradeResponse{Version: version.Cluster(s.ClusterVersion().String())}
 	return &resp, nil
 }

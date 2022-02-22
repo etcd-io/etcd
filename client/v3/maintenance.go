@@ -33,6 +33,14 @@ type (
 	HashKVResponse     pb.HashKVResponse
 	MoveLeaderResponse pb.MoveLeaderResponse
 	DowngradeResponse  pb.DowngradeResponse
+
+	DowngradeAction pb.DowngradeRequest_DowngradeAction
+)
+
+const (
+	DowngradeValidate = DowngradeAction(pb.DowngradeRequest_VALIDATE)
+	DowngradeEnable   = DowngradeAction(pb.DowngradeRequest_ENABLE)
+	DowngradeCancel   = DowngradeAction(pb.DowngradeRequest_CANCEL)
 )
 
 type Maintenance interface {
@@ -76,12 +84,8 @@ type Maintenance interface {
 
 	// Downgrade requests downgrades, verifies feasibility or cancels downgrade
 	// on the cluster version.
-	// action is one of the following:
-	// VALIDATE = 0;
-	// ENABLE = 1;
-	// CANCEL = 2;
 	// Supported since etcd 3.5.
-	Downgrade(ctx context.Context, action int32, version string) (*DowngradeResponse, error)
+	Downgrade(ctx context.Context, action DowngradeAction, version string) (*DowngradeResponse, error)
 }
 
 // SnapshotResponse is aggregated response from the snapshot stream.
@@ -337,14 +341,14 @@ func (m *maintenance) MoveLeader(ctx context.Context, transfereeID uint64) (*Mov
 	return (*MoveLeaderResponse)(resp), toErr(ctx, err)
 }
 
-func (m *maintenance) Downgrade(ctx context.Context, action int32, version string) (*DowngradeResponse, error) {
-	actionType := pb.DowngradeRequest_VALIDATE
+func (m *maintenance) Downgrade(ctx context.Context, action DowngradeAction, version string) (*DowngradeResponse, error) {
+	var actionType pb.DowngradeRequest_DowngradeAction
 	switch action {
-	case 0:
+	case DowngradeValidate:
 		actionType = pb.DowngradeRequest_VALIDATE
-	case 1:
+	case DowngradeEnable:
 		actionType = pb.DowngradeRequest_ENABLE
-	case 2:
+	case DowngradeCancel:
 		actionType = pb.DowngradeRequest_CANCEL
 	default:
 		return nil, errors.New("etcdclient: unknown downgrade action")
