@@ -13,7 +13,12 @@ The minimum recommended etcd versions to run in **production** are 3.3.18+, 3.4.
 - Fix [Provide a better liveness probe for when etcd runs as a Kubernetes pod](https://github.com/etcd-io/etcd/pull/13706)
 
 ### package `client/pkg/v3`
+
 - [Trim the suffix dot from the target](https://github.com/etcd-io/etcd/pull/13714) in SRV records returned by DNS lookup
+
+### etcdctl v3
+
+- [Always print the raft_term in decimal](https://github.com/etcd-io/etcd/pull/13727) when displaying member list in json.
 
 <hr>
 
