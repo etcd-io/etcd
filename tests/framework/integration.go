@@ -24,17 +24,17 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-type integrationFramework struct{}
+type integrationRunner struct{}
 
-func (e integrationFramework) TestMain(m *testing.M) {
+func (e integrationRunner) TestMain(m *testing.M) {
 	testutil.MustTestMainWithLeakDetection(m)
 }
 
-func (e integrationFramework) BeforeTest(t testing.TB) {
+func (e integrationRunner) BeforeTest(t testing.TB) {
 	integration.BeforeTest(t)
 }
 
-func (e integrationFramework) NewCluster(t testing.TB) Cluster {
+func (e integrationRunner) NewCluster(t testing.TB) Cluster {
 	return &integrationCluster{
 		Cluster: integration.NewCluster(t, &integration.ClusterConfig{Size: 1}),
 		t:       t,

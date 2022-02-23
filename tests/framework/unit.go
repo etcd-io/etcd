@@ -23,11 +23,11 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
-type noFrameworkSelected struct{}
+type unitRunner struct{}
 
-var _ testFramework = (*noFrameworkSelected)(nil)
+var _ testRunner = (*unitRunner)(nil)
 
-func (e noFrameworkSelected) TestMain(m *testing.M) {
+func (e unitRunner) TestMain(m *testing.M) {
 	flag.Parse()
 	if !testing.Short() {
 		fmt.Println(`No test mode selected, please selected either e2e mode with "--tags e2e" or integration mode with "--tags integration"`)
@@ -35,10 +35,10 @@ func (e noFrameworkSelected) TestMain(m *testing.M) {
 	}
 }
 
-func (e noFrameworkSelected) BeforeTest(t testing.TB) {
-	testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
+func (e unitRunner) BeforeTest(t testing.TB) {
 }
 
-func (e noFrameworkSelected) NewCluster(t testing.TB) Cluster {
+func (e unitRunner) NewCluster(t testing.TB) Cluster {
+	testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
 	return nil
 }

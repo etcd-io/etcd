@@ -22,8 +22,8 @@ import (
 )
 
 func TestKVPut(t *testing.T) {
-	testFramework.BeforeTest(t)
-	clus := testFramework.NewCluster(t)
+	testRunner.BeforeTest(t)
+	clus := testRunner.NewCluster(t)
 	defer clus.Close()
 	cc := clus.Client()
 

@@ -20,8 +20,8 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework"
 )
 
-var testFramework = framework.TestFramework
+var testRunner = framework.UnitTestRunner
 
 func TestMain(m *testing.M) {
-	testFramework.TestMain(m)
+	testRunner.TestMain(m)
 }

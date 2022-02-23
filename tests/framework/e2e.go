@@ -24,9 +24,9 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-type e2eFramework struct{}
+type e2eRunner struct{}
 
-func (e e2eFramework) TestMain(m *testing.M) {
+func (e e2eRunner) TestMain(m *testing.M) {
 	e2e.InitFlags()
 	v := m.Run()
 	if v == 0 && testutil.CheckLeakedGoroutine() {
@@ -35,11 +35,11 @@ func (e e2eFramework) TestMain(m *testing.M) {
 	os.Exit(v)
 }
 
-func (e e2eFramework) BeforeTest(t testing.TB) {
+func (e e2eRunner) BeforeTest(t testing.TB) {
 	e2e.BeforeTest(t)
 }
 
-func (e e2eFramework) NewCluster(t testing.TB) Cluster {
+func (e e2eRunner) NewCluster(t testing.TB) Cluster {
 	epc, err := e2e.NewEtcdProcessCluster(t, e2e.ConfigStandalone(*e2e.NewConfigAutoTLS()))
 	if err != nil {
 		t.Fatalf("could not start etcd integrationCluster: %s", err)

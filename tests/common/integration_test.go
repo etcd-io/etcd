@@ -22,5 +22,5 @@ import (
 )
 
 func init() {
-	testFramework = framework.RunIntegrationTests
+	testRunner = framework.IntegrationTestRunner
 }

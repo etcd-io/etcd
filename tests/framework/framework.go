@@ -15,7 +15,10 @@
 package framework
 
 var (
-	TestFramework       testFramework = noFrameworkSelected{}
-	RunE2eTests         testFramework = e2eFramework{}
-	RunIntegrationTests testFramework = integrationFramework{}
+	// UnitTestRunner only runs in `--short` mode, will fail otherwise. Attempts in cluster creation will result in tests being skipped.
+	UnitTestRunner testRunner = unitRunner{}
+	// E2eTestRunner runs etcd and etcdctl binaries in a separate process.
+	E2eTestRunner = e2eRunner{}
+	// IntegrationTestRunner runs etcdserver.EtcdServer in separate goroutine and uses client libraries to communicate.
+	IntegrationTestRunner = integrationRunner{}
 )

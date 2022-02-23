@@ -21,7 +21,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-type testFramework interface {
+type testRunner interface {
 	TestMain(m *testing.M)
 	BeforeTest(testing.TB)
 	NewCluster(testing.TB) Cluster

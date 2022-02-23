@@ -20,5 +20,5 @@ package common
 import "go.etcd.io/etcd/tests/v3/framework"
 
 func init() {
-	testFramework = framework.RunE2eTests
+	testRunner = framework.E2eTestRunner
 }
