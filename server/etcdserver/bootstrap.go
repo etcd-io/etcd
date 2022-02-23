@@ -329,10 +329,12 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*
 	}
 	if cfg.ShouldDiscover() {
 		var str string
-		if cfg.EnableV2Discovery {
+		if cfg.DiscoveryURL != "" {
+			cfg.Logger.Warn("V2 discovery is deprecated!")
 			str, err = v2discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
 		} else {
-			str, err = v3discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, &cfg.DiscoveryCfg, m.ID, cfg.InitialPeerURLsMap.String())
+			cfg.Logger.Info("Bootstrapping cluster using v3 discovery.")
+			str, err = v3discovery.JoinCluster(cfg.Logger, &cfg.DiscoveryCfg, m.ID, cfg.InitialPeerURLsMap.String())
 		}
 		if err != nil {
 			return nil, &DiscoveryError{Op: "join", Err: err}

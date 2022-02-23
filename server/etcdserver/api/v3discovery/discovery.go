@@ -22,7 +22,6 @@ import (
 	"errors"
 
 	"math"
-	"net/url"
 	"path"
 	"sort"
 	"strconv"
@@ -56,7 +55,8 @@ var (
 )
 
 type DiscoveryConfig struct {
-	Url string `json:"discovery"`
+	Token     string   `json:"discovery-token"`
+	Endpoints []string `json:"discovery-endpoints"`
 
 	DialTimeout      time.Duration `json:"discovery-dial-timeout"`
 	RequestTimeOut   time.Duration `json:"discovery-request-timeout"`
@@ -110,10 +110,10 @@ func getMemberKey(cluster, memberId string) string {
 	return path.Join(getMemberKeyPrefix(cluster), memberId)
 }
 
-// GetCluster will connect to the discovery service at the given url and
+// GetCluster will connect to the discovery service at the given endpoints and
 // retrieve a string describing the cluster
-func GetCluster(lg *zap.Logger, dUrl string, cfg *DiscoveryConfig) (cs string, rerr error) {
-	d, err := newDiscovery(lg, dUrl, cfg, 0)
+func GetCluster(lg *zap.Logger, cfg *DiscoveryConfig) (cs string, rerr error) {
+	d, err := newDiscovery(lg, cfg, 0)
 	if err != nil {
 		return "", err
 	}
@@ -137,15 +137,15 @@ func GetCluster(lg *zap.Logger, dUrl string, cfg *DiscoveryConfig) (cs string, r
 	return d.getCluster()
 }
 
-// JoinCluster will connect to the discovery service at the given url, and
+// JoinCluster will connect to the discovery service at the endpoints, and
 // register the server represented by the given id and config to the cluster.
 // The parameter `config` is supposed to be in the format "memberName=peerURLs",
 // such as "member1=http://127.0.0.1:2380".
 //
 // The final returned string has the same format as "--initial-cluster", such as
 // "infra1=http://127.0.0.1:12380,infra2=http://127.0.0.1:22380,infra3=http://127.0.0.1:32380".
-func JoinCluster(lg *zap.Logger, durl string, cfg *DiscoveryConfig, id types.ID, config string) (cs string, rerr error) {
-	d, err := newDiscovery(lg, durl, cfg, id)
+func JoinCluster(lg *zap.Logger, cfg *DiscoveryConfig, id types.ID, config string) (cs string, rerr error) {
+	d, err := newDiscovery(lg, cfg, id)
 	if err != nil {
 		return "", err
 	}
@@ -175,26 +175,19 @@ type discovery struct {
 	memberId     types.ID
 	c            *clientv3.Client
 	retries      uint
-	durl         string
 
 	cfg *DiscoveryConfig
 
 	clock clockwork.Clock
 }
 
-func newDiscovery(lg *zap.Logger, durl string, dcfg *DiscoveryConfig, id types.ID) (*discovery, error) {
+func newDiscovery(lg *zap.Logger, dcfg *DiscoveryConfig, id types.ID) (*discovery, error) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
-	u, err := url.Parse(durl)
-	if err != nil {
-		return nil, err
-	}
-	token := u.Path
-	u.Path = ""
 
-	lg = lg.With(zap.String("discovery-url", durl))
-	cfg, err := newClientCfg(dcfg, u.String(), lg)
+	lg = lg.With(zap.String("discovery-token", dcfg.Token), zap.String("discovery-endpoints", strings.Join(dcfg.Endpoints, ",")))
+	cfg, err := newClientCfg(dcfg, lg)
 	if err != nil {
 		return nil, err
 	}
@@ -205,10 +198,9 @@ func newDiscovery(lg *zap.Logger, durl string, dcfg *DiscoveryConfig, id types.I
 	}
 	return &discovery{
 		lg:           lg,
-		clusterToken: token,
+		clusterToken: dcfg.Token,
 		memberId:     id,
 		c:            c,
-		durl:         u.String(),
 		cfg:          dcfg,
 		clock:        clockwork.NewRealClock(),
 	}, nil
@@ -216,7 +208,7 @@ func newDiscovery(lg *zap.Logger, durl string, dcfg *DiscoveryConfig, id types.I
 
 // The following function follows the same logic as etcdctl, refer to
 // https://github.com/etcd-io/etcd/blob/f9a8c49c695b098d66a07948666664ea10d01a82/etcdctl/ctlv3/command/global.go#L191-L250
-func newClientCfg(dcfg *DiscoveryConfig, dUrl string, lg *zap.Logger) (*clientv3.Config, error) {
+func newClientCfg(dcfg *DiscoveryConfig, lg *zap.Logger) (*clientv3.Config, error) {
 	var cfgtls *transport.TLSInfo
 
 	if dcfg.CertFile != "" || dcfg.KeyFile != "" || dcfg.TrustedCAFile != "" {
@@ -229,7 +221,7 @@ func newClientCfg(dcfg *DiscoveryConfig, dUrl string, lg *zap.Logger) (*clientv3
 	}
 
 	cfg := &clientv3.Config{
-		Endpoints:            []string{dUrl},
+		Endpoints:            dcfg.Endpoints,
 		DialTimeout:          dcfg.DialTimeout,
 		DialKeepAliveTime:    dcfg.KeepAliveTime,
 		DialKeepAliveTimeout: dcfg.KeepAliveTimeout,

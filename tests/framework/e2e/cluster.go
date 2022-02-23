@@ -170,7 +170,11 @@ type EtcdProcessClusterConfig struct {
 	V2deprecation       string
 
 	RollingStart bool
-	Discovery    string
+
+	Discovery string // v2 discovery
+
+	DiscoveryEndpoints []string // v3 discovery
+	DiscoveryToken     string
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -348,11 +352,18 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 	}
 
-	if cfg.Discovery == "" {
+	if cfg.Discovery == "" && len(cfg.DiscoveryEndpoints) == 0 {
 		for i := range etcdCfgs {
 			initialClusterArgs := []string{"--initial-cluster", strings.Join(initialCluster, ",")}
 			etcdCfgs[i].InitialCluster = strings.Join(initialCluster, ",")
 			etcdCfgs[i].Args = append(etcdCfgs[i].Args, initialClusterArgs...)
+		}
+	}
+
+	if len(cfg.DiscoveryEndpoints) > 0 {
+		for i := range etcdCfgs {
+			etcdCfgs[i].Args = append(etcdCfgs[i].Args, fmt.Sprintf("--discovery-token=%s", cfg.DiscoveryToken))
+			etcdCfgs[i].Args = append(etcdCfgs[i].Args, fmt.Sprintf("--discovery-endpoints=%s", strings.Join(cfg.DiscoveryEndpoints, ",")))
 		}
 	}
 

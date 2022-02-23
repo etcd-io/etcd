@@ -196,8 +196,8 @@ func startEtcdOrProxyV2(args []string) {
 			if types.URLs(cfg.ec.APUrls).String() == embed.DefaultInitialAdvertisePeerURLs {
 				lg.Warn("forgot to set --initial-advertise-peer-urls?")
 			}
-			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) && len(cfg.ec.Durl) == 0 {
-				lg.Warn("--discovery flag is not set")
+			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) && len(cfg.ec.Durl) == 0 && len(cfg.ec.DiscoveryCfg.Endpoints) == 0 {
+				lg.Warn("V2 discovery settings (i.e., --discovery) or v3 discovery settings (i.e., --discovery-token, --discovery-endpoints) are not set")
 			}
 			os.Exit(1)
 		}
@@ -287,7 +287,7 @@ func startProxy(cfg *config) error {
 	b, err := os.ReadFile(clusterfile)
 	switch {
 	case err == nil:
-		if cfg.ec.Durl != "" {
+		if cfg.ec.Durl != "" || len(cfg.ec.DiscoveryCfg.Endpoints) > 0 {
 			lg.Warn(
 				"discovery token ignored since the proxy has already been initialized; valid cluster file found",
 				zap.String("cluster-file", clusterfile),
@@ -318,21 +318,22 @@ func startProxy(cfg *config) error {
 			return fmt.Errorf("error setting up initial cluster: %v", err)
 		}
 
+		var s string
 		if cfg.ec.Durl != "" {
-			var s string
-			if cfg.ec.EnableV2Discovery {
-				lg.Warn("V2 discovery is deprecated!")
-				s, err = v2discovery.GetCluster(lg, cfg.ec.Durl, cfg.ec.Dproxy)
-			} else {
-				s, err = v3discovery.GetCluster(lg, cfg.ec.Durl, &cfg.ec.DiscoveryCfg)
-			}
-			if err != nil {
-				return err
-			}
+			lg.Warn("V2 discovery is deprecated!")
+			s, err = v2discovery.GetCluster(lg, cfg.ec.Durl, cfg.ec.Dproxy)
+		} else if len(cfg.ec.DiscoveryCfg.Endpoints) > 0 {
+			s, err = v3discovery.GetCluster(lg, &cfg.ec.DiscoveryCfg)
+		}
+		if err != nil {
+			return err
+		}
+		if s != "" {
 			if urlsmap, err = types.NewURLsMap(s); err != nil {
 				return err
 			}
 		}
+
 		peerURLs = urlsmap.URLs()
 		lg.Info("proxy using peer URLS", zap.Strings("peer-urls", peerURLs))
 

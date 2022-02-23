@@ -37,10 +37,9 @@ import (
 type ServerConfig struct {
 	Name string
 
-	EnableV2Discovery bool
-	DiscoveryURL      string
-	DiscoveryProxy    string
-	DiscoveryCfg      v3discovery.DiscoveryConfig
+	DiscoveryURL   string
+	DiscoveryProxy string
+	DiscoveryCfg   v3discovery.DiscoveryConfig
 
 	ClientURLs types.URLs
 	PeerURLs   types.URLs
@@ -309,7 +308,9 @@ func (c *ServerConfig) WALDir() string {
 
 func (c *ServerConfig) SnapDir() string { return filepath.Join(c.MemberDir(), "snap") }
 
-func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
+func (c *ServerConfig) ShouldDiscover() bool {
+	return c.DiscoveryURL != "" || len(c.DiscoveryCfg.Endpoints) > 0
+}
 
 // ReqTimeout returns timeout for request to finish.
 func (c *ServerConfig) ReqTimeout() time.Duration {
