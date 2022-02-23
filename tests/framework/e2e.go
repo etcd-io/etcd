@@ -64,5 +64,5 @@ func (c e2eClient) Get(key string, opts ...testutils.GetOption) (*clientv3.GetRe
 	for _, opt := range opts {
 		opt(&o)
 	}
-	return c.EtcdctlV3.Get(key, o.Serializable)
+	return c.EtcdctlV3.Get(key, o)
 }

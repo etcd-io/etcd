@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 type EtcdctlV3 struct {
@@ -38,9 +39,9 @@ func (ctl *EtcdctlV3) DowngradeEnable(version string) error {
 	return SpawnWithExpect(ctl.cmdArgs("downgrade", "enable", version), "Downgrade enable success")
 }
 
-func (ctl *EtcdctlV3) Get(key string, serializable bool) (*clientv3.GetResponse, error) {
+func (ctl *EtcdctlV3) Get(key string, o testutils.GetOptions) (*clientv3.GetResponse, error) {
 	args := ctl.cmdArgs()
-	if serializable {
+	if o.Serializable {
 		args = append(args, "--consistency", "s")
 	}
 	cmd, err := SpawnCmd(append(args, "get", key, "-w", "json"), nil)
