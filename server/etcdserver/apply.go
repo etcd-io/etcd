@@ -18,10 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"sort"
-	"strconv"
-	"time"
-
 	"github.com/coreos/go-semver/semver"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
@@ -35,6 +31,8 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"sort"
+	"strconv"
 
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
@@ -135,14 +133,14 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult {
 	op := "unknown"
 	ar := &applyResult{}
-	defer func(start time.Time) {
+	defer func(tr *TimeRecorder) {
 		success := ar.err == nil || ar.err == mvcc.ErrCompacted
-		applySec.WithLabelValues(v3Version, op, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		warnOfExpensiveRequest(a.s.Logger(), a.s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
+		applySec.WithLabelValues(v3Version, op, strconv.FormatBool(success)).Observe(tr.TotalDuration().Seconds())
+		warnOfExpensiveRequest(a.s.Logger(), a.s.Cfg.WarningApplyDuration, tr, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		if !success {
-			warnOfFailedRequest(a.s.Logger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
+			warnOfFailedRequest(a.s.Logger(), tr.GetStart(), &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
 		}
-	}(time.Now())
+	}(NewTimeRecorder())
 
 	switch {
 	case r.ClusterVersionSet != nil: // Implemented in 3.5.x

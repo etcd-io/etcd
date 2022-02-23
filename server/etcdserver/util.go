@@ -103,15 +103,15 @@ func (nc *notifier) notify(err error) {
 	close(nc.c)
 }
 
-func warnOfExpensiveRequest(lg *zap.Logger, warningApplyDuration time.Duration, now time.Time, reqStringer fmt.Stringer, respMsg proto.Message, err error) {
-	if time.Since(now) <= warningApplyDuration {
+func warnOfExpensiveRequest(lg *zap.Logger, warningApplyDuration time.Duration, tr *TimeRecorder, reqStringer fmt.Stringer, respMsg proto.Message, err error) {
+	if tr.TotalDuration() <= warningApplyDuration {
 		return
 	}
 	var resp string
 	if !isNil(respMsg) {
 		resp = fmt.Sprintf("size:%d", proto.Size(respMsg))
 	}
-	warnOfExpensiveGenericRequest(lg, warningApplyDuration, now, reqStringer, "", resp, err)
+	warnOfExpensiveGenericRequest(lg, warningApplyDuration, tr, reqStringer, "", resp, err)
 }
 
 func warnOfFailedRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer, respMsg proto.Message, err error) {
@@ -129,8 +129,8 @@ func warnOfFailedRequest(lg *zap.Logger, now time.Time, reqStringer fmt.Stringer
 	)
 }
 
-func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, warningApplyDuration time.Duration, now time.Time, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
-	if time.Since(now) <= warningApplyDuration {
+func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, warningApplyDuration time.Duration, tr *TimeRecorder, r *pb.TxnRequest, txnResponse *pb.TxnResponse, err error) {
+	if tr.TotalDuration() <= warningApplyDuration {
 		return
 	}
 	reqStringer := pb.NewLoggableTxnRequest(r)
@@ -147,25 +147,25 @@ func warnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, warningApplyDuration time
 		}
 		resp = fmt.Sprintf("responses:<%s> size:%d", strings.Join(resps, " "), txnResponse.Size())
 	}
-	warnOfExpensiveGenericRequest(lg, warningApplyDuration, now, reqStringer, "read-only txn ", resp, err)
+	warnOfExpensiveGenericRequest(lg, warningApplyDuration, tr, reqStringer, "read-only txn ", resp, err)
 }
 
-func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, warningApplyDuration time.Duration, now time.Time, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
-	if time.Since(now) <= warningApplyDuration {
+func warnOfExpensiveReadOnlyRangeRequest(lg *zap.Logger, warningApplyDuration time.Duration, tr *TimeRecorder, reqStringer fmt.Stringer, rangeResponse *pb.RangeResponse, err error) {
+	if tr.TotalDuration() <= warningApplyDuration {
 		return
 	}
 	var resp string
 	if !isNil(rangeResponse) {
 		resp = fmt.Sprintf("range_response_count:%d size:%d", len(rangeResponse.Kvs), rangeResponse.Size())
 	}
-	warnOfExpensiveGenericRequest(lg, warningApplyDuration, now, reqStringer, "read-only range ", resp, err)
+	warnOfExpensiveGenericRequest(lg, warningApplyDuration, tr, reqStringer, "read-only range ", resp, err)
 }
 
 // callers need make sure time has passed warningApplyDuration
-func warnOfExpensiveGenericRequest(lg *zap.Logger, warningApplyDuration time.Duration, now time.Time, reqStringer fmt.Stringer, prefix string, resp string, err error) {
+func warnOfExpensiveGenericRequest(lg *zap.Logger, warningApplyDuration time.Duration, tr *TimeRecorder, reqStringer fmt.Stringer, prefix string, resp string, err error) {
 	lg.Warn(
 		"apply request took too long",
-		zap.Duration("took", time.Since(now)),
+		zap.String("took", tr.String()),
 		zap.Duration("expected-duration", warningApplyDuration),
 		zap.String("prefix", prefix),
 		zap.String("request", reqStringer.String()),
@@ -195,4 +195,52 @@ func (n panicAlternativeStringer) String() (s string) {
 	}()
 	s = n.stringer.String()
 	return s
+}
+
+type TimeRecorder struct {
+	// start is the earliest time point.
+	start time.Time
+	// timeMap saves some time points, each of which has a name (the key).
+	timeMap map[string]time.Time
+}
+
+// NewTimeRecorder creates an instance of TimeRecorder
+func NewTimeRecorder() *TimeRecorder {
+	return &TimeRecorder{
+		start:   time.Now(),
+		timeMap: make(map[string]time.Time),
+	}
+}
+
+// GetStart returns the start time.
+func (tr *TimeRecorder) GetStart() time.Time {
+	return tr.start
+}
+
+// SetStart sets a start time, by default it's TimeRecorder's creation time.
+func (tr *TimeRecorder) SetStart(t time.Time) {
+	tr.start = t
+}
+
+// AddTime saves the time with name into the map.
+func (tr *TimeRecorder) AddTime(name string, t time.Time) {
+	tr.timeMap[name] = t
+}
+
+func (tr *TimeRecorder) TotalDuration() time.Duration {
+	return time.Since(tr.start)
+}
+
+func (tr *TimeRecorder) String() string {
+	var timeDurations []string
+
+	rightNow := time.Now()
+
+	timeDurations = append(timeDurations, fmt.Sprintf("total: %s", rightNow.Sub(tr.start)))
+
+	for k, v := range tr.timeMap {
+		timeDurations = append(timeDurations, fmt.Sprintf("%s: %s", k, rightNow.Sub(v)))
+	}
+
+	return strings.Join(timeDurations, ",")
 }

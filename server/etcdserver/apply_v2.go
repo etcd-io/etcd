@@ -122,11 +122,11 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 		stringer:    r,
 		alternative: func() string { return fmt.Sprintf("id:%d,method:%s,path:%s", r.ID, r.Method, r.Path) },
 	}
-	defer func(start time.Time) {
+	defer func(tr *TimeRecorder) {
 		success := resp.Err == nil
-		applySec.WithLabelValues(v2Version, r.Method, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		warnOfExpensiveRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, stringer, nil, nil)
-	}(time.Now())
+		applySec.WithLabelValues(v2Version, r.Method, strconv.FormatBool(success)).Observe(tr.TotalDuration().Seconds())
+		warnOfExpensiveRequest(s.Logger(), s.Cfg.WarningApplyDuration, tr, stringer, nil, nil)
+	}(NewTimeRecorder())
 
 	switch r.Method {
 	case "POST":

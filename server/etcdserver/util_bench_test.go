@@ -45,6 +45,6 @@ func BenchmarkWarnOfExpensiveRequestNoLog(b *testing.B) {
 	}
 	err := errors.New("benchmarking warn of expensive request")
 	for n := 0; n < b.N; n++ {
-		warnOfExpensiveRequest(testLogger, time.Second, time.Now(), nil, m, err)
+		warnOfExpensiveRequest(testLogger, time.Second, NewTimeRecorder(), nil, m, err)
 	}
 }

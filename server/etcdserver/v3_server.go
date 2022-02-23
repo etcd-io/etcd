@@ -102,8 +102,9 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 
 	var resp *pb.RangeResponse
 	var err error
-	defer func(start time.Time) {
-		warnOfExpensiveReadOnlyRangeRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, r, resp, err)
+	timeRecorder := NewTimeRecorder()
+	defer func(tr *TimeRecorder) {
+		warnOfExpensiveReadOnlyRangeRequest(s.Logger(), s.Cfg.WarningApplyDuration, tr, r, resp, err)
 		if resp != nil {
 			trace.AddField(
 				traceutil.Field{Key: "response_count", Value: len(resp.Kvs)},
@@ -111,7 +112,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 			)
 		}
 		trace.LogIfLong(traceThreshold)
-	}(time.Now())
+	}(timeRecorder)
 
 	if !r.Serializable {
 		err = s.linearizableReadNotify(ctx)
@@ -120,6 +121,8 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 			return nil, err
 		}
 	}
+	timeRecorder.AddTime("store-range", time.Now())
+
 	chk := func(ai *auth.AuthInfo) error {
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
@@ -155,6 +158,16 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 			s.Logger(),
 			traceutil.Field{Key: "read_only", Value: true},
 		)
+
+		var resp *pb.TxnResponse
+		var err error
+
+		timeRecorder := NewTimeRecorder()
+		defer func(tr *TimeRecorder) {
+			warnOfExpensiveReadOnlyTxnRequest(s.Logger(), s.Cfg.WarningApplyDuration, tr, r, resp, err)
+			trace.LogIfLong(traceThreshold)
+		}(timeRecorder)
+
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 		if !isTxnSerializable(r) {
 			err := s.linearizableReadNotify(ctx)
@@ -163,16 +176,11 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 				return nil, err
 			}
 		}
-		var resp *pb.TxnResponse
-		var err error
+		timeRecorder.AddTime("store-txn", time.Now())
+
 		chk := func(ai *auth.AuthInfo) error {
 			return checkTxnAuth(s.authStore, ai, r)
 		}
-
-		defer func(start time.Time) {
-			warnOfExpensiveReadOnlyTxnRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, r, resp, err)
-			trace.LogIfLong(traceThreshold)
-		}(time.Now())
 
 		get := func() { resp, _, err = s.applyV3Base.Txn(ctx, r) }
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
