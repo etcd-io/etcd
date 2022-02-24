@@ -36,11 +36,7 @@ func TestCtlV3GetRev(t *testing.T)       { testCtl(t, getRevTest) }
 func TestCtlV3GetKeysOnly(t *testing.T)  { testCtl(t, getKeysOnlyTest) }
 func TestCtlV3GetCountOnly(t *testing.T) { testCtl(t, getCountOnlyTest) }
 
-func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
-func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(*e2e.NewConfigNoTLS())) }
-func TestCtlV3DelClientTLS(t *testing.T) { testCtl(t, delTest, withCfg(*e2e.NewConfigClientTLS())) }
-func TestCtlV3DelPeerTLS(t *testing.T)   { testCtl(t, delTest, withCfg(*e2e.NewConfigPeerTLS())) }
-func TestCtlV3DelTimeout(t *testing.T)   { testCtl(t, delTest, withDialTimeout(0)) }
+func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDialTimeout(0)) }
 
 func TestCtlV3GetRevokedCRL(t *testing.T) {
 	cfg := e2e.EtcdProcessClusterConfig{

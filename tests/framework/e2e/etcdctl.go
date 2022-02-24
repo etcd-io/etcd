@@ -98,7 +98,7 @@ func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetRespons
 		_, err := cmd.Expect("Count")
 		return &resp, err
 	}
-	line, err := cmd.Expect("kvs")
+	line, err := cmd.Expect("header")
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +108,31 @@ func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetRespons
 
 func (ctl *EtcdctlV3) Put(key, value string) error {
 	return SpawnWithExpect(ctl.cmdArgs("put", key, value), "OK")
+}
+
+func (ctl *EtcdctlV3) Delete(key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "del", key, "-w", "json")
+	if o.End != "" {
+		args = append(args, o.End)
+	}
+	if o.Prefix {
+		args = append(args, "--prefix")
+	}
+	if o.FromKey {
+		args = append(args, "--from-key")
+	}
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.DeleteResponse
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
 }
 
 func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {

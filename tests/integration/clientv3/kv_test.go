@@ -358,27 +358,6 @@ func TestKVDeleteRange(t *testing.T) {
 
 		wkeys []string
 	}{
-		// [a, c)
-		{
-			key:  "a",
-			opts: []clientv3.OpOption{clientv3.WithRange("c")},
-
-			wkeys: []string{"c", "c/abc", "d"},
-		},
-		// >= c
-		{
-			key:  "c",
-			opts: []clientv3.OpOption{clientv3.WithFromKey()},
-
-			wkeys: []string{"a", "b"},
-		},
-		// c*
-		{
-			key:  "c",
-			opts: []clientv3.OpOption{clientv3.WithPrefix()},
-
-			wkeys: []string{"a", "b", "d"},
-		},
 		// *
 		{
 			key:  "\x00",
@@ -412,38 +391,6 @@ func TestKVDeleteRange(t *testing.T) {
 		if !reflect.DeepEqual(tt.wkeys, keys) {
 			t.Errorf("#%d: resp.Kvs got %v, expected %v", i, keys, tt.wkeys)
 		}
-	}
-}
-
-func TestKVDelete(t *testing.T) {
-	integration2.BeforeTest(t)
-
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
-	defer clus.Terminate(t)
-
-	kv := clus.RandClient()
-	ctx := context.TODO()
-
-	presp, err := kv.Put(ctx, "foo", "")
-	if err != nil {
-		t.Fatalf("couldn't put 'foo' (%v)", err)
-	}
-	if presp.Header.Revision != 2 {
-		t.Fatalf("presp.Header.Revision got %d, want %d", presp.Header.Revision, 2)
-	}
-	resp, err := kv.Delete(ctx, "foo")
-	if err != nil {
-		t.Fatalf("couldn't delete key (%v)", err)
-	}
-	if resp.Header.Revision != 3 {
-		t.Fatalf("resp.Header.Revision got %d, want %d", resp.Header.Revision, 3)
-	}
-	gresp, err := kv.Get(ctx, "foo")
-	if err != nil {
-		t.Fatalf("couldn't get key (%v)", err)
-	}
-	if len(gresp.Kvs) > 0 {
-		t.Fatalf("gresp.Kvs got %+v, want none", gresp.Kvs)
 	}
 }
 

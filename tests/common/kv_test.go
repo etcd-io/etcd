@@ -163,3 +163,106 @@ func TestKVGet(t *testing.T) {
 		})
 	}
 }
+
+func TestKVDelete(t *testing.T) {
+	testRunner.BeforeTest(t)
+	tcs := []struct {
+		name   string
+		config config.ClusterConfig
+	}{
+		{
+			name:   "NoTLS",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "PeerTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+		},
+		{
+			name:   "PeerAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+		},
+		{
+			name:   "ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			clus := testRunner.NewCluster(t, tc.config)
+			defer clus.Close()
+			cc := clus.Client()
+			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				kvs := []string{"a", "b", "c", "c/abc", "d"}
+				tests := []struct {
+					deleteKey string
+					options   config.DeleteOptions
+
+					wantDeleted int
+					wantKeys    []string
+				}{
+					{ // delete all keys
+						deleteKey:   "",
+						options:     config.DeleteOptions{Prefix: true},
+						wantDeleted: 5,
+					},
+					{ // delete all keys
+						deleteKey:   "",
+						options:     config.DeleteOptions{FromKey: true},
+						wantDeleted: 5,
+					},
+					{
+						deleteKey:   "a",
+						options:     config.DeleteOptions{End: "c"},
+						wantDeleted: 2,
+						wantKeys:    []string{"c", "c/abc", "d"},
+					},
+					{
+						deleteKey:   "c",
+						wantDeleted: 1,
+						wantKeys:    []string{"a", "b", "c/abc", "d"},
+					},
+					{
+						deleteKey:   "c",
+						options:     config.DeleteOptions{Prefix: true},
+						wantDeleted: 2,
+						wantKeys:    []string{"a", "b", "d"},
+					},
+					{
+						deleteKey:   "c",
+						options:     config.DeleteOptions{FromKey: true},
+						wantDeleted: 3,
+						wantKeys:    []string{"a", "b"},
+					},
+					{
+						deleteKey:   "e",
+						wantDeleted: 0,
+						wantKeys:    kvs,
+					},
+				}
+				for _, tt := range tests {
+					for i := range kvs {
+						if err := cc.Put(kvs[i], "bar"); err != nil {
+							t.Fatalf("count not put key %q, err: %s", kvs[i], err)
+						}
+					}
+					del, err := cc.Delete(tt.deleteKey, tt.options)
+					if err != nil {
+						t.Fatalf("count not get key %q, err: %s", tt.deleteKey, err)
+					}
+					assert.Equal(t, tt.wantDeleted, int(del.Deleted))
+					get, err := cc.Get("", config.GetOptions{Prefix: true})
+					if err != nil {
+						t.Fatalf("count not get key, err: %s", err)
+					}
+					kvs := testutils.KeysFromGetResponse(get)
+					assert.Equal(t, tt.wantKeys, kvs)
+				}
+			})
+		})
+	}
+}
