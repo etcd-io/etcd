@@ -104,10 +104,12 @@ Clustering:
   --advertise-client-urls 'http://localhost:2379'
     List of this member's client URLs to advertise to the public.
     The client URLs advertised should be accessible to machines that talk to etcd cluster. etcd client libraries parse these URLs to connect to the cluster.
-  --enable-v2-discovery 'true'
-    Enable to bootstrap the cluster using v2 discovery. Will be deprecated in v3.7, and be decommissioned in v3.8.
   --discovery ''
-    Discovery URL used to bootstrap the cluster.
+    Discovery URL used to bootstrap the cluster for v2 discovery. Will be deprecated in v3.7, and be decommissioned in v3.8.
+  --discovery-token ''
+    V3 discovery: discovery token for the etcd cluster to be bootstrapped.
+  --discovery-endpoints ''
+    V3 discovery: List of gRPC endpoints of the discovery service.
   --discovery-dial-timeout '2s'
     V3 discovery: dial timeout for client connections.
   --discovery-request-timeout '5s'

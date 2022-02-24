@@ -26,6 +26,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -175,7 +176,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		MaxWALFiles:                              cfg.MaxWalFiles,
 		InitialPeerURLsMap:                       urlsmap,
 		InitialClusterToken:                      token,
-		EnableV2Discovery:                        cfg.EnableV2Discovery,
 		DiscoveryURL:                             cfg.Durl,
 		DiscoveryProxy:                           cfg.Dproxy,
 		DiscoveryCfg:                             cfg.DiscoveryCfg,
@@ -348,6 +348,8 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
 
+		zap.String("discovery-token", sc.DiscoveryCfg.Token),
+		zap.String("discovery-endpoints", strings.Join(sc.DiscoveryCfg.Endpoints, ",")),
 		zap.String("discovery-dial-timeout", sc.DiscoveryCfg.DialTimeout.String()),
 		zap.String("discovery-request-timeout", sc.DiscoveryCfg.RequestTimeOut.String()),
 		zap.String("discovery-keepalive-time", sc.DiscoveryCfg.KeepAliveTime.String()),
