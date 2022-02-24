@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 func TestAuthority(t *testing.T) {
@@ -104,7 +105,7 @@ func TestAuthority(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				e2e.ExecuteWithTimeout(t, 5*time.Second, func() {
+				testutils.ExecuteWithTimeout(t, 5*time.Second, func() {
 					assertAuthority(t, fmt.Sprintf(tc.expectAuthorityPattern, 20000), epc)
 				})
 			})

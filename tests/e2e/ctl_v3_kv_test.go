@@ -18,12 +18,10 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3Put(t *testing.T)          { testCtl(t, putTest, withDialTimeout(7*time.Second)) }
 func TestCtlV3PutNoTLS(t *testing.T)     { testCtl(t, putTest, withCfg(*e2e.NewConfigNoTLS())) }
 func TestCtlV3PutClientTLS(t *testing.T) { testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS())) }
 func TestCtlV3PutClientAutoTLS(t *testing.T) {

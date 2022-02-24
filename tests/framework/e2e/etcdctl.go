@@ -15,31 +15,53 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-type etcdctlV3 struct {
+type EtcdctlV3 struct {
 	cfg       *EtcdProcessClusterConfig
 	endpoints []string
 }
 
-func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string) *etcdctlV3 {
-	return &etcdctlV3{
+func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string) *EtcdctlV3 {
+	return &EtcdctlV3{
 		cfg:       cfg,
 		endpoints: endpoints,
 	}
 }
 
-func (ctl *etcdctlV3) Put(key, value string) error {
-	return SpawnWithExpect(ctl.cmdArgs("put", key, value), "OK")
-}
-
-func (ctl *etcdctlV3) DowngradeEnable(version string) error {
+func (ctl *EtcdctlV3) DowngradeEnable(version string) error {
 	return SpawnWithExpect(ctl.cmdArgs("downgrade", "enable", version), "Downgrade enable success")
 }
 
-func (ctl *etcdctlV3) cmdArgs(args ...string) []string {
+func (ctl *EtcdctlV3) Get(key string, o testutils.GetOptions) (*clientv3.GetResponse, error) {
+	args := ctl.cmdArgs()
+	if o.Serializable {
+		args = append(args, "--consistency", "s")
+	}
+	cmd, err := SpawnCmd(append(args, "get", key, "-w", "json"), nil)
+	if err != nil {
+		return nil, err
+	}
+	line, err := cmd.Expect("kvs")
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.GetResponse
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) Put(key, value string) error {
+	return SpawnWithExpect(ctl.cmdArgs("put", key, value), "OK")
+}
+
+func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
 	cmdArgs := []string{CtlBinPath + "3"}
 	for k, v := range ctl.flags() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%s", k, v))
@@ -47,7 +69,7 @@ func (ctl *etcdctlV3) cmdArgs(args ...string) []string {
 	return append(cmdArgs, args...)
 }
 
-func (ctl *etcdctlV3) flags() map[string]string {
+func (ctl *EtcdctlV3) flags() map[string]string {
 	fmap := make(map[string]string)
 	if ctl.cfg.ClientTLS == ClientTLS {
 		if ctl.cfg.IsClientAutoTLS {
