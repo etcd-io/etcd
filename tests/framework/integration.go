@@ -63,14 +63,31 @@ type integrationClient struct {
 	*clientv3.Client
 }
 
-func (c integrationClient) Get(key string, opts ...testutils.GetOption) (*clientv3.GetResponse, error) {
-	o := testutils.GetOptions{}
-	for _, opt := range opts {
-		opt(&o)
-	}
+func (c integrationClient) Get(key string, o testutils.GetOptions) (*clientv3.GetResponse, error) {
 	clientOpts := []clientv3.OpOption{}
+	if o.Revision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithRev(int64(o.Revision)))
+	}
+	if o.End != "" {
+		clientOpts = append(clientOpts, clientv3.WithRange(o.End))
+	}
 	if o.Serializable {
 		clientOpts = append(clientOpts, clientv3.WithSerializable())
+	}
+	if o.Prefix {
+		clientOpts = append(clientOpts, clientv3.WithPrefix())
+	}
+	if o.Limit != 0 {
+		clientOpts = append(clientOpts, clientv3.WithLimit(int64(o.Limit)))
+	}
+	if o.FromKey {
+		clientOpts = append(clientOpts, clientv3.WithFromKey())
+	}
+	if o.CountOnly {
+		clientOpts = append(clientOpts, clientv3.WithCountOnly())
+	}
+	if o.SortBy != clientv3.SortByKey || o.Order != clientv3.SortNone {
+		clientOpts = append(clientOpts, clientv3.WithSort(o.SortBy, o.Order))
 	}
 	return c.Client.Get(context.Background(), key, clientOpts...)
 }

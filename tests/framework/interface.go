@@ -34,5 +34,5 @@ type Cluster interface {
 
 type Client interface {
 	Put(key, value string) error
-	Get(key string, opts ...testutils.GetOption) (*clientv3.GetResponse, error)
+	Get(key string, opts testutils.GetOptions) (*clientv3.GetResponse, error)
 }

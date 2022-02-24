@@ -44,15 +44,64 @@ func (ctl *EtcdctlV3) Get(key string, o testutils.GetOptions) (*clientv3.GetResp
 	if o.Serializable {
 		args = append(args, "--consistency", "s")
 	}
-	cmd, err := SpawnCmd(append(args, "get", key, "-w", "json"), nil)
+	args = append(args, "get", key, "-w", "json")
+	if o.End != "" {
+		args = append(args, o.End)
+	}
+	if o.Revision != 0 {
+		args = append(args, fmt.Sprintf("--rev=%d", o.Revision))
+	}
+	if o.Prefix {
+		args = append(args, "--prefix")
+	}
+	if o.Limit != 0 {
+		args = append(args, fmt.Sprintf("--limit=%d", o.Limit))
+	}
+	if o.FromKey {
+		args = append(args, "--from-key")
+	}
+	if o.CountOnly {
+		args = append(args, "-w", "fields", "--count-only")
+	} else {
+		args = append(args, "-w", "json")
+	}
+	switch o.SortBy {
+	case clientv3.SortByCreateRevision:
+		args = append(args, "--sort-by=CREATE")
+	case clientv3.SortByModRevision:
+		args = append(args, "--sort-by=MODIFY")
+	case clientv3.SortByValue:
+		args = append(args, "--sort-by=VALUE")
+	case clientv3.SortByVersion:
+		args = append(args, "--sort-by=VERSION")
+	case clientv3.SortByKey:
+		// nothing
+	default:
+		return nil, fmt.Errorf("bad sort target %v", o.SortBy)
+	}
+	switch o.Order {
+	case clientv3.SortAscend:
+		args = append(args, "--order=ASCEND")
+	case clientv3.SortDescend:
+		args = append(args, "--order=DESCEND")
+	case clientv3.SortNone:
+		// nothing
+	default:
+		return nil, fmt.Errorf("bad sort order %v", o.Order)
+	}
+	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
+	}
+	var resp clientv3.GetResponse
+	if o.CountOnly {
+		_, err := cmd.Expect("Count")
+		return &resp, err
 	}
 	line, err := cmd.Expect("kvs")
 	if err != nil {
 		return nil, err
 	}
-	var resp clientv3.GetResponse
 	err = json.Unmarshal([]byte(line), &resp)
 	return &resp, err
 }

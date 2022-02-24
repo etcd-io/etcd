@@ -33,7 +33,7 @@ func TestKVPut(t *testing.T) {
 		if err := cc.Put(key, value); err != nil {
 			t.Fatalf("count not put key %q, err: %s", key, err)
 		}
-		resp, err := cc.Get(key, testutils.WithSerializable())
+		resp, err := cc.Get(key, testutils.GetOptions{Serializable: true})
 		if err != nil {
 			t.Fatalf("count not get key %q, err: %s", key, err)
 		}

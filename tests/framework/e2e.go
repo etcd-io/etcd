@@ -19,9 +19,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 type e2eRunner struct{}
@@ -57,12 +55,4 @@ func (c *e2eCluster) Client() Client {
 
 type e2eClient struct {
 	*e2e.EtcdctlV3
-}
-
-func (c e2eClient) Get(key string, opts ...testutils.GetOption) (*clientv3.GetResponse, error) {
-	o := testutils.GetOptions{}
-	for _, opt := range opts {
-		opt(&o)
-	}
-	return c.EtcdctlV3.Get(key, o)
 }
