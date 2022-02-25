@@ -1372,6 +1372,14 @@ func (c *Cluster) Client(i int) *clientv3.Client {
 	return c.Members[i].Client
 }
 
+func (c *Cluster) Endpoints() []string {
+	var endpoints []string
+	for _, m := range c.Members {
+		endpoints = append(endpoints, m.GrpcURL)
+	}
+	return endpoints
+}
+
 func (c *Cluster) ClusterClient() (client *clientv3.Client, err error) {
 	if c.clusterClient == nil {
 		endpoints := []string{}
