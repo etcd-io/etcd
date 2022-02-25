@@ -701,7 +701,8 @@ func (e *Etcd) serveClients() (err error) {
 
 	// Start a client server goroutine for each listen address
 	mux := http.NewServeMux()
-	etcdhttp.HandleBasic(e.cfg.logger, mux, e.Server)
+	etcdhttp.HandleDebug(mux)
+	etcdhttp.HandleVersion(mux, e.Server)
 	etcdhttp.HandleMetrics(mux)
 	etcdhttp.HandleHealth(e.cfg.logger, mux, e.Server)
 

@@ -23,11 +23,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func HandleBasic(lg *zap.Logger, mux *http.ServeMux, peer etcdserver.ServerPeer) {
-	HandleDebug(mux)
-	HandleVersion(mux, peer)
-}
-
 func allowMethod(w http.ResponseWriter, r *http.Request, m string) bool {
 	if m == r.Method {
 		return true
