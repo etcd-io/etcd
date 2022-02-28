@@ -102,7 +102,7 @@ main() {
 
   # Check go version.
   local go_version current_go_version
-  go_version="go$(run_go_tool "github.com/mikefarah/yq/v3" read .travis.yml "go[0]")"
+  go_version="go$(run_go_tool "github.com/mikefarah/yq/v3" read .github/workflows/build.yaml "jobs.build.steps[1].with.go-version")"
   current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
     log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
@@ -129,7 +129,7 @@ main() {
 
 
     log_callout "Building etcd and checking --version output"
-    run ./build.sh
+    run ./scripts/build.sh
     local etcd_version
     etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
     if [[ "${etcd_version}" != "${VERSION}" ]]; then
