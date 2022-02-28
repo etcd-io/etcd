@@ -245,11 +245,11 @@ main() {
     log_callout "Creating manifest-list (multi-image)..."
 
     for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
-      maybe_run docker manifest create --amend "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      maybe_run docker manifest annotate "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
+      docker manifest create --amend "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      docker manifest annotate "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
 
-      maybe_run docker manifest create --amend "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      maybe_run docker manifest annotate "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
+      docker manifest create --amend "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      docker manifest annotate "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
     done
 
     log_callout "Pushing container manifest list to quay.io ${RELEASE_VERSION}"
