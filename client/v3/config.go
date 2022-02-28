@@ -90,3 +90,28 @@ type Config struct {
 
 	// TODO: support custom balancer picker
 }
+
+type ClientConfig struct {
+	Endpoints        []string      `json:"endpoints"`
+	RequestTimeout   time.Duration `json:"request-timeout"`
+	DialTimeout      time.Duration `json:"dial-timeout"`
+	KeepAliveTime    time.Duration `json:"keepalive-time"`
+	KeepAliveTimeout time.Duration `json:"keepalive-timeout"`
+	Secure           *SecureConfig `json:"secure"`
+	Auth             *AuthConfig   `json:"auth"`
+}
+
+type SecureConfig struct {
+	Cert       string `json:"cert"`
+	Key        string `json:"key"`
+	Cacert     string `json:"cacert"`
+	ServerName string `json:"server-name"`
+
+	InsecureTransport  bool `json:"insecure-transport"`
+	InsecureSkipVerify bool `json:"insecure-skip-tls-verify"`
+}
+
+type AuthConfig struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}

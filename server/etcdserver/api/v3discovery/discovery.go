@@ -55,22 +55,8 @@ var (
 )
 
 type DiscoveryConfig struct {
-	Token     string   `json:"discovery-token"`
-	Endpoints []string `json:"discovery-endpoints"`
-
-	DialTimeout      time.Duration `json:"discovery-dial-timeout"`
-	RequestTimeOut   time.Duration `json:"discovery-request-timeout"`
-	KeepAliveTime    time.Duration `json:"discovery-keepalive-time"`
-	KeepAliveTimeout time.Duration `json:"discovery-keepalive-timeout"`
-
-	InsecureTransport  bool   `json:"discovery-insecure-transport"`
-	InsecureSkipVerify bool   `json:"discovery-insecure-skip-tls-verify"`
-	CertFile           string `json:"discovery-cert"`
-	KeyFile            string `json:"discovery-key"`
-	TrustedCAFile      string `json:"discovery-cacert"`
-
-	User     string `json:"discovery-user"`
-	Password string `json:"discovery-password"`
+	clientv3.ClientConfig `json:"client"`
+	Token                 string `json:"token"`
 }
 
 type memberInfo struct {
@@ -211,11 +197,11 @@ func newDiscovery(lg *zap.Logger, dcfg *DiscoveryConfig, id types.ID) (*discover
 func newClientCfg(dcfg *DiscoveryConfig, lg *zap.Logger) (*clientv3.Config, error) {
 	var cfgtls *transport.TLSInfo
 
-	if dcfg.CertFile != "" || dcfg.KeyFile != "" || dcfg.TrustedCAFile != "" {
+	if dcfg.Secure.Cert != "" || dcfg.Secure.Key != "" || dcfg.Secure.Cacert != "" {
 		cfgtls = &transport.TLSInfo{
-			CertFile:      dcfg.CertFile,
-			KeyFile:       dcfg.KeyFile,
-			TrustedCAFile: dcfg.TrustedCAFile,
+			CertFile:      dcfg.Secure.Cert,
+			KeyFile:       dcfg.Secure.Key,
+			TrustedCAFile: dcfg.Secure.Cacert,
 			Logger:        lg,
 		}
 	}
@@ -225,8 +211,8 @@ func newClientCfg(dcfg *DiscoveryConfig, lg *zap.Logger) (*clientv3.Config, erro
 		DialTimeout:          dcfg.DialTimeout,
 		DialKeepAliveTime:    dcfg.KeepAliveTime,
 		DialKeepAliveTimeout: dcfg.KeepAliveTimeout,
-		Username:             dcfg.User,
-		Password:             dcfg.Password,
+		Username:             dcfg.Auth.Username,
+		Password:             dcfg.Auth.Password,
 	}
 
 	if cfgtls != nil {
@@ -240,13 +226,13 @@ func newClientCfg(dcfg *DiscoveryConfig, lg *zap.Logger) (*clientv3.Config, erro
 	// If key/cert is not given but user wants secure connection, we
 	// should still setup an empty tls configuration for gRPC to setup
 	// secure connection.
-	if cfg.TLS == nil && !dcfg.InsecureTransport {
+	if cfg.TLS == nil && !dcfg.Secure.InsecureTransport {
 		cfg.TLS = &tls.Config{}
 	}
 
 	// If the user wants to skip TLS verification then we should set
 	// the InsecureSkipVerify flag in tls configuration.
-	if cfg.TLS != nil && dcfg.InsecureSkipVerify {
+	if cfg.TLS != nil && dcfg.Secure.InsecureSkipVerify {
 		cfg.TLS.InsecureSkipVerify = true
 	}
 
@@ -293,7 +279,7 @@ func (d *discovery) joinCluster(config string) (string, error) {
 
 func (d *discovery) getClusterSize() (int, error) {
 	configKey := geClusterSizeKey(d.clusterToken)
-	ctx, cancel := context.WithTimeout(context.Background(), d.cfg.RequestTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), d.cfg.RequestTimeout)
 	defer cancel()
 
 	resp, err := d.c.Get(ctx, configKey)
@@ -320,7 +306,7 @@ func (d *discovery) getClusterSize() (int, error) {
 
 func (d *discovery) getClusterMembers() (*clusterInfo, int64, error) {
 	membersKeyPrefix := getMemberKeyPrefix(d.clusterToken)
-	ctx, cancel := context.WithTimeout(context.Background(), d.cfg.RequestTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), d.cfg.RequestTimeout)
 	defer cancel()
 
 	resp, err := d.c.Get(ctx, membersKeyPrefix, clientv3.WithPrefix())
@@ -404,7 +390,7 @@ func (d *discovery) registerSelfRetry(contents string) error {
 }
 
 func (d *discovery) registerSelf(contents string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), d.cfg.RequestTimeOut)
+	ctx, cancel := context.WithTimeout(context.Background(), d.cfg.RequestTimeout)
 	memberKey := getMemberKey(d.clusterToken, d.memberId.String())
 	_, err := d.c.Put(ctx, memberKey, contents)
 	cancel()

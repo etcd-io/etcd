@@ -27,7 +27,7 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/mvccpb"
-	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
@@ -93,7 +93,7 @@ func isCommandTimeoutFlagSet(cmd *cobra.Command) bool {
 }
 
 // get the process_resident_memory_bytes from <server>/metrics
-func endpointMemoryMetrics(host string, scfg *secureCfg) float64 {
+func endpointMemoryMetrics(host string, scfg *clientv3.SecureConfig) float64 {
 	residentMemoryKey := "process_resident_memory_bytes"
 	var residentMemoryValue string
 	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
@@ -102,14 +102,14 @@ func endpointMemoryMetrics(host string, scfg *secureCfg) float64 {
 	url := host + "/metrics"
 	if strings.HasPrefix(host, "https://") {
 		// load client certificate
-		cert, err := tls.LoadX509KeyPair(scfg.cert, scfg.key)
+		cert, err := tls.LoadX509KeyPair(scfg.Cert, scfg.Key)
 		if err != nil {
 			fmt.Println(fmt.Sprintf("client certificate error: %v", err))
 			return 0.0
 		}
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
 			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: scfg.insecureSkipVerify,
+			InsecureSkipVerify: scfg.InsecureSkipVerify,
 		}
 	}
 	resp, err := http.Get(url)
@@ -144,10 +144,10 @@ func endpointMemoryMetrics(host string, scfg *secureCfg) float64 {
 }
 
 // compact keyspace history to a provided revision
-func compact(c *v3.Client, rev int64) {
+func compact(c *clientv3.Client, rev int64) {
 	fmt.Printf("Compacting with revision %d\n", rev)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	_, err := c.Compact(ctx, rev, v3.WithCompactPhysical())
+	_, err := c.Compact(ctx, rev, clientv3.WithCompactPhysical())
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -156,7 +156,7 @@ func compact(c *v3.Client, rev int64) {
 }
 
 // defrag a given endpoint
-func defrag(c *v3.Client, ep string) {
+func defrag(c *clientv3.Client, ep string) {
 	fmt.Printf("Defragmenting %q\n", ep)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	_, err := c.Defragment(ctx, ep)
