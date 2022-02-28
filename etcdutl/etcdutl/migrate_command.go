@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"

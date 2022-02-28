@@ -19,8 +19,8 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 // NewMoveLeaderCommand returns the cobra command for "move-leader".
@@ -54,8 +54,8 @@ func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 	var leaderID uint64
 	for _, ep := range eps {
 		cfg := clientConfigFromCmd(cmd)
-		cfg.endpoints = []string{ep}
-		cli := cfg.mustClient()
+		cfg.Endpoints = []string{ep}
+		cli := cfg.MustClient()
 		resp, serr := cli.Status(ctx, ep)
 		if serr != nil {
 			cobrautl.ExitWithError(cobrautl.ExitError, serr)

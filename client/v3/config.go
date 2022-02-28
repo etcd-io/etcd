@@ -19,6 +19,9 @@ import (
 	"crypto/tls"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -89,4 +92,104 @@ type Config struct {
 	PermitWithoutStream bool `json:"permit-without-stream"`
 
 	// TODO: support custom balancer picker
+}
+
+type ClientConfig struct {
+	Endpoints        []string      `json:"endpoints"`
+	RequestTimeOut   time.Duration `json:"request-timeout"`
+	DialTimeout      time.Duration `json:"dial-timeout"`
+	KeepAliveTime    time.Duration `json:"keepalive-time"`
+	KeepAliveTimeout time.Duration `json:"keepalive-timeout"`
+	Secure           *SecureConfig `json:"secure"`
+	Auth             *AuthConfig   `json:"auth"`
+}
+
+type SecureConfig struct {
+	Cert       string `json:"cert"`
+	Key        string `json:"key"`
+	Cacert     string `json:"cacert"`
+	ServerName string `json:"server-name"`
+
+	InsecureTransport  bool `json:"insecure-transport"`
+	InsecureSkipVerify bool `json:"insecure-skip-tls-verify"`
+}
+
+type AuthConfig struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func (cc *ClientConfig) MustClient() *Client {
+	cfg, err := NewClientCfg(cc.Endpoints, cc.DialTimeout, cc.KeepAliveTime, cc.KeepAliveTimeout, cc.Secure, cc.Auth)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
+	}
+
+	client, err := New(*cfg)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitBadConnection, err)
+	}
+
+	return client
+}
+
+func NewClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeout time.Duration, scfg *SecureConfig, acfg *AuthConfig) (*Config, error) {
+	// set tls if any one tls option set
+	var cfgtls *transport.TLSInfo
+	tlsinfo := transport.TLSInfo{}
+	tlsinfo.Logger, _ = zap.NewProduction()
+	if scfg.Cert != "" {
+		tlsinfo.CertFile = scfg.Cert
+		cfgtls = &tlsinfo
+	}
+
+	if scfg.Key != "" {
+		tlsinfo.KeyFile = scfg.Key
+		cfgtls = &tlsinfo
+	}
+
+	if scfg.Cacert != "" {
+		tlsinfo.TrustedCAFile = scfg.Cacert
+		cfgtls = &tlsinfo
+	}
+
+	if scfg.ServerName != "" {
+		tlsinfo.ServerName = scfg.ServerName
+		cfgtls = &tlsinfo
+	}
+
+	cfg := &Config{
+		Endpoints:            endpoints,
+		DialTimeout:          dialTimeout,
+		DialKeepAliveTime:    keepAliveTime,
+		DialKeepAliveTimeout: keepAliveTimeout,
+	}
+
+	if cfgtls != nil {
+		clientTLS, err := cfgtls.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		cfg.TLS = clientTLS
+	}
+
+	// if key/cert is not given but user wants secure connection, we
+	// should still setup an empty tls configuration for gRPC to setup
+	// secure connection.
+	if cfg.TLS == nil && !scfg.InsecureTransport {
+		cfg.TLS = &tls.Config{}
+	}
+
+	// If the user wants to skip TLS verification then we should set
+	// the InsecureSkipVerify flag in tls configuration.
+	if scfg.InsecureSkipVerify && cfg.TLS != nil {
+		cfg.TLS.InsecureSkipVerify = true
+	}
+
+	if acfg != nil {
+		cfg.Username = acfg.Username
+		cfg.Password = acfg.Password
+	}
+
+	return cfg, nil
 }

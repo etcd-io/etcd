@@ -22,8 +22,8 @@ import (
 	"os/exec"
 	"os/signal"
 
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/urfave/cli"
 )

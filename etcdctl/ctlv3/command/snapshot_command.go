@@ -20,9 +20,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 	snapshot "go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/etcdutl/v3/etcdutl"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.uber.org/zap"
 )
 

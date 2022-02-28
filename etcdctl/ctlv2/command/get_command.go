@@ -20,8 +20,8 @@ import (
 	"os"
 
 	"github.com/urfave/cli"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 // NewGetCommand returns the CLI command for "get".

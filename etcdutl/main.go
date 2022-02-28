@@ -16,7 +16,7 @@
 package main
 
 import (
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 )
 
 func main() {

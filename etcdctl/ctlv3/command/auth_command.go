@@ -19,7 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 )
 
 // NewAuthCommand returns the cobra command for "auth".

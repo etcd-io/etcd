@@ -22,8 +22,8 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	v3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/flags"
 
 	"github.com/spf13/cobra"
@@ -100,9 +100,9 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	ka := keepAliveTimeFromCmd(cmd)
 	kat := keepAliveTimeoutFromCmd(cmd)
 	auth := authCfgFromCmd(cmd)
-	cfgs := []*v3.Config{}
+	cfgs := []*clientv3.Config{}
 	for _, ep := range endpointsFromCluster(cmd) {
-		cfg, err := newClientCfg([]string{ep}, dt, ka, kat, sec, auth)
+		cfg, err := clientv3.NewClientCfg([]string{ep}, dt, ka, kat, sec, auth)
 		if err != nil {
 			cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 		}
@@ -113,11 +113,11 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	hch := make(chan epHealth, len(cfgs))
 	for _, cfg := range cfgs {
 		wg.Add(1)
-		go func(cfg *v3.Config) {
+		go func(cfg *clientv3.Config) {
 			defer wg.Done()
 			ep := cfg.Endpoints[0]
 			cfg.Logger = lg.Named("client")
-			cli, err := v3.New(*cfg)
+			cli, err := clientv3.New(*cfg)
 			if err != nil {
 				hch <- epHealth{Ep: ep, Health: false, Error: err.Error()}
 				return
@@ -178,8 +178,8 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 type epStatus struct {
-	Ep   string             `json:"Endpoint"`
-	Resp *v3.StatusResponse `json:"Status"`
+	Ep   string                   `json:"Endpoint"`
+	Resp *clientv3.StatusResponse `json:"Status"`
 }
 
 func epStatusCommandFunc(cmd *cobra.Command, args []string) {
@@ -207,8 +207,8 @@ func epStatusCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 type epHashKV struct {
-	Ep   string             `json:"Endpoint"`
-	Resp *v3.HashKVResponse `json:"HashKV"`
+	Ep   string                   `json:"Endpoint"`
+	Resp *clientv3.HashKVResponse `json:"HashKV"`
 }
 
 func epHashKVCommandFunc(cmd *cobra.Command, args []string) {
@@ -254,11 +254,11 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 	}
 	// exclude auth for not asking needless password (MemberList() doesn't need authentication)
 
-	cfg, err := newClientCfg(eps, dt, ka, kat, sec, nil)
+	cfg, err := clientv3.NewClientCfg(eps, dt, ka, kat, sec, nil)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	c, err := v3.New(*cfg)
+	c, err := clientv3.New(*cfg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}

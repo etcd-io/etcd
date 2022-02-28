@@ -18,8 +18,8 @@ import (
 	"errors"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 // NewDowngradeCommand returns the cobra command for "downgrade".

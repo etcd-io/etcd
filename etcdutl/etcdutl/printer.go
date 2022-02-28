@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/client/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/dustin/go-humanize"
 )
