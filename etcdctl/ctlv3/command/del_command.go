@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"os"
 )
 
 var (
@@ -45,6 +46,9 @@ func NewDelCommand() *cobra.Command {
 // delCommandFunc executes the "del" command.
 func delCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getDelOp(args)
+	if delPrefix {
+		fmt.Fprintf(os.Stderr, "Warning: delete all keys with matching %v prefix.\n", key)
+	}
 	ctx, cancel := commandCtx(cmd)
 	resp, err := mustClientFromCmd(cmd).Delete(ctx, key, opts...)
 	cancel()
