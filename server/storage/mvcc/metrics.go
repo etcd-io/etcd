@@ -28,13 +28,6 @@ var (
 			Name:      "range_total",
 			Help:      "Total number of ranges seen by this member.",
 		})
-	rangeCounterDebug = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Namespace: "etcd_debugging",
-			Subsystem: "mvcc",
-			Name:      "range_total",
-			Help:      "Total number of ranges seen by this member.",
-		})
 
 	putCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
@@ -280,7 +273,6 @@ var (
 
 func init() {
 	prometheus.MustRegister(rangeCounter)
-	prometheus.MustRegister(rangeCounterDebug)
 	prometheus.MustRegister(putCounter)
 	prometheus.MustRegister(deleteCounter)
 	prometheus.MustRegister(txnCounter)
