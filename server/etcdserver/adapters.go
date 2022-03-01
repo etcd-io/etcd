@@ -68,7 +68,7 @@ func (s *serverVersionAdapter) GetDowngradeInfo() *serverversion.DowngradeInfo {
 }
 
 func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions {
-	return getMembersVersions(s.lg, s.cluster, s.id, s.peerRt)
+	return getMembersVersions(s.lg, s.cluster, s.id, s.peerRt, s.Cfg.ReqTimeout())
 }
 
 func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
