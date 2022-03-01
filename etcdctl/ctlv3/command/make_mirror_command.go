@@ -114,7 +114,7 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 
 	auth := authDestCfg()
 
-	cc := &clientv3.ClientConfig{
+	cc := &clientv3.ConfigSpec{
 		Endpoints:        []string{args[0]},
 		DialTimeout:      dialTimeout,
 		KeepAliveTime:    keepAliveTime,

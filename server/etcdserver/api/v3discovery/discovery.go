@@ -55,8 +55,8 @@ var (
 )
 
 type DiscoveryConfig struct {
-	clientv3.ClientConfig `json:"client"`
-	Token                 string `json:"token"`
+	clientv3.ConfigSpec `json:"client"`
+	Token               string `json:"token"`
 }
 
 type memberInfo struct {
@@ -77,18 +77,18 @@ type clusterInfo struct {
 }
 
 // key prefix for each cluster: "/_etcd/registry/<ClusterToken>".
-func geClusterKeyPrefix(cluster string) string {
+func getClusterKeyPrefix(cluster string) string {
 	return path.Join(discoveryPrefix, cluster)
 }
 
 // key format for cluster size: "/_etcd/registry/<ClusterToken>/_config/size".
-func geClusterSizeKey(cluster string) string {
-	return path.Join(geClusterKeyPrefix(cluster), "_config/size")
+func getClusterSizeKey(cluster string) string {
+	return path.Join(getClusterKeyPrefix(cluster), "_config/size")
 }
 
 // key prefix for each member: "/_etcd/registry/<ClusterToken>/members".
 func getMemberKeyPrefix(clusterToken string) string {
-	return path.Join(geClusterKeyPrefix(clusterToken), "members")
+	return path.Join(getClusterKeyPrefix(clusterToken), "members")
 }
 
 // key format for each member: "/_etcd/registry/<ClusterToken>/members/<memberId>".
@@ -278,7 +278,7 @@ func (d *discovery) joinCluster(config string) (string, error) {
 }
 
 func (d *discovery) getClusterSize() (int, error) {
-	configKey := geClusterSizeKey(d.clusterToken)
+	configKey := getClusterSizeKey(d.clusterToken)
 	ctx, cancel := context.WithTimeout(context.Background(), d.cfg.RequestTimeout)
 	defer cancel()
 

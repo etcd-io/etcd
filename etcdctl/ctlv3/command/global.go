@@ -88,7 +88,7 @@ func (*discardValue) String() string   { return "" }
 func (*discardValue) Set(string) error { return nil }
 func (*discardValue) Type() string     { return "" }
 
-func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ClientConfig {
+func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 	lg, err := zap.NewProduction()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -119,7 +119,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ClientConfig {
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
 	}
 
-	cfg := &clientv3.ClientConfig{}
+	cfg := &clientv3.ConfigSpec{}
 	cfg.Endpoints, err = endpointsFromCmd(cmd)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -150,7 +150,7 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	return mustClient(cfg)
 }
 
-func mustClient(cc *clientv3.ClientConfig) *clientv3.Client {
+func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
 	cfg, err := newClientCfg(cc.Endpoints, cc.DialTimeout, cc.KeepAliveTime, cc.KeepAliveTimeout, cc.Secure, cc.Auth)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)

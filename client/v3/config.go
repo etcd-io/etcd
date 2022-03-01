@@ -91,7 +91,10 @@ type Config struct {
 	// TODO: support custom balancer picker
 }
 
-type ClientConfig struct {
+// ConfigSpec is the configuration from users, which comes from command-line flags,
+// environment variables or config file. It is a fully declarative configuration,
+// and can be serialized & deserialized to/from JSON.
+type ConfigSpec struct {
 	Endpoints        []string      `json:"endpoints"`
 	RequestTimeout   time.Duration `json:"request-timeout"`
 	DialTimeout      time.Duration `json:"dial-timeout"`

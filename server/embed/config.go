@@ -517,7 +517,7 @@ func NewConfig() *Config {
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 
 		DiscoveryCfg: v3discovery.DiscoveryConfig{
-			ClientConfig: clientv3.ClientConfig{
+			ConfigSpec: clientv3.ConfigSpec{
 				DialTimeout:      DefaultDiscoveryDialTimeout,
 				RequestTimeout:   DefaultDiscoveryRequestTimeOut,
 				KeepAliveTime:    DefaultDiscoveryKeepAliveTime,
