@@ -500,9 +500,6 @@ func (s *store) setupMetricsReporter() {
 	reportDbTotalSizeInBytesMu.Lock()
 	reportDbTotalSizeInBytes = func() float64 { return float64(b.Size()) }
 	reportDbTotalSizeInBytesMu.Unlock()
-	reportDbTotalSizeInBytesDebugMu.Lock()
-	reportDbTotalSizeInBytesDebug = func() float64 { return float64(b.Size()) }
-	reportDbTotalSizeInBytesDebugMu.Unlock()
 	reportDbTotalSizeInUseInBytesMu.Lock()
 	reportDbTotalSizeInUseInBytes = func() float64 { return float64(b.SizeInUse()) }
 	reportDbTotalSizeInUseInBytesMu.Unlock()
