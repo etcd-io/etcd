@@ -523,7 +523,6 @@ type Member struct {
 
 	GrpcServerOpts []grpc.ServerOption
 	GrpcServer     *grpc.Server
-	GrpcServerPeer *grpc.Server
 	GrpcURL        string
 	GrpcBridge     *bridge
 
@@ -904,7 +903,6 @@ func (m *Member) Launch() error {
 			}
 		}
 		m.GrpcServer = v3rpc.Server(m.Server, tlscfg, m.GrpcServerRecorder.UnaryInterceptor(), m.GrpcServerOpts...)
-		m.GrpcServerPeer = v3rpc.Server(m.Server, peerTLScfg, m.GrpcServerRecorder.UnaryInterceptor())
 		m.ServerClient = v3client.New(m.Server)
 		lockpb.RegisterLockServer(m.GrpcServer, v3lock.NewLockServer(m.ServerClient))
 		epb.RegisterElectionServer(m.GrpcServer, v3election.NewElectionServer(m.ServerClient))
@@ -916,11 +914,7 @@ func (m *Member) Launch() error {
 	h := (http.Handler)(m.RaftHandler)
 	if m.GrpcListener != nil {
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-				m.GrpcServerPeer.ServeHTTP(w, r)
-			} else {
-				m.RaftHandler.ServeHTTP(w, r)
-			}
+			m.RaftHandler.ServeHTTP(w, r)
 		})
 	}
 
@@ -928,11 +922,6 @@ func (m *Member) Launch() error {
 		cm := cmux.New(ln)
 		// don't hang on matcher after closing listener
 		cm.SetReadTimeout(time.Second)
-
-		if m.GrpcServer != nil {
-			grpcl := cm.Match(cmux.HTTP2())
-			go m.GrpcServerPeer.Serve(grpcl)
-		}
 
 		// serve http1/http2 rafthttp/grpc
 		ll := cm.Match(cmux.Any())
@@ -1126,9 +1115,6 @@ func (m *Member) Close() {
 			<-ch
 		}
 		m.GrpcServer = nil
-		m.GrpcServerPeer.GracefulStop()
-		m.GrpcServerPeer.Stop()
-		m.GrpcServerPeer = nil
 	}
 	if m.Server != nil {
 		m.Server.HardStop()

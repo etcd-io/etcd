@@ -16,7 +16,6 @@ package embed
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	defaultLog "log"
@@ -39,7 +38,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
 
@@ -548,20 +546,12 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 // configure peer handlers after rafthttp.Transport started
 func (e *Etcd) servePeers() (err error) {
 	ph := etcdhttp.NewPeerHandler(e.GetLogger(), e.Server)
-	var peerTLScfg *tls.Config
-	if !e.cfg.PeerTLSInfo.Empty() {
-		if peerTLScfg, err = e.cfg.PeerTLSInfo.ServerConfig(); err != nil {
-			return err
-		}
-	}
 
 	for _, p := range e.Peers {
 		u := p.Listener.Addr().String()
-		gs := v3rpc.Server(e.Server, peerTLScfg, nil)
 		m := cmux.New(p.Listener)
-		go gs.Serve(m.Match(cmux.HTTP2()))
 		srv := &http.Server{
-			Handler:     grpcHandlerFunc(gs, ph),
+			Handler:     ph,
 			ReadTimeout: 5 * time.Minute,
 			ErrorLog:    defaultLog.New(io.Discard, "", 0), // do not log user error
 		}
@@ -581,7 +571,7 @@ func (e *Etcd) servePeers() (err error) {
 				"stopping serving peer traffic",
 				zap.String("address", u),
 			)
-			stopServers(ctx, &servers{secure: peerTLScfg != nil, grpc: gs, http: srv})
+			srv.Shutdown(ctx)
 			e.cfg.logger.Info(
 				"stopped serving peer traffic",
 				zap.String("address", u),
