@@ -169,10 +169,6 @@ var (
 	reportDbTotalSizeInBytesMu sync.RWMutex
 	reportDbTotalSizeInBytes   = func() float64 { return 0 }
 
-	// overridden by mvcc initialization
-	reportDbTotalSizeInBytesDebugMu sync.RWMutex
-	reportDbTotalSizeInBytesDebug   = func() float64 { return 0 }
-
 	dbTotalSizeInUse = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "mvcc",
