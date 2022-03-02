@@ -45,6 +45,10 @@ const (
 	maxGapBetweenApplyAndCommitIndex = 5000
 	traceThreshold                   = 100 * time.Millisecond
 	readIndexRetryTime               = 500 * time.Millisecond
+
+	// The timeout for the node to catch up its applied index, and is used in
+	// lease related operations, such as LeaseRenew and LeaseTimeToLive.
+	applyTimeout = time.Second
 )
 
 type RaftKV interface {
@@ -275,13 +279,13 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 	return resp.(*pb.LeaseGrantResponse), nil
 }
 
-func (s *EtcdServer) waitAppliedIndex(ctx context.Context) error {
+func (s *EtcdServer) waitAppliedIndex() error {
 	select {
 	case <-s.ApplyWait():
 	case <-s.stopping:
 		return ErrStopped
-	case <-ctx.Done():
-		return ErrTimeout
+	case <-time.After(applyTimeout):
+		return ErrTimeoutWaitAppliedIndex
 	}
 
 	return nil
@@ -296,22 +300,22 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 }
 
 func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
-	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
-	defer cancel()
-
 	if s.isLeader() {
-		if err := s.waitAppliedIndex(cctx); err != nil {
+		if err := s.waitAppliedIndex(); err != nil {
 			return 0, err
+		}
+
+		ttl, err := s.lessor.Renew(id)
+		if err == nil { // already requested to primary lessor(leader)
+			return ttl, nil
+		}
+		if err != lease.ErrNotPrimary {
+			return -1, err
 		}
 	}
 
-	ttl, err := s.lessor.Renew(id)
-	if err == nil { // already requested to primary lessor(leader)
-		return ttl, nil
-	}
-	if err != lease.ErrNotPrimary {
-		return -1, err
-	}
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
 
 	// renewals don't go through raft; forward to leader manually
 	for cctx.Err() == nil {
@@ -321,7 +325,7 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		}
 		for _, url := range leader.PeerURLs {
 			lurl := url + leasehttp.LeasePrefix
-			ttl, err = leasehttp.RenewHTTP(cctx, id, lurl, s.peerRt)
+			ttl, err := leasehttp.RenewHTTP(cctx, id, lurl, s.peerRt)
 			if err == nil || err == lease.ErrLeaseNotFound {
 				return ttl, err
 			}
@@ -337,11 +341,8 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 }
 
 func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
-	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
-	defer cancel()
-
 	if s.isLeader() {
-		if err := s.waitAppliedIndex(cctx); err != nil {
+		if err := s.waitAppliedIndex(); err != nil {
 			return nil, err
 		}
 		// primary; timetolive directly from leader
@@ -361,6 +362,9 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 		}
 		return resp, nil
 	}
+
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
 
 	// forward to leader
 	for cctx.Err() == nil {

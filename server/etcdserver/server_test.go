@@ -1906,3 +1906,59 @@ func (s *sendMsgAppRespTransporter) Send(m []raftpb.Message) {
 	}
 	s.sendC <- send
 }
+
+func TestWaitAppliedIndex(t *testing.T) {
+	cases := []struct {
+		name           string
+		appliedIndex   uint64
+		committedIndex uint64
+		action         func(s *EtcdServer)
+		ExpectedError  error
+	}{
+		{
+			name:           "The applied Id is already equal to the commitId",
+			appliedIndex:   10,
+			committedIndex: 10,
+			action: func(s *EtcdServer) {
+				s.applyWait.Trigger(10)
+			},
+			ExpectedError: nil,
+		},
+		{
+			name:           "The etcd server has already stopped",
+			appliedIndex:   10,
+			committedIndex: 12,
+			action: func(s *EtcdServer) {
+				s.stopping <- struct{}{}
+			},
+			ExpectedError: ErrStopped,
+		},
+		{
+			name:           "Timed out waiting for the applied index",
+			appliedIndex:   10,
+			committedIndex: 12,
+			action:         nil,
+			ExpectedError:  ErrTimeoutWaitAppliedIndex,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &EtcdServer{
+				appliedIndex:   tc.appliedIndex,
+				committedIndex: tc.committedIndex,
+				stopping:       make(chan struct{}, 1),
+				applyWait:      wait.NewTimeList(),
+			}
+
+			if tc.action != nil {
+				go tc.action(s)
+			}
+
+			err := s.waitAppliedIndex()
+
+			if err != tc.ExpectedError {
+				t.Errorf("Unexpected error, want (%v), got (%v)", tc.ExpectedError, err)
+			}
+		})
+	}
+}
