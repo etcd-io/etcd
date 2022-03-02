@@ -42,6 +42,9 @@ func (ctl *EtcdctlV3) DowngradeEnable(version string) error {
 
 func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetResponse, error) {
 	args := ctl.cmdArgs()
+	if o.Timeout != 0 {
+		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
+	}
 	if o.Serializable {
 		args = append(args, "--consistency", "s")
 	}

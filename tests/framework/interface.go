@@ -28,8 +28,15 @@ type testRunner interface {
 }
 
 type Cluster interface {
-	Close() error
+	Members() []Member
 	Client() Client
+	Close() error
+}
+
+type Member interface {
+	Client() Client
+	Start() error
+	Stop()
 }
 
 type Client interface {

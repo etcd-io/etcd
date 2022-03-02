@@ -84,6 +84,30 @@ func (c *e2eCluster) Client() Client {
 	return e2eClient{e2e.NewEtcdctl(c.Cfg, c.EndpointsV3())}
 }
 
+func (c *e2eCluster) Members() (ms []Member) {
+	for _, proc := range c.EtcdProcessCluster.Procs {
+		ms = append(ms, e2eMember{EtcdProcess: proc, Cfg: c.Cfg})
+	}
+	return ms
+}
+
 type e2eClient struct {
 	*e2e.EtcdctlV3
+}
+
+type e2eMember struct {
+	e2e.EtcdProcess
+	Cfg *e2e.EtcdProcessClusterConfig
+}
+
+func (m e2eMember) Client() Client {
+	return e2eClient{e2e.NewEtcdctl(m.Cfg, m.EndpointsV3())}
+}
+
+func (m e2eMember) Start() error {
+	return m.Restart()
+}
+
+func (m e2eMember) Stop() {
+	m.EtcdProcess.Stop()
 }

@@ -30,6 +30,7 @@ type GetOptions struct {
 	Limit        int
 	Order        clientv3.SortOrder
 	SortBy       clientv3.SortTarget
+	Timeout      time.Duration
 }
 
 type PutOptions struct {
