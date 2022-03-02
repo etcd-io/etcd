@@ -144,6 +144,48 @@ func (ctl *EtcdctlV3) Delete(key string, o config.DeleteOptions) (*clientv3.Dele
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) MemberList() (*clientv3.MemberListResponse, error) {
+	cmd, err := SpawnCmd(ctl.cmdArgs("member", "list", "-w", "json"), nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.MemberListResponse
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) MemberAddAsLearner(name string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
+	cmd, err := SpawnCmd(ctl.cmdArgs("member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","), "-w", "json"), nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.MemberAddResponse
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) MemberRemove(id uint64) (*clientv3.MemberRemoveResponse, error) {
+	cmd, err := SpawnCmd(ctl.cmdArgs("member", "remove", fmt.Sprintf("%x", id), "-w", "json"), nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.MemberRemoveResponse
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
 func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
 	cmdArgs := []string{CtlBinPath + "3"}
 	for k, v := range ctl.flags() {

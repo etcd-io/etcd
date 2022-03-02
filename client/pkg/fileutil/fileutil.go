@@ -17,6 +17,7 @@ package fileutil
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -164,4 +165,17 @@ func RemoveMatchFile(lg *zap.Logger, dir string, matchFunc func(fileName string)
 		return fmt.Errorf("remove file(s) %v error", removeFailedFiles)
 	}
 	return nil
+}
+
+// ListFiles lists files if matchFunc is true on an existing dir
+// Returns error if the dir does not exist
+func ListFiles(dir string, matchFunc func(fileName string) bool) ([]string, error) {
+	var files []string
+	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+		if matchFunc(path) {
+			files = append(files, path)
+		}
+		return nil
+	})
+	return files, err
 }
