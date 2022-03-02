@@ -12,27 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package framework
+package testutils
 
-import (
-	"testing"
+import clientv3 "go.etcd.io/etcd/client/v3"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/framework/config"
-)
-
-type testRunner interface {
-	TestMain(m *testing.M)
-	BeforeTest(testing.TB)
-	NewCluster(testing.TB, config.ClusterConfig) Cluster
-}
-
-type Cluster interface {
-	Close() error
-	Client() Client
-}
-
-type Client interface {
-	Put(key, value string) error
-	Get(key string, opts config.GetOptions) (*clientv3.GetResponse, error)
+func KeysFromGetResponse(resp *clientv3.GetResponse) (kvs []string) {
+	for _, kv := range resp.Kvs {
+		kvs = append(kvs, string(kv.Key))
+	}
+	return kvs
 }

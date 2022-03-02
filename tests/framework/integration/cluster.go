@@ -1373,9 +1373,18 @@ func (c *Cluster) ClusterClient() (client *clientv3.Client, err error) {
 			endpoints = append(endpoints, m.GrpcURL)
 		}
 		cfg := clientv3.Config{
-			Endpoints:   endpoints,
-			DialTimeout: 5 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			Endpoints:          endpoints,
+			DialTimeout:        5 * time.Second,
+			DialOptions:        []grpc.DialOption{grpc.WithBlock()},
+			MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
+			MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
+		}
+		if c.Cfg.ClientTLS != nil {
+			tls, err := c.Cfg.ClientTLS.ClientConfig()
+			if err != nil {
+				return nil, err
+			}
+			cfg.TLS = tls
 		}
 		c.clusterClient, err = newClientV3(cfg)
 		if err != nil {

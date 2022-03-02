@@ -22,12 +22,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3PutNoTLS(t *testing.T)     { testCtl(t, putTest, withCfg(*e2e.NewConfigNoTLS())) }
-func TestCtlV3PutClientTLS(t *testing.T) { testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS())) }
-func TestCtlV3PutClientAutoTLS(t *testing.T) {
-	testCtl(t, putTest, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3PutPeerTLS(t *testing.T) { testCtl(t, putTest, withCfg(*e2e.NewConfigPeerTLS())) }
 func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDialTimeout(0)) }
 func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 	testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS()), withFlagByEnv())
@@ -35,15 +29,7 @@ func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
 func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
 
-func TestCtlV3Get(t *testing.T)          { testCtl(t, getTest) }
-func TestCtlV3GetNoTLS(t *testing.T)     { testCtl(t, getTest, withCfg(*e2e.NewConfigNoTLS())) }
-func TestCtlV3GetClientTLS(t *testing.T) { testCtl(t, getTest, withCfg(*e2e.NewConfigClientTLS())) }
-func TestCtlV3GetClientAutoTLS(t *testing.T) {
-	testCtl(t, getTest, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3GetPeerTLS(t *testing.T) { testCtl(t, getTest, withCfg(*e2e.NewConfigPeerTLS())) }
 func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDialTimeout(0)) }
-func TestCtlV3GetQuorum(t *testing.T)  { testCtl(t, getTest, withQuorum()) }
 
 func TestCtlV3GetFormat(t *testing.T)    { testCtl(t, getFormatTest) }
 func TestCtlV3GetRev(t *testing.T)       { testCtl(t, getRevTest) }

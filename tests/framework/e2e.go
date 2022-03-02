@@ -19,9 +19,8 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 type e2eRunner struct{}
@@ -39,8 +38,37 @@ func (e e2eRunner) BeforeTest(t testing.TB) {
 	e2e.BeforeTest(t)
 }
 
-func (e e2eRunner) NewCluster(t testing.TB) Cluster {
-	epc, err := e2e.NewEtcdProcessCluster(t, e2e.ConfigStandalone(*e2e.NewConfigAutoTLS()))
+func (e e2eRunner) NewCluster(t testing.TB, cfg config.ClusterConfig) Cluster {
+	e2eConfig := e2e.EtcdProcessClusterConfig{
+		InitialToken: "new",
+		ClusterSize:  cfg.ClusterSize,
+	}
+	switch cfg.ClientTLS {
+	case config.NoTLS:
+		e2eConfig.ClientTLS = e2e.ClientNonTLS
+	case config.AutoTLS:
+		e2eConfig.IsClientAutoTLS = true
+		e2eConfig.ClientTLS = e2e.ClientTLS
+	case config.ManualTLS:
+		e2eConfig.IsClientAutoTLS = false
+		e2eConfig.ClientTLS = e2e.ClientTLS
+	default:
+		t.Fatalf("ClientTLS config %q not supported", cfg.ClientTLS)
+	}
+	switch cfg.PeerTLS {
+	case config.NoTLS:
+		e2eConfig.IsPeerTLS = false
+		e2eConfig.IsPeerAutoTLS = false
+	case config.AutoTLS:
+		e2eConfig.IsPeerTLS = true
+		e2eConfig.IsPeerAutoTLS = true
+	case config.ManualTLS:
+		e2eConfig.IsPeerTLS = true
+		e2eConfig.IsPeerAutoTLS = false
+	default:
+		t.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
+	}
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2eConfig)
 	if err != nil {
 		t.Fatalf("could not start etcd integrationCluster: %s", err)
 	}
@@ -57,12 +85,4 @@ func (c *e2eCluster) Client() Client {
 
 type e2eClient struct {
 	*e2e.EtcdctlV3
-}
-
-func (c e2eClient) Get(key string, opts ...testutils.GetOption) (*clientv3.GetResponse, error) {
-	o := testutils.GetOptions{}
-	for _, opt := range opts {
-		opt(&o)
-	}
-	return c.EtcdctlV3.Get(key, o)
 }

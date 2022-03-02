@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package testutils
+package config
+
+import clientv3 "go.etcd.io/etcd/client/v3"
 
 type GetOptions struct {
+	Revision     int
+	End          string
+	CountOnly    bool
 	Serializable bool
-}
-
-type GetOption func(*GetOptions)
-
-func WithSerializable() GetOption {
-	return func(options *GetOptions) {
-		options.Serializable = true
-	}
+	Prefix       bool
+	FromKey      bool
+	Limit        int
+	Order        clientv3.SortOrder
+	SortBy       clientv3.SortTarget
 }
