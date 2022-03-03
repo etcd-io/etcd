@@ -27,3 +27,9 @@ type GetOptions struct {
 	Order        clientv3.SortOrder
 	SortBy       clientv3.SortTarget
 }
+
+type DeleteOptions struct {
+	Prefix  bool
+	FromKey bool
+	End     string
+}

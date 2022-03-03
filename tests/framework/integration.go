@@ -127,3 +127,17 @@ func (c integrationClient) Put(key, value string) error {
 	_, err := c.Client.Put(context.Background(), key, value)
 	return err
 }
+
+func (c integrationClient) Delete(key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {
+	clientOpts := []clientv3.OpOption{}
+	if o.Prefix {
+		clientOpts = append(clientOpts, clientv3.WithPrefix())
+	}
+	if o.FromKey {
+		clientOpts = append(clientOpts, clientv3.WithFromKey())
+	}
+	if o.End != "" {
+		clientOpts = append(clientOpts, clientv3.WithRange(o.End))
+	}
+	return c.Client.Delete(context.Background(), key, clientOpts...)
+}
