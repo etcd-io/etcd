@@ -43,7 +43,7 @@ func NewListener(addr, scheme string, tlsinfo *TLSInfo) (l net.Listener, err err
 	return newListener(addr, scheme, WithTLSInfo(tlsinfo))
 }
 
-// NewListenerWithOpts creates a new listener which accpets listener options.
+// NewListenerWithOpts creates a new listener which accepts listener options.
 func NewListenerWithOpts(addr, scheme string, opts ...ListenerOption) (net.Listener, error) {
 	return newListener(addr, scheme, opts...)
 }
