@@ -66,7 +66,7 @@ etcd_build() {
       "-ldflags=${GO_LDFLAGS[*]}" \
       -o="../${out}/etcdctl" . || return 2
   ) || return 2
-  # Verify whether symbol we overriden exists
+  # Verify whether symbol we overwrote exists
   # For cross-compiling we cannot run: ${out}/etcd --version | grep -q "Git SHA: ${GIT_SHA}"
 
   # We need symbols to do this check:
