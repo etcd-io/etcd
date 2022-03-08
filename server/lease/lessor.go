@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 	"sort"
 	"sync"
@@ -799,15 +800,9 @@ func (le *lessor) initAndRecover() {
 	tx.Lock()
 
 	tx.UnsafeCreateBucket(buckets.Lease)
-	_, vs := tx.UnsafeRange(buckets.Lease, int64ToBytes(0), int64ToBytes(math.MaxInt64), 0)
-	// TODO: copy vs and do decoding outside tx lock if lock contention becomes an issue.
-	for i := range vs {
-		var lpb leasepb.Lease
-		err := lpb.Unmarshal(vs[i])
-		if err != nil {
-			tx.Unlock()
-			panic("failed to unmarshal lease proto item")
-		}
+	lpbs := unsafeGetAllLeases(tx)
+	tx.Unlock()
+	for _, lpb := range lpbs {
 		ID := LeaseID(lpb.ID)
 		if lpb.TTL < le.minLeaseTTL {
 			lpb.TTL = le.minLeaseTTL
@@ -825,7 +820,6 @@ func (le *lessor) initAndRecover() {
 	}
 	le.leaseExpiredNotifier.Init()
 	heap.Init(&le.leaseCheckpointHeap)
-	tx.Unlock()
 
 	le.b.ForceCommit()
 }
@@ -921,6 +915,30 @@ func int64ToBytes(n int64) []byte {
 	bytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes, uint64(n))
 	return bytes
+}
+
+func bytesToLeaseID(bytes []byte) int64 {
+	if len(bytes) != 8 {
+		panic(fmt.Errorf("lease ID must be 8-byte"))
+	}
+	return int64(binary.BigEndian.Uint64(bytes))
+}
+
+func unsafeGetAllLeases(tx backend.ReadTx) []*leasepb.Lease {
+	ls := make([]*leasepb.Lease, 0)
+	err := tx.UnsafeForEach(buckets.Lease, func(k, v []byte) error {
+		var lpb leasepb.Lease
+		err := lpb.Unmarshal(v)
+		if err != nil {
+			return fmt.Errorf("failed to Unmarshal lease proto item; lease ID=%016x", bytesToLeaseID(k))
+		}
+		ls = append(ls, &lpb)
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return ls
 }
 
 // FakeLessor is a fake implementation of Lessor interface.

@@ -16,6 +16,7 @@ package integration
 
 import (
 	"context"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"sync"
@@ -25,8 +26,10 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
+	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -227,4 +230,120 @@ func TestV3CorruptAlarm(t *testing.T) {
 		time.Sleep(time.Second)
 	}
 	t.Fatalf("expected error %v after %s", rpctypes.ErrCorrupt, 5*time.Second)
+}
+
+func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
+	BeforeTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{
+		CorruptCheckTime:       time.Second,
+		Size:                   3,
+		SnapshotCount:          10,
+		SnapshotCatchUpEntries: 5,
+	})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	lresp, err := toGRPC(clus.RandClient()).Lease.LeaseGrant(ctx, &pb.LeaseGrantRequest{ID: 1, TTL: 60})
+	if err != nil {
+		t.Errorf("could not create lease 1 (%v)", err)
+	}
+	if lresp.ID != 1 {
+		t.Errorf("got id %v, wanted id %v", lresp.ID, 1)
+	}
+
+	putr := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID}
+	// Trigger snapshot from the leader to new member
+	for i := 0; i < 15; i++ {
+		_, err := toGRPC(clus.RandClient()).KV.Put(ctx, putr)
+		if err != nil {
+			t.Errorf("#%d: couldn't put key (%v)", i, err)
+		}
+	}
+
+	clus.RemoveMember(t, uint64(clus.Members[2].ID()))
+	oldMemberClient := clus.Client(2)
+	if err := oldMemberClient.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	clus.AddMember(t)
+	// Wait for new member to catch up
+	newMemberClient, err := clus.NewClientV3(2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	WaitClientV3(t, newMemberClient)
+	clus.clients[2] = newMemberClient
+
+	// Corrupt member 2 by modifying backend lease bucket offline.
+	clus.Members[2].Stop(t)
+	fp := filepath.Join(clus.Members[2].DataDir, "member", "snap", "db")
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = fp
+	bcfg.Logger = zaptest.NewLogger(t)
+	be := backend.New(bcfg)
+
+	tx := be.BatchTx()
+	tx.UnsafeDelete(buckets.Lease, leaseIdToBytes(1))
+	lpb := leasepb.Lease{ID: int64(2), TTL: 60}
+	mustUnsafePutLease(tx, &lpb)
+	tx.Commit()
+
+	if err := be.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := clus.Members[2].Restart(t); err != nil {
+		t.Fatal(err)
+	}
+
+	clus.Members[1].WaitOK(t)
+	clus.Members[2].WaitOK(t)
+
+	// Revoke lease should remove key except the member with corruption
+	_, err = toGRPC(clus.Client(0)).Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp0, err0 := clus.Client(1).KV.Get(context.TODO(), "foo")
+	if err0 != nil {
+		t.Fatal(err0)
+	}
+	resp1, err1 := clus.Client(2).KV.Get(context.TODO(), "foo")
+	if err1 != nil {
+		t.Fatal(err1)
+	}
+
+	if resp0.Header.Revision == resp1.Header.Revision {
+		t.Fatalf("matching Revision values")
+	}
+
+	// Wait for CorruptCheckTime
+	time.Sleep(time.Second)
+	presp, perr := clus.Client(0).Put(context.TODO(), "abc", "aaa")
+	if perr != nil {
+		if !eqErrGRPC(perr, rpctypes.ErrCorrupt) {
+			t.Fatalf("expected %v, got %+v (%v)", rpctypes.ErrCorrupt, presp, perr)
+		} else {
+			return
+		}
+	}
+}
+
+func leaseIdToBytes(n int64) []byte {
+	bytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(bytes, uint64(n))
+	return bytes
+}
+
+func mustUnsafePutLease(tx backend.BatchTx, lpb *leasepb.Lease) {
+	key := leaseIdToBytes(lpb.ID)
+
+	val, err := lpb.Marshal()
+	if err != nil {
+		panic("failed to marshal lease proto item")
+	}
+	tx.UnsafePut(buckets.Lease, key, val)
 }
