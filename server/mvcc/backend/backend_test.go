@@ -122,7 +122,17 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 }
 
 func TestBackendDefrag(t *testing.T) {
-	b, _ := betesting.NewDefaultTmpBackend(t)
+	bcfg := backend.DefaultBackendConfig()
+	// Make sure we change BackendFreelistType
+	// The goal is to verify that we restore config option after defrag.
+	if bcfg.BackendFreelistType == bolt.FreelistMapType {
+		bcfg.BackendFreelistType = bolt.FreelistArrayType
+	} else {
+		bcfg.BackendFreelistType = bolt.FreelistMapType
+	}
+
+	b, _ := betesting.NewTmpBackendFromCfg(t, bcfg)
+
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
@@ -167,6 +177,10 @@ func TestBackendDefrag(t *testing.T) {
 	nsize := b.Size()
 	if nsize >= size {
 		t.Errorf("new size = %v, want < %d", nsize, size)
+	}
+	db := backend.DbFromBackendForTest(b)
+	if db.FreelistType != bcfg.BackendFreelistType {
+		t.Errorf("db FreelistType = [%v], want [%v]", db.FreelistType, bcfg.BackendFreelistType)
 	}
 
 	// try put more keys after shrink.
