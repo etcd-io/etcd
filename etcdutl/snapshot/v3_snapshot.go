@@ -262,7 +262,6 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
-		zap.Stack("stack"),
 	)
 
 	if err = s.saveDB(); err != nil {
