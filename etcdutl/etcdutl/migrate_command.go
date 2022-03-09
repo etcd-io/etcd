@@ -83,7 +83,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	}
 	c.targetVersion, err = semver.NewVersion(o.targetVersion + ".0")
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse target version: %w", err)
+		return nil, fmt.Errorf("failed to parse target version: %v", err)
 	}
 	if c.targetVersion.LessThan(schema.V3_5) {
 		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5"`, storageVersionToString(c.targetVersion))
