@@ -1094,8 +1094,8 @@ After initial bootstrap, cluster members agree on the cluster version. Every 5 s
 New members will refuse joining cluster with cluster version newer than theirs, thus preventing cluster from downgrading.
 Downgrade commands allow cluster administrator to force cluster version to be lowered to previous minor version, thus allowing to downgrade the cluster.
 
-Downgrade should be is executed in stages:
-1. Verify that cluster is ready be downgraded by running `etcdctl downgrade validate <TARGET_VERSION>`
+Downgrade should be executed in stages:
+1. Verify that cluster is ready to be downgraded by running `etcdctl downgrade validate <TARGET_VERSION>`
 2. Start the downgrade process by running `etcdctl downgrade enable <TARGET_VERSION>`
 3. For each cluster member:
    1. Ensure that member is ready for downgrade by confirming that it wrote `The server is ready to downgrade` log.

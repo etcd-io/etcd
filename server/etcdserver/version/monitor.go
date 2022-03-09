@@ -101,11 +101,11 @@ func (m *Monitor) UpdateStorageVersionIfNeeded() {
 
 	if sv == nil || sv.Major != cv.Major || sv.Minor != cv.Minor {
 		if sv != nil {
-			m.lg.Info("storage version differs from storage version.", zap.String("cluster-version", cv.String()), zap.String("storage-version", sv.String()))
+			m.lg.Info("cluster version differs from storage version.", zap.String("cluster-version", cv.String()), zap.String("storage-version", sv.String()))
 		}
 		err := m.s.UpdateStorageVersion(semver.Version{Major: cv.Major, Minor: cv.Minor})
 		if err != nil {
-			m.lg.Error("failed update storage version", zap.String("cluster-version", cv.String()), zap.Error(err))
+			m.lg.Error("failed to update storage version", zap.String("cluster-version", cv.String()), zap.Error(err))
 			return
 		}
 		d := m.s.GetDowngradeInfo()
