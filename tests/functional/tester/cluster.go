@@ -88,7 +88,7 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 		var err error
 		clus.agentConns[i], err = grpc.Dial(ap.AgentAddr, dialOpts...)
 		if err != nil {
-			return nil, fmt.Errorf("cannot dial agent %v: %w", ap.AgentAddr, err)
+			return nil, fmt.Errorf("cannot dial agent %v: %v", ap.AgentAddr, err)
 		}
 		clus.agentClients[i] = rpcpb.NewTransportClient(clus.agentConns[i])
 		lg.Info("connected", zap.String("agent-address", ap.AgentAddr))

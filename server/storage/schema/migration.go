@@ -60,7 +60,7 @@ func (p migrationPlan) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) (err er
 		if err != nil {
 			return err
 		}
-		lg.Info("upgraded storage version", zap.String("new-storage-version", s.target.String()))
+		lg.Info("updated storage version", zap.String("new-storage-version", s.target.String()))
 	}
 	return nil
 }
