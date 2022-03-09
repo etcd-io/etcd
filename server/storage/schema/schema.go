@@ -73,7 +73,7 @@ func UnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semv
 	}
 	plan, err := newPlan(lg, current, target)
 	if err != nil {
-		return fmt.Errorf("cannot create migration plan: %w", err)
+		return fmt.Errorf("cannot create migration plan: %v", err)
 	}
 	if target.LessThan(current) {
 		minVersion := w.MinimalEtcdVersion()
