@@ -71,7 +71,7 @@ func newPeerHandler(
 	if hashKVHandler != nil {
 		mux.Handle(etcdserver.PeerHashKVPath, hashKVHandler)
 	}
-	mux.HandleFunc(versionPath, versionHandler(s.Cluster(), serveVersion))
+	mux.HandleFunc(versionPath, versionHandler(s, serveVersion))
 	return mux
 }
 

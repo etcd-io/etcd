@@ -186,6 +186,9 @@ type Server interface {
 	// the leader is etcd 2.0. etcd 2.0 leader will not update clusterVersion since
 	// this feature is introduced post 2.0.
 	ClusterVersion() *semver.Version
+	// StorageVersion is the storage schema version. It's supported starting
+	// from 3.6.
+	StorageVersion() *semver.Version
 	Cluster() api.Cluster
 	Alarms() []*pb.AlarmMember
 
@@ -2105,6 +2108,19 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 		return nil
 	}
 	return s.cluster.Version()
+}
+
+func (s *EtcdServer) StorageVersion() *semver.Version {
+	// `applySnapshot` sets a new backend instance, so we need to acquire the bemu lock.
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
+
+	v, err := schema.DetectSchemaVersion(s.lg, s.be.ReadTx())
+	if err != nil {
+		s.lg.Warn("Failed to detect schema version", zap.Error(err))
+		return nil
+	}
+	return &v
 }
 
 // monitorClusterVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.

@@ -29,13 +29,14 @@ func TestServeVersion(t *testing.T) {
 		t.Fatalf("error creating request: %v", err)
 	}
 	rw := httptest.NewRecorder()
-	serveVersion(rw, req, "2.1.0")
+	serveVersion(rw, req, "3.6.0", "3.5.2")
 	if rw.Code != http.StatusOK {
 		t.Errorf("code=%d, want %d", rw.Code, http.StatusOK)
 	}
 	vs := version.Versions{
 		Server:  version.Version,
-		Cluster: "2.1.0",
+		Cluster: "3.6.0",
+		Storage: "3.5.2",
 	}
 	w, err := json.Marshal(&vs)
 	if err != nil {
@@ -53,14 +54,16 @@ func TestServeVersionFails(t *testing.T) {
 	for _, m := range []string{
 		"CONNECT", "TRACE", "PUT", "POST", "HEAD",
 	} {
-		req, err := http.NewRequest(m, "", nil)
-		if err != nil {
-			t.Fatalf("error creating request: %v", err)
-		}
-		rw := httptest.NewRecorder()
-		serveVersion(rw, req, "2.1.0")
-		if rw.Code != http.StatusMethodNotAllowed {
-			t.Errorf("method %s: code=%d, want %d", m, rw.Code, http.StatusMethodNotAllowed)
-		}
+		t.Run(m, func(t *testing.T) {
+			req, err := http.NewRequest(m, "", nil)
+			if err != nil {
+				t.Fatalf("error creating request: %v", err)
+			}
+			rw := httptest.NewRecorder()
+			serveVersion(rw, req, "3.6.0", "3.5.2")
+			if rw.Code != http.StatusMethodNotAllowed {
+				t.Errorf("method %s: code=%d, want %d", m, rw.Code, http.StatusMethodNotAllowed)
+			}
+		})
 	}
 }
