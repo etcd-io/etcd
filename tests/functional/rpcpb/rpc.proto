@@ -235,6 +235,7 @@ message Etcd {
 
   bool PreVote = 63 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
   bool InitialCorruptCheck = 64 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
+  string CorruptCheckTime = 65 [(gogoproto.moretags) = "yaml:\"corrupt-check-time\""];
 
   string Logger = 71 [(gogoproto.moretags) = "yaml:\"logger\""];
   // LogOutputs is the log file to store current etcd server logs.

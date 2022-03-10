@@ -140,8 +140,6 @@ type ctlCtx struct {
 	user string
 	pass string
 
-	initialCorruptCheck bool
-
 	// for compaction
 	compactPhysical bool
 
@@ -158,7 +156,6 @@ func (cx *ctlCtx) applyOpts(opts []ctlOption) {
 	for _, opt := range opts {
 		opt(cx)
 	}
-	cx.initialCorruptCheck = true
 }
 
 func withCfg(cfg e2e.EtcdProcessClusterConfig) ctlOption {
@@ -179,10 +176,6 @@ func withInteractive() ctlOption {
 
 func withQuota(b int64) ctlOption {
 	return func(cx *ctlCtx) { cx.quotaBackendBytes = b }
-}
-
-func withInitialCorruptCheck() ctlOption {
-	return func(cx *ctlCtx) { cx.initialCorruptCheck = true }
 }
 
 func withCorruptFunc(f func(string) error) ctlOption {
@@ -230,9 +223,6 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 		ret.cfg.QuotaBackendBytes = ret.quotaBackendBytes
 	}
 	ret.cfg.NoStrictReconfig = ret.noStrictReconfig
-	if ret.initialCorruptCheck {
-		ret.cfg.InitialCorruptCheck = ret.initialCorruptCheck
-	}
 	if testOfflineFunc != nil {
 		ret.cfg.KeepDataDir = true
 	}

@@ -142,13 +142,13 @@ func (s *EtcdServer) monitorKVHash() {
 		if !s.isLeader() {
 			continue
 		}
-		if err := s.checkHashKV(); err != nil {
+		if err := s.CheckHashKV(); err != nil {
 			lg.Warn("failed to check hash KV", zap.Error(err))
 		}
 	}
 }
 
-func (s *EtcdServer) checkHashKV() error {
+func (s *EtcdServer) CheckHashKV() error {
 	lg := s.Logger()
 
 	h, rev, crev, err := s.kv.HashByRev(0)
@@ -183,6 +183,7 @@ func (s *EtcdServer) checkHashKV() error {
 		s.GoAttach(func() {
 			s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
 		})
+		err = fmt.Errorf("mismatch %d", id)
 	}
 
 	if h2 != h && rev2 == rev && crev == crev2 {
@@ -242,7 +243,7 @@ func (s *EtcdServer) checkHashKV() error {
 		}
 	}
 	lg.Info("finished peer corruption check", zap.Int("number-of-peers-checked", checkedCount))
-	return nil
+	return err
 }
 
 type peerInfo struct {

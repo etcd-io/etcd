@@ -53,6 +53,7 @@ var etcdFields = []string{
 
 	"PreVote",
 	"InitialCorruptCheck",
+	"CorruptCheckTime",
 
 	"Logger",
 	"LogOutputs",
@@ -95,6 +96,9 @@ func (e *Etcd) Flags() (fs []string) {
 
 		// TODO: remove this
 		if fname == "initial-corrupt-check" {
+			fname = "experimental-" + fname
+		}
+		if fname == "corrupt-check-time" {
 			fname = "experimental-" + fname
 		}
 

@@ -57,6 +57,7 @@ import (
 	"go.etcd.io/etcd/server/v3/verify"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -797,6 +798,15 @@ type dialer struct {
 	addr    string
 }
 
+func (m *Member) Healthy() bool {
+	cli := healthpb.NewHealthClient(m.Client.ActiveConnection())
+	resp, err := cli.Check(context.TODO(), &healthpb.HealthCheckRequest{})
+	if err != nil {
+		return false
+	}
+	return resp.Status == healthpb.HealthCheckResponse_SERVING
+}
+
 func (d dialer) Dial() (net.Conn, error) {
 	return net.Dial(d.network, d.addr)
 }
@@ -1328,6 +1338,10 @@ func (c *Cluster) TakeClient(idx int) {
 
 func (c *Cluster) Terminate(t testutil.TB) {
 	c.mu.Lock()
+	err := c.CheckHashIfHealthy()
+	if err != nil {
+		t.Errorf("Failed to verify cluster consistency: %v", err)
+	}
 	if c.clusterClient != nil {
 		if err := c.clusterClient.Close(); err != nil {
 			t.Error(err)
@@ -1348,6 +1362,19 @@ func (c *Cluster) Terminate(t testutil.TB) {
 		}(m)
 	}
 	wg.Wait()
+}
+
+func (c *Cluster) CheckHashIfHealthy() error {
+	for _, m := range c.Members {
+		if !m.Healthy() {
+			return nil
+		}
+	}
+	err := c.Members[0].Server.CheckHashKV()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Cluster) RandClient() *clientv3.Client {

@@ -43,7 +43,6 @@ func TestEtcdCorruptHash(t *testing.T) {
 
 	testCtl(t, corruptTest, withQuorum(),
 		withCfg(*cfg),
-		withInitialCorruptCheck(),
 		withCorruptFunc(corruptHash),
 	)
 }

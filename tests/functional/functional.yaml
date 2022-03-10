@@ -33,6 +33,7 @@ agent-configs:
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
+    corrupt-check-time: 1s
     logger: zap
     log-outputs: [/tmp/etcd-functional-1/etcd.log]
     log-level: info
@@ -86,6 +87,7 @@ agent-configs:
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
+    corrupt-check-time: 1s
     logger: zap
     log-outputs: [/tmp/etcd-functional-2/etcd.log]
     log-level: info
@@ -139,6 +141,7 @@ agent-configs:
     quota-backend-bytes: 10740000000 # 10 GiB
     pre-vote: true
     initial-corrupt-check: true
+    corrupt-check-time: 1s
     logger: zap
     log-outputs: [/tmp/etcd-functional-3/etcd.log]
     log-level: info

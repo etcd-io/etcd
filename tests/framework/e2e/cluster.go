@@ -160,14 +160,13 @@ type EtcdProcessClusterConfig struct {
 
 	CipherSuites []string
 
-	ForceNewCluster     bool
-	InitialToken        string
-	QuotaBackendBytes   int64
-	NoStrictReconfig    bool
-	EnableV2            bool
-	InitialCorruptCheck bool
-	AuthTokenOpts       string
-	V2deprecation       string
+	ForceNewCluster   bool
+	InitialToken      string
+	QuotaBackendBytes int64
+	NoStrictReconfig  bool
+	EnableV2          bool
+	AuthTokenOpts     string
+	V2deprecation     string
 
 	RollingStart bool
 
@@ -294,6 +293,8 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 			"--initial-cluster-token", cfg.InitialToken,
 			"--data-dir", dataDirPath,
 			"--snapshot-count", fmt.Sprintf("%d", cfg.SnapshotCount),
+			"--experimental-initial-corrupt-check",
+			"--experimental-corrupt-check-time=1s",
 		}
 
 		if cfg.ForceNewCluster {
@@ -309,9 +310,6 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 		if cfg.EnableV2 {
 			args = append(args, "--enable-v2")
-		}
-		if cfg.InitialCorruptCheck {
-			args = append(args, "--experimental-initial-corrupt-check")
 		}
 		var murl string
 		if cfg.MetricsURLScheme != "" {
