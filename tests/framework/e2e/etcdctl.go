@@ -162,3 +162,17 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
 	return fmap
 }
+
+func (ctl *EtcdctlV3) Compact(rev int64, o config.CompactOption) (*clientv3.CompactResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "compact", fmt.Sprint(rev))
+
+	if o.Timeout != 0 {
+		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
+	}
+	if o.Physical {
+		args = append(args, "--physical")
+	}
+
+	return nil, SpawnWithExpect(args, fmt.Sprintf("compacted revision %v", rev))
+}
