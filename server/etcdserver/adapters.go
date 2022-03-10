@@ -26,12 +26,14 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
-// serverVersionAdapter implements Server interface needed by serverversion.Monitor
+// serverVersionAdapter implements the interface Server defined in package
+// go.etcd.io/etcd/server/v3/etcdserver/version, and it's needed by Monitor
+// in the same package.
 type serverVersionAdapter struct {
 	*EtcdServer
 }
 
-func newServerVersionAdapter(s *EtcdServer) *serverVersionAdapter {
+func NewServerVersionAdapter(s *EtcdServer) *serverVersionAdapter {
 	return &serverVersionAdapter{
 		EtcdServer: s,
 	}
