@@ -141,3 +141,17 @@ func (c integrationClient) Delete(key string, o config.DeleteOptions) (*clientv3
 	}
 	return c.Client.Delete(context.Background(), key, clientOpts...)
 }
+
+func (c integrationClient) Compact(rev int64, o config.CompactOption) (*clientv3.CompactResponse, error) {
+	ctx := context.Background()
+	if o.Timeout != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, o.Timeout)
+		defer cancel()
+	}
+	clientOpts := []clientv3.CompactOption{}
+	if o.Physical {
+		clientOpts = append(clientOpts, clientv3.WithCompactPhysical())
+	}
+	return c.Client.Compact(ctx, rev, clientOpts...)
+}

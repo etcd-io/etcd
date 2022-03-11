@@ -14,7 +14,10 @@
 
 package config
 
-import clientv3 "go.etcd.io/etcd/client/v3"
+import (
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"time"
+)
 
 type GetOptions struct {
 	Revision     int
@@ -32,4 +35,9 @@ type DeleteOptions struct {
 	Prefix  bool
 	FromKey bool
 	End     string
+}
+
+type CompactOption struct {
+	Physical bool
+	Timeout  time.Duration
 }
