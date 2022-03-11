@@ -156,7 +156,10 @@ Clustering:
       'write-only'             // Custom v2 state is not allowed (planned default in v3.6)
       'write-only-drop-data'   // Custom v2 state will get DELETED !
       'gone'                   // v2store is not maintained any longer. (planned default in v3.7)
-
+  --compaction-batch-limit 1000
+    CompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
+  --compaction-sleep-interval 10ms
+    CompactionBatchLimit sets the sleep interval between each compaction batch.
 Security:
   --cert-file ''
     Path to the client server TLS cert file.
@@ -260,8 +263,6 @@ Experimental feature:
     Duration of time between cluster corruption check passes.
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
-  --experimental-compaction-batch-limit 1000
-    ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
   --experimental-peer-skip-client-san-verification 'false'
     Skip verification of SAN field in client certificate for peer connections.
   --experimental-watch-progress-notify-interval '10m'

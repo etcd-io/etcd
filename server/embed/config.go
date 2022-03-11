@@ -313,6 +313,10 @@ type Config struct {
 	//The AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
+	CompactionBatchLimit int `json:"compaction-batch-limit"`
+	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
+	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
+
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
 	// ExperimentalEnableLeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
@@ -321,11 +325,8 @@ type Config struct {
 	// Requires experimental-enable-lease-checkpoint to be enabled.
 	// Deprecated in v3.6.
 	// TODO: Delete in v3.7
-	ExperimentalEnableLeaseCheckpointPersist bool `json:"experimental-enable-lease-checkpoint-persist"`
-	ExperimentalCompactionBatchLimit         int  `json:"experimental-compaction-batch-limit"`
-	// ExperimentalCompactionSleepInterval is the sleep interval between every etcd compaction loop.
-	ExperimentalCompactionSleepInterval     time.Duration `json:"experimental-compaction-sleep-interval"`
-	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
+	ExperimentalEnableLeaseCheckpointPersist bool          `json:"experimental-enable-lease-checkpoint-persist"`
+	ExperimentalWatchProgressNotifyInterval  time.Duration `json:"experimental-watch-progress-notify-interval"`
 	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
 	// takes more time than this value.
 	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
