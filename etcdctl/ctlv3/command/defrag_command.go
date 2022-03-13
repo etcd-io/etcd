@@ -46,6 +46,7 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 		if err != nil {
 			cobrautl.ExitWithError(cobrautl.ExitError, err)
 		}
+		return
 	}
 
 	failures := 0
