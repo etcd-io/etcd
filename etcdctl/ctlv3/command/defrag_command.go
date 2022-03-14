@@ -20,12 +20,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.etcd.io/etcd/etcdutl/v3/etcdutl"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-)
-
-var (
-	defragDataDir string
 )
 
 // NewDefragCommand returns the cobra command for "Defrag".
@@ -36,19 +31,10 @@ func NewDefragCommand() *cobra.Command {
 		Run:   defragCommandFunc,
 	}
 	cmd.PersistentFlags().BoolVar(&epClusterEndpoints, "cluster", false, "use all endpoints from the cluster member list")
-	cmd.Flags().StringVar(&defragDataDir, "data-dir", "", "Optional. If present, defragments a data directory not in use by etcd.")
-	cmd.MarkFlagDirname("data-dir")
 	return cmd
 }
 
 func defragCommandFunc(cmd *cobra.Command, args []string) {
-	if len(defragDataDir) > 0 {
-		fmt.Fprintf(os.Stderr, "Use `etcdutl defrag` instead. The --data-dir is going to be decomissioned in v3.6.\n\n")
-		err := etcdutl.DefragData(defragDataDir)
-		if err != nil {
-			cobrautl.ExitWithError(cobrautl.ExitError, err)
-		}
-	}
 
 	failures := 0
 	c := mustClientFromCmd(cmd)
