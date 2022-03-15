@@ -299,8 +299,6 @@ func TestWatchCancelRunning(t *testing.T) {
 }
 
 func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
-	integration2.BeforeTest(t)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	if wctx.ch = wctx.w.Watch(ctx, "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil watcher channel")
