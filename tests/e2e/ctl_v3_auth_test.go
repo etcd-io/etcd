@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -1255,4 +1255,13 @@ func authTestRevisionConsistency(cx ctlCtx) {
 	if newAuthRevision != oldAuthRevision {
 		cx.t.Fatalf("auth revison shouldn't change when restarting etcd, expected: %d, got: %d", oldAuthRevision, newAuthRevision)
 	}
+}
+
+func ctlV3EndpointHealth(cx ctlCtx) error {
+	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health")
+	lines := make([]string, cx.epc.Cfg.ClusterSize)
+	for i := range lines {
+		lines[i] = "is healthy"
+	}
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }

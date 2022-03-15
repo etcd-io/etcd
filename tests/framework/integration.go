@@ -19,9 +19,12 @@ import (
 	"fmt"
 	"testing"
 
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
+
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.uber.org/zap"
@@ -154,4 +157,42 @@ func (c integrationClient) Compact(rev int64, o config.CompactOption) (*clientv3
 		clientOpts = append(clientOpts, clientv3.WithCompactPhysical())
 	}
 	return c.Client.Compact(ctx, rev, clientOpts...)
+}
+
+func (c integrationClient) Status() ([]*clientv3.StatusResponse, error) {
+	endpoints := c.Client.Endpoints()
+	var resp []*clientv3.StatusResponse
+	for _, ep := range endpoints {
+		status, err := c.Client.Status(context.Background(), ep)
+		if err != nil {
+			return nil, err
+		}
+		resp = append(resp, status)
+	}
+	return resp, nil
+}
+
+func (c integrationClient) HashKV(rev int64) ([]*clientv3.HashKVResponse, error) {
+	endpoints := c.Client.Endpoints()
+	var resp []*clientv3.HashKVResponse
+	for _, ep := range endpoints {
+		hashKV, err := c.Client.HashKV(context.Background(), ep, rev)
+		if err != nil {
+			return nil, err
+		}
+		resp = append(resp, hashKV)
+	}
+	return resp, nil
+}
+
+func (c integrationClient) Health() error {
+	cli := healthpb.NewHealthClient(c.Client.ActiveConnection())
+	resp, err := cli.Check(context.TODO(), &healthpb.HealthCheckRequest{})
+	if err != nil {
+		return err
+	}
+	if resp.Status != healthpb.HealthCheckResponse_SERVING {
+		return fmt.Errorf("status expected %s, got %s", healthpb.HealthCheckResponse_SERVING, resp.Status)
+	}
+	return nil
 }

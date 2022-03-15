@@ -37,4 +37,8 @@ type Client interface {
 	Get(key string, opts config.GetOptions) (*clientv3.GetResponse, error)
 	Delete(key string, opts config.DeleteOptions) (*clientv3.DeleteResponse, error)
 	Compact(rev int64, opts config.CompactOption) (*clientv3.CompactResponse, error)
+
+	Status() ([]*clientv3.StatusResponse, error)
+	HashKV(rev int64) ([]*clientv3.HashKVResponse, error)
+	Health() error
 }
