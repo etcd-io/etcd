@@ -72,6 +72,10 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 	t.Helper()
 	options := newTestOptions(opts...)
 
+	if insideTestContext {
+		t.Fatal("already in test context. BeforeTest was likely already called")
+	}
+
 	if options.skipInShort {
 		testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
 	}
@@ -92,10 +96,6 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 		insideTestContext = previousInsideTestContext
 		os.Chdir(previousWD)
 	})
-
-	if insideTestContext {
-		t.Fatal("already in test context. BeforeTest was likely already called")
-	}
 
 	grpc_logger.Set(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
 	insideTestContext = true
