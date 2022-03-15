@@ -333,15 +333,6 @@
 		]
 	},
 	{
-		"project": "github.com/shurcooL/sanitized_anchor_name",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/sirupsen/logrus",
 		"licenses": [
 			{
