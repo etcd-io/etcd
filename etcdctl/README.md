@@ -913,7 +913,7 @@ If NOSPACE alarm is present:
 
 ### DEFRAG [options]
 
-DEFRAG defragments the backend database file for a set of given endpoints while etcd is running, ~~or directly defragments an etcd data directory while etcd is not running~~. When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
+DEFRAG defragments the backend database file for a set of given endpoints while etcd is running. When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
 
 **Note: to defragment offline (`--data-dir` flag), use: `etcutl defrag` instead**
 
@@ -921,9 +921,6 @@ DEFRAG defragments the backend database file for a set of given endpoints while 
 
 **Note that defragmentation request does not get replicated over cluster. That is, the request is only applied to the local node. Specify all members in `--endpoints` flag or `--cluster` flag to automatically find all cluster members.**
 
-#### Options
-
-- data-dir -- Optional. **Deprecated**. If present, defragments a data directory not in use by etcd. To be removed in v3.6.
 
 #### Output
 
@@ -944,16 +941,6 @@ Run defragment operations for all endpoints in the cluster associated with the d
 Finished defragmenting etcd member[http://127.0.0.1:2379]
 Finished defragmenting etcd member[http://127.0.0.1:22379]
 Finished defragmenting etcd member[http://127.0.0.1:32379]
-```
-
-To defragment a data directory directly, use the `etcdutl` with `--data-dir` flag 
-(`etcdctl` will remove this flag in v3.6):
-
-``` bash
-# Defragment while etcd is not running
-./etcdutl defrag --data-dir default.etcd
-# success (exit status 0)
-# Error: cannot open database at default.etcd/member/snap/db
 ```
 
 #### Remarks

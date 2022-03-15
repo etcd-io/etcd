@@ -22,9 +22,6 @@ import (
 
 func TestCtlV3DefragOnline(t *testing.T) { testCtl(t, defragOnlineTest) }
 
-func TestCtlV3DefragOffline(t *testing.T) {
-	testCtlWithOffline(t, maintenanceInitKeys, defragOfflineTest)
-}
 func TestCtlV3DefragOfflineEtcdutl(t *testing.T) {
 	testCtlWithOffline(t, maintenanceInitKeys, defragOfflineTest, withEtcdutl())
 }
