@@ -24,20 +24,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3LeaseGrantLeases(t *testing.T) { testCtl(t, leaseTestGrantLeaseListed) }
-func TestCtlV3LeaseGrantLeasesNoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigNoTLS()))
-}
-func TestCtlV3LeaseGrantLeasesClientTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigClientTLS()))
-}
-func TestCtlV3LeaseGrantLeasesClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3LeaseGrantLeasesPeerTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigPeerTLS()))
-}
-
 func TestCtlV3LeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, leaseTestTimeToLiveExpired) }
 func TestCtlV3LeaseTestTimeToLiveExpiredNoTLS(t *testing.T) {
 	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigNoTLS()))
@@ -92,31 +78,6 @@ func TestCtlV3LeaseRevokeClientAutoTLS(t *testing.T) {
 }
 func TestCtlV3LeaseRevokePeerTLS(t *testing.T) {
 	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigPeerTLS()))
-}
-
-func leaseTestGrantLeaseListed(cx ctlCtx) {
-	err := leaseTestGrantLeasesList(cx)
-	if err != nil {
-		cx.t.Fatalf("leaseTestGrantLeasesList: (%v)", err)
-	}
-}
-
-func leaseTestGrantLeasesList(cx ctlCtx) error {
-	id, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		return fmt.Errorf("ctlV3LeaseGrant error (%v)", err)
-	}
-
-	cmdArgs := append(cx.PrefixArgs(), "lease", "list")
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-	if err != nil {
-		return fmt.Errorf("lease list failed (%v)", err)
-	}
-	_, err = proc.Expect(id)
-	if err != nil {
-		return fmt.Errorf("lease id not in returned list (%v)", err)
-	}
-	return proc.Close()
 }
 
 func leaseTestTimeToLiveExpired(cx ctlCtx) {

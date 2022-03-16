@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -67,5 +68,82 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 				require.Equal(t, ttl, ttlResp.GrantedTTL)
 			})
 		})
+	}
+}
+
+func TestLeaseGrantAndList(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	tcs := []struct {
+		name   string
+		config config.ClusterConfig
+	}{
+		{
+			name:   "NoTLS",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "PeerTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+		},
+		{
+			name:   "PeerAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+		},
+		{
+			name:   "ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+		},
+	}
+	for _, tc := range tcs {
+		nestedCases := []struct {
+			name       string
+			leaseCount int
+		}{
+			{
+				name:       "no_leases",
+				leaseCount: 0,
+			},
+			{
+				name:       "one_lease",
+				leaseCount: 1,
+			},
+			{
+				name:       "many_leases",
+				leaseCount: 3,
+			},
+		}
+
+		for _, nc := range nestedCases {
+			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
+				clus := testRunner.NewCluster(t, tc.config)
+				defer clus.Close()
+				cc := clus.Client()
+
+				testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+					createdLeases := []clientv3.LeaseID{}
+					for i := 0; i < nc.leaseCount; i++ {
+						leaseResp, err := cc.Grant(10)
+						require.NoError(t, err)
+						createdLeases = append(createdLeases, leaseResp.ID)
+					}
+
+					resp, err := cc.LeaseList()
+					require.NoError(t, err)
+					require.Len(t, resp.Leases, nc.leaseCount)
+
+					returnedLeases := make([]clientv3.LeaseID, 0, nc.leaseCount)
+					for _, status := range resp.Leases {
+						returnedLeases = append(returnedLeases, status.ID)
+					}
+
+					require.ElementsMatch(t, createdLeases, returnedLeases)
+				})
+			})
+		}
 	}
 }

@@ -862,6 +862,24 @@ func authLeaseTestLeaseGrantLeases(cx ctlCtx) {
 	}
 }
 
+func leaseTestGrantLeasesList(cx ctlCtx) error {
+	id, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		return fmt.Errorf("ctlV3LeaseGrant error (%v)", err)
+	}
+
+	cmdArgs := append(cx.PrefixArgs(), "lease", "list")
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	if err != nil {
+		return fmt.Errorf("lease list failed (%v)", err)
+	}
+	_, err = proc.Expect(id)
+	if err != nil {
+		return fmt.Errorf("lease id not in returned list (%v)", err)
+	}
+	return proc.Close()
+}
+
 func authLeaseTestLeaseRevoke(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
