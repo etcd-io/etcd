@@ -126,8 +126,12 @@ func (c integrationClient) Get(key string, o config.GetOptions) (*clientv3.GetRe
 	return c.Client.Get(context.Background(), key, clientOpts...)
 }
 
-func (c integrationClient) Put(key, value string) error {
-	_, err := c.Client.Put(context.Background(), key, value)
+func (c integrationClient) Put(key, value string, opts config.PutOptions) error {
+	clientOpts := []clientv3.OpOption{}
+	if opts.LeaseID != 0 {
+		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
+	}
+	_, err := c.Client.Put(context.Background(), key, value, clientOpts...)
 	return err
 }
 

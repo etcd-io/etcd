@@ -60,7 +60,7 @@ func TestKVPut(t *testing.T) {
 			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
 				key, value := "foo", "bar"
 
-				if err := cc.Put(key, value); err != nil {
+				if err := cc.Put(key, value, config.PutOptions{}); err != nil {
 					t.Fatalf("count not put key %q, err: %s", key, err)
 				}
 				resp, err := cc.Get(key, config.GetOptions{Serializable: true})
@@ -123,7 +123,7 @@ func TestKVGet(t *testing.T) {
 				)
 
 				for i := range kvs {
-					if err := cc.Put(kvs[i], "bar"); err != nil {
+					if err := cc.Put(kvs[i], "bar", config.PutOptions{}); err != nil {
 						t.Fatalf("count not put key %q, err: %s", kvs[i], err)
 					}
 				}
@@ -246,7 +246,7 @@ func TestKVDelete(t *testing.T) {
 				}
 				for _, tt := range tests {
 					for i := range kvs {
-						if err := cc.Put(kvs[i], "bar"); err != nil {
+						if err := cc.Put(kvs[i], "bar", config.PutOptions{}); err != nil {
 							t.Fatalf("count not put key %q, err: %s", kvs[i], err)
 						}
 					}

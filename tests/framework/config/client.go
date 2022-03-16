@@ -32,6 +32,10 @@ type GetOptions struct {
 	SortBy       clientv3.SortTarget
 }
 
+type PutOptions struct {
+	LeaseID clientv3.LeaseID
+}
+
 type DeleteOptions struct {
 	Prefix  bool
 	FromKey bool

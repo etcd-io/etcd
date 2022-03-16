@@ -107,8 +107,13 @@ func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetRespons
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) Put(key, value string) error {
-	return SpawnWithExpect(ctl.cmdArgs("put", key, value), "OK")
+func (ctl *EtcdctlV3) Put(key, value string, opts config.PutOptions) error {
+	args := ctl.cmdArgs()
+	args = append(args, "put", key, value)
+	if opts.LeaseID != 0 {
+		args = append(args, "--lease", strconv.FormatInt(int64(opts.LeaseID), 16))
+	}
+	return SpawnWithExpect(args, "OK")
 }
 
 func (ctl *EtcdctlV3) Delete(key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {

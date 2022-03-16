@@ -33,7 +33,7 @@ type Cluster interface {
 }
 
 type Client interface {
-	Put(key, value string) error
+	Put(key, value string, opts config.PutOptions) error
 	Get(key string, opts config.GetOptions) (*clientv3.GetResponse, error)
 	Delete(key string, opts config.DeleteOptions) (*clientv3.DeleteResponse, error)
 	Compact(rev int64, opts config.CompactOption) (*clientv3.CompactResponse, error)
