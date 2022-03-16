@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -113,8 +113,6 @@ func TestMutexTryLockMultiNode(t *testing.T) {
 }
 
 func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.Client) {
-	integration2.BeforeTest(t)
-
 	lockedC := make(chan *concurrency.Mutex)
 	notlockedC := make(chan *concurrency.Mutex)
 	stopC := make(chan struct{})
