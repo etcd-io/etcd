@@ -24,20 +24,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3LeaseGrantTimeToLive(t *testing.T) { testCtl(t, leaseTestGrantTimeToLive) }
-func TestCtlV3LeaseGrantTimeToLiveNoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(*e2e.NewConfigNoTLS()))
-}
-func TestCtlV3LeaseGrantTimeToLiveClientTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(*e2e.NewConfigClientTLS()))
-}
-func TestCtlV3LeaseGrantTimeToLiveClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3LeaseGrantTimeToLivePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestGrantTimeToLive, withCfg(*e2e.NewConfigPeerTLS()))
-}
-
 func TestCtlV3LeaseGrantLeases(t *testing.T) { testCtl(t, leaseTestGrantLeaseListed) }
 func TestCtlV3LeaseGrantLeasesNoTLS(t *testing.T) {
 	testCtl(t, leaseTestGrantLeaseListed, withCfg(*e2e.NewConfigNoTLS()))
@@ -106,32 +92,6 @@ func TestCtlV3LeaseRevokeClientAutoTLS(t *testing.T) {
 }
 func TestCtlV3LeaseRevokePeerTLS(t *testing.T) {
 	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigPeerTLS()))
-}
-
-func leaseTestGrantTimeToLive(cx ctlCtx) {
-	id, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		cx.t.Fatalf("leaseTestGrantTimeToLive: ctlV3LeaseGrant error (%v)", err)
-	}
-
-	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", id, "--keys")
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-	if err != nil {
-		cx.t.Fatalf("leaseTestGrantTimeToLive: error (%v)", err)
-	}
-	line, err := proc.Expect(" granted with TTL(")
-	if err != nil {
-		cx.t.Fatalf("leaseTestGrantTimeToLive: error (%v)", err)
-	}
-	if err = proc.Close(); err != nil {
-		cx.t.Fatalf("leaseTestGrantTimeToLive: error (%v)", err)
-	}
-	if !strings.Contains(line, ", attached keys") {
-		cx.t.Fatalf("leaseTestGrantTimeToLive: expected 'attached keys', got %q", line)
-	}
-	if !strings.Contains(line, id) {
-		cx.t.Fatalf("leaseTestGrantTimeToLive: expected leaseID %q, got %q", id, line)
-	}
 }
 
 func leaseTestGrantLeaseListed(cx ctlCtx) {
