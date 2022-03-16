@@ -279,7 +279,6 @@ func (ctl *EtcdctlV3) TimeToLive(id clientv3.LeaseID, o config.LeaseOption) (*cl
 }
 
 func (ctl *EtcdctlV3) Defragment(o config.DefragOption) error {
-
 	args := append(ctl.cmdArgs(), "defrag")
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
@@ -290,4 +289,20 @@ func (ctl *EtcdctlV3) Defragment(o config.DefragOption) error {
 	}
 	_, err := SpawnWithExpectLines(args, map[string]string{}, lines...)
 	return err
+}
+
+func (ctl *EtcdctlV3) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "lease", "list", "-w", "json")
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.LeaseLeasesResponse
+	line, err := cmd.Expect("id")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
 }

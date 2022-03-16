@@ -228,3 +228,9 @@ func (c integrationClient) TimeToLive(id clientv3.LeaseID, o config.LeaseOption)
 
 	return c.Client.TimeToLive(ctx, id, leaseOpts...)
 }
+
+func (c integrationClient) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
+	ctx := context.Background()
+
+	return c.Client.Leases(ctx)
+}
