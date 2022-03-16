@@ -46,3 +46,7 @@ type CompactOption struct {
 type DefragOption struct {
 	Timeout time.Duration
 }
+
+type LeaseOption struct {
+	WithAttachedKeys bool
+}

@@ -17,6 +17,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -185,7 +186,6 @@ func (ctl *EtcdctlV3) Status() ([]*clientv3.StatusResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var epStatus []*struct {
 		Endpoint string
 		Status   *clientv3.StatusResponse
@@ -241,7 +241,41 @@ func (ctl *EtcdctlV3) Health() error {
 		lines[i] = "is healthy"
 	}
 	return SpawnWithExpects(args, map[string]string{}, lines...)
+}
 
+func (ctl *EtcdctlV3) Grant(ttl int64) (*clientv3.LeaseGrantResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "lease", "grant", strconv.FormatInt(ttl, 10), "-w", "json")
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.LeaseGrantResponse
+	line, err := cmd.Expect("ID")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) TimeToLive(id clientv3.LeaseID, o config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "lease", "timetolive", strconv.FormatInt(int64(id), 16), "-w", "json")
+	if o.WithAttachedKeys {
+		args = append(args, "--keys")
+	}
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.LeaseTimeToLiveResponse
+	line, err := cmd.Expect("id")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
 }
 
 func (ctl *EtcdctlV3) Defragment(o config.DefragOption) error {
