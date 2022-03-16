@@ -19,24 +19,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
-
-func TestCtlV3LeaseTestTimeToLiveExpired(t *testing.T) { testCtl(t, leaseTestTimeToLiveExpired) }
-func TestCtlV3LeaseTestTimeToLiveExpiredNoTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigNoTLS()))
-}
-func TestCtlV3LeaseTestTimeToLiveExpiredClientTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigClientTLS()))
-}
-func TestCtlV3LeaseTestTimeToLiveExpiredClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3LeaseTestTimeToLiveExpiredPeerTLS(t *testing.T) {
-	testCtl(t, leaseTestTimeToLiveExpired, withCfg(*e2e.NewConfigPeerTLS()))
-}
 
 func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
 func TestCtlV3LeaseKeepAliveNoTLS(t *testing.T) {
@@ -78,35 +63,6 @@ func TestCtlV3LeaseRevokeClientAutoTLS(t *testing.T) {
 }
 func TestCtlV3LeaseRevokePeerTLS(t *testing.T) {
 	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigPeerTLS()))
-}
-
-func leaseTestTimeToLiveExpired(cx ctlCtx) {
-	err := leaseTestTimeToLiveExpire(cx, 3)
-	if err != nil {
-		cx.t.Fatalf("leaseTestTimeToLiveExpire: (%v)", err)
-	}
-}
-
-func leaseTestTimeToLiveExpire(cx ctlCtx, ttl int) error {
-	leaseID, err := ctlV3LeaseGrant(cx, ttl)
-	if err != nil {
-		return fmt.Errorf("ctlV3LeaseGrant error (%v)", err)
-	}
-
-	if err = ctlV3Put(cx, "key", "val", leaseID); err != nil {
-		return fmt.Errorf("ctlV3Put error (%v)", err)
-	}
-	// eliminate false positive
-	time.Sleep(time.Duration(ttl+1) * time.Second)
-	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", leaseID)
-	exp := fmt.Sprintf("lease %s already expired", leaseID)
-	if err = e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, exp); err != nil {
-		return fmt.Errorf("lease not properly expired: (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"key"}); err != nil {
-		return fmt.Errorf("ctlV3Get error (%v)", err)
-	}
-	return nil
 }
 
 func leaseTestKeepAlive(cx ctlCtx) {
