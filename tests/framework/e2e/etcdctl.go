@@ -176,3 +176,70 @@ func (ctl *EtcdctlV3) Compact(rev int64, o config.CompactOption) (*clientv3.Comp
 
 	return nil, SpawnWithExpect(args, fmt.Sprintf("compacted revision %v", rev))
 }
+
+func (ctl *EtcdctlV3) Status() ([]*clientv3.StatusResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "endpoint", "status", "-w", "json")
+	args = append(args, "--endpoints", strings.Join(ctl.endpoints, ","))
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var epStatus []*struct {
+		Endpoint string
+		Status   *clientv3.StatusResponse
+	}
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &epStatus)
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]*clientv3.StatusResponse, len(epStatus))
+	for _, e := range epStatus {
+		resp = append(resp, e.Status)
+	}
+	return resp, err
+}
+
+func (ctl *EtcdctlV3) HashKV(rev int64) ([]*clientv3.HashKVResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "endpoint", "hashkv", "-w", "json")
+	args = append(args, "--endpoints", strings.Join(ctl.endpoints, ","))
+	args = append(args, "--rev", fmt.Sprint(rev))
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var epHashKVs []*struct {
+		Endpoint string
+		HashKV   *clientv3.HashKVResponse
+	}
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &epHashKVs)
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]*clientv3.HashKVResponse, len(epHashKVs))
+	for _, e := range epHashKVs {
+		resp = append(resp, e.HashKV)
+	}
+	return resp, err
+}
+
+func (ctl *EtcdctlV3) Health() error {
+	args := ctl.cmdArgs()
+	args = append(args, "endpoint", "health")
+	lines := make([]string, len(ctl.endpoints))
+	for i := range lines {
+		lines[i] = "is healthy"
+	}
+	return SpawnWithExpects(args, map[string]string{}, lines...)
+
+}
