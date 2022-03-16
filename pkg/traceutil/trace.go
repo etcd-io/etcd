@@ -192,7 +192,7 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 		// add subtrace common fields which defined at the end to each sub-steps
 		if step.isSubTraceEnd {
 			for j := i - 1; j >= 0 && !t.steps[j].isSubTraceStart; j-- {
-				t.steps[j].fields = append(step.fields, t.steps[j].fields...)
+				t.steps[j].fields = append(t.steps[j].fields, step.fields...)
 			}
 			continue
 		}
@@ -215,7 +215,8 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 		zap.Time("start", t.startTime),
 		zap.Time("end", endTime),
 		zap.Strings("steps", steps),
-		zap.Int("step_count", len(steps))}
+		zap.Int("step_count", len(steps)),
+		zap.Int("total_step_count", len(t.steps))}
 	return msg, fs
 }
 

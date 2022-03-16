@@ -194,6 +194,7 @@ func TestLog(t *testing.T) {
 				"traceKey1:traceValue1", "count:1",
 				"stepKey1:stepValue1", "stepKey2:stepValue2", "subStepKey:subStepValue",
 				"beginSubTrace:true", "endSubTrace:true",
+				"beginSubTrace:true; subStepKey:subStepValue; endSubTrace:true;",
 				"\"step_count\":3",
 			},
 		},
