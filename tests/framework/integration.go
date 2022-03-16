@@ -244,3 +244,9 @@ func (c integrationClient) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.Le
 
 	return c.Client.KeepAliveOnce(ctx, id)
 }
+
+func (c integrationClient) LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
+	ctx := context.Background()
+
+	return c.Client.Revoke(ctx, id)
+}

@@ -45,4 +45,5 @@ type Client interface {
 	TimeToLive(id clientv3.LeaseID, opts config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error)
 	LeaseList() (*clientv3.LeaseLeasesResponse, error)
 	LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error)
+	LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error)
 }

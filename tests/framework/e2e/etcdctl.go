@@ -327,3 +327,19 @@ func (ctl *EtcdctlV3) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKe
 	err = json.Unmarshal([]byte(line), &resp)
 	return &resp, err
 }
+
+func (ctl *EtcdctlV3) LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "lease", "revoke", strconv.FormatInt(int64(id), 16), "-w", "json")
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.LeaseRevokeResponse
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
