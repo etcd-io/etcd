@@ -207,3 +207,55 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 		})
 	}
 }
+
+func TestLeaseGrantKeepAliveOnce(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	tcs := []struct {
+		name   string
+		config config.ClusterConfig
+	}{
+		{
+			name:   "NoTLS",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "PeerTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+		},
+		{
+			name:   "PeerAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+		},
+		{
+			name:   "ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			clus := testRunner.NewCluster(t, tc.config)
+			defer clus.Close()
+			cc := clus.Client()
+
+			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				leaseResp, err := cc.Grant(2)
+				require.NoError(t, err)
+
+				_, err = cc.LeaseKeepAliveOnce(leaseResp.ID)
+				require.NoError(t, err)
+
+				time.Sleep(2 * time.Second) // Wait for the original lease to expire
+
+				ttlResp, err := cc.TimeToLive(leaseResp.ID, config.LeaseOption{})
+				require.NoError(t, err)
+				// We still have a lease!
+				require.Greater(t, int64(2), ttlResp.TTL)
+			})
+		})
+	}
+}
