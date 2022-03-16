@@ -37,20 +37,6 @@ func TestCtlV3LeaseKeepAlivePeerTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
-func TestCtlV3LeaseRevoke(t *testing.T) { testCtl(t, leaseTestRevoked) }
-func TestCtlV3LeaseRevokeNoTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigNoTLS()))
-}
-func TestCtlV3LeaseRevokeClientTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigClientTLS()))
-}
-func TestCtlV3LeaseRevokeClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3LeaseRevokePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestRevoked, withCfg(*e2e.NewConfigPeerTLS()))
-}
-
 func leaseTestKeepAlive(cx ctlCtx) {
 	// put with TTL 10 seconds and keep-alive
 	leaseID, err := ctlV3LeaseGrant(cx, 10)
@@ -66,31 +52,6 @@ func leaseTestKeepAlive(cx ctlCtx) {
 	if err := ctlV3Get(cx, []string{"key"}, kv{"key", "val"}); err != nil {
 		cx.t.Fatalf("leaseTestKeepAlive: ctlV3Get error (%v)", err)
 	}
-}
-
-func leaseTestRevoked(cx ctlCtx) {
-	err := leaseTestRevoke(cx)
-	if err != nil {
-		cx.t.Fatalf("leaseTestRevoke: (%v)", err)
-	}
-}
-
-func leaseTestRevoke(cx ctlCtx) error {
-	// put with TTL 10 seconds and revoke
-	leaseID, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		return fmt.Errorf("ctlV3LeaseGrant error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
-		return fmt.Errorf("ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3LeaseRevoke(cx, leaseID); err != nil {
-		return fmt.Errorf("ctlV3LeaseRevoke error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"key"}); err != nil { // expect no output
-		return fmt.Errorf("ctlV3Get error (%v)", err)
-	}
-	return nil
 }
 
 func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {

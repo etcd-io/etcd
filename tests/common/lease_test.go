@@ -259,3 +259,64 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 		})
 	}
 }
+
+func TestLeaseGrantRevoke(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	tcs := []struct {
+		name   string
+		config config.ClusterConfig
+	}{
+		{
+			name:   "NoTLS",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "PeerTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+		},
+		{
+			name:   "PeerAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+		},
+		{
+			name:   "ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			clus := testRunner.NewCluster(t, tc.config)
+			defer clus.Close()
+			cc := clus.Client()
+
+			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				leaseResp, err := cc.Grant(20)
+				require.NoError(t, err)
+
+				err = cc.Put("foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
+				require.NoError(t, err)
+
+				getResp, err := cc.Get("foo", config.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, int64(1), getResp.Count)
+
+				_, err = cc.LeaseRevoke(leaseResp.ID)
+				require.NoError(t, err)
+
+				ttlResp, err := cc.TimeToLive(leaseResp.ID, config.LeaseOption{})
+				require.NoError(t, err)
+				require.Equal(t, int64(-1), ttlResp.TTL)
+
+				getResp, err = cc.Get("foo", config.GetOptions{})
+				require.NoError(t, err)
+				// Value should expire with the lease
+				require.Equal(t, int64(0), getResp.Count)
+			})
+		})
+	}
+}
