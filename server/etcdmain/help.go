@@ -228,15 +228,15 @@ Logging:
     Configures log rotation if enabled with a JSON logger config. MaxSize(MB), MaxAge(days,0=no limit), MaxBackups(0=no limit), LocalTime(use computers local time), Compress(gzip)". 
 
 Experimental distributed tracing:
-  --experimental-enable-distributed-tracing 'false'
+  --enable-distributed-tracing 'false'
     Enable experimental distributed tracing.
-  --experimental-distributed-tracing-address 'localhost:4317'
+  --distributed-tracing-address 'localhost:4317'
     Distributed tracing collector address.
-  --experimental-distributed-tracing-service-name 'etcd'
+  --distributed-tracing-service-name 'etcd'
     Distributed tracing service name, must be same across all etcd instances.
-  --experimental-distributed-tracing-instance-id ''
+  --distributed-tracing-instance-id ''
     Distributed tracing instance ID, must be unique per each etcd instance.
-  --experimental-distributed-tracing-sampling-rate '0'
+  --distributed-tracing-sampling-rate '0'
     Number of samples to collect per million spans for distributed tracing. Disabled by default.
 
 v2 Proxy (to be deprecated in v3.6):

@@ -347,22 +347,22 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// ExperimentalEnableDistributedTracing indicates if experimental tracing using OpenTelemetry is enabled.
-	ExperimentalEnableDistributedTracing bool `json:"experimental-enable-distributed-tracing"`
-	// ExperimentalDistributedTracingAddress is the address of the OpenTelemetry Collector.
-	// Can only be set if ExperimentalEnableDistributedTracing is true.
-	ExperimentalDistributedTracingAddress string `json:"experimental-distributed-tracing-address"`
-	// ExperimentalDistributedTracingServiceName is the name of the service.
-	// Can only be used if ExperimentalEnableDistributedTracing is true.
-	ExperimentalDistributedTracingServiceName string `json:"experimental-distributed-tracing-service-name"`
-	// ExperimentalDistributedTracingServiceInstanceID is the ID key of the service.
+	// EnableDistributedTracing indicates if tracing using OpenTelemetry is enabled.
+	EnableDistributedTracing bool `json:"enable-distributed-tracing"`
+	// DistributedTracingAddress is the address of the OpenTelemetry Collector.
+	// Can only be set if EnableDistributedTracing is true.
+	DistributedTracingAddress string `json:"distributed-tracing-address"`
+	// DistributedTracingServiceName is the name of the service.
+	// Can only be used if DistributedTracing is true.
+	DistributedTracingServiceName string `json:"distributed-tracing-service-name"`
+	// DistributedTracingServiceInstanceID is the ID key of the service.
 	// This ID must be unique, as helps to distinguish instances of the same service
 	// that exist at the same time.
-	// Can only be used if ExperimentalEnableDistributedTracing is true.
-	ExperimentalDistributedTracingServiceInstanceID string `json:"experimental-distributed-tracing-instance-id"`
-	// ExperimentalDistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
+	// Can only be used if EnableDistributedTracing is true.
+	DistributedTracingServiceInstanceID string `json:"distributed-tracing-instance-id"`
+	// DistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
 	// Defaults to 0.
-	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
+	DistributedTracingSamplingRatePerMillion int `json:"distributed-tracing-sampling-rate"`
 
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
@@ -738,8 +738,8 @@ func (cfg *Config) Validate() error {
 	}
 
 	// Validate distributed tracing configuration but only if enabled.
-	if cfg.ExperimentalEnableDistributedTracing {
-		if err := validateTracingConfig(cfg.ExperimentalDistributedTracingSamplingRatePerMillion); err != nil {
+	if cfg.EnableDistributedTracing {
+		if err := validateTracingConfig(cfg.DistributedTracingSamplingRatePerMillion); err != nil {
 			return fmt.Errorf("distributed tracing configurition is not valid: (%v)", err)
 		}
 	}
