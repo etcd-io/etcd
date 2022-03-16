@@ -238,3 +238,9 @@ func (c integrationClient) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
 
 	return c.Client.Leases(ctx)
 }
+
+func (c integrationClient) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
+	ctx := context.Background()
+
+	return c.Client.KeepAliveOnce(ctx, id)
+}
