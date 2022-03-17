@@ -54,3 +54,7 @@ type DefragOption struct {
 type LeaseOption struct {
 	WithAttachedKeys bool
 }
+
+type UserAddOptions struct {
+	NoPassword bool
+}
