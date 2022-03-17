@@ -937,7 +937,7 @@ func (r *raft) Step(m pb.Message) error {
 		// ...and we believe the candidate is up to date.
 		if canVote && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			// Note: it turns out that that learners must be allowed to cast votes.
-			// This seems counter- intuitive but is necessary in the situation in which
+			// This seems counter-intuitive but is necessary in the situation in which
 			// a learner has been promoted (i.e. is now a voter) but has not learned
 			// about this yet.
 			// For example, consider a group in which id=1 is a learner and id=2 and
