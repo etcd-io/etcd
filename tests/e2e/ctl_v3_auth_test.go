@@ -1305,3 +1305,24 @@ func ctlV3EndpointHealth(cx ctlCtx) error {
 	}
 	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
+
+func ctlV3User(cx ctlCtx, args []string, expStr string, stdIn []string) error {
+	cmdArgs := append(cx.PrefixArgs(), "user")
+	cmdArgs = append(cmdArgs, args...)
+
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	if err != nil {
+		return err
+	}
+	defer proc.Close()
+
+	// Send 'stdIn' strings as input.
+	for _, s := range stdIn {
+		if err = proc.Send(s + "\r"); err != nil {
+			return err
+		}
+	}
+
+	_, err = proc.Expect(expStr)
+	return err
+}
