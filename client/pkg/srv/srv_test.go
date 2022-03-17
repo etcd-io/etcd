@@ -226,8 +226,8 @@ func TestSRVDiscover(t *testing.T) {
 		},
 		{
 			[]*net.SRV{
-				{Target: "a.example.com", Port: 2480},
-				{Target: "b.example.com", Port: 2480},
+				{Target: "a.example.com.", Port: 2480},
+				{Target: "b.example.com.", Port: 2480},
 				{Target: "c.example.com", Port: 2480},
 			},
 			[]*net.SRV{},

@@ -47,11 +47,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 	peers, tmpdirs := make([]string, 3), make([]string, 3)
 	for i := range peers {
 		peers[i] = fmt.Sprintf("e%d=http://127.0.0.1:%d", i, e2e.EtcdProcessBasePort+i)
-		d, err := os.MkdirTemp("", fmt.Sprintf("e%d.etcd", i))
-		if err != nil {
-			t.Fatal(err)
-		}
-		tmpdirs[i] = d
+		tmpdirs[i] = t.TempDir()
 	}
 	ic := strings.Join(peers, ",")
 
@@ -61,7 +57,6 @@ func TestEtcdMultiPeer(t *testing.T) {
 			if procs[i] != nil {
 				procs[i].Stop()
 			}
-			os.RemoveAll(tmpdirs[i])
 		}
 	}()
 	for i := range procs {
@@ -93,11 +88,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 func TestEtcdUnixPeers(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	d, err := os.MkdirTemp("", "e1.etcd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(d)
+	d := t.TempDir()
 	proc, err := e2e.SpawnCmd(
 		[]string{
 			e2e.BinDir + "/etcd",
@@ -127,11 +118,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 	peers, tmpdirs := make([]string, 3), make([]string, 3)
 	for i := range peers {
 		peers[i] = fmt.Sprintf("e%d=https://127.0.0.1:%d", i, e2e.EtcdProcessBasePort+i)
-		d, err := os.MkdirTemp("", fmt.Sprintf("e%d.etcd", i))
-		if err != nil {
-			t.Fatal(err)
-		}
-		tmpdirs[i] = d
+		tmpdirs[i] = t.TempDir()
 	}
 	ic := strings.Join(peers, ",")
 
@@ -141,7 +128,6 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 			if procs[i] != nil {
 				procs[i].Stop()
 			}
-			os.RemoveAll(tmpdirs[i])
 		}
 	}()
 
@@ -210,11 +196,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 	peers, tmpdirs := make([]string, 3), make([]string, 3)
 	for i := range peers {
 		peers[i] = fmt.Sprintf("e%d=https://127.0.0.1:%d", i, e2e.EtcdProcessBasePort+i)
-		d, err := os.MkdirTemp("", fmt.Sprintf("e%d.etcd", i))
-		if err != nil {
-			t.Fatal(err)
-		}
-		tmpdirs[i] = d
+		tmpdirs[i] = t.TempDir()
 	}
 	ic := strings.Join(peers, ",")
 

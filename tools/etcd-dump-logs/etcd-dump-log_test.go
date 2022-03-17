@@ -47,11 +47,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 	decoder_correctoutputformat := filepath.Join(binDir, "/testdecoder/decoder_correctoutputformat.sh")
 	decoder_wrongoutputformat := filepath.Join(binDir, "/testdecoder/decoder_wrongoutputformat.sh")
 
-	p, err := os.MkdirTemp(os.TempDir(), "etcddumplogstest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(p)
+	p := t.TempDir()
 
 	memberdir := filepath.Join(p, "member")
 	err = os.Mkdir(memberdir, 0744)

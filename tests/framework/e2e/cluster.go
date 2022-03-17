@@ -170,7 +170,11 @@ type EtcdProcessClusterConfig struct {
 	V2deprecation       string
 
 	RollingStart bool
-	Discovery    string
+
+	Discovery string // v2 discovery
+
+	DiscoveryEndpoints []string // v3 discovery
+	DiscoveryToken     string
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -181,16 +185,7 @@ func NewEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdPr
 		return nil, err
 	}
 
-	if cfg.RollingStart {
-		if err := epc.RollingStart(); err != nil {
-			return nil, fmt.Errorf("Cannot rolling-start: %v", err)
-		}
-	} else {
-		if err := epc.Start(); err != nil {
-			return nil, fmt.Errorf("Cannot start: %v", err)
-		}
-	}
-	return epc, nil
+	return StartEtcdProcessCluster(epc, cfg)
 }
 
 // InitEtcdProcessCluster initializes a new cluster based on the given config.
@@ -213,6 +208,21 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 			return nil, fmt.Errorf("cannot configure: %v", err)
 		}
 		epc.Procs[i] = proc
+	}
+
+	return epc, nil
+}
+
+// StartEtcdProcessCluster launches a new cluster from etcd processes.
+func StartEtcdProcessCluster(epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+	if cfg.RollingStart {
+		if err := epc.RollingStart(); err != nil {
+			return nil, fmt.Errorf("cannot rolling-start: %v", err)
+		}
+	} else {
+		if err := epc.Start(); err != nil {
+			return nil, fmt.Errorf("cannot start: %v", err)
+		}
 	}
 
 	return epc, nil
@@ -342,11 +352,18 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 	}
 
-	if cfg.Discovery == "" {
+	if cfg.Discovery == "" && len(cfg.DiscoveryEndpoints) == 0 {
 		for i := range etcdCfgs {
 			initialClusterArgs := []string{"--initial-cluster", strings.Join(initialCluster, ",")}
 			etcdCfgs[i].InitialCluster = strings.Join(initialCluster, ",")
 			etcdCfgs[i].Args = append(etcdCfgs[i].Args, initialClusterArgs...)
+		}
+	}
+
+	if len(cfg.DiscoveryEndpoints) > 0 {
+		for i := range etcdCfgs {
+			etcdCfgs[i].Args = append(etcdCfgs[i].Args, fmt.Sprintf("--discovery-token=%s", cfg.DiscoveryToken))
+			etcdCfgs[i].Args = append(etcdCfgs[i].Args, fmt.Sprintf("--discovery-endpoints=%s", strings.Join(cfg.DiscoveryEndpoints, ",")))
 		}
 	}
 

@@ -20,7 +20,7 @@ jobs:
           echo "${TARGET}"
           case "${TARGET}" in
             linux-amd64-fmt)
-              GOARCH=amd64 PASSES='fmt bom dep' ./test.sh
+              GOARCH=amd64 PASSES='fmt bom dep' ./scripts/test.sh
               ;;
             *)
               echo "Failed to find target"

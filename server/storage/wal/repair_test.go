@@ -43,11 +43,7 @@ func TestRepairTruncate(t *testing.T) {
 }
 
 func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expectedEnts int) {
-	p, err := os.MkdirTemp(os.TempDir(), "waltest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(p)
+	p := t.TempDir()
 
 	// create WAL
 	w, err := Create(zap.NewExample(), p, nil)
@@ -183,11 +179,7 @@ func TestRepairWriteTearMiddle(t *testing.T) {
 }
 
 func TestRepairFailDeleteDir(t *testing.T) {
-	p, err := os.MkdirTemp(os.TempDir(), "waltest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(p)
+	p := t.TempDir()
 
 	w, err := Create(zap.NewExample(), p, nil)
 	if err != nil {

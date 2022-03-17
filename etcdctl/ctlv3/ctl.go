@@ -97,6 +97,7 @@ func init() {
 		command.NewRoleCommand(),
 		command.NewCheckCommand(),
 		command.NewCompletionCommand(),
+		command.NewDowngradeCommand(),
 	)
 }
 

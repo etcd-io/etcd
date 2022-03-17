@@ -1086,11 +1086,7 @@ func TestSnapshotOrdering(t *testing.T) {
 	cl := membership.NewCluster(lg)
 	cl.SetStore(st)
 
-	testdir, err := os.MkdirTemp(t.TempDir(), "testsnapdir")
-	if err != nil {
-		t.Fatalf("couldn't open tempdir (%v)", err)
-	}
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 
 	snapdir := filepath.Join(testdir, "member", "snap")
 	if err := os.MkdirAll(snapdir, 0755); err != nil {
@@ -1242,11 +1238,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	cl := membership.NewCluster(lg)
 	cl.SetStore(st)
 
-	testdir, err := os.MkdirTemp(t.TempDir(), "testsnapdir")
-	if err != nil {
-		t.Fatalf("Couldn't open tempdir (%v)", err)
-	}
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 	if err := os.MkdirAll(testdir+"/member/snap", 0755); err != nil {
 		t.Fatalf("Couldn't make snap dir (%v)", err)
 	}
@@ -1472,130 +1464,6 @@ func TestUpdateMember(t *testing.T) {
 }
 
 // TODO: test server could stop itself when being removed
-
-func TestPublish(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	n := newNodeRecorder()
-	ch := make(chan interface{}, 1)
-	// simulate that request has gone through consensus
-	ch <- Response{}
-	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.Background())
-	srv := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         lg,
-		readych:    make(chan struct{}),
-		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		id:         1,
-		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
-		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
-		cluster:    &membership.RaftCluster{},
-		w:          w,
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
-
-		ctx:    ctx,
-		cancel: cancel,
-	}
-	srv.publish(time.Hour)
-
-	action := n.Action()
-	if len(action) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(action))
-	}
-	if action[0].Name != "Propose" {
-		t.Fatalf("action = %s, want Propose", action[0].Name)
-	}
-	data := action[0].Params[0].([]byte)
-	var r pb.Request
-	if err := r.Unmarshal(data); err != nil {
-		t.Fatalf("unmarshal request error: %v", err)
-	}
-	if r.Method != "PUT" {
-		t.Errorf("method = %s, want PUT", r.Method)
-	}
-	wm := membership.Member{ID: 1, Attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}}}
-	if wpath := membership.MemberAttributesStorePath(wm.ID); r.Path != wpath {
-		t.Errorf("path = %s, want %s", r.Path, wpath)
-	}
-	var gattr membership.Attributes
-	if err := json.Unmarshal([]byte(r.Val), &gattr); err != nil {
-		t.Fatalf("unmarshal val error: %v", err)
-	}
-	if !reflect.DeepEqual(gattr, wm.Attributes) {
-		t.Errorf("member = %v, want %v", gattr, wm.Attributes)
-	}
-}
-
-// TestPublishStopped tests that publish will be stopped if server is stopped.
-func TestPublishStopped(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	r := newRaftNode(raftNodeConfig{
-		lg:        lg,
-		Node:      newNodeNop(),
-		transport: newNopTransporter(),
-	})
-	srv := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         lg,
-		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:          *r,
-		cluster:    &membership.RaftCluster{},
-		w:          mockwait.NewNop(),
-		done:       make(chan struct{}),
-		stopping:   make(chan struct{}),
-		stop:       make(chan struct{}),
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
-
-		ctx:    ctx,
-		cancel: cancel,
-	}
-	close(srv.stopping)
-	srv.publish(time.Hour)
-}
-
-// TestPublishRetry tests that publish will keep retry until success.
-func TestPublishRetry(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	n := newNodeRecorderStream()
-	srv := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         lg,
-		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
-		w:          mockwait.NewNop(),
-		stopping:   make(chan struct{}),
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
-		ctx:        ctx,
-		cancel:     cancel,
-	}
-	// expect multiple proposals from retrying
-	ch := make(chan struct{})
-	go func() {
-		defer close(ch)
-		if action, err := n.Wait(2); err != nil {
-			t.Errorf("len(action) = %d, want >= 2 (%v)", len(action), err)
-		}
-		close(srv.stopping)
-		// drain remaining actions, if any, so publish can terminate
-		for {
-			select {
-			case <-ch:
-				return
-			default:
-				n.Action()
-			}
-		}
-	}()
-	srv.publish(10 * time.Nanosecond)
-	ch <- struct{}{}
-	<-ch
-}
 
 func TestPublishV3(t *testing.T) {
 	n := newNodeRecorder()

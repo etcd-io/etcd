@@ -176,6 +176,16 @@ func (s *simplePrinter) MoveLeader(leader, target uint64, r v3.MoveLeaderRespons
 	fmt.Printf("Leadership transferred from %s to %s\n", types.ID(leader), types.ID(target))
 }
 
+func (s *simplePrinter) DowngradeValidate(r v3.DowngradeResponse) {
+	fmt.Printf("Downgrade validate success, cluster version %s\n", r.Version)
+}
+func (s *simplePrinter) DowngradeEnable(r v3.DowngradeResponse) {
+	fmt.Printf("Downgrade enable success, cluster version %s\n", r.Version)
+}
+func (s *simplePrinter) DowngradeCancel(r v3.DowngradeResponse) {
+	fmt.Printf("Downgrade cancel success, cluster version %s\n", r.Version)
+}
+
 func (s *simplePrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) {
 	fmt.Printf("Role %s created\n", role)
 }

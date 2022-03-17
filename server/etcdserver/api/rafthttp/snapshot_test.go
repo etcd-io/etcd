@@ -94,11 +94,7 @@ func TestSnapshotSend(t *testing.T) {
 }
 
 func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.DirEntry) {
-	d, err := os.MkdirTemp(os.TempDir(), "snapdir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(d)
+	d := t.TempDir()
 
 	r := &fakeRaft{}
 	tr := &Transport{pipelineRt: &http.Transport{}, ClusterID: types.ID(1), Raft: r}

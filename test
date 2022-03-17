@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-echo -e "\\e[91mDEPRECATED!!! Use test.sh script instead.\\e[0m\\n"
-sleep 1
-
-source ./test.sh

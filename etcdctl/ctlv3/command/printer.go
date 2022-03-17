@@ -50,6 +50,10 @@ type printer interface {
 	EndpointHashKV([]epHashKV)
 	MoveLeader(leader, target uint64, r v3.MoveLeaderResponse)
 
+	DowngradeValidate(r v3.DowngradeResponse)
+	DowngradeEnable(r v3.DowngradeResponse)
+	DowngradeCancel(r v3.DowngradeResponse)
+
 	Alarm(v3.AlarmResponse)
 
 	RoleAdd(role string, r v3.AuthRoleAddResponse)
@@ -118,6 +122,9 @@ func (p *printerRPC) Alarm(r v3.AlarmResponse)           { p.p((*pb.AlarmRespons
 func (p *printerRPC) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) {
 	p.p((*pb.MoveLeaderResponse)(&r))
 }
+func (p *printerRPC) DowngradeValidate(r v3.DowngradeResponse)   { p.p((*pb.DowngradeResponse)(&r)) }
+func (p *printerRPC) DowngradeEnable(r v3.DowngradeResponse)     { p.p((*pb.DowngradeResponse)(&r)) }
+func (p *printerRPC) DowngradeCancel(r v3.DowngradeResponse)     { p.p((*pb.DowngradeResponse)(&r)) }
 func (p *printerRPC) RoleAdd(_ string, r v3.AuthRoleAddResponse) { p.p((*pb.AuthRoleAddResponse)(&r)) }
 func (p *printerRPC) RoleGet(_ string, r v3.AuthRoleGetResponse) { p.p((*pb.AuthRoleGetResponse)(&r)) }
 func (p *printerRPC) RoleDelete(_ string, r v3.AuthRoleDeleteResponse) {
@@ -163,6 +170,9 @@ func (p *printerUnsupported) EndpointStatus([]epStatus) { p.p(nil) }
 func (p *printerUnsupported) EndpointHashKV([]epHashKV) { p.p(nil) }
 
 func (p *printerUnsupported) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) { p.p(nil) }
+func (p *printerUnsupported) DowngradeValidate(r v3.DowngradeResponse)                  { p.p(nil) }
+func (p *printerUnsupported) DowngradeEnable(r v3.DowngradeResponse)                    { p.p(nil) }
+func (p *printerUnsupported) DowngradeCancel(r v3.DowngradeResponse)                    { p.p(nil) }
 
 func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string) {
 	hdr = []string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs", "Is Learner"}

@@ -30,15 +30,11 @@ import (
 )
 
 func TestIsDirWriteable(t *testing.T) {
-	tmpdir, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Fatalf("unexpected os.MkdirTemp error: %v", err)
-	}
-	defer os.RemoveAll(tmpdir)
-	if err = IsDirWriteable(tmpdir); err != nil {
+	tmpdir := t.TempDir()
+	if err := IsDirWriteable(tmpdir); err != nil {
 		t.Fatalf("unexpected IsDirWriteable error: %v", err)
 	}
-	if err = os.Chmod(tmpdir, 0444); err != nil {
+	if err := os.Chmod(tmpdir, 0444); err != nil {
 		t.Fatalf("unexpected os.Chmod error: %v", err)
 	}
 	me, err := user.Current()
@@ -59,22 +55,18 @@ func TestIsDirWriteable(t *testing.T) {
 }
 
 func TestCreateDirAll(t *testing.T) {
-	tmpdir, err := os.MkdirTemp(os.TempDir(), "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	tmpdir2 := filepath.Join(tmpdir, "testdir")
-	if err = CreateDirAll(zaptest.NewLogger(t), tmpdir2); err != nil {
+	if err := CreateDirAll(zaptest.NewLogger(t), tmpdir2); err != nil {
 		t.Fatal(err)
 	}
 
-	if err = os.WriteFile(filepath.Join(tmpdir2, "text.txt"), []byte("test text"), PrivateFileMode); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpdir2, "text.txt"), []byte("test text"), PrivateFileMode); err != nil {
 		t.Fatal(err)
 	}
 
-	if err = CreateDirAll(zaptest.NewLogger(t), tmpdir2); err == nil || !strings.Contains(err.Error(), "to be empty, got") {
+	if err := CreateDirAll(zaptest.NewLogger(t), tmpdir2); err == nil || !strings.Contains(err.Error(), "to be empty, got") {
 		t.Fatalf("unexpected error %v", err)
 	}
 }
@@ -107,11 +99,7 @@ func TestExist(t *testing.T) {
 }
 
 func TestDirEmpty(t *testing.T) {
-	dir, err := os.MkdirTemp(os.TempDir(), "empty_dir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	if !DirEmpty(dir) {
 		t.Fatalf("expected DirEmpty true, got %v", DirEmpty(dir))
@@ -177,19 +165,15 @@ func TestZeroToEnd(t *testing.T) {
 }
 
 func TestDirPermission(t *testing.T) {
-	tmpdir, err := os.MkdirTemp(os.TempDir(), "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 
 	tmpdir2 := filepath.Join(tmpdir, "testpermission")
 	// create a new dir with 0700
-	if err = CreateDirAll(zaptest.NewLogger(t), tmpdir2); err != nil {
+	if err := CreateDirAll(zaptest.NewLogger(t), tmpdir2); err != nil {
 		t.Fatal(err)
 	}
 	// check dir permission with mode different than created dir
-	if err = CheckDirPermission(tmpdir2, 0600); err == nil {
+	if err := CheckDirPermission(tmpdir2, 0600); err == nil {
 		t.Errorf("expected error, got nil")
 	}
 }

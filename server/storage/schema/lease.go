@@ -16,7 +16,7 @@ package schema
 
 import (
 	"encoding/binary"
-	"math"
+	"fmt"
 
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -27,15 +27,18 @@ func UnsafeCreateLeaseBucket(tx backend.BatchTx) {
 }
 
 func MustUnsafeGetAllLeases(tx backend.ReadTx) []*leasepb.Lease {
-	_, vs := tx.UnsafeRange(Lease, leaseIdToBytes(0), leaseIdToBytes(math.MaxInt64), 0)
-	ls := make([]*leasepb.Lease, 0, len(vs))
-	for i := range vs {
+	ls := make([]*leasepb.Lease, 0)
+	err := tx.UnsafeForEach(Lease, func(k, v []byte) error {
 		var lpb leasepb.Lease
-		err := lpb.Unmarshal(vs[i])
+		err := lpb.Unmarshal(v)
 		if err != nil {
-			panic("failed to unmarshal lease proto item")
+			return fmt.Errorf("failed to Unmarshal lease proto item; lease ID=%016x", bytesToLeaseID(k))
 		}
 		ls = append(ls, &lpb)
+		return nil
+	})
+	if err != nil {
+		panic(err)
 	}
 	return ls
 }
@@ -71,4 +74,11 @@ func leaseIdToBytes(n int64) []byte {
 	bytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes, uint64(n))
 	return bytes
+}
+
+func bytesToLeaseID(bytes []byte) int64 {
+	if len(bytes) != 8 {
+		panic(fmt.Errorf("lease ID must be 8-byte"))
+	}
+	return int64(binary.BigEndian.Uint64(bytes))
 }

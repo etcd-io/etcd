@@ -15,7 +15,6 @@
 package wal
 
 import (
-	"os"
 	"testing"
 
 	"go.uber.org/zap"
@@ -36,11 +35,7 @@ func BenchmarkWrite1000EntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 
 func BenchmarkWrite1000EntryBatch1000(b *testing.B)    { benchmarkWriteEntry(b, 1000, 1000) }
 
 func benchmarkWriteEntry(b *testing.B, size int, batch int) {
-	p, err := os.MkdirTemp(os.TempDir(), "waltest")
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer os.RemoveAll(p)
+	p := b.TempDir()
 
 	w, err := Create(zap.NewExample(), p, []byte("somedata"))
 	if err != nil {

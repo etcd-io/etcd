@@ -22,10 +22,10 @@ ETCD_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 pushd "${ETCD_ROOT}" >/dev/null
   log_callout "Building etcd binary..."
-  ./scripts/build-binary "${VERSION}"
+  ./scripts/build-binary.sh "${VERSION}"
 
   for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
     log_callout "Building ${TARGET_ARCH} docker image..."
-    GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker "${VERSION}"
+    GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker.sh "${VERSION}"
   done
 popd >/dev/null

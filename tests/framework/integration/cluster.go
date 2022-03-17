@@ -170,6 +170,7 @@ type ClusterConfig struct {
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
 	StrictReconfigCheck         bool
+	CorruptCheckTime            time.Duration
 }
 
 type Cluster struct {
@@ -282,6 +283,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
 			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
 			StrictReconfigCheck:         c.Cfg.StrictReconfigCheck,
+			CorruptCheckTime:            c.Cfg.CorruptCheckTime,
 		})
 	m.DiscoveryURL = c.Cfg.DiscoveryURL
 	return m
@@ -521,7 +523,6 @@ type Member struct {
 
 	GrpcServerOpts []grpc.ServerOption
 	GrpcServer     *grpc.Server
-	GrpcServerPeer *grpc.Server
 	GrpcURL        string
 	GrpcBridge     *bridge
 
@@ -571,6 +572,7 @@ type MemberConfig struct {
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
 	StrictReconfigCheck         bool
+	CorruptCheckTime            time.Duration
 }
 
 // MustNewMember return an inited member with the given name. If peerTLS is
@@ -673,6 +675,9 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
 	m.InitialCorruptCheck = true
+	if mcfg.CorruptCheckTime > time.Duration(0) {
+		m.CorruptCheckTime = mcfg.CorruptCheckTime
+	}
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 	m.WarningUnaryRequestDuration = embed.DefaultWarningUnaryRequestDuration
 	m.ExperimentalMaxLearners = membership.DefaultMaxLearners
@@ -898,7 +903,6 @@ func (m *Member) Launch() error {
 			}
 		}
 		m.GrpcServer = v3rpc.Server(m.Server, tlscfg, m.GrpcServerRecorder.UnaryInterceptor(), m.GrpcServerOpts...)
-		m.GrpcServerPeer = v3rpc.Server(m.Server, peerTLScfg, m.GrpcServerRecorder.UnaryInterceptor())
 		m.ServerClient = v3client.New(m.Server)
 		lockpb.RegisterLockServer(m.GrpcServer, v3lock.NewLockServer(m.ServerClient))
 		epb.RegisterElectionServer(m.GrpcServer, v3election.NewElectionServer(m.ServerClient))
@@ -910,11 +914,7 @@ func (m *Member) Launch() error {
 	h := (http.Handler)(m.RaftHandler)
 	if m.GrpcListener != nil {
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-				m.GrpcServerPeer.ServeHTTP(w, r)
-			} else {
-				m.RaftHandler.ServeHTTP(w, r)
-			}
+			m.RaftHandler.ServeHTTP(w, r)
 		})
 	}
 
@@ -922,11 +922,6 @@ func (m *Member) Launch() error {
 		cm := cmux.New(ln)
 		// don't hang on matcher after closing listener
 		cm.SetReadTimeout(time.Second)
-
-		if m.GrpcServer != nil {
-			grpcl := cm.Match(cmux.HTTP2())
-			go m.GrpcServerPeer.Serve(grpcl)
-		}
 
 		// serve http1/http2 rafthttp/grpc
 		ll := cm.Match(cmux.Any())
@@ -1120,9 +1115,6 @@ func (m *Member) Close() {
 			<-ch
 		}
 		m.GrpcServer = nil
-		m.GrpcServerPeer.GracefulStop()
-		m.GrpcServerPeer.Stop()
-		m.GrpcServerPeer = nil
 	}
 	if m.Server != nil {
 		m.Server.HardStop()
@@ -1366,6 +1358,14 @@ func (c *Cluster) Client(i int) *clientv3.Client {
 	return c.Members[i].Client
 }
 
+func (c *Cluster) Endpoints() []string {
+	var endpoints []string
+	for _, m := range c.Members {
+		endpoints = append(endpoints, m.GrpcURL)
+	}
+	return endpoints
+}
+
 func (c *Cluster) ClusterClient() (client *clientv3.Client, err error) {
 	if c.clusterClient == nil {
 		endpoints := []string{}
@@ -1373,9 +1373,18 @@ func (c *Cluster) ClusterClient() (client *clientv3.Client, err error) {
 			endpoints = append(endpoints, m.GrpcURL)
 		}
 		cfg := clientv3.Config{
-			Endpoints:   endpoints,
-			DialTimeout: 5 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			Endpoints:          endpoints,
+			DialTimeout:        5 * time.Second,
+			DialOptions:        []grpc.DialOption{grpc.WithBlock()},
+			MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
+			MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
+		}
+		if c.Cfg.ClientTLS != nil {
+			tls, err := c.Cfg.ClientTLS.ClientConfig()
+			if err != nil {
+				return nil, err
+			}
+			cfg.TLS = tls
 		}
 		c.clusterClient, err = newClientV3(cfg)
 		if err != nil {

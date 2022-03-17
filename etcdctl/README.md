@@ -913,7 +913,7 @@ If NOSPACE alarm is present:
 
 ### DEFRAG [options]
 
-DEFRAG defragments the backend database file for a set of given endpoints while etcd is running, ~~or directly defragments an etcd data directory while etcd is not running~~. When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
+DEFRAG defragments the backend database file for a set of given endpoints while etcd is running. When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
 
 **Note: to defragment offline (`--data-dir` flag), use: `etcutl defrag` instead**
 
@@ -921,9 +921,6 @@ DEFRAG defragments the backend database file for a set of given endpoints while 
 
 **Note that defragmentation request does not get replicated over cluster. That is, the request is only applied to the local node. Specify all members in `--endpoints` flag or `--cluster` flag to automatically find all cluster members.**
 
-#### Options
-
-- data-dir -- Optional. **Deprecated**. If present, defragments a data directory not in use by etcd. To be removed in v3.6.
 
 #### Output
 
@@ -944,16 +941,6 @@ Run defragment operations for all endpoints in the cluster associated with the d
 Finished defragmenting etcd member[http://127.0.0.1:2379]
 Finished defragmenting etcd member[http://127.0.0.1:22379]
 Finished defragmenting etcd member[http://127.0.0.1:32379]
-```
-
-To defragment a data directory directly, use the `etcdutl` with `--data-dir` flag 
-(`etcdctl` will remove this flag in v3.6):
-
-``` bash
-# Defragment while etcd is not running
-./etcdutl defrag --data-dir default.etcd
-# success (exit status 0)
-# Error: cannot open database at default.etcd/member/snap/db
 ```
 
 #### Remarks
@@ -1081,6 +1068,69 @@ echo ${transferee_id}
 # request to leader with target node ID
 ./etcdctl --endpoints ${leader_ep} move-leader ${transferee_id}
 # Leadership transferred from 45ddc0e800e20b93 to c89feb932daef420
+```
+
+### DOWNGRADE \<subcommand\>
+
+NOTICE: Downgrades is an experimental feature in v3.6 and is not recommended for production clusters.
+
+Downgrade provides commands to downgrade cluster.
+Normally etcd members cannot be downgraded due to cluster version mechanism.
+
+After initial bootstrap, cluster members agree on the cluster version. Every 5 seconds, leader checks versions of all members and picks lowers minor version.
+New members will refuse joining cluster with cluster version newer than theirs, thus preventing cluster from downgrading.
+Downgrade commands allow cluster administrator to force cluster version to be lowered to previous minor version, thus allowing to downgrade the cluster.
+
+Downgrade should be executed in stages:
+1. Verify that cluster is ready to be downgraded by running `etcdctl downgrade validate <TARGET_VERSION>`
+2. Start the downgrade process by running `etcdctl downgrade enable <TARGET_VERSION>`
+3. For each cluster member:
+   1. Ensure that member is ready for downgrade by confirming that it wrote `The server is ready to downgrade` log.
+   2. Replace member binary with one with older version.
+   3. Confirm that member has correctly started and joined the cluster.
+4. Ensure that downgrade process has succeeded by checking leader log for `the cluster has been downgraded`
+
+Downgrade can be canceled by running `etcdctl downgrade cancel` command.
+
+In case of downgrade being canceled, cluster version will return to its normal behavior (pick the lowest member minor version).
+If no members were downgraded, cluster version will return to original value.
+If at least one member was downgraded, cluster version will stay at the `<TARGET_VALUE>` until downgraded members are upgraded back.
+
+### DOWNGRADE VALIDATE \<TARGET_VERSION\>
+
+DOWNGRADE VALIDATE validate downgrade capability before starting downgrade.
+
+#### Example
+
+```bash
+./etcdctl downgrade validate 3.5
+Downgrade validate success, cluster version 3.6
+
+./etcdctl downgrade validate 3.4
+Error: etcdserver: invalid downgrade target version
+
+```
+
+### DOWNGRADE ENABLE \<TARGET_VERSION\>
+
+DOWNGRADE ENABLE starts a downgrade action to cluster.
+
+#### Example
+
+```bash
+./etcdctl downgrade enable 3.5
+Downgrade enable success, cluster version 3.6
+```
+
+### DOWNGRADE CANCEL \<TARGET_VERSION\>
+
+DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
+
+#### Example
+
+```bash
+./etcdctl downgrade cancel
+Downgrade cancel success, cluster version 3.5
 ```
 
 ## Concurrency commands

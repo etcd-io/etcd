@@ -16,18 +16,13 @@ package wal
 
 import (
 	"math"
-	"os"
 	"testing"
 
 	"go.uber.org/zap"
 )
 
 func TestFilePipeline(t *testing.T) {
-	tdir, err := os.MkdirTemp(os.TempDir(), "wal-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := t.TempDir()
 
 	fp := newFilePipeline(zap.NewExample(), tdir, SegmentSizeBytes)
 	defer fp.Close()
@@ -40,11 +35,7 @@ func TestFilePipeline(t *testing.T) {
 }
 
 func TestFilePipelineFailPreallocate(t *testing.T) {
-	tdir, err := os.MkdirTemp(os.TempDir(), "wal-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tdir)
+	tdir := t.TempDir()
 
 	fp := newFilePipeline(zap.NewExample(), tdir, math.MaxInt64)
 	defer fp.Close()
@@ -56,11 +47,7 @@ func TestFilePipelineFailPreallocate(t *testing.T) {
 }
 
 func TestFilePipelineFailLockFile(t *testing.T) {
-	tdir, err := os.MkdirTemp(os.TempDir(), "wal-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.RemoveAll(tdir)
+	tdir := t.TempDir()
 
 	fp := newFilePipeline(zap.NewExample(), tdir, math.MaxInt64)
 	defer fp.Close()

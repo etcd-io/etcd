@@ -257,8 +257,14 @@ func (ti *treeIndex) Equal(bi index) bool {
 	equal := true
 
 	ti.tree.Ascend(func(item btree.Item) bool {
-		aki := item.(*keyIndex)
-		bki := b.tree.Get(item).(*keyIndex)
+		var aki, bki *keyIndex
+		var ok bool
+		if aki, ok = item.(*keyIndex); !ok {
+			return false
+		}
+		if bki, ok = b.tree.Get(item).(*keyIndex); !ok {
+			return false
+		}
 		if !aki.equal(bki) {
 			equal = false
 			return false

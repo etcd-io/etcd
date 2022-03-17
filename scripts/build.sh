@@ -18,7 +18,7 @@ GO_BUILD_ENV=("CGO_ENABLED=0" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS}" "GOOS=${GOOS}" 
 toggle_failpoints() {
   mode="$1"
   if command -v gofail >/dev/null 2>&1; then
-    run gofail "$mode" server/etcdserver/ server/mvcc/backend/
+    run gofail "$mode" server/etcdserver/ server/storage/backend/
   elif [[ "$mode" != "disable" ]]; then
     log_error "FAILPOINTS set but gofail not found"
     exit 1
@@ -66,7 +66,7 @@ etcd_build() {
       "-ldflags=${GO_LDFLAGS[*]}" \
       -o="../${out}/etcdctl" . || return 2
   ) || return 2
-  # Verify whether symbol we overriden exists
+  # Verify whether symbol we overwrote exists
   # For cross-compiling we cannot run: ${out}/etcd --version | grep -q "Git SHA: ${GIT_SHA}"
 
   # We need symbols to do this check:

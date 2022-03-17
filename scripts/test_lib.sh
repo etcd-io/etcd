@@ -71,7 +71,7 @@ function relativePath {
   local commonPart=$source
   local result=""
 
-  while [[ "${target#$commonPart}" == "${target}" ]]; do
+  while [[ "${target#"$commonPart"}" == "${target}" ]]; do
     # no match, means that candidate common part is not correct
     # go up one level (reduce common part)
     commonPart="$(dirname "$commonPart")"
@@ -90,7 +90,7 @@ function relativePath {
 
   # since we now have identified the common part,
   # compute the non-common part
-  local forwardPart="${target#$commonPart}"
+  local forwardPart="${target#"$commonPart"}"
 
   # and now stick all parts together
   if [[ -n $result ]] && [[ -n $forwardPart ]]; then
@@ -353,23 +353,27 @@ function tool_exists {
   fi
 }
 
-# Ensure gobin is available, as it runs majority of the tools
-if ! command -v "gobin" >/dev/null; then
-    GOARCH="" run env GO111MODULE=off go get github.com/myitcv/gobin || exit 1
-fi
-
 # tool_get_bin [tool] - returns absolute path to a tool binary (or returns error)
 function tool_get_bin {
-  tool_exists "gobin" "GO111MODULE=off go get github.com/myitcv/gobin" || return 2
-
   local tool="$1"
+  local pkg_part="$1"
   if [[ "$tool" == *"@"* ]]; then
+    pkg_part=$(echo "${tool}" | cut -d'@' -f1)
     # shellcheck disable=SC2086
-    run gobin ${GOBINARGS:-} -p "${tool}" || return 2
+    run go install ${GOBINARGS:-} "${tool}" || return 2
   else
     # shellcheck disable=SC2086
-    run_for_module ./tools/mod run gobin ${GOBINARGS:-} -p -m --mod=readonly "${tool}" || return 2
+    run_for_module ./tools/mod run go install ${GOBINARGS:-} "${tool}" || return 2
   fi
+
+  # remove the version suffix, such as removing "/v3" from "go.etcd.io/etcd/v3".
+  local cmd_base_name
+  cmd_base_name=$(basename "${pkg_part}")
+  if [[ ${cmd_base_name} =~ ^v[0-9]*$ ]]; then
+    pkg_part=$(dirname "${pkg_part}")
+  fi
+
+  command -v "$(basename "${pkg_part}")"
 }
 
 # tool_pkg_dir [pkg] - returns absolute path to a directory that stores given pkg.

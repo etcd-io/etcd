@@ -13,7 +13,9 @@ Usage:
                 - data_dir/member/wal/0000000000000000-0000000000000000.wal
 
 Flags:
-
+  -wal-dir string
+      If set, dumps WAL from the informed path, rather than following the
+      standard 'data_dir/member/wal/' location
   -entry-type string
     	If set, filters output by entry type. Must be one or more than one of:
 	    ConfigChange, Normal, Request, InternalRaftRequest,
