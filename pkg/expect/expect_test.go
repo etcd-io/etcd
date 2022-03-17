@@ -23,7 +23,7 @@ import (
 )
 
 func TestExpectFunc(t *testing.T) {
-	ep, err := NewExpect("/bin/echo", "hello world")
+	ep, err := NewExpect("echo", "hello world")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestExpectFunc(t *testing.T) {
 }
 
 func TestEcho(t *testing.T) {
-	ep, err := NewExpect("/bin/echo", "hello world")
+	ep, err := NewExpect("echo", "hello world")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestEcho(t *testing.T) {
 }
 
 func TestLineCount(t *testing.T) {
-	ep, err := NewExpect("/usr/bin/printf", "1\n2\n3")
+	ep, err := NewExpect("printf", "1\n2\n3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestLineCount(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
-	ep, err := NewExpect("/usr/bin/tr", "a", "b")
+	ep, err := NewExpect("tr", "a", "b")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestSend(t *testing.T) {
 }
 
 func TestSignal(t *testing.T) {
-	ep, err := NewExpect("/bin/sleep", "100")
+	ep, err := NewExpect("sleep", "100")
 	if err != nil {
 		t.Fatal(err)
 	}
