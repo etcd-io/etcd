@@ -15,8 +15,9 @@
 package config
 
 import (
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 type GetOptions struct {
@@ -40,4 +41,8 @@ type DeleteOptions struct {
 type CompactOption struct {
 	Physical bool
 	Timeout  time.Duration
+}
+
+type DefragOption struct {
+	Timeout time.Duration
 }

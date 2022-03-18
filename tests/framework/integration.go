@@ -196,3 +196,19 @@ func (c integrationClient) Health() error {
 	}
 	return nil
 }
+
+func (c integrationClient) Defragment(o config.DefragOption) error {
+	ctx := context.Background()
+	if o.Timeout != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, o.Timeout)
+		defer cancel()
+	}
+	for _, ep := range c.Endpoints() {
+		_, err := c.Client.Defragment(ctx, ep)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
