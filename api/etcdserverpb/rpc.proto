@@ -1158,6 +1158,8 @@ message StatusResponse {
   int64 dbSizeInUse = 9 [(versionpb.etcd_version_field)="3.4"];
   // isLearner indicates if the member is raft learner.
   bool isLearner = 10 [(versionpb.etcd_version_field)="3.4"];
+  // storageVersion is the version of the db file. It might be get updated with delay in relationship to the target cluster version.
+  string storageVersion = 11 [(versionpb.etcd_version_field)="3.6"];
 }
 
 message AuthEnableRequest {
