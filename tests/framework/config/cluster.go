@@ -23,7 +23,8 @@ const (
 )
 
 type ClusterConfig struct {
-	ClusterSize int
-	PeerTLS     TLSConfig
-	ClientTLS   TLSConfig
+	ClusterSize       int
+	PeerTLS           TLSConfig
+	ClientTLS         TLSConfig
+	QuotaBackendBytes int64
 }

@@ -241,7 +241,13 @@ func (ctl *EtcdctlV3) Health() error {
 		lines[i] = "is healthy"
 	}
 	return SpawnWithExpects(args, map[string]string{}, lines...)
+}
 
+func (ctl *EtcdctlV3) Alarm(cmd string) (*clientv3.AlarmResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "alarm", cmd)
+
+	return nil, SpawnWithExpect(args, "alarm:NOSPACE")
 }
 
 func (ctl *EtcdctlV3) Defragment(o config.DefragOption) error {

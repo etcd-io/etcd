@@ -45,6 +45,7 @@ func (e integrationRunner) NewCluster(t testing.TB, cfg config.ClusterConfig) Cl
 	var integrationCfg integration.ClusterConfig
 	integrationCfg.Size = cfg.ClusterSize
 	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
+	integrationCfg.QuotaBackendBytes = cfg.QuotaBackendBytes
 	if err != nil {
 		t.Fatalf("ClientTLS: %s", err)
 	}
@@ -157,6 +158,14 @@ func (c integrationClient) Compact(rev int64, o config.CompactOption) (*clientv3
 		clientOpts = append(clientOpts, clientv3.WithCompactPhysical())
 	}
 	return c.Client.Compact(ctx, rev, clientOpts...)
+}
+
+func (c integrationClient) Alarm(cmd string) (*clientv3.AlarmResponse, error) {
+	ctx := context.Background()
+	if cmd == "list" {
+		return c.Client.AlarmList(ctx)
+	}
+	return c.Client.AlarmDisarm(ctx, nil)
 }
 
 func (c integrationClient) Status() ([]*clientv3.StatusResponse, error) {
