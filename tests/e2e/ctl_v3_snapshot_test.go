@@ -294,9 +294,6 @@ func testIssue6361(t *testing.T, etcdutl bool) {
 
 // For storageVersion to be stored, all fields expected 3.6 fields need to be set. This happens after first WAL snapshot.
 // In this test we lower SnapshotCount to 1 to ensure WAL snapshot is triggered.
-func TestCtlV3SnapshotVersion(t *testing.T) {
-	testCtl(t, snapshotVersionTest, withCfg(e2e.EtcdProcessClusterConfig{SnapshotCount: 1}))
-}
 func TestCtlV3SnapshotVersionEtcdutl(t *testing.T) {
 	testCtl(t, snapshotVersionTest, withEtcdutl(), withCfg(e2e.EtcdProcessClusterConfig{SnapshotCount: 1}))
 }

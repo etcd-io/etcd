@@ -243,3 +243,17 @@ func (ctl *EtcdctlV3) Health() error {
 	return SpawnWithExpects(args, map[string]string{}, lines...)
 
 }
+
+func (ctl *EtcdctlV3) Defragment(o config.DefragOption) error {
+
+	args := append(ctl.cmdArgs(), "defrag")
+	if o.Timeout != 0 {
+		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
+	}
+	lines := make([]string, len(ctl.endpoints))
+	for i := range lines {
+		lines[i] = "Finished defragmenting etcd member"
+	}
+	_, err := SpawnWithExpectLines(args, map[string]string{}, lines...)
+	return err
+}

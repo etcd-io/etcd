@@ -41,4 +41,5 @@ type Client interface {
 	Status() ([]*clientv3.StatusResponse, error)
 	HashKV(rev int64) ([]*clientv3.HashKVResponse, error)
 	Health() error
+	Defragment(opts config.DefragOption) error
 }
