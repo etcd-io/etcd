@@ -21,73 +21,74 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 func TestAlarm(t *testing.T) {
 	testRunner.BeforeTest(t)
-
 	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3, QuotaBackendBytes: int64(13 * os.Getpagesize())})
 	defer clus.Close()
+	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+		// test small put still works
+		smallbuf := strings.Repeat("a", 64)
+		if err := clus.Client().Put("1st_test", smallbuf); err != nil {
+			t.Fatalf("alarmTest: put kv error (%v)", err)
+		}
 
-	// test small put still works
-	smallbuf := strings.Repeat("a", 64)
-	if err := clus.Client().Put("1st_test", smallbuf); err != nil {
-		t.Fatalf("alarmTest: put kv error (%v)", err)
-	}
+		// write some chunks to fill up the database
+		buf := strings.Repeat("b", os.Getpagesize())
+		for {
+			if err := clus.Client().Put("2nd_test", buf); err != nil {
+				if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
+					t.Fatal(err)
+				}
+				break
+			}
+		}
 
-	// write some chunks to fill up the database
-	buf := strings.Repeat("b", os.Getpagesize())
-	for {
-		if err := clus.Client().Put("2nd_test", buf); err != nil {
+		// quota alarm should now be on
+		_, err := clus.Client().Alarm("list")
+		if err != nil {
+			t.Fatalf("alarmTest: Alarm error (%v)", err)
+		}
+
+		// endpoint should not healthy
+		if err := clus.Client().Health(); err == nil {
+			t.Fatalf("endpoint should not healthy")
+		}
+
+		// check that Put is rejected when alarm is on
+		if err := clus.Client().Put("3rd_test", smallbuf); err != nil {
 			if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
 				t.Fatal(err)
 			}
-			break
 		}
-	}
 
-	// quota alarm should now be on
-	_, err := clus.Client().Alarm("list")
-	if err != nil {
-		t.Fatalf("alarmTest: Alarm error (%v)", err)
-	}
+		// get latest revision to compact
+		sresp, err := clus.Client().Status()
+		if err != nil {
+			t.Fatalf("get endpoint status error: %v", err)
+		}
 
-	// endpoint should not healthy
-	if err := clus.Client().Health(); err == nil {
-		t.Fatalf("endpoint should not healthy")
-	}
+		// make some space
+		_, err = clus.Client().Compact(sresp[0].Header.Revision, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
+		if err != nil {
+			t.Fatalf("alarmTest: Compact error (%v)", err)
+		}
 
-	// check that Put is rejected when alarm is on
-	if err := clus.Client().Put("3rd_test", smallbuf); err != nil {
-		if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
+		if err = clus.Client().Defragment(config.DefragOption{Timeout: 10 * time.Second}); err != nil {
+			t.Fatalf("alarmTest: defrag error (%v)", err)
+		}
+
+		// turn off alarm
+		_, err = clus.Client().Alarm("disarm")
+		if err != nil {
+			t.Fatalf("alarmTest: Alarm error (%v)", err)
+		}
+
+		// put one more key below quota
+		if err := clus.Client().Put("4th_test", smallbuf); err != nil {
 			t.Fatal(err)
 		}
-	}
-
-	// get latest revision to compact
-	sresp, err := clus.Client().Status()
-	if err != nil {
-		t.Fatalf("get endpoint status error: %v", err)
-	}
-
-	// make some space
-	_, err = clus.Client().Compact(sresp[0].Header.Revision, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
-	if err != nil {
-		t.Fatalf("alarmTest: Compact error (%v)", err)
-	}
-
-	if err = clus.Client().Defragment(config.DefragOption{Timeout: 10 * time.Second}); err != nil {
-		t.Fatalf("alarmTest: defrag error (%v)", err)
-	}
-
-	// turn off alarm
-	_, err = clus.Client().Alarm("disarm")
-	if err != nil {
-		t.Fatalf("alarmTest: Alarm error (%v)", err)
-	}
-
-	// put one more key below quota
-	if err := clus.Client().Put("4th_test", smallbuf); err != nil {
-		t.Fatal(err)
-	}
+	})
 }
