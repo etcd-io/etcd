@@ -33,13 +33,17 @@ type Cluster interface {
 }
 
 type Client interface {
-	Put(key, value string) error
+	Put(key, value string, opts config.PutOptions) error
 	Get(key string, opts config.GetOptions) (*clientv3.GetResponse, error)
 	Delete(key string, opts config.DeleteOptions) (*clientv3.DeleteResponse, error)
 	Compact(rev int64, opts config.CompactOption) (*clientv3.CompactResponse, error)
-
 	Status() ([]*clientv3.StatusResponse, error)
 	HashKV(rev int64) ([]*clientv3.HashKVResponse, error)
 	Health() error
 	Defragment(opts config.DefragOption) error
+	Grant(ttl int64) (*clientv3.LeaseGrantResponse, error)
+	TimeToLive(id clientv3.LeaseID, opts config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error)
+	LeaseList() (*clientv3.LeaseLeasesResponse, error)
+	LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error)
+	LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error)
 }

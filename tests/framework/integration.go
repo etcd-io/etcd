@@ -126,8 +126,12 @@ func (c integrationClient) Get(key string, o config.GetOptions) (*clientv3.GetRe
 	return c.Client.Get(context.Background(), key, clientOpts...)
 }
 
-func (c integrationClient) Put(key, value string) error {
-	_, err := c.Client.Put(context.Background(), key, value)
+func (c integrationClient) Put(key, value string, opts config.PutOptions) error {
+	clientOpts := []clientv3.OpOption{}
+	if opts.LeaseID != 0 {
+		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
+	}
+	_, err := c.Client.Put(context.Background(), key, value, clientOpts...)
 	return err
 }
 
@@ -211,4 +215,38 @@ func (c integrationClient) Defragment(o config.DefragOption) error {
 		}
 	}
 	return nil
+}
+
+func (c integrationClient) Grant(ttl int64) (*clientv3.LeaseGrantResponse, error) {
+	ctx := context.Background()
+	return c.Client.Grant(ctx, ttl)
+}
+
+func (c integrationClient) TimeToLive(id clientv3.LeaseID, o config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {
+	ctx := context.Background()
+
+	leaseOpts := []clientv3.LeaseOption{}
+	if o.WithAttachedKeys {
+		leaseOpts = append(leaseOpts, clientv3.WithAttachedKeys())
+	}
+
+	return c.Client.TimeToLive(ctx, id, leaseOpts...)
+}
+
+func (c integrationClient) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
+	ctx := context.Background()
+
+	return c.Client.Leases(ctx)
+}
+
+func (c integrationClient) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
+	ctx := context.Background()
+
+	return c.Client.KeepAliveOnce(ctx, id)
+}
+
+func (c integrationClient) LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
+	ctx := context.Background()
+
+	return c.Client.Revoke(ctx, id)
 }
