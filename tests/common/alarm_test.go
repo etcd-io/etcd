@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -47,14 +48,9 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// quota alarm should now be on
-		_, err := clus.Client().Alarm("list")
+		alarmResp, err := clus.Client().Alarm("list", nil)
 		if err != nil {
 			t.Fatalf("alarmTest: Alarm error (%v)", err)
-		}
-
-		// endpoint should not healthy
-		if err := clus.Client().Health(); err == nil {
-			t.Fatalf("endpoint should not healthy")
 		}
 
 		// check that Put is rejected when alarm is on
@@ -88,9 +84,15 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// turn off alarm
-		_, err = clus.Client().Alarm("disarm")
-		if err != nil {
-			t.Fatalf("alarmTest: Alarm error (%v)", err)
+		for _, alarm := range alarmResp.Alarms {
+			m := &clientv3.AlarmMember{
+				MemberID: alarm.MemberID,
+				Alarm:    alarm.Alarm,
+			}
+			_, err = clus.Client().Alarm("disarm", m)
+			if err != nil {
+				t.Fatalf("alarmTest: Alarm error (%v)", err)
+			}
 		}
 
 		// put one more key below quota

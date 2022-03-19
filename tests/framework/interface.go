@@ -41,7 +41,7 @@ type Client interface {
 	HashKV(rev int64) ([]*clientv3.HashKVResponse, error)
 	Health() error
 	Defragment(opts config.DefragOption) error
-	Alarm(cmd string) (*clientv3.AlarmResponse, error)
+	Alarm(cmd string, member *clientv3.AlarmMember) (*clientv3.AlarmResponse, error)
 	Grant(ttl int64) (*clientv3.LeaseGrantResponse, error)
 	TimeToLive(id clientv3.LeaseID, opts config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error)
 	LeaseList() (*clientv3.LeaseLeasesResponse, error)

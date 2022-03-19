@@ -344,9 +344,18 @@ func (ctl *EtcdctlV3) LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeRes
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) Alarm(cmd string) (*clientv3.AlarmResponse, error) {
+func (ctl *EtcdctlV3) Alarm(cmd string, _ *clientv3.AlarmMember) (*clientv3.AlarmResponse, error) {
 	args := ctl.cmdArgs()
-	args = append(args, "alarm", cmd)
-
-	return nil, SpawnWithExpect(args, "alarm:NOSPACE")
+	args = append(args, "alarm", cmd, "-w", "json")
+	ep, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.AlarmResponse
+	line, err := ep.Expect("alarm")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
 }
