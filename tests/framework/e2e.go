@@ -40,8 +40,9 @@ func (e e2eRunner) BeforeTest(t testing.TB) {
 
 func (e e2eRunner) NewCluster(t testing.TB, cfg config.ClusterConfig) Cluster {
 	e2eConfig := e2e.EtcdProcessClusterConfig{
-		InitialToken: "new",
-		ClusterSize:  cfg.ClusterSize,
+		InitialToken:      "new",
+		ClusterSize:       cfg.ClusterSize,
+		QuotaBackendBytes: cfg.QuotaBackendBytes,
 	}
 	switch cfg.ClientTLS {
 	case config.NoTLS:

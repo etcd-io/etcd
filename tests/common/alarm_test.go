@@ -69,9 +69,16 @@ func TestAlarm(t *testing.T) {
 		if err != nil {
 			t.Fatalf("get endpoint status error: %v", err)
 		}
+		var rvs int64
+		for _, resp := range sresp {
+			if resp != nil && resp.Header != nil {
+				rvs = resp.Header.Revision
+				break
+			}
+		}
 
 		// make some space
-		_, err = clus.Client().Compact(sresp[0].Header.Revision, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
+		_, err = clus.Client().Compact(rvs, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
 		if err != nil {
 			t.Fatalf("alarmTest: Compact error (%v)", err)
 		}
