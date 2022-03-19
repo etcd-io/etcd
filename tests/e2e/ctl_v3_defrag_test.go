@@ -15,12 +15,11 @@
 package e2e
 
 import (
+	"strconv"
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
-
-func TestCtlV3DefragOnline(t *testing.T) { testCtl(t, defragOnlineTest) }
 
 func TestCtlV3DefragOfflineEtcdutl(t *testing.T) {
 	testCtlWithOffline(t, maintenanceInitKeys, defragOfflineTest, withEtcdutl())
@@ -32,18 +31,6 @@ func maintenanceInitKeys(cx ctlCtx) {
 		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
 			cx.t.Fatal(err)
 		}
-	}
-}
-
-func defragOnlineTest(cx ctlCtx) {
-	maintenanceInitKeys(cx)
-
-	if err := ctlV3Compact(cx, 4, cx.compactPhysical); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	if err := ctlV3OnlineDefrag(cx); err != nil {
-		cx.t.Fatalf("defragTest ctlV3Defrag error (%v)", err)
 	}
 }
 
@@ -66,4 +53,13 @@ func defragOfflineTest(cx ctlCtx) {
 	if err := ctlV3OfflineDefrag(cx); err != nil {
 		cx.t.Fatalf("defragTest ctlV3Defrag error (%v)", err)
 	}
+}
+
+func ctlV3Compact(cx ctlCtx, rev int64, physical bool) error {
+	rs := strconv.FormatInt(rev, 10)
+	cmdArgs := append(cx.PrefixArgs(), "compact", rs)
+	if physical {
+		cmdArgs = append(cmdArgs, "--physical")
+	}
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "compacted revision "+rs)
 }

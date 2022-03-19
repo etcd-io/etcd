@@ -2067,7 +2067,7 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 
 // monitorClusterVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.
 func (s *EtcdServer) monitorClusterVersions() {
-	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
+	monitor := serverversion.NewMonitor(s.Logger(), NewServerVersionAdapter(s))
 	for {
 		select {
 		case <-s.firstCommitInTerm.Receive():
@@ -2085,7 +2085,7 @@ func (s *EtcdServer) monitorClusterVersions() {
 
 // monitorStorageVersion every monitorVersionInterval updates storage version if needed.
 func (s *EtcdServer) monitorStorageVersion() {
-	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
+	monitor := serverversion.NewMonitor(s.Logger(), NewServerVersionAdapter(s))
 	for {
 		select {
 		case <-time.After(monitorVersionInterval):
@@ -2175,7 +2175,7 @@ func (s *EtcdServer) updateClusterVersionV3(ver string) {
 
 // monitorDowngrade every DowngradeCheckTime checks if it's the leader and cancels downgrade if needed.
 func (s *EtcdServer) monitorDowngrade() {
-	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
+	monitor := serverversion.NewMonitor(s.Logger(), NewServerVersionAdapter(s))
 	t := s.Cfg.DowngradeCheckTime
 	if t == 0 {
 		return
@@ -2294,5 +2294,5 @@ func (s *EtcdServer) raftStatus() raft.Status {
 }
 
 func (s *EtcdServer) Version() *serverversion.Manager {
-	return serverversion.NewManager(s.Logger(), newServerVersionAdapter(s))
+	return serverversion.NewManager(s.Logger(), NewServerVersionAdapter(s))
 }

@@ -15,8 +15,9 @@
 package config
 
 import (
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"time"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 type GetOptions struct {
@@ -31,6 +32,10 @@ type GetOptions struct {
 	SortBy       clientv3.SortTarget
 }
 
+type PutOptions struct {
+	LeaseID clientv3.LeaseID
+}
+
 type DeleteOptions struct {
 	Prefix  bool
 	FromKey bool
@@ -40,4 +45,12 @@ type DeleteOptions struct {
 type CompactOption struct {
 	Physical bool
 	Timeout  time.Duration
+}
+
+type DefragOption struct {
+	Timeout time.Duration
+}
+
+type LeaseOption struct {
+	WithAttachedKeys bool
 }
