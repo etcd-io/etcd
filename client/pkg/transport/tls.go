@@ -15,6 +15,7 @@
 package transport
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -34,7 +35,7 @@ func ValidateSecureEndpoints(tlsInfo TLSInfo, eps []string) ([]string, error) {
 			errs = append(errs, fmt.Sprintf("%q is insecure", ep))
 			continue
 		}
-		conn, cerr := t.Dial("tcp", ep[len("https://"):])
+		conn, cerr := t.DialContext(context.Background(), "tcp", ep[len("https://"):])
 		if cerr != nil {
 			errs = append(errs, fmt.Sprintf("%q failed to dial (%v)", ep, cerr))
 			continue
