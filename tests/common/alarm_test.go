@@ -27,7 +27,7 @@ import (
 
 func TestAlarm(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3, QuotaBackendBytes: int64(13 * os.Getpagesize())})
+	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 1, QuotaBackendBytes: int64(13 * os.Getpagesize())})
 	defer clus.Close()
 	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
 		// test small put still works
