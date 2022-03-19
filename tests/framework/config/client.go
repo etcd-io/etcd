@@ -32,6 +32,10 @@ type GetOptions struct {
 	SortBy       clientv3.SortTarget
 }
 
+type PutOptions struct {
+	LeaseID clientv3.LeaseID
+}
+
 type DeleteOptions struct {
 	Prefix  bool
 	FromKey bool
@@ -45,4 +49,8 @@ type CompactOption struct {
 
 type DefragOption struct {
 	Timeout time.Duration
+}
+
+type LeaseOption struct {
+	WithAttachedKeys bool
 }

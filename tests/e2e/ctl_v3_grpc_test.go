@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -100,7 +101,7 @@ func TestAuthority(t *testing.T) {
 				endpoints := templateEndpoints(t, tc.clientURLPattern, epc)
 
 				client := e2e.NewEtcdctl(cfg, endpoints)
-				err = client.Put("foo", "bar")
+				err = client.Put("foo", "bar", config.PutOptions{})
 				if err != nil {
 					t.Fatal(err)
 				}

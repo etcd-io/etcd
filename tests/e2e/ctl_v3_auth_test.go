@@ -853,6 +853,28 @@ func authLeaseTestTimeToLiveExpired(cx ctlCtx) {
 	}
 }
 
+func leaseTestTimeToLiveExpire(cx ctlCtx, ttl int) error {
+	leaseID, err := ctlV3LeaseGrant(cx, ttl)
+	if err != nil {
+		return fmt.Errorf("ctlV3LeaseGrant error (%v)", err)
+	}
+
+	if err = ctlV3Put(cx, "key", "val", leaseID); err != nil {
+		return fmt.Errorf("ctlV3Put error (%v)", err)
+	}
+	// eliminate false positive
+	time.Sleep(time.Duration(ttl+1) * time.Second)
+	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", leaseID)
+	exp := fmt.Sprintf("lease %s already expired", leaseID)
+	if err = e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, exp); err != nil {
+		return fmt.Errorf("lease not properly expired: (%v)", err)
+	}
+	if err := ctlV3Get(cx, []string{"key"}); err != nil {
+		return fmt.Errorf("ctlV3Get error (%v)", err)
+	}
+	return nil
+}
+
 func authLeaseTestLeaseGrantLeases(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
@@ -860,6 +882,24 @@ func authLeaseTestLeaseGrantLeases(cx ctlCtx) {
 	if err := leaseTestGrantLeasesList(cx); err != nil {
 		cx.t.Fatalf("authLeaseTestLeaseGrantLeases: error (%v)", err)
 	}
+}
+
+func leaseTestGrantLeasesList(cx ctlCtx) error {
+	id, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		return fmt.Errorf("ctlV3LeaseGrant error (%v)", err)
+	}
+
+	cmdArgs := append(cx.PrefixArgs(), "lease", "list")
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	if err != nil {
+		return fmt.Errorf("lease list failed (%v)", err)
+	}
+	_, err = proc.Expect(id)
+	if err != nil {
+		return fmt.Errorf("lease id not in returned list (%v)", err)
+	}
+	return proc.Close()
 }
 
 func authLeaseTestLeaseRevoke(cx ctlCtx) {

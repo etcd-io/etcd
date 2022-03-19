@@ -30,7 +30,7 @@ func TestDefragOnline(t *testing.T) {
 		defer clus.Close()
 		var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 		for i := range kvs {
-			if err := clus.Client().Put(kvs[i].Key, kvs[i].Val); err != nil {
+			if err := clus.Client().Put(kvs[i].Key, kvs[i].Val, config.PutOptions{}); err != nil {
 				t.Fatalf("compactTest #%d: put kv error (%v)", i, err)
 			}
 		}

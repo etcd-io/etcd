@@ -31,14 +31,14 @@ func TestAlarm(t *testing.T) {
 	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
 		// test small put still works
 		smallbuf := strings.Repeat("a", 64)
-		if err := clus.Client().Put("1st_test", smallbuf); err != nil {
+		if err := clus.Client().Put("1st_test", smallbuf, config.PutOptions{}); err != nil {
 			t.Fatalf("alarmTest: put kv error (%v)", err)
 		}
 
 		// write some chunks to fill up the database
 		buf := strings.Repeat("b", os.Getpagesize())
 		for {
-			if err := clus.Client().Put("2nd_test", buf); err != nil {
+			if err := clus.Client().Put("2nd_test", buf, config.PutOptions{}); err != nil {
 				if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
 					t.Fatal(err)
 				}
@@ -58,7 +58,7 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// check that Put is rejected when alarm is on
-		if err := clus.Client().Put("3rd_test", smallbuf); err != nil {
+		if err := clus.Client().Put("3rd_test", smallbuf, config.PutOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
 				t.Fatal(err)
 			}
@@ -94,7 +94,7 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// put one more key below quota
-		if err := clus.Client().Put("4th_test", smallbuf); err != nil {
+		if err := clus.Client().Put("4th_test", smallbuf, config.PutOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	})
