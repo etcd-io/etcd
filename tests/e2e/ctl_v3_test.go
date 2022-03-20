@@ -181,10 +181,6 @@ func withQuota(b int64) ctlOption {
 	return func(cx *ctlCtx) { cx.quotaBackendBytes = b }
 }
 
-func withCompactPhysical() ctlOption {
-	return func(cx *ctlCtx) { cx.compactPhysical = true }
-}
-
 func withInitialCorruptCheck() ctlOption {
 	return func(cx *ctlCtx) { cx.initialCorruptCheck = true }
 }
