@@ -44,7 +44,7 @@ func validateTracingConfig(samplingRate int) error {
 func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.SpanExporter, options []otelgrpc.Option, err error) {
 	exporter, err = otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint(cfg.DistributedTracingAddress),
+		otlptracegrpc.WithEndpoint(cfg.ExperimentalDistributedTracingAddress),
 	)
 	if err != nil {
 		return nil, nil, err
@@ -52,14 +52,14 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String(cfg.DistributedTracingServiceName),
+			semconv.ServiceNameKey.String(cfg.ExperimentalDistributedTracingServiceName),
 		),
 	)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if resWithIDKey := determineResourceWithIDKey(cfg.DistributedTracingServiceInstanceID); resWithIDKey != nil {
+	if resWithIDKey := determineResourceWithIDKey(cfg.ExperimentalDistributedTracingServiceInstanceID); resWithIDKey != nil {
 		// Merge resources into a new
 		// resource in case of duplicates.
 		res, err = resource.Merge(res, resWithIDKey)
@@ -80,7 +80,7 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 				tracesdk.WithBatcher(exporter),
 				tracesdk.WithResource(res),
 				tracesdk.WithSampler(
-					tracesdk.ParentBased(determineSampler(cfg.DistributedTracingSamplingRatePerMillion)),
+					tracesdk.ParentBased(determineSampler(cfg.ExperimentalDistributedTracingSamplingRatePerMillion)),
 				),
 			),
 		),
@@ -88,10 +88,10 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 
 	cfg.logger.Debug(
 		"distributed tracing enabled",
-		zap.String("address", cfg.DistributedTracingAddress),
-		zap.String("service-name", cfg.DistributedTracingServiceName),
-		zap.String("service-instance-id", cfg.DistributedTracingServiceInstanceID),
-		zap.Int("sampling-rate", cfg.DistributedTracingSamplingRatePerMillion),
+		zap.String("address", cfg.ExperimentalDistributedTracingAddress),
+		zap.String("service-name", cfg.ExperimentalDistributedTracingServiceName),
+		zap.String("service-instance-id", cfg.ExperimentalDistributedTracingServiceInstanceID),
+		zap.Int("sampling-rate", cfg.ExperimentalDistributedTracingSamplingRatePerMillion),
 	)
 
 	return exporter, options, err
