@@ -164,12 +164,12 @@ func (c integrationClient) Compact(rev int64, o config.CompactOption) (*clientv3
 	return c.Client.Compact(ctx, rev, clientOpts...)
 }
 
-func (c integrationClient) Alarm(cmd string, member *clientv3.AlarmMember) (*clientv3.AlarmResponse, error) {
-	ctx := context.Background()
-	if cmd == "list" {
-		return c.Client.AlarmList(ctx)
-	}
-	return c.Client.AlarmDisarm(ctx, member)
+func (c integrationClient) AlarmList() (*clientv3.AlarmResponse, error) {
+	return c.Client.AlarmList(context.Background())
+}
+
+func (c integrationClient) AlarmDisarm(alarmMember *clientv3.AlarmMember) (*clientv3.AlarmResponse, error) {
+	return c.Client.AlarmDisarm(context.Background(), alarmMember)
 }
 
 func (c integrationClient) Status() ([]*clientv3.StatusResponse, error) {

@@ -48,7 +48,7 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// quota alarm should now be on
-		alarmResp, err := clus.Client().Alarm("list", nil)
+		alarmResp, err := clus.Client().AlarmList()
 		if err != nil {
 			t.Fatalf("alarmTest: Alarm error (%v)", err)
 		}
@@ -85,11 +85,11 @@ func TestAlarm(t *testing.T) {
 
 		// turn off alarm
 		for _, alarm := range alarmResp.Alarms {
-			m := &clientv3.AlarmMember{
+			alarmMember := &clientv3.AlarmMember{
 				MemberID: alarm.MemberID,
 				Alarm:    alarm.Alarm,
 			}
-			_, err = clus.Client().Alarm("disarm", m)
+			_, err = clus.Client().AlarmDisarm(alarmMember)
 			if err != nil {
 				t.Fatalf("alarmTest: Alarm error (%v)", err)
 			}
