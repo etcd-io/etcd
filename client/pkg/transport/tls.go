@@ -28,6 +28,8 @@ func ValidateSecureEndpoints(tlsInfo TLSInfo, eps []string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer t.CloseIdleConnections()
+
 	var errs []string
 	var endpoints []string
 	for _, ep := range eps {
