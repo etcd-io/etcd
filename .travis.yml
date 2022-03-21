@@ -6,7 +6,7 @@ sudo: required
 services: docker
 
 go:
-  - "1.16.3"
+  - "1.16.15"
   - tip
 
 notifications:
@@ -21,14 +21,14 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
-    - go: "1.16.3"
+    - go: "1.16.15"
       env: TARGET=linux-amd64-coverage
     - go: tip
       env: TARGET=linux-amd64-fmt-unit-go-tip-2-cpu
   exclude:
     - go: tip
       env: TARGET=linux-amd64-coverage
-    - go: "1.16.3"
+    - go: "1.16.15"
       env: TARGET=linux-amd64-fmt-unit-go-tip-2-cpu
 
 before_install:
