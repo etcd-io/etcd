@@ -39,7 +39,7 @@ clean:
 	rm -rf ./tests/e2e/default.proxy
 	find ./ -name "127.0.0.1:*" -o -name "localhost:*" -o -name "*.log" -o -name "agent-*" -o -name "*.coverprofile" -o -name "testname-proxy-*" | $(XARGS)
 
-GO_VERSION ?= 1.17.6
+GO_VERSION ?= 1.17.8
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
