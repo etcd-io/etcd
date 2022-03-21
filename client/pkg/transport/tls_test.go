@@ -77,12 +77,10 @@ func TestValidateSecureEndpoints(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			secureEps, err := ValidateSecureEndpoints(*tlsInfo, test.endPoints)
-			if test.expectedErr && err == nil {
-				t.Errorf("expected error")
+			if test.expectedErr != (err != nil) {
+				t.Errorf("Unexpected error, got: %v, want: %v", err, test.expectedError)
 			}
-			if !test.expectedErr && err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
+
 			if err == nil && !test.expectedErr {
 				if len(secureEps) != len(test.expectedEndpoints) {
 					t.Errorf("expected %v endpoints, got %v", len(test.expectedEndpoints), len(secureEps))
