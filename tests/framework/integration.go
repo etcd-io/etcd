@@ -81,6 +81,30 @@ type integrationCluster struct {
 	t testing.TB
 }
 
+func (c *integrationCluster) Members() (ms []Member) {
+	for _, m := range c.Cluster.Members {
+		ms = append(ms, integrationMember{m, c.t})
+	}
+	return ms
+}
+
+type integrationMember struct {
+	*integration.Member
+	t testing.TB
+}
+
+func (m integrationMember) Client() Client {
+	return integrationClient{m.Member.Client}
+}
+
+func (m integrationMember) Start() error {
+	return m.Member.Restart(m.t)
+}
+
+func (m integrationMember) Stop() {
+	m.Member.Stop(m.t)
+}
+
 func (c *integrationCluster) Close() error {
 	c.Terminate(c.t)
 	return nil
@@ -91,7 +115,7 @@ func (c *integrationCluster) Client() Client {
 	if err != nil {
 		c.t.Fatal(err)
 	}
-	return &integrationClient{cc}
+	return integrationClient{cc}
 }
 
 type integrationClient struct {
@@ -99,6 +123,12 @@ type integrationClient struct {
 }
 
 func (c integrationClient) Get(key string, o config.GetOptions) (*clientv3.GetResponse, error) {
+	ctx := context.Background()
+	if o.Timeout != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, o.Timeout)
+		defer cancel()
+	}
 	clientOpts := []clientv3.OpOption{}
 	if o.Revision != 0 {
 		clientOpts = append(clientOpts, clientv3.WithRev(int64(o.Revision)))
@@ -124,7 +154,7 @@ func (c integrationClient) Get(key string, o config.GetOptions) (*clientv3.GetRe
 	if o.SortBy != clientv3.SortByKey || o.Order != clientv3.SortNone {
 		clientOpts = append(clientOpts, clientv3.WithSort(o.SortBy, o.Order))
 	}
-	return c.Client.Get(context.Background(), key, clientOpts...)
+	return c.Client.Get(ctx, key, clientOpts...)
 }
 
 func (c integrationClient) Put(key, value string, opts config.PutOptions) error {

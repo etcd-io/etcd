@@ -266,3 +266,42 @@ func TestKVDelete(t *testing.T) {
 		})
 	}
 }
+
+func TestKVGetNoQuorum(t *testing.T) {
+	testRunner.BeforeTest(t)
+	tcs := []struct {
+		name    string
+		options config.GetOptions
+
+		wantError bool
+	}{
+		{
+			name:    "Serializable",
+			options: config.GetOptions{Serializable: true},
+		},
+		{
+			name:      "Linearizable",
+			options:   config.GetOptions{Serializable: false, Timeout: time.Second},
+			wantError: true,
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3})
+			defer clus.Close()
+
+			clus.Members()[0].Stop()
+			clus.Members()[1].Stop()
+
+			cc := clus.Members()[2].Client()
+			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				key := "foo"
+				_, err := cc.Get(key, tc.options)
+				gotError := err != nil
+				if gotError != tc.wantError {
+					t.Fatalf("Unexpeted result, wantError: %v, gotErr: %v, err: %s", tc.wantError, gotError, err)
+				}
+			})
+		})
+	}
+}
