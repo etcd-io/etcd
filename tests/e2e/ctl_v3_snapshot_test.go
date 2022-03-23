@@ -62,7 +62,6 @@ func snapshotTest(cx ctlCtx) {
 	}
 }
 
-func TestCtlV3SnapshotCorrupt(t *testing.T)        { testCtl(t, snapshotCorruptTest) }
 func TestCtlV3SnapshotCorruptEtcdutl(t *testing.T) { testCtl(t, snapshotCorruptTest, withEtcdutl()) }
 
 func snapshotCorruptTest(cx ctlCtx) {
@@ -98,7 +97,6 @@ func snapshotCorruptTest(cx ctlCtx) {
 }
 
 // This test ensures that the snapshot status does not modify the snapshot file
-func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) { testCtl(t, snapshotStatusBeforeRestoreTest) }
 func TestCtlV3SnapshotStatusBeforeRestoreEtcdutl(t *testing.T) {
 	testCtl(t, snapshotStatusBeforeRestoreTest, withEtcdutl())
 }
@@ -136,6 +134,7 @@ func ctlV3SnapshotSave(cx ctlCtx, fpath string) error {
 }
 
 func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
+	cx.etcdutl = true
 	cmdArgs := append(cx.PrefixArgsUtl(), "--write-out", "json", "snapshot", "status", fpath)
 
 	proc, err := e2e.SpawnCmd(cmdArgs, nil)
@@ -159,7 +158,6 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 	return resp, nil
 }
 
-func TestIssue6361(t *testing.T)        { testIssue6361(t, false) }
 func TestIssue6361etcdutl(t *testing.T) { testIssue6361(t, true) }
 
 // TestIssue6361 ensures new member that starts with snapshot correctly

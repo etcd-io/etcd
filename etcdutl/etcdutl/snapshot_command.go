@@ -46,25 +46,9 @@ func NewSnapshotCommand() *cobra.Command {
 		Use:   "snapshot <subcommand>",
 		Short: "Manages etcd node snapshots",
 	}
-	cmd.AddCommand(NewSnapshotSaveCommand())
 	cmd.AddCommand(NewSnapshotRestoreCommand())
 	cmd.AddCommand(newSnapshotStatusCommand())
 	return cmd
-}
-
-func NewSnapshotSaveCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:                   "save <filename>",
-		Short:                 "Stores an etcd node backend snapshot to a given file",
-		Hidden:                true,
-		DisableFlagsInUseLine: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			cobrautl.ExitWithError(cobrautl.ExitBadArgs,
-				fmt.Errorf("In order to download snapshot use: "+
-					"`etcdctl snapshot save ...`"))
-		},
-		Deprecated: "Use `etcdctl snapshot save` to download snapshot",
-	}
 }
 
 func newSnapshotStatusCommand() *cobra.Command {
