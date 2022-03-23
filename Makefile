@@ -55,7 +55,7 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.16.3
+GO_VERSION ?= 1.16.15
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
@@ -161,7 +161,10 @@ test-full:
 	$(info log-file: test-$(TEST_SUFFIX).log)
 	PASSES="fmt build release unit integration functional e2e grpcproxy" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
 
-docker-test:
+ensure-docker-test-image-exists:
+	make push-docker-test || echo "WARNING: Container Image not found in registry, building locally"; make build-docker-test
+
+docker-test: ensure-docker-test-image-exists
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
 	$(info TEST_OPTS: $(TEST_OPTS))
