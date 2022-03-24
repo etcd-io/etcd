@@ -15,7 +15,6 @@
 package command
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -138,7 +137,8 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 
 func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 	cc := clientConfigFromCmd(cmd)
-	cfg, err := newClientCfg(cc.Endpoints, cc.DialTimeout, cc.KeepAliveTime, cc.KeepAliveTimeout, cc.Secure, cc.Auth)
+	lg, _ := zap.NewProduction()
+	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
@@ -151,7 +151,8 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 }
 
 func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
-	cfg, err := newClientCfg(cc.Endpoints, cc.DialTimeout, cc.KeepAliveTime, cc.KeepAliveTimeout, cc.Secure, cc.Auth)
+	lg, _ := zap.NewProduction()
+	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
@@ -162,67 +163,6 @@ func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
 	}
 
 	return client
-}
-
-func newClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeout time.Duration, scfg *clientv3.SecureConfig, acfg *clientv3.AuthConfig) (*clientv3.Config, error) {
-	// set tls if any one tls option set
-	var cfgtls *transport.TLSInfo
-	tlsinfo := transport.TLSInfo{}
-	tlsinfo.Logger, _ = zap.NewProduction()
-	if scfg.Cert != "" {
-		tlsinfo.CertFile = scfg.Cert
-		cfgtls = &tlsinfo
-	}
-
-	if scfg.Key != "" {
-		tlsinfo.KeyFile = scfg.Key
-		cfgtls = &tlsinfo
-	}
-
-	if scfg.Cacert != "" {
-		tlsinfo.TrustedCAFile = scfg.Cacert
-		cfgtls = &tlsinfo
-	}
-
-	if scfg.ServerName != "" {
-		tlsinfo.ServerName = scfg.ServerName
-		cfgtls = &tlsinfo
-	}
-
-	cfg := &clientv3.Config{
-		Endpoints:            endpoints,
-		DialTimeout:          dialTimeout,
-		DialKeepAliveTime:    keepAliveTime,
-		DialKeepAliveTimeout: keepAliveTimeout,
-	}
-
-	if cfgtls != nil {
-		clientTLS, err := cfgtls.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
-		cfg.TLS = clientTLS
-	}
-
-	// if key/cert is not given but user wants secure connection, we
-	// should still setup an empty tls configuration for gRPC to setup
-	// secure connection.
-	if cfg.TLS == nil && !scfg.InsecureTransport {
-		cfg.TLS = &tls.Config{}
-	}
-
-	// If the user wants to skip TLS verification then we should set
-	// the InsecureSkipVerify flag in tls configuration.
-	if scfg.InsecureSkipVerify && cfg.TLS != nil {
-		cfg.TLS.InsecureSkipVerify = true
-	}
-
-	if acfg != nil {
-		cfg.Username = acfg.Username
-		cfg.Password = acfg.Password
-	}
-
-	return cfg, nil
 }
 
 func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
