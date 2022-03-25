@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -129,10 +128,6 @@ func (s *keyStresser) run() {
 			continue
 		}
 
-		if !s.isRetryableError(err) {
-			return
-		}
-
 		// only record errors before pausing stressers
 		s.emu.Lock()
 		if !s.paused {
@@ -183,14 +178,6 @@ func (s *keyStresser) isRetryableError(err error) bool {
 		return true
 	}
 
-	s.lg.Warn(
-		"stress run exiting",
-		zap.String("stress-type", "KV"),
-		zap.String("endpoint", s.m.EtcdClientEndpoint),
-		zap.String("error-type", reflect.TypeOf(err).String()),
-		zap.String("error-desc", rpctypes.ErrorDesc(err)),
-		zap.Error(err),
-	)
 	return false
 }
 

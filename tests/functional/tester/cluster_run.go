@@ -171,11 +171,6 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 		zap.String("desc", fa.Desc()),
 	)
 
-	clus.lg.Info("wait health before injecting failures")
-	if err := clus.WaitHealth(); err != nil {
-		t.Fatalf("wait full health error: %v", err)
-	}
-
 	stressStarted := false
 	fcase := fa.TestCase()
 	if fcase != rpcpb.Case_NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS {
@@ -191,30 +186,42 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 		}
 		stressStarted = true
 	}
+	done := time.After(time.Minute * 10)
+inject:
+  for {
+		select {
+			case <- done:
+				break inject
+		default:
+		}
 
-	clus.lg.Info(
-		"inject START",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.cases)),
-		zap.String("desc", fa.Desc()),
-	)
-	if err := fa.Inject(clus); err != nil {
-		t.Fatalf("injection error: %v", err)
-	}
-
-	// if run local, recovering server may conflict
-	// with stressing client ports
-	// TODO: use unix for local tests
-	clus.lg.Info(
-		"recover START",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.cases)),
-		zap.String("desc", fa.Desc()),
-	)
-	if err := fa.Recover(clus); err != nil {
-		t.Fatalf("recovery error: %v", err)
+		clus.lg.Info("wait health before injecting failure")
+		if err := clus.WaitHealth(); err != nil {
+			t.Fatalf("wait full health error: %v", err)
+		}
+		clus.lg.Info(
+			"inject START",
+			zap.Int("round", clus.rd),
+			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.cases)),
+			zap.String("desc", fa.Desc()),
+		)
+		if err := fa.Inject(clus); err != nil {
+			t.Fatalf("injection error: %v", err)
+		}
+		// if run local, recovering server may conflict
+		// with stressing client ports
+		// TODO: use unix for local tests
+		clus.lg.Info(
+			"recover START",
+			zap.Int("round", clus.rd),
+			zap.Int("case", clus.cs),
+			zap.Int("case-total", len(clus.cases)),
+			zap.String("desc", fa.Desc()),
+		)
+		if err := fa.Recover(clus); err != nil {
+			t.Fatalf("recovery error: %v", err)
+		}
 	}
 
 	if stressStarted {

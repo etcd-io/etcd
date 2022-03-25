@@ -260,6 +260,9 @@ enum Operation {
   // SIGQUIT_ETCD_AND_REMOVE_DATA kills etcd process and removes all data
   // directories to simulate destroying the whole machine.
   SIGQUIT_ETCD_AND_REMOVE_DATA = 21;
+  // SIGKILL_ETCD kills etcd process while keeping data directories
+  // and previous etcd configurations.
+  SIGKILL_ETCD = 22;
 
   // SAVE_SNAPSHOT is sent to trigger local member to download its snapshot
   // onto its local disk with the specified path from tester.
@@ -426,6 +429,8 @@ enum Case {
   // each member must be able to process client requests.
   SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH = 14;
 
+  SIGKILL_FOLLOWER = 15;
+  SIGKILL_LEADER = 16;
   // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
   // packets from/to the peer port on a randomly chosen follower
   // (non-leader), and waits for "delay-ms" until recovery.
