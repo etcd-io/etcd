@@ -15,14 +15,13 @@
 package e2e
 
 import (
-	"strconv"
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3DefragOfflineEtcdutl(t *testing.T) {
-	testCtlWithOffline(t, maintenanceInitKeys, defragOfflineTest, withEtcdutl())
+func TestCtlV3DefragOffline(t *testing.T) {
+	testCtlWithOffline(t, maintenanceInitKeys, defragOfflineTest)
 }
 
 func maintenanceInitKeys(cx ctlCtx) {
@@ -53,13 +52,4 @@ func defragOfflineTest(cx ctlCtx) {
 	if err := ctlV3OfflineDefrag(cx); err != nil {
 		cx.t.Fatalf("defragTest ctlV3Defrag error (%v)", err)
 	}
-}
-
-func ctlV3Compact(cx ctlCtx, rev int64, physical bool) error {
-	rs := strconv.FormatInt(rev, 10)
-	cmdArgs := append(cx.PrefixArgs(), "compact", rs)
-	if physical {
-		cmdArgs = append(cmdArgs, "--physical")
-	}
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "compacted revision "+rs)
 }
