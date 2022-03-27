@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// ******************************************************************
+// *           Russell Hernandez Ruiz changed this file             *
+// ******************************************************************
+
 package transport
 
 import (
@@ -66,7 +70,7 @@ func newListener(addr, scheme string, opts ...ListenerOption) (net.Listener, err
 		lnOpts.ListenConfig = config
 		// check for timeout
 		fallthrough
-	case lnOpts.IsTimeout(), lnOpts.IsSocketOpts():
+	case lnOpts.IsTimeout() && lnOpts.IsSocketOpts():
 		// timeout listener with socket options.
 		ln, err := lnOpts.ListenConfig.Listen(context.TODO(), "tcp", addr)
 		if err != nil {
