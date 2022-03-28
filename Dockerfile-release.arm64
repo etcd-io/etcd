@@ -9,7 +9,6 @@ ADD etcdctl /usr/local/bin/
 ADD etcdutl /usr/local/bin/
 ADD var/etcd /var/etcd
 ADD var/lib/etcd /var/lib/etcd
-ENV ETCD_UNSUPPORTED_ARCH=arm64
 
 EXPOSE 2379 2380
 
