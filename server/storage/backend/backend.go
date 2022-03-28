@@ -67,6 +67,10 @@ type Backend interface {
 	Defrag() error
 	ForceCommit()
 	Close() error
+
+	// SetOnPreUnlockFunc sets a callback function which is called before unlocking the batchTx.
+	SetOnPreUnlockFunc(func())
+	OnPreUnlock()
 }
 
 type Snapshot interface {
@@ -119,7 +123,25 @@ type backend struct {
 
 	hooks Hooks
 
+	muUnlock sync.Mutex
+	onUnlock func()
+
 	lg *zap.Logger
+}
+
+func (b *backend) SetOnPreUnlockFunc(f func()) {
+	b.muUnlock.Lock()
+	defer b.muUnlock.Unlock()
+	b.onUnlock = f
+}
+
+func (b *backend) OnPreUnlock() {
+	b.muUnlock.Lock()
+	defer b.muUnlock.Unlock()
+	if b.onUnlock != nil {
+		b.onUnlock()
+		b.onUnlock = nil
+	}
 }
 
 type BackendConfig struct {

@@ -916,6 +916,8 @@ func (b *fakeBackend) Snapshot() backend.Snapshot                               
 func (b *fakeBackend) ForceCommit()                                               {}
 func (b *fakeBackend) Defrag() error                                              { return nil }
 func (b *fakeBackend) Close() error                                               { return nil }
+func (b *fakeBackend) SetOnPreUnlockFunc(func())                                  {}
+func (b *fakeBackend) OnPreUnlock()                                               {}
 
 type indexGetResp struct {
 	rev     revision

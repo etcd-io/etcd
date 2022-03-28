@@ -68,6 +68,11 @@ func (t *batchTx) Lock() {
 }
 
 func (t *batchTx) Unlock() {
+	t.backend.OnPreUnlock()
+	t.SimpleUnlock()
+}
+
+func (t *batchTx) SimpleUnlock() {
 	if t.pending >= t.backend.batchLimit {
 		t.commit(false)
 	}
@@ -290,16 +295,28 @@ func (t *batchTxBuffered) Unlock() {
 	t.batchTx.Unlock()
 }
 
+func (t *batchTxBuffered) SimpleUnlock() {
+	if t.pending != 0 {
+		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
+		t.buf.writeback(&t.backend.readTx.buf)
+		t.backend.readTx.Unlock()
+		if t.pending >= t.backend.batchLimit {
+			t.commit(false)
+		}
+	}
+	t.batchTx.SimpleUnlock()
+}
+
 func (t *batchTxBuffered) Commit() {
 	t.Lock()
 	t.commit(false)
-	t.Unlock()
+	t.SimpleUnlock()
 }
 
 func (t *batchTxBuffered) CommitAndStop() {
 	t.Lock()
 	t.commit(true)
-	t.Unlock()
+	t.SimpleUnlock()
 }
 
 func (t *batchTxBuffered) commit(stop bool) {
