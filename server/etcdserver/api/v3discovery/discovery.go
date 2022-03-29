@@ -18,7 +18,6 @@ package v3discovery
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 
 	"math"
@@ -28,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v3"
 
@@ -173,7 +171,7 @@ func newDiscovery(lg *zap.Logger, dcfg *DiscoveryConfig, id types.ID) (*discover
 	}
 
 	lg = lg.With(zap.String("discovery-token", dcfg.Token), zap.String("discovery-endpoints", strings.Join(dcfg.Endpoints, ",")))
-	cfg, err := newClientCfg(dcfg, lg)
+	cfg, err := clientv3.NewClientConfig(&dcfg.ConfigSpec, lg)
 	if err != nil {
 		return nil, err
 	}
@@ -190,53 +188,6 @@ func newDiscovery(lg *zap.Logger, dcfg *DiscoveryConfig, id types.ID) (*discover
 		cfg:          dcfg,
 		clock:        clockwork.NewRealClock(),
 	}, nil
-}
-
-// The following function follows the same logic as etcdctl, refer to
-// https://github.com/etcd-io/etcd/blob/f9a8c49c695b098d66a07948666664ea10d01a82/etcdctl/ctlv3/command/global.go#L191-L250
-func newClientCfg(dcfg *DiscoveryConfig, lg *zap.Logger) (*clientv3.Config, error) {
-	var cfgtls *transport.TLSInfo
-
-	if dcfg.Secure.Cert != "" || dcfg.Secure.Key != "" || dcfg.Secure.Cacert != "" {
-		cfgtls = &transport.TLSInfo{
-			CertFile:      dcfg.Secure.Cert,
-			KeyFile:       dcfg.Secure.Key,
-			TrustedCAFile: dcfg.Secure.Cacert,
-			Logger:        lg,
-		}
-	}
-
-	cfg := &clientv3.Config{
-		Endpoints:            dcfg.Endpoints,
-		DialTimeout:          dcfg.DialTimeout,
-		DialKeepAliveTime:    dcfg.KeepAliveTime,
-		DialKeepAliveTimeout: dcfg.KeepAliveTimeout,
-		Username:             dcfg.Auth.Username,
-		Password:             dcfg.Auth.Password,
-	}
-
-	if cfgtls != nil {
-		if clientTLS, err := cfgtls.ClientConfig(); err == nil {
-			cfg.TLS = clientTLS
-		} else {
-			return nil, err
-		}
-	}
-
-	// If key/cert is not given but user wants secure connection, we
-	// should still setup an empty tls configuration for gRPC to setup
-	// secure connection.
-	if cfg.TLS == nil && !dcfg.Secure.InsecureTransport {
-		cfg.TLS = &tls.Config{}
-	}
-
-	// If the user wants to skip TLS verification then we should set
-	// the InsecureSkipVerify flag in tls configuration.
-	if cfg.TLS != nil && dcfg.Secure.InsecureSkipVerify {
-		cfg.TLS.InsecureSkipVerify = true
-	}
-
-	return cfg, nil
 }
 
 func (d *discovery) getCluster() (string, error) {

@@ -16,6 +16,11 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 ### Deprecations
 
 - Deprecated [V2 discovery](https://etcd.io/docs/v3.5/dev-internal/discovery_protocol/).
+- Removed [etcdctl defrag --data-dir](https://github.com/etcd-io/etcd/pull/13793).
+- Removed [etcdctl snapshot status](https://github.com/etcd-io/etcd/pull/13809).
+- Removed [etcdctl snapshot restore](https://github.com/etcd-io/etcd/pull/13809).
+- Removed [etcdutl snapshot save](https://github.com/etcd-io/etcd/pull/13809).
+
 
 ### etcdctl v3
 
@@ -57,6 +62,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [etcd gateway doesn't format the endpoint of IPv6 address correctly](https://github.com/etcd-io/etcd/pull/13551)
 - Fix [A client can cause a nil dereference in etcd by passing an invalid SortTarget](https://github.com/etcd-io/etcd/pull/13555)
 - Fix [Grant lease with negative ID can possibly cause db out of sync](https://github.com/etcd-io/etcd/pull/13676)
+- Fix [segmentation violation(SIGSEGV) error due to premature unlocking of watchableStore](https://github.com/etcd-io/etcd/pull/13505)
 
 ### tools/benchmark
 
@@ -67,6 +73,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
 
 - Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).
+
+### Go
+- Compile with [Go 1.17+](https://golang.org/doc/devel/release.html#go1.17)
 
 ### Other
 
