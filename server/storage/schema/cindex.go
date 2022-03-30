@@ -26,7 +26,7 @@ func UnsafeCreateMetaBucket(tx backend.BatchTx) {
 
 // CreateMetaBucket creates the `meta` bucket (if it does not exists yet).
 func CreateMetaBucket(tx backend.BatchTx) {
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(Meta)
 }
@@ -51,8 +51,8 @@ func UnsafeReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
 // ReadConsistentIndex loads consistent index and term from given transaction.
 // returns 0 if the data are not found.
 func ReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	return UnsafeReadConsistentIndex(tx)
 }
 
