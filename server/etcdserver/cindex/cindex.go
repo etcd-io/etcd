@@ -23,6 +23,7 @@ import (
 )
 
 type Backend interface {
+	ReadTx() backend.ReadTx
 	BatchTx() backend.BatchTx
 }
 
@@ -31,6 +32,9 @@ type ConsistentIndexer interface {
 
 	// ConsistentIndex returns the consistent index of current executing entry.
 	ConsistentIndex() uint64
+
+	// UnsafeConsistentIndex is similar to ConsistentIndex, but it doesn't lock the transaction.
+	UnsafeConsistentIndex() uint64
 
 	// SetConsistentIndex set the consistent index of current executing entry.
 	SetConsistentIndex(v uint64, term uint64)
@@ -73,7 +77,19 @@ func (ci *consistentIndex) ConsistentIndex() uint64 {
 	ci.mutex.Lock()
 	defer ci.mutex.Unlock()
 
-	v, term := schema.ReadConsistentIndex(ci.be.BatchTx())
+	v, term := schema.ReadConsistentIndex(ci.be.ReadTx())
+	ci.SetConsistentIndex(v, term)
+	return v
+}
+
+// UnsafeConsistentIndex is similar to ConsistentIndex,
+// but it shouldn't lock the transaction.
+func (ci *consistentIndex) UnsafeConsistentIndex() uint64 {
+	if index := atomic.LoadUint64(&ci.consistentIndex); index > 0 {
+		return index
+	}
+
+	v, term := schema.UnsafeReadConsistentIndex(ci.be.BatchTx())
 	ci.SetConsistentIndex(v, term)
 	return v
 }
@@ -106,7 +122,8 @@ type fakeConsistentIndex struct {
 	term  uint64
 }
 
-func (f *fakeConsistentIndex) ConsistentIndex() uint64 { return f.index }
+func (f *fakeConsistentIndex) ConsistentIndex() uint64       { return f.index }
+func (f *fakeConsistentIndex) UnsafeConsistentIndex() uint64 { return f.index }
 
 func (f *fakeConsistentIndex) SetConsistentIndex(index uint64, term uint64) {
 	atomic.StoreUint64(&f.index, index)
@@ -117,7 +134,7 @@ func (f *fakeConsistentIndex) UnsafeSave(_ backend.BatchTx) {}
 func (f *fakeConsistentIndex) SetBackend(_ Backend)         {}
 
 func UpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, onlyGrow bool) {
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	schema.UnsafeUpdateConsistentIndex(tx, index, term, onlyGrow)
 }

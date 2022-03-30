@@ -121,7 +121,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 	}
 
 	tx := s.b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Key)
 	schema.UnsafeCreateMetaBucket(tx)
 	tx.Unlock()
@@ -331,7 +331,7 @@ func (s *store) restore() error {
 
 	// restore index
 	tx := s.b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 
 	finishedCompact, found := UnsafeReadFinishedCompact(tx)
 	if found {

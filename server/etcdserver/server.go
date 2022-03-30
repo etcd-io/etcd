@@ -207,8 +207,10 @@ type EtcdServer struct {
 	term              uint64 // must use atomic operations to access; keep 64-bit aligned.
 	lead              uint64 // must use atomic operations to access; keep 64-bit aligned.
 
-	consistIndex cindex.ConsistentIndexer // consistIndex is used to get/set/save consistentIndex
-	r            raftNode                 // uses 64-bit atomics; keep 64-bit aligned.
+	consistentIdx  uint64                   // must use atomic operations to access; keep 64-bit aligned.
+	consistentTerm uint64                   // must use atomic operations to access; keep 64-bit aligned.
+	consistIndex   cindex.ConsistentIndexer // consistIndex is used to get/set/save consistentIndex
+	r              raftNode                 // uses 64-bit atomics; keep 64-bit aligned.
 
 	readych chan struct{}
 	Cfg     config.ServerConfig
@@ -341,6 +343,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = b.storage.backend.be
+	srv.be.SetTxPostLockHook(srv.getTxPostLockHook())
 	srv.beHooks = b.storage.backend.beHooks
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
 
@@ -978,6 +981,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	}
 
 	s.consistIndex.SetBackend(newbe)
+	newbe.SetTxPostLockHook(s.getTxPostLockHook())
+
 	lg.Info("restored mvcc store", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
 
 	// Closing old backend might block until all the txns
@@ -1547,6 +1552,15 @@ func (s *EtcdServer) getTerm() uint64 {
 	return atomic.LoadUint64(&s.term)
 }
 
+func (s *EtcdServer) setConsistentIndexAndTerm(cIdx, cTerm uint64) {
+	atomic.StoreUint64(&s.consistentIdx, cIdx)
+	atomic.StoreUint64(&s.consistentTerm, cTerm)
+}
+
+func (s *EtcdServer) getConsistentIndexAndTerm() (uint64, uint64) {
+	return atomic.LoadUint64(&s.consistentIdx), atomic.LoadUint64(&s.consistentTerm)
+}
+
 func (s *EtcdServer) setLead(v uint64) {
 	atomic.StoreUint64(&s.lead, v)
 }
@@ -1771,7 +1785,7 @@ func (s *EtcdServer) apply(
 
 			// set the consistent index of current executing entry
 			if e.Index > s.consistIndex.ConsistentIndex() {
-				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+				s.setConsistentIndexAndTerm(e.Index, e.Term)
 				shouldApplyV3 = membership.ApplyBoth
 			}
 
@@ -1801,7 +1815,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
-		s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+		s.setConsistentIndexAndTerm(e.Index, e.Term)
 		shouldApplyV3 = membership.ApplyBoth
 	}
 	s.lg.Debug("apply entry normal",
@@ -2295,4 +2309,13 @@ func (s *EtcdServer) raftStatus() raft.Status {
 
 func (s *EtcdServer) Version() *serverversion.Manager {
 	return serverversion.NewManager(s.Logger(), NewServerVersionAdapter(s))
+}
+
+func (s *EtcdServer) getTxPostLockHook() func() {
+	return func() {
+		cIdx, term := s.getConsistentIndexAndTerm()
+		if cIdx > s.consistIndex.UnsafeConsistentIndex() {
+			s.consistIndex.SetConsistentIndex(cIdx, term)
+		}
+	}
 }
