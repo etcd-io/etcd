@@ -34,7 +34,7 @@ func NewAlarmBackend(lg *zap.Logger, be backend.Backend) *alarmBackend {
 
 func (s *alarmBackend) CreateAlarmBucket() {
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(Alarm)
 }

@@ -55,6 +55,7 @@ type BatchTx interface {
 	CommitAndStop()
 	LockInsideApply()
 	LockOutsideApply()
+
 }
 
 type batchTx struct {
@@ -66,6 +67,13 @@ type batchTx struct {
 }
 
 func (t *batchTx) Lock() {
+	t.LockWithoutHook()
+	if t.backend.txPostLockHook != nil {
+		t.backend.txPostLockHook()
+	}
+}
+
+func (t *batchTx) LockWithoutHook() {
 	t.Mutex.Lock()
 }
 
@@ -226,14 +234,14 @@ func unsafeForEach(tx *bolt.Tx, bucket Bucket, visitor func(k, v []byte) error) 
 
 // Commit commits a previous tx and begins a new writable one.
 func (t *batchTx) Commit() {
-	t.Lock()
+	t.LockWithoutHook()
 	t.commit(false)
 	t.Unlock()
 }
 
 // CommitAndStop commits the previous tx and does not create a new one.
 func (t *batchTx) CommitAndStop() {
-	t.Lock()
+	t.LockWithoutHook()
 	t.commit(true)
 	t.Unlock()
 }
@@ -303,13 +311,13 @@ func (t *batchTxBuffered) Unlock() {
 }
 
 func (t *batchTxBuffered) Commit() {
-	t.Lock()
+	t.LockWithoutHook()
 	t.commit(false)
 	t.Unlock()
 }
 
 func (t *batchTxBuffered) CommitAndStop() {
-	t.Lock()
+	t.LockWithoutHook()
 	t.commit(true)
 	t.Unlock()
 }

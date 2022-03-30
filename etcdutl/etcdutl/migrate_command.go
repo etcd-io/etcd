@@ -118,7 +118,7 @@ type migrateConfig struct {
 func migrateCommandFunc(c *migrateConfig) error {
 	defer c.be.Close()
 	tx := c.be.BatchTx()
-	current, err := schema.DetectSchemaVersion(c.lg, tx)
+	current, err := schema.DetectSchemaVersion(c.lg, c.be.ReadTx())
 	if err != nil {
 		c.lg.Error("failed to detect storage version. Please make sure you are using data dir from etcd v3.5 and older")
 		return err
@@ -140,7 +140,7 @@ func migrateCommandFunc(c *migrateConfig) error {
 }
 
 func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	// Storage version is only supported since v3.6
 	if target.LessThan(schema.V3_6) {

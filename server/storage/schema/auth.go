@@ -49,7 +49,7 @@ func NewAuthBackend(lg *zap.Logger, be backend.Backend) *authBackend {
 
 func (abe *authBackend) CreateAuthBuckets() {
 	tx := abe.be.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(Auth)
 	tx.UnsafeCreateBucket(AuthUsers)
