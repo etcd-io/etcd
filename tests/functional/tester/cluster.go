@@ -189,6 +189,12 @@ func (clus *Cluster) updateCases() {
 		case "SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH":
 			clus.cases = append(clus.cases,
 				new_Case_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH(clus))
+		case "SIGKILL_FOLLOWER":
+			clus.cases = append(clus.cases,
+				new_Case_SIGKILL_FOLLOWER())
+		case "SIGKILL_LEADER":
+			clus.cases = append(clus.cases,
+				new_Case_SIGKILL_LEADER())
 
 		case "BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER":
 			clus.cases = append(clus.cases,

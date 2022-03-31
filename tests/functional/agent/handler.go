@@ -53,6 +53,8 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 
 	case rpcpb.Operation_SIGTERM_ETCD:
 		return srv.handle_SIGTERM_ETCD()
+	case rpcpb.Operation_SIGKILL_ETCD:
+		return srv.handle_SIGKILL_ETCD()
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA:
 		return srv.handle_SIGQUIT_ETCD_AND_REMOVE_DATA()
 
@@ -536,6 +538,23 @@ func (srv *Server) handle_RESTART_ETCD(req *rpcpb.Request) (*rpcpb.Response, err
 
 func (srv *Server) handle_SIGTERM_ETCD() (*rpcpb.Response, error) {
 	if err := srv.stopEtcd(syscall.SIGTERM); err != nil {
+		return nil, err
+	}
+
+	if srv.etcdServer != nil {
+		srv.etcdServer.GetLogger().Sync()
+	} else {
+		srv.etcdLogFile.Sync()
+	}
+
+	return &rpcpb.Response{
+		Success: true,
+		Status:  "killed etcd",
+	}, nil
+}
+
+func (srv *Server) handle_SIGKILL_ETCD() (*rpcpb.Response, error) {
+	if err := srv.stopEtcd(syscall.SIGKILL); err != nil {
 		return nil, err
 	}
 
