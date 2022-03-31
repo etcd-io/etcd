@@ -54,7 +54,13 @@ type BatchTx interface {
 	// CommitAndStop commits the previous tx and does not create a new one.
 	CommitAndStop()
 
-	// LockWithoutHook doesn't execute the `txPostLockHook`.
+	// LockWithoutHook doesn't execute the `txPostLockHook`, while the Lock method may
+	// call back the hook if present.
+	//
+	// The original Lock() is supposed to be called only by operations in the applying
+	// workflow, and all other operations should call LockWithoutHook(). If the operation
+	// doesn't have any impact on the applying workflow, such as the `etcdutl` commands,
+	// then it doesn't matter which lock method it calls.
 	LockWithoutHook()
 }
 
