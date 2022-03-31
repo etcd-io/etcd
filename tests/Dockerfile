@@ -1,4 +1,4 @@
-FROM ubuntu:20.10
+FROM ubuntu:22.04
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
