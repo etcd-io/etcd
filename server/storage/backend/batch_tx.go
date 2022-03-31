@@ -55,7 +55,6 @@ type BatchTx interface {
 	CommitAndStop()
 	LockInsideApply()
 	LockOutsideApply()
-
 }
 
 type batchTx struct {
