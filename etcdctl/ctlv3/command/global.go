@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
@@ -114,7 +115,7 @@ func (*discardValue) Set(string) error { return nil }
 func (*discardValue) Type() string     { return "" }
 
 func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
-	lg, err := zap.NewProduction()
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -193,7 +194,7 @@ func newClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeo
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tlsinfo := transport.TLSInfo{}
-	tlsinfo.Logger, _ = zap.NewProduction()
+	tlsinfo.Logger, _ = logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if scfg.cert != "" {
 		tlsinfo.CertFile = scfg.cert
 		cfgtls = &tlsinfo

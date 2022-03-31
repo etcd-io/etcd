@@ -37,16 +37,7 @@ var (
 	defaultDialTimeout   = 3 * time.Second
 	defaultBufferSize    = 48 * 1024
 	defaultRetryInterval = 10 * time.Millisecond
-	defaultLogger        *zap.Logger
 )
-
-func init() {
-	var err error
-	defaultLogger, err = zap.NewProduction()
-	if err != nil {
-		panic(err)
-	}
-}
 
 // Server defines proxy server layer that simulates common network faults:
 // latency spikes and packet drop or corruption. The proxy overhead is very
@@ -239,9 +230,6 @@ func NewServer(cfg ServerConfig) Server {
 	}
 	if s.retryInterval == 0 {
 		s.retryInterval = defaultRetryInterval
-	}
-	if s.lg == nil {
-		s.lg = defaultLogger
 	}
 
 	close(s.pauseAcceptc)

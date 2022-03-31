@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/tests/v3/functional/agent"
 
 	"go.uber.org/zap"
@@ -27,7 +28,7 @@ var logger *zap.Logger
 
 func init() {
 	var err error
-	logger, err = zap.NewProduction()
+	logger, err = logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		panic(err)
 	}

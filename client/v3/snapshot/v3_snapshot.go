@@ -44,9 +44,6 @@ func hasChecksum(n int64) bool {
 // selected node, and saved snapshot is the point-in-time state of
 // the selected node.
 func Save(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) error {
-	if lg == nil {
-		lg = zap.NewExample()
-	}
 	cfg.Logger = lg.Named("client")
 	if len(cfg.Endpoints) != 1 {
 		return fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)

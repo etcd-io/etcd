@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	pkgioutil "go.etcd.io/etcd/pkg/v3/ioutil"
@@ -63,7 +64,7 @@ func startEtcdOrProxyV2(args []string) {
 	if lg == nil {
 		var zapError error
 		// use this logger
-		lg, zapError = zap.NewProduction()
+		lg, zapError = logutil.CreateDefaultZapLogger(zap.InfoLevel)
 		if zapError != nil {
 			fmt.Printf("error creating zap logger %v", zapError)
 			os.Exit(1)
@@ -463,6 +464,10 @@ func identifyDataDirOrDie(lg *zap.Logger, dir string) dirType {
 }
 
 func checkSupportArch() {
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	if err != nil {
+		panic(err)
+	}
 	// to add a new platform, check https://github.com/etcd-io/website/blob/main/content/en/docs/next/op-guide/supported-platform.md
 	if runtime.GOARCH == "amd64" ||
 		runtime.GOARCH == "arm64" ||
@@ -474,10 +479,10 @@ func checkSupportArch() {
 	// so unset here to not parse through flag
 	defer os.Unsetenv("ETCD_UNSUPPORTED_ARCH")
 	if env, ok := os.LookupEnv("ETCD_UNSUPPORTED_ARCH"); ok && env == runtime.GOARCH {
-		fmt.Printf("running etcd on unsupported architecture %q since ETCD_UNSUPPORTED_ARCH is set\n", env)
+		lg.Info("running etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is set", zap.String("arch", env))
 		return
 	}
 
-	fmt.Printf("etcd on unsupported platform without ETCD_UNSUPPORTED_ARCH=%s set\n", runtime.GOARCH)
+	lg.Error("running etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is set", zap.String("arch", runtime.GOARCH))
 	os.Exit(1)
 }
