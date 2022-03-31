@@ -25,6 +25,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/creack/pty"
 )
@@ -36,7 +37,6 @@ type ExpectProcess struct {
 	fpty *os.File
 	wg   sync.WaitGroup
 
-	cond  *sync.Cond // for broadcasting updates are available
 	mu    sync.Mutex // protects lines and err
 	lines []string
 	count int // increment whenever new line gets added
@@ -60,7 +60,6 @@ func NewExpectWithEnv(name string, args []string, env []string) (ep *ExpectProce
 		cmd:        cmd,
 		StopSignal: syscall.SIGKILL,
 	}
-	ep.cond = sync.NewCond(&ep.mu)
 	ep.cmd.Stderr = ep.cmd.Stdout
 	ep.cmd.Stdin = nil
 
@@ -77,52 +76,56 @@ func (ep *ExpectProcess) read() {
 	defer ep.wg.Done()
 	printDebugLines := os.Getenv("EXPECT_DEBUG") != ""
 	r := bufio.NewReader(ep.fpty)
-	for ep.err == nil {
-		l, rerr := r.ReadString('\n')
+	for {
+		l, err := r.ReadString('\n')
 		ep.mu.Lock()
-		ep.err = rerr
 		if l != "" {
 			if printDebugLines {
 				fmt.Printf("%s-%d: %s", ep.cmd.Path, ep.cmd.Process.Pid, l)
 			}
 			ep.lines = append(ep.lines, l)
 			ep.count++
-			if len(ep.lines) == 1 {
-				ep.cond.Signal()
-			}
+		}
+		if err != nil {
+			ep.err = err
+			ep.mu.Unlock()
+			break
 		}
 		ep.mu.Unlock()
 	}
-	ep.cond.Signal()
 }
 
 // ExpectFunc returns the first line satisfying the function f.
 func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
-	lastLinesBuffer := make([]string, 0)
+	i := 0
 
-	ep.mu.Lock()
 	for {
-		for len(ep.lines) == 0 && ep.err == nil {
-			ep.cond.Wait()
+		ep.mu.Lock()
+		for i < len(ep.lines) {
+			line := ep.lines[i]
+			i++
+			if f(line) {
+				ep.mu.Unlock()
+				return line, nil
+			}
 		}
-		if len(ep.lines) == 0 {
+		if ep.err != nil {
+			ep.mu.Unlock()
 			break
 		}
-		l := ep.lines[0]
-		ep.lines = ep.lines[1:]
-		lastLinesBuffer = append(lastLinesBuffer, l)
-		if l := len(lastLinesBuffer); l > DEBUG_LINES_TAIL {
-			lastLinesBuffer = lastLinesBuffer[l-DEBUG_LINES_TAIL : l-1]
-		}
-		if f(l) {
-			ep.mu.Unlock()
-			return l, nil
-		}
+		ep.mu.Unlock()
+		time.Sleep(time.Millisecond * 100)
 	}
+	ep.mu.Lock()
+	lastLinesIndex := len(ep.lines) - DEBUG_LINES_TAIL
+	if lastLinesIndex < 0 {
+		lastLinesIndex = 0
+	}
+	lastLines := strings.Join(ep.lines[lastLinesIndex:], "")
 	ep.mu.Unlock()
 	return "", fmt.Errorf("match not found."+
 		" Set EXPECT_DEBUG for more info Err: %v, last lines:\n%s",
-		ep.err, strings.Join(lastLinesBuffer, ""))
+		ep.err, lastLines)
 }
 
 // Expect returns the first line containing the given string.
@@ -188,4 +191,10 @@ func (ep *ExpectProcess) ProcessError() error {
 		return nil
 	}
 	return ep.err
+}
+
+func (ep *ExpectProcess) Lines() []string {
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+	return ep.lines
 }
