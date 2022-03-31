@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
@@ -88,7 +89,7 @@ func (*discardValue) Set(string) error { return nil }
 func (*discardValue) Type() string     { return "" }
 
 func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
-	lg, err := zap.NewProduction()
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -137,7 +138,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 
 func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 	cc := clientConfigFromCmd(cmd)
-	lg, _ := zap.NewProduction()
+	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
@@ -151,7 +152,7 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 }
 
 func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
-	lg, _ := zap.NewProduction()
+	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)

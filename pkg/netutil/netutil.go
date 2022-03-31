@@ -193,12 +193,6 @@ func URLStringsEqual(ctx context.Context, lg *zap.Logger, a []string, b []string
 	if err != nil {
 		return false, err
 	}
-	if lg == nil {
-		lg, _ = zap.NewProduction()
-		if lg == nil {
-			lg = zap.NewExample()
-		}
-	}
 	return urlsEqual(ctx, lg, urlsA, urlsB)
 }
 

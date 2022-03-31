@@ -175,6 +175,7 @@ type EtcdProcessClusterConfig struct {
 
 	DiscoveryEndpoints []string // v3 discovery
 	DiscoveryToken     string
+	LogLevel           string
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -334,6 +335,10 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 
 		if cfg.Discovery != "" {
 			args = append(args, "--discovery", cfg.Discovery)
+		}
+
+		if cfg.LogLevel != "" {
+			args = append(args, "--log-level", cfg.LogLevel)
 		}
 
 		etcdCfgs[i] = &EtcdServerProcessConfig{

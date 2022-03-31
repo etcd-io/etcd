@@ -70,9 +70,6 @@ type Manager interface {
 
 // NewV3 returns a new snapshot Manager for v3.x snapshot.
 func NewV3(lg *zap.Logger) Manager {
-	if lg == nil {
-		lg = zap.NewExample()
-	}
 	return &v3Manager{lg: lg}
 }
 
