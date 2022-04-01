@@ -343,7 +343,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = b.storage.backend.be
-	srv.be.SetTxPostLockHook(srv.getTxPostLockHook())
 	srv.beHooks = b.storage.backend.beHooks
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * heartbeat
 
@@ -403,6 +402,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			srv.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseCheckpoint: cp})
 		})
 	}
+
+	// Set the hook after EtcdServer finishes the initialization to avoid
+	// the hook being called during the initialization process.
+	srv.be.SetTxPostLockHook(srv.getTxPostLockHook())
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{

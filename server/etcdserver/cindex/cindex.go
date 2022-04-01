@@ -89,7 +89,7 @@ func (ci *consistentIndex) UnsafeConsistentIndex() uint64 {
 		return index
 	}
 
-	v, term := schema.UnsafeReadConsistentIndex(ci.be.BatchTx())
+	v, term := schema.UnsafeReadConsistentIndex(ci.be.ReadTx())
 	ci.SetConsistentIndex(v, term)
 	return v
 }
