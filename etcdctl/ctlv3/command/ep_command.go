@@ -22,6 +22,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/flags"
@@ -88,7 +89,7 @@ type epHealth struct {
 
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
-	lg, err := zap.NewProduction()
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -260,7 +261,7 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	// exclude auth for not asking needless password (MemberList() doesn't need authentication)
-	lg, _ := zap.NewProduction()
+	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(&clientv3.ConfigSpec{
 		Endpoints:        eps,
 		DialTimeout:      dt,

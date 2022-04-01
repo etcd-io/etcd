@@ -377,11 +377,10 @@ func (cfg *config) parse(arguments []string) error {
 
 func (cfg *config) configFromCmdLine() error {
 	// user-specified logger is not setup yet, use this logger during flag parsing
-	lg, err := zap.NewProduction()
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		return err
 	}
-
 	verKey := "ETCD_VERSION"
 	if verVal := os.Getenv(verKey); verVal != "" {
 		// unset to avoid any possible side-effect.
