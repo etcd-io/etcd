@@ -797,7 +797,7 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 func (le *lessor) initAndRecover() {
 	tx := le.b.BatchTx()
 
-	tx.Lock()
+	tx.LockWithoutHook()
 	schema.UnsafeCreateLeaseBucket(tx)
 	lpbs := schema.MustUnsafeGetAllLeases(tx)
 	tx.Unlock()

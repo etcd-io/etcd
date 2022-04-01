@@ -49,7 +49,7 @@ func newPlan(lg *zap.Logger, current semver.Version, target semver.Version) (pla
 }
 
 func (p migrationPlan) Execute(lg *zap.Logger, tx backend.BatchTx) error {
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	return p.unsafeExecute(lg, tx)
 }
@@ -90,7 +90,7 @@ func newMigrationStep(v semver.Version, isUpgrade bool, changes []schemaChange) 
 
 // execute runs actions required to migrate etcd storage between two minor versions.
 func (s migrationStep) execute(lg *zap.Logger, tx backend.BatchTx) error {
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	return s.unsafeExecute(lg, tx)
 }

@@ -687,9 +687,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 
 	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{})
 	consistIndex := srv.consistIndex.ConsistentIndex()
-	if consistIndex != appliedi {
-		t.Fatalf("consistIndex = %v, want %v", consistIndex, appliedi)
-	}
+	assert.Equal(t, uint64(2), appliedi)
 
 	t.Run("verify-backend", func(t *testing.T) {
 		tx := be.BatchTx()
@@ -698,9 +696,8 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		srv.beHooks.OnPreCommitUnsafe(tx)
 		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *schema.UnsafeConfStateFromBackend(lg, tx))
 	})
-	rindex, rterm := schema.ReadConsistentIndex(be.BatchTx())
+	rindex, _ := schema.ReadConsistentIndex(be.ReadTx())
 	assert.Equal(t, consistIndex, rindex)
-	assert.Equal(t, uint64(4), rterm)
 }
 
 func realisticRaftNode(lg *zap.Logger) *raftNode {

@@ -74,9 +74,9 @@ func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions
 }
 
 func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
-	tx := s.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx := s.be.ReadTx()
+	tx.RLock()
+	defer tx.RUnlock()
 	v, err := schema.UnsafeDetectSchemaVersion(s.lg, tx)
 	if err != nil {
 		return nil
@@ -86,7 +86,7 @@ func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
 
 func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error {
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	return schema.UnsafeMigrate(s.lg, tx, s.r.storage, target)
 }

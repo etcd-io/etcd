@@ -61,7 +61,7 @@ func (s *membershipBackend) MustSaveMemberToBackend(m *membership.Member) {
 // from the v3 backend.
 func (s *membershipBackend) TrimClusterFromBackend() error {
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	tx.UnsafeDeleteBucket(Cluster)
 	return nil
@@ -121,7 +121,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 func (s *membershipBackend) TrimMembershipFromBackend() error {
 	s.lg.Info("Trimming membership information from the backend...")
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	err := tx.UnsafeForEach(Members, func(k, v []byte) error {
 		tx.UnsafeDelete(Members, k)
@@ -167,7 +167,7 @@ func (s *membershipBackend) MustSaveDowngradeToBackend(downgrade *version.Downgr
 
 func (s *membershipBackend) MustCreateBackendBuckets() {
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(Members)
 	tx.UnsafeCreateBucket(MembersRemoved)
