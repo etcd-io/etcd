@@ -115,6 +115,9 @@ func SkipInShortMode(t testing.TB) {
 
 func mergeEnvVariables(envVars map[string]string) []string {
 	var env []string
+
+	envVars = addNoProxy(envVars)
+
 	// Environment variables are passed as parameter have higher priority
 	// than os environment variables.
 	for k, v := range envVars {
@@ -131,4 +134,23 @@ func mergeEnvVariables(envVars map[string]string) []string {
 	}
 
 	return env
+}
+
+// addNoProxy adds no_proxy entry for "localhost,127.0.0.1".
+func addNoProxy(envVars map[string]string) map[string]string {
+	newEnvMap := make(map[string]string)
+
+	// clone the old env map, otherwise it may run into "fatal error: concurrent map read and map write".
+	for k, v := range envVars {
+		newEnvMap[k] = v
+	}
+
+	localHosts := "localhost,127.0.0.1"
+	if val, ok := newEnvMap["no_proxy"]; ok && len(val) > 0 {
+		newEnvMap["no_proxy"] = fmt.Sprintf("%s,%s", val, localHosts)
+	} else {
+		newEnvMap["no_proxy"] = localHosts
+	}
+
+	return newEnvMap
 }
