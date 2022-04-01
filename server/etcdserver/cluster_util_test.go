@@ -19,12 +19,10 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
 )
-
-var testLogger = zap.NewExample()
 
 func TestIsCompatibleWithVers(t *testing.T) {
 	tests := []struct {
@@ -90,7 +88,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		ok := isCompatibleWithVers(testLogger, tt.vers, tt.local, tt.minV, tt.maxV)
+		ok := isCompatibleWithVers(zaptest.NewLogger(t), tt.vers, tt.local, tt.minV, tt.maxV)
 		if ok != tt.wok {
 			t.Errorf("#%d: ok = %+v, want %+v", i, ok, tt.wok)
 		}

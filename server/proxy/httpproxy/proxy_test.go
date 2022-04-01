@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestReadonlyHandler(t *testing.T) {
@@ -73,7 +73,7 @@ func TestConfigHandlerGET(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lg := zap.NewExample()
+	lg := zaptest.NewLogger(t)
 	rp := reverseProxy{
 		lg: lg,
 		director: &director{

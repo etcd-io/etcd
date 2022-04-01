@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestEtcdDumpLogEntryType(t *testing.T) {
@@ -57,7 +57,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 	waldir := walDir(p)
 	snapdir := snapDir(p)
 
-	w, err := wal.Create(zap.NewExample(), waldir, nil)
+	w, err := wal.Create(zaptest.NewLogger(t), waldir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

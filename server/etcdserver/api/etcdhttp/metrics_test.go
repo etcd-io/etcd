@@ -14,7 +14,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 type fakeStats struct{}
@@ -98,7 +98,7 @@ func TestHealthHandler(t *testing.T) {
 	for i, tt := range tests {
 		func() {
 			mux := http.NewServeMux()
-			HandleMetricsHealth(zap.NewExample(), mux, &fakeServerV2{
+			HandleMetricsHealth(zaptest.NewLogger(t), mux, &fakeServerV2{
 				fakeServer: fakeServer{alarms: tt.alarms},
 				health:     tt.health,
 			})

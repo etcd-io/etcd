@@ -20,13 +20,12 @@ import (
 
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(b)
-	watchable := newWatchableStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})
+	watchable := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
 
 	defer cleanup(watchable, be, tmpPath)
 

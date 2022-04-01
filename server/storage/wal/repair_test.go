@@ -22,8 +22,7 @@ import (
 
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 type corruptFunc func(string, int64) error
@@ -31,7 +30,7 @@ type corruptFunc func(string, int64) error
 // TestRepairTruncate ensures a truncated file can be repaired
 func TestRepairTruncate(t *testing.T) {
 	corruptf := func(p string, offset int64) error {
-		f, err := openLast(zap.NewExample(), p)
+		f, err := openLast(zaptest.NewLogger(t), p)
 		if err != nil {
 			return err
 		}
@@ -46,7 +45,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	p := t.TempDir()
 
 	// create WAL
-	w, err := Create(zap.NewExample(), p, nil)
+	w, err := Create(zaptest.NewLogger(t), p, nil)
 	defer func() {
 		if err = w.Close(); err != nil {
 			t.Fatal(err)
@@ -74,7 +73,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	}
 
 	// verify we broke the wal
-	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,12 +84,12 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	w.Close()
 
 	// repair the wal
-	if ok := Repair(zap.NewExample(), p); !ok {
+	if ok := Repair(zaptest.NewLogger(t), p); !ok {
 		t.Fatalf("'Repair' returned '%v', want 'true'", ok)
 	}
 
 	// read it back
-	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +111,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	w.Close()
 
 	// read back entries following repair, ensure it's all there
-	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +135,7 @@ func makeEnts(ents int) (ret [][]raftpb.Entry) {
 // that straddled two sectors.
 func TestRepairWriteTearLast(t *testing.T) {
 	corruptf := func(p string, offset int64) error {
-		f, err := openLast(zap.NewExample(), p)
+		f, err := openLast(zaptest.NewLogger(t), p)
 		if err != nil {
 			return err
 		}
@@ -157,7 +156,7 @@ func TestRepairWriteTearLast(t *testing.T) {
 // in the middle of a record.
 func TestRepairWriteTearMiddle(t *testing.T) {
 	corruptf := func(p string, offset int64) error {
-		f, err := openLast(zap.NewExample(), p)
+		f, err := openLast(zaptest.NewLogger(t), p)
 		if err != nil {
 			return err
 		}
@@ -181,7 +180,7 @@ func TestRepairWriteTearMiddle(t *testing.T) {
 func TestRepairFailDeleteDir(t *testing.T) {
 	p := t.TempDir()
 
-	w, err := Create(zap.NewExample(), p, nil)
+	w, err := Create(zaptest.NewLogger(t), p, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +202,7 @@ func TestRepairFailDeleteDir(t *testing.T) {
 	}
 	w.Close()
 
-	f, err := openLast(zap.NewExample(), p)
+	f, err := openLast(zaptest.NewLogger(t), p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +211,7 @@ func TestRepairFailDeleteDir(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = Open(zap.NewExample(), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +222,7 @@ func TestRepairFailDeleteDir(t *testing.T) {
 	w.Close()
 
 	os.RemoveAll(p)
-	if Repair(zap.NewExample(), p) {
+	if Repair(zaptest.NewLogger(t), p) {
 		t.Fatal("expect 'Repair' fail on unexpected directory deletion")
 	}
 }

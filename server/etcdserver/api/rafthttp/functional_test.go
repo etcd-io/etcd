@@ -25,8 +25,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestSendMessage(t *testing.T) {
@@ -36,7 +35,7 @@ func TestSendMessage(t *testing.T) {
 		ClusterID:   types.ID(1),
 		Raft:        &fakeRaft{},
 		ServerStats: newServerStats(),
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), "1"),
+		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "1"),
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -50,7 +49,7 @@ func TestSendMessage(t *testing.T) {
 		ClusterID:   types.ID(1),
 		Raft:        p,
 		ServerStats: newServerStats(),
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), "2"),
+		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "2"),
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())
@@ -94,7 +93,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		ClusterID:   types.ID(1),
 		Raft:        &fakeRaft{},
 		ServerStats: newServerStats(),
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), "1"),
+		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "1"),
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -108,7 +107,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		ClusterID:   types.ID(1),
 		Raft:        p,
 		ServerStats: newServerStats(),
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), "2"),
+		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "2"),
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())

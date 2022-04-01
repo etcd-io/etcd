@@ -21,16 +21,16 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/jonboulle/clockwork"
-	"go.uber.org/zap"
 )
 
 func TestRevision(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
-	tb := newRevision(zap.NewExample(), fc, 10, rg, compactable)
+	tb := newRevision(zaptest.NewLogger(t), fc, 10, rg, compactable)
 
 	tb.Run()
 	defer tb.Stop()
@@ -73,7 +73,7 @@ func TestRevisionPause(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStream(), 99} // will be 100
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
-	tb := newRevision(zap.NewExample(), fc, 10, rg, compactable)
+	tb := newRevision(zaptest.NewLogger(t), fc, 10, rg, compactable)
 
 	tb.Run()
 	tb.Pause()

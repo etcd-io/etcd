@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func init() { setDflSignal = func(syscall.Signal) {} }
@@ -71,7 +71,7 @@ func TestHandleInterrupts(t *testing.T) {
 		c := make(chan os.Signal, 2)
 		signal.Notify(c, sig)
 
-		HandleInterrupts(zap.NewExample())
+		HandleInterrupts(zaptest.NewLogger(t))
 		syscall.Kill(syscall.Getpid(), sig)
 
 		// we should receive the signal once from our own kill and

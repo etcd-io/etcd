@@ -10,9 +10,9 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/jonboulle/clockwork"
-	"go.uber.org/zap"
 )
 
 // fakeKVForClusterSize is used to test getClusterSize.
@@ -62,12 +62,9 @@ func TestGetClusterSize(t *testing.T) {
 		},
 	}
 
-	lg, err := zap.NewProduction()
-	if err != nil {
-		t.Errorf("Failed to create a logger, error: %v", err)
-	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			d := &discovery{
 				lg: lg,
 				c: &clientv3.Client{
@@ -178,10 +175,7 @@ func TestGetClusterMembers(t *testing.T) {
 		},
 	}
 
-	lg, err := zap.NewProduction()
-	if err != nil {
-		t.Errorf("Failed to create a logger, error: %v", err)
-	}
+	lg := zaptest.NewLogger(t)
 
 	d := &discovery{
 		lg: lg,
@@ -356,10 +350,7 @@ func TestCheckCluster(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			lg, err := zap.NewProduction()
-			if err != nil {
-				t.Errorf("Failed to create a logger, error: %v", err)
-			}
+			lg := zaptest.NewLogger(t)
 
 			fkv := &fakeKVForCheckCluster{
 				fakeBaseKV:        &fakeBaseKV{},
@@ -469,13 +460,9 @@ func TestRegisterSelf(t *testing.T) {
 		},
 	}
 
-	lg, err := zap.NewProduction()
-	if err != nil {
-		t.Errorf("Failed to create a logger, error: %v", err)
-	}
-
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			fkv := &fakeKVForRegisterSelf{
 				fakeBaseKV:       &fakeBaseKV{},
 				t:                t,
@@ -597,10 +584,7 @@ func TestWaitPeers(t *testing.T) {
 		},
 	}
 
-	lg, err := zap.NewProduction()
-	if err != nil {
-		t.Errorf("Failed to create a logger, error: %v", err)
-	}
+	lg := zaptest.NewLogger(t)
 
 	d := &discovery{
 		lg: lg,

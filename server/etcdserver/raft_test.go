@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestGetIDs(t *testing.T) {
@@ -67,7 +67,7 @@ func TestGetIDs(t *testing.T) {
 		if tt.confState != nil {
 			snap.Metadata.ConfState = *tt.confState
 		}
-		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(testLogger, &snap, tt.ents)
+		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(zaptest.NewLogger(t), &snap, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
@@ -147,7 +147,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gents := serverstorage.CreateConfigChangeEnts(testLogger, tt.ids, tt.self, tt.term, tt.index)
+		gents := serverstorage.CreateConfigChangeEnts(zaptest.NewLogger(t), tt.ids, tt.self, tt.term, tt.index)
 		if !reflect.DeepEqual(gents, tt.wents) {
 			t.Errorf("#%d: ents = %v, want %v", i, gents, tt.wents)
 		}
@@ -157,13 +157,13 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	n := newNopReadyNode()
 	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
+		lg:          zaptest.NewLogger(t),
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   newNopTransporter(),
 	})
-	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zap.NewExample(), r: *r}
+	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
 	srv.r.start(nil)
 	n.readyc <- raft.Ready{}
 	select {
@@ -185,13 +185,13 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
 	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
+		lg:          zaptest.NewLogger(t),
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   newNopTransporter(),
 	})
-	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zap.NewExample(), r: *r}
+	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
 
 	srv.r.start(&raftReadyHandler{
 		getLead:          func() uint64 { return 0 },
@@ -231,13 +231,13 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 
 func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	n := newNopReadyNode()
-	cl := membership.NewCluster(zap.NewExample())
+	cl := membership.NewCluster(zaptest.NewLogger(t))
 
 	rs := raft.NewMemoryStorage()
 	p := mockstorage.NewStorageRecorder("")
 	tr, sendc := newSendMsgAppRespTransporter()
 	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
+		lg:          zaptest.NewLogger(t),
 		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
 		Node:        n,
 		transport:   tr,
@@ -247,7 +247,7 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 
 	s := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
-		lg:         zap.NewExample(),
+		lg:         zaptest.NewLogger(t),
 		r:          *r,
 		cluster:    cl,
 		SyncTicker: &time.Ticker{},

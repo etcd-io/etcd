@@ -101,7 +101,7 @@ func TestDoLocalAction(t *testing.T) {
 		st := mockstore.NewRecorder()
 		srv := &EtcdServer{
 			lgMu:     new(sync.RWMutex),
-			lg:       zap.NewExample(),
+			lg:       zaptest.NewLogger(t),
 			v2store:  st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
@@ -156,7 +156,7 @@ func TestDoBadLocalAction(t *testing.T) {
 		st := mockstore.NewErrRecorder(storeErr)
 		srv := &EtcdServer{
 			lgMu:     new(sync.RWMutex),
-			lg:       zap.NewExample(),
+			lg:       zaptest.NewLogger(t),
 			v2store:  st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
@@ -186,7 +186,7 @@ func TestApplyRepeat(t *testing.T) {
 	cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
+		lg:          zaptest.NewLogger(t),
 		Node:        n,
 		raftStorage: raft.NewMemoryStorage(),
 		storage:     mockstorage.NewStorageRecorder(""),
@@ -194,7 +194,7 @@ func TestApplyRepeat(t *testing.T) {
 	})
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
-		lg:           zap.NewExample(),
+		lg:           zaptest.NewLogger(t),
 		r:            *r,
 		v2store:      st,
 		cluster:      cl,
@@ -469,7 +469,7 @@ func TestApplyRequest(t *testing.T) {
 		st := mockstore.NewRecorder()
 		srv := &EtcdServer{
 			lgMu:    new(sync.RWMutex),
-			lg:      zap.NewExample(),
+			lg:      zaptest.NewLogger(t),
 			v2store: st,
 		}
 		srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
@@ -489,7 +489,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 	cl := newTestCluster(t, []*membership.Member{{ID: 1}})
 	srv := &EtcdServer{
 		lgMu:    new(sync.RWMutex),
-		lg:      zap.NewExample(),
+		lg:      zaptest.NewLogger(t),
 		v2store: mockstore.NewRecorder(),
 		cluster: cl,
 	}
@@ -575,8 +575,8 @@ func TestApplyConfChangeError(t *testing.T) {
 		n := newNodeRecorder()
 		srv := &EtcdServer{
 			lgMu:    new(sync.RWMutex),
-			lg:      zap.NewExample(),
-			r:       *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
+			lg:      zaptest.NewLogger(t),
+			r:       *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 			cluster: cl,
 		}
 		_, err := srv.applyConfChange(tt.cc, nil, true)
@@ -603,7 +603,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
 	r := newRaftNode(raftNodeConfig{
-		lg:        zap.NewExample(),
+		lg:        zaptest.NewLogger(t),
 		Node:      newNodeNop(),
 		transport: newNopTransporter(),
 	})
@@ -778,7 +778,7 @@ func TestDoProposal(t *testing.T) {
 	for i, tt := range tests {
 		st := mockstore.NewRecorder()
 		r := newRaftNode(raftNodeConfig{
-			lg:          zap.NewExample(),
+			lg:          zaptest.NewLogger(t),
 			Node:        newNodeCommitter(),
 			storage:     mockstorage.NewStorageRecorder(""),
 			raftStorage: raft.NewMemoryStorage(),
@@ -786,8 +786,8 @@ func TestDoProposal(t *testing.T) {
 		})
 		srv := &EtcdServer{
 			lgMu:         new(sync.RWMutex),
-			lg:           zap.NewExample(),
-			Cfg:          config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+			lg:           zaptest.NewLogger(t),
+			Cfg:          config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 			r:            *r,
 			v2store:      st,
 			reqIDGen:     idutil.NewGenerator(0, time.Time{}),
@@ -818,8 +818,8 @@ func TestDoProposalCancelled(t *testing.T) {
 	wt := mockwait.NewRecorder()
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
-		lg:       zap.NewExample(),
-		Cfg:      config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		lg:       zaptest.NewLogger(t),
+		Cfg:      config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
 		w:        wt,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -842,8 +842,8 @@ func TestDoProposalCancelled(t *testing.T) {
 func TestDoProposalTimeout(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
-		lg:       zap.NewExample(),
-		Cfg:      config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		lg:       zaptest.NewLogger(t),
+		Cfg:      config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -861,9 +861,9 @@ func TestDoProposalTimeout(t *testing.T) {
 func TestDoProposalStopped(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
-		lg:       zap.NewExample(),
-		Cfg:      config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:        *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: newNodeNop()}),
+		lg:       zaptest.NewLogger(t),
+		Cfg:      config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		r:        *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: newNodeNop()}),
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
@@ -883,8 +883,8 @@ func TestSync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
-		lg:       zap.NewExample(),
-		r:        *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
+		lg:       zaptest.NewLogger(t),
+		r:        *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		ctx:      ctx,
 		cancel:   cancel,
@@ -928,8 +928,8 @@ func TestSyncTimeout(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
-		lg:       zap.NewExample(),
-		r:        *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
+		lg:       zaptest.NewLogger(t),
+		r:        *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		ctx:      ctx,
 		cancel:   cancel,
@@ -963,7 +963,7 @@ func TestSyncTrigger(t *testing.T) {
 	st := make(chan time.Time, 1)
 	tk := &time.Ticker{C: st}
 	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
+		lg:          zaptest.NewLogger(t),
 		Node:        n,
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   newNopTransporter(),
@@ -972,8 +972,8 @@ func TestSyncTrigger(t *testing.T) {
 
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
-		lg:         zap.NewExample(),
-		Cfg:        config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		lg:         zaptest.NewLogger(t),
+		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:          *r,
 		v2store:    mockstore.NewNop(),
 		SyncTicker: tk,
@@ -1023,19 +1023,19 @@ func TestSnapshot(t *testing.T) {
 	st := mockstore.NewRecorderStream()
 	p := mockstorage.NewStorageRecorderStream("")
 	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
+		lg:          zaptest.NewLogger(t),
 		Node:        newNodeNop(),
 		raftStorage: s,
 		storage:     p,
 	})
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
-		lg:           zap.NewExample(),
+		lg:           zaptest.NewLogger(t),
 		r:            *r,
 		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
-	srv.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
 
 	ch := make(chan struct{}, 2)
@@ -1095,7 +1095,7 @@ func TestSnapshotOrdering(t *testing.T) {
 
 	rs := raft.NewMemoryStorage()
 	p := mockstorage.NewStorageRecorderStream(testdir)
-	tr, snapDoneC := newSnapTransporter(snapdir)
+	tr, snapDoneC := newSnapTransporter(lg, snapdir)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
 		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
@@ -1176,7 +1176,7 @@ func TestTriggerSnap(t *testing.T) {
 	st := mockstore.NewRecorder()
 	p := mockstorage.NewStorageRecorderStream("")
 	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
+		lg:          zaptest.NewLogger(t),
 		Node:        newNodeCommitter(),
 		raftStorage: raft.NewMemoryStorage(),
 		storage:     p,
@@ -1184,8 +1184,8 @@ func TestTriggerSnap(t *testing.T) {
 	})
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
-		lg:           zap.NewExample(),
-		Cfg:          config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCount: uint64(snapc), SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		lg:           zaptest.NewLogger(t),
+		Cfg:          config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCount: uint64(snapc), SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:            *r,
 		v2store:      st,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
@@ -1194,7 +1194,7 @@ func TestTriggerSnap(t *testing.T) {
 	}
 	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
-	srv.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
 
 	srv.start()
@@ -1244,7 +1244,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	}
 
 	rs := raft.NewMemoryStorage()
-	tr, snapDoneC := newSnapTransporter(testdir)
+	tr, snapDoneC := newSnapTransporter(lg, testdir)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
 		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
@@ -1390,7 +1390,7 @@ func TestRemoveMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
-		lg:           zap.NewExample(),
+		lg:           zaptest.NewLogger(t),
 		r:            *r,
 		v2store:      st,
 		cluster:      cl,
@@ -1513,14 +1513,14 @@ func TestPublishV3(t *testing.T) {
 func TestPublishV3Stopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	r := newRaftNode(raftNodeConfig{
-		lg:        zap.NewExample(),
+		lg:        zaptest.NewLogger(t),
 		Node:      newNodeNop(),
 		transport: newNopTransporter(),
 	})
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
-		lg:         zap.NewExample(),
-		Cfg:        config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		lg:         zaptest.NewLogger(t),
+		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:          *r,
 		cluster:    &membership.RaftCluster{},
 		w:          mockwait.NewNop(),
@@ -1595,10 +1595,10 @@ func TestUpdateVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
-		lg:         zap.NewExample(),
+		lg:         zaptest.NewLogger(t),
 		id:         1,
-		Cfg:        config.ServerConfig{Logger: zap.NewExample(), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:          *newRaftNode(raftNodeConfig{lg: zap.NewExample(), Node: n}),
+		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
 		cluster:    &membership.RaftCluster{},
 		w:          w,
@@ -1636,7 +1636,7 @@ func TestUpdateVersion(t *testing.T) {
 func TestStopNotify(t *testing.T) {
 	s := &EtcdServer{
 		lgMu: new(sync.RWMutex),
-		lg:   zap.NewExample(),
+		lg:   zaptest.NewLogger(t),
 		stop: make(chan struct{}),
 		done: make(chan struct{}),
 	}
@@ -1873,16 +1873,17 @@ type snapTransporter struct {
 	nopTransporter
 	snapDoneC chan snap.Message
 	snapDir   string
+	lg        *zap.Logger
 }
 
-func newSnapTransporter(snapDir string) (rafthttp.Transporter, <-chan snap.Message) {
+func newSnapTransporter(lg *zap.Logger, snapDir string) (rafthttp.Transporter, <-chan snap.Message) {
 	ch := make(chan snap.Message, 1)
-	tr := &snapTransporter{snapDoneC: ch, snapDir: snapDir}
+	tr := &snapTransporter{snapDoneC: ch, snapDir: snapDir, lg: lg}
 	return tr, ch
 }
 
 func (s *snapTransporter) SendSnapshot(m snap.Message) {
-	ss := snap.New(zap.NewExample(), s.snapDir)
+	ss := snap.New(s.lg, s.snapDir)
 	ss.SaveDBFrom(m.ReadCloser, m.Snapshot.Metadata.Index+1)
 	m.CloseWithError(nil)
 	s.snapDoneC <- m
