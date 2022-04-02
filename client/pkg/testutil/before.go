@@ -1,4 +1,4 @@
-// Copyright 2021 The etcd Authors
+// Copyright 2022 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package testutil
 
 import (
+	"os"
 	"testing"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
+// These are constants from "go.etcd.io/etcd/server/v3/verify",
+// but we don't want to take dependency.
+const ENV_VERIFY = "ETCD_VERIFY"
+const ENV_VERIFY_ALL_VALUE = "all"
+
 func BeforeTest(t testing.TB) {
-	SkipInShortMode(t)
-	testutil.BeforeTest(t)
+	RegisterLeakDetection(t)
+	os.Setenv(ENV_VERIFY, ENV_VERIFY_ALL_VALUE)
+
+	path, err := os.Getwd()
+	assert.NoError(t, err)
+	tempDir := t.TempDir()
+	assert.NoError(t, os.Chdir(tempDir))
+	t.Logf("Changing working directory to: %s", tempDir)
+
+	t.Cleanup(func() { assert.NoError(t, os.Chdir(path)) })
 }
