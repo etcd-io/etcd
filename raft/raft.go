@@ -1154,7 +1154,7 @@ func stepLeader(r *raft, m pb.Message) error {
 				// the rejection's log term. If a probe at one of these indexes
 				// succeeded, its log term at that index would match the leader's,
 				// i.e. 3 or 5 in this example. But the follower already told the
-				// leader that it is still at term 2 at index 9, and since the
+				// leader that it is still at term 2 at index 6, and since the
 				// log term only ever goes up (within a log), this is a contradiction.
 				//
 				// At index 1, however, the leader can draw no such conclusion,
