@@ -433,6 +433,8 @@ func (b *backend) run() {
 func (b *backend) Close() error {
 	close(b.stopc)
 	<-b.donec
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	return b.db.Close()
 }
 
