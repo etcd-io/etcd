@@ -250,11 +250,9 @@ type EtcdServer struct {
 
 	applyV2 ApplierV2
 
-	// applyV3 is the applier with auth and quotas
-	applyV3 applierV3
-	// applyV3Internal is the applier for internal request
-	applyV3Internal applierV3Internal
-	applyWait       wait.WaitTime
+	uberApply *uberApplier
+
+	applyWait wait.WaitTime
 
 	kv         mvcc.WatchableKV
 	lessor     lease.Lessor
@@ -390,10 +388,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		srv.compactor.Run()
 	}
 
-	srv.applyV3Internal = srv.newApplierV3Internal()
 	if err = srv.restoreAlarms(); err != nil {
 		return nil, err
 	}
+	srv.uberApply = newUberApplier(srv)
 
 	if srv.Cfg.EnableLeaseCheckpoint {
 		// setting checkpointer enables lease checkpoint feature.
@@ -1071,6 +1069,10 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	ep.appliedi = apply.snapshot.Metadata.Index
 	ep.snapi = ep.appliedi
 	ep.confState = apply.snapshot.Metadata.ConfState
+
+	// As backends and implementations like alarmsStore changed, we need
+	// to re-bootstrap Appliers.
+	s.uberApply = newUberApplier(s)
 }
 
 func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {
@@ -1888,7 +1890,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
 		applyV3Performed = true
-		ar = s.applyV3.Apply(&raftReq, shouldApplyV3)
+		ar = s.uberApply.Apply(&raftReq, shouldApplyV3)
 	}
 
 	// do not re-apply applied entries.
@@ -2292,18 +2294,11 @@ func (s *EtcdServer) Backend() backend.Backend {
 func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
 
 func (s *EtcdServer) restoreAlarms() error {
-	s.applyV3 = s.newApplierV3()
 	as, err := v3alarm.NewAlarmStore(s.lg, schema.NewAlarmBackend(s.lg, s.be))
 	if err != nil {
 		return err
 	}
 	s.alarmStore = as
-	if len(as.Get(pb.AlarmType_NOSPACE)) > 0 {
-		s.applyV3 = newApplierV3Capped(s.applyV3)
-	}
-	if len(as.Get(pb.AlarmType_CORRUPT)) > 0 {
-		s.applyV3 = newApplierV3Corrupt(s.applyV3)
-	}
 	return nil
 }
 

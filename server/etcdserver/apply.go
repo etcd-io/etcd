@@ -16,9 +16,6 @@ package etcdserver
 
 import (
 	"context"
-	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/coreos/go-semver/semver"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -45,7 +42,7 @@ type applyResult struct {
 	resp proto.Message
 	err  error
 	// physc signals the physical effect of the request has completed in addition
-	// to being logically reflected by the node. Currently only used for
+	// to being logically reflected by the node. Currently, only used for
 	// Compaction requests.
 	physc <-chan struct{}
 	trace *traceutil.Trace
@@ -58,9 +55,12 @@ type applierV3Internal interface {
 	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
 }
 
+type ApplyFunc func(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult
+
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
-	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult
+	WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *applyResult
+	//Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult
 
 	Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
@@ -100,137 +100,8 @@ type applierV3backend struct {
 	s *EtcdServer
 }
 
-func (s *EtcdServer) newApplierV3Backend() applierV3 {
-	return &applierV3backend{s: s}
-}
-
-func (s *EtcdServer) newApplierV3Internal() applierV3Internal {
-	base := &applierV3backend{s: s}
-	return base
-}
-
-func (s *EtcdServer) newApplierV3() applierV3 {
-	return newAuthApplierV3(
-		s.AuthStore(),
-		newQuotaApplierV3(s, s.newApplierV3Backend()),
-		s.lessor,
-	)
-}
-
-func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult {
-	op := "unknown"
-	ar := &applyResult{}
-	defer func(start time.Time) {
-		success := ar.err == nil || ar.err == mvcc.ErrCompacted
-		applySec.WithLabelValues(v3Version, op, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		warnOfExpensiveRequest(a.s.Logger(), a.s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
-		if !success {
-			warnOfFailedRequest(a.s.Logger(), start, &pb.InternalRaftStringer{Request: r}, ar.resp, ar.err)
-		}
-	}(time.Now())
-
-	switch {
-	case r.ClusterVersionSet != nil: // Implemented in 3.5.x
-		op = "ClusterVersionSet"
-		a.s.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
-		return ar
-	case r.ClusterMemberAttrSet != nil:
-		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
-		a.s.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
-		return ar
-	case r.DowngradeInfoSet != nil:
-		op = "DowngradeInfoSet" // Implemented in 3.5.x
-		a.s.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
-		return ar
-	}
-
-	if !shouldApplyV3 {
-		return nil
-	}
-
-	// call into a.s.applyV3.F instead of a.F so upper appliers can check individual calls
-	switch {
-	case r.Range != nil:
-		op = "Range"
-		ar.resp, ar.err = a.s.applyV3.Range(context.TODO(), nil, r.Range)
-	case r.Put != nil:
-		op = "Put"
-		ar.resp, ar.trace, ar.err = a.s.applyV3.Put(context.TODO(), nil, r.Put)
-	case r.DeleteRange != nil:
-		op = "DeleteRange"
-		ar.resp, ar.err = a.s.applyV3.DeleteRange(nil, r.DeleteRange)
-	case r.Txn != nil:
-		op = "Txn"
-		ar.resp, ar.trace, ar.err = a.s.applyV3.Txn(context.TODO(), r.Txn)
-	case r.Compaction != nil:
-		op = "Compaction"
-		ar.resp, ar.physc, ar.trace, ar.err = a.s.applyV3.Compaction(r.Compaction)
-	case r.LeaseGrant != nil:
-		op = "LeaseGrant"
-		ar.resp, ar.err = a.s.applyV3.LeaseGrant(r.LeaseGrant)
-	case r.LeaseRevoke != nil:
-		op = "LeaseRevoke"
-		ar.resp, ar.err = a.s.applyV3.LeaseRevoke(r.LeaseRevoke)
-	case r.LeaseCheckpoint != nil:
-		op = "LeaseCheckpoint"
-		ar.resp, ar.err = a.s.applyV3.LeaseCheckpoint(r.LeaseCheckpoint)
-	case r.Alarm != nil:
-		op = "Alarm"
-		ar.resp, ar.err = a.s.applyV3.Alarm(r.Alarm)
-	case r.Authenticate != nil:
-		op = "Authenticate"
-		ar.resp, ar.err = a.s.applyV3.Authenticate(r.Authenticate)
-	case r.AuthEnable != nil:
-		op = "AuthEnable"
-		ar.resp, ar.err = a.s.applyV3.AuthEnable()
-	case r.AuthDisable != nil:
-		op = "AuthDisable"
-		ar.resp, ar.err = a.s.applyV3.AuthDisable()
-	case r.AuthStatus != nil:
-		ar.resp, ar.err = a.s.applyV3.AuthStatus()
-	case r.AuthUserAdd != nil:
-		op = "AuthUserAdd"
-		ar.resp, ar.err = a.s.applyV3.UserAdd(r.AuthUserAdd)
-	case r.AuthUserDelete != nil:
-		op = "AuthUserDelete"
-		ar.resp, ar.err = a.s.applyV3.UserDelete(r.AuthUserDelete)
-	case r.AuthUserChangePassword != nil:
-		op = "AuthUserChangePassword"
-		ar.resp, ar.err = a.s.applyV3.UserChangePassword(r.AuthUserChangePassword)
-	case r.AuthUserGrantRole != nil:
-		op = "AuthUserGrantRole"
-		ar.resp, ar.err = a.s.applyV3.UserGrantRole(r.AuthUserGrantRole)
-	case r.AuthUserGet != nil:
-		op = "AuthUserGet"
-		ar.resp, ar.err = a.s.applyV3.UserGet(r.AuthUserGet)
-	case r.AuthUserRevokeRole != nil:
-		op = "AuthUserRevokeRole"
-		ar.resp, ar.err = a.s.applyV3.UserRevokeRole(r.AuthUserRevokeRole)
-	case r.AuthRoleAdd != nil:
-		op = "AuthRoleAdd"
-		ar.resp, ar.err = a.s.applyV3.RoleAdd(r.AuthRoleAdd)
-	case r.AuthRoleGrantPermission != nil:
-		op = "AuthRoleGrantPermission"
-		ar.resp, ar.err = a.s.applyV3.RoleGrantPermission(r.AuthRoleGrantPermission)
-	case r.AuthRoleGet != nil:
-		op = "AuthRoleGet"
-		ar.resp, ar.err = a.s.applyV3.RoleGet(r.AuthRoleGet)
-	case r.AuthRoleRevokePermission != nil:
-		op = "AuthRoleRevokePermission"
-		ar.resp, ar.err = a.s.applyV3.RoleRevokePermission(r.AuthRoleRevokePermission)
-	case r.AuthRoleDelete != nil:
-		op = "AuthRoleDelete"
-		ar.resp, ar.err = a.s.applyV3.RoleDelete(r.AuthRoleDelete)
-	case r.AuthUserList != nil:
-		op = "AuthUserList"
-		ar.resp, ar.err = a.s.applyV3.UserList(r.AuthUserList)
-	case r.AuthRoleList != nil:
-		op = "AuthRoleList"
-		ar.resp, ar.err = a.s.applyV3.RoleList(r.AuthRoleList)
-	default:
-		a.s.lg.Panic("not implemented apply", zap.Stringer("raft-request", r))
-	}
-	return ar
+func (a *applierV3backend) WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *applyResult {
+	return applyFunc(ctx, r, shouldApplyV3)
 }
 
 func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
@@ -295,9 +166,7 @@ func (a *applierV3backend) LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.L
 
 func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
 	resp := &pb.AlarmResponse{}
-	oldCount := len(a.s.alarmStore.Get(ar.Alarm))
 
-	lg := a.s.Logger()
 	switch ar.Action {
 	case pb.AlarmRequest_GET:
 		resp.Alarms = a.s.alarmStore.Get(ar.Alarm)
@@ -310,39 +179,12 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 			break
 		}
 		resp.Alarms = append(resp.Alarms, m)
-		activated := oldCount == 0 && len(a.s.alarmStore.Get(m.Alarm)) == 1
-		if !activated {
-			break
-		}
-
-		lg.Warn("alarm raised", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
-		switch m.Alarm {
-		case pb.AlarmType_CORRUPT:
-			a.s.applyV3 = newApplierV3Corrupt(a)
-		case pb.AlarmType_NOSPACE:
-			a.s.applyV3 = newApplierV3Capped(a)
-		default:
-			lg.Panic("unimplemented alarm activation", zap.String("alarm", fmt.Sprintf("%+v", m)))
-		}
 	case pb.AlarmRequest_DEACTIVATE:
 		m := a.s.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
 		if m == nil {
 			break
 		}
 		resp.Alarms = append(resp.Alarms, m)
-		deactivated := oldCount > 0 && len(a.s.alarmStore.Get(ar.Alarm)) == 0
-		if !deactivated {
-			break
-		}
-
-		switch m.Alarm {
-		case pb.AlarmType_NOSPACE, pb.AlarmType_CORRUPT:
-			// TODO: check kv hash before deactivating CORRUPT?
-			lg.Warn("alarm disarmed", zap.String("alarm", m.Alarm.String()), zap.String("from", types.ID(m.MemberID).String()))
-			a.s.applyV3 = a.s.newApplierV3()
-		default:
-			lg.Warn("unimplemented alarm deactivation", zap.String("alarm", fmt.Sprintf("%+v", m)))
-		}
 	default:
 		return nil, nil
 	}
@@ -358,7 +200,7 @@ type applierV3Capped struct {
 // with Puts so that the number of keys in the store is capped.
 func newApplierV3Capped(base applierV3) applierV3 { return &applierV3Capped{applierV3: base} }
 
-func (a *applierV3Capped) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (a *applierV3Capped) Put(_ context.Context, _ mvcc.TxnWrite, _ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	return nil, nil, ErrNoSpace
 }
 
@@ -369,7 +211,7 @@ func (a *applierV3Capped) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnRes
 	return a.applierV3.Txn(ctx, r)
 }
 
-func (a *applierV3Capped) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
+func (a *applierV3Capped) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	return nil, ErrNoSpace
 }
 
