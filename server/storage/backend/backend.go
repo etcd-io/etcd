@@ -162,6 +162,13 @@ func New(bcfg BackendConfig) Backend {
 	return newBackend(bcfg)
 }
 
+func NewDefaultBackendLg(lg *zap.Logger, path string) Backend {
+	bcfg := DefaultBackendConfig()
+	bcfg.Path = path
+	bcfg.Logger = lg
+	return newBackend(bcfg)
+}
+
 func NewDefaultBackend(path string) Backend {
 	bcfg := DefaultBackendConfig()
 	bcfg.Path = path
