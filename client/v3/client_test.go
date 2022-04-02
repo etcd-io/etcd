@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -204,8 +203,13 @@ func TestZapWithLogger(t *testing.T) {
 }
 
 func TestAuthTokenBundleNoOverwrite(t *testing.T) {
+	// This call in particular changes working directory to the tmp dir of
+	// the test. The `etcd-auth-test:0` can be created in local directory,
+	// not exceeding the longest allowed path on OsX.
+	testutil.BeforeTest(t)
+
 	// Create a mock AuthServer to handle Authenticate RPCs.
-	lis, err := net.Listen("unix", filepath.Join(t.TempDir(), "etcd-auth-test:0"))
+	lis, err := net.Listen("unix", "etcd-auth-test:0")
 	if err != nil {
 		t.Fatal(err)
 	}

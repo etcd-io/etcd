@@ -15,6 +15,7 @@
 package clientv3_test
 
 import (
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -44,6 +45,16 @@ func forUnitTestsRunInMockedContext(mocking func(), example func()) {
 // TestMain sets up an etcd cluster if running the examples.
 func TestMain(m *testing.M) {
 	testutil.ExitInShortMode("Skipping: the tests require real cluster")
+
+	tempDir := os.TempDir()
+	defer os.RemoveAll(tempDir)
+
+	err := os.Chdir(tempDir)
+	if err != nil {
+		log.Printf("Failed to change working dir to: %s: %v", tempDir, err)
+		os.Exit(1)
+	}
+
 	v := m.Run()
 	lazyCluster.Terminate()
 
