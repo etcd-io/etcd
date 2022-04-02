@@ -252,8 +252,6 @@ type EtcdServer struct {
 
 	// applyV3 is the applier with auth and quotas
 	applyV3 applierV3
-	// applyV3Base is the core applier without auth or quotas
-	applyV3Base applierV3
 	// applyV3Internal is the applier for internal request
 	applyV3Internal applierV3Internal
 	applyWait       wait.WaitTime
@@ -392,7 +390,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		srv.compactor.Run()
 	}
 
-	srv.applyV3Base = srv.newApplierV3Backend()
 	srv.applyV3Internal = srv.newApplierV3Internal()
 	if err = srv.restoreAlarms(); err != nil {
 		return nil, err

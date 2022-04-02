@@ -128,7 +128,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
 
-	get := func() { resp, err = s.applyV3Base.Range(ctx, nil, r) }
+	get := func() { resp, err = Range(ctx, s.Logger(), s.KV(), nil, r) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
 		err = serr
 		return nil, err
@@ -178,7 +178,9 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 			trace.LogIfLong(traceThreshold)
 		}(time.Now())
 
-		get := func() { resp, _, err = s.applyV3Base.Txn(ctx, r) }
+		get := func() {
+			resp, _, err = Txn(ctx, s.Logger(), r, s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer, s.KV(), s.lessor)
+		}
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
 		}
@@ -390,7 +392,8 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 	return nil, ErrCanceled
 }
 
-func (s *EtcdServer) LeaseLeases(ctx context.Context, r *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
+// LeaseLeases is really ListLeases !???
+func (s *EtcdServer) LeaseLeases(_ context.Context, _ *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
 	ls := s.lessor.Leases()
 	lss := make([]*pb.LeaseStatus, len(ls))
 	for i := range ls {
