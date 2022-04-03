@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	mvcc_txn "go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
@@ -145,19 +146,19 @@ func (a *applierV3backend) WrapApply(ctx context.Context, r *pb.InternalRaftRequ
 }
 
 func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	return Put(ctx, a.lg, a.lessor, a.kv, txn, p)
+	return mvcc_txn.Put(ctx, a.lg, a.lessor, a.kv, txn, p)
 }
 
 func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	return DeleteRange(a.kv, txn, dr)
+	return mvcc_txn.DeleteRange(a.kv, txn, dr)
 }
 
 func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	return Range(ctx, a.lg, a.kv, txn, r)
+	return mvcc_txn.Range(ctx, a.lg, a.kv, txn, r)
 }
 
 func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return Txn(ctx, a.lg, rt, a.txnModeWriteWithSharedBuffer, a.kv, a.lessor)
+	return mvcc_txn.Txn(ctx, a.lg, rt, a.txnModeWriteWithSharedBuffer, a.kv, a.lessor)
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {

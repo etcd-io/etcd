@@ -17,6 +17,8 @@ package etcdserver
 import (
 	"errors"
 	"fmt"
+
+	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 )
 
 var (
@@ -37,11 +39,11 @@ var (
 	ErrNoSpace                     = errors.New("etcdserver: no space")
 	ErrTooManyRequests             = errors.New("etcdserver: too many requests")
 	ErrUnhealthy                   = errors.New("etcdserver: unhealthy cluster")
-	ErrKeyNotFound                 = errors.New("etcdserver: key not found")
 	ErrCorrupt                     = errors.New("etcdserver: corrupt cluster")
 	ErrBadLeaderTransferee         = errors.New("etcdserver: bad leader transferee")
 	ErrClusterVersionUnavailable   = errors.New("etcdserver: cluster version not found during downgrade")
 	ErrWrongDowngradeVersionFormat = errors.New("etcdserver: wrong downgrade target version format")
+	ErrKeyNotFound                 = txn.ErrKeyNotFound
 )
 
 type DiscoveryError struct {

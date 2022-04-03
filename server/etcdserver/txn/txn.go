@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package txn
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"sort"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -25,6 +26,10 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.uber.org/zap"
+)
+
+var (
+	ErrKeyNotFound = errors.New("etcdserver: key not found")
 )
 
 func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
@@ -221,7 +226,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 		trace = traceutil.New("transaction", lg)
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 	}
-	isWrite := !isTxnReadonly(rt)
+	isWrite := !IsTxnReadonly(rt)
 
 	// When the transaction contains write operations, we use ReadTx instead of
 	// ConcurrentReadTx to avoid extra overhead of copying buffer.
@@ -592,6 +597,34 @@ func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 		return result > 0
 	case pb.Compare_LESS:
 		return result < 0
+	}
+	return true
+}
+
+func IsTxnSerializable(r *pb.TxnRequest) bool {
+	for _, u := range r.Success {
+		if r := u.GetRequestRange(); r == nil || !r.Serializable {
+			return false
+		}
+	}
+	for _, u := range r.Failure {
+		if r := u.GetRequestRange(); r == nil || !r.Serializable {
+			return false
+		}
+	}
+	return true
+}
+
+func IsTxnReadonly(r *pb.TxnRequest) bool {
+	for _, u := range r.Success {
+		if r := u.GetRequestRange(); r == nil {
+			return false
+		}
+	}
+	for _, u := range r.Failure {
+		if r := u.GetRequestRange(); r == nil {
+			return false
+		}
 	}
 	return true
 }

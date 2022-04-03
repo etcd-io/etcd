@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -128,7 +129,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
 
-	get := func() { resp, err = Range(ctx, s.Logger(), s.KV(), nil, r) }
+	get := func() { resp, err = txn.Range(ctx, s.Logger(), s.KV(), nil, r) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
 		err = serr
 		return nil, err
@@ -154,13 +155,13 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	if isTxnReadonly(r) {
+	if txn.IsTxnReadonly(r) {
 		trace := traceutil.New("transaction",
 			s.Logger(),
 			traceutil.Field{Key: "read_only", Value: true},
 		)
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
-		if !isTxnSerializable(r) {
+		if !txn.IsTxnSerializable(r) {
 			err := s.linearizableReadNotify(ctx)
 			trace.Step("agreement among raft nodes before linearized reading")
 			if err != nil {
@@ -179,7 +180,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		}(time.Now())
 
 		get := func() {
-			resp, _, err = Txn(ctx, s.Logger(), r, s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer, s.KV(), s.lessor)
+			resp, _, err = txn.Txn(ctx, s.Logger(), r, s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer, s.KV(), s.lessor)
 		}
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
@@ -193,34 +194,6 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		return nil, err
 	}
 	return resp.(*pb.TxnResponse), nil
-}
-
-func isTxnSerializable(r *pb.TxnRequest) bool {
-	for _, u := range r.Success {
-		if r := u.GetRequestRange(); r == nil || !r.Serializable {
-			return false
-		}
-	}
-	for _, u := range r.Failure {
-		if r := u.GetRequestRange(); r == nil || !r.Serializable {
-			return false
-		}
-	}
-	return true
-}
-
-func isTxnReadonly(r *pb.TxnRequest) bool {
-	for _, u := range r.Success {
-		if r := u.GetRequestRange(); r == nil {
-			return false
-		}
-	}
-	for _, u := range r.Failure {
-		if r := u.GetRequestRange(); r == nil {
-			return false
-		}
-	}
-	return true
 }
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
