@@ -259,7 +259,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 	c.LastMemberNum++
 	m := MustNewMember(t,
 		MemberConfig{
-			Name:                        fmt.Sprintf("m%v", memberNumber-1),
+			Name:                        fmt.Sprintf("m%v", memberNumber),
 			MemberNumber:                memberNumber,
 			AuthToken:                   c.Cfg.AuthToken,
 			PeerTLS:                     c.Cfg.PeerTLS,
