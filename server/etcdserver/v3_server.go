@@ -392,6 +392,15 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 	return nil, ErrCanceled
 }
 
+func (s *EtcdServer) newHeader() *pb.ResponseHeader {
+	return &pb.ResponseHeader{
+		ClusterId: uint64(s.cluster.ID()),
+		MemberId:  uint64(s.MemberId()),
+		Revision:  s.KV().Rev(),
+		RaftTerm:  s.Term(),
+	}
+}
+
 // LeaseLeases is really ListLeases !???
 func (s *EtcdServer) LeaseLeases(_ context.Context, _ *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
 	ls := s.lessor.Leases()
@@ -399,7 +408,7 @@ func (s *EtcdServer) LeaseLeases(_ context.Context, _ *pb.LeaseLeasesRequest) (*
 	for i := range ls {
 		lss[i] = &pb.LeaseStatus{ID: int64(ls[i].ID)}
 	}
-	return &pb.LeaseLeasesResponse{Header: newHeader(s), Leases: lss}, nil
+	return &pb.LeaseLeasesResponse{Header: s.newHeader(), Leases: lss}, nil
 }
 
 func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error) {

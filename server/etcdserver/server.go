@@ -391,7 +391,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	if err = srv.restoreAlarms(); err != nil {
 		return nil, err
 	}
-	srv.uberApply = newUberApplier(srv)
+	srv.uberApply = srv.NewUberApplier()
 
 	if srv.Cfg.EnableLeaseCheckpoint {
 		// setting checkpointer enables lease checkpoint feature.
@@ -1072,7 +1072,12 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	// As backends and implementations like alarmsStore changed, we need
 	// to re-bootstrap Appliers.
-	s.uberApply = newUberApplier(s)
+	s.uberApply = s.NewUberApplier()
+}
+
+func (s *EtcdServer) NewUberApplier() *uberApplier {
+	return newUberApplier(s.lg, s.be, s.KV(), s.alarmStore, s.authStore, s.lessor, s.cluster, s, s, s.consistIndex,
+		s.Cfg.WarningApplyDuration, s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer, s.Cfg.QuotaBackendBytes)
 }
 
 func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {
@@ -1107,6 +1112,10 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState); shouldstop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 	}
+}
+
+func (s *EtcdServer) ForceSnapshot() {
+	s.forceSnapshot = true
 }
 
 func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {

@@ -25,9 +25,12 @@ import (
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
+	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 
 	"github.com/gogo/protobuf/proto"
@@ -89,13 +92,52 @@ type applierV3 interface {
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
 
 	// processing internal V3 raft request
+
 	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3)
 	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3)
 	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
 }
 
+type SnapshotServer interface {
+	ForceSnapshot()
+}
+
 type applierV3backend struct {
-	s *EtcdServer
+	lg              *zap.Logger
+	kv              mvcc.KV
+	alarmStore      *v3alarm.AlarmStore
+	authStore       auth.AuthStore
+	lessor          lease.Lessor
+	cluster         *membership.RaftCluster
+	raftStatus      RaftStatusGetter
+	snapshotServer  SnapshotServer
+	consistentIndex cindex.ConsistentIndexer
+
+	txnModeWriteWithSharedBuffer bool
+}
+
+func newApplierV3Backend(
+	lg *zap.Logger,
+	kv mvcc.KV,
+	alarmStore *v3alarm.AlarmStore,
+	authStore auth.AuthStore,
+	lessor lease.Lessor,
+	cluster *membership.RaftCluster,
+	raftStatus RaftStatusGetter,
+	snapshotServer SnapshotServer,
+	consistentIndex cindex.ConsistentIndexer,
+	txnModeWriteWithSharedBuffer bool) applierV3 {
+	return &applierV3backend{
+		lg:                           lg,
+		kv:                           kv,
+		alarmStore:                   alarmStore,
+		authStore:                    authStore,
+		lessor:                       lessor,
+		cluster:                      cluster,
+		raftStatus:                   raftStatus,
+		snapshotServer:               snapshotServer,
+		consistentIndex:              consistentIndex,
+		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer}
 }
 
 func (a *applierV3backend) WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *applyResult {
@@ -103,63 +145,63 @@ func (a *applierV3backend) WrapApply(ctx context.Context, r *pb.InternalRaftRequ
 }
 
 func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	return Put(ctx, a.s.Logger(), a.s.lessor, a.s.KV(), txn, p)
+	return Put(ctx, a.lg, a.lessor, a.kv, txn, p)
 }
 
 func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	return DeleteRange(a.s.KV(), txn, dr)
+	return DeleteRange(a.kv, txn, dr)
 }
 
 func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	return Range(ctx, a.s.Logger(), a.s.KV(), txn, r)
+	return Range(ctx, a.lg, a.kv, txn, r)
 }
 
 func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return Txn(ctx, a.s.Logger(), rt, a.s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer, a.s.KV(), a.s.lessor)
+	return Txn(ctx, a.lg, rt, a.txnModeWriteWithSharedBuffer, a.kv, a.lessor)
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
 	resp := &pb.CompactionResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	trace := traceutil.New("compact",
-		a.s.Logger(),
+		a.lg,
 		traceutil.Field{Key: "revision", Value: compaction.Revision},
 	)
 
-	ch, err := a.s.KV().Compact(trace, compaction.Revision)
+	ch, err := a.kv.Compact(trace, compaction.Revision)
 	if err != nil {
 		return nil, ch, nil, err
 	}
 	// get the current revision. which key to get is not important.
-	rr, _ := a.s.KV().Range(context.TODO(), []byte("compaction"), nil, mvcc.RangeOptions{})
+	rr, _ := a.kv.Range(context.TODO(), []byte("compaction"), nil, mvcc.RangeOptions{})
 	resp.Header.Revision = rr.Rev
 	return resp, ch, trace, err
 }
 
 func (a *applierV3backend) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	l, err := a.s.lessor.Grant(lease.LeaseID(lc.ID), lc.TTL)
+	l, err := a.lessor.Grant(lease.LeaseID(lc.ID), lc.TTL)
 	resp := &pb.LeaseGrantResponse{}
 	if err == nil {
 		resp.ID = int64(l.ID)
 		resp.TTL = l.TTL()
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	err := a.s.lessor.Revoke(lease.LeaseID(lc.ID))
-	return &pb.LeaseRevokeResponse{Header: newHeader(a.s)}, err
+	err := a.lessor.Revoke(lease.LeaseID(lc.ID))
+	return &pb.LeaseRevokeResponse{Header: a.newHeader()}, err
 }
 
 func (a *applierV3backend) LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.LeaseCheckpointResponse, error) {
 	for _, c := range lc.Checkpoints {
-		err := a.s.lessor.Checkpoint(lease.LeaseID(c.ID), c.Remaining_TTL)
+		err := a.lessor.Checkpoint(lease.LeaseID(c.ID), c.Remaining_TTL)
 		if err != nil {
-			return &pb.LeaseCheckpointResponse{Header: newHeader(a.s)}, err
+			return &pb.LeaseCheckpointResponse{Header: a.newHeader()}, err
 		}
 	}
-	return &pb.LeaseCheckpointResponse{Header: newHeader(a.s)}, nil
+	return &pb.LeaseCheckpointResponse{Header: a.newHeader()}, nil
 }
 
 func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
@@ -167,18 +209,18 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 
 	switch ar.Action {
 	case pb.AlarmRequest_GET:
-		resp.Alarms = a.s.alarmStore.Get(ar.Alarm)
+		resp.Alarms = a.alarmStore.Get(ar.Alarm)
 	case pb.AlarmRequest_ACTIVATE:
 		if ar.Alarm == pb.AlarmType_NONE {
 			break
 		}
-		m := a.s.alarmStore.Activate(types.ID(ar.MemberID), ar.Alarm)
+		m := a.alarmStore.Activate(types.ID(ar.MemberID), ar.Alarm)
 		if m == nil {
 			break
 		}
 		resp.Alarms = append(resp.Alarms, m)
 	case pb.AlarmRequest_DEACTIVATE:
-		m := a.s.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
+		m := a.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
 		if m == nil {
 			break
 		}
@@ -214,156 +256,156 @@ func (a *applierV3Capped) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 }
 
 func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
-	err := a.s.AuthStore().AuthEnable()
+	err := a.authStore.AuthEnable()
 	if err != nil {
 		return nil, err
 	}
-	return &pb.AuthEnableResponse{Header: newHeader(a.s)}, nil
+	return &pb.AuthEnableResponse{Header: a.newHeader()}, nil
 }
 
 func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
-	a.s.AuthStore().AuthDisable()
-	return &pb.AuthDisableResponse{Header: newHeader(a.s)}, nil
+	a.authStore.AuthDisable()
+	return &pb.AuthDisableResponse{Header: a.newHeader()}, nil
 }
 
 func (a *applierV3backend) AuthStatus() (*pb.AuthStatusResponse, error) {
-	enabled := a.s.AuthStore().IsAuthEnabled()
-	authRevision := a.s.AuthStore().Revision()
-	return &pb.AuthStatusResponse{Header: newHeader(a.s), Enabled: enabled, AuthRevision: authRevision}, nil
+	enabled := a.authStore.IsAuthEnabled()
+	authRevision := a.authStore.Revision()
+	return &pb.AuthStatusResponse{Header: a.newHeader(), Enabled: enabled, AuthRevision: authRevision}, nil
 }
 
 func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	ctx := context.WithValue(context.WithValue(a.s.ctx, auth.AuthenticateParamIndex{}, a.s.consistIndex.ConsistentIndex()), auth.AuthenticateParamSimpleTokenPrefix{}, r.SimpleToken)
-	resp, err := a.s.AuthStore().Authenticate(ctx, r.Name, r.Password)
+	ctx := context.WithValue(context.WithValue(context.Background(), auth.AuthenticateParamIndex{}, a.consistentIndex.ConsistentIndex()), auth.AuthenticateParamSimpleTokenPrefix{}, r.SimpleToken)
+	resp, err := a.authStore.Authenticate(ctx, r.Name, r.Password)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
-	resp, err := a.s.AuthStore().UserAdd(r)
+	resp, err := a.authStore.UserAdd(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
-	resp, err := a.s.AuthStore().UserDelete(r)
+	resp, err := a.authStore.UserDelete(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
-	resp, err := a.s.AuthStore().UserChangePassword(r)
+	resp, err := a.authStore.UserChangePassword(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error) {
-	resp, err := a.s.AuthStore().UserGrantRole(r)
+	resp, err := a.authStore.UserGrantRole(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
-	resp, err := a.s.AuthStore().UserGet(r)
+	resp, err := a.authStore.UserGet(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
-	resp, err := a.s.AuthStore().UserRevokeRole(r)
+	resp, err := a.authStore.UserRevokeRole(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
-	resp, err := a.s.AuthStore().RoleAdd(r)
+	resp, err := a.authStore.RoleAdd(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error) {
-	resp, err := a.s.AuthStore().RoleGrantPermission(r)
+	resp, err := a.authStore.RoleGrantPermission(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
-	resp, err := a.s.AuthStore().RoleGet(r)
+	resp, err := a.authStore.RoleGet(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
-	resp, err := a.s.AuthStore().RoleRevokePermission(r)
+	resp, err := a.authStore.RoleRevokePermission(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	resp, err := a.s.AuthStore().RoleDelete(r)
+	resp, err := a.authStore.RoleDelete(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
-	resp, err := a.s.AuthStore().UserList(r)
+	resp, err := a.authStore.UserList(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
-	resp, err := a.s.AuthStore().RoleList(r)
+	resp, err := a.authStore.RoleList(r)
 	if resp != nil {
-		resp.Header = newHeader(a.s)
+		resp.Header = a.newHeader()
 	}
 	return resp, err
 }
 
 func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
-	prevVersion := a.s.Cluster().Version()
+	prevVersion := a.cluster.Version()
 	newVersion := semver.Must(semver.NewVersion(r.Ver))
-	a.s.cluster.SetVersion(newVersion, api.UpdateCapability, shouldApplyV3)
+	a.cluster.SetVersion(newVersion, api.UpdateCapability, shouldApplyV3)
 	// Force snapshot after cluster version downgrade.
 	if prevVersion != nil && newVersion.LessThan(*prevVersion) {
-		lg := a.s.Logger()
+		lg := a.lg
 		if lg != nil {
 			lg.Info("Cluster version downgrade detected, forcing snapshot",
 				zap.String("prev-cluster-version", prevVersion.String()),
 				zap.String("new-cluster-version", newVersion.String()),
 			)
 		}
-		a.s.forceSnapshot = true
+		a.snapshotServer.ForceSnapshot()
 	}
 }
 
 func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
-	a.s.cluster.UpdateAttributes(
+	a.cluster.UpdateAttributes(
 		types.ID(r.Member_ID),
 		membership.Attributes{
 			Name:       r.MemberAttributes.Name,
@@ -378,7 +420,7 @@ func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequ
 	if r.Enabled {
 		d = version.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
 	}
-	a.s.cluster.SetDowngradeInfo(&d, shouldApplyV3)
+	a.cluster.SetDowngradeInfo(&d, shouldApplyV3)
 }
 
 type quotaApplierV3 struct {
@@ -386,8 +428,8 @@ type quotaApplierV3 struct {
 	q serverstorage.Quota
 }
 
-func newQuotaApplierV3(s *EtcdServer, app applierV3) applierV3 {
-	return &quotaApplierV3{app, serverstorage.NewBackendQuota(s.Cfg, s.Backend(), "v3-applier")}
+func newQuotaApplierV3(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Backend, app applierV3) applierV3 {
+	return &quotaApplierV3{app, serverstorage.NewBackendQuota(lg, quotaBackendBytesCfg, be, "v3-applier")}
 }
 
 func (a *quotaApplierV3) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
@@ -439,11 +481,11 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 	txn.Failure = f(txn.Failure)
 }
 
-func newHeader(s *EtcdServer) *pb.ResponseHeader {
+func (a *applierV3backend) newHeader() *pb.ResponseHeader {
 	return &pb.ResponseHeader{
-		ClusterId: uint64(s.Cluster().ID()),
-		MemberId:  uint64(s.MemberId()),
-		Revision:  s.KV().Rev(),
-		RaftTerm:  s.Term(),
+		ClusterId: uint64(a.cluster.ID()),
+		MemberId:  uint64(a.raftStatus.MemberId()),
+		Revision:  a.kv.Rev(),
+		RaftTerm:  a.raftStatus.Term(),
 	}
 }
