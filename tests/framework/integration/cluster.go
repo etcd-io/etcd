@@ -214,6 +214,7 @@ func (c *Cluster) fillClusterForMembers() error {
 }
 
 func (c *Cluster) Launch(t testutil.TB) {
+	t.Logf("Launching new cluster...")
 	errc := make(chan error)
 	for _, m := range c.Members {
 		// Members are launched in separate goroutines because if they boot
@@ -411,7 +412,7 @@ func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	l := 0
-	for l = c.waitMembersForLeader(t, ctx, membs); l < 0; {
+	for l = c.waitMembersForLeader(ctx, t, membs); l < 0; {
 		if ctx.Err() != nil {
 			t.Fatal("WaitLeader FAILED: %v", ctx.Err())
 		}
@@ -427,14 +428,12 @@ func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
 	//   - 9903a56eaf96afac became follower at term 3	{"member": "m0"}
 	//   - 9903a56eaf96afac lost leader 9903a56eaf96afac at term 3	{"member": "m0"}
 
-
 	return l
 }
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (c *Cluster) waitMembersForLeader(t testutil.TB, ctx context.Context, membs []*Member) int {
-	t.Logf("WaitMembersForLeader...")
+func (c *Cluster) waitMembersForLeader(ctx context.Context, t testutil.TB, membs []*Member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
@@ -473,12 +472,12 @@ func (c *Cluster) waitMembersForLeader(t testutil.TB, ctx context.Context, membs
 
 	for i, m := range membs {
 		if uint64(m.Server.ID()) == lead {
-			t.Logf("WaitMembersForLeader found leader. Member: %v lead: %x", i, lead)
+			t.Logf("waitMembersForLeader found leader. Member: %v lead: %x", i, lead)
 			return i
 		}
 	}
 
-	t.Logf("WaitMembersForLeader FAILED (-1)")
+	t.Logf("waitMembersForLeader failed (-1)")
 	return -1
 }
 
@@ -531,6 +530,7 @@ func newLocalListener(t testutil.TB) net.Listener {
 }
 
 func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
+	t.Logf("Creating listener with addr: %v", addr)
 	l, err := transport.NewUnixListener(addr)
 	if err != nil {
 		t.Fatal(err)
@@ -722,7 +722,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.Logger = memberLogger(t, mcfg.Name)
 	m.StrictReconfigCheck = mcfg.StrictReconfigCheck
 	if err := m.listenGRPC(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("listenGRPC FAILED: %v", err)
 	}
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
@@ -747,7 +747,11 @@ func (m *Member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
 	network, host, port := m.grpcAddr()
 	grpcAddr := host + ":" + port
-	m.Logger.Info("LISTEN GRPC", zap.String("grpcAddr", grpcAddr), zap.String("m.Name", m.Name))
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	m.Logger.Info("LISTEN GRPC", zap.String("grpcAddr", grpcAddr), zap.String("m.Name", m.Name), zap.String("workdir", wd))
 	grpcListener, err := net.Listen(network, grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen failed on grpc socket %s (%v)", grpcAddr, err)
@@ -1346,7 +1350,7 @@ func NewCluster(t testutil.TB, cfg *ClusterConfig) *Cluster {
 	}
 	c.Members = ms
 	if err := c.fillClusterForMembers(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("fillClusterForMembers failed: %v", err)
 	}
 	c.Launch(t)
 
@@ -1360,6 +1364,9 @@ func (c *Cluster) TakeClient(idx int) {
 }
 
 func (c *Cluster) Terminate(t testutil.TB) {
+	if t != nil {
+		t.Logf("========= Cluster termination started =====================")
+	}
 	c.mu.Lock()
 	if c.clusterClient != nil {
 		if err := c.clusterClient.Close(); err != nil {
@@ -1381,6 +1388,9 @@ func (c *Cluster) Terminate(t testutil.TB) {
 		}(m)
 	}
 	wg.Wait()
+	if t != nil {
+		t.Logf("========= Cluster termination succeeded ===================")
+	}
 }
 
 func (c *Cluster) RandClient() *clientv3.Client {
