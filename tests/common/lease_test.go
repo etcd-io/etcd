@@ -120,19 +120,22 @@ func TestLeaseGrantAndList(t *testing.T) {
 
 		for _, nc := range nestedCases {
 			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
+				t.Logf("Creating cluster...")
 				clus := testRunner.NewCluster(t, tc.config)
 				defer clus.Close()
 				cc := clus.Client()
-
+				t.Logf("Created cluster and client")
 				testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
 					createdLeases := []clientv3.LeaseID{}
 					for i := 0; i < nc.leaseCount; i++ {
 						leaseResp, err := cc.Grant(10)
+						t.Logf("Grant returned: resp:%s err:%v", leaseResp.String(), err)
 						require.NoError(t, err)
 						createdLeases = append(createdLeases, leaseResp.ID)
 					}
 
 					resp, err := cc.LeaseList()
+					t.Logf("Lease list returned: resp:%s err:%v", resp.String(), err)
 					require.NoError(t, err)
 					require.Len(t, resp.Leases, nc.leaseCount)
 

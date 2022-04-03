@@ -284,6 +284,8 @@ func TestIssue3699(t *testing.T) {
 	// add node d
 	c.AddMember(t)
 
+	t.Logf("Disturbing cluster till member:3 will become a leader")
+
 	// electing node d as leader makes node a unable to participate
 	leaderID := c.WaitMembersForLeader(t, c.Members)
 	for leaderID != 3 {
@@ -297,11 +299,16 @@ func TestIssue3699(t *testing.T) {
 		leaderID = c.WaitMembersForLeader(t, c.Members)
 	}
 
+	t.Logf("Finally elected member 3 as the leader.")
+
+	t.Logf("Restarting member '0'...")
 	// bring back node a
 	// node a will remain useless as long as d is the leader.
 	if err := c.Members[0].Restart(t); err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Restarted member '0'.")
+
 	select {
 	// waiting for ReadyNotify can take several seconds
 	case <-time.After(10 * time.Second):
@@ -311,12 +318,13 @@ func TestIssue3699(t *testing.T) {
 	case <-c.Members[0].Server.ReadyNotify():
 	}
 	// must WaitMembersForLeader so goroutines don't leak on terminate
-	c.WaitMembersForLeader(t, c.Members)
+	c.WaitLeader(t)
 
+	t.Logf("Expecting successful put...")
 	// try to participate in Cluster
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 	if _, err := c.Members[0].Client.Put(ctx, "/foo", "bar"); err != nil {
-		t.Fatalf("unexpected error on Set (%v)", err)
+		t.Fatalf("unexpected error on Put (%v)", err)
 	}
 	cancel()
 }
