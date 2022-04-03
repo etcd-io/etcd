@@ -442,7 +442,7 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 func newHeader(s *EtcdServer) *pb.ResponseHeader {
 	return &pb.ResponseHeader{
 		ClusterId: uint64(s.Cluster().ID()),
-		MemberId:  uint64(s.ID()),
+		MemberId:  uint64(s.MemberId()),
 		Revision:  s.KV().Rev(),
 		RaftTerm:  s.Term(),
 	}

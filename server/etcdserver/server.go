@@ -240,7 +240,7 @@ type EtcdServer struct {
 	leaderChanged *notify.Notifier
 
 	errorc     chan error
-	id         types.ID
+	memberId   types.ID
 	attributes membership.Attributes
 
 	cluster *membership.RaftCluster
@@ -323,7 +323,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		v2store:               b.storage.st,
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
-		id:                    b.cluster.nodeID,
+		memberId:              b.cluster.nodeID,
 		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:               b.cluster.cl,
 		stats:                 sstats,
@@ -461,7 +461,7 @@ func (s *EtcdServer) adjustTicks() {
 		ticks := s.Cfg.ElectionTicks - 1
 		lg.Info(
 			"started as single-node; fast-forwarding election ticks",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.Int("forward-ticks", ticks),
 			zap.String("forward-duration", tickToDur(ticks, s.Cfg.TickMs)),
 			zap.Int("election-ticks", s.Cfg.ElectionTicks),
@@ -500,7 +500,7 @@ func (s *EtcdServer) adjustTicks() {
 
 			lg.Info(
 				"initialized peer connections; fast-forwarding election ticks",
-				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-id", s.MemberId().String()),
 				zap.Int("forward-ticks", ticks),
 				zap.String("forward-duration", tickToDur(ticks, s.Cfg.TickMs)),
 				zap.Int("election-ticks", s.Cfg.ElectionTicks),
@@ -566,7 +566,7 @@ func (s *EtcdServer) start() {
 	if s.ClusterVersion() != nil {
 		lg.Info(
 			"starting etcd server",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("local-server-version", version.Version),
 			zap.String("cluster-id", s.Cluster().ID().String()),
 			zap.String("cluster-version", version.Cluster(s.ClusterVersion().String())),
@@ -575,7 +575,7 @@ func (s *EtcdServer) start() {
 	} else {
 		lg.Info(
 			"starting etcd server",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("local-server-version", version.Version),
 			zap.String("cluster-version", "to_be_decided"),
 		)
@@ -695,7 +695,7 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	if s.cluster.IsIDRemoved(types.ID(m.From)) {
 		lg.Warn(
 			"rejected Raft message from removed member",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("removed-member-id", types.ID(m.From).String()),
 		)
 		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message from removed member")
@@ -1057,7 +1057,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	lg.Info("adding peers from new cluster configuration")
 
 	for _, m := range s.cluster.Members() {
-		if m.ID == s.ID() {
+		if m.ID == s.MemberId() {
 			continue
 		}
 		s.r.transport.AddPeer(m.ID, m.PeerURLs)
@@ -1116,7 +1116,7 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 	lg := s.Logger()
 	lg.Info(
 		"triggering snapshot",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 		zap.Uint64("local-member-applied-index", ep.appliedi),
 		zap.Uint64("local-member-snapshot-index", ep.snapi),
 		zap.Uint64("local-member-snapshot-count", s.Cfg.SnapshotCount),
@@ -1137,7 +1137,7 @@ func (s *EtcdServer) hasMultipleVotingMembers() bool {
 }
 
 func (s *EtcdServer) isLeader() bool {
-	return uint64(s.ID()) == s.Lead()
+	return uint64(s.MemberId()) == s.Lead()
 }
 
 // MoveLeader transfers the leader to the given transferee.
@@ -1152,7 +1152,7 @@ func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) er
 	lg := s.Logger()
 	lg.Info(
 		"leadership transfer starting",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 		zap.String("current-leader-member-id", types.ID(lead).String()),
 		zap.String("transferee-member-id", types.ID(transferee).String()),
 	)
@@ -1169,7 +1169,7 @@ func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) er
 	// TODO: drain all requests, or drop all messages to the old leader
 	lg.Info(
 		"leadership transfer finished",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 		zap.String("old-leader-member-id", types.ID(lead).String()),
 		zap.String("new-leader-member-id", types.ID(transferee).String()),
 		zap.Duration("took", time.Since(now)),
@@ -1183,7 +1183,7 @@ func (s *EtcdServer) TransferLeadership() error {
 	if !s.isLeader() {
 		lg.Info(
 			"skipped leadership transfer; local server is not leader",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("current-leader-member-id", types.ID(s.Lead()).String()),
 		)
 		return nil
@@ -1192,7 +1192,7 @@ func (s *EtcdServer) TransferLeadership() error {
 	if !s.hasMultipleVotingMembers() {
 		lg.Info(
 			"skipped leadership transfer for single voting member cluster",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("current-leader-member-id", types.ID(s.Lead()).String()),
 		)
 		return nil
@@ -1229,7 +1229,7 @@ func (s *EtcdServer) HardStop() {
 func (s *EtcdServer) Stop() {
 	lg := s.Logger()
 	if err := s.TransferLeadership(); err != nil {
-		lg.Warn("leadership transfer failed", zap.String("local-member-id", s.ID().String()), zap.Error(err))
+		lg.Warn("leadership transfer failed", zap.String("local-member-id", s.MemberId().String()), zap.Error(err))
 	}
 	s.HardStop()
 }
@@ -1317,17 +1317,17 @@ func (s *EtcdServer) mayAddMember(memb membership.Member) error {
 	if !memb.IsLearner && !s.cluster.IsReadyToAddVotingMember() {
 		lg.Warn(
 			"rejecting member add request; not enough healthy members",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
 			zap.Error(ErrNotEnoughStartedMembers),
 		)
 		return ErrNotEnoughStartedMembers
 	}
 
-	if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), s.cluster.VotingMembers()) {
+	if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.MemberId(), s.cluster.VotingMembers()) {
 		lg.Warn(
 			"rejecting member add request; local member has not been connected to all peers, reconfigure breaks active quorum",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
 			zap.Error(ErrUnhealthy),
 		)
@@ -1446,7 +1446,7 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 	if !s.cluster.IsReadyToPromoteMember(uint64(id)) {
 		lg.Warn(
 			"rejecting member promote request; not enough healthy members",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-remove-id", id.String()),
 			zap.Error(ErrNotEnoughStartedMembers),
 		)
@@ -1505,7 +1505,7 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	if !s.cluster.IsReadyToRemoveVotingMember(uint64(id)) {
 		lg.Warn(
 			"rejecting member remove request; not enough healthy members",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-remove-id", id.String()),
 			zap.Error(ErrNotEnoughStartedMembers),
 		)
@@ -1513,17 +1513,17 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	}
 
 	// downed member is safe to remove since it's not part of the active quorum
-	if t := s.r.transport.ActiveSince(id); id != s.ID() && t.IsZero() {
+	if t := s.r.transport.ActiveSince(id); id != s.MemberId() && t.IsZero() {
 		return nil
 	}
 
 	// protect quorum if some members are down
 	m := s.cluster.VotingMembers()
-	active := numConnectedSince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), m)
+	active := numConnectedSince(s.r.transport, time.Now().Add(-HealthInterval), s.MemberId(), m)
 	if (active - 1) < 1+((len(m)-1)/2) {
 		lg.Warn(
 			"rejecting member remove request; local member has not been connected to all peers, reconfigure breaks active quorum",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-remove", id.String()),
 			zap.Int("active-peers", active),
 			zap.Error(ErrUnhealthy),
@@ -1597,14 +1597,14 @@ func (s *EtcdServer) FirstCommitInTermNotify() <-chan struct{} {
 
 // RaftStatusGetter represents etcd server and Raft progress.
 type RaftStatusGetter interface {
-	ID() types.ID
+	MemberId() types.ID
 	Leader() types.ID
 	CommittedIndex() uint64
 	AppliedIndex() uint64
 	Term() uint64
 }
 
-func (s *EtcdServer) ID() types.ID { return s.id }
+func (s *EtcdServer) MemberId() types.ID { return s.memberId }
 
 func (s *EtcdServer) Leader() types.ID { return types.ID(s.getLead()) }
 
@@ -1643,7 +1643,7 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 		resp := x.(*confChangeResponse)
 		lg.Info(
 			"applied a configuration change through raft",
-			zap.String("local-member-id", s.ID().String()),
+			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("raft-conf-change", cc.Type.String()),
 			zap.String("raft-conf-change-node-id", types.ID(cc.NodeID).String()),
 		)
@@ -1684,7 +1684,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // or its server is stopped.
 func (s *EtcdServer) publishV3(timeout time.Duration) {
 	req := &membershippb.ClusterMemberAttrSetRequest{
-		Member_ID: uint64(s.id),
+		Member_ID: uint64(s.MemberId()),
 		MemberAttributes: &membershippb.Attributes{
 			Name:       s.attributes.Name,
 			ClientUrls: s.attributes.ClientURLs,
@@ -1696,7 +1696,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 		case <-s.stopping:
 			lg.Warn(
 				"stopped publish because server is stopping",
-				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-id", s.MemberId().String()),
 				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
 				zap.Duration("publish-timeout", timeout),
 			)
@@ -1713,7 +1713,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 			close(s.readych)
 			lg.Info(
 				"published local member to cluster through raft",
-				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-id", s.MemberId().String()),
 				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
 				zap.String("cluster-id", s.cluster.ID().String()),
 				zap.Duration("publish-timeout", timeout),
@@ -1723,7 +1723,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 		default:
 			lg.Warn(
 				"failed to publish local member to cluster through raft",
-				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-id", s.MemberId().String()),
 				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
 				zap.Duration("publish-timeout", timeout),
 				zap.Error(err),
@@ -1737,7 +1737,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 
 	lg := s.Logger()
 	fields := []zap.Field{
-		zap.String("from", s.ID().String()),
+		zap.String("from", s.MemberId().String()),
 		zap.String("to", types.ID(merged.To).String()),
 		zap.Int64("bytes", merged.TotalSize),
 		zap.String("size", humanize.Bytes(uint64(merged.TotalSize))),
@@ -1917,7 +1917,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 
 	s.GoAttach(func() {
 		a := &pb.AlarmRequest{
-			MemberID: uint64(s.ID()),
+			MemberID: uint64(s.MemberId()),
 			Action:   pb.AlarmRequest_ACTIVATE,
 			Alarm:    pb.AlarmType_NOSPACE,
 		}
@@ -1963,13 +1963,13 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		} else {
 			s.cluster.AddMember(&confChangeContext.Member, shouldApplyV3)
 
-			if confChangeContext.Member.ID != s.id {
+			if confChangeContext.Member.ID != s.MemberId() {
 				s.r.transport.AddPeer(confChangeContext.Member.ID, confChangeContext.PeerURLs)
 			}
 		}
 
 		// update the isLearner metric when this server id is equal to the id in raft member confChange
-		if confChangeContext.Member.ID == s.id {
+		if confChangeContext.Member.ID == s.MemberId() {
 			if cc.Type == raftpb.ConfChangeAddLearnerNode {
 				isLearner.Set(1)
 			} else {
@@ -1980,7 +1980,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
 		s.cluster.RemoveMember(id, shouldApplyV3)
-		if id == s.id {
+		if id == s.MemberId() {
 			return true, nil
 		}
 		s.r.transport.RemovePeer(id)
@@ -1998,7 +1998,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 			)
 		}
 		s.cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes, shouldApplyV3)
-		if m.ID != s.id {
+		if m.ID != s.MemberId() {
 			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
 		}
 	}
@@ -2133,7 +2133,7 @@ func (s *EtcdServer) monitorClusterVersions() {
 			return
 		}
 
-		if s.Leader() != s.ID() {
+		if s.Leader() != s.MemberId() {
 			continue
 		}
 		monitor.UpdateClusterVersionIfNeeded()
@@ -2268,8 +2268,8 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 		switch lead {
 		case types.ID(raft.None):
 			// TODO: return error to specify it happens because the cluster does not have leader now
-		case s.ID():
-			if !isConnectedToQuorumSince(s.r.transport, start, s.ID(), s.cluster.Members()) {
+		case s.MemberId():
+			if !isConnectedToQuorumSince(s.r.transport, start, s.MemberId(), s.cluster.Members()) {
 				return ErrTimeoutDueToConnectionLost
 			}
 		default:

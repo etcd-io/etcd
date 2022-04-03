@@ -250,7 +250,7 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 }
 
 func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
-	if ms.rg.ID() != ms.rg.Leader() {
+	if ms.rg.MemberId() != ms.rg.Leader() {
 		return nil, rpctypes.ErrGRPCNotLeader
 	}
 

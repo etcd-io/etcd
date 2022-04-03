@@ -275,7 +275,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	e.cfg.logger.Info(
 		"now serving peer/client/metrics",
-		zap.String("local-member-id", e.Server.ID().String()),
+		zap.String("local-member-id", e.Server.MemberId().String()),
 		zap.Strings("initial-advertise-peer-urls", e.cfg.getAPURLs()),
 		zap.Strings("listen-peer-urls", e.cfg.getLPURLs()),
 		zap.Strings("advertise-client-urls", e.cfg.getACURLs()),

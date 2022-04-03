@@ -610,12 +610,12 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	})
 	lg := zaptest.NewLogger(t)
 	srv := &EtcdServer{
-		lgMu:    new(sync.RWMutex),
-		lg:      lg,
-		id:      1,
-		r:       *r,
-		cluster: cl,
-		beHooks: serverstorage.NewBackendHooks(lg, nil),
+		lgMu:     new(sync.RWMutex),
+		lg:       lg,
+		memberId: 1,
+		r:        *r,
+		cluster:  cl,
+		beHooks:  serverstorage.NewBackendHooks(lg, nil),
 	}
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
@@ -658,7 +658,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		id:           1,
+		memberId:     1,
 		r:            *realisticRaftNode(lg),
 		cluster:      cl,
 		w:            wait.New(),
@@ -739,7 +739,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		id:           2,
+		memberId:     2,
 		r:            *r,
 		cluster:      cl,
 		w:            wait.New(),
@@ -1487,7 +1487,7 @@ func TestPublishV3(t *testing.T) {
 		lg:         lg,
 		readych:    make(chan struct{}),
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
-		id:         1,
+		memberId:   1,
 		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
 		cluster:    &membership.RaftCluster{},
@@ -1557,7 +1557,7 @@ func TestPublishV3Retry(t *testing.T) {
 		lg:         lg,
 		readych:    make(chan struct{}),
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
-		id:         1,
+		memberId:   1,
 		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
 		w:          mockwait.NewNop(),
 		stopping:   make(chan struct{}),
@@ -1604,7 +1604,7 @@ func TestUpdateVersion(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zaptest.NewLogger(t),
-		id:         1,
+		memberId:         1,
 		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},

@@ -45,13 +45,13 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 
 	lg.Info(
 		"starting initial corruption check",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 		zap.Duration("timeout", s.Cfg.ReqTimeout()),
 	)
 
 	h, rev, crev, err := s.kv.HashByRev(0)
 	if err != nil {
-		return fmt.Errorf("%s failed to fetch hash (%v)", s.ID(), err)
+		return fmt.Errorf("%s failed to fetch hash (%v)", s.MemberId(), err)
 	}
 	peers := s.getPeerHashKVs(rev)
 	mismatch := 0
@@ -59,7 +59,7 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 		if p.resp != nil {
 			peerID := types.ID(p.resp.Header.MemberId)
 			fields := []zap.Field{
-				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-id", s.MemberId().String()),
 				zap.Int64("local-member-revision", rev),
 				zap.Int64("local-member-compact-revision", crev),
 				zap.Uint32("local-member-hash", h),
@@ -87,7 +87,7 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 			case rpctypes.ErrFutureRev:
 				lg.Warn(
 					"cannot fetch hash from slow remote peer",
-					zap.String("local-member-id", s.ID().String()),
+					zap.String("local-member-id", s.MemberId().String()),
 					zap.Int64("local-member-revision", rev),
 					zap.Int64("local-member-compact-revision", crev),
 					zap.Uint32("local-member-hash", h),
@@ -98,7 +98,7 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 			case rpctypes.ErrCompacted:
 				lg.Warn(
 					"cannot fetch hash from remote peer; local member is behind",
-					zap.String("local-member-id", s.ID().String()),
+					zap.String("local-member-id", s.MemberId().String()),
 					zap.Int64("local-member-revision", rev),
 					zap.Int64("local-member-compact-revision", crev),
 					zap.Uint32("local-member-hash", h),
@@ -110,12 +110,12 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 		}
 	}
 	if mismatch > 0 {
-		return fmt.Errorf("%s found data inconsistency with peers", s.ID())
+		return fmt.Errorf("%s found data inconsistency with peers", s.MemberId())
 	}
 
 	lg.Info(
 		"initial corruption checking passed; no corruption",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 	)
 	return nil
 }
@@ -129,7 +129,7 @@ func (s *EtcdServer) monitorKVHash() {
 	lg := s.Logger()
 	lg.Info(
 		"enabled corruption checking",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 		zap.Duration("interval", t),
 	)
 
@@ -195,7 +195,7 @@ func (s *EtcdServer) checkHashKV() error {
 			zap.Int64("compact-revision-2", crev2),
 			zap.Uint32("hash-2", h2),
 		)
-		mismatch(uint64(s.ID()))
+		mismatch(uint64(s.MemberId()))
 	}
 
 	checkedCount := 0
@@ -262,7 +262,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 	members := s.cluster.Members()
 	peers := make([]peerInfo, 0, len(members))
 	for _, m := range members {
-		if m.ID == s.ID() {
+		if m.ID == s.MemberId() {
 			continue
 		}
 		peers = append(peers, peerInfo{id: m.ID, eps: m.PeerURLs})
@@ -288,7 +288,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 			}
 			lg.Warn(
 				"failed hash kv request",
-				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-id", s.MemberId().String()),
 				zap.Int64("requested-revision", rev),
 				zap.String("remote-peer-endpoint", ep),
 				zap.Error(lastErr),
