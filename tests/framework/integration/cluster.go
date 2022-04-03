@@ -398,12 +398,43 @@ func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
 	}
 }
 
-// WaitLeader returns index of the member in c.Members that is leader (or -1).
-func (c *Cluster) WaitLeader(t testutil.TB) int { return c.WaitMembersForLeader(t, c.Members) }
+// WaitLeader returns index of the member in c.Members that is leader
+// or fails the test (if not established in 30min).
+func (c *Cluster) WaitLeader(t testutil.TB) int {
+	return c.WaitMembersForLeader(t, c.Members)
+}
 
 // WaitMembersForLeader waits until given members agree on the same leader,
-// and returns its 'index' in the 'membs' list (or -1).
+// and returns its 'index' in the 'membs' list
 func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
+	t.Logf("WaitMembersForLeader")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	l := 0
+	for l = c.waitMembersForLeader(t, ctx, membs); l < 0; {
+		if ctx.Err() != nil {
+			t.Fatal("WaitLeader FAILED: %v", ctx.Err())
+		}
+	}
+	t.Logf("WaitMembersForLeader succeeded. Cluster leader index: %v", l)
+
+	// TODO: Consider second pass check as sometimes leadership is lost
+	// soon after election:
+	//
+	// We perform multiple attempts, as some-times just after successful WaitLLeader
+	// there is a race and leadership is quickly lost:
+	//   - MsgAppResp message with higher term from 2acc3d3b521981 [term: 3]	{"member": "m0"}
+	//   - 9903a56eaf96afac became follower at term 3	{"member": "m0"}
+	//   - 9903a56eaf96afac lost leader 9903a56eaf96afac at term 3	{"member": "m0"}
+
+
+	return l
+}
+
+// WaitMembersForLeader waits until given members agree on the same leader,
+// and returns its 'index' in the 'membs' list
+func (c *Cluster) waitMembersForLeader(t testutil.TB, ctx context.Context, membs []*Member) int {
+	t.Logf("WaitMembersForLeader...")
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
@@ -415,7 +446,7 @@ func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
 	}
 	// ensure leader is up via linearizable get
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*TickDuration+time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 10*TickDuration+time.Second)
 		_, err := cc.Get(ctx, "0")
 		cancel()
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
@@ -442,10 +473,12 @@ func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
 
 	for i, m := range membs {
 		if uint64(m.Server.ID()) == lead {
+			t.Logf("WaitMembersForLeader found leader. Member: %v lead: %x", i, lead)
 			return i
 		}
 	}
 
+	t.Logf("WaitMembersForLeader FAILED (-1)")
 	return -1
 }
 

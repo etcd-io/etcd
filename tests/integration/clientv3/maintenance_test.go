@@ -274,18 +274,22 @@ func TestMaintenanceStatus(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
+	t.Logf("Waiting for leader...")
 	clus.WaitLeader(t)
+	t.Logf("Leader established.")
 
 	eps := make([]string, 3)
 	for i := 0; i < 3; i++ {
 		eps[i] = clus.Members[i].GRPCURL()
 	}
 
+	t.Logf("Creating client...")
 	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cli.Close()
+	t.Logf("Creating client [DONE]")
 
 	prevID, leaderFound := uint64(0), false
 	for i := 0; i < 3; i++ {
@@ -293,6 +297,7 @@ func TestMaintenanceStatus(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		t.Logf("Response from %v: %v", i, resp)
 		if prevID == 0 {
 			prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
 			continue
