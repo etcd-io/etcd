@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestResolveTCPAddrs(t *testing.T) {
@@ -130,7 +130,7 @@ func TestResolveTCPAddrs(t *testing.T) {
 			return &net.TCPAddr{IP: net.ParseIP(tt.hostMap[host]), Port: i, Zone: ""}, nil
 		}
 		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
-		urls, err := resolveTCPAddrs(ctx, zap.NewExample(), tt.urls)
+		urls, err := resolveTCPAddrs(ctx, zaptest.NewLogger(t), tt.urls)
 		cancel()
 		if tt.hasError {
 			if err == nil {
@@ -301,7 +301,7 @@ func TestURLsEqual(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		result, err := urlsEqual(context.TODO(), zap.NewExample(), test.a, test.b)
+		result, err := urlsEqual(context.TODO(), zaptest.NewLogger(t), test.a, test.b)
 		if result != test.expect {
 			t.Errorf("idx=%d #%d: a:%v b:%v, expected %v but %v", i, test.n, test.a, test.b, test.expect, result)
 		}
@@ -334,7 +334,7 @@ func TestURLStringsEqual(t *testing.T) {
 	for idx, c := range cases {
 		t.Logf("TestURLStringsEqual, case #%d", idx)
 		resolveTCPAddr = c.resolver
-		result, err := URLStringsEqual(context.TODO(), zap.NewExample(), c.urlsA, c.urlsB)
+		result, err := URLStringsEqual(context.TODO(), zaptest.NewLogger(t), c.urlsA, c.urlsB)
 		if !result {
 			t.Errorf("unexpected result %v", result)
 		}

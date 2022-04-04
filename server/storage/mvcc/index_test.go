@@ -19,11 +19,11 @@ import (
 	"testing"
 
 	"github.com/google/btree"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestIndexGet(t *testing.T) {
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zaptest.NewLogger(t))
 	ti.Put([]byte("foo"), revision{main: 2})
 	ti.Put([]byte("foo"), revision{main: 4})
 	ti.Tombstone([]byte("foo"), revision{main: 6})
@@ -65,7 +65,7 @@ func TestIndexRange(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
 	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}}
 
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zaptest.NewLogger(t))
 	for i := range allKeys {
 		ti.Put(allKeys[i], allRevs[i])
 	}
@@ -121,7 +121,7 @@ func TestIndexRange(t *testing.T) {
 }
 
 func TestIndexTombstone(t *testing.T) {
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zaptest.NewLogger(t))
 	ti.Put([]byte("foo"), revision{main: 1})
 
 	err := ti.Tombstone([]byte("foo"), revision{main: 2})
@@ -143,7 +143,7 @@ func TestIndexRangeSince(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
 	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}, {main: 4}, {main: 5}, {main: 6}}
 
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zaptest.NewLogger(t))
 	for i := range allKeys {
 		ti.Put(allKeys[i], allRevs[i])
 	}
@@ -217,7 +217,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 	}
 
 	// Continuous Compact and Keep
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zaptest.NewLogger(t))
 	for _, tt := range tests {
 		if tt.remove {
 			ti.Tombstone(tt.key, tt.rev)
@@ -248,7 +248,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 
 	// Once Compact and Keep
 	for i := int64(1); i < maxRev; i++ {
-		ti := newTreeIndex(zap.NewExample())
+		ti := newTreeIndex(zaptest.NewLogger(t))
 		for _, tt := range tests {
 			if tt.remove {
 				ti.Tombstone(tt.key, tt.rev)

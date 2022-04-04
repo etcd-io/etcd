@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/coreos/go-semver/semver"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -85,7 +85,7 @@ var fakeRaftHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 // TestNewPeerHandlerOnRaftPrefix tests that NewPeerHandler returns a handler that
 // handles raft-prefix requests well.
 func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
-	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil, nil)
+	ph := newPeerHandler(zaptest.NewLogger(t), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
@@ -233,7 +233,7 @@ func TestServeMemberPromoteFails(t *testing.T) {
 
 // TestNewPeerHandlerOnMembersPromotePrefix verifies the request with members promote prefix is routed correctly
 func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
-	ph := newPeerHandler(zap.NewExample(), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil, nil)
+	ph := newPeerHandler(zaptest.NewLogger(t), &fakeServer{cluster: &fakeCluster{}}, fakeRaftHandler, nil, nil, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 

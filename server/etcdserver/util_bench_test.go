@@ -16,9 +16,11 @@ package etcdserver
 
 import (
 	"errors"
-	"go.etcd.io/etcd/raft/v3/raftpb"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.uber.org/zap/zaptest"
 )
 
 func BenchmarkWarnOfExpensiveRequestNoLog(b *testing.B) {
@@ -45,6 +47,6 @@ func BenchmarkWarnOfExpensiveRequestNoLog(b *testing.B) {
 	}
 	err := errors.New("benchmarking warn of expensive request")
 	for n := 0; n < b.N; n++ {
-		warnOfExpensiveRequest(testLogger, time.Second, time.Now(), nil, m, err)
+		warnOfExpensiveRequest(zaptest.NewLogger(b), time.Second, time.Now(), nil, m, err)
 	}
 }

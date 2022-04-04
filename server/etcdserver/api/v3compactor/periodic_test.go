@@ -21,9 +21,9 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/jonboulle/clockwork"
-	"go.uber.org/zap"
 )
 
 func TestPeriodicHourly(t *testing.T) {
@@ -34,7 +34,7 @@ func TestPeriodicHourly(t *testing.T) {
 	// TODO: Do not depand or real time (Recorder.Wait) in unit tests.
 	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
-	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
+	tb := newPeriodic(zaptest.NewLogger(t), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
 	defer tb.Stop()
@@ -85,7 +85,7 @@ func TestPeriodicMinutes(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
-	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
+	tb := newPeriodic(zaptest.NewLogger(t), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
 	defer tb.Stop()
@@ -133,7 +133,7 @@ func TestPeriodicPause(t *testing.T) {
 	retentionDuration := time.Hour
 	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
-	tb := newPeriodic(zap.NewExample(), fc, retentionDuration, rg, compactable)
+	tb := newPeriodic(zaptest.NewLogger(t), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
 	tb.Pause()
