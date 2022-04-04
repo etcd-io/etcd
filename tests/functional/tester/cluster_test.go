@@ -19,6 +19,7 @@ import (
 	"sort"
 	"testing"
 
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
@@ -256,7 +257,7 @@ func Test_read(t *testing.T) {
 		},
 	}
 
-	logger, err := zap.NewProduction()
+	logger, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/server/v3/proxy/tcpproxy"
 
 	"github.com/spf13/cobra"
@@ -92,8 +93,7 @@ func stripSchema(eps []string) []string {
 }
 
 func startGateway(cmd *cobra.Command, args []string) {
-	var lg *zap.Logger
-	lg, err := zap.NewProduction()
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -175,6 +175,7 @@ type etcdProcessClusterConfig struct {
 	v2deprecation       string
 
 	rollingStart bool
+	logLevel     string
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -313,6 +314,10 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 
 		if cfg.v2deprecation != "" {
 			args = append(args, "--v2-deprecation", cfg.v2deprecation)
+		}
+
+		if cfg.logLevel != "" {
+			args = append(args, "--log-level", cfg.logLevel)
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
