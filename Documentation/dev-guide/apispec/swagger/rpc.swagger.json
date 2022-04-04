@@ -2213,7 +2213,13 @@
       }
     },
     "etcdserverpbLeaseLeasesRequest": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "linearizable": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
     },
     "etcdserverpbLeaseLeasesResponse": {
       "type": "object",

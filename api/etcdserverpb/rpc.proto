@@ -929,6 +929,8 @@ message LeaseTimeToLiveResponse {
 
 message LeaseLeasesRequest {
   option (versionpb.etcd_version_msg) = "3.3";
+
+  bool linearizable = 1 [(versionpb.etcd_version_field)="3.6"];
 }
 
 message LeaseStatus {
