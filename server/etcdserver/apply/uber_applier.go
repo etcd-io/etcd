@@ -104,6 +104,8 @@ func (a *UberApplier) RestoreAlarms() {
 }
 
 func (a *UberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult {
+	// We first execute chain of WrapApply across all objects (e.g. CorruptApplier -> CappedApplier -> Auth -> Quota -> Backend),
+	// than dispatch(), than individual methods wrappers CorruptApplier.Put(CappedApplier.Put(... BackendApplier.Put())))
 	return a.applyV3.WrapApply(context.TODO(), r, shouldApplyV3, a.dispatch)
 }
 
@@ -139,7 +141,6 @@ func (a *UberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 		return nil
 	}
 
-	// call into a.s.applyV3.F instead of a.F so upper appliers can check individual calls
 	switch {
 	case r.Range != nil:
 		op = "Range"

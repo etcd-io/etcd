@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
+	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 
 	"go.uber.org/zap"
@@ -42,7 +42,7 @@ type watchServer struct {
 
 	maxRequestBytes int
 
-	sg        apply2.RaftStatusGetter
+	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
 	ag        AuthGetter
 }
@@ -125,7 +125,7 @@ type serverWatchStream struct {
 
 	maxRequestBytes int
 
-	sg        apply2.RaftStatusGetter
+	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
 	ag        AuthGetter
 

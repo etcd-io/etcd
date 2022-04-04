@@ -1606,7 +1606,7 @@ func TestUpdateVersion(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zaptest.NewLogger(t),
-		memberId:         1,
+		memberId:   1,
 		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
 		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},

@@ -17,13 +17,13 @@ package v3rpc
 import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
+	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 )
 
 type header struct {
 	clusterID int64
 	memberID  int64
-	sg        apply2.RaftStatusGetter
+	sg        apply.RaftStatusGetter
 	rev       func() int64
 }
 
