@@ -127,20 +127,30 @@ func TestLeaseGrantAndList(t *testing.T) {
 				t.Logf("Created cluster and client")
 				testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
 					createdLeases := []clientv3.LeaseID{}
+					lastRev := int64(0)
 					for i := 0; i < nc.leaseCount; i++ {
 						leaseResp, err := cc.Grant(10)
 						t.Logf("Grant returned: resp:%s err:%v", leaseResp.String(), err)
 						require.NoError(t, err)
 						createdLeases = append(createdLeases, leaseResp.ID)
+						lastRev = leaseResp.GetRevision()
 					}
 
-					resp, err := cc.LeaseList()
-					t.Logf("Lease list returned: resp:%s err:%v", resp.String(), err)
-					require.NoError(t, err)
-					require.Len(t, resp.Leases, nc.leaseCount)
+					// Because we're not guarunteed to talk to the same member, wait for
+					// listing to eventually return true, either by the result propagaing
+					// or by hitting an up to date member.
+					leases := []clientv3.LeaseStatus{}
+					require.Eventually(t, func() bool {
+						resp, err := cc.LeaseList()
+						if err != nil {
+							return false
+						}
+						leases = resp.Leases
+						return resp.GetRevision() >= lastRev
+					}, 2*time.Second, 10*time.Millisecond)
 
 					returnedLeases := make([]clientv3.LeaseID, 0, nc.leaseCount)
-					for _, status := range resp.Leases {
+					for _, status := range leases {
 						returnedLeases = append(returnedLeases, status.ID)
 					}
 
