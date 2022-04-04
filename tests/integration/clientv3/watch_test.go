@@ -415,15 +415,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 	}
 	clus.Members[0].Stop(t)
 
-	ticker := time.After(time.Second * 10)
-	for clus.WaitLeader(t) <= 0 {
-		select {
-		case <-ticker:
-			t.Fatalf("failed to wait for new leader")
-		default:
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
+	clus.WaitLeader(t)
 
 	// put some data and compact away
 	numPuts := 5

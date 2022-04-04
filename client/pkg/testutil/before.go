@@ -15,6 +15,8 @@
 package testutil
 
 import (
+	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 
@@ -37,4 +39,22 @@ func BeforeTest(t testing.TB) {
 	t.Logf("Changing working directory to: %s", tempDir)
 
 	t.Cleanup(func() { assert.NoError(t, os.Chdir(path)) })
+}
+
+func BeforeIntegrationExamples(*testing.M) func() {
+	ExitInShortMode("Skipping: the tests require real cluster")
+
+	tempDir, err := ioutil.TempDir(os.TempDir(), "etcd-integration")
+	if err != nil {
+		log.Printf("Failed to obtain tempDir: %v", tempDir)
+		os.Exit(1)
+	}
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		log.Printf("Failed to change working dir to: %s: %v", tempDir, err)
+		os.Exit(1)
+	}
+	log.Printf("Running tests (examples) in dir(%v): ...", tempDir)
+	return func() { os.RemoveAll(tempDir) }
 }
