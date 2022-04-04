@@ -256,7 +256,7 @@ type EtcdServer struct {
 
 	kv         mvcc.WatchableKV
 	lessor     lease.Lessor
-	bemu       sync.Mutex
+	bemu       sync.RWMutex
 	be         backend.Backend
 	beHooks    *serverstorage.BackendHooks
 	authStore  auth.AuthStore
@@ -2229,8 +2229,8 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 
 func (s *EtcdServer) KV() mvcc.WatchableKV { return s.kv }
 func (s *EtcdServer) Backend() backend.Backend {
-	s.bemu.Lock()
-	defer s.bemu.Unlock()
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
 	return s.be
 }
 

@@ -237,7 +237,11 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 		// the hash may revert to a hash prior to compaction completing
 		// if the compaction resumes. Force the finished compaction to
 		// commit so it won't resume following a crash.
+		//
+		// `applySnapshot` sets a new backend instance, so we need to acquire the bemu lock.
+		s.bemu.RLock()
 		s.be.ForceCommit()
+		s.bemu.RUnlock()
 		trace.Step("physically apply compaction")
 	}
 	if err != nil {

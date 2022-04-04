@@ -74,6 +74,10 @@ func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions
 }
 
 func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
+	// `applySnapshot` sets a new backend instance, so we need to acquire the bemu lock.
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
+
 	tx := s.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -85,6 +89,10 @@ func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
 }
 
 func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error {
+	// `applySnapshot` sets a new backend instance, so we need to acquire the bemu lock.
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
+
 	tx := s.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
