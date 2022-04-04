@@ -272,10 +272,10 @@ func (c integrationClient) TimeToLive(id clientv3.LeaseID, o config.LeaseOption)
 	return c.Client.TimeToLive(ctx, id, leaseOpts...)
 }
 
-func (c integrationClient) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
+func (c integrationClient) LeaseList(linearizable bool) (*clientv3.LeaseLeasesResponse, error) {
 	ctx := context.Background()
 
-	return c.Client.Leases(ctx)
+	return c.Client.Leases(ctx, linearizable)
 }
 
 func (c integrationClient) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {

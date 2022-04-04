@@ -299,9 +299,9 @@ func (ctl *EtcdctlV3) Defragment(o config.DefragOption) error {
 	return err
 }
 
-func (ctl *EtcdctlV3) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
+func (ctl *EtcdctlV3) LeaseList(linearizable bool) (*clientv3.LeaseLeasesResponse, error) {
 	args := ctl.cmdArgs()
-	args = append(args, "lease", "list", "-w", "json")
+	args = append(args, "lease", "list", "--linearizable", strconv.FormatBool(linearizable), "-w", "json")
 	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err

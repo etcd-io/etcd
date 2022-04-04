@@ -116,7 +116,7 @@ type Lease interface {
 	TimeToLive(ctx context.Context, id LeaseID, opts ...LeaseOption) (*LeaseTimeToLiveResponse, error)
 
 	// Leases retrieves all leases.
-	Leases(ctx context.Context) (*LeaseLeasesResponse, error)
+	Leases(ctx context.Context, linearizable bool) (*LeaseLeasesResponse, error)
 
 	// KeepAlive attempts to keep the given lease alive forever. If the keepalive responses posted
 	// to the channel are not consumed promptly the channel may become full. When full, the lease
@@ -251,8 +251,8 @@ func (l *lessor) TimeToLive(ctx context.Context, id LeaseID, opts ...LeaseOption
 	return gresp, nil
 }
 
-func (l *lessor) Leases(ctx context.Context) (*LeaseLeasesResponse, error) {
-	resp, err := l.remote.LeaseLeases(ctx, &pb.LeaseLeasesRequest{}, l.callOpts...)
+func (l *lessor) Leases(ctx context.Context, linearizable bool) (*LeaseLeasesResponse, error) {
+	resp, err := l.remote.LeaseLeases(ctx, &pb.LeaseLeasesRequest{Linearizable: linearizable}, l.callOpts...)
 	if err == nil {
 		leases := make([]LeaseStatus, len(resp.Leases))
 		for i := range resp.Leases {

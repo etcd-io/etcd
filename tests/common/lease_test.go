@@ -71,7 +71,7 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 	}
 }
 
-func TestLeaseGrantAndList(t *testing.T) {
+func TestLeaseGrantAndList_Serializable(t *testing.T) {
 	testRunner.BeforeTest(t)
 
 	tcs := []struct {
@@ -141,13 +141,95 @@ func TestLeaseGrantAndList(t *testing.T) {
 					// or by hitting an up to date member.
 					leases := []clientv3.LeaseStatus{}
 					require.Eventually(t, func() bool {
-						resp, err := cc.LeaseList()
+						resp, err := cc.LeaseList(false)
 						if err != nil {
 							return false
 						}
 						leases = resp.Leases
 						return resp.GetRevision() >= lastRev
 					}, 2*time.Second, 10*time.Millisecond)
+
+					returnedLeases := make([]clientv3.LeaseID, 0, nc.leaseCount)
+					for _, status := range leases {
+						returnedLeases = append(returnedLeases, status.ID)
+					}
+
+					require.ElementsMatch(t, createdLeases, returnedLeases)
+				})
+			})
+		}
+	}
+}
+
+func TestLeaseGrantAndList_Linearizable(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	tcs := []struct {
+		name   string
+		config config.ClusterConfig
+	}{
+		{
+			name:   "NoTLS",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "PeerTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+		},
+		{
+			name:   "PeerAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+		},
+		{
+			name:   "ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+		},
+	}
+	for _, tc := range tcs {
+		nestedCases := []struct {
+			name       string
+			leaseCount int
+		}{
+			{
+				name:       "no_leases",
+				leaseCount: 0,
+			},
+			{
+				name:       "one_lease",
+				leaseCount: 1,
+			},
+			{
+				name:       "many_leases",
+				leaseCount: 3,
+			},
+		}
+
+		for _, nc := range nestedCases {
+			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
+				t.Logf("Creating cluster...")
+				clus := testRunner.NewCluster(t, tc.config)
+				defer clus.Close()
+				cc := clus.Client()
+				t.Logf("Created cluster and client")
+				testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+					createdLeases := []clientv3.LeaseID{}
+					lastRev := int64(0)
+					for i := 0; i < nc.leaseCount; i++ {
+						leaseResp, err := cc.Grant(10)
+						t.Logf("Grant returned: resp:%s err:%v", leaseResp.String(), err)
+						require.NoError(t, err)
+						createdLeases = append(createdLeases, leaseResp.ID)
+						lastRev = leaseResp.GetRevision()
+					}
+
+					resp, err := cc.LeaseList(true)
+					require.NoError(t, err)
+					leases := resp.Leases
+					require.GreaterOrEqual(t, resp.GetRevision(), lastRev)
 
 					returnedLeases := make([]clientv3.LeaseID, 0, nc.leaseCount)
 					for _, status := range leases {

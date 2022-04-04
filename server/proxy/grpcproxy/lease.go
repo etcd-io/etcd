@@ -23,7 +23,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -115,7 +115,7 @@ func (lp *leaseProxy) LeaseTimeToLive(ctx context.Context, rr *pb.LeaseTimeToLiv
 }
 
 func (lp *leaseProxy) LeaseLeases(ctx context.Context, rr *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
-	r, err := lp.lessor.Leases(ctx)
+	r, err := lp.lessor.Leases(ctx, rr.Linearizable)
 	if err != nil {
 		return nil, err
 	}

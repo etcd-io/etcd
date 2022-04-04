@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -637,7 +637,7 @@ func TestLeaseLeases(t *testing.T) {
 		ids = append(ids, resp.ID)
 	}
 
-	resp, err := cli.Leases(context.Background())
+	resp, err := cli.Leases(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
 	}

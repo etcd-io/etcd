@@ -132,6 +132,8 @@ func leaseTimeToLiveCommandFunc(cmd *cobra.Command, args []string) {
 	display.TimeToLive(*resp, timeToLiveKeys)
 }
 
+var linearizableLeaseList bool
+
 // NewLeaseListCommand returns the cobra command for "lease list".
 func NewLeaseListCommand() *cobra.Command {
 	lc := &cobra.Command{
@@ -139,12 +141,13 @@ func NewLeaseListCommand() *cobra.Command {
 		Short: "List all active leases",
 		Run:   leaseListCommandFunc,
 	}
+	lc.Flags().BoolVar(&linearizableLeaseList, "linearizable", false, "Whether we should make a linearizable request for the list of leases")
 	return lc
 }
 
 // leaseListCommandFunc executes the "lease list" command.
 func leaseListCommandFunc(cmd *cobra.Command, args []string) {
-	resp, rerr := mustClientFromCmd(cmd).Leases(context.TODO())
+	resp, rerr := mustClientFromCmd(cmd).Leases(context.TODO(), linearizableLeaseList)
 	if rerr != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, rerr)
 	}
