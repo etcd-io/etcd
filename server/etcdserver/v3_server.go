@@ -366,6 +366,12 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 }
 
 func (s *EtcdServer) LeaseLeases(ctx context.Context, r *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
+	if r.Linearizable {
+		if err := s.linearizableReadNotify(ctx); err != nil {
+			return nil, err
+		}
+	}
+
 	ls := s.lessor.Leases()
 	lss := make([]*pb.LeaseStatus, len(ls))
 	for i := range ls {
