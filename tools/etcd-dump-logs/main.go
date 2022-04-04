@@ -123,8 +123,10 @@ and output a hex encoded line of binary for each input line`)
 	fmt.Printf("WAL metadata:\nnodeID=%s clusterID=%s term=%d commitIndex=%d vote=%s\n",
 		id, cid, state.Term, state.Commit, vid)
 
-	fmt.Printf("WAL entries:\n")
-	fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].Index)
+	fmt.Printf("WAL entries: %d\n", len(ents))
+	if len(ents) > 0 {
+		fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].Index)
+	}
 
 	fmt.Printf("%4s\t%10s\ttype\tdata", "term", "index")
 	if *streamdecoder != "" {
