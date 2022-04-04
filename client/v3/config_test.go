@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.uber.org/zap"
 )
@@ -111,7 +112,7 @@ func TestNewClientConfig(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			lg, _ := zap.NewProduction()
+			lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 
 			cfg, err := NewClientConfig(&tc.spec, lg)
 			if err != nil {
