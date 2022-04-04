@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -111,13 +112,12 @@ func (a *UberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 	op := "unknown"
 	ar := &ApplyResult{}
 	defer func(start time.Time) {
-		op += " "
-		//		success := ar.Err == nil || ar.Err == mvcc.ErrCompacted
-		//etcdserver.applySec.WithLabelValues(v3Version, op, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		//etcdserver.warnOfExpensiveRequest(a.lg, a.warningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
-		//if !success {
-		//	etcdserver.warnOfFailedRequest(a.lg, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
-		//}
+		success := ar.Err == nil || ar.Err == mvcc.ErrCompacted
+		txn.ApplySecObserve(v3Version, op, success, time.Since(start))
+		txn.WarnOfExpensiveRequest(a.lg, a.warningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
+		if !success {
+			txn.WarnOfFailedRequest(a.lg, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
+		}
 	}(time.Now())
 
 	switch {

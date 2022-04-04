@@ -33,6 +33,7 @@ import (
 )
 
 func TestGetIDs(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	addcc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
 	addEntry := raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc)}
 	removecc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
@@ -67,7 +68,7 @@ func TestGetIDs(t *testing.T) {
 		if tt.confState != nil {
 			snap.Metadata.ConfState = *tt.confState
 		}
-		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(zaptest.NewLogger(t), &snap, tt.ents)
+		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(lg, &snap, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
@@ -75,6 +76,7 @@ func TestGetIDs(t *testing.T) {
 }
 
 func TestCreateConfigChangeEnts(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	m := membership.Member{
 		ID:             types.ID(1),
 		RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:2380"}},
@@ -147,7 +149,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gents := serverstorage.CreateConfigChangeEnts(zaptest.NewLogger(t), tt.ids, tt.self, tt.term, tt.index)
+		gents := serverstorage.CreateConfigChangeEnts(lg, tt.ids, tt.self, tt.term, tt.index)
 		if !reflect.DeepEqual(gents, tt.wents) {
 			t.Errorf("#%d: ents = %v, want %v", i, gents, tt.wents)
 		}

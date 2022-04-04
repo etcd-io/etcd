@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package txn
 
 import (
 	"errors"
@@ -46,7 +46,8 @@ func BenchmarkWarnOfExpensiveRequestNoLog(b *testing.B) {
 		Context:    nil,
 	}
 	err := errors.New("benchmarking warn of expensive request")
+	lg := zaptest.NewLogger(b)
 	for n := 0; n < b.N; n++ {
-		warnOfExpensiveRequest(zaptest.NewLogger(b), time.Second, time.Now(), nil, m, err)
+		WarnOfExpensiveRequest(lg, time.Second, time.Now(), nil, m, err)
 	}
 }
