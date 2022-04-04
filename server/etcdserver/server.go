@@ -1815,6 +1815,14 @@ func (s *EtcdServer) apply(
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
+	applyV3Performed := false
+	defer func() {
+		// The txPostLock callback will not get called in this case,
+		// so we should set the consistent index directly.
+		if s.consistIndex != nil && !applyV3Performed && membership.ApplyBoth == shouldApplyV3 {
+			s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+		}
+	}()
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
@@ -1870,6 +1878,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
+		applyV3Performed = true
 		ar = s.applyV3.Apply(&raftReq, shouldApplyV3)
 	}
 
@@ -1912,6 +1921,12 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
+
+		// The txPostLock callback will not get called in this case,
+		// so we should set the consistent index directly.
+		if s.consistIndex != nil && membership.ApplyBoth == shouldApplyV3 {
+			s.consistIndex.SetConsistentIndex(s.consistentIdx, s.consistentTerm)
+		}
 		return false, err
 	}
 
