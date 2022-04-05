@@ -374,7 +374,7 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 
 func (as *authStore) Recover(be AuthBackend) {
 	as.be = be
-	tx := be.BatchTx()
+	tx := be.ReadTx()
 	tx.Lock()
 
 	enabled := tx.UnsafeReadAuthEnabled()
@@ -939,7 +939,7 @@ func NewAuthStore(lg *zap.Logger, be AuthBackend, tp TokenProvider, bcryptCost i
 
 	be.CreateAuthBuckets()
 	tx := be.BatchTx()
-	// We should call LockWithoutHook here, but the txPostLockHoos isn't set
+	// We should call LockOutsideApply here, but the txPostLockHoos isn't set
 	// to EtcdServer yet, so it's OK.
 	tx.Lock()
 	enabled := tx.UnsafeReadAuthEnabled()

@@ -26,7 +26,7 @@ func UnsafeCreateMetaBucket(tx backend.BatchTx) {
 
 // CreateMetaBucket creates the `meta` bucket (if it does not exists yet).
 func CreateMetaBucket(tx backend.BatchTx) {
-	tx.LockWithoutHook()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(Meta)
 }

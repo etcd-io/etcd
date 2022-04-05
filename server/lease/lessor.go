@@ -797,7 +797,7 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 func (le *lessor) initAndRecover() {
 	tx := le.b.BatchTx()
 
-	tx.LockWithoutHook()
+	tx.LockOutsideApply()
 	schema.UnsafeCreateLeaseBucket(tx)
 	lpbs := schema.MustUnsafeGetAllLeases(tx)
 	tx.Unlock()
@@ -845,7 +845,7 @@ func (l *Lease) expired() bool {
 func (l *Lease) persistTo(b backend.Backend) {
 	lpb := leasepb.Lease{ID: int64(l.ID), TTL: l.ttl, RemainingTTL: l.remainingTTL}
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	schema.MustUnsafePutLease(tx, &lpb)
 }

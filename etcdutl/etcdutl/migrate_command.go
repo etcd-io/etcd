@@ -140,7 +140,7 @@ func migrateCommandFunc(c *migrateConfig) error {
 }
 
 func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
-	tx.LockWithoutHook()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	// Storage version is only supported since v3.6
 	if target.LessThan(schema.V3_6) {

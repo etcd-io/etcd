@@ -405,7 +405,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	// Set the hook after EtcdServer finishes the initialization to avoid
 	// the hook being called during the initialization process.
-	srv.be.SetTxPostLockHook(srv.getTxPostLockHook())
+	srv.be.SetTxPostLockInsideApplyHook(srv.getTxPostLockHook())
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
@@ -984,7 +984,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	}
 
 	s.consistIndex.SetBackend(newbe)
-	newbe.SetTxPostLockHook(s.getTxPostLockHook())
+	newbe.SetTxPostLockInsideApplyHook(s.getTxPostLockHook())
 
 	lg.Info("restored mvcc store", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
 

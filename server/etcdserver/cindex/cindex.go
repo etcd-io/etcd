@@ -82,8 +82,6 @@ func (ci *consistentIndex) ConsistentIndex() uint64 {
 	return v
 }
 
-// UnsafeConsistentIndex is similar to ConsistentIndex,
-// but it shouldn't lock the transaction.
 func (ci *consistentIndex) UnsafeConsistentIndex() uint64 {
 	if index := atomic.LoadUint64(&ci.consistentIndex); index > 0 {
 		return index
@@ -134,7 +132,7 @@ func (f *fakeConsistentIndex) UnsafeSave(_ backend.BatchTx) {}
 func (f *fakeConsistentIndex) SetBackend(_ Backend)         {}
 
 func UpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, onlyGrow bool) {
-	tx.LockWithoutHook()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	schema.UnsafeUpdateConsistentIndex(tx, index, term, onlyGrow)
 }

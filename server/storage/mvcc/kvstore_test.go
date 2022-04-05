@@ -881,7 +881,8 @@ type fakeBatchTx struct {
 	rangeRespc chan rangeResp
 }
 
-func (b *fakeBatchTx) LockWithoutHook()                         {}
+func (b *fakeBatchTx) LockInsideApply()                         {}
+func (b *fakeBatchTx) LockOutsideApply()                        {}
 func (b *fakeBatchTx) Lock()                                    {}
 func (b *fakeBatchTx) Unlock()                                  {}
 func (b *fakeBatchTx) RLock()                                   {}
@@ -905,10 +906,8 @@ func (b *fakeBatchTx) UnsafeDelete(bucket backend.Bucket, key []byte) {
 func (b *fakeBatchTx) UnsafeForEach(bucket backend.Bucket, visitor func(k, v []byte) error) error {
 	return nil
 }
-func (b *fakeBatchTx) Commit()           {}
-func (b *fakeBatchTx) CommitAndStop()    {}
-func (b *fakeBatchTx) LockInsideApply()  {}
-func (b *fakeBatchTx) LockOutsideApply() {}
+func (b *fakeBatchTx) Commit()        {}
+func (b *fakeBatchTx) CommitAndStop() {}
 
 type fakeBackend struct {
 	tx *fakeBatchTx
@@ -925,7 +924,7 @@ func (b *fakeBackend) Snapshot() backend.Snapshot                               
 func (b *fakeBackend) ForceCommit()                                               {}
 func (b *fakeBackend) Defrag() error                                              { return nil }
 func (b *fakeBackend) Close() error                                               { return nil }
-func (b *fakeBackend) SetTxPostLockHook(func())                                   {}
+func (b *fakeBackend) SetTxPostLockInsideApplyHook(func())                        {}
 
 type indexGetResp struct {
 	rev     revision

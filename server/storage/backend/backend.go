@@ -68,8 +68,8 @@ type Backend interface {
 	ForceCommit()
 	Close() error
 
-	// SetTxPostLockHook sets a txPostLockHook.
-	SetTxPostLockHook(func())
+	// SetTxPostLockInsideApplyHook sets a txPostLockHook.
+	SetTxPostLockInsideApplyHook(func())
 }
 
 type Snapshot interface {
@@ -233,10 +233,10 @@ func (b *backend) BatchTx() BatchTx {
 	return b.batchTx
 }
 
-func (b *backend) SetTxPostLockHook(hook func()) {
+func (b *backend) SetTxPostLockInsideApplyHook(hook func()) {
 	// It needs to lock the batchTx, because the periodic commit
 	// may be accessing the txPostLockHook at the moment.
-	b.batchTx.LockWithoutHook()
+	b.batchTx.lock()
 	defer b.batchTx.Unlock()
 	b.txPostLockHook = hook
 }
@@ -452,7 +452,7 @@ func (b *backend) defrag() error {
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then
 	// close previous ongoing tx.
-	b.batchTx.LockWithoutHook()
+	b.batchTx.LockOutsideApply()
 	defer b.batchTx.Unlock()
 
 	// lock database after lock tx to avoid deadlock.

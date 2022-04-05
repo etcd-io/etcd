@@ -88,7 +88,7 @@ func TestValidate(t *testing.T) {
 
 			b := backend.NewDefaultBackend(lg, dataPath)
 			defer b.Close()
-			err := Validate(lg, b.BatchTx())
+			err := Validate(lg, b.ReadTx())
 			if (err != nil) != tc.expectError {
 				t.Errorf("Validate(lg, tx) = %+v, expected error: %v", err, tc.expectError)
 			}

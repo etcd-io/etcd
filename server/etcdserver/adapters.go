@@ -94,7 +94,7 @@ func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error
 	defer s.bemu.RUnlock()
 
 	tx := s.be.BatchTx()
-	tx.LockWithoutHook()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	return schema.UnsafeMigrate(s.lg, tx, s.r.storage, target)
 }
