@@ -173,7 +173,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		var resp *pb.TxnResponse
 		var err error
 		chk := func(ai *auth.AuthInfo) error {
-			return apply2.CheckTxnAuth(s.authStore, ai, r)
+			return txn.CheckTxnAuth(s.authStore, ai, r)
 		}
 
 		defer func(start time.Time) {

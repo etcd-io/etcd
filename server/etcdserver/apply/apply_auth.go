@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
@@ -150,20 +151,8 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 	return nil
 }
 
-func CheckTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
-	for _, c := range rt.Compare {
-		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
-			return err
-		}
-	}
-	if err := checkTxnReqsPermission(as, ai, rt.Success); err != nil {
-		return err
-	}
-	return checkTxnReqsPermission(as, ai, rt.Failure)
-}
-
 func (aa *authApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	if err := CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
+	if err := txn.CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
 		return nil, nil, err
 	}
 	return aa.applierV3.Txn(ctx, rt)
