@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestEtctlutlMigrate(t *testing.T) {
@@ -105,6 +106,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
+			lg := zaptest.NewLogger(t)
 			if tc.binary != "" && !fileutil.Exist(tc.binary) {
 				t.Skipf("%q does not exist", lastReleaseBinary)
 			}
@@ -154,7 +156,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 
 			t.Log("etcdutl migrate...")
-			be := backend.NewDefaultBackend(dataDirPath + "/member/snap/db")
+			be := backend.NewDefaultBackend(lg, dataDirPath+"/member/snap/db")
 			defer be.Close()
 
 			ver := schema.ReadStorageVersion(be.ReadTx())

@@ -31,6 +31,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 const (
@@ -310,7 +311,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 	// simulate stop and recovery
 	le.Stop()
 	be.Close()
-	bcfg := backend.DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig(lg)
 	bcfg.Path = filepath.Join(dir, "be")
 	be = backend.New(bcfg)
 	defer be.Close()
@@ -669,8 +670,9 @@ func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
+	lg := zaptest.NewLogger(t)
 	tmpPath := t.TempDir()
-	bcfg := backend.DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig(lg)
 	bcfg.Path = filepath.Join(tmpPath, "be")
 	return tmpPath, backend.New(bcfg)
 }

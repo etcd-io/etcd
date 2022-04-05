@@ -69,7 +69,7 @@ func Verify(cfg Config) error {
 		}
 	}()
 
-	beConfig := backend.DefaultBackendConfig()
+	beConfig := backend.DefaultBackendConfig(lg)
 	beConfig.Path = datadir.ToBackendFileName(cfg.DataDir)
 	beConfig.Logger = cfg.Logger
 

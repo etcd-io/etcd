@@ -144,11 +144,12 @@ type BackendConfig struct {
 	Hooks Hooks
 }
 
-func DefaultBackendConfig() BackendConfig {
+func DefaultBackendConfig(lg *zap.Logger) BackendConfig {
 	return BackendConfig{
 		BatchInterval: defaultBatchInterval,
 		BatchLimit:    defaultBatchLimit,
 		MmapSize:      initialMmapSize,
+		Logger:        lg,
 	}
 }
 
@@ -156,17 +157,13 @@ func New(bcfg BackendConfig) Backend {
 	return newBackend(bcfg)
 }
 
-func NewDefaultBackend(path string) Backend {
-	bcfg := DefaultBackendConfig()
+func NewDefaultBackend(lg *zap.Logger, path string) Backend {
+	bcfg := DefaultBackendConfig(lg)
 	bcfg.Path = path
 	return newBackend(bcfg)
 }
 
 func newBackend(bcfg BackendConfig) *backend {
-	if bcfg.Logger == nil {
-		bcfg.Logger = zap.NewNop()
-	}
-
 	bopts := &bolt.Options{}
 	if boltOpenOptions != nil {
 		*bopts = *boltOpenOptions
