@@ -52,8 +52,9 @@ func TestAuthEnabled(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			abe := NewAuthBackend(zaptest.NewLogger(t), be)
+			abe := NewAuthBackend(lg, be)
 			tx := abe.BatchTx()
 			abe.CreateAuthBuckets()
 
@@ -65,9 +66,9 @@ func TestAuthEnabled(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(tmpPath)
+			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
-			abe2 := NewAuthBackend(zaptest.NewLogger(t), be2)
+			abe2 := NewAuthBackend(lg, be2)
 			tx = abe2.BatchTx()
 			tx.Lock()
 			defer tx.Unlock()
@@ -102,8 +103,9 @@ func TestAuthRevision(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			abe := NewAuthBackend(zaptest.NewLogger(t), be)
+			abe := NewAuthBackend(lg, be)
 			abe.CreateAuthBuckets()
 
 			if tc.setRevision != 0 {
@@ -115,9 +117,9 @@ func TestAuthRevision(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(tmpPath)
+			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
-			abe2 := NewAuthBackend(zaptest.NewLogger(t), be2)
+			abe2 := NewAuthBackend(lg, be2)
 			tx := abe2.BatchTx()
 			tx.Lock()
 			defer tx.Unlock()

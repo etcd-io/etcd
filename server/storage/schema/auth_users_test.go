@@ -97,8 +97,9 @@ func TestGetAllUsers(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			abe := NewAuthBackend(zaptest.NewLogger(t), be)
+			abe := NewAuthBackend(lg, be)
 			abe.CreateAuthBuckets()
 
 			tx := abe.BatchTx()
@@ -109,9 +110,9 @@ func TestGetAllUsers(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(tmpPath)
+			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
-			abe2 := NewAuthBackend(zaptest.NewLogger(t), be2)
+			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetAllUsers()
 
 			assert.Equal(t, tc.want, users)
@@ -181,8 +182,9 @@ func TestGetUser(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
-			abe := NewAuthBackend(zaptest.NewLogger(t), be)
+			abe := NewAuthBackend(lg, be)
 			abe.CreateAuthBuckets()
 
 			tx := abe.BatchTx()
@@ -193,9 +195,9 @@ func TestGetUser(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(tmpPath)
+			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
-			abe2 := NewAuthBackend(zaptest.NewLogger(t), be2)
+			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetUser("alice")
 
 			assert.Equal(t, tc.want, users)

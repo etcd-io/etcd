@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.uber.org/zap/zaptest"
 )
 
 // TestConsistentIndex ensures that LoadConsistentIndex/Save/ConsistentIndex and backend.BatchTx can work well together.
@@ -53,7 +54,7 @@ func TestConsistentIndex(t *testing.T) {
 	be.ForceCommit()
 	be.Close()
 
-	b := backend.NewDefaultBackend(tmpPath)
+	b := backend.NewDefaultBackend(zaptest.NewLogger(t), tmpPath)
 	defer b.Close()
 	ci.SetBackend(b)
 	index = ci.ConsistentIndex()

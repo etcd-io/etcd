@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/bbolt"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/backend/testing"
@@ -55,6 +56,7 @@ func TestVersion(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.version, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			tx := be.BatchTx()
 			if tx == nil {
@@ -67,7 +69,7 @@ func TestVersion(t *testing.T) {
 			be.ForceCommit()
 			be.Close()
 
-			b := backend.NewDefaultBackend(tmpPath)
+			b := backend.NewDefaultBackend(lg, tmpPath)
 			defer b.Close()
 			v := UnsafeReadStorageVersion(b.BatchTx())
 

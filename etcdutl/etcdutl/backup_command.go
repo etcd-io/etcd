@@ -308,7 +308,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 		}
 	}
 
-	be := backend.NewDefaultBackend(destDB)
+	be := backend.NewDefaultBackend(lg, destDB)
 	defer be.Close()
 	ms := schema.NewMembershipBackend(lg, be)
 	if err := ms.TrimClusterFromBackend(); err != nil {

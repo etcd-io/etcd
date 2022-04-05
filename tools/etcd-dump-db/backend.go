@@ -21,6 +21,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
@@ -176,7 +177,7 @@ func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error)
 }
 
 func getHash(dbPath string) (hash uint32, err error) {
-	b := backend.NewDefaultBackend(dbPath)
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
 	return b.Hash(schema.DefaultIgnores)
 }
 

@@ -57,7 +57,7 @@ func DefragData(dataDir string) error {
 	dbDir := datadir.ToBackendFileName(dataDir)
 	go func() {
 		defer close(bch)
-		cfg := backend.DefaultBackendConfig()
+		cfg := backend.DefaultBackendConfig(lg)
 		cfg.Logger = lg
 		cfg.Path = dbDir
 		be = backend.New(cfg)
