@@ -16,7 +16,10 @@ package backend
 
 import (
 	"bytes"
+	"log"
 	"math"
+	"runtime/debug"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -77,10 +80,33 @@ func (t *batchTx) Lock() {
 	if t.backend.txPostLockHook != nil {
 		t.backend.txPostLockHook()
 	}
+
+	stackTraceStr := string(debug.Stack())
+	if !strings.Contains(stackTraceStr, ".applyEntries") {
+		debug.PrintStack()
+		//log.Printf("LOGGER: %s", t.backend.lg)
+		//time.Sleep(10 * time.Second)
+		t.backend.lg.Fatal("LockWitHook outside of APPLY!", zap.Stack("stacktrace"));
+	} else {
+		t.backend.lg.Info("LockWithHook:", zap.Stack("stacktrace"))
+	}
+}
+
+func (t *batchTx) lockWithoutHook() {
+	t.Mutex.Lock()
 }
 
 func (t *batchTx) LockWithoutHook() {
-	t.Mutex.Lock()
+	t.lockWithoutHook()
+	stackTraceStr:=string(debug.Stack())
+	if strings.Contains(stackTraceStr, ".applyEntries") {
+	//	debug.PrintStack()
+		log.Printf("LOGGER: %s", t.backend.lg)
+	//	time.Sleep(10 * time.Second)
+		t.backend.lg.Fatal("LockWithoutHook in APPLY!", zap.Stack("stacktrace"));
+	} else {
+		t.backend.lg.Info("LockWithoutHook:", zap.Stack("stacktrace"))
+	}
 }
 
 func (t *batchTx) Unlock() {

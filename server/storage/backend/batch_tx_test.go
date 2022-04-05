@@ -31,7 +31,7 @@ func TestBatchTxPut(t *testing.T) {
 
 	tx := b.BatchTx()
 
-	tx.Lock()
+	tx.LockWithoutHook()
 
 	// create bucket
 	tx.UnsafeCreateBucket(schema.Test)
@@ -44,7 +44,7 @@ func TestBatchTxPut(t *testing.T) {
 
 	// check put result before and after tx is committed
 	for k := 0; k < 2; k++ {
-		tx.Lock()
+		tx.LockWithoutHook()
 		_, gv := tx.UnsafeRange(schema.Test, []byte("foo"), nil, 0)
 		tx.Unlock()
 		if !reflect.DeepEqual(gv[0], v) {
@@ -59,7 +59,7 @@ func TestBatchTxRange(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 
 	tx.UnsafeCreateBucket(schema.Test)
@@ -130,7 +130,7 @@ func TestBatchTxDelete(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 
 	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
@@ -141,7 +141,7 @@ func TestBatchTxDelete(t *testing.T) {
 
 	// check put result before and after tx is committed
 	for k := 0; k < 2; k++ {
-		tx.Lock()
+		tx.LockWithoutHook()
 		ks, _ := tx.UnsafeRange(schema.Test, []byte("foo"), nil, 0)
 		tx.Unlock()
 		if len(ks) != 0 {
@@ -156,7 +156,7 @@ func TestBatchTxCommit(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
@@ -185,7 +185,7 @@ func TestBatchTxBatchLimitCommit(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()

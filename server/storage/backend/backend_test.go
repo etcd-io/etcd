@@ -52,7 +52,7 @@ func TestBackendSnapshot(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
@@ -77,7 +77,7 @@ func TestBackendSnapshot(t *testing.T) {
 	defer betesting.Close(t, nb)
 
 	newTx := nb.BatchTx()
-	newTx.Lock()
+	newTx.LockWithoutHook()
 	ks, _ := newTx.UnsafeRange(schema.Test, []byte("foo"), []byte("goo"), 0)
 	if len(ks) != 1 {
 		t.Errorf("len(kvs) = %d, want 1", len(ks))
@@ -94,7 +94,7 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 	pc := backend.CommitsForTest(b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
 	tx.Unlock()
@@ -136,7 +136,7 @@ func TestBackendDefrag(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Test)
 	for i := 0; i < backend.DefragLimitForTest()+100; i++ {
 		tx.UnsafePut(schema.Test, []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
@@ -146,7 +146,7 @@ func TestBackendDefrag(t *testing.T) {
 
 	// remove some keys to ensure the disk space will be reclaimed after defrag
 	tx = b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	for i := 0; i < 50; i++ {
 		tx.UnsafeDelete(schema.Test, []byte(fmt.Sprintf("foo_%d", i)))
 	}
@@ -185,7 +185,7 @@ func TestBackendDefrag(t *testing.T) {
 
 	// try put more keys after shrink.
 	tx = b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Test)
 	tx.UnsafePut(schema.Test, []byte("more"), []byte("bar"))
 	tx.Unlock()
@@ -198,7 +198,7 @@ func TestBackendWriteback(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Key)
 	tx.UnsafePut(schema.Key, []byte("abc"), []byte("bar"))
 	tx.UnsafePut(schema.Key, []byte("def"), []byte("baz"))
@@ -206,7 +206,7 @@ func TestBackendWriteback(t *testing.T) {
 	tx.Unlock()
 
 	// overwrites should be propagated too
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafePut(schema.Key, []byte("overwrite"), []byte("2"))
 	tx.Unlock()
 
@@ -274,14 +274,14 @@ func TestConcurrentReadTx(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	wtx1 := b.BatchTx()
-	wtx1.Lock()
+	wtx1.LockWithoutHook()
 	wtx1.UnsafeCreateBucket(schema.Key)
 	wtx1.UnsafePut(schema.Key, []byte("abc"), []byte("ABC"))
 	wtx1.UnsafePut(schema.Key, []byte("overwrite"), []byte("1"))
 	wtx1.Unlock()
 
 	wtx2 := b.BatchTx()
-	wtx2.Lock()
+	wtx2.LockWithoutHook()
 	wtx2.UnsafePut(schema.Key, []byte("def"), []byte("DEF"))
 	wtx2.UnsafePut(schema.Key, []byte("overwrite"), []byte("2"))
 	wtx2.Unlock()
@@ -304,7 +304,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	defer betesting.Close(t, b)
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Key)
 	for i := 0; i < 5; i++ {
 		k := []byte(fmt.Sprintf("%04d", i))
@@ -315,7 +315,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	// writeback
 	b.ForceCommit()
 
-	tx.Lock()
+	tx.LockWithoutHook()
 	tx.UnsafeCreateBucket(schema.Key)
 	for i := 5; i < 20; i++ {
 		k := []byte(fmt.Sprintf("%04d", i))
@@ -338,7 +338,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	seq = ""
 	b.ForceCommit()
 
-	tx.Lock()
+	tx.LockWithoutHook()
 	assert.NoError(t, tx.UnsafeForEach(schema.Key, getSeq))
 	tx.Unlock()
 

@@ -346,7 +346,7 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 	// to avoid putting it in the critical section of the tx lock.
 	revision, err := func() (uint64, error) {
 		tx := as.be.BatchTx()
-		tx.Lock()
+		tx.LockWithoutHook()
 		defer tx.Unlock()
 
 		user = tx.UnsafeGetUser(username)
@@ -374,7 +374,7 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 func (as *authStore) Recover(be AuthBackend) {
 	as.be = be
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 
 	enabled := tx.UnsafeReadAuthEnabled()
 	as.setRevision(tx.UnsafeReadAuthRevision())

@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/btree"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestIndexGet(t *testing.T) {
@@ -217,7 +218,7 @@ func TestIndexCompactAndKeep(t *testing.T) {
 	}
 
 	// Continuous Compact and Keep
-	ti := newTreeIndex(zap.NewExample())
+	ti := newTreeIndex(zaptest.NewLogger(t))
 	for _, tt := range tests {
 		if tt.remove {
 			ti.Tombstone(tt.key, tt.rev)

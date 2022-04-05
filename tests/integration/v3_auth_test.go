@@ -50,6 +50,8 @@ func TestV3AuthEmptyUserGet(t *testing.T) {
 // TestV3AuthTokenWithDisable tests that auth won't crash if
 // given a valid token when authentication is disabled
 func TestV3AuthTokenWithDisable(t *testing.T) {
+	t.Skip("Temporary... as there is put")
+
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

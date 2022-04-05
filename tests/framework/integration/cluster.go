@@ -1327,6 +1327,7 @@ func (c *Cluster) TakeClient(idx int) {
 }
 
 func (c *Cluster) Terminate(t testutil.TB) {
+	t.Logf("Terminating cluster...")
 	c.mu.Lock()
 	if c.clusterClient != nil {
 		if err := c.clusterClient.Close(); err != nil {

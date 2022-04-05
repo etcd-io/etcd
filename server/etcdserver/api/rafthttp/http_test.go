@@ -35,6 +35,7 @@ import (
 	"go.uber.org/zap"
 )
 
+
 func TestServeRaftPrefix(t *testing.T) {
 	testCases := []struct {
 		method    string

@@ -30,7 +30,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 const (
@@ -38,11 +38,13 @@ const (
 	minLeaseTTLDuration = time.Duration(minLeaseTTL) * time.Second
 )
 
+func applyEntries(x func()) { x() }
+
 // TestLessorGrant ensures Lessor can grant wanted lease.
 // The granted lease should have a unique ID with a term
 // that is greater than minLeaseTTL.
 func TestLessorGrant(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -51,13 +53,17 @@ func TestLessorGrant(t *testing.T) {
 	defer le.Stop()
 	le.Promote(0)
 
-	l, err := le.Grant(1, 1)
-	if err != nil {
-		t.Fatalf("could not grant lease 1 (%v)", err)
-	}
-	if l.ttl != minLeaseTTL {
-		t.Fatalf("ttl = %v, expect minLeaseTTL %v", l.ttl, minLeaseTTL)
-	}
+	var l *Lease
+	applyEntries(func() {
+		var err error
+		l, err = le.Grant(1, 1)
+		if err != nil {
+			t.Fatalf("could not grant lease 1 (%v)", err)
+		}
+		if l.ttl != minLeaseTTL {
+			t.Fatalf("ttl = %v, expect minLeaseTTL %v", l.ttl, minLeaseTTL)
+		}
+	})
 
 	gl := le.Lookup(l.ID)
 
@@ -68,19 +74,24 @@ func TestLessorGrant(t *testing.T) {
 		t.Errorf("term = %v, want at least %v", l.Remaining(), minLeaseTTLDuration-time.Second)
 	}
 
-	_, err = le.Grant(1, 1)
-	if err == nil {
-		t.Errorf("allocated the same lease")
-	}
+	applyEntries(func() {
+		_, err := le.Grant(1, 1)
+		if err == nil {
+			t.Errorf("allocated the same lease")
+		}})
 
 	var nl *Lease
-	nl, err = le.Grant(2, 1)
-	if err != nil {
-		t.Errorf("could not grant lease 2 (%v)", err)
-	}
-	if nl.ID == l.ID {
-		t.Errorf("new lease.id = %x, want != %x", nl.ID, l.ID)
-	}
+
+	applyEntries(func() {
+		var err error
+		nl, err = le.Grant(2, 1)
+		if err != nil {
+			t.Errorf("could not grant lease 2 (%v)", err)
+		}
+		if nl.ID == l.ID {
+			t.Errorf("new lease.id = %x, want != %x", nl.ID, l.ID)
+		}
+	})
 
 	lss := []*Lease{gl, nl}
 	leases := le.Leases()
@@ -94,7 +105,7 @@ func TestLessorGrant(t *testing.T) {
 	}
 
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockWithoutHook()
 	defer tx.Unlock()
 	lpb := schema.MustUnsafeGetLease(tx, int64(l.ID))
 	if lpb == nil {
@@ -105,7 +116,7 @@ func TestLessorGrant(t *testing.T) {
 // TestLeaseConcurrentKeys ensures Lease.Keys method calls are guarded
 // from concurrent map writes on 'itemSet'.
 func TestLeaseConcurrentKeys(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -154,7 +165,7 @@ func TestLeaseConcurrentKeys(t *testing.T) {
 // the backend.
 // The revoked lease cannot be got from Lessor again.
 func TestLessorRevoke(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -208,7 +219,7 @@ func TestLessorRevoke(t *testing.T) {
 
 // TestLessorRenew ensures Lessor can renew an existing lease.
 func TestLessorRenew(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer be.Close()
 	defer os.RemoveAll(dir)
@@ -241,7 +252,7 @@ func TestLessorRenew(t *testing.T) {
 }
 
 func TestLessorRenewWithCheckpointer(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer be.Close()
 	defer os.RemoveAll(dir)
@@ -289,7 +300,7 @@ func TestLessorRenewWithCheckpointer(t *testing.T) {
 func TestLessorRenewExtendPileup(t *testing.T) {
 	oldRevokeRate := leaseRevokeRate
 	defer func() { leaseRevokeRate = oldRevokeRate }()
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	leaseRevokeRate = 10
 
 	dir, be := NewTestBackend(t)
@@ -339,7 +350,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 }
 
 func TestLessorDetach(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -380,7 +391,7 @@ func TestLessorDetach(t *testing.T) {
 // TestLessorRecover ensures Lessor recovers leases from
 // persist backend.
 func TestLessorRecover(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -408,7 +419,7 @@ func TestLessorRecover(t *testing.T) {
 }
 
 func TestLessorExpire(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -461,7 +472,7 @@ func TestLessorExpire(t *testing.T) {
 }
 
 func TestLessorExpireAndDemote(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -512,7 +523,7 @@ func TestLessorExpireAndDemote(t *testing.T) {
 }
 
 func TestLessorMaxTTL(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -527,7 +538,7 @@ func TestLessorMaxTTL(t *testing.T) {
 }
 
 func TestLessorCheckpointScheduling(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
@@ -562,7 +573,7 @@ func TestLessorCheckpointScheduling(t *testing.T) {
 }
 
 func TestLessorCheckpointsRestoredOnPromote(t *testing.T) {
-	lg := zap.NewNop()
+	lg := zaptest.NewLogger(t)
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 	defer be.Close()
@@ -621,7 +632,7 @@ func TestLessorCheckpointPersistenceAfterRestart(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			lg := zap.NewNop()
+			lg := zaptest.NewLogger(t)
 			dir, be := NewTestBackend(t)
 			defer os.RemoveAll(dir)
 			defer be.Close()

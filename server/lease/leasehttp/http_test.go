@@ -26,17 +26,27 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
+func applyEntries(x func()){
+	x()
+}
+
 func TestRenewHTTP(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, be)
 
 	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
-	le.Promote(time.Second)
-	l, err := le.Grant(1, int64(5))
-	if err != nil {
-		t.Fatalf("failed to create lease: %v", err)
-	}
+
+	var l *lease.Lease
+	applyEntries(func() {
+		le.Promote(time.Second)
+		var err error
+		l, err = le.Grant(1, int64(5))
+		if err != nil {
+			t.Fatalf("failed to create lease: %v", err)
+		}
+	})
+
 
 	ts := httptest.NewServer(NewHandler(le, waitReady))
 	defer ts.Close()
@@ -57,10 +67,15 @@ func TestTimeToLiveHTTP(t *testing.T) {
 
 	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
-	l, err := le.Grant(1, int64(5))
-	if err != nil {
-		t.Fatalf("failed to create lease: %v", err)
-	}
+
+	var l *lease.Lease
+	applyEntries(func() {
+		var err error
+		l, err = le.Grant(1, int64(5))
+		if err != nil {
+			t.Fatalf("failed to create lease: %v", err)
+		}
+	})
 
 	ts := httptest.NewServer(NewHandler(le, waitReady))
 	defer ts.Close()
@@ -98,14 +113,17 @@ func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
 
 	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
-	l, err := le.Grant(1, int64(5))
-	if err != nil {
-		t.Fatalf("failed to create lease: %v", err)
-	}
+	var l *lease.Lease
+	applyEntries(func() {
+		var err error
+		l, err = le.Grant(1, int64(5))
+		if err != nil {
+			t.Fatalf("failed to create lease: %v", err)
+		}})
 
 	ts := httptest.NewServer(NewHandler(le, waitNotReady))
 	defer ts.Close()
-	err = f(l, ts.URL)
+	err := f(l, ts.URL)
 	if err == nil {
 		t.Fatalf("expected timeout error, got nil")
 	}
