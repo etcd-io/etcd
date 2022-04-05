@@ -53,6 +53,8 @@ type BatchTx interface {
 	Commit()
 	// CommitAndStop commits the previous tx and does not create a new one.
 	CommitAndStop()
+	LockInsideApply()
+	LockOutsideApply()
 }
 
 type batchTx struct {
@@ -65,6 +67,16 @@ type batchTx struct {
 
 func (t *batchTx) Lock() {
 	t.Mutex.Lock()
+}
+
+func (t *batchTx) LockInsideApply() {
+	ValidateCalledInsideApply(t.backend.lg)
+	t.Lock()
+}
+
+func (t *batchTx) LockOutsideApply() {
+	ValidateCalledOutSideApply(t.backend.lg)
+	t.Lock()
 }
 
 func (t *batchTx) Unlock() {
