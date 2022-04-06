@@ -55,4 +55,9 @@ type Client interface {
 	LeaseList() (*clientv3.LeaseLeasesResponse, error)
 	LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error)
 	LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error)
+
+	UserAdd(name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error)
+	UserList() (*clientv3.AuthUserListResponse, error)
+	UserDelete(name string) (*clientv3.AuthUserDeleteResponse, error)
+	UserChangePass(user, newPass string) error
 }

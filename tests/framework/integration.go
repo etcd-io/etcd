@@ -289,3 +289,25 @@ func (c integrationClient) LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevo
 
 	return c.Client.Revoke(ctx, id)
 }
+
+func (c integrationClient) UserAdd(name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error) {
+	ctx := context.Background()
+	return c.Client.UserAddWithOptions(ctx, name, password, &clientv3.UserAddOptions{
+		NoPassword: opts.NoPassword,
+	})
+}
+
+func (c integrationClient) UserList() (*clientv3.AuthUserListResponse, error) {
+	ctx := context.Background()
+	return c.Client.UserList(ctx)
+}
+
+func (c integrationClient) UserDelete(name string) (*clientv3.AuthUserDeleteResponse, error) {
+	ctx := context.Background()
+	return c.Client.UserDelete(ctx, name)
+}
+
+func (c integrationClient) UserChangePass(user, newPass string) error {
+	_, err := c.Client.UserChangePassword(context.Background(), user, newPass)
+	return err
+}

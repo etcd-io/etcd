@@ -378,3 +378,90 @@ func (ctl *EtcdctlV3) AlarmDisarm(_ *clientv3.AlarmMember) (*clientv3.AlarmRespo
 	err = json.Unmarshal([]byte(line), &resp)
 	return &resp, err
 }
+
+func (ctl *EtcdctlV3) UserAdd(name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "user", "add")
+	if password == "" {
+		args = append(args, name)
+	} else {
+		args = append(args, fmt.Sprintf("%s:%s", name, password))
+	}
+
+	if opts.NoPassword {
+		args = append(args, "--no-password")
+	}
+
+	args = append(args, "--interactive=false", "-w", "json")
+
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no password is provided, and NoPassword isn't set, the CLI will always
+	// wait for a password, send an enter in this case for an "empty" password.
+	if !opts.NoPassword && password == "" {
+		err := cmd.Send("\n")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var resp clientv3.AuthUserAddResponse
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) UserList() (*clientv3.AuthUserListResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "user", "list", "-w", "json")
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.AuthUserListResponse
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) UserDelete(name string) (*clientv3.AuthUserDeleteResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "user", "delete", name, "-w", "json")
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.AuthUserDeleteResponse
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) UserChangePass(user, newPass string) error {
+	args := ctl.cmdArgs()
+	args = append(args, "user", "passwd", user, "--interactive=false")
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return err
+	}
+
+	err = cmd.Send(newPass + "\n")
+	if err != nil {
+		return err
+	}
+
+	_, err = cmd.Expect("Password updated")
+	return err
+}
