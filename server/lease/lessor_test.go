@@ -634,18 +634,18 @@ func TestLessorCheckpointPersistenceAfterRestart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if l.RemainingTTL() != ttl {
-				t.Errorf("remainingTTL() = %d, expected: %d", l.RemainingTTL(), ttl)
+			if l.getRemainingTTL() != ttl {
+				t.Errorf("getRemainingTTL() = %d, expected: %d", l.getRemainingTTL(), ttl)
 			}
 			le.Checkpoint(2, checkpointTTL)
-			if l.RemainingTTL() != checkpointTTL {
-				t.Errorf("remainingTTL() = %d, expected: %d", l.RemainingTTL(), checkpointTTL)
+			if l.getRemainingTTL() != checkpointTTL {
+				t.Errorf("getRemainingTTL() = %d, expected: %d", l.getRemainingTTL(), checkpointTTL)
 			}
 			le.Stop()
 			le2 := newLessor(lg, be, clusterLatest(), cfg)
 			l = le2.Lookup(2)
-			if l.RemainingTTL() != tc.expectRemainingTTL {
-				t.Errorf("remainingTTL() = %d, expected: %d", l.RemainingTTL(), tc.expectRemainingTTL)
+			if l.getRemainingTTL() != tc.expectRemainingTTL {
+				t.Errorf("getRemainingTTL() = %d, expected: %d", l.getRemainingTTL(), tc.expectRemainingTTL)
 			}
 		})
 	}
