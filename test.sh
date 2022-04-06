@@ -43,6 +43,7 @@ set -o pipefail
 # e.g. add/update missing dependencies. Such divergences should be 
 # detected and trigger a failure that needs explicit developer's action.
 export GOFLAGS=-mod=readonly
+export ETCD_VERIFY=all
 
 source ./scripts/test_lib.sh
 source ./build.sh
