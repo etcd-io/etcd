@@ -77,13 +77,14 @@ func (t *batchTx) lock() {
 
 func (t *batchTx) LockInsideApply() {
 	t.lock()
-	if t.backend.txPostLockHook != nil {
+	if t.backend.txPostLockInsideApplyHook != nil {
 		// The callers of some methods (i.e., (*RaftCluster).AddMember)
 		// can be coming from both InsideApply and OutsideApply, but the
-		// callers from OutsideApply will have a nil txPostLockHook. So we
-		// should check the txPostLockHook before validating the callstack.
+		// callers from OutsideApply will have a nil txPostLockInsideApplyHook.
+		// So we should check the txPostLockInsideApplyHook before validating
+		// the callstack.
 		ValidateCalledInsideApply(t.backend.lg)
-		t.backend.txPostLockHook()
+		t.backend.txPostLockInsideApplyHook()
 	}
 }
 
