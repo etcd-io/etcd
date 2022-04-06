@@ -744,7 +744,7 @@ func (le *lessor) scheduleCheckpointIfNeeded(lease *Lease) {
 		return
 	}
 
-	if lease.RemainingTTL() > int64(le.checkpointInterval.Seconds()) {
+	if lease.getRemainingTTL() > int64(le.checkpointInterval.Seconds()) {
 		if le.lg != nil {
 			le.lg.Debug("Scheduling lease checkpoint",
 				zap.Int64("leaseID", int64(lease.ID)),
@@ -855,9 +855,8 @@ func (l *Lease) TTL() int64 {
 	return l.ttl
 }
 
-// RemainingTTL returns the last checkpointed remaining TTL of the lease.
-// TODO(jpbetz): do not expose this utility method
-func (l *Lease) RemainingTTL() int64 {
+// getRemainingTTL returns the last checkpointed remaining TTL of the lease.
+func (l *Lease) getRemainingTTL() int64 {
 	if l.remainingTTL > 0 {
 		return l.remainingTTL
 	}
@@ -866,7 +865,7 @@ func (l *Lease) RemainingTTL() int64 {
 
 // refresh refreshes the expiry of the lease.
 func (l *Lease) refresh(extend time.Duration) {
-	newExpiry := time.Now().Add(extend + time.Duration(l.RemainingTTL())*time.Second)
+	newExpiry := time.Now().Add(extend + time.Duration(l.getRemainingTTL())*time.Second)
 	l.expiryMu.Lock()
 	defer l.expiryMu.Unlock()
 	l.expiry = newExpiry
