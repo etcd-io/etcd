@@ -65,7 +65,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	}
 	lg.Info("created temporary db file", zap.String("path", partpath))
 
-	now := time.Now()
+	start := time.Now()
 	resp, err := cli.SnapshotWithVersion(ctx)
 	if err != nil {
 		return resp.Version, err
@@ -89,7 +89,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	lg.Info("fetched snapshot",
 		zap.String("endpoint", cfg.Endpoints[0]),
 		zap.String("size", humanize.Bytes(uint64(size))),
-		zap.String("took", humanize.Time(now)),
+		zap.String("took", time.Since(start).String()),
 		zap.String("etcd-version", version),
 	)
 
