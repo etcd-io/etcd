@@ -288,7 +288,7 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 	// create snapshot db file: "%016x.snap.db"
 	be := serverstorage.OpenBackend(cfg, nil)
 	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm, false)
+	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm)
 	schema.MustUnsafeSaveConfStateToBackend(cfg.Logger, be.BatchTx(), &confState)
 	if err = be.Close(); err != nil {
 		return
@@ -301,6 +301,6 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 	// create backend db file
 	be = serverstorage.OpenBackend(cfg, nil)
 	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1, false)
+	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1)
 	return be.Close()
 }
