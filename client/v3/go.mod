@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	go.etcd.io/etcd/api/v3 v3.5.2
 	go.etcd.io/etcd/client/pkg/v3 v3.5.2
 	go.uber.org/zap v1.17.0
