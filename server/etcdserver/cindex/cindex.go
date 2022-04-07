@@ -25,6 +25,7 @@ import (
 
 type Backend interface {
 	BatchTx() backend.BatchTx
+	ReadTx() backend.ReadTx
 }
 
 // ConsistentIndexer is an interface that wraps the Get/Set/Save method for consistentIndex.
@@ -87,7 +88,7 @@ func (ci *consistentIndex) SetConsistentIndex(v uint64, term uint64) {
 func (ci *consistentIndex) UnsafeSave(tx backend.BatchTx) {
 	index := atomic.LoadUint64(&ci.consistentIndex)
 	term := atomic.LoadUint64(&ci.term)
-	UnsafeUpdateConsistentIndex(tx, index, term, true)
+	UnsafeUpdateConsistentIndex(tx, index, term)
 }
 
 func (ci *consistentIndex) SetBackend(be Backend) {
@@ -154,20 +155,10 @@ func ReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
 	return unsafeReadConsistentIndex(tx)
 }
 
-func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, onlyGrow bool) {
+func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64) {
 	if index == 0 {
 		// Never save 0 as it means that we didn't loaded the real index yet.
 		return
-	}
-
-	if onlyGrow {
-		oldi, oldTerm := unsafeReadConsistentIndex(tx)
-		if term < oldTerm {
-			return
-		}
-		if term == oldTerm && index <= oldi {
-			return
-		}
 	}
 
 	bs1 := make([]byte, 8)
@@ -182,8 +173,8 @@ func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, 
 	}
 }
 
-func UpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, onlyGrow bool) {
+func UpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64) {
 	tx.Lock()
 	defer tx.Unlock()
-	UnsafeUpdateConsistentIndex(tx, index, term, onlyGrow)
+	UnsafeUpdateConsistentIndex(tx, index, term)
 }

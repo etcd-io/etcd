@@ -476,6 +476,6 @@ func (s *v3Manager) updateCIndex(commit uint64, term uint64) error {
 	be := backend.NewDefaultBackend(s.outDbPath())
 	defer be.Close()
 
-	cindex.UpdateConsistentIndex(be.BatchTx(), commit, term, false)
+	cindex.UpdateConsistentIndex(be.BatchTx(), commit, term)
 	return nil
 }
