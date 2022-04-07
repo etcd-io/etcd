@@ -30,13 +30,13 @@ var (
 )
 
 // Validate checks provided backend to confirm that schema used is supported.
-func Validate(lg *zap.Logger, tx backend.BatchTx) error {
+func Validate(lg *zap.Logger, tx backend.ReadTx) error {
 	tx.Lock()
 	defer tx.Unlock()
 	return unsafeValidate(lg, tx)
 }
 
-func unsafeValidate(lg *zap.Logger, tx backend.BatchTx) error {
+func unsafeValidate(lg *zap.Logger, tx backend.ReadTx) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
 		// v3.5 requires a wal snapshot to persist its fields, so we can assign it a schema version.
@@ -60,7 +60,7 @@ type WALVersion interface {
 // Migrate updates storage schema to provided target version.
 // Downgrading requires that provided WAL doesn't contain unsupported entries.
 func Migrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Version) error {
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	return UnsafeMigrate(lg, tx, w, target)
 }
@@ -89,8 +89,8 @@ func UnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semv
 // * v3.5 will return it's version if it includes all storage fields added in v3.5 (might require a snapshot).
 // * v3.4 and older is not supported and will return error.
 func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, err error) {
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	return UnsafeDetectSchemaVersion(lg, tx)
 }
 

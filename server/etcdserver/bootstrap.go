@@ -231,7 +231,7 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 		}
 	}
 	if beExist {
-		err = schema.Validate(cfg.Logger, be.BatchTx())
+		err = schema.Validate(cfg.Logger, be.ReadTx())
 		if err != nil {
 			cfg.Logger.Error("Failed to validate schema", zap.Error(err))
 			return nil, err

@@ -27,6 +27,35 @@ func (abe *authBackend) GetUser(username string) *authpb.User {
 }
 
 func (atx *authBatchTx) UnsafeGetUser(username string) *authpb.User {
+	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
+	return arx.UnsafeGetUser(username)
+}
+
+func (abe *authBackend) GetAllUsers() []*authpb.User {
+	tx := abe.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	return tx.UnsafeGetAllUsers()
+}
+
+func (atx *authBatchTx) UnsafeGetAllUsers() []*authpb.User {
+	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
+	return arx.UnsafeGetAllUsers()
+}
+
+func (atx *authBatchTx) UnsafePutUser(user *authpb.User) {
+	b, err := user.Marshal()
+	if err != nil {
+		atx.lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
+	}
+	atx.tx.UnsafePut(AuthUsers, user.Name, b)
+}
+
+func (atx *authBatchTx) UnsafeDeleteUser(username string) {
+	atx.tx.UnsafeDelete(AuthUsers, []byte(username))
+}
+
+func (atx *authReadTx) UnsafeGetUser(username string) *authpb.User {
 	_, vs := atx.tx.UnsafeRange(AuthUsers, []byte(username), nil, 0)
 	if len(vs) == 0 {
 		return nil
@@ -44,14 +73,7 @@ func (atx *authBatchTx) UnsafeGetUser(username string) *authpb.User {
 	return user
 }
 
-func (abe *authBackend) GetAllUsers() []*authpb.User {
-	tx := abe.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	return tx.UnsafeGetAllUsers()
-}
-
-func (atx *authBatchTx) UnsafeGetAllUsers() []*authpb.User {
+func (atx *authReadTx) UnsafeGetAllUsers() []*authpb.User {
 	_, vs := atx.tx.UnsafeRange(AuthUsers, []byte{0}, []byte{0xff}, -1)
 	if len(vs) == 0 {
 		return nil
@@ -67,16 +89,4 @@ func (atx *authBatchTx) UnsafeGetAllUsers() []*authpb.User {
 		users[i] = user
 	}
 	return users
-}
-
-func (atx *authBatchTx) UnsafePutUser(user *authpb.User) {
-	b, err := user.Marshal()
-	if err != nil {
-		atx.lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
-	}
-	atx.tx.UnsafePut(AuthUsers, user.Name, b)
-}
-
-func (atx *authBatchTx) UnsafeDeleteUser(username string) {
-	atx.tx.UnsafeDelete(AuthUsers, []byte(username))
 }

@@ -36,6 +36,10 @@ func (b *backendMock) CreateAuthBuckets() {
 func (b *backendMock) ForceCommit() {
 }
 
+func (b *backendMock) ReadTx() AuthReadTx {
+	return &txMock{be: b}
+}
+
 func (b *backendMock) BatchTx() AuthBatchTx {
 	return &txMock{be: b}
 }

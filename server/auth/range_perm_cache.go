@@ -20,7 +20,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func getMergedPerms(tx AuthBatchTx, userName string) *unifiedRangePermissions {
+func getMergedPerms(tx AuthReadTx, userName string) *unifiedRangePermissions {
 	user := tx.UnsafeGetUser(userName)
 	if user == nil {
 		return nil
@@ -103,7 +103,7 @@ func checkKeyPoint(lg *zap.Logger, cachedPerms *unifiedRangePermissions, key []b
 	return false
 }
 
-func (as *authStore) isRangeOpPermitted(tx AuthBatchTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
+func (as *authStore) isRangeOpPermitted(tx AuthReadTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
 	// assumption: tx is Lock()ed
 	_, ok := as.rangePermCache[userName]
 	if !ok {

@@ -401,6 +401,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		})
 	}
 
+	// Set the hook after EtcdServer finishes the initialization to avoid
+	// the hook being called during the initialization process.
+	srv.be.SetTxPostLockInsideApplyHook(srv.getTxPostLockInsideApplyHook())
+
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
 		Logger:      cfg.Logger,
@@ -978,6 +982,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	}
 
 	s.consistIndex.SetBackend(newbe)
+	newbe.SetTxPostLockInsideApplyHook(s.getTxPostLockInsideApplyHook())
+
 	lg.Info("restored mvcc store", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
 
 	// Closing old backend might block until all the txns
@@ -1771,7 +1777,7 @@ func (s *EtcdServer) apply(
 
 			// set the consistent index of current executing entry
 			if e.Index > s.consistIndex.ConsistentIndex() {
-				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+				s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
 				shouldApplyV3 = membership.ApplyBoth
 			}
 
@@ -1798,10 +1804,18 @@ func (s *EtcdServer) apply(
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
+	applyV3Performed := false
+	defer func() {
+		// The txPostLock callback will not get called in this case,
+		// so we should set the consistent index directly.
+		if s.consistIndex != nil && !applyV3Performed && membership.ApplyBoth == shouldApplyV3 {
+			s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+		}
+	}()
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
-		s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+		s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
 		shouldApplyV3 = membership.ApplyBoth
 	}
 	s.lg.Debug("apply entry normal",
@@ -1853,6 +1867,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
+		applyV3Performed = true
 		ar = s.applyV3.Apply(&raftReq, shouldApplyV3)
 	}
 
@@ -1895,6 +1910,13 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
+
+		// The txPostLock callback will not get called in this case,
+		// so we should set the consistent index directly.
+		if s.consistIndex != nil && membership.ApplyBoth == shouldApplyV3 {
+			applyingIndex, applyingTerm := s.consistIndex.ConsistentApplyingIndex()
+			s.consistIndex.SetConsistentIndex(applyingIndex, applyingTerm)
+		}
 		return false, err
 	}
 
@@ -2295,4 +2317,13 @@ func (s *EtcdServer) raftStatus() raft.Status {
 
 func (s *EtcdServer) Version() *serverversion.Manager {
 	return serverversion.NewManager(s.Logger(), NewServerVersionAdapter(s))
+}
+
+func (s *EtcdServer) getTxPostLockInsideApplyHook() func() {
+	return func() {
+		applyingIdx, applyingTerm := s.consistIndex.ConsistentApplyingIndex()
+		if applyingIdx > s.consistIndex.UnsafeConsistentIndex() {
+			s.consistIndex.SetConsistentIndex(applyingIdx, applyingTerm)
+		}
+	}
 }
