@@ -264,13 +264,15 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	if err = s.saveDB(); err != nil {
 		return err
 	}
-	hardstate, err := s.saveWALAndSnap()
-	if err != nil {
-		return err
-	}
+	if s.cl.IsMemberExist(s.cl.ID()) && !s.cl.IsLocalMemberLearner() {
+		hardstate, err := s.saveWALAndSnap()
+		if err != nil {
+			return err
+		}
 
-	if err := s.updateCIndex(hardstate.Commit, hardstate.Term); err != nil {
-		return err
+		if err := s.updateCIndex(hardstate.Commit, hardstate.Term); err != nil {
+			return err
+		}
 	}
 
 	s.lg.Info(
@@ -387,8 +389,6 @@ func (s *v3Manager) copyAndVerifyDB() error {
 }
 
 // saveWALAndSnap creates a WAL for the initial cluster
-//
-// TODO: This code ignores learners !!!
 func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	if err := fileutil.CreateDirAll(s.lg, s.walDir); err != nil {
 		return nil, err
