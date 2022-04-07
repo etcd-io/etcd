@@ -24,7 +24,6 @@ import (
 
 type Backend interface {
 	ReadTx() backend.ReadTx
-	BatchTx() backend.BatchTx
 }
 
 // ConsistentIndexer is an interface that wraps the Get/Set/Save method for consistentIndex.
@@ -119,7 +118,7 @@ func (ci *consistentIndex) SetConsistentIndex(v uint64, term uint64) {
 func (ci *consistentIndex) UnsafeSave(tx backend.BatchTx) {
 	index := atomic.LoadUint64(&ci.consistentIndex)
 	term := atomic.LoadUint64(&ci.term)
-	schema.UnsafeUpdateConsistentIndex(tx, index, term, true)
+	schema.UnsafeUpdateConsistentIndex(tx, index, term)
 }
 
 func (ci *consistentIndex) SetBackend(be Backend) {
@@ -170,8 +169,8 @@ func (f *fakeConsistentIndex) SetConsistentApplyingIndex(index uint64, term uint
 func (f *fakeConsistentIndex) UnsafeSave(_ backend.BatchTx) {}
 func (f *fakeConsistentIndex) SetBackend(_ Backend)         {}
 
-func UpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, onlyGrow bool) {
+func UpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64) {
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	schema.UnsafeUpdateConsistentIndex(tx, index, term, onlyGrow)
+	schema.UnsafeUpdateConsistentIndex(tx, index, term)
 }

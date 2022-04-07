@@ -16,6 +16,7 @@ package schema
 
 import (
 	"encoding/binary"
+
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
@@ -56,32 +57,11 @@ func ReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
 	return UnsafeReadConsistentIndex(tx)
 }
 
-func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, onlyGrow bool) {
+func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64) {
 	if index == 0 {
 		// Never save 0 as it means that we didn't load the real index yet.
 		return
 	}
-
-	if onlyGrow {
-		oldi, oldTerm := UnsafeReadConsistentIndex(tx)
-		if term < oldTerm {
-			return
-		}
-		if index > oldi {
-			bs1 := make([]byte, 8)
-			binary.BigEndian.PutUint64(bs1, index)
-			// put the index into the underlying backend
-			// tx has been locked in TxnBegin, so there is no need to lock it again
-			tx.UnsafePut(Meta, MetaConsistentIndexKeyName, bs1)
-		}
-		if term > 0 && term > oldTerm {
-			bs2 := make([]byte, 8)
-			binary.BigEndian.PutUint64(bs2, term)
-			tx.UnsafePut(Meta, MetaTermKeyName, bs2)
-		}
-		return
-	}
-
 	bs1 := make([]byte, 8)
 	binary.BigEndian.PutUint64(bs1, index)
 	// put the index into the underlying backend
