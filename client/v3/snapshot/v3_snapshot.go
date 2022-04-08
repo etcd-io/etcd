@@ -89,7 +89,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	lg.Info("fetched snapshot",
 		zap.String("endpoint", cfg.Endpoints[0]),
 		zap.String("size", humanize.Bytes(uint64(size))),
-		zap.String("took", time.Since(start).String()),
+		zap.Duration("took", time.Since(start)),
 		zap.String("etcd-version", version),
 	)
 
