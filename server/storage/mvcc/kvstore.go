@@ -330,8 +330,8 @@ func (s *store) restore() error {
 	keyToLease := make(map[string]lease.LeaseID)
 
 	// restore index
-	tx := s.b.BatchTx()
-	tx.LockOutsideApply()
+	tx := s.b.ReadTx()
+	tx.Lock()
 
 	finishedCompact, found := UnsafeReadFinishedCompact(tx)
 	if found {
