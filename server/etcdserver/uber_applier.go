@@ -37,11 +37,6 @@ type uberApplier struct {
 
 	// This is the applier used for wrapping when alarms change
 	applyV3base applierV3
-
-	// applyV3Internal is the applier for internal requests
-	// (that seems to bypass wrappings)
-	// TODO(ptab): Seems artificial and could be part of the regular stack.
-	applyV3Internal applierV3Internal
 }
 
 func newUberApplier(s *EtcdServer) *uberApplier {
@@ -53,7 +48,6 @@ func newUberApplier(s *EtcdServer) *uberApplier {
 		warningApplyDuration: s.Cfg.WarningApplyDuration,
 		applyV3:              applyV3base_,
 		applyV3base:          applyV3base_,
-		applyV3Internal:      newApplierV3Internal(s),
 	}
 	ua.RestoreAlarms()
 	return ua
@@ -61,11 +55,6 @@ func newUberApplier(s *EtcdServer) *uberApplier {
 
 func newApplierV3Backend(s *EtcdServer) applierV3 {
 	return &applierV3backend{s: s}
-}
-
-func newApplierV3Internal(s *EtcdServer) applierV3Internal {
-	base := &applierV3backend{s: s}
-	return base
 }
 
 func newApplierV3(s *EtcdServer) applierV3 {
@@ -108,15 +97,15 @@ func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 	switch {
 	case r.ClusterVersionSet != nil: // Implemented in 3.5.x
 		op = "ClusterVersionSet"
-		a.applyV3Internal.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
+		a.applyV3.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
 		return ar
 	case r.ClusterMemberAttrSet != nil:
 		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
-		a.applyV3Internal.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
+		a.applyV3.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
 		return ar
 	case r.DowngradeInfoSet != nil:
 		op = "DowngradeInfoSet" // Implemented in 3.5.x
-		a.applyV3Internal.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
+		a.applyV3.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
 		return ar
 	}
 

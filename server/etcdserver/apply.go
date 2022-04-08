@@ -48,13 +48,6 @@ type applyResult struct {
 	trace *traceutil.Trace
 }
 
-// applierV3Internal is the interface for processing internal V3 raft request
-type applierV3Internal interface {
-	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-}
-
 type ApplyFunc func(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult
 
 // applierV3 is the interface for processing V3 raft messages
@@ -94,6 +87,11 @@ type applierV3 interface {
 	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 	UserList(ua *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
+
+	// processing internal V3 raft request
+	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3)
+	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3)
+	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
 }
 
 type applierV3backend struct {
