@@ -797,7 +797,7 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 
 func (le *lessor) initAndRecover() {
 	tx := le.b.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 
 	tx.UnsafeCreateBucket(buckets.Lease)
 	lpbs := unsafeGetAllLeases(tx)
@@ -852,7 +852,7 @@ func (l *Lease) persistTo(b backend.Backend) {
 		panic("failed to marshal lease proto item")
 	}
 
-	b.BatchTx().Lock()
+	b.BatchTx().LockInsideApply()
 	b.BatchTx().UnsafePut(buckets.Lease, key, val)
 	b.BatchTx().Unlock()
 }

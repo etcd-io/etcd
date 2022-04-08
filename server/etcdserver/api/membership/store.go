@@ -52,7 +52,7 @@ func unsafeSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) er
 	}
 
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	if unsafeMemberExists(tx, mkey) {
 		return errMemberAlreadyExist
@@ -65,7 +65,7 @@ func unsafeSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) er
 // from the v3 backend.
 func TrimClusterFromBackend(be backend.Backend) error {
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	tx.UnsafeDeleteBucket(buckets.Cluster)
 	return nil
@@ -75,7 +75,7 @@ func unsafeDeleteMemberFromBackend(be backend.Backend, id types.ID) error {
 	mkey := backendMemberKey(id)
 
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	tx.UnsafePut(buckets.MembersRemoved, mkey, []byte("removed"))
 	if !unsafeMemberExists(tx, mkey) {
@@ -140,7 +140,7 @@ func mustReadMembersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.I
 func TrimMembershipFromBackend(lg *zap.Logger, be backend.Backend) error {
 	lg.Info("Trimming membership information from the backend...")
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	err := tx.UnsafeForEach(buckets.Members, func(k, v []byte) error {
 		tx.UnsafeDelete(buckets.Members, k)
@@ -185,7 +185,7 @@ func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
 	ckey := backendClusterVersionKey()
 
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	tx.UnsafePut(buckets.Cluster, ckey, []byte(ver.String()))
 }
@@ -198,7 +198,7 @@ func mustSaveDowngradeToBackend(lg *zap.Logger, be backend.Backend, downgrade *D
 		lg.Panic("failed to marshal downgrade information", zap.Error(err))
 	}
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	tx.UnsafePut(buckets.Cluster, dkey, dvalue)
 }
@@ -316,7 +316,7 @@ func backendDowngradeKey() []byte {
 
 func mustCreateBackendBuckets(be backend.Backend) {
 	tx := be.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(buckets.Members)
 	tx.UnsafeCreateBucket(buckets.MembersRemoved)

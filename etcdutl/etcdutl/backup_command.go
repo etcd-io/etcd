@@ -319,7 +319,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 
 	if !v3 {
 		tx := be.BatchTx()
-		tx.Lock()
+		tx.LockOutsideApply()
 		defer tx.Unlock()
 		cindex.UnsafeCreateMetaBucket(tx)
 		cindex.UnsafeUpdateConsistentIndex(tx, idx, term)
