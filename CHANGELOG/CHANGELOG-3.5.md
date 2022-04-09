@@ -10,6 +10,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd server
 - Fix [Provide a better liveness probe for when etcd runs as a Kubernetes pod](https://github.com/etcd-io/etcd/pull/13706)
 - Fix [inconsistent log format](https://github.com/etcd-io/etcd/pull/13864)
+- Fix [Inconsistent revision and data occurs](https://github.com/etcd-io/etcd/pull/13908)
 
 ### package `client/pkg/v3`
 
