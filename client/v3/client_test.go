@@ -248,10 +248,56 @@ func TestAuthTokenBundleNoOverwrite(t *testing.T) {
 	}
 }
 
+func TestSyncFiltersMembers(t *testing.T) {
+	c, _ := NewClient(t, Config{Endpoints: []string{"http://254.0.0.1:12345"}})
+	defer c.Close()
+	c.Cluster = &mockCluster{
+		[]*etcdserverpb.Member{
+			{ID: 0, Name: "", ClientURLs: []string{"http://254.0.0.1:12345"}, IsLearner: false},
+			{ID: 1, Name: "isStarted", ClientURLs: []string{"http://254.0.0.2:12345"}, IsLearner: true},
+			{ID: 2, Name: "isStartedAndNotLearner", ClientURLs: []string{"http://254.0.0.3:12345"}, IsLearner: false},
+		},
+	}
+	c.Sync(context.Background())
+
+	endpoints := c.Endpoints()
+	if len(endpoints) != 1 || endpoints[0] != "http://254.0.0.3:12345" {
+		t.Error("Client.Sync uses learner and/or non-started member client URLs")
+	}
+}
+
 type mockAuthServer struct {
 	*etcdserverpb.UnimplementedAuthServer
 }
 
 func (mockAuthServer) Authenticate(context.Context, *etcdserverpb.AuthenticateRequest) (*etcdserverpb.AuthenticateResponse, error) {
 	return &etcdserverpb.AuthenticateResponse{Token: "mock-token"}, nil
+}
+
+type mockCluster struct {
+	members []*etcdserverpb.Member
+}
+
+func (mc *mockCluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
+	return &MemberListResponse{Members: mc.members}, nil
+}
+
+func (mc *mockCluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
+	return nil, nil
+}
+
+func (mc *mockCluster) MemberAddAsLearner(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
+	return nil, nil
+}
+
+func (mc *mockCluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error) {
+	return nil, nil
+}
+
+func (mc *mockCluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error) {
+	return nil, nil
+}
+
+func (mc *mockCluster) MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error) {
+	return nil, nil
 }
