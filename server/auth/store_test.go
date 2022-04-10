@@ -168,6 +168,10 @@ func TestRecover(t *testing.T) {
 	if !as.IsAuthEnabled() {
 		t.Fatalf("expected auth enabled got disabled")
 	}
+
+	if len(as.rangePermCache) != 0 {
+		t.Fatalf("expected range permission cache is empty")
+	}
 }
 
 func TestCheckPassword(t *testing.T) {

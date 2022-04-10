@@ -388,6 +388,8 @@ func (as *authStore) Recover(be AuthBackend) {
 		as.tokenProvider.enable()
 	}
 	as.enabledMu.Unlock()
+
+	as.rangePermCache = make(map[string]*unifiedRangePermissions)
 }
 
 func (as *authStore) selectPassword(password string, hashedPassword string) ([]byte, error) {
