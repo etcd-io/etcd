@@ -19,10 +19,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"go.etcd.io/etcd/client/pkg/v3/lruutil"
 	"io/ioutil"
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 // tlsListener overrides a TLS listener so it will reject client
@@ -39,8 +41,8 @@ type tlsListener struct {
 
 type tlsCheckFunc func(context.Context, *tls.Conn) error
 
-// crlBytesMap cache tls cert context
-var crlBytesMap sync.Map
+// crlBytesLru cache tls cert context
+var crlBytesLru = lruutil.NewTimeEvictLru(time.Second * 60)
 
 // NewTLSListener handshakes TLS connections and performs optional CRL checking.
 func NewTLSListener(l net.Listener, tlsinfo *TLSInfo) (net.Listener, error) {
@@ -172,14 +174,14 @@ func (l *tlsListener) acceptLoop() {
 func checkCRL(crlPath string, cert []*x509.Certificate) error {
 	var crlBytes []byte
 
-	if v, ok := crlBytesMap.Load(crlPath); ok {
-		crlBytes = v.([]byte)
+	if v, ok := crlBytesLru.Get(crlPath); ok {
+		crlBytes = v
 	} else {
 		crlBytes, err := ioutil.ReadFile(crlPath)
 		if err != nil {
 			return err
 		}
-		crlBytesMap.Store(crlPath, crlBytes)
+		crlBytesLru.Set(crlPath, crlBytes)
 	}
 	certList, err := x509.ParseCRL(crlBytes)
 	if err != nil {
