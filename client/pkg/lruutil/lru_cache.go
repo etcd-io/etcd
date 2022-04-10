@@ -47,7 +47,7 @@ type LruTimeCache struct {
 	mu                sync.Mutex
 	lruCheckpointHeap lruQueue
 	bufMap            map[string][]byte
-	done              chan int
+	ttl               time.Duration
 }
 
 var _ heap.Interface = &lruQueue{}
@@ -58,40 +58,30 @@ func NewTimeEvictLru(ttl time.Duration) *LruTimeCache {
 	lru := LruTimeCache{
 		lruCheckpointHeap: make(lruQueue, 0),
 		bufMap:            make(map[string][]byte),
-		done:              make(chan int),
+		ttl:               ttl,
 	}
 	heap.Init(&lru.lruCheckpointHeap)
-
-	timer := time.NewTicker(500 * time.Millisecond)
-	go func() {
-		for {
-			select {
-			case <-timer.C:
-				lru.tick()
-			case <-lru.done:
-				return
-
-			}
-		}
-	}()
 	return &lru
 }
 
 func (lru *LruTimeCache) tick() {
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
-	if len(lru.lruCheckpointHeap) < 1 {
-		return
+	for {
+		if len(lru.lruCheckpointHeap) < 1 {
+			return
+		}
+		lt := lru.lruCheckpointHeap[0]
+		if time.Now().After(lt.time) /* lt.time: next checkpoint time */ {
+			item := heap.Pop(&lru.lruCheckpointHeap).(*lruItem)
+			delete(lru.bufMap, item.id)
+		} else {
+			return
+		}
 	}
-	lt := lru.lruCheckpointHeap[0]
-	if lt.time.After(time.Now()) /* lt.time: next checkpoint time */ {
-		return
-	}
-	item := heap.Pop(&lru.lruCheckpointHeap).(*lruItem)
-	delete(lru.bufMap, item.id)
-
 }
 func (lru *LruTimeCache) Get(key string) (v []byte, ok bool) {
+	lru.tick()
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
 	element := lru.bufMap[key]
@@ -102,23 +92,20 @@ func (lru *LruTimeCache) Get(key string) (v []byte, ok bool) {
 }
 
 func (lru *LruTimeCache) Set(key string, value []byte) {
+	lru.tick()
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
 	lru.bufMap[key] = value
 	heap.Push(&lru.lruCheckpointHeap, &lruItem{
 		id:    key,
-		time:  time.Now(),
+		time:  time.Now().Add(lru.ttl),
 		index: 0,
 	})
-
 }
 
 func (lru *LruTimeCache) Len() int {
+	lru.tick()
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
-
 	return lru.lruCheckpointHeap.Len()
-}
-func (lru *LruTimeCache) Close() {
-	close(lru.done)
 }

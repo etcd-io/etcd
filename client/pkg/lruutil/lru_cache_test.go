@@ -10,30 +10,32 @@ func TestLruCache(t *testing.T) {
 		vals     []string
 		interval time.Duration
 		ttl      time.Duration
-		less     int
+		expect   int
 	}{
 		{
 			vals:     []string{"a", "b", "c", "d"},
 			interval: time.Millisecond * 50,
 			ttl:      time.Second,
-			less:     4,
+			expect:   4,
 		},
 		{
 			vals:     []string{"a", "b", "c", "d"},
-			interval: time.Second,
+			interval: time.Second * 2,
 			ttl:      time.Second,
-			less:     0,
+			expect:   0,
 		},
 	}
 	for i, tt := range tests {
 		sf := NewTimeEvictLru(tt.ttl)
 		for _, v := range tt.vals {
 			sf.Set(v, []byte(v))
-			time.Sleep(tt.interval)
 		}
-		if tt.less != sf.Len() {
-			t.Fatalf("#%d: expected %+v, got %+v", i, tt.less, sf.Len())
+		time.Sleep(tt.interval)
+		for _, v := range tt.vals {
+			sf.Get(v)
 		}
-		sf.Close()
+		if tt.expect != sf.Len() {
+			t.Fatalf("#%d: expected %+v, got %+v", i, tt.expect, sf.Len())
+		}
 	}
 }
