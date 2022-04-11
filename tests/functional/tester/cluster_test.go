@@ -257,7 +257,7 @@ func Test_read(t *testing.T) {
 			StressKeySuffixRangeTxn: 100,
 			StressKeyTxnOps:         10,
 			StressClients:           100,
-			StressQPS:               2000,
+			StressQPS:               4000,
 		},
 	}
 

@@ -256,4 +256,4 @@ tester-config:
   stress-key-txn-ops: 10
 
   stress-clients: 100
-  stress-qps: 2000
+  stress-qps: 4000
