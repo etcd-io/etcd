@@ -1411,7 +1411,7 @@ func (c *Cluster) Endpoints() []string {
 
 func (c *Cluster) ClusterClient() (client *clientv3.Client, err error) {
 	if c.clusterClient == nil {
-		endpoints := []string{}
+		var endpoints []string
 		for _, m := range c.Members {
 			endpoints = append(endpoints, m.GrpcURL)
 		}

@@ -65,6 +65,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [segmentation violation(SIGSEGV) error due to premature unlocking of watchableStore](https://github.com/etcd-io/etcd/pull/13505)
 - Fix [inconsistent log format](https://github.com/etcd-io/etcd/pull/13864)
 - Fix [Inconsistent revision and data occurs](https://github.com/etcd-io/etcd/pull/13854)
+- Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/13690)
 
 ### tools/benchmark
 
