@@ -174,6 +174,30 @@ func recover_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 	return err
 }
 
+func inject_SIGKILL(clus *Cluster, index int) error {
+	clus.lg.Info(
+		"disastrous machine failure START",
+		zap.String("target-endpoint", clus.Members[index].EtcdClientEndpoint),
+	)
+	err := clus.sendOp(index, rpcpb.Operation_SIGKILL_ETCD)
+	clus.lg.Info(
+		"disastrous machine failure END",
+		zap.String("target-endpoint", clus.Members[index].EtcdClientEndpoint),
+		zap.Error(err),
+	)
+	return err
+}
+
+func recover_SIGKILL(clus *Cluster, idx1 int) error {
+	err := clus.sendOp(idx1, rpcpb.Operation_RESTART_ETCD)
+	clus.lg.Info(
+		"restart machine",
+		zap.String("target-endpoint", clus.Members[idx1].EtcdClientEndpoint),
+		zap.Error(err),
+	)
+	return err
+}
+
 func new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus *Cluster) Case {
 	cc := caseByFunc{
 		rpcpbCase:     rpcpb.Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER,
@@ -185,6 +209,24 @@ func new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER(clus *Cluster) Case {
 		Case:          c,
 		delayDuration: clus.GetCaseDelayDuration(),
 	}
+}
+
+func new_Case_SIGKILL_FOLLOWER() Case {
+	cc := caseByFunc{
+		rpcpbCase:     rpcpb.Case_SIGKILL_FOLLOWER,
+		injectMember:  inject_SIGKILL,
+		recoverMember: recover_SIGKILL,
+	}
+	return &caseFollower{cc, -1, -1}
+}
+
+func new_Case_SIGKILL_LEADER() Case {
+	cc := caseByFunc{
+		rpcpbCase:     rpcpb.Case_SIGKILL_LEADER,
+		injectMember:  inject_SIGKILL,
+		recoverMember: recover_SIGKILL,
+	}
+	return &caseLeader{cc, -1, -1}
 }
 
 func new_Case_SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT(clus *Cluster) Case {
