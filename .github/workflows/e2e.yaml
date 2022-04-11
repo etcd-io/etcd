@@ -4,10 +4,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         target:
-        - linux-amd64-e2e
+        - linux-amd64-e2e-release
+        - linux-amd64-e2e-ramfs
+        - linux-amd64-e2e-ext4
         - linux-386-e2e
     steps:
     - uses: actions/checkout@v2
@@ -20,12 +22,30 @@ jobs:
       run: |
         echo "${TARGET}"
         case "${TARGET}" in
-          linux-amd64-e2e)
+          linux-amd64-e2e-release)
             PASSES='build release e2e' MANUAL_VER=v3.5.0 CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./scripts/test.sh 2>&1 | tee test.log
             ! egrep "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
             ;;
           linux-386-e2e)
             GOARCH=386 PASSES='build e2e' CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./scripts/test.sh 2>&1 | tee test.log
+            ! egrep "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
+            ;;
+          linux-amd64-e2e-ramfs)
+            TESTDIR=${PWD}/ramfs
+            mkdir ${TESTDIR}
+            sudo mount -t ramfs -o size=2048m none ${TESTDIR}
+            sudo chmod 777 ${TESTDIR}
+            TMPDIR=${TESTDIR} PASSES='build e2e' CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./scripts/test.sh 2>&1 | tee test.log
+            ! egrep "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
+            ;;
+          linux-amd64-e2e-ext4)
+            TESTDIR=${PWD}/ext4
+            dd if=/dev/zero of=ext4.img bs=1M count=2048
+            mkfs.ext4 ext4.img
+            mkdir ${TESTDIR}
+            sudo mount -t ext4 -o loop ext4.img ${TESTDIR}
+            sudo chmod 777 ${TESTDIR}
+            TMPDIR=${TESTDIR} PASSES='build e2e' CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./scripts/test.sh 2>&1 | tee test.log
             ! egrep "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
             ;;
           *)

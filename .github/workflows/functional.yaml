@@ -4,10 +4,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         target:
-        - linux-amd64-functional
+        - linux-amd64-functional-ramfs
+        - linux-amd64-functional-ext4
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
@@ -19,8 +20,23 @@ jobs:
       run: |
         echo "${TARGET}"
         case "${TARGET}" in
-          linux-amd64-functional)
-            GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh && GOARCH=amd64 PASSES='functional' ./scripts/test.sh
+          linux-amd64-functional-ramfs)
+            GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+            TESTDIR=${PWD}/ramfs
+            mkdir ${TESTDIR}
+            sudo mount -t ramfs -o size=2048m none ${TESTDIR}
+            sudo chmod 777 ${TESTDIR}
+            TMPDIR=${TESTDIR} GOARCH=amd64 PASSES='functional' ./scripts/test.sh
+            ;;
+          linux-amd64-functional-ext4)
+            GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+            TESTDIR=${PWD}/ext4
+            dd if=/dev/zero of=ext4.img bs=1M count=2048
+            mkfs.ext4 ext4.img
+            mkdir ${TESTDIR}
+            sudo mount -t ext4 -o loop ext4.img ${TESTDIR}
+            sudo chmod 777 ${TESTDIR}
+            TMPDIR=${TESTDIR} GOARCH=amd64 PASSES='functional' ./scripts/test.sh
             ;;
           *)
             echo "Failed to find target"

@@ -10,6 +10,8 @@ jobs:
         - linux-amd64-integration-1-cpu
         - linux-amd64-integration-2-cpu
         - linux-amd64-integration-4-cpu
+        - linux-amd64-integration-ramfs
+        - linux-amd64-integration-ext4
         - linux-amd64-unit-4-cpu-race
         - linux-386-unit-1-cpu
     steps:
@@ -32,6 +34,24 @@ jobs:
             ;;
           linux-amd64-integration-4-cpu)
             GOARCH=amd64 CPU=4 PASSES='integration' RACE='false' ./scripts/test.sh
+            ;;
+          linux-amd64-integration-ramfs)
+            GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+            TESTDIR=${PWD}/ramfs
+            mkdir ${TESTDIR}
+            sudo mount -t ramfs -o size=2048m none ${TESTDIR}
+            sudo chmod 777 ${TESTDIR}
+            TMPDIR=${TESTDIR} GOARCH=amd64 PASSES='integration' RACE='false' ./scripts/test.sh
+            ;;
+          linux-amd64-integration-ext4)
+            GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+            TESTDIR=${PWD}/ext4
+            dd if=/dev/zero of=ext4.img bs=1M count=2048
+            mkfs.ext4 ext4.img
+            mkdir ${TESTDIR}
+            sudo mount -t ext4 -o loop ext4.img ${TESTDIR}
+            sudo chmod 777 ${TESTDIR}
+            TMPDIR=${TESTDIR} GOARCH=amd64 PASSES='integration' RACE='false' ./scripts/test.sh
             ;;
           linux-amd64-unit-4-cpu-race)
             GOARCH=amd64 PASSES='unit' RACE='true' CPU='4' ./scripts/test.sh -p=2
