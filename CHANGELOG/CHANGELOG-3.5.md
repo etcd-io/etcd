@@ -13,6 +13,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [Inconsistent revision and data occurs](https://github.com/etcd-io/etcd/pull/13908)
 - Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/13932)
 - Fix [consistent_index coming from snapshot is overwritten by the old local value](https://github.com/etcd-io/etcd/pull/13933)
+- [Update container base image snapshot](https://github.com/etcd-io/etcd/pull/13862)
 
 ### package `client/pkg/v3`
 
