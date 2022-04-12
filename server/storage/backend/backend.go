@@ -67,6 +67,9 @@ type Backend interface {
 	Defrag() error
 	ForceCommit()
 	Close() error
+
+	// SetTxPostLockInsideApplyHook sets a txPostLockInsideApplyHook.
+	SetTxPostLockInsideApplyHook(func())
 }
 
 type Snapshot interface {
@@ -119,6 +122,9 @@ type backend struct {
 
 	hooks Hooks
 
+	// txPostLockInsideApplyHook is called each time right after locking the tx.
+	txPostLockInsideApplyHook func()
+
 	lg *zap.Logger
 }
 
@@ -144,11 +150,12 @@ type BackendConfig struct {
 	Hooks Hooks
 }
 
-func DefaultBackendConfig() BackendConfig {
+func DefaultBackendConfig(lg *zap.Logger) BackendConfig {
 	return BackendConfig{
 		BatchInterval: defaultBatchInterval,
 		BatchLimit:    defaultBatchLimit,
 		MmapSize:      initialMmapSize,
+		Logger:        lg,
 	}
 }
 
@@ -156,17 +163,13 @@ func New(bcfg BackendConfig) Backend {
 	return newBackend(bcfg)
 }
 
-func NewDefaultBackend(path string) Backend {
-	bcfg := DefaultBackendConfig()
+func NewDefaultBackend(lg *zap.Logger, path string) Backend {
+	bcfg := DefaultBackendConfig(lg)
 	bcfg.Path = path
 	return newBackend(bcfg)
 }
 
 func newBackend(bcfg BackendConfig) *backend {
-	if bcfg.Logger == nil {
-		bcfg.Logger = zap.NewNop()
-	}
-
 	bopts := &bolt.Options{}
 	if boltOpenOptions != nil {
 		*bopts = *boltOpenOptions
@@ -228,6 +231,14 @@ func newBackend(bcfg BackendConfig) *backend {
 // The write result is isolated with other txs until the current one get committed.
 func (b *backend) BatchTx() BatchTx {
 	return b.batchTx
+}
+
+func (b *backend) SetTxPostLockInsideApplyHook(hook func()) {
+	// It needs to lock the batchTx, because the periodic commit
+	// may be accessing the txPostLockInsideApplyHook at the moment.
+	b.batchTx.lock()
+	defer b.batchTx.Unlock()
+	b.txPostLockInsideApplyHook = hook
 }
 
 func (b *backend) ReadTx() ReadTx { return b.readTx }
@@ -419,6 +430,8 @@ func (b *backend) run() {
 func (b *backend) Close() error {
 	close(b.stopc)
 	<-b.donec
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	return b.db.Close()
 }
 
@@ -439,7 +452,7 @@ func (b *backend) defrag() error {
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then
 	// close previous ongoing tx.
-	b.batchTx.Lock()
+	b.batchTx.LockOutsideApply()
 	defer b.batchTx.Unlock()
 
 	// lock database after lock tx to avoid deadlock.

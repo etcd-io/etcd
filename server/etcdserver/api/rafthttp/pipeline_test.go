@@ -28,8 +28,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 // TestPipelineSend tests that pipeline could send data using roundtripper
@@ -38,7 +37,7 @@ func TestPipelineSend(t *testing.T) {
 	tr := &roundTripperRecorder{rec: testutil.NewRecorderStream()}
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	tp := &Transport{pipelineRt: tr}
-	p := startTestPipeline(tp, picker)
+	p := startTestPipeline(t, tp, picker)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	tr.rec.Wait(1)
@@ -54,7 +53,7 @@ func TestPipelineKeepSendingWhenPostError(t *testing.T) {
 	tr := &respRoundTripper{rec: testutil.NewRecorderStream(), err: fmt.Errorf("roundtrip error")}
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	tp := &Transport{pipelineRt: tr}
-	p := startTestPipeline(tp, picker)
+	p := startTestPipeline(t, tp, picker)
 	defer p.stop()
 
 	for i := 0; i < 50; i++ {
@@ -71,7 +70,7 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 	rt := newRoundTripperBlocker()
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	tp := &Transport{pipelineRt: rt}
-	p := startTestPipeline(tp, picker)
+	p := startTestPipeline(t, tp, picker)
 	defer p.stop()
 
 	// keep the sender busy and make the buffer full
@@ -109,7 +108,7 @@ func TestPipelineSendFailed(t *testing.T) {
 	rt := newRespRoundTripper(0, errors.New("blah"))
 	rt.rec = testutil.NewRecorderStream()
 	tp := &Transport{pipelineRt: rt}
-	p := startTestPipeline(tp, picker)
+	p := startTestPipeline(t, tp, picker)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	if _, err := rt.rec.Wait(1); err != nil {
@@ -127,7 +126,7 @@ func TestPipelinePost(t *testing.T) {
 	tr := &roundTripperRecorder{rec: &testutil.RecorderBuffered{}}
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	tp := &Transport{ClusterID: types.ID(1), pipelineRt: tr}
-	p := startTestPipeline(tp, picker)
+	p := startTestPipeline(t, tp, picker)
 	if err := p.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpected post error: %v", err)
 	}
@@ -181,7 +180,7 @@ func TestPipelinePostBad(t *testing.T) {
 	for i, tt := range tests {
 		picker := mustNewURLPicker(t, []string{tt.u})
 		tp := &Transport{pipelineRt: newRespRoundTripper(tt.code, tt.err)}
-		p := startTestPipeline(tp, picker)
+		p := startTestPipeline(t, tp, picker)
 		err := p.post([]byte("some data"))
 		p.stop()
 
@@ -202,7 +201,7 @@ func TestPipelinePostErrorc(t *testing.T) {
 	for i, tt := range tests {
 		picker := mustNewURLPicker(t, []string{tt.u})
 		tp := &Transport{pipelineRt: newRespRoundTripper(tt.code, tt.err)}
-		p := startTestPipeline(tp, picker)
+		p := startTestPipeline(t, tp, picker)
 		p.post([]byte("some data"))
 		p.stop()
 		select {
@@ -216,7 +215,7 @@ func TestPipelinePostErrorc(t *testing.T) {
 func TestStopBlockedPipeline(t *testing.T) {
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	tp := &Transport{pipelineRt: newRoundTripperBlocker()}
-	p := startTestPipeline(tp, picker)
+	p := startTestPipeline(t, tp, picker)
 	// send many messages that most of them will be blocked in buffer
 	for i := 0; i < connPerPipeline*10; i++ {
 		p.msgc <- raftpb.Message{}
@@ -297,12 +296,12 @@ type nopReadCloser struct{}
 func (n *nopReadCloser) Read(p []byte) (int, error) { return 0, io.EOF }
 func (n *nopReadCloser) Close() error               { return nil }
 
-func startTestPipeline(tr *Transport, picker *urlPicker) *pipeline {
+func startTestPipeline(t *testing.T, tr *Transport, picker *urlPicker) *pipeline {
 	p := &pipeline{
 		peerID:        types.ID(1),
 		tr:            tr,
 		picker:        picker,
-		status:        newPeerStatus(zap.NewExample(), tr.ID, types.ID(1)),
+		status:        newPeerStatus(zaptest.NewLogger(t), tr.ID, types.ID(1)),
 		raft:          &fakeRaft{},
 		followerStats: &stats.FollowerStats{},
 		errorc:        make(chan error, 1),

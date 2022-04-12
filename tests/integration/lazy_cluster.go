@@ -77,12 +77,14 @@ func NewLazyClusterWithConfig(cfg integration.ClusterConfig) LazyCluster {
 
 func (lc *lazyCluster) mustLazyInit() {
 	lc.once.Do(func() {
+		lc.tb.Logf("LazyIniting ...")
 		var err error
 		lc.transport, err = transport.NewTransport(transport.TLSInfo{}, time.Second)
 		if err != nil {
 			log.Fatal(err)
 		}
 		lc.cluster = integration.NewCluster(lc.tb, &lc.cfg)
+		lc.tb.Logf("LazyIniting [Done]")
 	})
 }
 

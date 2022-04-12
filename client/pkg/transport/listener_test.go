@@ -28,20 +28,17 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-func createSelfCert(hosts ...string) (*TLSInfo, func(), error) {
-	return createSelfCertEx("127.0.0.1")
+func createSelfCert(t *testing.T, hosts ...string) (*TLSInfo, error) {
+	return createSelfCertEx(t, "127.0.0.1")
 }
 
-func createSelfCertEx(host string, additionalUsages ...x509.ExtKeyUsage) (*TLSInfo, func(), error) {
-	d, terr := os.MkdirTemp("", "etcd-test-tls-")
-	if terr != nil {
-		return nil, nil, terr
-	}
+func createSelfCertEx(t *testing.T, host string, additionalUsages ...x509.ExtKeyUsage) (*TLSInfo, error) {
+	d := t.TempDir()
 	info, err := SelfCert(zap.NewExample(), d, []string{host + ":0"}, 1, additionalUsages...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return &info, func() { os.RemoveAll(d) }, nil
+	return &info, nil
 }
 
 func fakeCertificateParserFunc(cert tls.Certificate, err error) func(certPEMBlock, keyPEMBlock []byte) (tls.Certificate, error) {
@@ -53,20 +50,18 @@ func fakeCertificateParserFunc(cert tls.Certificate, err error) func(certPEMBloc
 // TestNewListenerTLSInfo tests that NewListener with valid TLSInfo returns
 // a TLS listener that accepts TLS connections.
 func TestNewListenerTLSInfo(t *testing.T) {
-	tlsInfo, del, err := createSelfCert()
+	tlsInfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 	testNewListenerTLSInfoAccept(t, *tlsInfo)
 }
 
 func TestNewListenerWithOpts(t *testing.T) {
-	tlsInfo, del, err := createSelfCert()
+	tlsInfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 
 	tests := map[string]struct {
 		opts        []ListenerOption
@@ -124,11 +119,10 @@ func TestNewListenerWithOpts(t *testing.T) {
 }
 
 func TestNewListenerWithSocketOpts(t *testing.T) {
-	tlsInfo, del, err := createSelfCert()
+	tlsInfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 
 	tests := map[string]struct {
 		opts        []ListenerOption
@@ -257,21 +251,19 @@ func TestNewListenerTLSInfoSkipClientSANVerify(t *testing.T) {
 }
 
 func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientSANVerify, goodClientHost, acceptExpected bool) {
-	tlsInfo, del, err := createSelfCert()
+	tlsInfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 
 	host := "127.0.0.222"
 	if goodClientHost {
 		host = "127.0.0.1"
 	}
-	clientTLSInfo, del2, err := createSelfCertEx(host, x509.ExtKeyUsageClientAuth)
+	clientTLSInfo, err := createSelfCertEx(t, host, x509.ExtKeyUsageClientAuth)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del2()
 
 	tlsInfo.SkipClientSANVerify = skipClientSANVerify
 	tlsInfo.TrustedCAFile = clientTLSInfo.CertFile
@@ -344,11 +336,10 @@ func TestNewListenerTLSEmptyInfo(t *testing.T) {
 }
 
 func TestNewTransportTLSInfo(t *testing.T) {
-	tlsinfo, del, err := createSelfCert()
+	tlsinfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 
 	tests := []TLSInfo{
 		{},
@@ -416,11 +407,10 @@ func TestTLSInfoEmpty(t *testing.T) {
 }
 
 func TestTLSInfoMissingFields(t *testing.T) {
-	tlsinfo, del, err := createSelfCert()
+	tlsinfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 
 	tests := []TLSInfo{
 		{CertFile: tlsinfo.CertFile},
@@ -441,11 +431,10 @@ func TestTLSInfoMissingFields(t *testing.T) {
 }
 
 func TestTLSInfoParseFuncError(t *testing.T) {
-	tlsinfo, del, err := createSelfCert()
+	tlsinfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 
 	tests := []struct {
 		info TLSInfo
@@ -474,11 +463,10 @@ func TestTLSInfoParseFuncError(t *testing.T) {
 
 func TestTLSInfoConfigFuncs(t *testing.T) {
 	ln := zaptest.NewLogger(t)
-	tlsinfo, del, err := createSelfCert()
+	tlsinfo, err := createSelfCert(t)
 	if err != nil {
 		t.Fatalf("unable to create cert: %v", err)
 	}
-	defer del()
 
 	tests := []struct {
 		info       TLSInfo
@@ -531,11 +519,7 @@ func TestNewListenerUnixSocket(t *testing.T) {
 
 // TestNewListenerTLSInfoSelfCert tests that a new certificate accepts connections.
 func TestNewListenerTLSInfoSelfCert(t *testing.T) {
-	tmpdir, err := os.MkdirTemp(os.TempDir(), "tlsdir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpdir)
+	tmpdir := t.TempDir()
 	tlsinfo, err := SelfCert(zap.NewExample(), tmpdir, []string{"127.0.0.1"}, 1)
 	if err != nil {
 		t.Fatal(err)

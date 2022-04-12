@@ -256,7 +256,7 @@ type EtcdServer struct {
 
 	kv         mvcc.WatchableKV
 	lessor     lease.Lessor
-	bemu       sync.Mutex
+	bemu       sync.RWMutex
 	be         backend.Backend
 	beHooks    *serverstorage.BackendHooks
 	authStore  auth.AuthStore
@@ -291,6 +291,9 @@ type EtcdServer struct {
 	clusterVersionChanged *notify.Notifier
 
 	*AccessController
+	// forceSnapshot can force snapshot be triggered after apply, independent of the snapshotCount.
+	// Should only be set within apply code path. Used to force snapshot after cluster version downgrade.
+	forceSnapshot bool
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -397,6 +400,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			srv.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseCheckpoint: cp})
 		})
 	}
+
+	// Set the hook after EtcdServer finishes the initialization to avoid
+	// the hook being called during the initialization process.
+	srv.be.SetTxPostLockInsideApplyHook(srv.getTxPostLockInsideApplyHook())
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
@@ -511,9 +518,7 @@ func (s *EtcdServer) adjustTicks() {
 func (s *EtcdServer) Start() {
 	s.start()
 	s.GoAttach(func() { s.adjustTicks() })
-	// TODO: Switch to publishV3 in 3.6.
-	// Support for cluster_member_set_attr was added in 3.5.
-	s.GoAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
+	s.GoAttach(func() { s.publishV3(s.Cfg.ReqTimeout()) })
 	s.GoAttach(s.purgeFile)
 	s.GoAttach(func() { monitorFileDescriptor(s.Logger(), s.stopping) })
 	s.GoAttach(s.monitorClusterVersions)
@@ -960,6 +965,13 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
 
+	// We need to set the backend to consistIndex before recovering the lessor,
+	// because lessor.Recover will commit the boltDB transaction, accordingly it
+	// will get the old consistent_index persisted into the db in OnPreCommitUnsafe.
+	// Eventually the new consistent_index value coming from snapshot is overwritten
+	// by the old value.
+	s.consistIndex.SetBackend(newbe)
+
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	if s.lessor != nil {
@@ -976,7 +988,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		lg.Panic("failed to restore mvcc store", zap.Error(err))
 	}
 
-	s.consistIndex.SetBackend(newbe)
+	newbe.SetTxPostLockInsideApplyHook(s.getTxPostLockInsideApplyHook())
+
 	lg.Info("restored mvcc store", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
 
 	// Closing old backend might block until all the txns
@@ -1081,10 +1094,9 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 }
 
 func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
-	if ep.appliedi-ep.snapi <= s.Cfg.SnapshotCount {
+	if !s.shouldSnapshot(ep) {
 		return
 	}
-
 	lg := s.Logger()
 	lg.Info(
 		"triggering snapshot",
@@ -1092,10 +1104,16 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 		zap.Uint64("local-member-applied-index", ep.appliedi),
 		zap.Uint64("local-member-snapshot-index", ep.snapi),
 		zap.Uint64("local-member-snapshot-count", s.Cfg.SnapshotCount),
+		zap.Bool("snapshot-forced", s.forceSnapshot),
 	)
+	s.forceSnapshot = false
 
 	s.snapshot(ep.appliedi, ep.confState)
 	ep.snapi = ep.appliedi
+}
+
+func (s *EtcdServer) shouldSnapshot(ep *etcdProgress) bool {
+	return (s.forceSnapshot && ep.appliedi != ep.snapi) || (ep.appliedi-ep.snapi > s.Cfg.SnapshotCount)
 }
 
 func (s *EtcdServer) hasMultipleVotingMembers() bool {
@@ -1698,69 +1716,6 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 	}
 }
 
-// publish registers server information into the cluster. The information
-// is the JSON representation of this server's member struct, updated with the
-// static clientURLs of the server.
-// The function keeps attempting to register until it succeeds,
-// or its server is stopped.
-//
-// Use v2 store to encode member attributes, and apply through Raft
-// but does not go through v2 API endpoint, which means cluster can still
-// process publish requests through rafthttp
-// TODO: Remove in 3.6 (start using publishV3)
-func (s *EtcdServer) publish(timeout time.Duration) {
-	lg := s.Logger()
-	b, err := json.Marshal(s.attributes)
-	if err != nil {
-		lg.Panic("failed to marshal JSON", zap.Error(err))
-		return
-	}
-	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.MemberAttributesStorePath(s.id),
-		Val:    string(b),
-	}
-
-	for {
-		ctx, cancel := context.WithTimeout(s.ctx, timeout)
-		_, err := s.Do(ctx, req)
-		cancel()
-		switch err {
-		case nil:
-			close(s.readych)
-			lg.Info(
-				"published local member to cluster through raft",
-				zap.String("local-member-id", s.ID().String()),
-				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
-				zap.String("request-path", req.Path),
-				zap.String("cluster-id", s.cluster.ID().String()),
-				zap.Duration("publish-timeout", timeout),
-			)
-			return
-
-		case ErrStopped:
-			lg.Warn(
-				"stopped publish because server is stopped",
-				zap.String("local-member-id", s.ID().String()),
-				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
-				zap.Duration("publish-timeout", timeout),
-				zap.Error(err),
-			)
-			return
-
-		default:
-			lg.Warn(
-				"failed to publish local member to cluster through raft",
-				zap.String("local-member-id", s.ID().String()),
-				zap.String("local-member-attributes", fmt.Sprintf("%+v", s.attributes)),
-				zap.String("request-path", req.Path),
-				zap.Duration("publish-timeout", timeout),
-				zap.Error(err),
-			)
-		}
-	}
-}
-
 func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 	atomic.AddInt64(&s.inflightSnapshots, 1)
 
@@ -1828,7 +1783,7 @@ func (s *EtcdServer) apply(
 
 			// set the consistent index of current executing entry
 			if e.Index > s.consistIndex.ConsistentIndex() {
-				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+				s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
 				shouldApplyV3 = membership.ApplyBoth
 			}
 
@@ -1855,10 +1810,18 @@ func (s *EtcdServer) apply(
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
+	applyV3Performed := false
+	defer func() {
+		// The txPostLock callback will not get called in this case,
+		// so we should set the consistent index directly.
+		if s.consistIndex != nil && !applyV3Performed && membership.ApplyBoth == shouldApplyV3 {
+			s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+		}
+	}()
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
-		s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+		s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
 		shouldApplyV3 = membership.ApplyBoth
 	}
 	s.lg.Debug("apply entry normal",
@@ -1910,6 +1873,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
+		applyV3Performed = true
 		ar = s.applyV3.Apply(&raftReq, shouldApplyV3)
 	}
 
@@ -1952,6 +1916,13 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
+
+		// The txPostLock callback will not get called in this case,
+		// so we should set the consistent index directly.
+		if s.consistIndex != nil && membership.ApplyBoth == shouldApplyV3 {
+			applyingIndex, applyingTerm := s.consistIndex.ConsistentApplyingIndex()
+			s.consistIndex.SetConsistentIndex(applyingIndex, applyingTerm)
+		}
 		return false, err
 	}
 
@@ -2124,7 +2095,7 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 
 // monitorClusterVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.
 func (s *EtcdServer) monitorClusterVersions() {
-	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
+	monitor := serverversion.NewMonitor(s.Logger(), NewServerVersionAdapter(s))
 	for {
 		select {
 		case <-s.firstCommitInTerm.Receive():
@@ -2142,7 +2113,7 @@ func (s *EtcdServer) monitorClusterVersions() {
 
 // monitorStorageVersion every monitorVersionInterval updates storage version if needed.
 func (s *EtcdServer) monitorStorageVersion() {
-	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
+	monitor := serverversion.NewMonitor(s.Logger(), NewServerVersionAdapter(s))
 	for {
 		select {
 		case <-time.After(monitorVersionInterval):
@@ -2232,7 +2203,7 @@ func (s *EtcdServer) updateClusterVersionV3(ver string) {
 
 // monitorDowngrade every DowngradeCheckTime checks if it's the leader and cancels downgrade if needed.
 func (s *EtcdServer) monitorDowngrade() {
-	monitor := serverversion.NewMonitor(s.Logger(), newServerVersionAdapter(s))
+	monitor := serverversion.NewMonitor(s.Logger(), NewServerVersionAdapter(s))
 	t := s.Cfg.DowngradeCheckTime
 	if t == 0 {
 		return
@@ -2286,8 +2257,8 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 
 func (s *EtcdServer) KV() mvcc.WatchableKV { return s.kv }
 func (s *EtcdServer) Backend() backend.Backend {
-	s.bemu.Lock()
-	defer s.bemu.Unlock()
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
 	return s.be
 }
 
@@ -2351,5 +2322,14 @@ func (s *EtcdServer) raftStatus() raft.Status {
 }
 
 func (s *EtcdServer) Version() *serverversion.Manager {
-	return serverversion.NewManager(s.Logger(), newServerVersionAdapter(s))
+	return serverversion.NewManager(s.Logger(), NewServerVersionAdapter(s))
+}
+
+func (s *EtcdServer) getTxPostLockInsideApplyHook() func() {
+	return func() {
+		applyingIdx, applyingTerm := s.consistIndex.ConsistentApplyingIndex()
+		if applyingIdx > s.consistIndex.UnsafeConsistentIndex() {
+			s.consistIndex.SetConsistentIndex(applyingIdx, applyingTerm)
+		}
+	}
 }

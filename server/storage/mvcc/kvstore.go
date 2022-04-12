@@ -121,7 +121,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 	}
 
 	tx := s.b.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	tx.UnsafeCreateBucket(schema.Key)
 	schema.UnsafeCreateMetaBucket(tx)
 	tx.Unlock()
@@ -330,7 +330,7 @@ func (s *store) restore() error {
 	keyToLease := make(map[string]lease.LeaseID)
 
 	// restore index
-	tx := s.b.BatchTx()
+	tx := s.b.ReadTx()
 	tx.Lock()
 
 	finishedCompact, found := UnsafeReadFinishedCompact(tx)
@@ -500,9 +500,6 @@ func (s *store) setupMetricsReporter() {
 	reportDbTotalSizeInBytesMu.Lock()
 	reportDbTotalSizeInBytes = func() float64 { return float64(b.Size()) }
 	reportDbTotalSizeInBytesMu.Unlock()
-	reportDbTotalSizeInBytesDebugMu.Lock()
-	reportDbTotalSizeInBytesDebug = func() float64 { return float64(b.Size()) }
-	reportDbTotalSizeInBytesDebugMu.Unlock()
 	reportDbTotalSizeInUseInBytesMu.Lock()
 	reportDbTotalSizeInUseInBytes = func() float64 { return float64(b.SizeInUse()) }
 	reportDbTotalSizeInUseInBytesMu.Unlock()

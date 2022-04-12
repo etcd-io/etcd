@@ -174,6 +174,7 @@ func TestV3AlarmDeactivate(t *testing.T) {
 
 func TestV3CorruptAlarm(t *testing.T) {
 	integration.BeforeTest(t)
+	lg := zaptest.NewLogger(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
@@ -192,8 +193,8 @@ func TestV3CorruptAlarm(t *testing.T) {
 	// Corrupt member 0 by modifying backend offline.
 	clus.Members[0].Stop(t)
 	fp := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
-	be := backend.NewDefaultBackend(fp)
-	s := mvcc.NewStore(zaptest.NewLogger(t), be, nil, mvcc.StoreConfig{})
+	be := backend.NewDefaultBackend(lg, fp)
+	s := mvcc.NewStore(lg, be, nil, mvcc.StoreConfig{})
 	// NOTE: cluster_proxy mode with namespacing won't set 'k', but namespace/'k'.
 	s.Put([]byte("abc"), []byte("def"), 0)
 	s.Put([]byte("xyz"), []byte("123"), 0)
@@ -258,6 +259,7 @@ func TestV3CorruptAlarm(t *testing.T) {
 
 func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	integration.BeforeTest(t)
+	lg := zaptest.NewLogger(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{
 		CorruptCheckTime:       time.Second,
 		Size:                   3,
@@ -299,9 +301,8 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	// Corrupt member 2 by modifying backend lease bucket offline.
 	clus.Members[2].Stop(t)
 	fp := filepath.Join(clus.Members[2].DataDir, "member", "snap", "db")
-	bcfg := backend.DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig(lg)
 	bcfg.Path = fp
-	bcfg.Logger = zaptest.NewLogger(t)
 	be := backend.New(bcfg)
 
 	olpb := leasepb.Lease{ID: int64(1), TTL: 60}

@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestLeaseBackend(t *testing.T) {
@@ -86,6 +87,7 @@ func TestLeaseBackend(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			tx := be.BatchTx()
 			tx.Lock()
@@ -96,7 +98,7 @@ func TestLeaseBackend(t *testing.T) {
 			be.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(tmpPath)
+			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
 			leases := MustUnsafeGetAllLeases(be2.ReadTx())
 

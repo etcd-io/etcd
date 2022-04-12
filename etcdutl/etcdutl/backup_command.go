@@ -308,7 +308,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 		}
 	}
 
-	be := backend.NewDefaultBackend(destDB)
+	be := backend.NewDefaultBackend(lg, destDB)
 	defer be.Close()
 	ms := schema.NewMembershipBackend(lg, be)
 	if err := ms.TrimClusterFromBackend(); err != nil {
@@ -322,10 +322,10 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 
 	if !v3 {
 		tx := be.BatchTx()
-		tx.Lock()
+		tx.LockOutsideApply()
 		defer tx.Unlock()
 		schema.UnsafeCreateMetaBucket(tx)
-		schema.UnsafeUpdateConsistentIndex(tx, idx, term, false)
+		schema.UnsafeUpdateConsistentIndex(tx, idx, term)
 	} else {
 		// Thanks to translateWAL not moving entries, but just replacing them with
 		// 'empty', there is no need to update the consistency index.

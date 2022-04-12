@@ -29,9 +29,9 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v2"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/jonboulle/clockwork"
-	"go.uber.org/zap"
 )
 
 const (
@@ -39,7 +39,7 @@ const (
 )
 
 func TestNewProxyFuncUnset(t *testing.T) {
-	pf, err := newProxyFunc(zap.NewExample(), "")
+	pf, err := newProxyFunc(zaptest.NewLogger(t), "")
 	if pf != nil {
 		t.Fatal("unexpected non-nil proxyFunc")
 	}
@@ -54,7 +54,7 @@ func TestNewProxyFuncBad(t *testing.T) {
 		"http://foo.com/%1",
 	}
 	for i, in := range tests {
-		pf, err := newProxyFunc(zap.NewExample(), in)
+		pf, err := newProxyFunc(zaptest.NewLogger(t), in)
 		if pf != nil {
 			t.Errorf("#%d: unexpected non-nil proxyFunc", i)
 		}
@@ -70,7 +70,7 @@ func TestNewProxyFunc(t *testing.T) {
 		"http://disco.foo.bar": "http://disco.foo.bar",
 	}
 	for in, w := range tests {
-		pf, err := newProxyFunc(zap.NewExample(), in)
+		pf, err := newProxyFunc(zaptest.NewLogger(t), in)
 		if pf == nil {
 			t.Errorf("%s: unexpected nil proxyFunc", in)
 			continue
@@ -197,12 +197,12 @@ func TestCheckCluster(t *testing.T) {
 			})
 		}
 		c := &clientWithResp{rs: rs}
-		dBase := newTestDiscovery(cluster, 1, c)
+		dBase := newTestDiscovery(t, cluster, 1, c)
 
 		cRetry := &clientWithRetry{failTimes: 3}
 		cRetry.rs = rs
 		fc := clockwork.NewFakeClock()
-		dRetry := newTestDiscoveryWithClock(cluster, 1, cRetry, fc)
+		dRetry := newTestDiscoveryWithClock(t, cluster, 1, cRetry, fc)
 
 		for _, d := range []*discovery{dBase, dRetry} {
 			go func() {
@@ -267,7 +267,7 @@ func TestWaitNodes(t *testing.T) {
 	for i, tt := range tests {
 		// Basic case
 		c := &clientWithResp{rs: nil, w: &watcherWithResp{rs: tt.rs}}
-		dBase := newTestDiscovery("1000", 1, c)
+		dBase := newTestDiscovery(t, "1000", 1, c)
 
 		// Retry case
 		var retryScanResp []*client.Response
@@ -289,7 +289,7 @@ func TestWaitNodes(t *testing.T) {
 			w:  &watcherWithRetry{rs: tt.rs, failTimes: 2},
 		}
 		fc := clockwork.NewFakeClock()
-		dRetry := newTestDiscoveryWithClock("1000", 1, cRetry, fc)
+		dRetry := newTestDiscoveryWithClock(t, "1000", 1, cRetry, fc)
 
 		for _, d := range []*discovery{dBase, dRetry} {
 			go func() {
@@ -335,7 +335,7 @@ func TestCreateSelf(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		d := newTestDiscovery("1000", 1, tt.c)
+		d := newTestDiscovery(t, "1000", 1, tt.c)
 		if err := d.createSelf(""); err != tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, err, nil)
 		}
@@ -428,7 +428,7 @@ func TestRetryFailure(t *testing.T) {
 	cluster := "1000"
 	c := &clientWithRetry{failTimes: 4}
 	fc := clockwork.NewFakeClock()
-	d := newTestDiscoveryWithClock(cluster, 1, c, fc)
+	d := newTestDiscoveryWithClock(t, cluster, 1, c, fc)
 	go func() {
 		for i := uint(1); i <= maxRetryInTest; i++ {
 			fc.BlockUntil(1)
@@ -551,9 +551,9 @@ func (w *watcherWithRetry) Next(context.Context) (*client.Response, error) {
 	return r, nil
 }
 
-func newTestDiscovery(cluster string, id types.ID, c client.KeysAPI) *discovery {
+func newTestDiscovery(t *testing.T, cluster string, id types.ID, c client.KeysAPI) *discovery {
 	return &discovery{
-		lg:      zap.NewExample(),
+		lg:      zaptest.NewLogger(t),
 		cluster: cluster,
 		id:      id,
 		c:       c,
@@ -561,9 +561,9 @@ func newTestDiscovery(cluster string, id types.ID, c client.KeysAPI) *discovery 
 	}
 }
 
-func newTestDiscoveryWithClock(cluster string, id types.ID, c client.KeysAPI, clock clockwork.Clock) *discovery {
+func newTestDiscoveryWithClock(t *testing.T, cluster string, id types.ID, c client.KeysAPI, clock clockwork.Clock) *discovery {
 	return &discovery{
-		lg:      zap.NewExample(),
+		lg:      zaptest.NewLogger(t),
 		cluster: cluster,
 		id:      id,
 		c:       c,

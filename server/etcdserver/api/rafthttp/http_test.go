@@ -31,8 +31,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestServeRaftPrefix(t *testing.T) {
@@ -153,7 +152,7 @@ func TestServeRaftPrefix(t *testing.T) {
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		req.Header.Set("X-Server-Version", version.Version)
 		rw := httptest.NewRecorder()
-		h := newPipelineHandler(&Transport{Logger: zap.NewExample()}, tt.p, types.ID(0))
+		h := newPipelineHandler(&Transport{Logger: zaptest.NewLogger(t)}, tt.p, types.ID(0))
 
 		// goroutine because the handler panics to disconnect on raft error
 		donec := make(chan struct{})

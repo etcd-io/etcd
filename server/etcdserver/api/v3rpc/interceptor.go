@@ -50,7 +50,7 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 		}
 
 		if s.IsMemberExist(s.ID()) && s.IsLearner() && !isRPCSupportedForLearner(req) {
-			return nil, rpctypes.ErrGPRCNotSupportedForLearner
+			return nil, rpctypes.ErrGRPCNotSupportedForLearner
 		}
 
 		md, ok := metadata.FromIncomingContext(ctx)
@@ -219,7 +219,7 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 		}
 
 		if s.IsMemberExist(s.ID()) && s.IsLearner() && info.FullMethod != snapshotMethod { // learner does not support stream RPC except Snapshot
-			return rpctypes.ErrGPRCNotSupportedForLearner
+			return rpctypes.ErrGRPCNotSupportedForLearner
 		}
 
 		md, ok := metadata.FromIncomingContext(ss.Context())

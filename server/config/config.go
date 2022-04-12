@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/netutil"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
@@ -34,12 +35,15 @@ import (
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
-	Name           string
+	Name string
+
 	DiscoveryURL   string
 	DiscoveryProxy string
-	ClientURLs     types.URLs
-	PeerURLs       types.URLs
-	DataDir        string
+	DiscoveryCfg   v3discovery.DiscoveryConfig
+
+	ClientURLs types.URLs
+	PeerURLs   types.URLs
+	DataDir    string
 	// DedicatedWALDir config will make the etcd to write the WAL to the WALDir
 	// rather than the dataDir/member/wal.
 	DedicatedWALDir string
@@ -304,7 +308,9 @@ func (c *ServerConfig) WALDir() string {
 
 func (c *ServerConfig) SnapDir() string { return filepath.Join(c.MemberDir(), "snap") }
 
-func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
+func (c *ServerConfig) ShouldDiscover() bool {
+	return c.DiscoveryURL != "" || len(c.DiscoveryCfg.Endpoints) > 0
+}
 
 // ReqTimeout returns timeout for request to finish.
 func (c *ServerConfig) ReqTimeout() time.Duration {

@@ -61,21 +61,15 @@ func SpawnWithExpectLines(args []string, envVars map[string]string, xs ...string
 	// process until either stdout or stderr contains
 	// the expected string
 	var (
-		lines    []string
-		lineFunc = func(txt string) bool { return true }
+		lines []string
 	)
 	for _, txt := range xs {
-		for {
-			l, lerr := proc.ExpectFunc(lineFunc)
-			if lerr != nil {
-				proc.Close()
-				return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)
-			}
-			lines = append(lines, l)
-			if strings.Contains(l, txt) {
-				break
-			}
+		l, lerr := proc.Expect(txt)
+		if lerr != nil {
+			proc.Close()
+			return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)
 		}
+		lines = append(lines, l)
 	}
 	perr := proc.Close()
 	l := proc.LineCount()
@@ -117,20 +111,6 @@ func ToTLS(s string) string {
 
 func SkipInShortMode(t testing.TB) {
 	testutil.SkipTestIfShortMode(t, "e2e tests are not running in --short mode")
-}
-
-func ExecuteWithTimeout(t *testing.T, timeout time.Duration, f func()) {
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		f()
-	}()
-
-	select {
-	case <-time.After(timeout):
-		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
-	case <-donec:
-	}
 }
 
 func mergeEnvVariables(envVars map[string]string) []string {

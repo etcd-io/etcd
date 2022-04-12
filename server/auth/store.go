@@ -196,6 +196,7 @@ type TokenProvider interface {
 type AuthBackend interface {
 	CreateAuthBuckets()
 	ForceCommit()
+	ReadTx() AuthReadTx
 	BatchTx() AuthBatchTx
 
 	GetUser(string) *authpb.User
@@ -345,7 +346,7 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 	// CompareHashAndPassword is very expensive, so we use closures
 	// to avoid putting it in the critical section of the tx lock.
 	revision, err := func() (uint64, error) {
-		tx := as.be.BatchTx()
+		tx := as.be.ReadTx()
 		tx.Lock()
 		defer tx.Unlock()
 
@@ -373,7 +374,7 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 
 func (as *authStore) Recover(be AuthBackend) {
 	as.be = be
-	tx := be.BatchTx()
+	tx := be.ReadTx()
 	tx.Lock()
 
 	enabled := tx.UnsafeReadAuthEnabled()
@@ -855,7 +856,7 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 		return ErrAuthOldRevision
 	}
 
-	tx := as.be.BatchTx()
+	tx := as.be.ReadTx()
 	tx.Lock()
 	defer tx.Unlock()
 
@@ -897,7 +898,10 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 		return ErrUserEmpty
 	}
 
-	u := as.be.GetUser(authInfo.Username)
+	tx := as.be.ReadTx()
+	tx.Lock()
+	defer tx.Unlock()
+	u := tx.UnsafeGetUser(authInfo.Username)
 
 	if u == nil {
 		return ErrUserNotFound
@@ -935,6 +939,8 @@ func NewAuthStore(lg *zap.Logger, be AuthBackend, tp TokenProvider, bcryptCost i
 
 	be.CreateAuthBuckets()
 	tx := be.BatchTx()
+	// We should call LockOutsideApply here, but the txPostLockHoos isn't set
+	// to EtcdServer yet, so it's OK.
 	tx.Lock()
 	enabled := tx.UnsafeReadAuthEnabled()
 	as := &authStore{

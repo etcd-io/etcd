@@ -20,17 +20,19 @@ package etcdserver
 import (
 	"encoding/json"
 	"fmt"
-	bolt "go.etcd.io/bbolt"
-	"go.etcd.io/etcd/server/v3/storage/datadir"
-	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
@@ -41,7 +43,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.uber.org/zap"
 )
 
 func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
@@ -95,7 +96,7 @@ func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
 			cfg := config.ServerConfig{
 				Name:                    "node0",
 				InitialPeerURLsMap:      cluster,
-				Logger:                  zap.NewExample(),
+				Logger:                  zaptest.NewLogger(t),
 				ExperimentalMaxLearners: tt.maxLearner,
 			}
 			_, err = bootstrapExistingClusterNoWAL(cfg, mockBootstrapRoundTrip(tt.members))
@@ -184,7 +185,7 @@ func TestBootstrapBackend(t *testing.T) {
 				Name:                "demoNode",
 				DataDir:             dataDir,
 				BackendFreelistType: bolt.FreelistArrayType,
-				Logger:              zap.NewExample(),
+				Logger:              zaptest.NewLogger(t),
 			}
 
 			if tt.prepareData != nil {
@@ -287,7 +288,7 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 	// create snapshot db file: "%016x.snap.db"
 	be := serverstorage.OpenBackend(cfg, nil)
 	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm, false)
+	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm)
 	schema.MustUnsafeSaveConfStateToBackend(cfg.Logger, be.BatchTx(), &confState)
 	if err = be.Close(); err != nil {
 		return
@@ -300,6 +301,6 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 	// create backend db file
 	be = serverstorage.OpenBackend(cfg, nil)
 	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1, false)
+	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1)
 	return be.Close()
 }

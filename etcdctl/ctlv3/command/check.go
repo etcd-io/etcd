@@ -158,7 +158,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	cc := clientConfigFromCmd(cmd)
 	clients := make([]*v3.Client, cfg.clients)
 	for i := 0; i < cfg.clients; i++ {
-		clients[i] = cc.mustClient()
+		clients[i] = mustClient(cc)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.duration)*time.Second)
@@ -331,7 +331,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	cc := clientConfigFromCmd(cmd)
 	clients := make([]*v3.Client, cfg.clients)
 	for i := 0; i < cfg.clients; i++ {
-		clients[i] = cc.mustClient()
+		clients[i] = mustClient(cc)
 	}
 
 	// get endpoints

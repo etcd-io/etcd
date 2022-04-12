@@ -15,24 +15,12 @@
 package e2e
 
 import (
-	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.etcd.io/etcd/server/v3/verify"
 )
 
 func BeforeTest(t testing.TB) {
 	SkipInShortMode(t)
-	testutil.RegisterLeakDetection(t)
-	os.Setenv(verify.ENV_VERIFY, verify.ENV_VERIFY_ALL_VALUE)
-
-	path, err := os.Getwd()
-	assert.NoError(t, err)
-	tempDir := t.TempDir()
-	assert.NoError(t, os.Chdir(tempDir))
-	t.Logf("Changing working directory to: %s", tempDir)
-
-	t.Cleanup(func() { assert.NoError(t, os.Chdir(path)) })
+	testutil.BeforeTest(t)
 }

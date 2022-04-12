@@ -1,5 +1,5 @@
 TMP_DOCKERFILE:=$(shell mktemp)
-GO_VERSION ?= 1.17.2
+GO_VERSION ?= 1.17.8
 TMP_DIR_MOUNT_FLAG = --tmpfs=/tmp:exec
 ifdef HOST_TMP_DIR
 	TMP_DIR_MOUNT_FLAG = --mount type=bind,source=$(HOST_TMP_DIR),destination=/tmp

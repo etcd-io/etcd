@@ -75,6 +75,7 @@ func (o *migrateOptions) AddFlags(cmd *cobra.Command) {
 func (o *migrateOptions) Config() (*migrateConfig, error) {
 	c := &migrateConfig{
 		force: o.force,
+		lg:    GetLogger(),
 	}
 	var err error
 	dotCount := strings.Count(o.targetVersion, ".")
@@ -83,17 +84,17 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	}
 	c.targetVersion, err = semver.NewVersion(o.targetVersion + ".0")
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse target version: %w", err)
+		return nil, fmt.Errorf("failed to parse target version: %v", err)
 	}
 	if c.targetVersion.LessThan(schema.V3_5) {
 		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5"`, storageVersionToString(c.targetVersion))
 	}
 
 	dbPath := datadir.ToBackendFileName(o.dataDir)
-	c.be = backend.NewDefaultBackend(dbPath)
+	c.be = backend.NewDefaultBackend(GetLogger(), dbPath)
 
 	walPath := datadir.ToWalDir(o.dataDir)
-	w, err := wal.OpenForRead(GetLogger(), walPath, walpb.Snapshot{})
+	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{})
 	if err != nil {
 		return nil, fmt.Errorf(`failed to open wal: %v`, err)
 	}
@@ -107,6 +108,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 }
 
 type migrateConfig struct {
+	lg            *zap.Logger
 	be            backend.Backend
 	targetVersion *semver.Version
 	walVersion    schema.WALVersion
@@ -115,31 +117,30 @@ type migrateConfig struct {
 
 func migrateCommandFunc(c *migrateConfig) error {
 	defer c.be.Close()
-	lg := GetLogger()
 	tx := c.be.BatchTx()
-	current, err := schema.DetectSchemaVersion(lg, tx)
+	current, err := schema.DetectSchemaVersion(c.lg, c.be.ReadTx())
 	if err != nil {
-		lg.Error("failed to detect storage version. Please make sure you are using data dir from etcd v3.5 and older")
+		c.lg.Error("failed to detect storage version. Please make sure you are using data dir from etcd v3.5 and older")
 		return err
 	}
 	if current == *c.targetVersion {
-		lg.Info("storage version up-to-date", zap.String("storage-version", storageVersionToString(&current)))
+		c.lg.Info("storage version up-to-date", zap.String("storage-version", storageVersionToString(&current)))
 		return nil
 	}
-	err = schema.Migrate(lg, tx, c.walVersion, *c.targetVersion)
+	err = schema.Migrate(c.lg, tx, c.walVersion, *c.targetVersion)
 	if err != nil {
 		if !c.force {
 			return err
 		}
-		lg.Info("normal migrate failed, trying with force", zap.Error(err))
-		migrateForce(lg, tx, c.targetVersion)
+		c.lg.Info("normal migrate failed, trying with force", zap.Error(err))
+		migrateForce(c.lg, tx, c.targetVersion)
 	}
 	c.be.ForceCommit()
 	return nil
 }
 
 func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	// Storage version is only supported since v3.6
 	if target.LessThan(schema.V3_6) {

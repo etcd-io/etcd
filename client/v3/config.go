@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -89,4 +90,94 @@ type Config struct {
 	PermitWithoutStream bool `json:"permit-without-stream"`
 
 	// TODO: support custom balancer picker
+}
+
+// ConfigSpec is the configuration from users, which comes from command-line flags,
+// environment variables or config file. It is a fully declarative configuration,
+// and can be serialized & deserialized to/from JSON.
+type ConfigSpec struct {
+	Endpoints        []string      `json:"endpoints"`
+	RequestTimeout   time.Duration `json:"request-timeout"`
+	DialTimeout      time.Duration `json:"dial-timeout"`
+	KeepAliveTime    time.Duration `json:"keepalive-time"`
+	KeepAliveTimeout time.Duration `json:"keepalive-timeout"`
+	Secure           *SecureConfig `json:"secure"`
+	Auth             *AuthConfig   `json:"auth"`
+}
+
+type SecureConfig struct {
+	Cert       string `json:"cert"`
+	Key        string `json:"key"`
+	Cacert     string `json:"cacert"`
+	ServerName string `json:"server-name"`
+
+	InsecureTransport  bool `json:"insecure-transport"`
+	InsecureSkipVerify bool `json:"insecure-skip-tls-verify"`
+}
+
+type AuthConfig struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// NewClientConfig creates a Config based on the provided ConfigSpec.
+func NewClientConfig(confSpec *ConfigSpec, lg *zap.Logger) (*Config, error) {
+	tlsCfg, err := newTLSConfig(confSpec.Secure, lg)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &Config{
+		Endpoints:            confSpec.Endpoints,
+		DialTimeout:          confSpec.DialTimeout,
+		DialKeepAliveTime:    confSpec.KeepAliveTime,
+		DialKeepAliveTimeout: confSpec.KeepAliveTimeout,
+		TLS:                  tlsCfg,
+	}
+
+	if confSpec.Auth != nil {
+		cfg.Username = confSpec.Auth.Username
+		cfg.Password = confSpec.Auth.Password
+	}
+
+	return cfg, nil
+}
+
+func newTLSConfig(scfg *SecureConfig, lg *zap.Logger) (*tls.Config, error) {
+	var (
+		tlsCfg *tls.Config
+		err    error
+	)
+
+	if scfg == nil {
+		return nil, nil
+	}
+
+	if scfg.Cert != "" || scfg.Key != "" || scfg.Cacert != "" || scfg.ServerName != "" {
+		cfgtls := &transport.TLSInfo{
+			CertFile:      scfg.Cert,
+			KeyFile:       scfg.Key,
+			TrustedCAFile: scfg.Cacert,
+			ServerName:    scfg.ServerName,
+			Logger:        lg,
+		}
+		if tlsCfg, err = cfgtls.ClientConfig(); err != nil {
+			return nil, err
+		}
+	}
+
+	// If key/cert is not given but user wants secure connection, we
+	// should still setup an empty tls configuration for gRPC to setup
+	// secure connection.
+	if tlsCfg == nil && !scfg.InsecureTransport {
+		tlsCfg = &tls.Config{}
+	}
+
+	// If the user wants to skip TLS verification then we should set
+	// the InsecureSkipVerify flag in tls configuration.
+	if tlsCfg != nil && scfg.InsecureSkipVerify {
+		tlsCfg.InsecureSkipVerify = true
+	}
+
+	return tlsCfg, nil
 }

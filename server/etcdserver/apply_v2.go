@@ -20,6 +20,7 @@ import (
 	"path"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -123,6 +124,10 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 		alternative: func() string { return fmt.Sprintf("id:%d,method:%s,path:%s", r.ID, r.Method, r.Path) },
 	}
 	defer func(start time.Time) {
+		if !utf8.ValidString(r.Method) {
+			s.lg.Info("method is not valid utf-8")
+			return
+		}
 		success := resp.Err == nil
 		applySec.WithLabelValues(v2Version, r.Method, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
 		warnOfExpensiveRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, stringer, nil, nil)

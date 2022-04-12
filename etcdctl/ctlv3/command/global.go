@@ -15,7 +15,6 @@
 package command
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -24,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
@@ -60,21 +60,6 @@ type GlobalFlags struct {
 	Debug bool
 }
 
-type secureCfg struct {
-	cert       string
-	key        string
-	cacert     string
-	serverName string
-
-	insecureTransport  bool
-	insecureSkipVerify bool
-}
-
-type authCfg struct {
-	username string
-	password string
-}
-
 type discoveryCfg struct {
 	domain      string
 	insecure    bool
@@ -97,23 +82,14 @@ func initDisplayFromCmd(cmd *cobra.Command) {
 	}
 }
 
-type clientConfig struct {
-	endpoints        []string
-	dialTimeout      time.Duration
-	keepAliveTime    time.Duration
-	keepAliveTimeout time.Duration
-	scfg             *secureCfg
-	acfg             *authCfg
-}
-
 type discardValue struct{}
 
 func (*discardValue) String() string   { return "" }
 func (*discardValue) Set(string) error { return nil }
 func (*discardValue) Type() string     { return "" }
 
-func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
-	lg, err := zap.NewProduction()
+func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -143,18 +119,18 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
 	}
 
-	cfg := &clientConfig{}
-	cfg.endpoints, err = endpointsFromCmd(cmd)
+	cfg := &clientv3.ConfigSpec{}
+	cfg.Endpoints, err = endpointsFromCmd(cmd)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	cfg.dialTimeout = dialTimeoutFromCmd(cmd)
-	cfg.keepAliveTime = keepAliveTimeFromCmd(cmd)
-	cfg.keepAliveTimeout = keepAliveTimeoutFromCmd(cmd)
+	cfg.DialTimeout = dialTimeoutFromCmd(cmd)
+	cfg.KeepAliveTime = keepAliveTimeFromCmd(cmd)
+	cfg.KeepAliveTimeout = keepAliveTimeoutFromCmd(cmd)
 
-	cfg.scfg = secureCfgFromCmd(cmd)
-	cfg.acfg = authCfgFromCmd(cmd)
+	cfg.Secure = secureCfgFromCmd(cmd)
+	cfg.Auth = authCfgFromCmd(cmd)
 
 	initDisplayFromCmd(cmd)
 	return cfg
@@ -162,7 +138,8 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientConfig {
 
 func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 	cc := clientConfigFromCmd(cmd)
-	cfg, err := newClientCfg(cc.endpoints, cc.dialTimeout, cc.keepAliveTime, cc.keepAliveTimeout, cc.scfg, cc.acfg)
+	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
@@ -171,11 +148,12 @@ func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	cfg := clientConfigFromCmd(cmd)
-	return cfg.mustClient()
+	return mustClient(cfg)
 }
 
-func (cc *clientConfig) mustClient() *clientv3.Client {
-	cfg, err := newClientCfg(cc.endpoints, cc.dialTimeout, cc.keepAliveTime, cc.keepAliveTimeout, cc.scfg, cc.acfg)
+func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
+	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
@@ -186,67 +164,6 @@ func (cc *clientConfig) mustClient() *clientv3.Client {
 	}
 
 	return client
-}
-
-func newClientCfg(endpoints []string, dialTimeout, keepAliveTime, keepAliveTimeout time.Duration, scfg *secureCfg, acfg *authCfg) (*clientv3.Config, error) {
-	// set tls if any one tls option set
-	var cfgtls *transport.TLSInfo
-	tlsinfo := transport.TLSInfo{}
-	tlsinfo.Logger, _ = zap.NewProduction()
-	if scfg.cert != "" {
-		tlsinfo.CertFile = scfg.cert
-		cfgtls = &tlsinfo
-	}
-
-	if scfg.key != "" {
-		tlsinfo.KeyFile = scfg.key
-		cfgtls = &tlsinfo
-	}
-
-	if scfg.cacert != "" {
-		tlsinfo.TrustedCAFile = scfg.cacert
-		cfgtls = &tlsinfo
-	}
-
-	if scfg.serverName != "" {
-		tlsinfo.ServerName = scfg.serverName
-		cfgtls = &tlsinfo
-	}
-
-	cfg := &clientv3.Config{
-		Endpoints:            endpoints,
-		DialTimeout:          dialTimeout,
-		DialKeepAliveTime:    keepAliveTime,
-		DialKeepAliveTimeout: keepAliveTimeout,
-	}
-
-	if cfgtls != nil {
-		clientTLS, err := cfgtls.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
-		cfg.TLS = clientTLS
-	}
-
-	// if key/cert is not given but user wants secure connection, we
-	// should still setup an empty tls configuration for gRPC to setup
-	// secure connection.
-	if cfg.TLS == nil && !scfg.insecureTransport {
-		cfg.TLS = &tls.Config{}
-	}
-
-	// If the user wants to skip TLS verification then we should set
-	// the InsecureSkipVerify flag in tls configuration.
-	if scfg.insecureSkipVerify && cfg.TLS != nil {
-		cfg.TLS.InsecureSkipVerify = true
-	}
-
-	if acfg != nil {
-		cfg.Username = acfg.username
-		cfg.Password = acfg.password
-	}
-
-	return cfg, nil
 }
 
 func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
@@ -284,7 +201,7 @@ func keepAliveTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 	return keepAliveTimeout
 }
 
-func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
+func secureCfgFromCmd(cmd *cobra.Command) *clientv3.SecureConfig {
 	cert, key, cacert := keyAndCertFromCmd(cmd)
 	insecureTr := insecureTransportFromCmd(cmd)
 	skipVerify := insecureSkipVerifyFromCmd(cmd)
@@ -294,14 +211,14 @@ func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
 		discoveryCfg.domain = ""
 	}
 
-	return &secureCfg{
-		cert:       cert,
-		key:        key,
-		cacert:     cacert,
-		serverName: discoveryCfg.domain,
+	return &clientv3.SecureConfig{
+		Cert:       cert,
+		Key:        key,
+		Cacert:     cacert,
+		ServerName: discoveryCfg.domain,
 
-		insecureTransport:  insecureTr,
-		insecureSkipVerify: skipVerify,
+		InsecureTransport:  insecureTr,
+		InsecureSkipVerify: skipVerify,
 	}
 }
 
@@ -344,7 +261,7 @@ func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {
 	return cert, key, cacert
 }
 
-func authCfgFromCmd(cmd *cobra.Command) *authCfg {
+func authCfgFromCmd(cmd *cobra.Command) *clientv3.AuthConfig {
 	userFlag, err := cmd.Flags().GetString("user")
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
@@ -358,23 +275,23 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 		return nil
 	}
 
-	var cfg authCfg
+	var cfg clientv3.AuthConfig
 
 	if passwordFlag == "" {
 		splitted := strings.SplitN(userFlag, ":", 2)
 		if len(splitted) < 2 {
-			cfg.username = userFlag
-			cfg.password, err = speakeasy.Ask("Password: ")
+			cfg.Username = userFlag
+			cfg.Password, err = speakeasy.Ask("Password: ")
 			if err != nil {
 				cobrautl.ExitWithError(cobrautl.ExitError, err)
 			}
 		} else {
-			cfg.username = splitted[0]
-			cfg.password = splitted[1]
+			cfg.Username = splitted[0]
+			cfg.Password = splitted[1]
 		}
 	} else {
-		cfg.username = userFlag
-		cfg.password = passwordFlag
+		cfg.Username = userFlag
+		cfg.Password = passwordFlag
 	}
 
 	return &cfg

@@ -6,10 +6,10 @@ require (
 	github.com/creack/pty v1.1.11
 	github.com/dustin/go-humanize v1.0.0
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
-	go.etcd.io/etcd/client/pkg/v3 v3.5.0
+	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
 	go.uber.org/zap v1.17.0
 	google.golang.org/grpc v1.41.0
 )
@@ -28,15 +28,15 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
-replace (
-	go.etcd.io/etcd/api/v3 => ../api
-	go.etcd.io/etcd/client/pkg/v3 => ../client/pkg
-)
+replace go.etcd.io/etcd/client/pkg/v3 => ../client/pkg
 
 // Bad imports are sometimes causing attempts to pull that code.
 // This makes the error more explicit.
+// Etcd contains lots of packages and dependency relationship.
+// Shouldn't import unnecessary dependencies
 replace (
 	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/api/v3 => ./FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/tests/v3 => ./FORBIDDEN_DEPENDENCY
 	go.etcd.io/etcd/v3 => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
 )

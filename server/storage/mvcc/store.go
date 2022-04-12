@@ -36,7 +36,7 @@ func UnsafeReadScheduledCompact(tx backend.ReadTx) (scheduledComact int64, found
 }
 
 func SetScheduledCompact(tx backend.BatchTx, value int64) {
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	UnsafeSetScheduledCompact(tx, value)
 }
@@ -48,7 +48,7 @@ func UnsafeSetScheduledCompact(tx backend.BatchTx, value int64) {
 }
 
 func SetFinishedCompact(tx backend.BatchTx, value int64) {
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	UnsafeSetFinishedCompact(tx, value)
 }

@@ -19,8 +19,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func mustNewURLs(t *testing.T, urls []string) []url.URL {
@@ -39,7 +38,7 @@ func TestConfigVerifyBootstrapWithoutClusterAndDiscoveryURLFail(t *testing.T) {
 		Name:               "node1",
 		DiscoveryURL:       "",
 		InitialPeerURLsMap: types.URLsMap{},
-		Logger:             zap.NewExample(),
+		Logger:             zaptest.NewLogger(t),
 	}
 	if err := c.VerifyBootstrap(); err == nil {
 		t.Errorf("err = nil, want not nil")
@@ -57,7 +56,7 @@ func TestConfigVerifyExistingWithDiscoveryURLFail(t *testing.T) {
 		PeerURLs:           mustNewURLs(t, []string{"http://127.0.0.1:2380"}),
 		InitialPeerURLsMap: cluster,
 		NewCluster:         false,
-		Logger:             zap.NewExample(),
+		Logger:             zaptest.NewLogger(t),
 	}
 	if err := c.VerifyJoinExisting(); err == nil {
 		t.Errorf("err = nil, want not nil")
@@ -145,7 +144,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 		cfg := ServerConfig{
 			Name:               "node1",
 			InitialPeerURLsMap: cluster,
-			Logger:             zap.NewExample(),
+			Logger:             zaptest.NewLogger(t),
 		}
 		if tt.apurls != nil {
 			cfg.PeerURLs = mustNewURLs(t, tt.apurls)
@@ -170,7 +169,7 @@ func TestSnapDir(t *testing.T) {
 	for dd, w := range tests {
 		cfg := ServerConfig{
 			DataDir: dd,
-			Logger:  zap.NewExample(),
+			Logger:  zaptest.NewLogger(t),
 		}
 		if g := cfg.SnapDir(); g != w {
 			t.Errorf("DataDir=%q: SnapDir()=%q, want=%q", dd, g, w)
@@ -186,7 +185,7 @@ func TestWALDir(t *testing.T) {
 	for dd, w := range tests {
 		cfg := ServerConfig{
 			DataDir: dd,
-			Logger:  zap.NewExample(),
+			Logger:  zaptest.NewLogger(t),
 		}
 		if g := cfg.WALDir(); g != w {
 			t.Errorf("DataDir=%q: WALDir()=%q, want=%q", dd, g, w)
@@ -203,7 +202,7 @@ func TestShouldDiscover(t *testing.T) {
 	for durl, w := range tests {
 		cfg := ServerConfig{
 			DiscoveryURL: durl,
-			Logger:       zap.NewExample(),
+			Logger:       zaptest.NewLogger(t),
 		}
 		if g := cfg.ShouldDiscover(); g != w {
 			t.Errorf("durl=%q: ShouldDiscover()=%t, want=%t", durl, g, w)

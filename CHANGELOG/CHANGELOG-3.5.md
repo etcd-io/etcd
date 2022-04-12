@@ -3,7 +3,24 @@
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 
 
-The minimum recommended etcd versions to run in **production** are 3.3.18+, 3.4.2+, and 3.5.2+. Refer to the [versioning policy](https://etcd.io/docs/v3.5/op-guide/versioning/) for more details.
+<hr>
+
+## v3.5.3 (TBD)
+
+### etcd server
+- Fix [Provide a better liveness probe for when etcd runs as a Kubernetes pod](https://github.com/etcd-io/etcd/pull/13706)
+- Fix [inconsistent log format](https://github.com/etcd-io/etcd/pull/13864)
+- Fix [Inconsistent revision and data occurs](https://github.com/etcd-io/etcd/pull/13908)
+- Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/13932)
+- Fix [consistent_index coming from snapshot is overwritten by the old local value](https://github.com/etcd-io/etcd/pull/13933)
+
+### package `client/pkg/v3`
+
+- [Trim the suffix dot from the target](https://github.com/etcd-io/etcd/pull/13714) in SRV records returned by DNS lookup
+
+### etcdctl v3
+
+- [Always print the raft_term in decimal](https://github.com/etcd-io/etcd/pull/13727) when displaying member list in json.
 
 <hr>
 
@@ -16,6 +33,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.1...v3.5.2) and 
 - Add [`etcd --experimental-enable-lease-checkpoint-persist`](https://github.com/etcd-io/etcd/pull/13508) flag to enable checkpoint persisting.
 - Fix [Lease checkpoints don't prevent to reset ttl on leader change](https://github.com/etcd-io/etcd/pull/13508), requires enabling checkpoint persisting.
 - Fix [assertion failed due to tx closed when recovering v3 backend from a snapshot db](https://github.com/etcd-io/etcd/pull/13501)
+- Fix [segmentation violation(SIGSEGV) error due to premature unlocking of watchableStore](https://github.com/etcd-io/etcd/pull/13541)
 
 <hr>
 

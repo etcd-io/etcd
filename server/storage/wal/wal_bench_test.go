@@ -15,12 +15,10 @@
 package wal
 
 import (
-	"os"
 	"testing"
 
-	"go.uber.org/zap"
-
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.uber.org/zap/zaptest"
 )
 
 func BenchmarkWrite100EntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 100, 0) }
@@ -36,13 +34,9 @@ func BenchmarkWrite1000EntryBatch500(b *testing.B)     { benchmarkWriteEntry(b, 
 func BenchmarkWrite1000EntryBatch1000(b *testing.B)    { benchmarkWriteEntry(b, 1000, 1000) }
 
 func benchmarkWriteEntry(b *testing.B, size int, batch int) {
-	p, err := os.MkdirTemp(os.TempDir(), "waltest")
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer os.RemoveAll(p)
+	p := b.TempDir()
 
-	w, err := Create(zap.NewExample(), p, []byte("somedata"))
+	w, err := Create(zaptest.NewLogger(b), p, []byte("somedata"))
 	if err != nil {
 		b.Fatalf("err = %v, want nil", err)
 	}

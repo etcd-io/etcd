@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2022 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mvcc
+//go:build e2e
+// +build e2e
 
-import (
-	"fmt"
+package common
 
-	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
-)
+import "go.etcd.io/etcd/tests/v3/framework"
 
-func WriteKV(be backend.Backend, kv mvccpb.KeyValue) {
-	ibytes := newRevBytes()
-	revToBytes(revision{main: kv.ModRevision}, ibytes)
-
-	d, err := kv.Marshal()
-	if err != nil {
-		panic(fmt.Errorf("cannot marshal event: %v", err))
-	}
-
-	be.BatchTx().Lock()
-	be.BatchTx().UnsafePut(schema.Key, ibytes, d)
-	be.BatchTx().Unlock()
+func init() {
+	testRunner = framework.E2eTestRunner
 }

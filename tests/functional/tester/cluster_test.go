@@ -20,8 +20,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func Test_read(t *testing.T) {
@@ -262,10 +261,7 @@ func Test_read(t *testing.T) {
 		},
 	}
 
-	logger, err := zap.NewProduction()
-	if err != nil {
-		t.Fatal(err)
-	}
+	logger := zaptest.NewLogger(t)
 	defer logger.Sync()
 
 	cfg, err := read(logger, "../functional.yaml")

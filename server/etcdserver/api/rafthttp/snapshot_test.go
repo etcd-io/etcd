@@ -27,8 +27,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 type strReaderCloser struct{ *strings.Reader }
@@ -94,21 +93,17 @@ func TestSnapshotSend(t *testing.T) {
 }
 
 func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.DirEntry) {
-	d, err := os.MkdirTemp(os.TempDir(), "snapdir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(d)
+	d := t.TempDir()
 
 	r := &fakeRaft{}
 	tr := &Transport{pipelineRt: &http.Transport{}, ClusterID: types.ID(1), Raft: r}
 	ch := make(chan struct{}, 1)
-	h := &syncHandler{newSnapshotHandler(tr, r, snap.New(zap.NewExample(), d), types.ID(1)), ch}
+	h := &syncHandler{newSnapshotHandler(tr, r, snap.New(zaptest.NewLogger(t), d), types.ID(1)), ch}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
 	picker := mustNewURLPicker(t, []string{srv.URL})
-	snapsend := newSnapshotSender(tr, picker, types.ID(1), newPeerStatus(zap.NewExample(), types.ID(0), types.ID(1)))
+	snapsend := newSnapshotSender(tr, picker, types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)))
 	defer snapsend.stop()
 
 	snapsend.send(*sm)

@@ -26,12 +26,14 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
-// serverVersionAdapter implements Server interface needed by serverversion.Monitor
+// serverVersionAdapter implements the interface Server defined in package
+// go.etcd.io/etcd/server/v3/etcdserver/version, and it's needed by Monitor
+// in the same package.
 type serverVersionAdapter struct {
 	*EtcdServer
 }
 
-func newServerVersionAdapter(s *EtcdServer) *serverVersionAdapter {
+func NewServerVersionAdapter(s *EtcdServer) *serverVersionAdapter {
 	return &serverVersionAdapter{
 		EtcdServer: s,
 	}
@@ -68,13 +70,17 @@ func (s *serverVersionAdapter) GetDowngradeInfo() *serverversion.DowngradeInfo {
 }
 
 func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions {
-	return getMembersVersions(s.lg, s.cluster, s.id, s.peerRt)
+	return getMembersVersions(s.lg, s.cluster, s.id, s.peerRt, s.Cfg.ReqTimeout())
 }
 
 func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
-	tx := s.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+	// `applySnapshot` sets a new backend instance, so we need to acquire the bemu lock.
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
+
+	tx := s.be.ReadTx()
+	tx.RLock()
+	defer tx.RUnlock()
 	v, err := schema.UnsafeDetectSchemaVersion(s.lg, tx)
 	if err != nil {
 		return nil
@@ -83,8 +89,12 @@ func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
 }
 
 func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error {
+	// `applySnapshot` sets a new backend instance, so we need to acquire the bemu lock.
+	s.bemu.RLock()
+	defer s.bemu.RUnlock()
+
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	return schema.UnsafeMigrate(s.lg, tx, s.r.storage, target)
 }

@@ -23,6 +23,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.uber.org/zap/zaptest"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 )
 
 func TestBackendPreCommitHook(t *testing.T) {
-	be := newTestHooksBackend(t, backend.DefaultBackendConfig())
+	be := newTestHooksBackend(t, backend.DefaultBackendConfig(zaptest.NewLogger(t)))
 
 	tx := be.BatchTx()
 	prepareBuckenAndKey(tx)
@@ -40,15 +41,13 @@ func TestBackendPreCommitHook(t *testing.T) {
 	// Empty commit.
 	tx.Commit()
 
-	write(tx, []byte("foo"), []byte("bar"))
-
 	assert.Equal(t, ">cc", getCommitsKey(t, be), "expected 2 explict commits")
 	tx.Commit()
 	assert.Equal(t, ">ccc", getCommitsKey(t, be), "expected 3 explict commits")
 }
 
 func TestBackendAutoCommitLimitHook(t *testing.T) {
-	cfg := backend.DefaultBackendConfig()
+	cfg := backend.DefaultBackendConfig(zaptest.NewLogger(t))
 	cfg.BatchLimit = 3
 	be := newTestHooksBackend(t, cfg)
 
@@ -72,7 +71,7 @@ func TestBackendAutoCommitBatchIntervalHook(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	cfg := backend.DefaultBackendConfig()
+	cfg := backend.DefaultBackendConfig(zaptest.NewLogger(t))
 	cfg.BatchInterval = 10 * time.Millisecond
 	be := newTestHooksBackend(t, cfg)
 	tx := be.BatchTx()

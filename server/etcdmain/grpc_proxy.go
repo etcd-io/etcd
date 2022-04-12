@@ -164,16 +164,14 @@ func newGRPCProxyStartCommand() *cobra.Command {
 
 func startGRPCProxy(cmd *cobra.Command, args []string) {
 	checkArgs()
-
-	lcfg := logutil.DefaultZapLoggerConfig
+	lvl := zap.InfoLevel
 	if grpcProxyDebug {
-		lcfg.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+		lvl = zap.DebugLevel
 		grpc.EnableTracing = true
 	}
-
-	lg, err := lcfg.Build()
+	lg, err := logutil.CreateDefaultZapLogger(lvl)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer lg.Sync()
 

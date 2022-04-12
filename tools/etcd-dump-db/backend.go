@@ -21,6 +21,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
@@ -53,12 +54,14 @@ func getBuckets(dbPath string) (buckets []string, err error) {
 
 type decoder func(k, v []byte)
 
+// key is the bucket name, and value is the function to decode K/V in the bucket.
 var decoders = map[string]decoder{
 	"key":       keyDecoder,
 	"lease":     leaseDecoder,
 	"auth":      authDecoder,
 	"authRoles": authRolesDecoder,
 	"authUsers": authUsersDecoder,
+	"meta":      metaDecoder,
 }
 
 type revision struct {
@@ -71,6 +74,10 @@ func bytesToRev(bytes []byte) revision {
 		main: int64(binary.BigEndian.Uint64(bytes[0:8])),
 		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
 	}
+}
+
+func defaultDecoder(k, v []byte) {
+	fmt.Printf("key=%q, value=%q\n", k, v)
 }
 
 func keyDecoder(k, v []byte) {
@@ -125,6 +132,14 @@ func authUsersDecoder(k, v []byte) {
 	fmt.Printf("user=%q, roles=%q, option=%v\n", user.Name, user.Roles, user.Options)
 }
 
+func metaDecoder(k, v []byte) {
+	if string(k) == string(schema.MetaConsistentIndexKeyName) || string(k) == string(schema.MetaTermKeyName) {
+		fmt.Printf("key=%q, value=%v\n", k, binary.BigEndian.Uint64(v))
+	} else {
+		defaultDecoder(k, v)
+	}
+}
+
 func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error) {
 	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: flockTimeout})
 	if err != nil {
@@ -147,7 +162,7 @@ func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error)
 			if dec, ok := decoders[bucket]; decode && ok {
 				dec(k, v)
 			} else {
-				fmt.Printf("key=%q, value=%q\n", k, v)
+				defaultDecoder(k, v)
 			}
 
 			limit--
@@ -162,7 +177,7 @@ func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error)
 }
 
 func getHash(dbPath string) (hash uint32, err error) {
-	b := backend.NewDefaultBackend(dbPath)
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
 	return b.Hash(schema.DefaultIgnores)
 }
 

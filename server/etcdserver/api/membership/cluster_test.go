@@ -28,8 +28,6 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
-
-	"go.uber.org/zap"
 )
 
 func TestClusterMember(t *testing.T) {
@@ -241,7 +239,7 @@ func TestClusterValidateAndAssignIDsBad(t *testing.T) {
 	for i, tt := range tests {
 		ecl := newTestCluster(t, tt.clmembs)
 		lcl := newTestCluster(t, tt.membs)
-		if err := ValidateClusterAndAssignIDs(zap.NewExample(), lcl, ecl); err == nil {
+		if err := ValidateClusterAndAssignIDs(zaptest.NewLogger(t), lcl, ecl); err == nil {
 			t.Errorf("#%d: unexpected update success", i)
 		}
 	}
@@ -268,7 +266,7 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 	for i, tt := range tests {
 		lcl := newTestCluster(t, tt.clmembs)
 		ecl := newTestCluster(t, tt.membs)
-		if err := ValidateClusterAndAssignIDs(zap.NewExample(), lcl, ecl); err != nil {
+		if err := ValidateClusterAndAssignIDs(zaptest.NewLogger(t), lcl, ecl); err != nil {
 			t.Errorf("#%d: unexpect update error: %v", i, err)
 		}
 		if !reflect.DeepEqual(lcl.MemberIDs(), tt.wids) {
@@ -509,7 +507,7 @@ func TestNodeToMemberBad(t *testing.T) {
 		}},
 	}
 	for i, tt := range tests {
-		if _, err := nodeToMember(zap.NewExample(), tt); err == nil {
+		if _, err := nodeToMember(zaptest.NewLogger(t), tt); err == nil {
 			t.Errorf("#%d: unexpected nil error", i)
 		}
 	}
@@ -638,7 +636,7 @@ func TestNodeToMember(t *testing.T) {
 		{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
 	}}
 	wm := &Member{ID: 0x1234, RaftAttributes: RaftAttributes{}, Attributes: Attributes{Name: "node1"}}
-	m, err := nodeToMember(zap.NewExample(), n)
+	m, err := nodeToMember(zaptest.NewLogger(t), n)
 	if err != nil {
 		t.Fatalf("unexpected nodeToMember error: %v", err)
 	}

@@ -19,8 +19,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/pkg/v3/adt"
-
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestRangePermission(t *testing.T) {
@@ -53,7 +52,7 @@ func TestRangePermission(t *testing.T) {
 			readPerms.Insert(p, struct{}{})
 		}
 
-		result := checkKeyInterval(zap.NewExample(), &unifiedRangePermissions{readPerms: readPerms}, tt.begin, tt.end, authpb.READ)
+		result := checkKeyInterval(zaptest.NewLogger(t), &unifiedRangePermissions{readPerms: readPerms}, tt.begin, tt.end, authpb.READ)
 		if result != tt.want {
 			t.Errorf("#%d: result=%t, want=%t", i, result, tt.want)
 		}
@@ -94,7 +93,7 @@ func TestKeyPermission(t *testing.T) {
 			readPerms.Insert(p, struct{}{})
 		}
 
-		result := checkKeyPoint(zap.NewExample(), &unifiedRangePermissions{readPerms: readPerms}, tt.key, authpb.READ)
+		result := checkKeyPoint(zaptest.NewLogger(t), &unifiedRangePermissions{readPerms: readPerms}, tt.key, authpb.READ)
 		if result != tt.want {
 			t.Errorf("#%d: result=%t, want=%t", i, result, tt.want)
 		}

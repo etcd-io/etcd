@@ -2,9 +2,6 @@
 
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.2.md).
 
-
-The minimum recommended etcd versions to run in **production** are 3.3.18+, 3.4.2+, and 3.5.2+. Refer to the [versioning policy](https://etcd.io/docs/v3.3/op-guide/versioning/) for more details.
-
 <hr>
 
 ## v3.3.27 (2021-10-15)
@@ -760,7 +757,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.2...v3.3.3) and 
   - For every compaction period or 1-hour, compactor uses the last revision that was fetched before compaction period, to discard historical data.
   - The retention window of compaction period moves for every given compaction period or hour.
   - For instance, when hourly writes are 100 and `etcd --auto-compaction-mode=periodic --auto-compaction-retention=24h`, `v3.2.x`, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 2400, 2640, and 2880 for every 2.4-hour, while `v3.3.3` *or later* compacts revision 2400, 2500, 2600 for every 1-hour.
-  - Futhermore, when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
+  - Furthermore, when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=30m` and writes per minute are about 1000, `v3.3.0`, `v3.3.1`, and `v3.3.2` compact revision 30000, 33000, and 36000, for every 3-minute, while `v3.3.3` *or later* compacts revision 30000, 60000, and 90000, for every 30-minute.
 
 ### Metrics, Monitoring
 
@@ -963,7 +960,7 @@ See [security doc](https://etcd.io/docs/latest/op-guide/security/) for more deta
   - Periodic compactor continues to record latest revisions for every 1/10 of given compaction period (e.g. 1-hour when `etcd --auto-compaction-mode=periodic --auto-compaction-retention=10h`).
   - For every 1/10 of given compaction period, compactor uses the last revision that was fetched before compaction period, to discard historical data.
   - The retention window of compaction period moves for every 1/10 of given compaction period.
-  - For instance, when hourly writes are 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2.x, v3.3.0, v3.3.1, and v3.3.2 compact revision 1000, 1100, and 1200 for every 1-hour. Futhermore, when writes per minute are 1000, v3.3.0, v3.3.1, and v3.3.2 with `--auto-compaction-mode=periodic --auto-compaction-retention=30m` compact revision 30000, 33000, and 36000, for every 3-minute with more finer granularity.
+  - For instance, when hourly writes are 100 and `--auto-compaction-retention=10`, v3.1 compacts revision 1000, 2000, and 3000 for every 10-hour, while v3.2.x, v3.3.0, v3.3.1, and v3.3.2 compact revision 1000, 1100, and 1200 for every 1-hour. Furthermore, when writes per minute are 1000, v3.3.0, v3.3.1, and v3.3.2 with `--auto-compaction-mode=periodic --auto-compaction-retention=30m` compact revision 30000, 33000, and 36000, for every 3-minute with more finer granularity.
   - Whether compaction succeeds or not, this process repeats for every 1/10 of given compaction period. If compaction succeeds, it just removes compacted revision from historical revision records.
 - Add [`etcd --grpc-keepalive-min-time`, `etcd --grpc-keepalive-interval`, `etcd --grpc-keepalive-timeout`](https://github.com/etcd-io/etcd/pull/8535) flags to configure server-side keepalive policies.
 - Serve [`/health` endpoint as unhealthy](https://github.com/etcd-io/etcd/pull/8272) when [alarm (e.g. `NOSPACE`) is raised or there's no leader](https://github.com/etcd-io/etcd/issues/8207).

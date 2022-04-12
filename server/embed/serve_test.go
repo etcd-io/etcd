@@ -25,11 +25,7 @@ import (
 
 // TestStartEtcdWrongToken ensures that StartEtcd with wrong configs returns with error.
 func TestStartEtcdWrongToken(t *testing.T) {
-	tdir, err := os.MkdirTemp(t.TempDir(), "token-test")
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	tdir := t.TempDir()
 
 	cfg := NewConfig()
 
@@ -47,7 +43,7 @@ func TestStartEtcdWrongToken(t *testing.T) {
 	cfg.Dir = tdir
 	cfg.AuthToken = "wrong-token"
 
-	if _, err = StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
+	if _, err := StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
 		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
 	}
 }

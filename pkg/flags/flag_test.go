@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestSetFlagsFromEnv(t *testing.T) {
@@ -49,7 +49,7 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	}
 
 	// now read the env and verify flags were updated as expected
-	err := SetFlagsFromEnv(zap.NewExample(), "ETCD", fs)
+	err := SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs)
 	if err != nil {
 		t.Errorf("err=%v, want nil", err)
 	}
@@ -68,7 +68,7 @@ func TestSetFlagsFromEnvBad(t *testing.T) {
 	fs := flag.NewFlagSet("testing", flag.ExitOnError)
 	fs.Int("x", 0, "")
 	os.Setenv("ETCD_X", "not_a_number")
-	if err := SetFlagsFromEnv(zap.NewExample(), "ETCD", fs); err == nil {
+	if err := SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs); err == nil {
 		t.Errorf("err=nil, want != nil")
 	}
 }
@@ -83,7 +83,7 @@ func TestSetFlagsFromEnvParsingError(t *testing.T) {
 	}
 	defer os.Unsetenv("ETCD_HEARTBEAT_INTERVAL")
 
-	err := SetFlagsFromEnv(zap.NewExample(), "ETCD", fs)
+	err := SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs)
 	for _, v := range []string{"invalid syntax", "parse error"} {
 		if strings.Contains(err.Error(), v) {
 			err = nil

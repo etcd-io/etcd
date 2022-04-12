@@ -16,7 +16,6 @@ package embed
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	defaultLog "log"
@@ -26,6 +25,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,7 +38,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
 
@@ -177,6 +176,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		InitialClusterToken:                      token,
 		DiscoveryURL:                             cfg.Durl,
 		DiscoveryProxy:                           cfg.Dproxy,
+		DiscoveryCfg:                             cfg.DiscoveryCfg,
 		NewCluster:                               cfg.IsNewCluster(),
 		PeerTLSInfo:                              cfg.PeerTLSInfo,
 		TickMs:                                   cfg.TickMs,
@@ -345,6 +345,20 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
+
+		zap.String("discovery-token", sc.DiscoveryCfg.Token),
+		zap.String("discovery-endpoints", strings.Join(sc.DiscoveryCfg.Endpoints, ",")),
+		zap.String("discovery-dial-timeout", sc.DiscoveryCfg.DialTimeout.String()),
+		zap.String("discovery-request-timeout", sc.DiscoveryCfg.RequestTimeout.String()),
+		zap.String("discovery-keepalive-time", sc.DiscoveryCfg.KeepAliveTime.String()),
+		zap.String("discovery-keepalive-timeout", sc.DiscoveryCfg.KeepAliveTimeout.String()),
+		zap.Bool("discovery-insecure-transport", sc.DiscoveryCfg.Secure.InsecureTransport),
+		zap.Bool("discovery-insecure-skip-tls-verify", sc.DiscoveryCfg.Secure.InsecureSkipVerify),
+		zap.String("discovery-cert", sc.DiscoveryCfg.Secure.Cert),
+		zap.String("discovery-key", sc.DiscoveryCfg.Secure.Key),
+		zap.String("discovery-cacert", sc.DiscoveryCfg.Secure.Cacert),
+		zap.String("discovery-user", sc.DiscoveryCfg.Auth.Username),
+
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
 		zap.Int("max-learners", sc.ExperimentalMaxLearners),
 	)
@@ -532,20 +546,12 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 // configure peer handlers after rafthttp.Transport started
 func (e *Etcd) servePeers() (err error) {
 	ph := etcdhttp.NewPeerHandler(e.GetLogger(), e.Server)
-	var peerTLScfg *tls.Config
-	if !e.cfg.PeerTLSInfo.Empty() {
-		if peerTLScfg, err = e.cfg.PeerTLSInfo.ServerConfig(); err != nil {
-			return err
-		}
-	}
 
 	for _, p := range e.Peers {
 		u := p.Listener.Addr().String()
-		gs := v3rpc.Server(e.Server, peerTLScfg, nil)
 		m := cmux.New(p.Listener)
-		go gs.Serve(m.Match(cmux.HTTP2()))
 		srv := &http.Server{
-			Handler:     grpcHandlerFunc(gs, ph),
+			Handler:     ph,
 			ReadTimeout: 5 * time.Minute,
 			ErrorLog:    defaultLog.New(io.Discard, "", 0), // do not log user error
 		}
@@ -565,7 +571,7 @@ func (e *Etcd) servePeers() (err error) {
 				"stopping serving peer traffic",
 				zap.String("address", u),
 			)
-			stopServers(ctx, &servers{secure: peerTLScfg != nil, grpc: gs, http: srv})
+			srv.Shutdown(ctx)
 			e.cfg.logger.Info(
 				"stopped serving peer traffic",
 				zap.String("address", u),

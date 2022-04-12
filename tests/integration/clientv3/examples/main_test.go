@@ -15,6 +15,8 @@
 package clientv3_test
 
 import (
+	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -36,7 +38,7 @@ var lazyCluster = integration.NewLazyClusterWithConfig(
 
 func exampleEndpoints() []string { return lazyCluster.EndpointsV3() }
 
-func forUnitTestsRunInMockedContext(mocking func(), example func()) {
+func forUnitTestsRunInMockedContext(_ func(), example func()) {
 	// For integration tests runs in the provided environment
 	example()
 }
@@ -44,6 +46,20 @@ func forUnitTestsRunInMockedContext(mocking func(), example func()) {
 // TestMain sets up an etcd cluster if running the examples.
 func TestMain(m *testing.M) {
 	testutil.ExitInShortMode("Skipping: the tests require real cluster")
+
+	tempDir, err := ioutil.TempDir(os.TempDir(), "etcd-integration")
+	if err != nil {
+		log.Printf("Failed to obtain tempDir: %v", tempDir)
+		os.Exit(1)
+	}
+	defer os.RemoveAll(tempDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		log.Printf("Failed to change working dir to: %s: %v", tempDir, err)
+		os.Exit(1)
+	}
+	log.Printf("Running tests (examples) in dir(%v): ...", tempDir)
 	v := m.Run()
 	lazyCluster.Terminate()
 

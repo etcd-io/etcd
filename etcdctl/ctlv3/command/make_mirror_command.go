@@ -69,29 +69,29 @@ func NewMakeMirrorCommand() *cobra.Command {
 	return c
 }
 
-func authDestCfg() *authCfg {
+func authDestCfg() *clientv3.AuthConfig {
 	if mmuser == "" {
 		return nil
 	}
 
-	var cfg authCfg
+	var cfg clientv3.AuthConfig
 
 	if mmpassword == "" {
 		splitted := strings.SplitN(mmuser, ":", 2)
 		if len(splitted) < 2 {
 			var err error
-			cfg.username = mmuser
-			cfg.password, err = speakeasy.Ask("Destination Password: ")
+			cfg.Username = mmuser
+			cfg.Password, err = speakeasy.Ask("Destination Password: ")
 			if err != nil {
 				cobrautl.ExitWithError(cobrautl.ExitError, err)
 			}
 		} else {
-			cfg.username = splitted[0]
-			cfg.password = splitted[1]
+			cfg.Username = splitted[0]
+			cfg.Password = splitted[1]
 		}
 	} else {
-		cfg.username = mmuser
-		cfg.password = mmpassword
+		cfg.Username = mmuser
+		cfg.Password = mmpassword
 	}
 
 	return &cfg
@@ -105,24 +105,24 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 	dialTimeout := dialTimeoutFromCmd(cmd)
 	keepAliveTime := keepAliveTimeFromCmd(cmd)
 	keepAliveTimeout := keepAliveTimeoutFromCmd(cmd)
-	sec := &secureCfg{
-		cert:              mmcert,
-		key:               mmkey,
-		cacert:            mmcacert,
-		insecureTransport: mminsecureTr,
+	sec := &clientv3.SecureConfig{
+		Cert:              mmcert,
+		Key:               mmkey,
+		Cacert:            mmcacert,
+		InsecureTransport: mminsecureTr,
 	}
 
 	auth := authDestCfg()
 
-	cc := &clientConfig{
-		endpoints:        []string{args[0]},
-		dialTimeout:      dialTimeout,
-		keepAliveTime:    keepAliveTime,
-		keepAliveTimeout: keepAliveTimeout,
-		scfg:             sec,
-		acfg:             auth,
+	cc := &clientv3.ConfigSpec{
+		Endpoints:        []string{args[0]},
+		DialTimeout:      dialTimeout,
+		KeepAliveTime:    keepAliveTime,
+		KeepAliveTimeout: keepAliveTimeout,
+		Secure:           sec,
+		Auth:             auth,
 	}
-	dc := cc.mustClient()
+	dc := mustClient(cc)
 	c := mustClientFromCmd(cmd)
 
 	err := makeMirror(context.TODO(), c, dc)

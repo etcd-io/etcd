@@ -49,7 +49,7 @@ func newPlan(lg *zap.Logger, current semver.Version, target semver.Version) (pla
 }
 
 func (p migrationPlan) Execute(lg *zap.Logger, tx backend.BatchTx) error {
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	return p.unsafeExecute(lg, tx)
 }
@@ -60,7 +60,7 @@ func (p migrationPlan) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) (err er
 		if err != nil {
 			return err
 		}
-		lg.Info("upgraded storage version", zap.String("new-storage-version", s.target.String()))
+		lg.Info("updated storage version", zap.String("new-storage-version", s.target.String()))
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func newMigrationStep(v semver.Version, isUpgrade bool, changes []schemaChange) 
 
 // execute runs actions required to migrate etcd storage between two minor versions.
 func (s migrationStep) execute(lg *zap.Logger, tx backend.BatchTx) error {
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	return s.unsafeExecute(lg, tx)
 }

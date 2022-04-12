@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -96,7 +96,7 @@ func TestMutexTryLockSingleNode(t *testing.T) {
 	integration2.BeforeTest(t)
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-
+	t.Logf("3 nodes cluster created...")
 	var clients []*clientv3.Client
 	testMutexTryLock(t, 5, integration2.MakeSingleNodeClients(t, clus, &clients))
 	integration2.CloseClients(t, clients)
@@ -113,37 +113,39 @@ func TestMutexTryLockMultiNode(t *testing.T) {
 }
 
 func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.Client) {
-	integration2.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	lockedC := make(chan *concurrency.Mutex)
 	notlockedC := make(chan *concurrency.Mutex)
-	stopC := make(chan struct{})
-	defer close(stopC)
+
 	for i := 0; i < lockers; i++ {
-		go func() {
+		go func(i int) {
 			session, err := concurrency.NewSession(chooseClient())
 			if err != nil {
 				t.Error(err)
 			}
 			m := concurrency.NewMutex(session, "test-mutex-try-lock")
-			err = m.TryLock(context.TODO())
+			err = m.TryLock(ctx)
 			if err == nil {
 				select {
 				case lockedC <- m:
-				case <-stopC:
+				case <-ctx.Done():
+					t.Errorf("Thread: %v, Context failed: %v", i, err)
 				}
 			} else if err == concurrency.ErrLocked {
 				select {
 				case notlockedC <- m:
-				case <-stopC:
+				case <-ctx.Done():
+					t.Errorf("Thread: %v, Context failed: %v", i, err)
 				}
 			} else {
-				t.Errorf("Unexpected Error %v", err)
+				t.Errorf("Thread: %v; Unexpected Error %v", i, err)
 			}
-		}()
+		}(i)
 	}
 
-	timerC := time.After(time.Second)
+	timerC := time.After(30 * time.Second)
 	select {
 	case <-lockedC:
 		for i := 0; i < lockers-1; i++ {
@@ -156,7 +158,7 @@ func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.C
 			}
 		}
 	case <-timerC:
-		t.Errorf("timed out waiting for lock")
+		t.Errorf("timed out waiting for lock (30s)")
 	}
 }
 

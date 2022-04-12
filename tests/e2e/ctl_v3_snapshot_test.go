@@ -29,8 +29,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3Snapshot(t *testing.T)        { testCtl(t, snapshotTest) }
-func TestCtlV3SnapshotEtcdutl(t *testing.T) { testCtl(t, snapshotTest, withEtcdutl()) }
+func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
 
 func snapshotTest(cx ctlCtx) {
 	maintenanceInitKeys(cx)
@@ -62,8 +61,7 @@ func snapshotTest(cx ctlCtx) {
 	}
 }
 
-func TestCtlV3SnapshotCorrupt(t *testing.T)        { testCtl(t, snapshotCorruptTest) }
-func TestCtlV3SnapshotCorruptEtcdutl(t *testing.T) { testCtl(t, snapshotCorruptTest, withEtcdutl()) }
+func TestCtlV3SnapshotCorrupt(t *testing.T) { testCtl(t, snapshotCorruptTest) }
 
 func snapshotCorruptTest(cx ctlCtx) {
 	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
@@ -98,9 +96,8 @@ func snapshotCorruptTest(cx ctlCtx) {
 }
 
 // This test ensures that the snapshot status does not modify the snapshot file
-func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) { testCtl(t, snapshotStatusBeforeRestoreTest) }
-func TestCtlV3SnapshotStatusBeforeRestoreEtcdutl(t *testing.T) {
-	testCtl(t, snapshotStatusBeforeRestoreTest, withEtcdutl())
+func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) {
+	testCtl(t, snapshotStatusBeforeRestoreTest)
 }
 
 func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
@@ -159,12 +156,11 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 	return resp, nil
 }
 
-func TestIssue6361(t *testing.T)        { testIssue6361(t, false) }
-func TestIssue6361etcdutl(t *testing.T) { testIssue6361(t, true) }
+func TestIssue6361(t *testing.T) { testIssue6361(t) }
 
 // TestIssue6361 ensures new member that starts with snapshot correctly
 // syncs up with other members and serve correct data.
-func testIssue6361(t *testing.T, etcdutl bool) {
+func testIssue6361(t *testing.T) {
 	{
 		// This tests is pretty flaky on semaphoreci as of 2021-01-10.
 		// TODO: Remove when the flakiness source is identified.
@@ -218,14 +214,8 @@ func testIssue6361(t *testing.T, etcdutl bool) {
 	}
 
 	newDataDir := filepath.Join(t.TempDir(), "test.data")
-
-	uctlBinPath := e2e.CtlBinPath
-	if etcdutl {
-		uctlBinPath = e2e.UtlBinPath
-	}
-
 	t.Log("etcdctl restoring the snapshot...")
-	err = e2e.SpawnWithExpect([]string{uctlBinPath, "snapshot", "restore", fpath, "--name", epc.Procs[0].Config().Name, "--initial-cluster", epc.Procs[0].Config().InitialCluster, "--initial-cluster-token", epc.Procs[0].Config().InitialToken, "--initial-advertise-peer-urls", epc.Procs[0].Config().Purl.String(), "--data-dir", newDataDir}, "added member")
+	err = e2e.SpawnWithExpect([]string{e2e.UtlBinPath, "snapshot", "restore", fpath, "--name", epc.Procs[0].Config().Name, "--initial-cluster", epc.Procs[0].Config().InitialCluster, "--initial-cluster-token", epc.Procs[0].Config().InitialToken, "--initial-advertise-peer-urls", epc.Procs[0].Config().Purl.String(), "--data-dir", newDataDir}, "added member")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,9 +286,6 @@ func testIssue6361(t *testing.T, etcdutl bool) {
 // In this test we lower SnapshotCount to 1 to ensure WAL snapshot is triggered.
 func TestCtlV3SnapshotVersion(t *testing.T) {
 	testCtl(t, snapshotVersionTest, withCfg(e2e.EtcdProcessClusterConfig{SnapshotCount: 1}))
-}
-func TestCtlV3SnapshotVersionEtcdutl(t *testing.T) {
-	testCtl(t, snapshotVersionTest, withEtcdutl(), withCfg(e2e.EtcdProcessClusterConfig{SnapshotCount: 1}))
 }
 
 func snapshotVersionTest(cx ctlCtx) {

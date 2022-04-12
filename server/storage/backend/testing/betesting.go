@@ -38,13 +38,13 @@ func NewTmpBackendFromCfg(t testing.TB, bcfg backend.BackendConfig) (backend.Bac
 
 // NewTmpBackend creates a backend implementation for testing.
 func NewTmpBackend(t testing.TB, batchInterval time.Duration, batchLimit int) (backend.Backend, string) {
-	bcfg := backend.DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig(zaptest.NewLogger(t))
 	bcfg.BatchInterval, bcfg.BatchLimit = batchInterval, batchLimit
 	return NewTmpBackendFromCfg(t, bcfg)
 }
 
 func NewDefaultTmpBackend(t testing.TB) (backend.Backend, string) {
-	return NewTmpBackendFromCfg(t, backend.DefaultBackendConfig())
+	return NewTmpBackendFromCfg(t, backend.DefaultBackendConfig(zaptest.NewLogger(t)))
 }
 
 func Close(t testing.TB, b backend.Backend) {

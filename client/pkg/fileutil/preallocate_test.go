@@ -62,11 +62,7 @@ func testPreallocateFixed(t *testing.T, f *os.File) {
 }
 
 func runPreallocTest(t *testing.T, test func(*testing.T, *os.File)) {
-	p, err := os.MkdirTemp(os.TempDir(), "preallocateTest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(p)
+	p := t.TempDir()
 
 	f, err := os.CreateTemp(p, "")
 	if err != nil {

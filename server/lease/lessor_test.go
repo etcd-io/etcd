@@ -31,6 +31,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 const (
@@ -310,7 +311,7 @@ func TestLessorRenewExtendPileup(t *testing.T) {
 	// simulate stop and recovery
 	le.Stop()
 	be.Close()
-	bcfg := backend.DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig(lg)
 	bcfg.Path = filepath.Join(dir, "be")
 	be = backend.New(bcfg)
 	defer be.Close()
@@ -633,18 +634,18 @@ func TestLessorCheckpointPersistenceAfterRestart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if l.RemainingTTL() != ttl {
-				t.Errorf("remainingTTL() = %d, expected: %d", l.RemainingTTL(), ttl)
+			if l.getRemainingTTL() != ttl {
+				t.Errorf("getRemainingTTL() = %d, expected: %d", l.getRemainingTTL(), ttl)
 			}
 			le.Checkpoint(2, checkpointTTL)
-			if l.RemainingTTL() != checkpointTTL {
-				t.Errorf("remainingTTL() = %d, expected: %d", l.RemainingTTL(), checkpointTTL)
+			if l.getRemainingTTL() != checkpointTTL {
+				t.Errorf("getRemainingTTL() = %d, expected: %d", l.getRemainingTTL(), checkpointTTL)
 			}
 			le.Stop()
 			le2 := newLessor(lg, be, clusterLatest(), cfg)
 			l = le2.Lookup(2)
-			if l.RemainingTTL() != tc.expectRemainingTTL {
-				t.Errorf("remainingTTL() = %d, expected: %d", l.RemainingTTL(), tc.expectRemainingTTL)
+			if l.getRemainingTTL() != tc.expectRemainingTTL {
+				t.Errorf("getRemainingTTL() = %d, expected: %d", l.getRemainingTTL(), tc.expectRemainingTTL)
 			}
 		})
 	}
@@ -669,11 +670,9 @@ func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
-	tmpPath, err := os.MkdirTemp("", "lease")
-	if err != nil {
-		t.Fatalf("failed to create tmpdir (%v)", err)
-	}
-	bcfg := backend.DefaultBackendConfig()
+	lg := zaptest.NewLogger(t)
+	tmpPath := t.TempDir()
+	bcfg := backend.DefaultBackendConfig(lg)
 	bcfg.Path = filepath.Join(tmpPath, "be")
 	return tmpPath, backend.New(bcfg)
 }

@@ -31,9 +31,9 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
+	"go.uber.org/zap/zaptest"
 
 	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -41,7 +41,7 @@ import (
 // to streamWriter. After that, streamWriter can use it to send messages
 // continuously, and closes it when stopped.
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(zap.NewExample(), types.ID(0), types.ID(1), newPeerStatus(zap.NewExample(), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 	// the expected initial state of streamWriter is not working
 	if _, ok := sw.writec(); ok {
 		t.Errorf("initial working status = %v, want false", ok)
@@ -93,7 +93,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 // TestStreamWriterAttachBadOutgoingConn tests that streamWriter with bad
 // outgoingConn will close the outgoingConn and fall back to non-working status.
 func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(zap.NewExample(), types.ID(0), types.ID(1), newPeerStatus(zap.NewExample(), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 	defer sw.stop()
 	wfc := newFakeWriteFlushCloser(errors.New("blah"))
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
@@ -127,7 +127,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		}
 		req := act[0].Params[0].(*http.Request)
 
-		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint(zap.NewExample()) + "/1")
+		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint(zaptest.NewLogger(t)) + "/1")
 		if req.URL.String() != wurl {
 			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
 		}
@@ -197,7 +197,7 @@ func TestStreamReaderStopOnDial(t *testing.T) {
 		picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
 		errorc: make(chan error, 1),
 		typ:    streamTypeMessage,
-		status: newPeerStatus(zap.NewExample(), types.ID(1), types.ID(2)),
+		status: newPeerStatus(zaptest.NewLogger(t), types.ID(1), types.ID(2)),
 		rl:     rate.NewLimiter(rate.Every(100*time.Millisecond), 1),
 	}
 	tr.onResp = func() {
@@ -304,7 +304,7 @@ func TestStream(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
-		sw := startStreamWriter(zap.NewExample(), types.ID(0), types.ID(1), newPeerStatus(zap.NewExample(), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+		sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 		defer sw.stop()
 		h.sw = sw
 
@@ -316,7 +316,7 @@ func TestStream(t *testing.T) {
 			typ:    tt.t,
 			tr:     tr,
 			picker: picker,
-			status: newPeerStatus(zap.NewExample(), types.ID(0), types.ID(2)),
+			status: newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(2)),
 			recvc:  recvc,
 			propc:  propc,
 			rl:     rate.NewLimiter(rate.Every(100*time.Millisecond), 1),

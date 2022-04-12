@@ -16,6 +16,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"testing"
@@ -411,8 +412,8 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 				}
 			}
 
-			if tc.expectTTLIsGT != 0 && time.Duration(ttlresp.TTL)*time.Second <= tc.expectTTLIsGT {
-				t.Errorf("Expected lease ttl (%v) to be greather than (%v)", time.Duration(ttlresp.TTL)*time.Second, tc.expectTTLIsGT)
+			if tc.expectTTLIsGT != 0 && time.Duration(ttlresp.TTL)*time.Second < tc.expectTTLIsGT {
+				t.Errorf("Expected lease ttl (%v) to be >= than (%v)", time.Duration(ttlresp.TTL)*time.Second, tc.expectTTLIsGT)
 			}
 
 			if tc.expectTTLIsLT != 0 && time.Duration(ttlresp.TTL)*time.Second > tc.expectTTLIsLT {
@@ -487,17 +488,31 @@ func TestV3LeaseLeases(t *testing.T) {
 // it was oberserved that the immediate lease renewal after granting a lease from follower resulted lease not found.
 // related issue https://github.com/etcd-io/etcd/issues/6978
 func TestV3LeaseRenewStress(t *testing.T) {
-	testLeaseStress(t, stressLeaseRenew)
+	testLeaseStress(t, stressLeaseRenew, false)
+}
+
+// TestV3LeaseRenewStressWithClusterClient is similar to TestV3LeaseRenewStress,
+// but it uses a cluster client instead of a specific member's client.
+// The related issue is https://github.com/etcd-io/etcd/issues/13675.
+func TestV3LeaseRenewStressWithClusterClient(t *testing.T) {
+	testLeaseStress(t, stressLeaseRenew, true)
 }
 
 // TestV3LeaseTimeToLiveStress keeps creating lease and retrieving it immediately to ensure the lease can be retrieved.
 // it was oberserved that the immediate lease retrieval after granting a lease from follower resulted lease not found.
 // related issue https://github.com/etcd-io/etcd/issues/6978
 func TestV3LeaseTimeToLiveStress(t *testing.T) {
-	testLeaseStress(t, stressLeaseTimeToLive)
+	testLeaseStress(t, stressLeaseTimeToLive, false)
 }
 
-func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient) error) {
+// TestV3LeaseTimeToLiveStressWithClusterClient is similar to TestV3LeaseTimeToLiveStress,
+// but it uses a cluster client instead of a specific member's client.
+// The related issue is https://github.com/etcd-io/etcd/issues/13675.
+func TestV3LeaseTimeToLiveStressWithClusterClient(t *testing.T) {
+	testLeaseStress(t, stressLeaseTimeToLive, true)
+}
+
+func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient) error, useClusterClient bool) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -506,13 +521,23 @@ func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient
 	defer cancel()
 	errc := make(chan error)
 
-	for i := 0; i < 30; i++ {
-		for j := 0; j < 3; j++ {
-			go func(i int) { errc <- stresser(ctx, integration.ToGRPC(clus.Client(i)).Lease) }(j)
+	if useClusterClient {
+		for i := 0; i < 300; i++ {
+			clusterClient, err := clus.ClusterClient()
+			if err != nil {
+				t.Fatal(err)
+			}
+			go func(i int) { errc <- stresser(ctx, integration.ToGRPC(clusterClient).Lease) }(i)
+		}
+	} else {
+		for i := 0; i < 100; i++ {
+			for j := 0; j < 3; j++ {
+				go func(i int) { errc <- stresser(ctx, integration.ToGRPC(clus.Client(i)).Lease) }(j)
+			}
 		}
 	}
 
-	for i := 0; i < 90; i++ {
+	for i := 0; i < 300; i++ {
 		if err := <-errc; err != nil {
 			t.Fatal(err)
 		}
@@ -543,7 +568,7 @@ func stressLeaseRenew(tctx context.Context, lc pb.LeaseClient) (reterr error) {
 			continue
 		}
 		if rresp.TTL == 0 {
-			return fmt.Errorf("TTL shouldn't be 0 so soon")
+			return errors.New("TTL shouldn't be 0 so soon")
 		}
 	}
 	return nil

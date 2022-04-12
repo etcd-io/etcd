@@ -69,7 +69,7 @@ func Verify(cfg Config) error {
 		}
 	}()
 
-	beConfig := backend.DefaultBackendConfig()
+	beConfig := backend.DefaultBackendConfig(lg)
 	beConfig.Path = datadir.ToBackendFileName(cfg.DataDir)
 	beConfig.Logger = cfg.Logger
 
@@ -108,8 +108,7 @@ func MustVerifyIfEnabled(cfg Config) {
 }
 
 func validateConsistentIndex(cfg Config, hardstate *raftpb.HardState, snapshot *walpb.Snapshot, be backend.Backend) error {
-	tx := be.BatchTx()
-	index, term := schema.ReadConsistentIndex(tx)
+	index, term := schema.ReadConsistentIndex(be.ReadTx())
 	if cfg.ExactIndex && index != hardstate.Commit {
 		return fmt.Errorf("backend.ConsistentIndex (%v) expected == WAL.HardState.commit (%v)", index, hardstate.Commit)
 	}

@@ -29,7 +29,7 @@ import (
 )
 
 func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
-	bcfg := backend.DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig(cfg.Logger)
 	bcfg.Path = cfg.BackendPath()
 	bcfg.UnsafeNoFsync = cfg.UnsafeNoFsync
 	if cfg.BackendBatchLimit != 0 {
@@ -99,7 +99,7 @@ func OpenBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 func RecoverSnapshotBackend(cfg config.ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot, beExist bool, hooks *BackendHooks) (backend.Backend, error) {
 	consistentIndex := uint64(0)
 	if beExist {
-		consistentIndex, _ = schema.ReadConsistentIndex(oldbe.BatchTx())
+		consistentIndex, _ = schema.ReadConsistentIndex(oldbe.ReadTx())
 	}
 	if snapshot.Metadata.Index <= consistentIndex {
 		return oldbe, nil

@@ -214,6 +214,7 @@ func (c *Cluster) fillClusterForMembers() error {
 }
 
 func (c *Cluster) Launch(t testutil.TB) {
+	t.Logf("Launching new cluster...")
 	errc := make(chan error)
 	for _, m := range c.Members {
 		// Members are launched in separate goroutines because if they boot
@@ -259,7 +260,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 	c.LastMemberNum++
 	m := MustNewMember(t,
 		MemberConfig{
-			Name:                        fmt.Sprintf("m%v", memberNumber-1),
+			Name:                        fmt.Sprintf("m%v", memberNumber),
 			MemberNumber:                memberNumber,
 			AuthToken:                   c.Cfg.AuthToken,
 			PeerTLS:                     c.Cfg.PeerTLS,
@@ -398,12 +399,41 @@ func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
 	}
 }
 
-// WaitLeader returns index of the member in c.Members that is leader (or -1).
-func (c *Cluster) WaitLeader(t testutil.TB) int { return c.WaitMembersForLeader(t, c.Members) }
+// WaitLeader returns index of the member in c.Members that is leader
+// or fails the test (if not established in 30min).
+func (c *Cluster) WaitLeader(t testutil.TB) int {
+	return c.WaitMembersForLeader(t, c.Members)
+}
 
 // WaitMembersForLeader waits until given members agree on the same leader,
-// and returns its 'index' in the 'membs' list (or -1).
+// and returns its 'index' in the 'membs' list
 func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
+	t.Logf("WaitMembersForLeader")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	l := 0
+	for l = c.waitMembersForLeader(ctx, t, membs); l < 0; {
+		if ctx.Err() != nil {
+			t.Fatal("WaitLeader FAILED: %v", ctx.Err())
+		}
+	}
+	t.Logf("WaitMembersForLeader succeeded. Cluster leader index: %v", l)
+
+	// TODO: Consider second pass check as sometimes leadership is lost
+	// soon after election:
+	//
+	// We perform multiple attempts, as some-times just after successful WaitLLeader
+	// there is a race and leadership is quickly lost:
+	//   - MsgAppResp message with higher term from 2acc3d3b521981 [term: 3]	{"member": "m0"}
+	//   - 9903a56eaf96afac became follower at term 3	{"member": "m0"}
+	//   - 9903a56eaf96afac lost leader 9903a56eaf96afac at term 3	{"member": "m0"}
+
+	return l
+}
+
+// WaitMembersForLeader waits until given members agree on the same leader,
+// and returns its 'index' in the 'membs' list
+func (c *Cluster) waitMembersForLeader(ctx context.Context, t testutil.TB, membs []*Member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
@@ -415,7 +445,7 @@ func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
 	}
 	// ensure leader is up via linearizable get
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*TickDuration+time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 10*TickDuration+time.Second)
 		_, err := cc.Get(ctx, "0")
 		cancel()
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
@@ -442,10 +472,12 @@ func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
 
 	for i, m := range membs {
 		if uint64(m.Server.ID()) == lead {
+			t.Logf("waitMembersForLeader found leader. Member: %v lead: %x", i, lead)
 			return i
 		}
 	}
 
+	t.Logf("waitMembersForLeader failed (-1)")
 	return -1
 }
 
@@ -498,6 +530,7 @@ func newLocalListener(t testutil.TB) net.Listener {
 }
 
 func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
+	t.Logf("Creating listener with addr: %v", addr)
 	l, err := transport.NewUnixListener(addr)
 	if err != nil {
 		t.Fatal(err)
@@ -523,7 +556,6 @@ type Member struct {
 
 	GrpcServerOpts []grpc.ServerOption
 	GrpcServer     *grpc.Server
-	GrpcServerPeer *grpc.Server
 	GrpcURL        string
 	GrpcBridge     *bridge
 
@@ -690,7 +722,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.Logger = memberLogger(t, mcfg.Name)
 	m.StrictReconfigCheck = mcfg.StrictReconfigCheck
 	if err := m.listenGRPC(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("listenGRPC FAILED: %v", err)
 	}
 	t.Cleanup(func() {
 		// if we didn't cleanup the logger, the consecutive test
@@ -715,7 +747,11 @@ func (m *Member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
 	network, host, port := m.grpcAddr()
 	grpcAddr := host + ":" + port
-	m.Logger.Info("LISTEN GRPC", zap.String("grpcAddr", grpcAddr), zap.String("m.Name", m.Name))
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	m.Logger.Info("LISTEN GRPC", zap.String("grpcAddr", grpcAddr), zap.String("m.Name", m.Name), zap.String("workdir", wd))
 	grpcListener, err := net.Listen(network, grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen failed on grpc socket %s (%v)", grpcAddr, err)
@@ -904,7 +940,6 @@ func (m *Member) Launch() error {
 			}
 		}
 		m.GrpcServer = v3rpc.Server(m.Server, tlscfg, m.GrpcServerRecorder.UnaryInterceptor(), m.GrpcServerOpts...)
-		m.GrpcServerPeer = v3rpc.Server(m.Server, peerTLScfg, m.GrpcServerRecorder.UnaryInterceptor())
 		m.ServerClient = v3client.New(m.Server)
 		lockpb.RegisterLockServer(m.GrpcServer, v3lock.NewLockServer(m.ServerClient))
 		epb.RegisterElectionServer(m.GrpcServer, v3election.NewElectionServer(m.ServerClient))
@@ -916,11 +951,7 @@ func (m *Member) Launch() error {
 	h := (http.Handler)(m.RaftHandler)
 	if m.GrpcListener != nil {
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-				m.GrpcServerPeer.ServeHTTP(w, r)
-			} else {
-				m.RaftHandler.ServeHTTP(w, r)
-			}
+			m.RaftHandler.ServeHTTP(w, r)
 		})
 	}
 
@@ -928,11 +959,6 @@ func (m *Member) Launch() error {
 		cm := cmux.New(ln)
 		// don't hang on matcher after closing listener
 		cm.SetReadTimeout(time.Second)
-
-		if m.GrpcServer != nil {
-			grpcl := cm.Match(cmux.HTTP2())
-			go m.GrpcServerPeer.Serve(grpcl)
-		}
 
 		// serve http1/http2 rafthttp/grpc
 		ll := cm.Match(cmux.Any())
@@ -1126,9 +1152,6 @@ func (m *Member) Close() {
 			<-ch
 		}
 		m.GrpcServer = nil
-		m.GrpcServerPeer.GracefulStop()
-		m.GrpcServerPeer.Stop()
-		m.GrpcServerPeer = nil
 	}
 	if m.Server != nil {
 		m.Server.HardStop()
@@ -1327,7 +1350,7 @@ func NewCluster(t testutil.TB, cfg *ClusterConfig) *Cluster {
 	}
 	c.Members = ms
 	if err := c.fillClusterForMembers(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("fillClusterForMembers failed: %v", err)
 	}
 	c.Launch(t)
 
@@ -1341,6 +1364,9 @@ func (c *Cluster) TakeClient(idx int) {
 }
 
 func (c *Cluster) Terminate(t testutil.TB) {
+	if t != nil {
+		t.Logf("========= Cluster termination started =====================")
+	}
 	c.mu.Lock()
 	if c.clusterClient != nil {
 		if err := c.clusterClient.Close(); err != nil {
@@ -1362,6 +1388,9 @@ func (c *Cluster) Terminate(t testutil.TB) {
 		}(m)
 	}
 	wg.Wait()
+	if t != nil {
+		t.Logf("========= Cluster termination succeeded ===================")
+	}
 }
 
 func (c *Cluster) RandClient() *clientv3.Client {
@@ -1372,16 +1401,33 @@ func (c *Cluster) Client(i int) *clientv3.Client {
 	return c.Members[i].Client
 }
 
+func (c *Cluster) Endpoints() []string {
+	var endpoints []string
+	for _, m := range c.Members {
+		endpoints = append(endpoints, m.GrpcURL)
+	}
+	return endpoints
+}
+
 func (c *Cluster) ClusterClient() (client *clientv3.Client, err error) {
 	if c.clusterClient == nil {
-		endpoints := []string{}
+		var endpoints []string
 		for _, m := range c.Members {
 			endpoints = append(endpoints, m.GrpcURL)
 		}
 		cfg := clientv3.Config{
-			Endpoints:   endpoints,
-			DialTimeout: 5 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			Endpoints:          endpoints,
+			DialTimeout:        5 * time.Second,
+			DialOptions:        []grpc.DialOption{grpc.WithBlock()},
+			MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
+			MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
+		}
+		if c.Cfg.ClientTLS != nil {
+			tls, err := c.Cfg.ClientTLS.ClientConfig()
+			if err != nil {
+				return nil, err
+			}
+			cfg.TLS = tls
 		}
 		c.clusterClient, err = newClientV3(cfg)
 		if err != nil {

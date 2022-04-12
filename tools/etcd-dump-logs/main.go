@@ -45,6 +45,7 @@ const (
 
 func main() {
 	snapfile := flag.String("start-snap", "", "The base name of snapshot file to start dumping")
+	waldir := flag.String("wal-dir", "", "If set, dumps WAL from the informed path, rather than following the standard 'data_dir/member/wal/' location")
 	index := flag.Uint64("start-index", 0, "The index to start dumping")
 	// Default entry types are Normal and ConfigChange
 	entrytype := flag.String("entry-type", defaultEntryTypes, `If set, filters output by entry type. Must be one or more than one of:
@@ -103,7 +104,12 @@ and output a hex encoded line of binary for each input line`)
 		fmt.Println("Start dumping log entries from snapshot.")
 	}
 
-	w, err := wal.OpenForRead(zap.NewExample(), walDir(dataDir), walsnap)
+	wd := *waldir
+	if wd == "" {
+		wd = walDir(dataDir)
+	}
+
+	w, err := wal.OpenForRead(zap.NewExample(), wd, walsnap)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}
@@ -117,8 +123,10 @@ and output a hex encoded line of binary for each input line`)
 	fmt.Printf("WAL metadata:\nnodeID=%s clusterID=%s term=%d commitIndex=%d vote=%s\n",
 		id, cid, state.Term, state.Commit, vid)
 
-	fmt.Printf("WAL entries:\n")
-	fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].Index)
+	fmt.Printf("WAL entries: %d\n", len(ents))
+	if len(ents) > 0 {
+		fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].Index)
+	}
 
 	fmt.Printf("%4s\t%10s\ttype\tdata", "term", "index")
 	if *streamdecoder != "" {

@@ -155,6 +155,7 @@ func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 	for _, ep := range eps {
 		p.hdr(ep.Resp.Header)
 		fmt.Printf("\"Version\" : %q\n", ep.Resp.Version)
+		fmt.Printf("\"StorageVersion\" : %q\n", ep.Resp.StorageVersion)
 		fmt.Println(`"DBSize" :`, ep.Resp.DbSize)
 		fmt.Println(`"DBSizeInUse" :`, ep.Resp.DbSizeInUse)
 		fmt.Println(`"Leader" :`, ep.Resp.Leader)

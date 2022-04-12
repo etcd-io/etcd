@@ -45,9 +45,6 @@ func hasChecksum(n int64) bool {
 // the selected node.
 // Etcd <v3.6 will return "" as version.
 func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) (version string, err error) {
-	if lg == nil {
-		lg = zap.NewExample()
-	}
 	cfg.Logger = lg.Named("client")
 	if len(cfg.Endpoints) != 1 {
 		return "", fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
@@ -68,7 +65,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	}
 	lg.Info("created temporary db file", zap.String("path", partpath))
 
-	now := time.Now()
+	start := time.Now()
 	resp, err := cli.SnapshotWithVersion(ctx)
 	if err != nil {
 		return resp.Version, err
@@ -92,7 +89,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	lg.Info("fetched snapshot",
 		zap.String("endpoint", cfg.Endpoints[0]),
 		zap.String("size", humanize.Bytes(uint64(size))),
-		zap.String("took", humanize.Time(now)),
+		zap.Duration("took", time.Since(start)),
 		zap.String("etcd-version", version),
 	)
 

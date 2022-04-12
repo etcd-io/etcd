@@ -145,9 +145,6 @@ type ctlCtx struct {
 	// for compaction
 	compactPhysical bool
 
-	// to run etcdutl instead of etcdctl for suitable commands.
-	etcdutl bool
-
 	// dir that was used during the test
 	dataDir string
 }
@@ -181,10 +178,6 @@ func withQuota(b int64) ctlOption {
 	return func(cx *ctlCtx) { cx.quotaBackendBytes = b }
 }
 
-func withCompactPhysical() ctlOption {
-	return func(cx *ctlCtx) { cx.compactPhysical = true }
-}
-
 func withInitialCorruptCheck() ctlOption {
 	return func(cx *ctlCtx) { cx.initialCorruptCheck = true }
 }
@@ -203,10 +196,6 @@ func withApiPrefix(p string) ctlOption {
 
 func withFlagByEnv() ctlOption {
 	return func(cx *ctlCtx) { cx.envMap = make(map[string]string) }
-}
-
-func withEtcdutl() ctlOption {
-	return func(cx *ctlCtx) { cx.etcdutl = true }
 }
 
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
@@ -335,14 +324,10 @@ func (cx *ctlCtx) PrefixArgs() []string {
 	return cx.prefixArgs(cx.epc.EndpointsV3())
 }
 
-// PrefixArgsUtl returns prefix of the command that is either etcdctl or etcdutl
-// depending on cx configuration.
+// PrefixArgsUtl returns prefix of the command that is etcdutl
 // Please not thet 'utl' compatible commands does not consume --endpoints flag.
 func (cx *ctlCtx) PrefixArgsUtl() []string {
-	if cx.etcdutl {
-		return []string{e2e.UtlBinPath}
-	}
-	return []string{e2e.CtlBinPath}
+	return []string{e2e.UtlBinPath}
 }
 
 func isGRPCTimedout(err error) bool {

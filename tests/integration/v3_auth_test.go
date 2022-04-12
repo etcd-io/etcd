@@ -358,7 +358,6 @@ func TestV3AuthNonAuthorizedRPCs(t *testing.T) {
 }
 
 func TestV3AuthOldRevConcurrent(t *testing.T) {
-	t.Skip() // TODO(jingyih): re-enable the test when #10408 is fixed.
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

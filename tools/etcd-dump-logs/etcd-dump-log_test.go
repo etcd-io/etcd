@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestEtcdDumpLogEntryType(t *testing.T) {
@@ -47,11 +47,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 	decoder_correctoutputformat := filepath.Join(binDir, "/testdecoder/decoder_correctoutputformat.sh")
 	decoder_wrongoutputformat := filepath.Join(binDir, "/testdecoder/decoder_wrongoutputformat.sh")
 
-	p, err := os.MkdirTemp(os.TempDir(), "etcddumplogstest")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(p)
+	p := t.TempDir()
 
 	memberdir := filepath.Join(p, "member")
 	err = os.Mkdir(memberdir, 0744)
@@ -61,7 +57,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 	waldir := walDir(p)
 	snapdir := snapDir(p)
 
-	w, err := wal.Create(zap.NewExample(), waldir, nil)
+	w, err := wal.Create(zaptest.NewLogger(t), waldir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

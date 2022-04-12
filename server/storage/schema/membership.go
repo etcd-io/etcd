@@ -52,7 +52,7 @@ func (s *membershipBackend) MustSaveMemberToBackend(m *membership.Member) {
 	}
 
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	tx.UnsafePut(Members, mkey, mvalue)
 }
@@ -61,7 +61,7 @@ func (s *membershipBackend) MustSaveMemberToBackend(m *membership.Member) {
 // from the v3 backend.
 func (s *membershipBackend) TrimClusterFromBackend() error {
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	tx.UnsafeDeleteBucket(Cluster)
 	return nil
@@ -71,7 +71,7 @@ func (s *membershipBackend) MustDeleteMemberFromBackend(id types.ID) {
 	mkey := BackendMemberKey(id)
 
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	tx.UnsafeDelete(Members, mkey)
 	tx.UnsafePut(MembersRemoved, mkey, []byte("removed"))
@@ -102,7 +102,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 		return nil
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't read members from backend: %w", err)
+		return nil, nil, fmt.Errorf("couldn't read members from backend: %v", err)
 	}
 
 	err = tx.UnsafeForEach(MembersRemoved, func(k, v []byte) error {
@@ -111,7 +111,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 		return nil
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't read members_removed from backend: %w", err)
+		return nil, nil, fmt.Errorf("couldn't read members_removed from backend: %v", err)
 	}
 	return members, removed, nil
 }
@@ -121,7 +121,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 func (s *membershipBackend) TrimMembershipFromBackend() error {
 	s.lg.Info("Trimming membership information from the backend...")
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	err := tx.UnsafeForEach(Members, func(k, v []byte) error {
 		tx.UnsafeDelete(Members, k)
@@ -146,7 +146,7 @@ func (s *membershipBackend) MustSaveClusterVersionToBackend(ver *semver.Version)
 	ckey := ClusterClusterVersionKeyName
 
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	tx.UnsafePut(Cluster, ckey, []byte(ver.String()))
 }
@@ -160,14 +160,14 @@ func (s *membershipBackend) MustSaveDowngradeToBackend(downgrade *version.Downgr
 		s.lg.Panic("failed to marshal downgrade information", zap.Error(err))
 	}
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	tx.UnsafePut(Cluster, dkey, dvalue)
 }
 
 func (s *membershipBackend) MustCreateBackendBuckets() {
 	tx := s.be.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(Members)
 	tx.UnsafeCreateBucket(MembersRemoved)
