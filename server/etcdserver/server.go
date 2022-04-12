@@ -965,6 +965,13 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
 
+	// We need to set the backend to consistIndex before recovering the lessor,
+	// because lessor.Recover will commit the boltDB transaction, accordingly it
+	// will get the old consistent_index persisted into the db in OnPreCommitUnsafe.
+	// Eventually the new consistent_index value coming from snapshot is overwritten
+	// by the old value.
+	s.consistIndex.SetBackend(newbe)
+
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	if s.lessor != nil {
@@ -981,7 +988,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		lg.Panic("failed to restore mvcc store", zap.Error(err))
 	}
 
-	s.consistIndex.SetBackend(newbe)
 	newbe.SetTxPostLockInsideApplyHook(s.getTxPostLockInsideApplyHook())
 
 	lg.Info("restored mvcc store", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
