@@ -12,6 +12,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 
 - `etcd` will no longer start on data dir created by newer versions (for example etcd v3.6 will not run on v3.7+ data dir). To downgrade data dir please check out `etcdutl migrate` command.
 - `etcd` doesn't support serving client requests on the peer listen endpoints (--listen-peer-urls). See [pull/13565](https://github.com/etcd-io/etcd/pull/13565).
+- `etcdctl` will sleep(2s) in case of range delete without `--range` flag.See [pull/13747](https://github.com/etcd-io/etcd/pull/13747)
 
 ### Deprecations
 
