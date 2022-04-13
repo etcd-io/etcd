@@ -19,7 +19,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Removed [etcdctl defrag --data-dir](https://github.com/etcd-io/etcd/pull/13793).
 - Removed [etcdctl snapshot status](https://github.com/etcd-io/etcd/pull/13809).
 - Removed [etcdctl snapshot restore](https://github.com/etcd-io/etcd/pull/13809).
-- Removed [etcdutl snapshot save](https://github.com/etcd-io/etcd/pull/13809).
+- Removed [etcdctl snapshot save](https://github.com/etcd-io/etcd/pull/13809).
 
 
 ### etcdctl v3
