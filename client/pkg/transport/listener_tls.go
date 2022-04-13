@@ -19,12 +19,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"go.etcd.io/etcd/client/pkg/v3/lruutil"
 	"io/ioutil"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/hashicorp/golang-lru"
 )
 
 // tlsListener overrides a TLS listener so it will reject client
@@ -42,7 +43,7 @@ type tlsListener struct {
 type tlsCheckFunc func(context.Context, *tls.Conn) error
 
 // crlBytesLru cache tls cert context
-var crlBytesLru = lruutil.NewTimeEvictLru(time.Second * 60)
+var crlBytesLru, _ = lru.New(128)
 
 // NewTLSListener handshakes TLS connections and performs optional CRL checking.
 func NewTLSListener(l net.Listener, tlsinfo *TLSInfo) (net.Listener, error) {
@@ -172,16 +173,10 @@ func (l *tlsListener) acceptLoop() {
 }
 
 func checkCRL(crlPath string, cert []*x509.Certificate) error {
-	var crlBytes []byte
-
-	if v, ok := crlBytesLru.Get(crlPath); ok {
-		crlBytes = v
-	} else {
-		crlBytes, err := ioutil.ReadFile(crlPath)
-		if err != nil {
-			return err
-		}
-		crlBytesLru.Set(crlPath, crlBytes)
+	// cache crlBytes
+	crlBytes, err := memoizeCRL(crlBytesLru, crlPath, time.Second*60)
+	if err != nil {
+		return err
 	}
 	certList, err := x509.ParseCRL(crlBytes)
 	if err != nil {
@@ -280,4 +275,23 @@ func (l *tlsListener) Close() error {
 	err := l.Listener.Close()
 	<-l.donec
 	return err
+}
+
+func memoizeCRL(cache *lru.Cache, crlPath string, ttl time.Duration) (value []byte, err error) {
+	if v, ok := cache.Get(crlPath); ok {
+		expireTime := v.([2]interface{})[0].(time.Time)
+		// has not yet expired
+		if expireTime.After(time.Now()) {
+			return v.([2]interface{})[1].([]byte), nil
+		}
+	}
+	crlBytes, err := ioutil.ReadFile(crlPath)
+	if err != nil {
+		return nil, err
+	}
+	cache.Add(crlPath, [2]interface{}{
+		time.Now().Add(ttl),
+		crlBytes,
+	})
+	return crlBytes, nil
 }
