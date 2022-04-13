@@ -127,13 +127,11 @@ func TestLeaseGrantAndList(t *testing.T) {
 				t.Logf("Created cluster and client")
 				testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
 					createdLeases := []clientv3.LeaseID{}
-					lastRev := int64(0)
 					for i := 0; i < nc.leaseCount; i++ {
 						leaseResp, err := cc.Grant(10)
 						t.Logf("Grant returned: resp:%s err:%v", leaseResp.String(), err)
 						require.NoError(t, err)
 						createdLeases = append(createdLeases, leaseResp.ID)
-						lastRev = leaseResp.GetRevision()
 					}
 
 					// Because we're not guarunteed to talk to the same member, wait for
@@ -146,7 +144,9 @@ func TestLeaseGrantAndList(t *testing.T) {
 							return false
 						}
 						leases = resp.Leases
-						return resp.GetRevision() >= lastRev
+						// TODO: update this to use last Revision from leaseResp
+						// after https://github.com/etcd-io/etcd/issues/13989 is fixed
+						return len(leases) == len(createdLeases)
 					}, 2*time.Second, 10*time.Millisecond)
 
 					returnedLeases := make([]clientv3.LeaseID, 0, nc.leaseCount)
