@@ -67,7 +67,7 @@ func TestValidate(t *testing.T) {
 			version: V3_5,
 			overrideKeys: func(tx backend.BatchTx) {
 				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-				UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+				UnsafeUpdateConsistentIndex(tx, 1, 1)
 			},
 		},
 		{
@@ -88,7 +88,7 @@ func TestValidate(t *testing.T) {
 
 			b := backend.NewDefaultBackend(lg, dataPath)
 			defer b.Close()
-			err := Validate(lg, b.BatchTx())
+			err := Validate(lg, b.ReadTx())
 			if (err != nil) != tc.expectError {
 				t.Errorf("Validate(lg, tx) = %+v, expected error: %v", err, tc.expectError)
 			}
@@ -313,14 +313,14 @@ func setupBackendData(t *testing.T, version semver.Version, overrideKeys func(tx
 		case V3_4:
 		case V3_5:
 			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			UnsafeUpdateConsistentIndex(tx, 1, 1)
 		case V3_6:
 			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			UnsafeUpdateConsistentIndex(tx, 1, 1)
 			UnsafeSetStorageVersion(tx, &V3_6)
 		case V3_7:
 			MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
-			UnsafeUpdateConsistentIndex(tx, 1, 1, false)
+			UnsafeUpdateConsistentIndex(tx, 1, 1)
 			UnsafeSetStorageVersion(tx, &V3_7)
 			tx.UnsafePut(Meta, []byte("future-key"), []byte(""))
 		default:

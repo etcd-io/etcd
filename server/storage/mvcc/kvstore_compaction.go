@@ -42,7 +42,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		start := time.Now()
 
 		tx := s.b.BatchTx()
-		tx.Lock()
+		tx.LockOutsideApply()
 		keys, _ := tx.UnsafeRange(schema.Key, last, end, int64(batchNum))
 		for _, key := range keys {
 			rev = bytesToRev(key)
