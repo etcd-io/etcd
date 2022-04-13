@@ -65,18 +65,32 @@ type batchTx struct {
 	pending int
 }
 
+// Lock is supposed to be called only by the unit test.
 func (t *batchTx) Lock() {
+	ValidateCalledInsideUnittest(t.backend.lg)
+	t.lock()
+}
+
+func (t *batchTx) lock() {
 	t.Mutex.Lock()
 }
 
 func (t *batchTx) LockInsideApply() {
-	ValidateCalledInsideApply(t.backend.lg)
-	t.Lock()
+	t.lock()
+	if t.backend.txPostLockInsideApplyHook != nil {
+		// The callers of some methods (i.e., (*RaftCluster).AddMember)
+		// can be coming from both InsideApply and OutsideApply, but the
+		// callers from OutsideApply will have a nil txPostLockInsideApplyHook.
+		// So we should check the txPostLockInsideApplyHook before validating
+		// the callstack.
+		ValidateCalledInsideApply(t.backend.lg)
+		t.backend.txPostLockInsideApplyHook()
+	}
 }
 
 func (t *batchTx) LockOutsideApply() {
 	ValidateCalledOutSideApply(t.backend.lg)
-	t.Lock()
+	t.lock()
 }
 
 func (t *batchTx) Unlock() {
@@ -226,14 +240,14 @@ func unsafeForEach(tx *bolt.Tx, bucket Bucket, visitor func(k, v []byte) error) 
 
 // Commit commits a previous tx and begins a new writable one.
 func (t *batchTx) Commit() {
-	t.Lock()
+	t.lock()
 	t.commit(false)
 	t.Unlock()
 }
 
 // CommitAndStop commits the previous tx and does not create a new one.
 func (t *batchTx) CommitAndStop() {
-	t.Lock()
+	t.lock()
 	t.commit(true)
 	t.Unlock()
 }
@@ -303,13 +317,13 @@ func (t *batchTxBuffered) Unlock() {
 }
 
 func (t *batchTxBuffered) Commit() {
-	t.Lock()
+	t.lock()
 	t.commit(false)
 	t.Unlock()
 }
 
 func (t *batchTxBuffered) CommitAndStop() {
-	t.Lock()
+	t.lock()
 	t.commit(true)
 	t.Unlock()
 }

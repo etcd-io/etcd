@@ -49,7 +49,7 @@ func NewAuthBackend(lg *zap.Logger, be backend.Backend) *authBackend {
 
 func (abe *authBackend) CreateAuthBuckets() {
 	tx := abe.be.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(Auth)
 	tx.UnsafeCreateBucket(AuthUsers)
@@ -60,8 +60,17 @@ func (abe *authBackend) ForceCommit() {
 	abe.be.ForceCommit()
 }
 
+func (abe *authBackend) ReadTx() auth.AuthReadTx {
+	return &authReadTx{tx: abe.be.ReadTx(), lg: abe.lg}
+}
+
 func (abe *authBackend) BatchTx() auth.AuthBatchTx {
 	return &authBatchTx{tx: abe.be.BatchTx(), lg: abe.lg}
+}
+
+type authReadTx struct {
+	tx backend.ReadTx
+	lg *zap.Logger
 }
 
 type authBatchTx struct {
@@ -69,6 +78,7 @@ type authBatchTx struct {
 	lg *zap.Logger
 }
 
+var _ auth.AuthReadTx = (*authReadTx)(nil)
 var _ auth.AuthBatchTx = (*authBatchTx)(nil)
 
 func (atx *authBatchTx) UnsafeSaveAuthEnabled(enabled bool) {
@@ -86,6 +96,24 @@ func (atx *authBatchTx) UnsafeSaveAuthRevision(rev uint64) {
 }
 
 func (atx *authBatchTx) UnsafeReadAuthEnabled() bool {
+	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
+	return arx.UnsafeReadAuthEnabled()
+}
+
+func (atx *authBatchTx) UnsafeReadAuthRevision() uint64 {
+	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
+	return arx.UnsafeReadAuthRevision()
+}
+
+func (atx *authBatchTx) Lock() {
+	atx.tx.LockInsideApply()
+}
+
+func (atx *authBatchTx) Unlock() {
+	atx.tx.Unlock()
+}
+
+func (atx *authReadTx) UnsafeReadAuthEnabled() bool {
 	_, vs := atx.tx.UnsafeRange(Auth, AuthEnabledKeyName, nil, 0)
 	if len(vs) == 1 {
 		if bytes.Equal(vs[0], authEnabled) {
@@ -95,7 +123,7 @@ func (atx *authBatchTx) UnsafeReadAuthEnabled() bool {
 	return false
 }
 
-func (atx *authBatchTx) UnsafeReadAuthRevision() uint64 {
+func (atx *authReadTx) UnsafeReadAuthRevision() uint64 {
 	_, vs := atx.tx.UnsafeRange(Auth, AuthRevisionKeyName, nil, 0)
 	if len(vs) != 1 {
 		// this can happen in the initialization phase
@@ -104,10 +132,10 @@ func (atx *authBatchTx) UnsafeReadAuthRevision() uint64 {
 	return binary.BigEndian.Uint64(vs[0])
 }
 
-func (atx *authBatchTx) Lock() {
-	atx.tx.Lock()
+func (atx *authReadTx) Lock() {
+	atx.tx.RLock()
 }
 
-func (atx *authBatchTx) Unlock() {
-	atx.tx.Unlock()
+func (atx *authReadTx) Unlock() {
+	atx.tx.RUnlock()
 }

@@ -184,7 +184,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	ms.lg.Info("successfully sent database snapshot to client",
 		zap.Int64("total-bytes", total),
 		zap.String("size", size),
-		zap.String("took", humanize.Time(start)),
+		zap.Duration("took", time.Since(start)),
 		zap.String("storage-version", storageVersion),
 	)
 	return nil
