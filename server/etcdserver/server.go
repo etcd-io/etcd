@@ -2167,18 +2167,19 @@ func (s *EtcdServer) apply(
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
 	applyV3Performed := false
-	defer func() {
-		// The txPostLock callback will not get called in this case,
-		// so we should set the consistent index directly.
-		if s.consistIndex != nil && !applyV3Performed && membership.ApplyBoth == shouldApplyV3 {
-			s.consistIndex.SetConsistentIndex(e.Index, e.Term)
-		}
-	}()
+	var ar *applyResult
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
 		s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
 		shouldApplyV3 = membership.ApplyBoth
+		defer func() {
+			// The txPostLockInsideApplyHook will not get called in some cases,
+			// in which we should move the consistent index forward directly.
+			if !applyV3Performed || (ar != nil && ar.err != nil) {
+				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
+			}
+		}()
 	}
 	s.lg.Debug("apply entry normal",
 		zap.Uint64("consistent-index", index),
@@ -2220,7 +2221,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		id = raftReq.Header.ID
 	}
 
-	var ar *applyResult
 	needResult := s.w.IsRegistered(id)
 	if needResult || !noSideEffect(&raftReq) {
 		if !needResult && raftReq.Txn != nil {
