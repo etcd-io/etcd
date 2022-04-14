@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -59,8 +58,6 @@ func writeResponse(resp response, w http.ResponseWriter) {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	rBytes, err := io.ReadAll(r.Body)
-	// fix codeql: Log entries created from user input
-	rBytes = bytes.TrimSuffix(rBytes, []byte{'\n'})
 	if err != nil {
 		fmt.Printf("failed to read http request: %s\n", err)
 		os.Exit(1)
