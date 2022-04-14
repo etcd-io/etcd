@@ -243,6 +243,15 @@
 		]
 	},
 	{
+		"project": "github.com/grpc-ecosystem/grpc-gateway/v2",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.979253112033195
+			}
+		]
+	},
+	{
 		"project": "github.com/hashicorp/golang-lru",
 		"licenses": [
 			{
