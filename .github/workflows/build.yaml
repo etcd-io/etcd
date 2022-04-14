@@ -1,5 +1,6 @@
 name: Build
 on: [push, pull_request]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -58,3 +59,33 @@ jobs:
               exit 1
               ;;
           esac
+
+  build-windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["windows-latest"]
+        go: ["1.17.8"]
+    env:
+      GIT_ORG: ${{ github.repository_owner }}
+      GIT_REPO: ${{ github.events.repository.name }}
+      GO_VERSION: ${{ matrix.go }}
+    runs-on: ${{ matrix.os }}
+    steps:
+    # This step is required as long as the symlinks for client/v3/*_test.go -> tests/integration/clientv3/examples/*_test.go exist
+      - name: core.symlinks
+        run: |
+          git config --global core.symlinks true
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1      
+      - uses: WillAbides/setup-go-faster@v1.7.0
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Continuous Integration
+        run: make.ps1 -Script ci # -Version ${{ github.ref }}
+      - uses: dominikh/staticcheck-action@v1.2.0
+        with:
+          version: "2022.1"
+          install-go: false
+          cache-key: ${{ matrix.go }}
