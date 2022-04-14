@@ -135,6 +135,24 @@
 		]
 	},
 	{
+		"project": "github.com/go-logr/logr",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/go-logr/stdr",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/gogo/protobuf",
 		"licenses": [
 			{
@@ -532,6 +550,15 @@
 	},
 	{
 		"project": "go.opentelemetry.io/otel",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/exporters/otlp/internal/retry",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",

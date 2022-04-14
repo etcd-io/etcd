@@ -99,7 +99,7 @@ func CheckAfterTest(d time.Duration) error {
 // If you execute RegisterLeakDetection, you don't need to explicitly register AfterTest.
 func RegisterLeakDetection(t TB) {
 	if err := CheckAfterTest(10 * time.Millisecond); err != nil {
-		t.Skip("Found leaked goroutined BEFORE test", err)
+		t.Skip("Found leaked goroutines BEFORE test", err)
 		return
 	}
 	t.Cleanup(func() {

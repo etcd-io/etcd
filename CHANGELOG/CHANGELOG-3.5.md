@@ -5,7 +5,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.3 (TBD)
+## v3.5.3 (2022-04-13)
 
 ### etcd server
 - Fix [Provide a better liveness probe for when etcd runs as a Kubernetes pod](https://github.com/etcd-io/etcd/pull/13706)
