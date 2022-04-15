@@ -49,7 +49,7 @@ func TouchDirAll(lg *zap.Logger, dir string) error {
 	// first check if dir exist with an expected permission mode.
 	if Exist(dir) {
 		err := CheckDirPermission(dir, PrivateDirMode)
-		if err != nil {
+		if err != nil && lg != nil {
 			lg.Warn("check file permission", zap.Error(err))
 		}
 	} else {

@@ -186,11 +186,13 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	info.Logger = lg
 	if selfSignedCertValidity == 0 {
 		err = fmt.Errorf("selfSignedCertValidity is invalid,it should be greater than 0")
-		info.Logger.Warn(
-			"cannot generate cert",
-			zap.Error(err),
-		)
-		return
+		if info.Logger != nil {
+			info.Logger.Warn(
+				"cannot generate cert",
+				zap.Error(err),
+			)
+			return
+		}
 	}
 	err = fileutil.TouchDirAll(lg, dirpath)
 	if err != nil {
@@ -285,11 +287,13 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 
 	certOut, err := os.Create(certPath)
 	if err != nil {
-		info.Logger.Warn(
-			"cannot cert file",
-			zap.String("path", certPath),
-			zap.Error(err),
-		)
+		if info.Logger != nil {
+			info.Logger.Warn(
+				"cannot cert file",
+				zap.String("path", certPath),
+				zap.Error(err),
+			)
+		}
 		return
 	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})

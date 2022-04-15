@@ -520,14 +520,27 @@ func TestNewListenerUnixSocket(t *testing.T) {
 // TestNewListenerTLSInfoSelfCert tests that a new certificate accepts connections.
 func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 	tmpdir := t.TempDir()
-	tlsinfo, err := SelfCert(zap.NewExample(), tmpdir, []string{"127.0.0.1"}, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tlsinfo.Empty() {
-		t.Fatalf("tlsinfo should have certs (%+v)", tlsinfo)
-	}
-	testNewListenerTLSInfoAccept(t, tlsinfo)
+	t.Run("test New Listener SelfCert with logger", func(t *testing.T) {
+		tlsinfo, err := SelfCert(zap.NewExample(), tmpdir, []string{"127.0.0.1"}, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tlsinfo.Empty() {
+			t.Fatalf("tlsinfo should have certs (%+v)", tlsinfo)
+		}
+		testNewListenerTLSInfoAccept(t, tlsinfo)
+	})
+	t.Run("test New Listener SelfCert without logger", func(t *testing.T) {
+		tlsinfo, err := SelfCert(nil, tmpdir, []string{"127.0.0.1"}, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tlsinfo.Empty() {
+			t.Fatalf("tlsinfo should have certs (%+v)", tlsinfo)
+		}
+		testNewListenerTLSInfoAccept(t, tlsinfo)
+	})
+
 }
 
 func TestIsClosedConnError(t *testing.T) {

@@ -54,6 +54,26 @@ func TestIsDirWriteable(t *testing.T) {
 	}
 }
 
+func TestTouchDirAll(t *testing.T) {
+	tmpdir := t.TempDir()
+	t.Run("test creation of already existing directory with drwxr-xr-x rights without logger", func(t *testing.T) {
+		if err := TouchDirAll(nil, tmpdir); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Run("test creation of already existing directory with drwxr-xr-x rights with logger", func(t *testing.T) {
+		if err := TouchDirAll(zaptest.NewLogger(t), tmpdir); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Run("test creation of non-existent directory", func(t *testing.T) {
+		tmpdir2 := filepath.Join(tmpdir, "testdir")
+		if err := TouchDirAll(zaptest.NewLogger(t), tmpdir2); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
 func TestCreateDirAll(t *testing.T) {
 	tmpdir := t.TempDir()
 
