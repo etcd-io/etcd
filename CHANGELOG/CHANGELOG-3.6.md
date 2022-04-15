@@ -34,9 +34,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
 - Add `migrate` command for downgrading/upgrading etcd data dir files.
 
-### package `client/pkg/v3`
-- [Trim the suffix dot from the target](https://github.com/etcd-io/etcd/pull/13712) in SRV records returned by DNS lookup
-
 ### Package `server`
 
 - Package `mvcc` was moved to `storage/mvcc`
