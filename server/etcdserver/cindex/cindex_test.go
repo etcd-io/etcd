@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -66,28 +67,33 @@ func TestConsistentIndex(t *testing.T) {
 }
 
 func TestConsistentIndexDecrease(t *testing.T) {
+	testutil.BeforeTest(t)
 	initIndex := uint64(100)
 	initTerm := uint64(10)
 
 	tcs := []struct {
-		name  string
-		index uint64
-		term  uint64
+		name          string
+		index         uint64
+		term          uint64
+		panicExpected bool
 	}{
 		{
-			name:  "Decrease term",
-			index: initIndex + 1,
-			term:  initTerm - 1,
+			name:          "Decrease term",
+			index:         initIndex + 1,
+			term:          initTerm - 1,
+			panicExpected: false, // TODO: Change in v3.7
 		},
 		{
-			name:  "Decrease CI",
-			index: initIndex - 1,
-			term:  initTerm + 1,
+			name:          "Decrease CI",
+			index:         initIndex - 1,
+			term:          initTerm + 1,
+			panicExpected: true,
 		},
 		{
-			name:  "Decrease CI and term",
-			index: initIndex - 1,
-			term:  initTerm - 1,
+			name:          "Decrease CI and term",
+			index:         initIndex - 1,
+			term:          initTerm - 1,
+			panicExpected: true,
 		},
 	}
 	for _, tc := range tcs {
@@ -106,13 +112,21 @@ func TestConsistentIndexDecrease(t *testing.T) {
 			ci := NewConsistentIndex(be)
 			ci.SetConsistentIndex(tc.index, tc.term)
 			tx = be.BatchTx()
-			tx.Lock()
-			ci.UnsafeSave(tx)
-			tx.Unlock()
-			assert.Equal(t, tc.index, ci.ConsistentIndex())
+			func() {
+				tx.Lock()
+				defer tx.Unlock()
+				if tc.panicExpected {
+					assert.Panics(t, func() { ci.UnsafeSave(tx) }, "Should refuse to decrease cindex")
+					return
+				}
+				ci.UnsafeSave(tx)
+			}()
+			if !tc.panicExpected {
+				assert.Equal(t, tc.index, ci.ConsistentIndex())
 
-			ci = NewConsistentIndex(be)
-			assert.Equal(t, tc.index, ci.ConsistentIndex())
+				ci = NewConsistentIndex(be)
+				assert.Equal(t, tc.index, ci.ConsistentIndex())
+			}
 		})
 	}
 }

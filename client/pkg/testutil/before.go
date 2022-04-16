@@ -21,16 +21,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
-
-// These are constants from "go.etcd.io/etcd/server/v3/verify",
-// but we don't want to take dependency.
-const ENV_VERIFY = "ETCD_VERIFY"
-const ENV_VERIFY_ALL_VALUE = "all"
 
 func BeforeTest(t testing.TB) {
 	RegisterLeakDetection(t)
-	os.Setenv(ENV_VERIFY, ENV_VERIFY_ALL_VALUE)
+
+	revertVerifyFunc := verify.EnableAllVerifications()
 
 	path, err := os.Getwd()
 	assert.NoError(t, err)
@@ -38,7 +35,10 @@ func BeforeTest(t testing.TB) {
 	assert.NoError(t, os.Chdir(tempDir))
 	t.Logf("Changing working directory to: %s", tempDir)
 
-	t.Cleanup(func() { assert.NoError(t, os.Chdir(path)) })
+	t.Cleanup(func() {
+		revertVerifyFunc()
+		assert.NoError(t, os.Chdir(path))
+	})
 }
 
 func BeforeIntegrationExamples(*testing.M) func() {

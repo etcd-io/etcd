@@ -15,10 +15,10 @@
 package backend_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
@@ -69,11 +69,8 @@ func TestLockVerify(t *testing.T) {
 			expectPanic: false,
 		},
 	}
-	env := os.Getenv("ETCD_VERIFY")
-	os.Setenv("ETCD_VERIFY", "lock")
-	defer func() {
-		os.Setenv("ETCD_VERIFY", env)
-	}()
+	revertVerifyFunc := verify.EnableVerifications(backend.ENV_VERIFY_VALUE_LOCK)
+	defer revertVerifyFunc()
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 
