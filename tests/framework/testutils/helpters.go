@@ -29,6 +29,13 @@ func KeysFromGetResponse(resp *clientv3.GetResponse) (kvs []string) {
 	return kvs
 }
 
+func KeyValuesFromWatchResponse(resp clientv3.WatchResponse) (kvs []KV) {
+	for _, event := range resp.Events {
+		kvs = append(kvs, KV{Key: string(event.Kv.Key), Val: string(event.Kv.Value)})
+	}
+	return kvs
+}
+
 func KeyValuesFromGetResponse(resp *clientv3.GetResponse) (kvs []KV) {
 	for _, kv := range resp.Kvs {
 		kvs = append(kvs, KV{Key: string(kv.Key), Val: string(kv.Value)})

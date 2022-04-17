@@ -507,3 +507,51 @@ func (ctl *EtcdctlV3) UserChangePass(user, newPass string) error {
 	_, err = cmd.Expect("Password updated")
 	return err
 }
+
+func (ctl *EtcdctlV3) Watch(key string, opts config.WatchOptions) clientv3.WatchChan {
+	args := ctl.cmdArgs()
+	args = append(args, "watch", key)
+	if opts.RangeEnd != "" {
+		args = append(args, opts.RangeEnd)
+	}
+	args = append(args, "-w", "json")
+	if opts.Prefix {
+		args = append(args, "--prefix")
+	}
+	if opts.Interactive {
+		args = append(args, "--interactive")
+	}
+	if opts.Revision != 0 {
+		args = append(args, "--rev", fmt.Sprint(opts.Revision))
+	}
+	if len(opts.ExecCmd) > 0 {
+		args = append(args, "--")
+		args = append(args, opts.ExecCmd...)
+	}
+
+	ep, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil
+	}
+	defer ep.Stop()
+	if opts.Interactive {
+		wl := strings.Join(args, " ") + "\r"
+		if err = ep.Send(wl); err != nil {
+			return nil
+		}
+	}
+	var resp clientv3.WatchResponse
+	line, err := ep.Expect("")
+	if err != nil {
+		return nil
+	}
+	err = json.Unmarshal([]byte(line), &resp)
+	if err != nil {
+		return nil
+	}
+	ch := make(chan clientv3.WatchResponse, 1)
+	ch <- resp
+	close(ch)
+
+	return ch
+}

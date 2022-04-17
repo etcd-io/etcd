@@ -59,3 +59,11 @@ type LeaseOption struct {
 type UserAddOptions struct {
 	NoPassword bool
 }
+
+type WatchOptions struct {
+	Prefix      bool
+	Revision    int64
+	RangeEnd    string
+	ExecCmd     []string
+	Interactive bool
+}

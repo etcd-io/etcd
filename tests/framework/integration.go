@@ -311,3 +311,18 @@ func (c integrationClient) UserChangePass(user, newPass string) error {
 	_, err := c.Client.UserChangePassword(context.Background(), user, newPass)
 	return err
 }
+
+func (c integrationClient) Watch(key string, opts config.WatchOptions) clientv3.WatchChan {
+	opOpts := []clientv3.OpOption{}
+	if opts.Prefix {
+		opOpts = append(opOpts, clientv3.WithPrefix())
+	}
+	if opts.Revision != 0 {
+		opOpts = append(opOpts, clientv3.WithRev(opts.Revision))
+	}
+	if opts.RangeEnd != "" {
+		opOpts = append(opOpts, clientv3.WithRange(opts.RangeEnd))
+	}
+
+	return c.Client.Watch(context.Background(), key, opOpts...)
+}
