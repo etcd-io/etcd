@@ -113,7 +113,7 @@ func TestGetAllUsers(t *testing.T) {
 			be2 := backend.NewDefaultBackend(lg, tmpPath)
 			defer be2.Close()
 			abe2 := NewAuthBackend(lg, be2)
-			users := abe2.GetAllUsers()
+			users := abe2.ReadTx().UnsafeGetAllUsers()
 
 			assert.Equal(t, tc.want, users)
 		})
