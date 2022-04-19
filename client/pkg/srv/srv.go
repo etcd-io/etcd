@@ -106,10 +106,9 @@ func GetClient(service, domain string, serviceName string) (*SRVClients, error) 
 			return err
 		}
 		for _, srv := range addrs {
-			shortHost := strings.TrimSuffix(srv.Target, ".")
 			urls = append(urls, &url.URL{
 				Scheme: scheme,
-				Host:   net.JoinHostPort(shortHost, fmt.Sprintf("%d", srv.Port)),
+				Host:   net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port)),
 			})
 		}
 		srvs = append(srvs, addrs...)
