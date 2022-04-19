@@ -90,12 +90,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			writeResponse(response{req.Val, req.Version, ""}, w)
 		}
 	} else {
-		fmt.Printf("unknown op: %s\n", req.Op)
+		fmt.Printf("unknown op: %s\n", escape(req.Op))
 		return
 	}
 }
 
+func escape(s string) string {
+	escaped := strings.Replace(s, "\n", " ", -1)
+	escaped = strings.Replace(escaped, "\r", " ", -1)
+	return escaped
+}
+
 func main() {
 	http.HandleFunc("/", handler)
-	http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		fmt.Printf("failed to listen and serve: %s\n", err)
+		os.Exit(1)
+	}
 }
