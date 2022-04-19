@@ -101,7 +101,7 @@ tools_build() {
 
 tests_build() {
   out=${BINDIR:-./bin}
-  out=$(readlink -m "$out")
+  out=$(readlink -f "$out")
   out="${out}/functional/cmd"
   mkdir -p "${out}"
   BINDIR="${out}" run ./tests/functional/build.sh || return 2
