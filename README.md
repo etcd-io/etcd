@@ -169,7 +169,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 ## Reporting bugs
 
-See [reporting bugs](https://etcd.io/docs/latest/reporting_bugs/) for details about reporting any issues.
+See [reporting bugs](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md) for details about reporting any issues.
 
 ## Reporting a security vulnerability
 
@@ -177,9 +177,9 @@ See [security disclosure and release process](security/README.md) for details on
 
 ## Issue and PR management
 
-See [issue triage guidelines](https://etcd.io/docs/current/triage/issues/) for details on how issues are managed.
+See [issue triage guidelines](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/triage_issues.md) for details on how issues are managed.
 
-See [PR management](https://etcd.io/docs/current/triage/prs/) for guidelines on how pull requests are managed.
+See [PR management](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/triage_prs.md) for guidelines on how pull requests are managed.
 
 ## etcd Emeritus Maintainers
 
