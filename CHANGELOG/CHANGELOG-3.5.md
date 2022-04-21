@@ -2,6 +2,17 @@
 
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 
+<hr>
+
+## v3.5.4 (TBD)
+
+### etcd server
+- Fix [etcd panic on startup (auth enabled)](https://github.com/etcd-io/etcd/pull/13946)
+
+### package `client/pkg/v3`
+
+- [Revert the change of trimming the trailing dot from SRV.Target](https://github.com/etcd-io/etcd/pull/13950) returned by DNS lookup
+
 
 <hr>
 
