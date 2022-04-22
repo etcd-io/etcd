@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package apply
 
 import (
 	"context"
@@ -42,7 +42,7 @@ func newAuthApplierV3(as auth.AuthStore, base applierV3, lessor lease.Lessor) *a
 	return &authApplierV3{applierV3: base, as: as, lessor: lessor}
 }
 
-func (aa *authApplierV3) WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *applyResult {
+func (aa *authApplierV3) WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *ApplyResult {
 	aa.mu.Lock()
 	defer aa.mu.Unlock()
 	if r.Header != nil {
@@ -55,7 +55,7 @@ func (aa *authApplierV3) WrapApply(ctx context.Context, r *pb.InternalRaftReques
 		if err := aa.as.IsAdminPermitted(&aa.authInfo); err != nil {
 			aa.authInfo.Username = ""
 			aa.authInfo.Revision = 0
-			return &applyResult{err: err}
+			return &ApplyResult{Err: err}
 		}
 	}
 	ret := aa.applierV3.WrapApply(ctx, r, shouldApplyV3, applyFunc)
@@ -150,7 +150,7 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 	return nil
 }
 
-func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
+func CheckTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
 	for _, c := range rt.Compare {
 		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
 			return err
@@ -163,7 +163,7 @@ func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error
 }
 
 func (aa *authApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	if err := checkTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
+	if err := CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
 		return nil, nil, err
 	}
 	return aa.applierV3.Txn(ctx, rt)

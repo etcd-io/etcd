@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package apply
 
 import (
 	"context"
@@ -43,22 +43,31 @@ const (
 	v3Version = "v3"
 )
 
-type applyResult struct {
-	resp proto.Message
-	err  error
-	// physc signals the physical effect of the request has completed in addition
-	// to being logically reflected by the node. Currently, only used for
-	// Compaction requests.
-	physc <-chan struct{}
-	trace *traceutil.Trace
+// RaftStatusGetter represents etcd server and Raft progress.
+type RaftStatusGetter interface {
+	MemberId() types.ID
+	Leader() types.ID
+	CommittedIndex() uint64
+	AppliedIndex() uint64
+	Term() uint64
 }
 
-type ApplyFunc func(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult
+type ApplyResult struct {
+	Resp proto.Message
+	Err  error
+	// Physc signals the physical effect of the request has completed in addition
+	// to being logically reflected by the node. Currently, only used for
+	// Compaction requests.
+	Physc <-chan struct{}
+	Trace *traceutil.Trace
+}
+
+type ApplyFunc func(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
-	WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *applyResult
-	//Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult
+	WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *ApplyResult
+	//Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult
 
 	Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
@@ -142,7 +151,7 @@ func newApplierV3Backend(
 		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer}
 }
 
-func (a *applierV3backend) WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *applyResult {
+func (a *applierV3backend) WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *ApplyResult {
 	return applyFunc(ctx, r, shouldApplyV3)
 }
 
@@ -459,28 +468,6 @@ func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 		err = etcderrors.ErrNoSpace
 	}
 	return resp, err
-}
-
-func noSideEffect(r *pb.InternalRaftRequest) bool {
-	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
-}
-
-func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
-	f := func(ops []*pb.RequestOp) []*pb.RequestOp {
-		j := 0
-		for i := 0; i < len(ops); i++ {
-			if _, ok := ops[i].Request.(*pb.RequestOp_RequestRange); ok {
-				continue
-			}
-			ops[j] = ops[i]
-			j++
-		}
-
-		return ops[:j]
-	}
-
-	txn.Success = f(txn.Success)
-	txn.Failure = f(txn.Failure)
 }
 
 func (a *applierV3backend) newHeader() *pb.ResponseHeader {

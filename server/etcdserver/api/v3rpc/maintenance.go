@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -70,7 +71,7 @@ type ClusterStatusGetter interface {
 
 type maintenanceServer struct {
 	lg  *zap.Logger
-	rg  etcdserver.RaftStatusGetter
+	rg  apply.RaftStatusGetter
 	kg  KVGetter
 	bg  BackendGetter
 	a   Alarmer

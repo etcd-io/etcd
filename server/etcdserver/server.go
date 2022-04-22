@@ -33,7 +33,9 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/etcd/pkg/v3/notify"
+	"go.etcd.io/etcd/pkg/v3/runtime"
 	"go.etcd.io/etcd/server/v3/config"
+	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	"go.uber.org/zap"
 
@@ -45,7 +47,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/pkg/v3/runtime"
 	"go.etcd.io/etcd/pkg/v3/schedule"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/pkg/v3/wait"
@@ -149,7 +150,7 @@ type ServerV2 interface {
 
 type ServerV3 interface {
 	Server
-	RaftStatusGetter
+	apply2.RaftStatusGetter
 }
 
 func (s *EtcdServer) ClientCertAuthEnabled() bool { return s.Cfg.ClientCertAuthEnabled }
@@ -251,7 +252,7 @@ type EtcdServer struct {
 
 	applyV2 ApplierV2
 
-	uberApply *uberApplier
+	uberApply *apply2.UberApplier
 
 	applyWait wait.WaitTime
 
@@ -1076,8 +1077,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	s.uberApply = s.NewUberApplier()
 }
 
-func (s *EtcdServer) NewUberApplier() *uberApplier {
-	return newUberApplier(s.lg, s.be, s.KV(), s.alarmStore, s.authStore, s.lessor, s.cluster, s, s, s.consistIndex,
+func (s *EtcdServer) NewUberApplier() *apply2.UberApplier {
+	return apply2.NewUberApplier(s.lg, s.be, s.KV(), s.alarmStore, s.authStore, s.lessor, s.cluster, s, s, s.consistIndex,
 		s.Cfg.WarningApplyDuration, s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer, s.Cfg.QuotaBackendBytes)
 }
 
@@ -1605,15 +1606,6 @@ func (s *EtcdServer) FirstCommitInTermNotify() <-chan struct{} {
 	return s.firstCommitInTerm.Receive()
 }
 
-// RaftStatusGetter represents etcd server and Raft progress.
-type RaftStatusGetter interface {
-	MemberId() types.ID
-	Leader() types.ID
-	CommittedIndex() uint64
-	AppliedIndex() uint64
-	Term() uint64
-}
-
 func (s *EtcdServer) MemberId() types.ID { return s.memberId }
 
 func (s *EtcdServer) Leader() types.ID { return types.ID(s.getLead()) }
@@ -1837,7 +1829,7 @@ func (s *EtcdServer) apply(
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
 	applyV3Performed := false
-	var ar *applyResult
+	var ar *apply2.ApplyResult
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
@@ -1846,7 +1838,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		defer func() {
 			// The txPostLockInsideApplyHook will not get called in some cases,
 			// in which we should move the consistent index forward directly.
-			if !applyV3Performed || (ar != nil && ar.err != nil) {
+			if !applyV3Performed || (ar != nil && ar.Err != nil) {
 				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
 			}
 		}()
@@ -1912,7 +1904,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		return
 	}
 
-	if ar.err != etcderrors.ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
+	if ar.Err != etcderrors.ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.w.Trigger(id, ar)
 		return
 	}
@@ -1922,7 +1914,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		"message exceeded backend quota; raising alarm",
 		zap.Int64("quota-size-bytes", s.Cfg.QuotaBackendBytes),
 		zap.String("quota-size", humanize.Bytes(uint64(s.Cfg.QuotaBackendBytes))),
-		zap.Error(ar.err),
+		zap.Error(ar.Err),
 	)
 
 	s.GoAttach(func() {
@@ -1934,6 +1926,28 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
 		s.w.Trigger(id, ar)
 	})
+}
+
+func noSideEffect(r *pb.InternalRaftRequest) bool {
+	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
+}
+
+func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
+	f := func(ops []*pb.RequestOp) []*pb.RequestOp {
+		j := 0
+		for i := 0; i < len(ops); i++ {
+			if _, ok := ops[i].Request.(*pb.RequestOp_RequestRange); ok {
+				continue
+			}
+			ops[j] = ops[i]
+			j++
+		}
+
+		return ops[:j]
+	}
+
+	txn.Success = f(txn.Success)
+	txn.Failure = f(txn.Failure)
 }
 
 // applyConfChange applies a ConfChange to the server. It is only

@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -172,7 +173,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		var resp *pb.TxnResponse
 		var err error
 		chk := func(ai *auth.AuthInfo) error {
-			return checkTxnAuth(s.authStore, ai, r)
+			return apply2.CheckTxnAuth(s.authStore, ai, r)
 		}
 
 		defer func(start time.Time) {
@@ -201,17 +202,17 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 	startTime := time.Now()
 	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Compaction: r})
 	trace := traceutil.TODO()
-	if result != nil && result.trace != nil {
-		trace = result.trace
+	if result != nil && result.Trace != nil {
+		trace = result.Trace
 		defer func() {
 			trace.LogIfLong(traceThreshold)
 		}()
-		applyStart := result.trace.GetStartTime()
-		result.trace.SetStartTime(startTime)
+		applyStart := result.Trace.GetStartTime()
+		result.Trace.SetStartTime(startTime)
 		trace.InsertStep(0, applyStart, "process raft request")
 	}
-	if r.Physical && result != nil && result.physc != nil {
-		<-result.physc
+	if r.Physical && result != nil && result.Physc != nil {
+		<-result.Physc
 		// The compaction is done deleting keys; the hash is now settled
 		// but the data is not necessarily committed. If there's a crash,
 		// the hash may revert to a hash prior to compaction completing
@@ -227,10 +228,10 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
+	if result.Err != nil {
+		return nil, result.Err
 	}
-	resp := result.resp.(*pb.CompactionResponse)
+	resp := result.Resp.(*pb.CompactionResponse)
 	if resp == nil {
 		resp = &pb.CompactionResponse{}
 	}
@@ -611,19 +612,19 @@ func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftReque
 	if err != nil {
 		return nil, err
 	}
-	if result.err != nil {
-		return nil, result.err
+	if result.Err != nil {
+		return nil, result.Err
 	}
-	if startTime, ok := ctx.Value(traceutil.StartTimeKey).(time.Time); ok && result.trace != nil {
-		applyStart := result.trace.GetStartTime()
+	if startTime, ok := ctx.Value(traceutil.StartTimeKey).(time.Time); ok && result.Trace != nil {
+		applyStart := result.Trace.GetStartTime()
 		// The trace object is created in apply. Here reset the start time to trace
 		// the raft request time by the difference between the request start time
 		// and apply start time
-		result.trace.SetStartTime(startTime)
-		result.trace.InsertStep(0, applyStart, "process raft request")
-		result.trace.LogIfLong(traceThreshold)
+		result.Trace.SetStartTime(startTime)
+		result.Trace.InsertStep(0, applyStart, "process raft request")
+		result.Trace.LogIfLong(traceThreshold)
 	}
-	return result.resp, nil
+	return result.Resp, nil
 }
 
 func (s *EtcdServer) raftRequest(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
@@ -655,7 +656,7 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 	return nil
 }
 
-func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*apply2.ApplyResult, error) {
 	ai := s.getAppliedIndex()
 	ci := s.getCommittedIndex()
 	if ci > ai+maxGapBetweenApplyAndCommitIndex {
@@ -708,7 +709,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 
 	select {
 	case x := <-ch:
-		return x.(*applyResult), nil
+		return x.(*apply2.ApplyResult), nil
 	case <-cctx.Done():
 		proposalsFailed.Inc()
 		s.w.Trigger(id, nil) // GC wait

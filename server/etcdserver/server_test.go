@@ -46,6 +46,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -1478,7 +1479,7 @@ func TestPublishV3(t *testing.T) {
 	n := newNodeRecorder()
 	ch := make(chan interface{}, 1)
 	// simulate that request has gone through consensus
-	ch <- &applyResult{}
+	ch <- &apply2.ApplyResult{}
 	w := wait.NewWithResponse(ch)
 	ctx, cancel := context.WithCancel(context.Background())
 	lg := zaptest.NewLogger(t)
