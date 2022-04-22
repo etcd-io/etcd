@@ -73,7 +73,9 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer p.Close()
 
 	data1 := []byte("Hello World!")
@@ -196,7 +198,9 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer p.Close()
 
 	data := []byte("Hello World!")
@@ -246,7 +250,9 @@ func TestServer_PauseTx(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer p.Close()
 
 	p.PauseTx()
@@ -293,7 +299,9 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer p.Close()
 
 	p.ModifyTx(func(d []byte) []byte {
@@ -329,7 +337,9 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer p.Close()
 
 	// 50% packet loss
@@ -366,7 +376,9 @@ func TestServer_BlackholeTx(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer p.Close()
 
 	p.BlackholeTx()
@@ -417,7 +429,9 @@ func TestServer_Shutdown(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer p.Close()
 
 	s, _ := p.(*server)
@@ -448,7 +462,9 @@ func TestServer_ShutdownListener(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer p.Close()
 
 	// shut down destination
@@ -527,7 +543,9 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
-	<-p.Ready()
+
+	waitForServer(t, p)
+
 	defer func() {
 		lg.Info("closing Proxy server...")
 		p.Close()
@@ -669,4 +687,14 @@ func receive(t *testing.T, ln net.Listener) (data []byte) {
 		}
 	}
 	return buf.Bytes()
+}
+
+// Waits until a proxy is ready to serve.
+// Aborts test on proxy start-up error.
+func waitForServer(t *testing.T, s Server) {
+	select {
+	case <-s.Ready():
+	case err := <-s.Error():
+		t.Fatal(err)
+	}
 }

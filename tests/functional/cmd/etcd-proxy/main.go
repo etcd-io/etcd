@@ -87,7 +87,13 @@ $ ./bin/etcdctl --endpoints localhost:23790 put foo bar`)
 			zap.Int("port", httpPort))
 	}
 	p := proxy.NewServer(cfg)
-	<-p.Ready()
+
+	select {
+	case <-p.Ready():
+	case err := <-p.Error():
+		panic(err)
+	}
+
 	defer p.Close()
 
 	mux := http.NewServeMux()
