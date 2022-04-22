@@ -201,7 +201,7 @@ func (cfg *Config) setupLogging() error {
 	return nil
 }
 
-// NewZapLoggerBuilder generates a zap logger builder that sets given loger
+// NewZapLoggerBuilder generates a zap logger builder that sets given logger
 // for embedded etcd.
 func NewZapLoggerBuilder(lg *zap.Logger) func(*Config) error {
 	return func(cfg *Config) error {
