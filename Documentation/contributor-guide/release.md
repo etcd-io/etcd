@@ -10,27 +10,16 @@ etcd community members are assigned to manage the release each etcd major/minor 
 and to each stable release branch. The managers are responsible for communicating the timelines and status of each
 release and for ensuring the stability of the release branch.
 
-| Releases | Manager |
-| -------- | ------- |
-| 3.1 patch (post 3.1.0) | Joe Betz [@jpbetz](https://github.com/jpbetz) |
-| 3.2 patch (post 3.2.0) | Joe Betz [@jpbetz](https://github.com/jpbetz) |
-| 3.3 patch (post 3.3.0) | Gyuho Lee [@gyuho](https://github.com/gyuho) |
-
-## Prepare release
-
-Set desired version as environment variable for following steps. Here is an example to release 2.3.0:
-
-```
-export VERSION=v2.3.0
-export PREV_VERSION=v2.2.5
-```
+| Releases               | Manager                                                     |
+|------------------------|-------------------------------------------------------------|
+| 3.4 patch (post 3.4.0) |                                                             |
+| 3.5 patch (post 3.5.0) | Marek Siarkowicz [@serathius](https://github.com/serathius) |
 
 All releases version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
 
 ### Major, minor version release, or its pre-release
 
 - Ensure the relevant milestone on GitHub is complete. All referenced issues should be closed, or moved elsewhere.
-- Remove this release from [roadmap](https://github.com/etcd-io/etcd/blob/master/ROADMAP.md), if necessary.
 - Ensure the latest upgrade documentation is available.
 - Bump [hardcoded MinClusterVerion in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L29), if necessary.
 - Add feature capability maps for the new version, if necessary.
@@ -48,52 +37,18 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 - Put `[GH XXXX]` at the head of change line to reference Pull Request that introduces the change. Moreover, add a link on it to jump to the Pull Request.
 - Find PRs with `release-note` label and explain them in `NEWS` file, as a straightforward summary of changes for end-users.
 
-## Tag version
-
-- Bump [hardcoded Version in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L30) to the latest version `${VERSION}`.
-- Ensure all tests on CI system are passed.
-- Manually check etcd is buildable in Linux, Darwin and Windows.
-- Manually check upgrade etcd cluster of previous minor version works well.
-- Manually check new features work well.
-- Add a signed tag through `git tag -s ${VERSION}`.
-- Sanity check tag correctness through `git show tags/$VERSION`.
-- Push the tag to GitHub through `git push origin tags/$VERSION`. This assumes `origin` corresponds to "https://github.com/etcd-io/etcd\".
-
-## Build release binaries and images
+## Build and push the release artifacts
 
 - Ensure `docker` is available.
 
 Run release script in root directory:
 
 ```
-TAG=gcr.io/etcd-development/etcd ./scripts/release.sh ${VERSION}
+DRY_RUN=false ./scripts/release.sh ${VERSION}
 ```
 
 It generates all release binaries and images under directory ./release.
-
-## Sign binaries, images, and source code
-
-etcd project key must be used to sign the generated binaries and images.`$SUBKEYID` is the key ID of etcd project Yubikey. Connect the key and run `gpg2 --card-status` to get the ID.
-
-The following commands are used for public release sign:
-
-```
-cd release
-for i in etcd-*{.zip,.tar.gz}; do gpg2 --default-key $SUBKEYID --armor --output ${i}.asc --detach-sign ${i}; done
-for i in etcd-*{.zip,.tar.gz}; do gpg2 --verify ${i}.asc ${i}; done
-
-# sign zipped source code files
-wget https://github.com/etcd-io/etcd/archive/${VERSION}.zip
-gpg2 --armor --default-key $SUBKEYID --output ${VERSION}.zip.asc --detach-sign ${VERSION}.zip
-gpg2 --verify ${VERSION}.zip.asc ${VERSION}.zip
-
-wget https://github.com/etcd-io/etcd/archive/${VERSION}.tar.gz
-gpg2 --armor --default-key $SUBKEYID --output ${VERSION}.tar.gz.asc --detach-sign ${VERSION}.tar.gz
-gpg2 --verify ${VERSION}.tar.gz.asc ${VERSION}.tar.gz
-```
-
-The public key for GPG signing can be found at [CoreOS Application Signing Key](https://coreos.com/security/app-signing-key)
-
+Binaries are pushed to gcr.io and images are pushed to quay.io and gcr.io.
 
 ## Publish release page in GitHub
 
@@ -102,45 +57,6 @@ The public key for GPG signing can be found at [CoreOS Application Signing Key](
 - Attach the generated binaries and signatures.
 - Select whether it is a pre-release.
 - Publish the release!
-
-## Publish docker image in gcr.io
-
-- Push docker image:
-
-```
-gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd.json)" https://gcr.io
-
-for TARGET_ARCH in "-arm64" "-ppc64le" "-s390x" ""; do
-  gcloud docker -- push gcr.io/etcd-development/etcd:${VERSION}${TARGET_ARCH}
-done
-```
-
-- Add `latest` tag to the new image on [gcr.io](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd?project=etcd-development&authuser=1) if this is a stable release.
-
-## Publish docker image in Quay.io
-
-- Build docker images with quay.io:
-
-```
-for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
-  TAG=quay.io/coreos/etcd GOARCH=${TARGET_ARCH} \
-    BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} \
-    BUILDDIR=release \
-    ./scripts/build-docker ${VERSION}
-done
-```
-
-- Push docker image:
-
-```
-docker login quay.io
-
-for TARGET_ARCH in "-arm64" "-ppc64le" "-s390x" ""; do
-  docker push quay.io/coreos/etcd:${VERSION}${TARGET_ARCH}
-done
-```
-
-- Add `latest` tag to the new image on [quay.io](https://quay.io/repository/coreos/etcd?tag=latest&tab=tags) if this is a stable release.
 
 ## Announce to the etcd-dev Googlegroup
 
