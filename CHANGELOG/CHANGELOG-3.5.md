@@ -4,7 +4,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.4 (TBD)
+## v3.5.4 (2022-04-24)
 
 ### etcd server
 - Fix [etcd panic on startup (auth enabled)](https://github.com/etcd-io/etcd/pull/13946)
