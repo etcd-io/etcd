@@ -2,7 +2,7 @@
 
 set -e
 
-source ./scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
 
 VER=$1
 REPOSITORY="${REPOSITORY:-git@github.com:etcd-io/etcd.git}"
@@ -25,9 +25,7 @@ function setup_env {
 
   pushd "${proj}" >/dev/null
     run git fetch --all
-    git_assert_branch_in_sync || exit 2
     run git checkout "${ver}"
-    git_assert_branch_in_sync || exit 2
   popd >/dev/null
 }
 
@@ -83,11 +81,11 @@ function main {
       export GOARCH=${TARGET_ARCH}
 
       pushd etcd >/dev/null
-      GO_LDFLAGS="-s" ./build.sh
+      GO_LDFLAGS="-s" /go/src/go.etcd.io/etcd/build.sh
       popd >/dev/null
 
       TARGET="etcd-${VER}-${GOOS}-${GOARCH}"
-      mkdir "${TARGET}"
+      mkdir -p "${TARGET}"
       package "${TARGET}" "${proj}"
 
       if [ ${GOOS} == "linux" ]; then

@@ -4,8 +4,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-source ./scripts/test_lib.sh
-source ./scripts/release_mod.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/release_mod.sh
 
 DRY_RUN=${DRY_RUN:-true}
 
@@ -43,7 +43,7 @@ help() {
   echo "    --no-docker-push: skip docker image pushes."
   echo ""
   echo "One can perform a (dry-run) test release from any (uncommitted) branch using:"
-  echo "  DRY_RUN=true REPOSITORY=\`pwd\` BRANCH='local-branch-name' ./scripts/release 3.5.0-foobar.2"
+  echo "  DRY_RUN=true REPOSITORY=\`pwd\` BRANCH='local-branch-name' /go/src/go.etcd.io/etcd/scripts/release 3.5.0-foobar.2"
 }
 
 main() {
@@ -102,7 +102,7 @@ main() {
 
   # Check go version.
   local go_version current_go_version
-  go_version="go$(run_go_tool "github.com/mikefarah/yq/v3" read .travis.yml "go[0]")"
+  go_version="go$(run_go_tool "github.com/mikefarah/yq/v3" read .github/workflows/tests.yaml "jobs.test.steps[1].with.go-version")"
   current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
     log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
@@ -129,7 +129,7 @@ main() {
 
 
     log_callout "Building etcd and checking --version output"
-    run ./build.sh
+    run /go/src/go.etcd.io/etcd/build.sh
     local etcd_version
     etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
     if [[ "${etcd_version}" != "${VERSION}" ]]; then
@@ -140,7 +140,7 @@ main() {
     if [[ -n $(git status -s) ]]; then
       log_callout "Committing mods & api/version/version.go update."
       run git add api/version/version.go
-      run git add $(find -name go.mod ! -path './release/*'| xargs)
+      run git add $(find -name go.mod ! -path '/go/src/go.etcd.io/etcd/release/*'| xargs)
       run git diff --staged | cat
       run git commit -m "version: bump up to ${VERSION}"
       run git diff --staged | cat
@@ -178,30 +178,30 @@ main() {
 
   # Build release.
   # TODO: check the release directory for all required build artifacts.
-  if [ -d release ]; then
+  if [ -d /go/src/go.etcd.io/etcd/release ]; then
     log_warning "Skipping release build step. /release directory already exists."
   else
     log_callout "Building release..."
     if ${DRY_RUN}; then
       log_warning "In DRY_RUN mode we clone the current release directory (as there was no push)"
-      REPOSITORY=$(pwd) ./scripts/build-release.sh "${RELEASE_VERSION}"
+      REPOSITORY=$(pwd) /go/src/go.etcd.io/etcd/scripts/build-release.sh "${RELEASE_VERSION}"
     else
-      REPOSITORY=${REPOSITORY} ./scripts/build-release.sh "${RELEASE_VERSION}"
+      REPOSITORY=${REPOSITORY} /go/src/go.etcd.io/etcd/scripts/build-release.sh "${RELEASE_VERSION}"
     fi
   fi
 
   # Sanity checks.
-  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep -q "etcd Version: ${VERSION}" || true
-  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdctl" version | grep -q "etcdctl version: ${VERSION}" || true
-  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdutl" version | grep -q "etcdutl version: ${VERSION}" || true
+  "/go/src/go.etcd.io/etcd/release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep -q "etcd Version: ${VERSION}" || true
+  "/go/src/go.etcd.io/etcd/release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdctl" version | grep -q "etcdctl version: ${VERSION}" || true
+  "/go/src/go.etcd.io/etcd/release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdutl" version | grep -q "etcdutl version: ${VERSION}" || true
 
   # Generate SHA256SUMS
   log_callout "Generating sha256sums of release artifacts."
-  pushd ./release
-  ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUMS
+  pushd /go/src/go.etcd.io/etcd/release
+  ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > /go/src/go.etcd.io/etcd/release/SHA256SUMS
   popd
-  if [ -s ./release/SHA256SUMS ]; then
-    cat ./release/SHA256SUMS
+  if [ -s /go/src/go.etcd.io/etcd/release/SHA256SUMS ]; then
+    cat /go/src/go.etcd.io/etcd/release/SHA256SUMS
   else
     log_error "sha256sums is not valid. Aborting."
     exit 1
@@ -213,9 +213,9 @@ main() {
   else
     read -p "Upload etcd ${RELEASE_VERSION} release artifacts to gs://etcd [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
-    maybe_run gsutil -m cp ./release/SHA256SUMS "gs://etcd/${RELEASE_VERSION}/"
-    maybe_run gsutil -m cp ./release/*.zip "gs://etcd/${RELEASE_VERSION}/"
-    maybe_run gsutil -m cp ./release/*.tar.gz "gs://etcd/${RELEASE_VERSION}/"
+    maybe_run gsutil -m cp /go/src/go.etcd.io/etcd/release/SHA256SUMS "gs://etcd/${RELEASE_VERSION}/"
+    maybe_run gsutil -m cp /go/src/go.etcd.io/etcd/release/*.zip "gs://etcd/${RELEASE_VERSION}/"
+    maybe_run gsutil -m cp /go/src/go.etcd.io/etcd/release/*.tar.gz "gs://etcd/${RELEASE_VERSION}/"
     maybe_run gsutil -m acl ch -u allUsers:R -r "gs://etcd/${RELEASE_VERSION}/"
   fi
 
@@ -228,7 +228,7 @@ main() {
     # shellcheck disable=SC2034
     for i in {1..5}; do
       docker login quay.io && break
-      log_warning "login failed, retrying"
+      log_warning "login failed, retryingmaybe_run"
     done
 
     for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
@@ -263,7 +263,7 @@ main() {
 
   # Check image versions
   for IMAGE in "quay.io/coreos/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"; do
-    local image_version=$(dry_run docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
+    local image_version=$(maybe_run docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
     if [ "${image_version}" != "${VERSION}" ]; then
       log_error "Check failed: etcd --version output for ${IMAGE} is incorrect: ${image_version}"
       exit 1

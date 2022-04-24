@@ -4,15 +4,15 @@
 
 # Edit go.mod files such that all etcd modules are pointing on given version:
 #
-# % DRY_RUN=false TARGET_VERSION="v3.5.13" ./scripts/release_mod.sh update_versions
+# % DRY_RUN=false TARGET_VERSION="v3.5.13" /go/src/go.etcd.io/etcd/scripts/release_mod.sh update_versions
 
 # Tag latest commit with current version number for all the modules and push upstream:
 #
-# % DRY_RUN=false REMOTE_REPO="origin" ./scripts/release_mod.sh push_mod_tags
+# % DRY_RUN=false REMOTE_REPO="origin" /go/src/go.etcd.io/etcd/scripts/release_mod.sh push_mod_tags
 
 set -e
 
-source ./scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
 
 DRY_RUN=${DRY_RUN:-true}
 

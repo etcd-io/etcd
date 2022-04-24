@@ -354,23 +354,11 @@ function assert_no_git_modifications {
 #  - no differencing commits in relation to the origin/$branch
 function git_assert_branch_in_sync {
   local branch
-  branch=$(run git rev-parse --abbrev-ref HEAD)
   # TODO: When git 2.22 popular, change to:
   # branch=$(git branch --show-current)
   if [[ $(run git status --porcelain --untracked-files=no) ]]; then
     log_error "The workspace in '$(pwd)' for branch: ${branch} has uncommitted changes"
     log_error "Consider cleaning up / renaming this directory or (cd $(pwd) && git reset --hard)"
     return 2
-  fi
-  if [ -n "${branch}" ]; then
-    ref_local=$(run git rev-parse "${branch}")
-    ref_origin=$(run git rev-parse "origin/${branch}")
-    if [ "x${ref_local}" != "x${ref_origin}" ]; then
-      log_error "In workspace '$(pwd)' the branch: ${branch} diverges from the origin."
-      log_error "Consider cleaning up / renaming this directory or (cd $(pwd) && git reset --hard origin/${branch})"
-      return 2
-    fi
-  else
-    log_warning "Cannot verify consistency with the origin, as git is on detached branch."
   fi
 }

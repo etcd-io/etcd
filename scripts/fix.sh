@@ -5,8 +5,8 @@ set -e
 # Top level problems with modules can lead to test_lib being not functional
 go mod tidy
 
-source ./scripts/test_lib.sh
-source ./scripts/updatebom.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/updatebom.sh
 
 # To fix according to newer version of go:
 # go get golang.org/dl/gotip

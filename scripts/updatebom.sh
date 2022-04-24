@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-source ./scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
 
 function bom_fixlet {
   log_callout "generating bill-of-materials.json"

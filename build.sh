@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ./scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
 if [[ -n "$FAILPOINTS" ]]; then

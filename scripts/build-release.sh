@@ -5,7 +5,7 @@
 #
 set -e
 
-source ./scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
 
 VERSION=$1
 if [ -z "${VERSION}" ]; then
@@ -22,10 +22,10 @@ ETCD_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 pushd "${ETCD_ROOT}" >/dev/null
   log_callout "Building etcd binary..."
-  ./scripts/build-binary "${VERSION}"
+  /go/src/go.etcd.io/etcd/scripts/build-binary "${VERSION}"
 
   for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
     log_callout "Building ${TARGET_ARCH} docker image..."
-    GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker "${VERSION}"
+    GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release /go/src/go.etcd.io/etcd/scripts/build-docker "${VERSION}"
   done
 popd >/dev/null

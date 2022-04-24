@@ -10,7 +10,7 @@ if ! [[ "$0" =~ scripts/genproto.sh ]]; then
   exit 255
 fi
 
-source ./scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
 
 if [[ $(protoc --version | cut -f2 -d' ') != "3.14.0" ]]; then
   echo "could not find protoc 3.14.0, is it installed + in PATH?"

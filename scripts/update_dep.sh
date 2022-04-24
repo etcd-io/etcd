@@ -1,15 +1,15 @@
 #!/bin/bash 
 
 # Usage:
-#    ./scripts/update_dep.sh module version
-# or ./scripts/update_dep.sh module
+#    /go/src/go.etcd.io/etcd/scripts/update_dep.sh module version
+# or /go/src/go.etcd.io/etcd/scripts/update_dep.sh module
 # e.g.
-#   ./scripts/update_dep.sh github.com/golang/groupcache
-#   ./scripts/update_dep.sh github.com/soheilhy/cmux v0.1.5
+#   /go/src/go.etcd.io/etcd/scripts/update_dep.sh github.com/golang/groupcache
+#   /go/src/go.etcd.io/etcd/scripts/update_dep.sh github.com/soheilhy/cmux v0.1.5
 #
 # Updates version of given dependency in all the modules that depend on the mod.
 
-source ./scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
 
 mod="$1"
 ver="$2"

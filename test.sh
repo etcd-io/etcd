@@ -1,35 +1,35 @@
 #!/usr/bin/env bash
 #
 # Run all etcd tests
-# ./test
-# ./test -v
+# /go/src/go.etcd.io/etcd/scripts/test.sh
+# /go/src/go.etcd.io/etcd/scripts/test.sh -v
 #
 #
 # Run specified test pass
 #
-# $ PASSES=unit ./test
-# $ PASSES=integration ./test
+# $ PASSES=unit /go/src/go.etcd.io/etcd/scripts/test.sh
+# $ PASSES=integration /go/src/go.etcd.io/etcd/scripts/test.sh
 #
 #
 # Run tests for one package
 # Each pass has different default timeout, if you just run tests in one package or 1 test case then you can set TIMEOUT
 # flag for different expectation
 #
-# $ PASSES=unit PKG=./wal TIMEOUT=1m ./test
-# $ PASSES=integration PKG=./clientv3 TIMEOUT=1m ./test
+# $ PASSES=unit PKG=./wal TIMEOUT=1m /go/src/go.etcd.io/etcd/scripts/test.sh
+# $ PASSES=integration PKG=./clientv3 TIMEOUT=1m /go/src/go.etcd.io/etcd/scripts/test.sh
 #
 # Run specified unit tests in one package
 # To run all the tests with prefix of "TestNew", set "TESTCASE=TestNew ";
 # to run only "TestNew", set "TESTCASE="\bTestNew\b""
 #
-# $ PASSES=unit PKG=./wal TESTCASE=TestNew TIMEOUT=1m ./test
-# $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m ./test
-# $ PASSES=integration PKG=./client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./test
+# $ PASSES=unit PKG=./wal TESTCASE=TestNew TIMEOUT=1m /go/src/go.etcd.io/etcd/scripts/test.sh
+# $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m /go/src/go.etcd.io/etcd/scripts/test.sh
+# $ PASSES=integration PKG=./client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m /go/src/go.etcd.io/etcd/scripts/test.sh
 #
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
-# $ COVERDIR=coverage PASSES="build build_cov cov" ./test
+# $ COVERDIR=coverage PASSES="build build_cov cov" /go/src/go.etcd.io/etcd/scripts/test.sh
 # $ go tool cover -html ./coverage/cover.out
 set -e
 set -o pipefail
@@ -45,8 +45,8 @@ set -o pipefail
 export GOFLAGS=-mod=readonly
 export ETCD_VERIFY=all
 
-source ./scripts/test_lib.sh
-source ./build.sh
+source /go/src/go.etcd.io/etcd/scripts/test_lib.sh
+source /go/src/go.etcd.io/etcd/build.sh
 
 PASSES=${PASSES:-"fmt bom dep build unit"}
 PKG=${PKG:-}
@@ -291,7 +291,7 @@ function cov_pass {
   fi
 
   if [ ! -f "bin/etcd_test" ]; then
-    log_error "etcd_test binary not found. Call: PASSES='build_cov' ./test"
+    log_error "etcd_test binary not found. Call: PASSES='build_cov' /go/src/go.etcd.io/etcd/scripts/test.sh"
     return 255
   fi
 
@@ -401,7 +401,7 @@ function shellws_pass {
   local files
   files=$(find ./ -name '*.sh' -print0 | xargs -0 )
   # shellcheck disable=SC2206
-  files=( ${files[@]} "./scripts/build-binary" "./scripts/build-docker" "./scripts/release" )
+  files=( ${files[@]} "/go/src/go.etcd.io/etcd/scripts/build-binary.sh" "/go/src/go.etcd.io/etcd/scripts/build-docker.sh" "/go/src/go.etcd.io/etcd/scripts/release.sh" )
   log_cmd "grep -E -n $'^ *${TAB}' ${files[*]}"
   # shellcheck disable=SC2086
   if grep -E -n $'^ *${TAB}' "${files[@]}" | sed $'s|${TAB}|[\\\\tab]|g'; then
