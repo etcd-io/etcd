@@ -6,7 +6,7 @@ Speed up issue management.
 
 The `etcd` issues are listed at https://github.com/etcd-io/etcd/issues
 and are identified with labels. For example, an issue that is identified
-as a bug will eventually be set to label `area/bug `. New issues will
+as a bug will eventually be set to label `area/bug`. New issues will
 start out without any labels, but typically `etcd` maintainers and active contributors
 add labels based on their findings. The detailed list of labels can be found at
 https://github.com/kubernetes/kubernetes/labels

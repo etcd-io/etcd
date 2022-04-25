@@ -385,7 +385,7 @@ func withMax(maxRetries uint) retryOption {
 	}}
 }
 
-// WithBackoff sets the `BackoffFunc `used to control time between retries.
+// WithBackoff sets the `BackoffFunc` used to control time between retries.
 func withBackoff(bf backoffFunc) retryOption {
 	return retryOption{applyFunc: func(o *options) {
 		o.backoffFunc = bf
