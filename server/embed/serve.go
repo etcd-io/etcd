@@ -17,6 +17,7 @@ package embed
 import (
 	"context"
 	"fmt"
+	"golang.org/x/net/http2"
 	"io/ioutil"
 	defaultLog "log"
 	"math"
@@ -181,6 +182,11 @@ func (sctx *serveCtx) serve(
 			Handler:   createAccessController(sctx.lg, s, httpmux),
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
+		}
+		if err := http2.ConfigureServer(srv, &http2.Server{
+			MaxConcurrentStreams: math.MaxUint32,
+		}); err != nil {
+			return err
 		}
 		go func() { errHandler(srv.Serve(tlsl)) }()
 
