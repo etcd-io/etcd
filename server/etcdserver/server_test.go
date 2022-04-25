@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/pkg/v3/wait"
@@ -1077,6 +1078,11 @@ func TestSnapshot(t *testing.T) {
 // TestSnapshotOrdering ensures raft persists snapshot onto disk before
 // snapshot db is applied.
 func TestSnapshotOrdering(t *testing.T) {
+	// Ignore the snapshot index verification in unit test, because
+	// it doesn't follow the e2e applying logic.
+	revertFunc := verify.DisableVerifications()
+	defer revertFunc()
+
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
 	st := v2store.New()
@@ -1229,6 +1235,11 @@ func TestTriggerSnap(t *testing.T) {
 // TestConcurrentApplyAndSnapshotV3 will send out snapshots concurrently with
 // proposals.
 func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
+	// Ignore the snapshot index verification in unit test, because
+	// it doesn't follow the e2e applying logic.
+	revertFunc := verify.DisableVerifications()
+	defer revertFunc()
+
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
 	st := v2store.New()
