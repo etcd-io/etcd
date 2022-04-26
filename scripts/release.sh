@@ -194,13 +194,13 @@ main() {
   if [ -d release ]; then
     log_warning "Skipping release build step. /release directory already exists."
   else
-    log_callout "Building release..."
-    if [ "$DRY_RUN" == "true" ]; then
-      log_warning "In DRY_RUN mode we clone the current release directory (as there was no push)"
-      REPOSITORY=$(pwd) ./scripts/build-release.sh "${RELEASE_VERSION}"
-    else
-      REPOSITORY=${REPOSITORY} ./scripts/build-release.sh "${RELEASE_VERSION}"
-    fi
+    log_callout "Building etcd binary..."
+    ./scripts/build-binary.sh "${VERSION}"
+
+    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
+      log_callout "Building ${TARGET_ARCH} docker image..."
+      GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker.sh "${VERSION}"
+    done
   fi
 
   # Sanity checks.
