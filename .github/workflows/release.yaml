@@ -21,4 +21,4 @@ jobs:
         Name-Email: github-action@etcd.io
         Expire-Date: 0
         EOF
-        BRANCH=main ./scripts/release.sh --no-upload --no-docker-push 3.6.99
+        DRY_RUN=true BRANCH=main ./scripts/release.sh --no-upload --no-docker-push 3.6.99
