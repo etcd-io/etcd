@@ -204,9 +204,17 @@ main() {
   fi
 
   # Sanity checks.
-  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep -q "etcd Version: ${VERSION}" || true
-  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdctl" version | grep -q "etcdctl version: ${VERSION}" || true
-  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdutl" version | grep -q "etcdutl version: ${VERSION}" || true
+  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep -q "etcd Version: ${VERSION}"
+  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdctl" version | grep -q "etcdctl version: ${VERSION}"
+  "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdutl" version | grep -q "etcdutl version: ${VERSION}"
+
+  docker run -it --rm gcr.io/etcd-development/etcd:${RELEASE_VERSION}-amd64 /etcd --version | grep -q "etcd Version: ${VERSION}"
+  docker run -it --rm gcr.io/etcd-development/etcd:${RELEASE_VERSION}-amd64 /etcdctl --version | grep -q "etcd Version: ${VERSION}"
+  docker run -it --rm gcr.io/etcd-development/etcd:${RELEASE_VERSION}-amd64 /etcdutl --version | grep -q "etcd Version: ${VERSION}"
+
+  docker run -it --rm quay.io/coreos/etcd:${RELEASE_VERSION}-amd64 /etcd --version | grep -q "etcd Version: ${VERSION}"
+  docker run -it --rm quay.io/coreos/etcd:${RELEASE_VERSION}-amd64 /etcdctl --version | grep -q "etcd Version: ${VERSION}"
+  docker run -it --rm quay.io/coreos/etcd:${RELEASE_VERSION}-amd64 /etcdutl --version | grep -q "etcd Version: ${VERSION}"
 
   # Generate SHA256SUMS
   log_callout "Generating sha256sums of release artifacts."
