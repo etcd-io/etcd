@@ -63,6 +63,11 @@ main() {
   log_callout "BRANCH=${BRANCH}"
   log_callout "REPOSITORY=${REPOSITORY}"
   log_callout ""
+
+  if [ "${BRANCH}" != "main" ] && [ "${BRANCH}" != "release-3.5" ]; then
+    log_error "branch unsupported"
+    exit 1
+  fi
   
   # Required to enable 'docker manifest ...'
   export DOCKER_CLI_EXPERIMENTAL=enabled
@@ -102,7 +107,7 @@ main() {
 
   # Check go version.
   local go_version current_go_version
-  go_version="go$(grep go-version .github/workflows/build.yaml | awk '{print $2}' | tr -d '"')"
+  go_version="go$(grep go-version .github/workflows/tests.yaml | awk '{print $2}' | tr -d '"')"
   current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
     log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
@@ -129,7 +134,12 @@ main() {
 
 
     log_callout "Building etcd and checking --version output"
-    run ./scripts/build.sh
+    if [ "${BRANCH}" == "release-3.5" ]; then
+      run ./build.sh
+    else
+      run ./scripts/build.sh
+    fi
+
     local etcd_version
     etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
     if [[ "${etcd_version}" != "${VERSION}" ]]; then
