@@ -522,7 +522,7 @@ func isMembersEqual(membs []*pb.Member, wmembs []*pb.Member) bool {
 	return cmp.Equal(membs, wmembs, cmpopts.IgnoreFields(pb.Member{}, "ID", "PeerURLs", "ClientURLs"))
 }
 
-func newLocalListener(t testutil.TB) net.Listener {
+func NewLocalListener(t testutil.TB) net.Listener {
 	c := atomic.AddInt32(&LocalListenCount, 1)
 	// Go 1.8+ allows only numbers in port
 	addr := fmt.Sprintf("127.0.0.1:%05d%05d", c+BasePort, os.Getpid())
@@ -620,7 +620,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	peerScheme := SchemeFromTLSInfo(mcfg.PeerTLS)
 	clientScheme := SchemeFromTLSInfo(mcfg.ClientTLS)
 
-	pln := newLocalListener(t)
+	pln := NewLocalListener(t)
 	m.PeerListeners = []net.Listener{pln}
 	m.PeerURLs, err = types.NewURLs([]string{peerScheme + "://" + pln.Addr().String()})
 	if err != nil {
@@ -628,7 +628,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	}
 	m.PeerTLSInfo = mcfg.PeerTLS
 
-	cln := newLocalListener(t)
+	cln := NewLocalListener(t)
 	m.ClientListeners = []net.Listener{cln}
 	m.ClientURLs, err = types.NewURLs([]string{clientScheme + "://" + cln.Addr().String()})
 	if err != nil {
