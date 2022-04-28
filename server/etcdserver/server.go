@@ -252,7 +252,7 @@ type EtcdServer struct {
 
 	applyV2 ApplierV2
 
-	uberApply *apply.UberApplier
+	uberApply apply.UberApplier
 
 	applyWait wait.WaitTime
 
@@ -1077,7 +1077,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	s.uberApply = s.NewUberApplier()
 }
 
-func (s *EtcdServer) NewUberApplier() *apply.UberApplier {
+func (s *EtcdServer) NewUberApplier() apply.UberApplier {
 	return apply.NewUberApplier(s.lg, s.be, s.KV(), s.alarmStore, s.authStore, s.lessor, s.cluster, s, s, s.consistIndex,
 		s.Cfg.WarningApplyDuration, s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer, s.Cfg.QuotaBackendBytes)
 }

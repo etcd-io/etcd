@@ -30,7 +30,11 @@ import (
 	"go.uber.org/zap"
 )
 
-type UberApplier struct {
+type UberApplier interface {
+	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult
+}
+
+type uberApplier struct {
 	lg *zap.Logger
 
 	alarmStore           *v3alarm.AlarmStore
@@ -56,17 +60,17 @@ func NewUberApplier(
 	consistentIndex cindex.ConsistentIndexer,
 	warningApplyDuration time.Duration,
 	txnModeWriteWithSharedBuffer bool,
-	quotaBackendBytesCfg int64) *UberApplier {
+	quotaBackendBytesCfg int64) UberApplier {
 	applyV3base_ := newApplierV3(lg, be, kv, alarmStore, authStore, lessor, cluster, raftStatus, snapshotServer, consistentIndex, txnModeWriteWithSharedBuffer, quotaBackendBytesCfg)
 
-	ua := &UberApplier{
+	ua := &uberApplier{
 		lg:                   lg,
 		alarmStore:           alarmStore,
 		warningApplyDuration: warningApplyDuration,
 		applyV3:              applyV3base_,
 		applyV3base:          applyV3base_,
 	}
-	ua.RestoreAlarms()
+	ua.restoreAlarms()
 	return ua
 }
 
@@ -91,7 +95,7 @@ func newApplierV3(
 	)
 }
 
-func (a *UberApplier) RestoreAlarms() {
+func (a *uberApplier) restoreAlarms() {
 	noSpaceAlarms := len(a.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0
 	corruptAlarms := len(a.alarmStore.Get(pb.AlarmType_CORRUPT)) > 0
 	a.applyV3 = a.applyV3base
@@ -103,14 +107,17 @@ func (a *UberApplier) RestoreAlarms() {
 	}
 }
 
-func (a *UberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult {
-	// We first execute chain of WrapApply across all objects (e.g. CorruptApplier -> CappedApplier -> Auth -> Quota -> Backend),
-	// than dispatch(), than individual methods wrappers CorruptApplier.Put(CappedApplier.Put(... BackendApplier.Put())))
+func (a *uberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult {
+	// We first execute chain of WrapApply() calls down the hierarchy:
+	// (i.e. CorruptApplier -> CappedApplier -> Auth -> Quota -> Backend),
+	// then dispatch() unpacks the request to a specific method (like Put),
+	// that gets executed down the hierarchy again:
+	// i.e. CorruptApplier.Put(CappedApplier.Put(...(BackendApplier.Put(...)))).
 	return a.applyV3.WrapApply(context.TODO(), r, shouldApplyV3, a.dispatch)
 }
 
 // This function
-func (a *UberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult {
+func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult {
 	op := "unknown"
 	ar := &ApplyResult{}
 	defer func(start time.Time) {
@@ -225,12 +232,12 @@ func (a *UberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 	return ar
 }
 
-func (a *UberApplier) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+func (a *uberApplier) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
 	resp, err := a.applyV3.Alarm(ar)
 
 	if ar.Action == pb.AlarmRequest_ACTIVATE ||
 		ar.Action == pb.AlarmRequest_DEACTIVATE {
-		a.RestoreAlarms()
+		a.restoreAlarms()
 	}
 	return resp, err
 }
