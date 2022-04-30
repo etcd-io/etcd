@@ -188,4 +188,4 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 
 ### License
 
-etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details test.
