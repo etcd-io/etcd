@@ -1072,6 +1072,8 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration2.Cluster)) 
 		t.Fatal(err)
 	}
 	ch := make(chan struct{}, n)
+	tCtx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
 	for i := 0; i < n; i++ {
 		go func() {
 			defer func() { ch <- struct{}{} }()
@@ -1079,6 +1081,12 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration2.Cluster)) 
 			ctx, cancel := context.WithCancel(ctxs[idx])
 			ctxc[idx] <- struct{}{}
 			wch := cli.Watch(ctx, "abc", clientv3.WithRev(1))
+			select {
+			case <-tCtx.Done():
+				cancel()
+				return
+			default:
+			}
 			f(clus)
 			select {
 			case _, ok := <-wch:
