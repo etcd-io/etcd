@@ -1,7 +1,9 @@
 package common
 
 import (
+	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -44,7 +46,7 @@ func TestTxn(t *testing.T) {
 			clus := testRunner.NewCluster(t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 				tests := []struct {
 					puts     []testutils.KV
 					watchKey string
@@ -55,7 +57,7 @@ func TestTxn(t *testing.T) {
 						puts:     []testutils.KV{{Key: "bar", Val: "revision_1"}, {Key: "bar", Val: "revision_2"}, {Key: "bar", Val: "revision_3"}},
 						watchKey: "bar",
 						opts:     config.WatchOptions{Revision: 3},
-						wanted:   []testutils.KV{{Key: "bar", Val: "revision_2"}, {Key: "bar", Val: "revision_3"}},
+						wanted:   []testutils.KV{{Key: "bar2", Val: "revision_2"}, {Key: "bar", Val: "revision_3"}},
 					},
 					{ // watch 1 key
 						puts:     []testutils.KV{{Key: "sample", Val: "value"}},
@@ -69,7 +71,6 @@ func TestTxn(t *testing.T) {
 						opts:     config.WatchOptions{Revision: 1, Prefix: true},
 						wanted:   []testutils.KV{{Key: "foo1", Val: "val1"}, {Key: "foo2", Val: "val2"}, {Key: "foo3", Val: "val3"}},
 					},
-
 					{ // watch 3 keys by range
 						puts:     []testutils.KV{{Key: "key1", Val: "val1"}, {Key: "key3", Val: "val3"}, {Key: "key2", Val: "val2"}},
 						watchKey: "key",
@@ -79,27 +80,31 @@ func TestTxn(t *testing.T) {
 				}
 
 				for i, tt := range tests {
-					donec := make(chan struct{})
+					var wg sync.WaitGroup
+					wg.Add(1)
 					errs := make(chan error, 1)
+					ctx, cancel := context.WithCancel(context.Background())
 					go func(i int, puts []testutils.KV) {
+						defer wg.Done()
+						defer close(errs)
+						defer cancel()
 						for j := range puts {
 							if err := cc.Put(puts[j].Key, puts[j].Val, config.PutOptions{}); err != nil {
 								errs <- fmt.Errorf("can't not put key %q, err: %s", puts[j].Key, err)
 								break
 							}
+							time.Sleep(time.Second)
 						}
 						errs <- nil
-						close(errs)
-						close(donec)
 					}(i, tt.puts)
 
 					err := <-errs
 					if err != nil {
 						t.Fatal(err)
 					}
-					<-donec
+					wg.Wait()
 
-					wch := cc.Watch(tt.watchKey, tt.opts)
+					wch := cc.Watch(ctx, tt.watchKey, tt.opts)
 					select {
 					case wresp, ok := <-wch:
 						if ok {

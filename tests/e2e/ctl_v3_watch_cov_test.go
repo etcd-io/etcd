@@ -52,42 +52,20 @@ func watchTest(cx ctlCtx) {
 
 		wkv []kvExec
 	}{
-		{ // watch 1 key
-			puts: []kv{{"sample", "value"}},
-			args: []string{"sample", "--rev", "1"},
-			wkv:  []kvExec{{key: "sample", val: "value"}},
-		},
 		{ // watch 1 key with env
 			puts:   []kv{{"sample", "value"}},
 			envKey: "sample",
 			args:   []string{"--rev", "1"},
 			wkv:    []kvExec{{key: "sample", val: "value"}},
 		},
-
 		// coverage tests get extra arguments:
 		// ./bin/etcdctl_test -test.coverprofile=e2e.1525392462795198897.coverprofile -test.outputdir=../..
 		// do not test watch exec commands
-
-		{ // watch 3 keys by prefix
-			puts: []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
-			args: []string{"key", "--rev", "1", "--prefix"},
-			wkv:  []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}, {key: "key3", val: "val3"}},
-		},
 		{ // watch 3 keys by prefix, with env
 			puts:   []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
 			envKey: "key",
 			args:   []string{"--rev", "1", "--prefix"},
 			wkv:    []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}, {key: "key3", val: "val3"}},
-		},
-		{ // watch by revision
-			puts: []kv{{"etcd", "revision_1"}, {"etcd", "revision_2"}, {"etcd", "revision_3"}},
-			args: []string{"etcd", "--rev", "2"},
-			wkv:  []kvExec{{key: "etcd", val: "revision_2"}, {key: "etcd", val: "revision_3"}},
-		},
-		{ // watch 3 keys by range
-			puts: []kv{{"key1", "val1"}, {"key3", "val3"}, {"key2", "val2"}},
-			args: []string{"key", "key3", "--rev", "1"},
-			wkv:  []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}},
 		},
 		{ // watch 3 keys by range, with env
 			puts:     []kv{{"key1", "val1"}, {"key3", "val3"}, {"key2", "val2"}},

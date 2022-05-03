@@ -312,7 +312,7 @@ func (c integrationClient) UserChangePass(user, newPass string) error {
 	return err
 }
 
-func (c integrationClient) Watch(key string, opts config.WatchOptions) clientv3.WatchChan {
+func (c integrationClient) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {
 	opOpts := []clientv3.OpOption{}
 	if opts.Prefix {
 		opOpts = append(opOpts, clientv3.WithPrefix())
@@ -324,5 +324,5 @@ func (c integrationClient) Watch(key string, opts config.WatchOptions) clientv3.
 		opOpts = append(opOpts, clientv3.WithRange(opts.RangeEnd))
 	}
 
-	return c.Client.Watch(context.Background(), key, opOpts...)
+	return c.Client.Watch(ctx, key, opOpts...)
 }

@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -508,7 +509,7 @@ func (ctl *EtcdctlV3) UserChangePass(user, newPass string) error {
 	return err
 }
 
-func (ctl *EtcdctlV3) Watch(key string, opts config.WatchOptions) clientv3.WatchChan {
+func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {
 	args := ctl.cmdArgs()
 	args = append(args, "watch", key)
 	if opts.RangeEnd != "" {
@@ -529,29 +530,38 @@ func (ctl *EtcdctlV3) Watch(key string, opts config.WatchOptions) clientv3.Watch
 		args = append(args, opts.ExecCmd...)
 	}
 
-	ep, err := SpawnCmd(args, nil)
+	proc, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil
 	}
-	defer ep.Stop()
+	defer proc.Stop()
 	if opts.Interactive {
 		wl := strings.Join(args, " ") + "\r"
-		if err = ep.Send(wl); err != nil {
+		if err = proc.Send(wl); err != nil {
 			return nil
 		}
 	}
-	var resp clientv3.WatchResponse
-	line, err := ep.Expect("")
-	if err != nil {
-		return nil
-	}
-	err = json.Unmarshal([]byte(line), &resp)
-	if err != nil {
-		return nil
-	}
-	ch := make(chan clientv3.WatchResponse, 1)
-	ch <- resp
-	close(ch)
+
+	ch := make(chan clientv3.WatchResponse)
+	go func() {
+		var resp clientv3.WatchResponse
+		for {
+			lines := proc.Lines()
+			for _, line := range lines {
+				err = json.Unmarshal([]byte(line), &resp)
+				if err != nil {
+					continue
+				}
+				ch <- resp
+			}
+
+			select {
+			case <-ctx.Done():
+				close(ch)
+				return
+			}
+		}
+	}()
 
 	return ch
 }

@@ -15,6 +15,7 @@
 package framework
 
 import (
+	"context"
 	"testing"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -59,5 +60,5 @@ type Client interface {
 	UserList() (*clientv3.AuthUserListResponse, error)
 	UserDelete(name string) (*clientv3.AuthUserDeleteResponse, error)
 	UserChangePass(user, newPass string) error
-	Watch(key string, opts config.WatchOptions) clientv3.WatchChan
+	Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan
 }
