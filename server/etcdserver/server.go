@@ -258,7 +258,7 @@ type EtcdServer struct {
 	kv                    mvcc.WatchableKV
 	lessor                lease.Lessor
 	namespaceQuotaManager namespacequota.NamespaceQuotaManager
-	bemu                  sync.Mutex
+	bemu                  sync.RWMutex
 	be                    backend.Backend
 	beHooks               *serverstorage.BackendHooks
 	authStore             auth.AuthStore

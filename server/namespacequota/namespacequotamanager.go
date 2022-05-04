@@ -383,7 +383,7 @@ func (nq *NamespaceQuota) persistTo(b backend.Backend) {
 	}
 
 	tx := b.BatchTx()
-	tx.Lock()
+	tx.LockInsideApply()
 	defer tx.Unlock()
 	schema.MustUnsafePutNamespaceQuota(tx, &nqpb)
 }
@@ -411,7 +411,7 @@ func newNamespaceQuotaManager(lg *zap.Logger, b backend.Backend, cfg NamespaceQu
 // initAndRecover init and recover the NamespaceQuotaManager
 func (nqm *namespaceQuotaManager) initAndRecover() {
 	tx := nqm.b.BatchTx()
-	tx.Lock()
+	tx.LockOutsideApply()
 
 	schema.UnsafeCreateNamespaceQuotaBucket(tx)
 	quotas := schema.MustUnsafeGetAllNamespaceQuotas(tx)

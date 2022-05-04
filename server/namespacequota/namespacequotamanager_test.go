@@ -17,6 +17,7 @@ package namespacequota
 
 import (
 	"bytes"
+	"go.uber.org/zap/zaptest"
 	"os"
 	"reflect"
 	"sort"
@@ -451,10 +452,11 @@ func (frs *fakeReadViewDeleteRange) GetValueSize(key []byte) (valueSize int, isF
 // NewTestBackend provides test backend
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
 	tmpPath, err := ioutil.TempDir("", "namespacequota")
+	lg := zaptest.NewLogger(t)
 	if err != nil {
 		t.Fatalf("failed to create tmpdir (%v)", err)
 	}
-	bcfg := backend.DefaultBackendConfig()
+	bcfg := backend.DefaultBackendConfig(lg)
 	bcfg.Path = filepath.Join(tmpPath, "be")
 	return tmpPath, backend.New(bcfg)
 }
