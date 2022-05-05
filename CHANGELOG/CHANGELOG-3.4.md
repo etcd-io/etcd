@@ -11,6 +11,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.18...v3.4.19) an
 ### etcd server
 - Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13475).
 
+### Package `clientv3`
+- Fix [a bug of not refreshing expired tokens](https://github.com/etcd-io/etcd/pull/13308).
+
 <hr>
 
 ## v3.4.18 (2021-10-15)
