@@ -171,7 +171,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	select {
 	case <-srv.r.applyc:
 	case <-time.After(time.Second):
-		t.Fatalf("failed to receive apply struct")
+		t.Fatalf("failed to receive toApply struct")
 	}
 
 	srv.r.stopped <- struct{}{}
@@ -182,7 +182,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	}
 }
 
-// TestConfigChangeBlocksApply ensures apply blocks if committed entries contain config-change.
+// TestConfigChangeBlocksApply ensures toApply blocks if committed entries contain config-change.
 func TestConfigChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
@@ -217,11 +217,11 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 
 	select {
 	case <-continueC:
-		t.Fatalf("unexpected execution: raft routine should block waiting for apply")
+		t.Fatalf("unexpected execution: raft routine should block waiting for toApply")
 	case <-time.After(time.Second):
 	}
 
-	// finish apply, unblock raft routine
+	// finish toApply, unblock raft routine
 	<-ap.notifyc
 
 	select {

@@ -35,7 +35,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/pkg/v3/runtime"
 	"go.etcd.io/etcd/server/v3/config"
-	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
+	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	"go.uber.org/zap"
 
@@ -150,7 +150,7 @@ type ServerV2 interface {
 
 type ServerV3 interface {
 	Server
-	apply2.RaftStatusGetter
+	apply.RaftStatusGetter
 }
 
 func (s *EtcdServer) ClientCertAuthEnabled() bool { return s.Cfg.ClientCertAuthEnabled }
@@ -252,7 +252,7 @@ type EtcdServer struct {
 
 	applyV2 ApplierV2
 
-	uberApply *apply2.UberApplier
+	uberApply *apply.UberApplier
 
 	applyWait wait.WaitTime
 
@@ -727,7 +727,7 @@ type etcdProgress struct {
 
 // raftReadyHandler contains a set of EtcdServer operations to be called by raftNode,
 // and helps decouple state machine logic from Raft algorithms.
-// TODO: add a state machine interface to apply the commit entries and do snapshot/recover
+// TODO: add a state machine interface to toApply the commit entries and do snapshot/recover
 type raftReadyHandler struct {
 	getLead              func() (lead uint64)
 	updateLead           func(lead uint64)
@@ -743,7 +743,7 @@ func (s *EtcdServer) run() {
 		lg.Panic("failed to get snapshot from Raft storage", zap.Error(err))
 	}
 
-	// asynchronously accept apply packets, dispatch progress in-order
+	// asynchronously accept toApply packets, dispatch progress in-order
 	sched := schedule.NewFIFOScheduler()
 
 	var (
@@ -905,7 +905,7 @@ func (s *EtcdServer) Cleanup() {
 	}
 }
 
-func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
+func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	s.applySnapshot(ep, apply)
 	s.applyEntries(ep, apply)
 
@@ -914,7 +914,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
 
 	// wait for the raft routine to finish the disk writes before triggering a
 	// snapshot. or applied index might be greater than the last index in raft
-	// storage, since the raft routine might be slower than apply routine.
+	// storage, since the raft routine might be slower than toApply routine.
 	<-apply.notifyc
 
 	s.triggerSnapshot(ep)
@@ -927,8 +927,8 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
 	}
 }
 
-func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
-	if raft.IsEmptySnap(apply.snapshot) {
+func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
+	if raft.IsEmptySnap(toApply.snapshot) {
 		return
 	}
 	applySnapshotInProgress.Inc()
@@ -938,34 +938,34 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		"applying snapshot",
 		zap.Uint64("current-snapshot-index", ep.snapi),
 		zap.Uint64("current-applied-index", ep.appliedi),
-		zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
-		zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
+		zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
+		zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
 	)
 	defer func() {
 		lg.Info(
 			"applied snapshot",
 			zap.Uint64("current-snapshot-index", ep.snapi),
 			zap.Uint64("current-applied-index", ep.appliedi),
-			zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
-			zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
+			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
+			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
 		)
 		applySnapshotInProgress.Dec()
 	}()
 
-	if apply.snapshot.Metadata.Index <= ep.appliedi {
+	if toApply.snapshot.Metadata.Index <= ep.appliedi {
 		lg.Panic(
 			"unexpected leader snapshot from outdated index",
 			zap.Uint64("current-snapshot-index", ep.snapi),
 			zap.Uint64("current-applied-index", ep.appliedi),
-			zap.Uint64("incoming-leader-snapshot-index", apply.snapshot.Metadata.Index),
-			zap.Uint64("incoming-leader-snapshot-term", apply.snapshot.Metadata.Term),
+			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
+			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
 		)
 	}
 
 	// wait for raftNode to persist snapshot onto the disk
-	<-apply.notifyc
+	<-toApply.notifyc
 
-	newbe, err := serverstorage.OpenSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot, s.beHooks)
+	newbe, err := serverstorage.OpenSnapshotBackend(s.Cfg, s.snapshotter, toApply.snapshot, s.beHooks)
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
@@ -1033,7 +1033,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	}
 
 	lg.Info("restoring v2 store")
-	if err := s.v2store.Recovery(apply.snapshot.Data); err != nil {
+	if err := s.v2store.Recovery(toApply.snapshot.Data); err != nil {
 		lg.Panic("failed to restore v2 store", zap.Error(err))
 	}
 
@@ -1067,18 +1067,18 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	lg.Info("added peers from new cluster configuration")
 
-	ep.appliedt = apply.snapshot.Metadata.Term
-	ep.appliedi = apply.snapshot.Metadata.Index
+	ep.appliedt = toApply.snapshot.Metadata.Term
+	ep.appliedi = toApply.snapshot.Metadata.Index
 	ep.snapi = ep.appliedi
-	ep.confState = apply.snapshot.Metadata.ConfState
+	ep.confState = toApply.snapshot.Metadata.ConfState
 
 	// As backends and implementations like alarmsStore changed, we need
 	// to re-bootstrap Appliers.
 	s.uberApply = s.NewUberApplier()
 }
 
-func (s *EtcdServer) NewUberApplier() *apply2.UberApplier {
-	return apply2.NewUberApplier(s.lg, s.be, s.KV(), s.alarmStore, s.authStore, s.lessor, s.cluster, s, s, s.consistIndex,
+func (s *EtcdServer) NewUberApplier() *apply.UberApplier {
+	return apply.NewUberApplier(s.lg, s.be, s.KV(), s.alarmStore, s.authStore, s.lessor, s.cluster, s, s, s.consistIndex,
 		s.Cfg.WarningApplyDuration, s.Cfg.ExperimentalTxnModeWriteWithSharedBuffer, s.Cfg.QuotaBackendBytes)
 }
 
@@ -1090,7 +1090,7 @@ func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {
 	})
 }
 
-func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
+func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 	if len(apply.entries) == 0 {
 		return
 	}
@@ -1277,7 +1277,7 @@ func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) err
 
 	// Note that this permission check is done in the API layer,
 	// so TOCTOU problem can be caused potentially in a schedule like this:
-	// update membership with user A -> revoke root role of A -> apply membership change
+	// update membership with user A -> revoke root role of A -> toApply membership change
 	// in the state machine layer
 	// However, both of membership change and role management requires the root privilege.
 	// So careful operation by admins can prevent the problem.
@@ -1469,7 +1469,7 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 
 // check whether the learner catches up with leader or not.
 // Note: it will return nil if member is not found in cluster or if member is not learner.
-// These two conditions will be checked before apply phase later.
+// These two conditions will be checked before toApply phase later.
 func (s *EtcdServer) isLearnerReady(id uint64) error {
 	rs := s.raftStatus()
 
@@ -1774,7 +1774,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 	})
 }
 
-// apply takes entries received from Raft (after it has been committed) and
+// toApply takes entries received from Raft (after it has been committed) and
 // applies them to the current state of the EtcdServer.
 // The given entries should not be empty.
 func (s *EtcdServer) apply(
@@ -1795,7 +1795,7 @@ func (s *EtcdServer) apply(
 			s.setTerm(e.Term)
 
 		case raftpb.EntryConfChange:
-			// We need to apply all WAL entries on top of v2store
+			// We need to toApply all WAL entries on top of v2store
 			// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
 			shouldApplyV3 := membership.ApplyV2storeOnly
 
@@ -1829,7 +1829,7 @@ func (s *EtcdServer) apply(
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
 	applyV3Performed := false
-	var ar *apply2.ApplyResult
+	var ar *apply.ApplyResult
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
@@ -1843,7 +1843,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 			}
 		}()
 	}
-	s.lg.Debug("apply entry normal",
+	s.lg.Debug("toApply entry normal",
 		zap.Uint64("consistent-index", index),
 		zap.Uint64("entry-index", e.Index),
 		zap.Bool("should-applyV3", bool(shouldApplyV3)))
@@ -1895,7 +1895,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		ar = s.uberApply.Apply(&raftReq, shouldApplyV3)
 	}
 
-	// do not re-apply applied entries.
+	// do not re-toApply applied entries.
 	if !shouldApplyV3 {
 		return
 	}
@@ -2039,7 +2039,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	// KV().commit() updates the consistent index in backend.
 	// All operations that update consistent index must be called sequentially
 	// from applyAll function.
-	// So KV().Commit() cannot run in parallel with apply. It has to be called outside
+	// So KV().Commit() cannot run in parallel with toApply. It has to be called outside
 	// the go routine created below.
 	s.KV().Commit()
 

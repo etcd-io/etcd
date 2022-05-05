@@ -43,7 +43,7 @@ import (
 const (
 	// In the health case, there might be a small gap (10s of entries) between
 	// the applied index and committed index.
-	// However, if the committed entries are very heavy to apply, the gap might grow.
+	// However, if the committed entries are very heavy to toApply, the gap might grow.
 	// We should stop accepting new proposals if the gap growing to a certain point.
 	maxGapBetweenApplyAndCommitIndex = 5000
 	traceThreshold                   = 100 * time.Millisecond
@@ -63,9 +63,9 @@ type RaftKV interface {
 }
 
 type Lessor interface {
-	// LeaseGrant sends LeaseGrant request to raft and apply it after committed.
+	// LeaseGrant sends LeaseGrant request to raft and toApply it after committed.
 	LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
-	// LeaseRevoke sends LeaseRevoke request to raft and apply it after committed.
+	// LeaseRevoke sends LeaseRevoke request to raft and toApply it after committed.
 	LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 
 	// LeaseRenew renews the lease with given ID. The renewed TTL is returned. Or an error
@@ -223,7 +223,7 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 		s.bemu.RLock()
 		s.be.ForceCommit()
 		s.bemu.RUnlock()
-		trace.Step("physically apply compaction")
+		trace.Step("physically toApply compaction")
 	}
 	if err != nil {
 		return nil, err
@@ -617,9 +617,9 @@ func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftReque
 	}
 	if startTime, ok := ctx.Value(traceutil.StartTimeKey).(time.Time); ok && result.Trace != nil {
 		applyStart := result.Trace.GetStartTime()
-		// The trace object is created in apply. Here reset the start time to trace
+		// The trace object is created in toApply. Here reset the start time to trace
 		// the raft request time by the difference between the request start time
-		// and apply start time
+		// and toApply start time
 		result.Trace.SetStartTime(startTime)
 		result.Trace.InsertStep(0, applyStart, "process raft request")
 		result.Trace.LogIfLong(traceThreshold)

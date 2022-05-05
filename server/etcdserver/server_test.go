@@ -723,7 +723,7 @@ func realisticRaftNode(lg *zap.Logger) *raftNode {
 	return r
 }
 
-// TestApplyMultiConfChangeShouldStop ensures that apply will return shouldStop
+// TestApplyMultiConfChangeShouldStop ensures that toApply will return shouldStop
 // if the local member is removed along with other conf updates.
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	lg := zaptest.NewLogger(t)
