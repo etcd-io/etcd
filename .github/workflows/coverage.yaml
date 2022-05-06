@@ -1,5 +1,5 @@
 name: Coverage
-on: [push, pull_request]
+on: [push]
 jobs:
   coverage:
     runs-on: ubuntu-latest
