@@ -74,18 +74,7 @@ func (s *serverVersionAdapter) GetMembersVersions() map[string]*version.Versions
 }
 
 func (s *serverVersionAdapter) GetStorageVersion() *semver.Version {
-	// `applySnapshot` sets a new backend instance, so we need to acquire the bemu lock.
-	s.bemu.RLock()
-	defer s.bemu.RUnlock()
-
-	tx := s.be.ReadTx()
-	tx.RLock()
-	defer tx.RUnlock()
-	v, err := schema.UnsafeDetectSchemaVersion(s.lg, tx)
-	if err != nil {
-		return nil
-	}
-	return &v
+	return s.StorageVersion()
 }
 
 func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error {

@@ -43,6 +43,7 @@ func init() {
 type Versions struct {
 	Server  string `json:"etcdserver"`
 	Cluster string `json:"etcdcluster"`
+	Storage string `json:"storage"`
 	// TODO: raft state machine version
 }
 

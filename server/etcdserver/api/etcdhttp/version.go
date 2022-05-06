@@ -21,35 +21,39 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/server/v3/etcdserver/api"
 )
 
 const (
 	versionPath = "/version"
 )
 
-func HandleVersion(mux *http.ServeMux, server etcdserver.ServerPeer) {
-	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
+func HandleVersion(mux *http.ServeMux, server etcdserver.Server) {
+	mux.HandleFunc(versionPath, versionHandler(server, serveVersion))
 }
 
-func versionHandler(c api.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+func versionHandler(server etcdserver.Server, fn func(http.ResponseWriter, *http.Request, string, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		v := c.Version()
-		if v != nil {
-			fn(w, r, v.String())
-		} else {
-			fn(w, r, "not_decided")
+		clusterVersion := server.ClusterVersion()
+		storageVersion := server.StorageVersion()
+		clusterVersionStr, storageVersionStr := "not_decided", "unknown"
+		if clusterVersion != nil {
+			clusterVersionStr = clusterVersion.String()
 		}
+		if storageVersion != nil {
+			storageVersionStr = storageVersion.String()
+		}
+		fn(w, r, clusterVersionStr, storageVersionStr)
 	}
 }
 
-func serveVersion(w http.ResponseWriter, r *http.Request, clusterV string) {
+func serveVersion(w http.ResponseWriter, r *http.Request, clusterV, storageV string) {
 	if !allowMethod(w, r, "GET") {
 		return
 	}
 	vs := version.Versions{
 		Server:  version.Version,
 		Cluster: clusterV,
+		Storage: storageV,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
