@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Authors
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,17 +15,33 @@
 package etcdhttp
 
 import (
+	"expvar"
+	"fmt"
 	"net/http"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
-	PathMetrics      = "/metrics"
-	PathProxyMetrics = "/proxy/metrics"
+	varsPath = "/debug/vars"
 )
 
-// HandleMetrics registers prometheus handler on '/metrics'.
-func HandleMetrics(mux *http.ServeMux) {
-	mux.Handle(PathMetrics, promhttp.Handler())
+func HandleDebug(mux *http.ServeMux) {
+	mux.HandleFunc(varsPath, serveVars)
+}
+
+func serveVars(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, "GET") {
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	fmt.Fprintf(w, "{\n")
+	first := true
+	expvar.Do(func(kv expvar.KeyValue) {
+		if !first {
+			fmt.Fprintf(w, ",\n")
+		}
+		first = false
+		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
+	})
+	fmt.Fprintf(w, "\n}\n")
 }

@@ -26,7 +26,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2http/httptypes"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp/types"
 
 	"go.uber.org/zap"
 )

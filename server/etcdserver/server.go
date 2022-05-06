@@ -52,10 +52,10 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2http/httptypes"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
@@ -444,6 +444,10 @@ func (s *EtcdServer) Logger() *zap.Logger {
 	l := s.lg
 	s.lgMu.RUnlock()
 	return l
+}
+
+func (s *EtcdServer) Config() config.ServerConfig {
+	return s.Cfg
 }
 
 func tickToDur(ticks int, tickMs uint) string {

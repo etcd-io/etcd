@@ -47,7 +47,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2http"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
@@ -992,14 +991,15 @@ func (m *Member) Launch() error {
 		m.ServerClosers = append(m.ServerClosers, closer)
 	}
 	for _, ln := range m.ClientListeners {
+		handler := http.NewServeMux()
+		etcdhttp.HandleDebug(handler)
+		etcdhttp.HandleVersion(handler, m.Server)
+		etcdhttp.HandleMetrics(handler)
+		etcdhttp.HandleHealth(m.Logger, handler, m.Server)
 		hs := &httptest.Server{
 			Listener: ln,
 			Config: &http.Server{
-				Handler: v2http.NewClientHandler(
-					m.Logger,
-					m.Server,
-					m.ServerConfig.ReqTimeout(),
-				),
+				Handler:  handler,
 				ErrorLog: log.New(io.Discard, "net/http", 0),
 			},
 		}

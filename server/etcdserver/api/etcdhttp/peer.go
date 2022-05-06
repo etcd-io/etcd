@@ -145,7 +145,7 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 		case etcdserver.ErrLearnerNotReady:
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
 		default:
-			WriteError(h.lg, w, r, err)
+			writeError(h.lg, w, r, err)
 		}
 		h.lg.Warn(
 			"failed to promote a member",
