@@ -23,7 +23,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
-	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.uber.org/zap"
@@ -65,7 +65,7 @@ func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, t
 	if p.IgnoreValue || p.IgnoreLease {
 		if rr == nil || len(rr.KVs) == 0 {
 			// ignore_{lease,value} flag expects previous key-value pair
-			return nil, nil, etcderrors.ErrKeyNotFound
+			return nil, nil, errors.ErrKeyNotFound
 		}
 	}
 	if p.IgnoreValue {
@@ -378,7 +378,7 @@ func checkRequestPut(rv mvcc.ReadView, lessor lease.Lessor, reqOp *pb.RequestOp)
 			return err
 		}
 		if rr == nil || len(rr.KVs) == 0 {
-			return etcderrors.ErrKeyNotFound
+			return errors.ErrKeyNotFound
 		}
 	}
 	if lease.LeaseID(req.Lease) != lease.NoLease {

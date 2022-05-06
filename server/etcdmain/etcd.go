@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/osutil"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2discovery"
-	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -126,7 +126,7 @@ func startEtcdOrProxyV2(args []string) {
 	}
 
 	if err != nil {
-		if derr, ok := err.(*etcderrors.DiscoveryError); ok {
+		if derr, ok := err.(*errors.DiscoveryError); ok {
 			switch derr.Err {
 			case v2discovery.ErrDuplicateID:
 				lg.Warn(

@@ -48,7 +48,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
-	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
@@ -97,7 +97,7 @@ func TestDoLocalAction(t *testing.T) {
 		},
 		{
 			pb.Request{Method: "BADMETHOD", ID: 1},
-			Response{}, etcderrors.ErrUnknownMethod, []testutil.Action{},
+			Response{}, errors.ErrUnknownMethod, []testutil.Action{},
 		},
 	}
 	for i, tt := range tests {
@@ -463,7 +463,7 @@ func TestApplyRequest(t *testing.T) {
 		// Unknown method - error
 		{
 			pb.Request{Method: "BADMETHOD", ID: 1},
-			Response{Err: etcderrors.ErrUnknownMethod},
+			Response{Err: errors.ErrUnknownMethod},
 			[]testutil.Action{},
 		},
 	}
@@ -830,8 +830,8 @@ func TestDoProposalCancelled(t *testing.T) {
 	cancel()
 	_, err := srv.Do(ctx, pb.Request{Method: "PUT"})
 
-	if err != etcderrors.ErrCanceled {
-		t.Fatalf("err = %v, want %v", err, etcderrors.ErrCanceled)
+	if err != errors.ErrCanceled {
+		t.Fatalf("err = %v, want %v", err, errors.ErrCanceled)
 	}
 	w := []testutil.Action{{Name: "Register"}, {Name: "Trigger"}}
 	if !reflect.DeepEqual(wt.Action(), w) {
@@ -853,8 +853,8 @@ func TestDoProposalTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 0)
 	_, err := srv.Do(ctx, pb.Request{Method: "PUT"})
 	cancel()
-	if err != etcderrors.ErrTimeout {
-		t.Fatalf("err = %v, want %v", err, etcderrors.ErrTimeout)
+	if err != errors.ErrTimeout {
+		t.Fatalf("err = %v, want %v", err, errors.ErrTimeout)
 	}
 }
 
@@ -872,8 +872,8 @@ func TestDoProposalStopped(t *testing.T) {
 	srv.stopping = make(chan struct{})
 	close(srv.stopping)
 	_, err := srv.Do(context.Background(), pb.Request{Method: "PUT", ID: 1})
-	if err != etcderrors.ErrStopped {
-		t.Errorf("err = %v, want %v", err, etcderrors.ErrStopped)
+	if err != errors.ErrStopped {
+		t.Errorf("err = %v, want %v", err, errors.ErrStopped)
 	}
 }
 
@@ -1944,14 +1944,14 @@ func TestWaitAppliedIndex(t *testing.T) {
 			action: func(s *EtcdServer) {
 				s.stopping <- struct{}{}
 			},
-			ExpectedError: etcderrors.ErrStopped,
+			ExpectedError: errors.ErrStopped,
 		},
 		{
 			name:           "Timed out waiting for the applied index",
 			appliedIndex:   10,
 			committedIndex: 12,
 			action:         nil,
-			ExpectedError:  etcderrors.ErrTimeoutWaitAppliedIndex,
+			ExpectedError:  errors.ErrTimeoutWaitAppliedIndex,
 		},
 	}
 	for _, tc := range cases {

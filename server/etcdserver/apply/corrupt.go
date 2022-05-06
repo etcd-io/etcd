@@ -19,7 +19,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
@@ -30,29 +30,29 @@ type applierV3Corrupt struct {
 func newApplierV3Corrupt(a applierV3) *applierV3Corrupt { return &applierV3Corrupt{a} }
 
 func (a *applierV3Corrupt) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
-	return nil, nil, etcderrors.ErrCorrupt
+	return nil, nil, errors.ErrCorrupt
 }
 
 func (a *applierV3Corrupt) Range(ctx context.Context, txn mvcc.TxnRead, p *pb.RangeRequest) (*pb.RangeResponse, error) {
-	return nil, etcderrors.ErrCorrupt
+	return nil, errors.ErrCorrupt
 }
 
 func (a *applierV3Corrupt) DeleteRange(txn mvcc.TxnWrite, p *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	return nil, etcderrors.ErrCorrupt
+	return nil, errors.ErrCorrupt
 }
 
 func (a *applierV3Corrupt) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return nil, nil, etcderrors.ErrCorrupt
+	return nil, nil, errors.ErrCorrupt
 }
 
 func (a *applierV3Corrupt) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
-	return nil, nil, nil, etcderrors.ErrCorrupt
+	return nil, nil, nil, errors.ErrCorrupt
 }
 
 func (a *applierV3Corrupt) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	return nil, etcderrors.ErrCorrupt
+	return nil, errors.ErrCorrupt
 }
 
 func (a *applierV3Corrupt) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	return nil, etcderrors.ErrCorrupt
+	return nil, errors.ErrCorrupt
 }

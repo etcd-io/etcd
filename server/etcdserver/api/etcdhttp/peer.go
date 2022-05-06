@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 
 	"go.uber.org/zap"
@@ -143,7 +143,7 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 			http.Error(w, err.Error(), http.StatusNotFound)
 		case membership.ErrMemberNotLearner:
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-		case etcderrors.ErrLearnerNotReady:
+		case errors.ErrLearnerNotReady:
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
 		default:
 			writeError(h.lg, w, r, err)
