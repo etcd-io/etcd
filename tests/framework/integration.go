@@ -311,3 +311,27 @@ func (c integrationClient) UserChangePass(user, newPass string) error {
 	_, err := c.Client.UserChangePassword(context.Background(), user, newPass)
 	return err
 }
+
+func (c integrationClient) RoleAdd(name string) (*clientv3.AuthRoleAddResponse, error) {
+	return c.Client.RoleAdd(context.Background(), name)
+}
+
+func (c integrationClient) RoleGrantPermission(name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
+	return c.Client.RoleGrantPermission(context.Background(), name, key, rangeEnd, permType)
+}
+
+func (c integrationClient) RoleGet(role string) (*clientv3.AuthRoleGetResponse, error) {
+	return c.Client.RoleGet(context.Background(), role)
+}
+
+func (c integrationClient) RoleList() (*clientv3.AuthRoleListResponse, error) {
+	return c.Client.RoleList(context.Background())
+}
+
+func (c integrationClient) RoleRevokePermission(role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error) {
+	return c.Client.RoleRevokePermission(context.Background(), role, key, rangeEnd)
+}
+
+func (c integrationClient) RoleDelete(role string) (*clientv3.AuthRoleDeleteResponse, error) {
+	return c.Client.RoleDelete(context.Background(), role)
+}

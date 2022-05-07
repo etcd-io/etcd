@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"go.etcd.io/etcd/api/v3/authpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -506,4 +507,54 @@ func (ctl *EtcdctlV3) UserChangePass(user, newPass string) error {
 
 	_, err = cmd.Expect("Password updated")
 	return err
+}
+
+func (ctl *EtcdctlV3) RoleAdd(name string) (*clientv3.AuthRoleAddResponse, error) {
+	var resp clientv3.AuthRoleAddResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "add", name)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleGrantPermission(name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
+	permissionType := authpb.Permission_Type_name[int32(permType)]
+	var resp clientv3.AuthRoleGrantPermissionResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "grant-permission", name, permissionType, key, rangeEnd)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleGet(role string) (*clientv3.AuthRoleGetResponse, error) {
+	var resp clientv3.AuthRoleGetResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "get", role)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleList() (*clientv3.AuthRoleListResponse, error) {
+	var resp clientv3.AuthRoleListResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "list")
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleRevokePermission(role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error) {
+	var resp clientv3.AuthRoleRevokePermissionResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "revoke-permission", role, key, rangeEnd)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleDelete(role string) (*clientv3.AuthRoleDeleteResponse, error) {
+	var resp clientv3.AuthRoleDeleteResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "delete", role)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) spawnJsonCmd(output interface{}, args ...string) error {
+	args = append(args, "-w", "json")
+	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), nil)
+	if err != nil {
+		return err
+	}
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal([]byte(line), output)
 }
