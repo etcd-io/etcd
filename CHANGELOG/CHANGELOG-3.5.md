@@ -4,6 +4,16 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
+## v3.5.5 (TBD)
+
+### etcd server
+- Fix [lease leak issue due to tokenProvider isn't enabled when restoring auth store from a snapshot](https://github.com/etcd-io/etcd/pull/13205).
+
+### Other
+- [Bump golang.org/x/crypto to latest version](https://github.com/etcd-io/etcd/pull/13996) to address [CVE-2022-27191](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
+
+<hr>
+
 ## v3.5.4 (2022-04-24)
 
 ### etcd server
@@ -25,6 +35,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/13932)
 - Fix [consistent_index coming from snapshot is overwritten by the old local value](https://github.com/etcd-io/etcd/pull/13933)
 - [Update container base image snapshot](https://github.com/etcd-io/etcd/pull/13862)
+- Fix [Defrag unsets backend options](https://github.com/etcd-io/etcd/pull/13701).
 
 ### package `client/pkg/v3`
 

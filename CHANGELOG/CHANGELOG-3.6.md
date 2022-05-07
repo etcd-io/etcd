@@ -66,6 +66,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/13690)
 - Fix [consistent_index coming from snapshot is overwritten by the old local value](https://github.com/etcd-io/etcd/pull/13930)
 - Fix [etcd panic on startup (auth enabled)](https://github.com/etcd-io/etcd/pull/13942)
+- Fix [Defrag unsets backend options](https://github.com/etcd-io/etcd/pull/13679).
 
 ### tools/benchmark
 
@@ -83,5 +84,6 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 ### Other
 
 - Use Distroless as base image to make the image less vulnerable and reduce image size.
+- [Bump golang.org/x/crypto to latest version](https://github.com/etcd-io/etcd/pull/13969) to address [CVE-2022-27191](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
 
 <hr>
