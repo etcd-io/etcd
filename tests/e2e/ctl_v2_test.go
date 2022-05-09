@@ -54,6 +54,26 @@ func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	}
 }
 
+func TestCtlV2SetLongKey(t *testing.T) {
+	os.Setenv("ETCDCTL_API", "2")
+	defer os.Unsetenv("ETCDCTL_API")
+	defer testutil.AfterTest(t)
+
+	cfg := &configNoTLS
+
+	cfg.enableV2 = true
+	epc := setupEtcdctlTest(t, cfg, false)
+	defer func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	}()
+
+	if err := etcdctlSetNoSync(epc, strings.Repeat("X", 5000), "bar"); err != nil {
+		t.Fatalf("failed set (%v)", err)
+	}
+}
+
 func TestCtlV2Mk(t *testing.T)       { testCtlV2Mk(t, &configNoTLS, false) }
 func TestCtlV2MkQuorum(t *testing.T) { testCtlV2Mk(t, &configNoTLS, true) }
 func TestCtlV2MkTLS(t *testing.T)    { testCtlV2Mk(t, &configTLS, false) }
@@ -435,6 +455,13 @@ func etcdctlClusterHealth(clus *etcdProcessCluster, val string) error {
 
 func etcdctlSet(clus *etcdProcessCluster, key, value string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "set", key, value)
+	return spawnWithExpect(cmdArgs, value)
+}
+
+func etcdctlSetNoSync(clus *etcdProcessCluster, key, value string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus))
+	cmdArgs = append(cmdArgs, "--no-sync")
+	cmdArgs = append(cmdArgs, "set", key, value)
 	return spawnWithExpect(cmdArgs, value)
 }
 

@@ -132,7 +132,7 @@ func (sctx *serveCtx) serve(
 			Handler:  createAccessController(sctx.lg, s, httpmux),
 			ErrorLog: logger, // do not log user error
 		}
-		httpl := m.Match(cmux.HTTP1())
+		httpl := m.Match(cmux.HTTP1Fast())
 		go func() { errHandler(srvhttp.Serve(httpl)) }()
 
 		sctx.serversC <- &servers{grpc: gs, http: srvhttp}
