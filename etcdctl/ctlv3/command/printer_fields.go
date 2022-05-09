@@ -36,7 +36,12 @@ func (p *fieldsPrinter) kv(pfx string, kv *spb.KeyValue) {
 func (p *fieldsPrinter) hdr(h *pb.ResponseHeader) {
 	fmt.Println(`"ClusterID" :`, h.ClusterId)
 	fmt.Println(`"MemberID" :`, h.MemberId)
-	fmt.Println(`"Revision" :`, h.Revision)
+	// Revision only makes sense for k/v responses. For other kinds of
+	// responses, i.e. MemberList, usually the revision isn't populated
+	// at all; so it would be better to hide this field in these cases.
+	if h.Revision > 0 {
+		fmt.Println(`"Revision" :`, h.Revision)
+	}
 	fmt.Println(`"RaftTerm" :`, h.RaftTerm)
 }
 

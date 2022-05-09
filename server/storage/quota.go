@@ -18,7 +18,6 @@ import (
 	"sync"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 
 	humanize "github.com/dustin/go-humanize"
@@ -73,23 +72,21 @@ var (
 )
 
 // NewBackendQuota creates a quota layer with the given storage limit.
-func NewBackendQuota(cfg config.ServerConfig, be backend.Backend, name string) Quota {
-	lg := cfg.Logger
-	quotaBackendBytes.Set(float64(cfg.QuotaBackendBytes))
-
-	if cfg.QuotaBackendBytes < 0 {
+func NewBackendQuota(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Backend, name string) Quota {
+	quotaBackendBytes.Set(float64(quotaBackendBytesCfg))
+	if quotaBackendBytesCfg < 0 {
 		// disable quotas if negative
 		quotaLogOnce.Do(func() {
 			lg.Info(
 				"disabled backend quota",
 				zap.String("quota-name", name),
-				zap.Int64("quota-size-bytes", cfg.QuotaBackendBytes),
+				zap.Int64("quota-size-bytes", quotaBackendBytesCfg),
 			)
 		})
 		return &passthroughQuota{}
 	}
 
-	if cfg.QuotaBackendBytes == 0 {
+	if quotaBackendBytesCfg == 0 {
 		// use default size if no quota size given
 		quotaLogOnce.Do(func() {
 			if lg != nil {
@@ -106,12 +103,12 @@ func NewBackendQuota(cfg config.ServerConfig, be backend.Backend, name string) Q
 	}
 
 	quotaLogOnce.Do(func() {
-		if cfg.QuotaBackendBytes > MaxQuotaBytes {
+		if quotaBackendBytesCfg > MaxQuotaBytes {
 			lg.Warn(
 				"quota exceeds the maximum value",
 				zap.String("quota-name", name),
-				zap.Int64("quota-size-bytes", cfg.QuotaBackendBytes),
-				zap.String("quota-size", humanize.Bytes(uint64(cfg.QuotaBackendBytes))),
+				zap.Int64("quota-size-bytes", quotaBackendBytesCfg),
+				zap.String("quota-size", humanize.Bytes(uint64(quotaBackendBytesCfg))),
 				zap.Int64("quota-maximum-size-bytes", MaxQuotaBytes),
 				zap.String("quota-maximum-size", maxQuotaSize),
 			)
@@ -119,11 +116,11 @@ func NewBackendQuota(cfg config.ServerConfig, be backend.Backend, name string) Q
 		lg.Info(
 			"enabled backend quota",
 			zap.String("quota-name", name),
-			zap.Int64("quota-size-bytes", cfg.QuotaBackendBytes),
-			zap.String("quota-size", humanize.Bytes(uint64(cfg.QuotaBackendBytes))),
+			zap.Int64("quota-size-bytes", quotaBackendBytesCfg),
+			zap.String("quota-size", humanize.Bytes(uint64(quotaBackendBytesCfg))),
 		)
 	})
-	return &BackendQuota{be, cfg.QuotaBackendBytes}
+	return &BackendQuota{be, quotaBackendBytesCfg}
 }
 
 func (b *BackendQuota) Available(v interface{}) bool {

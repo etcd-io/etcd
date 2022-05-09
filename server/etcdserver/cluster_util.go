@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
@@ -304,12 +305,12 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 	}
 
 	if resp.StatusCode == http.StatusRequestTimeout {
-		return nil, ErrTimeout
+		return nil, errors.ErrTimeout
 	}
 	if resp.StatusCode == http.StatusPreconditionFailed {
 		// both ErrMemberNotLearner and ErrLearnerNotReady have same http status code
-		if strings.Contains(string(b), ErrLearnerNotReady.Error()) {
-			return nil, ErrLearnerNotReady
+		if strings.Contains(string(b), errors.ErrLearnerNotReady.Error()) {
+			return nil, errors.ErrLearnerNotReady
 		}
 		if strings.Contains(string(b), membership.ErrMemberNotLearner.Error()) {
 			return nil, membership.ErrMemberNotLearner
@@ -408,7 +409,7 @@ func convertToClusterVersion(v string) (*semver.Version, error) {
 		// allow input version format Major.Minor
 		ver, err = semver.NewVersion(v + ".0")
 		if err != nil {
-			return nil, ErrWrongDowngradeVersionFormat
+			return nil, errors.ErrWrongDowngradeVersionFormat
 		}
 	}
 	// cluster version only keeps major.minor, remove patch version

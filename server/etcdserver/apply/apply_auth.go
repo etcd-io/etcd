@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package apply
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
@@ -42,7 +43,7 @@ func newAuthApplierV3(as auth.AuthStore, base applierV3, lessor lease.Lessor) *a
 	return &authApplierV3{applierV3: base, as: as, lessor: lessor}
 }
 
-func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *applyResult {
+func (aa *authApplierV3) Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
 	aa.mu.Lock()
 	defer aa.mu.Unlock()
 	if r.Header != nil {
@@ -55,10 +56,10 @@ func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membersh
 		if err := aa.as.IsAdminPermitted(&aa.authInfo); err != nil {
 			aa.authInfo.Username = ""
 			aa.authInfo.Revision = 0
-			return &applyResult{err: err}
+			return &Result{Err: err}
 		}
 	}
-	ret := aa.applierV3.Apply(r, shouldApplyV3)
+	ret := aa.applierV3.Apply(ctx, r, shouldApplyV3, applyFunc)
 	aa.authInfo.Username = ""
 	aa.authInfo.Revision = 0
 	return ret
@@ -107,63 +108,8 @@ func (aa *authApplierV3) DeleteRange(txn mvcc.TxnWrite, r *pb.DeleteRangeRequest
 	return aa.applierV3.DeleteRange(txn, r)
 }
 
-func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.RequestOp) error {
-	for _, requ := range reqs {
-		switch tv := requ.Request.(type) {
-		case *pb.RequestOp_RequestRange:
-			if tv.RequestRange == nil {
-				continue
-			}
-
-			if err := as.IsRangePermitted(ai, tv.RequestRange.Key, tv.RequestRange.RangeEnd); err != nil {
-				return err
-			}
-
-		case *pb.RequestOp_RequestPut:
-			if tv.RequestPut == nil {
-				continue
-			}
-
-			if err := as.IsPutPermitted(ai, tv.RequestPut.Key); err != nil {
-				return err
-			}
-
-		case *pb.RequestOp_RequestDeleteRange:
-			if tv.RequestDeleteRange == nil {
-				continue
-			}
-
-			if tv.RequestDeleteRange.PrevKv {
-				err := as.IsRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
-				if err != nil {
-					return err
-				}
-			}
-
-			err := as.IsDeleteRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
-	for _, c := range rt.Compare {
-		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
-			return err
-		}
-	}
-	if err := checkTxnReqsPermission(as, ai, rt.Success); err != nil {
-		return err
-	}
-	return checkTxnReqsPermission(as, ai, rt.Failure)
-}
-
 func (aa *authApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	if err := checkTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
+	if err := txn.CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
 		return nil, nil, err
 	}
 	return aa.applierV3.Txn(ctx, rt)
@@ -177,9 +123,9 @@ func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevoke
 }
 
 func (aa *authApplierV3) checkLeasePuts(leaseID lease.LeaseID) error {
-	lease := aa.lessor.Lookup(leaseID)
-	if lease != nil {
-		for _, key := range lease.Keys() {
+	l := aa.lessor.Lookup(leaseID)
+	if l != nil {
+		for _, key := range l.Keys() {
 			if err := aa.as.IsPutPermitted(&aa.authInfo, []byte(key)); err != nil {
 				return err
 			}

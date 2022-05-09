@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/dustin/go-humanize"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -337,7 +338,7 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*
 			str, err = v3discovery.JoinCluster(cfg.Logger, &cfg.DiscoveryCfg, m.ID, cfg.InitialPeerURLsMap.String())
 		}
 		if err != nil {
-			return nil, &DiscoveryError{Op: "join", Err: err}
+			return nil, &errors.DiscoveryError{Op: "join", Err: err}
 		}
 		var urlsmap types.URLsMap
 		urlsmap, err = types.NewURLsMap(str)

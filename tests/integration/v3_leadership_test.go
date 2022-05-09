@@ -37,7 +37,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 	defer clus.Terminate(t)
 
 	oldLeadIdx := clus.WaitLeader(t)
-	oldLeadID := uint64(clus.Members[oldLeadIdx].Server.ID())
+	oldLeadID := uint64(clus.Members[oldLeadIdx].Server.MemberId())
 
 	// ensure followers go through leader transition while leadership transfer
 	idc := make(chan uint64)
@@ -55,7 +55,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 		}
 	}
 
-	target := uint64(clus.Members[(oldLeadIdx+1)%3].Server.ID())
+	target := uint64(clus.Members[(oldLeadIdx+1)%3].Server.MemberId())
 	if auto {
 		err := clus.Members[oldLeadIdx].Server.TransferLeadership()
 		if err != nil {
@@ -107,7 +107,7 @@ func TestMoveLeaderError(t *testing.T) {
 	oldLeadIdx := clus.WaitLeader(t)
 	followerIdx := (oldLeadIdx + 1) % 3
 
-	target := uint64(clus.Members[(oldLeadIdx+2)%3].Server.ID())
+	target := uint64(clus.Members[(oldLeadIdx+2)%3].Server.MemberId())
 
 	mvc := integration.ToGRPC(clus.Client(followerIdx)).Maintenance
 	_, err := mvc.MoveLeader(context.TODO(), &pb.MoveLeaderRequest{TargetID: target})

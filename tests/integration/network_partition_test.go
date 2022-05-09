@@ -96,7 +96,7 @@ func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 
 	// leader must be hold in majority
 	leadIndex2 := clus.WaitMembersForLeader(t, majorityMembers)
-	leadID, leadID2 := clus.Members[leadIndex].Server.ID(), majorityMembers[leadIndex2].Server.ID()
+	leadID, leadID2 := clus.Members[leadIndex].Server.MemberId(), majorityMembers[leadIndex2].Server.MemberId()
 	if leadID != leadID2 {
 		return fmt.Errorf("unexpected leader change from %s, got %s", leadID, leadID2)
 	}

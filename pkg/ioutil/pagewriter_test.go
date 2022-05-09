@@ -19,6 +19,22 @@ import (
 	"testing"
 )
 
+func TestPageWriterPageBytes(t *testing.T) {
+	// PageWriter should not be created with 0 pageBytes,
+	// otherwise, it will crash when writing.
+	pageBytes := 0
+	defaultBufferBytes = 8 * 1024
+	cw := &checkPageWriter{pageBytes: pageBytes, t: t}
+	defer func() {
+		if err := recover(); err != nil {
+			return
+		}
+	}()
+	NewPageWriter(cw, pageBytes, 0)
+	t.Fatal("NewPageWriter should panic instead of return an obj")
+
+}
+
 func TestPageWriterRandom(t *testing.T) {
 	// smaller buffer for stress testing
 	defaultBufferBytes = 8 * 1024

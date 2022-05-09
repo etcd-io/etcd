@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -27,9 +28,11 @@ import (
 
 func TestAlarm(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 1, QuotaBackendBytes: int64(13 * os.Getpagesize())})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 1, QuotaBackendBytes: int64(13 * os.Getpagesize())})
 	defer clus.Close()
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	testutils.ExecuteUntil(ctx, t, func() {
 		// test small put still works
 		smallbuf := strings.Repeat("a", 64)
 		if err := clus.Client().Put("1st_test", smallbuf, config.PutOptions{}); err != nil {

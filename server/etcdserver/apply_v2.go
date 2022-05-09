@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"strconv"
 	"time"
 	"unicode/utf8"
 
@@ -27,6 +26,8 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 
 	"go.uber.org/zap"
 )
@@ -129,8 +130,8 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 			return
 		}
 		success := resp.Err == nil
-		applySec.WithLabelValues(v2Version, r.Method, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		warnOfExpensiveRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, stringer, nil, nil)
+		txn.ApplySecObserve(v2Version, r.Method, success, time.Since(start))
+		txn.WarnOfExpensiveRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, stringer, nil, nil)
 	}(time.Now())
 
 	switch r.Method {
@@ -146,7 +147,7 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 		return s.applyV2.Sync(r)
 	default:
 		// This should never be reached, but just in case:
-		return Response{Err: ErrUnknownMethod}
+		return Response{Err: errors.ErrUnknownMethod}
 	}
 }
 

@@ -33,6 +33,7 @@ import (
 )
 
 func TestGetIDs(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	addcc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
 	addEntry := raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(addcc)}
 	removecc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
@@ -67,7 +68,7 @@ func TestGetIDs(t *testing.T) {
 		if tt.confState != nil {
 			snap.Metadata.ConfState = *tt.confState
 		}
-		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(zaptest.NewLogger(t), &snap, tt.ents)
+		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(lg, &snap, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
@@ -75,6 +76,7 @@ func TestGetIDs(t *testing.T) {
 }
 
 func TestCreateConfigChangeEnts(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	m := membership.Member{
 		ID:             types.ID(1),
 		RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:2380"}},
@@ -147,7 +149,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gents := serverstorage.CreateConfigChangeEnts(zaptest.NewLogger(t), tt.ids, tt.self, tt.term, tt.index)
+		gents := serverstorage.CreateConfigChangeEnts(lg, tt.ids, tt.self, tt.term, tt.index)
 		if !reflect.DeepEqual(gents, tt.wents) {
 			t.Errorf("#%d: ents = %v, want %v", i, gents, tt.wents)
 		}
@@ -169,7 +171,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	select {
 	case <-srv.r.applyc:
 	case <-time.After(time.Second):
-		t.Fatalf("failed to receive apply struct")
+		t.Fatalf("failed to receive toApply struct")
 	}
 
 	srv.r.stopped <- struct{}{}
@@ -180,7 +182,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	}
 }
 
-// TestConfigChangeBlocksApply ensures apply blocks if committed entries contain config-change.
+// TestConfigChangeBlocksApply ensures toApply blocks if committed entries contain config-change.
 func TestConfigChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
@@ -215,11 +217,11 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 
 	select {
 	case <-continueC:
-		t.Fatalf("unexpected execution: raft routine should block waiting for apply")
+		t.Fatalf("unexpected execution: raft routine should block waiting for toApply")
 	case <-time.After(time.Second):
 	}
 
-	// finish apply, unblock raft routine
+	// finish toApply, unblock raft routine
 	<-ap.notifyc
 
 	select {

@@ -15,6 +15,7 @@
 package verify
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -68,5 +69,12 @@ func DisableVerifications() func() {
 func Verify(f func()) {
 	if IsVerificationEnabled(ENV_VERIFY_VALUE_ASSERT) {
 		f()
+	}
+}
+
+// Assert will panic with a given formatted message if the given condition is false.
+func Assert(condition bool, msg string, v ...interface{}) {
+	if !condition {
+		panic(fmt.Sprintf("assertion failed: "+msg, v...))
 	}
 }
