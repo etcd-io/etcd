@@ -41,6 +41,9 @@ type PageWriter struct {
 // NewPageWriter creates a new PageWriter. pageBytes is the number of bytes
 // to write per page. pageOffset is the starting offset of io.Writer.
 func NewPageWriter(w io.Writer, pageBytes, pageOffset int) *PageWriter {
+	if pageBytes < 1 {
+		return nil
+	}
 	return &PageWriter{
 		w:                 w,
 		pageOffset:        pageOffset,
