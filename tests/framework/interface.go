@@ -60,4 +60,10 @@ type Client interface {
 	UserList() (*clientv3.AuthUserListResponse, error)
 	UserDelete(name string) (*clientv3.AuthUserDeleteResponse, error)
 	UserChangePass(user, newPass string) error
+	RoleAdd(name string) (*clientv3.AuthRoleAddResponse, error)
+	RoleGrantPermission(name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error)
+	RoleGet(role string) (*clientv3.AuthRoleGetResponse, error)
+	RoleList() (*clientv3.AuthRoleListResponse, error)
+	RoleRevokePermission(role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error)
+	RoleDelete(role string) (*clientv3.AuthRoleDeleteResponse, error)
 }
