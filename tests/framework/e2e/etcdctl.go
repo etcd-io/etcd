@@ -42,7 +42,8 @@ func (ctl *EtcdctlV3) DowngradeEnable(version string) error {
 }
 
 func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetResponse, error) {
-	args := ctl.cmdArgs()
+	resp := clientv3.GetResponse{}
+	var args []string
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
 	}
@@ -94,20 +95,15 @@ func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetRespons
 	default:
 		return nil, fmt.Errorf("bad sort order %v", o.Order)
 	}
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
-	var resp clientv3.GetResponse
 	if o.CountOnly {
-		_, err := cmd.Expect("Count")
+		cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+		if err != nil {
+			return nil, err
+		}
+		_, err = cmd.Expect("Count")
 		return &resp, err
 	}
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, args...)
 	return &resp, err
 }
 
@@ -121,8 +117,7 @@ func (ctl *EtcdctlV3) Put(key, value string, opts config.PutOptions) error {
 }
 
 func (ctl *EtcdctlV3) Delete(key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "del", key, "-w", "json")
+	args := []string{"del", key}
 	if o.End != "" {
 		args = append(args, o.End)
 	}
@@ -132,58 +127,26 @@ func (ctl *EtcdctlV3) Delete(key string, o config.DeleteOptions) (*clientv3.Dele
 	if o.FromKey {
 		args = append(args, "--from-key")
 	}
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.DeleteResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, args...)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberList() (*clientv3.MemberListResponse, error) {
-	cmd, err := SpawnCmd(ctl.cmdArgs("member", "list", "-w", "json"), nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.MemberListResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "member", "list")
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberAddAsLearner(name string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
-	cmd, err := SpawnCmd(ctl.cmdArgs("member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","), "-w", "json"), nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.MemberAddResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","))
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberRemove(id uint64) (*clientv3.MemberRemoveResponse, error) {
-	cmd, err := SpawnCmd(ctl.cmdArgs("member", "remove", fmt.Sprintf("%x", id), "-w", "json"), nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.MemberRemoveResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "member", "remove", fmt.Sprintf("%x", id))
 	return &resp, err
 }
 
@@ -216,9 +179,7 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 }
 
 func (ctl *EtcdctlV3) Compact(rev int64, o config.CompactOption) (*clientv3.CompactResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "compact", fmt.Sprint(rev))
-
+	args := ctl.cmdArgs("compact", fmt.Sprint(rev))
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
 	}
@@ -230,22 +191,11 @@ func (ctl *EtcdctlV3) Compact(rev int64, o config.CompactOption) (*clientv3.Comp
 }
 
 func (ctl *EtcdctlV3) Status() ([]*clientv3.StatusResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "endpoint", "status", "-w", "json")
-	args = append(args, "--endpoints", strings.Join(ctl.endpoints, ","))
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var epStatus []*struct {
 		Endpoint string
 		Status   *clientv3.StatusResponse
 	}
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &epStatus)
+	err := ctl.spawnJsonCmd(&epStatus, "endpoint", "status", "--endpoints", strings.Join(ctl.endpoints, ","))
 	if err != nil {
 		return nil, err
 	}
@@ -257,23 +207,11 @@ func (ctl *EtcdctlV3) Status() ([]*clientv3.StatusResponse, error) {
 }
 
 func (ctl *EtcdctlV3) HashKV(rev int64) ([]*clientv3.HashKVResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "endpoint", "hashkv", "-w", "json")
-	args = append(args, "--endpoints", strings.Join(ctl.endpoints, ","))
-	args = append(args, "--rev", fmt.Sprint(rev))
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var epHashKVs []*struct {
 		Endpoint string
 		HashKV   *clientv3.HashKVResponse
 	}
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &epHashKVs)
+	err := ctl.spawnJsonCmd(&epHashKVs, "endpoint", "hashkv", "--endpoints", strings.Join(ctl.endpoints, ","), "--rev", fmt.Sprint(rev))
 	if err != nil {
 		return nil, err
 	}
@@ -343,8 +281,7 @@ func (ctl *EtcdctlV3) Defragment(o config.DefragOption) error {
 }
 
 func (ctl *EtcdctlV3) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "lease", "list", "-w", "json")
+	args := ctl.cmdArgs("lease", "list", "-w", "json")
 	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
@@ -359,8 +296,7 @@ func (ctl *EtcdctlV3) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
 }
 
 func (ctl *EtcdctlV3) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "lease", "keep-alive", strconv.FormatInt(int64(id), 16), "--once", "-w", "json")
+	args := ctl.cmdArgs("lease", "keep-alive", strconv.FormatInt(int64(id), 16), "--once", "-w", "json")
 	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
@@ -375,34 +311,14 @@ func (ctl *EtcdctlV3) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKe
 }
 
 func (ctl *EtcdctlV3) LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "lease", "revoke", strconv.FormatInt(int64(id), 16), "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.LeaseRevokeResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "lease", "revoke", strconv.FormatInt(int64(id), 16))
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) AlarmList() (*clientv3.AlarmResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "alarm", "list", "-w", "json")
-	ep, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.AlarmResponse
-	line, err := ep.Expect("alarm")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "alarm", "list")
 	return &resp, err
 }
 
@@ -461,34 +377,14 @@ func (ctl *EtcdctlV3) UserAdd(name, password string, opts config.UserAddOptions)
 }
 
 func (ctl *EtcdctlV3) UserList() (*clientv3.AuthUserListResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "user", "list", "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.AuthUserListResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "user", "list")
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) UserDelete(name string) (*clientv3.AuthUserDeleteResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "user", "delete", name, "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.AuthUserDeleteResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "user", "delete", name)
 	return &resp, err
 }
 
