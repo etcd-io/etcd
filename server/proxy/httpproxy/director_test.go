@@ -55,8 +55,7 @@ func TestNewDirectorScheme(t *testing.T) {
 		uf := func() []string {
 			return tt.urls
 		}
-		stop, donec := make(chan struct{}), make(chan struct{})
-		got := newDirector(zaptest.NewLogger(t), uf, time.Minute, time.Minute, stop, donec)
+		got := newDirector(zaptest.NewLogger(t), uf, time.Minute, time.Minute)
 
 		var gep []string
 		for _, ep := range got.ep {
@@ -68,9 +67,9 @@ func TestNewDirectorScheme(t *testing.T) {
 			t.Errorf("#%d: want endpoints = %#v, got = %#v", i, tt.want, gep)
 		}
 
-		close(stop)
+		close(got.stopc)
 		select {
-		case <-donec:
+		case <-got.donec:
 		case <-time.After(time.Second):
 			t.Fatalf("done took too long")
 		}

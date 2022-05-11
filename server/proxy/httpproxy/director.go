@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/pkg/v3/osutil"
 	"go.uber.org/zap"
 )
 
@@ -33,7 +34,7 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration, stop <-chan struct{}, donec chan<- struct{}) *director {
+func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -41,12 +42,15 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 		lg:          lg,
 		uf:          urlsFunc,
 		failureWait: failureWait,
+		stopc:       make(chan struct{}),
+		donec:       make(chan struct{}),
 	}
+	osutil.RegisterInterruptHandler(func() {
+		close(d.stopc)
+	})
 	d.refresh()
 	go func() {
-		if donec != nil {
-			defer close(donec)
-		}
+		defer close(d.donec)
 		// In order to prevent missing proxy endpoints in the first try:
 		// when given refresh interval of defaultRefreshInterval or greater
 		// and whenever there is no available proxy endpoints,
@@ -71,7 +75,7 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 			select {
 			case <-time.After(ri):
 				d.refresh()
-			case <-stop:
+			case <-d.stopc:
 				return
 			}
 		}
@@ -85,6 +89,8 @@ type director struct {
 	ep          []*endpoint
 	uf          GetProxyURLs
 	failureWait time.Duration
+	stopc       chan struct{}
+	donec       chan struct{}
 }
 
 func (d *director) refresh() {
