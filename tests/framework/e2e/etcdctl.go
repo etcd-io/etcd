@@ -17,10 +17,12 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
 	"go.etcd.io/etcd/api/v3/authpb"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -145,6 +147,101 @@ func (ctl *EtcdctlV3) Delete(key string, o config.DeleteOptions) (*clientv3.Dele
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) Txn(compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "txn")
+	if o.Interactive {
+		args = append(args, "--interactive")
+	}
+	args = append(args, "-w", "json", "--hex=true")
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil, err
+	}
+	_, err = cmd.Expect("compares:")
+	if err != nil {
+		return nil, err
+	}
+	for _, cmp := range compares {
+		if err := cmd.Send(cmp + "\r"); err != nil {
+			return nil, err
+		}
+	}
+	if err := cmd.Send("\r"); err != nil {
+		return nil, err
+	}
+	_, err = cmd.Expect("success requests (get, put, del):")
+	if err != nil {
+		return nil, err
+	}
+	for _, req := range ifSucess {
+		if err = cmd.Send(req + "\r"); err != nil {
+			return nil, err
+		}
+	}
+	if err = cmd.Send("\r"); err != nil {
+		return nil, err
+	}
+
+	_, err = cmd.Expect("failure requests (get, put, del):")
+	if err != nil {
+		return nil, err
+	}
+	for _, req := range ifFail {
+		if err = cmd.Send(req + "\r"); err != nil {
+			return nil, err
+		}
+	}
+	if err = cmd.Send("\r"); err != nil {
+		return nil, err
+	}
+	var line string
+	line, err = cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.TxnResponse
+	AddTxnResponse(&resp, line)
+	err = json.Unmarshal([]byte(line), &resp)
+	return &resp, err
+}
+
+// AddTxnResponse looks for ResponseOp json tags and adds the objects for json decoding
+func AddTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
+	if resp == nil {
+		return
+	}
+	if resp.Responses == nil {
+		resp.Responses = []*etcdserverpb.ResponseOp{}
+	}
+	jd := json.NewDecoder(strings.NewReader(jsonData))
+	for {
+		t, e := jd.Token()
+		if e == io.EOF {
+			break
+		}
+		if t == "response_range" {
+			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
+				Response: &etcdserverpb.ResponseOp_ResponseRange{},
+			})
+		}
+		if t == "response_put" {
+			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
+				Response: &etcdserverpb.ResponseOp_ResponsePut{},
+			})
+		}
+		if t == "response_delete_range" {
+			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
+				Response: &etcdserverpb.ResponseOp_ResponseDeleteRange{},
+			})
+		}
+		if t == "response_txn" {
+			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
+				Response: &etcdserverpb.ResponseOp_ResponseTxn{},
+			})
+		}
+	}
+}
 func (ctl *EtcdctlV3) MemberList() (*clientv3.MemberListResponse, error) {
 	cmd, err := SpawnCmd(ctl.cmdArgs("member", "list", "-w", "json"), nil)
 	if err != nil {

@@ -17,6 +17,7 @@ package framework
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -24,6 +25,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	etcdctlcmd "go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -334,4 +336,47 @@ func (c integrationClient) RoleRevokePermission(role string, key, rangeEnd strin
 
 func (c integrationClient) RoleDelete(role string) (*clientv3.AuthRoleDeleteResponse, error) {
 	return c.Client.RoleDelete(context.Background(), role)
+}
+
+func (c integrationClient) Txn(compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error) {
+	txn := c.Client.Txn(context.Background())
+	cmps := []clientv3.Cmp{}
+	for _, c := range compares {
+		cmp, err := etcdctlcmd.ParseCompare(c)
+		if err != nil {
+			return nil, err
+		}
+		cmps = append(cmps, *cmp)
+	}
+	succOps, err := getOps(ifSucess)
+	if err != nil {
+		return nil, err
+	}
+	failOps, err := getOps(ifFail)
+	if err != nil {
+		return nil, err
+	}
+	txnrsp, err := txn.
+		If(cmps...).
+		Then(succOps...).
+		Else(failOps...).
+		Commit()
+	return txnrsp, err
+}
+
+func getOps(ss []string) ([]clientv3.Op, error) {
+	ops := []clientv3.Op{}
+	for _, s := range ss {
+		s = strings.TrimSpace(s)
+		args := etcdctlcmd.Argify(s)
+		switch args[0] {
+		case "get":
+			ops = append(ops, clientv3.OpGet(args[1]))
+		case "put":
+			ops = append(ops, clientv3.OpPut(args[1], args[2]))
+		case "del":
+			ops = append(ops, clientv3.OpDelete(args[1]))
+		}
+	}
+	return ops, nil
 }

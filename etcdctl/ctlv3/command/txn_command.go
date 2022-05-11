@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
@@ -85,7 +85,7 @@ func readCompares(r *bufio.Reader) (cmps []clientv3.Cmp) {
 			break
 		}
 
-		cmp, err := parseCompare(line)
+		cmp, err := ParseCompare(line)
 		if err != nil {
 			cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)
 		}
@@ -119,7 +119,7 @@ func readOps(r *bufio.Reader) (ops []clientv3.Op) {
 }
 
 func parseRequestUnion(line string) (*clientv3.Op, error) {
-	args := argify(line)
+	args := Argify(line)
 	if len(args) < 2 {
 		return nil, fmt.Errorf("invalid txn compare request: %s", line)
 	}
@@ -153,7 +153,7 @@ func parseRequestUnion(line string) (*clientv3.Op, error) {
 	return &op, nil
 }
 
-func parseCompare(line string) (*clientv3.Cmp, error) {
+func ParseCompare(line string) (*clientv3.Cmp, error) {
 	var (
 		key string
 		op  string
