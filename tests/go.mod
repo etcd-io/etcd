@@ -33,6 +33,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/v2 v2.306.0-alpha.0
 	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0
+	go.etcd.io/etcd/etcdctl/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/etcdutl/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/pkg/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/raft/v3 v3.6.0-alpha.0
@@ -47,6 +48,7 @@ require (
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
@@ -58,7 +60,10 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.2.2 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
@@ -81,6 +86,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
