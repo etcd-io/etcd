@@ -33,7 +33,7 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
+func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration, stop <-chan struct{}, donec chan<- struct{}) *director {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
@@ -44,6 +44,9 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 	}
 	d.refresh()
 	go func() {
+		if donec != nil {
+			defer close(donec)
+		}
 		// In order to prevent missing proxy endpoints in the first try:
 		// when given refresh interval of defaultRefreshInterval or greater
 		// and whenever there is no available proxy endpoints,
@@ -65,8 +68,12 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 					lg.Info("endpoints found", zap.Strings("endpoints", sl))
 				})
 			}
-			time.Sleep(ri)
-			d.refresh()
+			select {
+			case <-time.After(ri):
+				d.refresh()
+			case <-stop:
+				return
+			}
 		}
 	}()
 	return d

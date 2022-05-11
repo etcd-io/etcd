@@ -58,7 +58,7 @@ func NewHandler(lg *zap.Logger, t *http.Transport, urlsFunc GetProxyURLs, failur
 
 	p := &reverseProxy{
 		lg:        lg,
-		director:  newDirector(lg, urlsFunc, failureWait, refreshInterval),
+		director:  newDirector(lg, urlsFunc, failureWait, refreshInterval, nil, nil),
 		transport: t,
 	}
 

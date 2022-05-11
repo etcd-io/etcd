@@ -55,7 +55,8 @@ func TestNewDirectorScheme(t *testing.T) {
 		uf := func() []string {
 			return tt.urls
 		}
-		got := newDirector(zaptest.NewLogger(t), uf, time.Minute, time.Minute)
+		stop, donec := make(chan struct{}), make(chan struct{})
+		got := newDirector(zaptest.NewLogger(t), uf, time.Minute, time.Minute, stop, donec)
 
 		var gep []string
 		for _, ep := range got.ep {
@@ -65,6 +66,13 @@ func TestNewDirectorScheme(t *testing.T) {
 		sort.Strings(gep)
 		if !reflect.DeepEqual(tt.want, gep) {
 			t.Errorf("#%d: want endpoints = %#v, got = %#v", i, tt.want, gep)
+		}
+
+		close(stop)
+		select {
+		case <-donec:
+		case <-time.After(time.Second):
+			t.Fatalf("done took too long")
 		}
 	}
 }
