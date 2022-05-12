@@ -67,12 +67,7 @@ func TestNewDirectorScheme(t *testing.T) {
 			t.Errorf("#%d: want endpoints = %#v, got = %#v", i, tt.want, gep)
 		}
 
-		close(got.stopc)
-		select {
-		case <-got.donec:
-		case <-time.After(time.Second):
-			t.Fatalf("done took too long")
-		}
+		got.stop()
 	}
 }
 

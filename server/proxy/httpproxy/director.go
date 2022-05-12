@@ -45,9 +45,7 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 		stopc:       make(chan struct{}),
 		donec:       make(chan struct{}),
 	}
-	osutil.RegisterInterruptHandler(func() {
-		close(d.stopc)
-	})
+	osutil.RegisterInterruptHandler(d.stop)
 	d.refresh()
 	go func() {
 		defer close(d.donec)
@@ -127,6 +125,15 @@ func (d *director) endpoints() []*endpoint {
 	}
 
 	return filtered
+}
+
+func (d *director) stop() {
+	close(d.stopc)
+	select {
+	case <-d.donec:
+	case <-time.After(time.Second):
+		d.lg.Warn("timed out waiting for director to stop")
+	}
 }
 
 func newEndpoint(lg *zap.Logger, u url.URL, failureWait time.Duration) *endpoint {
