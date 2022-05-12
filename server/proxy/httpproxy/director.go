@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/osutil"
 	"go.uber.org/zap"
 )
 
@@ -45,7 +44,6 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 		stopc:       make(chan struct{}),
 		donec:       make(chan struct{}),
 	}
-	osutil.RegisterInterruptHandler(d.stop)
 	d.refresh()
 	go func() {
 		defer close(d.donec)
