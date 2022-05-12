@@ -94,7 +94,6 @@ func TestConfigParsingClusteringFlags(t *testing.T) {
 		"-initial-cluster-token=etcdtest",
 		"-initial-advertise-peer-urls=http://localhost:8000,https://localhost:8001",
 		"-advertise-client-urls=http://localhost:7000,https://localhost:7001",
-		"-discovery-fallback=exit",
 	}
 
 	cfg := newConfig()
@@ -112,14 +111,12 @@ func TestConfigFileClusteringFields(t *testing.T) {
 		InitialClusterToken string `json:"initial-cluster-token"`
 		Apurls              string `json:"initial-advertise-peer-urls"`
 		Acurls              string `json:"advertise-client-urls"`
-		Fallback            string `json:"discovery-fallback"`
 	}{
 		"0=http://localhost:8000",
 		"existing",
 		"etcdtest",
 		"http://localhost:8000,https://localhost:8001",
 		"http://localhost:7000,https://localhost:7001",
-		"exit",
 	}
 
 	b, err := yaml.Marshal(&yc)
@@ -191,44 +188,6 @@ func TestConfigFileClusteringFlags(t *testing.T) {
 			t.Errorf("%d: err = %v", i, err)
 		}
 	}
-}
-
-func TestConfigParsingOtherFlags(t *testing.T) {
-	args := []string{"-proxy=readonly"}
-
-	cfg := newConfig()
-	err := cfg.parse(args)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	validateOtherFlags(t, cfg)
-}
-
-func TestConfigFileOtherFields(t *testing.T) {
-	yc := struct {
-		ProxyCfgFile string `json:"proxy"`
-	}{
-		"readonly",
-	}
-
-	b, err := yaml.Marshal(&yc)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tmpfile := mustCreateCfgFile(t, b)
-	defer os.Remove(tmpfile.Name())
-
-	args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
-
-	cfg := newConfig()
-	err = cfg.parse(args)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	validateOtherFlags(t, cfg)
 }
 
 func TestConfigParsingConflictClusteringFlags(t *testing.T) {
@@ -336,27 +295,6 @@ func TestConfigParsingMissedAdvertiseClientURLsFlag(t *testing.T) {
 			},
 			embed.ErrUnsetAdvertiseClientURLsFlag,
 		},
-		{
-			[]string{
-				"-discovery=http://example.com/abc",
-				"-listen-client-urls=http://127.0.0.1:2379",
-			},
-			nil,
-		},
-		{
-			[]string{
-				"-proxy=on",
-				"-listen-client-urls=http://127.0.0.1:2379",
-			},
-			nil,
-		},
-		{
-			[]string{
-				"-proxy=readonly",
-				"-listen-client-urls=http://127.0.0.1:2379",
-			},
-			nil,
-		},
 	}
 
 	for i, tt := range tests {
@@ -383,65 +321,6 @@ func TestConfigIsNewCluster(t *testing.T) {
 		}
 		if g := cfg.ec.IsNewCluster(); g != tt.wIsNew {
 			t.Errorf("#%d: isNewCluster = %v, want %v", i, g, tt.wIsNew)
-		}
-	}
-}
-
-func TestConfigIsProxy(t *testing.T) {
-	tests := []struct {
-		proxy    string
-		wIsProxy bool
-	}{
-		{proxyFlagOff, false},
-		{proxyFlagReadonly, true},
-		{proxyFlagOn, true},
-	}
-	for i, tt := range tests {
-		cfg := newConfig()
-		if err := cfg.cf.proxy.Set(tt.proxy); err != nil {
-			t.Fatalf("#%d: unexpected proxy.Set error: %v", i, err)
-		}
-		if g := cfg.isProxy(); g != tt.wIsProxy {
-			t.Errorf("#%d: isProxy = %v, want %v", i, g, tt.wIsProxy)
-		}
-	}
-}
-
-func TestConfigIsReadonlyProxy(t *testing.T) {
-	tests := []struct {
-		proxy       string
-		wIsReadonly bool
-	}{
-		{proxyFlagOff, false},
-		{proxyFlagReadonly, true},
-		{proxyFlagOn, false},
-	}
-	for i, tt := range tests {
-		cfg := newConfig()
-		if err := cfg.cf.proxy.Set(tt.proxy); err != nil {
-			t.Fatalf("#%d: unexpected proxy.Set error: %v", i, err)
-		}
-		if g := cfg.isReadonlyProxy(); g != tt.wIsReadonly {
-			t.Errorf("#%d: isReadonlyProxy = %v, want %v", i, g, tt.wIsReadonly)
-		}
-	}
-}
-
-func TestConfigShouldFallbackToProxy(t *testing.T) {
-	tests := []struct {
-		fallback  string
-		wFallback bool
-	}{
-		{fallbackFlagProxy, true},
-		{fallbackFlagExit, false},
-	}
-	for i, tt := range tests {
-		cfg := newConfig()
-		if err := cfg.cf.fallback.Set(tt.fallback); err != nil {
-			t.Fatalf("#%d: unexpected fallback.Set error: %v", i, err)
-		}
-		if g := cfg.shouldFallbackToProxy(); g != tt.wFallback {
-			t.Errorf("#%d: shouldFallbackToProxy = %v, want %v", i, g, tt.wFallback)
 		}
 	}
 }
@@ -549,15 +428,11 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 	wcfg.ec.APUrls = []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}}
 	wcfg.ec.ACUrls = []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}}
 	wcfg.ec.ClusterState = embed.ClusterStateFlagExisting
-	wcfg.cf.fallback.Set(fallbackFlagExit)
 	wcfg.ec.InitialCluster = "0=http://localhost:8000"
 	wcfg.ec.InitialClusterToken = "etcdtest"
 
 	if cfg.ec.ClusterState != wcfg.ec.ClusterState {
 		t.Errorf("clusterState = %v, want %v", cfg.ec.ClusterState, wcfg.ec.ClusterState)
-	}
-	if cfg.cf.fallback.String() != wcfg.cf.fallback.String() {
-		t.Errorf("fallback = %v, want %v", cfg.cf.fallback, wcfg.cf.fallback)
 	}
 	if cfg.ec.InitialCluster != wcfg.ec.InitialCluster {
 		t.Errorf("initialCluster = %v, want %v", cfg.ec.InitialCluster, wcfg.ec.InitialCluster)
@@ -570,13 +445,5 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 	}
 	if !reflect.DeepEqual(cfg.ec.ACUrls, wcfg.ec.ACUrls) {
 		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.ACUrls, wcfg.ec.ACUrls)
-	}
-}
-
-func validateOtherFlags(t *testing.T, cfg *config) {
-	wcfg := newConfig()
-	wcfg.cf.proxy.Set(proxyFlagReadonly)
-	if cfg.cf.proxy.String() != wcfg.cf.proxy.String() {
-		t.Errorf("proxy = %v, want %v", cfg.cf.proxy, wcfg.cf.proxy)
 	}
 }
