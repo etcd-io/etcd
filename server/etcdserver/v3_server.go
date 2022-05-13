@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
@@ -258,9 +259,9 @@ func (s *EtcdServer) waitAppliedIndex() error {
 	select {
 	case <-s.ApplyWait():
 	case <-s.stopping:
-		return ErrStopped
+		return etcderrors.ErrStopped
 	case <-time.After(applyTimeout):
-		return ErrTimeoutWaitAppliedIndex
+		return etcderrors.ErrTimeoutWaitAppliedIndex
 	}
 
 	return nil
@@ -310,9 +311,9 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 	}
 
 	if cctx.Err() == context.DeadlineExceeded {
-		return -1, ErrTimeout
+		return -1, etcderrors.ErrTimeout
 	}
-	return -1, ErrCanceled
+	return -1, etcderrors.ErrCanceled
 }
 
 func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
@@ -360,9 +361,9 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 	}
 
 	if cctx.Err() == context.DeadlineExceeded {
-		return nil, ErrTimeout
+		return nil, etcderrors.ErrTimeout
 	}
-	return nil, ErrCanceled
+	return nil, etcderrors.ErrCanceled
 }
 
 func (s *EtcdServer) newHeader() *pb.ResponseHeader {
@@ -393,13 +394,13 @@ func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error)
 		case <-time.After(dur):
 			leader = s.cluster.Member(s.Leader())
 		case <-s.stopping:
-			return nil, ErrStopped
+			return nil, etcderrors.ErrStopped
 		case <-ctx.Done():
-			return nil, ErrNoLeader
+			return nil, etcderrors.ErrNoLeader
 		}
 	}
 	if len(leader.PeerURLs) == 0 {
-		return nil, ErrNoLeader
+		return nil, etcderrors.ErrNoLeader
 	}
 	return leader, nil
 }
@@ -658,7 +659,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	ai := s.getAppliedIndex()
 	ci := s.getCommittedIndex()
 	if ci > ai+maxGapBetweenApplyAndCommitIndex {
-		return nil, ErrTooManyRequests
+		return nil, etcderrors.ErrTooManyRequests
 	}
 
 	r.Header = &pb.RequestHeader{
@@ -683,7 +684,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	}
 
 	if len(data) > int(s.Cfg.MaxRequestBytes) {
-		return nil, ErrRequestTooLarge
+		return nil, etcderrors.ErrRequestTooLarge
 	}
 
 	id := r.ID
@@ -713,7 +714,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		s.w.Trigger(id, nil) // GC wait
 		return nil, s.parseProposeCtxErr(cctx.Err(), start)
 	case <-s.done:
-		return nil, ErrStopped
+		return nil, etcderrors.ErrStopped
 	}
 }
 
@@ -774,7 +775,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 }
 
 func isStopped(err error) bool {
-	return err == raft.ErrStopped || err == ErrStopped
+	return err == raft.ErrStopped || err == etcderrors.ErrStopped
 }
 
 func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, requestId uint64) (uint64, error) {
@@ -815,7 +816,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 		case <-leaderChangedNotifier:
 			readIndexFailed.Inc()
 			// return a retryable error.
-			return 0, ErrLeaderChanged
+			return 0, etcderrors.ErrLeaderChanged
 		case <-firstCommitInTermNotifier:
 			firstCommitInTermNotifier = s.firstCommitInTerm.Receive()
 			lg.Info("first commit in current term: resending ReadIndex request")
@@ -843,9 +844,9 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 				zap.Duration("timeout", s.Cfg.ReqTimeout()),
 			)
 			slowReadIndex.Inc()
-			return 0, ErrTimeout
+			return 0, etcderrors.ErrTimeout
 		case <-s.stopping:
-			return 0, ErrStopped
+			return 0, etcderrors.ErrStopped
 		}
 	}
 }
@@ -896,7 +897,7 @@ func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-s.done:
-		return ErrStopped
+		return etcderrors.ErrStopped
 	}
 }
 
@@ -921,7 +922,7 @@ func (s *EtcdServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb
 	case pb.DowngradeRequest_CANCEL:
 		return s.downgradeCancel(ctx)
 	default:
-		return nil, ErrUnknownMethod
+		return nil, etcderrors.ErrUnknownMethod
 	}
 }
 
@@ -935,7 +936,7 @@ func (s *EtcdServer) downgradeValidate(ctx context.Context, v string) (*pb.Downg
 
 	cv := s.ClusterVersion()
 	if cv == nil {
-		return nil, ErrClusterVersionUnavailable
+		return nil, etcderrors.ErrClusterVersionUnavailable
 	}
 	resp.Version = version.Cluster(cv.String())
 	err = s.Version().DowngradeValidate(ctx, targetVersion)

@@ -21,8 +21,8 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/auth"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -38,30 +38,30 @@ var toGRPCErrorMap = map[error]error{
 	membership.ErrPeerURLexists:           rpctypes.ErrGRPCPeerURLExist,
 	membership.ErrMemberNotLearner:        rpctypes.ErrGRPCMemberNotLearner,
 	membership.ErrTooManyLearners:         rpctypes.ErrGRPCTooManyLearners,
-	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
-	etcdserver.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
+	etcderrors.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
+	etcderrors.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
 
 	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,
 	mvcc.ErrFutureRev:             rpctypes.ErrGRPCFutureRev,
-	etcdserver.ErrRequestTooLarge: rpctypes.ErrGRPCRequestTooLarge,
-	etcdserver.ErrNoSpace:         rpctypes.ErrGRPCNoSpace,
-	etcdserver.ErrTooManyRequests: rpctypes.ErrTooManyRequests,
+	etcderrors.ErrRequestTooLarge: rpctypes.ErrGRPCRequestTooLarge,
+	etcderrors.ErrNoSpace:         rpctypes.ErrGRPCNoSpace,
+	etcderrors.ErrTooManyRequests: rpctypes.ErrTooManyRequests,
 
-	etcdserver.ErrNoLeader:                   rpctypes.ErrGRPCNoLeader,
-	etcdserver.ErrNotLeader:                  rpctypes.ErrGRPCNotLeader,
-	etcdserver.ErrLeaderChanged:              rpctypes.ErrGRPCLeaderChanged,
-	etcdserver.ErrStopped:                    rpctypes.ErrGRPCStopped,
-	etcdserver.ErrTimeout:                    rpctypes.ErrGRPCTimeout,
-	etcdserver.ErrTimeoutDueToLeaderFail:     rpctypes.ErrGRPCTimeoutDueToLeaderFail,
-	etcdserver.ErrTimeoutDueToConnectionLost: rpctypes.ErrGRPCTimeoutDueToConnectionLost,
-	etcdserver.ErrTimeoutWaitAppliedIndex:    rpctypes.ErrGRPCTimeoutWaitAppliedIndex,
-	etcdserver.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
-	etcdserver.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
-	etcdserver.ErrCorrupt:                    rpctypes.ErrGRPCCorrupt,
-	etcdserver.ErrBadLeaderTransferee:        rpctypes.ErrGRPCBadLeaderTransferee,
+	etcderrors.ErrNoLeader:                   rpctypes.ErrGRPCNoLeader,
+	etcderrors.ErrNotLeader:                  rpctypes.ErrGRPCNotLeader,
+	etcderrors.ErrLeaderChanged:              rpctypes.ErrGRPCLeaderChanged,
+	etcderrors.ErrStopped:                    rpctypes.ErrGRPCStopped,
+	etcderrors.ErrTimeout:                    rpctypes.ErrGRPCTimeout,
+	etcderrors.ErrTimeoutDueToLeaderFail:     rpctypes.ErrGRPCTimeoutDueToLeaderFail,
+	etcderrors.ErrTimeoutDueToConnectionLost: rpctypes.ErrGRPCTimeoutDueToConnectionLost,
+	etcderrors.ErrTimeoutWaitAppliedIndex:    rpctypes.ErrGRPCTimeoutWaitAppliedIndex,
+	etcderrors.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
+	etcderrors.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
+	etcderrors.ErrCorrupt:                    rpctypes.ErrGRPCCorrupt,
+	etcderrors.ErrBadLeaderTransferee:        rpctypes.ErrGRPCBadLeaderTransferee,
 
-	etcdserver.ErrClusterVersionUnavailable:   rpctypes.ErrGRPCClusterVersionUnavailable,
-	etcdserver.ErrWrongDowngradeVersionFormat: rpctypes.ErrGRPCWrongDowngradeVersionFormat,
+	etcderrors.ErrClusterVersionUnavailable:   rpctypes.ErrGRPCClusterVersionUnavailable,
+	etcderrors.ErrWrongDowngradeVersionFormat: rpctypes.ErrGRPCWrongDowngradeVersionFormat,
 	version.ErrInvalidDowngradeTargetVersion:  rpctypes.ErrGRPCInvalidDowngradeTargetVersion,
 	version.ErrDowngradeInProcess:             rpctypes.ErrGRPCDowngradeInProcess,
 	version.ErrNoInflightDowngrade:            rpctypes.ErrGRPCNoInflightDowngrade,

@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 
 	"go.uber.org/zap"
 )
@@ -146,7 +147,7 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 		return s.applyV2.Sync(r)
 	default:
 		// This should never be reached, but just in case:
-		return Response{Err: ErrUnknownMethod}
+		return Response{Err: etcderrors.ErrUnknownMethod}
 	}
 }
 

@@ -17,19 +17,15 @@ package txn
 import (
 	"bytes"
 	"context"
-	"errors"
 	"sort"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
+	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.uber.org/zap"
-)
-
-var (
-	ErrKeyNotFound = errors.New("etcdserver: key not found")
 )
 
 func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
@@ -68,7 +64,7 @@ func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, t
 	if p.IgnoreValue || p.IgnoreLease {
 		if rr == nil || len(rr.KVs) == 0 {
 			// ignore_{lease,value} flag expects previous key-value pair
-			return nil, nil, ErrKeyNotFound
+			return nil, nil, etcderrors.ErrKeyNotFound
 		}
 	}
 	if p.IgnoreValue {
@@ -381,7 +377,7 @@ func checkRequestPut(rv mvcc.ReadView, lessor lease.Lessor, reqOp *pb.RequestOp)
 			return err
 		}
 		if rr == nil || len(rr.KVs) == 0 {
-			return ErrKeyNotFound
+			return etcderrors.ErrKeyNotFound
 		}
 	}
 	if lease.LeaseID(req.Lease) != lease.NoLease {

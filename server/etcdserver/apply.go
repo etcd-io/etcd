@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	mvcc_txn "go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -242,18 +243,18 @@ type applierV3Capped struct {
 func newApplierV3Capped(base applierV3) applierV3 { return &applierV3Capped{applierV3: base} }
 
 func (a *applierV3Capped) Put(_ context.Context, _ mvcc.TxnWrite, _ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
-	return nil, nil, ErrNoSpace
+	return nil, nil, etcderrors.ErrNoSpace
 }
 
 func (a *applierV3Capped) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
 	if a.q.Cost(r) > 0 {
-		return nil, nil, ErrNoSpace
+		return nil, nil, etcderrors.ErrNoSpace
 	}
 	return a.applierV3.Txn(ctx, r)
 }
 
 func (a *applierV3Capped) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	return nil, ErrNoSpace
+	return nil, etcderrors.ErrNoSpace
 }
 
 func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
@@ -437,7 +438,7 @@ func (a *quotaApplierV3) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRe
 	ok := a.q.Available(p)
 	resp, trace, err := a.applierV3.Put(ctx, txn, p)
 	if err == nil && !ok {
-		err = ErrNoSpace
+		err = etcderrors.ErrNoSpace
 	}
 	return resp, trace, err
 }
@@ -446,7 +447,7 @@ func (a *quotaApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnRes
 	ok := a.q.Available(rt)
 	resp, trace, err := a.applierV3.Txn(ctx, rt)
 	if err == nil && !ok {
-		err = ErrNoSpace
+		err = etcderrors.ErrNoSpace
 	}
 	return resp, trace, err
 }
@@ -455,7 +456,7 @@ func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 	ok := a.q.Available(lc)
 	resp, err := a.applierV3.LeaseGrant(lc)
 	if err == nil && !ok {
-		err = ErrNoSpace
+		err = etcderrors.ErrNoSpace
 	}
 	return resp, err
 }

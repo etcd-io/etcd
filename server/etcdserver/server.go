@@ -34,6 +34,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -1152,7 +1153,7 @@ func (s *EtcdServer) isLeader() bool {
 // MoveLeader transfers the leader to the given transferee.
 func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) error {
 	if !s.cluster.IsMemberExist(types.ID(transferee)) || s.cluster.Member(types.ID(transferee)).IsLearner {
-		return ErrBadLeaderTransferee
+		return etcderrors.ErrBadLeaderTransferee
 	}
 
 	now := time.Now()
@@ -1170,7 +1171,7 @@ func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) er
 	for s.Lead() != transferee {
 		select {
 		case <-ctx.Done(): // time out
-			return ErrTimeoutLeaderTransfer
+			return etcderrors.ErrTimeoutLeaderTransfer
 		case <-time.After(interval):
 		}
 	}
@@ -1209,7 +1210,7 @@ func (s *EtcdServer) TransferLeadership() error {
 
 	transferee, ok := longestConnected(s.r.transport, s.cluster.VotingMemberIDs())
 	if !ok {
-		return ErrUnhealthy
+		return etcderrors.ErrUnhealthy
 	}
 
 	tm := s.Cfg.ReqTimeout()
@@ -1328,9 +1329,9 @@ func (s *EtcdServer) mayAddMember(memb membership.Member) error {
 			"rejecting member add request; not enough healthy members",
 			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
-			zap.Error(ErrNotEnoughStartedMembers),
+			zap.Error(etcderrors.ErrNotEnoughStartedMembers),
 		)
-		return ErrNotEnoughStartedMembers
+		return etcderrors.ErrNotEnoughStartedMembers
 	}
 
 	if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.MemberId(), s.cluster.VotingMembers()) {
@@ -1338,9 +1339,9 @@ func (s *EtcdServer) mayAddMember(memb membership.Member) error {
 			"rejecting member add request; local member has not been connected to all peers, reconfigure breaks active quorum",
 			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-add", fmt.Sprintf("%+v", memb)),
-			zap.Error(ErrUnhealthy),
+			zap.Error(etcderrors.ErrUnhealthy),
 		)
-		return ErrUnhealthy
+		return etcderrors.ErrUnhealthy
 	}
 
 	return nil
@@ -1373,7 +1374,7 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 		learnerPromoteSucceed.Inc()
 		return resp, nil
 	}
-	if err != ErrNotLeader {
+	if err != etcderrors.ErrNotLeader {
 		learnerPromoteFailed.WithLabelValues(err.Error()).Inc()
 		return resp, err
 	}
@@ -1392,16 +1393,16 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 				return resp, nil
 			}
 			// If member promotion failed, return early. Otherwise keep retry.
-			if err == ErrLearnerNotReady || err == membership.ErrIDNotFound || err == membership.ErrMemberNotLearner {
+			if err == etcderrors.ErrLearnerNotReady || err == membership.ErrIDNotFound || err == membership.ErrMemberNotLearner {
 				return nil, err
 			}
 		}
 	}
 
 	if cctx.Err() == context.DeadlineExceeded {
-		return nil, ErrTimeout
+		return nil, etcderrors.ErrTimeout
 	}
-	return nil, ErrCanceled
+	return nil, etcderrors.ErrCanceled
 }
 
 // promoteMember checks whether the to-be-promoted learner node is ready before sending the promote
@@ -1457,9 +1458,9 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 			"rejecting member promote request; not enough healthy members",
 			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-remove-id", id.String()),
-			zap.Error(ErrNotEnoughStartedMembers),
+			zap.Error(etcderrors.ErrNotEnoughStartedMembers),
 		)
-		return ErrNotEnoughStartedMembers
+		return etcderrors.ErrNotEnoughStartedMembers
 	}
 
 	return nil
@@ -1473,7 +1474,7 @@ func (s *EtcdServer) isLearnerReady(id uint64) error {
 
 	// leader's raftStatus.Progress is not nil
 	if rs.Progress == nil {
-		return ErrNotLeader
+		return etcderrors.ErrNotLeader
 	}
 
 	var learnerMatch uint64
@@ -1492,7 +1493,7 @@ func (s *EtcdServer) isLearnerReady(id uint64) error {
 		leaderMatch := rs.Progress[leaderID].Match
 		// the learner's Match not caught up with leader yet
 		if float64(learnerMatch) < float64(leaderMatch)*readyPercent {
-			return ErrLearnerNotReady
+			return etcderrors.ErrLearnerNotReady
 		}
 	}
 
@@ -1516,9 +1517,9 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 			"rejecting member remove request; not enough healthy members",
 			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-remove-id", id.String()),
-			zap.Error(ErrNotEnoughStartedMembers),
+			zap.Error(etcderrors.ErrNotEnoughStartedMembers),
 		)
-		return ErrNotEnoughStartedMembers
+		return etcderrors.ErrNotEnoughStartedMembers
 	}
 
 	// downed member is safe to remove since it's not part of the active quorum
@@ -1535,9 +1536,9 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 			zap.String("local-member-id", s.MemberId().String()),
 			zap.String("requested-member-remove", id.String()),
 			zap.Int("active-peers", active),
-			zap.Error(ErrUnhealthy),
+			zap.Error(etcderrors.ErrUnhealthy),
 		)
-		return ErrUnhealthy
+		return etcderrors.ErrUnhealthy
 	}
 
 	return nil
@@ -1663,7 +1664,7 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 		return nil, s.parseProposeCtxErr(ctx.Err(), start)
 
 	case <-s.stopping:
-		return nil, ErrStopped
+		return nil, etcderrors.ErrStopped
 	}
 }
 
@@ -1911,7 +1912,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		return
 	}
 
-	if ar.err != ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
+	if ar.err != etcderrors.ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.w.Trigger(id, ar)
 		return
 	}
@@ -2194,7 +2195,7 @@ func (s *EtcdServer) updateClusterVersionV2(ver string) {
 		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
 		return
 
-	case ErrStopped:
+	case etcderrors.ErrStopped:
 		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
 		return
 
@@ -2230,7 +2231,7 @@ func (s *EtcdServer) updateClusterVersionV3(ver string) {
 		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
 		return
 
-	case ErrStopped:
+	case etcderrors.ErrStopped:
 		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
 		return
 
@@ -2263,7 +2264,7 @@ func (s *EtcdServer) monitorDowngrade() {
 func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 	switch err {
 	case context.Canceled:
-		return ErrCanceled
+		return etcderrors.ErrCanceled
 
 	case context.DeadlineExceeded:
 		s.leadTimeMu.RLock()
@@ -2271,7 +2272,7 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 		s.leadTimeMu.RUnlock()
 		prevLeadLost := curLeadElected.Add(-2 * time.Duration(s.Cfg.ElectionTicks) * time.Duration(s.Cfg.TickMs) * time.Millisecond)
 		if start.After(prevLeadLost) && start.Before(curLeadElected) {
-			return ErrTimeoutDueToLeaderFail
+			return etcderrors.ErrTimeoutDueToLeaderFail
 		}
 		lead := types.ID(s.getLead())
 		switch lead {
@@ -2279,14 +2280,14 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 			// TODO: return error to specify it happens because the cluster does not have leader now
 		case s.MemberId():
 			if !isConnectedToQuorumSince(s.r.transport, start, s.MemberId(), s.cluster.Members()) {
-				return ErrTimeoutDueToConnectionLost
+				return etcderrors.ErrTimeoutDueToConnectionLost
 			}
 		default:
 			if !isConnectedSince(s.r.transport, start, lead) {
-				return ErrTimeoutDueToConnectionLost
+				return etcderrors.ErrTimeoutDueToConnectionLost
 			}
 		}
-		return ErrTimeout
+		return etcderrors.ErrTimeout
 
 	default:
 		return err

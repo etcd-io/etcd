@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2022 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package etcderrors
 
 import (
 	"errors"
 	"fmt"
-
-	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 )
 
 var (
@@ -43,7 +41,7 @@ var (
 	ErrBadLeaderTransferee         = errors.New("etcdserver: bad leader transferee")
 	ErrClusterVersionUnavailable   = errors.New("etcdserver: cluster version not found during downgrade")
 	ErrWrongDowngradeVersionFormat = errors.New("etcdserver: wrong downgrade target version format")
-	ErrKeyNotFound                 = txn.ErrKeyNotFound
+	ErrKeyNotFound                 = errors.New("etcdserver: key not found")
 )
 
 type DiscoveryError struct {

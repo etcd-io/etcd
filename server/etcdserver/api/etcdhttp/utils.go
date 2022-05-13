@@ -17,7 +17,7 @@ package etcdhttp
 import (
 	"net/http"
 
-	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/etcderrors"
 	httptypes "go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
 	"go.uber.org/zap"
@@ -57,8 +57,8 @@ func writeError(lg *zap.Logger, w http.ResponseWriter, r *http.Request, err erro
 
 	default:
 		switch err {
-		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost, etcdserver.ErrNotEnoughStartedMembers,
-			etcdserver.ErrUnhealthy:
+		case etcderrors.ErrTimeoutDueToLeaderFail, etcderrors.ErrTimeoutDueToConnectionLost, etcderrors.ErrNotEnoughStartedMembers,
+			etcderrors.ErrUnhealthy:
 			if lg != nil {
 				lg.Warn(
 					"v2 response error",
