@@ -24,12 +24,14 @@ func TestPageWriterPageBytes(t *testing.T) {
 	// otherwise, it will crash when writing.
 	pageBytes := 0
 	defaultBufferBytes = 8 * 1024
-
 	cw := &checkPageWriter{pageBytes: pageBytes, t: t}
-	w := NewPageWriter(cw, pageBytes, 0)
-	if w != nil {
-		t.Fatal("PageWriter created with pageBytes=0")
-	}
+	defer func() {
+		if err := recover(); err != nil {
+			return
+		}
+	}()
+	NewPageWriter(cw, pageBytes, 0)
+	t.Fatal("NewPageWriter should panic instead of return an obj")
 
 }
 
