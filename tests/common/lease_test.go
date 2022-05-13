@@ -74,32 +74,7 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 func TestLeaseGrantAndList(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		nestedCases := []struct {
 			name       string
 			leaseCount int
@@ -164,32 +139,7 @@ func TestLeaseGrantAndList(t *testing.T) {
 func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			clus := testRunner.NewCluster(t, tc.config)
 			defer clus.Close()
@@ -224,32 +174,7 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			clus := testRunner.NewCluster(t, tc.config)
 			defer clus.Close()
@@ -276,32 +201,7 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 func TestLeaseGrantRevoke(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			clus := testRunner.NewCluster(t, tc.config)
 			defer clus.Close()
