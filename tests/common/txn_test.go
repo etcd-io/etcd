@@ -34,31 +34,7 @@ type txnReq struct {
 }
 
 func TestTxnSucc(t *testing.T) {
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
+	testRunner.BeforeTest(t)
 	reqs := []txnReq{
 		{
 			compare:  []string{`value("key1") != "value2"`, `value("key2") != "value1"`},
@@ -77,8 +53,7 @@ func TestTxnSucc(t *testing.T) {
 			results:  []string{"SUCCESS", `key "with" space`, "value \x23"},
 		},
 	}
-	testRunner.BeforeTest(t)
-	for _, cfg := range tcs {
+	for _, cfg := range clusterTestCases {
 		t.Run(cfg.name, func(t *testing.T) {
 			clus := testRunner.NewCluster(t, cfg.config)
 			defer clus.Close()
@@ -105,31 +80,7 @@ func TestTxnSucc(t *testing.T) {
 }
 
 func TestTxnFail(t *testing.T) {
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
+	testRunner.BeforeTest(t)
 	reqs := []txnReq{
 		{
 			compare:  []string{`version("key") < "0"`},
@@ -144,8 +95,7 @@ func TestTxnFail(t *testing.T) {
 			results:  []string{"FAILURE", "OK"},
 		},
 	}
-	testRunner.BeforeTest(t)
-	for _, cfg := range tcs {
+	for _, cfg := range clusterTestCases {
 		t.Run(cfg.name, func(t *testing.T) {
 			clus := testRunner.NewCluster(t, cfg.config)
 			defer clus.Close()

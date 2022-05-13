@@ -18,10 +18,38 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/framework"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
 var testRunner = framework.UnitTestRunner
+var clusterTestCases = []testCase{
+	{
+		name:   "NoTLS",
+		config: config.ClusterConfig{ClusterSize: 1},
+	},
+	{
+		name:   "PeerTLS",
+		config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+	},
+	{
+		name:   "PeerAutoTLS",
+		config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+	},
+	{
+		name:   "ClientTLS",
+		config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+	},
+	{
+		name:   "ClientAutoTLS",
+		config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+	},
+}
 
 func TestMain(m *testing.M) {
 	testRunner.TestMain(m)
+}
+
+type testCase struct {
+	name   string
+	config config.ClusterConfig
 }
