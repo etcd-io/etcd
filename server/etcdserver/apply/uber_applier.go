@@ -116,7 +116,8 @@ func (a *uberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.
 	return a.applyV3.WrapApply(context.TODO(), r, shouldApplyV3, a.dispatch)
 }
 
-// This function
+// dispatch translates the request (r) into appropriate call (like Put) on
+// the underlying applyV3 object.
 func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult {
 	op := "unknown"
 	ar := &ApplyResult{}
