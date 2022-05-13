@@ -41,9 +41,12 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 		lg:          lg,
 		uf:          urlsFunc,
 		failureWait: failureWait,
+		stopc:       make(chan struct{}),
+		donec:       make(chan struct{}),
 	}
 	d.refresh()
 	go func() {
+		defer close(d.donec)
 		// In order to prevent missing proxy endpoints in the first try:
 		// when given refresh interval of defaultRefreshInterval or greater
 		// and whenever there is no available proxy endpoints,
@@ -65,8 +68,12 @@ func newDirector(lg *zap.Logger, urlsFunc GetProxyURLs, failureWait time.Duratio
 					lg.Info("endpoints found", zap.Strings("endpoints", sl))
 				})
 			}
-			time.Sleep(ri)
-			d.refresh()
+			select {
+			case <-time.After(ri):
+				d.refresh()
+			case <-d.stopc:
+				return
+			}
 		}
 	}()
 	return d
@@ -78,6 +85,8 @@ type director struct {
 	ep          []*endpoint
 	uf          GetProxyURLs
 	failureWait time.Duration
+	stopc       chan struct{}
+	donec       chan struct{}
 }
 
 func (d *director) refresh() {
@@ -114,6 +123,15 @@ func (d *director) endpoints() []*endpoint {
 	}
 
 	return filtered
+}
+
+func (d *director) stop() {
+	close(d.stopc)
+	select {
+	case <-d.donec:
+	case <-time.After(time.Second):
+		d.lg.Warn("timed out waiting for director to stop")
+	}
 }
 
 func newEndpoint(lg *zap.Logger, u url.URL, failureWait time.Duration) *endpoint {

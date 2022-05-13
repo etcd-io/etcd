@@ -66,6 +66,8 @@ func TestNewDirectorScheme(t *testing.T) {
 		if !reflect.DeepEqual(tt.want, gep) {
 			t.Errorf("#%d: want endpoints = %#v, got = %#v", i, tt.want, gep)
 		}
+
+		got.stop()
 	}
 }
 
