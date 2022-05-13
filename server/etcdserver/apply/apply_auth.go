@@ -43,7 +43,7 @@ func newAuthApplierV3(as auth.AuthStore, base applierV3, lessor lease.Lessor) *a
 	return &authApplierV3{applierV3: base, as: as, lessor: lessor}
 }
 
-func (aa *authApplierV3) WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *ApplyResult {
+func (aa *authApplierV3) Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
 	aa.mu.Lock()
 	defer aa.mu.Unlock()
 	if r.Header != nil {
@@ -56,10 +56,10 @@ func (aa *authApplierV3) WrapApply(ctx context.Context, r *pb.InternalRaftReques
 		if err := aa.as.IsAdminPermitted(&aa.authInfo); err != nil {
 			aa.authInfo.Username = ""
 			aa.authInfo.Revision = 0
-			return &ApplyResult{Err: err}
+			return &Result{Err: err}
 		}
 	}
-	ret := aa.applierV3.WrapApply(ctx, r, shouldApplyV3, applyFunc)
+	ret := aa.applierV3.Apply(ctx, r, shouldApplyV3, applyFunc)
 	aa.authInfo.Username = ""
 	aa.authInfo.Revision = 0
 	return ret

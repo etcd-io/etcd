@@ -656,7 +656,7 @@ func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) e
 	return nil
 }
 
-func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*apply2.ApplyResult, error) {
+func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*apply2.Result, error) {
 	ai := s.getAppliedIndex()
 	ci := s.getCommittedIndex()
 	if ci > ai+maxGapBetweenApplyAndCommitIndex {
@@ -709,7 +709,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 
 	select {
 	case x := <-ch:
-		return x.(*apply2.ApplyResult), nil
+		return x.(*apply2.Result), nil
 	case <-cctx.Done():
 		proposalsFailed.Inc()
 		s.w.Trigger(id, nil) // GC wait

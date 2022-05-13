@@ -52,7 +52,7 @@ type RaftStatusGetter interface {
 	Term() uint64
 }
 
-type ApplyResult struct {
+type Result struct {
 	Resp proto.Message
 	Err  error
 	// Physc signals the physical effect of the request has completed in addition
@@ -62,12 +62,13 @@ type ApplyResult struct {
 	Trace *traceutil.Trace
 }
 
-type ApplyFunc func(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult
+type applyFunc func(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
-	WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *ApplyResult
-	//Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult
+	// Apply executes the generic portion of application logic for the current applier, but
+	// delegates the actual execution to the applyFunc method.
+	Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
 
 	Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
@@ -151,7 +152,7 @@ func newApplierV3Backend(
 		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer}
 }
 
-func (a *applierV3backend) WrapApply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc ApplyFunc) *ApplyResult {
+func (a *applierV3backend) Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
 	return applyFunc(ctx, r, shouldApplyV3)
 }
 

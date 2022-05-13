@@ -31,7 +31,7 @@ import (
 )
 
 type UberApplier interface {
-	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult
+	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result
 }
 
 type uberApplier struct {
@@ -107,20 +107,20 @@ func (a *uberApplier) restoreAlarms() {
 	}
 }
 
-func (a *uberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult {
-	// We first execute chain of WrapApply() calls down the hierarchy:
+func (a *uberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
+	// We first execute chain of Apply() calls down the hierarchy:
 	// (i.e. CorruptApplier -> CappedApplier -> Auth -> Quota -> Backend),
 	// then dispatch() unpacks the request to a specific method (like Put),
 	// that gets executed down the hierarchy again:
 	// i.e. CorruptApplier.Put(CappedApplier.Put(...(BackendApplier.Put(...)))).
-	return a.applyV3.WrapApply(context.TODO(), r, shouldApplyV3, a.dispatch)
+	return a.applyV3.Apply(context.TODO(), r, shouldApplyV3, a.dispatch)
 }
 
 // dispatch translates the request (r) into appropriate call (like Put) on
 // the underlying applyV3 object.
-func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *ApplyResult {
+func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
 	op := "unknown"
-	ar := &ApplyResult{}
+	ar := &Result{}
 	defer func(start time.Time) {
 		success := ar.Err == nil || ar.Err == mvcc.ErrCompacted
 		txn.ApplySecObserve(v3Version, op, success, time.Since(start))

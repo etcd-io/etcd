@@ -1479,7 +1479,7 @@ func TestPublishV3(t *testing.T) {
 	n := newNodeRecorder()
 	ch := make(chan interface{}, 1)
 	// simulate that request has gone through consensus
-	ch <- &apply2.ApplyResult{}
+	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
 	ctx, cancel := context.WithCancel(context.Background())
 	lg := zaptest.NewLogger(t)

@@ -1829,7 +1829,7 @@ func (s *EtcdServer) apply(
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
 	applyV3Performed := false
-	var ar *apply.ApplyResult
+	var ar *apply.Result
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
