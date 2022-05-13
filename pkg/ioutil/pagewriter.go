@@ -42,7 +42,7 @@ type PageWriter struct {
 // to write per page. pageOffset is the starting offset of io.Writer.
 func NewPageWriter(w io.Writer, pageBytes, pageOffset int) *PageWriter {
 	if pageBytes < 1 {
-		return nil
+		panic("pageBytes is less than 1, and it is an illegal value")
 	}
 	return &PageWriter{
 		w:                 w,
