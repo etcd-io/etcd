@@ -1,0 +1,24 @@
+name: Release
+on: [push, pull_request]
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.16.15"
+    - run: |
+        git config --global user.email "github-action@etcd.io"
+        git config --global user.name "Github Action"
+        gpg --batch --gen-key <<EOF
+        %no-protection
+        Key-Type: 1
+        Key-Length: 2048
+        Subkey-Type: 1
+        Subkey-Length: 2048
+        Name-Real: Github Action
+        Name-Email: github-action@etcd.io
+        Expire-Date: 0
+        EOF
+        DRY_RUN=true BRANCH=release-3.5 ./scripts/release --no-upload --no-docker-push 3.5.99
