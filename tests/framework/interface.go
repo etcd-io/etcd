@@ -15,6 +15,7 @@
 package framework
 
 import (
+	"context"
 	"testing"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -24,7 +25,7 @@ import (
 type testRunner interface {
 	TestMain(m *testing.M)
 	BeforeTest(testing.TB)
-	NewCluster(testing.TB, config.ClusterConfig) Cluster
+	NewCluster(context.Context, testing.TB, config.ClusterConfig) Cluster
 }
 
 type Cluster interface {

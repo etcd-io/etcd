@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -29,11 +30,13 @@ func TestRoleAdd_Simple(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				_, err := cc.RoleAdd("root")
 				if err != nil {
 					t.Fatalf("want no error, but got (%v)", err)
@@ -45,10 +48,12 @@ func TestRoleAdd_Simple(t *testing.T) {
 
 func TestRoleAdd_Error(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 1})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 1})
 	defer clus.Close()
 	cc := clus.Client()
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.RoleAdd("test-role")
 		if err != nil {
 			t.Fatalf("want no error, but got (%v)", err)
@@ -66,10 +71,12 @@ func TestRoleAdd_Error(t *testing.T) {
 
 func TestRootRole(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 1})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 1})
 	defer clus.Close()
 	cc := clus.Client()
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.RoleAdd("root")
 		if err != nil {
 			t.Fatalf("want no error, but got (%v)", err)
@@ -94,10 +101,12 @@ func TestRootRole(t *testing.T) {
 
 func TestRoleGrantRevokePermission(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 1})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 1})
 	defer clus.Close()
 	cc := clus.Client()
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.RoleAdd("role1")
 		if err != nil {
 			t.Fatalf("want no error, but got (%v)", err)
@@ -127,10 +136,12 @@ func TestRoleGrantRevokePermission(t *testing.T) {
 
 func TestRoleDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 1})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 1})
 	defer clus.Close()
 	cc := clus.Client()
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.RoleAdd("role1")
 		if err != nil {
 			t.Fatalf("want no error, but got (%v)", err)

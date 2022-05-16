@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -55,10 +56,12 @@ func TestTxnSucc(t *testing.T) {
 	}
 	for _, cfg := range clusterTestCases {
 		t.Run(cfg.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, cfg.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, cfg.config)
 			defer clus.Close()
 			cc := clus.Client()
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				if err := cc.Put("key1", "value1", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key1", "value1")
 				}
@@ -97,10 +100,12 @@ func TestTxnFail(t *testing.T) {
 	}
 	for _, cfg := range clusterTestCases {
 		t.Run(cfg.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, cfg.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, cfg.config)
 			defer clus.Close()
 			cc := clus.Client()
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				if err := cc.Put("key1", "value1", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key1", "value1")
 				}
