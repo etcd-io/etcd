@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -54,11 +55,13 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				ttl := int64(10)
 				leaseResp, err := cc.Grant(ttl)
 				require.NoError(t, err)
@@ -95,12 +98,14 @@ func TestLeaseGrantAndList(t *testing.T) {
 
 		for _, nc := range nestedCases {
 			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
 				t.Logf("Creating cluster...")
-				clus := testRunner.NewCluster(t, tc.config)
+				clus := testRunner.NewCluster(ctx, t, tc.config)
 				defer clus.Close()
 				cc := clus.Client()
 				t.Logf("Created cluster and client")
-				testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				testutils.ExecuteUntil(ctx, t, func() {
 					createdLeases := []clientv3.LeaseID{}
 					for i := 0; i < nc.leaseCount; i++ {
 						leaseResp, err := cc.Grant(10)
@@ -141,11 +146,13 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(2)
 				require.NoError(t, err)
 
@@ -176,11 +183,13 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(2)
 				require.NoError(t, err)
 
@@ -203,11 +212,13 @@ func TestLeaseGrantRevoke(t *testing.T) {
 
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(20)
 				require.NoError(t, err)
 

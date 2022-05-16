@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -63,11 +64,13 @@ func TestUserAdd_Simple(t *testing.T) {
 	for _, tc := range clusterTestCases {
 		for _, nc := range tcs {
 			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
-				clus := testRunner.NewCluster(t, tc.config)
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				clus := testRunner.NewCluster(ctx, t, tc.config)
 				defer clus.Close()
 				cc := clus.Client()
 
-				testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				testutils.ExecuteUntil(ctx, t, func() {
 					resp, err := cc.UserAdd(nc.username, nc.password, config.UserAddOptions{NoPassword: nc.noPassword})
 					if nc.expectedError != "" {
 						if err != nil {
@@ -95,11 +98,13 @@ func TestUserAdd_DuplicateUserNotAllowed(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				user := "barb"
 				password := "rhubarb"
 
@@ -122,11 +127,13 @@ func TestUserList(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				// No Users Yet
 				resp, err := cc.UserList()
 				if err != nil {
@@ -161,11 +168,13 @@ func TestUserDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				user := "barb"
 				password := "rhubarb"
 
@@ -211,11 +220,13 @@ func TestUserChangePassword(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				user := "barb"
 				password := "rhubarb"
 				newPassword := "potato"

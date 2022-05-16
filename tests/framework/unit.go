@@ -15,6 +15,7 @@
 package framework
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -39,7 +40,7 @@ func (e unitRunner) TestMain(m *testing.M) {
 func (e unitRunner) BeforeTest(t testing.TB) {
 }
 
-func (e unitRunner) NewCluster(t testing.TB, cfg config.ClusterConfig) Cluster {
+func (e unitRunner) NewCluster(ctx context.Context, t testing.TB, cfg config.ClusterConfig) Cluster {
 	testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
 	return nil
 }

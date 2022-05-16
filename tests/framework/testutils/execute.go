@@ -15,6 +15,7 @@
 package testutils
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -23,6 +24,14 @@ import (
 )
 
 func ExecuteWithTimeout(t *testing.T, timeout time.Duration, f func()) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	ExecuteUntil(ctx, t, f)
+}
+
+func ExecuteUntil(ctx context.Context, t *testing.T, f func()) {
+	deadline, deadlineSet := ctx.Deadline()
+	timeout := time.Until(deadline)
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
@@ -30,8 +39,12 @@ func ExecuteWithTimeout(t *testing.T, timeout time.Duration, f func()) {
 	}()
 
 	select {
-	case <-time.After(timeout):
-		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
+	case <-ctx.Done():
+		msg := ctx.Err().Error()
+		if deadlineSet {
+			msg = fmt.Sprintf("test timed out after %v, err: %v", timeout, msg)
+		}
+		testutil.FatalStack(t, msg)
 	case <-donec:
 	}
 }

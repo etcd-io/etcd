@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -28,11 +29,13 @@ func TestKVPut(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				key, value := "foo", "bar"
 
 				if err := cc.Put(key, value, config.PutOptions{}); err != nil {
@@ -60,11 +63,13 @@ func TestKVGet(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				var (
 					kvs          = []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
 					wantKvs      = []string{"a", "b", "c", "foo", "foo/abc", "fop"}
@@ -118,10 +123,12 @@ func TestKVDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				kvs := []string{"a", "b", "c", "c/abc", "d"}
 				tests := []struct {
 					deleteKey string
@@ -212,14 +219,16 @@ func TestKVGetNoQuorum(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3})
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 			defer clus.Close()
 
 			clus.Members()[0].Stop()
 			clus.Members()[1].Stop()
 
 			cc := clus.Members()[2].Client()
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				key := "foo"
 				_, err := cc.Get(key, tc.options)
 				gotError := err != nil

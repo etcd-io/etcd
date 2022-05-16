@@ -15,6 +15,7 @@
 package framework
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -38,7 +39,7 @@ func (e e2eRunner) BeforeTest(t testing.TB) {
 	e2e.BeforeTest(t)
 }
 
-func (e e2eRunner) NewCluster(t testing.TB, cfg config.ClusterConfig) Cluster {
+func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, cfg config.ClusterConfig) Cluster {
 	e2eConfig := e2e.EtcdProcessClusterConfig{
 		InitialToken:      "new",
 		ClusterSize:       cfg.ClusterSize,
