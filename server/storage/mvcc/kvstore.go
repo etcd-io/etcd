@@ -193,12 +193,16 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	defer tx.RUnlock()
 	s.mu.RUnlock()
 
-	upper := revision{main: rev + 1}
-	lower := revision{main: compactRev + 1}
+	hash, err = unsafeHashByRev(tx, revision{main: compactRev + 1}, revision{main: rev + 1}, keep)
+	hashRevSec.Observe(time.Since(start).Seconds())
+	return hash, currentRev, compactRev, err
+}
+
+func unsafeHashByRev(tx backend.ReadTx, lower, upper revision, keep map[revision]struct{}) (uint32, error) {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
 	h.Write(schema.Key.Name())
-	err = tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
+	err := tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
 		kr := bytesToRev(k)
 		if !upper.GreaterThan(kr) {
 			return nil
@@ -214,10 +218,7 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 		h.Write(v)
 		return nil
 	})
-	hash = h.Sum32()
-
-	hashRevSec.Observe(time.Since(start).Seconds())
-	return hash, currentRev, compactRev, err
+	return h.Sum32(), err
 }
 
 func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
