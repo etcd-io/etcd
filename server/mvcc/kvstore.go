@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"math"
 	"sync"
 	"time"
@@ -194,29 +193,6 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	hash, err = unsafeHashByRev(tx, revision{main: compactRev + 1}, revision{main: rev + 1}, keep)
 	hashRevSec.Observe(time.Since(start).Seconds())
 	return hash, currentRev, compactRev, err
-}
-
-func unsafeHashByRev(tx backend.ReadTx, lower, upper revision, keep map[revision]struct{}) (uint32, error) {
-	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
-
-	h.Write(buckets.Key.Name())
-	err := tx.UnsafeForEach(buckets.Key, func(k, v []byte) error {
-		kr := bytesToRev(k)
-		if !upper.GreaterThan(kr) {
-			return nil
-		}
-		// skip revisions that are scheduled for deletion
-		// due to compacting; don't skip if there isn't one.
-		if lower.GreaterThan(kr) && len(keep) > 0 {
-			if _, ok := keep[kr]; !ok {
-				return nil
-			}
-		}
-		h.Write(k)
-		h.Write(v)
-		return nil
-	})
-	return h.Sum32(), err
 }
 
 func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
