@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"hash"
 	"hash/crc32"
 
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
@@ -22,9 +23,7 @@ import (
 )
 
 func unsafeHashByRev(tx backend.ReadTx, lower, upper revision, keep map[revision]struct{}) (uint32, error) {
-	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
-
-	h.Write(buckets.Key.Name())
+	h := newKVHasher()
 	err := tx.UnsafeForEach(buckets.Key, func(k, v []byte) error {
 		kr := bytesToRev(k)
 		if !upper.GreaterThan(kr) {
@@ -37,9 +36,27 @@ func unsafeHashByRev(tx backend.ReadTx, lower, upper revision, keep map[revision
 				return nil
 			}
 		}
-		h.Write(k)
-		h.Write(v)
+		h.WriteKeyValue(k, v)
 		return nil
 	})
-	return h.Sum32(), err
+	return h.Hash(), err
+}
+
+type hasher struct {
+	h hash.Hash32
+}
+
+func newKVHasher() hasher {
+	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	h.Write(buckets.Key.Name())
+	return hasher{h}
+}
+
+func (h *hasher) WriteKeyValue(k, v []byte) {
+	h.h.Write(k)
+	h.h.Write(v)
+}
+
+func (h *hasher) Hash() uint32 {
+	return h.h.Sum32()
 }
