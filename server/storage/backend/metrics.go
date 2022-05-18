@@ -90,6 +90,22 @@ var (
 		Name:      "defrag_inflight",
 		Help:      "Whether or not defrag is active on the member. 1 means active, 0 means not.",
 	})
+
+	rangeTotalCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "disk",
+			Name:      "range_requests_total",
+			Help:      "Total number of UnsafeRange calls.",
+		})
+
+	buffRangeHitCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "disk",
+			Name:      "buff_range_requests_total",
+			Help:      "Total number of UnsafeRange buffer calls.",
+		})
 )
 
 func init() {
@@ -100,4 +116,6 @@ func init() {
 	prometheus.MustRegister(defragSec)
 	prometheus.MustRegister(snapshotTransferSec)
 	prometheus.MustRegister(isDefragActive)
+	prometheus.MustRegister(rangeTotalCounter)
+	prometheus.MustRegister(buffRangeHitCounter)
 }

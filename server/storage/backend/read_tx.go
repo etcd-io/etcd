@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"encoding/binary"
 	"math"
 	"sync"
 
@@ -38,8 +39,9 @@ type ReadTx interface {
 // Base type for readTx and concurrentReadTx to eliminate duplicate functions between these
 type baseReadTx struct {
 	// mu protects accesses to the txReadBuffer
-	mu  sync.RWMutex
-	buf txReadBuffer
+	mu           *sync.RWMutex
+	buf          *txReadBuffer
+	bufferNoCopy bool
 
 	// TODO: group and encapsulate {txMu, tx, buckets, txWg}, as they share the same lifecycle.
 	// txMu protects accesses to buckets and tx on Range requests.
@@ -74,7 +76,15 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []b
 	return baseReadTx.buf.ForEach(bucket, visitor)
 }
 
+func bytesToRev(bytes []byte) int64 {
+	if len(bytes) <= 8 {
+		return math.MaxInt64
+	}
+	return int64(binary.BigEndian.Uint64(bytes[0:8]))
+}
+
 func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
+	rangeTotalCounter.Inc()
 	if endKey == nil {
 		// forbid duplicates for single keys
 		limit = 1
@@ -83,13 +93,62 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 		limit = math.MaxInt64
 	}
 	if limit > 1 && !bucketType.IsSafeRangeBucket() {
-		panic("do not use unsafeRange on non-keys bucket")
-	}
-	keys, vals := baseReadTx.buf.Range(bucketType, key, endKey, limit)
-	if int64(len(keys)) == limit {
-		return keys, vals
+		panic("do not use UnsafeRange on non-keys bucket")
 	}
 
+	// ConcurrentReadTxNoCopyMode only for Key bucket
+	if baseReadTx.bufferNoCopy && endKey == nil {
+		// Single key search. Key exists either bolt db or read buffer
+		k1, v1 := baseReadTx.unsafeRangeDB(bucketType, key, endKey, limit)
+		if len(k1) != 0 {
+			return k1, v1
+		}
+		k2, v2 := baseReadTx.unsafeRangeBuff(bucketType, key, endKey, limit-int64(len(k1)))
+		if len(k2) != 0 {
+			// If rate of buffRangeHitCounter/rangeTotalCounter is high, we should not use ConcurrentReadTxNoCopyMode
+			buffRangeHitCounter.Inc()
+		}
+		return k2, v2
+	}
+
+	// Range keys search. Need searching buff first, to make assure result is from newest to old with limit.
+	k1, v1 := baseReadTx.unsafeRangeBuff(bucketType, key, endKey, limit)
+	if int64(len(k1)) == limit {
+		return k1, v1
+	}
+	k2, v2 := baseReadTx.unsafeRangeDB(bucketType, key, endKey, limit-int64(len(k1)))
+	return append(k1, k2...), append(v1, v2...)
+}
+
+func (baseReadTx *baseReadTx) unsafeRangeBuff(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
+	keyRev := int64(0)
+	endKeyRev := int64(0)
+	if bucketType.IsSafeRangeBucket() {
+		keyRev = bytesToRev(key)
+		if endKey != nil {
+			endKeyRev = bytesToRev(endKey)
+		}
+	}
+
+	var keys [][]byte
+	var vals [][]byte
+	if baseReadTx.bufferNoCopy {
+		baseReadTx.mu.RLock()
+		defer baseReadTx.mu.RUnlock()
+	}
+
+	// Meta data search, or key search in buffer scope
+	if !bucketType.IsSafeRangeBucket() || keyRev >= baseReadTx.buf.bufMinRev || endKeyRev >= baseReadTx.buf.bufMinRev {
+		keys, vals = baseReadTx.buf.Range(bucketType, key, endKey, limit)
+		if int64(len(keys)) == limit {
+			return keys, vals
+		}
+	}
+
+	return keys, vals
+}
+
+func (baseReadTx *baseReadTx) unsafeRangeDB(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
 	// find/cache bucket
 	bn := bucketType.ID()
 	baseReadTx.txMu.RLock()
@@ -108,7 +167,7 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 		if lockHeld {
 			baseReadTx.txMu.Unlock()
 		}
-		return keys, vals
+		return nil, nil
 	}
 	if !lockHeld {
 		baseReadTx.txMu.Lock()
@@ -116,8 +175,8 @@ func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte,
 	c := bucket.Cursor()
 	baseReadTx.txMu.Unlock()
 
-	k2, v2 := unsafeRange(c, key, endKey, limit-int64(len(keys)))
-	return append(k2, keys...), append(v2, vals...)
+	keys, vals := unsafeRange(c, key, endKey, limit)
+	return keys, vals
 }
 
 type readTx struct {
@@ -130,7 +189,6 @@ func (rt *readTx) RLock()   { rt.mu.RLock() }
 func (rt *readTx) RUnlock() { rt.mu.RUnlock() }
 
 func (rt *readTx) reset() {
-	rt.buf.reset()
 	rt.buckets = make(map[BucketID]*bolt.Bucket)
 	rt.tx = nil
 	rt.txWg = new(sync.WaitGroup)

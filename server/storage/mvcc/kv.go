@@ -107,6 +107,12 @@ const (
 	ConcurrentReadTxMode = ReadTxMode(1)
 	// Use backend ReadTx and txReadBuffer is not copied
 	SharedBufReadTxMode = ReadTxMode(2)
+	// Use ConcurrentReadTx and the txReadBuffer is not copied
+	ConcurrentReadTxNoCopyMode = ReadTxMode(3)
+)
+
+const (
+	ExpensiveReadLimit = 100
 )
 
 type KV interface {

@@ -16,6 +16,7 @@ package backend
 
 import (
 	"bytes"
+	"math"
 	"sort"
 )
 
@@ -42,6 +43,9 @@ type txWriteBuffer struct {
 	// Map from bucket ID into information whether this bucket is edited
 	// sequentially (i.e. keys are growing monotonically).
 	bucket2seq map[BucketID]bool
+
+	// store revision for keys bucket
+	bufRev int64
 }
 
 func (txw *txWriteBuffer) put(bucket Bucket, k, v []byte) {
@@ -76,6 +80,9 @@ func (txw *txWriteBuffer) reset() {
 }
 
 func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
+	if txr.bufMinRev == math.MaxInt64 {
+		txr.bufMinRev = txw.bufRev
+	}
 	for k, wb := range txw.buckets {
 		rb, ok := txr.buckets[k]
 		if !ok {
@@ -99,6 +106,9 @@ type txReadBuffer struct {
 	txBuffer
 	// bufVersion is used to check if the buffer is modified recently
 	bufVersion uint64
+
+	// bufRev is used to store oldest revision in txReadBuffer
+	bufMinRev int64
 }
 
 func (txr *txReadBuffer) Range(bucket Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
@@ -122,6 +132,7 @@ func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 			buckets: make(map[BucketID]*bucketBuffer, len(txr.txBuffer.buckets)),
 		},
 		bufVersion: 0,
+		bufMinRev:  txr.bufMinRev,
 	}
 	for bucketName, bucket := range txr.txBuffer.buckets {
 		txrCopy.txBuffer.buckets[bucketName] = bucket.Copy()

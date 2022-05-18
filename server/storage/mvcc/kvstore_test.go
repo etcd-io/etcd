@@ -906,6 +906,7 @@ func (b *fakeBatchTx) UnsafeDelete(bucket backend.Bucket, key []byte) {
 func (b *fakeBatchTx) UnsafeForEach(bucket backend.Bucket, visitor func(k, v []byte) error) error {
 	return nil
 }
+
 func (b *fakeBatchTx) Commit()        {}
 func (b *fakeBatchTx) CommitAndStop() {}
 
@@ -916,6 +917,7 @@ type fakeBackend struct {
 func (b *fakeBackend) BatchTx() backend.BatchTx                                   { return b.tx }
 func (b *fakeBackend) ReadTx() backend.ReadTx                                     { return b.tx }
 func (b *fakeBackend) ConcurrentReadTx() backend.ReadTx                           { return b.tx }
+func (b *fakeBackend) ConcurrentReadTxNoCopy() backend.ReadTx                     { return b.tx }
 func (b *fakeBackend) Hash(func(bucketName, keyName []byte) bool) (uint32, error) { return 0, nil }
 func (b *fakeBackend) Size() int64                                                { return 0 }
 func (b *fakeBackend) SizeInUse() int64                                           { return 0 }
