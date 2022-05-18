@@ -16,13 +16,14 @@ package mvcc
 
 import (
 	"encoding/binary"
+	"fmt"
 	"time"
 
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap"
 )
 
-func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) bool {
+func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) error {
 	totalStart := time.Now()
 	defer func() { dbCompactionTotalMs.Observe(float64(time.Since(totalStart) / time.Millisecond)) }()
 	keyCompactions := 0
@@ -60,7 +61,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 				zap.Int64("compact-revision", compactMainRev),
 				zap.Duration("took", time.Since(totalStart)),
 			)
-			return true
+			return nil
 		}
 
 		tx.Unlock()
@@ -73,7 +74,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		select {
 		case <-time.After(batchInterval):
 		case <-s.stopc:
-			return false
+			return fmt.Errorf("interrupted due to stop signal")
 		}
 	}
 }
