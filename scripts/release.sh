@@ -181,7 +181,7 @@ main() {
 
   # Verify the clean working tree
   # shellcheck disable=SC2155
-  local diff="$(git diff --stat)"
+  local diff="$(git diff HEAD --stat)"
   if [[ "${diff}" != '' ]]; then
     log_error "Error: Expected clean working tree, but 'git diff --stat' reported: ${diff}"
     exit 1
