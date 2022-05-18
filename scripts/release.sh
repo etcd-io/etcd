@@ -162,14 +162,6 @@ main() {
       REMOTE_REPO="origin" push_mod_tags_cmd
     fi
 
-    # Verify the latest commit has the version tag
-    # shellcheck disable=SC2155
-    local tag="$(git describe --exact-match HEAD)"
-    if [ "${tag}" != "${RELEASE_VERSION}" ]; then
-      log_error "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
-      exit 1
-    fi
-
     # Verify the version tag is on the right branch
     # shellcheck disable=SC2155
     local branch=$(git for-each-ref --contains "${RELEASE_VERSION}" --format="%(refname)" 'refs/heads' | cut -d '/' -f 3)
@@ -179,18 +171,29 @@ main() {
     fi
   fi
 
+  # Verify the latest commit has the version tag
+  # shellcheck disable=SC2155
+  local tag="$(git describe --exact-match HEAD)"
+  if [ "${tag}" != "${RELEASE_VERSION}" ]; then
+    log_error "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
+    exit 1
+  fi
+
+  # Verify the clean working tree
+  # shellcheck disable=SC2155
+  local diff="$(git diff --stat)"
+  if [[ "${diff}" != '' ]]; then
+    log_error "Error: Expected clean working tree, but 'git diff --stat' reported: ${diff}"
+    exit 1
+  fi
+
   # Build release.
   # TODO: check the release directory for all required build artifacts.
   if [ -d release ]; then
     log_warning "Skipping release build step. /release directory already exists."
   else
     log_callout "Building release..."
-    if [ "$DRY_RUN" == "true" ]; then
-      log_warning "In DRY_RUN mode we clone the current release directory (as there was no push)"
-      REPOSITORY=$(pwd) ./scripts/build-release.sh "${RELEASE_VERSION}"
-    else
-      REPOSITORY=${REPOSITORY} ./scripts/build-release.sh "${RELEASE_VERSION}"
-    fi
+    REPOSITORY=$(pwd) ./scripts/build-release.sh "${RELEASE_VERSION}"
   fi
 
   # Sanity checks.
