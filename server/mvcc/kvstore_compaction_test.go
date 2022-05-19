@@ -84,9 +84,9 @@ func TestScheduleCompaction(t *testing.T) {
 		}
 		tx.Unlock()
 
-		err := s.scheduleCompaction(tt.rev)
+		_, err := s.scheduleCompaction(tt.rev, 0)
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 
 		tx.Lock()

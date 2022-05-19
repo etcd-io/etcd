@@ -189,26 +189,25 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	tx.RLock()
 	defer tx.RUnlock()
 	s.mu.RUnlock()
-
 	hash, err = unsafeHashByRev(tx, revision{main: compactRev + 1}, revision{main: rev + 1}, keep)
 	hashRevSec.Observe(time.Since(start).Seconds())
 	return hash, currentRev, compactRev, err
 }
 
-func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
+func (s *store) updateCompactRev(rev int64) (<-chan struct{}, int64, error) {
 	s.revMu.Lock()
 	if rev <= s.compactMainRev {
 		ch := make(chan struct{})
 		f := func(ctx context.Context) { s.compactBarrier(ctx, ch) }
 		s.fifoSched.Schedule(f)
 		s.revMu.Unlock()
-		return ch, ErrCompacted
+		return ch, 0, ErrCompacted
 	}
 	if rev > s.currentRev {
 		s.revMu.Unlock()
-		return nil, ErrFutureRev
+		return nil, 0, ErrFutureRev
 	}
-
+	compactMainRev := s.compactMainRev
 	s.compactMainRev = rev
 
 	rbytes := newRevBytes()
@@ -223,17 +222,17 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 
 	s.revMu.Unlock()
 
-	return nil, nil
+	return nil, compactMainRev, nil
 }
 
-func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
+func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64) (<-chan struct{}, error) {
 	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
 		if ctx.Err() != nil {
 			s.compactBarrier(ctx, ch)
 			return
 		}
-		if err := s.scheduleCompaction(rev); err != nil {
+		if _, err := s.scheduleCompaction(rev, prevCompactRev); err != nil {
 			s.lg.Warn("Failed compaction", zap.Error(err))
 			s.compactBarrier(context.TODO(), ch)
 			return
@@ -247,18 +246,18 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 }
 
 func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
-	ch, err := s.updateCompactRev(rev)
+	ch, prevCompactRev, err := s.updateCompactRev(rev)
 	if err != nil {
 		return ch, err
 	}
 
-	return s.compact(traceutil.TODO(), rev)
+	return s.compact(traceutil.TODO(), rev, prevCompactRev)
 }
 
 func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
 	s.mu.Lock()
 
-	ch, err := s.updateCompactRev(rev)
+	ch, prevCompactRev, err := s.updateCompactRev(rev)
 	trace.Step("check and update compact revision")
 	if err != nil {
 		s.mu.Unlock()
@@ -266,7 +265,7 @@ func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 	}
 	s.mu.Unlock()
 
-	return s.compact(trace, rev)
+	return s.compact(trace, rev, prevCompactRev)
 }
 
 func (s *store) Commit() {
