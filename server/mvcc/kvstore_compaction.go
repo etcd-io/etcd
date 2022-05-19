@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (uint32, error) {
+func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyValueHash, error) {
 	totalStart := time.Now()
 	keep := s.kvindex.Compact(compactMainRev)
 	indexCompactionPauseMs.Observe(float64(time.Since(totalStart) / time.Millisecond))
@@ -67,7 +67,7 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (uint32
 				"finished scheduled compaction",
 				zap.Int64("compact-revision", compactMainRev),
 				zap.Duration("took", time.Since(totalStart)),
-				zap.Uint32("hash", hash),
+				zap.Uint32("hash", hash.Hash),
 			)
 			return hash, nil
 		}
@@ -82,7 +82,7 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (uint32
 		select {
 		case <-time.After(10 * time.Millisecond):
 		case <-s.stopc:
-			return 0, fmt.Errorf("interrupted due to stop signal")
+			return KeyValueHash{}, fmt.Errorf("interrupted due to stop signal")
 		}
 	}
 }

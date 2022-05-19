@@ -559,7 +559,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 				select {
 				case <-donec:
 					return
-				case hashCompactc <- hashKVResult{hash, compactRev}:
+				case hashCompactc <- hashKVResult{hash.Hash, compactRev}:
 				}
 			}
 		}()
@@ -618,7 +618,7 @@ func TestHashKVZeroRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var hash2 uint32
+	var hash2 KeyValueHash
 	hash2, _, _, err = s.HashByRev(0)
 	if err != nil {
 		t.Fatal(err)

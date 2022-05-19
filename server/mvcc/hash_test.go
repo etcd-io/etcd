@@ -41,7 +41,7 @@ func TestHashByRevValue(t *testing.T) {
 	assert.Less(t, int64(s.cfg.CompactionBatchLimit), totalRevisions)
 	assert.Less(t, int64(compactionCycle*10), totalRevisions)
 	var rev int64
-	var got []kvHash
+	var got []KeyValueHash
 	for ; rev < totalRevisions; rev += compactionCycle {
 		putKVs(s, rev, compactionCycle)
 		hash := testHashByRev(t, s, rev+compactionCycle/2)
@@ -50,7 +50,7 @@ func TestHashByRevValue(t *testing.T) {
 	putKVs(s, rev, totalRevisions)
 	hash := testHashByRev(t, s, rev+totalRevisions/2)
 	got = append(got, hash)
-	assert.Equal(t, []kvHash{
+	assert.Equal(t, []KeyValueHash{
 		{4082599214, -1, 35},
 		{2279933401, 35, 106},
 		{3284231217, 106, 177},
@@ -81,7 +81,7 @@ func TestHashByRevValueZero(t *testing.T) {
 	assert.Less(t, int64(s.cfg.CompactionBatchLimit), totalRevisions)
 	assert.Less(t, int64(compactionCycle*10), totalRevisions)
 	var rev int64
-	var got []kvHash
+	var got []KeyValueHash
 	for ; rev < totalRevisions; rev += compactionCycle {
 		putKVs(s, rev, compactionCycle)
 		hash := testHashByRev(t, s, 0)
@@ -90,7 +90,7 @@ func TestHashByRevValueZero(t *testing.T) {
 	putKVs(s, rev, totalRevisions)
 	hash := testHashByRev(t, s, 0)
 	got = append(got, hash)
-	assert.Equal(t, []kvHash{
+	assert.Equal(t, []KeyValueHash{
 		{1913897190, -1, 73},
 		{224860069, 73, 145},
 		{1565167519, 145, 217},
@@ -119,8 +119,8 @@ func putKVs(s *store, rev, count int64) {
 	}
 }
 
-func testHashByRev(t *testing.T, s *store, rev int64) kvHash {
-	hash, currentRev, compactRev, err := s.HashByRev(rev)
+func testHashByRev(t *testing.T, s *store, rev int64) KeyValueHash {
+	hash, currentRev, _, err := s.HashByRev(rev)
 	assert.NoError(t, err, "error on rev %v", rev)
 
 	if rev == 0 {
@@ -128,13 +128,7 @@ func testHashByRev(t *testing.T, s *store, rev int64) kvHash {
 	}
 	_, err = s.Compact(traceutil.TODO(), rev)
 	assert.NoError(t, err, "error on compact %v", rev)
-	return kvHash{hash: hash, compactRevision: compactRev, revision: rev}
-}
-
-type kvHash struct {
-	hash            uint32
-	compactRevision int64
-	revision        int64
+	return hash
 }
 
 // TODO: Change this to fuzz test

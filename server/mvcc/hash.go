@@ -22,8 +22,8 @@ import (
 	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 )
 
-func unsafeHashByRev(tx backend.ReadTx, lower, upper int64, keep map[revision]struct{}) (uint32, error) {
-	h := newKVHasher(lower, upper, keep)
+func unsafeHashByRev(tx backend.ReadTx, compactRevision, revision int64, keep map[revision]struct{}) (KeyValueHash, error) {
+	h := newKVHasher(compactRevision, revision, keep)
 	err := tx.UnsafeForEach(buckets.Key, func(k, v []byte) error {
 		h.WriteKeyValue(k, v)
 		return nil
@@ -32,29 +32,30 @@ func unsafeHashByRev(tx backend.ReadTx, lower, upper int64, keep map[revision]st
 }
 
 type kvHasher struct {
-	hash         hash.Hash32
-	lower, upper int64
-	keep         map[revision]struct{}
+	hash            hash.Hash32
+	compactRevision int64
+	revision        int64
+	keep            map[revision]struct{}
 }
 
-func newKVHasher(lower, upper int64, keep map[revision]struct{}) kvHasher {
+func newKVHasher(compactRev, rev int64, keep map[revision]struct{}) kvHasher {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 	h.Write(buckets.Key.Name())
 	return kvHasher{
-		hash:  h,
-		lower: lower,
-		upper: upper,
-		keep:  keep,
+		hash:            h,
+		compactRevision: compactRev,
+		revision:        rev,
+		keep:            keep,
 	}
 }
 
 func (h *kvHasher) WriteKeyValue(k, v []byte) {
 	kr := bytesToRev(k)
-	upper := revision{main: h.upper + 1}
+	upper := revision{main: h.revision + 1}
 	if !upper.GreaterThan(kr) {
 		return
 	}
-	lower := revision{main: h.lower + 1}
+	lower := revision{main: h.compactRevision + 1}
 	// skip revisions that are scheduled for deletion
 	// due to compacting; don't skip if there isn't one.
 	if lower.GreaterThan(kr) && len(h.keep) > 0 {
@@ -66,6 +67,12 @@ func (h *kvHasher) WriteKeyValue(k, v []byte) {
 	h.hash.Write(v)
 }
 
-func (h *kvHasher) Hash() uint32 {
-	return h.hash.Sum32()
+func (h *kvHasher) Hash() KeyValueHash {
+	return KeyValueHash{Hash: h.hash.Sum32(), CompactRevision: h.compactRevision, Revision: h.revision}
+}
+
+type KeyValueHash struct {
+	Hash            uint32
+	CompactRevision int64
+	Revision        int64
 }

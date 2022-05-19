@@ -51,24 +51,17 @@ type Hasher interface {
 func NewCorruptionMonitor(lg *zap.Logger, s *EtcdServer) *corruptionMonitor {
 	return &corruptionMonitor{
 		lg:     lg,
-		hasher: hasherAdapter{s},
+		hasher: hasherAdapter{s, s.KV()},
 	}
 }
 
 type hasherAdapter struct {
 	*EtcdServer
+	mvcc.KV
 }
 
 func (h hasherAdapter) MemberId() types.ID {
 	return h.EtcdServer.ID()
-}
-
-func (h hasherAdapter) Hash() (hash uint32, revision int64, err error) {
-	return h.EtcdServer.KV().Hash()
-}
-
-func (h hasherAdapter) HashByRev(rev int64) (hash uint32, revision int64, compactRev int64, err error) {
-	return h.EtcdServer.KV().HashByRev(rev)
 }
 
 func (h hasherAdapter) ReqTimeout() time.Duration {
@@ -107,7 +100,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 				zap.String("local-member-id", cm.hasher.MemberId().String()),
 				zap.Int64("local-member-revision", rev),
 				zap.Int64("local-member-compact-revision", crev),
-				zap.Uint32("local-member-hash", h),
+				zap.Uint32("local-member-hash", h.Hash),
 				zap.String("remote-peer-id", peerID.String()),
 				zap.Strings("remote-peer-endpoints", p.eps),
 				zap.Int64("remote-peer-revision", p.resp.Header.Revision),
@@ -115,7 +108,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 				zap.Uint32("remote-peer-hash", p.resp.Hash),
 			}
 
-			if h != p.resp.Hash {
+			if h.Hash != p.resp.Hash {
 				if crev == p.resp.CompactRevision {
 					cm.lg.Warn("found different hash values from remote peer", fields...)
 					mismatch++
@@ -135,7 +128,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 					zap.String("local-member-id", cm.hasher.MemberId().String()),
 					zap.Int64("local-member-revision", rev),
 					zap.Int64("local-member-compact-revision", crev),
-					zap.Uint32("local-member-hash", h),
+					zap.Uint32("local-member-hash", h.Hash),
 					zap.String("remote-peer-id", p.id.String()),
 					zap.Strings("remote-peer-endpoints", p.eps),
 					zap.Error(err),
@@ -146,7 +139,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 					zap.String("local-member-id", cm.hasher.MemberId().String()),
 					zap.Int64("local-member-revision", rev),
 					zap.Int64("local-member-compact-revision", crev),
-					zap.Uint32("local-member-hash", h),
+					zap.Uint32("local-member-hash", h.Hash),
 					zap.String("remote-peer-id", p.id.String()),
 					zap.Strings("remote-peer-endpoints", p.eps),
 					zap.Error(err),
@@ -193,15 +186,15 @@ func (cm *corruptionMonitor) periodicCheck() error {
 		cm.hasher.TriggerCorruptAlarm(id)
 	}
 
-	if h2 != h && rev2 == rev && crev == crev2 {
+	if h2.Hash != h.Hash && rev2 == rev && crev == crev2 {
 		cm.lg.Warn(
 			"found hash mismatch",
 			zap.Int64("revision-1", rev),
 			zap.Int64("compact-revision-1", crev),
-			zap.Uint32("hash-1", h),
+			zap.Uint32("hash-1", h.Hash),
 			zap.Int64("revision-2", rev2),
 			zap.Int64("compact-revision-2", crev2),
-			zap.Uint32("hash-2", h2),
+			zap.Uint32("hash-2", h2.Hash),
 		)
 		mismatch(uint64(cm.hasher.MemberId()))
 	}
@@ -237,11 +230,11 @@ func (cm *corruptionMonitor) periodicCheck() error {
 		}
 
 		// follower's compact revision is leader's old one, then hashes must match
-		if p.resp.CompactRevision == crev && p.resp.Hash != h {
+		if p.resp.CompactRevision == crev && p.resp.Hash != h.Hash {
 			cm.lg.Warn(
 				"same compact revision then hashes must match",
 				zap.Int64("leader-compact-revision", crev2),
-				zap.Uint32("leader-hash", h),
+				zap.Uint32("leader-hash", h.Hash),
 				zap.Int64("follower-compact-revision", p.resp.CompactRevision),
 				zap.Uint32("follower-hash", p.resp.Hash),
 				zap.String("follower-peer-id", types.ID(id).String()),
@@ -401,7 +394,7 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: hash, CompactRevision: compactRev}
+	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: hash.Hash, CompactRevision: compactRev}
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
 		h.lg.Warn("failed to marshal hashKV response", zap.Error(err))
