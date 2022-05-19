@@ -64,6 +64,26 @@ func TestMemberAdd(t *testing.T) {
 	}
 }
 
+func TestMemberAddRemoveFail(t *testing.T) {
+	integration2.BeforeTest(t)
+
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	capi := clus.RandClient()
+
+	urls := []string{"http://127.0.0.1:1234"}
+	resp, err := capi.MemberAddAsLearner(context.Background(), urls)
+	if err != nil {
+		t.Fatalf("failed to add member %v", err)
+	}
+
+	_, err = capi.MemberRemove(context.Background(), resp.Member.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMemberAddWithExistingURLs(t *testing.T) {
 	integration2.BeforeTest(t)
 

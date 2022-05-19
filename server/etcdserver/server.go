@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"path"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -1638,6 +1639,7 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 
 	select {
 	case x := <-ch:
+		lg.Info(string(debug.Stack()))
 		if x == nil {
 			lg.Panic("failed to configure")
 		}
@@ -1807,6 +1809,7 @@ func (s *EtcdServer) apply(
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
+			// this AppliedIndex is different from raftLog.applied
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 			shouldStop = shouldStop || removedSelf

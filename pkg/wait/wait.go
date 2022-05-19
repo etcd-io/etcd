@@ -18,6 +18,7 @@ package wait
 
 import (
 	"log"
+	"runtime/debug"
 	"sync"
 )
 
@@ -74,6 +75,7 @@ func (w *list) Register(id uint64) <-chan interface{} {
 }
 
 func (w *list) Trigger(id uint64, x interface{}) {
+	log.Println(string(debug.Stack()))
 	idx := id % defaultListElementLength
 	w.e[idx].l.Lock()
 	ch := w.e[idx].m[id]

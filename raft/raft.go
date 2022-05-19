@@ -549,6 +549,8 @@ func (r *raft) advance(rd Ready) {
 	// all of the new entries due to commit pagination by size.
 	if newApplied := rd.appliedCursor(); newApplied > 0 {
 		oldApplied := r.raftLog.applied
+		time.Sleep(20 * time.Millisecond)
+		println("Advanced")
 		r.raftLog.appliedTo(newApplied)
 
 		if r.prs.Config.AutoLeave && oldApplied <= r.pendingConfIndex && newApplied >= r.pendingConfIndex && r.state == StateLeader {
@@ -1054,6 +1056,7 @@ func stepLeader(r *raft, m pb.Message) error {
 
 				var refused string
 				if alreadyPending {
+					// need to check EtcdServer.appliedIndex. Advancing raftLog.applied isn't synchronized with EtcdServer.appliedIndex
 					refused = fmt.Sprintf("possible unapplied conf change at index %d (applied to %d)", r.pendingConfIndex, r.raftLog.applied)
 				} else if alreadyJoint && !wantsLeaveJoint {
 					refused = "must transition out of joint config first"
