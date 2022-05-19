@@ -552,7 +552,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for {
-				hash, _, err := s.HashByRev(int64(rev))
+				hash, _, err := s.HashStorage().HashByRev(int64(rev))
 				if err != nil {
 					t.Error(err)
 				}
@@ -614,12 +614,12 @@ func TestHashKVZeroRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hash1, _, err := s.HashByRev(int64(rev))
+	hash1, _, err := s.HashStorage().HashByRev(int64(rev))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var hash2 KeyValueHash
-	hash2, _, err = s.HashByRev(0)
+	hash2, _, err = s.HashStorage().HashByRev(0)
 	if err != nil {
 		t.Fatal(err)
 	}

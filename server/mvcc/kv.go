@@ -112,13 +112,15 @@ const (
 type KV interface {
 	ReadView
 	WriteView
-	Hasher
 
 	// Read creates a read transaction.
 	Read(mode ReadTxMode, trace *traceutil.Trace) TxnRead
 
 	// Write creates a write transaction.
 	Write(trace *traceutil.Trace) TxnWrite
+
+	// HashStorage returns HashStorage interface for KV storage.
+	HashStorage() HashStorage
 
 	// Compact frees all superseded keys with revisions less than rev.
 	Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error)
@@ -129,14 +131,6 @@ type KV interface {
 	// Restore restores the KV store from a backend.
 	Restore(b backend.Backend) error
 	Close() error
-}
-
-type Hasher interface {
-	// Hash computes the hash of the KV's backend.
-	Hash() (hash uint32, revision int64, err error)
-
-	// HashByRev computes the hash of all MVCC revisions up to a given revision.
-	HashByRev(rev int64) (hash KeyValueHash, revision int64, err error)
 }
 
 // WatchableKV is a KV that can be watched.

@@ -40,7 +40,7 @@ type corruptionMonitor struct {
 }
 
 type Hasher interface {
-	mvcc.Hasher
+	mvcc.HashStorage
 	ReqTimeout() time.Duration
 	MemberId() types.ID
 	PeerHashByRev(int64) []*peerHashKVResp
@@ -51,13 +51,13 @@ type Hasher interface {
 func NewCorruptionMonitor(lg *zap.Logger, s *EtcdServer) *corruptionMonitor {
 	return &corruptionMonitor{
 		lg:     lg,
-		hasher: hasherAdapter{s, s.KV()},
+		hasher: hasherAdapter{s, s.KV().HashStorage()},
 	}
 }
 
 type hasherAdapter struct {
 	*EtcdServer
-	mvcc.KV
+	mvcc.HashStorage
 }
 
 func (h hasherAdapter) MemberId() types.ID {
@@ -384,7 +384,7 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error unmarshalling request", http.StatusBadRequest)
 		return
 	}
-	hash, rev, err := h.server.KV().HashByRev(req.Revision)
+	hash, rev, err := h.server.KV().HashStorage().HashByRev(req.Revision)
 	if err != nil {
 		h.lg.Warn(
 			"failed to get hashKV",

@@ -83,7 +83,8 @@ type store struct {
 
 	stopc chan struct{}
 
-	lg *zap.Logger
+	lg     *zap.Logger
+	hashes HashStorage
 }
 
 // NewStore returns a new store. It is useful to create a store inside
@@ -111,6 +112,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 
 		lg: lg,
 	}
+	s.hashes = newHashStorage(s)
 	s.ReadView = &readView{s}
 	s.WriteView = &writeView{s}
 	if s.le != nil {
@@ -153,7 +155,7 @@ func (s *store) compactBarrier(ctx context.Context, ch chan struct{}) {
 	close(ch)
 }
 
-func (s *store) Hash() (hash uint32, revision int64, err error) {
+func (s *store) hash() (hash uint32, revision int64, err error) {
 	// TODO: hash and revision could be inconsistent, one possible fix is to add s.revMu.RLock() at the beginning of function, which is costly
 	start := time.Now()
 
@@ -164,7 +166,7 @@ func (s *store) Hash() (hash uint32, revision int64, err error) {
 	return h, s.currentRev, err
 }
 
-func (s *store) HashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error) {
+func (s *store) hashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error) {
 	var compactRev int64
 	start := time.Now()
 
@@ -180,7 +182,6 @@ func (s *store) HashByRev(rev int64) (hash KeyValueHash, currentRev int64, err e
 		s.mu.RUnlock()
 		return KeyValueHash{}, currentRev, ErrFutureRev
 	}
-
 	if rev == 0 {
 		rev = currentRev
 	}
@@ -527,4 +528,8 @@ func appendMarkTombstone(lg *zap.Logger, b []byte) []byte {
 // isTombstone checks whether the revision bytes is a tombstone.
 func isTombstone(b []byte) bool {
 	return len(b) == markedRevBytesLen && b[markBytePosition] == markTombstone
+}
+
+func (s *store) HashStorage() HashStorage {
+	return s.hashes
 }

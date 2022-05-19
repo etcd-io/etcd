@@ -76,3 +76,29 @@ type KeyValueHash struct {
 	CompactRevision int64
 	Revision        int64
 }
+
+type HashStorage interface {
+	// Hash computes the hash of the KV's backend.
+	Hash() (hash uint32, revision int64, err error)
+
+	// HashByRev computes the hash of all MVCC revisions up to a given revision.
+	HashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error)
+}
+
+type hashStorage struct {
+	store *store
+}
+
+func newHashStorage(s *store) HashStorage {
+	return &hashStorage{
+		store: s,
+	}
+}
+
+func (s *hashStorage) Hash() (hash uint32, revision int64, err error) {
+	return s.store.hash()
+}
+
+func (s *hashStorage) HashByRev(rev int64) (KeyValueHash, int64, error) {
+	return s.store.hashByRev(rev)
+}
