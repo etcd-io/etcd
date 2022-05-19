@@ -23,40 +23,47 @@ import (
 )
 
 func unsafeHashByRev(tx backend.ReadTx, lower, upper revision, keep map[revision]struct{}) (uint32, error) {
-	h := newKVHasher()
+	h := newKVHasher(lower, upper, keep)
 	err := tx.UnsafeForEach(buckets.Key, func(k, v []byte) error {
-		kr := bytesToRev(k)
-		if !upper.GreaterThan(kr) {
-			return nil
-		}
-		// skip revisions that are scheduled for deletion
-		// due to compacting; don't skip if there isn't one.
-		if lower.GreaterThan(kr) && len(keep) > 0 {
-			if _, ok := keep[kr]; !ok {
-				return nil
-			}
-		}
 		h.WriteKeyValue(k, v)
 		return nil
 	})
 	return h.Hash(), err
 }
 
-type hasher struct {
-	h hash.Hash32
+type kvHasher struct {
+	hash         hash.Hash32
+	lower, upper revision
+	keep         map[revision]struct{}
 }
 
-func newKVHasher() hasher {
+func newKVHasher(lower, upper revision, keep map[revision]struct{}) kvHasher {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 	h.Write(buckets.Key.Name())
-	return hasher{h}
+	return kvHasher{
+		hash:  h,
+		lower: lower,
+		upper: upper,
+		keep:  keep,
+	}
 }
 
-func (h *hasher) WriteKeyValue(k, v []byte) {
-	h.h.Write(k)
-	h.h.Write(v)
+func (h *kvHasher) WriteKeyValue(k, v []byte) {
+	kr := bytesToRev(k)
+	if !h.upper.GreaterThan(kr) {
+		return
+	}
+	// skip revisions that are scheduled for deletion
+	// due to compacting; don't skip if there isn't one.
+	if h.lower.GreaterThan(kr) && len(h.keep) > 0 {
+		if _, ok := h.keep[kr]; !ok {
+			return
+		}
+	}
+	h.hash.Write(k)
+	h.hash.Write(v)
 }
 
-func (h *hasher) Hash() uint32 {
-	return h.h.Sum32()
+func (h *kvHasher) Hash() uint32 {
+	return h.hash.Sum32()
 }
