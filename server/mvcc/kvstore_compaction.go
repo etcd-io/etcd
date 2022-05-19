@@ -23,8 +23,12 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) error {
+func (s *store) scheduleCompaction(compactMainRev int64) error {
 	totalStart := time.Now()
+	keep := s.kvindex.Compact(compactMainRev)
+	indexCompactionPauseMs.Observe(float64(time.Since(totalStart) / time.Millisecond))
+
+	totalStart = time.Now()
 	defer func() { dbCompactionTotalMs.Observe(float64(time.Since(totalStart) / time.Millisecond)) }()
 	keyCompactions := 0
 	defer func() { dbCompactionKeysCounter.Add(float64(keyCompactions)) }()

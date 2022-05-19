@@ -233,10 +233,7 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 			s.compactBarrier(ctx, ch)
 			return
 		}
-		start := time.Now()
-		keep := s.kvindex.Compact(rev)
-		indexCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
-		if err := s.scheduleCompaction(rev, keep); err != nil {
+		if err := s.scheduleCompaction(rev); err != nil {
 			s.lg.Warn("Failed compaction", zap.Error(err))
 			s.compactBarrier(context.TODO(), ch)
 			return
