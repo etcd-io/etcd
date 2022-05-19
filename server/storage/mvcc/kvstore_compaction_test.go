@@ -69,6 +69,10 @@ func TestScheduleCompaction(t *testing.T) {
 	for i, tt := range tests {
 		b, tmpPath := betesting.NewDefaultTmpBackend(t)
 		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		fi := newFakeIndex()
+		fi.indexCompactRespc <- tt.keep
+		s.kvindex = fi
+
 		tx := s.b.BatchTx()
 
 		tx.Lock()
@@ -79,7 +83,7 @@ func TestScheduleCompaction(t *testing.T) {
 		}
 		tx.Unlock()
 
-		err := s.scheduleCompaction(tt.rev, tt.keep)
+		err := s.scheduleCompaction(tt.rev)
 		if err != nil {
 			t.Fatal(err)
 		}

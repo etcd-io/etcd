@@ -849,18 +849,11 @@ func newFakeStore(lg *zap.Logger) *store {
 	b := &fakeBackend{&fakeBatchTx{
 		Recorder:   &testutil.RecorderBuffered{},
 		rangeRespc: make(chan rangeResp, 5)}}
-	fi := &fakeIndex{
-		Recorder:              &testutil.RecorderBuffered{},
-		indexGetRespc:         make(chan indexGetResp, 1),
-		indexRangeRespc:       make(chan indexRangeResp, 1),
-		indexRangeEventsRespc: make(chan indexRangeEventsResp, 1),
-		indexCompactRespc:     make(chan map[revision]struct{}, 1),
-	}
 	s := &store{
 		cfg:            StoreConfig{CompactionBatchLimit: 10000},
 		b:              b,
 		le:             &lease.FakeLessor{},
-		kvindex:        fi,
+		kvindex:        newFakeIndex(),
 		currentRev:     0,
 		compactMainRev: -1,
 		fifoSched:      schedule.NewFIFOScheduler(),
@@ -869,6 +862,16 @@ func newFakeStore(lg *zap.Logger) *store {
 	}
 	s.ReadView, s.WriteView = &readView{s}, &writeView{s}
 	return s
+}
+
+func newFakeIndex() *fakeIndex {
+	return &fakeIndex{
+		Recorder:              &testutil.RecorderBuffered{},
+		indexGetRespc:         make(chan indexGetResp, 1),
+		indexRangeRespc:       make(chan indexRangeResp, 1),
+		indexRangeEventsRespc: make(chan indexRangeEventsResp, 1),
+		indexCompactRespc:     make(chan map[revision]struct{}, 1),
+	}
 }
 
 type rangeResp struct {
