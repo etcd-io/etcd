@@ -136,7 +136,7 @@ type Hasher interface {
 	Hash() (hash uint32, revision int64, err error)
 
 	// HashByRev computes the hash of all MVCC revisions up to a given revision.
-	HashByRev(rev int64) (hash uint32, revision int64, compactRev int64, err error)
+	HashByRev(rev int64) (hash KeyValueHash, revision int64, compactRev int64, err error)
 }
 
 // WatchableKV is a KV that can be watched.
