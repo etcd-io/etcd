@@ -94,7 +94,7 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 		s.lg.Warn("failed to write a snap file", zap.String("path", spath), zap.Error(err))
 		rerr := os.Remove(spath)
 		if rerr != nil {
-			s.lg.Warn("failed to remove a broken snap file", zap.String("path", spath), zap.Error(err))
+			s.lg.Warn("failed to remove a broken snap file", zap.String("path", spath), zap.Error(rerr))
 		}
 		return err
 	}
