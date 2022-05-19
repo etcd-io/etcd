@@ -42,8 +42,8 @@ func newKVHasher(lower, upper int64, keep map[revision]struct{}) kvHasher {
 	h.Write(buckets.Key.Name())
 	return kvHasher{
 		hash:  h,
-		lower: revision{main: lower},
-		upper: revision{main: upper},
+		lower: revision{main: lower + 1},
+		upper: revision{main: upper + 1},
 		keep:  keep,
 	}
 }
