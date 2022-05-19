@@ -137,6 +137,36 @@ type kvHash struct {
 	revision        int64
 }
 
+// TODO: Change this to fuzz test
+func TestCompactionHash(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+
+	var totalRevisions int64 = 1210
+	assert.Less(t, int64(s.cfg.CompactionBatchLimit), totalRevisions)
+	assert.Less(t, int64(compactionCycle*10), totalRevisions)
+	var rev int64
+	for ; rev < totalRevisions; rev += compactionCycle {
+		testCompactionHash(t, s, rev, rev+compactionCycle)
+	}
+	testCompactionHash(t, s, rev, rev+totalRevisions)
+}
+
+func testCompactionHash(t *testing.T, s *store, start, stop int64) {
+	for i := start; i <= stop; i++ {
+		s.Put([]byte(pickKey(i)), []byte(fmt.Sprint(i)), 0)
+	}
+	hash1, _, _, err := s.HashByRev(stop)
+	assert.NoError(t, err, "error on rev %v", stop)
+
+	_, prevCompactRev, err := s.updateCompactRev(stop)
+	assert.NoError(t, err, "error on rev %v", stop)
+
+	hash2, err := s.scheduleCompaction(stop, prevCompactRev)
+	assert.NoError(t, err, "error on rev %v", stop)
+	assert.Equal(t, hash1, hash2, "hashes do not match on rev %v", stop)
+}
+
 func pickKey(i int64) string {
 	if i%(compactionCycle*2) == 30 {
 		return "zenek"

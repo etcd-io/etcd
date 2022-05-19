@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *store) scheduleCompaction(compactMainRev int64) error {
+func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (uint32, error) {
 	totalStart := time.Now()
 	keep := s.kvindex.Compact(compactMainRev)
 	indexCompactionPauseMs.Observe(float64(time.Since(totalStart) / time.Millisecond))
@@ -39,7 +39,7 @@ func (s *store) scheduleCompaction(compactMainRev int64) error {
 
 	batchNum := s.cfg.CompactionBatchLimit
 	batchInterval := s.cfg.CompactionSleepInterval
-
+	h := newKVHasher(revision{main: prevCompactRev + 1}, revision{main: compactMainRev + 1}, keep)
 	last := make([]byte, 8+1+8)
 	for {
 		var rev revision
@@ -48,24 +48,27 @@ func (s *store) scheduleCompaction(compactMainRev int64) error {
 
 		tx := s.b.BatchTx()
 		tx.LockOutsideApply()
-		keys, _ := tx.UnsafeRange(schema.Key, last, end, int64(batchNum))
-		for _, key := range keys {
-			rev = bytesToRev(key)
+		keys, values := tx.UnsafeRange(schema.Key, last, end, int64(batchNum))
+		for i := range keys {
+			rev = bytesToRev(keys[i])
 			if _, ok := keep[rev]; !ok {
-				tx.UnsafeDelete(schema.Key, key)
+				tx.UnsafeDelete(schema.Key, keys[i])
 				keyCompactions++
 			}
+			h.WriteKeyValue(keys[i], values[i])
 		}
 
 		if len(keys) < batchNum {
 			UnsafeSetFinishedCompact(tx, compactMainRev)
 			tx.Unlock()
+			hash := h.Hash()
 			s.lg.Info(
 				"finished scheduled compaction",
 				zap.Int64("compact-revision", compactMainRev),
 				zap.Duration("took", time.Since(totalStart)),
+				zap.Uint32("hash", hash),
 			)
-			return nil
+			return hash, nil
 		}
 
 		tx.Unlock()
@@ -78,7 +81,7 @@ func (s *store) scheduleCompaction(compactMainRev int64) error {
 		select {
 		case <-time.After(batchInterval):
 		case <-s.stopc:
-			return fmt.Errorf("interrupted due to stop signal")
+			return 0, fmt.Errorf("interrupted due to stop signal")
 		}
 	}
 }
