@@ -190,12 +190,12 @@ func (ms *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.H
 }
 
 func (ms *maintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*pb.HashKVResponse, error) {
-	h, rev, compactRev, err := ms.kg.KV().HashByRev(r.Revision)
+	h, rev, err := ms.kg.KV().HashByRev(r.Revision)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
 
-	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: h.Hash, CompactRevision: compactRev}
+	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: h.Hash, CompactRevision: h.CompactRevision}
 	ms.hdr.fill(resp.Header)
 	return resp, nil
 }

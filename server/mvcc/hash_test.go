@@ -120,7 +120,7 @@ func putKVs(s *store, rev, count int64) {
 }
 
 func testHashByRev(t *testing.T, s *store, rev int64) KeyValueHash {
-	hash, currentRev, _, err := s.HashByRev(rev)
+	hash, currentRev, err := s.HashByRev(rev)
 	assert.NoError(t, err, "error on rev %v", rev)
 
 	if rev == 0 {
@@ -150,7 +150,7 @@ func testCompactionHash(t *testing.T, s *store, start, stop int64) {
 	for i := start; i <= stop; i++ {
 		s.Put([]byte(pickKey(i)), []byte(fmt.Sprint(i)), 0)
 	}
-	hash1, _, _, err := s.HashByRev(stop)
+	hash1, _, err := s.HashByRev(stop)
 	assert.NoError(t, err, "error on rev %v", stop)
 
 	_, prevCompactRev, err := s.updateCompactRev(stop)

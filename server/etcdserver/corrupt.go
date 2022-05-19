@@ -87,7 +87,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 		zap.Duration("timeout", cm.hasher.ReqTimeout()),
 	)
 
-	h, rev, crev, err := cm.hasher.HashByRev(0)
+	h, rev, err := cm.hasher.HashByRev(0)
 	if err != nil {
 		return fmt.Errorf("%s failed to fetch hash (%v)", cm.hasher.MemberId(), err)
 	}
@@ -99,7 +99,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 			fields := []zap.Field{
 				zap.String("local-member-id", cm.hasher.MemberId().String()),
 				zap.Int64("local-member-revision", rev),
-				zap.Int64("local-member-compact-revision", crev),
+				zap.Int64("local-member-compact-revision", h.CompactRevision),
 				zap.Uint32("local-member-hash", h.Hash),
 				zap.String("remote-peer-id", peerID.String()),
 				zap.Strings("remote-peer-endpoints", p.eps),
@@ -109,7 +109,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 			}
 
 			if h.Hash != p.resp.Hash {
-				if crev == p.resp.CompactRevision {
+				if h.CompactRevision == p.resp.CompactRevision {
 					cm.lg.Warn("found different hash values from remote peer", fields...)
 					mismatch++
 				} else {
@@ -127,7 +127,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 					"cannot fetch hash from slow remote peer",
 					zap.String("local-member-id", cm.hasher.MemberId().String()),
 					zap.Int64("local-member-revision", rev),
-					zap.Int64("local-member-compact-revision", crev),
+					zap.Int64("local-member-compact-revision", h.CompactRevision),
 					zap.Uint32("local-member-hash", h.Hash),
 					zap.String("remote-peer-id", p.id.String()),
 					zap.Strings("remote-peer-endpoints", p.eps),
@@ -138,7 +138,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 					"cannot fetch hash from remote peer; local member is behind",
 					zap.String("local-member-id", cm.hasher.MemberId().String()),
 					zap.Int64("local-member-revision", rev),
-					zap.Int64("local-member-compact-revision", crev),
+					zap.Int64("local-member-compact-revision", h.CompactRevision),
 					zap.Uint32("local-member-hash", h.Hash),
 					zap.String("remote-peer-id", p.id.String()),
 					zap.Strings("remote-peer-endpoints", p.eps),
@@ -159,7 +159,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 }
 
 func (cm *corruptionMonitor) periodicCheck() error {
-	h, rev, crev, err := cm.hasher.HashByRev(0)
+	h, rev, err := cm.hasher.HashByRev(0)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func (cm *corruptionMonitor) periodicCheck() error {
 		return err
 	}
 
-	h2, rev2, crev2, err := cm.hasher.HashByRev(0)
+	h2, rev2, err := cm.hasher.HashByRev(0)
 	if err != nil {
 		return err
 	}
@@ -186,14 +186,14 @@ func (cm *corruptionMonitor) periodicCheck() error {
 		cm.hasher.TriggerCorruptAlarm(id)
 	}
 
-	if h2.Hash != h.Hash && rev2 == rev && crev == crev2 {
+	if h2.Hash != h.Hash && rev2 == rev && h.CompactRevision == h2.CompactRevision {
 		cm.lg.Warn(
 			"found hash mismatch",
 			zap.Int64("revision-1", rev),
-			zap.Int64("compact-revision-1", crev),
+			zap.Int64("compact-revision-1", h.CompactRevision),
 			zap.Uint32("hash-1", h.Hash),
 			zap.Int64("revision-2", rev2),
-			zap.Int64("compact-revision-2", crev2),
+			zap.Int64("compact-revision-2", h2.CompactRevision),
 			zap.Uint32("hash-2", h2.Hash),
 		)
 		mismatch(uint64(cm.hasher.MemberId()))
@@ -219,10 +219,10 @@ func (cm *corruptionMonitor) periodicCheck() error {
 		}
 
 		// leader expects follower's latest compact revision less than or equal to leader's
-		if p.resp.CompactRevision > crev2 {
+		if p.resp.CompactRevision > h2.CompactRevision {
 			cm.lg.Warn(
 				"compact revision from follower must be less than or equal to leader's",
-				zap.Int64("leader-compact-revision", crev2),
+				zap.Int64("leader-compact-revision", h2.CompactRevision),
 				zap.Int64("follower-compact-revision", p.resp.CompactRevision),
 				zap.String("follower-peer-id", types.ID(id).String()),
 			)
@@ -230,10 +230,10 @@ func (cm *corruptionMonitor) periodicCheck() error {
 		}
 
 		// follower's compact revision is leader's old one, then hashes must match
-		if p.resp.CompactRevision == crev && p.resp.Hash != h.Hash {
+		if p.resp.CompactRevision == h.CompactRevision && p.resp.Hash != h.Hash {
 			cm.lg.Warn(
 				"same compact revision then hashes must match",
-				zap.Int64("leader-compact-revision", crev2),
+				zap.Int64("leader-compact-revision", h2.CompactRevision),
 				zap.Uint32("leader-hash", h.Hash),
 				zap.Int64("follower-compact-revision", p.resp.CompactRevision),
 				zap.Uint32("follower-hash", p.resp.Hash),
@@ -384,7 +384,7 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error unmarshalling request", http.StatusBadRequest)
 		return
 	}
-	hash, rev, compactRev, err := h.server.KV().HashByRev(req.Revision)
+	hash, rev, err := h.server.KV().HashByRev(req.Revision)
 	if err != nil {
 		h.lg.Warn(
 			"failed to get hashKV",
@@ -394,7 +394,7 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: hash.Hash, CompactRevision: compactRev}
+	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: hash.Hash, CompactRevision: hash.CompactRevision}
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
 		h.lg.Warn("failed to marshal hashKV response", zap.Error(err))

@@ -164,7 +164,8 @@ func (s *store) Hash() (hash uint32, revision int64, err error) {
 	return h, s.currentRev, err
 }
 
-func (s *store) HashByRev(rev int64) (hash KeyValueHash, currentRev int64, compactRev int64, err error) {
+func (s *store) HashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error) {
+	var compactRev int64
 	start := time.Now()
 
 	s.mu.RLock()
@@ -174,10 +175,10 @@ func (s *store) HashByRev(rev int64) (hash KeyValueHash, currentRev int64, compa
 
 	if rev > 0 && rev <= compactRev {
 		s.mu.RUnlock()
-		return KeyValueHash{}, 0, compactRev, ErrCompacted
+		return KeyValueHash{}, 0, ErrCompacted
 	} else if rev > 0 && rev > currentRev {
 		s.mu.RUnlock()
-		return KeyValueHash{}, currentRev, 0, ErrFutureRev
+		return KeyValueHash{}, currentRev, ErrFutureRev
 	}
 
 	if rev == 0 {
@@ -191,7 +192,7 @@ func (s *store) HashByRev(rev int64) (hash KeyValueHash, currentRev int64, compa
 	s.mu.RUnlock()
 	hash, err = unsafeHashByRev(tx, compactRev, rev, keep)
 	hashRevSec.Observe(time.Since(start).Seconds())
-	return hash, currentRev, compactRev, err
+	return hash, currentRev, err
 }
 
 func (s *store) updateCompactRev(rev int64) (<-chan struct{}, int64, error) {
