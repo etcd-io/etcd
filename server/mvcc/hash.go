@@ -22,7 +22,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 )
 
-func unsafeHashByRev(tx backend.ReadTx, lower, upper revision, keep map[revision]struct{}) (uint32, error) {
+func unsafeHashByRev(tx backend.ReadTx, lower, upper int64, keep map[revision]struct{}) (uint32, error) {
 	h := newKVHasher(lower, upper, keep)
 	err := tx.UnsafeForEach(buckets.Key, func(k, v []byte) error {
 		h.WriteKeyValue(k, v)
@@ -37,13 +37,13 @@ type kvHasher struct {
 	keep         map[revision]struct{}
 }
 
-func newKVHasher(lower, upper revision, keep map[revision]struct{}) kvHasher {
+func newKVHasher(lower, upper int64, keep map[revision]struct{}) kvHasher {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 	h.Write(buckets.Key.Name())
 	return kvHasher{
 		hash:  h,
-		lower: lower,
-		upper: upper,
+		lower: revision{main: lower},
+		upper: revision{main: upper},
 		keep:  keep,
 	}
 }

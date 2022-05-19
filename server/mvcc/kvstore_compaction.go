@@ -38,7 +38,7 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (uint32
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
 
 	batchNum := s.cfg.CompactionBatchLimit
-	h := newKVHasher(revision{main: prevCompactRev + 1}, revision{main: compactMainRev + 1}, keep)
+	h := newKVHasher(prevCompactRev+1, compactMainRev+1, keep)
 	last := make([]byte, 8+1+8)
 	for {
 		var rev revision
