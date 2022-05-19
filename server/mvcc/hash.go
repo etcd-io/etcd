@@ -33,7 +33,7 @@ func unsafeHashByRev(tx backend.ReadTx, lower, upper int64, keep map[revision]st
 
 type kvHasher struct {
 	hash         hash.Hash32
-	lower, upper revision
+	lower, upper int64
 	keep         map[revision]struct{}
 }
 
@@ -42,20 +42,22 @@ func newKVHasher(lower, upper int64, keep map[revision]struct{}) kvHasher {
 	h.Write(buckets.Key.Name())
 	return kvHasher{
 		hash:  h,
-		lower: revision{main: lower + 1},
-		upper: revision{main: upper + 1},
+		lower: lower,
+		upper: upper,
 		keep:  keep,
 	}
 }
 
 func (h *kvHasher) WriteKeyValue(k, v []byte) {
 	kr := bytesToRev(k)
-	if !h.upper.GreaterThan(kr) {
+	upper := revision{main: h.upper + 1}
+	if !upper.GreaterThan(kr) {
 		return
 	}
+	lower := revision{main: h.lower + 1}
 	// skip revisions that are scheduled for deletion
 	// due to compacting; don't skip if there isn't one.
-	if h.lower.GreaterThan(kr) && len(h.keep) > 0 {
+	if lower.GreaterThan(kr) && len(h.keep) > 0 {
 		if _, ok := h.keep[kr]; !ok {
 			return
 		}
