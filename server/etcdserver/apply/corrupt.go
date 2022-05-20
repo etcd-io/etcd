@@ -29,30 +29,30 @@ type applierV3Corrupt struct {
 
 func newApplierV3Corrupt(a applierV3) *applierV3Corrupt { return &applierV3Corrupt{a} }
 
-func (a *applierV3Corrupt) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (a *applierV3Corrupt) Put(_ context.Context, _ mvcc.TxnWrite, _ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	return nil, nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) Range(ctx context.Context, txn mvcc.TxnRead, p *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (a *applierV3Corrupt) Range(_ context.Context, _ mvcc.TxnRead, _ *pb.RangeRequest) (*pb.RangeResponse, error) {
 	return nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) DeleteRange(txn mvcc.TxnWrite, p *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+func (a *applierV3Corrupt) DeleteRange(_ mvcc.TxnWrite, _ *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	return nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (a *applierV3Corrupt) Txn(_ context.Context, _ *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
 	return nil, nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
+func (a *applierV3Corrupt) Compaction(_ *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
 	return nil, nil, nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
+func (a *applierV3Corrupt) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	return nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+func (a *applierV3Corrupt) LeaseRevoke(_ *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
 	return nil, errors.ErrCorrupt
 }

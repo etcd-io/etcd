@@ -108,49 +108,6 @@ func (aa *authApplierV3) DeleteRange(txn mvcc.TxnWrite, r *pb.DeleteRangeRequest
 	return aa.applierV3.DeleteRange(txn, r)
 }
 
-func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.RequestOp) error {
-	for _, requ := range reqs {
-		switch tv := requ.Request.(type) {
-		case *pb.RequestOp_RequestRange:
-			if tv.RequestRange == nil {
-				continue
-			}
-
-			if err := as.IsRangePermitted(ai, tv.RequestRange.Key, tv.RequestRange.RangeEnd); err != nil {
-				return err
-			}
-
-		case *pb.RequestOp_RequestPut:
-			if tv.RequestPut == nil {
-				continue
-			}
-
-			if err := as.IsPutPermitted(ai, tv.RequestPut.Key); err != nil {
-				return err
-			}
-
-		case *pb.RequestOp_RequestDeleteRange:
-			if tv.RequestDeleteRange == nil {
-				continue
-			}
-
-			if tv.RequestDeleteRange.PrevKv {
-				err := as.IsRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
-				if err != nil {
-					return err
-				}
-			}
-
-			err := as.IsDeleteRangePermitted(ai, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 func (aa *authApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
 	if err := txn.CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
 		return nil, nil, err
@@ -166,9 +123,9 @@ func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevoke
 }
 
 func (aa *authApplierV3) checkLeasePuts(leaseID lease.LeaseID) error {
-	lease := aa.lessor.Lookup(leaseID)
-	if lease != nil {
-		for _, key := range lease.Keys() {
+	l := aa.lessor.Lookup(leaseID)
+	if l != nil {
+		for _, key := range l.Keys() {
 			if err := aa.as.IsPutPermitted(&aa.authInfo, []byte(key)); err != nil {
 				return err
 			}
