@@ -54,15 +54,14 @@ var (
 	// so that tests can set a different segment size.
 	SegmentSizeBytes int64 = 64 * 1000 * 1000 // 64MB
 
-	ErrMetadataConflict             = errors.New("wal: conflicting metadata found")
-	ErrFileNotFound                 = errors.New("wal: file not found")
-	ErrCRCMismatch                  = errors.New("wal: crc mismatch")
-	ErrSnapshotMismatch             = errors.New("wal: snapshot mismatch")
-	ErrSnapshotNotFound             = errors.New("wal: snapshot not found")
-	ErrSliceOutOfRange              = errors.New("wal: slice bounds out of range")
-	ErrMaxWALEntrySizeLimitExceeded = errors.New("wal: max entry size limit exceeded")
-	ErrDecoderNotFound              = errors.New("wal: decoder not found")
-	crcTable                        = crc32.MakeTable(crc32.Castagnoli)
+	ErrMetadataConflict = errors.New("wal: conflicting metadata found")
+	ErrFileNotFound     = errors.New("wal: file not found")
+	ErrCRCMismatch      = errors.New("wal: crc mismatch")
+	ErrSnapshotMismatch = errors.New("wal: snapshot mismatch")
+	ErrSnapshotNotFound = errors.New("wal: snapshot not found")
+	ErrSliceOutOfRange  = errors.New("wal: slice bounds out of range")
+	ErrDecoderNotFound  = errors.New("wal: decoder not found")
+	crcTable            = crc32.MakeTable(crc32.Castagnoli)
 )
 
 // WAL is a logical representation of the stable storage.

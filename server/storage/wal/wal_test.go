@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -368,48 +369,56 @@ func TestSaveWithCut(t *testing.T) {
 	}
 }
 
-func TestRecover(t *testing.T) {
-	p := t.TempDir()
+func TestRecoverWithDifferentEntrySizes(t *testing.T) {
+	zeroMb := 0
+	oneMb := 1 * 1024 * 1024
+	twentyMb := 20 * 1024 * 1024
+	for _, entrySize := range []int{zeroMb, oneMb, twentyMb} {
+		t.Run(fmt.Sprintf("WithEntrySize%d", entrySize), func(t *testing.T) {
 
-	w, err := Create(zaptest.NewLogger(t), p, []byte("metadata"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
-		t.Fatal(err)
-	}
-	ents := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}, {Index: 2, Term: 2, Data: []byte{2}}}
-	if err = w.Save(raftpb.HardState{}, ents); err != nil {
-		t.Fatal(err)
-	}
-	sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
-	for _, s := range sts {
-		if err = w.Save(s, nil); err != nil {
-			t.Fatal(err)
-		}
-	}
-	w.Close()
+			p := t.TempDir()
 
-	if w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
-		t.Fatal(err)
-	}
-	metadata, state, entries, err := w.ReadAll()
-	if err != nil {
-		t.Fatal(err)
-	}
+			w, err := Create(zaptest.NewLogger(t), p, []byte("metadata"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+				t.Fatal(err)
+			}
+			ents := []raftpb.Entry{{Index: 1, Term: 1, Data: generateRandData(t, entrySize)}, {Index: 2, Term: 2, Data: generateRandData(t, entrySize)}}
+			if err = w.Save(raftpb.HardState{}, ents); err != nil {
+				t.Fatal(err)
+			}
+			sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
+			for _, s := range sts {
+				if err = w.Save(s, nil); err != nil {
+					t.Fatal(err)
+				}
+			}
+			w.Close()
 
-	if !bytes.Equal(metadata, []byte("metadata")) {
-		t.Errorf("metadata = %s, want %s", metadata, "metadata")
+			if w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
+				t.Fatal(err)
+			}
+			metadata, state, entries, err := w.ReadAll()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !bytes.Equal(metadata, []byte("metadata")) {
+				t.Errorf("metadata = %s, want %s", metadata, "metadata")
+			}
+			if !reflect.DeepEqual(entries, ents) {
+				t.Errorf("ents = %+v, want %+v", entries, ents)
+			}
+			// only the latest state is recorded
+			s := sts[len(sts)-1]
+			if !reflect.DeepEqual(state, s) {
+				t.Errorf("state = %+v, want %+v", state, s)
+			}
+			w.Close()
+		})
 	}
-	if !reflect.DeepEqual(entries, ents) {
-		t.Errorf("ents = %+v, want %+v", entries, ents)
-	}
-	// only the latest state is recorded
-	s := sts[len(sts)-1]
-	if !reflect.DeepEqual(state, s) {
-		t.Errorf("state = %+v, want %+v", state, s)
-	}
-	w.Close()
 }
 
 func TestSearchIndex(t *testing.T) {
@@ -1025,4 +1034,13 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func generateRandData(t *testing.T, size int) []byte {
+	res := make([]byte, 0, size)
+	_, err := rand.Read(res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res
 }
