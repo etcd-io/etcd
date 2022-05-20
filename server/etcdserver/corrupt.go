@@ -27,7 +27,6 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 
 	"go.uber.org/zap"
@@ -45,13 +44,13 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 
 	lg.Info(
 		"starting initial corruption check",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 		zap.Duration("timeout", s.Cfg.ReqTimeout()),
 	)
 
 	h, rev, crev, err := s.kv.HashByRev(0)
 	if err != nil {
-		return fmt.Errorf("%s failed to fetch hash (%v)", s.ID(), err)
+		return fmt.Errorf("%s failed to fetch hash (%v)", s.MemberId(), err)
 	}
 	peers := s.getPeerHashKVs(rev)
 	mismatch := 0
@@ -59,7 +58,7 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 		if p.resp != nil {
 			peerID := types.ID(p.resp.Header.MemberId)
 			fields := []zap.Field{
-				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-id", s.MemberId().String()),
 				zap.Int64("local-member-revision", rev),
 				zap.Int64("local-member-compact-revision", crev),
 				zap.Uint32("local-member-hash", h),
@@ -87,7 +86,7 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 			case rpctypes.ErrFutureRev:
 				lg.Warn(
 					"cannot fetch hash from slow remote peer",
-					zap.String("local-member-id", s.ID().String()),
+					zap.String("local-member-id", s.MemberId().String()),
 					zap.Int64("local-member-revision", rev),
 					zap.Int64("local-member-compact-revision", crev),
 					zap.Uint32("local-member-hash", h),
@@ -98,7 +97,7 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 			case rpctypes.ErrCompacted:
 				lg.Warn(
 					"cannot fetch hash from remote peer; local member is behind",
-					zap.String("local-member-id", s.ID().String()),
+					zap.String("local-member-id", s.MemberId().String()),
 					zap.Int64("local-member-revision", rev),
 					zap.Int64("local-member-compact-revision", crev),
 					zap.Uint32("local-member-hash", h),
@@ -110,12 +109,12 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 		}
 	}
 	if mismatch > 0 {
-		return fmt.Errorf("%s found data inconsistency with peers", s.ID())
+		return fmt.Errorf("%s found data inconsistency with peers", s.MemberId())
 	}
 
 	lg.Info(
 		"initial corruption checking passed; no corruption",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 	)
 	return nil
 }
@@ -129,7 +128,7 @@ func (s *EtcdServer) monitorKVHash() {
 	lg := s.Logger()
 	lg.Info(
 		"enabled corruption checking",
-		zap.String("local-member-id", s.ID().String()),
+		zap.String("local-member-id", s.MemberId().String()),
 		zap.Duration("interval", t),
 	)
 
@@ -195,7 +194,7 @@ func (s *EtcdServer) checkHashKV() error {
 			zap.Int64("compact-revision-2", crev2),
 			zap.Uint32("hash-2", h2),
 		)
-		mismatch(uint64(s.ID()))
+		mismatch(uint64(s.MemberId()))
 	}
 
 	checkedCount := 0
@@ -262,7 +261,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 	members := s.cluster.Members()
 	peers := make([]peerInfo, 0, len(members))
 	for _, m := range members {
-		if m.ID == s.ID() {
+		if m.ID == s.MemberId() {
 			continue
 		}
 		peers = append(peers, peerInfo{id: m.ID, eps: m.PeerURLs})
@@ -288,7 +287,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 			}
 			lg.Warn(
 				"failed hash kv request",
-				zap.String("local-member-id", s.ID().String()),
+				zap.String("local-member-id", s.MemberId().String()),
 				zap.Int64("requested-revision", rev),
 				zap.String("remote-peer-endpoint", ep),
 				zap.Error(lastErr),
@@ -301,40 +300,6 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 		}
 	}
 	return resps
-}
-
-type applierV3Corrupt struct {
-	applierV3
-}
-
-func newApplierV3Corrupt(a applierV3) *applierV3Corrupt { return &applierV3Corrupt{a} }
-
-func (a *applierV3Corrupt) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
-	return nil, nil, ErrCorrupt
-}
-
-func (a *applierV3Corrupt) Range(ctx context.Context, txn mvcc.TxnRead, p *pb.RangeRequest) (*pb.RangeResponse, error) {
-	return nil, ErrCorrupt
-}
-
-func (a *applierV3Corrupt) DeleteRange(txn mvcc.TxnWrite, p *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	return nil, ErrCorrupt
-}
-
-func (a *applierV3Corrupt) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return nil, nil, ErrCorrupt
-}
-
-func (a *applierV3Corrupt) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
-	return nil, nil, nil, ErrCorrupt
-}
-
-func (a *applierV3Corrupt) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	return nil, ErrCorrupt
-}
-
-func (a *applierV3Corrupt) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	return nil, ErrCorrupt
 }
 
 const PeerHashKVPath = "/members/hashkv"

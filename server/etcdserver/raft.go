@@ -61,11 +61,11 @@ func init() {
 	}))
 }
 
-// apply contains entries, snapshot to be applied. Once
-// an apply is consumed, the entries will be persisted to
+// toApply contains entries, snapshot to be applied. Once
+// an toApply is consumed, the entries will be persisted to
 // to raft storage concurrently; the application must read
 // raftDone before assuming the raft messages are stable.
-type apply struct {
+type toApply struct {
 	entries  []raftpb.Entry
 	snapshot raftpb.Snapshot
 	// notifyc synchronizes etcd server applies with the raft node
@@ -82,7 +82,7 @@ type raftNode struct {
 	msgSnapC chan raftpb.Message
 
 	// a chan to send out apply
-	applyc chan apply
+	applyc chan toApply
 
 	// a chan to send out readState
 	readStateC chan raft.ReadState
@@ -134,7 +134,7 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 		td:         contention.NewTimeoutDetector(2 * cfg.heartbeat),
 		readStateC: make(chan raft.ReadState, 1),
 		msgSnapC:   make(chan raftpb.Message, maxInFlightMsgSnap),
-		applyc:     make(chan apply),
+		applyc:     make(chan toApply),
 		stopped:    make(chan struct{}),
 		done:       make(chan struct{}),
 	}
@@ -201,7 +201,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 
 				notifyc := make(chan struct{}, 1)
-				ap := apply{
+				ap := toApply{
 					entries:  rd.CommittedEntries,
 					snapshot: rd.Snapshot,
 					notifyc:  notifyc,
@@ -278,7 +278,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// changes to be applied before sending messages.
 					// Otherwise we might incorrectly count votes (e.g. votes from removed members).
 					// Also slow machine's follower raft-layer could proceed to become the leader
-					// on its own single-node cluster, before apply-layer applies the config change.
+					// on its own single-node cluster, before toApply-layer applies the config change.
 					// We simply wait for ALL pending entries to be applied for now.
 					// We might improve this later on if it causes unnecessary long blocking issues.
 					waitApply := false
@@ -314,7 +314,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 	}()
 }
 
-func updateCommittedIndex(ap *apply, rh *raftReadyHandler) {
+func updateCommittedIndex(ap *toApply, rh *raftReadyHandler) {
 	var ci uint64
 	if len(ap.entries) != 0 {
 		ci = ap.entries[len(ap.entries)-1].Index
@@ -372,7 +372,7 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 	return ms
 }
 
-func (r *raftNode) apply() chan apply {
+func (r *raftNode) apply() chan toApply {
 	return r.applyc
 }
 

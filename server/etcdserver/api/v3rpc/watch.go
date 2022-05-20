@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 
 	"go.uber.org/zap"
@@ -41,7 +42,7 @@ type watchServer struct {
 
 	maxRequestBytes int
 
-	sg        etcdserver.RaftStatusGetter
+	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
 	ag        AuthGetter
 }
@@ -52,7 +53,7 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 		lg: s.Cfg.Logger,
 
 		clusterID: int64(s.Cluster().ID()),
-		memberID:  int64(s.ID()),
+		memberID:  int64(s.MemberId()),
 
 		maxRequestBytes: int(s.Cfg.MaxRequestBytes + grpcOverheadBytes),
 
@@ -124,7 +125,7 @@ type serverWatchStream struct {
 
 	maxRequestBytes int
 
-	sg        etcdserver.RaftStatusGetter
+	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
 	ag        AuthGetter
 
