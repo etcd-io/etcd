@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -132,4 +133,48 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	assert.NoError(t, err, "error on alarm list")
 	// TODO: Investigate why MemberID is 0?
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: 0}}, alarmResponse.Alarms)
+}
+
+func TestCompactHashCheckDetectCorruption(t *testing.T) {
+	e2e.BeforeTest(t)
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize: 3,
+		KeepDataDir: true,
+	})
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	t.Cleanup(func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+
+	cc := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+
+	for i := 0; i < 10; i++ {
+		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
+		assert.NoError(t, err, "error on put")
+	}
+	members, err := cc.MemberList()
+	assert.NoError(t, err, "error on member list")
+	var memberID uint64
+	for _, m := range members.Members {
+		if m.Name == epc.Procs[0].Config().Name {
+			memberID = m.ID
+		}
+	}
+
+	epc.Procs[0].Stop()
+	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
+	assert.NoError(t, err)
+
+	err = epc.Procs[0].Restart()
+	assert.NoError(t, err)
+	_, err = cc.Compact(5, config.CompactOption{})
+	assert.NoError(t, err)
+	time.Sleep(etcdserver.CompactHashCheckInterval * 11 / 10)
+	alarmResponse, err := cc.AlarmList()
+	assert.NoError(t, err, "error on alarm list")
+	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: memberID}}, alarmResponse.Alarms)
 }

@@ -111,7 +111,8 @@ var (
 	// monitorVersionInterval should be smaller than the timeout
 	// on the connection. Or we will not be able to reuse the connection
 	// (since it will timeout).
-	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
+	monitorVersionInterval   = rafthttp.ConnWriteTimeout - time.Second
+	CompactHashCheckInterval = 15 * time.Second
 
 	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
 	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
@@ -372,7 +373,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		CompactionSleepInterval: cfg.CompactionSleepInterval,
 	}
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
-	srv.corruptionChecker = NewCorruptionChecker(cfg.Logger, srv)
+	srv.corruptionChecker = newCorruptionChecker(cfg.Logger, srv, srv.kv.HashStorage())
 
 	srv.authStore = auth.NewAuthStore(srv.Logger(), schema.NewAuthBackend(srv.Logger(), srv.be), tp, int(cfg.BcryptCost))
 
@@ -532,6 +533,7 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(s.monitorStorageVersion)
 	s.GoAttach(s.linearizableReadLoop)
 	s.GoAttach(s.monitorKVHash)
+	s.GoAttach(s.monitorCompactHash)
 	s.GoAttach(s.monitorDowngrade)
 }
 
@@ -2213,6 +2215,20 @@ func (s *EtcdServer) monitorKVHash() {
 		if err := s.corruptionChecker.PeriodicCheck(); err != nil {
 			lg.Warn("failed to check hash KV", zap.Error(err))
 		}
+	}
+}
+
+func (s *EtcdServer) monitorCompactHash() {
+	for {
+		select {
+		case <-time.After(CompactHashCheckInterval):
+		case <-s.stopping:
+			return
+		}
+		if !s.isLeader() {
+			continue
+		}
+		s.corruptionChecker.CompactHashCheck()
 	}
 }
 
