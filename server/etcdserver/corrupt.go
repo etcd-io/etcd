@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -36,12 +38,16 @@ import (
 type CorruptionChecker interface {
 	InitialCheck() error
 	PeriodicCheck() error
+	CompactHashCheck()
 }
 
 type corruptionChecker struct {
 	lg *zap.Logger
 
 	hasher Hasher
+
+	mux                   sync.RWMutex
+	latestRevisionChecked int64
 }
 
 type Hasher interface {
@@ -53,10 +59,10 @@ type Hasher interface {
 	TriggerCorruptAlarm(uint64)
 }
 
-func NewCorruptionChecker(lg *zap.Logger, s *EtcdServer) *corruptionChecker {
+func newCorruptionChecker(lg *zap.Logger, s *EtcdServer, storage mvcc.HashStorage) *corruptionChecker {
 	return &corruptionChecker{
 		lg:     lg,
-		hasher: hasherAdapter{s, s.KV().HashStorage()},
+		hasher: hasherAdapter{s, storage},
 	}
 }
 
@@ -249,6 +255,85 @@ func (cm *corruptionChecker) PeriodicCheck() error {
 	}
 	cm.lg.Info("finished peer corruption check", zap.Int("number-of-peers-checked", checkedCount))
 	return nil
+}
+
+func (cm *corruptionChecker) CompactHashCheck() {
+	cm.lg.Info("starting compact hash check",
+		zap.String("local-member-id", cm.hasher.MemberId().String()),
+		zap.Duration("timeout", cm.hasher.ReqTimeout()),
+	)
+	hashes := cm.uncheckedRevisions()
+	// Assume that revisions are ordered from largest to smallest
+	for i, hash := range hashes {
+		peers := cm.hasher.PeerHashByRev(hash.Revision)
+		if len(peers) == 0 {
+			continue
+		}
+		peersChecked := 0
+		for _, p := range peers {
+			if p.resp == nil || p.resp.CompactRevision != hash.CompactRevision {
+				continue
+			}
+
+			// follower's compact revision is leader's old one, then hashes must match
+			if p.resp.Hash != hash.Hash {
+				cm.hasher.TriggerCorruptAlarm(uint64(p.id))
+				cm.lg.Error("failed compaction hash check",
+					zap.Int64("revision", hash.Revision),
+					zap.Int64("leader-compact-revision", hash.CompactRevision),
+					zap.Uint32("leader-hash", hash.Hash),
+					zap.Int64("follower-compact-revision", p.resp.CompactRevision),
+					zap.Uint32("follower-hash", p.resp.Hash),
+					zap.String("follower-peer-id", p.id.String()),
+				)
+				return
+			}
+			peersChecked++
+			cm.lg.Info("successfully checked hash on follower",
+				zap.Int64("revision", hash.Revision),
+				zap.String("peer-id", p.id.String()),
+			)
+		}
+		if len(peers) == peersChecked {
+			cm.lg.Info("successfully checked hash on whole cluster",
+				zap.Int("number-of-peers-checked", peersChecked),
+				zap.Int64("revision", hash.Revision),
+			)
+			cm.mux.Lock()
+			if hash.Revision > cm.latestRevisionChecked {
+				cm.latestRevisionChecked = hash.Revision
+			}
+			cm.mux.Unlock()
+			cm.lg.Info("finished compaction hash check", zap.Int("number-of-hashes-checked", i+1))
+			return
+		} else {
+			cm.lg.Warn("skipped checking hash; was not able to check all peers",
+				zap.Int("number-of-peers-checked", peersChecked),
+				zap.Int("number-of-peers", len(peers)),
+				zap.Int64("revision", hash.Revision),
+			)
+		}
+	}
+	cm.lg.Info("finished compaction hash check", zap.Int("number-of-hashes-checked", len(hashes)))
+	return
+}
+
+func (cm *corruptionChecker) uncheckedRevisions() []mvcc.KeyValueHash {
+	cm.mux.RLock()
+	lastRevisionChecked := cm.latestRevisionChecked
+	cm.mux.RUnlock()
+
+	hashes := cm.hasher.Hashes()
+	// Sort in descending order
+	sort.Slice(hashes, func(i, j int) bool {
+		return hashes[i].Revision > hashes[j].Revision
+	})
+	for i, hash := range hashes {
+		if hash.Revision <= lastRevisionChecked {
+			return hashes[:i]
+		}
+	}
+	return hashes
 }
 
 func (s *EtcdServer) triggerCorruptAlarm(id uint64) {

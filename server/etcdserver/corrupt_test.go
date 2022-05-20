@@ -221,11 +221,101 @@ func TestPeriodicCheck(t *testing.T) {
 	}
 }
 
+func TestCompactHashCheck(t *testing.T) {
+	tcs := []struct {
+		name                string
+		hasher              fakeHasher
+		lastRevisionChecked int64
+
+		expectError               bool
+		expectCorrupt             bool
+		expectActions             []string
+		expectLastRevisionChecked int64
+	}{
+		{
+			name:          "No hashes",
+			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()"},
+		},
+		{
+			name: "No peers, check new checked from largest to smallest",
+			hasher: fakeHasher{
+				hashes: []mvcc.KeyValueHash{{Revision: 1}, {Revision: 2}, {Revision: 3}, {Revision: 4}},
+			},
+			lastRevisionChecked:       2,
+			expectActions:             []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(4)", "PeerHashByRev(3)"},
+			expectLastRevisionChecked: 2,
+		},
+		{
+			name: "Peer error",
+			hasher: fakeHasher{
+				hashes:     []mvcc.KeyValueHash{{Revision: 1}, {Revision: 2}},
+				peerHashes: []*peerHashKVResp{{err: fmt.Errorf("failed getting hash")}},
+			},
+			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(2)", "PeerHashByRev(1)"},
+		},
+		{
+			name: "Peer returned different compaction revision is skipped",
+			hasher: fakeHasher{
+				hashes:     []mvcc.KeyValueHash{{Revision: 1, CompactRevision: 1}, {Revision: 2, CompactRevision: 2}},
+				peerHashes: []*peerHashKVResp{{resp: &pb.HashKVResponse{CompactRevision: 3}}},
+			},
+			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(2)", "PeerHashByRev(1)"},
+		},
+		{
+			name: "Peer returned same compaction revision but different hash triggers alarm",
+			hasher: fakeHasher{
+				hashes:     []mvcc.KeyValueHash{{Revision: 1, CompactRevision: 1, Hash: 1}, {Revision: 2, CompactRevision: 1, Hash: 2}},
+				peerHashes: []*peerHashKVResp{{peerInfo: peerInfo{id: 42}, resp: &pb.HashKVResponse{CompactRevision: 1, Hash: 3}}},
+			},
+			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(2)", "TriggerCorruptAlarm(42)"},
+			expectCorrupt: true,
+		},
+		{
+			name: "Peer returned same hash bumps last revision checked",
+			hasher: fakeHasher{
+				hashes:     []mvcc.KeyValueHash{{Revision: 1, CompactRevision: 1, Hash: 1}, {Revision: 2, CompactRevision: 1, Hash: 1}},
+				peerHashes: []*peerHashKVResp{{resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{MemberId: 42}, CompactRevision: 1, Hash: 1}}},
+			},
+			expectActions:             []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(2)"},
+			expectLastRevisionChecked: 2,
+		},
+		{
+			name: "Only one peer succeeded check",
+			hasher: fakeHasher{
+				hashes: []mvcc.KeyValueHash{{Revision: 1, CompactRevision: 1, Hash: 1}},
+				peerHashes: []*peerHashKVResp{
+					{resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{MemberId: 42}, CompactRevision: 1, Hash: 1}},
+					{err: fmt.Errorf("failed getting hash")},
+				},
+			},
+			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(1)"},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			monitor := corruptionChecker{
+				latestRevisionChecked: tc.lastRevisionChecked,
+				lg:                    zaptest.NewLogger(t),
+				hasher:                &tc.hasher,
+			}
+			monitor.CompactHashCheck()
+			if tc.hasher.alarmTriggered != tc.expectCorrupt {
+				t.Errorf("Unexpected corrupt triggered, got: %v, expected?: %v", tc.hasher.alarmTriggered, tc.expectCorrupt)
+			}
+			if tc.expectLastRevisionChecked != monitor.latestRevisionChecked {
+				t.Errorf("Unexpected last revision checked, got: %v, expected?: %v", monitor.latestRevisionChecked, tc.expectLastRevisionChecked)
+			}
+			assert.Equal(t, tc.expectActions, tc.hasher.actions)
+		})
+	}
+}
+
 type fakeHasher struct {
 	peerHashes             []*peerHashKVResp
 	hashByRevIndex         int
 	hashByRevResponses     []hashByRev
 	linearizableReadNotify error
+	hashes                 []mvcc.KeyValueHash
 
 	alarmTriggered bool
 	actions        []string
@@ -251,8 +341,14 @@ func (f *fakeHasher) HashByRev(rev int64) (hash mvcc.KeyValueHash, revision int6
 	return hashByRev.hash, hashByRev.revision, hashByRev.err
 }
 
-func (f *fakeHasher) Store(valueHash mvcc.KeyValueHash) {
-	panic("not implemented")
+func (f *fakeHasher) Store(hash mvcc.KeyValueHash) {
+	f.actions = append(f.actions, fmt.Sprintf("Store(%v)", hash))
+	f.hashes = append(f.hashes, hash)
+}
+
+func (f *fakeHasher) Hashes() []mvcc.KeyValueHash {
+	f.actions = append(f.actions, "Hashes()")
+	return f.hashes
 }
 
 func (f *fakeHasher) ReqTimeout() time.Duration {
