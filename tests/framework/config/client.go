@@ -43,6 +43,10 @@ type DeleteOptions struct {
 	End     string
 }
 
+type TxnOptions struct {
+	Interactive bool
+}
+
 type CompactOption struct {
 	Physical bool
 	Timeout  time.Duration

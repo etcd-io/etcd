@@ -21,6 +21,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 )
 
 type RequestV2 pb.Request
@@ -116,7 +117,7 @@ func (a *reqV2HandlerEtcdServer) processRaftRequest(ctx context.Context, r *Requ
 		return Response{}, a.s.parseProposeCtxErr(ctx.Err(), start)
 	case <-a.s.stopping:
 	}
-	return Response{}, ErrStopped
+	return Response{}, errors.ErrStopped
 }
 
 func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
@@ -157,7 +158,7 @@ func (r *RequestV2) Handle(ctx context.Context, v2api RequestV2Handler) (Respons
 	case "HEAD":
 		return v2api.Head(ctx, r)
 	}
-	return Response{}, ErrUnknownMethod
+	return Response{}, errors.ErrUnknownMethod
 }
 
 func (r *RequestV2) String() string {

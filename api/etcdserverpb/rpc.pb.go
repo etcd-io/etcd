@@ -275,7 +275,8 @@ type ResponseHeader struct {
 	ClusterId uint64 `protobuf:"varint,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
 	// member_id is the ID of the member which sent the response.
 	MemberId uint64 `protobuf:"varint,2,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"`
-	// revision is the key-value store revision when the request was applied.
+	// revision is the key-value store revision when the request was applied, and it's
+	// unset (so 0) in case of calls not interacting with key-value store.
 	// For watch progress responses, the header.revision indicates progress. All future events
 	// received in this stream are guaranteed to have a higher revision number than the
 	// header.revision number.

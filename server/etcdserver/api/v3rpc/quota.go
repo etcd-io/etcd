@@ -53,7 +53,7 @@ func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
 func NewQuotaKVServer(s *etcdserver.EtcdServer) pb.KVServer {
 	return &quotaKVServer{
 		NewKVServer(s),
-		quotaAlarmer{storage.NewBackendQuota(s.Cfg, s.Backend(), "kv"), s, s.ID()},
+		quotaAlarmer{newBackendQuota(s, "kv"), s, s.MemberId()},
 	}
 }
 
@@ -86,6 +86,10 @@ func (s *quotaLeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequ
 func NewQuotaLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {
 	return &quotaLeaseServer{
 		NewLeaseServer(s),
-		quotaAlarmer{storage.NewBackendQuota(s.Cfg, s.Backend(), "lease"), s, s.ID()},
+		quotaAlarmer{newBackendQuota(s, "lease"), s, s.MemberId()},
 	}
+}
+
+func newBackendQuota(s *etcdserver.EtcdServer, name string) storage.Quota {
+	return storage.NewBackendQuota(s.Logger(), s.Cfg.QuotaBackendBytes, s.Backend(), name)
 }

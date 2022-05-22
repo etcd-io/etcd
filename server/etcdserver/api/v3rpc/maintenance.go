@@ -27,6 +27,8 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/apply"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -69,7 +71,7 @@ type ClusterStatusGetter interface {
 
 type maintenanceServer struct {
 	lg  *zap.Logger
-	rg  etcdserver.RaftStatusGetter
+	rg  apply.RaftStatusGetter
 	kg  KVGetter
 	bg  BackendGetter
 	a   Alarmer
@@ -241,7 +243,7 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		resp.StorageVersion = storageVersion.String()
 	}
 	if resp.Leader == raft.None {
-		resp.Errors = append(resp.Errors, etcdserver.ErrNoLeader.Error())
+		resp.Errors = append(resp.Errors, errors.ErrNoLeader.Error())
 	}
 	for _, a := range ms.a.Alarms() {
 		resp.Errors = append(resp.Errors, a.String())
@@ -250,7 +252,7 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 }
 
 func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
-	if ms.rg.ID() != ms.rg.Leader() {
+	if ms.rg.MemberId() != ms.rg.Leader() {
 		return nil, rpctypes.ErrGRPCNotLeader
 	}
 

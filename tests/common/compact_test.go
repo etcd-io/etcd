@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -42,9 +43,11 @@ func TestCompact(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3})
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 			defer clus.Close()
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 				for i := range kvs {
 					if err := clus.Client().Put(kvs[i].Key, kvs[i].Val, config.PutOptions{}); err != nil {
