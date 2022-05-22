@@ -80,6 +80,10 @@ type ServerConfig struct {
 	TickMs        uint
 	ElectionTicks int
 
+	// WaitClusterReadyTimeout is the maximum time to wait for the
+	// cluster to be ready on startup before serving client requests.
+	WaitClusterReadyTimeout time.Duration
+
 	// InitialElectionTickAdvance is true, then local member fast-forwards
 	// election ticks to speed up "initial" leader election trigger. This
 	// benefits the case of larger election ticks. For instance, cross

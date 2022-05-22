@@ -49,16 +49,17 @@ const (
 	ClusterStateFlagNew      = "new"
 	ClusterStateFlagExisting = "existing"
 
-	DefaultName                  = "default"
-	DefaultMaxSnapshots          = 5
-	DefaultMaxWALs               = 5
-	DefaultMaxTxnOps             = uint(128)
-	DefaultWarningApplyDuration  = 100 * time.Millisecond
-	DefaultMaxRequestBytes       = 1.5 * 1024 * 1024
-	DefaultGRPCKeepAliveMinTime  = 5 * time.Second
-	DefaultGRPCKeepAliveInterval = 2 * time.Hour
-	DefaultGRPCKeepAliveTimeout  = 20 * time.Second
-	DefaultDowngradeCheckTime    = 5 * time.Second
+	DefaultName                    = "default"
+	DefaultMaxSnapshots            = 5
+	DefaultMaxWALs                 = 5
+	DefaultMaxTxnOps               = uint(128)
+	DefaultWarningApplyDuration    = 100 * time.Millisecond
+	DefaultMaxRequestBytes         = 1.5 * 1024 * 1024
+	DefaultGRPCKeepAliveMinTime    = 5 * time.Second
+	DefaultGRPCKeepAliveInterval   = 2 * time.Hour
+	DefaultGRPCKeepAliveTimeout    = 20 * time.Second
+	DefaultDowngradeCheckTime      = 5 * time.Second
+	DefaultWaitClusterReadyTimeout = 5 * time.Second
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
@@ -214,14 +215,15 @@ type Config struct {
 	// Note that cipher suites are prioritized in the given order.
 	CipherSuites []string `json:"cipher-suites"`
 
-	ClusterState          string `json:"initial-cluster-state"`
-	DNSCluster            string `json:"discovery-srv"`
-	DNSClusterServiceName string `json:"discovery-srv-name"`
-	Dproxy                string `json:"discovery-proxy"`
-	Durl                  string `json:"discovery"`
-	InitialCluster        string `json:"initial-cluster"`
-	InitialClusterToken   string `json:"initial-cluster-token"`
-	StrictReconfigCheck   bool   `json:"strict-reconfig-check"`
+	ClusterState                        string        `json:"initial-cluster-state"`
+	DNSCluster                          string        `json:"discovery-srv"`
+	DNSClusterServiceName               string        `json:"discovery-srv-name"`
+	Dproxy                              string        `json:"discovery-proxy"`
+	Durl                                string        `json:"discovery"`
+	InitialCluster                      string        `json:"initial-cluster"`
+	InitialClusterToken                 string        `json:"initial-cluster-token"`
+	StrictReconfigCheck                 bool          `json:"strict-reconfig-check"`
+	ExperimentalWaitClusterReadyTimeout time.Duration `json:"wait-cluster-ready-timeout"`
 
 	// EnableV2 exposes the deprecated V2 API surface.
 	// TODO: Delete in 3.6 (https://github.com/etcd-io/etcd/issues/12913)
@@ -465,8 +467,9 @@ func NewConfig() *Config {
 		APUrls: []url.URL{*apurl},
 		ACUrls: []url.URL{*acurl},
 
-		ClusterState:        ClusterStateFlagNew,
-		InitialClusterToken: "etcd-cluster",
+		ClusterState:                        ClusterStateFlagNew,
+		InitialClusterToken:                 "etcd-cluster",
+		ExperimentalWaitClusterReadyTimeout: DefaultWaitClusterReadyTimeout,
 
 		StrictReconfigCheck: DefaultStrictReconfigCheck,
 		Metrics:             "basic",

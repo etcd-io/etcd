@@ -246,6 +246,8 @@ Experimental feature:
     Enable the write transaction to use a shared buffer in its readonly check operations.
   --experimental-bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
+  --experimental-wait-cluster-ready-timeout '5s'
+    Set the maximum time duration to wait for the cluster to be ready.
 
 Unsafe feature:
   --force-new-cluster 'false'
