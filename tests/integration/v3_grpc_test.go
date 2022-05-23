@@ -1923,7 +1923,71 @@ func TestV3LargeRequests(t *testing.T) {
 					t.Errorf("#%d: range expected no error, got %v", i, err)
 				}
 			}
+		})
+	}
+}
 
+// TestV3AdditionalGRPCOptions ensures that configurable GRPCAdditionalServerOptions works as intended.
+func TestV3AdditionalGRPCOptions(t *testing.T) {
+	integration.BeforeTest(t)
+	tests := []struct {
+		name            string
+		maxRequestBytes uint
+		grpcOpts        []grpc.ServerOption
+		valueSize       int
+		expectError     error
+	}{
+		{
+			name:            "requests will get a gRPC error because it's larger than gRPC MaxRecvMsgSize",
+			maxRequestBytes: 8 * 1024 * 1024,
+			grpcOpts:        nil,
+			valueSize:       9 * 1024 * 1024,
+			expectError:     status.Errorf(codes.ResourceExhausted, "grpc: received message larger than max"),
+		},
+		{
+			name:            "requests will get an etcd custom gRPC error because it's larger than MaxRequestBytes",
+			maxRequestBytes: 8 * 1024 * 1024,
+			grpcOpts:        []grpc.ServerOption{grpc.MaxRecvMsgSize(10 * 1024 * 1024)},
+			valueSize:       9 * 1024 * 1024,
+			expectError:     rpctypes.ErrGRPCRequestTooLarge,
+		},
+		{
+			name:            "requests size is smaller than MaxRequestBytes but larger than MaxRecvMsgSize",
+			maxRequestBytes: 8 * 1024 * 1024,
+			grpcOpts:        []grpc.ServerOption{grpc.MaxRecvMsgSize(4 * 1024 * 1024)},
+			valueSize:       6 * 1024 * 1024,
+			expectError:     status.Errorf(codes.ResourceExhausted, "grpc: received message larger than max"),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			clus := integration.NewCluster(t, &integration.ClusterConfig{
+				Size:                        1,
+				MaxRequestBytes:             test.maxRequestBytes,
+				ClientMaxCallSendMsgSize:    12 * 1024 * 1024,
+				GRPCAdditionalServerOptions: test.grpcOpts,
+			})
+			defer clus.Terminate(t)
+			kvcli := integration.ToGRPC(clus.Client(0)).KV
+			reqput := &pb.PutRequest{Key: []byte("foo"), Value: make([]byte, test.valueSize)}
+			if _, err := kvcli.Put(context.TODO(), reqput); err != nil {
+				if _, ok := err.(rpctypes.EtcdError); ok {
+					if err.Error() != status.Convert(test.expectError).Message() {
+						t.Errorf("expected %v, got %v", status.Convert(test.expectError).Message(), err.Error())
+					}
+				} else if !strings.HasPrefix(err.Error(), test.expectError.Error()) {
+					t.Errorf("expected error starting with '%s', got '%s'", test.expectError.Error(), err.Error())
+				}
+			}
+			// request went through, expect large response back from server
+			if test.expectError == nil {
+				reqget := &pb.RangeRequest{Key: []byte("foo")}
+				// limit receive call size with original value + gRPC overhead bytes
+				_, err := kvcli.Range(context.TODO(), reqget, grpc.MaxCallRecvMsgSize(test.valueSize+512*1024))
+				if err != nil {
+					t.Errorf("range expected no error, got %v", err)
+				}
+			}
 		})
 	}
 }
