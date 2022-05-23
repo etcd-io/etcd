@@ -24,3 +24,10 @@ hack/tls-setup/certs
 .gobincache/
 /Documentation/dev-guide/api_reference_v3.md
 /Documentation/dev-guide/api_concurrency_reference_v3.md
+
+/tools/etcd-dump-db/etcd-dump-db
+/tools/etcd-dump-logs/etcd-dump-logs
+/tools/etcd-dump-metrics/etcd-dump-metrics
+/tools/local-tester/bridge/bridge
+/tools/proto-annotations/proto-annotations
+/tools/benchmark/benchmark
