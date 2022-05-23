@@ -263,6 +263,10 @@ type Config struct {
 	// before closing a non-responsive connection. 0 to disable.
 	GRPCKeepAliveTimeout time.Duration `json:"grpc-keepalive-timeout"`
 
+	// GRPCAdditionalServerOptions is the additional server option hook
+	// for changing the default internal gRPC configuration.
+	GRPCAdditionalServerOptions []grpc.ServerOption `json:"grpc-additional-server-options"`
+
 	// SocketOpts are socket options passed to listener config.
 	SocketOpts transport.SocketOpts `json:"socket-options"`
 

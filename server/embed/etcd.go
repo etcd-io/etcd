@@ -722,6 +722,7 @@ func (e *Etcd) serveClients() (err error) {
 			Timeout: e.cfg.GRPCKeepAliveTimeout,
 		}))
 	}
+	gopts = append(gopts, e.cfg.GRPCAdditionalServerOptions...)
 
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
