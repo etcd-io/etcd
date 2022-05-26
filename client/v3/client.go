@@ -299,7 +299,9 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 	if c.cfg.DialTimeout > 0 {
 		var cancel context.CancelFunc
 		dctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
-		defer cancel() // TODO: Is this right for cases where grpc.WithBlock() is not set on the dial options?
+		defer cancel()
+
+		opts = append(opts, grpc.WithBlock())
 	}
 	target := fmt.Sprintf("%s://%p/%s", resolver.Schema, c, authority(c.endpoints[0]))
 	conn, err := grpc.DialContext(dctx, target, opts...)
