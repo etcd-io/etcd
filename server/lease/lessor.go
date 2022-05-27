@@ -17,7 +17,6 @@ package lease
 import (
 	"container/heap"
 	"context"
-	"encoding/binary"
 	"errors"
 	"math"
 	"sort"
@@ -516,12 +515,6 @@ func (le *lessor) Promote(extend time.Duration) {
 	}
 }
 
-type leasesByExpiry []*Lease
-
-func (le leasesByExpiry) Len() int           { return len(le) }
-func (le leasesByExpiry) Less(i, j int) bool { return le[i].Remaining() < le[j].Remaining() }
-func (le leasesByExpiry) Swap(i, j int)      { le[i], le[j] = le[j], le[i] }
-
 func (le *lessor) Demote() {
 	le.mu.Lock()
 	defer le.mu.Unlock()
@@ -821,92 +814,6 @@ func (le *lessor) initAndRecover() {
 	heap.Init(&le.leaseCheckpointHeap)
 
 	le.b.ForceCommit()
-}
-
-type Lease struct {
-	ID           LeaseID
-	ttl          int64 // time to live of the lease in seconds
-	remainingTTL int64 // remaining time to live in seconds, if zero valued it is considered unset and the full ttl should be used
-	// expiryMu protects concurrent accesses to expiry
-	expiryMu sync.RWMutex
-	// expiry is time when lease should expire. no expiration when expiry.IsZero() is true
-	expiry time.Time
-
-	// mu protects concurrent accesses to itemSet
-	mu      sync.RWMutex
-	itemSet map[LeaseItem]struct{}
-	revokec chan struct{}
-}
-
-func (l *Lease) expired() bool {
-	return l.Remaining() <= 0
-}
-
-func (l *Lease) persistTo(b backend.Backend) {
-	lpb := leasepb.Lease{ID: int64(l.ID), TTL: l.ttl, RemainingTTL: l.remainingTTL}
-	tx := b.BatchTx()
-	tx.LockInsideApply()
-	defer tx.Unlock()
-	schema.MustUnsafePutLease(tx, &lpb)
-}
-
-// TTL returns the TTL of the Lease.
-func (l *Lease) TTL() int64 {
-	return l.ttl
-}
-
-// RemainingTTL returns the last checkpointed remaining TTL of the lease.
-func (l *Lease) getRemainingTTL() int64 {
-	if l.remainingTTL > 0 {
-		return l.remainingTTL
-	}
-	return l.ttl
-}
-
-// refresh refreshes the expiry of the lease.
-func (l *Lease) refresh(extend time.Duration) {
-	newExpiry := time.Now().Add(extend + time.Duration(l.getRemainingTTL())*time.Second)
-	l.expiryMu.Lock()
-	defer l.expiryMu.Unlock()
-	l.expiry = newExpiry
-}
-
-// forever sets the expiry of lease to be forever.
-func (l *Lease) forever() {
-	l.expiryMu.Lock()
-	defer l.expiryMu.Unlock()
-	l.expiry = forever
-}
-
-// Keys returns all the keys attached to the lease.
-func (l *Lease) Keys() []string {
-	l.mu.RLock()
-	keys := make([]string, 0, len(l.itemSet))
-	for k := range l.itemSet {
-		keys = append(keys, k.Key)
-	}
-	l.mu.RUnlock()
-	return keys
-}
-
-// Remaining returns the remaining time of the lease.
-func (l *Lease) Remaining() time.Duration {
-	l.expiryMu.RLock()
-	defer l.expiryMu.RUnlock()
-	if l.expiry.IsZero() {
-		return time.Duration(math.MaxInt64)
-	}
-	return time.Until(l.expiry)
-}
-
-type LeaseItem struct {
-	Key string
-}
-
-func int64ToBytes(n int64) []byte {
-	bytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(bytes, uint64(n))
-	return bytes
 }
 
 // FakeLessor is a fake implementation of Lessor interface.
