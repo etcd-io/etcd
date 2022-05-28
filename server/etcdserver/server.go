@@ -842,33 +842,7 @@ func (s *EtcdServer) run() {
 			f := func(context.Context) { s.applyAll(&ep, &ap) }
 			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
-			s.GoAttach(func() {
-				// Increases throughput of expired leases deletion process through parallelization
-				c := make(chan struct{}, maxPendingRevokes)
-				for _, lease := range leases {
-					select {
-					case c <- struct{}{}:
-					case <-s.stopping:
-						return
-					}
-					lid := lease.ID
-					s.GoAttach(func() {
-						ctx := s.authStore.WithRoot(s.ctx)
-						_, lerr := s.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: int64(lid)})
-						if lerr == nil {
-							leaseExpired.Inc()
-						} else {
-							lg.Warn(
-								"failed to revoke lease",
-								zap.String("lease-id", fmt.Sprintf("%016x", lid)),
-								zap.Error(lerr),
-							)
-						}
-
-						<-c
-					})
-				}
-			})
+			s.revokeExpiredLeases(leases)
 		case err := <-s.errorc:
 			lg.Warn("server error", zap.Error(err))
 			lg.Warn("data-dir used by this member must be removed")
@@ -881,6 +855,41 @@ func (s *EtcdServer) run() {
 			return
 		}
 	}
+}
+
+func (s *EtcdServer) revokeExpiredLeases(leases []*lease.Lease) {
+	s.GoAttach(func() {
+		lg := s.Logger()
+		// Increases throughput of expired leases deletion process through parallelization
+		c := make(chan struct{}, maxPendingRevokes)
+		for _, curLease := range leases {
+			select {
+			case c <- struct{}{}:
+			case <-s.stopping:
+				return
+			}
+
+			f := func(lid int64) {
+				s.GoAttach(func() {
+					ctx := s.authStore.WithRoot(s.ctx)
+					_, lerr := s.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lid})
+					if lerr == nil {
+						leaseExpired.Inc()
+					} else {
+						lg.Warn(
+							"failed to revoke lease",
+							zap.String("lease-id", fmt.Sprintf("%016x", lid)),
+							zap.Error(lerr),
+						)
+					}
+
+					<-c
+				})
+			}
+
+			f(int64(curLease.ID))
+		}
+	})
 }
 
 // Cleanup removes allocated objects by EtcdServer.NewServer in
