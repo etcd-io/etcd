@@ -286,15 +286,15 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 		revokec: make(chan struct{}),
 	}
 
+	if l.ttl < le.minLeaseTTL {
+		l.ttl = le.minLeaseTTL
+	}
+
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
 	if _, ok := le.leaseMap[id]; ok {
 		return nil, ErrLeaseExists
-	}
-
-	if l.ttl < le.minLeaseTTL {
-		l.ttl = le.minLeaseTTL
 	}
 
 	if le.isPrimary() {
@@ -326,6 +326,12 @@ func (le *lessor) Revoke(id LeaseID) error {
 		le.mu.Unlock()
 		return ErrLeaseNotFound
 	}
+
+	// We shouldn't delete the lease inside the transaction lock, otherwise
+	// it may lead to deadlock with Grant or Checkpoint operations, which
+	// acquire the le.mu firstly and then the batchTx lock.
+	delete(le.leaseMap, id)
+
 	defer close(l.revokec)
 	// unlock before doing external work
 	le.mu.Unlock()
@@ -344,9 +350,6 @@ func (le *lessor) Revoke(id LeaseID) error {
 		txn.DeleteRange([]byte(key), nil)
 	}
 
-	le.mu.Lock()
-	defer le.mu.Unlock()
-	delete(le.leaseMap, l.ID)
 	// lease deletion needs to be in the same backend transaction with the
 	// kv deletion. Or we might end up with not executing the revoke or not
 	// deleting the keys if etcdserver fails in between.
