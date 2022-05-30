@@ -191,6 +191,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		BackendBatchInterval:                     cfg.BackendBatchInterval,
 		MaxTxnOps:                                cfg.MaxTxnOps,
 		MaxRequestBytes:                          cfg.MaxRequestBytes,
+		MaxConcurrentStreams:                     cfg.MaxConcurrentStreams,
 		SocketOpts:                               cfg.SocketOpts,
 		StrictReconfigCheck:                      cfg.StrictReconfigCheck,
 		ClientCertAuthEnabled:                    cfg.ClientTLSInfo.ClientCertAuth,

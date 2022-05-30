@@ -21,7 +21,13 @@ import (
 	"math/rand"
 	"path"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -29,11 +35,13 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
-var apiPrefix = []string{"/v3"}
+var (
+	apiPrefix              = []string{"/v3"}
+	maxStreams      uint32 = 6
+	exceededStreams uint32
+)
 
 func TestV3CurlPutGetNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
@@ -58,6 +66,24 @@ func TestV3CurlPutGetPeerTLS(t *testing.T) {
 func TestV3CurlPutGetClientTLS(t *testing.T) {
 	for _, p := range apiPrefix {
 		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigClientTLS()))
+	}
+}
+func TestV3CurlWatchConcurrent(t *testing.T) {
+	cfg := *e2e.NewConfigNoTLS()
+	cfg.ClusterSize = 1
+	cfg.MaxConcurrentStreams = maxStreams
+	exceededStreams = 1
+	for _, p := range apiPrefix {
+		testCtl(t, testV3CurlWatchConcurrent, withApiPrefix(p), withCfg(cfg))
+	}
+}
+func TestV3CurlWatchConcurrentClientTLS(t *testing.T) {
+	cfg := *e2e.NewConfigClientTLS()
+	cfg.ClusterSize = 1
+	exceededStreams = 0
+	cfg.MaxConcurrentStreams = maxStreams
+	for _, p := range apiPrefix {
+		testCtl(t, testV3CurlWatchConcurrent, withApiPrefix(p), withCfg(cfg))
 	}
 }
 func TestV3CurlWatch(t *testing.T) {
@@ -145,6 +171,66 @@ func testV3CurlWatch(cx ctlCtx) {
 	}
 }
 
+func testV3CurlWatchConcurrent(cx ctlCtx) {
+	// store "bar" into "foo"
+	putreq, err := json.Marshal(&pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	// watch for first update to "foo"
+	wcr := &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 1}
+	wreq, err := json.Marshal(wcr)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	// marshaling the grpc to json gives:
+	// "{"RequestUnion":{"CreateRequest":{"key":"Zm9v","start_revision":1}}}"
+	// but the gprc-gateway expects a different format..
+	wstr := `{"create_request" : ` + string(wreq) + "}"
+	p := cx.apiPrefix
+
+	// concurrent watch
+	var (
+		wg            sync.WaitGroup
+		failedStreams int32
+	)
+
+	wg.Add(int(maxStreams + exceededStreams))
+
+	for i := 0; i < int(maxStreams+exceededStreams); i++ {
+		go func() {
+			defer wg.Done()
+			// expects "bar", timeout after 2 seconds since stream waits forever
+			if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/watch"), Value: wstr, Expected: `"YmFy"`, Timeout: 2}); err != nil {
+				// make sure the error is timeout
+				assert.Contains(cx.t, err.Error(), "curl: (28) Operation timed out")
+				atomic.AddInt32(&failedStreams, 1)
+			}
+		}()
+		// sleep for concurrent stream limit
+		time.Sleep(1 * time.Millisecond)
+	}
+	// wait for watch connection establishment
+	time.Sleep(20 * time.Millisecond)
+	// put KV
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/put"), Value: string(putreq), Expected: "revision"}); err != nil {
+		cx.t.Fatalf("failed testV3CurlWatch put with curl using prefix (%s) (%v)", p, err)
+	}
+	// wait for watch timeout
+	wg.Wait()
+
+	// because thread contention between streams trying to write to the connection,
+	// when the `MaxConcurrentStreams` is exceeded, the number of failed streams will
+	// not be exactly equal to the number of exceeded streams.
+	// so we need to make two different assertions depending on the situation.
+	// (concurrentWatches + basicStreams) is the actual number of concurrent streams required
+	if exceededStreams < 1 {
+		assert.Equal(cx.t, int32(0), failedStreams)
+	} else {
+		assert.GreaterOrEqual(cx.t, uint32(failedStreams), exceededStreams)
+	}
+}
+
 func testV3CurlTxn(cx ctlCtx) {
 	txn := &pb.TxnRequest{
 		Compare: []*pb.Compare{
@@ -182,7 +268,6 @@ func testV3CurlTxn(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/txn"), Value: malformed, Expected: "error"}); err != nil {
 		cx.t.Fatalf("failed testV3CurlTxn put with curl using prefix (%s) (%v)", p, err)
 	}
-
 }
 
 func testV3CurlAuth(cx ctlCtx) {
@@ -209,7 +294,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		cx.t.Fatalf("failed testV3CurlAuth create role with curl using prefix (%s) (%v)", p, err)
 	}
 
-	//grant root role
+	// grant root role
 	for i := 0; i < len(usernames); i++ {
 		grantroleroot, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: usernames[i], Role: "root"})
 		testutil.AssertNil(cx.t, err)

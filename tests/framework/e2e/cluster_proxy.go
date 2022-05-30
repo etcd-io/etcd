@@ -218,6 +218,11 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 		murl = proxyListenURL(cfg, 4)
 		args = append(args, "--metrics-addr", murl)
 	}
+	if cfg.MaxConcurrentStreams > 0 {
+		args = append(args, "--max-concurrent-streams",
+			fmt.Sprintf("%d", cfg.MaxConcurrentStreams),
+		)
+	}
 	tlsArgs := []string{}
 	for i := 0; i < len(cfg.TlsArgs); i++ {
 		switch cfg.TlsArgs[i] {

@@ -77,6 +77,8 @@ type EtcdServerProcessConfig struct {
 
 	InitialToken   string
 	InitialCluster string
+
+	MaxConcurrentStreams uint32 // default is math.MaxUint32
 }
 
 func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {

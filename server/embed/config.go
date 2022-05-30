@@ -17,6 +17,7 @@ package embed
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -59,6 +60,7 @@ const (
 	DefaultWarningApplyDuration        = 100 * time.Millisecond
 	DefaultWarningUnaryRequestDuration = 300 * time.Millisecond
 	DefaultMaxRequestBytes             = 1.5 * 1024 * 1024
+	DefaultMaxConcurrentStreams        = math.MaxUint32
 	DefaultGRPCKeepAliveMinTime        = 5 * time.Second
 	DefaultGRPCKeepAliveInterval       = 2 * time.Hour
 	DefaultGRPCKeepAliveTimeout        = 20 * time.Second
@@ -205,6 +207,10 @@ type Config struct {
 	MaxTxnOps           uint   `json:"max-txn-ops"`
 	MaxRequestBytes     uint   `json:"max-request-bytes"`
 
+	// MaxConcurrentStreams optionally specifies the number of concurrent
+	// streams that each client may have open at a time.
+	MaxConcurrentStreams uint32 `json:"max-concurrent-streams"`
+
 	LPUrls, LCUrls []url.URL
 	APUrls, ACUrls []url.URL
 	ClientTLSInfo  transport.TLSInfo
@@ -311,7 +317,7 @@ type Config struct {
 	AuthToken  string `json:"auth-token"`
 	BcryptCost uint   `json:"bcrypt-cost"`
 
-	//The AuthTokenTTL in seconds of the simple token
+	// AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
 	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
@@ -462,6 +468,7 @@ func NewConfig() *Config {
 
 		MaxTxnOps:                        DefaultMaxTxnOps,
 		MaxRequestBytes:                  DefaultMaxRequestBytes,
+		MaxConcurrentStreams:             DefaultMaxConcurrentStreams,
 		ExperimentalWarningApplyDuration: DefaultWarningApplyDuration,
 
 		ExperimentalWarningUnaryRequestDuration: DefaultWarningUnaryRequestDuration,
