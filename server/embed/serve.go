@@ -44,6 +44,7 @@ import (
 	"github.com/soheilhy/cmux"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 )
@@ -148,6 +149,9 @@ func (sctx *serveCtx) serve(
 			Handler:  createAccessController(sctx.lg, s, httpmux),
 			ErrorLog: logger, // do not log user error
 		}
+		if err := setMaxConcurrentStreams(srvhttp, s.Cfg.MaxConcurrentStreams); err != nil {
+			return err
+		}
 		httpl := m.Match(cmux.HTTP1())
 		go func() { errHandler(srvhttp.Serve(httpl)) }()
 
@@ -197,6 +201,9 @@ func (sctx *serveCtx) serve(
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
+		if err := setMaxConcurrentStreams(srv, s.Cfg.MaxConcurrentStreams); err != nil {
+			return err
+		}
 		go func() { errHandler(srv.Serve(tlsl)) }()
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
@@ -207,6 +214,13 @@ func (sctx *serveCtx) serve(
 	}
 
 	return m.Serve()
+}
+
+// setMaxConcurrentStreams sets the maxConcurrentStreams for the http server
+func setMaxConcurrentStreams(srv *http.Server, maxConcurrentStreams uint32) error {
+	return http2.ConfigureServer(srv, &http2.Server{
+		MaxConcurrentStreams: maxConcurrentStreams,
+	})
 }
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC

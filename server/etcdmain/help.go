@@ -81,6 +81,8 @@ Member:
     Maximum number of operations permitted in a transaction.
   --max-request-bytes '1572864'
     Maximum client request size in bytes the server will accept.
+  --max-concurrent-streams '0'
+    Maximum concurrent streams that each client may have open at a time.
   --grpc-keepalive-min-time '5s'
     Minimum duration interval that a client should wait before pinging server.
   --grpc-keepalive-interval '2h'
