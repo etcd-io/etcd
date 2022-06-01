@@ -106,13 +106,13 @@ func (op Op) RangeBytes() []byte { return op.end }
 // Rev returns the requested revision, if any.
 func (op Op) Rev() int64 { return op.rev }
 
-// IsPut returns true iff the operation is a Put.
+// IsPut returns true if the operation is a Put.
 func (op Op) IsPut() bool { return op.t == tPut }
 
-// IsGet returns true iff the operation is a Get.
+// IsGet returns true if the operation is a Get.
 func (op Op) IsGet() bool { return op.t == tRange }
 
-// IsDelete returns true iff the operation is a Delete.
+// IsDelete returns true if the operation is a Delete.
 func (op Op) IsDelete() bool { return op.t == tDeleteRange }
 
 // IsSerializable returns true if the serializable field is true.

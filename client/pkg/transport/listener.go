@@ -325,7 +325,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 //
 // Previously,
 // 1. Server has non-empty (*tls.Config).Certificates on client hello
-// 2. Server calls (*tls.Config).GetCertificate iff:
+// 2. Server calls (*tls.Config).GetCertificate if:
 //    - Server's (*tls.Config).Certificates is not empty, or
 //    - Client supplies SNI; non-empty (*tls.ClientHelloInfo).ServerName
 //

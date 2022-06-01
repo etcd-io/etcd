@@ -254,7 +254,7 @@ func (b *backend) ConcurrentReadTx() ReadTx {
 
 	// TODO: might want to copy the read buffer lazily - create copy when A) end of a write transaction B) end of a batch interval.
 
-	// inspect/update cache recency iff there's no ongoing update to the cache
+	// inspect/update cache recency if there's no ongoing update to the cache
 	// this falls through if there's no cache update
 
 	// by this line, "ConcurrentReadTx" code path is already protected against concurrent "writeback" operations

@@ -497,7 +497,7 @@ func TestIntervalTreeVisitExit(t *testing.T) {
 	}
 }
 
-// TestIntervalTreeContains tests that contains returns true iff the ivt maps the entire interval.
+// TestIntervalTreeContains tests that contains returns true if the ivt maps the entire interval.
 func TestIntervalTreeContains(t *testing.T) {
 	tests := []struct {
 		ivls   []Interval
