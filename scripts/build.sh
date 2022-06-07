@@ -107,14 +107,25 @@ tests_build() {
   BINDIR="${out}" run ./tests/functional/build.sh || return 2
 }
 
+run_build() {
+  echo Running "$1"
+  if $1; then
+    log_success "SUCCESS: $1 (GOARCH=${GOARCH})"
+  else
+    log_error "FAIL: $1 (GOARCH=${GOARCH})"
+    exit 2
+  fi
+
+}
+
 toggle_failpoints_default
 
 # only build when called directly, not sourced
 if echo "$0" | grep -E "build(.sh)?$" >/dev/null; then
-  if etcd_build; then
-    log_success "SUCCESS: etcd_build (GOARCH=${GOARCH})"
+  # if an argument is passed, run it; otherwise, run etcd_build
+  if [ -z  "$1" ]; then
+    run_build "etcd_build"
   else
-    log_error "FAIL: etcd_build (GOARCH=${GOARCH})"
-    exit 2
+    run_build "$1"
   fi
 fi
