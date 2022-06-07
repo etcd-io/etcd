@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -152,8 +153,12 @@ func TestCloseProposerInflight(t *testing.T) {
 	clus := newCluster(1)
 	defer clus.closeNoErrors(t)
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	// some inflight ops
 	go func() {
+		defer wg.Done()
 		clus.proposeC[0] <- "foo"
 		clus.proposeC[0] <- "bar"
 	}()
@@ -162,6 +167,8 @@ func TestCloseProposerInflight(t *testing.T) {
 	if c, ok := <-clus.commitC[0]; !ok || c.data[0] != "foo" {
 		t.Fatalf("Commit failed")
 	}
+
+	wg.Wait()
 }
 
 func TestPutAndGetKeyValue(t *testing.T) {
