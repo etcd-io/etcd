@@ -251,6 +251,10 @@ func (f *fakeHasher) HashByRev(rev int64) (hash mvcc.KeyValueHash, revision int6
 	return hashByRev.hash, hashByRev.revision, hashByRev.err
 }
 
+func (f *fakeHasher) Store(valueHash mvcc.KeyValueHash) {
+	panic("not implemented")
+}
+
 func (f *fakeHasher) ReqTimeout() time.Duration {
 	f.actions = append(f.actions, "ReqTimeout()")
 	return time.Second

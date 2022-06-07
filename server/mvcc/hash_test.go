@@ -187,3 +187,53 @@ func pickKey(i int64) string {
 		panic("Can't count")
 	}
 }
+
+func TestHasherStore(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	s := newHashStorage(lg, newFakeStore())
+	var hashes []KeyValueHash
+	for i := 0; i < hashStorageMaxSize; i++ {
+		hash := KeyValueHash{Hash: uint32(i), Revision: int64(i) + 10, CompactRevision: int64(i) + 100}
+		hashes = append(hashes, hash)
+		s.Store(hash)
+	}
+
+	for _, want := range hashes {
+		got, _, err := s.HashByRev(want.Revision)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want.Hash != got.Hash {
+			t.Errorf("Expected stored hash to match, got: %d, expected: %d", want.Hash, got.Hash)
+		}
+		if want.Revision != got.Revision {
+			t.Errorf("Expected stored revision to match, got: %d, expected: %d", want.Revision, got.Revision)
+		}
+		if want.CompactRevision != got.CompactRevision {
+			t.Errorf("Expected stored compact revision to match, got: %d, expected: %d", want.CompactRevision, got.CompactRevision)
+		}
+	}
+}
+
+func TestHasherStoreFull(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	s := newHashStorage(lg, newFakeStore())
+	var minRevision int64 = 100
+	var maxRevision = minRevision + hashStorageMaxSize
+	for i := 0; i < hashStorageMaxSize; i++ {
+		s.Store(KeyValueHash{Revision: int64(i) + minRevision})
+	}
+
+	// Hash for old revision should be discarded as storage is already full
+	s.Store(KeyValueHash{Revision: minRevision - 1})
+	hash, _, err := s.HashByRev(minRevision - 1)
+	if err == nil {
+		t.Errorf("Expected an error as old revision should be discarded, got: %v", hash)
+	}
+	// Hash for new revision should be stored even when storage is full
+	s.Store(KeyValueHash{Revision: maxRevision + 1})
+	_, _, err = s.HashByRev(maxRevision + 1)
+	if err != nil {
+		t.Errorf("Didn't expect error for new revision, err: %v", err)
+	}
+}

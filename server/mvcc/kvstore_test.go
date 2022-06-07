@@ -851,6 +851,7 @@ func newFakeStore() *store {
 		lg:             zap.NewExample(),
 	}
 	s.ReadView, s.WriteView = &readView{s}, &writeView{s}
+	s.hashes = newHashStorage(zap.NewExample(), s)
 	return s
 }
 

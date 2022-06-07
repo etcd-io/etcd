@@ -17,9 +17,16 @@ package mvcc
 import (
 	"hash"
 	"hash/crc32"
+	"sort"
+	"sync"
 
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	"go.etcd.io/etcd/server/v3/mvcc/buckets"
+	"go.uber.org/zap"
+)
+
+const (
+	hashStorageMaxSize = 10
 )
 
 func unsafeHashByRev(tx backend.ReadTx, compactRevision, revision int64, keep map[revision]struct{}) (KeyValueHash, error) {
@@ -83,15 +90,22 @@ type HashStorage interface {
 
 	// HashByRev computes the hash of all MVCC revisions up to a given revision.
 	HashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error)
+
+	// Store adds hash value in local cache, allowing it can be returned by HashByRev.
+	Store(valueHash KeyValueHash)
 }
 
 type hashStorage struct {
-	store *store
+	store  *store
+	hashMu sync.RWMutex
+	hashes []KeyValueHash
+	lg     *zap.Logger
 }
 
-func newHashStorage(s *store) HashStorage {
+func newHashStorage(lg *zap.Logger, s *store) *hashStorage {
 	return &hashStorage{
 		store: s,
+		lg:    lg,
 	}
 }
 
@@ -100,5 +114,35 @@ func (s *hashStorage) Hash() (hash uint32, revision int64, err error) {
 }
 
 func (s *hashStorage) HashByRev(rev int64) (KeyValueHash, int64, error) {
+	s.hashMu.RLock()
+	for _, h := range s.hashes {
+		if rev == h.Revision {
+			s.hashMu.RUnlock()
+
+			s.store.revMu.RLock()
+			currentRev := s.store.currentRev
+			s.store.revMu.RUnlock()
+			return h, currentRev, nil
+		}
+	}
+	s.hashMu.RUnlock()
+
 	return s.store.hashByRev(rev)
+}
+
+func (s *hashStorage) Store(hash KeyValueHash) {
+	s.lg.Info("storing new hash",
+		zap.Uint32("hash", hash.Hash),
+		zap.Int64("revision", hash.Revision),
+		zap.Int64("compact-revision", hash.CompactRevision),
+	)
+	s.hashMu.Lock()
+	defer s.hashMu.Unlock()
+	s.hashes = append(s.hashes, hash)
+	sort.Slice(s.hashes, func(i, j int) bool {
+		return s.hashes[i].Revision < s.hashes[j].Revision
+	})
+	if len(s.hashes) > hashStorageMaxSize {
+		s.hashes = s.hashes[len(s.hashes)-hashStorageMaxSize:]
+	}
 }

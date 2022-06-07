@@ -112,7 +112,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 
 		lg: lg,
 	}
-	s.hashes = newHashStorage(s)
+	s.hashes = newHashStorage(lg, s)
 	s.ReadView = &readView{s}
 	s.WriteView = &writeView{s}
 	if s.le != nil {
@@ -234,11 +234,13 @@ func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64) (<-ch
 			s.compactBarrier(ctx, ch)
 			return
 		}
-		if _, err := s.scheduleCompaction(rev, prevCompactRev); err != nil {
+		hash, err := s.scheduleCompaction(rev, prevCompactRev)
+		if err != nil {
 			s.lg.Warn("Failed compaction", zap.Error(err))
 			s.compactBarrier(context.TODO(), ch)
 			return
 		}
+		s.hashes.Store(hash)
 		close(ch)
 	}
 
