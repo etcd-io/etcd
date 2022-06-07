@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 
@@ -34,6 +35,11 @@ import (
 	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	"go.etcd.io/etcd/tests/v3/integration"
+)
+
+const (
+	// Use high prime
+	compactionCycle = 71
 )
 
 func TestMaintenanceHashKV(t *testing.T) {
@@ -66,6 +72,74 @@ func TestMaintenanceHashKV(t *testing.T) {
 		if hv != hresp.Hash {
 			t.Fatalf("#%d: hash expected %d, got %d", i, hv, hresp.Hash)
 		}
+	}
+}
+
+func TestCompactionHash(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx := context.Background()
+	cc, err := clus.ClusterClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var totalRevisions int64 = 1210
+	assert.Less(t, int64(1000), totalRevisions)
+	assert.Less(t, int64(compactionCycle*10), totalRevisions)
+	var rev int64
+	for ; rev < totalRevisions; rev += compactionCycle {
+		testCompactionHash(ctx, t, cc, clus.Members[0].GRPCURL(), rev, rev+compactionCycle)
+	}
+	testCompactionHash(ctx, t, cc, clus.Members[0].GRPCURL(), rev, rev+totalRevisions)
+}
+
+func testCompactionHash(ctx context.Context, t *testing.T, cc *clientv3.Client, url string, start, stop int64) {
+	for i := start; i <= stop; i++ {
+		cc.Put(ctx, pickKey(i), fmt.Sprint(i))
+	}
+	hash1, err := cc.HashKV(ctx, url, stop)
+	assert.NoError(t, err, "error on rev %v", stop)
+
+	_, err = cc.Compact(ctx, stop)
+	assert.NoError(t, err, "error on compact rev %v", stop)
+
+	// Wait for compaction to be compacted
+	time.Sleep(50 * time.Millisecond)
+
+	hash2, err := cc.HashKV(ctx, url, stop)
+	assert.NoError(t, err, "error on rev %v", stop)
+	assert.Equal(t, hash1, hash2, "hashes do not match on rev %v", stop)
+}
+
+func pickKey(i int64) string {
+	if i%(compactionCycle*2) == 30 {
+		return "zenek"
+	}
+	if i%compactionCycle == 30 {
+		return "xavery"
+	}
+	// Use low prime number to ensure repeats without alignment
+	switch i % 7 {
+	case 0:
+		return "alice"
+	case 1:
+		return "bob"
+	case 2:
+		return "celine"
+	case 3:
+		return "dominik"
+	case 4:
+		return "eve"
+	case 5:
+		return "frederica"
+	case 6:
+		return "gorge"
+	default:
+		panic("Can't count")
 	}
 }
 
