@@ -861,6 +861,7 @@ func newFakeStore(lg *zap.Logger) *store {
 		lg:             lg,
 	}
 	s.ReadView, s.WriteView = &readView{s}, &writeView{s}
+	s.hashes = newHashStorage(lg, s)
 	return s
 }
 
