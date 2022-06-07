@@ -120,7 +120,13 @@ type Lessor interface {
 
 	// Renew renews a lease with given ID. It returns the renewed TTL. If the ID does not exist,
 	// an error will be returned.
+	// TODO(ahrtr): deprecate `Renew` in 3.7, it will be replaced by `RenewV3`.
 	Renew(id LeaseID) (int64, error)
+
+	// RenewV3 renews a lease with given ID. If the given lease does not exist,
+	// an error will be returned. The request is coming from raft.
+	// TODO(ahrtr): rename it to `Renew` when the legacy `Renew` is removed.
+	RenewV3(id LeaseID) (int64, error)
 
 	// Lookup gives the lease at a given lease id, if any
 	Lookup(id LeaseID) *Lease
@@ -364,6 +370,10 @@ func (le *lessor) Checkpoint(id LeaseID, remainingTTL int64) error {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
+	return le.checkpoint(id, remainingTTL)
+}
+
+func (le *lessor) checkpoint(id LeaseID, remainingTTL int64) error {
 	if l, ok := le.leaseMap[id]; ok {
 		// when checkpointing, we only update the remainingTTL, Promote is responsible for applying this to lease expiry
 		l.remainingTTL = remainingTTL
@@ -389,6 +399,7 @@ func greaterOrEqual(first, second semver.Version) bool {
 
 // Renew renews an existing lease. If the given lease does not exist or
 // has expired, an error will be returned.
+// TODO(ahrtr): deprecate the legacy `Renew` in 3.7
 func (le *lessor) Renew(id LeaseID) (int64, error) {
 	le.mu.RLock()
 	if !le.isPrimary() {
@@ -436,6 +447,33 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	item := &LeaseWithTime{id: l.ID, time: l.expiry}
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
 	le.mu.Unlock()
+
+	leaseRenewed.Inc()
+	return l.ttl, nil
+}
+
+// RenewV3 renews an existing lease. If the given lease does not exist,
+// an error will be returned. The request is coming from raft.
+func (le *lessor) RenewV3(id LeaseID) (int64, error) {
+	le.mu.Lock()
+	defer le.mu.Unlock()
+
+	l := le.leaseMap[id]
+	if l == nil {
+		return -1, ErrLeaseNotFound
+	}
+
+	if !le.isPrimary() {
+		if l.remainingTTL > 0 {
+			le.checkpoint(id, 0)
+		}
+		return l.ttl, nil
+	}
+
+	le.checkpoint(id, 0)
+	l.refresh(0)
+	item := &LeaseWithTime{id: l.ID, time: l.expiry}
+	le.leaseExpiredNotifier.RegisterOrUpdate(item)
 
 	leaseRenewed.Inc()
 	return l.ttl, nil
@@ -842,6 +880,8 @@ func (fl *FakeLessor) Promote(extend time.Duration) {}
 func (fl *FakeLessor) Demote() {}
 
 func (fl *FakeLessor) Renew(id LeaseID) (int64, error) { return 10, nil }
+
+func (fl *FakeLessor) RenewV3(id LeaseID) (int64, error) { return 10, nil }
 
 func (fl *FakeLessor) Lookup(id LeaseID) *Lease { return nil }
 

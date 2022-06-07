@@ -408,6 +408,7 @@ func TestLessorRecover(t *testing.T) {
 	}
 }
 
+// TODO(ahrtr): remove this test case when the legacy `Renew` is removed.
 func TestLessorExpire(t *testing.T) {
 	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
@@ -461,6 +462,49 @@ func TestLessorExpire(t *testing.T) {
 	}
 }
 
+// TODO(ahrtr): rename this test case to `TestLessorExpire` when the legacy `Renew` is removed.
+func TestLessorExpireV3(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	testMinTTL := int64(1)
+
+	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: testMinTTL})
+	defer le.Stop()
+
+	le.Promote(1 * time.Second)
+	l, err := le.Grant(1, testMinTTL)
+	if err != nil {
+		t.Fatalf("failed to create lease: %v", err)
+	}
+
+	select {
+	case el := <-le.ExpiredLeasesC():
+		if el[0].ID != l.ID {
+			t.Fatalf("expired id = %x, want %x", el[0].ID, l.ID)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("failed to receive expired lease")
+	}
+
+	if _, err := le.RenewV3(l.ID); err != nil {
+		t.Errorf("unexpected renew")
+	}
+
+	// expired lease can be revoked
+	if err := le.Revoke(l.ID); err != nil {
+		t.Fatalf("failed to revoke expired lease: %v", err)
+	}
+
+	// revoked lease can't be renewed
+	if _, err := le.RenewV3(l.ID); err != ErrLeaseNotFound {
+		t.Errorf("unexpected renew")
+	}
+}
+
+// TODO(ahrtr): remove this test case when the legacy `Renew` is removed.
 func TestLessorExpireAndDemote(t *testing.T) {
 	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
@@ -509,6 +553,45 @@ func TestLessorExpireAndDemote(t *testing.T) {
 	case <-donec:
 	case <-time.After(10 * time.Second):
 		t.Fatalf("renew has not returned after lessor demotion")
+	}
+}
+
+// TODO(ahrtr): rename this test case to `TestLessorExpireAndDemote` when the legacy `Renew` is removed.
+func TestLessorExpireAndDemoteV3(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	testMinTTL := int64(1)
+
+	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: testMinTTL})
+	defer le.Stop()
+
+	le.Promote(1 * time.Second)
+	l, err := le.Grant(1, testMinTTL)
+	if err != nil {
+		t.Fatalf("failed to create lease: %v", err)
+	}
+
+	select {
+	case el := <-le.ExpiredLeasesC():
+		if el[0].ID != l.ID {
+			t.Fatalf("expired id = %x, want %x", el[0].ID, l.ID)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("failed to receive expired lease")
+	}
+
+	if _, err := le.RenewV3(l.ID); err != nil {
+		t.Errorf("unexpected renew: %v", err)
+	}
+
+	le.Demote()
+
+	// renew should work after demote.
+	if _, err := le.RenewV3(l.ID); err != nil {
+		t.Errorf("unexpected renew: %v", err)
 	}
 }
 

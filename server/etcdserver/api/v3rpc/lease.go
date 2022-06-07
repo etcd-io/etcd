@@ -129,20 +129,21 @@ func (ls *LeaseServer) leaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) erro
 		// or remote leader.
 		// Without this, a lease might be revoked at rev 3 but client can see the keepalive succeeded
 		// at rev 4.
-		resp := &pb.LeaseKeepAliveResponse{ID: req.ID, Header: &pb.ResponseHeader{}}
-		ls.hdr.fill(resp.Header)
+		// todo(ahrtr): remove respForLeaseNotFound, we don't need to process ErrLeaseNotFound separately.
+		respForLeaseNotFound := &pb.LeaseKeepAliveResponse{ID: req.ID, Header: &pb.ResponseHeader{}}
+		ls.hdr.fill(respForLeaseNotFound.Header)
 
-		ttl, err := ls.le.LeaseRenew(stream.Context(), lease.LeaseID(req.ID))
+		resp, err := ls.le.LeaseRenew(stream.Context(), req)
 		if err == lease.ErrLeaseNotFound {
 			err = nil
-			ttl = 0
+			respForLeaseNotFound.TTL = 0
+			resp = respForLeaseNotFound
 		}
 
 		if err != nil {
 			return togRPCError(err)
 		}
 
-		resp.TTL = ttl
 		err = stream.Send(resp)
 		if err != nil {
 			if isClientCtxErr(stream.Context().Err(), err) {
