@@ -16,15 +16,14 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 )
 
 const (
@@ -32,22 +31,18 @@ const (
 	compactionCycle = 71
 )
 
-func TestCompactionHashHTTP(t *testing.T) {
+// TODO: Change this to fuzz test
+func TestCompactionHash(t *testing.T) {
 	BeforeTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	ctx := context.Background()
 	cc, err := clus.ClusterClient()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var totalRevisions int64 = 1210
-	assert.Less(t, int64(1000), totalRevisions)
-	assert.Less(t, int64(compactionCycle*10), totalRevisions)
-	var rev int64
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
@@ -55,54 +50,39 @@ func TestCompactionHashHTTP(t *testing.T) {
 			},
 		},
 	}
-	for ; rev < totalRevisions; rev += compactionCycle {
-		testCompactionHash(ctx, t, cc, client, rev, rev+compactionCycle)
-	}
-	testCompactionHash(ctx, t, cc, client, rev, rev+totalRevisions)
+
+	testutil.TestCompactionHash(context.Background(), t, hashTestCase{cc, clus.Members[0].GRPCURL(), client}, 1000)
 }
 
-func testCompactionHash(ctx context.Context, t *testing.T, cc *clientv3.Client, client *http.Client, start, stop int64) {
-	for i := start; i <= stop; i++ {
-		cc.Put(ctx, pickKey(i), fmt.Sprint(i))
-	}
-	hash1, err := etcdserver.HashByRev(ctx, client, "http://unix", stop)
-	assert.NoError(t, err, "error on rev %v", stop)
+type hashTestCase struct {
+	*clientv3.Client
+	url  string
+	http *http.Client
+}
 
-	_, err = cc.Compact(ctx, stop)
-	assert.NoError(t, err, "error on compact rev %v", stop)
+func (tc hashTestCase) Put(ctx context.Context, key, value string) error {
+	_, err := tc.Client.Put(ctx, key, value)
+	return err
+}
 
+func (tc hashTestCase) Delete(ctx context.Context, key string) error {
+	_, err := tc.Client.Delete(ctx, key)
+	return err
+}
+
+func (tc hashTestCase) HashByRev(ctx context.Context, rev int64) (testutil.KeyValueHash, error) {
+	resp, err := etcdserver.HashByRev(ctx, tc.http, "http://unix", rev)
+	return testutil.KeyValueHash{Hash: resp.Hash, CompactRevision: resp.CompactRevision, Revision: resp.Header.Revision}, err
+}
+
+func (tc hashTestCase) Defrag(ctx context.Context) error {
+	_, err := tc.Client.Defragment(ctx, tc.url)
+	return err
+}
+
+func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {
+	_, err := tc.Client.Compact(ctx, rev)
 	// Wait for compaction to be compacted
 	time.Sleep(50 * time.Millisecond)
-
-	hash2, err := etcdserver.HashByRev(ctx, client, "http://unix", stop)
-	assert.NoError(t, err, "error on rev %v", stop)
-	assert.Equal(t, hash1, hash2, "hashes do not match on rev %v", stop)
-}
-
-func pickKey(i int64) string {
-	if i%(compactionCycle*2) == 30 {
-		return "zenek"
-	}
-	if i%compactionCycle == 30 {
-		return "xavery"
-	}
-	// Use low prime number to ensure repeats without alignment
-	switch i % 7 {
-	case 0:
-		return "alice"
-	case 1:
-		return "bob"
-	case 2:
-		return "celine"
-	case 3:
-		return "dominik"
-	case 4:
-		return "eve"
-	case 5:
-		return "frederica"
-	case 6:
-		return "gorge"
-	default:
-		panic("Can't count")
-	}
+	return err
 }

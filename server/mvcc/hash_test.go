@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -22,12 +23,8 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 	"go.uber.org/zap/zaptest"
-)
-
-const (
-	// Use high prime
-	compactionCycle = 71
 )
 
 // Test HashByRevValue values to ensure we don't change the output which would
@@ -39,12 +36,12 @@ func TestHashByRevValue(t *testing.T) {
 
 	var totalRevisions int64 = 1210
 	assert.Less(t, int64(s.cfg.CompactionBatchLimit), totalRevisions)
-	assert.Less(t, int64(compactionCycle*10), totalRevisions)
+	assert.Less(t, int64(testutil.CompactionCycle*10), totalRevisions)
 	var rev int64
 	var got []KeyValueHash
-	for ; rev < totalRevisions; rev += compactionCycle {
-		putKVs(s, rev, compactionCycle)
-		hash := testHashByRev(t, s, rev+compactionCycle/2)
+	for ; rev < totalRevisions; rev += testutil.CompactionCycle {
+		putKVs(s, rev, testutil.CompactionCycle)
+		hash := testHashByRev(t, s, rev+testutil.CompactionCycle/2)
 		got = append(got, hash)
 	}
 	putKVs(s, rev, totalRevisions)
@@ -79,11 +76,11 @@ func TestHashByRevValueLastRevision(t *testing.T) {
 
 	var totalRevisions int64 = 1210
 	assert.Less(t, int64(s.cfg.CompactionBatchLimit), totalRevisions)
-	assert.Less(t, int64(compactionCycle*10), totalRevisions)
+	assert.Less(t, int64(testutil.CompactionCycle*10), totalRevisions)
 	var rev int64
 	var got []KeyValueHash
-	for ; rev < totalRevisions; rev += compactionCycle {
-		putKVs(s, rev, compactionCycle)
+	for ; rev < totalRevisions; rev += testutil.CompactionCycle {
+		putKVs(s, rev, testutil.CompactionCycle)
 		hash := testHashByRev(t, s, 0)
 		got = append(got, hash)
 	}
@@ -115,7 +112,7 @@ func TestHashByRevValueLastRevision(t *testing.T) {
 
 func putKVs(s *store, rev, count int64) {
 	for i := rev; i <= rev+count; i++ {
-		s.Put([]byte(pickKey(i)), []byte(fmt.Sprint(i)), 0)
+		s.Put([]byte(testutil.PickKey(i)), []byte(fmt.Sprint(i)), 0)
 	}
 }
 
@@ -135,57 +132,43 @@ func TestCompactionHash(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
-	var totalRevisions int64 = 1210
-	assert.Less(t, int64(s.cfg.CompactionBatchLimit), totalRevisions)
-	assert.Less(t, int64(compactionCycle*10), totalRevisions)
-	var rev int64
-	for ; rev < totalRevisions; rev += compactionCycle {
-		testCompactionHash(t, s, rev, rev+compactionCycle)
-	}
-	testCompactionHash(t, s, rev, rev+totalRevisions)
+	testutil.TestCompactionHash(context.Background(), t, hashTestCase{s}, s.cfg.CompactionBatchLimit)
 }
 
-func testCompactionHash(t *testing.T, s *store, start, stop int64) {
-	for i := start; i <= stop; i++ {
-		s.Put([]byte(pickKey(i)), []byte(fmt.Sprint(i)), 0)
-	}
-	hash1, _, err := s.hashByRev(stop)
-	assert.NoError(t, err, "error on rev %v", stop)
-
-	_, prevCompactRev, err := s.updateCompactRev(stop)
-	assert.NoError(t, err, "error on rev %v", stop)
-
-	hash2, err := s.scheduleCompaction(stop, prevCompactRev)
-	assert.NoError(t, err, "error on rev %v", stop)
-	assert.Equal(t, hash1, hash2, "hashes do not match on rev %v", stop)
+type hashTestCase struct {
+	*store
 }
 
-func pickKey(i int64) string {
-	if i%(compactionCycle*2) == 30 {
-		return "zenek"
+func (tc hashTestCase) Put(ctx context.Context, key, value string) error {
+	tc.store.Put([]byte(key), []byte(value), 0)
+	return nil
+}
+
+func (tc hashTestCase) Delete(ctx context.Context, key string) error {
+	tc.store.DeleteRange([]byte(key), nil)
+	return nil
+}
+
+func (tc hashTestCase) HashByRev(ctx context.Context, rev int64) (testutil.KeyValueHash, error) {
+	hash, _, err := tc.store.HashStorage().HashByRev(rev)
+	return testutil.KeyValueHash{Hash: hash.Hash, CompactRevision: hash.CompactRevision, Revision: hash.Revision}, err
+}
+
+func (tc hashTestCase) Defrag(ctx context.Context) error {
+	return tc.store.b.Defrag()
+}
+
+func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {
+	done, err := tc.store.Compact(traceutil.TODO(), rev)
+	if err != nil {
+		return err
 	}
-	if i%compactionCycle == 30 {
-		return "xavery"
+	select {
+	case <-done:
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-	// Use low prime number to ensure repeats without alignment
-	switch i % 7 {
-	case 0:
-		return "alice"
-	case 1:
-		return "bob"
-	case 2:
-		return "celine"
-	case 3:
-		return "dominik"
-	case 4:
-		return "eve"
-	case 5:
-		return "frederica"
-	case 6:
-		return "gorge"
-	default:
-		panic("Can't count")
-	}
+	return nil
 }
 
 func TestHasherStore(t *testing.T) {
