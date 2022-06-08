@@ -97,7 +97,7 @@ const (
 	DefaultStrictReconfigCheck = true
 
 	// maxElectionMs specifies the maximum value of election timeout.
-	// More details are listed in ../Documentation/tuning.md#time-parameters.
+	// More details are listed on etcd.io/docs > version > tuning/#time-parameters
 	maxElectionMs = 50000
 	// backend freelist map type
 	freelistArrayType = "array"
