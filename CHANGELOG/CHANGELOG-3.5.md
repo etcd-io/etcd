@@ -255,6 +255,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd --experimental-distributed-tracing-address`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows configuring the OpenTelemetry collector address.
 - Add [`etcd --experimental-distributed-tracing-service-name`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows changing the default "etcd" service name.
 - Add [`etcd --experimental-distributed-tracing-instance-id`](https://github.com/etcd-io/etcd/pull/12919) string flag which configures an instance ID, which must be unique per etcd instance.
+- Add [`--experimental-bootstrap-defrag-threshold-megabytes`](https://github.com/etcd-io/etcd/pull/12941) which configures a threshold for the unused db size and etcdserver will automatically perform defragmentation on bootstrap when it exceeds this value. The functionality is disabled if the value is 0.
 
 ### Package `runtime`
 
