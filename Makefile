@@ -28,7 +28,7 @@ build:
 	./bin/etcdutl version
 
 build_tools:
-	GO_BUILD_FLAGS="-v" ./scripts/build.sh tools_build
+	GO_BUILD_FLAGS="-v" ./scripts/build_tools.sh
 
 clean:
 	rm -f ./codecov
