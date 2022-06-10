@@ -129,7 +129,6 @@ func (ls *LeaseServer) leaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) erro
 		// or remote leader.
 		// Without this, a lease might be revoked at rev 3 but client can see the keepalive succeeded
 		// at rev 4.
-		// todo(ahrtr): remove respForLeaseNotFound, we don't need to process ErrLeaseNotFound separately.
 		respForLeaseNotFound := &pb.LeaseKeepAliveResponse{ID: req.ID, Header: &pb.ResponseHeader{}}
 		ls.hdr.fill(respForLeaseNotFound.Header)
 

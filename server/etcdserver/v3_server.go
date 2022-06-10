@@ -275,6 +275,19 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 	return resp.(*pb.LeaseRevokeResponse), nil
 }
 
+func (s *EtcdServer) LeaseRenew(ctx context.Context, r *pb.LeaseKeepAliveRequest) (*pb.LeaseKeepAliveResponse, error) {
+	if s.Cfg.ExperimentalEnableLeaseV2Renew {
+		resp := &pb.LeaseKeepAliveResponse{ID: r.ID, Header: s.newHeader()}
+
+		var err error
+		resp.TTL, err = s.leaseRenewV2(ctx, lease.LeaseID(r.ID))
+
+		return resp, err
+	}
+
+	return s.leaseRenewV3(ctx, r)
+}
+
 func (s *EtcdServer) leaseRenewV2(ctx context.Context, id lease.LeaseID) (int64, error) {
 	if s.isLeader() {
 		if err := s.waitAppliedIndex(); err != nil {
@@ -316,7 +329,7 @@ func (s *EtcdServer) leaseRenewV2(ctx context.Context, id lease.LeaseID) (int64,
 	return -1, errors.ErrCanceled
 }
 
-func (s *EtcdServer) LeaseRenew(ctx context.Context, r *pb.LeaseKeepAliveRequest) (*pb.LeaseKeepAliveResponse, error) {
+func (s *EtcdServer) leaseRenewV3(ctx context.Context, r *pb.LeaseKeepAliveRequest) (*pb.LeaseKeepAliveResponse, error) {
 	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRenew: r})
 	if err != nil {
 		return nil, err

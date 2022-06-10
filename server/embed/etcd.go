@@ -209,6 +209,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		UnsafeNoFsync:                            cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:                    cfg.ExperimentalEnableLeaseCheckpoint,
 		LeaseCheckpointPersist:                   cfg.ExperimentalEnableLeaseCheckpointPersist,
+		ExperimentalEnableLeaseV2Renew:           cfg.ExperimentalEnableLeaseV2Renew,
 		CompactionBatchLimit:                     cfg.ExperimentalCompactionBatchLimit,
 		CompactionSleepInterval:                  cfg.ExperimentalCompactionSleepInterval,
 		WatchProgressNotifyInterval:              cfg.ExperimentalWatchProgressNotifyInterval,
@@ -345,6 +346,10 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
+
+		zap.Bool("experimental-enable-lease-checkpoint", sc.EnableLeaseCheckpoint),
+		zap.Bool("experimental-enable-lease-checkpoint-persist", sc.LeaseCheckpointPersist),
+		zap.Bool("experimental-enable-lease-v2-renew", sc.ExperimentalEnableLeaseV2Renew),
 
 		zap.String("discovery-token", sc.DiscoveryCfg.Token),
 		zap.String("discovery-endpoints", strings.Join(sc.DiscoveryCfg.Endpoints, ",")),

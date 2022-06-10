@@ -246,6 +246,8 @@ Experimental feature:
     Duration of time between cluster corruption check passes.
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+  --experimental-enable-lease-v2-renew 'true'
+    ExperimentalEnableLeaseV2Renew enables the legacy lease v2 renew implementation. Will be deprecated in 3.7.
   --experimental-compaction-batch-limit 1000
     ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
   --experimental-peer-skip-client-san-verification 'false'

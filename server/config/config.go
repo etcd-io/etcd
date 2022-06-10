@@ -164,6 +164,12 @@ type ServerConfig struct {
 	// LeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
 	LeaseCheckpointPersist bool
 
+	// ExperimentalEnableLeaseV2Renew enables the legacy renew implementation.
+	// When it's enabled, if a follower receives the renew request from client,
+	// it just forward the request to the leader.
+	// Otherwise, each member just submits the request to raft.
+	ExperimentalEnableLeaseV2Renew bool
+
 	EnableGRPCGateway bool
 
 	// ExperimentalEnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.

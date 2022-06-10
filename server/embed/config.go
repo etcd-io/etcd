@@ -323,7 +323,9 @@ type Config struct {
 	// Deprecated in v3.6.
 	// TODO: Delete in v3.7
 	ExperimentalEnableLeaseCheckpointPersist bool `json:"experimental-enable-lease-checkpoint-persist"`
-	ExperimentalCompactionBatchLimit         int  `json:"experimental-compaction-batch-limit"`
+	ExperimentalEnableLeaseV2Renew           bool `json:"experimental-enable-lease-v2-renew"`
+
+	ExperimentalCompactionBatchLimit int `json:"experimental-compaction-batch-limit"`
 	// ExperimentalCompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	ExperimentalCompactionSleepInterval     time.Duration `json:"experimental-compaction-sleep-interval"`
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
