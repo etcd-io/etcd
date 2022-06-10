@@ -142,6 +142,8 @@ type ctlCtx struct {
 
 	initialCorruptCheck bool
 
+	enableLeaseV2Renew bool
+
 	// for compaction
 	compactPhysical bool
 
@@ -180,6 +182,10 @@ func withQuota(b int64) ctlOption {
 
 func withInitialCorruptCheck() ctlOption {
 	return func(cx *ctlCtx) { cx.initialCorruptCheck = true }
+}
+
+func withLeaseV2Renew() ctlOption {
+	return func(cx *ctlCtx) { cx.enableLeaseV2Renew = true }
 }
 
 func withCorruptFunc(f func(string) error) ctlOption {
@@ -225,6 +231,9 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	ret.cfg.NoStrictReconfig = ret.noStrictReconfig
 	if ret.initialCorruptCheck {
 		ret.cfg.InitialCorruptCheck = ret.initialCorruptCheck
+	}
+	if ret.enableLeaseV2Renew {
+		ret.cfg.EnableLeaseV2Renew = ret.enableLeaseV2Renew
 	}
 	if testOfflineFunc != nil {
 		ret.cfg.KeepDataDir = true

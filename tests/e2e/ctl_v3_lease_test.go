@@ -23,12 +23,20 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
+func TestCtlV3LeaseKeepAlive(t *testing.T) {
+	testCtl(t, leaseTestKeepAlive)
+}
+func TestCtlV3LeaseKeepAliveWithLeaseV2Renew(t *testing.T) {
+	testCtl(t, leaseTestKeepAlive, withLeaseV2Renew())
+}
 func TestCtlV3LeaseKeepAliveNoTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3LeaseKeepAliveClientTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientTLS()))
+}
+func TestCtlV3LeaseKeepAliveClientTLSWithLeaseV2Renew(t *testing.T) {
+	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientTLS()), withLeaseV2Renew())
 }
 func TestCtlV3LeaseKeepAliveClientAutoTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientAutoTLS()))

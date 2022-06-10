@@ -166,6 +166,7 @@ type EtcdProcessClusterConfig struct {
 	NoStrictReconfig    bool
 	EnableV2            bool
 	InitialCorruptCheck bool
+	EnableLeaseV2Renew  bool
 	AuthTokenOpts       string
 	V2deprecation       string
 
@@ -313,6 +314,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 		if cfg.InitialCorruptCheck {
 			args = append(args, "--experimental-initial-corrupt-check")
+		}
+		if cfg.EnableLeaseV2Renew {
+			args = append(args, "--experimental-enable-lease-v2-renew")
 		}
 		var murl string
 		if cfg.MetricsURLScheme != "" {
