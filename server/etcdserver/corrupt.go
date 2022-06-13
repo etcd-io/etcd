@@ -175,14 +175,7 @@ func (s *EtcdServer) checkHashKV() error {
 			return
 		}
 		alarmed = true
-		a := &pb.AlarmRequest{
-			MemberID: id,
-			Action:   pb.AlarmRequest_ACTIVATE,
-			Alarm:    pb.AlarmType_CORRUPT,
-		}
-		s.GoAttach(func() {
-			s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
-		})
+		s.triggerCorruptAlarm(id)
 	}
 
 	if h2 != h && rev2 == rev && crev == crev2 {
@@ -243,6 +236,17 @@ func (s *EtcdServer) checkHashKV() error {
 	}
 	lg.Info("finished peer corruption check", zap.Int("number-of-peers-checked", checkedCount))
 	return nil
+}
+
+func (s *EtcdServer) triggerCorruptAlarm(id uint64) {
+	a := &pb.AlarmRequest{
+		MemberID: id,
+		Action:   pb.AlarmRequest_ACTIVATE,
+		Alarm:    pb.AlarmType_CORRUPT,
+	}
+	s.GoAttach(func() {
+		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
+	})
 }
 
 type peerInfo struct {
