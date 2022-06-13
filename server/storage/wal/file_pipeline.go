@@ -58,6 +58,7 @@ func newFilePipeline(lg *zap.Logger, dir string, fileSize int64) *filePipeline {
 
 // Open returns a fresh file for writing. Rename the file before calling
 // Open again or there will be file collisions.
+// it will 'block' if the tmp file lock is already taken.
 func (fp *filePipeline) Open() (f *fileutil.LockedFile, err error) {
 	select {
 	case f = <-fp.filec:
