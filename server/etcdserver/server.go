@@ -2508,6 +2508,34 @@ func (s *EtcdServer) monitorVersions() {
 	}
 }
 
+func (s *EtcdServer) monitorKVHash() {
+	t := s.Cfg.CorruptCheckTime
+	if t == 0 {
+		return
+	}
+
+	lg := s.Logger()
+	lg.Info(
+		"enabled corruption checking",
+		zap.String("local-member-id", s.ID().String()),
+		zap.Duration("interval", t),
+	)
+	monitor := NewCorruptionMonitor(lg, s)
+	for {
+		select {
+		case <-s.stopping:
+			return
+		case <-time.After(t):
+		}
+		if !s.isLeader() {
+			continue
+		}
+		if err := monitor.periodicCheck(); err != nil {
+			lg.Warn("failed to check hash KV", zap.Error(err))
+		}
+	}
+}
+
 func (s *EtcdServer) updateClusterVersionV2(ver string) {
 	lg := s.Logger()
 
