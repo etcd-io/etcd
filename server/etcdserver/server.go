@@ -54,7 +54,7 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp/types"
+	httptypes "go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -744,7 +744,7 @@ func (s *EtcdServer) run() {
 	}
 
 	// asynchronously accept toApply packets, dispatch progress in-order
-	sched := schedule.NewFIFOScheduler()
+	sched := schedule.NewFIFOScheduler(lg)
 
 	var (
 		smu   sync.RWMutex
@@ -839,7 +839,7 @@ func (s *EtcdServer) run() {
 	for {
 		select {
 		case ap := <-s.r.apply():
-			f := func(context.Context) { s.applyAll(&ep, &ap) }
+			f := schedule.NewJob("server_applyAll", func(context.Context) { s.applyAll(&ep, &ap) })
 			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
 			s.revokeExpiredLeases(leases)
