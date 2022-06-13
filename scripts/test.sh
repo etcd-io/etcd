@@ -44,7 +44,7 @@ export GOFLAGS=-mod=readonly
 export ETCD_VERIFY=all
 
 source ./scripts/test_lib.sh
-source ./scripts/build.sh
+source ./scripts/build_lib.sh
 
 if [ -n "${OUTPUT_FILE}" ]; then
   log_callout "Dumping output to: ${OUTPUT_FILE}"

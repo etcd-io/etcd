@@ -27,6 +27,9 @@ build:
 	./bin/etcdctl version
 	./bin/etcdutl version
 
+build_tools:
+	GO_BUILD_FLAGS="-v" ./scripts/build_tools.sh
+
 clean:
 	rm -f ./codecov
 	rm -rf ./covdir
