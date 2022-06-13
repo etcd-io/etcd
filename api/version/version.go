@@ -33,6 +33,19 @@ var (
 	GitSHA = "Not provided (use ./build instead of go build)"
 )
 
+// Get all constant versions defined in a centralized place.
+var (
+	V3_0 = semver.Version{Major: 3, Minor: 0}
+	V3_1 = semver.Version{Major: 3, Minor: 1}
+	V3_2 = semver.Version{Major: 3, Minor: 2}
+	V3_3 = semver.Version{Major: 3, Minor: 3}
+	V3_4 = semver.Version{Major: 3, Minor: 4}
+	V3_5 = semver.Version{Major: 3, Minor: 5}
+	V3_6 = semver.Version{Major: 3, Minor: 6}
+	V3_7 = semver.Version{Major: 3, Minor: 7}
+	V4_0 = semver.Version{Major: 4, Minor: 0}
+)
+
 func init() {
 	ver, err := semver.NewVersion(Version)
 	if err == nil {
@@ -54,4 +67,16 @@ func Cluster(v string) string {
 		return v
 	}
 	return fmt.Sprintf("%s.%s", vs[0], vs[1])
+}
+
+func Compare(ver1, ver2 semver.Version) int {
+	return ver1.Compare(ver2)
+}
+
+func LessThan(ver1, ver2 semver.Version) bool {
+	return ver1.LessThan(ver2)
+}
+
+func Equal(ver1, ver2 semver.Version) bool {
+	return ver1.Equal(ver2)
 }
