@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -36,8 +37,6 @@ const NoLease = LeaseID(0)
 
 // MaxLeaseTTL is the maximum lease TTL value
 const MaxLeaseTTL = 9000000000
-
-var v3_6 = semver.Version{Major: 3, Minor: 6}
 
 var (
 	forever = time.Time{}
@@ -381,11 +380,11 @@ func (le *lessor) Checkpoint(id LeaseID, remainingTTL int64) error {
 
 func (le *lessor) shouldPersistCheckpoints() bool {
 	cv := le.cluster.Version()
-	return le.checkpointPersist || (cv != nil && greaterOrEqual(*cv, v3_6))
+	return le.checkpointPersist || (cv != nil && greaterOrEqual(*cv, version.V3_6))
 }
 
 func greaterOrEqual(first, second semver.Version) bool {
-	return !first.LessThan(second)
+	return !version.LessThan(first, second)
 }
 
 // Renew renews an existing lease. If the given lease does not exist or

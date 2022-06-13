@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
@@ -86,7 +87,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse target version: %v", err)
 	}
-	if c.targetVersion.LessThan(schema.V3_5) {
+	if c.targetVersion.LessThan(version.V3_5) {
 		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5"`, storageVersionToString(c.targetVersion))
 	}
 
@@ -143,7 +144,7 @@ func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
 	tx.LockOutsideApply()
 	defer tx.Unlock()
 	// Storage version is only supported since v3.6
-	if target.LessThan(schema.V3_6) {
+	if target.LessThan(version.V3_6) {
 		schema.UnsafeClearStorageVersion(tx)
 		lg.Warn("forcefully cleared storage version")
 	} else {
