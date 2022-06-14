@@ -473,8 +473,15 @@ func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnR
 	if isWrite {
 		txn.End()
 		txn = a.s.KV().Write(trace)
+		a.applyTxn(ctx, txn, rt, txnPath, txnResp)
+	} else {
+		// readonly transactions are allowed to fail
+		err := a.applyReadOnlyTxn(ctx, txn, rt, txnPath, txnResp)
+		if err !=nil {
+			return nil, nil, err
+		}
 	}
-	a.applyTxn(ctx, txn, rt, txnPath, txnResp)
+
 	rev := txn.Rev()
 	if len(txn.Changes()) != 0 {
 		rev++
@@ -615,6 +622,35 @@ func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 		return result < 0
 	}
 	return true
+}
+
+//applyReadOnlyTxn handles a special case of readonly transactions (only Range) that can't be nested and are allowed to fail
+func (a *applierV3backend) applyReadOnlyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse) error {
+	trace := traceutil.Get(ctx)
+	reqs := rt.Success
+	if !txnPath[0] {
+		reqs = rt.Failure
+	}
+
+	for i, req := range reqs {
+		respi := tresp.Responses[i].Response
+		switch tv := req.Request.(type) {
+		case *pb.RequestOp_RequestRange:
+			trace.StartSubTrace(
+				traceutil.Field{Key: "req_type", Value: "range"},
+				traceutil.Field{Key: "range_begin", Value: string(tv.RequestRange.Key)},
+				traceutil.Field{Key: "range_end", Value: string(tv.RequestRange.RangeEnd)})
+			resp, err := a.Range(ctx, txn, tv.RequestRange)
+			if err != nil {
+				return  err
+			}
+			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
+			trace.StopSubTrace()
+		default:
+			// empty union
+		}
+	}
+	return nil
 }
 
 func (a *applierV3backend) applyTxn(ctx context.Context, txn mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse) (txns int) {
