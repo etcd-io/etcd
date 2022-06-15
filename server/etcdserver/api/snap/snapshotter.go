@@ -242,7 +242,7 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 			snaps = append(snaps, names[i])
 		} else {
 			// If we find a file which is not a snapshot then check if it's
-			// a vaild file. If not throw out a warning.
+			// a valid file. If not throw out a warning.
 			if _, ok := validFiles[names[i]]; !ok {
 				if lg != nil {
 					lg.Warn("found unexpected non-snap file; skipping", zap.String("path", names[i]))
