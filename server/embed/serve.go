@@ -114,9 +114,14 @@ func (sctx *serveCtx) serve(
 	var gs *grpc.Server
 	defer func() {
 		if err != nil && gs != nil {
+			sctx.lg.Warn("stopping grpc server due to error", zap.Error(err))
 			gs.Stop()
+			sctx.lg.Warn("stopped grpc server due to error", zap.Error(err))
 		}
 	}()
+
+	// Make sure serversC is closed even if we prematurely exit the function.
+	defer close(sctx.serversC)
 
 	if sctx.insecure {
 		gs = v3rpc.Server(s, nil, nil, gopts...)
@@ -132,6 +137,7 @@ func (sctx *serveCtx) serve(
 		if s.Cfg.EnableGRPCGateway {
 			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithInsecure()})
 			if err != nil {
+				sctx.lg.Error("registerGateway failed", zap.Error(err))
 				return err
 			}
 		}
@@ -200,7 +206,6 @@ func (sctx *serveCtx) serve(
 		)
 	}
 
-	close(sctx.serversC)
 	return m.Serve()
 }
 
@@ -238,6 +243,7 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 
 	conn, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
+		sctx.lg.Error("registerGateway failed to dial", zap.String("addr", addr), zap.Error(err))
 		return nil, err
 	}
 	gwmux := gw.NewServeMux()
