@@ -120,6 +120,9 @@ func (sctx *serveCtx) serve(
 		}
 	}()
 
+	// Make sure serversC is closed even if we prematurely exit the function.
+	defer close(sctx.serversC)
+
 	if sctx.insecure {
 		gs = v3rpc.Server(s, nil, nil, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
@@ -203,7 +206,6 @@ func (sctx *serveCtx) serve(
 		)
 	}
 
-	close(sctx.serversC)
 	return m.Serve()
 }
 
