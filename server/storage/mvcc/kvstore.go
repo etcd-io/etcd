@@ -108,7 +108,7 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 		currentRev:     1,
 		compactMainRev: -1,
 
-		fifoSched: schedule.NewFIFOScheduler(),
+		fifoSched: schedule.NewFIFOScheduler(lg),
 
 		stopc: make(chan struct{}),
 
@@ -148,7 +148,7 @@ func (s *store) compactBarrier(ctx context.Context, ch chan struct{}) {
 			// snapshot call, compaction and apply snapshot requests are serialized by
 			// raft, and do not happen at the same time.
 			s.mu.Lock()
-			f := func(ctx context.Context) { s.compactBarrier(ctx, ch) }
+			f := schedule.NewJob("kvstore_compactBarrier", func(ctx context.Context) { s.compactBarrier(ctx, ch) })
 			s.fifoSched.Schedule(f)
 			s.mu.Unlock()
 		}
@@ -202,7 +202,7 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, int64, error) {
 	s.revMu.Lock()
 	if rev <= s.compactMainRev {
 		ch := make(chan struct{})
-		f := func(ctx context.Context) { s.compactBarrier(ctx, ch) }
+		f := schedule.NewJob("kvstore_updateCompactRev_compactBarrier", func(ctx context.Context) { s.compactBarrier(ctx, ch) })
 		s.fifoSched.Schedule(f)
 		s.revMu.Unlock()
 		return ch, 0, ErrCompacted
@@ -225,7 +225,7 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, int64, error) {
 
 func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64) (<-chan struct{}, error) {
 	ch := make(chan struct{})
-	var j = func(ctx context.Context) {
+	j := schedule.NewJob("kvstore_compact", func(ctx context.Context) {
 		if ctx.Err() != nil {
 			s.compactBarrier(ctx, ch)
 			return
@@ -238,7 +238,7 @@ func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64) (<-ch
 		}
 		s.hashes.Store(hash)
 		close(ch)
-	}
+	})
 
 	s.fifoSched.Schedule(j)
 	trace.Step("schedule compaction")
@@ -292,7 +292,7 @@ func (s *store) Restore(b backend.Backend) error {
 		s.revMu.Unlock()
 	}
 
-	s.fifoSched = schedule.NewFIFOScheduler()
+	s.fifoSched = schedule.NewFIFOScheduler(s.lg)
 	s.stopc = make(chan struct{})
 
 	return s.restore()

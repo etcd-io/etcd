@@ -856,7 +856,7 @@ func newFakeStore(lg *zap.Logger) *store {
 		kvindex:        newFakeIndex(),
 		currentRev:     0,
 		compactMainRev: -1,
-		fifoSched:      schedule.NewFIFOScheduler(),
+		fifoSched:      schedule.NewFIFOScheduler(lg),
 		stopc:          make(chan struct{}),
 		lg:             lg,
 	}
