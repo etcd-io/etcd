@@ -17,7 +17,6 @@ package snap
 import (
 	"errors"
 	"fmt"
-	"go.etcd.io/etcd/raft/v3"
 	"hash/crc32"
 	"os"
 	"path/filepath"
@@ -28,6 +27,7 @@ import (
 
 	pioutil "go.etcd.io/etcd/pkg/v3/ioutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap/snappb"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
@@ -242,7 +242,7 @@ func checkSuffix(lg *zap.Logger, names []string) []string {
 			snaps = append(snaps, names[i])
 		} else {
 			// If we find a file which is not a snapshot then check if it's
-			// a valid file. If not throw out a warning.
+			// a vaild file. If not throw out a warning.
 			if _, ok := validFiles[names[i]]; !ok {
 				if lg != nil {
 					lg.Warn("found unexpected non-snap file; skipping", zap.String("path", names[i]))
