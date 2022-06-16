@@ -16,6 +16,7 @@ package fileutil
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,7 +34,9 @@ func TestFileBufReader(t *testing.T) {
 
 	fbr := NewFileBufReader(NewFileReader(f))
 
-	assert.Equal(t, fi.Name(), fbr.FileInfo().Name())
+	if !strings.HasPrefix(fbr.FileInfo().Name(), "wal") {
+		t.Errorf("Unexpected file name: %s", fbr.FileInfo().Name())
+	}
 	assert.Equal(t, fi.Size(), fbr.FileInfo().Size())
 	assert.Equal(t, fi.IsDir(), fbr.FileInfo().IsDir())
 	assert.Equal(t, fi.Mode(), fbr.FileInfo().Mode())
