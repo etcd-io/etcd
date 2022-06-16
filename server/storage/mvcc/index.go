@@ -15,7 +15,6 @@
 package mvcc
 
 import (
-	"sort"
 	"sync"
 
 	"github.com/google/btree"
@@ -29,7 +28,6 @@ type index interface {
 	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev revision)
 	Tombstone(key []byte, rev revision) error
-	RangeSince(key, end []byte, rev int64) []revision
 	Compact(rev int64) map[revision]struct{}
 	Keep(rev int64) map[revision]struct{}
 	Equal(b index) bool
@@ -107,6 +105,9 @@ func (ti *treeIndex) unsafeVisit(key, end []byte, f func(ki *keyIndex) bool) {
 	})
 }
 
+// Revisions returns limited number of revisions from key(included) to end(excluded)
+// at the given rev. The returned slice is sorted in the order of key. There is no limit if limit <= 0.
+// The second return parameter isn't capped by the limit and reflects the total number of revisions.
 func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []revision, total int) {
 	ti.RLock()
 	defer ti.RUnlock()
@@ -130,6 +131,8 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []
 	return revs, total
 }
 
+// CountRevisions returns the number of revisions
+// from key(included) to end(excluded) at the given rev.
 func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
 	ti.RLock()
 	defer ti.RUnlock()
@@ -184,31 +187,6 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 
 	ki := item.(*keyIndex)
 	return ki.tombstone(ti.lg, rev.main, rev.sub)
-}
-
-// RangeSince returns all revisions from key(including) to end(excluding)
-// at or after the given rev. The returned slice is sorted in the order
-// of revision.
-func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
-	ti.RLock()
-	defer ti.RUnlock()
-
-	if end == nil {
-		keyi := ti.keyIndex(&keyIndex{key: key})
-		if keyi == nil {
-			return nil
-		}
-		return keyi.since(ti.lg, rev)
-	}
-
-	var revs []revision
-	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
-		revs = append(revs, ki.since(ti.lg, rev)...)
-		return true
-	})
-	sort.Sort(revisions(revs))
-
-	return revs
 }
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
