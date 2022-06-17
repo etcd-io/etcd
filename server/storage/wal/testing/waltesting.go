@@ -15,7 +15,7 @@
 package testing
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -29,7 +29,7 @@ import (
 
 func NewTmpWAL(t testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL, string) {
 	t.Helper()
-	dir, err := ioutil.TempDir(t.TempDir(), "etcd_wal_test")
+	dir, err := os.MkdirTemp(t.TempDir(), "etcd_wal_test")
 	if err != nil {
 		panic(err)
 	}
