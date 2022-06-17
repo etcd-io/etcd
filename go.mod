@@ -33,7 +33,7 @@ require (
 	go.etcd.io/etcd/tests/v3 v3.6.0-alpha.0
 	go.uber.org/zap v1.17.0
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
-	google.golang.org/grpc v1.41.0
+	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 )
@@ -50,7 +50,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
@@ -84,7 +84,6 @@ require (
 	golang.org/x/net v0.0.0-20220105145211-5b0dc2dfae98 // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect

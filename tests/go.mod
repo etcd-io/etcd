@@ -19,7 +19,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
-	github.com/google/go-cmp v0.5.6
+	github.com/google/go-cmp v0.5.8
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
@@ -42,7 +42,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
-	google.golang.org/grpc v1.41.0
+	google.golang.org/grpc v1.47.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -83,7 +83,6 @@ require (
 	golang.org/x/net v0.0.0-20220105145211-5b0dc2dfae98 // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
