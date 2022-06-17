@@ -15,7 +15,6 @@
 package testutil
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"testing"
@@ -44,7 +43,7 @@ func BeforeTest(t testing.TB) {
 func BeforeIntegrationExamples(*testing.M) func() {
 	ExitInShortMode("Skipping: the tests require real cluster")
 
-	tempDir, err := ioutil.TempDir(os.TempDir(), "etcd-integration")
+	tempDir, err := os.MkdirTemp(os.TempDir(), "etcd-integration")
 	if err != nil {
 		log.Printf("Failed to obtain tempDir: %v", tempDir)
 		os.Exit(1)

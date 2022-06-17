@@ -15,7 +15,6 @@
 package clientv3_test
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"testing"
@@ -47,7 +46,7 @@ func forUnitTestsRunInMockedContext(_ func(), example func()) {
 func TestMain(m *testing.M) {
 	testutil.ExitInShortMode("Skipping: the tests require real cluster")
 
-	tempDir, err := ioutil.TempDir(os.TempDir(), "etcd-integration")
+	tempDir, err := os.MkdirTemp(os.TempDir(), "etcd-integration")
 	if err != nil {
 		log.Printf("Failed to obtain tempDir: %v", tempDir)
 		os.Exit(1)
