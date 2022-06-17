@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -297,7 +298,7 @@ func TestCut(t *testing.T) {
 	}
 	defer f.Close()
 	nw := &WAL{
-		decoder: newDecoder(f),
+		decoder: newDecoder(fileutil.NewFileReader(f)),
 		start:   snap,
 	}
 	_, gst, _, err := nw.ReadAll()
@@ -369,47 +370,77 @@ func TestSaveWithCut(t *testing.T) {
 }
 
 func TestRecover(t *testing.T) {
-	p := t.TempDir()
-
-	w, err := Create(zaptest.NewLogger(t), p, []byte("metadata"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
-		t.Fatal(err)
-	}
-	ents := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}, {Index: 2, Term: 2, Data: []byte{2}}}
-	if err = w.Save(raftpb.HardState{}, ents); err != nil {
-		t.Fatal(err)
-	}
-	sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
-	for _, s := range sts {
-		if err = w.Save(s, nil); err != nil {
-			t.Fatal(err)
-		}
-	}
-	w.Close()
-
-	if w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
-		t.Fatal(err)
-	}
-	metadata, state, entries, err := w.ReadAll()
-	if err != nil {
-		t.Fatal(err)
+	cases := []struct {
+		name string
+		size int
+	}{
+		{
+			name: "10MB",
+			size: 10 * 1024 * 1024,
+		},
+		{
+			name: "20MB",
+			size: 20 * 1024 * 1024,
+		},
+		{
+			name: "40MB",
+			size: 40 * 1024 * 1024,
+		},
 	}
 
-	if !bytes.Equal(metadata, []byte("metadata")) {
-		t.Errorf("metadata = %s, want %s", metadata, "metadata")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := t.TempDir()
+
+			w, err := Create(zaptest.NewLogger(t), p, []byte("metadata"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+				t.Fatal(err)
+			}
+
+			data := make([]byte, tc.size)
+			n, err := rand.Read(data)
+			assert.Equal(t, tc.size, n)
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+
+			ents := []raftpb.Entry{{Index: 1, Term: 1, Data: data}, {Index: 2, Term: 2, Data: data}}
+			if err = w.Save(raftpb.HardState{}, ents); err != nil {
+				t.Fatal(err)
+			}
+			sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
+			for _, s := range sts {
+				if err = w.Save(s, nil); err != nil {
+					t.Fatal(err)
+				}
+			}
+			w.Close()
+
+			if w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
+				t.Fatal(err)
+			}
+			metadata, state, entries, err := w.ReadAll()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !bytes.Equal(metadata, []byte("metadata")) {
+				t.Errorf("metadata = %s, want %s", metadata, "metadata")
+			}
+			if !reflect.DeepEqual(entries, ents) {
+				t.Errorf("ents = %+v, want %+v", entries, ents)
+			}
+			// only the latest state is recorded
+			s := sts[len(sts)-1]
+			if !reflect.DeepEqual(state, s) {
+				t.Errorf("state = %+v, want %+v", state, s)
+			}
+			w.Close()
+		})
 	}
-	if !reflect.DeepEqual(entries, ents) {
-		t.Errorf("ents = %+v, want %+v", entries, ents)
-	}
-	// only the latest state is recorded
-	s := sts[len(sts)-1]
-	if !reflect.DeepEqual(state, s) {
-		t.Errorf("state = %+v, want %+v", state, s)
-	}
-	w.Close()
 }
 
 func TestSearchIndex(t *testing.T) {
