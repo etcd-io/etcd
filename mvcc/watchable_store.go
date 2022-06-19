@@ -152,10 +152,13 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		s.mu.Lock()
 		if s.unsynced.delete(wa) {
 			slowWatcherGauge.Dec()
+			watcherGauge.Dec()
 			break
 		} else if s.synced.delete(wa) {
+			watcherGauge.Dec()
 			break
 		} else if wa.compacted {
+			watcherGauge.Dec()
 			break
 		} else if wa.ch == nil {
 			// already canceled (e.g., cancel/close race)
@@ -175,6 +178,7 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		}
 		if victimBatch != nil {
 			slowWatcherGauge.Dec()
+			watcherGauge.Dec()
 			delete(victimBatch, wa)
 			break
 		}
@@ -184,7 +188,6 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		time.Sleep(time.Millisecond)
 	}
 
-	watcherGauge.Dec()
 	wa.ch = nil
 	s.mu.Unlock()
 }

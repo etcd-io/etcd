@@ -351,8 +351,15 @@ func (s *store) Restore(b backend.Backend) error {
 	atomic.StoreUint64(&s.consistentIndex, 0)
 	s.b = b
 	s.kvindex = newTreeIndex(s.lg)
-	s.currentRev = 1
-	s.compactMainRev = -1
+
+	{
+		// During restore the metrics might report 'special' values.
+		s.revMu.Lock()
+		s.currentRev = 1
+		s.compactMainRev = -1
+		s.revMu.Unlock()
+	}
+
 	s.fifoSched = schedule.NewFIFOScheduler()
 	s.stopc = make(chan struct{})
 
