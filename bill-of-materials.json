@@ -1,5 +1,14 @@
 [
 	{
+		"project": "github.com/VividCortex/ewma",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/benbjohnson/clock",
 		"licenses": [
 			{
@@ -50,6 +59,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/cheggaaa/pb/v3",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9916666666666667
 			}
 		]
 	},
@@ -122,6 +140,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.96875
+			}
+		]
+	},
+	{
+		"project": "github.com/fatih/color",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},
@@ -270,6 +297,24 @@
 		]
 	},
 	{
+		"project": "github.com/mattn/go-colorable",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/mattn/go-isatty",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9587628865979382
+			}
+		]
+	},
+	{
 		"project": "github.com/mattn/go-runewidth",
 		"licenses": [
 			{
@@ -346,6 +391,15 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/rivo/uniseg",
+		"licenses": [
+			{
+				"type": "MIT License",
 				"confidence": 1
 			}
 		]
@@ -689,15 +743,6 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9663865546218487
-			}
-		]
-	},
-	{
-		"project": "gopkg.in/cheggaaa/pb.v1",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9916666666666667
 			}
 		]
 	},
