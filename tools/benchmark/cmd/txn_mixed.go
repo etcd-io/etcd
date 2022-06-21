@@ -26,9 +26,9 @@ import (
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/report"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
-	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // mixeTxnCmd represents the mixedTxn command
@@ -93,7 +93,6 @@ func mixedTxnFunc(cmd *cobra.Command, args []string) {
 	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
 	bar = pb.New(mixedTxnTotal)
-	bar.Format("Bom !")
 	bar.Start()
 
 	reportRead := newReport()

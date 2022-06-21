@@ -30,9 +30,9 @@ import (
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/report"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
-	"gopkg.in/cheggaaa/pb.v1"
 )
 
 var (
@@ -180,7 +180,6 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	k, v := make([]byte, ksize), string(make([]byte, vsize))
 
 	bar := pb.New(cfg.duration)
-	bar.Format("Bom !")
 	bar.Start()
 
 	r := report.NewReport("%4.4f")
@@ -368,7 +367,6 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 
 	fmt.Println(fmt.Sprintf("Start data scale check for work load [%v key-value pairs, %v bytes per key-value, %v concurrent clients].", cfg.limit, cfg.kvSize, cfg.clients))
 	bar := pb.New(cfg.limit)
-	bar.Format("Bom !")
 	bar.Start()
 
 	for i := range clients {
