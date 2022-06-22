@@ -27,9 +27,10 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/mirror"
 
+	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
 )
 
@@ -44,6 +45,8 @@ var (
 	mmpassword     string
 	mmnodestprefix bool
 	mmrev          int64
+
+	modRevision = "__mod_revision"
 )
 
 // NewMakeMirrorCommand returns the cobra command for "makeMirror".
@@ -130,29 +133,43 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) error {
-	total := int64(0)
+	var (
+		revision = int64(0)
+		startRev = mmrev - 1
+	)
 
 	// if destination prefix is specified and remove destination prefix is true return error
 	if mmnodestprefix && len(mmdestprefix) > 0 {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one"))
 	}
 
+	if startRev < 0 { //Ignore if specify the revision
+		startRev = 0
+		resp, err := c.Get(ctx, modRevision) //Get Mod_Revision to start mirror (We probadly mirror a few keys twice)
+		if err == nil {
+			startRev = cast.ToInt64(string(resp.Kvs[0].Value)) - 1
+			revision = startRev
+		}
+	}
+
 	go func() {
 		for {
-			time.Sleep(30 * time.Second)
-			fmt.Println(atomic.LoadInt64(&total))
+			//Update Mod_Revision every 1+ second
+			time.Sleep(1 * time.Second)
+			ct, cl := context.WithTimeout(context.TODO(), 5*time.Second)
+			_, err := c.Put(ct, modRevision, cast.ToString(atomic.LoadInt64(&revision)))
+			cl()
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}()
-
-	startRev := mmrev - 1
-	if startRev < 0 {
-		startRev = 0
-	}
 
 	s := mirror.NewSyncer(c, mmprefix, startRev)
 
 	// If a rev is provided, then do not sync the whole key space.
 	// Instead, just start watching the key space starting from the rev
+	fmt.Println("startRev " + cast.ToString(startRev))
 	if startRev == 0 {
 		rc, errc := s.SyncBase(ctx)
 
@@ -167,7 +184,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 				if err != nil {
 					return err
 				}
-				atomic.AddInt64(&total, 1)
+				atomic.StoreInt64(&revision, kv.ModRevision)
 			}
 		}
 
@@ -200,10 +217,10 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 			switch ev.Type {
 			case mvccpb.PUT:
 				ops = append(ops, clientv3.OpPut(modifyPrefix(string(ev.Kv.Key)), string(ev.Kv.Value)))
-				atomic.AddInt64(&total, 1)
+				atomic.StoreInt64(&revision, ev.Kv.ModRevision)
 			case mvccpb.DELETE:
 				ops = append(ops, clientv3.OpDelete(modifyPrefix(string(ev.Kv.Key))))
-				atomic.AddInt64(&total, 1)
+				atomic.StoreInt64(&revision, ev.Kv.ModRevision)
 			default:
 				panic("unexpected event type")
 			}
