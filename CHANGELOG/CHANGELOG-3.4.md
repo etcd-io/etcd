@@ -16,6 +16,14 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.18...v3.4.19) an
 ### Package `clientv3`
 - Fix [a bug of not refreshing expired tokens](https://github.com/etcd-io/etcd/pull/13999).
 
+### Dependency
+- Upgrade [go.etcd.io/bbolt](https://github.com/etcd-io/bbolt/releases) from [v1.3.3](https://github.com/etcd-io/bbolt/releases/tag/v1.3.3) to [v1.3.6](https://github.com/etcd-io/bbolt/releases/tag/v1.3.6).
+
+### Go
+- Require [Go 1.16+](https://github.com/etcd-io/etcd/pull/14136).
+- Compile with [Go 1.16+](https://go.dev/doc/devel/release#go1.16).
+- etcd uses [go modules](https://github.com/etcd-io/etcd/pull/14136) (instead of vendor dir) to track dependencies.
+
 <hr>
 
 ## v3.4.18 (2021-10-15)
