@@ -6,7 +6,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: [1.12.17, 1.15.15]
         target:
         - linux-amd64-fmt
         - linux-amd64-integration-1-cpu
@@ -17,53 +16,42 @@ jobs:
         - all-build
         - linux-amd64-grpcproxy
         - linux-386-unit
-        exclude:
-        - go: 1.12.17
-          target: linux-amd64-grpcproxy
-        - go: 1.12.17
-          target: linux-386-unit
-        - go: 1.15.15
-          target: linux-amd64-integration-1-cpu
-        - go: 1.15.15
-          target: linux-amd64-integration-2-cpu
-        - go: 1.12.17
-          target: linux-amd64-unit
-        - go: 1.15.15
-          target: linux-amd64-coverage
-        - go: 1.12.17
-          target: linux-amd64-fmt
-        - go: 1.15.15
-          target: linux-386-unit
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
       with:
-        go-version: ${{ matrix.go }}
+        go-version: "1.16.15"
     - run: date
     - env:
         TARGET: ${{ matrix.target }}
-        GO_VERSION: ${{ matrix.go }}
       run: |
-        RACE='true'; if [[ ${GO_VERSION} == 1.15.15 ]]; then echo 'setting race off'; RACE='false'; fi
+        go version
+        echo ${GOROOT}
+        # The version of ${GOROOT} is 1.16.15, while the `/usr/bin/go` links to go1.17.11.
+        # We need to make sure they are linking to the same go version; otherwise, we will
+        # run into issue: "compile: version go1.16.15 does not match go tool version go1.17.11".
+        # Refer to https://github.com/actions/setup-go/issues/107 as well.
+        sudo unlink /usr/bin/go; sudo ln -s ${GOROOT}/bin/go /usr/bin/go; ls -lrt /usr/bin/go
+
         echo "${TARGET}"
         case "${TARGET}" in
           linux-amd64-fmt)
             GOARCH=amd64 PASSES='fmt bom dep' ./test
             ;;
           linux-amd64-integration-1-cpu)
-            GOARCH=amd64 CPU=1 PASSES='integration' RACE="${RACE}" ./test
+            GOARCH=amd64 CPU=1 PASSES='integration' RACE='false' ./test
             ;;
           linux-amd64-integration-2-cpu)
-            GOARCH=amd64 CPU=2 PASSES='integration' RACE="${RACE}" ./test
+            GOARCH=amd64 CPU=2 PASSES='integration' RACE='false' ./test
             ;;
           linux-amd64-integration-4-cpu)
-            GOARCH=amd64 CPU=4 PASSES='integration' RACE="${RACE}" ./test
+            GOARCH=amd64 CPU=4 PASSES='integration' RACE='false' ./test
             ;;
           linux-amd64-functional)
-            ./build && GOARCH=amd64 PASSES='functional' RACE="${RACE}" ./test
+            ./build && GOARCH=amd64 PASSES='functional' ./test
             ;;
           linux-amd64-unit)
-            GOARCH=amd64 PASSES='unit' RACE="${RACE}" ./test
+            GOARCH=amd64 PASSES='unit' RACE='false' ./test
             ;;
           all-build)
             GOARCH=amd64 PASSES='build' ./test

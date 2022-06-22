@@ -104,5 +104,5 @@ func TestNodeExternClone(t *testing.T) {
 func sameSlice(a, b []*NodeExtern) bool {
 	ah := (*reflect.SliceHeader)(unsafe.Pointer(&a))
 	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	return *ah == *bh
+	return ah.Data == bh.Data && ah.Len == bh.Len && ah.Cap == bh.Cap
 }

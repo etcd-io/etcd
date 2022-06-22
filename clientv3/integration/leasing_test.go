@@ -619,16 +619,28 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
+	client := clus.Client(0)
+
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
 	testutil.AssertNil(t, err)
-	defer closeLKV()
+
+	defer func() {
+		// In '--tags cluster_proxy' mode the client need to be closed before
+		// closeLKV(). This interrupts all outstanding watches. Closing by closeLKV()
+		// is not sufficient as (unfortunately) context close does not interrupts Watches.
+		// See ./clientv3/watch.go:
+		// >> Currently, client contexts are overwritten with "valCtx" that never closes. <<
+		clus.TakeClient(0) // avoid double Close() of the client.
+		client.Close()
+		closeLKV()
+	}()
 
 	keyCount := rand.Intn(10) + 1
 	var ops []clientv3.Op
 	presps := make([]*clientv3.PutResponse, keyCount)
 	for i := range presps {
 		k := fmt.Sprintf("k-%d", i)
-		presp, err := clus.Client(0).Put(context.TODO(), k, k+k)
+		presp, err := client.Put(context.TODO(), k, k+k)
 		if err != nil {
 			t.Fatal(err)
 		}
