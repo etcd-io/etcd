@@ -146,7 +146,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 	if startRev < 0 { //Ignore if specify the revision
 		startRev = 0
 		resp, err := c.Get(ctx, modRevision) //Get Mod_Revision to start mirror (We probadly mirror a few keys twice)
-		if err == nil {
+		if err == nil && len(resp.Kvs[0].Value) > 0 {
 			startRev = cast.ToInt64(string(resp.Kvs[0].Value)) - 1
 			revision = startRev
 		}
