@@ -14,9 +14,25 @@
 
 package v3rpc
 
-import "github.com/golang/protobuf/proto"
+import (
+	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc/encoding"
+)
 
-type codec struct{}
+// RegisterCodec encapsulates the `encoding.RegisterCodec`.
+//
+// `grpc.CustomCodec` has already been deprecated in gRPC 1.47. Users are
+//  supposed to use `encoding.RegisterCodec` to register customized codec.
+func RegisterCodec(name string) {
+	encoding.RegisterCodec(&codec{name})
+}
+
+// codec needs to implement interface `Codec` when registering codec using
+// `encoding.RegisterCodec`, please refer to
+// https://github.com/grpc/grpc-go/blob/v1.47.0/encoding/encoding.go#L86.
+type codec struct {
+	name string
+}
 
 func (c *codec) Marshal(v interface{}) ([]byte, error) {
 	b, err := proto.Marshal(v.(proto.Message))
@@ -29,6 +45,10 @@ func (c *codec) Unmarshal(data []byte, v interface{}) error {
 	return proto.Unmarshal(data, v.(proto.Message))
 }
 
+func (c *codec) Name() string {
+	return c.name
+}
+
 func (c *codec) String() string {
-	return "proto"
+	return c.name
 }

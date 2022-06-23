@@ -111,6 +111,9 @@ func (sctx *serveCtx) serve(
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
+	// register the codec
+	v3rpc.RegisterCodec(s.Cfg.Name)
+
 	var gs *grpc.Server
 	defer func() {
 		if err != nil && gs != nil {

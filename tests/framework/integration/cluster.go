@@ -616,6 +616,8 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 		UniqNumber:   int(atomic.AddInt32(&LocalListenCount, 1)),
 	}
 
+	v3rpc.RegisterCodec(mcfg.Name)
+
 	peerScheme := SchemeFromTLSInfo(mcfg.PeerTLS)
 	clientScheme := SchemeFromTLSInfo(mcfg.ClientTLS)
 
@@ -720,6 +722,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.GrpcServerRecorder = &grpc_testing.GrpcRecorder{}
 	m.Logger = memberLogger(t, mcfg.Name)
 	m.StrictReconfigCheck = mcfg.StrictReconfigCheck
+
 	if err := m.listenGRPC(); err != nil {
 		t.Fatalf("listenGRPC FAILED: %v", err)
 	}
