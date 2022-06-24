@@ -1059,37 +1059,7 @@ func (s *EtcdServer) run() {
 			f := func(context.Context) { s.applyAll(&ep, &ap) }
 			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
-			s.goAttach(func() {
-				// Increases throughput of expired leases deletion process through parallelization
-				c := make(chan struct{}, maxPendingRevokes)
-				for _, lease := range leases {
-					select {
-					case c <- struct{}{}:
-					case <-s.stopping:
-						return
-					}
-					lid := lease.ID
-					s.goAttach(func() {
-						ctx := s.authStore.WithRoot(s.ctx)
-						_, lerr := s.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: int64(lid)})
-						if lerr == nil {
-							leaseExpired.Inc()
-						} else {
-							if lg != nil {
-								lg.Warn(
-									"failed to revoke lease",
-									zap.String("lease-id", fmt.Sprintf("%016x", lid)),
-									zap.Error(lerr),
-								)
-							} else {
-								plog.Warningf("failed to revoke %016x (%q)", lid, lerr.Error())
-							}
-						}
-
-						<-c
-					})
-				}
-			})
+			s.revokeExpiredLeases(leases)
 		case err := <-s.errorc:
 			if lg != nil {
 				lg.Warn("server error", zap.Error(err))
@@ -1107,6 +1077,45 @@ func (s *EtcdServer) run() {
 			return
 		}
 	}
+}
+
+func (s *EtcdServer) revokeExpiredLeases(leases []*lease.Lease) {
+	s.goAttach(func() {
+		lg := s.Logger()
+		// Increases throughput of expired leases deletion process through parallelization
+		c := make(chan struct{}, maxPendingRevokes)
+		for _, curLease := range leases {
+			select {
+			case c <- struct{}{}:
+			case <-s.stopping:
+				return
+			}
+
+			f := func(lid int64) {
+				s.goAttach(func() {
+					ctx := s.authStore.WithRoot(s.ctx)
+					_, lerr := s.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lid})
+					if lerr == nil {
+						leaseExpired.Inc()
+					} else {
+						if lg != nil {
+							lg.Warn(
+								"failed to revoke lease",
+								zap.String("lease-id", fmt.Sprintf("%016x", lid)),
+								zap.Error(lerr),
+							)
+						} else {
+							plog.Warningf("failed to revoke %016x (%q)", lid, lerr.Error())
+						}
+					}
+
+					<-c
+				})
+			}
+
+			f(int64(curLease.ID))
+		}
+	})
 }
 
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
