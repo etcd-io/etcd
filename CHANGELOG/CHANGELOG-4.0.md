@@ -18,10 +18,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v4.0.0) and 
 ### Breaking Changes
 
 - [Secure etcd by default](https://github.com/etcd-io/etcd/issues/9475)?
-- Change `/health` endpoint output.
-  - Previously, `{"health":"true"}`.
-  - Now, `{"health":true}`.
-  - Breaks [Kubernetes `kubectl get componentstatuses` command](https://github.com/kubernetes/kubernetes/issues/58240).
 - Deprecate [`etcd --proxy*`](TODO) flags; **no more v2 proxy**.
 - Deprecate [v2 storage backend](https://github.com/etcd-io/etcd/issues/9232); **no more v2 store**.
   - v2 API is still supported via [v2 emulation](TODO).
