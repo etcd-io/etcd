@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/etcd/proxy/grpcproxy/adapter"
 )
 
-const throughProxy = true
+const ThroughProxy = true
 
 var (
 	pmu     sync.Mutex

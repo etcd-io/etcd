@@ -262,7 +262,8 @@ func (wps *watchProxyStream) recvLoop() error {
 		case *pb.WatchRequest_CancelRequest:
 			wps.delete(uv.CancelRequest.WatchId)
 		default:
-			panic("not implemented")
+			// Panic or Fatalf would allow network clients to crash the serve remotely.
+			//panic("not implemented")
 		}
 	}
 }
