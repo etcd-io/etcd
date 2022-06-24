@@ -12,6 +12,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.18...v3.4.19) an
 - Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13475).
 - Fix [Defrag unsets backend options](https://github.com/etcd-io/etcd/pull/13713).
 - Fix [lease leak issue due to tokenProvider isn't enabled when restoring auth store from a snapshot](https://github.com/etcd-io/etcd/pull/13206).
+- Fix [the race condition between goroutine and channel on the same leases to be revoked](https://github.com/etcd-io/etcd/pull/14150).
+- Fix [lessor may continue to schedule checkpoint after stepping down leader role](https://github.com/etcd-io/etcd/pull/14150).
 
 ### Package `clientv3`
 - Fix [a bug of not refreshing expired tokens](https://github.com/etcd-io/etcd/pull/13999).
