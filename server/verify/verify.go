@@ -68,11 +68,7 @@ func Verify(cfg Config) error {
 		}
 	}()
 
-	beConfig := backend.DefaultBackendConfig(lg)
-	beConfig.Path = datadir.ToBackendFileName(cfg.DataDir)
-	beConfig.Logger = cfg.Logger
-
-	be := backend.New(beConfig)
+	be := backend.NewDefaultBackend(lg, datadir.ToBackendFileName(cfg.DataDir))
 	defer be.Close()
 
 	snapshot, hardstate, err := validateWal(cfg)
