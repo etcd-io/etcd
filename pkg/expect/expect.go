@@ -42,7 +42,7 @@ type ExpectProcess struct {
 	count int // increment whenever new line gets added
 	err   error
 
-	// StopSignal is the signal Stop sends to the process; defaults to SIGKILL.
+	// StopSignal is the signal Stop sends to the process; defaults to SIGTERM.
 	StopSignal os.Signal
 }
 
@@ -58,7 +58,7 @@ func NewExpectWithEnv(name string, args []string, env []string) (ep *ExpectProce
 	cmd.Env = env
 	ep = &ExpectProcess{
 		cmd:        cmd,
-		StopSignal: syscall.SIGKILL,
+		StopSignal: syscall.SIGTERM,
 	}
 	ep.cmd.Stderr = ep.cmd.Stdout
 	ep.cmd.Stdin = nil
