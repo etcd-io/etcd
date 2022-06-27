@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
@@ -149,7 +150,8 @@ func (sctx *serveCtx) serve(
 			Handler:  createAccessController(sctx.lg, s, httpmux),
 			ErrorLog: logger, // do not log user error
 		}
-		if err := setMaxConcurrentStreams(srvhttp, s.Cfg.MaxConcurrentStreams); err != nil {
+		if err := configureHttpServer(srvhttp, s.Cfg); err != nil {
+			sctx.lg.Error("Configure http server failed", zap.Error(err))
 			return err
 		}
 		httpl := m.Match(cmux.HTTP1())
@@ -201,7 +203,8 @@ func (sctx *serveCtx) serve(
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
-		if err := setMaxConcurrentStreams(srv, s.Cfg.MaxConcurrentStreams); err != nil {
+		if err := configureHttpServer(srv, s.Cfg); err != nil {
+			sctx.lg.Error("Configure https server failed", zap.Error(err))
 			return err
 		}
 		go func() { errHandler(srv.Serve(tlsl)) }()
@@ -216,10 +219,10 @@ func (sctx *serveCtx) serve(
 	return m.Serve()
 }
 
-// setMaxConcurrentStreams sets the maxConcurrentStreams for the http server
-func setMaxConcurrentStreams(srv *http.Server, maxConcurrentStreams uint32) error {
+func configureHttpServer(srv *http.Server, cfg config.ServerConfig) error {
+	// todo (ahrtr): should we support configuring other parameters in the future as well?
 	return http2.ConfigureServer(srv, &http2.Server{
-		MaxConcurrentStreams: maxConcurrentStreams,
+		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
 	})
 }
 

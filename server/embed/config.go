@@ -207,8 +207,8 @@ type Config struct {
 	MaxTxnOps           uint   `json:"max-txn-ops"`
 	MaxRequestBytes     uint   `json:"max-request-bytes"`
 
-	// MaxConcurrentStreams optionally specifies the number of concurrent
-	// streams that each client may have open at a time.
+	// MaxConcurrentStreams specifies the number of concurrent streams
+	// that the server can accept.
 	MaxConcurrentStreams uint32 `json:"max-concurrent-streams"`
 
 	LPUrls, LCUrls []url.URL
