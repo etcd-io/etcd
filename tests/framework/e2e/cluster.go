@@ -176,6 +176,8 @@ type EtcdProcessClusterConfig struct {
 	DiscoveryEndpoints []string // v3 discovery
 	DiscoveryToken     string
 	LogLevel           string
+
+	MaxConcurrentStreams uint32 // default is math.MaxUint32
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -339,6 +341,10 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 
 		if cfg.LogLevel != "" {
 			args = append(args, "--log-level", cfg.LogLevel)
+		}
+
+		if cfg.MaxConcurrentStreams != 0 {
+			args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.MaxConcurrentStreams))
 		}
 
 		etcdCfgs[i] = &EtcdServerProcessConfig{
