@@ -83,7 +83,7 @@ func testV3CurlMaxStream(t *testing.T, reachLimit bool, opts ...ctlOption) {
 	t.Log("Generating configuration for creating cluster.")
 	cx := getDefaultCtlCtx(t)
 	cx.applyOpts(opts)
-	// We must set the clusterSize to 1, otherwise different streams may
+	// We must set the `ClusterSize` to 1, otherwise different streams may
 	// connect to different members, accordingly it's difficult to test the
 	// behavior.
 	cx.cfg.ClusterSize = 1
@@ -114,8 +114,8 @@ func testV3CurlMaxStream(t *testing.T, reachLimit bool, opts ...ctlOption) {
 	submitConcurrentWatch(cx, int(concurrentNumber), &wg, errCh)
 	submitRangeAfterConcurrentWatch(cx, expectedResponse)
 
-	// Step 4: check the watch errors. Note that we ony check the watch error
-	// before closing cluster. Once we closed the cluster, the watch must run
+	// Step 4: check the watch errors. Note that we only check the watch error
+	// before closing cluster. Once we close the cluster, the watch must run
 	// into error, and we should ignore them by then.
 	t.Log("Checking watch error.")
 	select {
