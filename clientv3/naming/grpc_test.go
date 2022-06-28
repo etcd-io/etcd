@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package naming
+package naming_test
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	etcd "go.etcd.io/etcd/clientv3"
+	namingv3 "go.etcd.io/etcd/clientv3/naming"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 
@@ -33,7 +34,7 @@ func TestGRPCResolver(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	r := GRPCResolver{
+	r := namingv3.GRPCResolver{
 		Client: clus.RandClient(),
 	}
 
@@ -107,7 +108,7 @@ func TestGRPCResolverMulti(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := GRPCResolver{c}
+	r := namingv3.GRPCResolver{c}
 
 	w, err := r.Resolve("foo")
 	if err != nil {
