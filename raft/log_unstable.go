@@ -135,8 +135,7 @@ func (u *unstable) truncateAndAppend(ents []pb.Entry) {
 		// truncate to after and copy to u.entries
 		// then append
 		u.logger.Infof("truncate the unstable entries before index %d", after)
-		u.entries = append([]pb.Entry{}, u.slice(u.offset, after)...)
-		u.entries = append(u.entries, ents...)
+		u.entries = append(u.slice(u.offset, after), ents...)
 	}
 }
 
