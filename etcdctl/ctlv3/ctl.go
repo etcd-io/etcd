@@ -16,6 +16,7 @@
 package ctlv3
 
 import (
+	"os"
 	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -114,7 +115,11 @@ func Start() error {
 
 func MustStart() {
 	if err := Start(); err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitError, err)
+		if rootCmd.SilenceErrors {
+			cobrautl.ExitWithError(cobrautl.ExitError, err)
+		} else {
+			os.Exit(cobrautl.ExitError)
+		}
 	}
 }
 
