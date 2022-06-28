@@ -48,13 +48,13 @@ type leaseProxy struct {
 	wg sync.WaitGroup
 }
 
-func NewLeaseProxy(c *clientv3.Client) (pb.LeaseServer, <-chan struct{}) {
-	cctx, cancel := context.WithCancel(c.Ctx())
+func NewLeaseProxy(ctx context.Context, c *clientv3.Client) (pb.LeaseServer, <-chan struct{}) {
+	cctx, cancel := context.WithCancel(ctx)
 	lp := &leaseProxy{
 		leaseClient: pb.NewLeaseClient(c.ActiveConnection()),
 		lessor:      c.Lease,
 		ctx:         cctx,
-		leader:      newLeader(c.Ctx(), c.Watcher),
+		leader:      newLeader(ctx, c.Watcher),
 	}
 	ch := make(chan struct{})
 	go func() {

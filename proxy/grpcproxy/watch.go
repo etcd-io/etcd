@@ -46,12 +46,12 @@ type watchProxy struct {
 	kv clientv3.KV
 }
 
-func NewWatchProxy(c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
-	cctx, cancel := context.WithCancel(c.Ctx())
+func NewWatchProxy(ctx context.Context, c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
+	cctx, cancel := context.WithCancel(ctx)
 	wp := &watchProxy{
 		cw:     c.Watcher,
 		ctx:    cctx,
-		leader: newLeader(c.Ctx(), c.Watcher),
+		leader: newLeader(ctx, c.Watcher),
 
 		kv: c.KV, // for permission checking
 	}
