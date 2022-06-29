@@ -25,15 +25,13 @@ import (
 )
 
 func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
-	c := 0
 	matchSet := func(l string) bool {
 		for _, s := range readyStrs {
 			if strings.Contains(l, s) {
-				c++
-				break
+				return true
 			}
 		}
-		return c == len(readyStrs)
+		return false
 	}
 	_, err := exproc.ExpectFunc(matchSet)
 	return err
@@ -56,20 +54,16 @@ func spawnWithExpectLines(args []string, xs ...string) ([]string, error) {
 	// process until either stdout or stderr contains
 	// the expected string
 	var (
-		lines    []string
-		lineFunc = func(txt string) bool { return true }
+		lines []string
 	)
 	for _, txt := range xs {
 		for {
-			l, lerr := proc.ExpectFunc(lineFunc)
+			l, lerr := proc.Expect(txt)
 			if lerr != nil {
 				proc.Close()
 				return nil, fmt.Errorf("%v (expected %q, got %q)", lerr, txt, lines)
 			}
 			lines = append(lines, l)
-			if strings.Contains(l, txt) {
-				break
-			}
 		}
 	}
 	perr := proc.Close()

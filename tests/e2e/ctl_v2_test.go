@@ -264,11 +264,10 @@ func testCtlV2Backup(t *testing.T, snapCount int, v3 bool) {
 	defer os.Unsetenv("ETCDCTL_API")
 	defer testutil.AfterTest(t)
 
-	backupDir, err := ioutil.TempDir("", "testbackup0.etcd")
+	backupDir, err := ioutil.TempDir(t.TempDir(), "testbackup0.etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(backupDir)
 
 	etcdCfg := configNoTLS
 	etcdCfg.snapshotCount = snapCount

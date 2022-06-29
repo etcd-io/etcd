@@ -205,7 +205,7 @@ func (v2p *proxyV2Proc) Start() error {
 	if err := v2p.start(); err != nil {
 		return err
 	}
-	return v2p.waitReady("httpproxy: endpoints found")
+	return v2p.waitReady("endpoints found")
 }
 
 func (v2p *proxyV2Proc) Restart() error {
