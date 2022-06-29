@@ -26,6 +26,9 @@ import (
 	"strings"
 	"testing"
 
+	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.uber.org/zap/zaptest"
 
 	"github.com/coreos/go-semver/semver"
@@ -78,6 +81,14 @@ func (s *fakeServer) StorageVersion() *semver.Version      { return nil }
 func (s *fakeServer) Cluster() api.Cluster                 { return s.cluster }
 func (s *fakeServer) Alarms() []*pb.AlarmMember            { return s.alarms }
 func (s *fakeServer) LeaderChangedNotify() <-chan struct{} { return nil }
+func (s *fakeServer) ClientCertAuthEnabled() bool          { return false }
+func (s *fakeServer) Leader() types.ID                     { return types.ID(raft.None) }
+func (s *fakeServer) Do(ctx context.Context, r pb.Request) (etcdserver.Response, error) {
+	return etcdserver.Response{}, fmt.Errorf("method Do is not implemented in fakeServer")
+}
+
+func (s *fakeServer) LinearizableReadNotify(_ context.Context) error { return nil }
+func (s *fakeServer) Config() config.ServerConfig                    { return config.ServerConfig{} }
 
 var fakeRaftHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("test data"))
@@ -134,7 +145,7 @@ func TestServeMembersFails(t *testing.T) {
 	}
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		h := newPeerMembersHandler(nil, &fakeCluster{})
+		h := newPeerMembersHandler(nil, &fakeServer{cluster: &fakeCluster{}})
 		req, err := http.NewRequest(tt.method, "", nil)
 		if err != nil {
 			t.Fatalf("#%d: failed to create http request: %v", i, err)
@@ -153,7 +164,7 @@ func TestServeMembersGet(t *testing.T) {
 		id:      1,
 		members: map[uint64]*membership.Member{1: &memb1, 2: &memb2},
 	}
-	h := newPeerMembersHandler(nil, cluster)
+	h := newPeerMembersHandler(nil, &fakeServer{cluster: cluster})
 	msb, err := json.Marshal([]membership.Member{memb1, memb2})
 	if err != nil {
 		t.Fatal(err)

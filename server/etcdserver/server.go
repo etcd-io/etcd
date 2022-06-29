@@ -146,6 +146,8 @@ type ServerV2 interface {
 	// Do takes a V2 request and attempts to fulfill it, returning a Response.
 	Do(ctx context.Context, r pb.Request) (Response, error)
 	ClientCertAuthEnabled() bool
+	LinearizableReadNotify(ctx context.Context) error
+	Config() config.ServerConfig
 }
 
 type ServerV3 interface {

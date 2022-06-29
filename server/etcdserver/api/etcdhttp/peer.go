@@ -15,6 +15,7 @@
 package etcdhttp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -44,7 +45,7 @@ func NewPeerHandler(lg *zap.Logger, s etcdserver.ServerPeerV2) http.Handler {
 
 func newPeerHandler(
 	lg *zap.Logger,
-	s etcdserver.Server,
+	s etcdserver.ServerV2,
 	raftHandler http.Handler,
 	leaseHandler http.Handler,
 	hashKVHandler http.Handler,
@@ -53,7 +54,7 @@ func newPeerHandler(
 	if lg == nil {
 		lg = zap.NewNop()
 	}
-	peerMembersHandler := newPeerMembersHandler(lg, s.Cluster())
+	peerMembersHandler := newPeerMembersHandler(lg, s)
 	peerMemberPromoteHandler := newPeerMemberPromoteHandler(lg, s)
 
 	mux := http.NewServeMux()
@@ -76,16 +77,18 @@ func newPeerHandler(
 	return mux
 }
 
-func newPeerMembersHandler(lg *zap.Logger, cluster api.Cluster) http.Handler {
+func newPeerMembersHandler(lg *zap.Logger, s etcdserver.ServerV2) http.Handler {
 	return &peerMembersHandler{
 		lg:      lg,
-		cluster: cluster,
+		cluster: s.Cluster(),
+		server:  s,
 	}
 }
 
 type peerMembersHandler struct {
 	lg      *zap.Logger
 	cluster api.Cluster
+	server  etcdserver.ServerV2
 }
 
 func newPeerMemberPromoteHandler(lg *zap.Logger, s etcdserver.Server) http.Handler {
@@ -112,6 +115,18 @@ func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad path", http.StatusBadRequest)
 		return
 	}
+
+	// wait until the membership reconfiguration applied
+	cfg := h.server.Config()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ReqTimeout())
+	err := h.server.LinearizableReadNotify(ctx)
+	cancel()
+	if err != nil {
+		h.lg.Warn("failed to serve linearizable member list", zap.Error(err))
+		writeError(h.lg, w, r, err)
+		return
+	}
+
 	ms := h.cluster.Members()
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(ms); err != nil {
