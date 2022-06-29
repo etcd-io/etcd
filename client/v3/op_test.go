@@ -36,3 +36,66 @@ func TestOpWithSort(t *testing.T) {
 		t.Fatalf("expected %+v, got %+v", wreq, req)
 	}
 }
+
+func TestIsSortOptionValid(t *testing.T) {
+	rangeReqs := []struct {
+		sortOrder     pb.RangeRequest_SortOrder
+		sortTarget    pb.RangeRequest_SortTarget
+		expectedValid bool
+	}{
+		{
+			sortOrder:     pb.RangeRequest_ASCEND,
+			sortTarget:    pb.RangeRequest_CREATE,
+			expectedValid: true,
+		},
+		{
+			sortOrder:     pb.RangeRequest_ASCEND,
+			sortTarget:    100,
+			expectedValid: false,
+		},
+		{
+			sortOrder:     200,
+			sortTarget:    pb.RangeRequest_MOD,
+			expectedValid: false,
+		},
+	}
+
+	for _, req := range rangeReqs {
+		getOp := Op{
+			sort: &SortOption{
+				Order:  SortOrder(req.sortOrder),
+				Target: SortTarget(req.sortTarget),
+			},
+		}
+
+		actualRet := getOp.IsSortOptionValid()
+		if actualRet != req.expectedValid {
+			t.Errorf("expected sortOrder (%d) and sortTarget (%d) to be %t, but got %t",
+				req.sortOrder, req.sortTarget, req.expectedValid, actualRet)
+		}
+	}
+}
+
+func TestIsOptsWithPrefix(t *testing.T) {
+	optswithprefix := []OpOption{WithPrefix()}
+	if !IsOptsWithPrefix(optswithprefix) {
+		t.Errorf("IsOptsWithPrefix = false, expected true")
+	}
+
+	optswithfromkey := []OpOption{WithFromKey()}
+	if IsOptsWithPrefix(optswithfromkey) {
+		t.Errorf("IsOptsWithPrefix = true, expected false")
+	}
+}
+
+func TestIsOptsWithFromKey(t *testing.T) {
+	optswithfromkey := []OpOption{WithFromKey()}
+	if !IsOptsWithFromKey(optswithfromkey) {
+		t.Errorf("IsOptsWithFromKey = false, expected true")
+	}
+
+	optswithprefix := []OpOption{WithPrefix()}
+	if IsOptsWithFromKey(optswithprefix) {
+		t.Errorf("IsOptsWithFromKey = true, expected false")
+	}
+}
