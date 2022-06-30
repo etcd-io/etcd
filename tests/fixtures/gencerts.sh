@@ -58,6 +58,9 @@ gencert ./server-ca-csr2.json server2
 # generate DNS: localhost, IP: 127.0.0.1, CN: "" certificates
 gencert ./server-ca-csr3.json server3
 
+# generate DNS: localhost, IP: 127.0.0.1, CN: "example4.com", URI: "spiffe://example4.com/service" certificates
+gencert ./server-ca-csr4.json server4
+
 # generate wildcard certificates DNS: *.etcd.local
 gencert ./server-ca-csr-wildcard.json server-wildcard
 

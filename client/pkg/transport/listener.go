@@ -165,6 +165,10 @@ type TLSInfo struct {
 	// certificate provided by a client.
 	AllowedHostname string
 
+	// AllowedURI is a subjective alternative name URI that must match that
+	// in the TLS certificate provided by a client.
+	AllowedURI string
+
 	// Logger logs TLS errors.
 	// If nil, all logs are discarded.
 	Logger *zap.Logger
@@ -377,17 +381,32 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	// Client certificates may be verified by either an exact match on the CN,
 	// or a more general check of the CN and SANs.
 	var verifyCertificate func(*x509.Certificate) bool
-	if info.AllowedCN != "" {
-		if info.AllowedHostname != "" {
-			return nil, fmt.Errorf("AllowedCN and AllowedHostname are mutually exclusive (cn=%q, hostname=%q)", info.AllowedCN, info.AllowedHostname)
+	var definedRestrictions int
+	for _, restriction := range []string{info.AllowedCN, info.AllowedHostname, info.AllowedURI} {
+		if restriction != "" {
+			definedRestrictions++
+			if definedRestrictions > 1 {
+				return nil, errors.New("exactly one of AllowedCN, AllowedHostname, or AllowedURI can be defined")
+			}
 		}
+	}
+	switch {
+	case info.AllowedCN != "":
 		verifyCertificate = func(cert *x509.Certificate) bool {
 			return info.AllowedCN == cert.Subject.CommonName
 		}
-	}
-	if info.AllowedHostname != "" {
+	case info.AllowedHostname != "":
 		verifyCertificate = func(cert *x509.Certificate) bool {
 			return cert.VerifyHostname(info.AllowedHostname) == nil
+		}
+	case info.AllowedURI != "":
+		verifyCertificate = func(cert *x509.Certificate) bool {
+			for _, uri := range cert.URIs {
+				if info.AllowedURI == uri.String() {
+					return true
+				}
+			}
+			return false
 		}
 	}
 	if verifyCertificate != nil {

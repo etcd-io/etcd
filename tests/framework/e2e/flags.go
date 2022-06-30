@@ -36,6 +36,9 @@ var (
 	CertPath3       string
 	PrivateKeyPath3 string
 
+	CertPath4       string
+	PrivateKeyPath4 string
+
 	CrlPath               string
 	RevokedCertPath       string
 	RevokedPrivateKeyPath string
@@ -69,4 +72,7 @@ func InitFlags() {
 
 	CertPath3 = CertDir + "/server3.crt"
 	PrivateKeyPath3 = CertDir + "/server3.key.insecure"
+
+	CertPath4 = CertDir + "/server4.crt"
+	PrivateKeyPath4 = CertDir + "/server4.key.insecure"
 }
