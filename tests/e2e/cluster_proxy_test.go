@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
@@ -245,13 +246,13 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 	for i := 0; i < len(cfg.tlsArgs); i++ {
 		switch cfg.tlsArgs[i] {
 		case "--cert-file":
-			tlsArgs = append(tlsArgs, "--cert", cfg.tlsArgs[i+1], "--cert-file", cfg.tlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--cert-file", cfg.tlsArgs[i+1])
 			i++
 		case "--key-file":
-			tlsArgs = append(tlsArgs, "--key", cfg.tlsArgs[i+1], "--key-file", cfg.tlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--key-file", cfg.tlsArgs[i+1])
 			i++
 		case "--trusted-ca-file":
-			tlsArgs = append(tlsArgs, "--cacert", cfg.tlsArgs[i+1], "--trusted-ca-file", cfg.tlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--trusted-ca-file", cfg.tlsArgs[i+1])
 			i++
 		case "--auto-tls":
 			tlsArgs = append(tlsArgs, "--auto-tls", "--insecure-skip-tls-verify")
@@ -262,6 +263,16 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 			tlsArgs = append(tlsArgs, cfg.tlsArgs[i])
 		}
 	}
+	if len(cfg.tlsArgs) > 0 {
+		// Configure certificates for connection proxy ---> server.
+		// This certificate must NOT have CN set.
+		tlsArgs = append(tlsArgs,
+			"--cert", path.Join(certDir, "client-nocn.crt"),
+			"--key", path.Join(certDir, "client-nocn.key.insecure"),
+			"--cacert", path.Join(certDir, "ca.crt"),
+			"--client-crl-file", path.Join(certDir, "client-nocn.revoke.crl"))
+	}
+
 	return &proxyV3Proc{
 		proxyProc{
 			execPath: cfg.execPath,
