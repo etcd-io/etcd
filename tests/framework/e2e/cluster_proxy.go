@@ -238,7 +238,8 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 		default:
 			tlsArgs = append(tlsArgs, cfg.TlsArgs[i])
 		}
-
+	}
+	if len(cfg.TlsArgs) > 0 {
 		// Configure certificates for connection proxy ---> server.
 		// This certificate must NOT have CN set.
 		tlsArgs = append(tlsArgs,
@@ -247,6 +248,7 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 			"--cacert", path.Join(FixturesDir, "ca.crt"),
 			"--client-crl-file", path.Join(FixturesDir, "revoke.crl"))
 	}
+
 	return &proxyV3Proc{
 		proxyProc{
 			lg:       cfg.lg,
