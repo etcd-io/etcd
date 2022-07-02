@@ -103,34 +103,49 @@ func checkKeyPoint(lg *zap.Logger, cachedPerms *unifiedRangePermissions, key []b
 	return false
 }
 
-func (as *authStore) isRangeOpPermitted(tx AuthReadTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
+func (as *authStore) isRangeOpPermitted(userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
 	// assumption: tx is Lock()ed
-	_, ok := as.rangePermCache[userName]
+	as.rangePermCacheMu.RLock()
+	defer as.rangePermCacheMu.RUnlock()
+
+	rangePerm, ok := as.rangePermCache[userName]
 	if !ok {
+		as.lg.Error(
+			"user doesn't exist",
+			zap.String("user-name", userName),
+		)
+		return false
+	}
+
+	if len(rangeEnd) == 0 {
+		return checkKeyPoint(as.lg, rangePerm, key, permtyp)
+	}
+
+	return checkKeyInterval(as.lg, rangePerm, key, rangeEnd, permtyp)
+}
+
+func (as *authStore) refreshRangePermCache(tx AuthReadTx) {
+	// Note that every authentication configuration update calls this method and it invalidates the entire
+	// rangePermCache and reconstruct it based on information of users and roles stored in the backend.
+	// This can be a costly operation.
+	as.rangePermCacheMu.Lock()
+	defer as.rangePermCacheMu.Unlock()
+
+	as.rangePermCache = make(map[string]*unifiedRangePermissions)
+
+	users := tx.UnsafeGetAllUsers()
+	for _, user := range users {
+		userName := string(user.Name)
 		perms := getMergedPerms(tx, userName)
 		if perms == nil {
 			as.lg.Error(
 				"failed to create a merged permission",
 				zap.String("user-name", userName),
 			)
-			return false
+			continue
 		}
 		as.rangePermCache[userName] = perms
 	}
-
-	if len(rangeEnd) == 0 {
-		return checkKeyPoint(as.lg, as.rangePermCache[userName], key, permtyp)
-	}
-
-	return checkKeyInterval(as.lg, as.rangePermCache[userName], key, rangeEnd, permtyp)
-}
-
-func (as *authStore) clearCachedPerm() {
-	as.rangePermCache = make(map[string]*unifiedRangePermissions)
-}
-
-func (as *authStore) invalidateCachedPerm(userName string) {
-	delete(as.rangePermCache, userName)
 }
 
 type unifiedRangePermissions struct {

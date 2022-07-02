@@ -31,13 +31,6 @@ func (atx *authBatchTx) UnsafeGetUser(username string) *authpb.User {
 	return arx.UnsafeGetUser(username)
 }
 
-func (abe *authBackend) GetAllUsers() []*authpb.User {
-	tx := abe.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	return tx.UnsafeGetAllUsers()
-}
-
 func (atx *authBatchTx) UnsafeGetAllUsers() []*authpb.User {
 	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
 	return arx.UnsafeGetAllUsers()
@@ -73,8 +66,23 @@ func (atx *authReadTx) UnsafeGetUser(username string) *authpb.User {
 	return user
 }
 
+func (abe *authBackend) GetAllUsers() []*authpb.User {
+	tx := abe.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	return tx.UnsafeGetAllUsers()
+}
+
 func (atx *authReadTx) UnsafeGetAllUsers() []*authpb.User {
-	_, vs := atx.tx.UnsafeRange(AuthUsers, []byte{0}, []byte{0xff}, -1)
+	var vs [][]byte
+	err := atx.tx.UnsafeForEach(AuthUsers, func(k []byte, v []byte) error {
+		vs = append(vs, v)
+		return nil
+	})
+	if err != nil {
+		atx.lg.Panic("failed to get users",
+			zap.Error(err))
+	}
 	if len(vs) == 0 {
 		return nil
 	}
