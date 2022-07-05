@@ -108,8 +108,7 @@ var (
 	// monitorVersionInterval should be smaller than the timeout
 	// on the connection. Or we will not be able to reuse the connection
 	// (since it will timeout).
-	monitorVersionInterval   = rafthttp.ConnWriteTimeout - time.Second
-	CompactHashCheckInterval = 15 * time.Second
+	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
 	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
 	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
@@ -2540,9 +2539,13 @@ func (s *EtcdServer) monitorKVHash() {
 }
 
 func (s *EtcdServer) monitorCompactHash() {
+	if !s.Cfg.CompactHashCheckEnabled {
+		return
+	}
+	t := s.Cfg.CompactHashCheckTime
 	for {
 		select {
-		case <-time.After(CompactHashCheckInterval):
+		case <-time.After(t):
 		case <-s.stopping:
 			return
 		}

@@ -22,9 +22,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/datadir"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 )
 
@@ -134,10 +133,13 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 }
 
 func TestCompactHashCheckDetectCorruption(t *testing.T) {
+	checkTime := time.Second
 	BeforeTest(t)
 	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
-		clusterSize: 3,
-		keepDataDir: true,
+		clusterSize:             3,
+		keepDataDir:             true,
+		CompactHashCheckEnabled: true,
+		CompactHashCheckTime:    checkTime,
 	})
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
@@ -171,7 +173,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = cc.Compact(5)
 	assert.NoError(t, err)
-	time.Sleep(etcdserver.CompactHashCheckInterval * 11 / 10)
+	time.Sleep(checkTime * 11 / 10)
 	alarmResponse, err := cc.AlarmList()
 	assert.NoError(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: memberID}}, alarmResponse.Alarms)

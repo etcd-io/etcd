@@ -314,8 +314,10 @@ type Config struct {
 	// AuthTokenTTL specifies the TTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
-	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
-	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
+	ExperimentalInitialCorruptCheck     bool          `json:"experimental-initial-corrupt-check"`
+	ExperimentalCorruptCheckTime        time.Duration `json:"experimental-corrupt-check-time"`
+	ExperimentalCompactHashCheckEnabled bool          `json:"experimental-compact-hash-check-enabled"`
+	ExperimentalCompactHashCheckTime    time.Duration `json:"experimental-compact-hash-check-time"`
 	// ExperimentalEnableV2V3 configures URLs that expose deprecated V2 API working on V3 store.
 	// Deprecated in v3.5.
 	// TODO: Delete in v3.6 (https://github.com/etcd-io/etcd/issues/12913)
@@ -500,6 +502,9 @@ func NewConfig() *Config {
 		ExperimentalDowngradeCheckTime:           DefaultDowngradeCheckTime,
 		ExperimentalMemoryMlock:                  false,
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
+
+		ExperimentalCompactHashCheckEnabled: false,
+		ExperimentalCompactHashCheckTime:    time.Minute,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 	}
@@ -696,6 +701,10 @@ func (cfg *Config) Validate() error {
 
 	if cfg.ExperimentalEnableLeaseCheckpointPersist && !cfg.ExperimentalEnableLeaseCheckpoint {
 		return fmt.Errorf("setting experimental-enable-lease-checkpoint-persist requires experimental-enable-lease-checkpoint")
+	}
+
+	if cfg.ExperimentalCompactHashCheckTime <= 0 {
+		return fmt.Errorf("--experimental-compact-hash-check-time must be >0 (set to %v)", cfg.ExperimentalCompactHashCheckTime)
 	}
 
 	return nil
