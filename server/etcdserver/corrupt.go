@@ -301,13 +301,12 @@ func (cm *corruptionChecker) CompactHashCheck() {
 			cm.mux.Unlock()
 			cm.lg.Info("finished compaction hash check", zap.Int("number-of-hashes-checked", i+1))
 			return
-		} else {
-			cm.lg.Warn("skipped checking hash; was not able to check all peers",
-				zap.Int("number-of-peers-checked", peersChecked),
-				zap.Int("number-of-peers", len(peers)),
-				zap.Int64("revision", hash.Revision),
-			)
 		}
+		cm.lg.Warn("skipped revision in compaction hash check; was not able to check all peers",
+			zap.Int("number-of-peers-checked", peersChecked),
+			zap.Int("number-of-peers", len(peers)),
+			zap.Int64("revision", hash.Revision),
+		)
 	}
 	cm.lg.Info("finished compaction hash check", zap.Int("number-of-hashes-checked", len(hashes)))
 	return
