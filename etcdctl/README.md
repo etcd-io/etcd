@@ -1133,7 +1133,7 @@ Whenever a leader is elected, its proposal is given as output.
 
 ELECT returns a zero exit code only if it is terminated by a signal and can revoke its candidacy or leadership, if any.
 
-If a candidate is abnormally terminated, election rogress may be delayed by up to the default lease length of 60 seconds.
+If a candidate is abnormally terminated, election progress may be delayed by up to the default lease length of 60 seconds.
 
 ## Authentication commands
 
