@@ -15,6 +15,7 @@
 package flags
 
 import (
+	"flag"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,6 +64,48 @@ func TestUint32Value(t *testing.T) {
 				}
 				assert.Equal(t, uint32(val), tc.expectedVal)
 			}
+		})
+	}
+}
+
+func TestUint32FromFlag(t *testing.T) {
+	const flagName = "max-concurrent-streams"
+
+	cases := []struct {
+		name        string
+		defaultVal  uint32
+		arguments   []string
+		expectedVal uint32
+	}{
+		{
+			name:        "only default value",
+			defaultVal:  15,
+			arguments:   []string{},
+			expectedVal: 15,
+		},
+		{
+			name:        "argument has different value from the default one",
+			defaultVal:  16,
+			arguments:   []string{"--max-concurrent-streams", "200"},
+			expectedVal: 200,
+		},
+		{
+			name:        "argument has the same value from the default one",
+			defaultVal:  105,
+			arguments:   []string{"--max-concurrent-streams", "105"},
+			expectedVal: 105,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fs := flag.NewFlagSet("etcd", flag.ContinueOnError)
+			fs.Var(NewUint32Value(tc.defaultVal), flagName, "Maximum concurrent streams that each client can open at a time.")
+			if err := fs.Parse(tc.arguments); err != nil {
+				t.Fatalf("Unexpected error: %v\n", err)
+			}
+			actualMaxStream := Uint32FromFlag(fs, flagName)
+			assert.Equal(t, actualMaxStream, tc.expectedVal)
 		})
 	}
 }
