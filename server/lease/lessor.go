@@ -683,7 +683,7 @@ func (le *lessor) expireExists() (l *Lease, ok bool, next bool) {
 		return nil, false, false
 	}
 
-	item := le.leaseExpiredNotifier.Poll()
+	item := le.leaseExpiredNotifier.Peek()
 	l = le.leaseMap[item.id]
 	if l == nil {
 		// lease has expired or been revoked
