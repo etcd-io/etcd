@@ -12,7 +12,7 @@ jobs:
         - linux-amd64-integration-2-cpu
         - linux-amd64-integration-4-cpu
         - linux-amd64-functional
-        - linux-amd64-unit
+        - linux-amd64-unit-4-cpu-race
         - all-build
         - linux-amd64-grpcproxy
         - linux-386-unit
@@ -50,8 +50,8 @@ jobs:
           linux-amd64-functional)
             ./build && GOARCH=amd64 PASSES='functional' ./test
             ;;
-          linux-amd64-unit)
-            GOARCH=amd64 PASSES='unit' RACE='false' ./test
+          linux-amd64-unit-4-cpu-race)
+            GOARCH=amd64 PASSES='unit' RACE='true' CPU='4' ./test -p=2
             ;;
           all-build)
             GOARCH=amd64 PASSES='build' ./test
@@ -64,7 +64,7 @@ jobs:
             GO_BUILD_FLAGS='-v' GOARCH=s390x ./build
             ;;
           linux-amd64-grpcproxy)
-            PASSES='build grpcproxy' CPU='4' ./test 2>&1 | tee test.log
+            PASSES='build grpcproxy' CPU='4' RACE='true' ./test 2>&1 | tee test.log
             ! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
             ;;
           linux-386-unit)
