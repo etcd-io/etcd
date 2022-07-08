@@ -21,6 +21,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.18...v3.4.19) an
 ### Dependency
 - Upgrade [go.etcd.io/bbolt](https://github.com/etcd-io/bbolt/releases) from [v1.3.3](https://github.com/etcd-io/bbolt/releases/tag/v1.3.3) to [v1.3.6](https://github.com/etcd-io/bbolt/releases/tag/v1.3.6).
 
+### Security
+- Upgrade [golang.org/x/crypto](https://github.com/etcd-io/etcd/pull/14179) to v0.0.0-20220411220226-7b82a4e95df4 to address [CVE-2022-27191 ](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
+- Upgrade [gopkg.in/yaml.v2](https://github.com/etcd-io/etcd/pull/14192) to v2.4.0 to address [CVE-2019-11254](https://github.com/advisories/GHSA-wxc4-f4m6-wwqv).
+
 ### Go
 - Require [Go 1.16+](https://github.com/etcd-io/etcd/pull/14136).
 - Compile with [Go 1.16+](https://go.dev/doc/devel/release#go1.16).
