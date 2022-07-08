@@ -51,7 +51,7 @@ func etcdClientDebugLevel() zapcore.Level {
 		return zapcore.InfoLevel
 	}
 	var l zapcore.Level
-	if err := l.Set(envLevel); err == nil {
+	if err := l.Set(envLevel); err != nil {
 		log.Printf("Deprecated env ETCD_CLIENT_DEBUG value. Using default level: 'info'")
 		return zapcore.InfoLevel
 	}
