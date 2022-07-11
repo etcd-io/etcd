@@ -61,14 +61,16 @@ main() {
   cd "${reldir}/etcd"
 
   # If a release version tag already exists, use it.
+  log_callout "Checking tag: ${RELEASE_VERSION}"
   local remote_tag_exists
-  remote_tag_exists=$(git ls-remote origin "refs/tags/${RELEASE_VERSION}" | grep -c "${RELEASE_VERSION}")
+  remote_tag_exists=$(git ls-remote origin "refs/tags/${RELEASE_VERSION}" | grep -c "${RELEASE_VERSION}" || true)
   if [ "${remote_tag_exists}" -gt 0 ]; then
     log_callout "Release version tag exists on remote. Checking out refs/tags/${RELEASE_VERSION}"
     git checkout -q "tags/${RELEASE_VERSION}"
   fi
 
   # Check go version.
+  log_callout "Checking go version"
   local go_version current_go_version
   go_version="go$(grep go-version .github/workflows/tests.yaml | awk '{print $2}' | tr -d '"')"
   current_go_version=$(go version | awk '{ print $3 }')
@@ -139,7 +141,7 @@ main() {
 
     # Verify the version tag is on the right branch
     # shellcheck disable=SC2155
-    local branch=$(git branch --contains "${RELEASE_VERSION}")
+    local branch=$(git for-each-ref --contains "${RELEASE_VERSION}" --format="%(refname)" 'refs/heads' | cut -d '/' -f 3)
     if [ "${branch}" != "release-${MINOR_VERSION}" ]; then
       log_error "Error: Git tag ${RELEASE_VERSION} should be on branch release-${MINOR_VERSION} but is on ${branch}"
       exit 1
