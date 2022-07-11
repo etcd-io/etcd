@@ -128,7 +128,7 @@ for TARGET_ARCH in "amd64" "arm64" "ppc64le"; do
   TAG=quay.io/coreos/etcd GOARCH=${TARGET_ARCH} \
     BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} \
     BUILDDIR=release \
-    ./scripts/build-docker ${VERSION}
+    ./scripts/build-docker.sh ${VERSION}
 done
 ```
 

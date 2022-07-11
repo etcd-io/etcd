@@ -4,6 +4,10 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+source ./scripts/test_lib.sh
+
+DRY_RUN=${DRY_RUN:-true}
+
 help() {
   echo "$(basename "$0") [version]"
   echo "Release etcd using the same approach as the etcd-release-runbook (https://goo.gl/Gxwysq)"
@@ -32,8 +36,14 @@ main() {
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
   BRANCH="release-${MINOR_VERSION}"
 
+  log_warning "DRY_RUN=${DRY_RUN}"
+  log_callout "RELEASE_VERSION=${RELEASE_VERSION}"
+  log_callout "MINOR_VERSION=${MINOR_VERSION}"
+  log_callout "BRANCH=${BRANCH}"
+  log_callout ""
+
   if ! command -v docker >/dev/null; then
-    echo "cannot find docker"
+    log_error "cannot find docker"
     exit 1
   fi
 
@@ -42,6 +52,7 @@ main() {
 
   # Set up release directory.
   local reldir="/tmp/etcd-release-${VERSION}"
+  log_callout "Preparing temporary directory: ${reldir}"
   if [ ! -d "${reldir}/etcd" ]; then
     mkdir -p "${reldir}"
     cd "${reldir}"
@@ -50,20 +61,21 @@ main() {
   cd "${reldir}/etcd"
 
   # If a release version tag already exists, use it.
+  log_callout "Checking tag: ${RELEASE_VERSION}"
   local remote_tag_exists
-  remote_tag_exists=$(git ls-remote origin "refs/tags/${RELEASE_VERSION}" | grep -c "${RELEASE_VERSION}")
+  remote_tag_exists=$(git ls-remote origin "refs/tags/${RELEASE_VERSION}" | grep -c "${RELEASE_VERSION}" || true)
   if [ "${remote_tag_exists}" -gt 0 ]; then
-    echo "Release version tag exists on remote. Checking out refs/tags/${RELEASE_VERSION}"
+    log_callout "Release version tag exists on remote. Checking out refs/tags/${RELEASE_VERSION}"
     git checkout -q "tags/${RELEASE_VERSION}"
   fi
 
   # Check go version.
-  # download "yq" from https://github.com/mikefarah/yq
+  log_callout "Checking go version"
   local go_version current_go_version
-  go_version="go$(yq read .travis.yml "go[0]")"
+  go_version="go$(grep go-version .github/workflows/tests.yaml | awk '{print $2}' | tr -d '"')"
   current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
-    echo "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
+    log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .github/workflows/tests.yaml)."
     exit 1
   fi
 
@@ -75,31 +87,31 @@ main() {
     if [[ "${source_version}" != "${VERSION}" ]]; then
       source_minor_version=$(echo "${source_version}" | cut -d. -f 1-2)
       if [[ "${source_minor_version}" != "${MINOR_VERSION}" ]]; then
-        echo "Wrong etcd minor version in version/version.go. Expected ${MINOR_VERSION} but got ${source_minor_version}. Aborting."
+        log_error "Wrong etcd minor version in version/version.go. Expected ${MINOR_VERSION} but got ${source_minor_version}. Aborting."
         exit 1
       fi
       echo "Updating version from ${source_version} to ${VERSION} in version/version.go"
       sed -i "s/${source_version}/${VERSION}/g" version/version.go
     fi
 
-    echo "Building etcd and checking --version output"
+    log_callout "Building etcd and checking --version output"
     ./build
     local etcd_version
     etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
     if [[ "${etcd_version}" != "${VERSION}" ]]; then
-      echo "Wrong etcd version in version/version.go. Expected ${etcd_version} but got ${VERSION}. Aborting."
+      log_error "Wrong etcd version in version/version.go. Expected ${etcd_version} but got ${VERSION}. Aborting."
       exit 1
     fi
 
     if [[ -n $(git status -s) ]]; then
-      echo "Committing version/version.go update."
+      log_callout "Committing version/version.go update."
       git add version/version.go
-      git commit -m "version: bump up to ${VERSION}"
+      git commit --signoff -m "version: bump up to ${VERSION}"
       git diff --staged
     fi
 
     # Push the version change if it's not already been pushed.
-    if [ "$(git rev-list --count "origin/${BRANCH}..${BRANCH}")" -gt 0 ]; then
+    if [ "$DRY_RUN" != "true" ] && [ "$(git rev-list --count "origin/${BRANCH}..${BRANCH}")" -gt 0 ]; then
       read -p "Push version bump up to ${VERSION} to github.com/etcd-io/etcd [y/N]? " -r confirm
       [[ "${confirm,,}" == "y" ]] || exit 1
       git push
@@ -107,50 +119,51 @@ main() {
 
     # Tag release.
     if [ "$(git tag --list | grep -c "${RELEASE_VERSION}")" -gt 0 ]; then
-      echo "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
+      log_callout "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
     else
-      echo "Tagging release..."
-      KEYID=$(gpg --list-keys --with-colons| awk -F: '/^pub:/ { print $5 }')
+      log_callout "Tagging release..."
+      gitemail=$(git config --get user.email)
+      KEYID=$(gpg --list-keys --with-colons "${gitemail}" | awk -F: '/^pub:/ { print $5 }')
       if [[ -z "${KEYID}" ]]; then
-        echo "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
+        log_error "Failed to load gpg key. Is gpg set up correctly for etcd releases?"
         exit 1
       fi
       git tag --local-user "${KEYID}" --sign "${RELEASE_VERSION}" --message "${RELEASE_VERSION}"
     fi
 
     # Verify the latest commit has the version tag
+    # shellcheck disable=SC2155
     local tag="$(git describe --exact-match HEAD)"
     if [ "${tag}" != "${RELEASE_VERSION}" ]; then
-      echo "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
+      log_error "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
       exit 1
     fi
 
     # Verify the version tag is on the right branch
-    local branch=$(git branch --contains "${RELEASE_VERSION}")
+    # shellcheck disable=SC2155
+    local branch=$(git for-each-ref --contains "${RELEASE_VERSION}" --format="%(refname)" 'refs/heads' | cut -d '/' -f 3)
     if [ "${branch}" != "release-${MINOR_VERSION}" ]; then
-      echo "Error: Git tag ${RELEASE_VERSION} should be on branch release-${MINOR_VERSION} but is on ${branch}"
+      log_error "Error: Git tag ${RELEASE_VERSION} should be on branch release-${MINOR_VERSION} but is on ${branch}"
       exit 1
     fi
 
     # Push the tag change if it's not already been pushed.
-    read -p "Push etcd ${RELEASE_VERSION} tag [y/N]? " -r confirm
-    [[ "${confirm,,}" == "y" ]] || exit 1
-    git push origin "tags/${RELEASE_VERSION}"
+    if [ "$DRY_RUN" != "true" ]; then
+      read -p "Push etcd ${RELEASE_VERSION} tag [y/N]? " -r confirm
+      [[ "${confirm,,}" == "y" ]] || exit 1
+      git push origin "tags/${RELEASE_VERSION}"
+    fi
   fi
 
   # Build release.
   # TODO: check the release directory for all required build artifacts.
   if [ -d release ]; then
-    echo "Skpping release build step. /release directory already exists."
+    log_warning "Skipping release build step. /release directory already exists."
   else
-    echo "Building release..."
+    log_callout "Building release..."
     # Check for old and new names of the release build script.
     # TODO: Move the release script into this on as a function?
-    if [ -f ./scripts/release.sh ]; then
-      ./scripts/release.sh "${RELEASE_VERSION}"
-    else
-      ./scripts/build-release.sh "${RELEASE_VERSION}"
-    fi
+    ./scripts/build-release.sh "${RELEASE_VERSION}"
   fi
 
   # Sanity checks.
@@ -158,20 +171,21 @@ main() {
   "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdctl" version | grep -q "etcdctl version: ${VERSION}" || true
 
   # Generate SHA256SUMS
-  echo -e "Generating sha256sums of release artifacts.\n"
+  log_callout "Generating sha256sums of release artifacts."
   pushd ./release
+  # shellcheck disable=SC2010
   ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUMS
   popd
   if [ -s ./release/SHA256SUMS ]; then
     cat ./release/SHA256SUMS
   else
-    echo "sha256sums is not valid. Aborting."
+    log_error "sha256sums is not valid. Aborting."
     exit 1
   fi
 
   # Upload artifacts.
-  if [ "${NO_UPLOAD}" == 1 ]; then
-    echo "Skipping artifact upload to gs://etcd. --no-upload flat is set."
+  if [ "$DRY_RUN" = "true" ] || [ "${NO_UPLOAD}" == 1 ]; then
+    log_callout "Skipping artifact upload to gs://etcd. --no-upload flat is set or DRY_RUN is true."
   else
     read -p "Upload etcd ${RELEASE_VERSION} release artifacts to gs://etcd [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
@@ -182,33 +196,27 @@ main() {
   fi
 
   # Push images.
-  if [ "${NO_DOCKER_PUSH}" == 1 ]; then
-    echo "Skipping docker push. --no-docker-push flat is set."
+  if [ "$DRY_RUN" = "true" ] || [ "${NO_DOCKER_PUSH}" == 1 ]; then
+    log_callout "Skipping docker push. --no-docker-push flat is set or DRY_RUN is true."
   else
     read -p "Publish etcd ${RELEASE_VERSION} docker images to quay.io [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
-    # shellcheck disable=SC2034
-    for i in {1..5}; do
-      docker login quay.io && break
-      echo "login failed, retrying"
-    done
-    gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd-development.json)" https://gcr.io
 
     echo "Pushing container images to quay.io ${RELEASE_VERSION}"
     docker push "quay.io/coreos/etcd:${RELEASE_VERSION}"
 
     echo "Pushing container images to gcr.io ${RELEASE_VERSION}"
-    gcloud docker -- push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
+    docker push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
 
     for TARGET_ARCH in "-arm64" "-ppc64le"; do
-      echo "Pushing container images to quay.io ${RELEASE_VERSION}${TARGET_ARCH}"
+      log_callout "Pushing container images to quay.io ${RELEASE_VERSION}${TARGET_ARCH}"
       docker push "quay.io/coreos/etcd:${RELEASE_VERSION}${TARGET_ARCH}"
 
-      echo "Pushing container images to gcr.io ${RELEASE_VERSION}${TARGET_ARCH}"
-      gcloud docker -- push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}"
+      log_callout "Pushing container images to gcr.io ${RELEASE_VERSION}${TARGET_ARCH}"
+      docker push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}"
     done
 
-    echo "Setting permissions using gsutil..."
+    log_callout "Setting permissions using gsutil..."
     gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
   fi
 
@@ -217,28 +225,35 @@ main() {
 
   # Check image versions
   for IMAGE in "quay.io/coreos/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"; do
+    # shellcheck disable=SC2155
     local image_version=$(docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
     if [ "${image_version}" != "${VERSION}" ]; then
-      echo "Check failed: etcd --version output for ${IMAGE} is incorrect: ${image_version}"
+      log_error "Check failed: etcd --version output for ${IMAGE} is incorrect: ${image_version}"
       exit 1
     fi
   done
 
   # Check gsutil binary versions
+  # shellcheck disable=SC2155
   local BINARY_TGZ="etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64.tar.gz"
-  gsutil cp "gs://etcd/${RELEASE_VERSION}/${BINARY_TGZ}" downloads
+  if [ "${DRY_RUN}" == "true" ] || [ "${NO_UPLOAD}" == 1 ]; then
+    cp "./release/${BINARY_TGZ}" downloads
+  else
+    gsutil cp "gs://etcd/${RELEASE_VERSION}/${BINARY_TGZ}" downloads
+  fi
   tar -zx -C downloads -f "downloads/${BINARY_TGZ}"
+  # shellcheck disable=SC2155
   local binary_version=$("./downloads/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
   if [ "${binary_version}" != "${VERSION}" ]; then
-    echo "Check failed: etcd --version output for ${BINARY_TGZ} from gs://etcd/${RELEASE_VERSION} is incorrect: ${binary_version}"
+    log_error "Check failed: etcd --version output for ${BINARY_TGZ} from gs://etcd/${RELEASE_VERSION} is incorrect: ${binary_version}"
     exit 1
   fi
 
   # TODO: signing process
-  echo ""
-  echo "WARNING: The release has not been signed and published to github. This must be done manually."
-  echo ""
-  echo "Success."
+  log_warning ""
+  log_warning "WARNING: The release has not been signed and published to github. This must be done manually."
+  log_warning ""
+  log_success "Success."
   exit 0
 }
 
