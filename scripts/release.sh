@@ -105,7 +105,7 @@ main() {
   go_version="go$(grep go-version .github/workflows/build.yaml | awk '{print $2}' | tr -d '"')"
   current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
-    log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
+    log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .github/workflows/build.yaml)."
     exit 1
   fi
 
