@@ -21,9 +21,9 @@ function setup_env {
 	fi
 
 	pushd "${proj}" >/dev/null
-		git checkout master
+		git checkout main
 		git fetch --all
-		git reset --hard origin/master
+		git reset --hard origin/main
 		git checkout "${ver}"
 	popd >/dev/null
 }
