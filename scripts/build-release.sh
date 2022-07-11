@@ -21,7 +21,7 @@ fi
 ETCD_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 pushd "${ETCD_ROOT}" >/dev/null
-	log_callout "Building etcd binary..."
+	log_callout "Building etcd binary in ${REPOSITORY}"
 	./scripts/build-binary.sh "${VERSION}"
 
 	for TARGET_ARCH in "amd64" "arm64" "ppc64le"; do
