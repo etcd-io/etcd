@@ -48,8 +48,9 @@ A `Procfile` at the base of the etcd git repository is provided to easily config
 1. Install `goreman` to control Procfile-based applications:
 
     ```
-    $ go get github.com/mattn/goreman
+    $ go install github.com/mattn/goreman@latest
     ```
+   The installation will place executables in the $GOPATH/bin. If $GOPATH environment variable is not set, the tool will be installed into the $HOME/go/bin. Make sure that $PATH is set accordingly in your environment.
 
 2. Start a cluster with `goreman` using etcd's stock Procfile:
 
