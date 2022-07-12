@@ -4,7 +4,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.19 (TODO)
+## v3.4.19 (2022-07-12)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.18...v3.4.19) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
 
