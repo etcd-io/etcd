@@ -106,8 +106,9 @@ main() {
     if [[ -n $(git status -s) ]]; then
       log_callout "Committing version/version.go update."
       git add version/version.go
+      git diff --staged | cat
       git commit --signoff -m "version: bump up to ${VERSION}"
-      git diff --staged
+      git diff --staged | cat
     fi
 
     # Push the version change if it's not already been pushed.
@@ -163,7 +164,7 @@ main() {
     log_callout "Building release..."
     # Check for old and new names of the release build script.
     # TODO: Move the release script into this on as a function?
-    ./scripts/build-release.sh "${RELEASE_VERSION}"
+    REPOSITORY=$(pwd) ./scripts/build-release.sh "${RELEASE_VERSION}"
   fi
 
   # Sanity checks.

@@ -2,8 +2,11 @@
 
 set -e
 
+source ./scripts/test_lib.sh
+
 VER=$1
 PROJ="etcd"
+REPOSITORY="${REPOSITORY:-https://github.com/etcd-io/etcd.git}"
 
 if [ -z "$1" ]; then
 	echo "Usage: ${0} VERSION" >> /dev/stderr
@@ -17,13 +20,12 @@ function setup_env {
 	local ver=${2}
 
 	if [ ! -d "${proj}" ]; then
-		git clone https://github.com/etcd-io/"${proj}"
+	  log_callout "Cloning ${REPOSITORY}..."
+	  git clone "${REPOSITORY}"
 	fi
 
 	pushd "${proj}" >/dev/null
-		git checkout main
 		git fetch --all
-		git reset --hard origin/main
 		git checkout "${ver}"
 	popd >/dev/null
 }
@@ -53,7 +55,7 @@ function package {
 }
 
 function main {
-	mkdir release
+	mkdir -p release
 	cd release
 	setup_env "${PROJ}" "${VER}"
 
