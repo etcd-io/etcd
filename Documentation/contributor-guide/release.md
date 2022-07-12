@@ -12,7 +12,7 @@ release and for ensuring the stability of the release branch.
 
 | Releases               | Manager                                                     |
 |------------------------|-------------------------------------------------------------|
-| 3.4 patch (post 3.4.0) |                                                             |
+| 3.4 patch (post 3.4.0) | Benjamin Wang [@ahrtr](https://github.com/ahrtr)            |
 | 3.5 patch (post 3.5.0) | Marek Siarkowicz [@serathius](https://github.com/serathius) |
 
 All releases version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
