@@ -47,6 +47,7 @@ import (
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
@@ -95,6 +96,8 @@ var (
 	grpcKeepAliveMinTime  time.Duration
 	grpcKeepAliveTimeout  time.Duration
 	grpcKeepAliveInterval time.Duration
+
+	maxConcurrentStreams uint32
 )
 
 const defaultGRPCMaxCallSendMsgSize = 1.5 * 1024 * 1024
@@ -159,6 +162,8 @@ func newGRPCProxyStartCommand() *cobra.Command {
 
 	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
 
+	cmd.Flags().Uint32Var(&maxConcurrentStreams, "max-concurrent-streams", math.MaxUint32, "Maximum concurrent streams that each client can open at a time.")
+
 	return &cmd
 }
 
@@ -212,6 +217,13 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	httpClient := mustNewHTTPClient(lg)
 
 	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client, proxyClient)
+
+	if err := http2.ConfigureServer(srvhttp, &http2.Server{
+		MaxConcurrentStreams: maxConcurrentStreams,
+	}); err != nil {
+		lg.Fatal("Failed to configure the http server", zap.Error(err))
+	}
+
 	errc := make(chan error, 3)
 	go func() { errc <- newGRPCProxyServer(lg, client).Serve(grpcl) }()
 	go func() { errc <- srvhttp.Serve(httpl) }()

@@ -129,6 +129,10 @@ type ServerConfig struct {
 	// MaxRequestBytes is the maximum request size to send over raft.
 	MaxRequestBytes uint
 
+	// MaxConcurrentStreams specifies the maximum number of concurrent
+	// streams that each client can open at a time.
+	MaxConcurrentStreams uint32
+
 	WarningApplyDuration        time.Duration
 	WarningUnaryRequestDuration time.Duration
 
