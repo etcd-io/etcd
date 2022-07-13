@@ -176,6 +176,8 @@ type etcdProcessClusterConfig struct {
 
 	rollingStart bool
 	logLevel     string
+
+	MaxConcurrentStreams uint32 // default is math.MaxUint32
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -318,6 +320,10 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 
 		if cfg.logLevel != "" {
 			args = append(args, "--log-level", cfg.logLevel)
+		}
+
+		if cfg.MaxConcurrentStreams != 0 {
+			args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.MaxConcurrentStreams))
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
