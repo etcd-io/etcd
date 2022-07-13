@@ -132,6 +132,7 @@ type ctlCtx struct {
 	envMap map[string]string
 
 	dialTimeout time.Duration
+	testTimeout time.Duration
 
 	quorum      bool // if true, set up 3-node cluster and linearizable read
 	interactive bool
@@ -166,6 +167,10 @@ func withCfg(cfg etcdProcessClusterConfig) ctlOption {
 
 func withDialTimeout(timeout time.Duration) ctlOption {
 	return func(cx *ctlCtx) { cx.dialTimeout = timeout }
+}
+
+func withTestTimeout(timeout time.Duration) ctlOption {
+	return func(cx *ctlCtx) { cx.testTimeout = timeout }
 }
 
 func withQuorum() ctlOption {
@@ -208,18 +213,30 @@ func withEtcdutl() ctlOption {
 	return func(cx *ctlCtx) { cx.etcdutl = true }
 }
 
+// This function must be called after the `withCfg`, otherwise its value
+// may be overwritten by `withCfg`.
+func withMaxConcurrentStreams(streams uint32) ctlOption {
+	return func(cx *ctlCtx) {
+		cx.cfg.MaxConcurrentStreams = streams
+	}
+}
+
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	testCtlWithOffline(t, testFunc, nil, opts...)
+}
+
+func getDefaultCtlCtx(t *testing.T) ctlCtx {
+	return ctlCtx{
+		t:           t,
+		cfg:         *newConfigAutoTLS(),
+		dialTimeout: 7 * time.Second,
+	}
 }
 
 func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx), opts ...ctlOption) {
 	BeforeTest(t)
 
-	ret := ctlCtx{
-		t:           t,
-		cfg:         *newConfigAutoTLS(),
-		dialTimeout: 7 * time.Second,
-	}
+	ret := getDefaultCtlCtx(t)
 	ret.applyOpts(opts)
 
 	if !ret.quorum {
@@ -264,10 +281,8 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 		t.Log("---testFunc logic DONE")
 	}()
 
-	timeout := 2*ret.dialTimeout + time.Second
-	if ret.dialTimeout == 0 {
-		timeout = 30 * time.Second
-	}
+	timeout := ret.getTestTimeout()
+
 	select {
 	case <-time.After(timeout):
 		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
@@ -282,6 +297,17 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	if testOfflineFunc != nil {
 		testOfflineFunc(ret)
 	}
+}
+
+func (cx *ctlCtx) getTestTimeout() time.Duration {
+	timeout := cx.testTimeout
+	if timeout == 0 {
+		timeout = 2*cx.dialTimeout + time.Second
+		if cx.dialTimeout == 0 {
+			timeout = 30 * time.Second
+		}
+	}
+	return timeout
 }
 
 func (cx *ctlCtx) prefixArgs(eps []string) []string {
