@@ -238,6 +238,21 @@
               summary: 'etcd cluster database growing very fast.',
             },
           },
+          {
+            alert: 'etcdDatabaseHighFragmentationRatio',
+            expr: |||
+              (last_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[5m]) / last_over_time(etcd_mvcc_db_total_size_in_bytes[5m])) < 0.5
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'etcd cluster "{{ $labels.%s }}": database size in use on instance {{ $labels.instance }} is {{ $value | humanizePercentage }} of the actual allocated disk space, please run defragmentation (e.g. etcdctl defrag) to retrieve the unused fragmented disk space.' % $._config.clusterLabel,
+              summary: 'etcd database size in use is less than 50% of the actual allocated storage.',
+              runbook_url: 'https://etcd.io/docs/v3.5/op-guide/maintenance/#defragmentation',
+            },
+          },
         ],
       },
     ],
