@@ -227,14 +227,14 @@
           {
             alert: 'etcdExcessiveDatabaseGrowth',
             expr: |||
-              increase(((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100)[240m:1m]) > 50
+              predict_linear(etcd_mvcc_db_total_size_in_bytes[4h], 4*60*60) > etcd_server_quota_backend_bytes
             ||| % $._config,
             'for': '10m',
             labels: {
               severity: 'warning',
             },
             annotations: {
-              description: 'etcd cluster "{{ $labels.%s }}": Observed surge in etcd writes leading to 50%% increase in database size over the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.' % $._config.clusterLabel,
+              description: 'etcd cluster "{{ $labels.%s }}": Predicting running out of disk space in the next four hours, based on write observations within the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.' % $._config.clusterLabel,
               summary: 'etcd cluster database growing very fast.',
             },
           },
