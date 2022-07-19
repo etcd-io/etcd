@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,7 +27,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/lease/leasepb"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.uber.org/zap"
 )
@@ -576,6 +579,93 @@ func TestLessorCheckpointsRestoredOnPromote(t *testing.T) {
 	if !(remaining > 4 && remaining < 5) {
 		t.Fatalf("expected expiry to be less than 1s in the future, but got %f seconds", remaining)
 	}
+}
+
+func TestLeaseBackend(t *testing.T) {
+	tcs := []struct {
+		name  string
+		setup func(tx backend.BatchTx)
+		want  []*leasepb.Lease
+	}{
+		{
+			name:  "Empty by default",
+			setup: func(tx backend.BatchTx) {},
+			want:  []*leasepb.Lease{},
+		},
+		{
+			name: "Returns data put before",
+			setup: func(tx backend.BatchTx) {
+				mustUnsafePutLease(tx, &leasepb.Lease{
+					ID:  -1,
+					TTL: 2,
+				})
+			},
+			want: []*leasepb.Lease{
+				{
+					ID:  -1,
+					TTL: 2,
+				},
+			},
+		},
+		{
+			name: "Skips deleted",
+			setup: func(tx backend.BatchTx) {
+				mustUnsafePutLease(tx, &leasepb.Lease{
+					ID:  -1,
+					TTL: 2,
+				})
+				mustUnsafePutLease(tx, &leasepb.Lease{
+					ID:  math.MinInt64,
+					TTL: 2,
+				})
+				mustUnsafePutLease(tx, &leasepb.Lease{
+					ID:  math.MaxInt64,
+					TTL: 3,
+				})
+				tx.UnsafeDelete(leaseBucketName, int64ToBytes(-1))
+			},
+			want: []*leasepb.Lease{
+				{
+					ID:  math.MaxInt64,
+					TTL: 3,
+				},
+				{
+					ID:  math.MinInt64, // bytes bigger than MaxInt64
+					TTL: 2,
+				},
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			be, tmpPath := backend.NewTmpBackend(time.Microsecond, 10)
+			tx := be.BatchTx()
+			tx.Lock()
+			tx.UnsafeCreateBucket(leaseBucketName)
+			tc.setup(tx)
+			tx.Unlock()
+
+			be.ForceCommit()
+			be.Close()
+
+			be2 := backend.NewDefaultBackend(tmpPath)
+			defer be2.Close()
+			leases := unsafeGetAllLeases(be2.ReadTx())
+
+			assert.Equal(t, tc.want, leases)
+		})
+	}
+}
+
+func mustUnsafePutLease(tx backend.BatchTx, lpb *leasepb.Lease) {
+	key := int64ToBytes(lpb.ID)
+
+	val, err := lpb.Marshal()
+	if err != nil {
+		panic("failed to marshal lease proto item")
+	}
+	tx.UnsafePut(leaseBucketName, key, val)
 }
 
 type fakeDeleter struct {

@@ -154,6 +154,7 @@ type ClusterConfig struct {
 	LeaseCheckpointInterval time.Duration
 
 	WatchProgressNotifyInterval time.Duration
+	CorruptCheckTime            time.Duration
 }
 
 type cluster struct {
@@ -299,6 +300,7 @@ func (c *cluster) mustNewMember(t testing.TB) *member {
 			enableLeaseCheckpoint:       c.cfg.EnableLeaseCheckpoint,
 			leaseCheckpointInterval:     c.cfg.LeaseCheckpointInterval,
 			WatchProgressNotifyInterval: c.cfg.WatchProgressNotifyInterval,
+			CorruptCheckTime:            c.cfg.CorruptCheckTime,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -589,6 +591,7 @@ type memberConfig struct {
 	enableLeaseCheckpoint       bool
 	leaseCheckpointInterval     time.Duration
 	WatchProgressNotifyInterval time.Duration
+	CorruptCheckTime            time.Duration
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -685,7 +688,9 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
 	m.InitialCorruptCheck = true
-
+	if mcfg.CorruptCheckTime > time.Duration(0) {
+		m.CorruptCheckTime = mcfg.CorruptCheckTime
+	}
 	lcfg := logutil.DefaultZapLoggerConfig
 	m.LoggerConfig = &lcfg
 	m.LoggerConfig.OutputPaths = []string{"/dev/null"}
