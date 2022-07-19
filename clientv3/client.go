@@ -174,7 +174,9 @@ func (c *Client) Sync(ctx context.Context) error {
 	}
 	var eps []string
 	for _, m := range mresp.Members {
-		eps = append(eps, m.ClientURLs...)
+		if len(m.Name) != 0 && !m.IsLearner {
+			eps = append(eps, m.ClientURLs...)
+		}
 	}
 	c.SetEndpoints(eps...)
 	return nil
