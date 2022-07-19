@@ -14,7 +14,7 @@ please see [CONTRIBUTING](./CONTRIBUTING.md) guide.
 
 ## Maintainers
 
-[Maintainers](./MAINTAINERS) are first and foremost contributors that have shown they
+Maintainers are first and foremost contributors that have shown they
 are committed to the long term success of a project. Maintainership is about building
 trust with the current maintainers of the project and being a person that they can
 depend on to make decisions in the best interest of the project in a consistent manner.
@@ -39,18 +39,30 @@ below.
 - Resolution of bugs triaged to a package/feature
 - Regularly review pull requests to the pkg subsystem
 
-Contributors who are interested in becoming a maintainer, if performing these
+### Nomination and retiring of maintainers
+
+[Maintainers](./MAINTAINERS) file on the `main` branch reflects the latest
+state of project maintainers. Changes to list of maintainers should be done by
+opening a pull request and CCing all the existing maintainers.
+
+Contributors who are interested in becoming a maintainer, if performing relevant
 responsibilities, should discuss their interest with the existing maintainers. New
 maintainers must be nominated by an existing maintainer and must be elected by a
 supermajority of maintainers with a fallback on lazy consensus after three business weeks
-inactive voting period and as long as two maintainers are on board. Maintainers can be
-removed by a supermajority of the maintainers and moved to emeritus status.
+inactive voting period and as long as two maintainers are on board. 
 
-Life priorities, interests, and passions can change. If a maintainer needs to step
-down, inform other maintainers about this intention, and if possible, help find someone
-to pick up the related work. At the very least, ensure the related work can be continued.
-Afterward, create a pull request to remove yourself from the [MAINTAINERS](./MAINTAINERS)
-file.
+Life priorities, interests, and passions can change. Maintainers can retire and
+be removed from [maintainers](./MAINTAINERS) list and added to
+[emeritus](./README.md#etcd-emeritus-maintainers). If a maintainer needs to step
+down, they should inform other maintainers, if possible, help find someone to
+pick up the related work. At the very least, ensure the related work can be
+continued. Afterward they can remove themselves from list of existing maintainers.
+
+If a maintainer is not been performing their duties for period of 12 months,
+they can be removed by other active maintainers. If an emeritus maintainer wants
+to regain an active role, they can do so after renewing their contributions.
+Retiring of other maintainers or regaining the status should require approval
+of at least two active maintainers.
 
 ## Reviewers
 
