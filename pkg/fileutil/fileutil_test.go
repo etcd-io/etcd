@@ -26,6 +26,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.uber.org/zap/zaptest"
 )
 
 func TestIsDirWriteable(t *testing.T) {
@@ -163,6 +165,47 @@ func TestDirPermission(t *testing.T) {
 	}
 	// check dir permission with mode different than created dir
 	if err = CheckDirPermission(tmpdir2, 0600); err == nil {
+		t.Errorf("expected error, got nil")
+	}
+}
+
+func TestRemoveMatchFile(t *testing.T) {
+	tmpdir := t.TempDir()
+	f, err := os.CreateTemp(tmpdir, "tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	f, err = os.CreateTemp(tmpdir, "foo.tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	err = RemoveMatchFile(zaptest.NewLogger(t), tmpdir, func(fileName string) bool {
+		return strings.HasPrefix(fileName, "tmp")
+	})
+	if err != nil {
+		t.Errorf("expected nil, got error")
+	}
+	fnames, err := ReadDir(tmpdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fnames) != 1 {
+		t.Errorf("expected exist 1 files, got %d", len(fnames))
+	}
+
+	f, err = os.CreateTemp(tmpdir, "tmp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	err = RemoveMatchFile(zaptest.NewLogger(t), tmpdir, func(fileName string) bool {
+		os.Remove(filepath.Join(tmpdir, fileName))
+		return strings.HasPrefix(fileName, "tmp")
+	})
+	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
 }

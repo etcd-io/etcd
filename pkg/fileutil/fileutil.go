@@ -16,6 +16,7 @@ package fileutil
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"io"
 	"io/ioutil"
 	"os"
@@ -124,6 +125,37 @@ func CheckDirPermission(dir string, perm os.FileMode) error {
 	if dirMode != perm {
 		err = fmt.Errorf("directory %q exist, but the permission is %q. The recommended permission is %q to prevent possible unprivileged access to the data.", dir, dirInfo.Mode(), os.FileMode(PrivateDirMode))
 		return err
+	}
+	return nil
+}
+
+// RemoveMatchFile deletes file if matchFunc is true on an existing dir
+// Returns error if the dir does not exist or remove file fail
+func RemoveMatchFile(lg *zap.Logger, dir string, matchFunc func(fileName string) bool) error {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
+	if !Exist(dir) {
+		return fmt.Errorf("directory %s does not exist", dir)
+	}
+	fileNames, err := ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	var removeFailedFiles []string
+	for _, fileName := range fileNames {
+		if matchFunc(fileName) {
+			file := filepath.Join(dir, fileName)
+			if err = os.Remove(file); err != nil {
+				removeFailedFiles = append(removeFailedFiles, fileName)
+				lg.Error("remove file failed",
+					zap.String("file", file),
+					zap.Error(err))
+			}
+		}
+	}
+	if len(removeFailedFiles) != 0 {
+		return fmt.Errorf("remove file(s) %v error", removeFailedFiles)
 	}
 	return nil
 }
