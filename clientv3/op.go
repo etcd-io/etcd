@@ -77,6 +77,9 @@ type Op struct {
 	cmps    []Cmp
 	thenOps []Op
 	elseOps []Op
+
+	isOptsWithFromKey bool
+	isOptsWithPrefix  bool
 }
 
 // accessors / mutators
@@ -214,6 +217,10 @@ func (op Op) isWrite() bool {
 		return false
 	}
 	return op.t != tRange
+}
+
+func NewOp() *Op {
+	return &Op{key: []byte("")}
 }
 
 // OpGet returns "get" operation based on given key and operation options.
@@ -387,6 +394,7 @@ func WithPrefix() OpOption {
 			return
 		}
 		op.end = getPrefix(op.key)
+		op.isOptsWithPrefix = true
 	}
 }
 
@@ -406,6 +414,7 @@ func WithFromKey() OpOption {
 			op.key = []byte{0}
 		}
 		op.end = []byte("\x00")
+		op.isOptsWithFromKey = true
 	}
 }
 
@@ -554,7 +563,21 @@ func toLeaseTimeToLiveRequest(id LeaseID, opts ...LeaseOption) *pb.LeaseTimeToLi
 }
 
 // isWithPrefix returns true if WithPrefix is being called in the op
-func isWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
+func isWithPrefix(opts []OpOption) bool {
+	ret := NewOp()
+	for _, opt := range opts {
+		opt(ret)
+	}
+
+	return ret.isOptsWithPrefix
+}
 
 // isWithFromKey returns true if WithFromKey is being called in the op
-func isWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }
+func isWithFromKey(opts []OpOption) bool {
+	ret := NewOp()
+	for _, opt := range opts {
+		opt(ret)
+	}
+
+	return ret.isOptsWithFromKey
+}
