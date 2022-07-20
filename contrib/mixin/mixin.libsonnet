@@ -211,7 +211,7 @@
             },
           },
           {
-            alert: 'etcdBackendQuotaLowSpace',
+            alert: 'etcdDatabaseQuotaLowSpace',
             expr: |||
               (last_over_time(etcd_mvcc_db_total_size_in_bytes[5m]) / last_over_time(etcd_server_quota_backend_bytes[5m]))*100 > 95
             ||| % $._config,
