@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"strconv"
 	"time"
 
 	"go.etcd.io/etcd/auth"
@@ -792,7 +791,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 		trace.AddField(traceutil.Field{Key: "readStateIndex", Value: index})
 
 		ai := s.getAppliedIndex()
-		trace.AddField(traceutil.Field{Key: "appliedIndex", Value: strconv.FormatUint(ai, 10)})
+		trace.AddField(traceutil.Field{Key: "appliedIndex", Value: ai})
 
 		if ai < index {
 			select {
