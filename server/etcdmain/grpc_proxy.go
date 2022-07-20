@@ -45,6 +45,7 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
@@ -443,8 +444,14 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 		grpc_prometheus.UnaryServerInterceptor,
 	}
 	if grpcProxyEnableLogging {
-		grpcChainStreamList = append(grpcChainStreamList, grpc_zap.PayloadStreamServerInterceptor(lg, alwaysLoggingDeciderServer))
-		grpcChainUnaryList = append(grpcChainUnaryList, grpc_zap.PayloadUnaryServerInterceptor(lg, alwaysLoggingDeciderServer))
+		grpcChainStreamList = append(grpcChainStreamList,
+			grpc_ctxtags.StreamServerInterceptor(),
+			grpc_zap.PayloadStreamServerInterceptor(lg, alwaysLoggingDeciderServer),
+		)
+		grpcChainUnaryList = append(grpcChainUnaryList,
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_zap.PayloadUnaryServerInterceptor(lg, alwaysLoggingDeciderServer),
+		)
 	}
 
 	gopts := []grpc.ServerOption{
