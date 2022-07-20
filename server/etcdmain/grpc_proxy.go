@@ -43,6 +43,9 @@ import (
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	"go.uber.org/zap/zapgrpc"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
@@ -89,6 +92,7 @@ var (
 
 	grpcProxyEnablePprof    bool
 	grpcProxyEnableOrdering bool
+	grpcProxyEnableLogging  bool
 
 	grpcProxyDebug bool
 
@@ -159,6 +163,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	// experimental flags
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
 	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
+	cmd.Flags().BoolVar(&grpcProxyEnableLogging, "experimental-grpc-logging", false, "logging all grpc request and response")
 
 	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
 
@@ -430,9 +435,32 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
+	alwaysLoggingDeciderServer := func(ctx context.Context, fullMethodName string, servingObject interface{}) bool { return true }
+
+	grpcChainStreamList := []grpc.StreamServerInterceptor{
+		grpc_prometheus.StreamServerInterceptor,
+	}
+	grpcChainUnaryList := []grpc.UnaryServerInterceptor{
+		grpc_prometheus.UnaryServerInterceptor,
+	}
+	if grpcProxyEnableLogging {
+		grpcChainStreamList = append(grpcChainStreamList,
+			grpc_ctxtags.StreamServerInterceptor(),
+			grpc_zap.PayloadStreamServerInterceptor(lg, alwaysLoggingDeciderServer),
+		)
+		grpcChainUnaryList = append(grpcChainUnaryList,
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_zap.PayloadUnaryServerInterceptor(lg, alwaysLoggingDeciderServer),
+		)
+	}
+
 	gopts := []grpc.ServerOption{
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpcChainStreamList...,
+		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpcChainUnaryList...,
+		)),
 		grpc.MaxConcurrentStreams(math.MaxUint32),
 	}
 	if grpcKeepAliveMinTime > time.Duration(0) {
