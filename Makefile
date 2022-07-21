@@ -166,3 +166,7 @@ build-docker-release-main:
 push-docker-release-main:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
 	docker push gcr.io/etcd-development/etcd:$(ETCD_VERSION)
+
+lint:
+	# Recursively analyzes the tree:
+	golangci-lint -v run
