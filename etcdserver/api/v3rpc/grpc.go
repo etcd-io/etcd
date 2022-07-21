@@ -31,7 +31,6 @@ import (
 
 const (
 	grpcOverheadBytes = 512 * 1024
-	maxStreams        = math.MaxUint32
 	maxSendBytes      = math.MaxInt32
 )
 
@@ -53,7 +52,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, gopts ...grpc.ServerOptio
 	)))
 	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytes+grpcOverheadBytes)))
 	opts = append(opts, grpc.MaxSendMsgSize(maxSendBytes))
-	opts = append(opts, grpc.MaxConcurrentStreams(maxStreams))
+	opts = append(opts, grpc.MaxConcurrentStreams(s.Cfg.MaxConcurrentStreams))
 	grpcServer := grpc.NewServer(append(opts, gopts...)...)
 
 	pb.RegisterKVServer(grpcServer, NewQuotaKVServer(s))

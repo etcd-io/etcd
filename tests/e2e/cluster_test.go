@@ -134,6 +134,8 @@ type etcdProcessClusterConfig struct {
 	enableV2            bool
 	initialCorruptCheck bool
 	authTokenOpts       string
+
+	MaxConcurrentStreams uint32 // default is math.MaxUint32
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -261,6 +263,10 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 
 		if cfg.authTokenOpts != "" {
 			args = append(args, "--auth-token", cfg.authTokenOpts)
+		}
+
+		if cfg.MaxConcurrentStreams != 0 {
+			args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.MaxConcurrentStreams))
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
