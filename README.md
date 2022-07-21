@@ -159,7 +159,7 @@ Now it's time to dig into the full etcd API and other guides.
 
 - Mailing list: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
 - IRC: #[etcd](irc://irc.freenode.org:6667/#etcd) on freenode.org
-- Planning/Roadmap: [milestones](https://github.com/etcd-io/etcd/milestones), [roadmap](./ROADMAP.md)
+- Planning: [milestones](https://github.com/etcd-io/etcd/milestones)
 - Bugs: [issues](https://github.com/etcd-io/etcd/issues)
 
 ## Contributing
