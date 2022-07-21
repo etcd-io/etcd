@@ -64,6 +64,7 @@ type ctlCtx struct {
 	envMap map[string]struct{}
 
 	dialTimeout time.Duration
+	testTimeout time.Duration
 
 	quorum      bool // if true, set up 3-node cluster and linearizable read
 	interactive bool
@@ -92,6 +93,10 @@ func withCfg(cfg etcdProcessClusterConfig) ctlOption {
 
 func withDialTimeout(timeout time.Duration) ctlOption {
 	return func(cx *ctlCtx) { cx.dialTimeout = timeout }
+}
+
+func withTestTimeout(timeout time.Duration) ctlOption {
+	return func(cx *ctlCtx) { cx.testTimeout = timeout }
 }
 
 func withQuorum() ctlOption {
@@ -130,14 +135,26 @@ func withFlagByEnv() ctlOption {
 	return func(cx *ctlCtx) { cx.envMap = make(map[string]struct{}) }
 }
 
-func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
-	defer testutil.AfterTest(t)
+// This function must be called after the `withCfg`, otherwise its value
+// may be overwritten by `withCfg`.
+func withMaxConcurrentStreams(streams uint32) ctlOption {
+	return func(cx *ctlCtx) {
+		cx.cfg.MaxConcurrentStreams = streams
+	}
+}
 
-	ret := ctlCtx{
+func getDefaultCtlCtx(t *testing.T) ctlCtx {
+	return ctlCtx{
 		t:           t,
 		cfg:         configAutoTLS,
 		dialTimeout: 7 * time.Second,
 	}
+}
+
+func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
+	defer testutil.AfterTest(t)
+
+	ret := getDefaultCtlCtx(t)
 	ret.applyOpts(opts)
 
 	mustEtcdctl(t)
@@ -175,15 +192,24 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 		testFunc(ret)
 	}()
 
-	timeout := 2*ret.dialTimeout + time.Second
-	if ret.dialTimeout == 0 {
-		timeout = 30 * time.Second
-	}
+	timeout := ret.getTestTimeout()
+
 	select {
 	case <-time.After(timeout):
 		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
 	case <-donec:
 	}
+}
+
+func (cx *ctlCtx) getTestTimeout() time.Duration {
+	timeout := cx.testTimeout
+	if timeout == 0 {
+		timeout = 2*cx.dialTimeout + time.Second
+		if cx.dialTimeout == 0 {
+			timeout = 30 * time.Second
+		}
+	}
+	return timeout
 }
 
 func (cx *ctlCtx) prefixArgs(eps []string) []string {

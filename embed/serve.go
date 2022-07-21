@@ -17,6 +17,7 @@ package embed
 import (
 	"context"
 	"fmt"
+	"golang.org/x/net/http2"
 	"io/ioutil"
 	defaultLog "log"
 	"math"
@@ -132,6 +133,10 @@ func (sctx *serveCtx) serve(
 			Handler:  createAccessController(sctx.lg, s, httpmux),
 			ErrorLog: logger, // do not log user error
 		}
+		if err = configureHttpServer(srvhttp, s.Cfg); err != nil {
+			sctx.lg.Error("Configure http server failed", zap.Error(err))
+			return err
+		}
 		httpl := m.Match(cmux.HTTP1())
 		go func() { errHandler(srvhttp.Serve(httpl)) }()
 
@@ -185,6 +190,10 @@ func (sctx *serveCtx) serve(
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
+		if err = configureHttpServer(srv, s.Cfg); err != nil {
+			sctx.lg.Error("Configure https server failed", zap.Error(err))
+			return err
+		}
 		go func() { errHandler(srv.Serve(tlsl)) }()
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
@@ -200,6 +209,13 @@ func (sctx *serveCtx) serve(
 
 	close(sctx.serversC)
 	return m.Serve()
+}
+
+func configureHttpServer(srv *http.Server, cfg etcdserver.ServerConfig) error {
+	// todo (ahrtr): should we support configuring other parameters in the future as well?
+	return http2.ConfigureServer(srv, &http2.Server{
+		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
+	})
 }
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
