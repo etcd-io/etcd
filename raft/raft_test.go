@@ -21,6 +21,7 @@ import (
 	"math/rand"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	pb "go.etcd.io/etcd/raft/v3/raftpb"
@@ -1040,6 +1041,7 @@ func TestProposal(t *testing.T) {
 	}
 
 	for j, tt := range tests {
+		tt := tt
 		send := func(m pb.Message) {
 			defer func() {
 				// only recover if we expect it to panic (success==false)
@@ -1586,38 +1588,46 @@ func TestStateTransition(t *testing.T) {
 		{StateLeader, StateLeader, true, 0, 1},
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(len(tests))
 	for i, tt := range tests {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					if tt.wallow {
-						t.Errorf("%d: allow = %v, want %v", i, false, true)
+		i := i
+		tt := tt
+		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
+			func() {
+				defer wg.Done()
+				defer func() {
+					if r := recover(); r != nil {
+						if tt.wallow {
+							t.Errorf("%d: allow = %v, want %v", i, false, true)
+						}
 					}
+				}()
+
+				sm := newTestRaft(1, 10, 1, newTestMemoryStorage(withPeers(1)))
+				sm.state = tt.from
+
+				switch tt.to {
+				case StateFollower:
+					sm.becomeFollower(tt.wterm, tt.wlead)
+				case StatePreCandidate:
+					sm.becomePreCandidate()
+				case StateCandidate:
+					sm.becomeCandidate()
+				case StateLeader:
+					sm.becomeLeader()
+				}
+
+				if sm.Term != tt.wterm {
+					t.Errorf("%d: term = %d, want %d", i, sm.Term, tt.wterm)
+				}
+				if sm.lead != tt.wlead {
+					t.Errorf("%d: lead = %d, want %d", i, sm.lead, tt.wlead)
 				}
 			}()
-
-			sm := newTestRaft(1, 10, 1, newTestMemoryStorage(withPeers(1)))
-			sm.state = tt.from
-
-			switch tt.to {
-			case StateFollower:
-				sm.becomeFollower(tt.wterm, tt.wlead)
-			case StatePreCandidate:
-				sm.becomePreCandidate()
-			case StateCandidate:
-				sm.becomeCandidate()
-			case StateLeader:
-				sm.becomeLeader()
-			}
-
-			if sm.Term != tt.wterm {
-				t.Errorf("%d: term = %d, want %d", i, sm.Term, tt.wterm)
-			}
-			if sm.lead != tt.wlead {
-				t.Errorf("%d: lead = %d, want %d", i, sm.lead, tt.wlead)
-			}
-		}()
+		})
 	}
+	wg.Wait()
 }
 
 func TestAllServerStepdown(t *testing.T) {
@@ -4532,7 +4542,9 @@ func TestFastLogRejection(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		t.Run("", func(t *testing.T) {
+		i := i
+		test := test
+		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
 			s1 := NewMemoryStorage()
 			s1.snapshot.Metadata.ConfState = pb.ConfState{Voters: []uint64{1, 2, 3}}
 			s1.Append(test.leaderLog)
