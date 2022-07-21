@@ -377,6 +377,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 				EnableLeaseCheckpoint:   tc.checkpointingEnabled,
 				LeaseCheckpointInterval: tc.checkpointingInterval,
 				LeaseCheckpointPersist:  tc.checkpointingPersist,
+				SnapshotCount:           5,
 			}
 			clus := NewClusterV3(t, config)
 			defer clus.Terminate(t)
