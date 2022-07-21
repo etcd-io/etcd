@@ -180,7 +180,6 @@ func TestDirPermission(t *testing.T) {
 
 func TestRemoveMatchFile(t *testing.T) {
 	tmpdir := t.TempDir()
-	defer os.RemoveAll(tmpdir)
 	f, err := os.CreateTemp(tmpdir, "tmp")
 	if err != nil {
 		t.Fatal(err)
