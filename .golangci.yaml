@@ -1,4 +1,5 @@
 run:
+  go: '1.17'
   timeout: 30m
   skip-files:
     - "^zz_generated.*"
@@ -27,15 +28,10 @@ linters:
 
 linters-settings: # please keep this alphabetized
   staticcheck:
-    go: "1.17"
-    checks: [
-      "all",
-      "-SA1019", # TODO(fix) Using a deprecated function, variable, constant or field
-      "-SA2002"  # TODO(fix) Called testing.T.FailNow or SkipNow in a goroutine, which isn’t allowed
-    ]
+    checks:
+      - "all"
+      - "-SA1019" # TODO(fix) Using a deprecated function, variable, constant or field
+      - "-SA2002"  # TODO(fix) Called testing.T.FailNow or SkipNow in a goroutine, which isn’t allowed
   stylecheck:
-    checks: [
-      "ST1019",  # Importing the same package multiple times.
-    ]
-  unused:
-    go: "1.17"
+    checks:
+      - "ST1019"  # Importing the same package multiple times.
