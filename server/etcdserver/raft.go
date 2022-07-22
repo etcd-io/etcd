@@ -377,7 +377,14 @@ func (r *raftNode) apply() chan toApply {
 }
 
 func (r *raftNode) stop() {
-	r.stopped <- struct{}{}
+	select {
+	case r.stopped <- struct{}{}:
+		// Not already stopped, so trigger it
+	case <-r.done:
+		// Has already been stopped - no need to do anything
+		return
+	}
+	// Block until the stop has been acknowledged by start()
 	<-r.done
 }
 
