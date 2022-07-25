@@ -252,7 +252,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	// newly started member ("memberInitialized==false")
 	// does not need corruption check
 	if memberInitialized && srvcfg.InitialCorruptCheck {
-		if err = etcdserver.NewCorruptionMonitor(e.cfg.logger, e.Server).InitialCheck(); err != nil {
+		if err = e.Server.CorruptionChecker().InitialCheck(); err != nil {
 			// set "EtcdServer" to nil, so that it does not block on "EtcdServer.Close()"
 			// (nothing to close since rafthttp transports have not been started)
 
