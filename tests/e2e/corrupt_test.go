@@ -20,12 +20,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/datadir"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 )
-
-// TODO: test with embedded etcd in integration package
 
 func TestEtcdCorruptHash(t *testing.T) {
 	// oldenv := os.Getenv("EXPECT_DEBUG")
@@ -93,4 +93,41 @@ func corruptTest(cx ctlCtx) {
 	cx.t.Log("waiting for etcd[0] failure...")
 	// restarting corrupted member should fail
 	waitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
+}
+
+func TestPeriodicCheckDetectsCorruption(t *testing.T) {
+	checkTime := time.Second
+	BeforeTest(t)
+	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
+		clusterSize:      3,
+		keepDataDir:      true,
+		CorruptCheckTime: time.Second,
+	})
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	t.Cleanup(func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+
+	cc := NewEtcdctl(epc.EndpointsV3())
+
+	for i := 0; i < 10; i++ {
+		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))
+		assert.NoError(t, err, "error on put")
+	}
+
+	epc.procs[0].Stop()
+	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.procs[0].Config().dataDirPath))
+	assert.NoError(t, err)
+
+	err = epc.procs[0].Restart()
+	assert.NoError(t, err)
+	time.Sleep(checkTime * 11 / 10)
+	alarmResponse, err := cc.AlarmList()
+	assert.NoError(t, err, "error on alarm list")
+	// TODO: Investigate why MemberID is 0?
+	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: 0}}, alarmResponse.Alarms)
 }
