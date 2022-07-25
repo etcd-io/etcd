@@ -20,13 +20,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
-
-// TODO: test with embedded etcd in integration package
 
 func TestEtcdCorruptHash(t *testing.T) {
 	// oldenv := os.Getenv("EXPECT_DEBUG")
@@ -94,4 +95,41 @@ func corruptTest(cx ctlCtx) {
 	cx.t.Log("waiting for etcd[0] failure...")
 	// restarting corrupted member should fail
 	e2e.WaitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
+}
+
+func TestPeriodicCheckDetectsCorruption(t *testing.T) {
+	checkTime := time.Second
+	e2e.BeforeTest(t)
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:      3,
+		KeepDataDir:      true,
+		CorruptCheckTime: time.Second,
+	})
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	t.Cleanup(func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+
+	cc := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+
+	for i := 0; i < 10; i++ {
+		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
+		assert.NoError(t, err, "error on put")
+	}
+
+	epc.Procs[0].Stop()
+	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
+	assert.NoError(t, err)
+
+	err = epc.Procs[0].Restart()
+	assert.NoError(t, err)
+	time.Sleep(checkTime * 11 / 10)
+	alarmResponse, err := cc.AlarmList()
+	assert.NoError(t, err, "error on alarm list")
+	// TODO: Investigate why MemberID is 0?
+	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: 0}}, alarmResponse.Alarms)
 }
