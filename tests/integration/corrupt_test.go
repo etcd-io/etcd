@@ -97,8 +97,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	alarmResponse, err := cc.AlarmList(ctx)
 	assert.NoError(t, err, "error on alarm list")
-	// TODO: Investigate why MemberID is 0?
-	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: 0}}, alarmResponse.Alarms)
+	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: uint64(clus.Members[0].ID())}}, alarmResponse.Alarms)
 }
 
 func TestCompactHashCheck(t *testing.T) {
