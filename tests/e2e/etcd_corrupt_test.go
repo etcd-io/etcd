@@ -44,7 +44,7 @@ func TestEtcdCorruptHash(t *testing.T) {
 	testCtl(t, corruptTest, withQuorum(),
 		withCfg(*cfg),
 		withInitialCorruptCheck(),
-		withCorruptFunc(corruptHash),
+		withCorruptFunc(CorruptBBolt),
 	)
 }
 
@@ -99,7 +99,7 @@ func corruptTest(cx ctlCtx) {
 	e2e.WaitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
 }
 
-func corruptHash(fpath string) error {
+func CorruptBBolt(fpath string) error {
 	db, derr := bolt.Open(fpath, os.ModePerm, &bolt.Options{})
 	if derr != nil {
 		return derr
