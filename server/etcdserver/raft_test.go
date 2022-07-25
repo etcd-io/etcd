@@ -288,9 +288,8 @@ func TestExpvarWithNoRaftStatus(t *testing.T) {
 
 func TestStopRaftNodeMoreThanOnce(t *testing.T) {
 	n := newNopReadyNode()
-
 	r := newRaftNode(raftNodeConfig{
-		lg:          zap.NewExample(),
+		lg:          zaptest.NewLogger(t),
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
