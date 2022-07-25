@@ -293,6 +293,7 @@ type EtcdServer struct {
 	firstCommitInTermC  chan struct{}
 
 	*AccessController
+	corruptionChecker CorruptionChecker
 }
 
 type backendHooks struct {
@@ -629,6 +630,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			)
 		}
 	}
+	srv.corruptionChecker = NewCorruptionChecker(cfg.Logger, srv)
 
 	srv.authStore = auth.NewAuthStore(srv.Logger(), srv.be, tp, int(cfg.BcryptCost))
 
@@ -2520,7 +2522,6 @@ func (s *EtcdServer) monitorKVHash() {
 		zap.String("local-member-id", s.ID().String()),
 		zap.Duration("interval", t),
 	)
-	monitor := NewCorruptionMonitor(lg, s)
 	for {
 		select {
 		case <-s.stopping:
@@ -2530,7 +2531,7 @@ func (s *EtcdServer) monitorKVHash() {
 		if !s.isLeader() {
 			continue
 		}
-		if err := monitor.periodicCheck(); err != nil {
+		if err := s.corruptionChecker.PeriodicCheck(); err != nil {
 			lg.Warn("failed to check hash KV", zap.Error(err))
 		}
 	}
@@ -2772,4 +2773,8 @@ func maybeDefragBackend(cfg config.ServerConfig, be backend.Backend) error {
 		return nil
 	}
 	return be.Defrag()
+}
+
+func (s *EtcdServer) CorruptionChecker() CorruptionChecker {
+	return s.corruptionChecker
 }

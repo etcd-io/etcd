@@ -88,7 +88,7 @@ func TestInitialCheck(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			monitor := corruptionMonitor{
+			monitor := corruptionChecker{
 				lg:     zaptest.NewLogger(t),
 				hasher: &tc.hasher,
 			}
@@ -205,11 +205,11 @@ func TestPeriodicCheck(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			monitor := corruptionMonitor{
+			monitor := corruptionChecker{
 				lg:     zaptest.NewLogger(t),
 				hasher: &tc.hasher,
 			}
-			err := monitor.periodicCheck()
+			err := monitor.PeriodicCheck()
 			if gotError := err != nil; gotError != tc.expectError {
 				t.Errorf("Unexpected error, got: %v, expected?: %v", err, tc.expectError)
 			}

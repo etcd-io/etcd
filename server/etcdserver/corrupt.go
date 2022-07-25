@@ -33,7 +33,12 @@ import (
 	"go.uber.org/zap"
 )
 
-type corruptionMonitor struct {
+type CorruptionChecker interface {
+	InitialCheck() error
+	PeriodicCheck() error
+}
+
+type corruptionChecker struct {
 	lg *zap.Logger
 
 	hasher Hasher
@@ -48,8 +53,8 @@ type Hasher interface {
 	TriggerCorruptAlarm(uint64)
 }
 
-func NewCorruptionMonitor(lg *zap.Logger, s *EtcdServer) *corruptionMonitor {
-	return &corruptionMonitor{
+func NewCorruptionChecker(lg *zap.Logger, s *EtcdServer) *corruptionChecker {
+	return &corruptionChecker{
 		lg:     lg,
 		hasher: hasherAdapter{s, s.KV().HashStorage()},
 	}
@@ -79,7 +84,7 @@ func (h hasherAdapter) TriggerCorruptAlarm(memberID uint64) {
 // InitialCheck compares initial hash values with its peers
 // before serving any peer/client traffic. Only mismatch when hashes
 // are different at requested revision, with same compact revision.
-func (cm *corruptionMonitor) InitialCheck() error {
+func (cm *corruptionChecker) InitialCheck() error {
 
 	cm.lg.Info(
 		"starting initial corruption check",
@@ -158,7 +163,7 @@ func (cm *corruptionMonitor) InitialCheck() error {
 	return nil
 }
 
-func (cm *corruptionMonitor) periodicCheck() error {
+func (cm *corruptionChecker) PeriodicCheck() error {
 	h, rev, err := cm.hasher.HashByRev(0)
 	if err != nil {
 		return err
