@@ -16,16 +16,13 @@ package e2e
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
-	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -44,7 +41,7 @@ func TestEtcdCorruptHash(t *testing.T) {
 	testCtl(t, corruptTest, withQuorum(),
 		withCfg(*cfg),
 		withInitialCorruptCheck(),
-		withCorruptFunc(CorruptBBolt),
+		withCorruptFunc(testutil.CorruptBBolt),
 	)
 }
 
@@ -97,41 +94,4 @@ func corruptTest(cx ctlCtx) {
 	cx.t.Log("waiting for etcd[0] failure...")
 	// restarting corrupted member should fail
 	e2e.WaitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
-}
-
-func CorruptBBolt(fpath string) error {
-	db, derr := bolt.Open(fpath, os.ModePerm, &bolt.Options{})
-	if derr != nil {
-		return derr
-	}
-	defer db.Close()
-
-	return db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("key"))
-		if b == nil {
-			return errors.New("got nil bucket for 'key'")
-		}
-		keys, vals := [][]byte{}, [][]byte{}
-		c := b.Cursor()
-		for k, v := c.First(); k != nil; k, v = c.Next() {
-			keys = append(keys, k)
-			var kv mvccpb.KeyValue
-			if uerr := kv.Unmarshal(v); uerr != nil {
-				return uerr
-			}
-			kv.Key[0]++
-			kv.Value[0]++
-			v2, v2err := kv.Marshal()
-			if v2err != nil {
-				return v2err
-			}
-			vals = append(vals, v2)
-		}
-		for i := range keys {
-			if perr := b.Put(keys[i], vals[i]); perr != nil {
-				return perr
-			}
-		}
-		return nil
-	})
 }
