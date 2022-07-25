@@ -91,7 +91,7 @@ func TestRoundRobinBalancedResolvableNoFailover(t *testing.T) {
 				return picked, err
 			}
 
-			_, picked, err := warmupConnections(reqFunc, tc.serverCount)
+			_, picked, err := warmupConnections(reqFunc, tc.serverCount, "")
 			if err != nil {
 				t.Fatalf("Unexpected failure %v", err)
 			}
@@ -160,9 +160,11 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 	}
 
 	// stop first server, loads should be redistributed
-	// stopped server should never be picked
 	ms.StopAt(0)
-	available, picked, err := warmupConnections(reqFunc, serverCount-1)
+	// stopped server will be transitioned into TRANSIENT_FAILURE state
+	// but it doesn't happen instantaneously and it can still be picked for a short period of time
+	// we ignore "transport is closing" in such case
+	available, picked, err := warmupConnections(reqFunc, serverCount-1, "transport is closing")
 	if err != nil {
 		t.Fatalf("Unexpected failure %v", err)
 	}
@@ -171,8 +173,8 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 	prev, switches := picked, 0
 	for i := 0; i < reqN; i++ {
 		picked, err = reqFunc(context.Background())
-		if err != nil && strings.Contains(err.Error(), "transport is closing") {
-			continue
+		if err != nil {
+			t.Fatalf("#%d: unexpected failure %v", i, err)
 		}
 		if _, ok := available[picked]; !ok {
 			t.Fatalf("picked unavailable address %q (available %v)", picked, available)
@@ -188,8 +190,7 @@ func TestRoundRobinBalancedResolvableFailoverFromServerFail(t *testing.T) {
 
 	// now failed server comes back
 	ms.StartAt(0)
-
-	available, picked, err = warmupConnections(reqFunc, serverCount)
+	available, picked, err = warmupConnections(reqFunc, serverCount, "")
 	if err != nil {
 		t.Fatalf("Unexpected failure %v", err)
 	}
@@ -266,7 +267,7 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 		return picked, err
 	}
 
-	available, picked, err := warmupConnections(reqFunc, serverCount)
+	available, picked, err := warmupConnections(reqFunc, serverCount, "")
 	if err != nil {
 		t.Fatalf("Unexpected failure %v", err)
 	}
@@ -301,7 +302,7 @@ func TestRoundRobinBalancedResolvableFailoverFromRequestFail(t *testing.T) {
 
 type reqFuncT = func(ctx context.Context) (picked string, err error)
 
-func warmupConnections(reqFunc reqFuncT, serverCount int) (map[string]struct{}, string, error) {
+func warmupConnections(reqFunc reqFuncT, serverCount int, ignoreErr string) (map[string]struct{}, string, error) {
 	var picked string
 	var err error
 	available := make(map[string]struct{})
@@ -310,6 +311,10 @@ func warmupConnections(reqFunc reqFuncT, serverCount int) (map[string]struct{}, 
 	for len(available) < serverCount {
 		picked, err = reqFunc(context.Background())
 		if err != nil {
+			if ignoreErr != "" && strings.Contains(err.Error(), ignoreErr) {
+				// skip ignored errors
+				continue
+			}
 			return available, picked, err
 		}
 		available[picked] = struct{}{}
