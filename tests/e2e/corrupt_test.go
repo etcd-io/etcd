@@ -119,6 +119,15 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		assert.NoError(t, err, "error on put")
 	}
 
+	members, err := cc.MemberList()
+	assert.NoError(t, err, "error on member list")
+	var memberID uint64
+	for _, m := range members.Members {
+		if m.Name == epc.procs[0].Config().name {
+			memberID = m.ID
+		}
+	}
+	assert.NotZero(t, memberID, "member not found")
 	epc.procs[0].Stop()
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.procs[0].Config().dataDirPath))
 	assert.NoError(t, err)
@@ -128,8 +137,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	time.Sleep(checkTime * 11 / 10)
 	alarmResponse, err := cc.AlarmList()
 	assert.NoError(t, err, "error on alarm list")
-	// TODO: Investigate why MemberID is 0?
-	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: 0}}, alarmResponse.Alarms)
+	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: memberID}}, alarmResponse.Alarms)
 }
 
 func TestCompactHashCheckDetectCorruption(t *testing.T) {
