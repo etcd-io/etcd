@@ -325,7 +325,7 @@ func testNonleaderElectionTimeoutRandomized(t *testing.T, state StateType) {
 		timeouts[time] = true
 	}
 
-	for d := et + 1; d < 2*et; d++ {
+	for d := et; d < 2*et; d++ {
 		if !timeouts[d] {
 			t.Errorf("timeout in %d ticks should happen", d)
 		}
