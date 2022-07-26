@@ -70,4 +70,6 @@ type Client interface {
 	RoleDelete(role string) (*clientv3.AuthRoleDeleteResponse, error)
 
 	Txn(compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error)
+
+	MemberList() (*clientv3.MemberListResponse, error)
 }

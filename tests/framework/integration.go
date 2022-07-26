@@ -372,3 +372,7 @@ func getOps(ss []string) ([]clientv3.Op, error) {
 	}
 	return ops, nil
 }
+
+func (c integrationClient) MemberList() (*clientv3.MemberListResponse, error) {
+	return c.Client.MemberList(c.ctx)
+}
