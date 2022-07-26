@@ -381,6 +381,7 @@ func (s *store) restore() error {
 
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
+		s.revMu.Lock()
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
 
 		if s.lg != nil {
@@ -393,6 +394,7 @@ func (s *store) restore() error {
 		} else {
 			plog.Printf("restore compact to %d", s.compactMainRev)
 		}
+		s.revMu.Unlock()
 	}
 	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
 	scheduledCompact := int64(0)
@@ -421,16 +423,22 @@ func (s *store) restore() error {
 		revToBytes(newMin, min)
 	}
 	close(rkvc)
-	s.currentRev = <-revc
 
-	// keys in the range [compacted revision -N, compaction] might all be deleted due to compaction.
-	// the correct revision should be set to compaction revision in the case, not the largest revision
-	// we have seen.
-	if s.currentRev < s.compactMainRev {
-		s.currentRev = s.compactMainRev
-	}
-	if scheduledCompact <= s.compactMainRev {
-		scheduledCompact = 0
+	{
+		s.revMu.Lock()
+		s.currentRev = <-revc
+
+		// keys in the range [compacted revision -N, compaction] might all be deleted due to compaction.
+		// the correct revision should be set to compaction revision in the case, not the largest revision
+		// we have seen.
+		if s.currentRev < s.compactMainRev {
+			s.currentRev = s.compactMainRev
+		}
+
+		if scheduledCompact <= s.compactMainRev {
+			scheduledCompact = 0
+		}
+		s.revMu.Unlock()
 	}
 
 	for key, lid := range keyToLease {
