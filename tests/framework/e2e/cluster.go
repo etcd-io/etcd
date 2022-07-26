@@ -177,7 +177,10 @@ type EtcdProcessClusterConfig struct {
 	DiscoveryToken     string
 	LogLevel           string
 
-	MaxConcurrentStreams uint32 // default is math.MaxUint32
+	MaxConcurrentStreams    uint32 // default is math.MaxUint32
+	CorruptCheckTime        time.Duration
+	CompactHashCheckEnabled bool
+	CompactHashCheckTime    time.Duration
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -345,6 +348,16 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 
 		if cfg.MaxConcurrentStreams != 0 {
 			args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.MaxConcurrentStreams))
+		}
+
+		if cfg.CorruptCheckTime != 0 {
+			args = append(args, "--experimental-corrupt-check-time", fmt.Sprintf("%s", cfg.CorruptCheckTime))
+		}
+		if cfg.CompactHashCheckEnabled {
+			args = append(args, "--experimental-compact-hash-check-enabled")
+		}
+		if cfg.CompactHashCheckTime != 0 {
+			args = append(args, "--experimental-compact-hash-check-time", cfg.CompactHashCheckTime.String())
 		}
 
 		etcdCfgs[i] = &EtcdServerProcessConfig{

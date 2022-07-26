@@ -320,8 +320,11 @@ type Config struct {
 	// AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
-	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
-	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
+	ExperimentalInitialCorruptCheck     bool          `json:"experimental-initial-corrupt-check"`
+	ExperimentalCorruptCheckTime        time.Duration `json:"experimental-corrupt-check-time"`
+	ExperimentalCompactHashCheckEnabled bool          `json:"experimental-compact-hash-check-enabled"`
+	ExperimentalCompactHashCheckTime    time.Duration `json:"experimental-compact-hash-check-time"`
+
 	// ExperimentalEnableLeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
 	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
 	// ExperimentalEnableLeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
@@ -520,6 +523,9 @@ func NewConfig() *Config {
 		ExperimentalMemoryMlock:                  false,
 		ExperimentalTxnModeWriteWithSharedBuffer: true,
 		ExperimentalMaxLearners:                  membership.DefaultMaxLearners,
+
+		ExperimentalCompactHashCheckEnabled: false,
+		ExperimentalCompactHashCheckTime:    time.Minute,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 
@@ -757,6 +763,10 @@ func (cfg *Config) Validate() error {
 
 	if cfg.ExperimentalEnableLeaseCheckpointPersist && !cfg.ExperimentalEnableLeaseCheckpoint {
 		return fmt.Errorf("setting experimental-enable-lease-checkpoint-persist requires experimental-enable-lease-checkpoint")
+	}
+
+	if cfg.ExperimentalCompactHashCheckTime <= 0 {
+		return fmt.Errorf("--experimental-compact-hash-check-time must be >0 (set to %v)", cfg.ExperimentalCompactHashCheckTime)
 	}
 
 	return nil

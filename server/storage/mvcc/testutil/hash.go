@@ -16,10 +16,14 @@ package testutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/bbolt"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
 const (
@@ -102,4 +106,41 @@ func PickKey(i int64) string {
 	default:
 		panic("Can't count")
 	}
+}
+
+func CorruptBBolt(fpath string) error {
+	db, derr := bbolt.Open(fpath, os.ModePerm, &bbolt.Options{})
+	if derr != nil {
+		return derr
+	}
+	defer db.Close()
+
+	return db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte("key"))
+		if b == nil {
+			return errors.New("got nil bucket for 'key'")
+		}
+		keys, vals := [][]byte{}, [][]byte{}
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			keys = append(keys, k)
+			var kv mvccpb.KeyValue
+			if uerr := kv.Unmarshal(v); uerr != nil {
+				return uerr
+			}
+			kv.Key[0]++
+			kv.Value[0]++
+			v2, v2err := kv.Marshal()
+			if v2err != nil {
+				return v2err
+			}
+			vals = append(vals, v2)
+		}
+		for i := range keys {
+			if perr := b.Put(keys[i], vals[i]); perr != nil {
+				return perr
+			}
+		}
+		return nil
+	})
 }

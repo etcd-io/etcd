@@ -295,7 +295,8 @@ type EtcdServer struct {
 	*AccessController
 	// forceSnapshot can force snapshot be triggered after apply, independent of the snapshotCount.
 	// Should only be set within apply code path. Used to force snapshot after cluster version downgrade.
-	forceSnapshot bool
+	forceSnapshot     bool
+	corruptionChecker CorruptionChecker
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -371,6 +372,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		CompactionSleepInterval: cfg.CompactionSleepInterval,
 	}
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
+	srv.corruptionChecker = newCorruptionChecker(cfg.Logger, srv, srv.kv.HashStorage())
 
 	srv.authStore = auth.NewAuthStore(srv.Logger(), schema.NewAuthBackend(srv.Logger(), srv.be), tp, int(cfg.BcryptCost))
 
@@ -530,6 +532,7 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(s.monitorStorageVersion)
 	s.GoAttach(s.linearizableReadLoop)
 	s.GoAttach(s.monitorKVHash)
+	s.GoAttach(s.monitorCompactHash)
 	s.GoAttach(s.monitorDowngrade)
 }
 
@@ -2199,7 +2202,6 @@ func (s *EtcdServer) monitorKVHash() {
 		zap.String("local-member-id", s.MemberId().String()),
 		zap.Duration("interval", t),
 	)
-	monitor := NewCorruptionMonitor(lg, s)
 	for {
 		select {
 		case <-s.stopping:
@@ -2209,9 +2211,27 @@ func (s *EtcdServer) monitorKVHash() {
 		if !s.isLeader() {
 			continue
 		}
-		if err := monitor.periodicCheck(); err != nil {
+		if err := s.corruptionChecker.PeriodicCheck(); err != nil {
 			lg.Warn("failed to check hash KV", zap.Error(err))
 		}
+	}
+}
+
+func (s *EtcdServer) monitorCompactHash() {
+	if !s.Cfg.CompactHashCheckEnabled {
+		return
+	}
+	t := s.Cfg.CompactHashCheckTime
+	for {
+		select {
+		case <-time.After(t):
+		case <-s.stopping:
+			return
+		}
+		if !s.isLeader() {
+			continue
+		}
+		s.corruptionChecker.CompactHashCheck()
 	}
 }
 
@@ -2415,4 +2435,8 @@ func (s *EtcdServer) getTxPostLockInsideApplyHook() func() {
 			s.consistIndex.SetConsistentIndex(applyingIdx, applyingTerm)
 		}
 	}
+}
+
+func (s *EtcdServer) CorruptionChecker() CorruptionChecker {
+	return s.corruptionChecker
 }

@@ -93,6 +93,9 @@ type HashStorage interface {
 
 	// Store adds hash value in local cache, allowing it can be returned by HashByRev.
 	Store(valueHash KeyValueHash)
+
+	// Hashes returns list of up to `hashStorageMaxSize` newest previously stored hashes.
+	Hashes() []KeyValueHash
 }
 
 type hashStorage struct {
@@ -145,4 +148,15 @@ func (s *hashStorage) Store(hash KeyValueHash) {
 	if len(s.hashes) > hashStorageMaxSize {
 		s.hashes = s.hashes[len(s.hashes)-hashStorageMaxSize:]
 	}
+}
+
+func (s *hashStorage) Hashes() []KeyValueHash {
+	s.hashMu.RLock()
+	// Copy out hashes under lock just to be safe
+	hashes := make([]KeyValueHash, 0, len(s.hashes))
+	for _, hash := range s.hashes {
+		hashes = append(hashes, hash)
+	}
+	s.hashMu.RUnlock()
+	return hashes
 }
