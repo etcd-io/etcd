@@ -48,6 +48,7 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type serveCtx struct {
@@ -137,7 +138,7 @@ func (sctx *serveCtx) serve(
 
 		var gwmux *gw.ServeMux
 		if s.Cfg.EnableGRPCGateway {
-			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithInsecure()})
+			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())})
 			if err != nil {
 				sctx.lg.Error("registerGateway failed", zap.Error(err))
 				return err
