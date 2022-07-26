@@ -6,8 +6,21 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.20 (TBD)
 
+### Package `clientv3`
+
+- Fix [filter learners members during autosync](https://github.com/etcd-io/etcd/pull/14236).
+
 ### etcd server
+- Add [`etcd --max-concurrent-streams`](https://github.com/etcd-io/etcd/pull/14251) flag to configure the max concurrent streams each client can open at a time, and defaults to math.MaxUint32.
+- Add [`etcd --experimental-enable-lease-checkpoint-persist`](https://github.com/etcd-io/etcd/pull/14253) flag to enable checkpoint persisting.
+- Fix [Lease checkpoints don't prevent to reset ttl on leader change](https://github.com/etcd-io/etcd/pull/14253), requires enabling checkpoint persisting.
 - Fix [Protect rangePermCache with a RW lock correctly](https://github.com/etcd-io/etcd/pull/14230)
+- Fix [raft: postpone MsgReadIndex until first commit in the term](https://github.com/etcd-io/etcd/pull/14258)
+- Fix [etcdserver: resend ReadIndex request on empty apply request](https://github.com/etcd-io/etcd/pull/14269)
+- Fix [remove temp files in snap dir when etcdserver starting](https://github.com/etcd-io/etcd/pull/14246)
+- Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/14177)
+- Fix [Grant lease with negative ID can possibly cause db out of sync](https://github.com/etcd-io/etcd/pull/14239)
+- Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/14254)
 
 ## v3.4.19 (2022-07-12)
 
