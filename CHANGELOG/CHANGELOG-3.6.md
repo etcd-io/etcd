@@ -83,6 +83,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
 
 - Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).
+- Add [`etcd_debugging_server_alarms`](https://github.com/etcd-io/etcd/pull/14276).
 
 ### Go
 - Compile with [Go 1.17+](https://golang.org/doc/devel/release.html#go1.17)
