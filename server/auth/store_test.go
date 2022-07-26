@@ -87,7 +87,7 @@ func TestNewAuthStoreBcryptCost(t *testing.T) {
 
 func encodePassword(s string) string {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(s), bcrypt.MinCost)
-	return base64.StdEncoding.EncodeToString([]byte(hashedPassword))
+	return base64.StdEncoding.EncodeToString(hashedPassword)
 }
 
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
