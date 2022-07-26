@@ -161,7 +161,7 @@ func TestPeriodicCheck(t *testing.T) {
 		{
 			name: "Peer with newer revision",
 			hasher: fakeHasher{
-				peerHashes: []*peerHashKVResp{{resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 1, MemberId: 42}}}},
+				peerHashes: []*peerHashKVResp{{peerInfo: peerInfo{id: 42}, resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 1}}}},
 			},
 			expectActions: []string{"HashByRev(0)", "PeerHashByRev(0)", "ReqTimeout()", "LinearizableReadNotify()", "HashByRev(0)", "TriggerCorruptAlarm(42)"},
 			expectCorrupt: true,
@@ -169,7 +169,7 @@ func TestPeriodicCheck(t *testing.T) {
 		{
 			name: "Peer with newer compact revision",
 			hasher: fakeHasher{
-				peerHashes: []*peerHashKVResp{{resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 10, MemberId: 88}, CompactRevision: 2}}},
+				peerHashes: []*peerHashKVResp{{peerInfo: peerInfo{id: 88}, resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 10}, CompactRevision: 2}}},
 			},
 			expectActions: []string{"HashByRev(0)", "PeerHashByRev(0)", "ReqTimeout()", "LinearizableReadNotify()", "HashByRev(0)", "TriggerCorruptAlarm(88)"},
 			expectCorrupt: true,
@@ -186,7 +186,7 @@ func TestPeriodicCheck(t *testing.T) {
 			name: "Peer with different hash and same compact revision as first local",
 			hasher: fakeHasher{
 				hashByRevResponses: []hashByRev{{hash: mvcc.KeyValueHash{Hash: 1, CompactRevision: 1}, revision: 1}, {hash: mvcc.KeyValueHash{Hash: 2, CompactRevision: 2}, revision: 2}},
-				peerHashes:         []*peerHashKVResp{{resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 1, MemberId: 666}, CompactRevision: 1, Hash: 2}}},
+				peerHashes:         []*peerHashKVResp{{peerInfo: peerInfo{id: 666}, resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 1}, CompactRevision: 1, Hash: 2}}},
 			},
 			expectActions: []string{"HashByRev(0)", "PeerHashByRev(1)", "ReqTimeout()", "LinearizableReadNotify()", "HashByRev(0)", "TriggerCorruptAlarm(666)"},
 			expectCorrupt: true,
@@ -195,8 +195,8 @@ func TestPeriodicCheck(t *testing.T) {
 			name: "Multiple corrupted peers trigger one alarm",
 			hasher: fakeHasher{
 				peerHashes: []*peerHashKVResp{
-					{resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 10, MemberId: 88}, CompactRevision: 2}},
-					{resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 10, MemberId: 89}, CompactRevision: 2}},
+					{peerInfo: peerInfo{id: 88}, resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 10}, CompactRevision: 2}},
+					{peerInfo: peerInfo{id: 89}, resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: 10}, CompactRevision: 2}},
 				},
 			},
 			expectActions: []string{"HashByRev(0)", "PeerHashByRev(0)", "ReqTimeout()", "LinearizableReadNotify()", "HashByRev(0)", "TriggerCorruptAlarm(88)"},
@@ -371,7 +371,7 @@ func (f *fakeHasher) LinearizableReadNotify(ctx context.Context) error {
 	return f.linearizableReadNotify
 }
 
-func (f *fakeHasher) TriggerCorruptAlarm(memberId uint64) {
+func (f *fakeHasher) TriggerCorruptAlarm(memberId types.ID) {
 	f.actions = append(f.actions, fmt.Sprintf("TriggerCorruptAlarm(%d)", memberId))
 	f.alarmTriggered = true
 }

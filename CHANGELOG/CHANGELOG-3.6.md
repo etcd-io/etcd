@@ -73,6 +73,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [etcd panic on startup (auth enabled)](https://github.com/etcd-io/etcd/pull/13942)
 - Fix [Defrag unsets backend options](https://github.com/etcd-io/etcd/pull/13679).
 - Fix [Restrict the max size of each WAL entry to the remaining size of the WAL file](https://github.com/etcd-io/etcd/pull/14122).
+- Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
 
 ### tools/benchmark
 

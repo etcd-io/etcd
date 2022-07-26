@@ -55,7 +55,7 @@ type Hasher interface {
 	MemberId() types.ID
 	PeerHashByRev(int64) []*peerHashKVResp
 	LinearizableReadNotify(context.Context) error
-	TriggerCorruptAlarm(uint64)
+	TriggerCorruptAlarm(types.ID)
 }
 
 func newCorruptionChecker(lg *zap.Logger, s *EtcdServer, storage mvcc.HashStorage) *corruptionChecker {
@@ -78,7 +78,7 @@ func (h hasherAdapter) PeerHashByRev(rev int64) []*peerHashKVResp {
 	return h.EtcdServer.getPeerHashKVs(rev)
 }
 
-func (h hasherAdapter) TriggerCorruptAlarm(memberID uint64) {
+func (h hasherAdapter) TriggerCorruptAlarm(memberID types.ID) {
 	h.EtcdServer.triggerCorruptAlarm(memberID)
 }
 
@@ -184,7 +184,7 @@ func (cm *corruptionChecker) PeriodicCheck() error {
 	}
 
 	alarmed := false
-	mismatch := func(id uint64) {
+	mismatch := func(id types.ID) {
 		if alarmed {
 			return
 		}
@@ -202,7 +202,7 @@ func (cm *corruptionChecker) PeriodicCheck() error {
 			zap.Int64("compact-revision-2", h2.CompactRevision),
 			zap.Uint32("hash-2", h2.Hash),
 		)
-		mismatch(uint64(cm.hasher.MemberId()))
+		mismatch(cm.hasher.MemberId())
 	}
 
 	checkedCount := 0
@@ -211,7 +211,6 @@ func (cm *corruptionChecker) PeriodicCheck() error {
 			continue
 		}
 		checkedCount++
-		id := p.resp.Header.MemberId
 
 		// leader expects follower's latest revision less than or equal to leader's
 		if p.resp.Header.Revision > rev2 {
@@ -219,9 +218,9 @@ func (cm *corruptionChecker) PeriodicCheck() error {
 				"revision from follower must be less than or equal to leader's",
 				zap.Int64("leader-revision", rev2),
 				zap.Int64("follower-revision", p.resp.Header.Revision),
-				zap.String("follower-peer-id", types.ID(id).String()),
+				zap.String("follower-peer-id", p.id.String()),
 			)
-			mismatch(id)
+			mismatch(p.id)
 		}
 
 		// leader expects follower's latest compact revision less than or equal to leader's
@@ -230,9 +229,9 @@ func (cm *corruptionChecker) PeriodicCheck() error {
 				"compact revision from follower must be less than or equal to leader's",
 				zap.Int64("leader-compact-revision", h2.CompactRevision),
 				zap.Int64("follower-compact-revision", p.resp.CompactRevision),
-				zap.String("follower-peer-id", types.ID(id).String()),
+				zap.String("follower-peer-id", p.id.String()),
 			)
-			mismatch(id)
+			mismatch(p.id)
 		}
 
 		// follower's compact revision is leader's old one, then hashes must match
@@ -243,9 +242,9 @@ func (cm *corruptionChecker) PeriodicCheck() error {
 				zap.Uint32("leader-hash", h.Hash),
 				zap.Int64("follower-compact-revision", p.resp.CompactRevision),
 				zap.Uint32("follower-hash", p.resp.Hash),
-				zap.String("follower-peer-id", types.ID(id).String()),
+				zap.String("follower-peer-id", p.id.String()),
 			)
-			mismatch(id)
+			mismatch(p.id)
 		}
 	}
 	cm.lg.Info("finished peer corruption check", zap.Int("number-of-peers-checked", checkedCount))
@@ -272,7 +271,7 @@ func (cm *corruptionChecker) CompactHashCheck() {
 
 			// follower's compact revision is leader's old one, then hashes must match
 			if p.resp.Hash != hash.Hash {
-				cm.hasher.TriggerCorruptAlarm(uint64(p.id))
+				cm.hasher.TriggerCorruptAlarm(p.id)
 				cm.lg.Error("failed compaction hash check",
 					zap.Int64("revision", hash.Revision),
 					zap.Int64("leader-compact-revision", hash.CompactRevision),
@@ -330,9 +329,9 @@ func (cm *corruptionChecker) uncheckedRevisions() []mvcc.KeyValueHash {
 	return hashes
 }
 
-func (s *EtcdServer) triggerCorruptAlarm(id uint64) {
+func (s *EtcdServer) triggerCorruptAlarm(id types.ID) {
 	a := &pb.AlarmRequest{
-		MemberID: id,
+		MemberID: uint64(id),
 		Action:   pb.AlarmRequest_ACTIVATE,
 		Alarm:    pb.AlarmType_CORRUPT,
 	}
