@@ -42,25 +42,30 @@ below.
 ### Nomination and retiring of maintainers
 
 [Maintainers](./MAINTAINERS) file on the `main` branch reflects the latest
-state of project maintainers. Changes to list of maintainers should be done by
-opening a pull request and CCing all the existing maintainers.
+state of project maintainers. List of existing maintainers should be kept up to
+date by existing maintainers to properly reflect community health and to gain
+better understanding of recruiting need for new maintainers. Changes to list of
+maintainers should be done by opening a pull request and CCing all the existing
+maintainers.
 
 Contributors who are interested in becoming a maintainer, if performing relevant
-responsibilities, should discuss their interest with the existing maintainers. New
-maintainers must be nominated by an existing maintainer and must be elected by a
-supermajority of maintainers with a fallback on lazy consensus after three business weeks
-inactive voting period and as long as two maintainers are on board. 
+responsibilities, should discuss their interest with the existing maintainers.
+New maintainers must be nominated by an existing maintainer and must be elected
+by a supermajority of maintainers with a fallback on lazy consensus after three
+business weeks inactive voting period and as long as two maintainers are on board.
 
 Life priorities, interests, and passions can change. Maintainers can retire and
-be removed from [maintainers](./MAINTAINERS) list and added to
-[emeritus](./README.md#etcd-emeritus-maintainers). If a maintainer needs to step
-down, they should inform other maintainers, if possible, help find someone to
-pick up the related work. At the very least, ensure the related work can be
-continued. Afterward they can remove themselves from list of existing maintainers.
+move to the [emeritus status](./README.md#etcd-emeritus-maintainers). If a
+maintainer needs to step down, they should inform other maintainers, if possible,
+help find someone to pick up the related work. At the very least, ensure the
+related work can be continued. Afterward they can remove themselves from list of
+existing maintainers.
 
 If a maintainer is not been performing their duties for period of 12 months,
-they can be removed by other active maintainers. If an emeritus maintainer wants
-to regain an active role, they can do so after renewing their contributions.
+they can be removed by other maintainers. In that case inactive maintainer will
+be first notified via an email. If situation doesn't improve, they will be
+removed. If an emeritus maintainer wants to regain an active role, they can do
+so by renewing their contributions. Active maintainers should welcome such a move.
 Retiring of other maintainers or regaining the status should require approval
 of at least two active maintainers.
 
