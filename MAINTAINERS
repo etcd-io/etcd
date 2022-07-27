@@ -13,7 +13,6 @@ Benjamin Wang <wachao@vmware.com> (ahrtr@) pkg:*
 Gyuho Lee <gyuhox@gmail.com> (@gyuho) pkg:*
 Hitoshi Mitake <h.mitake@gmail.com> (@mitake) pkg:*
 Jingyi Hu <jingyih@google.com> (@jingyih) pkg:*
-Joe Betz <jpbetz@google.com> (@jpbetz) pkg:*
 Marek Siarkowicz <siarkowicz@google.com> (@serathius) pkg:*
 Piotr Tabor <ptab@google.com> (@ptabor) pkg:*
 Sahdev Zala <spzala@us.ibm.com> (@spzala) pkg:*
@@ -27,3 +26,6 @@ Tobias Grieger <tobias.schottdorf@gmail.com> (@tbg) pkg:go.etcd.io/etcd/raft
 # REVIEWERS
 Lili Cosic <cosiclili@gmail.com> (lilic@) pkg:*
 Wilson Wang <wilson.wang@bytedance.com> (wilsonwang371@) pkg:*
+
+# EMERITUS MAINTAINERS
+Joe Betz <jpbetz@google.com> (@jpbetz) pkg:*
