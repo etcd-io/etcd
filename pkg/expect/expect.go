@@ -114,7 +114,7 @@ func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 			break
 		}
 		ep.mu.Unlock()
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 10)
 	}
 	ep.mu.Lock()
 	lastLinesIndex := len(ep.lines) - DEBUG_LINES_TAIL
