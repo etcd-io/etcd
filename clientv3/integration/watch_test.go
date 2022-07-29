@@ -50,6 +50,10 @@ func runWatchTest(t *testing.T, f watcherTest) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
+	if len(clus.Members) != 3 {
+		t.Fatalf("not enough members in cluster, expected 3 but found %d", len(clus.Members))
+	}
+
 	wclientMember := rand.Intn(3)
 	w := clus.Client(wclientMember).Watcher
 	// select a different client for KV operations so puts succeed if
