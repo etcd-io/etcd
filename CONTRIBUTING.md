@@ -92,3 +92,9 @@ commit using message with a more generic `*:` prefix.
 *: <what changed>
 [..]
 ```
+
+### Static analysis.
+
+We recommend that you install [golangci-lint](https://golangci-lint.run/usage/install/) and run `make lint`.
+
+Very soon we will have a GitHub action to run our linters.
