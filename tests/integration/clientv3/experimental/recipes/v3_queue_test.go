@@ -37,6 +37,9 @@ func TestQueueOneReaderOneWriter(t *testing.T) {
 	defer clus.Terminate(t)
 
 	done := make(chan struct{})
+	defer func() {
+		<-done
+	}()
 	go func() {
 		defer func() {
 			done <- struct{}{}
@@ -61,7 +64,6 @@ func TestQueueOneReaderOneWriter(t *testing.T) {
 			t.Fatalf("expected dequeue value %v, got %v", s, i)
 		}
 	}
-	<-done
 }
 
 func TestQueueManyReaderOneWriter(t *testing.T) {
