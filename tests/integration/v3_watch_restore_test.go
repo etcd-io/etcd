@@ -130,7 +130,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	// should be able to notify on old-revision watchers in unsynced
 	// make sure restore watch operation correctly moves watchers
 	// between synced and unsynced watchers
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		cresp, cerr := wStream.Recv()
 		if cerr != nil {
