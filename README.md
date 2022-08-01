@@ -161,7 +161,7 @@ Now it's time to dig into the full etcd API and other guides.
 - Planning/Roadmap: [milestones](https://github.com/etcd-io/etcd/milestones), [roadmap](./ROADMAP.md)
 - Bugs: [issues](https://github.com/etcd-io/etcd/issues)
 
-## Contributing
+## Contributing test
 
 See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
 
