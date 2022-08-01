@@ -285,3 +285,29 @@ func TestExpvarWithNoRaftStatus(t *testing.T) {
 		_ = kv.Value.String()
 	})
 }
+
+func TestStopRaftNodeMoreThanOnce(t *testing.T) {
+	n := newNopReadyNode()
+	r := newRaftNode(raftNodeConfig{
+		lg:          zaptest.NewLogger(t),
+		Node:        n,
+		storage:     mockstorage.NewStorageRecorder(""),
+		raftStorage: raft.NewMemoryStorage(),
+		transport:   newNopTransporter(),
+	})
+	r.start(&raftReadyHandler{})
+
+	for i := 0; i < 2; i++ {
+		stopped := make(chan struct{})
+		go func() {
+			r.stop()
+			close(stopped)
+		}()
+
+		select {
+		case <-stopped:
+		case <-time.After(time.Second):
+			t.Errorf("*raftNode.stop() is blocked !")
+		}
+	}
+}
