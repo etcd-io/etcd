@@ -466,7 +466,7 @@ function govet_shadow_pass {
 	# shellcheck disable=SC2206
 	fmtpkgs=($fmtpkgs)
 	# Golang 1.12 onwards the experimental -shadow option is no longer available with go vet
-	go get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	go get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@v0.1.11
 	export PATH=${GOPATH}/bin:${PATH}
 	# shellcheck disable=SC2230
 	shadow_tool=$(which shadow)
