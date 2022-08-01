@@ -33,6 +33,8 @@ import (
 const DEBUG_LINES_TAIL = 40
 
 type ExpectProcess struct {
+	name string
+
 	cmd  *exec.Cmd
 	fpty *os.File
 	wg   sync.WaitGroup
@@ -48,15 +50,16 @@ type ExpectProcess struct {
 
 // NewExpect creates a new process for expect testing.
 func NewExpect(name string, arg ...string) (ep *ExpectProcess, err error) {
-	// if env[] is nil, use current system env
-	return NewExpectWithEnv(name, arg, nil)
+	// if env[] is nil, use current system env and the default command as name
+	return NewExpectWithEnv(name, arg, nil, name)
 }
 
 // NewExpectWithEnv creates a new process with user defined env variables for expect testing.
-func NewExpectWithEnv(name string, args []string, env []string) (ep *ExpectProcess, err error) {
+func NewExpectWithEnv(name string, args []string, env []string, serverProcessConfigName string) (ep *ExpectProcess, err error) {
 	cmd := exec.Command(name, args...)
 	cmd.Env = env
 	ep = &ExpectProcess{
+		name:       serverProcessConfigName,
 		cmd:        cmd,
 		StopSignal: syscall.SIGTERM,
 	}
@@ -72,6 +75,10 @@ func NewExpectWithEnv(name string, args []string, env []string) (ep *ExpectProce
 	return ep, nil
 }
 
+func (ep *ExpectProcess) Pid() int {
+	return ep.cmd.Process.Pid
+}
+
 func (ep *ExpectProcess) read() {
 	defer ep.wg.Done()
 	printDebugLines := os.Getenv("EXPECT_DEBUG") != ""
@@ -81,7 +88,7 @@ func (ep *ExpectProcess) read() {
 		ep.mu.Lock()
 		if l != "" {
 			if printDebugLines {
-				fmt.Printf("%s-%d: %s", ep.cmd.Path, ep.cmd.Process.Pid, l)
+				fmt.Printf("%s (%s) (%d): %s", ep.cmd.Path, ep.name, ep.cmd.Process.Pid, l)
 			}
 			ep.lines = append(ep.lines, l)
 			ep.count++

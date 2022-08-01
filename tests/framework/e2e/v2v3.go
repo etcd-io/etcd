@@ -17,6 +17,18 @@
 
 package e2e
 
-func AddV2Args(args []string) []string {
-	return append(args, "--experimental-enable-v2v3", "v2/")
+import (
+	"strings"
+
+	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/pkg/v3/expect"
+)
+
+func SpawnCmd(args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
+	return SpawnNamedCmd(strings.Join(args, "_"), args, envVars)
+}
+
+func SpawnNamedCmd(processName string, args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
+	return SpawnCmdWithLogger(zap.NewNop(), args, envVars, processName)
 }

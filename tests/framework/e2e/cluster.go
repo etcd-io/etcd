@@ -20,14 +20,15 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/proxy"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/server/v3/etcdserver"
 )
 
 const EtcdProcessBasePort = 20000
@@ -39,6 +40,9 @@ const (
 	ClientTLS
 	ClientTLSAndNonTLS
 )
+
+// allow alphanumerics, underscores and dashes
+var testNameCleanRegex = regexp.MustCompile(`[^a-zA-Z0-9 \-_]+`)
 
 func NewConfigNoTLS() *EtcdProcessClusterConfig {
 	return &EtcdProcessClusterConfig{ClusterSize: 3,
@@ -260,43 +264,45 @@ func (cfg *EtcdProcessClusterConfig) PeerScheme() string {
 	return setupScheme(cfg.BasePeerScheme, cfg.IsPeerTLS)
 }
 
-func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i int) *EtcdServerProcessConfig {
-	var curls []string
-	var curl string
-	port := cfg.BasePort + 5*i
-	clientPort := port
-	peerPort := port + 1
-	peer2Port := port + 3
-	clientHttpPort := port + 4
+func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*EtcdServerProcessConfig {
+	lg := zaptest.NewLogger(tb)
 
-	if cfg.ClientTLS == ClientTLSAndNonTLS {
-		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
-		curls = []string{curl, clientURL(cfg.ClientScheme(), clientPort, ClientTLS)}
-	} else {
-		curl = clientURL(cfg.ClientScheme(), clientPort, cfg.ClientTLS)
-		curls = []string{curl}
+	if cfg.BasePort == 0 {
+		cfg.BasePort = EtcdProcessBasePort
+	}
+	if cfg.ExecPath == "" {
+		cfg.ExecPath = BinPath
+	}
+	if cfg.SnapshotCount == 0 {
+		cfg.SnapshotCount = etcdserver.DefaultSnapshotCount
 	}
 
-	purl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
-	peerAdvertiseUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
-	var proxyCfg *proxy.ServerConfig
-	if cfg.PeerProxy {
-		if !cfg.IsPeerTLS {
-			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
+	etcdCfgs := make([]*EtcdServerProcessConfig, cfg.ClusterSize)
+	initialCluster := make([]string, cfg.ClusterSize)
+	for i := 0; i < cfg.ClusterSize; i++ {
+		var curls []string
+		var curl, curltls string
+		port := cfg.BasePort + 5*i
+		curlHost := fmt.Sprintf("localhost:%d", port)
+
+		switch cfg.ClientTLS {
+		case ClientNonTLS, ClientTLS:
+			curl = (&url.URL{Scheme: cfg.ClientScheme(), Host: curlHost}).String()
+			curls = []string{curl}
+		case ClientTLSAndNonTLS:
+			curl = (&url.URL{Scheme: "http", Host: curlHost}).String()
+			curltls = (&url.URL{Scheme: "https", Host: curlHost}).String()
+			curls = []string{curl, curltls}
 		}
-		peerAdvertiseUrl.Host = fmt.Sprintf("localhost:%d", peer2Port)
-		proxyCfg = &proxy.ServerConfig{
-			Logger: zap.NewNop(),
-			To:     purl,
-			From:   peerAdvertiseUrl,
-		}
-	}
 
-	name := fmt.Sprintf("test-%d", i)
-	dataDirPath := cfg.DataDirPath
-	if cfg.DataDirPath == "" {
-		dataDirPath = tb.TempDir()
-	}
+		purl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", port+1)}
+
+		name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
+		dataDirPath := cfg.DataDirPath
+		if cfg.DataDirPath == "" {
+			dataDirPath = tb.TempDir()
+		}
+		initialCluster[i] = fmt.Sprintf("%s=%s", name, purl.String())
 
 	args := []string{
 		"--name", name,
