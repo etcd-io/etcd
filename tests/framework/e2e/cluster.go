@@ -19,13 +19,15 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/server/v3/etcdserver"
 )
 
 const EtcdProcessBasePort = 20000
@@ -37,6 +39,9 @@ const (
 	ClientTLS
 	ClientTLSAndNonTLS
 )
+
+// allow alphanumerics, underscores and dashes
+var testNameCleanRegex = regexp.MustCompile(`[^a-zA-Z0-9 \-_]+`)
 
 func NewConfigNoTLS() *EtcdProcessClusterConfig {
 	return &EtcdProcessClusterConfig{ClusterSize: 3,
@@ -284,7 +289,8 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 
 		purl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", port+1)}
-		name := fmt.Sprintf("test-%d", i)
+
+		name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
 		dataDirPath := cfg.DataDirPath
 		if cfg.DataDirPath == "" {
 			dataDirPath = tb.TempDir()
