@@ -18,15 +18,12 @@
 package fileutil
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"syscall"
 
 	"golang.org/x/sys/windows"
 )
-
-var errLocked = errors.New("the process cannot access the file because another process has locked a portion of the file")
 
 func TryLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 	f, err := open(path, flag, perm)
@@ -89,10 +86,8 @@ func lockFile(fd windows.Handle, flags uint32) error {
 	err := windows.LockFileEx(fd, flags|windows.LOCKFILE_EXCLUSIVE_LOCK, 0, 1, 0, &windows.Overlapped{})
 	if err == nil {
 		return nil
-	} else if err.Error() == errLocked.Error() {
+	} else if err == windows.ERROR_LOCK_VIOLATION {
 		return ErrLocked
-	} else if err != windows.ERROR_LOCK_VIOLATION {
-		return err
 	}
-	return nil
+	return err
 }
