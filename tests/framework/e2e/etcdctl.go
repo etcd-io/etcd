@@ -292,13 +292,13 @@ func (ctl *EtcdctlV3) Status() ([]*clientv3.StatusResponse, error) {
 		Endpoint string
 		Status   *clientv3.StatusResponse
 	}
-	err := ctl.spawnJsonCmd(&epStatus, "endpoint", "status", "--endpoints", strings.Join(ctl.endpoints, ","))
+	err := ctl.spawnJsonCmd(&epStatus, "endpoint", "status")
 	if err != nil {
 		return nil, err
 	}
 	resp := make([]*clientv3.StatusResponse, len(epStatus))
-	for _, e := range epStatus {
-		resp = append(resp, e.Status)
+	for i, e := range epStatus {
+		resp[i] = e.Status
 	}
 	return resp, err
 }
