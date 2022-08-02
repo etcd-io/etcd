@@ -377,9 +377,12 @@ func selectWALFiles(lg *zap.Logger, dirpath string, snap walpb.Snapshot) ([]stri
 	}
 
 	nameIndex, ok := searchIndex(lg, names, snap.Index)
-	if !ok || !isValidSeq(lg, names[nameIndex:]) {
-		err = ErrFileNotFound
-		return nil, -1, err
+	if !ok {
+		return nil, -1, fmt.Errorf("wal: file not found which matches the snapshot index '%d'", snap.Index)
+	}
+
+	if !isValidSeq(lg, names[nameIndex:]) {
+		return nil, -1, fmt.Errorf("wal: file sequence numbers (starting from %d) do not increase continuously", nameIndex)
 	}
 
 	return names, nameIndex, nil
