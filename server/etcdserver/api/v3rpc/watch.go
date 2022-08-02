@@ -24,6 +24,8 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
@@ -286,7 +288,7 @@ func (sws *serverWatchStream) recvLoop() error {
 
 				wr := &pb.WatchResponse{
 					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
-					WatchId:      creq.WatchId,
+					WatchId:      clientv3.InvalidWatchID,
 					Canceled:     true,
 					Created:      true,
 					CancelReason: cancelReason,
@@ -320,7 +322,10 @@ func (sws *serverWatchStream) recvLoop() error {
 					sws.fragment[id] = true
 				}
 				sws.mu.Unlock()
+			} else {
+				id = clientv3.InvalidWatchID
 			}
+
 			wr := &pb.WatchResponse{
 				Header:   sws.newResponseHeader(wsrev),
 				WatchId:  int64(id),
@@ -357,7 +362,7 @@ func (sws *serverWatchStream) recvLoop() error {
 			if uv.ProgressRequest != nil {
 				sws.ctrlStream <- &pb.WatchResponse{
 					Header:  sws.newResponseHeader(sws.watchStream.Rev()),
-					WatchId: -1, // response is not associated with any WatchId and will be broadcast to all watch channels
+					WatchId: clientv3.InvalidWatchID, // response is not associated with any WatchId and will be broadcast to all watch channels
 				}
 			}
 		default:
@@ -481,7 +486,10 @@ func (sws *serverWatchStream) sendLoop() {
 
 			// track id creation
 			wid := mvcc.WatchID(c.WatchId)
-			if c.Canceled {
+
+			verify.Assert(!(c.Canceled && c.Created) || wid == clientv3.InvalidWatchID, "unexpected watchId: %d, wanted: %d, since both 'Canceled' and 'Created' are true", wid, clientv3.InvalidWatchID)
+
+			if c.Canceled && wid != clientv3.InvalidWatchID {
 				delete(ids, wid)
 				continue
 			}
