@@ -168,18 +168,24 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
 	srv.r.start(nil)
 	n.readyc <- raft.Ready{}
+
+	stop := func() {
+		srv.r.stopped <- struct{}{}
+		select {
+		case <-srv.r.done:
+		case <-time.After(time.Second):
+			t.Fatalf("failed to stop raft loop")
+		}
+	}
+
 	select {
 	case <-srv.r.applyc:
 	case <-time.After(time.Second):
+		stop()
 		t.Fatalf("failed to receive toApply struct")
 	}
 
-	srv.r.stopped <- struct{}{}
-	select {
-	case <-srv.r.done:
-	case <-time.After(time.Second):
-		t.Fatalf("failed to stop raft loop")
-	}
+	stop()
 }
 
 // TestConfigChangeBlocksApply ensures toApply blocks if committed entries contain config-change.
