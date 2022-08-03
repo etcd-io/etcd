@@ -16,13 +16,15 @@ package framework
 
 import (
 	"context"
-	"os"
-	"testing"
-
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"os"
+	"testing"
+	"time"
 )
+
+const TickDuration = 10 * time.Millisecond
 
 type e2eRunner struct{}
 

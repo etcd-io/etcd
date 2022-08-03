@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework"
 	"io"
 	"log"
 	"math/rand"
@@ -31,6 +32,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -399,40 +401,27 @@ func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
 }
 
 // WaitLeader returns index of the member in c.Members that is leader
-// or fails the test (if not established in 30min).
-func (c *Cluster) WaitLeader(t testutil.TB) int {
+// or fails the test (if not established in 30s).
+func (c *Cluster) WaitLeader(t testing.TB) int {
 	return c.WaitMembersForLeader(t, c.Members)
 }
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (c *Cluster) WaitMembersForLeader(t testutil.TB, membs []*Member) int {
-	t.Logf("WaitMembersForLeader")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func (c *Cluster) WaitMembersForLeader(t testing.TB, membs []*Member) int {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	l := 0
-	for l = c.waitMembersForLeader(ctx, t, membs); l < 0; {
-		if ctx.Err() != nil {
-			t.Fatal("WaitLeader FAILED: %v", ctx.Err())
-		}
+
+	members := make([]framework.Member, len(membs))
+	for i, m := range membs {
+		members[i] = framework.NewMember(ctx, t, m)
 	}
-	t.Logf("WaitMembersForLeader succeeded. Cluster leader index: %v", l)
-
-	// TODO: Consider second pass check as sometimes leadership is lost
-	// soon after election:
-	//
-	// We perform multiple attempts, as some-times just after successful WaitLLeader
-	// there is a race and leadership is quickly lost:
-	//   - MsgAppResp message with higher term from 2acc3d3b521981 [term: 3]	{"member": "m0"}
-	//   - 9903a56eaf96afac became follower at term 3	{"member": "m0"}
-	//   - 9903a56eaf96afac lost leader 9903a56eaf96afac at term 3	{"member": "m0"}
-
-	return l
+	return framework.WaitMembersForLeader(t, framework.NewClusterFromIntegration(ctx, t, c), members)
 }
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (c *Cluster) waitMembersForLeader(ctx context.Context, t testutil.TB, membs []*Member) int {
+func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs []*Member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {

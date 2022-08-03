@@ -62,6 +62,14 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, cfg con
 	}
 }
 
+func NewClusterFromIntegration(ctx context.Context, t testing.TB, c *integration.Cluster) Cluster {
+	return &integrationCluster{
+		Cluster: c,
+		t:       t,
+		ctx:     ctx,
+	}
+}
+
 func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
 	switch cfg {
 	case config.NoTLS:
@@ -96,6 +104,10 @@ type integrationMember struct {
 	*integration.Member
 	t   testing.TB
 	ctx context.Context
+}
+
+func NewMember(ctx context.Context, t testing.TB, m *integration.Member) Member {
+	return &integrationMember{m, t, ctx}
 }
 
 func (m integrationMember) Client() Client {
