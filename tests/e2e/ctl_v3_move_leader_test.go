@@ -109,6 +109,10 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig) {
 			[]string{cx.epc.EndpointsV3()[leadIdx]},
 			fmt.Sprintf("Leadership transferred from %s to %s", types.ID(leaderID), types.ID(transferee)),
 		},
+		{ // request to all endpoints
+			cx.epc.EndpointsV3(),
+			fmt.Sprintf("Leadership transferred"),
+		},
 	}
 	for i, tc := range tests {
 		prefix := cx.prefixArgs(tc.eps)
