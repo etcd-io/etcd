@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.etcd.io/etcd/client/pkg/v3 v3.5.4
 	go.uber.org/zap v1.17.0
-	google.golang.org/grpc v1.38.0
+	google.golang.org/grpc v1.41.0
 )
 
 replace (

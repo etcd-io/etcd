@@ -40,6 +40,6 @@ require (
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
-	google.golang.org/grpc v1.38.0
+	google.golang.org/grpc v1.41.0
 	gopkg.in/yaml.v2 v2.4.0
 )

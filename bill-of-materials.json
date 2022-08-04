@@ -18,6 +18,15 @@
 		]
 	},
 	{
+		"project": "github.com/cenkalti/backoff/v4",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/certifi/gocertifi",
 		"licenses": [
 			{
@@ -540,15 +549,6 @@
 		]
 	},
 	{
-		"project": "go.opentelemetry.io/contrib",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc",
 		"licenses": [
 			{
@@ -567,7 +567,7 @@
 		]
 	},
 	{
-		"project": "go.opentelemetry.io/otel/exporters/otlp",
+		"project": "go.opentelemetry.io/otel/exporters/otlp/otlptrace",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -576,7 +576,7 @@
 		]
 	},
 	{
-		"project": "go.opentelemetry.io/otel/metric",
+		"project": "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -586,24 +586,6 @@
 	},
 	{
 		"project": "go.opentelemetry.io/otel/sdk",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "go.opentelemetry.io/otel/sdk/export/metric",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "go.opentelemetry.io/otel/sdk/metric",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
