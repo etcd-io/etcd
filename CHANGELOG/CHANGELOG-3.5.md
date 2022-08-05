@@ -17,9 +17,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [Restrict the max size of each WAL entry to the remaining size of the WAL file](https://github.com/etcd-io/etcd/pull/14127).
 - Fix [Protect rangePermCache with a RW lock correctly](https://github.com/etcd-io/etcd/pull/14227)
 - Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
-- 
+
 ### Other
 - [Bump golang.org/x/crypto to latest version](https://github.com/etcd-io/etcd/pull/13996) to address [CVE-2022-27191](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
+- [Bump OpenTelemetry to 1.0.1 and gRPC to 1.41.0](https://github.com/etcd-io/etcd/pull/14312).
 
 <hr>
 
