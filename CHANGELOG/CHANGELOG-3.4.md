@@ -4,7 +4,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.20 (TBD)
+## v3.4.20 (2022-08-06)
 
 ### Package `clientv3`
 
