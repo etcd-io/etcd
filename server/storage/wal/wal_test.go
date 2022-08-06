@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -539,8 +540,8 @@ func TestRecoverAfterCut(t *testing.T) {
 		w, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{Index: uint64(i), Term: 1})
 		if err != nil {
 			if i <= 4 {
-				if err != ErrFileNotFound {
-					t.Errorf("#%d: err = %v, want %v", i, err, ErrFileNotFound)
+				if !strings.Contains(err.Error(), "do not increase continuously") {
+					t.Errorf("#%d: err = %v isn't expected, want: '* do not increase continuously'", i, err)
 				}
 			} else {
 				t.Errorf("#%d: err = %v, want nil", i, err)
