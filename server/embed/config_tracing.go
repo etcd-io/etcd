@@ -64,6 +64,7 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 			tracesdk.NewTracerProvider(
 				tracesdk.WithBatcher(exporter),
 				tracesdk.WithResource(res),
+				tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.NeverSample())),
 			),
 		),
 	)

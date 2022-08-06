@@ -808,4 +808,3 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 	}
 	return ret, nil
 }
-
