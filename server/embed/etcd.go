@@ -849,6 +849,7 @@ func (e *Etcd) setupTracing(ctx context.Context) (exporter tracesdk.SpanExporter
 			tracesdk.NewTracerProvider(
 				tracesdk.WithBatcher(exporter),
 				tracesdk.WithResource(res),
+				tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.NeverSample())),
 			),
 		),
 	)
