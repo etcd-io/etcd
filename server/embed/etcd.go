@@ -46,13 +46,6 @@ import (
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -230,7 +223,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
 		tctx := context.Background()
-		tracingExporter, opts, err := e.setupTracing(tctx)
+		tracingExporter, opts, err := setupTracingExporter(tctx, cfg)
 		if err != nil {
 			return e, err
 		}
@@ -239,6 +232,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 		e.tracingExporterShutdown = func() { tracingExporter.Shutdown(tctx) }
 		srvcfg.ExperimentalTracerOptions = opts
+
+		e.cfg.logger.Info("distributed tracing setup enabled")
 	}
 
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
@@ -812,54 +807,4 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 		}
 	}
 	return ret, nil
-}
-
-func (e *Etcd) setupTracing(ctx context.Context) (exporter tracesdk.SpanExporter, options []otelgrpc.Option, err error) {
-	exporter, err = otlp.NewExporter(ctx,
-		otlpgrpc.NewDriver(
-			otlpgrpc.WithEndpoint(e.cfg.ExperimentalDistributedTracingAddress),
-			otlpgrpc.WithInsecure(),
-		))
-	if err != nil {
-		return nil, nil, err
-	}
-	res := resource.NewWithAttributes(
-		semconv.ServiceNameKey.String(e.cfg.ExperimentalDistributedTracingServiceName),
-	)
-	// As Tracing service Instance ID must be unique, it should
-	// never use the empty default string value, so we only set it
-	// if it's a non empty string.
-	if e.cfg.ExperimentalDistributedTracingServiceInstanceID != "" {
-		resWithIDKey := resource.NewWithAttributes(
-			(semconv.ServiceInstanceIDKey.String(e.cfg.ExperimentalDistributedTracingServiceInstanceID)),
-		)
-		// Merge resources to combine into a new
-		// resource in case of duplicates.
-		res = resource.Merge(res, resWithIDKey)
-	}
-
-	options = append(options,
-		otelgrpc.WithPropagators(
-			propagation.NewCompositeTextMapPropagator(
-				propagation.TraceContext{},
-				propagation.Baggage{},
-			),
-		),
-		otelgrpc.WithTracerProvider(
-			tracesdk.NewTracerProvider(
-				tracesdk.WithBatcher(exporter),
-				tracesdk.WithResource(res),
-				tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.NeverSample())),
-			),
-		),
-	)
-
-	e.cfg.logger.Info(
-		"distributed tracing enabled",
-		zap.String("distributed-tracing-address", e.cfg.ExperimentalDistributedTracingAddress),
-		zap.String("distributed-tracing-service-name", e.cfg.ExperimentalDistributedTracingServiceName),
-		zap.String("distributed-tracing-service-instance-id", e.cfg.ExperimentalDistributedTracingServiceInstanceID),
-	)
-
-	return exporter, options, err
 }
