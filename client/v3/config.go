@@ -19,9 +19,10 @@ import (
 	"crypto/tls"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
 type Config struct {
@@ -175,8 +176,11 @@ func newTLSConfig(scfg *SecureConfig, lg *zap.Logger) (*tls.Config, error) {
 
 	// If the user wants to skip TLS verification then we should set
 	// the InsecureSkipVerify flag in tls configuration.
-	if tlsCfg != nil && scfg.InsecureSkipVerify {
-		tlsCfg.InsecureSkipVerify = true
+	if scfg.InsecureSkipVerify {
+		if tlsCfg == nil {
+			tlsCfg = &tls.Config{}
+		}
+		tlsCfg.InsecureSkipVerify = scfg.InsecureSkipVerify
 	}
 
 	return tlsCfg, nil
