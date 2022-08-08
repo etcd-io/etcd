@@ -17,7 +17,6 @@ package apply
 import (
 	"context"
 
-	"github.com/coreos/go-semver/semver"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -34,9 +33,10 @@ import (
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-
-	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
+
+	"github.com/coreos/go-semver/semver"
+	"github.com/gogo/protobuf/proto"
 )
 
 const (
@@ -231,12 +231,14 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 			break
 		}
 		resp.Alarms = append(resp.Alarms, m)
+		alarms.WithLabelValues(types.ID(ar.MemberID).String(), m.Alarm.String()).Inc()
 	case pb.AlarmRequest_DEACTIVATE:
 		m := a.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
 		if m == nil {
 			break
 		}
 		resp.Alarms = append(resp.Alarms, m)
+		alarms.WithLabelValues(types.ID(ar.MemberID).String(), m.Alarm.String()).Dec()
 	default:
 		return nil, nil
 	}
