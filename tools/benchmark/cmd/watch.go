@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/report"
 
 	"github.com/cheggaaa/pb/v3"
@@ -209,7 +209,12 @@ func benchPutWatches(clients []*clientv3.Client, wk *watchedKeys) {
 		}
 	}()
 
-	limit := rate.NewLimiter(rate.Limit(watchPutRate), 1)
+	watchPutLimit := rate.Inf
+	if watchPutRate > 0 {
+		watchPutLimit = rate.Limit(watchPutRate)
+	}
+
+	limit := rate.NewLimiter(watchPutLimit, 1)
 	for _, cc := range clients {
 		go func(c *clientv3.Client) {
 			for op := range putreqc {
