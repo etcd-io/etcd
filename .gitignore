@@ -23,6 +23,7 @@ hack/tls-setup/certs
 *.tmp
 *.bak
 .gobincache/
+.DS_Store
 /Documentation/dev-guide/api_reference_v3.md
 /Documentation/dev-guide/api_concurrency_reference_v3.md
 
