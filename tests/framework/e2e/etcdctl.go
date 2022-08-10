@@ -31,6 +31,8 @@ import (
 type EtcdctlV3 struct {
 	cfg       *EtcdProcessClusterConfig
 	endpoints []string
+	userName  string
+	password  string
 }
 
 func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string) *EtcdctlV3 {
@@ -38,6 +40,12 @@ func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string) *EtcdctlV3 {
 		cfg:       cfg,
 		endpoints: endpoints,
 	}
+}
+
+func (ctl *EtcdctlV3) WithAuth(userName, password string) *EtcdctlV3 {
+	ctl.userName = userName
+	ctl.password = password
+	return ctl
 }
 
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {
@@ -234,6 +242,7 @@ func AddTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
 		}
 	}
 }
+
 func (ctl *EtcdctlV3) MemberList(ctx context.Context) (*clientv3.MemberListResponse, error) {
 	var resp clientv3.MemberListResponse
 	err := ctl.spawnJsonCmd(ctx, &resp, "member", "list")
@@ -283,6 +292,9 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 		}
 	}
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
+	if ctl.userName != "" && ctl.password != "" {
+		fmap["user"] = ctl.userName + ":" + ctl.password
+	}
 	return fmap
 }
 
@@ -453,6 +465,24 @@ func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) 
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) (*clientv3.AuthEnableResponse, error) {
+	var resp clientv3.AuthEnableResponse
+	err := ctl.spawnJsonCmd(ctx, &resp, "auth", "enable")
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) AuthDisable(ctx context.Context) (*clientv3.AuthDisableResponse, error) {
+	var resp clientv3.AuthDisableResponse
+	err := ctl.spawnJsonCmd(ctx, &resp, "auth", "disable")
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) AuthStatus(ctx context.Context) (*clientv3.AuthStatusResponse, error) {
+	var resp clientv3.AuthStatusResponse
+	err := ctl.spawnJsonCmd(ctx, &resp, "auth", "status")
+	return &resp, err
+}
+
 func (ctl *EtcdctlV3) UserAdd(ctx context.Context, name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error) {
 	args := ctl.cmdArgs()
 	args = append(args, "user", "add")
@@ -492,6 +522,12 @@ func (ctl *EtcdctlV3) UserAdd(ctx context.Context, name, password string, opts c
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) UserGet(ctx context.Context, name string) (*clientv3.AuthUserGetResponse, error) {
+	var resp clientv3.AuthUserGetResponse
+	err := ctl.spawnJsonCmd(ctx, &resp, "user", "get", name)
+	return &resp, err
+}
+
 func (ctl *EtcdctlV3) UserList(ctx context.Context) (*clientv3.AuthUserListResponse, error) {
 	var resp clientv3.AuthUserListResponse
 	err := ctl.spawnJsonCmd(ctx, &resp, "user", "list")
@@ -519,6 +555,18 @@ func (ctl *EtcdctlV3) UserChangePass(ctx context.Context, user, newPass string) 
 
 	_, err = cmd.ExpectWithContext(ctx, "Password updated")
 	return err
+}
+
+func (ctl *EtcdctlV3) UserGrantRole(ctx context.Context, user string, role string) (*clientv3.AuthUserGrantRoleResponse, error) {
+	var resp clientv3.AuthUserGrantRoleResponse
+	err := ctl.spawnJsonCmd(ctx, &resp, "user", "grant-role", user, role)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) UserRevokeRole(ctx context.Context, user string, role string) (*clientv3.AuthUserRevokeRoleResponse, error) {
+	var resp clientv3.AuthUserRevokeRoleResponse
+	err := ctl.spawnJsonCmd(ctx, &resp, "user", "revoke-role", user, role)
+	return &resp, err
 }
 
 func (ctl *EtcdctlV3) RoleAdd(ctx context.Context, name string) (*clientv3.AuthRoleAddResponse, error) {

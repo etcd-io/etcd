@@ -48,6 +48,7 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, cfg con
 		Size:                       cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
 		DisableStrictReconfigCheck: cfg.DisableStrictReconfigCheck,
+		AuthToken:                  cfg.AuthToken,
 		SnapshotCount:              uint64(cfg.SnapshotCount),
 	}
 	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
@@ -117,12 +118,19 @@ func (c *integrationCluster) Close() error {
 	return nil
 }
 
-func (c *integrationCluster) Client() Client {
-	cc, err := c.ClusterClient()
-	if err != nil {
-		c.t.Fatal(err)
+func (c *integrationCluster) Client(cfg clientv3.AuthConfig) (Client, error) {
+	option := func(_ *clientv3.Config) {}
+	if !cfg.Empty() {
+		option = func(clientCfg *clientv3.Config) {
+			clientCfg.Username = cfg.Username
+			clientCfg.Password = cfg.Password
+		}
 	}
-	return integrationClient{Client: cc}
+	cc, err := c.ClusterClient(c.t, option)
+	if err != nil {
+		return nil, err
+	}
+	return integrationClient{Client: cc}, nil
 }
 
 type integrationClient struct {
@@ -261,15 +269,83 @@ func (c integrationClient) TimeToLive(ctx context.Context, id clientv3.LeaseID, 
 	return c.Client.TimeToLive(ctx, id, leaseOpts...)
 }
 
+func (c integrationClient) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse, error) {
+	return c.Client.Leases(ctx)
+}
+
+func (c integrationClient) KeepAliveOnce(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
+	return c.Client.KeepAliveOnce(ctx, id)
+}
+
+func (c integrationClient) Revoke(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
+	return c.Client.Revoke(ctx, id)
+}
+
+func (c integrationClient) AuthEnable(ctx context.Context) (*clientv3.AuthEnableResponse, error) {
+	return c.Client.AuthEnable(ctx)
+}
+
+func (c integrationClient) AuthDisable(ctx context.Context) (*clientv3.AuthDisableResponse, error) {
+	return c.Client.AuthDisable(ctx)
+}
+
+func (c integrationClient) AuthStatus(ctx context.Context) (*clientv3.AuthStatusResponse, error) {
+	return c.Client.AuthStatus(ctx)
+}
+
 func (c integrationClient) UserAdd(ctx context.Context, name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error) {
 	return c.Client.UserAddWithOptions(ctx, name, password, &clientv3.UserAddOptions{
 		NoPassword: opts.NoPassword,
 	})
 }
 
+func (c integrationClient) UserGet(ctx context.Context, name string) (*clientv3.AuthUserGetResponse, error) {
+	return c.Client.UserGet(ctx, name)
+}
+
+func (c integrationClient) UserList(ctx context.Context) (*clientv3.AuthUserListResponse, error) {
+	return c.Client.UserList(ctx)
+}
+
+func (c integrationClient) UserDelete(ctx context.Context, name string) (*clientv3.AuthUserDeleteResponse, error) {
+	return c.Client.UserDelete(ctx, name)
+}
+
 func (c integrationClient) UserChangePass(ctx context.Context, user, newPass string) error {
 	_, err := c.Client.UserChangePassword(ctx, user, newPass)
 	return err
+}
+
+func (c integrationClient) UserGrantRole(ctx context.Context, user string, role string) (*clientv3.AuthUserGrantRoleResponse, error) {
+	return c.Client.UserGrantRole(ctx, user, role)
+}
+
+func (c integrationClient) UserRevokeRole(ctx context.Context, user string, role string) (*clientv3.AuthUserRevokeRoleResponse, error) {
+	return c.Client.UserRevokeRole(ctx, user, role)
+}
+
+func (c integrationClient) RoleAdd(ctx context.Context, name string) (*clientv3.AuthRoleAddResponse, error) {
+	return c.Client.RoleAdd(ctx, name)
+}
+
+func (c integrationClient) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
+	return c.Client.RoleGrantPermission(ctx, name, key, rangeEnd, permType)
+}
+
+func (c integrationClient) RoleGet(ctx context.Context, role string) (*clientv3.AuthRoleGetResponse, error) {
+	return c.Client.RoleGet(ctx, role)
+}
+
+func (c integrationClient) RoleList(ctx context.Context) (*clientv3.AuthRoleListResponse, error) {
+	return c.Client.RoleList(ctx)
+}
+
+func (c integrationClient) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error) {
+	return c.Client.RoleRevokePermission(ctx, role, key, rangeEnd)
+}
+
+func (c integrationClient) RoleDelete(ctx context.Context, role string) (*clientv3.AuthRoleDeleteResponse, error) {
+	return c.Client.RoleDelete(ctx, role)
 }
 
 func (c integrationClient) Txn(ctx context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error) {

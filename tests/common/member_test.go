@@ -35,7 +35,7 @@ func TestMemberList(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := clus.Client()
+			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				resp, err := cc.MemberList(ctx)
@@ -109,7 +109,7 @@ func TestMemberAdd(t *testing.T) {
 					c.DisableStrictReconfigCheck = !quorumTc.strictReconfigCheck
 					clus := testRunner.NewCluster(ctx, t, c)
 					defer clus.Close()
-					cc := clus.Client()
+					cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 
 					testutils.ExecuteUntil(ctx, t, func() {
 						var addResp *clientv3.MemberAddResponse

@@ -30,7 +30,7 @@ type testRunner interface {
 
 type Cluster interface {
 	Members() []Member
-	Client() Client
+	Client(cfg clientv3.AuthConfig) (Client, error)
 	WaitLeader(t testing.TB) int
 	Close() error
 }
@@ -57,18 +57,23 @@ type Client interface {
 	Leases(context context.Context) (*clientv3.LeaseLeasesResponse, error)
 	KeepAliveOnce(context context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error)
 	Revoke(context context.Context, id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error)
+
+	AuthEnable(context context.Context) (*clientv3.AuthEnableResponse, error)
+	AuthDisable(context context.Context) (*clientv3.AuthDisableResponse, error)
+	AuthStatus(context context.Context) (*clientv3.AuthStatusResponse, error)
 	UserAdd(context context.Context, name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error)
+	UserGet(context context.Context, name string) (*clientv3.AuthUserGetResponse, error)
 	UserList(context context.Context) (*clientv3.AuthUserListResponse, error)
 	UserDelete(context context.Context, name string) (*clientv3.AuthUserDeleteResponse, error)
 	UserChangePass(context context.Context, user, newPass string) error
-
+	UserGrantRole(context context.Context, user string, role string) (*clientv3.AuthUserGrantRoleResponse, error)
+	UserRevokeRole(context context.Context, user string, role string) (*clientv3.AuthUserRevokeRoleResponse, error)
 	RoleAdd(context context.Context, name string) (*clientv3.AuthRoleAddResponse, error)
 	RoleGrantPermission(context context.Context, name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error)
 	RoleGet(context context.Context, role string) (*clientv3.AuthRoleGetResponse, error)
 	RoleList(context context.Context) (*clientv3.AuthRoleListResponse, error)
 	RoleRevokePermission(context context.Context, role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error)
 	RoleDelete(context context.Context, role string) (*clientv3.AuthRoleDeleteResponse, error)
-
 	Txn(context context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error)
 
 	MemberList(context context.Context) (*clientv3.MemberListResponse, error)

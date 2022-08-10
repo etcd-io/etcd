@@ -34,7 +34,7 @@ func TestPeriodicCheck(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	cc, err := clus.ClusterClient()
+	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	cc, err := clus.ClusterClient()
+	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -106,7 +106,7 @@ func TestCompactHashCheck(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	cc, err := clus.ClusterClient()
+	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -143,7 +143,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	cc, err := clus.ClusterClient()
+	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
 	ctx := context.Background()

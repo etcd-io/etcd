@@ -77,7 +77,7 @@ func TestCompactionHash(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	cc, err := clus.ClusterClient()
+	cc, err := clus.ClusterClient(t)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -523,11 +523,11 @@ func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient
 	errc := make(chan error)
 
 	if useClusterClient {
+		clusterClient, err := clus.ClusterClient(t)
+		if err != nil {
+			t.Fatal(err)
+		}
 		for i := 0; i < 300; i++ {
-			clusterClient, err := clus.ClusterClient()
-			if err != nil {
-				t.Fatal(err)
-			}
 			go func(i int) { errc <- stresser(ctx, integration.ToGRPC(clusterClient).Lease) }(i)
 		}
 	} else {
