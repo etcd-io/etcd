@@ -832,6 +832,8 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 		"granted/updated a permission to a user",
 		zap.String("user-name", r.Name),
 		zap.String("permission-name", authpb.Permission_Type_name[int32(r.Perm.PermType)]),
+		zap.ByteString("key", r.Perm.Key),
+		zap.ByteString("range-end", r.Perm.RangeEnd),
 	)
 	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
