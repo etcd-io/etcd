@@ -192,6 +192,7 @@ func (c *Client) Sync(ctx context.Context) error {
 		}
 	}
 	c.SetEndpoints(eps...)
+	c.lg.Debug("set etcd endpoints by autoSync", zap.Strings("endpoints", eps))
 	return nil
 }
 
