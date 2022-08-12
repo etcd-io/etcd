@@ -47,12 +47,11 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -811,27 +810,30 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 }
 
 func (e *Etcd) setupTracing(ctx context.Context) (exporter tracesdk.SpanExporter, options []otelgrpc.Option, err error) {
-	exporter, err = otlp.NewExporter(ctx,
-		otlpgrpc.NewDriver(
-			otlpgrpc.WithEndpoint(e.cfg.ExperimentalDistributedTracingAddress),
-			otlpgrpc.WithInsecure(),
-		))
+	exporter, err = otlptracegrpc.New(ctx,
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithEndpoint(e.cfg.ExperimentalDistributedTracingAddress),
+	)
 	if err != nil {
 		return nil, nil, err
 	}
-	res := resource.NewWithAttributes(
-		semconv.ServiceNameKey.String(e.cfg.ExperimentalDistributedTracingServiceName),
+
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(e.cfg.ExperimentalDistributedTracingServiceName),
+		),
 	)
-	// As Tracing service Instance ID must be unique, it should
-	// never use the empty default string value, so we only set it
-	// if it's a non empty string.
-	if e.cfg.ExperimentalDistributedTracingServiceInstanceID != "" {
-		resWithIDKey := resource.NewWithAttributes(
-			(semconv.ServiceInstanceIDKey.String(e.cfg.ExperimentalDistributedTracingServiceInstanceID)),
-		)
-		// Merge resources to combine into a new
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if resWithIDKey := determineResourceWithIDKey(e.cfg.ExperimentalDistributedTracingServiceInstanceID); resWithIDKey != nil {
+		// Merge resources into a new
 		// resource in case of duplicates.
-		res = resource.Merge(res, resWithIDKey)
+		res, err = resource.Merge(res, resWithIDKey)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	options = append(options,
@@ -857,4 +859,16 @@ func (e *Etcd) setupTracing(ctx context.Context) (exporter tracesdk.SpanExporter
 	)
 
 	return exporter, options, err
+}
+
+// As Tracing service Instance ID must be unique, it should
+// never use the empty default string value, it's set if
+// if it's a non empty string.
+func determineResourceWithIDKey(serviceInstanceID string) *resource.Resource {
+	if serviceInstanceID != "" {
+		return resource.NewSchemaless(
+			(semconv.ServiceInstanceIDKey.String(serviceInstanceID)),
+		)
+	}
+	return nil
 }
