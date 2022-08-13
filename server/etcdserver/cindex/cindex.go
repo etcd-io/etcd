@@ -169,8 +169,8 @@ func (f *fakeConsistentIndex) SetConsistentApplyingIndex(index uint64, term uint
 func (f *fakeConsistentIndex) UnsafeSave(_ backend.BatchTx) {}
 func (f *fakeConsistentIndex) SetBackend(_ Backend)         {}
 
-func UpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64) {
+func UpdateConsistentIndexForce(tx backend.BatchTx, index uint64, term uint64) {
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	schema.UnsafeUpdateConsistentIndex(tx, index, term)
+	schema.UnsafeUpdateConsistentIndexForce(tx, index, term)
 }

@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
@@ -153,13 +153,13 @@ func (s *keyStresser) isRetryableError(err error) bool {
 		// as well. We want to keep stressing until the cluster elects a
 		// new leader and start processing requests again.
 		return true
-	case etcdserver.ErrTimeoutDueToLeaderFail.Error(), etcdserver.ErrTimeout.Error():
+	case errors.ErrTimeoutDueToLeaderFail.Error(), errors.ErrTimeout.Error():
 		// This retries when request is triggered at the same time as
 		// leader failure and follower nodes receive time out errors
 		// from losing their leader. Followers should retry to connect
 		// to the new leader.
 		return true
-	case etcdserver.ErrStopped.Error():
+	case errors.ErrStopped.Error():
 		// one of the etcd nodes stopped from failure injection
 		return true
 	case rpctypes.ErrNotCapable.Error():

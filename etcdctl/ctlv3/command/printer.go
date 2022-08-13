@@ -79,7 +79,7 @@ func NewPrinter(printerType string, isHex bool) printer {
 	case "simple":
 		return &simplePrinter{isHex: isHex}
 	case "fields":
-		return &fieldsPrinter{newPrinterUnsupported("fields")}
+		return &fieldsPrinter{printer: newPrinterUnsupported("fields"), isHex: isHex}
 	case "json":
 		return newJSONPrinter(isHex)
 	case "protobuf":

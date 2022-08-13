@@ -19,10 +19,14 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	spb "go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	v3 "go.etcd.io/etcd/client/v3"
 )
 
-type fieldsPrinter struct{ printer }
+type fieldsPrinter struct {
+	printer
+	isHex bool
+}
 
 func (p *fieldsPrinter) kv(pfx string, kv *spb.KeyValue) {
 	fmt.Printf("\"%sKey\" : %q\n", pfx, string(kv.Key))
@@ -30,13 +34,27 @@ func (p *fieldsPrinter) kv(pfx string, kv *spb.KeyValue) {
 	fmt.Printf("\"%sModRevision\" : %d\n", pfx, kv.ModRevision)
 	fmt.Printf("\"%sVersion\" : %d\n", pfx, kv.Version)
 	fmt.Printf("\"%sValue\" : %q\n", pfx, string(kv.Value))
-	fmt.Printf("\"%sLease\" : %d\n", pfx, kv.Lease)
+	if p.isHex {
+		fmt.Printf("\"%sLease\" : %016x\n", pfx, kv.Lease)
+	} else {
+		fmt.Printf("\"%sLease\" : %d\n", pfx, kv.Lease)
+	}
 }
 
 func (p *fieldsPrinter) hdr(h *pb.ResponseHeader) {
-	fmt.Println(`"ClusterID" :`, h.ClusterId)
-	fmt.Println(`"MemberID" :`, h.MemberId)
-	fmt.Println(`"Revision" :`, h.Revision)
+	if p.isHex {
+		fmt.Println(`"ClusterID" :`, types.ID(h.ClusterId))
+		fmt.Println(`"MemberID" :`, types.ID(h.MemberId))
+	} else {
+		fmt.Println(`"ClusterID" :`, h.ClusterId)
+		fmt.Println(`"MemberID" :`, h.MemberId)
+	}
+	// Revision only makes sense for k/v responses. For other kinds of
+	// responses, i.e. MemberList, usually the revision isn't populated
+	// at all; so it would be better to hide this field in these cases.
+	if h.Revision > 0 {
+		fmt.Println(`"Revision" :`, h.Revision)
+	}
 	fmt.Println(`"RaftTerm" :`, h.RaftTerm)
 }
 
@@ -94,7 +112,11 @@ func (p *fieldsPrinter) Watch(resp v3.WatchResponse) {
 
 func (p *fieldsPrinter) Grant(r v3.LeaseGrantResponse) {
 	p.hdr(r.ResponseHeader)
-	fmt.Println(`"ID" :`, r.ID)
+	if p.isHex {
+		fmt.Printf("\"ID\" : %016x\n", r.ID)
+	} else {
+		fmt.Println(`"ID" :`, r.ID)
+	}
 	fmt.Println(`"TTL" :`, r.TTL)
 }
 
@@ -104,13 +126,21 @@ func (p *fieldsPrinter) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse) {
 
 func (p *fieldsPrinter) KeepAlive(r v3.LeaseKeepAliveResponse) {
 	p.hdr(r.ResponseHeader)
-	fmt.Println(`"ID" :`, r.ID)
+	if p.isHex {
+		fmt.Printf("\"ID\" : %016x\n", r.ID)
+	} else {
+		fmt.Println(`"ID" :`, r.ID)
+	}
 	fmt.Println(`"TTL" :`, r.TTL)
 }
 
 func (p *fieldsPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
 	p.hdr(r.ResponseHeader)
-	fmt.Println(`"ID" :`, r.ID)
+	if p.isHex {
+		fmt.Printf("\"ID\" : %016x\n", r.ID)
+	} else {
+		fmt.Println(`"ID" :`, r.ID)
+	}
 	fmt.Println(`"TTL" :`, r.TTL)
 	fmt.Println(`"GrantedTTL" :`, r.GrantedTTL)
 	for _, k := range r.Keys {
@@ -121,14 +151,22 @@ func (p *fieldsPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
 func (p *fieldsPrinter) Leases(r v3.LeaseLeasesResponse) {
 	p.hdr(r.ResponseHeader)
 	for _, item := range r.Leases {
-		fmt.Println(`"ID" :`, item.ID)
+		if p.isHex {
+			fmt.Printf("\"ID\" : %016x\n", item.ID)
+		} else {
+			fmt.Println(`"ID" :`, item.ID)
+		}
 	}
 }
 
 func (p *fieldsPrinter) MemberList(r v3.MemberListResponse) {
 	p.hdr(r.Header)
 	for _, m := range r.Members {
-		fmt.Println(`"ID" :`, m.ID)
+		if p.isHex {
+			fmt.Println(`"ID" :`, types.ID(m.ID))
+		} else {
+			fmt.Println(`"ID" :`, m.ID)
+		}
 		fmt.Printf("\"Name\" : %q\n", m.Name)
 		for _, u := range m.PeerURLs {
 			fmt.Printf("\"PeerURL\" : %q\n", u)
@@ -181,7 +219,11 @@ func (p *fieldsPrinter) EndpointHashKV(hs []epHashKV) {
 func (p *fieldsPrinter) Alarm(r v3.AlarmResponse) {
 	p.hdr(r.Header)
 	for _, a := range r.Alarms {
-		fmt.Println(`"MemberID" :`, a.MemberID)
+		if p.isHex {
+			fmt.Println(`"MemberID" :`, types.ID(a.MemberID))
+		} else {
+			fmt.Println(`"MemberID" :`, a.MemberID)
+		}
 		fmt.Println(`"AlarmType" :`, a.Alarm)
 		fmt.Println()
 	}

@@ -44,7 +44,12 @@ export GOFLAGS=-mod=readonly
 export ETCD_VERIFY=all
 
 source ./scripts/test_lib.sh
-source ./scripts/build.sh
+source ./scripts/build_lib.sh
+
+if [ -n "${OUTPUT_FILE}" ]; then
+  log_callout "Dumping output to: ${OUTPUT_FILE}"
+  exec > >(tee -a "${OUTPUT_FILE}") 2>&1
+fi
 
 PASSES=${PASSES:-"fmt bom dep build unit"}
 PKG=${PKG:-}
@@ -462,7 +467,7 @@ function staticcheck_pass {
 }
 
 function revive_pass {
-  run_for_modules generic_checker run_go_tool "github.com/mgechev/revive" -config "${ETCD_ROOT_DIR}/tests/revive.toml" -exclude "vendor/..."
+  run_for_modules generic_checker run_go_tool "github.com/mgechev/revive" -config "${ETCD_ROOT_DIR}/tests/revive.toml" -exclude "vendor/..." -exclude "out/..."
 }
 
 function unconvert_pass {

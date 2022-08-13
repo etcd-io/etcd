@@ -27,6 +27,8 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/apply"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -68,20 +70,20 @@ type ClusterStatusGetter interface {
 }
 
 type maintenanceServer struct {
-	lg  *zap.Logger
-	rg  etcdserver.RaftStatusGetter
-	kg  KVGetter
-	bg  BackendGetter
-	a   Alarmer
-	lt  LeaderTransferrer
-	hdr header
-	cs  ClusterStatusGetter
-	d   Downgrader
-	vs  serverversion.Server
+	lg     *zap.Logger
+	rg     apply.RaftStatusGetter
+	hasher mvcc.HashStorage
+	bg     BackendGetter
+	a      Alarmer
+	lt     LeaderTransferrer
+	hdr    header
+	cs     ClusterStatusGetter
+	d      Downgrader
+	vs     serverversion.Server
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s), cs: s, d: s, vs: etcdserver.NewServerVersionAdapter(s)}
+	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, hasher: s.KV().HashStorage(), bg: s, a: s, lt: s, hdr: newHeader(s), cs: s, d: s, vs: etcdserver.NewServerVersionAdapter(s)}
 	if srv.lg == nil {
 		srv.lg = zap.NewNop()
 	}
@@ -191,7 +193,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 }
 
 func (ms *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
-	h, rev, err := ms.kg.KV().Hash()
+	h, rev, err := ms.hasher.Hash()
 	if err != nil {
 		return nil, togRPCError(err)
 	}
@@ -201,12 +203,12 @@ func (ms *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.H
 }
 
 func (ms *maintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*pb.HashKVResponse, error) {
-	h, rev, compactRev, err := ms.kg.KV().HashByRev(r.Revision)
+	h, rev, err := ms.hasher.HashByRev(r.Revision)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
 
-	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: h, CompactRevision: compactRev}
+	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: h.Hash, CompactRevision: h.CompactRevision}
 	ms.hdr.fill(resp.Header)
 	return resp, nil
 }
@@ -241,7 +243,7 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		resp.StorageVersion = storageVersion.String()
 	}
 	if resp.Leader == raft.None {
-		resp.Errors = append(resp.Errors, etcdserver.ErrNoLeader.Error())
+		resp.Errors = append(resp.Errors, errors.ErrNoLeader.Error())
 	}
 	for _, a := range ms.a.Alarms() {
 		resp.Errors = append(resp.Errors, a.String())
@@ -250,7 +252,7 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 }
 
 func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
-	if ms.rg.ID() != ms.rg.Leader() {
+	if ms.rg.MemberId() != ms.rg.Leader() {
 		return nil, rpctypes.ErrGRPCNotLeader
 	}
 

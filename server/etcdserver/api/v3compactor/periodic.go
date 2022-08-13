@@ -102,6 +102,7 @@ func (pc *Periodic) Run() {
 	retentions := pc.getRetentions()
 
 	go func() {
+		lastRevision := int64(0)
 		lastSuccess := pc.clock.Now()
 		baseInterval := pc.period
 		for {
@@ -121,8 +122,8 @@ func (pc *Periodic) Run() {
 					continue
 				}
 			}
-
-			if pc.clock.Now().Sub(lastSuccess) < baseInterval {
+			rev := pc.revs[0]
+			if pc.clock.Now().Sub(lastSuccess) < baseInterval || rev == lastRevision {
 				continue
 			}
 
@@ -130,7 +131,6 @@ func (pc *Periodic) Run() {
 			if baseInterval == pc.period {
 				baseInterval = compactInterval
 			}
-			rev := pc.revs[0]
 
 			pc.lg.Info(
 				"starting auto periodic compaction",
@@ -146,6 +146,7 @@ func (pc *Periodic) Run() {
 					zap.Duration("compact-period", pc.period),
 					zap.Duration("took", pc.clock.Now().Sub(startTime)),
 				)
+				lastRevision = rev
 				lastSuccess = pc.clock.Now()
 			} else {
 				pc.lg.Warn(

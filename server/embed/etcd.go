@@ -191,6 +191,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		BackendBatchInterval:                     cfg.BackendBatchInterval,
 		MaxTxnOps:                                cfg.MaxTxnOps,
 		MaxRequestBytes:                          cfg.MaxRequestBytes,
+		MaxConcurrentStreams:                     cfg.MaxConcurrentStreams,
 		SocketOpts:                               cfg.SocketOpts,
 		StrictReconfigCheck:                      cfg.StrictReconfigCheck,
 		ClientCertAuthEnabled:                    cfg.ClientTLSInfo.ClientCertAuth,
@@ -201,6 +202,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		HostWhitelist:                            cfg.HostWhitelist,
 		InitialCorruptCheck:                      cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:                         cfg.ExperimentalCorruptCheckTime,
+		CompactHashCheckEnabled:                  cfg.ExperimentalCompactHashCheckEnabled,
+		CompactHashCheckTime:                     cfg.ExperimentalCompactHashCheckTime,
 		PreVote:                                  cfg.PreVote,
 		Logger:                                   cfg.logger,
 		ForceNewCluster:                          cfg.ForceNewCluster,
@@ -250,8 +253,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	// newly started member ("memberInitialized==false")
 	// does not need corruption check
-	if memberInitialized {
-		if err = e.Server.CheckInitialHashKV(); err != nil {
+	if memberInitialized && srvcfg.InitialCorruptCheck {
+		if err = e.Server.CorruptionChecker().InitialCheck(); err != nil {
 			// set "EtcdServer" to nil, so that it does not block on "EtcdServer.Close()"
 			// (nothing to close since rafthttp transports have not been started)
 
@@ -275,7 +278,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	e.cfg.logger.Info(
 		"now serving peer/client/metrics",
-		zap.String("local-member-id", e.Server.ID().String()),
+		zap.String("local-member-id", e.Server.MemberId().String()),
 		zap.Strings("initial-advertise-peer-urls", e.cfg.getAPURLs()),
 		zap.Strings("listen-peer-urls", e.cfg.getLPURLs()),
 		zap.Strings("advertise-client-urls", e.cfg.getACURLs()),
@@ -336,10 +339,15 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("initial-cluster", sc.InitialPeerURLsMap.String()),
 		zap.String("initial-cluster-state", ec.ClusterState),
 		zap.String("initial-cluster-token", sc.InitialClusterToken),
-		zap.Int64("quota-size-bytes", quota),
+		zap.Int64("quota-backend-bytes", quota),
+		zap.Uint("max-request-bytes", sc.MaxRequestBytes),
+		zap.Uint32("max-concurrent-streams", sc.MaxConcurrentStreams),
+
 		zap.Bool("pre-vote", sc.PreVote),
 		zap.Bool("initial-corrupt-check", sc.InitialCorruptCheck),
 		zap.String("corrupt-check-time-interval", sc.CorruptCheckTime.String()),
+		zap.Bool("compact-check-time-enabled", sc.CompactHashCheckEnabled),
+		zap.Duration("compact-check-time-interval", sc.CompactHashCheckTime),
 		zap.String("auto-compaction-mode", sc.AutoCompactionMode),
 		zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention),
 		zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
@@ -701,8 +709,10 @@ func (e *Etcd) serveClients() (err error) {
 
 	// Start a client server goroutine for each listen address
 	mux := http.NewServeMux()
-	etcdhttp.HandleBasic(e.cfg.logger, mux, e.Server)
-	etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, mux, e.Server)
+	etcdhttp.HandleDebug(mux)
+	etcdhttp.HandleVersion(mux, e.Server)
+	etcdhttp.HandleMetrics(mux)
+	etcdhttp.HandleHealth(e.cfg.logger, mux, e.Server)
 
 	gopts := []grpc.ServerOption{}
 	if e.cfg.GRPCKeepAliveMinTime > time.Duration(0) {
@@ -735,7 +745,8 @@ func (e *Etcd) serveMetrics() (err error) {
 
 	if len(e.cfg.ListenMetricsUrls) > 0 {
 		metricsMux := http.NewServeMux()
-		etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, metricsMux, e.Server)
+		etcdhttp.HandleMetrics(metricsMux)
+		etcdhttp.HandleHealth(e.cfg.logger, metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
 			tlsInfo := &e.cfg.ClientTLSInfo
@@ -763,6 +774,9 @@ func (e *Etcd) serveMetrics() (err error) {
 }
 
 func (e *Etcd) errHandler(err error) {
+	if err != nil {
+		e.GetLogger().Error("setting up serving from embedded etcd failed.", zap.Error(err))
+	}
 	select {
 	case <-e.stopc:
 		return

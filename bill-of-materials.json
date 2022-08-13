@@ -1,5 +1,23 @@
 [
 	{
+		"project": "github.com/VividCortex/ewma",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/benbjohnson/clock",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/beorn7/perks/quantile",
 		"licenses": [
 			{
@@ -41,6 +59,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/cheggaaa/pb/v3",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9916666666666667
 			}
 		]
 	},
@@ -90,15 +117,6 @@
 		]
 	},
 	{
-		"project": "github.com/cpuguy83/go-md2man/v2/md2man",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/creack/pty",
 		"licenses": [
 			{
@@ -126,11 +144,38 @@
 		]
 	},
 	{
+		"project": "github.com/fatih/color",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/getsentry/raven-go",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
+		"project": "github.com/go-logr/logr",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/go-logr/stdr",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
@@ -225,6 +270,15 @@
 		]
 	},
 	{
+		"project": "github.com/grpc-ecosystem/grpc-gateway/v2",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.979253112033195
+			}
+		]
+	},
+	{
 		"project": "github.com/inconshreveable/mousetrap",
 		"licenses": [
 			{
@@ -239,6 +293,24 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/mattn/go-colorable",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/mattn/go-isatty",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9587628865979382
 			}
 		]
 	},
@@ -324,11 +396,11 @@
 		]
 	},
 	{
-		"project": "github.com/russross/blackfriday/v2",
+		"project": "github.com/rivo/uniseg",
 		"licenses": [
 			{
-				"type": "BSD 2-clause \"Simplified\" License",
-				"confidence": 0.9626168224299065
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},
@@ -383,15 +455,6 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
-		"project": "github.com/urfave/cli",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
 			}
 		]
 	},
@@ -523,6 +586,15 @@
 	},
 	{
 		"project": "go.opentelemetry.io/otel",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/exporters/otlp/internal/retry",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -671,15 +743,6 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9663865546218487
-			}
-		]
-	},
-	{
-		"project": "gopkg.in/cheggaaa/pb.v1",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9916666666666667
 			}
 		]
 	},

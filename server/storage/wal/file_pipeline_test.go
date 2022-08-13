@@ -45,15 +45,3 @@ func TestFilePipelineFailPreallocate(t *testing.T) {
 		t.Fatal("expected error on invalid pre-allocate size, but no error")
 	}
 }
-
-func TestFilePipelineFailLockFile(t *testing.T) {
-	tdir := t.TempDir()
-
-	fp := newFilePipeline(zaptest.NewLogger(t), tdir, math.MaxInt64)
-	defer fp.Close()
-
-	f, ferr := fp.Open()
-	if f != nil || ferr == nil { // no such file or directory
-		t.Fatal("expected error on invalid pre-allocate size, but no error")
-	}
-}

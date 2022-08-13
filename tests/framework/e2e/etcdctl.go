@@ -18,9 +18,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
+	"go.etcd.io/etcd/api/v3/authpb"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -42,7 +45,8 @@ func (ctl *EtcdctlV3) DowngradeEnable(version string) error {
 }
 
 func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetResponse, error) {
-	args := ctl.cmdArgs()
+	resp := clientv3.GetResponse{}
+	var args []string
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
 	}
@@ -94,20 +98,15 @@ func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetRespons
 	default:
 		return nil, fmt.Errorf("bad sort order %v", o.Order)
 	}
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
-	var resp clientv3.GetResponse
 	if o.CountOnly {
-		_, err := cmd.Expect("Count")
+		cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+		if err != nil {
+			return nil, err
+		}
+		_, err = cmd.Expect("Count")
 		return &resp, err
 	}
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, args...)
 	return &resp, err
 }
 
@@ -121,8 +120,7 @@ func (ctl *EtcdctlV3) Put(key, value string, opts config.PutOptions) error {
 }
 
 func (ctl *EtcdctlV3) Delete(key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "del", key, "-w", "json")
+	args := []string{"del", key}
 	if o.End != "" {
 		args = append(args, o.End)
 	}
@@ -132,58 +130,121 @@ func (ctl *EtcdctlV3) Delete(key string, o config.DeleteOptions) (*clientv3.Dele
 	if o.FromKey {
 		args = append(args, "--from-key")
 	}
+	var resp clientv3.DeleteResponse
+	err := ctl.spawnJsonCmd(&resp, args...)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) Txn(compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error) {
+	args := ctl.cmdArgs()
+	args = append(args, "txn")
+	if o.Interactive {
+		args = append(args, "--interactive")
+	}
+	args = append(args, "-w", "json", "--hex=true")
 	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}
-	var resp clientv3.DeleteResponse
-	line, err := cmd.Expect("header")
+	_, err = cmd.Expect("compares:")
 	if err != nil {
 		return nil, err
 	}
+	for _, cmp := range compares {
+		if err := cmd.Send(cmp + "\r"); err != nil {
+			return nil, err
+		}
+	}
+	if err := cmd.Send("\r"); err != nil {
+		return nil, err
+	}
+	_, err = cmd.Expect("success requests (get, put, del):")
+	if err != nil {
+		return nil, err
+	}
+	for _, req := range ifSucess {
+		if err = cmd.Send(req + "\r"); err != nil {
+			return nil, err
+		}
+	}
+	if err = cmd.Send("\r"); err != nil {
+		return nil, err
+	}
+
+	_, err = cmd.Expect("failure requests (get, put, del):")
+	if err != nil {
+		return nil, err
+	}
+	for _, req := range ifFail {
+		if err = cmd.Send(req + "\r"); err != nil {
+			return nil, err
+		}
+	}
+	if err = cmd.Send("\r"); err != nil {
+		return nil, err
+	}
+	var line string
+	line, err = cmd.Expect("header")
+	if err != nil {
+		return nil, err
+	}
+	var resp clientv3.TxnResponse
+	AddTxnResponse(&resp, line)
 	err = json.Unmarshal([]byte(line), &resp)
 	return &resp, err
 }
 
+// AddTxnResponse looks for ResponseOp json tags and adds the objects for json decoding
+func AddTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
+	if resp == nil {
+		return
+	}
+	if resp.Responses == nil {
+		resp.Responses = []*etcdserverpb.ResponseOp{}
+	}
+	jd := json.NewDecoder(strings.NewReader(jsonData))
+	for {
+		t, e := jd.Token()
+		if e == io.EOF {
+			break
+		}
+		if t == "response_range" {
+			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
+				Response: &etcdserverpb.ResponseOp_ResponseRange{},
+			})
+		}
+		if t == "response_put" {
+			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
+				Response: &etcdserverpb.ResponseOp_ResponsePut{},
+			})
+		}
+		if t == "response_delete_range" {
+			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
+				Response: &etcdserverpb.ResponseOp_ResponseDeleteRange{},
+			})
+		}
+		if t == "response_txn" {
+			resp.Responses = append(resp.Responses, &etcdserverpb.ResponseOp{
+				Response: &etcdserverpb.ResponseOp_ResponseTxn{},
+			})
+		}
+	}
+}
 func (ctl *EtcdctlV3) MemberList() (*clientv3.MemberListResponse, error) {
-	cmd, err := SpawnCmd(ctl.cmdArgs("member", "list", "-w", "json"), nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.MemberListResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "member", "list")
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberAddAsLearner(name string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
-	cmd, err := SpawnCmd(ctl.cmdArgs("member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","), "-w", "json"), nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.MemberAddResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","))
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberRemove(id uint64) (*clientv3.MemberRemoveResponse, error) {
-	cmd, err := SpawnCmd(ctl.cmdArgs("member", "remove", fmt.Sprintf("%x", id), "-w", "json"), nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.MemberRemoveResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "member", "remove", fmt.Sprintf("%x", id))
 	return &resp, err
 }
 
@@ -216,9 +277,7 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 }
 
 func (ctl *EtcdctlV3) Compact(rev int64, o config.CompactOption) (*clientv3.CompactResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "compact", fmt.Sprint(rev))
-
+	args := ctl.cmdArgs("compact", fmt.Sprint(rev))
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
 	}
@@ -230,50 +289,27 @@ func (ctl *EtcdctlV3) Compact(rev int64, o config.CompactOption) (*clientv3.Comp
 }
 
 func (ctl *EtcdctlV3) Status() ([]*clientv3.StatusResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "endpoint", "status", "-w", "json")
-	args = append(args, "--endpoints", strings.Join(ctl.endpoints, ","))
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var epStatus []*struct {
 		Endpoint string
 		Status   *clientv3.StatusResponse
 	}
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &epStatus)
+	err := ctl.spawnJsonCmd(&epStatus, "endpoint", "status")
 	if err != nil {
 		return nil, err
 	}
 	resp := make([]*clientv3.StatusResponse, len(epStatus))
-	for _, e := range epStatus {
-		resp = append(resp, e.Status)
+	for i, e := range epStatus {
+		resp[i] = e.Status
 	}
 	return resp, err
 }
 
 func (ctl *EtcdctlV3) HashKV(rev int64) ([]*clientv3.HashKVResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "endpoint", "hashkv", "-w", "json")
-	args = append(args, "--endpoints", strings.Join(ctl.endpoints, ","))
-	args = append(args, "--rev", fmt.Sprint(rev))
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var epHashKVs []*struct {
 		Endpoint string
 		HashKV   *clientv3.HashKVResponse
 	}
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &epHashKVs)
+	err := ctl.spawnJsonCmd(&epHashKVs, "endpoint", "hashkv", "--endpoints", strings.Join(ctl.endpoints, ","), "--rev", fmt.Sprint(rev))
 	if err != nil {
 		return nil, err
 	}
@@ -343,8 +379,7 @@ func (ctl *EtcdctlV3) Defragment(o config.DefragOption) error {
 }
 
 func (ctl *EtcdctlV3) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "lease", "list", "-w", "json")
+	args := ctl.cmdArgs("lease", "list", "-w", "json")
 	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
@@ -359,8 +394,7 @@ func (ctl *EtcdctlV3) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
 }
 
 func (ctl *EtcdctlV3) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "lease", "keep-alive", strconv.FormatInt(int64(id), 16), "--once", "-w", "json")
+	args := ctl.cmdArgs("lease", "keep-alive", strconv.FormatInt(int64(id), 16), "--once", "-w", "json")
 	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
@@ -375,34 +409,14 @@ func (ctl *EtcdctlV3) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKe
 }
 
 func (ctl *EtcdctlV3) LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "lease", "revoke", strconv.FormatInt(int64(id), 16), "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.LeaseRevokeResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "lease", "revoke", strconv.FormatInt(int64(id), 16))
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) AlarmList() (*clientv3.AlarmResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "alarm", "list", "-w", "json")
-	ep, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.AlarmResponse
-	line, err := ep.Expect("alarm")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "alarm", "list")
 	return &resp, err
 }
 
@@ -461,34 +475,14 @@ func (ctl *EtcdctlV3) UserAdd(name, password string, opts config.UserAddOptions)
 }
 
 func (ctl *EtcdctlV3) UserList() (*clientv3.AuthUserListResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "user", "list", "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.AuthUserListResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "user", "list")
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) UserDelete(name string) (*clientv3.AuthUserDeleteResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "user", "delete", name, "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
-	if err != nil {
-		return nil, err
-	}
 	var resp clientv3.AuthUserDeleteResponse
-	line, err := cmd.Expect("header")
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(line), &resp)
+	err := ctl.spawnJsonCmd(&resp, "user", "delete", name)
 	return &resp, err
 }
 
@@ -507,6 +501,56 @@ func (ctl *EtcdctlV3) UserChangePass(user, newPass string) error {
 
 	_, err = cmd.Expect("Password updated")
 	return err
+}
+
+func (ctl *EtcdctlV3) RoleAdd(name string) (*clientv3.AuthRoleAddResponse, error) {
+	var resp clientv3.AuthRoleAddResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "add", name)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleGrantPermission(name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
+	permissionType := authpb.Permission_Type_name[int32(permType)]
+	var resp clientv3.AuthRoleGrantPermissionResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "grant-permission", name, permissionType, key, rangeEnd)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleGet(role string) (*clientv3.AuthRoleGetResponse, error) {
+	var resp clientv3.AuthRoleGetResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "get", role)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleList() (*clientv3.AuthRoleListResponse, error) {
+	var resp clientv3.AuthRoleListResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "list")
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleRevokePermission(role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error) {
+	var resp clientv3.AuthRoleRevokePermissionResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "revoke-permission", role, key, rangeEnd)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) RoleDelete(role string) (*clientv3.AuthRoleDeleteResponse, error) {
+	var resp clientv3.AuthRoleDeleteResponse
+	err := ctl.spawnJsonCmd(&resp, "role", "delete", role)
+	return &resp, err
+}
+
+func (ctl *EtcdctlV3) spawnJsonCmd(output interface{}, args ...string) error {
+	args = append(args, "-w", "json")
+	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), nil)
+	if err != nil {
+		return err
+	}
+	line, err := cmd.Expect("header")
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal([]byte(line), output)
 }
 
 func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {

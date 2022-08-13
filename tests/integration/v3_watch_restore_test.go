@@ -81,7 +81,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 	initialLead := clus.WaitMembersForLeader(t, clus.Members[1:])
-	t.Logf("elected lead: %v", clus.Members[initialLead].Server.ID())
+	t.Logf("elected lead: %v", clus.Members[initialLead].Server.MemberId())
 	t.Logf("sleeping for 2 seconds")
 	time.Sleep(2 * time.Second)
 	t.Logf("sleeping for 2 seconds DONE")
@@ -130,7 +130,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	// should be able to notify on old-revision watchers in unsynced
 	// make sure restore watch operation correctly moves watchers
 	// between synced and unsynced watchers
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	go func() {
 		cresp, cerr := wStream.Recv()
 		if cerr != nil {

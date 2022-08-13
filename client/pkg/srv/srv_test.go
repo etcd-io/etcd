@@ -226,12 +226,12 @@ func TestSRVDiscover(t *testing.T) {
 		},
 		{
 			[]*net.SRV{
-				{Target: "a.example.com.", Port: 2480},
-				{Target: "b.example.com.", Port: 2480},
-				{Target: "c.example.com", Port: 2480},
+				{Target: "a.example.com", Port: 2480},
+				{Target: "b.example.com", Port: 2480},
+				{Target: "c.example.com.", Port: 2480},
 			},
 			[]*net.SRV{},
-			[]string{"https://a.example.com:2480", "https://b.example.com:2480", "https://c.example.com:2480"},
+			[]string{"https://a.example.com:2480", "https://b.example.com:2480", "https://c.example.com.:2480"},
 			false,
 		},
 	}

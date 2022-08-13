@@ -15,83 +15,8 @@
 package e2e
 
 import (
-	"testing"
-
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
-
-func TestCtlV3TxnInteractiveSuccess(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive())
-}
-func TestCtlV3TxnInteractiveSuccessNoTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*e2e.NewConfigNoTLS()))
-}
-func TestCtlV3TxnInteractiveSuccessClientTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*e2e.NewConfigClientTLS()))
-}
-func TestCtlV3TxnInteractiveSuccessPeerTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*e2e.NewConfigPeerTLS()))
-}
-func TestCtlV3TxnInteractiveFail(t *testing.T) {
-	testCtl(t, txnTestFail, withInteractive())
-}
-
-func txnTestSuccess(cx ctlCtx) {
-	if err := ctlV3Put(cx, "key1", "value1", ""); err != nil {
-		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "key2", "value2", ""); err != nil {
-		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
-	}
-	rqs := []txnRequests{
-		{
-			compare:  []string{`value("key1") != "value2"`, `value("key2") != "value1"`},
-			ifSucess: []string{"get key1", "get key2"},
-			results:  []string{"SUCCESS", "key1", "value1", "key2", "value2"},
-		},
-		{
-			compare:  []string{`version("key1") = "1"`, `version("key2") = "1"`},
-			ifSucess: []string{"get key1", "get key2", `put "key \"with\" space" "value \x23"`},
-			ifFail:   []string{`put key1 "fail"`, `put key2 "fail"`},
-			results:  []string{"SUCCESS", "key1", "value1", "key2", "value2"},
-		},
-		{
-			compare:  []string{`version("key \"with\" space") = "1"`},
-			ifSucess: []string{`get "key \"with\" space"`},
-			results:  []string{"SUCCESS", `key "with" space`, "value \x23"},
-		},
-	}
-	for _, rq := range rqs {
-		if err := ctlV3Txn(cx, rq); err != nil {
-			cx.t.Fatal(err)
-		}
-	}
-}
-
-func txnTestFail(cx ctlCtx) {
-	if err := ctlV3Put(cx, "key1", "value1", ""); err != nil {
-		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
-	}
-	rqs := []txnRequests{
-		{
-			compare:  []string{`version("key") < "0"`},
-			ifSucess: []string{`put key "success"`},
-			ifFail:   []string{`put key "fail"`},
-			results:  []string{"FAILURE", "OK"},
-		},
-		{
-			compare:  []string{`value("key1") != "value1"`},
-			ifSucess: []string{`put key1 "success"`},
-			ifFail:   []string{`put key1 "fail"`},
-			results:  []string{"FAILURE", "OK"},
-		},
-	}
-	for _, rq := range rqs {
-		if err := ctlV3Txn(cx, rq); err != nil {
-			cx.t.Fatal(err)
-		}
-	}
-}
 
 type txnRequests struct {
 	compare  []string

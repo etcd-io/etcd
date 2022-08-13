@@ -17,7 +17,6 @@ package snapshot_test
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -42,7 +41,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	dbPath := createSnapshotFile(t, kvs)
 
 	clusterN := 1
-	urls := newEmbedURLs(clusterN * 2)
+	urls := newEmbedURLs(t, clusterN*2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
 	cfg := integration2.NewEmbedConfig(t, "s1")
@@ -172,7 +171,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	testutil.SkipTestIfShortMode(t,
 		"Snapshot creation tests are depending on embedded etcd server so are integration-level tests.")
 	clusterN := 1
-	urls := newEmbedURLs(clusterN * 2)
+	urls := newEmbedURLs(t, clusterN*2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
 	cfg := integration2.NewEmbedConfig(t, "default")
@@ -223,7 +222,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 	cURLs []url.URL,
 	pURLs []url.URL,
 	srvs []*embed.Etcd) {
-	urls := newEmbedURLs(clusterN * 2)
+	urls := newEmbedURLs(t, clusterN*2)
 	cURLs, pURLs = urls[:clusterN], urls[clusterN:]
 
 	ics := ""
@@ -284,11 +283,16 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 }
 
 // TODO: TLS
-func newEmbedURLs(n int) (urls []url.URL) {
+func newEmbedURLs(t testutil.TB, n int) (urls []url.URL) {
 	urls = make([]url.URL, n)
 	for i := 0; i < n; i++ {
-		rand.Seed(int64(time.Now().Nanosecond()))
-		u, _ := url.Parse(fmt.Sprintf("unix://localhost:%d", rand.Intn(45000)))
+		l := integration2.NewLocalListener(t)
+		defer l.Close()
+
+		u, err := url.Parse(fmt.Sprintf("unix://%s", l.Addr()))
+		if err != nil {
+			t.Fatal(err)
+		}
 		urls[i] = *u
 	}
 	return urls

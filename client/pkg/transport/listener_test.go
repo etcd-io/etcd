@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -34,7 +33,7 @@ func createSelfCert(t *testing.T, hosts ...string) (*TLSInfo, error) {
 
 func createSelfCertEx(t *testing.T, host string, additionalUsages ...x509.ExtKeyUsage) (*TLSInfo, error) {
 	d := t.TempDir()
-	info, err := SelfCert(zap.NewExample(), d, []string{host + ":0"}, 1, additionalUsages...)
+	info, err := SelfCert(zaptest.NewLogger(t), d, []string{host + ":0"}, 1, additionalUsages...)
 	if err != nil {
 		return nil, err
 	}
@@ -520,7 +519,7 @@ func TestNewListenerUnixSocket(t *testing.T) {
 // TestNewListenerTLSInfoSelfCert tests that a new certificate accepts connections.
 func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 	tmpdir := t.TempDir()
-	tlsinfo, err := SelfCert(zap.NewExample(), tmpdir, []string{"127.0.0.1"}, 1)
+	tlsinfo, err := SelfCert(zaptest.NewLogger(t), tmpdir, []string{"127.0.0.1"}, 1)
 	if err != nil {
 		t.Fatal(err)
 	}

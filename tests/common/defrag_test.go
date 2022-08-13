@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -24,9 +25,11 @@ import (
 
 func TestDefragOnline(t *testing.T) {
 	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	options := config.DefragOption{Timeout: 10 * time.Second}
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3})
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
+	testutils.ExecuteUntil(ctx, t, func() {
 		defer clus.Close()
 		var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 		for i := range kvs {

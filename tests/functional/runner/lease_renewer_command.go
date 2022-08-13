@@ -17,11 +17,10 @@ package runner
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
@@ -71,15 +70,10 @@ func runLeaseRenewerFunc(cmd *cobra.Command, args []string) {
 			if ev, ok := status.FromError(err); ok && ev.Code() == codes.NotFound {
 				if time.Since(expire) < 0 {
 					log.Fatalf("bad renew! exceeded: %v", time.Since(expire))
-					for {
-						lk, err = c.Lease.KeepAliveOnce(ctx, l.ID)
-						fmt.Println(lk, err)
-						time.Sleep(time.Second)
-					}
 				}
 				log.Fatalf("lost lease %d, expire: %v\n", l.ID, expire)
-				break
 			}
+
 			if err != nil {
 				continue
 			}

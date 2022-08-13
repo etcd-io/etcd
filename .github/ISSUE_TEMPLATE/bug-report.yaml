@@ -6,7 +6,7 @@ body:
 - type: markdown
   attributes:
     value: |
-      Please read https://etcd.io/docs/latest/reporting_bugs/
+      Please read https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md
       If this matter is security related, please disclose it privately via security@etcd.io.
       Please fill the form below and provide as much information as possible.
       Not doing so may result in your bug not being addressed in a timely manner.

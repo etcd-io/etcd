@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -54,11 +55,13 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				ttl := int64(10)
 				leaseResp, err := cc.Grant(ttl)
 				require.NoError(t, err)
@@ -74,32 +77,7 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 func TestLeaseGrantAndList(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		nestedCases := []struct {
 			name       string
 			leaseCount int
@@ -120,20 +98,20 @@ func TestLeaseGrantAndList(t *testing.T) {
 
 		for _, nc := range nestedCases {
 			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
 				t.Logf("Creating cluster...")
-				clus := testRunner.NewCluster(t, tc.config)
+				clus := testRunner.NewCluster(ctx, t, tc.config)
 				defer clus.Close()
 				cc := clus.Client()
 				t.Logf("Created cluster and client")
-				testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+				testutils.ExecuteUntil(ctx, t, func() {
 					createdLeases := []clientv3.LeaseID{}
-					lastRev := int64(0)
 					for i := 0; i < nc.leaseCount; i++ {
 						leaseResp, err := cc.Grant(10)
 						t.Logf("Grant returned: resp:%s err:%v", leaseResp.String(), err)
 						require.NoError(t, err)
 						createdLeases = append(createdLeases, leaseResp.ID)
-						lastRev = leaseResp.GetRevision()
 					}
 
 					// Because we're not guarunteed to talk to the same member, wait for
@@ -146,7 +124,9 @@ func TestLeaseGrantAndList(t *testing.T) {
 							return false
 						}
 						leases = resp.Leases
-						return resp.GetRevision() >= lastRev
+						// TODO: update this to use last Revision from leaseResp
+						// after https://github.com/etcd-io/etcd/issues/13989 is fixed
+						return len(leases) == len(createdLeases)
 					}, 2*time.Second, 10*time.Millisecond)
 
 					returnedLeases := make([]clientv3.LeaseID, 0, nc.leaseCount)
@@ -164,38 +144,15 @@ func TestLeaseGrantAndList(t *testing.T) {
 func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(2)
 				require.NoError(t, err)
 
@@ -224,38 +181,15 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(2)
 				require.NoError(t, err)
 
@@ -276,38 +210,15 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 func TestLeaseGrantRevoke(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(20)
 				require.NoError(t, err)
 

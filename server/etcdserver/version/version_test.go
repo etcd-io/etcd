@@ -28,87 +28,83 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 )
 
-var (
-	V3_7 = semver.Version{Major: 3, Minor: 7}
-)
-
 func TestUpgradeSingleNode(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	c := newCluster(lg, 1, V3_6)
+	c := newCluster(lg, 1, version.V3_6)
 	c.StepMonitors()
-	assert.Equal(t, newCluster(lg, 1, V3_6), c)
+	assert.Equal(t, newCluster(lg, 1, version.V3_6), c)
 
-	c.ReplaceMemberBinary(0, V3_7)
+	c.ReplaceMemberBinary(0, version.V3_7)
 	c.StepMonitors()
 	c.StepMonitors()
 
-	assert.Equal(t, newCluster(lg, 1, V3_7), c)
+	assert.Equal(t, newCluster(lg, 1, version.V3_7), c)
 }
 
 func TestUpgradeThreeNodes(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	c := newCluster(lg, 3, V3_6)
+	c := newCluster(lg, 3, version.V3_6)
 	c.StepMonitors()
-	assert.Equal(t, newCluster(lg, 3, V3_6), c)
+	assert.Equal(t, newCluster(lg, 3, version.V3_6), c)
 
-	c.ReplaceMemberBinary(0, V3_7)
+	c.ReplaceMemberBinary(0, version.V3_7)
 	c.StepMonitors()
-	c.ReplaceMemberBinary(1, V3_7)
+	c.ReplaceMemberBinary(1, version.V3_7)
 	c.StepMonitors()
-	c.ReplaceMemberBinary(2, V3_7)
+	c.ReplaceMemberBinary(2, version.V3_7)
 	c.StepMonitors()
 	c.StepMonitors()
 
-	assert.Equal(t, newCluster(lg, 3, V3_7), c)
+	assert.Equal(t, newCluster(lg, 3, version.V3_7), c)
 }
 
 func TestDowngradeSingleNode(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	c := newCluster(lg, 1, V3_6)
+	c := newCluster(lg, 1, version.V3_6)
 	c.StepMonitors()
-	assert.Equal(t, newCluster(lg, 1, V3_6), c)
+	assert.Equal(t, newCluster(lg, 1, version.V3_6), c)
 
-	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &V3_5))
+	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
 	c.StepMonitors()
-	assert.Equal(t, V3_5, c.clusterVersion)
+	assert.Equal(t, version.V3_5, c.clusterVersion)
 
-	c.ReplaceMemberBinary(0, V3_5)
+	c.ReplaceMemberBinary(0, version.V3_5)
 	c.StepMonitors()
 
-	assert.Equal(t, newCluster(lg, 1, V3_5), c)
+	assert.Equal(t, newCluster(lg, 1, version.V3_5), c)
 }
 
 func TestDowngradeThreeNode(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	c := newCluster(lg, 3, V3_6)
+	c := newCluster(lg, 3, version.V3_6)
 	c.StepMonitors()
-	assert.Equal(t, newCluster(lg, 3, V3_6), c)
+	assert.Equal(t, newCluster(lg, 3, version.V3_6), c)
 
-	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &V3_5))
+	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
 	c.StepMonitors()
-	assert.Equal(t, V3_5, c.clusterVersion)
+	assert.Equal(t, version.V3_5, c.clusterVersion)
 
-	c.ReplaceMemberBinary(0, V3_5)
+	c.ReplaceMemberBinary(0, version.V3_5)
 	c.StepMonitors()
-	c.ReplaceMemberBinary(1, V3_5)
+	c.ReplaceMemberBinary(1, version.V3_5)
 	c.StepMonitors()
-	c.ReplaceMemberBinary(2, V3_5)
+	c.ReplaceMemberBinary(2, version.V3_5)
 	c.StepMonitors()
 
-	assert.Equal(t, newCluster(lg, 3, V3_5), c)
+	assert.Equal(t, newCluster(lg, 3, version.V3_5), c)
 }
 
 func TestNewerMemberCanReconnectDuringDowngrade(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	c := newCluster(lg, 3, V3_6)
+	c := newCluster(lg, 3, version.V3_6)
 	c.StepMonitors()
-	assert.Equal(t, newCluster(lg, 3, V3_6), c)
+	assert.Equal(t, newCluster(lg, 3, version.V3_6), c)
 
-	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &V3_5))
+	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
 	c.StepMonitors()
-	assert.Equal(t, V3_5, c.clusterVersion)
+	assert.Equal(t, version.V3_5, c.clusterVersion)
 
-	c.ReplaceMemberBinary(0, V3_5)
+	c.ReplaceMemberBinary(0, version.V3_5)
 	c.StepMonitors()
 
 	c.MemberCrashes(2)
@@ -116,12 +112,12 @@ func TestNewerMemberCanReconnectDuringDowngrade(t *testing.T) {
 	c.MemberReconnects(2)
 	c.StepMonitors()
 
-	c.ReplaceMemberBinary(1, V3_5)
+	c.ReplaceMemberBinary(1, version.V3_5)
 	c.StepMonitors()
-	c.ReplaceMemberBinary(2, V3_5)
+	c.ReplaceMemberBinary(2, version.V3_5)
 	c.StepMonitors()
 
-	assert.Equal(t, newCluster(lg, 3, V3_5), c)
+	assert.Equal(t, newCluster(lg, 3, version.V3_5), c)
 }
 
 func newCluster(lg *zap.Logger, memberCount int, ver semver.Version) *clusterMock {

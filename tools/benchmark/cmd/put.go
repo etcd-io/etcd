@@ -27,10 +27,10 @@ import (
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/report"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
-	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // putCmd represents the put command
@@ -86,7 +86,6 @@ func putFunc(cmd *cobra.Command, args []string) {
 	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
 	bar = pb.New(putTotal)
-	bar.Format("Bom !")
 	bar.Start()
 
 	r := newReport()

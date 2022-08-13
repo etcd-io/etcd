@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
+	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
@@ -44,8 +45,10 @@ import (
 	"github.com/soheilhy/cmux"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type serveCtx struct {
@@ -114,9 +117,14 @@ func (sctx *serveCtx) serve(
 	var gs *grpc.Server
 	defer func() {
 		if err != nil && gs != nil {
+			sctx.lg.Warn("stopping grpc server due to error", zap.Error(err))
 			gs.Stop()
+			sctx.lg.Warn("stopped grpc server due to error", zap.Error(err))
 		}
 	}()
+
+	// Make sure serversC is closed even if we prematurely exit the function.
+	defer close(sctx.serversC)
 
 	if sctx.insecure {
 		gs = v3rpc.Server(s, nil, nil, gopts...)
@@ -130,8 +138,9 @@ func (sctx *serveCtx) serve(
 
 		var gwmux *gw.ServeMux
 		if s.Cfg.EnableGRPCGateway {
-			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithInsecure()})
+			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())})
 			if err != nil {
+				sctx.lg.Error("registerGateway failed", zap.Error(err))
 				return err
 			}
 		}
@@ -141,6 +150,10 @@ func (sctx *serveCtx) serve(
 		srvhttp := &http.Server{
 			Handler:  createAccessController(sctx.lg, s, httpmux),
 			ErrorLog: logger, // do not log user error
+		}
+		if err := configureHttpServer(srvhttp, s.Cfg); err != nil {
+			sctx.lg.Error("Configure http server failed", zap.Error(err))
+			return err
 		}
 		httpl := m.Match(cmux.HTTP1())
 		go func() { errHandler(srvhttp.Serve(httpl)) }()
@@ -191,6 +204,10 @@ func (sctx *serveCtx) serve(
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
+		if err := configureHttpServer(srv, s.Cfg); err != nil {
+			sctx.lg.Error("Configure https server failed", zap.Error(err))
+			return err
+		}
 		go func() { errHandler(srv.Serve(tlsl)) }()
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
@@ -200,8 +217,14 @@ func (sctx *serveCtx) serve(
 		)
 	}
 
-	close(sctx.serversC)
 	return m.Serve()
+}
+
+func configureHttpServer(srv *http.Server, cfg config.ServerConfig) error {
+	// todo (ahrtr): should we support configuring other parameters in the future as well?
+	return http2.ConfigureServer(srv, &http2.Server{
+		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
+	})
 }
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
@@ -229,7 +252,7 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 	addr := sctx.addr
 	if network := sctx.network; network == "unix" {
 		// explicitly define unix network for gRPC socket support
-		addr = fmt.Sprintf("%s://%s", network, addr)
+		addr = fmt.Sprintf("%s:%s", network, addr)
 	}
 
 	opts = append(opts, grpc.WithDefaultCallOptions([]grpc.CallOption{
@@ -238,6 +261,7 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 
 	conn, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
+		sctx.lg.Error("registerGateway failed to dial", zap.String("addr", addr), zap.Error(err))
 		return nil, err
 	}
 	gwmux := gw.NewServeMux()

@@ -75,7 +75,7 @@ func TestNewRaftLoggerFromZapCore(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	syncer := zapcore.AddSync(buf)
 	cr := zapcore.NewCore(
-		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.NewJSONEncoder(logutil.DefaultZapLoggerConfig.EncoderConfig),
 		syncer,
 		zap.NewAtomicLevelAt(zap.InfoLevel),
 	)

@@ -236,7 +236,7 @@ func (t *tokenSimple) isValidSimpleToken(ctx context.Context, token string) bool
 	}
 
 	select {
-	case <-t.indexWaiter(uint64(index)):
+	case <-t.indexWaiter(index):
 		return true
 	case <-ctx.Done():
 	}

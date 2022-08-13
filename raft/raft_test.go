@@ -1546,7 +1546,6 @@ func testRecvMsgVote(t *testing.T, msgType pb.MessageType) {
 		msgs := sm.readMessages()
 		if g := len(msgs); g != 1 {
 			t.Fatalf("#%d: len(msgs) = %d, want 1", i, g)
-			continue
 		}
 		if g := msgs[0].Type; g != voteRespMsgType(msgType) {
 			t.Errorf("#%d, m.Type = %v, want %v", i, g, voteRespMsgType(msgType))

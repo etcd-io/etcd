@@ -47,7 +47,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2http"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
@@ -353,7 +352,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 	}
 	newMembers := make([]*Member, 0)
 	for _, m := range c.Members {
-		if uint64(m.Server.ID()) != id {
+		if uint64(m.Server.MemberId()) != id {
 			newMembers = append(newMembers, m)
 		} else {
 			m.Client.Close()
@@ -364,7 +363,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 			// TODO: remove connection write timeout by selecting on http response closeNotifier
 			// blocking on https://github.com/golang/go/issues/9524
 			case <-time.After(time.Second + time.Duration(ElectionTicks)*TickDuration + time.Second + rafthttp.ConnWriteTimeout):
-				t.Fatalf("failed to remove member %s in time", m.Server.ID())
+				t.Fatalf("failed to remove member %s in time", m.Server.MemberId())
 			}
 		}
 	}
@@ -437,7 +436,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testutil.TB, membs
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
-		possibleLead[uint64(m.Server.ID())] = true
+		possibleLead[uint64(m.Server.MemberId())] = true
 	}
 	cc, err := c.ClusterClient()
 	if err != nil {
@@ -471,7 +470,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testutil.TB, membs
 	}
 
 	for i, m := range membs {
-		if uint64(m.Server.ID()) == lead {
+		if uint64(m.Server.MemberId()) == lead {
 			t.Logf("waitMembersForLeader found leader. Member: %v lead: %x", i, lead)
 			return i
 		}
@@ -522,7 +521,7 @@ func isMembersEqual(membs []*pb.Member, wmembs []*pb.Member) bool {
 	return cmp.Equal(membs, wmembs, cmpopts.IgnoreFields(pb.Member{}, "ID", "PeerURLs", "ClientURLs"))
 }
 
-func newLocalListener(t testutil.TB) net.Listener {
+func NewLocalListener(t testutil.TB) net.Listener {
 	c := atomic.AddInt32(&LocalListenCount, 1)
 	// Go 1.8+ allows only numbers in port
 	addr := fmt.Sprintf("127.0.0.1:%05d%05d", c+BasePort, os.Getpid())
@@ -620,7 +619,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	peerScheme := SchemeFromTLSInfo(mcfg.PeerTLS)
 	clientScheme := SchemeFromTLSInfo(mcfg.ClientTLS)
 
-	pln := newLocalListener(t)
+	pln := NewLocalListener(t)
 	m.PeerListeners = []net.Listener{pln}
 	m.PeerURLs, err = types.NewURLs([]string{peerScheme + "://" + pln.Addr().String()})
 	if err != nil {
@@ -628,7 +627,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	}
 	m.PeerTLSInfo = mcfg.PeerTLS
 
-	cln := newLocalListener(t)
+	cln := NewLocalListener(t)
 	m.ClientListeners = []net.Listener{cln}
 	m.ClientURLs, err = types.NewURLs([]string{clientScheme + "://" + cln.Addr().String()})
 	if err != nil {
@@ -842,7 +841,7 @@ func (m *Member) ElectionTimeout() time.Duration {
 	return time.Duration(m.Server.Cfg.ElectionTicks*int(m.Server.Cfg.TickMs)) * time.Millisecond
 }
 
-func (m *Member) ID() types.ID { return m.Server.ID() }
+func (m *Member) ID() types.ID { return m.Server.MemberId() }
 
 // NewClientV3 creates a new grpc client connection to the member
 func NewClientV3(m *Member) (*clientv3.Client, error) {
@@ -992,14 +991,15 @@ func (m *Member) Launch() error {
 		m.ServerClosers = append(m.ServerClosers, closer)
 	}
 	for _, ln := range m.ClientListeners {
+		handler := http.NewServeMux()
+		etcdhttp.HandleDebug(handler)
+		etcdhttp.HandleVersion(handler, m.Server)
+		etcdhttp.HandleMetrics(handler)
+		etcdhttp.HandleHealth(m.Logger, handler, m.Server)
 		hs := &httptest.Server{
 			Listener: ln,
 			Config: &http.Server{
-				Handler: v2http.NewClientHandler(
-					m.Logger,
-					m.Server,
-					m.ServerConfig.ReqTimeout(),
-				),
+				Handler:  handler,
 				ErrorLog: log.New(io.Discard, "net/http", 0),
 			},
 		}
@@ -1307,18 +1307,18 @@ func (m *Member) Metric(metricName string, expectLabels ...string) (string, erro
 // InjectPartition drops connections from m to others, vice versa.
 func (m *Member) InjectPartition(t testutil.TB, others ...*Member) {
 	for _, other := range others {
-		m.Server.CutPeer(other.Server.ID())
-		other.Server.CutPeer(m.Server.ID())
-		t.Logf("network partition injected between: %v <-> %v", m.Server.ID(), other.Server.ID())
+		m.Server.CutPeer(other.Server.MemberId())
+		other.Server.CutPeer(m.Server.MemberId())
+		t.Logf("network partition injected between: %v <-> %v", m.Server.MemberId(), other.Server.MemberId())
 	}
 }
 
 // RecoverPartition recovers connections from m to others, vice versa.
 func (m *Member) RecoverPartition(t testutil.TB, others ...*Member) {
 	for _, other := range others {
-		m.Server.MendPeer(other.Server.ID())
-		other.Server.MendPeer(m.Server.ID())
-		t.Logf("network partition between: %v <-> %v", m.Server.ID(), other.Server.ID())
+		m.Server.MendPeer(other.Server.MemberId())
+		other.Server.MendPeer(m.Server.MemberId())
+		t.Logf("network partition between: %v <-> %v", m.Server.MemberId(), other.Server.MemberId())
 	}
 }
 

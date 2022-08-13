@@ -3,7 +3,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/etcd-io/etcd?style=flat-square)](https://goreportcard.com/report/github.com/etcd-io/etcd)
 [![Coverage](https://codecov.io/gh/etcd-io/etcd/branch/main/graph/badge.svg)](https://codecov.io/gh/etcd-io/etcd)
 [![Tests](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml)
-[![asset-transparency](https://github.com/etcd-io/etcd/actions/workflows/asset-transparency.yaml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/asset-transparency.yaml)
 [![codeql-analysis](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml)
 [![Docs](https://img.shields.io/badge/docs-latest-green.svg)](https://etcd.io/docs)
 [![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/etcd-io/etcd)
@@ -160,7 +159,7 @@ Now it's time to dig into the full etcd API and other guides.
 
 - Mailing list: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
 - IRC: #[etcd](irc://irc.freenode.org:6667/#etcd) on freenode.org
-- Planning/Roadmap: [milestones](https://github.com/etcd-io/etcd/milestones), [roadmap](./ROADMAP.md)
+- Planning: [milestones](https://github.com/etcd-io/etcd/milestones)
 - Bugs: [issues](https://github.com/etcd-io/etcd/issues)
 
 ## Contributing
@@ -169,7 +168,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 ## Reporting bugs
 
-See [reporting bugs](https://etcd.io/docs/latest/reporting_bugs/) for details about reporting any issues.
+See [reporting bugs](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md) for details about reporting any issues.
 
 ## Reporting a security vulnerability
 
@@ -177,9 +176,9 @@ See [security disclosure and release process](security/README.md) for details on
 
 ## Issue and PR management
 
-See [issue triage guidelines](https://etcd.io/docs/current/triage/issues/) for details on how issues are managed.
+See [issue triage guidelines](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/triage_issues.md) for details on how issues are managed.
 
-See [PR management](https://etcd.io/docs/current/triage/prs/) for guidelines on how pull requests are managed.
+See [PR management](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/triage_prs.md) for guidelines on how pull requests are managed.
 
 ## etcd Emeritus Maintainers
 

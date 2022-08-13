@@ -24,11 +24,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
-var (
-	V3_5 = semver.Version{Major: 3, Minor: 5}
-	V3_6 = semver.Version{Major: 3, Minor: 6}
-)
-
 // Validate checks provided backend to confirm that schema used is supported.
 func Validate(lg *zap.Logger, tx backend.ReadTx) error {
 	tx.Lock()
@@ -108,7 +103,7 @@ func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Vers
 	if term == 0 {
 		return v, fmt.Errorf("missing term information")
 	}
-	return V3_5, nil
+	return version.V3_5, nil
 }
 
 func schemaChangesForVersion(v semver.Version, isUpgrade bool) ([]schemaChange, error) {
@@ -132,7 +127,7 @@ var (
 	// schemaChanges list changes that were introduced in a particular version.
 	// schema was introduced in v3.6 as so its changes were not tracked before.
 	schemaChanges = map[semver.Version][]schemaChange{
-		V3_6: {
+		version.V3_6: {
 			addNewField(Meta, MetaStorageVersionName, emptyStorageVersion),
 		},
 	}

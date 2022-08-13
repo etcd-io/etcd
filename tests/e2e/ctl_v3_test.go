@@ -133,6 +133,7 @@ type ctlCtx struct {
 	envMap map[string]string
 
 	dialTimeout time.Duration
+	testTimeout time.Duration
 
 	quorum      bool // if true, set up 3-node cluster and linearizable read
 	interactive bool
@@ -166,6 +167,10 @@ func withDialTimeout(timeout time.Duration) ctlOption {
 	return func(cx *ctlCtx) { cx.dialTimeout = timeout }
 }
 
+func withTestTimeout(timeout time.Duration) ctlOption {
+	return func(cx *ctlCtx) { cx.testTimeout = timeout }
+}
+
 func withQuorum() ctlOption {
 	return func(cx *ctlCtx) { cx.quorum = true }
 }
@@ -196,6 +201,14 @@ func withApiPrefix(p string) ctlOption {
 
 func withFlagByEnv() ctlOption {
 	return func(cx *ctlCtx) { cx.envMap = make(map[string]string) }
+}
+
+// This function must be called after the `withCfg`, otherwise its value
+// may be overwritten by `withCfg`.
+func withMaxConcurrentStreams(streams uint32) ctlOption {
+	return func(cx *ctlCtx) {
+		cx.cfg.MaxConcurrentStreams = streams
+	}
 }
 
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
@@ -262,10 +275,8 @@ func runCtlTest(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx
 		t.Log("---testFunc logic DONE")
 	}()
 
-	timeout := 2*cx.dialTimeout + time.Second
-	if cx.dialTimeout == 0 {
-		timeout = 30 * time.Second
-	}
+	timeout := cx.getTestTimeout()
+
 	select {
 	case <-time.After(timeout):
 		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
@@ -280,6 +291,17 @@ func runCtlTest(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx
 	if testOfflineFunc != nil {
 		testOfflineFunc(cx)
 	}
+}
+
+func (cx *ctlCtx) getTestTimeout() time.Duration {
+	timeout := cx.testTimeout
+	if timeout == 0 {
+		timeout = 2*cx.dialTimeout + time.Second
+		if cx.dialTimeout == 0 {
+			timeout = 30 * time.Second
+		}
+	}
+	return timeout
 }
 
 func (cx *ctlCtx) prefixArgs(eps []string) []string {
@@ -306,7 +328,7 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 
 	useEnv := cx.envMap != nil
 
-	cmdArgs := []string{e2e.CtlBinPath + "3"}
+	cmdArgs := []string{e2e.CtlBinPath}
 	for k, v := range fmap {
 		if useEnv {
 			ek := flags.FlagToEnv("ETCDCTL", k)

@@ -24,9 +24,9 @@ import (
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/report"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
-	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // rangeCmd represents the range command
@@ -80,7 +80,6 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	clients := mustCreateClients(totalClients, totalConns)
 
 	bar = pb.New(rangeTotal)
-	bar.Format("Bom !")
 	bar.Start()
 
 	r := newReport()

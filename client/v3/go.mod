@@ -5,16 +5,17 @@ go 1.17
 require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/prometheus/client_golang v1.12.1
-	github.com/stretchr/testify v1.7.0
+	github.com/prometheus/client_golang v1.12.2
+	github.com/stretchr/testify v1.7.2
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
-	go.uber.org/zap v1.17.0
-	google.golang.org/grpc v1.41.0
-	sigs.k8s.io/yaml v1.2.0
+	go.uber.org/zap v1.21.0
+	google.golang.org/grpc v1.47.0
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
+	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
@@ -35,7 +36,7 @@ require (
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace (

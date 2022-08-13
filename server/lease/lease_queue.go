@@ -96,7 +96,7 @@ func (mq *LeaseExpiredNotifier) Unregister() *LeaseWithTime {
 	return item
 }
 
-func (mq *LeaseExpiredNotifier) Poll() *LeaseWithTime {
+func (mq *LeaseExpiredNotifier) Peek() *LeaseWithTime {
 	if mq.Len() == 0 {
 		return nil
 	}

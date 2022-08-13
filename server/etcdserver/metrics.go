@@ -70,12 +70,6 @@ var (
 		Name:      "heartbeat_send_failures_total",
 		Help:      "The total number of leader heartbeat send failures (likely overloaded from slow disk).",
 	})
-	slowApplies = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "slow_apply_total",
-		Help:      "The total number of slow apply requests (likely overloaded from slow disk).",
-	})
 	applySnapshotInProgress = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
@@ -159,17 +153,6 @@ var (
 		Name:      "limit",
 		Help:      "The file descriptor limit.",
 	})
-	applySec = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "apply_duration_seconds",
-		Help:      "The latency distributions of v2 apply called by backend.",
-
-		// lowest bucket start of upper bound 0.0001 sec (0.1 ms) with factor 2
-		// highest bucket start of 0.0001 sec * 2^19 == 52.4288 sec
-		Buckets: prometheus.ExponentialBuckets(0.0001, 2, 20),
-	},
-		[]string{"version", "op", "success"})
 )
 
 func init() {
@@ -177,7 +160,6 @@ func init() {
 	prometheus.MustRegister(isLeader)
 	prometheus.MustRegister(leaderChanges)
 	prometheus.MustRegister(heartbeatSendFailures)
-	prometheus.MustRegister(slowApplies)
 	prometheus.MustRegister(applySnapshotInProgress)
 	prometheus.MustRegister(proposalsCommitted)
 	prometheus.MustRegister(proposalsApplied)
@@ -194,7 +176,6 @@ func init() {
 	prometheus.MustRegister(learnerPromoteFailed)
 	prometheus.MustRegister(fdUsed)
 	prometheus.MustRegister(fdLimit)
-	prometheus.MustRegister(applySec)
 
 	currentVersion.With(prometheus.Labels{
 		"server_version": version.Version,

@@ -28,9 +28,9 @@ import (
 	"go.etcd.io/etcd/pkg/v3/report"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
-	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // stmCmd represents the STM benchmark command
@@ -108,7 +108,6 @@ func stmFunc(cmd *cobra.Command, args []string) {
 	clients := mustCreateClients(totalClients, totalConns)
 
 	bar = pb.New(stmTotal)
-	bar.Format("Bom !")
 	bar.Start()
 
 	r := newReport()

@@ -20,8 +20,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
 func TestNewClientConfig(t *testing.T) {
@@ -107,11 +109,33 @@ func TestNewClientConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "insecure transport and skip TLS verification",
+			spec: ConfigSpec{
+				Endpoints:        []string{"http://192.168.0.13:2379"},
+				DialTimeout:      1 * time.Second,
+				KeepAliveTime:    3 * time.Second,
+				KeepAliveTimeout: 5 * time.Second,
+				Secure: &SecureConfig{
+					InsecureTransport:  true,
+					InsecureSkipVerify: true,
+				},
+			},
+			expectedConf: Config{
+				Endpoints:            []string{"http://192.168.0.13:2379"},
+				DialTimeout:          1 * time.Second,
+				DialKeepAliveTime:    3 * time.Second,
+				DialKeepAliveTimeout: 5 * time.Second,
+				TLS: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			lg, _ := zap.NewProduction()
+			lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 
 			cfg, err := NewClientConfig(&tc.spec, lg)
 			if err != nil {

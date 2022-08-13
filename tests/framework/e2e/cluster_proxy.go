@@ -32,8 +32,9 @@ import (
 
 type proxyEtcdProcess struct {
 	etcdProc EtcdProcess
-	proxyV2  *proxyV2Proc
-	proxyV3  *proxyV3Proc
+	// TODO(ahrtr): We need to remove `proxyV2` and v2discovery when the v2client is removed.
+	proxyV2 *proxyV2Proc
+	proxyV3 *proxyV3Proc
 }
 
 func NewEtcdProcess(cfg *EtcdServerProcessConfig) (EtcdProcess, error) {
@@ -65,9 +66,6 @@ func (p *proxyEtcdProcess) Start() error {
 	if err := p.etcdProc.Start(); err != nil {
 		return err
 	}
-	if err := p.proxyV2.Start(); err != nil {
-		return err
-	}
 	return p.proxyV3.Start()
 }
 
@@ -75,17 +73,11 @@ func (p *proxyEtcdProcess) Restart() error {
 	if err := p.etcdProc.Restart(); err != nil {
 		return err
 	}
-	if err := p.proxyV2.Restart(); err != nil {
-		return err
-	}
 	return p.proxyV3.Restart()
 }
 
 func (p *proxyEtcdProcess) Stop() error {
-	err := p.proxyV2.Stop()
-	if v3err := p.proxyV3.Stop(); err == nil {
-		err = v3err
-	}
+	err := p.proxyV3.Stop()
 	if eerr := p.etcdProc.Stop(); eerr != nil && err == nil {
 		// fails on go-grpc issue #1384
 		if !strings.Contains(eerr.Error(), "exit status 2") {
@@ -96,10 +88,7 @@ func (p *proxyEtcdProcess) Stop() error {
 }
 
 func (p *proxyEtcdProcess) Close() error {
-	err := p.proxyV2.Close()
-	if v3err := p.proxyV3.Close(); err == nil {
-		err = v3err
-	}
+	err := p.proxyV3.Close()
 	if eerr := p.etcdProc.Close(); eerr != nil && err == nil {
 		// fails on go-grpc issue #1384
 		if !strings.Contains(eerr.Error(), "exit status 2") {
@@ -110,7 +99,6 @@ func (p *proxyEtcdProcess) Close() error {
 }
 
 func (p *proxyEtcdProcess) WithStopSignal(sig os.Signal) os.Signal {
-	p.proxyV2.WithStopSignal(sig)
 	p.proxyV3.WithStopSignal(sig)
 	return p.etcdProc.WithStopSignal(sig)
 }
@@ -210,31 +198,6 @@ func newProxyV2Proc(cfg *EtcdServerProcessConfig) *proxyV2Proc {
 	}
 }
 
-func (v2p *proxyV2Proc) Start() error {
-	os.RemoveAll(v2p.dataDir)
-	if err := v2p.start(); err != nil {
-		return err
-	}
-	// The full line we are expecting in the logs:
-	// "caller":"httpproxy/director.go:65","msg":"endpoints found","endpoints":["http://localhost:20000"]}
-	return v2p.waitReady("endpoints found")
-}
-
-func (v2p *proxyV2Proc) Restart() error {
-	if err := v2p.Stop(); err != nil {
-		return err
-	}
-	return v2p.Start()
-}
-
-func (v2p *proxyV2Proc) Stop() error {
-	if err := v2p.proxyProc.Stop(); err != nil {
-		return err
-	}
-	// v2 proxy caches members; avoid reuse of directory
-	return os.RemoveAll(v2p.dataDir)
-}
-
 type proxyV3Proc struct {
 	proxyProc
 }
@@ -275,7 +238,8 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 		default:
 			tlsArgs = append(tlsArgs, cfg.TlsArgs[i])
 		}
-
+	}
+	if len(cfg.TlsArgs) > 0 {
 		// Configure certificates for connection proxy ---> server.
 		// This certificate must NOT have CN set.
 		tlsArgs = append(tlsArgs,
@@ -284,6 +248,7 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 			"--cacert", path.Join(FixturesDir, "ca.crt"),
 			"--client-crl-file", path.Join(FixturesDir, "revoke.crl"))
 	}
+
 	return &proxyV3Proc{
 		proxyProc{
 			lg:       cfg.lg,

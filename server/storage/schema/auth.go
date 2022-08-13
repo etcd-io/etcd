@@ -111,6 +111,9 @@ func (atx *authBatchTx) Lock() {
 
 func (atx *authBatchTx) Unlock() {
 	atx.tx.Unlock()
+	// Calling Commit() for defensive purpose. If the number of pending writes doesn't exceed batchLimit,
+	// ReadTx can miss some writes issued by its predecessor BatchTx.
+	atx.tx.Commit()
 }
 
 func (atx *authReadTx) UnsafeReadAuthEnabled() bool {

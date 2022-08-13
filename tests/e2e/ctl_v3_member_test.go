@@ -28,18 +28,6 @@ import (
 
 func TestCtlV3MemberList(t *testing.T)        { testCtl(t, memberListTest) }
 func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest) }
-func TestCtlV3MemberListNoTLS(t *testing.T) {
-	testCtl(t, memberListTest, withCfg(*e2e.NewConfigNoTLS()))
-}
-func TestCtlV3MemberListClientTLS(t *testing.T) {
-	testCtl(t, memberListTest, withCfg(*e2e.NewConfigClientTLS()))
-}
-func TestCtlV3MemberListClientAutoTLS(t *testing.T) {
-	testCtl(t, memberListTest, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3MemberListPeerTLS(t *testing.T) {
-	testCtl(t, memberListTest, withCfg(*e2e.NewConfigPeerTLS()))
-}
 func TestCtlV3MemberRemove(t *testing.T) {
 	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig())
 }

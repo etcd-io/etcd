@@ -2,12 +2,7 @@
 
 Previous change logs can be found at [CHANGELOG-3.x](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.x.md).
 
-
-The minimum recommended etcd versions to run in **production** are 3.2.28+, 3.3.18+, and 3.4.2+.
-
-
 <hr>
-
 
 ## v4.0.0 (TBD)
 
@@ -18,10 +13,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v4.0.0) and 
 ### Breaking Changes
 
 - [Secure etcd by default](https://github.com/etcd-io/etcd/issues/9475)?
-- Change `/health` endpoint output.
-  - Previously, `{"health":"true"}`.
-  - Now, `{"health":true}`.
-  - Breaks [Kubernetes `kubectl get componentstatuses` command](https://github.com/kubernetes/kubernetes/issues/58240).
 - Deprecate [`etcd --proxy*`](TODO) flags; **no more v2 proxy**.
 - Deprecate [v2 storage backend](https://github.com/etcd-io/etcd/issues/9232); **no more v2 store**.
   - v2 API is still supported via [v2 emulation](TODO).

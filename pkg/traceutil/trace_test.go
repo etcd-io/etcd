@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 )
 
 func TestGet(t *testing.T) {
@@ -204,7 +204,7 @@ func TestLog(t *testing.T) {
 			logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-%d", time.Now().UnixNano()))
 			defer os.RemoveAll(logPath)
 
-			lcfg := zap.NewProductionConfig()
+			lcfg := logutil.DefaultZapLoggerConfig
 			lcfg.OutputPaths = []string{logPath}
 			lcfg.ErrorOutputPaths = []string{logPath}
 			lg, _ := lcfg.Build()
@@ -285,7 +285,7 @@ func TestLogIfLong(t *testing.T) {
 			logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-%d", time.Now().UnixNano()))
 			defer os.RemoveAll(logPath)
 
-			lcfg := zap.NewProductionConfig()
+			lcfg := logutil.DefaultZapLoggerConfig
 			lcfg.OutputPaths = []string{logPath}
 			lcfg.ErrorOutputPaths = []string{logPath}
 			lg, _ := lcfg.Build()

@@ -211,9 +211,9 @@
             },
           },
           {
-            alert: 'etcdBackendQuotaLowSpace',
+            alert: 'etcdDatabaseQuotaLowSpace',
             expr: |||
-              (etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100 > 95
+              (last_over_time(etcd_mvcc_db_total_size_in_bytes[5m]) / last_over_time(etcd_server_quota_backend_bytes[5m]))*100 > 95
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -227,15 +227,30 @@
           {
             alert: 'etcdExcessiveDatabaseGrowth',
             expr: |||
-              increase(((etcd_mvcc_db_total_size_in_bytes/etcd_server_quota_backend_bytes)*100)[240m:1m]) > 50
+              predict_linear(etcd_mvcc_db_total_size_in_bytes[4h], 4*60*60) > etcd_server_quota_backend_bytes
             ||| % $._config,
             'for': '10m',
             labels: {
               severity: 'warning',
             },
             annotations: {
-              description: 'etcd cluster "{{ $labels.%s }}": Observed surge in etcd writes leading to 50%% increase in database size over the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.' % $._config.clusterLabel,
+              description: 'etcd cluster "{{ $labels.%s }}": Predicting running out of disk space in the next four hours, based on write observations within the past four hours on etcd instance {{ $labels.instance }}, please check as it might be disruptive.' % $._config.clusterLabel,
               summary: 'etcd cluster database growing very fast.',
+            },
+          },
+          {
+            alert: 'etcdDatabaseHighFragmentationRatio',
+            expr: |||
+              (last_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[5m]) / last_over_time(etcd_mvcc_db_total_size_in_bytes[5m])) < 0.5
+            ||| % $._config,
+            'for': '10m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              description: 'etcd cluster "{{ $labels.%s }}": database size in use on instance {{ $labels.instance }} is {{ $value | humanizePercentage }} of the actual allocated disk space, please run defragmentation (e.g. etcdctl defrag) to retrieve the unused fragmented disk space.' % $._config.clusterLabel,
+              summary: 'etcd database size in use is less than 50% of the actual allocated storage.',
+              runbook_url: 'https://etcd.io/docs/v3.5/op-guide/maintenance/#defragmentation',
             },
           },
         ],

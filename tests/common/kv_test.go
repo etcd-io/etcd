@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -26,44 +27,21 @@ import (
 
 func TestKVPut(t *testing.T) {
 	testRunner.BeforeTest(t)
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				key, value := "foo", "bar"
 
 				if err := cc.Put(key, value, config.PutOptions{}); err != nil {
 					t.Fatalf("count not put key %q, err: %s", key, err)
 				}
-				resp, err := cc.Get(key, config.GetOptions{Serializable: true})
+				resp, err := cc.Get(key, config.GetOptions{})
 				if err != nil {
 					t.Fatalf("count not get key %q, err: %s", key, err)
 				}
@@ -83,38 +61,15 @@ func TestKVPut(t *testing.T) {
 
 func TestKVGet(t *testing.T) {
 	testRunner.BeforeTest(t)
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
 
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				var (
 					kvs          = []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
 					wantKvs      = []string{"a", "b", "c", "foo", "foo/abc", "fop"}
@@ -166,37 +121,14 @@ func TestKVGet(t *testing.T) {
 
 func TestKVDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
-	tcs := []struct {
-		name   string
-		config config.ClusterConfig
-	}{
-		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
-		},
-		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
-		},
-	}
-	for _, tc := range tcs {
+	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
 			cc := clus.Client()
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				kvs := []string{"a", "b", "c", "c/abc", "d"}
 				tests := []struct {
 					deleteKey string
@@ -287,14 +219,16 @@ func TestKVGetNoQuorum(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3})
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 			defer clus.Close()
 
 			clus.Members()[0].Stop()
 			clus.Members()[1].Stop()
 
 			cc := clus.Members()[2].Client()
-			testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				key := "foo"
 				_, err := cc.Get(key, tc.options)
 				gotError := err != nil

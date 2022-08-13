@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -45,25 +46,25 @@ func TestEtctlutlMigrate(t *testing.T) {
 			name:                 "Invalid target version string",
 			targetVersion:        "abc",
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "abc"`,
-			expectStorageVersion: &schema.V3_6,
+			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Invalid target version",
 			targetVersion:        "3.a",
 			expectLogsSubString:  `Error: failed to parse target version: strconv.ParseInt: parsing "a": invalid syntax`,
-			expectStorageVersion: &schema.V3_6,
+			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Target with only major version is invalid",
 			targetVersion:        "3",
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "3"`,
-			expectStorageVersion: &schema.V3_6,
+			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Target with patch version is invalid",
 			targetVersion:        "3.6.0",
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "3.6.0"`,
-			expectStorageVersion: &schema.V3_6,
+			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                "Migrate v3.5 to v3.5 is no-op",
@@ -75,19 +76,19 @@ func TestEtctlutlMigrate(t *testing.T) {
 			name:                 "Upgrade v3.5 to v3.6 should work",
 			binary:               lastReleaseBinary,
 			targetVersion:        "3.6",
-			expectStorageVersion: &schema.V3_6,
+			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Migrate v3.6 to v3.6 is no-op",
 			targetVersion:        "3.6",
 			expectLogsSubString:  "storage version up-to-date\t" + `{"storage-version": "3.6"}`,
-			expectStorageVersion: &schema.V3_6,
+			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Downgrade v3.6 to v3.5 should fail until it's implemented",
 			targetVersion:        "3.5",
 			expectLogsSubString:  "cannot downgrade storage, WAL contains newer entries",
-			expectStorageVersion: &schema.V3_6,
+			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                "Downgrade v3.6 to v3.5 with force should work",

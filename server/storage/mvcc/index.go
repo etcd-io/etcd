@@ -15,7 +15,6 @@
 package mvcc
 
 import (
-	"sort"
 	"sync"
 
 	"github.com/google/btree"
@@ -29,7 +28,6 @@ type index interface {
 	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev revision)
 	Tombstone(key []byte, rev revision) error
-	RangeSince(key, end []byte, rev int64) []revision
 	Compact(rev int64) map[revision]struct{}
 	Keep(rev int64) map[revision]struct{}
 	Equal(b index) bool
@@ -67,9 +65,13 @@ func (ti *treeIndex) Put(key []byte, rev revision) {
 }
 
 func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
-	keyi := &keyIndex{key: key}
 	ti.RLock()
 	defer ti.RUnlock()
+	return ti.unsafeGet(key, atRev)
+}
+
+func (ti *treeIndex) unsafeGet(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
+	keyi := &keyIndex{key: key}
 	if keyi = ti.keyIndex(keyi); keyi == nil {
 		return revision{}, revision{}, 0, ErrRevisionNotFound
 	}
@@ -89,11 +91,8 @@ func (ti *treeIndex) keyIndex(keyi *keyIndex) *keyIndex {
 	return nil
 }
 
-func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex) bool) {
+func (ti *treeIndex) unsafeVisit(key, end []byte, f func(ki *keyIndex) bool) {
 	keyi, endi := &keyIndex{key: key}, &keyIndex{key: end}
-
-	ti.RLock()
-	defer ti.RUnlock()
 
 	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
 		if len(endi.key) > 0 && !item.Less(endi) {
@@ -106,15 +105,21 @@ func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex) bool) {
 	})
 }
 
+// Revisions returns limited number of revisions from key(included) to end(excluded)
+// at the given rev. The returned slice is sorted in the order of key. There is no limit if limit <= 0.
+// The second return parameter isn't capped by the limit and reflects the total number of revisions.
 func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []revision, total int) {
+	ti.RLock()
+	defer ti.RUnlock()
+
 	if end == nil {
-		rev, _, _, err := ti.Get(key, atRev)
+		rev, _, _, err := ti.unsafeGet(key, atRev)
 		if err != nil {
 			return nil, 0
 		}
 		return []revision{rev}, 1
 	}
-	ti.visit(key, end, func(ki *keyIndex) bool {
+	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			if limit <= 0 || len(revs) < limit {
 				revs = append(revs, rev)
@@ -126,16 +131,21 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []
 	return revs, total
 }
 
+// CountRevisions returns the number of revisions
+// from key(included) to end(excluded) at the given rev.
 func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
+	ti.RLock()
+	defer ti.RUnlock()
+
 	if end == nil {
-		_, _, _, err := ti.Get(key, atRev)
+		_, _, _, err := ti.unsafeGet(key, atRev)
 		if err != nil {
 			return 0
 		}
 		return 1
 	}
 	total := 0
-	ti.visit(key, end, func(ki *keyIndex) bool {
+	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
 		if _, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			total++
 		}
@@ -145,14 +155,17 @@ func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
 }
 
 func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []revision) {
+	ti.RLock()
+	defer ti.RUnlock()
+
 	if end == nil {
-		rev, _, _, err := ti.Get(key, atRev)
+		rev, _, _, err := ti.unsafeGet(key, atRev)
 		if err != nil {
 			return nil, nil
 		}
 		return [][]byte{key}, []revision{rev}
 	}
-	ti.visit(key, end, func(ki *keyIndex) bool {
+	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			revs = append(revs, rev)
 			keys = append(keys, ki.key)
@@ -174,39 +187,6 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 
 	ki := item.(*keyIndex)
 	return ki.tombstone(ti.lg, rev.main, rev.sub)
-}
-
-// RangeSince returns all revisions from key(including) to end(excluding)
-// at or after the given rev. The returned slice is sorted in the order
-// of revision.
-func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
-	keyi := &keyIndex{key: key}
-
-	ti.RLock()
-	defer ti.RUnlock()
-
-	if end == nil {
-		item := ti.tree.Get(keyi)
-		if item == nil {
-			return nil
-		}
-		keyi = item.(*keyIndex)
-		return keyi.since(ti.lg, rev)
-	}
-
-	endi := &keyIndex{key: end}
-	var revs []revision
-	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
-		if len(endi.key) > 0 && !item.Less(endi) {
-			return false
-		}
-		curKeyi := item.(*keyIndex)
-		revs = append(revs, curKeyi.since(ti.lg, rev)...)
-		return true
-	})
-	sort.Sort(revisions(revs))
-
-	return revs
 }
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {

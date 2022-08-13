@@ -74,6 +74,7 @@ func (s *fakeServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 	return nil, fmt.Errorf("PromoteMember not implemented in fakeServer")
 }
 func (s *fakeServer) ClusterVersion() *semver.Version      { return nil }
+func (s *fakeServer) StorageVersion() *semver.Version      { return nil }
 func (s *fakeServer) Cluster() api.Cluster                 { return s.cluster }
 func (s *fakeServer) Alarms() []*pb.AlarmMember            { return s.alarms }
 func (s *fakeServer) LeaderChangedNotify() <-chan struct{} { return nil }

@@ -55,7 +55,7 @@ main() {
   RELEASE_VERSION="v${VERSION}"
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
   BRANCH=${BRANCH:-"release-${MINOR_VERSION}"}
-  REPOSITORY=${REPOSITORY:-"git@github.com:etcd-io/etcd.git"}
+  REPOSITORY=${REPOSITORY:-"https://github.com/etcd-io/etcd.git"}
 
   log_warning "DRY_RUN=${DRY_RUN}"
   log_callout "RELEASE_VERSION=${RELEASE_VERSION}"
@@ -102,10 +102,10 @@ main() {
 
   # Check go version.
   local go_version current_go_version
-  go_version="go$(run_go_tool "github.com/mikefarah/yq/v3" read .github/workflows/build.yaml "jobs.build.steps[1].with.go-version")"
+  go_version="go$(grep go-version .github/workflows/build.yaml | awk '{print $2}' | tr -d '"')"
   current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
-    log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .travis.yml)."
+    log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .github/workflows/build.yaml)."
     exit 1
   fi
 
@@ -148,7 +148,7 @@ main() {
     fi
 
     # Push the version change if it's not already been pushed.
-    if [ "$(git rev-list --count "origin/${BRANCH}..${BRANCH}")" -gt 0 ]; then
+    if [ "$DRY_RUN" != "true" ] && [ "$(git rev-list --count "origin/${BRANCH}..${BRANCH}")" -gt 0 ]; then
       read -p "Push version bump up to ${VERSION} to '$(git remote get-url origin)' [y/N]? " -r confirm
       [[ "${confirm,,}" == "y" ]] || exit 1
       maybe_run git push
@@ -162,14 +162,6 @@ main() {
       REMOTE_REPO="origin" push_mod_tags_cmd
     fi
 
-    # Verify the latest commit has the version tag
-    # shellcheck disable=SC2155
-    local tag="$(git describe --exact-match HEAD)"
-    if [ "${tag}" != "${RELEASE_VERSION}" ]; then
-      log_error "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
-      exit 1
-    fi
-
     # Verify the version tag is on the right branch
     # shellcheck disable=SC2155
     local branch=$(git for-each-ref --contains "${RELEASE_VERSION}" --format="%(refname)" 'refs/heads' | cut -d '/' -f 3)
@@ -179,18 +171,29 @@ main() {
     fi
   fi
 
+  # Verify the latest commit has the version tag
+  # shellcheck disable=SC2155
+  local tag="$(git describe --exact-match HEAD)"
+  if [ "${tag}" != "${RELEASE_VERSION}" ]; then
+    log_error "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
+    exit 1
+  fi
+
+  # Verify the clean working tree
+  # shellcheck disable=SC2155
+  local diff="$(git diff HEAD --stat)"
+  if [[ "${diff}" != '' ]]; then
+    log_error "Error: Expected clean working tree, but 'git diff --stat' reported: ${diff}"
+    exit 1
+  fi
+
   # Build release.
   # TODO: check the release directory for all required build artifacts.
   if [ -d release ]; then
     log_warning "Skipping release build step. /release directory already exists."
   else
     log_callout "Building release..."
-    if ${DRY_RUN}; then
-      log_warning "In DRY_RUN mode we clone the current release directory (as there was no push)"
-      REPOSITORY=$(pwd) ./scripts/build-release.sh "${RELEASE_VERSION}"
-    else
-      REPOSITORY=${REPOSITORY} ./scripts/build-release.sh "${RELEASE_VERSION}"
-    fi
+    REPOSITORY=$(pwd) ./scripts/build-release.sh "${RELEASE_VERSION}"
   fi
 
   # Sanity checks.
@@ -267,6 +270,9 @@ main() {
 
   # Check image versions
   for IMAGE in "quay.io/coreos/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"; do
+    if [ "${DRY_RUN}" == "true" ] || [ "${NO_DOCKER_PUSH}" == 1 ]; then
+      IMAGE="${IMAGE}-amd64"
+    fi
     # shellcheck disable=SC2155
     local image_version=$(docker run --rm "${IMAGE}" etcd --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
     if [ "${image_version}" != "${VERSION}" ]; then
@@ -278,7 +284,11 @@ main() {
   # Check gsutil binary versions
   # shellcheck disable=SC2155
   local BINARY_TGZ="etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64.tar.gz"
-  gsutil cp "gs://etcd/${RELEASE_VERSION}/${BINARY_TGZ}" downloads
+  if [ "${DRY_RUN}" == "true" ] || [ "${NO_UPLOAD}" == 1 ]; then
+    cp "./release/${BINARY_TGZ}" downloads
+  else
+    gsutil cp "gs://etcd/${RELEASE_VERSION}/${BINARY_TGZ}" downloads
+  fi
   tar -zx -C downloads -f "downloads/${BINARY_TGZ}"
   # shellcheck disable=SC2155
   local binary_version=$("./downloads/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')

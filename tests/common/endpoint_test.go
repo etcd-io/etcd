@@ -15,6 +15,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -24,9 +25,11 @@ import (
 
 func TestEndpointStatus(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := clus.Client().Status()
 		if err != nil {
 			t.Fatalf("get endpoint status error: %v", err)
@@ -36,9 +39,11 @@ func TestEndpointStatus(t *testing.T) {
 
 func TestEndpointHashKV(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := clus.Client().HashKV(0)
 		if err != nil {
 			t.Fatalf("get endpoint hashkv error: %v", err)
@@ -48,9 +53,11 @@ func TestEndpointHashKV(t *testing.T) {
 
 func TestEndpointHealth(t *testing.T) {
 	testRunner.BeforeTest(t)
-	clus := testRunner.NewCluster(t, config.ClusterConfig{ClusterSize: 3})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
-	testutils.ExecuteWithTimeout(t, 10*time.Second, func() {
+	testutils.ExecuteUntil(ctx, t, func() {
 		if err := clus.Client().Health(); err != nil {
 			t.Fatalf("get endpoint health error: %v", err)
 		}

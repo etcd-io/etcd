@@ -40,20 +40,20 @@ type CURLReq struct {
 
 // CURLPrefixArgs builds the beginning of a curl command for a given key
 // addressed to a random URL in the given cluster.
-func CURLPrefixArgs(clus *EtcdProcessCluster, method string, req CURLReq) []string {
+func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method string, req CURLReq) []string {
 	var (
 		cmdArgs = []string{"curl"}
-		acurl   = clus.Procs[rand.Intn(clus.Cfg.ClusterSize)].Config().Acurl
+		acurl   = member.Config().Acurl
 	)
 	if req.MetricsURLScheme != "https" {
 		if req.IsTLS {
-			if clus.Cfg.ClientTLS != ClientTLSAndNonTLS {
+			if cfg.ClientTLS != ClientTLSAndNonTLS {
 				panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
 			}
 			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
-			acurl = ToTLS(clus.Procs[rand.Intn(clus.Cfg.ClusterSize)].Config().Acurl)
-		} else if clus.Cfg.ClientTLS == ClientTLS {
-			if !clus.Cfg.NoCN {
+			acurl = ToTLS(member.Config().Acurl)
+		} else if cfg.ClientTLS == ClientTLS {
+			if !cfg.NoCN {
 				cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
 			} else {
 				cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath3, "--key", PrivateKeyPath3)
@@ -61,7 +61,7 @@ func CURLPrefixArgs(clus *EtcdProcessCluster, method string, req CURLReq) []stri
 		}
 	}
 	if req.MetricsURLScheme != "" {
-		acurl = clus.Procs[rand.Intn(clus.Cfg.ClusterSize)].EndpointsMetrics()[0]
+		acurl = member.EndpointsMetrics()[0]
 	}
 	ep := acurl + req.Endpoint
 
@@ -94,13 +94,13 @@ func CURLPrefixArgs(clus *EtcdProcessCluster, method string, req CURLReq) []stri
 }
 
 func CURLPost(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgs(clus, "POST", req), req.Expected)
+	return SpawnWithExpect(CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", req), req.Expected)
 }
 
 func CURLPut(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgs(clus, "PUT", req), req.Expected)
+	return SpawnWithExpect(CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "PUT", req), req.Expected)
 }
 
 func CURLGet(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgs(clus, "GET", req), req.Expected)
+	return SpawnWithExpect(CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "GET", req), req.Expected)
 }

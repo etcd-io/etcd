@@ -42,8 +42,9 @@ below.
 Contributors who are interested in becoming a maintainer, if performing these
 responsibilities, should discuss their interest with the existing maintainers. New
 maintainers must be nominated by an existing maintainer and must be elected by a
-supermajority of maintainers. Likewise, maintainers can be removed by a supermajority
-of the maintainers and moved to emeritus status.
+supermajority of maintainers with a fallback on lazy consensus after three business weeks
+inactive voting period and as long as two maintainers are on board. Maintainers can be
+removed by a supermajority of the maintainers and moved to emeritus status.
 
 Life priorities, interests, and passions can change. If a maintainer needs to step
 down, inform other maintainers about this intention, and if possible, help find someone
@@ -57,8 +58,10 @@ file.
 reviewing the code contribution from other contributors. Their LGTM counts towards
 merging a code change into the project. A reviewer is generally on the ladder towards
 maintainership. New reviewers must be nominated by an existing maintainer and must be
-elected by a supermajority of maintainers. Likewise, reviewers can be removed by a
-supermajority of the  maintainers or can resign by notifying the maintainers.
+elected by a supermajority of maintainers with a fallback on lazy consensus after three
+business weeks inactive voting period and as long as two maintainers are on board.
+Reviewers can be removed by a supermajority of the  maintainers or can resign by notifying
+the maintainers.
 
 ## Decision making process
 
@@ -73,7 +76,8 @@ worked out between the persons involved. However, any technical dispute that has
 reached an impasse with a subset of the community, any contributor may open a GitHub
 issue or PR or send an email to `etcd-maintainers@googlegroups.com`. If the
 maintainers themselves cannot decide an issue, the issue will be resolved by a
-supermajority of the maintainers.
+supermajority of the maintainers with a fallback on lazy consensus after three business
+weeks inactive voting period and as long as two maintainers are on board.
 
 ## Changes in Governance
 

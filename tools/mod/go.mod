@@ -13,7 +13,7 @@ require (
 	github.com/gyuho/gocovmerge v0.0.0-20171205171859-50c7e6afd535
 	github.com/hexfusion/schwag v0.0.0-20211117114134-3ceb0191ccbf
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
-	github.com/mgechev/revive v1.2.0
+	github.com/mgechev/revive v1.2.1
 	github.com/mikefarah/yq/v4 v4.24.2
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	gotest.tools/gotestsum v1.7.0
@@ -23,7 +23,7 @@ require (
 )
 
 require (
-	github.com/BurntSushi/toml v1.0.0 // indirect
+	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/a8m/envsubst v1.3.0 // indirect

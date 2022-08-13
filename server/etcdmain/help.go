@@ -1,4 +1,5 @@
 // Copyright 2015 The etcd Authors
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,6 +81,8 @@ Member:
     Maximum number of operations permitted in a transaction.
   --max-request-bytes '1572864'
     Maximum client request size in bytes the server will accept.
+  --max-concurrent-streams 'math.MaxUint32'
+    Maximum concurrent streams that each client can open at a time.
   --grpc-keepalive-min-time '5s'
     Minimum duration interval that a client should wait before pinging server.
   --grpc-keepalive-interval '2h'
@@ -132,9 +135,8 @@ Clustering:
     V3 discovery: username[:password] for authentication (prompt if password is not supplied).
   --discovery-password ''
     V3 discovery: password for authentication (if this option is used, --user option shouldn't include password).
-  --discovery-fallback 'proxy'
-    Expected behavior ('exit' or 'proxy') when discovery services fails.
-    "proxy" supports v2 API only.
+  --discovery-fallback 'exit'
+    Expected behavior ('exit') when discovery services fails. Note that v2 proxy is removed.
   --discovery-proxy ''
     HTTP proxy to use for traffic to discovery service. Will be deprecated in v3.7, and be decommissioned in v3.8.
   --discovery-srv ''
@@ -238,20 +240,6 @@ Experimental distributed tracing:
     Distributed tracing instance ID, must be unique per each etcd instance.
   --experimental-distributed-tracing-sampling-rate '0'
     Number of samples to collect per million spans for distributed tracing. Disabled by default.
-
-v2 Proxy (to be deprecated in v3.6):
-  --proxy 'off'
-    Proxy mode setting ('off', 'readonly' or 'on').
-  --proxy-failure-wait 5000
-    Time (in milliseconds) an endpoint will be held in a failed state.
-  --proxy-refresh-interval 30000
-    Time (in milliseconds) of the endpoints refresh interval.
-  --proxy-dial-timeout 1000
-    Time (in milliseconds) for a dial to timeout.
-  --proxy-write-timeout 5000
-    Time (in milliseconds) for a write to timeout.
-  --proxy-read-timeout 0
-    Time (in milliseconds) for a read to timeout.
 
 Experimental feature:
   --experimental-initial-corrupt-check 'false'

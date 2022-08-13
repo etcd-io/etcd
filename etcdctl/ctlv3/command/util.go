@@ -27,7 +27,7 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"github.com/spf13/cobra"
@@ -56,7 +56,7 @@ func addHexPrefix(s string) string {
 	return string(ns)
 }
 
-func argify(s string) []string {
+func Argify(s string) []string {
 	r := regexp.MustCompile(`"(?:[^"\\]|\\.)*"|'[^']*'|[^'"\s]\S*[^'"\s]?`)
 	args := r.FindAllString(s, -1)
 	for i := range args {

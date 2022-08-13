@@ -15,17 +15,15 @@
 package backend
 
 import (
-	"os"
 	"runtime/debug"
 	"strings"
 
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.uber.org/zap"
 )
 
 const (
-	ENV_VERIFY           = "ETCD_VERIFY"
-	ENV_VERIFY_ALL_VALUE = "all"
-	ENV_VERIFY_LOCK      = "lock"
+	ENV_VERIFY_VALUE_LOCK verify.VerificationType = "lock"
 )
 
 func ValidateCalledInsideApply(lg *zap.Logger) {
@@ -56,7 +54,7 @@ func ValidateCalledInsideUnittest(lg *zap.Logger) {
 }
 
 func verifyLockEnabled() bool {
-	return os.Getenv(ENV_VERIFY) == ENV_VERIFY_ALL_VALUE || os.Getenv(ENV_VERIFY) == ENV_VERIFY_LOCK
+	return verify.IsVerificationEnabled(ENV_VERIFY_VALUE_LOCK)
 }
 
 func insideApply() bool {

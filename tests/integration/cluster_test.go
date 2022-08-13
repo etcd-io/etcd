@@ -101,7 +101,7 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 
 	// TODO: remove the last but one member
 	for i := 0; i < size-1; i++ {
-		id := c.Members[len(c.Members)-1].Server.ID()
+		id := c.Members[len(c.Members)-1].Server.MemberId()
 		// may hit second leader election on slow machines
 		if err := c.RemoveMember(t, c.Members[0].Client, uint64(id)); err != nil {
 			if strings.Contains(err.Error(), "no leader") {
@@ -179,7 +179,7 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 
 	// remove all the previous three members and add in three new members.
 	for i := 0; i < 3; i++ {
-		if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[1].Server.ID())); err != nil {
+		if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[1].Server.MemberId())); err != nil {
 			t.Fatal(err)
 		}
 		c.WaitMembersForLeader(t, c.Members)
@@ -200,7 +200,7 @@ func TestIssue2681(t *testing.T) {
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5})
 	defer c.Terminate(t)
 
-	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[4].Server.ID())); err != nil {
+	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[4].Server.MemberId())); err != nil {
 		t.Fatal(err)
 	}
 	c.WaitMembersForLeader(t, c.Members)
@@ -226,7 +226,7 @@ func testIssue2746(t *testing.T, members int) {
 		clusterMustProgress(t, c.Members)
 	}
 
-	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[members-1].Server.ID())); err != nil {
+	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[members-1].Server.MemberId())); err != nil {
 		t.Fatal(err)
 	}
 	c.WaitMembersForLeader(t, c.Members)
@@ -251,7 +251,7 @@ func TestIssue2904(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 	// the proposal is not committed because member 1 is stopped, but the
 	// proposal is appended to leader'Server raft log.
-	c.Members[0].Client.MemberRemove(ctx, uint64(c.Members[2].Server.ID()))
+	c.Members[0].Client.MemberRemove(ctx, uint64(c.Members[2].Server.MemberId()))
 	cancel()
 
 	// restart member, and expect it to send UpdateAttributes request.
@@ -381,7 +381,7 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	leader := c.WaitLeader(t)
 
 	// reject remove active member since (3,2)-(1,0) => (2,2) lacks quorum
-	err := c.RemoveMember(t, c.Members[leader].Client, uint64(c.Members[2].Server.ID()))
+	err := c.RemoveMember(t, c.Members[leader].Client, uint64(c.Members[2].Server.MemberId()))
 	if err == nil {
 		t.Fatalf("should reject quorum breaking remove: %s", err)
 	}
@@ -394,7 +394,7 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	time.Sleep(time.Duration(integration.ElectionTicks * int(integration.TickDuration)))
 
 	// permit remove dead member since (3,2) - (0,1) => (3,1) has quorum
-	if err = c.RemoveMember(t, c.Members[2].Client, uint64(c.Members[0].Server.ID())); err != nil {
+	if err = c.RemoveMember(t, c.Members[2].Client, uint64(c.Members[0].Server.MemberId())); err != nil {
 		t.Fatalf("should accept removing down member: %s", err)
 	}
 
@@ -405,7 +405,7 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	time.Sleep((3 * etcdserver.HealthInterval) / 2)
 
 	// accept remove member since (4,1)-(1,0) => (3,1) has quorum
-	if err = c.RemoveMember(t, c.Members[1].Client, uint64(c.Members[0].Server.ID())); err != nil {
+	if err = c.RemoveMember(t, c.Members[1].Client, uint64(c.Members[0].Server.MemberId())); err != nil {
 		t.Fatalf("expected to remove member, got error %v", err)
 	}
 }
@@ -429,7 +429,7 @@ func TestRestartRemoved(t *testing.T) {
 	firstMember.KeepDataDirTerminate = true
 
 	// 3. remove first member, shut down without deleting data
-	if err := c.RemoveMember(t, c.Members[1].Client, uint64(firstMember.Server.ID())); err != nil {
+	if err := c.RemoveMember(t, c.Members[1].Client, uint64(firstMember.Server.MemberId())); err != nil {
 		t.Fatalf("expected to remove member, got error %v", err)
 	}
 	c.WaitLeader(t)

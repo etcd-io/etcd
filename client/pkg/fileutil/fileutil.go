@@ -46,7 +46,7 @@ func IsDirWriteable(dir string) error {
 // does not exists. TouchDirAll also ensures the given directory is writable.
 func TouchDirAll(lg *zap.Logger, dir string) error {
 	// If path is already a directory, MkdirAll does nothing and returns nil, so,
-	// first check if dir exist with an expected permission mode.
+	// first check if dir exists with an expected permission mode.
 	if Exist(dir) {
 		err := CheckDirPermission(dir, PrivateDirMode)
 		if err != nil {

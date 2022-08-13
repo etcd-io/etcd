@@ -4,12 +4,49 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.19 (TODO)
+## v3.4.20 (2022-08-06)
+
+### Package `clientv3`
+
+- Fix [filter learners members during autosync](https://github.com/etcd-io/etcd/pull/14236).
+
+### etcd server
+- Add [`etcd --max-concurrent-streams`](https://github.com/etcd-io/etcd/pull/14251) flag to configure the max concurrent streams each client can open at a time, and defaults to math.MaxUint32.
+- Add [`etcd --experimental-enable-lease-checkpoint-persist`](https://github.com/etcd-io/etcd/pull/14253) flag to enable checkpoint persisting.
+- Fix [Lease checkpoints don't prevent to reset ttl on leader change](https://github.com/etcd-io/etcd/pull/14253), requires enabling checkpoint persisting.
+- Fix [Protect rangePermCache with a RW lock correctly](https://github.com/etcd-io/etcd/pull/14230)
+- Fix [raft: postpone MsgReadIndex until first commit in the term](https://github.com/etcd-io/etcd/pull/14258)
+- Fix [etcdserver: resend ReadIndex request on empty apply request](https://github.com/etcd-io/etcd/pull/14269)
+- Fix [remove temp files in snap dir when etcdserver starting](https://github.com/etcd-io/etcd/pull/14246)
+- Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/14177)
+- Fix [Grant lease with negative ID can possibly cause db out of sync](https://github.com/etcd-io/etcd/pull/14239)
+- Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/14254)
+
+## v3.4.19 (2022-07-12)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.4.18...v3.4.19) and [v3.4 upgrade guide](https://etcd.io/docs/latest/upgrades/upgrade_3_4/) for any breaking changes.
 
 ### etcd server
 - Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13475).
+- Fix [Defrag unsets backend options](https://github.com/etcd-io/etcd/pull/13713).
+- Fix [lease leak issue due to tokenProvider isn't enabled when restoring auth store from a snapshot](https://github.com/etcd-io/etcd/pull/13206).
+- Fix [the race condition between goroutine and channel on the same leases to be revoked](https://github.com/etcd-io/etcd/pull/14150).
+- Fix [lessor may continue to schedule checkpoint after stepping down leader role](https://github.com/etcd-io/etcd/pull/14150).
+
+### Package `clientv3`
+- Fix [a bug of not refreshing expired tokens](https://github.com/etcd-io/etcd/pull/13999).
+
+### Dependency
+- Upgrade [go.etcd.io/bbolt](https://github.com/etcd-io/bbolt/releases) from [v1.3.3](https://github.com/etcd-io/bbolt/releases/tag/v1.3.3) to [v1.3.6](https://github.com/etcd-io/bbolt/releases/tag/v1.3.6).
+
+### Security
+- Upgrade [golang.org/x/crypto](https://github.com/etcd-io/etcd/pull/14179) to v0.0.0-20220411220226-7b82a4e95df4 to address [CVE-2022-27191 ](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
+- Upgrade [gopkg.in/yaml.v2](https://github.com/etcd-io/etcd/pull/14192) to v2.4.0 to address [CVE-2019-11254](https://github.com/advisories/GHSA-wxc4-f4m6-wwqv).
+
+### Go
+- Require [Go 1.16+](https://github.com/etcd-io/etcd/pull/14136).
+- Compile with [Go 1.16+](https://go.dev/doc/devel/release#go1.16).
+- etcd uses [go modules](https://github.com/etcd-io/etcd/pull/14136) (instead of vendor dir) to track dependencies.
 
 <hr>
 

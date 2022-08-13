@@ -376,7 +376,7 @@ Prints the compacted revision.
 
 ### WATCH [options] [key or prefix] [range_end] [--] [exec-command arg1 arg2 ...]
 
-Watch watches events stream on keys or prefixes, [key or prefix, range_end) if range_end is given. The watch command runs until it encounters an error or is terminated by the user.  If range_end is given, it must be lexicographically greater than key or "\x00".
+Watch watches events stream on keys or prefixes, [key or prefix, range_end) if range_end is given. The watch command runs until it encounters an error or is terminated by the user. If range_end is given, it must be lexicographically greater than key or "\x00".
 
 RPC: Watch
 
@@ -1133,7 +1133,7 @@ Whenever a leader is elected, its proposal is given as output.
 
 ELECT returns a zero exit code only if it is terminated by a signal and can revoke its candidacy or leadership, if any.
 
-If a candidate is abnormally terminated, election rogress may be delayed by up to the default lease length of 60 seconds.
+If a candidate is abnormally terminated, election progress may be delayed by up to the default lease length of 60 seconds.
 
 ## Authentication commands
 
@@ -1504,6 +1504,26 @@ CHECK provides commands for checking properties of the etcd cluster.
 ### CHECK PERF [options]
 
 CHECK PERF checks the performance of the etcd cluster for 60 seconds. Running the `check perf` often can create a large keyspace history which can be auto compacted and defragmented using the `--auto-compact` and `--auto-defrag` options as described below.
+
+Notice that different workload models use different configurations in terms of number of clients and throughtput. Here is the configuration for each load:
+
+
+| Load | Number of clients | Number of put requests (requests/sec) |
+|---------|------|---------|
+| Small   | 50   | 10000   |
+| Medium  | 200  | 100000  |
+| Large   | 500  | 1000000 |
+| xLarge  | 1000 | 3000000 |
+
+The test checks for the following conditions:
+
+- The throughput should be at least 90% of the issued requets
+- All the requests should be done in less than 500 ms
+- The standard deviation of the requests should be less than 100 ms
+
+
+Hence, a workload model may work while another one might fail.
+
 
 RPC: CheckPerf
 

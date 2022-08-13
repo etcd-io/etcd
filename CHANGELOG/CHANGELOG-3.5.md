@@ -2,6 +2,37 @@
 
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 
+<hr>
+
+## v3.5.5 (TBD)
+
+### Package `clientv3`
+- Fix [do not overwrite authTokenBundle on dial](https://github.com/etcd-io/etcd/pull/14132).
+
+### etcd server
+- Add [`etcd --max-concurrent-streams`](https://github.com/etcd-io/etcd/pull/14219) flag to configure the max concurrent streams each client can open at a time, and defaults to math.MaxUint32.
+- Fix [lease leak issue due to tokenProvider isn't enabled when restoring auth store from a snapshot](https://github.com/etcd-io/etcd/pull/13205).
+- Fix [the race condition between goroutine and channel on the same leases to be revoked](https://github.com/etcd-io/etcd/pull/14087).
+- Fix [lessor may continue to schedule checkpoint after stepping down leader role](https://github.com/etcd-io/etcd/pull/14087).
+- Fix [Restrict the max size of each WAL entry to the remaining size of the WAL file](https://github.com/etcd-io/etcd/pull/14127).
+- Fix [Protect rangePermCache with a RW lock correctly](https://github.com/etcd-io/etcd/pull/14227)
+- Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
+
+### Other
+- [Bump golang.org/x/crypto to latest version](https://github.com/etcd-io/etcd/pull/13996) to address [CVE-2022-27191](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
+- [Bump OpenTelemetry to 1.0.1 and gRPC to 1.41.0](https://github.com/etcd-io/etcd/pull/14312).
+
+<hr>
+
+## v3.5.4 (2022-04-24)
+
+### etcd server
+- Fix [etcd panic on startup (auth enabled)](https://github.com/etcd-io/etcd/pull/13946)
+
+### package `client/pkg/v3`
+
+- [Revert the change of trimming the trailing dot from SRV.Target](https://github.com/etcd-io/etcd/pull/13950) returned by DNS lookup
+
 
 <hr>
 
@@ -14,6 +45,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/13932)
 - Fix [consistent_index coming from snapshot is overwritten by the old local value](https://github.com/etcd-io/etcd/pull/13933)
 - [Update container base image snapshot](https://github.com/etcd-io/etcd/pull/13862)
+- Fix [Defrag unsets backend options](https://github.com/etcd-io/etcd/pull/13701).
 
 ### package `client/pkg/v3`
 
@@ -231,6 +263,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcd --experimental-distributed-tracing-address`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows configuring the OpenTelemetry collector address.
 - Add [`etcd --experimental-distributed-tracing-service-name`](https://github.com/etcd-io/etcd/pull/12919) string flag which allows changing the default "etcd" service name.
 - Add [`etcd --experimental-distributed-tracing-instance-id`](https://github.com/etcd-io/etcd/pull/12919) string flag which configures an instance ID, which must be unique per etcd instance.
+- Add [`--experimental-bootstrap-defrag-threshold-megabytes`](https://github.com/etcd-io/etcd/pull/12941) which configures a threshold for the unused db size and etcdserver will automatically perform defragmentation on bootstrap when it exceeds this value. The functionality is disabled if the value is 0.
 
 ### Package `runtime`
 
@@ -291,7 +324,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Add [`etcdctl member list -w=json --hex`](https://github.com/etcd-io/etcd/pull/11812) flag to print memberListResponse in hex format json.
 - Changed [`etcdctl lock <lockname> exec-command`](https://github.com/etcd-io/etcd/pull/12829) to return exit code of exec-command.
 - [New tool: `etcdutl`](https://github.com/etcd-io/etcd/pull/12971) incorporated functionality of: `etcdctl snapshot status|restore`, `etcdctl backup`, `etcdctl defrag --data-dir ...`.
-- [ETCDCTL_API=2 `etcdctl migrate`](https://github.com/etcd-io/etcd/pull/12971) has been decomissioned. Use etcd <=v3.4 to restore v2 storage.
+- [ETCDCTL_API=3 `etcdctl migrate`](https://github.com/etcd-io/etcd/pull/12971) has been decommissioned. Use etcd <=v3.4 to restore v2 storage.
 
 ### gRPC gateway
 

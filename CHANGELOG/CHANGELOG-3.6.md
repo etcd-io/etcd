@@ -12,6 +12,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 
 - `etcd` will no longer start on data dir created by newer versions (for example etcd v3.6 will not run on v3.7+ data dir). To downgrade data dir please check out `etcdutl migrate` command.
 - `etcd` doesn't support serving client requests on the peer listen endpoints (--listen-peer-urls). See [pull/13565](https://github.com/etcd-io/etcd/pull/13565).
+- `etcdctl` will sleep(2s) in case of range delete without `--range` flag.See [pull/13747](https://github.com/etcd-io/etcd/pull/13747)
 
 ### Deprecations
 
@@ -34,8 +35,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
 - Add `migrate` command for downgrading/upgrading etcd data dir files.
 
-### package `client/pkg/v3`
-- [Trim the suffix dot from the target](https://github.com/etcd-io/etcd/pull/13712) in SRV records returned by DNS lookup
+### Package `clientv3`
+- Fix [do not overwrite authTokenBundle on dial](https://github.com/etcd-io/etcd/pull/12992).
 
 ### Package `server`
 
@@ -53,6 +54,8 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [`etcdctl make-mirror --rev`](https://github.com/etcd-io/etcd/pull/13519) flag to support incremental mirror.
 - Add [`etcd --experimental-wait-cluster-ready-timeout`](https://github.com/etcd-io/etcd/pull/13525) flag to wait for cluster to be ready before serving client requests.
 - Add [v3 discovery](https://github.com/etcd-io/etcd/pull/13635) to bootstrap a new etcd cluster.
+- Add [field `storage`](https://github.com/etcd-io/etcd/pull/13772) into the response body of endpoint `/version`.
+- Add [`etcd --max-concurrent-streams`](https://github.com/etcd-io/etcd/pull/14169) flag to configure the max concurrent streams each client can open at a time, and defaults to math.MaxUint32.
 - Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/13435)
 - Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13467).
 - Fix [Provide a better liveness probe for when etcd runs as a Kubernetes pod](https://github.com/etcd-io/etcd/pull/13399)
@@ -67,6 +70,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [Inconsistent revision and data occurs](https://github.com/etcd-io/etcd/pull/13854)
 - Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/13690)
 - Fix [consistent_index coming from snapshot is overwritten by the old local value](https://github.com/etcd-io/etcd/pull/13930)
+- Fix [etcd panic on startup (auth enabled)](https://github.com/etcd-io/etcd/pull/13942)
+- Fix [Defrag unsets backend options](https://github.com/etcd-io/etcd/pull/13679).
+- Fix [Restrict the max size of each WAL entry to the remaining size of the WAL file](https://github.com/etcd-io/etcd/pull/14122).
+- Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
 
 ### tools/benchmark
 
@@ -77,6 +84,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
 
 - Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).
+- Add [`etcd_debugging_server_alarms`](https://github.com/etcd-io/etcd/pull/14276).
 
 ### Go
 - Compile with [Go 1.17+](https://golang.org/doc/devel/release.html#go1.17)
@@ -84,5 +92,6 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 ### Other
 
 - Use Distroless as base image to make the image less vulnerable and reduce image size.
+- [Bump golang.org/x/crypto to latest version](https://github.com/etcd-io/etcd/pull/13969) to address [CVE-2022-27191](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
 
 <hr>
