@@ -563,46 +563,30 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 	if opts.Prefix {
 		args = append(args, "--prefix")
 	}
-	if opts.Interactive {
-		args = append(args, "--interactive")
-	}
 	if opts.Revision != 0 {
 		args = append(args, "--rev", fmt.Sprint(opts.Revision))
-	}
-	if len(opts.ExecCmd) > 0 {
-		args = append(args, "--")
-		args = append(args, opts.ExecCmd...)
 	}
 
 	proc, err := SpawnCmd(args, nil)
 	if err != nil {
 		return nil
 	}
-	defer proc.Stop()
-	if opts.Interactive {
-		wl := strings.Join(args, " ") + "\r"
-		if err = proc.Send(wl); err != nil {
-			return nil
-		}
-	}
 
 	ch := make(chan clientv3.WatchResponse)
 	go func() {
-		var resp clientv3.WatchResponse
-		for {
+		defer func() {
+			proc.Stop()
+		}()
+		select {
+		case <-ctx.Done():
+			close(ch)
+			return
+		default:
 			lines := proc.Lines()
 			for _, line := range lines {
-				err = json.Unmarshal([]byte(line), &resp)
-				if err != nil {
-					continue
-				}
+				var resp clientv3.WatchResponse
+				json.Unmarshal([]byte(line), &resp)
 				ch <- resp
-			}
-
-			select {
-			case <-ctx.Done():
-				close(ch)
-				return
 			}
 		}
 	}()

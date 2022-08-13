@@ -3,17 +3,15 @@ package common
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-func TestTxn(t *testing.T) {
+func TestWatch(t *testing.T) {
 	testRunner.BeforeTest(t)
 	tcs := []struct {
 		name   string
@@ -43,10 +41,13 @@ func TestTxn(t *testing.T) {
 	watchTimeout := 3 * time.Second
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus := testRunner.NewCluster(t, tc.config)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, tc.config)
+
 			defer clus.Close()
 			cc := clus.Client()
-			testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
+			testutils.ExecuteUntil(ctx, t, func() {
 				tests := []struct {
 					puts     []testutils.KV
 					watchKey string
@@ -57,7 +58,7 @@ func TestTxn(t *testing.T) {
 						puts:     []testutils.KV{{Key: "bar", Val: "revision_1"}, {Key: "bar", Val: "revision_2"}, {Key: "bar", Val: "revision_3"}},
 						watchKey: "bar",
 						opts:     config.WatchOptions{Revision: 3},
-						wanted:   []testutils.KV{{Key: "bar2", Val: "revision_2"}, {Key: "bar", Val: "revision_3"}},
+						wanted:   []testutils.KV{{Key: "bar", Val: "revision_2"}, {Key: "bar", Val: "revision_3"}},
 					},
 					{ // watch 1 key
 						puts:     []testutils.KV{{Key: "sample", Val: "value"}},
@@ -80,40 +81,49 @@ func TestTxn(t *testing.T) {
 				}
 
 				for i, tt := range tests {
-					var wg sync.WaitGroup
-					wg.Add(1)
-					errs := make(chan error, 1)
 					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
+					wch := cc.Watch(ctx, tt.watchKey, tt.opts)
+					if wch == nil {
+						t.Fatalf("failed to watch %s", tt.watchKey)
+					}
+
+					errs := make(chan error, 1)
 					go func(i int, puts []testutils.KV) {
-						defer wg.Done()
 						defer close(errs)
-						defer cancel()
 						for j := range puts {
 							if err := cc.Put(puts[j].Key, puts[j].Val, config.PutOptions{}); err != nil {
 								errs <- fmt.Errorf("can't not put key %q, err: %s", puts[j].Key, err)
 								break
 							}
-							time.Sleep(time.Second)
 						}
 						errs <- nil
+						// sleep some time for watch
+						time.Sleep(100 * time.Millisecond)
 					}(i, tt.puts)
 
 					err := <-errs
 					if err != nil {
 						t.Fatal(err)
 					}
-					wg.Wait()
 
-					wch := cc.Watch(ctx, tt.watchKey, tt.opts)
-					select {
-					case wresp, ok := <-wch:
-						if ok {
-							kvs := testutils.KeyValuesFromWatchResponse(wresp)
-							assert.Equal(t, tt.wanted, kvs)
+					var kvs []testutils.KV
+				ForLoop:
+					for {
+						select {
+						case watchResp, ok := <-wch:
+							if ok {
+								kvs = append(kvs, testutils.KeyValuesFromWatchResponse(watchResp)...)
+								if len(kvs) == len(tt.wanted) {
+									break ForLoop
+								}
+							}
+						case <-time.After(watchTimeout):
+							t.Fatal("closed watcher channel should not block")
 						}
-					case <-time.After(watchTimeout):
-						t.Fatalf("closed watcher channel should not block")
 					}
+
+					assert.Equal(t, tt.wanted, kvs)
 				}
 			})
 		})
