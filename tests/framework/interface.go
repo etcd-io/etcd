@@ -31,6 +31,7 @@ type testRunner interface {
 type Cluster interface {
 	Members() []Member
 	Client() Client
+	WaitLeader(t testing.TB) int
 	Close() error
 }
 
