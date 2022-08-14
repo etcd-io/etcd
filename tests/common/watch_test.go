@@ -38,7 +38,7 @@ func TestWatch(t *testing.T) {
 			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
 		},
 	}
-	watchTimeout := 2 * time.Second
+	watchTimeout := 1 * time.Second
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)

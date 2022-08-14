@@ -585,8 +585,28 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 				for _, line := range lines {
 					var resp clientv3.WatchResponse
 					json.Unmarshal([]byte(line), &resp)
-					if ch != nil {
-						ch <- resp
+					if resp.Canceled {
+						close(ch)
+						return
+					}
+					if len(resp.Events) > 0 {
+						// if the mod revision for the event is smaller than the current mod revision,
+						// consider it as a stale event and skip it.
+						for i, ev := range resp.Events {
+							if ev.Kv.ModRevision > curModRev {
+								curModRev = ev.Kv.ModRevision
+							} else {
+								if len(resp.Events) > 1 {
+									resp.Events = append(resp.Events[:i], resp.Events[i+1:]...)
+								} else {
+									resp.Events = nil
+								}
+							}
+						}
+
+						if len(resp.Events) > 0 {
+							ch <- resp
+						}
 					}
 				}
 			}
