@@ -55,6 +55,7 @@ import (
 	lockpb "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/server/v3/verify"
+	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
@@ -70,7 +71,6 @@ import (
 const (
 	// RequestWaitTimeout is the time duration to wait for a request to go through or detect leader loss.
 	RequestWaitTimeout = 5 * time.Second
-	TickDuration       = 10 * time.Millisecond
 	RequestTimeout     = 20 * time.Second
 
 	ClusterName  = "etcd"
@@ -363,7 +363,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 			// 1s stop delay + election timeout + 1s disk and network delay + connection write timeout
 			// TODO: remove connection write timeout by selecting on http response closeNotifier
 			// blocking on https://github.com/golang/go/issues/9524
-			case <-time.After(time.Second + time.Duration(ElectionTicks)*TickDuration + time.Second + rafthttp.ConnWriteTimeout):
+			case <-time.After(time.Second + time.Duration(ElectionTicks)*framecfg.TickDuration + time.Second + rafthttp.ConnWriteTimeout):
 				t.Fatalf("failed to remove member %s in time", m.Server.MemberId())
 			}
 		}
@@ -394,7 +394,7 @@ func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
 			if isMembersEqual(resp.Members, membs) {
 				break
 			}
-			time.Sleep(TickDuration)
+			time.Sleep(framecfg.TickDuration)
 		}
 	}
 }
@@ -445,7 +445,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 	}
 	// ensure leader is up via linearizable get
 	for {
-		ctx, cancel := context.WithTimeout(ctx, 10*TickDuration+time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 10*framecfg.TickDuration+time.Second)
 		_, err := cc.Get(ctx, "0")
 		cancel()
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
@@ -463,7 +463,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 			}
 			if lead != 0 && lead != m.Server.Lead() {
 				lead = 0
-				time.Sleep(10 * TickDuration)
+				time.Sleep(10 * framecfg.TickDuration)
 				break
 			}
 			lead = m.Server.Lead()
@@ -496,7 +496,7 @@ func (c *Cluster) WaitMembersNoLeader(membs []*Member) {
 			}
 			if m.Server.Lead() != 0 {
 				noLeader = false
-				time.Sleep(10 * TickDuration)
+				time.Sleep(10 * framecfg.TickDuration)
 				break
 			}
 		}
@@ -509,7 +509,7 @@ func (c *Cluster) waitVersion() {
 			if m.Server.ClusterVersion() != nil {
 				break
 			}
-			time.Sleep(TickDuration)
+			time.Sleep(framecfg.TickDuration)
 		}
 	}
 }
@@ -655,7 +655,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	}
 	m.ElectionTicks = ElectionTicks
 	m.InitialElectionTickAdvance = true
-	m.TickMs = uint(TickDuration / time.Millisecond)
+	m.TickMs = uint(framecfg.TickDuration / time.Millisecond)
 	m.QuotaBackendBytes = mcfg.QuotaBackendBytes
 	m.MaxTxnOps = mcfg.MaxTxnOps
 	if m.MaxTxnOps == 0 {
@@ -1079,7 +1079,7 @@ func (m *Member) RecordedRequests() []grpc_testing.RequestInfo {
 func (m *Member) WaitOK(t testutil.TB) {
 	m.WaitStarted(t)
 	for m.Server.Leader() == 0 {
-		time.Sleep(TickDuration)
+		time.Sleep(framecfg.TickDuration)
 	}
 }
 
@@ -1088,7 +1088,7 @@ func (m *Member) WaitStarted(t testutil.TB) {
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
 		_, err := m.Client.Get(ctx, "/", clientv3.WithSerializable())
 		if err != nil {
-			time.Sleep(TickDuration)
+			time.Sleep(framecfg.TickDuration)
 			continue
 		}
 		cancel()
@@ -1106,7 +1106,7 @@ func WaitClientV3(t testutil.TB, kv clientv3.KV) {
 		if err == nil {
 			return
 		}
-		time.Sleep(TickDuration)
+		time.Sleep(framecfg.TickDuration)
 	}
 	if err != nil {
 		t.Fatalf("timed out waiting for client: %v", err)
@@ -1604,7 +1604,7 @@ func (c *Cluster) waitMembersMatch(t testutil.TB) {
 			return
 		}
 
-		time.Sleep(TickDuration)
+		time.Sleep(framecfg.TickDuration)
 	}
 }
 

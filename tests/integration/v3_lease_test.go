@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 
 	"google.golang.org/grpc/codes"
@@ -391,7 +392,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 				leaderId := clus.WaitLeader(t)
 				leader := clus.Members[leaderId]
 				leader.Stop(t)
-				time.Sleep(time.Duration(3*integration.ElectionTicks) * integration.TickDuration)
+				time.Sleep(time.Duration(3*integration.ElectionTicks) * framecfg.TickDuration)
 				leader.Restart(t)
 			}
 
