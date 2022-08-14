@@ -574,19 +574,21 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 
 	ch := make(chan clientv3.WatchResponse)
 	go func() {
-		defer func() {
-			proc.Stop()
-		}()
-		select {
-		case <-ctx.Done():
-			close(ch)
-			return
-		default:
-			lines := proc.Lines()
-			for _, line := range lines {
-				var resp clientv3.WatchResponse
-				json.Unmarshal([]byte(line), &resp)
-				ch <- resp
+		defer proc.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				close(ch)
+				return
+			default:
+				lines := proc.Lines()
+				for _, line := range lines {
+					var resp clientv3.WatchResponse
+					json.Unmarshal([]byte(line), &resp)
+					if ch != nil {
+						ch <- resp
+					}
+				}
 			}
 		}
 	}()

@@ -38,7 +38,7 @@ func TestWatch(t *testing.T) {
 			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
 		},
 	}
-	watchTimeout := 3 * time.Second
+	watchTimeout := 2 * time.Second
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -81,9 +81,8 @@ func TestWatch(t *testing.T) {
 				}
 
 				for i, tt := range tests {
-					ctx, cancel := context.WithCancel(context.Background())
-					defer cancel()
-					wch := cc.Watch(ctx, tt.watchKey, tt.opts)
+					wCtx, wCancel := context.WithCancel(context.Background())
+					wch := cc.Watch(wCtx, tt.watchKey, tt.opts)
 					if wch == nil {
 						t.Fatalf("failed to watch %s", tt.watchKey)
 					}
@@ -119,10 +118,12 @@ func TestWatch(t *testing.T) {
 								}
 							}
 						case <-time.After(watchTimeout):
+							wCancel()
 							t.Fatal("closed watcher channel should not block")
 						}
 					}
 
+					wCancel()
 					assert.Equal(t, tt.wanted, kvs)
 				}
 			})
