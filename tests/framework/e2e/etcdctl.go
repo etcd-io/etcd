@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -102,6 +103,7 @@ func (ctl *EtcdctlV3) Get(key string, o config.GetOptions) (*clientv3.GetRespons
 		if err != nil {
 			return nil, err
 		}
+		defer cmd.Close()
 		_, err = cmd.Expect("Count")
 		return &resp, err
 	}
@@ -145,6 +147,7 @@ func (ctl *EtcdctlV3) Txn(compares, ifSucess, ifFail []string, o config.TxnOptio
 	if err != nil {
 		return nil, err
 	}
+	defer cmd.Close()
 	_, err = cmd.Expect("compares:")
 	if err != nil {
 		return nil, err
@@ -336,6 +339,7 @@ func (ctl *EtcdctlV3) Grant(ttl int64) (*clientv3.LeaseGrantResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cmd.Close()
 	var resp clientv3.LeaseGrantResponse
 	line, err := cmd.Expect("ID")
 	if err != nil {
@@ -355,6 +359,7 @@ func (ctl *EtcdctlV3) TimeToLive(id clientv3.LeaseID, o config.LeaseOption) (*cl
 	if err != nil {
 		return nil, err
 	}
+	defer cmd.Close()
 	var resp clientv3.LeaseTimeToLiveResponse
 	line, err := cmd.Expect("id")
 	if err != nil {
@@ -383,6 +388,7 @@ func (ctl *EtcdctlV3) LeaseList() (*clientv3.LeaseLeasesResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cmd.Close()
 	var resp clientv3.LeaseLeasesResponse
 	line, err := cmd.Expect("id")
 	if err != nil {
@@ -398,6 +404,7 @@ func (ctl *EtcdctlV3) LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKe
 	if err != nil {
 		return nil, err
 	}
+	defer cmd.Close()
 	var resp clientv3.LeaseKeepAliveResponse
 	line, err := cmd.Expect("ID")
 	if err != nil {
@@ -426,6 +433,7 @@ func (ctl *EtcdctlV3) AlarmDisarm(_ *clientv3.AlarmMember) (*clientv3.AlarmRespo
 	if err != nil {
 		return nil, err
 	}
+	defer ep.Close()
 	var resp clientv3.AlarmResponse
 	line, err := ep.Expect("alarm")
 	if err != nil {
@@ -454,6 +462,7 @@ func (ctl *EtcdctlV3) UserAdd(name, password string, opts config.UserAddOptions)
 	if err != nil {
 		return nil, err
 	}
+	defer cmd.Close()
 
 	// If no password is provided, and NoPassword isn't set, the CLI will always
 	// wait for a password, send an enter in this case for an "empty" password.
@@ -492,7 +501,7 @@ func (ctl *EtcdctlV3) UserChangePass(user, newPass string) error {
 	if err != nil {
 		return err
 	}
-
+	defer cmd.Close()
 	err = cmd.Send(newPass + "\n")
 	if err != nil {
 		return err
@@ -545,9 +554,55 @@ func (ctl *EtcdctlV3) spawnJsonCmd(output interface{}, args ...string) error {
 	if err != nil {
 		return err
 	}
+	defer cmd.Close()
 	line, err := cmd.Expect("header")
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal([]byte(line), output)
+}
+
+func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {
+	args := ctl.cmdArgs()
+	args = append(args, "watch", key)
+	if opts.RangeEnd != "" {
+		args = append(args, opts.RangeEnd)
+	}
+	args = append(args, "-w", "json")
+	if opts.Prefix {
+		args = append(args, "--prefix")
+	}
+	if opts.Revision != 0 {
+		args = append(args, "--rev", fmt.Sprint(opts.Revision))
+	}
+	proc, err := SpawnCmd(args, nil)
+	if err != nil {
+		return nil
+	}
+
+	ch := make(chan clientv3.WatchResponse)
+	go func() {
+		defer proc.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				close(ch)
+				return
+			default:
+				if line := proc.ReadLine(); line != "" {
+					var resp clientv3.WatchResponse
+					json.Unmarshal([]byte(line), &resp)
+					if resp.Canceled {
+						close(ch)
+						return
+					}
+					if len(resp.Events) > 0 {
+						ch <- resp
+					}
+				}
+			}
+		}
+	}()
+
+	return ch
 }

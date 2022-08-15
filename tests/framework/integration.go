@@ -376,3 +376,18 @@ func getOps(ss []string) ([]clientv3.Op, error) {
 func (c integrationClient) MemberList() (*clientv3.MemberListResponse, error) {
 	return c.Client.MemberList(c.ctx)
 }
+
+func (c integrationClient) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {
+	opOpts := []clientv3.OpOption{}
+	if opts.Prefix {
+		opOpts = append(opOpts, clientv3.WithPrefix())
+	}
+	if opts.Revision != 0 {
+		opOpts = append(opOpts, clientv3.WithRev(opts.Revision))
+	}
+	if opts.RangeEnd != "" {
+		opOpts = append(opOpts, clientv3.WithRange(opts.RangeEnd))
+	}
+
+	return c.Client.Watch(ctx, key, opOpts...)
+}

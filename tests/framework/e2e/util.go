@@ -58,6 +58,7 @@ func SpawnWithExpectLines(args []string, envVars map[string]string, xs ...string
 	if err != nil {
 		return nil, err
 	}
+	defer proc.Close()
 	// process until either stdout or stderr contains
 	// the expected string
 	var (

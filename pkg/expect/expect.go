@@ -40,6 +40,7 @@ type ExpectProcess struct {
 	mu    sync.Mutex // protects lines and err
 	lines []string
 	count int // increment whenever new line gets added
+	cur   int // current read position
 	err   error
 
 	// StopSignal is the signal Stop sends to the process; defaults to SIGTERM.
@@ -197,4 +198,16 @@ func (ep *ExpectProcess) Lines() []string {
 	ep.mu.Lock()
 	defer ep.mu.Unlock()
 	return ep.lines
+}
+
+// ReadLine returns line by line.
+func (ep *ExpectProcess) ReadLine() string {
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+	if ep.count > ep.cur {
+		line := ep.lines[ep.cur]
+		ep.cur++
+		return line
+	}
+	return ""
 }

@@ -15,6 +15,9 @@
 package testutils
 
 import (
+	"errors"
+	"time"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -34,4 +37,27 @@ func KeyValuesFromGetResponse(resp *clientv3.GetResponse) (kvs []KV) {
 		kvs = append(kvs, KV{Key: string(kv.Key), Val: string(kv.Value)})
 	}
 	return kvs
+}
+
+func KeyValuesFromWatchResponse(resp clientv3.WatchResponse) (kvs []KV) {
+	for _, event := range resp.Events {
+		kvs = append(kvs, KV{Key: string(event.Kv.Key), Val: string(event.Kv.Value)})
+	}
+	return kvs
+}
+
+func KeyValuesFromWatchChan(wch clientv3.WatchChan, wantedLen int, timeout time.Duration) (kvs []KV, err error) {
+	for {
+		select {
+		case watchResp, ok := <-wch:
+			if ok {
+				kvs = append(kvs, KeyValuesFromWatchResponse(watchResp)...)
+				if len(kvs) == wantedLen {
+					return kvs, nil
+				}
+			}
+		case <-time.After(timeout):
+			return nil, errors.New("closed watcher channel should not block")
+		}
+	}
 }
