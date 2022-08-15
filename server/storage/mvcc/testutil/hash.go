@@ -28,11 +28,11 @@ import (
 
 const (
 	// CompactionCycle is high prime used to test hash calculation between compactions.
-	CompactionCycle = 71
+	CompactionCycle       = 71
+	totalRevisions  int64 = 1210
 )
 
 func TestCompactionHash(ctx context.Context, t *testing.T, h CompactionHashTestCase, compactionBatchLimit int) {
-	var totalRevisions int64 = 1210
 	assert.Less(t, int64(compactionBatchLimit), totalRevisions)
 	assert.Less(t, int64(CompactionCycle*10), totalRevisions)
 	var rev int64
