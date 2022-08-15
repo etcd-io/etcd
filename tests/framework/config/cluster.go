@@ -14,12 +14,16 @@
 
 package config
 
+import "time"
+
 type TLSConfig string
 
 const (
 	NoTLS     TLSConfig = ""
 	AutoTLS   TLSConfig = "auto-tls"
 	ManualTLS TLSConfig = "manual-tls"
+
+	TickDuration = 10 * time.Millisecond
 )
 
 type ClusterConfig struct {

@@ -26,8 +26,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-const TickDuration = 10 * time.Millisecond
-
 type e2eRunner struct{}
 
 func (e e2eRunner) TestMain(m *testing.M) {
@@ -116,7 +114,7 @@ func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, mem
 			t.Fatal("WaitMembersForLeader timeout")
 		default:
 		}
-		_, err := cc.Get("0", config.GetOptions{Timeout: 10*TickDuration + time.Second})
+		_, err := cc.Get("0", config.GetOptions{Timeout: 10*config.TickDuration + time.Second})
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
 		}
@@ -149,7 +147,7 @@ func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, mem
 		}
 		leaders = make(map[uint64]struct{})
 		members = make(map[uint64]int)
-		time.Sleep(10 * TickDuration)
+		time.Sleep(10 * config.TickDuration)
 	}
 	for l := range leaders {
 		if index, ok := members[l]; ok {

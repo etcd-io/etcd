@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 
 	"google.golang.org/grpc"
@@ -1817,7 +1818,7 @@ func TestGRPCRequireLeader(t *testing.T) {
 	defer client.Close()
 
 	// wait for election timeout, then member[0] will not have a leader.
-	time.Sleep(time.Duration(3*integration.ElectionTicks) * integration.TickDuration)
+	time.Sleep(time.Duration(3*integration.ElectionTicks) * config.TickDuration)
 
 	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
@@ -1870,7 +1871,7 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 	clus.Members[2].Restart(t)
 
 	clus.WaitMembersForLeader(t, clus.Members)
-	time.Sleep(time.Duration(2*integration.ElectionTicks) * integration.TickDuration)
+	time.Sleep(time.Duration(2*integration.ElectionTicks) * config.TickDuration)
 
 	// new stream should also be OK now after we restarted the other members
 	wStream, err = wAPI.Watch(ctx)

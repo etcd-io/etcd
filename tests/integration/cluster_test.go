@@ -27,6 +27,7 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -294,7 +295,7 @@ func TestIssue3699(t *testing.T) {
 		// do not restart the killed member immediately.
 		// the member will advance its election timeout after restart,
 		// so it will have a better chance to become the leader again.
-		time.Sleep(time.Duration(integration.ElectionTicks * int(integration.TickDuration)))
+		time.Sleep(time.Duration(integration.ElectionTicks * int(config.TickDuration)))
 		c.Members[leaderID].Restart(t)
 		leaderID = c.WaitMembersForLeader(t, c.Members)
 	}
@@ -391,7 +392,7 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	}
 
 	// member stopped after launch; wait for missing heartbeats
-	time.Sleep(time.Duration(integration.ElectionTicks * int(integration.TickDuration)))
+	time.Sleep(time.Duration(integration.ElectionTicks * int(config.TickDuration)))
 
 	// permit remove dead member since (3,2) - (0,1) => (3,1) has quorum
 	if err = c.RemoveMember(t, c.Members[2].Client, uint64(c.Members[0].Server.MemberId())); err != nil {

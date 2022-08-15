@@ -21,6 +21,7 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -28,7 +29,7 @@ import (
 // waiting for not-empty value or 'timeout'.
 func MustFetchNotEmptyMetric(tb testing.TB, member *integration.Member, metric string, timeout <-chan time.Time) string {
 	metricValue := ""
-	tick := time.Tick(integration.TickDuration)
+	tick := time.Tick(config.TickDuration)
 	for metricValue == "" {
 		tb.Logf("Waiting for metric: %v", metric)
 		select {
