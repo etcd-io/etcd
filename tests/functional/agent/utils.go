@@ -15,6 +15,7 @@
 package agent
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"net/url"
@@ -100,6 +101,29 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return w.Sync()
+}
+
+func safeDataToFile(filePath string, fileData []byte, mode os.FileMode) error {
+	if filePath != "" {
+		if len(fileData) == 0 {
+			return fmt.Errorf("got empty data for %q", filePath)
+		}
+		if err := os.WriteFile(filePath, fileData, mode); err != nil {
+			return fmt.Errorf("writing file %q failed, %w", filePath, err)
+		}
+	}
+	return nil
+}
+
+func loadFileData(filePath string) ([]byte, error) {
+	if !fileutil.Exist(filePath) {
+		return nil, fmt.Errorf("cannot find %q", filePath)
+	}
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("read file %q failed, %w", filePath, err)
+	}
+	return data, nil
 }
 
 func cleanPageCache() error {
