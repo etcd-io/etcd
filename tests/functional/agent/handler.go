@@ -86,8 +86,7 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 // just archive the first file
 func (srv *Server) createEtcdLogFile() error {
 	var err error
-	srv.etcdLogFile, err = os.Create(srv.Member.Etcd.LogOutputs[0])
-	if err != nil {
+	if srv.etcdLogFile, err = os.Create(srv.Member.Etcd.LogOutputs[0]); err != nil {
 		return err
 	}
 	srv.lg.Info("created etcd log file", zap.String("path", srv.Member.Etcd.LogOutputs[0]))
@@ -172,8 +171,7 @@ func (srv *Server) stopEtcd(sig os.Signal) error {
 			zap.String("signal", sig.String()),
 		)
 
-		err := srv.etcdCmd.Process.Signal(sig)
-		if err != nil {
+		if err := srv.etcdCmd.Process.Signal(sig); err != nil {
 			return err
 		}
 
@@ -191,7 +189,7 @@ func (srv *Server) stopEtcd(sig os.Signal) error {
 			return e
 		}
 
-		err = <-errc
+		err := <-errc
 
 		srv.lg.Info(
 			"stopped etcd command",
@@ -306,29 +304,16 @@ func (srv *Server) stopProxy() {
 // if started with manual TLS, stores TLS assets
 // from tester/client to disk before starting etcd process
 func (srv *Server) saveTLSAssets() error {
-	if srv.Member.PeerCertPath != "" {
-		if srv.Member.PeerCertData == "" {
-			return fmt.Errorf("got empty data for %q", srv.Member.PeerCertPath)
-		}
-		if err := os.WriteFile(srv.Member.PeerCertPath, []byte(srv.Member.PeerCertData), 0644); err != nil {
-			return err
-		}
+	const defaultFileMode os.FileMode = 0644
+
+	if err := safeDataToFile(srv.Member.PeerCertPath, []byte(srv.Member.PeerCertData), defaultFileMode); err != nil {
+		return err
 	}
-	if srv.Member.PeerKeyPath != "" {
-		if srv.Member.PeerKeyData == "" {
-			return fmt.Errorf("got empty data for %q", srv.Member.PeerKeyPath)
-		}
-		if err := os.WriteFile(srv.Member.PeerKeyPath, []byte(srv.Member.PeerKeyData), 0644); err != nil {
-			return err
-		}
+	if err := safeDataToFile(srv.Member.PeerKeyPath, []byte(srv.Member.PeerKeyData), defaultFileMode); err != nil {
+		return err
 	}
-	if srv.Member.PeerTrustedCAPath != "" {
-		if srv.Member.PeerTrustedCAData == "" {
-			return fmt.Errorf("got empty data for %q", srv.Member.PeerTrustedCAPath)
-		}
-		if err := os.WriteFile(srv.Member.PeerTrustedCAPath, []byte(srv.Member.PeerTrustedCAData), 0644); err != nil {
-			return err
-		}
+	if err := safeDataToFile(srv.Member.PeerTrustedCAPath, []byte(srv.Member.PeerTrustedCAData), defaultFileMode); err != nil {
+		return err
 	}
 	if srv.Member.PeerCertPath != "" &&
 		srv.Member.PeerKeyPath != "" &&
@@ -341,29 +326,14 @@ func (srv *Server) saveTLSAssets() error {
 		)
 	}
 
-	if srv.Member.ClientCertPath != "" {
-		if srv.Member.ClientCertData == "" {
-			return fmt.Errorf("got empty data for %q", srv.Member.ClientCertPath)
-		}
-		if err := os.WriteFile(srv.Member.ClientCertPath, []byte(srv.Member.ClientCertData), 0644); err != nil {
-			return err
-		}
+	if err := safeDataToFile(srv.Member.ClientCertPath, []byte(srv.Member.ClientCertData), defaultFileMode); err != nil {
+		return err
 	}
-	if srv.Member.ClientKeyPath != "" {
-		if srv.Member.ClientKeyData == "" {
-			return fmt.Errorf("got empty data for %q", srv.Member.ClientKeyPath)
-		}
-		if err := os.WriteFile(srv.Member.ClientKeyPath, []byte(srv.Member.ClientKeyData), 0644); err != nil {
-			return err
-		}
+	if err := safeDataToFile(srv.Member.ClientKeyPath, []byte(srv.Member.ClientKeyData), defaultFileMode); err != nil {
+		return err
 	}
-	if srv.Member.ClientTrustedCAPath != "" {
-		if srv.Member.ClientTrustedCAData == "" {
-			return fmt.Errorf("got empty data for %q", srv.Member.ClientTrustedCAPath)
-		}
-		if err := os.WriteFile(srv.Member.ClientTrustedCAPath, []byte(srv.Member.ClientTrustedCAData), 0644); err != nil {
-			return err
-		}
+	if err := safeDataToFile(srv.Member.ClientTrustedCAPath, []byte(srv.Member.ClientTrustedCAData), defaultFileMode); err != nil {
+		return err
 	}
 	if srv.Member.ClientCertPath != "" &&
 		srv.Member.ClientKeyPath != "" &&
@@ -390,24 +360,18 @@ func (srv *Server) loadAutoTLSAssets() error {
 			zap.String("dir", fdir),
 			zap.String("endpoint", srv.EtcdClientEndpoint),
 		)
-
+		// load peer cert.pem
 		certPath := filepath.Join(fdir, "cert.pem")
-		if !fileutil.Exist(certPath) {
-			return fmt.Errorf("cannot find %q", certPath)
-		}
-		certData, err := os.ReadFile(certPath)
+		certData, err := loadFileData(certPath)
 		if err != nil {
-			return fmt.Errorf("cannot read %q (%v)", certPath, err)
+			return err
 		}
 		srv.Member.PeerCertData = string(certData)
-
+		// load peer key.pem
 		keyPath := filepath.Join(fdir, "key.pem")
-		if !fileutil.Exist(keyPath) {
-			return fmt.Errorf("cannot find %q", keyPath)
-		}
-		keyData, err := os.ReadFile(keyPath)
+		keyData, err := loadFileData(keyPath)
 		if err != nil {
-			return fmt.Errorf("cannot read %q (%v)", keyPath, err)
+			return err
 		}
 		srv.Member.PeerKeyData = string(keyData)
 
@@ -431,24 +395,18 @@ func (srv *Server) loadAutoTLSAssets() error {
 			zap.String("dir", fdir),
 			zap.String("endpoint", srv.EtcdClientEndpoint),
 		)
-
+		// load client cert.pem
 		certPath := filepath.Join(fdir, "cert.pem")
-		if !fileutil.Exist(certPath) {
-			return fmt.Errorf("cannot find %q", certPath)
-		}
-		certData, err := os.ReadFile(certPath)
+		certData, err := loadFileData(certPath)
 		if err != nil {
-			return fmt.Errorf("cannot read %q (%v)", certPath, err)
+			return err
 		}
 		srv.Member.ClientCertData = string(certData)
-
+		// load client key.pem
 		keyPath := filepath.Join(fdir, "key.pem")
-		if !fileutil.Exist(keyPath) {
-			return fmt.Errorf("cannot find %q", keyPath)
-		}
-		keyData, err := os.ReadFile(keyPath)
+		keyData, err := loadFileData(keyPath)
 		if err != nil {
-			return fmt.Errorf("cannot read %q (%v)", keyPath, err)
+			return err
 		}
 		srv.Member.ClientKeyData = string(keyData)
 
@@ -473,28 +431,27 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 		}, nil
 	}
 
-	err := fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir)
-	if err != nil {
+	if err := fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir); err != nil {
 		return nil, err
 	}
 	srv.lg.Info("created base directory", zap.String("path", srv.Member.BaseDir))
 
 	if srv.etcdServer == nil {
-		if err = srv.createEtcdLogFile(); err != nil {
+		if err := srv.createEtcdLogFile(); err != nil {
 			return nil, err
 		}
 	}
 
-	if err = srv.saveTLSAssets(); err != nil {
+	if err := srv.saveTLSAssets(); err != nil {
 		return nil, err
 	}
-	if err = srv.createEtcd(false, req.Member.Failpoints); err != nil {
+	if err := srv.createEtcd(false, req.Member.Failpoints); err != nil {
 		return nil, err
 	}
-	if err = srv.runEtcd(); err != nil {
+	if err := srv.runEtcd(); err != nil {
 		return nil, err
 	}
-	if err = srv.loadAutoTLSAssets(); err != nil {
+	if err := srv.loadAutoTLSAssets(); err != nil {
 		return nil, err
 	}
 
@@ -508,8 +465,7 @@ func (srv *Server) handle_INITIAL_START_ETCD(req *rpcpb.Request) (*rpcpb.Respons
 func (srv *Server) handle_RESTART_ETCD(req *rpcpb.Request) (*rpcpb.Response, error) {
 	var err error
 	if !fileutil.Exist(srv.Member.BaseDir) {
-		err = fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir)
-		if err != nil {
+		if err = fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir); err != nil {
 			return nil, err
 		}
 	}
@@ -552,8 +508,7 @@ func (srv *Server) handle_SIGTERM_ETCD() (*rpcpb.Response, error) {
 }
 
 func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error) {
-	err := srv.stopEtcd(syscall.SIGQUIT)
-	if err != nil {
+	if err := srv.stopEtcd(syscall.SIGQUIT); err != nil {
 		return nil, err
 	}
 
@@ -565,10 +520,10 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error
 	}
 
 	// for debugging purposes, rename instead of removing
-	if err = os.RemoveAll(srv.Member.BaseDir + ".backup"); err != nil {
+	if err := os.RemoveAll(srv.Member.BaseDir + ".backup"); err != nil {
 		return nil, err
 	}
-	if err = os.Rename(srv.Member.BaseDir, srv.Member.BaseDir+".backup"); err != nil {
+	if err := os.Rename(srv.Member.BaseDir, srv.Member.BaseDir+".backup"); err != nil {
 		return nil, err
 	}
 	srv.lg.Info(
@@ -579,8 +534,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error
 
 	// create a new log file for next new member restart
 	if !fileutil.Exist(srv.Member.BaseDir) {
-		err = fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir)
-		if err != nil {
+		if err := fileutil.TouchDirAll(srv.lg, srv.Member.BaseDir); err != nil {
 			return nil, err
 		}
 	}
@@ -592,8 +546,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA() (*rpcpb.Response, error
 }
 
 func (srv *Server) handle_SAVE_SNAPSHOT() (*rpcpb.Response, error) {
-	err := srv.Member.SaveSnapshot(srv.lg)
-	if err != nil {
+	if err := srv.Member.SaveSnapshot(srv.lg); err != nil {
 		return nil, err
 	}
 	return &rpcpb.Response{
@@ -604,8 +557,7 @@ func (srv *Server) handle_SAVE_SNAPSHOT() (*rpcpb.Response, error) {
 }
 
 func (srv *Server) handle_RESTORE_RESTART_FROM_SNAPSHOT(req *rpcpb.Request) (resp *rpcpb.Response, err error) {
-	err = srv.Member.RestoreSnapshot(srv.lg)
-	if err != nil {
+	if err = srv.Member.RestoreSnapshot(srv.lg); err != nil {
 		return nil, err
 	}
 	resp, err = srv.handle_RESTART_FROM_SNAPSHOT(req)
@@ -637,8 +589,7 @@ func (srv *Server) handle_RESTART_FROM_SNAPSHOT(req *rpcpb.Request) (resp *rpcpb
 }
 
 func (srv *Server) handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA() (*rpcpb.Response, error) {
-	err := srv.stopEtcd(syscall.SIGQUIT)
-	if err != nil {
+	if err := srv.stopEtcd(syscall.SIGQUIT); err != nil {
 		return nil, err
 	}
 
@@ -650,18 +601,13 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA() (*rpcpb.Response, erro
 	}
 
 	// TODO: support separate WAL directory
-	if err = archive(
-		srv.lg,
-		srv.Member.BaseDir,
-		srv.Member.Etcd.LogOutputs[0],
-		srv.Member.Etcd.DataDir,
-	); err != nil {
+	if err := archive(srv.lg, srv.Member.BaseDir, srv.Member.Etcd.LogOutputs[0], srv.Member.Etcd.DataDir); err != nil {
 		return nil, err
 	}
 	srv.lg.Info("archived data", zap.String("base-dir", srv.Member.BaseDir))
 
 	if srv.etcdServer == nil {
-		if err = srv.createEtcdLogFile(); err != nil {
+		if err := srv.createEtcdLogFile(); err != nil {
 			return nil, err
 		}
 	}
@@ -681,8 +627,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA() (*rpcpb.Response, erro
 
 // stop proxy, etcd, delete data directory
 func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT() (*rpcpb.Response, error) {
-	err := srv.stopEtcd(syscall.SIGQUIT)
-	if err != nil {
+	if err := srv.stopEtcd(syscall.SIGQUIT); err != nil {
 		return nil, err
 	}
 
@@ -693,8 +638,7 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT() (*rpcpb.
 		srv.etcdLogFile.Close()
 	}
 
-	err = os.RemoveAll(srv.Member.BaseDir)
-	if err != nil {
+	if err := os.RemoveAll(srv.Member.BaseDir); err != nil {
 		return nil, err
 	}
 	srv.lg.Info("removed base directory", zap.String("dir", srv.Member.BaseDir))

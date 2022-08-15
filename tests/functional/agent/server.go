@@ -138,12 +138,6 @@ func (srv *Server) Transport(stream rpcpb.Transport_TransportServer) (reterr err
 				// TODO: handle error and retry
 				return
 			}
-			if req.Member != nil {
-				srv.Member = req.Member
-			}
-			if req.Tester != nil {
-				srv.Tester = req.Tester
-			}
 
 			var resp *rpcpb.Response
 			resp, err = srv.handleTesterRequest(req)
