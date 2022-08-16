@@ -56,11 +56,9 @@ func (in *Inflights) Add(inflight uint64) {
 	if in.Full() {
 		panic("cannot add into a Full inflights")
 	}
-	next := in.start + in.count
-	size := in.size
-	if next >= size {
-		next -= size
-	}
+
+	next := (in.start + in.count) % in.size
+
 	if next >= len(in.buffer) {
 		in.grow()
 	}
