@@ -1466,6 +1466,8 @@ RPC: UserRevokeRole
 
 - dest-insecure-transport -- Disable transport security for client connections
 
+- max-txn-ops -- Maximum number of operations permitted in a transaction during syncing updates
+
 #### Output
 
 The approximate total number of keys transferred to the destination cluster, updated every 30 seconds.
