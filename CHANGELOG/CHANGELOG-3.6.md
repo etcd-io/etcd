@@ -78,6 +78,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [Restrict the max size of each WAL entry to the remaining size of the WAL file](https://github.com/etcd-io/etcd/pull/14122).
 - Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
 
+### etcd grpc-proxy
+
+- Add [`etcd grpc-proxy start --endpoints-auto-sync-interval`](https://github.com/etcd-io/etcd/pull/14354) flag to enable and configure interval of auto sync of endpoints with server.
+
 ### tools/benchmark
 
 - [Add etcd client autoSync flag](https://github.com/etcd-io/etcd/pull/13416)
