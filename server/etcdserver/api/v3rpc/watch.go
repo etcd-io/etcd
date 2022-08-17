@@ -348,7 +348,7 @@ func (sws *serverWatchStream) recvLoop() error {
 			// we probably should not shutdown the entire stream when
 			// receive an invalid command.
 			// so just do nothing instead.
-			sws.lg.Warn("invalid watch request received in gRPC stream")
+			sws.lg.Sugar().Infof("invalid watch request type %T received in gRPC stream", uv)
 			continue
 		}
 	}
