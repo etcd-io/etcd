@@ -40,6 +40,9 @@ func TestNewKeepAliveListener(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected Accept error: %v", err)
 	}
+	if _, ok := conn.(*keepAliveConn); !ok {
+		t.Fatalf("Unexpected conn type: %T, wanted *keepAliveConn", conn)
+	}
 	conn.Close()
 	ln.Close()
 

@@ -17,6 +17,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 ### Deprecations
 
 - Deprecated [V2 discovery](https://etcd.io/docs/v3.5/dev-internal/discovery_protocol/).
+- Deprecated [SetKeepAlive and SetKeepAlivePeriod in limitListenerConn](https://github.com/etcd-io/etcd/pull/14356).
 - Removed [etcdctl defrag --data-dir](https://github.com/etcd-io/etcd/pull/13793).
 - Removed [etcdctl snapshot status](https://github.com/etcd-io/etcd/pull/13809).
 - Removed [etcdctl snapshot restore](https://github.com/etcd-io/etcd/pull/13809).
