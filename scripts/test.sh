@@ -146,6 +146,12 @@ function generic_checker {
   fi
 }
 
+function killall_functional_test {
+  log_callout "Killing all etcd-agent and etcd processes..."
+  killall -9 etcd-agent
+  killall -9 etcd
+}
+
 function functional_pass {
   run ./tests/functional/build.sh || exit 1
 
@@ -166,32 +172,32 @@ function functional_pass {
     done
   done
 
+  trap killall_functional_test INT
+
   log_callout "functional test START!"
   run ./bin/etcd-tester --config ./tests/functional/functional.yaml -test.v && log_success "'etcd-tester' succeeded"
   local etcd_tester_exit_code=$?
-
-  if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
-    log_error "ETCD_TESTER_EXIT_CODE:" ${etcd_tester_exit_code}
-    exit 1
-  fi
 
   # shellcheck disable=SC2206
   agent_pids=($agent_pids)
   kill -s TERM "${agent_pids[@]}" || true
 
   if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
+    log_error "ETCD_TESTER_EXIT_CODE:" ${etcd_tester_exit_code}
+
     log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-1/etcd.log'"
-    tail -1000 /tmp/etcd-functional-1/etcd.log
+    tail -100 /tmp/etcd-functional-1/etcd.log
 
     log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-2/etcd.log'"
-    tail -1000 /tmp/etcd-functional-2/etcd.log
+    tail -100 /tmp/etcd-functional-2/etcd.log
 
     log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-3/etcd.log'"
-    tail -1000 /tmp/etcd-functional-3/etcd.log
+    tail -100 /tmp/etcd-functional-3/etcd.log
 
     log_error "--- FAIL: exit code" ${etcd_tester_exit_code}
-    return ${etcd_tester_exit_code}
+    exit ${etcd_tester_exit_code}
   fi
+
   log_success "functional test PASS!"
 }
 
