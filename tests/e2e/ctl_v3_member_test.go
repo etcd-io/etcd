@@ -29,16 +29,16 @@ import (
 func TestCtlV3MemberList(t *testing.T)        { testCtl(t, memberListTest) }
 func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest) }
 func TestCtlV3MemberRemove(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig())
+	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig())
 }
 func TestCtlV3MemberRemoveNoTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*e2e.NewConfigNoTLS()))
+	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3MemberRemoveClientTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*e2e.NewConfigClientTLS()))
+	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(*e2e.NewConfigClientTLS()))
 }
 func TestCtlV3MemberRemoveClientAutoTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(
+	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(
 		// default ClusterSize is 1
 		e2e.EtcdProcessClusterConfig{
 			ClusterSize:     3,
@@ -48,7 +48,7 @@ func TestCtlV3MemberRemoveClientAutoTLS(t *testing.T) {
 		}))
 }
 func TestCtlV3MemberRemovePeerTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*e2e.NewConfigPeerTLS()))
+	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(*e2e.NewConfigPeerTLS()))
 }
 func TestCtlV3MemberAdd(t *testing.T)      { testCtl(t, memberAddTest) }
 func TestCtlV3MemberAddNoTLS(t *testing.T) { testCtl(t, memberAddTest, withCfg(*e2e.NewConfigNoTLS())) }

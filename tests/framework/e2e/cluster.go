@@ -166,14 +166,14 @@ type EtcdProcessClusterConfig struct {
 
 	CipherSuites []string
 
-	ForceNewCluster     bool
-	InitialToken        string
-	QuotaBackendBytes   int64
-	NoStrictReconfig    bool
-	EnableV2            bool
-	InitialCorruptCheck bool
-	AuthTokenOpts       string
-	V2deprecation       string
+	ForceNewCluster            bool
+	InitialToken               string
+	QuotaBackendBytes          int64
+	DisableStrictReconfigCheck bool
+	EnableV2                   bool
+	InitialCorruptCheck        bool
+	AuthTokenOpts              string
+	V2deprecation              string
 
 	RollingStart bool
 
@@ -317,7 +317,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 				"--quota-backend-bytes", fmt.Sprintf("%d", cfg.QuotaBackendBytes),
 			)
 		}
-		if cfg.NoStrictReconfig {
+		if cfg.DisableStrictReconfigCheck {
 			args = append(args, "--strict-reconfig-check=false")
 		}
 		if cfg.EnableV2 {
