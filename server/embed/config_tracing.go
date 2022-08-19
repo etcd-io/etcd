@@ -43,7 +43,7 @@ func validateTracingConfig(samplingRate int) error {
 type tracingExporter struct {
 	exporter tracesdk.SpanExporter
 	opts     []otelgrpc.Option
-	shutdown func(ctx context.Context)
+	provider *tracesdk.TracerProvider
 }
 
 func newTracingExporter(ctx context.Context, cfg *Config) (*tracingExporter, error) {
@@ -80,6 +80,7 @@ func newTracingExporter(ctx context.Context, cfg *Config) (*tracingExporter, err
 			tracesdk.ParentBased(determineSampler(cfg.ExperimentalDistributedTracingSamplingRatePerMillion)),
 		),
 	)
+
 	options := []otelgrpc.Option{
 		otelgrpc.WithPropagators(
 			propagation.NewCompositeTextMapPropagator(
@@ -103,15 +104,17 @@ func newTracingExporter(ctx context.Context, cfg *Config) (*tracingExporter, err
 	return &tracingExporter{
 		exporter: exporter,
 		opts:     options,
-		shutdown: func(ctx context.Context) {
-			traceProvider.Shutdown(ctx)
-		},
+		provider: traceProvider,
 	}, nil
 }
 
 func (te *tracingExporter) Close(ctx context.Context) {
-	te.exporter.Shutdown(ctx)
-	te.shutdown(ctx)
+	if te.exporter != nil {
+		te.exporter.Shutdown(ctx)
+	}
+	if te.provider != nil {
+		te.provider.Shutdown(ctx)
+	}
 }
 
 func determineSampler(samplingRate int) tracesdk.Sampler {
