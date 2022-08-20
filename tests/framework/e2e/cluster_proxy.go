@@ -26,8 +26,9 @@ import (
 	"strconv"
 	"strings"
 
-	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
 type proxyEtcdProcess struct {
@@ -109,6 +110,7 @@ func (p *proxyEtcdProcess) Logs() LogsExpect {
 
 type proxyProc struct {
 	lg       *zap.Logger
+	name     string
 	execPath string
 	args     []string
 	ep       string
@@ -124,7 +126,7 @@ func (pp *proxyProc) start() error {
 	if pp.proc != nil {
 		panic("already started")
 	}
-	proc, err := SpawnCmdWithLogger(pp.lg, append([]string{pp.execPath}, pp.args...), nil)
+	proc, err := SpawnCmdWithLogger(pp.lg, append([]string{pp.execPath}, pp.args...), nil, pp.name)
 	if err != nil {
 		return err
 	}
@@ -188,6 +190,7 @@ func newProxyV2Proc(cfg *EtcdServerProcessConfig) *proxyV2Proc {
 	}
 	return &proxyV2Proc{
 		proxyProc: proxyProc{
+			name:     cfg.Name,
 			lg:       cfg.lg,
 			execPath: cfg.ExecPath,
 			args:     append(args, cfg.TlsArgs...),
@@ -251,6 +254,7 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 
 	return &proxyV3Proc{
 		proxyProc{
+			name:     cfg.Name,
 			lg:       cfg.lg,
 			execPath: cfg.ExecPath,
 			args:     append(args, tlsArgs...),
