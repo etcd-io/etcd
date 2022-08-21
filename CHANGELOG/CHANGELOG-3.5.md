@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.5 (TBD)
 
+### Deprecations
+- Deprecated [SetKeepAlive and SetKeepAlivePeriod in limitListenerConn](https://github.com/etcd-io/etcd/pull/14366).
+
 ### Package `clientv3`
 - Fix [do not overwrite authTokenBundle on dial](https://github.com/etcd-io/etcd/pull/14132).
 
