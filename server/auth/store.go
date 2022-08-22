@@ -965,6 +965,8 @@ func NewAuthStore(lg *zap.Logger, be AuthBackend, tp TokenProvider, bcryptCost i
 
 	as.setupMetricsReporter()
 
+	as.refreshRangePermCache(tx)
+
 	tx.Unlock()
 	be.ForceCommit()
 
