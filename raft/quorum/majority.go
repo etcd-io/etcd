@@ -183,8 +183,7 @@ func (c MajorityConfig) VoteResult(votes map[uint64]bool) VoteResult {
 		return VoteWon
 	}
 
-	ny := [2]int{} // vote counts for no and yes, respectively
-
+	var votedCnt int //vote counts for yes.
 	var missing int
 	for id := range c {
 		v, ok := votes[id]
@@ -193,17 +192,15 @@ func (c MajorityConfig) VoteResult(votes map[uint64]bool) VoteResult {
 			continue
 		}
 		if v {
-			ny[1]++
-		} else {
-			ny[0]++
+			votedCnt++
 		}
 	}
 
 	q := len(c)/2 + 1
-	if ny[1] >= q {
+	if votedCnt >= q {
 		return VoteWon
 	}
-	if ny[1]+missing >= q {
+	if votedCnt+missing >= q {
 		return VotePending
 	}
 	return VoteLost
