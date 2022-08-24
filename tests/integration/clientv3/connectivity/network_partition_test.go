@@ -33,13 +33,18 @@ import (
 
 var errExpected = errors.New("expected error")
 
+func isErrorExpected(err error) bool {
+	return clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) ||
+		err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail
+}
+
 // TestBalancerUnderNetworkPartitionPut tests when one member becomes isolated,
 // first Put request fails, and following retry succeeds with client balancer
 // switching to others.
 func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "a", "b")
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
+		if isErrorExpected(err) {
 			return errExpected
 		}
 		return err
@@ -49,7 +54,7 @@ func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 func TestBalancerUnderNetworkPartitionDelete(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "a")
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
+		if isErrorExpected(err) {
 			return errExpected
 		}
 		return err
@@ -62,7 +67,7 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 			Then(clientv3.OpPut("foo", "bar")).
 			Else(clientv3.OpPut("foo", "baz")).Commit()
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
+		if isErrorExpected(err) {
 			return errExpected
 		}
 		return err
@@ -75,7 +80,7 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
+		if isErrorExpected(err) {
 			return errExpected
 		}
 		return err
