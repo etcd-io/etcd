@@ -158,7 +158,7 @@ Now it's time to dig into the full etcd API and other guides.
 ## Contact
 
 - Mailing list: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
-- IRC: #[etcd](irc://irc.freenode.org:6667/#etcd) on freenode.org
+- Slack: [#etcd](https://kubernetes.slack.com/messages/C3HD8ARJ5/details/)
 - Planning: [milestones](https://github.com/etcd-io/etcd/milestones)
 - Bugs: [issues](https://github.com/etcd-io/etcd/issues)
 
