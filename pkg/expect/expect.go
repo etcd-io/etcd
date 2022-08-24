@@ -18,6 +18,7 @@ package expect
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -96,7 +97,7 @@ func (ep *ExpectProcess) read() {
 }
 
 // ExpectFunc returns the first line satisfying the function f.
-func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
+func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (string, error) {
 	i := 0
 
 	for {
@@ -114,7 +115,13 @@ func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 			break
 		}
 		ep.mu.Unlock()
-		time.Sleep(time.Millisecond * 10)
+
+		select {
+		case <-ctx.Done():
+			return "", fmt.Errorf("failed to find match string: %w", ctx.Err())
+		case <-time.After(time.Millisecond * 10):
+			// continue loop
+		}
 	}
 	ep.mu.Lock()
 	lastLinesIndex := len(ep.lines) - DEBUG_LINES_TAIL
@@ -128,9 +135,15 @@ func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 		ep.err, lastLines)
 }
 
+// ExpectWithContext returns the first line containing the given string.
+func (ep *ExpectProcess) ExpectWithContext(ctx context.Context, s string) (string, error) {
+	return ep.ExpectFunc(ctx, func(txt string) bool { return strings.Contains(txt, s) })
+}
+
 // Expect returns the first line containing the given string.
+// Deprecated: please use ExpectWithContext instead.
 func (ep *ExpectProcess) Expect(s string) (string, error) {
-	return ep.ExpectFunc(func(txt string) bool { return strings.Contains(txt, s) })
+	return ep.ExpectWithContext(context.Background(), s)
 }
 
 // LineCount returns the number of recorded lines since

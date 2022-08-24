@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -106,7 +107,7 @@ func ctlV3Elect(cx ctlCtx, name, proposal string) (*expect.ExpectProcess, <-chan
 		return proc, outc, err
 	}
 	go func() {
-		s, xerr := proc.ExpectFunc(func(string) bool { return true })
+		s, xerr := proc.ExpectFunc(context.TODO(), func(string) bool { return true })
 		if xerr != nil {
 			cx.t.Errorf("expect failed (%v)", xerr)
 		}

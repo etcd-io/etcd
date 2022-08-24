@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -127,7 +128,7 @@ func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, er
 		return proc, outc, err
 	}
 	go func() {
-		s, xerr := proc.ExpectFunc(func(string) bool { return true })
+		s, xerr := proc.ExpectFunc(context.TODO(), func(string) bool { return true })
 		if xerr != nil {
 			cx.t.Errorf("expect failed (%v)", xerr)
 		}
