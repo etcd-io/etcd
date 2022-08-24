@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -36,7 +37,7 @@ func WaitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error
 		}
 		return false
 	}
-	_, err := exproc.ExpectFunc(matchSet)
+	_, err := exproc.ExpectFunc(context.Background(), matchSet)
 	return err
 }
 

@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -249,7 +250,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		testutil.AssertNil(cx.t, err)
 		defer proc.Close()
 
-		cURLRes, err := proc.ExpectFunc(lineFunc)
+		cURLRes, err := proc.ExpectFunc(context.Background(), lineFunc)
 		testutil.AssertNil(cx.t, err)
 
 		authRes := make(map[string]interface{})
