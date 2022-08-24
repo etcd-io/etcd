@@ -341,7 +341,6 @@ func (clus *Cluster) failed(err error) {
 		zap.Int("case-total", len(clus.cases)),
 		zap.Error(err),
 	)
-	clus.Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
 	os.Exit(2)
 }

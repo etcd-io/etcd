@@ -41,7 +41,6 @@ func TestFunctional(t *testing.T) {
 	if err = clus.Send_INITIAL_START_ETCD(); err != nil {
 		t.Fatal("Bootstrap failed", zap.Error(err))
 	}
-	defer clus.Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
 	t.Log("wait health after bootstrap")
 	if err = clus.WaitHealth(); err != nil {

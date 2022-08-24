@@ -161,8 +161,6 @@ function functional_pass {
   # TODO: These ports should be dynamically allocated instead of hard-coded.
   for a in 1 2 3; do
     ./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 < /dev/null &
-    pid="$!"
-    agent_pids="${agent_pids} $pid"
   done
 
   for a in 1 2 3; do
@@ -172,26 +170,22 @@ function functional_pass {
     done
   done
 
-  trap killall_functional_test INT
+  trap killall_functional_test 0
 
   log_callout "functional test START!"
   run ./bin/etcd-tester --config ./tests/functional/functional.yaml -test.v && log_success "'etcd-tester' succeeded"
   local etcd_tester_exit_code=$?
 
-  # shellcheck disable=SC2206
-  agent_pids=($agent_pids)
-  kill -s TERM "${agent_pids[@]}" || true
-
   if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
     log_error "ETCD_TESTER_EXIT_CODE:" ${etcd_tester_exit_code}
 
-    log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-1/etcd.log'"
+    log_error -e "\\nFAILED! 'tail -100 /tmp/etcd-functional-1/etcd.log'"
     tail -100 /tmp/etcd-functional-1/etcd.log
 
-    log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-2/etcd.log'"
+    log_error -e "\\nFAILED! 'tail -100 /tmp/etcd-functional-2/etcd.log'"
     tail -100 /tmp/etcd-functional-2/etcd.log
 
-    log_error -e "\\nFAILED! 'tail -1000 /tmp/etcd-functional-3/etcd.log'"
+    log_error -e "\\nFAILED! 'tail -100 /tmp/etcd-functional-3/etcd.log'"
     tail -100 /tmp/etcd-functional-3/etcd.log
 
     log_error "--- FAIL: exit code" ${etcd_tester_exit_code}

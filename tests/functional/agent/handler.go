@@ -65,8 +65,6 @@ func (srv *Server) handleTesterRequest(req *rpcpb.Request) (resp *rpcpb.Response
 
 	case rpcpb.Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA:
 		return srv.handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA()
-	case rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT:
-		return srv.handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT()
 
 	case rpcpb.Operation_BLACKHOLE_PEER_PORT_TX_RX:
 		return srv.handle_BLACKHOLE_PEER_PORT_TX_RX(), nil
@@ -636,33 +634,6 @@ func (srv *Server) handle_SIGQUIT_ETCD_AND_ARCHIVE_DATA() (*rpcpb.Response, erro
 	return &rpcpb.Response{
 		Success: true,
 		Status:  "cleaned up etcd",
-	}, nil
-}
-
-// stop proxy, etcd, delete data directory
-func (srv *Server) handle_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT() (*rpcpb.Response, error) {
-	if err := srv.stopEtcd(syscall.SIGQUIT); err != nil {
-		return nil, err
-	}
-
-	if srv.etcdServer != nil {
-		srv.etcdServer.GetLogger().Sync()
-	} else {
-		srv.etcdLogFile.Sync()
-		srv.etcdLogFile.Close()
-	}
-
-	if err := os.RemoveAll(srv.Member.BaseDir); err != nil {
-		return nil, err
-	}
-	srv.lg.Info("removed base directory", zap.String("dir", srv.Member.BaseDir))
-
-	// stop agent server
-	srv.Stop()
-
-	return &rpcpb.Response{
-		Success: true,
-		Status:  "destroyed etcd and agent",
 	}, nil
 }
 

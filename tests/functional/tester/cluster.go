@@ -424,28 +424,7 @@ func (clus *Cluster) broadcast(op rpcpb.Operation) error {
 		if err == nil {
 			continue
 		}
-
-		if err != nil {
-			destroyed := false
-			if op == rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT {
-				if err == io.EOF {
-					destroyed = true
-				}
-				if strings.Contains(err.Error(),
-					"rpc error: code = Unavailable desc = transport is closing") {
-					// agent server has already closed;
-					// so this error is expected
-					destroyed = true
-				}
-				if strings.Contains(err.Error(),
-					"desc = os: process already finished") {
-					destroyed = true
-				}
-			}
-			if !destroyed {
-				errs = append(errs, err.Error())
-			}
-		}
+		errs = append(errs, err.Error())
 	}
 
 	if len(errs) == 0 {
@@ -576,28 +555,6 @@ func (clus *Cluster) sendOpWithResp(idx int, op rpcpb.Operation) (*rpcpb.Respons
 	}
 
 	return resp, nil
-}
-
-// Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT terminates all tester connections to agents and etcd servers.
-func (clus *Cluster) Send_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT() {
-	err := clus.broadcast(rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT)
-	if err != nil {
-		clus.lg.Warn("destroying etcd/agents FAIL", zap.Error(err))
-	} else {
-		clus.lg.Info("destroying etcd/agents PASS")
-	}
-
-	for i, conn := range clus.agentConns {
-		err := conn.Close()
-		clus.lg.Info("closed connection to agent", zap.String("agent-address", clus.Members[i].AgentAddr), zap.Error(err))
-	}
-
-	if clus.testerHTTPServer != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		err := clus.testerHTTPServer.Shutdown(ctx)
-		cancel()
-		clus.lg.Info("closed tester HTTP server", zap.String("tester-address", clus.Tester.Addr), zap.Error(err))
-	}
 }
 
 // WaitHealth ensures all members are healthy
