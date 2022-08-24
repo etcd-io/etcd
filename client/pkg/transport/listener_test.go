@@ -213,6 +213,15 @@ func TestNewListenerWithSocketOpts(t *testing.T) {
 			if !test.expectedErr && err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
+			if test.scheme == "http" {
+				lnOpts := newListenOpts(test.opts...)
+				if !lnOpts.IsSocketOpts() && !lnOpts.IsTimeout() {
+					if _, ok := ln.(*keepaliveListener); !ok {
+						t.Fatalf("ln: unexpected listener type: %T, wanted *keepaliveListener", ln)
+					}
+				}
+			}
 		})
 	}
 }
