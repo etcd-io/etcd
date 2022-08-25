@@ -42,36 +42,36 @@ type Member interface {
 }
 
 type Client interface {
-	Put(key, value string, opts config.PutOptions) error
-	Get(key string, opts config.GetOptions) (*clientv3.GetResponse, error)
-	Delete(key string, opts config.DeleteOptions) (*clientv3.DeleteResponse, error)
-	Compact(rev int64, opts config.CompactOption) (*clientv3.CompactResponse, error)
-	Status() ([]*clientv3.StatusResponse, error)
-	HashKV(rev int64) ([]*clientv3.HashKVResponse, error)
-	Health() error
-	Defragment(opts config.DefragOption) error
-	AlarmList() (*clientv3.AlarmResponse, error)
-	AlarmDisarm(alarmMember *clientv3.AlarmMember) (*clientv3.AlarmResponse, error)
-	Grant(ttl int64) (*clientv3.LeaseGrantResponse, error)
-	TimeToLive(id clientv3.LeaseID, opts config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error)
-	LeaseList() (*clientv3.LeaseLeasesResponse, error)
-	LeaseKeepAliveOnce(id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error)
-	LeaseRevoke(id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error)
-	UserAdd(name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error)
-	UserList() (*clientv3.AuthUserListResponse, error)
-	UserDelete(name string) (*clientv3.AuthUserDeleteResponse, error)
-	UserChangePass(user, newPass string) error
+	Put(context context.Context, key, value string, opts config.PutOptions) error
+	Get(context context.Context, key string, opts config.GetOptions) (*clientv3.GetResponse, error)
+	Delete(context context.Context, key string, opts config.DeleteOptions) (*clientv3.DeleteResponse, error)
+	Compact(context context.Context, rev int64, opts config.CompactOption) (*clientv3.CompactResponse, error)
+	Status(context context.Context) ([]*clientv3.StatusResponse, error)
+	HashKV(context context.Context, rev int64) ([]*clientv3.HashKVResponse, error)
+	Health(context context.Context) error
+	Defragment(context context.Context, opts config.DefragOption) error
+	AlarmList(context context.Context) (*clientv3.AlarmResponse, error)
+	AlarmDisarm(context context.Context, alarmMember *clientv3.AlarmMember) (*clientv3.AlarmResponse, error)
+	Grant(context context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error)
+	TimeToLive(context context.Context, id clientv3.LeaseID, opts config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error)
+	LeaseList(context context.Context) (*clientv3.LeaseLeasesResponse, error)
+	LeaseKeepAliveOnce(context context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error)
+	LeaseRevoke(context context.Context, id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error)
+	UserAdd(context context.Context, name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error)
+	UserList(context context.Context) (*clientv3.AuthUserListResponse, error)
+	UserDelete(context context.Context, name string) (*clientv3.AuthUserDeleteResponse, error)
+	UserChangePass(context context.Context, user, newPass string) error
 
-	RoleAdd(name string) (*clientv3.AuthRoleAddResponse, error)
-	RoleGrantPermission(name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error)
-	RoleGet(role string) (*clientv3.AuthRoleGetResponse, error)
-	RoleList() (*clientv3.AuthRoleListResponse, error)
-	RoleRevokePermission(role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error)
-	RoleDelete(role string) (*clientv3.AuthRoleDeleteResponse, error)
+	RoleAdd(context context.Context, name string) (*clientv3.AuthRoleAddResponse, error)
+	RoleGrantPermission(context context.Context, name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error)
+	RoleGet(context context.Context, role string) (*clientv3.AuthRoleGetResponse, error)
+	RoleList(context context.Context) (*clientv3.AuthRoleListResponse, error)
+	RoleRevokePermission(context context.Context, role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error)
+	RoleDelete(context context.Context, role string) (*clientv3.AuthRoleDeleteResponse, error)
 
-	Txn(compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error)
+	Txn(context context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error)
 
-	MemberList() (*clientv3.MemberListResponse, error)
+	MemberList(context context.Context) (*clientv3.MemberListResponse, error)
 
 	Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan
 }

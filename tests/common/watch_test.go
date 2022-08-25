@@ -62,7 +62,7 @@ func TestWatch(t *testing.T) {
 					}
 
 					for j := range tt.puts {
-						if err := cc.Put(tt.puts[j].Key, tt.puts[j].Val, config.PutOptions{}); err != nil {
+						if err := cc.Put(ctx, tt.puts[j].Key, tt.puts[j].Val, config.PutOptions{}); err != nil {
 							t.Fatalf("can't not put key %q, err: %s", tt.puts[j].Key, err)
 						}
 					}

@@ -34,6 +34,8 @@ import (
 
 func TestGrpcProxyAutoSync(t *testing.T) {
 	e2e.SkipInShortMode(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	var (
 		node1Name      = "node1"
@@ -66,11 +68,11 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 	require.NoError(t, err)
 
 	proxyCtl := e2e.NewEtcdctl(&e2e.EtcdProcessClusterConfig{}, []string{proxyClientURL})
-	err = proxyCtl.Put("k1", "v1", config.PutOptions{})
+	err = proxyCtl.Put(ctx, "k1", "v1", config.PutOptions{})
 	require.NoError(t, err)
 
 	memberCtl := e2e.NewEtcdctl(&e2e.EtcdProcessClusterConfig{}, []string{node1ClientURL})
-	_, err = memberCtl.MemberAdd(node2Name, []string{node2PeerURL})
+	_, err = memberCtl.MemberAdd(ctx, node2Name, []string{node2PeerURL})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +89,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 	err = waitForEndpointInLog(proxyProc, node2ClientURL)
 	require.NoError(t, err)
 
-	memberList, err := memberCtl.MemberList()
+	memberList, err := memberCtl.MemberList(ctx)
 	require.NoError(t, err)
 
 	node1MemberID, err := findMemberIDByEndpoint(memberList.Members, node1ClientURL)
@@ -95,7 +97,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 
 	// Second node could be not ready yet
 	for i := 0; i < 10; i++ {
-		_, err = memberCtl.MemberRemove(node1MemberID)
+		_, err = memberCtl.MemberRemove(ctx, node1MemberID)
 		if err != nil && strings.Contains(err.Error(), rpctypes.ErrGRPCUnhealthy.Error()) {
 			time.Sleep(500 * time.Millisecond)
 			continue
@@ -109,7 +111,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 
 	var resp *clientv3.GetResponse
 	for i := 0; i < 10; i++ {
-		resp, err = proxyCtl.Get("k1", config.GetOptions{})
+		resp, err = proxyCtl.Get(ctx, "k1", config.GetOptions{})
 		if err != nil && strings.Contains(err.Error(), rpctypes.ErrGRPCLeaderChanged.Error()) {
 			time.Sleep(500 * time.Millisecond)
 			continue

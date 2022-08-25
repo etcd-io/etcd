@@ -30,7 +30,7 @@ func TestEndpointStatus(t *testing.T) {
 	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
 	testutils.ExecuteUntil(ctx, t, func() {
-		_, err := clus.Client().Status()
+		_, err := clus.Client().Status(ctx)
 		if err != nil {
 			t.Fatalf("get endpoint status error: %v", err)
 		}
@@ -44,7 +44,7 @@ func TestEndpointHashKV(t *testing.T) {
 	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
 	testutils.ExecuteUntil(ctx, t, func() {
-		_, err := clus.Client().HashKV(0)
+		_, err := clus.Client().HashKV(ctx, 0)
 		if err != nil {
 			t.Fatalf("get endpoint hashkv error: %v", err)
 		}
@@ -58,7 +58,7 @@ func TestEndpointHealth(t *testing.T) {
 	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
 	testutils.ExecuteUntil(ctx, t, func() {
-		if err := clus.Client().Health(); err != nil {
+		if err := clus.Client().Health(ctx); err != nil {
 			t.Fatalf("get endpoint health error: %v", err)
 		}
 	})

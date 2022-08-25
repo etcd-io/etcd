@@ -62,14 +62,14 @@ func TestTxnSucc(t *testing.T) {
 			defer clus.Close()
 			cc := clus.Client()
 			testutils.ExecuteUntil(ctx, t, func() {
-				if err := cc.Put("key1", "value1", config.PutOptions{}); err != nil {
+				if err := cc.Put(ctx, "key1", "value1", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key1", "value1")
 				}
-				if err := cc.Put("key2", "value2", config.PutOptions{}); err != nil {
+				if err := cc.Put(ctx, "key2", "value2", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key2", "value2")
 				}
 				for _, req := range reqs {
-					resp, err := cc.Txn(req.compare, req.ifSucess, req.ifFail, config.TxnOptions{
+					resp, err := cc.Txn(ctx, req.compare, req.ifSucess, req.ifFail, config.TxnOptions{
 						Interactive: true,
 					})
 					if err != nil {
@@ -106,11 +106,11 @@ func TestTxnFail(t *testing.T) {
 			defer clus.Close()
 			cc := clus.Client()
 			testutils.ExecuteUntil(ctx, t, func() {
-				if err := cc.Put("key1", "value1", config.PutOptions{}); err != nil {
+				if err := cc.Put(ctx, "key1", "value1", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key1", "value1")
 				}
 				for _, req := range reqs {
-					resp, err := cc.Txn(req.compare, req.ifSucess, req.ifFail, config.TxnOptions{
+					resp, err := cc.Txn(ctx, req.compare, req.ifSucess, req.ifFail, config.TxnOptions{
 						Interactive: true,
 					})
 					if err != nil {
