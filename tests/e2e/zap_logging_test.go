@@ -18,6 +18,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ import (
 func TestServerJsonLogging(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
 		ClusterSize:  1,
 		InitialToken: "new",
 		LogLevel:     "debug",

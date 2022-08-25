@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -83,7 +84,7 @@ func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvEx
 		dialTimeout: 7 * time.Second,
 	}
 
-	mirrorepc, err := e2e.NewEtcdProcessCluster(cx.t, &mirrorctx.cfg)
+	mirrorepc, err := e2e.NewEtcdProcessCluster(context.TODO(), cx.t, &mirrorctx.cfg)
 	if err != nil {
 		cx.t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

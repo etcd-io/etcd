@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -33,7 +34,7 @@ func TestEtcdExampleConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = e2e.WaitReadyExpectProc(proc, e2e.EtcdServerReadyLines); err != nil {
+	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines); err != nil {
 		t.Fatal(err)
 	}
 	if err = proc.Stop(); err != nil {
@@ -78,7 +79,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 	}
 
 	for _, p := range procs {
-		if err := e2e.WaitReadyExpectProc(p, e2e.EtcdServerReadyLines); err != nil {
+		if err := e2e.WaitReadyExpectProc(context.TODO(), p, e2e.EtcdServerReadyLines); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -103,7 +104,7 @@ func TestEtcdUnixPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = e2e.WaitReadyExpectProc(proc, e2e.EtcdServerReadyLines); err != nil {
+	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines); err != nil {
 		t.Fatal(err)
 	}
 	if err = proc.Stop(); err != nil {
@@ -183,7 +184,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 		} else {
 			expect = []string{"remote error: tls: bad certificate"}
 		}
-		if err := e2e.WaitReadyExpectProc(p, expect); err != nil {
+		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -258,7 +259,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 		} else {
 			expect = []string{"client certificate authentication failed"}
 		}
-		if err := e2e.WaitReadyExpectProc(p, expect); err != nil {
+		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -309,7 +310,7 @@ func TestBootstrapDefragFlag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = e2e.WaitReadyExpectProc(proc, []string{"Skipping defragmentation"}); err != nil {
+	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, []string{"Skipping defragmentation"}); err != nil {
 		t.Fatal(err)
 	}
 	if err = proc.Stop(); err != nil {

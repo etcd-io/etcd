@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -61,7 +62,7 @@ func TestClusterVersion(t *testing.T) {
 			cfg.BaseScheme = "unix" // to avoid port conflict
 			cfg.RollingStart = tt.rollingStart
 
-			epc, err := e2e.NewEtcdProcessCluster(t, cfg)
+			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
 			if err != nil {
 				t.Fatalf("could not start etcd process cluster (%v)", err)
 			}
@@ -243,7 +244,7 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 		ret.cfg.KeepDataDir = true
 	}
 
-	epc, err := e2e.NewEtcdProcessCluster(t, &ret.cfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &ret.cfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

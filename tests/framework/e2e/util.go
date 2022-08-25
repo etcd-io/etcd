@@ -28,7 +28,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
-func WaitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
+func WaitReadyExpectProc(ctx context.Context, exproc *expect.ExpectProcess, readyStrs []string) error {
 	matchSet := func(l string) bool {
 		for _, s := range readyStrs {
 			if strings.Contains(l, s) {
@@ -37,7 +37,7 @@ func WaitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error
 		}
 		return false
 	}
-	_, err := exproc.ExpectFunc(context.Background(), matchSet)
+	_, err := exproc.ExpectFunc(ctx, matchSet)
 	return err
 }
 

@@ -37,7 +37,7 @@ type Cluster interface {
 
 type Member interface {
 	Client() Client
-	Start() error
+	Start(ctx context.Context) error
 	Stop()
 }
 

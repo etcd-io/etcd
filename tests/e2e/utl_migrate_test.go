@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -113,7 +114,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 			dataDirPath := t.TempDir()
 
-			epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
 				ExecPath:     tc.binary,
 				DataDirPath:  dataDirPath,
 				ClusterSize:  1,

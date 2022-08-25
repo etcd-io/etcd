@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -41,7 +42,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	copiedCfg.SnapshotCount = 3
 	copiedCfg.BaseScheme = "unix" // to avoid port conflict
 
-	epc, err := e2e.NewEtcdProcessCluster(t, copiedCfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, copiedCfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -82,7 +83,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		epc.Procs[i].Config().KeepDataDir = true
 
 		t.Logf("Restarting node in the new version: %v", i)
-		if err := epc.Procs[i].Restart(); err != nil {
+		if err := epc.Procs[i].Restart(context.TODO()); err != nil {
 			t.Fatalf("error restarting etcd process (%v)", err)
 		}
 
@@ -127,7 +128,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	copiedCfg.SnapshotCount = 10
 	copiedCfg.BaseScheme = "unix"
 
-	epc, err := e2e.NewEtcdProcessCluster(t, copiedCfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, copiedCfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -168,7 +169,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 		go func(i int) {
 			epc.Procs[i].Config().ExecPath = e2e.BinDir + "/etcd"
 			epc.Procs[i].Config().KeepDataDir = true
-			if err := epc.Procs[i].Restart(); err != nil {
+			if err := epc.Procs[i].Restart(context.TODO()); err != nil {
 				t.Errorf("error restarting etcd process (%v)", err)
 			}
 			wg.Done()

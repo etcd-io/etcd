@@ -101,7 +101,7 @@ func (m integrationMember) Client() Client {
 	return integrationClient{Client: m.Member.Client}
 }
 
-func (m integrationMember) Start() error {
+func (m integrationMember) Start(ctx context.Context) error {
 	return m.Member.Restart(m.t)
 }
 
