@@ -196,14 +196,6 @@ func (c integrationClient) Compact(ctx context.Context, rev int64, o config.Comp
 	return c.Client.Compact(ctx, rev, clientOpts...)
 }
 
-func (c integrationClient) AlarmList(ctx context.Context) (*clientv3.AlarmResponse, error) {
-	return c.Client.AlarmList(ctx)
-}
-
-func (c integrationClient) AlarmDisarm(ctx context.Context, alarmMember *clientv3.AlarmMember) (*clientv3.AlarmResponse, error) {
-	return c.Client.AlarmDisarm(ctx, alarmMember)
-}
-
 func (c integrationClient) Status(ctx context.Context) ([]*clientv3.StatusResponse, error) {
 	endpoints := c.Client.Endpoints()
 	var resp []*clientv3.StatusResponse
@@ -257,10 +249,6 @@ func (c integrationClient) Defragment(ctx context.Context, o config.DefragOption
 	return nil
 }
 
-func (c integrationClient) Grant(ctx context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error) {
-	return c.Client.Grant(ctx, ttl)
-}
-
 func (c integrationClient) TimeToLive(ctx context.Context, id clientv3.LeaseID, o config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {
 	leaseOpts := []clientv3.LeaseOption{}
 	if o.WithAttachedKeys {
@@ -288,41 +276,9 @@ func (c integrationClient) UserAdd(ctx context.Context, name, password string, o
 	})
 }
 
-func (c integrationClient) UserList(ctx context.Context) (*clientv3.AuthUserListResponse, error) {
-	return c.Client.UserList(ctx)
-}
-
-func (c integrationClient) UserDelete(ctx context.Context, name string) (*clientv3.AuthUserDeleteResponse, error) {
-	return c.Client.UserDelete(ctx, name)
-}
-
 func (c integrationClient) UserChangePass(ctx context.Context, user, newPass string) error {
 	_, err := c.Client.UserChangePassword(ctx, user, newPass)
 	return err
-}
-
-func (c integrationClient) RoleAdd(ctx context.Context, name string) (*clientv3.AuthRoleAddResponse, error) {
-	return c.Client.RoleAdd(ctx, name)
-}
-
-func (c integrationClient) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
-	return c.Client.RoleGrantPermission(ctx, name, key, rangeEnd, permType)
-}
-
-func (c integrationClient) RoleGet(ctx context.Context, role string) (*clientv3.AuthRoleGetResponse, error) {
-	return c.Client.RoleGet(ctx, role)
-}
-
-func (c integrationClient) RoleList(ctx context.Context) (*clientv3.AuthRoleListResponse, error) {
-	return c.Client.RoleList(ctx)
-}
-
-func (c integrationClient) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error) {
-	return c.Client.RoleRevokePermission(ctx, role, key, rangeEnd)
-}
-
-func (c integrationClient) RoleDelete(ctx context.Context, role string) (*clientv3.AuthRoleDeleteResponse, error) {
-	return c.Client.RoleDelete(ctx, role)
 }
 
 func (c integrationClient) Txn(ctx context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error) {
@@ -366,10 +322,6 @@ func getOps(ss []string) ([]clientv3.Op, error) {
 		}
 	}
 	return ops, nil
-}
-
-func (c integrationClient) MemberList(ctx context.Context) (*clientv3.MemberListResponse, error) {
-	return c.Client.MemberList(ctx)
 }
 
 func (c integrationClient) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {
