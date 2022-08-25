@@ -238,6 +238,12 @@ func (ctl *EtcdctlV3) MemberList() (*clientv3.MemberListResponse, error) {
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) MemberAdd(name string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
+	var resp clientv3.MemberAddResponse
+	err := ctl.spawnJsonCmd(&resp, "member", "add", name, "--peer-urls", strings.Join(peerAddrs, ","))
+	return &resp, err
+}
+
 func (ctl *EtcdctlV3) MemberAddAsLearner(name string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
 	var resp clientv3.MemberAddResponse
 	err := ctl.spawnJsonCmd(&resp, "member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","))
