@@ -392,7 +392,7 @@ func (ctl *EtcdctlV3) Defragment(ctx context.Context, o config.DefragOption) err
 	return err
 }
 
-func (ctl *EtcdctlV3) LeaseList(ctx context.Context) (*clientv3.LeaseLeasesResponse, error) {
+func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse, error) {
 	args := ctl.cmdArgs("lease", "list", "-w", "json")
 	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
@@ -408,7 +408,7 @@ func (ctl *EtcdctlV3) LeaseList(ctx context.Context) (*clientv3.LeaseLeasesRespo
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) LeaseKeepAliveOnce(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
+func (ctl *EtcdctlV3) KeepAliveOnce(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
 	args := ctl.cmdArgs("lease", "keep-alive", strconv.FormatInt(int64(id), 16), "--once", "-w", "json")
 	cmd, err := SpawnCmd(args, nil)
 	if err != nil {
@@ -424,7 +424,7 @@ func (ctl *EtcdctlV3) LeaseKeepAliveOnce(ctx context.Context, id clientv3.LeaseI
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) LeaseRevoke(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
+func (ctl *EtcdctlV3) Revoke(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
 	var resp clientv3.LeaseRevokeResponse
 	err := ctl.spawnJsonCmd(ctx, &resp, "lease", "revoke", strconv.FormatInt(int64(id), 16))
 	return &resp, err

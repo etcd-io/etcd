@@ -258,18 +258,6 @@ func (c integrationClient) TimeToLive(ctx context.Context, id clientv3.LeaseID, 
 	return c.Client.TimeToLive(ctx, id, leaseOpts...)
 }
 
-func (c integrationClient) LeaseList(ctx context.Context) (*clientv3.LeaseLeasesResponse, error) {
-	return c.Client.Leases(ctx)
-}
-
-func (c integrationClient) LeaseKeepAliveOnce(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
-	return c.Client.KeepAliveOnce(ctx, id)
-}
-
-func (c integrationClient) LeaseRevoke(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
-	return c.Client.Revoke(ctx, id)
-}
-
 func (c integrationClient) UserAdd(ctx context.Context, name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error) {
 	return c.Client.UserAddWithOptions(ctx, name, password, &clientv3.UserAddOptions{
 		NoPassword: opts.NoPassword,

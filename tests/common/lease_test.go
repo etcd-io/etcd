@@ -119,7 +119,7 @@ func TestLeaseGrantAndList(t *testing.T) {
 					// or by hitting an up to date member.
 					leases := []clientv3.LeaseStatus{}
 					require.Eventually(t, func() bool {
-						resp, err := cc.LeaseList(ctx)
+						resp, err := cc.Leases(ctx)
 						if err != nil {
 							return false
 						}
@@ -193,7 +193,7 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 				leaseResp, err := cc.Grant(ctx, 2)
 				require.NoError(t, err)
 
-				_, err = cc.LeaseKeepAliveOnce(ctx, leaseResp.ID)
+				_, err = cc.KeepAliveOnce(ctx, leaseResp.ID)
 				require.NoError(t, err)
 
 				time.Sleep(2 * time.Second) // Wait for the original lease to expire
@@ -229,7 +229,7 @@ func TestLeaseGrantRevoke(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, int64(1), getResp.Count)
 
-				_, err = cc.LeaseRevoke(ctx, leaseResp.ID)
+				_, err = cc.Revoke(ctx, leaseResp.ID)
 				require.NoError(t, err)
 
 				ttlResp, err := cc.TimeToLive(ctx, leaseResp.ID, config.LeaseOption{})
