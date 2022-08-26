@@ -114,7 +114,7 @@ func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, mem
 			t.Fatal("WaitMembersForLeader timeout")
 		default:
 		}
-		_, err := cc.Get("0", config.GetOptions{Timeout: 10*config.TickDuration + time.Second})
+		_, err := cc.Get(ctx, "0", config.GetOptions{Timeout: 10*config.TickDuration + time.Second})
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
 		}
@@ -129,7 +129,7 @@ func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, mem
 		default:
 		}
 		for i := range membs {
-			resp, err := membs[i].Client().Status()
+			resp, err := membs[i].Client().Status(ctx)
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {
 					// if member[i] has stopped

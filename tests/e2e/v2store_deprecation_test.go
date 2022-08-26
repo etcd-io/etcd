@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -97,6 +98,8 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	e2e.BeforeTest(t)
 	lastReleaseData := t.TempDir()
 	currentReleaseData := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
 	currentReleaseBinary := e2e.BinDir + "/etcd"
@@ -106,10 +109,10 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	}
 	snapshotCount := 10
 	epc := runEtcdAndCreateSnapshot(t, lastReleaseBinary, lastReleaseData, snapshotCount)
-	members1 := addAndRemoveKeysAndMembers(t, e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3()), snapshotCount)
+	members1 := addAndRemoveKeysAndMembers(ctx, t, e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3()), snapshotCount)
 	assert.NoError(t, epc.Close())
 	epc = runEtcdAndCreateSnapshot(t, currentReleaseBinary, currentReleaseData, snapshotCount)
-	members2 := addAndRemoveKeysAndMembers(t, e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3()), snapshotCount)
+	members2 := addAndRemoveKeysAndMembers(ctx, t, e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3()), snapshotCount)
 	assert.NoError(t, epc.Close())
 
 	assertSnapshotsMatch(t, lastReleaseData, currentReleaseData, func(data []byte) []byte {
@@ -130,6 +133,8 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	e2e.BeforeTest(t)
 	dataDir := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
 	currentReleaseBinary := e2e.BinDir + "/etcd"
@@ -141,10 +146,10 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 
 	cc := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
 
-	lastReleaseGetResponse, err := cc.Get("", config.GetOptions{Prefix: true})
+	lastReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 	assert.NoError(t, err)
 
-	lastReleaseMemberListResponse, err := cc.MemberList()
+	lastReleaseMemberListResponse, err := cc.MemberList(ctx)
 	assert.NoError(t, err)
 
 	assert.NoError(t, epc.Close())
@@ -153,10 +158,10 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	assert.NoError(t, err)
 
 	cc = e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
-	currentReleaseGetResponse, err := cc.Get("", config.GetOptions{Prefix: true})
+	currentReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 	assert.NoError(t, err)
 
-	currentReleaseMemberListResponse, err := cc.MemberList()
+	currentReleaseMemberListResponse, err := cc.MemberList(ctx)
 	assert.NoError(t, err)
 
 	assert.Equal(t, lastReleaseGetResponse.Kvs, currentReleaseGetResponse.Kvs)
@@ -171,33 +176,33 @@ func runEtcdAndCreateSnapshot(t testing.TB, binary, dataDir string, snapshotCoun
 	return epc
 }
 
-func addAndRemoveKeysAndMembers(t testing.TB, cc *e2e.EtcdctlV3, snapshotCount int) (members []uint64) {
+func addAndRemoveKeysAndMembers(ctx context.Context, t testing.TB, cc *e2e.EtcdctlV3, snapshotCount int) (members []uint64) {
 	// Execute some non-trivial key&member operation
 	for i := 0; i < snapshotCount*3; i++ {
-		err := cc.Put(fmt.Sprintf("%d", i), "1", config.PutOptions{})
+		err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
 		assert.NoError(t, err)
 	}
-	member1, err := cc.MemberAddAsLearner("member1", []string{"http://127.0.0.1:2000"})
+	member1, err := cc.MemberAddAsLearner(ctx, "member1", []string{"http://127.0.0.1:2000"})
 	assert.NoError(t, err)
 	members = append(members, member1.Member.ID)
 
 	for i := 0; i < snapshotCount*2; i++ {
-		_, err = cc.Delete(fmt.Sprintf("%d", i), config.DeleteOptions{})
+		_, err = cc.Delete(ctx, fmt.Sprintf("%d", i), config.DeleteOptions{})
 		assert.NoError(t, err)
 	}
-	_, err = cc.MemberRemove(member1.Member.ID)
+	_, err = cc.MemberRemove(ctx, member1.Member.ID)
 	assert.NoError(t, err)
 
 	for i := 0; i < snapshotCount; i++ {
-		err = cc.Put(fmt.Sprintf("%d", i), "2", config.PutOptions{})
+		err = cc.Put(ctx, fmt.Sprintf("%d", i), "2", config.PutOptions{})
 		assert.NoError(t, err)
 	}
-	member2, err := cc.MemberAddAsLearner("member2", []string{"http://127.0.0.1:2001"})
+	member2, err := cc.MemberAddAsLearner(ctx, "member2", []string{"http://127.0.0.1:2001"})
 	assert.NoError(t, err)
 	members = append(members, member2.Member.ID)
 
 	for i := 0; i < snapshotCount/2; i++ {
-		err = cc.Put(fmt.Sprintf("%d", i), "3", config.PutOptions{})
+		err = cc.Put(ctx, fmt.Sprintf("%d", i), "3", config.PutOptions{})
 		assert.NoError(t, err)
 	}
 	return members

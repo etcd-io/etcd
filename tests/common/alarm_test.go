@@ -35,14 +35,14 @@ func TestAlarm(t *testing.T) {
 	testutils.ExecuteUntil(ctx, t, func() {
 		// test small put still works
 		smallbuf := strings.Repeat("a", 64)
-		if err := clus.Client().Put("1st_test", smallbuf, config.PutOptions{}); err != nil {
+		if err := clus.Client().Put(ctx, "1st_test", smallbuf, config.PutOptions{}); err != nil {
 			t.Fatalf("alarmTest: put kv error (%v)", err)
 		}
 
 		// write some chunks to fill up the database
 		buf := strings.Repeat("b", os.Getpagesize())
 		for {
-			if err := clus.Client().Put("2nd_test", buf, config.PutOptions{}); err != nil {
+			if err := clus.Client().Put(ctx, "2nd_test", buf, config.PutOptions{}); err != nil {
 				if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
 					t.Fatal(err)
 				}
@@ -51,20 +51,20 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// quota alarm should now be on
-		alarmResp, err := clus.Client().AlarmList()
+		alarmResp, err := clus.Client().AlarmList(ctx)
 		if err != nil {
 			t.Fatalf("alarmTest: Alarm error (%v)", err)
 		}
 
 		// check that Put is rejected when alarm is on
-		if err := clus.Client().Put("3rd_test", smallbuf, config.PutOptions{}); err != nil {
+		if err := clus.Client().Put(ctx, "3rd_test", smallbuf, config.PutOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
 				t.Fatal(err)
 			}
 		}
 
 		// get latest revision to compact
-		sresp, err := clus.Client().Status()
+		sresp, err := clus.Client().Status(ctx)
 		if err != nil {
 			t.Fatalf("get endpoint status error: %v", err)
 		}
@@ -77,12 +77,12 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// make some space
-		_, err = clus.Client().Compact(rvs, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
+		_, err = clus.Client().Compact(ctx, rvs, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
 		if err != nil {
 			t.Fatalf("alarmTest: Compact error (%v)", err)
 		}
 
-		if err = clus.Client().Defragment(config.DefragOption{Timeout: 10 * time.Second}); err != nil {
+		if err = clus.Client().Defragment(ctx, config.DefragOption{Timeout: 10 * time.Second}); err != nil {
 			t.Fatalf("alarmTest: defrag error (%v)", err)
 		}
 
@@ -92,14 +92,14 @@ func TestAlarm(t *testing.T) {
 				MemberID: alarm.MemberID,
 				Alarm:    alarm.Alarm,
 			}
-			_, err = clus.Client().AlarmDisarm(alarmMember)
+			_, err = clus.Client().AlarmDisarm(ctx, alarmMember)
 			if err != nil {
 				t.Fatalf("alarmTest: Alarm error (%v)", err)
 			}
 		}
 
 		// put one more key below quota
-		if err := clus.Client().Put("4th_test", smallbuf, config.PutOptions{}); err != nil {
+		if err := clus.Client().Put(ctx, "4th_test", smallbuf, config.PutOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	})

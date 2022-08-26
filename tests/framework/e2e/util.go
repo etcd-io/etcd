@@ -50,11 +50,11 @@ func SpawnWithExpectWithEnv(args []string, envVars map[string]string, expected s
 }
 
 func SpawnWithExpects(args []string, envVars map[string]string, xs ...string) error {
-	_, err := SpawnWithExpectLines(args, envVars, xs...)
+	_, err := SpawnWithExpectLines(context.TODO(), args, envVars, xs...)
 	return err
 }
 
-func SpawnWithExpectLines(args []string, envVars map[string]string, xs ...string) ([]string, error) {
+func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string]string, xs ...string) ([]string, error) {
 	proc, err := SpawnCmd(args, envVars)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func SpawnWithExpectLines(args []string, envVars map[string]string, xs ...string
 		lines []string
 	)
 	for _, txt := range xs {
-		l, lerr := proc.Expect(txt)
+		l, lerr := proc.ExpectWithContext(ctx, txt)
 		if lerr != nil {
 			proc.Close()
 			return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)

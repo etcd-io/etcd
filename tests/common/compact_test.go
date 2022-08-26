@@ -50,11 +50,11 @@ func TestCompact(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 				for i := range kvs {
-					if err := clus.Client().Put(kvs[i].Key, kvs[i].Val, config.PutOptions{}); err != nil {
+					if err := clus.Client().Put(ctx, kvs[i].Key, kvs[i].Val, config.PutOptions{}); err != nil {
 						t.Fatalf("compactTest #%d: put kv error (%v)", i, err)
 					}
 				}
-				get, err := clus.Client().Get("key", config.GetOptions{Revision: 3})
+				get, err := clus.Client().Get(ctx, "key", config.GetOptions{Revision: 3})
 				if err != nil {
 					t.Fatalf("compactTest: Get kv by revision error (%v)", err)
 				}
@@ -62,12 +62,12 @@ func TestCompact(t *testing.T) {
 				getkvs := testutils.KeyValuesFromGetResponse(get)
 				assert.Equal(t, kvs[1:2], getkvs)
 
-				_, err = clus.Client().Compact(4, tc.options)
+				_, err = clus.Client().Compact(ctx, 4, tc.options)
 				if err != nil {
 					t.Fatalf("compactTest: Compact error (%v)", err)
 				}
 
-				get, err = clus.Client().Get("key", config.GetOptions{Revision: 3})
+				get, err = clus.Client().Get(ctx, "key", config.GetOptions{Revision: 3})
 				if err != nil {
 					if !strings.Contains(err.Error(), "required revision has been compacted") {
 						t.Fatalf("compactTest: Get compact key error (%v)", err)
@@ -76,7 +76,7 @@ func TestCompact(t *testing.T) {
 					t.Fatalf("expected '...has been compacted' error, got <nil>")
 				}
 
-				_, err = clus.Client().Compact(2, tc.options)
+				_, err = clus.Client().Compact(ctx, 2, tc.options)
 				if err != nil {
 					if !strings.Contains(err.Error(), "required revision has been compacted") {
 						t.Fatal(err)

@@ -124,7 +124,7 @@ func startEtcd(t *testing.T, ep e2e.EtcdProcess, execPath string) {
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Version) {
 	c := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
-		err := c.DowngradeEnable(ver.String())
+		err := c.DowngradeEnable(context.TODO(), ver.String())
 		if err != nil {
 			t.Fatal(err)
 		}

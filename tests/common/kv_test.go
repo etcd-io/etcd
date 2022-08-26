@@ -38,10 +38,10 @@ func TestKVPut(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				key, value := "foo", "bar"
 
-				if err := cc.Put(key, value, config.PutOptions{}); err != nil {
+				if err := cc.Put(ctx, key, value, config.PutOptions{}); err != nil {
 					t.Fatalf("count not put key %q, err: %s", key, err)
 				}
-				resp, err := cc.Get(key, config.GetOptions{})
+				resp, err := cc.Get(ctx, key, config.GetOptions{})
 				if err != nil {
 					t.Fatalf("count not get key %q, err: %s", key, err)
 				}
@@ -78,7 +78,7 @@ func TestKVGet(t *testing.T) {
 				)
 
 				for i := range kvs {
-					if err := cc.Put(kvs[i], "bar", config.PutOptions{}); err != nil {
+					if err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{}); err != nil {
 						t.Fatalf("count not put key %q, err: %s", kvs[i], err)
 					}
 				}
@@ -107,7 +107,7 @@ func TestKVGet(t *testing.T) {
 					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wkv: reversedKvs},
 				}
 				for _, tt := range tests {
-					resp, err := cc.Get(tt.begin, tt.options)
+					resp, err := cc.Get(ctx, tt.begin, tt.options)
 					if err != nil {
 						t.Fatalf("count not get key %q, err: %s", tt.begin, err)
 					}
@@ -178,16 +178,16 @@ func TestKVDelete(t *testing.T) {
 				}
 				for _, tt := range tests {
 					for i := range kvs {
-						if err := cc.Put(kvs[i], "bar", config.PutOptions{}); err != nil {
+						if err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{}); err != nil {
 							t.Fatalf("count not put key %q, err: %s", kvs[i], err)
 						}
 					}
-					del, err := cc.Delete(tt.deleteKey, tt.options)
+					del, err := cc.Delete(ctx, tt.deleteKey, tt.options)
 					if err != nil {
 						t.Fatalf("count not get key %q, err: %s", tt.deleteKey, err)
 					}
 					assert.Equal(t, tt.wantDeleted, int(del.Deleted))
-					get, err := cc.Get("", config.GetOptions{Prefix: true})
+					get, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 					if err != nil {
 						t.Fatalf("count not get key, err: %s", err)
 					}
@@ -230,7 +230,7 @@ func TestKVGetNoQuorum(t *testing.T) {
 			cc := clus.Members()[2].Client()
 			testutils.ExecuteUntil(ctx, t, func() {
 				key := "foo"
-				_, err := cc.Get(key, tc.options)
+				_, err := cc.Get(ctx, key, tc.options)
 				gotError := err != nil
 				if gotError != tc.wantError {
 					t.Fatalf("Unexpeted result, wantError: %v, gotErr: %v, err: %s", tc.wantError, gotError, err)
