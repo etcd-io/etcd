@@ -19,6 +19,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -207,6 +208,8 @@ func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
 	select {
 	case <-e.Server.ReadyNotify(): // wait for e.Server to join the cluster
 	case <-e.Server.StopNotify(): // publish aborted from 'ErrStopped'
+	case <-time.After(cfg.ExperimentalWaitClusterReadyTimeout):
+		e.GetLogger().Warn("startEtcd: timed out waiting for the ready notification")
 	}
 	return e.Server.StopNotify(), e.Err(), nil
 }

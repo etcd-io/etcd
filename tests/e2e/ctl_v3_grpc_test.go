@@ -18,6 +18,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -148,7 +149,7 @@ func firstMatch(t *testing.T, expectLine string, logs ...e2e.LogsExpect) string 
 	match := make(chan string, len(logs))
 	for i := range logs {
 		go func(l e2e.LogsExpect) {
-			line, _ := l.Expect(expectLine)
+			line, _ := l.ExpectWithContext(context.TODO(), expectLine)
 			match <- line
 		}(logs[i])
 	}
