@@ -61,7 +61,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 
 	t.Log("Downgrade enabled, validating if cluster is ready for downgrade")
 	for i := 0; i < len(epc.Procs); i++ {
-		expectLog(t, epc.Procs[i], "The server is ready to downgrade")
+		e2e.AssertProcessLogs(t, epc.Procs[i], "The server is ready to downgrade")
 		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{Cluster: lastVersionStr, Server: currentVersionStr})
 	}
 	t.Log("Cluster is ready for downgrade")
@@ -73,7 +73,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 		startEtcd(t, epc.Procs[i], lastReleaseBinary)
 	}
 	t.Log("All members downgraded, validating downgrade")
-	expectLog(t, leader(t, epc), "the cluster has been downgraded")
+	e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
 	for i := 0; i < len(epc.Procs); i++ {
 		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{Cluster: lastVersionStr, Server: lastVersionStr})
 	}
@@ -158,17 +158,6 @@ func validateVersion(t *testing.T, cfg *e2e.EtcdProcessClusterConfig, member e2e
 			}
 			break
 		}
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func expectLog(t *testing.T, ep e2e.EtcdProcess, expectLog string) {
-	t.Helper()
-	var err error
-	testutils.ExecuteWithTimeout(t, 30*time.Second, func() {
-		_, err = ep.Logs().Expect(expectLog)
 	})
 	if err != nil {
 		t.Fatal(err)

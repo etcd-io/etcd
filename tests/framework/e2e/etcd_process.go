@@ -15,9 +15,12 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
+	"testing"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -48,7 +51,7 @@ type EtcdProcess interface {
 }
 
 type LogsExpect interface {
-	Expect(string) (string, error)
+	ExpectWithContext(context.Context, string) (string, error)
 	Lines() []string
 	LineCount() int
 }
@@ -178,4 +181,15 @@ func (ep *EtcdServerProcess) Logs() LogsExpect {
 		ep.cfg.lg.Panic("Please grab logs before process is stopped")
 	}
 	return ep.proc
+}
+
+func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
+	t.Helper()
+	var err error
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err = ep.Logs().ExpectWithContext(ctx, expectLog)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
