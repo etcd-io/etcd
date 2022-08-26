@@ -121,12 +121,11 @@ func dialWithSchemeTest(cx ctlCtx) {
 }
 
 type ctlCtx struct {
-	t                 *testing.T
-	apiPrefix         string
-	cfg               e2e.EtcdProcessClusterConfig
-	quotaBackendBytes int64
-	corruptFunc       func(string) error
-	noStrictReconfig  bool
+	t                *testing.T
+	apiPrefix        string
+	cfg              e2e.EtcdProcessClusterConfig
+	corruptFunc      func(string) error
+	noStrictReconfig bool
 
 	epc *e2e.EtcdProcessCluster
 
@@ -143,9 +142,6 @@ type ctlCtx struct {
 
 	initialCorruptCheck bool
 
-	// for compaction
-	compactPhysical bool
-
 	// dir that was used during the test
 	dataDir string
 }
@@ -156,6 +152,7 @@ func (cx *ctlCtx) applyOpts(opts []ctlOption) {
 	for _, opt := range opts {
 		opt(cx)
 	}
+
 	cx.initialCorruptCheck = true
 }
 
@@ -177,10 +174,6 @@ func withQuorum() ctlOption {
 
 func withInteractive() ctlOption {
 	return func(cx *ctlCtx) { cx.interactive = true }
-}
-
-func withQuota(b int64) ctlOption {
-	return func(cx *ctlCtx) { cx.quotaBackendBytes = b }
 }
 
 func withInitialCorruptCheck() ctlOption {
@@ -231,9 +224,6 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 
 	if !ret.quorum {
 		ret.cfg = *e2e.ConfigStandalone(ret.cfg)
-	}
-	if ret.quotaBackendBytes > 0 {
-		ret.cfg.QuotaBackendBytes = ret.quotaBackendBytes
 	}
 	ret.cfg.NoStrictReconfig = ret.noStrictReconfig
 	if ret.initialCorruptCheck {
