@@ -25,6 +25,7 @@ linters:
     - staticcheck
     - stylecheck
     - unused
+    - revive
 
 linters-settings: # please keep this alphabetized
   staticcheck:

@@ -90,12 +90,12 @@ and output a hex encoded line of binary for each input line`)
 		case nil:
 			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
-			confstateJson, err := json.Marshal(snapshot.Metadata.ConfState)
+			confStateJSON, err := json.Marshal(snapshot.Metadata.ConfState)
 			if err != nil {
-				confstateJson = []byte(fmt.Sprintf("confstate err: %v", err))
+				confStateJSON = []byte(fmt.Sprintf("confstate err: %v", err))
 			}
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
-				walsnap.Term, walsnap.Index, nodes, confstateJson)
+				walsnap.Term, walsnap.Index, nodes, confStateJSON)
 		case snap.ErrNoSnapshot:
 			fmt.Printf("Snapshot:\nempty\n")
 		default:
@@ -372,9 +372,9 @@ func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry
 				return
 			}
 
-			decoder_status, decoded_data := parseDecoderOutput(decoderoutput)
+			decoderStatus, decodedData := parseDecoderOutput(decoderoutput)
 
-			fmt.Printf("\t%s\t%s", decoder_status, decoded_data)
+			fmt.Printf("\t%s\t%s", decoderStatus, decodedData)
 		}
 	}
 
@@ -393,19 +393,19 @@ func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry
 }
 
 func parseDecoderOutput(decoderoutput string) (string, string) {
-	var decoder_status string
-	var decoded_data string
+	var decoderStatus string
+	var decodedData string
 	output := strings.Split(decoderoutput, "|")
 	switch len(output) {
 	case 1:
-		decoder_status = "decoder output format is not right, print output anyway"
-		decoded_data = decoderoutput
+		decoderStatus = "decoder output format is not right, print output anyway"
+		decodedData = decoderoutput
 	case 2:
-		decoder_status = output[0]
-		decoded_data = output[1]
+		decoderStatus = output[0]
+		decodedData = output[1]
 	default:
-		decoder_status = output[0] + "(*WARNING: data might contain deliminator used by etcd-dump-logs)"
-		decoded_data = strings.Join(output[1:], "")
+		decoderStatus = output[0] + "(*WARNING: data might contain deliminator used by etcd-dump-logs)"
+		decodedData = strings.Join(output[1:], "")
 	}
-	return decoder_status, decoded_data
+	return decoderStatus, decodedData
 }
