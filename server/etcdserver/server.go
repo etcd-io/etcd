@@ -927,7 +927,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	// wait for the raft routine to finish the disk writes before triggering a
 	// snapshot. or applied index might be greater than the last index in raft
 	// storage, since the raft routine might be slower than toApply routine.
-	<-apply.notifyc
+	<-apply.snapNotifyc
 
 	s.triggerSnapshot(ep)
 	select {
@@ -975,7 +975,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	}
 
 	// wait for raftNode to persist snapshot onto the disk
-	<-toApply.notifyc
+	<-toApply.snapNotifyc
 
 	newbe, err := serverstorage.OpenSnapshotBackend(s.Cfg, s.snapshotter, toApply.snapshot, s.beHooks)
 	if err != nil {
@@ -1122,8 +1122,9 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 	if len(ents) == 0 {
 		return
 	}
+
 	var shouldstop bool
-	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState); shouldstop {
+	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState, apply.walNotifyc); shouldstop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 	}
 }
@@ -1792,8 +1793,10 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 func (s *EtcdServer) apply(
 	es []raftpb.Entry,
 	confState *raftpb.ConfState,
+	walNotifyc chan struct{},
 ) (appliedt uint64, appliedi uint64, shouldStop bool) {
 	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
+	walNotified := false
 	for i := range es {
 		e := es[i]
 		s.lg.Debug("Applying entry",
@@ -1802,7 +1805,16 @@ func (s *EtcdServer) apply(
 			zap.Stringer("type", e.Type))
 		switch e.Type {
 		case raftpb.EntryNormal:
-			s.applyEntryNormal(&e)
+			postApplyFunc := s.applyEntryNormal(&e)
+			if postApplyFunc != nil {
+				// wait for the WAL entries to be synced. Note we only need
+				// to wait for the notification once.
+				if walNotifyc != nil && !walNotified {
+					walNotified = true
+					<-walNotifyc
+				}
+				postApplyFunc()
+			}
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 
@@ -1823,6 +1835,12 @@ func (s *EtcdServer) apply(
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 			shouldStop = shouldStop || removedSelf
+			// wait for the WAL entries to be synced. Note we only need
+			// to wait for the notification once.
+			if walNotifyc != nil && !walNotified {
+				walNotified = true
+				<-walNotifyc
+			}
 			s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), err})
 
 		default:
@@ -1838,7 +1856,7 @@ func (s *EtcdServer) apply(
 }
 
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
-func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
+func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) func() {
 	shouldApplyV3 := membership.ApplyV2storeOnly
 	applyV3Performed := false
 	var ar *apply.Result
@@ -1870,7 +1888,8 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		if s.isLeader() {
 			s.lessor.Promote(s.Cfg.ElectionTimeout())
 		}
-		return
+
+		return nil
 	}
 
 	var raftReq pb.InternalRaftRequest
@@ -1879,15 +1898,17 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
 		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
-		return
+		return func() {
+			s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
+		}
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
-		s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
-		return
+		return func() {
+			s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
+		}
 	}
 
 	id := raftReq.ID
@@ -1909,16 +1930,17 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 
 	// do not re-toApply applied entries.
 	if !shouldApplyV3 {
-		return
+		return nil
 	}
 
 	if ar == nil {
-		return
+		return nil
 	}
 
 	if ar.Err != errors.ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
-		s.w.Trigger(id, ar)
-		return
+		return func() {
+			s.w.Trigger(id, ar)
+		}
 	}
 
 	lg := s.Logger()
@@ -1938,6 +1960,8 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
 		s.w.Trigger(id, ar)
 	})
+
+	return nil
 }
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {

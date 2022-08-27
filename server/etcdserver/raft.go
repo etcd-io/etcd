@@ -68,8 +68,10 @@ func init() {
 type toApply struct {
 	entries  []raftpb.Entry
 	snapshot raftpb.Snapshot
-	// notifyc synchronizes etcd server applies with the raft node
-	notifyc chan struct{}
+	// snapNotifyc synchronizes etcd server applies with the raft node
+	snapNotifyc chan struct{}
+	// walNotifyc synchronizes etcd server applies with the WAL persistence
+	walNotifyc chan struct{}
 }
 
 type raftNode struct {
@@ -200,11 +202,16 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					}
 				}
 
-				notifyc := make(chan struct{}, 1)
+				snapNotifyc := make(chan struct{}, 1)
+				var walNotifyc chan struct{}
+				if shouldWaitWALSync(rd) {
+					walNotifyc = make(chan struct{}, 1)
+				}
 				ap := toApply{
-					entries:  rd.CommittedEntries,
-					snapshot: rd.Snapshot,
-					notifyc:  notifyc,
+					entries:     rd.CommittedEntries,
+					snapshot:    rd.Snapshot,
+					snapNotifyc: snapNotifyc,
+					walNotifyc:  walNotifyc,
 				}
 
 				updateCommittedIndex(&ap, rh)
@@ -237,6 +244,12 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
 					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
 				}
+
+				if walNotifyc != nil {
+					// etcdserver should wait for this notification before responding to client.
+					walNotifyc <- struct{}{}
+				}
+
 				if !raft.IsEmptyHardState(rd.HardState) {
 					proposalsCommitted.Set(float64(rd.HardState.Commit))
 				}
@@ -252,7 +265,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					}
 
 					// etcdserver now claim the snapshot has been persisted onto the disk
-					notifyc <- struct{}{}
+					snapNotifyc <- struct{}{}
 
 					// gofail: var raftBeforeApplySnap struct{}
 					r.raftStorage.ApplySnapshot(rd.Snapshot)
@@ -272,7 +285,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					msgs := r.processMessages(rd.Messages)
 
 					// now unblocks 'applyAll' that waits on Raft log disk writes before triggering snapshots
-					notifyc <- struct{}{}
+					snapNotifyc <- struct{}{}
 
 					// Candidate or follower needs to wait for all pending configuration
 					// changes to be applied before sending messages.
@@ -293,7 +306,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						// to be in sync with scheduled config-change job
 						// (assume notifyc has cap of 1)
 						select {
-						case notifyc <- struct{}{}:
+						case snapNotifyc <- struct{}{}:
 						case <-r.stopped:
 							return
 						}
@@ -303,7 +316,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					r.transport.Send(msgs)
 				} else {
 					// leader already processed 'MsgSnap' and signaled
-					notifyc <- struct{}{}
+					snapNotifyc <- struct{}{}
 				}
 
 				r.Advance()
@@ -312,6 +325,42 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 			}
 		}
 	}()
+}
+
+// For a cluster with only one member, the raft may send both the
+// unstable entries and committed entries to etcdserver, and there
+// may have overlapped log entries between them.
+//
+// etcd responds to the client once it finishes (actually partially)
+// the applying workflow. But when the client receives the response,
+// it doesn't mean etcd has already successfully saved the data,
+// including BoltDB and WAL, because:
+//    1. etcd commits the boltDB transaction periodically instead of on each request;
+//    2. etcd saves WAL entries in parallel with applying the committed entries.
+// Accordingly, it might run into a situation of data loss when the etcd crashes
+// immediately after responding to the client and before the boltDB and WAL
+// successfully save the data to disk.
+// Note that this issue can only happen for clusters with only one member.
+//
+// For clusters with multiple members, it isn't an issue, because etcd will
+// not commit & apply the data before it being replicated to majority members.
+// When the client receives the response, it means the data must have been applied.
+// It further means the data must have been committed.
+// Note: for clusters with multiple members, the raft will never send identical
+// unstable entries and committed entries to etcdserver.
+//
+// Refer to https://github.com/etcd-io/etcd/issues/14370.
+func shouldWaitWALSync(rd raft.Ready) bool {
+	if len(rd.CommittedEntries) == 0 || len(rd.Entries) == 0 {
+		return false
+	}
+
+	// Check if there is overlap between unstable and committed entries
+	// assuming that their index and term are only incrementing.
+	lastCommittedEntry := rd.CommittedEntries[len(rd.CommittedEntries)-1]
+	firstUnstableEntry := rd.Entries[0]
+	return lastCommittedEntry.Term > firstUnstableEntry.Term ||
+		(lastCommittedEntry.Term == firstUnstableEntry.Term && lastCommittedEntry.Index >= firstUnstableEntry.Index)
 }
 
 func updateCommittedIndex(ap *toApply, rh *raftReadyHandler) {

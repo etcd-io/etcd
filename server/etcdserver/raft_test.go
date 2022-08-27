@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3"
@@ -190,6 +191,52 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 
 // TestConfigChangeBlocksApply ensures toApply blocks if committed entries contain config-change.
 func TestConfigChangeBlocksApply(t *testing.T) {
+	testEtcdserverAndRaftInteraction(t, testConfigChangeBlockApply)
+}
+
+func TestWALSyncNotBlockApply(t *testing.T) {
+	testEtcdserverAndRaftInteraction(t, testWALSyncNotBlockApply)
+}
+
+func TestWALSyncBlockApply(t *testing.T) {
+	testEtcdserverAndRaftInteraction(t, testWALSyncBlockApply)
+}
+
+func testConfigChangeBlockApply(t *testing.T, srv *EtcdServer, n *readyNode) toApply {
+	n.readyc <- raft.Ready{
+		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
+		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+	}
+	return <-srv.r.applyc
+}
+
+func testWALSyncNotBlockApply(t *testing.T, srv *EtcdServer, n *readyNode) toApply {
+	n.readyc <- raft.Ready{
+		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
+		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+	}
+	ap := <-srv.r.applyc
+	if ap.walNotifyc != nil {
+		t.Error("unexpected ap.walNotifyc, expected nil")
+	}
+	return ap
+}
+
+func testWALSyncBlockApply(t *testing.T, srv *EtcdServer, n *readyNode) toApply {
+	n.readyc <- raft.Ready{
+		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
+		Entries:          []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+	}
+	ap := <-srv.r.applyc
+	if ap.walNotifyc == nil {
+		t.Error("unexpected ap.walNotifyc, expected not nil")
+	}
+	assert.NotEqual(t, nil, ap.walNotifyc)
+	return ap
+}
+
+func testEtcdserverAndRaftInteraction(t *testing.T, testFunc func(*testing.T, *EtcdServer, *readyNode) toApply) {
 	n := newNopReadyNode()
 
 	r := newRaftNode(raftNodeConfig{
@@ -208,11 +255,7 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 	})
 	defer srv.r.Stop()
 
-	n.readyc <- raft.Ready{
-		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
-		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
-	}
-	ap := <-srv.r.applyc
+	ap := testFunc(t, srv, n)
 
 	continueC := make(chan struct{})
 	go func() {
@@ -228,7 +271,7 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 	}
 
 	// finish toApply, unblock raft routine
-	<-ap.notifyc
+	<-ap.snapNotifyc
 
 	select {
 	case <-continueC:
@@ -315,5 +358,81 @@ func TestStopRaftNodeMoreThanOnce(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Errorf("*raftNode.stop() is blocked !")
 		}
+	}
+}
+
+func TestShouldWaitWALSync(t *testing.T) {
+	testcases := []struct {
+		name            string
+		unstableEntries []raftpb.Entry
+		commitedEntries []raftpb.Entry
+		expectedResult  bool
+	}{
+		{
+			name:            "both entries are nil",
+			unstableEntries: nil,
+			commitedEntries: nil,
+			expectedResult:  false,
+		},
+		{
+			name:            "both entries are empty slices",
+			unstableEntries: []raftpb.Entry{},
+			commitedEntries: []raftpb.Entry{},
+			expectedResult:  false,
+		},
+		{
+			name:            "one nil and the other empty",
+			unstableEntries: nil,
+			commitedEntries: []raftpb.Entry{},
+			expectedResult:  false,
+		},
+		{
+			name:            "one nil and the other has data",
+			unstableEntries: nil,
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "one empty and the other has data",
+			unstableEntries: []raftpb.Entry{},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "has different term and index",
+			unstableEntries: []raftpb.Entry{{Term: 5, Index: 11, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "has identical data",
+			unstableEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  true,
+		},
+		{
+			name: "has overlapped entry",
+			unstableEntries: []raftpb.Entry{
+				{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}},
+				{Term: 4, Index: 11, Type: raftpb.EntryNormal, Data: []byte{0x44, 0x55, 0x66}},
+				{Term: 4, Index: 12, Type: raftpb.EntryNormal, Data: []byte{0x77, 0x88, 0x99}},
+			},
+			commitedEntries: []raftpb.Entry{
+				{Term: 4, Index: 8, Type: raftpb.EntryNormal, Data: []byte{0x07, 0x08, 0x09}},
+				{Term: 4, Index: 9, Type: raftpb.EntryNormal, Data: []byte{0x10, 0x11, 0x12}},
+				{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}},
+			},
+			expectedResult: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			shouldWALSync := shouldWaitWALSync(raft.Ready{
+				Entries:          tc.unstableEntries,
+				CommittedEntries: tc.commitedEntries,
+			})
+			assert.Equal(t, tc.expectedResult, shouldWALSync)
+		})
 	}
 }
