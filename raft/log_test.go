@@ -216,7 +216,7 @@ func TestLogMaybeAppend(t *testing.T) {
 			lastterm, lastindex, lastindex + 2, []pb.Entry{{Index: lastindex + 1, Term: 4}, {Index: lastindex + 2, Term: 4}},
 			lastindex + 2, true, lastindex + 2, false,
 		},
-		// match with the the entry in the middle
+		// match with the entry in the middle
 		{
 			lastterm - 1, lastindex - 1, lastindex, []pb.Entry{{Index: lastindex, Term: 4}},
 			lastindex, true, lastindex, false,
