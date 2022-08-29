@@ -182,6 +182,7 @@ type EtcdProcessClusterConfig struct {
 	CorruptCheckTime        time.Duration
 	CompactHashCheckEnabled bool
 	CompactHashCheckTime    time.Duration
+	GoFailEnabled           bool
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -388,12 +389,21 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if cfg.CompactHashCheckTime != 0 {
 		args = append(args, "--experimental-compact-hash-check-time", cfg.CompactHashCheckTime.String())
 	}
+	envVars := map[string]string{}
+	for key, value := range cfg.EnvVars {
+		envVars[key] = value
+	}
+	var gofailPort int
+	if cfg.GoFailEnabled {
+		gofailPort = (i+1)*10000 + 2381
+		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
+	}
 
 	return &EtcdServerProcessConfig{
 		lg:           cfg.Logger,
 		ExecPath:     cfg.ExecPath,
 		Args:         args,
-		EnvVars:      cfg.EnvVars,
+		EnvVars:      envVars,
 		TlsArgs:      cfg.TlsArgs(),
 		DataDirPath:  dataDirPath,
 		KeepDataDir:  cfg.KeepDataDir,
@@ -402,6 +412,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		Acurl:        curl,
 		Murl:         murl,
 		InitialToken: cfg.InitialToken,
+		GoFailPort:   gofailPort,
 	}
 }
 

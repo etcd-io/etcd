@@ -30,8 +30,8 @@ test-e2e-release: build
 	PASSES="release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-linearizability
-test-linearizability: build
-	PASSES="linearizability" ./scripts/test.sh $(GO_TEST_FLAGS)
+test-linearizability:
+	FAILPOINTS=true PASSES="linearizability" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 # Static analysis
 

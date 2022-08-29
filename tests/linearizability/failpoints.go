@@ -15,14 +15,20 @@
 package linearizability
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
+	"net/http"
+	"net/url"
+	"time"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 var (
-	KillFailpoint Failpoint = killFailpoint{}
+	KillFailpoint       Failpoint = killFailpoint{}
+	RaftBeforeSavePanic Failpoint = goFailpoint{"etcdserver/raftBeforeSave", "panic"}
 )
 
 type Failpoint interface {
@@ -46,4 +52,52 @@ func (f killFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster
 		return err
 	}
 	return nil
+}
+
+type goFailpoint struct {
+	failpoint string
+	payload   string
+}
+
+func (f goFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
+	err := triggerGoFailpoint(address, f.failpoint, f.payload)
+	if err != nil {
+		return fmt.Errorf("failed to trigger failpoint %q, err: %v", f.failpoint, err)
+	}
+	err = clus.Procs[0].Wait()
+	if err != nil {
+		return err
+	}
+	err = clus.Procs[0].Start(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func triggerGoFailpoint(host, failpoint, payload string) error {
+	failpointUrl := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   failpoint,
+	}
+	r, err := http.NewRequest("PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
+	if err != nil {
+		return err
+	}
+	resp, err := httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+var httpClient = http.Client{
+	Timeout: 10 * time.Millisecond,
 }

@@ -80,6 +80,7 @@ type EtcdServerProcessConfig struct {
 
 	InitialToken   string
 	InitialCluster string
+	GoFailPort     int
 }
 
 func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {

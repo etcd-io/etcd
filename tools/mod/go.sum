@@ -238,6 +238,8 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.1/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
+go.etcd.io/gofail v0.0.0-20220826035847-d0d2a96a6ef0 h1:TcXBU/YdVROXQ7FUowVK1ih9gu2yi3YMLE+tQb9q964=
+go.etcd.io/gofail v0.0.0-20220826035847-d0d2a96a6ef0/go.mod h1:bOzzUWJ5bNHifkNkoIN6Ydf/z/UPT0bYuPghFYVC8+4=
 go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116 h1:QQiUXlqz+d96jyNG71NE+IGTgOK6Xlhdx+PzvfbLHlQ=
 go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116/go.mod h1:F9kog+iVAuvPJucb1dkYcDcbV0g4uyGEHllTP5NrXiw=
 go.mongodb.org/mongo-driver v1.7.3 h1:G4l/eYY9VrQAK/AUgkV0koQKzQnyddnWxrd/Etf0jIs=
