@@ -33,16 +33,16 @@ func TestDefragOnline(t *testing.T) {
 		defer clus.Close()
 		var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 		for i := range kvs {
-			if err := clus.Client().Put(kvs[i].Key, kvs[i].Val, config.PutOptions{}); err != nil {
+			if err := clus.Client().Put(ctx, kvs[i].Key, kvs[i].Val, config.PutOptions{}); err != nil {
 				t.Fatalf("compactTest #%d: put kv error (%v)", i, err)
 			}
 		}
-		_, err := clus.Client().Compact(4, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
+		_, err := clus.Client().Compact(ctx, 4, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
 		if err != nil {
 			t.Fatalf("defrag_test: compact with revision error (%v)", err)
 		}
 
-		if err = clus.Client().Defragment(options); err != nil {
+		if err = clus.Client().Defragment(ctx, options); err != nil {
 			t.Fatalf("defrag_test: defrag error (%v)", err)
 		}
 	})

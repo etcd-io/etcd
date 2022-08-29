@@ -17,9 +17,12 @@
 package expect
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpectFunc(t *testing.T) {
@@ -28,7 +31,7 @@ func TestExpectFunc(t *testing.T) {
 		t.Fatal(err)
 	}
 	wstr := "hello world\r\n"
-	l, eerr := ep.ExpectFunc(func(a string) bool { return len(a) > 10 })
+	l, eerr := ep.ExpectFunc(context.Background(), func(a string) bool { return len(a) > 10 })
 	if eerr != nil {
 		t.Fatal(eerr)
 	}
@@ -37,6 +40,33 @@ func TestExpectFunc(t *testing.T) {
 	}
 	if cerr := ep.Close(); cerr != nil {
 		t.Fatal(cerr)
+	}
+}
+
+func TestExpectFuncTimeout(t *testing.T) {
+	ep, err := NewExpect("tail", "-f", "/dev/null")
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		// It's enough to have "talkative" process to stuck in the infinite loop of reading
+		for {
+			err := ep.Send("new line\n")
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	_, err = ep.ExpectFunc(ctx, func(a string) bool { return false })
+
+	require.ErrorAs(t, err, &context.DeadlineExceeded)
+
+	if err = ep.Stop(); err != nil {
+		t.Fatal(err)
 	}
 }
 

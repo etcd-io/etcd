@@ -685,7 +685,7 @@ func TestKVRestore(t *testing.T) {
 		keysBefore := readGaugeInt(keysGauge)
 		s.Close()
 
-		// ns should recover the the previous state from backend.
+		// ns should recover the previous state from backend.
 		ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
 		if keysRestore := readGaugeInt(keysGauge); keysBefore != keysRestore {

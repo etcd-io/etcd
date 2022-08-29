@@ -16,9 +16,10 @@ package common
 
 import (
 	"context"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 func TestMemberList(t *testing.T) {
@@ -33,7 +34,7 @@ func TestMemberList(t *testing.T) {
 			cc := clus.Client()
 
 			testutils.ExecuteUntil(ctx, t, func() {
-				resp, err := cc.MemberList()
+				resp, err := cc.MemberList(ctx)
 				if err != nil {
 					t.Fatalf("could not get member list, err: %s", err)
 				}

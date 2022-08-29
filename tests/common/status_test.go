@@ -35,7 +35,7 @@ func TestStatus(t *testing.T) {
 			cc := clus.Client()
 
 			testutils.ExecuteUntil(ctx, t, func() {
-				rs, err := cc.Status()
+				rs, err := cc.Status(ctx)
 				if err != nil {
 					t.Fatalf("could not get status, err: %s", err)
 				}

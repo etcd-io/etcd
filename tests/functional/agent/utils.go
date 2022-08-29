@@ -126,6 +126,23 @@ func loadFileData(filePath string) ([]byte, error) {
 	return data, nil
 }
 
+func checkTCPConnect(lg *zap.Logger, target string) error {
+	for i := 0; i < 10; i++ {
+		if conn, err := net.Dial("tcp", target); err != nil {
+			lg.Error("The target isn't reachable", zap.Int("retries", i), zap.String("target", target), zap.Error(err))
+		} else {
+			if conn != nil {
+				conn.Close()
+				lg.Info("The target is reachable", zap.Int("retries", i), zap.String("target", target))
+				return nil
+			}
+			lg.Error("The target isn't reachable due to the returned conn is nil", zap.Int("retries", i), zap.String("target", target))
+		}
+		time.Sleep(time.Second)
+	}
+	return fmt.Errorf("timed out waiting for the target (%s) to be reachable", target)
+}
+
 func cleanPageCache() error {
 	// https://www.kernel.org/doc/Documentation/sysctl/vm.txt
 	// https://github.com/torvalds/linux/blob/master/fs/drop_caches.c

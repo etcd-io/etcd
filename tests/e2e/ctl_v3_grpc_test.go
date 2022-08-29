@@ -18,6 +18,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -83,6 +84,8 @@ func TestAuthority(t *testing.T) {
 		for _, clusterSize := range []int{1, 3} {
 			t.Run(fmt.Sprintf("Size: %d, Scenario: %q", clusterSize, tc.name), func(t *testing.T) {
 				e2e.BeforeTest(t)
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
 
 				cfg := e2e.NewConfigNoTLS()
 				cfg.ClusterSize = clusterSize
@@ -101,7 +104,7 @@ func TestAuthority(t *testing.T) {
 				endpoints := templateEndpoints(t, tc.clientURLPattern, epc)
 
 				client := e2e.NewEtcdctl(cfg, endpoints)
-				err = client.Put("foo", "bar", config.PutOptions{})
+				err = client.Put(ctx, "foo", "bar", config.PutOptions{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -148,7 +151,7 @@ func firstMatch(t *testing.T, expectLine string, logs ...e2e.LogsExpect) string 
 	match := make(chan string, len(logs))
 	for i := range logs {
 		go func(l e2e.LogsExpect) {
-			line, _ := l.Expect(expectLine)
+			line, _ := l.ExpectWithContext(context.TODO(), expectLine)
 			match <- line
 		}(logs[i])
 	}

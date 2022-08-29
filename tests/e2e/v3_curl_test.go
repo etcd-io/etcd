@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -249,7 +250,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		testutil.AssertNil(cx.t, err)
 		defer proc.Close()
 
-		cURLRes, err := proc.ExpectFunc(lineFunc)
+		cURLRes, err := proc.ExpectFunc(context.Background(), lineFunc)
 		testutil.AssertNil(cx.t, err)
 
 		authRes := make(map[string]interface{})
@@ -287,7 +288,7 @@ func testV3CurlCampaign(cx ctlCtx) {
 		Endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
 		Value:    string(cdata),
 	})
-	lines, err := e2e.SpawnWithExpectLines(cargs, cx.envMap, `"leader":{"name":"`)
+	lines, err := e2e.SpawnWithExpectLines(context.TODO(), cargs, cx.envMap, `"leader":{"name":"`)
 	if err != nil {
 		cx.t.Fatalf("failed post campaign request (%s) (%v)", cx.apiPrefix, err)
 	}

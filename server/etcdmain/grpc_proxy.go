@@ -43,6 +43,9 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
@@ -55,15 +58,16 @@ import (
 )
 
 var (
-	grpcProxyListenAddr            string
-	grpcProxyMetricsListenAddr     string
-	grpcProxyEndpoints             []string
-	grpcProxyDNSCluster            string
-	grpcProxyDNSClusterServiceName string
-	grpcProxyInsecureDiscovery     bool
-	grpcProxyDataDir               string
-	grpcMaxCallSendMsgSize         int
-	grpcMaxCallRecvMsgSize         int
+	grpcProxyListenAddr                string
+	grpcProxyMetricsListenAddr         string
+	grpcProxyEndpoints                 []string
+	grpcProxyEndpointsAutoSyncInterval time.Duration
+	grpcProxyDNSCluster                string
+	grpcProxyDNSClusterServiceName     string
+	grpcProxyInsecureDiscovery         bool
+	grpcProxyDataDir                   string
+	grpcMaxCallSendMsgSize             int
+	grpcMaxCallRecvMsgSize             int
 
 	// tls for connecting to etcd
 
@@ -91,6 +95,7 @@ var (
 
 	grpcProxyEnablePprof    bool
 	grpcProxyEnableOrdering bool
+	grpcProxyEnableLogging  bool
 
 	grpcProxyDebug bool
 
@@ -132,6 +137,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyMetricsListenAddr, "metrics-addr", "", "listen for endpoint /metrics requests on an additional interface")
 	cmd.Flags().BoolVar(&grpcProxyInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
+	cmd.Flags().DurationVar(&grpcProxyEndpointsAutoSyncInterval, "endpoints-auto-sync-interval", 0, "etcd endpoints auto sync interval (disabled by default)")
 	cmd.Flags().StringVar(&grpcProxyAdvertiseClientURL, "advertise-client-url", "127.0.0.1:23790", "advertise address to register (must be reachable by client)")
 	cmd.Flags().StringVar(&grpcProxyResolverPrefix, "resolver-prefix", "", "prefix to use for registering proxy (must be shared with other grpc-proxy members)")
 	cmd.Flags().IntVar(&grpcProxyResolverTTL, "resolver-ttl", 0, "specify TTL, in seconds, when registering proxy endpoints")
@@ -162,6 +168,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	// experimental flags
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
 	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
+	cmd.Flags().BoolVar(&grpcProxyEnableLogging, "experimental-enable-grpc-logging", false, "logging all grpc requests and responses")
 
 	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
 
@@ -343,8 +350,9 @@ func newProxyClientCfg(lg *zap.Logger, eps []string, tls *transport.TLSInfo) (*c
 func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 	// set tls if any one tls option set
 	cfg := clientv3.Config{
-		Endpoints:   eps,
-		DialTimeout: 5 * time.Second,
+		Endpoints:        eps,
+		AutoSyncInterval: grpcProxyEndpointsAutoSyncInterval,
+		DialTimeout:      5 * time.Second,
 	}
 
 	if grpcMaxCallSendMsgSize > 0 {
@@ -440,9 +448,32 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
+	alwaysLoggingDeciderServer := func(ctx context.Context, fullMethodName string, servingObject interface{}) bool { return true }
+
+	grpcChainStreamList := []grpc.StreamServerInterceptor{
+		grpc_prometheus.StreamServerInterceptor,
+	}
+	grpcChainUnaryList := []grpc.UnaryServerInterceptor{
+		grpc_prometheus.UnaryServerInterceptor,
+	}
+	if grpcProxyEnableLogging {
+		grpcChainStreamList = append(grpcChainStreamList,
+			grpc_ctxtags.StreamServerInterceptor(),
+			grpc_zap.PayloadStreamServerInterceptor(lg, alwaysLoggingDeciderServer),
+		)
+		grpcChainUnaryList = append(grpcChainUnaryList,
+			grpc_ctxtags.UnaryServerInterceptor(),
+			grpc_zap.PayloadUnaryServerInterceptor(lg, alwaysLoggingDeciderServer),
+		)
+	}
+
 	gopts := []grpc.ServerOption{
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpcChainStreamList...,
+		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpcChainUnaryList...,
+		)),
 		grpc.MaxConcurrentStreams(math.MaxUint32),
 	}
 	if grpcKeepAliveMinTime > time.Duration(0) {

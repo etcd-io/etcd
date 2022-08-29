@@ -9,7 +9,7 @@ A PR can have various labels, milestone, reviewer etc. The detailed list of labe
 https://github.com/kubernetes/kubernetes/labels
 
 Following are few example searches on PR for convenience:
-* [Open PRS for milestone etcd-v3.4](https://github.com/etcd-io/etcd/pulls?utf8=%E2%9C%93&q=is%3Apr+is%3Aopen+milestone%3Aetcd-v3.4)
+* [Open PRS for milestone etcd-v3.6](https://github.com/etcd-io/etcd/pulls?utf8=%E2%9C%93&q=is%3Apr+is%3Aopen+milestone%3Aetcd-v3.6)
 * [PRs under investigation](https://github.com/etcd-io/etcd/labels/Investigating)
 
 ## Scope

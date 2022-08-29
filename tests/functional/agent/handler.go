@@ -125,7 +125,7 @@ func (srv *Server) createEtcd(fromSnapshot bool, failpoints string) error {
 func (srv *Server) runEtcd() error {
 	errc := make(chan error)
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 		// server advertise client/peer listener had to start first
 		// before setting up proxy listener
 		errc <- srv.startProxy()
@@ -137,17 +137,19 @@ func (srv *Server) runEtcd() error {
 			zap.String("command-path", srv.etcdCmd.Path),
 		)
 		err := srv.etcdCmd.Start()
-		perr := <-errc
+
 		srv.lg.Info(
 			"started etcd command",
 			zap.String("command-path", srv.etcdCmd.Path),
 			zap.Strings("command-args", srv.etcdCmd.Args),
-			zap.Errors("errors", []error{err, perr}),
+			zap.Strings("envs", srv.etcdCmd.Env),
+			zap.Error(err),
 		)
 		if err != nil {
 			return err
 		}
-		return perr
+
+		return <-errc
 	}
 
 	select {
@@ -218,6 +220,11 @@ func (srv *Server) startProxy() error {
 			return err
 		}
 
+		srv.lg.Info("Checking client target's connectivity", zap.String("target", listenClientURL.Host))
+		if err := checkTCPConnect(srv.lg, listenClientURL.Host); err != nil {
+			return fmt.Errorf("check client target failed, %w", err)
+		}
+
 		srv.lg.Info("starting proxy on client traffic", zap.String("url", advertiseClientURL.String()))
 		srv.advertiseClientPortToProxy[advertiseClientURLPort] = proxy.NewServer(proxy.ServerConfig{
 			Logger: srv.lg,
@@ -226,6 +233,7 @@ func (srv *Server) startProxy() error {
 		})
 		select {
 		case err = <-srv.advertiseClientPortToProxy[advertiseClientURLPort].Error():
+			srv.lg.Info("starting client proxy failed", zap.Error(err))
 			return err
 		case <-time.After(2 * time.Second):
 			srv.lg.Info("started proxy on client traffic", zap.String("url", advertiseClientURL.String()))
@@ -242,6 +250,11 @@ func (srv *Server) startProxy() error {
 			return err
 		}
 
+		srv.lg.Info("Checking peer target's connectivity", zap.String("target", listenPeerURL.Host))
+		if err := checkTCPConnect(srv.lg, listenPeerURL.Host); err != nil {
+			return fmt.Errorf("check peer target failed, %w", err)
+		}
+
 		srv.lg.Info("starting proxy on peer traffic", zap.String("url", advertisePeerURL.String()))
 		srv.advertisePeerPortToProxy[advertisePeerURLPort] = proxy.NewServer(proxy.ServerConfig{
 			Logger: srv.lg,
@@ -250,6 +263,7 @@ func (srv *Server) startProxy() error {
 		})
 		select {
 		case err = <-srv.advertisePeerPortToProxy[advertisePeerURLPort].Error():
+			srv.lg.Info("starting peer proxy failed", zap.Error(err))
 			return err
 		case <-time.After(2 * time.Second):
 			srv.lg.Info("started proxy on peer traffic", zap.String("url", advertisePeerURL.String()))

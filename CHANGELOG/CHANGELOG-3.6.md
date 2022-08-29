@@ -17,6 +17,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 ### Deprecations
 
 - Deprecated [V2 discovery](https://etcd.io/docs/v3.5/dev-internal/discovery_protocol/).
+- Deprecated [SetKeepAlive and SetKeepAlivePeriod in limitListenerConn](https://github.com/etcd-io/etcd/pull/14356).
 - Removed [etcdctl defrag --data-dir](https://github.com/etcd-io/etcd/pull/13793).
 - Removed [etcdctl snapshot status](https://github.com/etcd-io/etcd/pull/13809).
 - Removed [etcdctl snapshot restore](https://github.com/etcd-io/etcd/pull/13809).
@@ -57,6 +58,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [v3 discovery](https://github.com/etcd-io/etcd/pull/13635) to bootstrap a new etcd cluster.
 - Add [field `storage`](https://github.com/etcd-io/etcd/pull/13772) into the response body of endpoint `/version`.
 - Add [`etcd --max-concurrent-streams`](https://github.com/etcd-io/etcd/pull/14169) flag to configure the max concurrent streams each client can open at a time, and defaults to math.MaxUint32.
+- Add [`etcd grpc-proxy --experimental-enable-grpc-logging`](https://github.com/etcd-io/etcd/pull/14266) flag to logging all grpc requests and responses.
 - Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/13435)
 - Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13467).
 - Fix [Provide a better liveness probe for when etcd runs as a Kubernetes pod](https://github.com/etcd-io/etcd/pull/13399)
@@ -76,8 +78,9 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [Restrict the max size of each WAL entry to the remaining size of the WAL file](https://github.com/etcd-io/etcd/pull/14122).
 - Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
 
-### gRPC Proxy
+### etcd grpc-proxy
 
+- Add [`etcd grpc-proxy start --endpoints-auto-sync-interval`](https://github.com/etcd-io/etcd/pull/14354) flag to enable and configure interval of auto sync of endpoints with server.
 - Add [listen-cipher-suites](https://github.com/etcd-io/etcd/pull/14308) flag.
 
 ### tools/benchmark

@@ -15,13 +15,17 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
+	"testing"
+	"time"
+
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
-	"go.uber.org/zap"
 )
 
 var (
@@ -47,7 +51,7 @@ type EtcdProcess interface {
 }
 
 type LogsExpect interface {
-	Expect(string) (string, error)
+	ExpectWithContext(context.Context, string) (string, error)
 	Lines() []string
 	LineCount() int
 }
@@ -100,33 +104,33 @@ func (ep *EtcdServerProcess) Start() error {
 		panic("already started")
 	}
 	ep.cfg.lg.Info("starting server...", zap.String("name", ep.cfg.Name))
-	proc, err := SpawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.ExecPath}, ep.cfg.Args...), ep.cfg.EnvVars)
+	proc, err := SpawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.ExecPath}, ep.cfg.Args...), ep.cfg.EnvVars, ep.cfg.Name)
 	if err != nil {
 		return err
 	}
 	ep.proc = proc
 	err = ep.waitReady()
 	if err == nil {
-		ep.cfg.lg.Info("started server.", zap.String("name", ep.cfg.Name))
+		ep.cfg.lg.Info("started server.", zap.String("name", ep.cfg.Name), zap.Int("pid", ep.proc.Pid()))
 	}
 	return err
 }
 
 func (ep *EtcdServerProcess) Restart() error {
-	ep.cfg.lg.Info("restaring server...", zap.String("name", ep.cfg.Name))
+	ep.cfg.lg.Info("restarting server...", zap.String("name", ep.cfg.Name))
 	if err := ep.Stop(); err != nil {
 		return err
 	}
 	ep.donec = make(chan struct{})
 	err := ep.Start()
 	if err == nil {
-		ep.cfg.lg.Info("restared server", zap.String("name", ep.cfg.Name))
+		ep.cfg.lg.Info("restarted server", zap.String("name", ep.cfg.Name))
 	}
 	return err
 }
 
 func (ep *EtcdServerProcess) Stop() (err error) {
-	ep.cfg.lg.Info("stoping server...", zap.String("name", ep.cfg.Name))
+	ep.cfg.lg.Info("stopping server...", zap.String("name", ep.cfg.Name))
 	if ep == nil || ep.proc == nil {
 		return nil
 	}
@@ -174,7 +178,18 @@ func (ep *EtcdServerProcess) Config() *EtcdServerProcessConfig { return ep.cfg }
 
 func (ep *EtcdServerProcess) Logs() LogsExpect {
 	if ep.proc == nil {
-		ep.cfg.lg.Panic("Please grap logs before process is stopped")
+		ep.cfg.lg.Panic("Please grab logs before process is stopped")
 	}
 	return ep.proc
+}
+
+func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
+	t.Helper()
+	var err error
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err = ep.Logs().ExpectWithContext(ctx, expectLog)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
