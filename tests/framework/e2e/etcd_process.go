@@ -41,8 +41,8 @@ type EtcdProcess interface {
 	EndpointsV3() []string
 	EndpointsMetrics() []string
 
-	Start() error
-	Restart() error
+	Start(ctx context.Context) error
+	Restart(ctx context.Context) error
 	Stop() error
 	Close() error
 	WithStopSignal(sig os.Signal) os.Signal
@@ -99,7 +99,7 @@ func (ep *EtcdServerProcess) EndpointsV2() []string      { return []string{ep.cf
 func (ep *EtcdServerProcess) EndpointsV3() []string      { return ep.EndpointsV2() }
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.Murl} }
 
-func (ep *EtcdServerProcess) Start() error {
+func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 	if ep.proc != nil {
 		panic("already started")
 	}
@@ -109,20 +109,20 @@ func (ep *EtcdServerProcess) Start() error {
 		return err
 	}
 	ep.proc = proc
-	err = ep.waitReady()
+	err = ep.waitReady(ctx)
 	if err == nil {
 		ep.cfg.lg.Info("started server.", zap.String("name", ep.cfg.Name), zap.Int("pid", ep.proc.Pid()))
 	}
 	return err
 }
 
-func (ep *EtcdServerProcess) Restart() error {
+func (ep *EtcdServerProcess) Restart(ctx context.Context) error {
 	ep.cfg.lg.Info("restarting server...", zap.String("name", ep.cfg.Name))
 	if err := ep.Stop(); err != nil {
 		return err
 	}
 	ep.donec = make(chan struct{})
-	err := ep.Start()
+	err := ep.Start(ctx)
 	if err == nil {
 		ep.cfg.lg.Info("restarted server", zap.String("name", ep.cfg.Name))
 	}
@@ -169,9 +169,9 @@ func (ep *EtcdServerProcess) WithStopSignal(sig os.Signal) os.Signal {
 	return ret
 }
 
-func (ep *EtcdServerProcess) waitReady() error {
+func (ep *EtcdServerProcess) waitReady(ctx context.Context) error {
 	defer close(ep.donec)
-	return WaitReadyExpectProc(ep.proc, EtcdServerReadyLines)
+	return WaitReadyExpectProc(ctx, ep.proc, EtcdServerReadyLines)
 }
 
 func (ep *EtcdServerProcess) Config() *EtcdServerProcessConfig { return ep.cfg }

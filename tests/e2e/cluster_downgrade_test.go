@@ -96,7 +96,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 }
 
 func newCluster(t *testing.T, execPath string, clusterSize int) *e2e.EtcdProcessCluster {
-	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
 		ExecPath:     execPath,
 		ClusterSize:  clusterSize,
 		InitialToken: "new",
@@ -115,7 +115,7 @@ func newCluster(t *testing.T, execPath string, clusterSize int) *e2e.EtcdProcess
 
 func startEtcd(t *testing.T, ep e2e.EtcdProcess, execPath string) {
 	ep.Config().ExecPath = execPath
-	err := ep.Restart()
+	err := ep.Restart(context.TODO())
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

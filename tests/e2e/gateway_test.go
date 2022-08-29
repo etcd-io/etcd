@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -28,7 +29,7 @@ var (
 )
 
 func TestGateway(t *testing.T) {
-	ec, err := e2e.NewEtcdProcessCluster(t, e2e.NewConfigNoTLS())
+	ec, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.NewConfigNoTLS())
 	if err != nil {
 		t.Fatal(err)
 	}

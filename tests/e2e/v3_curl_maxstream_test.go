@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -90,7 +91,7 @@ func testV3CurlMaxStream(t *testing.T, reachLimit bool, opts ...ctlOption) {
 
 	// Step 2: create the cluster
 	t.Log("Creating an etcd cluster")
-	epc, err := e2e.NewEtcdProcessCluster(t, &cx.cfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &cx.cfg)
 	if err != nil {
 		t.Fatalf("Failed to start etcd cluster: %v", err)
 	}

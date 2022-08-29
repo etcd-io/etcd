@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -173,7 +174,7 @@ func testIssue6361(t *testing.T) {
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
 
-	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
 		ClusterSize:  1,
 		InitialToken: "new",
 		KeepDataDir:  true,
@@ -227,7 +228,7 @@ func testIssue6361(t *testing.T) {
 			epc.Procs[0].Config().Args[i+1] = newDataDir
 		}
 	}
-	if err = epc.Procs[0].Restart(); err != nil {
+	if err = epc.Procs[0].Restart(context.TODO()); err != nil {
 		t.Fatal(err)
 	}
 

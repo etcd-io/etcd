@@ -18,6 +18,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -63,18 +64,18 @@ func (p *proxyEtcdProcess) EndpointsMetrics() []string {
 	panic("not implemented; proxy doesn't provide health information")
 }
 
-func (p *proxyEtcdProcess) Start() error {
-	if err := p.etcdProc.Start(); err != nil {
+func (p *proxyEtcdProcess) Start(ctx context.Context) error {
+	if err := p.etcdProc.Start(ctx); err != nil {
 		return err
 	}
-	return p.proxyV3.Start()
+	return p.proxyV3.Start(ctx)
 }
 
-func (p *proxyEtcdProcess) Restart() error {
-	if err := p.etcdProc.Restart(); err != nil {
+func (p *proxyEtcdProcess) Restart(ctx context.Context) error {
+	if err := p.etcdProc.Restart(ctx); err != nil {
 		return err
 	}
-	return p.proxyV3.Restart()
+	return p.proxyV3.Restart(ctx)
 }
 
 func (p *proxyEtcdProcess) Stop() error {
@@ -134,9 +135,9 @@ func (pp *proxyProc) start() error {
 	return nil
 }
 
-func (pp *proxyProc) waitReady(readyStr string) error {
+func (pp *proxyProc) waitReady(ctx context.Context, readyStr string) error {
 	defer close(pp.donec)
-	return WaitReadyExpectProc(pp.proc, []string{readyStr})
+	return WaitReadyExpectProc(ctx, pp.proc, []string{readyStr})
 }
 
 func (pp *proxyProc) Stop() error {
@@ -265,16 +266,16 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 	}
 }
 
-func (v3p *proxyV3Proc) Restart() error {
+func (v3p *proxyV3Proc) Restart(ctx context.Context) error {
 	if err := v3p.Stop(); err != nil {
 		return err
 	}
-	return v3p.Start()
+	return v3p.Start(ctx)
 }
 
-func (v3p *proxyV3Proc) Start() error {
+func (v3p *proxyV3Proc) Start(ctx context.Context) error {
 	if err := v3p.start(); err != nil {
 		return err
 	}
-	return v3p.waitReady("started gRPC proxy")
+	return v3p.waitReady(ctx, "started gRPC proxy")
 }

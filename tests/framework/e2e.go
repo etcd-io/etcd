@@ -72,7 +72,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, cfg config.Clus
 	default:
 		t.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
 	}
-	epc, err := e2e.NewEtcdProcessCluster(t, &e2eConfig)
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, &e2eConfig)
 	if err != nil {
 		t.Fatalf("could not start etcd integrationCluster: %s", err)
 	}
@@ -173,8 +173,8 @@ func (m e2eMember) Client() Client {
 	return e2eClient{e2e.NewEtcdctl(m.Cfg, m.EndpointsV3())}
 }
 
-func (m e2eMember) Start() error {
-	return m.Restart()
+func (m e2eMember) Start(ctx context.Context) error {
+	return m.Restart(ctx)
 }
 
 func (m e2eMember) Stop() {

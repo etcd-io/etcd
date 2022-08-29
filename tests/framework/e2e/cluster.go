@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -190,13 +191,13 @@ type EtcdProcessClusterConfig struct {
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
-func NewEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+func NewEtcdProcessCluster(ctx context.Context, t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
 	epc, err := InitEtcdProcessCluster(t, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return StartEtcdProcessCluster(epc, cfg)
+	return StartEtcdProcessCluster(ctx, epc, cfg)
 }
 
 // InitEtcdProcessCluster initializes a new cluster based on the given config.
@@ -225,13 +226,13 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 }
 
 // StartEtcdProcessCluster launches a new cluster from etcd processes.
-func StartEtcdProcessCluster(epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+func StartEtcdProcessCluster(ctx context.Context, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
 	if cfg.RollingStart {
-		if err := epc.RollingStart(); err != nil {
+		if err := epc.RollingStart(ctx); err != nil {
 			return nil, fmt.Errorf("cannot rolling-start: %v", err)
 		}
 	} else {
-		if err := epc.Start(); err != nil {
+		if err := epc.Start(ctx); err != nil {
 			return nil, fmt.Errorf("cannot start: %v", err)
 		}
 	}
@@ -457,16 +458,16 @@ func (epc *EtcdProcessCluster) Endpoints(f func(ep EtcdProcess) []string) (ret [
 	return ret
 }
 
-func (epc *EtcdProcessCluster) Start() error {
-	return epc.start(func(ep EtcdProcess) error { return ep.Start() })
+func (epc *EtcdProcessCluster) Start(ctx context.Context) error {
+	return epc.start(func(ep EtcdProcess) error { return ep.Start(ctx) })
 }
 
-func (epc *EtcdProcessCluster) RollingStart() error {
-	return epc.rollingStart(func(ep EtcdProcess) error { return ep.Start() })
+func (epc *EtcdProcessCluster) RollingStart(ctx context.Context) error {
+	return epc.rollingStart(func(ep EtcdProcess) error { return ep.Start(ctx) })
 }
 
-func (epc *EtcdProcessCluster) Restart() error {
-	return epc.start(func(ep EtcdProcess) error { return ep.Restart() })
+func (epc *EtcdProcessCluster) Restart(ctx context.Context) error {
+	return epc.start(func(ep EtcdProcess) error { return ep.Restart(ctx) })
 }
 
 func (epc *EtcdProcessCluster) start(f func(ep EtcdProcess) error) error {

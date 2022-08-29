@@ -168,7 +168,7 @@ func authGracefulDisableTest(cx ctlCtx) {
 		// ...and restart the node
 		node0 := cx.epc.Procs[0]
 		node0.WithStopSignal(syscall.SIGINT)
-		if rerr := node0.Restart(); rerr != nil {
+		if rerr := node0.Restart(context.TODO()); rerr != nil {
 			cx.t.Fatal(rerr)
 		}
 
@@ -1282,7 +1282,7 @@ func authTestRevisionConsistency(cx ctlCtx) {
 
 	// restart the node
 	node0.WithStopSignal(syscall.SIGINT)
-	if err := node0.Restart(); err != nil {
+	if err := node0.Restart(context.TODO()); err != nil {
 		cx.t.Fatal(err)
 	}
 
