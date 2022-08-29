@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -38,12 +39,14 @@ type EtcdProcess interface {
 	EndpointsV3() []string
 	EndpointsMetrics() []string
 
+	Wait() error
 	Start(ctx context.Context) error
 	Restart(ctx context.Context) error
 	Stop() error
 	Close() error
 	Config() *EtcdServerProcessConfig
 	Logs() LogsExpect
+	Kill() error
 }
 
 type LogsExpect interface {
@@ -171,6 +174,22 @@ func (ep *EtcdServerProcess) Logs() LogsExpect {
 		ep.cfg.lg.Panic("Please grab logs before process is stopped")
 	}
 	return ep.proc
+}
+
+func (ep *EtcdServerProcess) Kill() error {
+	ep.cfg.lg.Info("killing server...", zap.String("name", ep.cfg.Name))
+	return ep.proc.Signal(syscall.SIGKILL)
+}
+
+func (ep *EtcdServerProcess) Wait() error {
+	err := ep.proc.Wait()
+	if err != nil {
+		ep.cfg.lg.Error("failed to wait for server exit", zap.String("name", ep.cfg.Name))
+		return err
+	}
+	ep.cfg.lg.Info("server exited", zap.String("name", ep.cfg.Name))
+	ep.proc = nil
+	return nil
 }
 
 func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {

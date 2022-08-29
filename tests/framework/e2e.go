@@ -109,6 +109,10 @@ func (c *e2eCluster) Client(cfg clientv3.AuthConfig) (Client, error) {
 	return e2eClient{etcdctl}, nil
 }
 
+func (c *e2eCluster) Endpoints() []string {
+	return c.EndpointsV3()
+}
+
 func (c *e2eCluster) Members() (ms []Member) {
 	for _, proc := range c.EtcdProcessCluster.Procs {
 		ms = append(ms, e2eMember{EtcdProcess: proc, Cfg: c.Cfg})

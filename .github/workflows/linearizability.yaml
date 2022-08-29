@@ -1,0 +1,17 @@
+name: Linearizability
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.19.1"
+    - run: |
+        mkdir -p /tmp/linearizability
+        EXPECT_DEBUG=true GO_TEST_FLAGS=-v RESULTS_DIR=/tmp/linearizability make test-linearizability
+    - uses: actions/upload-artifact@v2
+      if: always()
+      with:
+        path: /tmp/linearizability/*
