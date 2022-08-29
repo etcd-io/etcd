@@ -23,18 +23,17 @@ import (
 )
 
 type RWMutex struct {
-	s   *concurrency.Session
-	ctx context.Context
+	s *concurrency.Session
 
 	pfx   string
 	myKey *EphemeralKV
 }
 
 func NewRWMutex(s *concurrency.Session, prefix string) *RWMutex {
-	return &RWMutex{s, context.TODO(), prefix + "/", nil}
+	return &RWMutex{s, prefix + "/", nil}
 }
 
-func (rwm *RWMutex) RLock() error {
+func (rwm *RWMutex) RLock(ctx context.Context) error {
 	rk, err := newUniqueEphemeralKey(rwm.s, rwm.pfx+"read")
 	if err != nil {
 		return err
@@ -42,13 +41,13 @@ func (rwm *RWMutex) RLock() error {
 	rwm.myKey = rk
 	// wait until nodes with "write-" and a lower revision number than myKey are gone
 	for {
-		if done, werr := rwm.waitOnLastRev(rwm.pfx + "write"); done || werr != nil {
+		if done, werr := rwm.waitOnLastRev(ctx, rwm.pfx+"write"); done || werr != nil {
 			return werr
 		}
 	}
 }
 
-func (rwm *RWMutex) Lock() error {
+func (rwm *RWMutex) Lock(ctx context.Context) error {
 	rk, err := newUniqueEphemeralKey(rwm.s, rwm.pfx+"write")
 	if err != nil {
 		return err
@@ -56,7 +55,7 @@ func (rwm *RWMutex) Lock() error {
 	rwm.myKey = rk
 	// wait until all keys of lower revision than myKey are gone
 	for {
-		if done, werr := rwm.waitOnLastRev(rwm.pfx); done || werr != nil {
+		if done, werr := rwm.waitOnLastRev(ctx, rwm.pfx); done || werr != nil {
 			return werr
 		}
 		//  get the new lowest key until this is the only one left
@@ -65,11 +64,11 @@ func (rwm *RWMutex) Lock() error {
 
 // waitOnLowest will wait on the last key with a revision < rwm.myKey.Revision with a
 // given prefix. If there are no keys left to wait on, return true.
-func (rwm *RWMutex) waitOnLastRev(pfx string) (bool, error) {
+func (rwm *RWMutex) waitOnLastRev(ctx context.Context, pfx string) (bool, error) {
 	client := rwm.s.Client()
 	// get key that's blocking myKey
 	opts := append(v3.WithLastRev(), v3.WithMaxModRev(rwm.myKey.Revision()-1))
-	lastKey, err := client.Get(rwm.ctx, pfx, opts...)
+	lastKey, err := client.Get(ctx, pfx, opts...)
 	if err != nil {
 		return false, err
 	}
