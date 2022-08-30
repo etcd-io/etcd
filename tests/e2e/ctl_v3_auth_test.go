@@ -1401,7 +1401,7 @@ func authTestCacheReload(cx ctlCtx) {
 
 	// restart the node
 	node0.WithStopSignal(syscall.SIGINT)
-	if err := node0.Restart(); err != nil {
+	if err := node0.Restart(context.TODO()); err != nil {
 		cx.t.Fatal(err)
 	}
 

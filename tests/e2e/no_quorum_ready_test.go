@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -31,7 +32,7 @@ func TestInitDaemonNotifyWithoutQuorum(t *testing.T) {
 	epc.Procs = epc.Procs[:1]
 
 	// Start the etcd cluster with only one member
-	if err := epc.Start(); err != nil {
+	if err := epc.Start(context.TODO()); err != nil {
 		t.Fatalf("Failed to start the etcd cluster: %v", err)
 	}
 
