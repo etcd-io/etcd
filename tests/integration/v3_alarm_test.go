@@ -261,10 +261,11 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	integration.BeforeTest(t)
 	lg := zaptest.NewLogger(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{
-		CorruptCheckTime:       time.Second,
-		Size:                   3,
-		SnapshotCount:          10,
-		SnapshotCatchUpEntries: 5,
+		CorruptCheckTime:           time.Second,
+		Size:                       3,
+		SnapshotCount:              10,
+		SnapshotCatchUpEntries:     5,
+		DisableStrictReconfigCheck: true,
 	})
 	defer clus.Terminate(t)
 

@@ -120,7 +120,7 @@ func TestMoveLeaderError(t *testing.T) {
 func TestMoveLeaderToLearnerError(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
 	defer clus.Terminate(t)
 
 	// we have to add and launch learner member after initial cluster was created, because

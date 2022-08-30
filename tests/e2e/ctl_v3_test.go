@@ -122,9 +122,9 @@ func dialWithSchemeTest(cx ctlCtx) {
 }
 
 type ctlCtx struct {
-	t                          *testing.T
-	apiPrefix                  string
-	cfg                        e2e.EtcdProcessClusterConfig
+	t         *testing.T
+	apiPrefix string
+	cfg       e2e.EtcdProcessClusterConfig
 
 	corruptFunc                func(string) error
 	disableStrictReconfigCheck bool

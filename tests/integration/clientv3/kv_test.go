@@ -776,7 +776,7 @@ func TestKVLargeRequests(t *testing.T) {
 func TestKVForLearner(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
 	defer clus.Terminate(t)
 
 	// we have to add and launch learner member after initial cluster was created, because
@@ -855,7 +855,7 @@ func TestKVForLearner(t *testing.T) {
 func TestBalancerSupportLearner(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
 	defer clus.Terminate(t)
 
 	// we have to add and launch learner member after initial cluster was created, because
