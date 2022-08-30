@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -181,6 +182,17 @@ func (ep *EtcdServerProcess) Logs() LogsExpect {
 		ep.cfg.lg.Panic("Please grab logs before process is stopped")
 	}
 	return ep.proc
+}
+
+func (cfg *EtcdServerProcessConfig) SetInitialCluster(nodes []string, initialClusterState string) {
+	cfg.InitialCluster = strings.Join(nodes, ",")
+	cfg.Args = append(cfg.Args, "--initial-cluster", cfg.InitialCluster)
+	cfg.Args = append(cfg.Args, "--initial-cluster-state", initialClusterState)
+}
+
+func (cfg *EtcdServerProcessConfig) EnableDiscovery(token string, endpoints []string) {
+	cfg.Args = append(cfg.Args, fmt.Sprintf("--discovery-token=%s", token))
+	cfg.Args = append(cfg.Args, fmt.Sprintf("--discovery-endpoints=%s", strings.Join(endpoints, ",")))
 }
 
 func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
