@@ -272,11 +272,13 @@ func (l *raftLog) term(i uint64) (uint64, error) {
 		// TODO: return an error instead?
 		return 0, nil
 	}
-
+  log.Printf("UNSTABLE=%+v", l.unstable.entries)
 	if t, ok := l.unstable.maybeTerm(i); ok {
+		log.Printf("Found term !!!")
 		return t, nil
 	}
-
+	li, _ := l.storage.LastIndex()
+	log.Printf("STABLE=%v", li)
 	t, err := l.storage.Term(i)
 	if err == nil {
 		return t, nil
@@ -326,6 +328,7 @@ func (l *raftLog) matchTerm(i, term uint64) bool {
 }
 
 func (l *raftLog) maybeCommit(maxIndex, term uint64) bool {
+	log.Println("maxIndex=", maxIndex)
 	if maxIndex > l.committed && l.zeroTermOnErrCompacted(l.term(maxIndex)) == term {
 		l.commitTo(maxIndex)
 		return true
