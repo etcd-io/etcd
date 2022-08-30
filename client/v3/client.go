@@ -507,7 +507,7 @@ func (c *Client) checkVersion() (err error) {
 					return
 				}
 			}
-			if maj < 3 || (maj == 3 && min < 2) {
+			if maj < 3 || (maj == 3 && min < 4) {
 				rerr = ErrOldCluster
 			}
 			errc <- rerr
@@ -515,7 +515,7 @@ func (c *Client) checkVersion() (err error) {
 	}
 	// wait for success
 	for range eps {
-		if err = <-errc; err == nil {
+		if err = <-errc; err != nil {
 			break
 		}
 	}
