@@ -373,9 +373,9 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 				n.Tick()
 			case rd := <-n.Ready():
 				s.Append(rd.Entries)
+				rdyEntries = append(rdyEntries, rd.Entries...)
 				applied := false
-				for _, e := range rd.Entries {
-					rdyEntries = append(rdyEntries, e)
+				for _, e := range rd.CommittedEntries {
 					switch e.Type {
 					case raftpb.EntryNormal:
 					case raftpb.EntryConfChange:
@@ -385,8 +385,11 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 						applied = true
 					}
 				}
+				t.Logf("PreA !!!")
 				n.Advance()
+				t.Logf("PostA !!!")
 				if applied {
+					t.Logf("Applied !!!")
 					applyConfChan <- struct{}{}
 				}
 			}
@@ -600,10 +603,16 @@ func TestNodeStart(t *testing.T) {
 			MustSync: true,
 		},
 		{
-			HardState:        raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
+			HardState:        raftpb.HardState{Term: 2, Commit: 2, Vote: 1},
 			Entries:          []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
-			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 2, Data: nil}},
 			MustSync:         true,
+		},
+		{
+			HardState:        raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
+			Entries:          nil,
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			MustSync:         false,
 		},
 	}
 	storage := NewMemoryStorage()
@@ -637,6 +646,13 @@ func TestNodeStart(t *testing.T) {
 		t.Errorf("#%d: g = %+v,\n             w   %+v", 2, g2, wants[1])
 	} else {
 		storage.Append(g2.Entries)
+		n.Advance()
+	}
+
+	if g3 := <-n.Ready(); !reflect.DeepEqual(g3, wants[2]) {
+		t.Errorf("#%d!: g = %+v,\n                   w = %+v", 3, g3, wants[2])
+	} else {
+		storage.Append(g3.Entries)
 		n.Advance()
 	}
 
@@ -759,7 +775,7 @@ func TestNodeAdvance(t *testing.T) {
 	n.Advance()
 
 	n.Campaign(ctx)
-	<-n.Ready()
+	rd = <-n.Ready()
 
 	n.Propose(ctx, []byte("foo"))
 	select {

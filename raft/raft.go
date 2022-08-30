@@ -573,8 +573,11 @@ func (r *raft) advance(rd Ready) {
 	if len(rd.Entries) > 0 {
 		e := rd.Entries[len(rd.Entries)-1]
 		r.raftLog.stableTo(e.Index, e.Term)
-		r.prs.Progress[r.id].MaybeUpdate(e.Index)
-		r.maybeCommit()
+		if r.prs.Progress[r.id] != nil {
+			r.logger.Infof("Updating progress: %v", e.Index)
+			r.prs.Progress[r.id].MaybeUpdate(e.Index)
+		}
+		r.maybeCommit() // TODO: Consider moving to stepLeader loop...
 	}
 	if !IsEmptySnap(rd.Snapshot) {
 		r.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
@@ -635,6 +638,7 @@ func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 		// Drop the proposal.
 		return false
 	}
+	r.raftLog.append(es...)
 	// Regardless of maybeCommit's return, our caller will call bcastAppend.
 	r.maybeCommit()
 	return true
