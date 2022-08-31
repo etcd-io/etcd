@@ -667,7 +667,8 @@ func TestRawNodeStart(t *testing.T) {
 			{Term: 1, Index: 2, Data: nil},           // empty entry
 			{Term: 1, Index: 3, Data: []byte("foo")}, // empty entry
 		},
-		MustSync: true,
+		MustSync:                   true,
+		MustSaveEntriesBeforeApply: true,
 	}
 
 	storage := NewMemoryStorage()

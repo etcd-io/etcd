@@ -597,13 +597,15 @@ func TestNodeStart(t *testing.T) {
 			CommittedEntries: []raftpb.Entry{
 				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
 			},
-			MustSync: true,
+			MustSync:                   true,
+			MustSaveEntriesBeforeApply: true,
 		},
 		{
-			HardState:        raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
-			Entries:          []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
-			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
-			MustSync:         true,
+			HardState:                  raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
+			Entries:                    []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			CommittedEntries:           []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			MustSync:                   true,
+			MustSaveEntriesBeforeApply: true,
 		},
 	}
 	storage := NewMemoryStorage()
@@ -1018,5 +1020,83 @@ func TestNodeCommitPaginationAfterRestart(t *testing.T) {
 			persistedHardState.Commit, rd.HardState.Commit,
 			DescribeEntries(rd.CommittedEntries, func(data []byte) string { return fmt.Sprintf("%q", data) }),
 		)
+	}
+}
+
+func TestMustSaveEntriesBeforeApply(t *testing.T) {
+	testcases := []struct {
+		name            string
+		unstableEntries []raftpb.Entry
+		commitedEntries []raftpb.Entry
+		expectedResult  bool
+	}{
+		{
+			name:            "both entries are nil",
+			unstableEntries: nil,
+			commitedEntries: nil,
+			expectedResult:  false,
+		},
+		{
+			name:            "both entries are empty slices",
+			unstableEntries: []raftpb.Entry{},
+			commitedEntries: []raftpb.Entry{},
+			expectedResult:  false,
+		},
+		{
+			name:            "one nil and the other empty",
+			unstableEntries: nil,
+			commitedEntries: []raftpb.Entry{},
+			expectedResult:  false,
+		},
+		{
+			name:            "one nil and the other has data",
+			unstableEntries: nil,
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "one empty and the other has data",
+			unstableEntries: []raftpb.Entry{},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "has different term and index",
+			unstableEntries: []raftpb.Entry{{Term: 5, Index: 11, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "has identical data",
+			unstableEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  true,
+		},
+		{
+			name: "has overlapped entry",
+			unstableEntries: []raftpb.Entry{
+				{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}},
+				{Term: 4, Index: 11, Type: raftpb.EntryNormal, Data: []byte{0x44, 0x55, 0x66}},
+				{Term: 4, Index: 12, Type: raftpb.EntryNormal, Data: []byte{0x77, 0x88, 0x99}},
+			},
+			commitedEntries: []raftpb.Entry{
+				{Term: 4, Index: 8, Type: raftpb.EntryNormal, Data: []byte{0x07, 0x08, 0x09}},
+				{Term: 4, Index: 9, Type: raftpb.EntryNormal, Data: []byte{0x10, 0x11, 0x12}},
+				{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}},
+			},
+			expectedResult: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			shouldWait := mustSaveEntriesBeforeApply(Ready{
+				Entries:          tc.unstableEntries,
+				CommittedEntries: tc.commitedEntries,
+			})
+			if tc.expectedResult != shouldWait {
+				t.Errorf("Unexpected result, expected %t, got %t", tc.expectedResult, shouldWait)
+			}
+		})
 	}
 }

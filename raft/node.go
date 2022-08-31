@@ -87,6 +87,12 @@ type Ready struct {
 	// MustSync indicates whether the HardState and Entries must be synchronously
 	// written to disk or if an asynchronous write is permissible.
 	MustSync bool
+
+	// MustSaveEntriesBeforeApply indicates whether the Entries must be
+	// synchronously saved to disk before applying the CommittedEntries.
+	// Note that Entries and CommittedEntries may have overlapped entries
+	// for one-member cluster.
+	MustSaveEntriesBeforeApply bool
 }
 
 func isHardStateEqual(a, b pb.HardState) bool {
@@ -580,6 +586,7 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 		rd.ReadStates = r.readStates
 	}
 	rd.MustSync = MustSync(r.hardState(), prevHardSt, len(rd.Entries))
+	rd.MustSaveEntriesBeforeApply = mustSaveEntriesBeforeApply(rd)
 	return rd
 }
 
@@ -592,4 +599,42 @@ func MustSync(st, prevst pb.HardState, entsnum int) bool {
 	// votedFor
 	// log entries[]
 	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term
+}
+
+// For a cluster with only one member, the raft may send both the
+// unstable entries and committed entries to users (e.g. etcdserver),
+// and there may have overlapped log entries between them. The
+// user (e.g., etcd) should wait for the `Entries` to be successfully
+// saved before applying the `CommittedEntries` in this case.
+//
+// etcd responds to the client once it finishes (actually partially)
+// the applying workflow. But when the client receives the response,
+// it doesn't mean etcd has already successfully saved the data,
+// including BoltDB and WAL, because:
+//    1. etcd commits the boltDB transaction periodically instead of on each request;
+//    2. etcd saves WAL entries in parallel with applying the committed entries.
+// Accordingly, it might run into a situation of data loss when the etcd crashes
+// immediately after responding to the client and before the boltDB and WAL
+// successfully save the data to disk.
+// Note that this issue can only happen for clusters with only one member.
+//
+// For clusters with multiple members, it isn't an issue, because etcd will
+// not commit & apply the data before it being replicated to majority members.
+// When the client receives the response, it means the data must have been applied.
+// It further means the data must have been committed.
+// Note: for clusters with multiple members, the raft will never send
+// overlapped unstable entries and committed entries to etcdserver.
+//
+// Refer to https://github.com/etcd-io/etcd/issues/14370.
+func mustSaveEntriesBeforeApply(rd Ready) bool {
+	if len(rd.CommittedEntries) == 0 || len(rd.Entries) == 0 {
+		return false
+	}
+
+	// Check if there is overlap between unstable and committed entries
+	// assuming that their index and term are only incrementing.
+	lastCommittedEntry := rd.CommittedEntries[len(rd.CommittedEntries)-1]
+	firstUnstableEntry := rd.Entries[0]
+	return lastCommittedEntry.Term > firstUnstableEntry.Term ||
+		(lastCommittedEntry.Term == firstUnstableEntry.Term && lastCommittedEntry.Index >= firstUnstableEntry.Index)
 }
