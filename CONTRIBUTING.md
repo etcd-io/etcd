@@ -96,4 +96,4 @@ commit using message with a more generic `*:` prefix.
 
 We recommend that you install [golangci-lint](https://golangci-lint.run/usage/install/) and run `make lint`.
 
-Very soon we will have a GitHub action to run our linters.
+We also have a GitHub action to run our linters on every pull request.
