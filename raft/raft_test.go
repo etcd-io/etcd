@@ -3250,7 +3250,7 @@ func TestAddNodeCheckQuorum(t *testing.T) {
 }
 
 // TestRemoveNode tests that removeNode could update nodes and
-// and removed list correctly.
+// removed list correctly.
 func TestRemoveNode(t *testing.T) {
 	r := newTestRaft(1, 10, 1, newTestMemoryStorage(withPeers(1, 2)))
 	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeRemoveNode}.AsV2())
@@ -3269,7 +3269,7 @@ func TestRemoveNode(t *testing.T) {
 }
 
 // TestRemoveLearner tests that removeNode could update nodes and
-// and removed list correctly.
+// removed list correctly.
 func TestRemoveLearner(t *testing.T) {
 	r := newTestLearnerRaft(1, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
 	r.applyConfChange(pb.ConfChange{NodeID: 2, Type: pb.ConfChangeRemoveNode}.AsV2())
