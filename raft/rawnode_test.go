@@ -221,8 +221,8 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run("", func(t *testing.T) {
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
 			s := newTestMemoryStorage(withPeers(1))
 			rawNode, err := NewRawNode(newTestConfig(1, 10, 1, s))
 			if err != nil {
@@ -279,6 +279,9 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 							t.Fatal(err)
 						}
 						rawNode.ProposeConfChange(ccv2)
+					}
+					if err = rawNode.Step(pb.Message{From: rawNode.raft.id, To: rawNode.raft.id, Type: pb.MsgAppResp, Index: rawNode.raft.raftLog.lastIndex()}); err != nil {
+						t.Fatalf("Unexpected error: %v", err)
 					}
 					proposed = true
 				}
@@ -433,6 +436,8 @@ func TestRawNodeJointAutoLeave(t *testing.T) {
 					t.Fatal(err)
 				}
 				rawNode.ProposeConfChange(testCc)
+				r := rawNode.raft
+				rawNode.Step(pb.Message{From: r.id, To: r.id, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 				proposed = true
 			}
 		}
@@ -743,6 +748,7 @@ func TestRawNodeStart(t *testing.T) {
 	}
 	rawNode.Campaign()
 	rawNode.Propose([]byte("foo"))
+	rawNode.Step(pb.Message{From: rawNode.raft.id, To: rawNode.raft.id, Type: pb.MsgAppResp, Index: rawNode.raft.raftLog.lastIndex()})
 	if !rawNode.HasReady() {
 		t.Fatal("expected a Ready")
 	}
@@ -981,6 +987,8 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	// log to grow indefinitely.
 	for i := 0; i < 1024; i++ {
 		rawNode.Propose(data)
+		id := rawNode.raft.id
+		rawNode.Step(pb.Message{From: id, To: id, Type: pb.MsgAppResp, Index: rawNode.raft.raftLog.lastIndex()})
 	}
 
 	// Check the size of leader's uncommitted log tail. It should not exceed the

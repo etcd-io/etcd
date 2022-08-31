@@ -267,6 +267,7 @@ type node struct {
 	status     chan chan Status
 
 	rn *RawNode
+	rd Ready
 }
 
 func newNode(rn *RawNode) node {
@@ -304,7 +305,6 @@ func (n *node) run() {
 	var propc chan msgWithResult
 	var readyc chan Ready
 	var advancec chan struct{}
-	var rd Ready
 
 	r := n.rn.raft
 
@@ -322,7 +322,7 @@ func (n *node) run() {
 			// handled first, but it's generally good to emit larger Readys plus
 			// it simplifies testing (by emitting less frequently and more
 			// predictably).
-			rd = n.rn.readyWithoutAccept()
+			n.rd = n.rn.readyWithoutAccept()
 			readyc = n.readyc
 		}
 
@@ -393,12 +393,12 @@ func (n *node) run() {
 			}
 		case <-n.tickc:
 			n.rn.Tick()
-		case readyc <- rd:
-			n.rn.acceptReady(rd)
+		case readyc <- n.rd:
+			n.rn.acceptReady(n.rd)
 			advancec = n.advancec
 		case <-advancec:
-			n.rn.Advance(rd)
-			rd = Ready{}
+			n.rn.Advance(n.rd)
+			n.rd = Ready{}
 			advancec = nil
 		case c := <-n.status:
 			c <- getStatus(r)
@@ -503,6 +503,25 @@ func (n *node) stepWithWaitOption(ctx context.Context, m pb.Message, wait bool) 
 func (n *node) Ready() <-chan Ready { return n.readyc }
 
 func (n *node) Advance() {
+	ents := n.rd.Entries
+
+	// Provide a feedback that the `Entries` has already been successfully
+	// saved by the user. Note that only leader needs to do this, because
+	// a follower will not send the feedback to leader until it finishes
+	// saving the `Entries`.
+	//
+	// An empty entry is generated in the following two cases:
+	//    1. a new leader is elected.
+	//    2. enter into joint configuration.
+	// We need to ignore above two cases because the `pr.Match` is updated
+	// immediately after appending the empty entry. Note that it's safe to do
+	// so because it can only happen for multi-member cluster. Please also refer to
+	// https://github.com/ahrtr/etcd/blob/a79941679f401186dc29e10d4e86a53590c3d9d6/raft/raft.go#L643-L645
+	if n.isLeader() && (len(ents) > 1 || (len(ents) == 1 && len(ents[0].Data) > 0)) {
+		e := ents[len(ents)-1]
+		n.Step(context.TODO(), pb.Message{From: n.Status().ID, Type: pb.MsgAppResp, Index: e.Index})
+	}
+
 	select {
 	case n.advancec <- struct{}{}:
 	case <-n.done:
@@ -559,6 +578,11 @@ func (n *node) TransferLeadership(ctx context.Context, lead, transferee uint64) 
 
 func (n *node) ReadIndex(ctx context.Context, rctx []byte) error {
 	return n.step(ctx, pb.Message{Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: rctx}}})
+}
+
+func (n *node) isLeader() bool {
+	sts := n.Status()
+	return sts.ID == sts.Lead
 }
 
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {

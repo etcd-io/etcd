@@ -371,6 +371,8 @@ func newRaft(c *Config) *raft {
 
 func (r *raft) hasLeader() bool { return r.lead != None }
 
+func (r *raft) isLeader() bool { return r.id == r.lead }
+
 func (r *raft) softState() *SoftState { return &SoftState{Lead: r.lead, RaftState: r.state} }
 
 func (r *raft) hardState() pb.HardState {
@@ -635,7 +637,12 @@ func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 	}
 	// use latest "last" index after truncate/append
 	li = r.raftLog.append(es...)
-	r.prs.Progress[r.id].MaybeUpdate(li)
+	// The entries haven't been confirmed to be saved, so we can't
+	// update `pr.Match` for now.
+	// It's only called by `advance` and `becomeLeader` here.
+	if len(es) == 1 && es[0].Data == nil {
+		r.prs.Progress[r.id].MaybeUpdate(li)
+	}
 	// Regardless of maybeCommit's return, our caller will call bcastAppend.
 	r.maybeCommit()
 	return true

@@ -495,6 +495,7 @@ func TestLeaderAcknowledgeCommit(t *testing.T) {
 		commitNoopEntry(r, s)
 		li := r.raftLog.lastIndex()
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
+		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 
 		for _, m := range r.readMessages() {
 			if tt.acceptors[m.To] {

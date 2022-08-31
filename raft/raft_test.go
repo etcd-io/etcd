@@ -71,6 +71,9 @@ func TestProgressLeader(t *testing.T) {
 		if err := r.Step(propMsg); err != nil {
 			t.Fatalf("proposal resulted in error: %v", err)
 		}
+		if err := r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()}); err != nil {
+			t.Fatalf("reporting feedback resulted in error: %v", err)
+		}
 	}
 }
 
@@ -3388,6 +3391,9 @@ func TestCommitAfterRemoveNode(t *testing.T) {
 			{Type: pb.EntryConfChange, Data: ccData},
 		},
 	})
+	// Node 1 acknowledges the config change to its local raft.
+	r.Step(pb.Message{Type: pb.MsgAppResp, From: 1, Index: r.raftLog.lastIndex()})
+
 	// Stabilize the log and make sure nothing is committed yet.
 	if ents := nextEnts(r, s); len(ents) > 0 {
 		t.Fatalf("unexpected committed entries: %v", ents)
@@ -3401,6 +3407,8 @@ func TestCommitAfterRemoveNode(t *testing.T) {
 			{Type: pb.EntryNormal, Data: []byte("hello")},
 		},
 	})
+	// Node 1 acknowledges the proposal to its local raft.
+	r.Step(pb.Message{Type: pb.MsgAppResp, From: 1, Index: r.raftLog.lastIndex()})
 
 	// Node 2 acknowledges the config change, committing it.
 	r.Step(pb.Message{
@@ -4714,6 +4722,12 @@ func (nw *network) send(msgs ...pb.Message) {
 		m := msgs[0]
 		p := nw.peers[m.To]
 		p.Step(m)
+		if sm, ok := p.(*raft); ok {
+			// The leader acknowledges the proposal to its local raft.
+			if sm.isLeader() && m.Type == pb.MsgProp && len(m.Entries) > 0 && m.Entries[0].Data != nil {
+				p.Step(pb.Message{From: sm.id, To: sm.id, Type: pb.MsgAppResp, Index: sm.raftLog.lastIndex()})
+			}
+		}
 		msgs = append(msgs[1:], nw.filter(p.readMessages())...)
 	}
 }

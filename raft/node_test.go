@@ -374,7 +374,7 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 			case rd := <-n.Ready():
 				s.Append(rd.Entries)
 				applied := false
-				for _, e := range rd.Entries {
+				for _, e := range rd.CommittedEntries {
 					rdyEntries = append(rdyEntries, e)
 					switch e.Type {
 					case raftpb.EntryNormal:
@@ -600,10 +600,16 @@ func TestNodeStart(t *testing.T) {
 			MustSync: true,
 		},
 		{
-			HardState:        raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
+			HardState:        raftpb.HardState{},
 			Entries:          []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
-			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			CommittedEntries: nil,
 			MustSync:         true,
+		},
+		{
+			HardState:        raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
+			Entries:          nil,
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			MustSync:         false,
 		},
 	}
 	storage := NewMemoryStorage()
@@ -642,8 +648,11 @@ func TestNodeStart(t *testing.T) {
 
 	select {
 	case rd := <-n.Ready():
-		t.Errorf("unexpected Ready: %+v", rd)
-	case <-time.After(time.Millisecond):
+		if !reflect.DeepEqual(rd, wants[2]) {
+			t.Errorf("Unexpected ready: got = %+v,\n             wanted = %+v", rd, wants[2])
+		}
+	case <-time.After(10 * time.Millisecond):
+		t.Error("Timed out waiting for the ready data")
 	}
 }
 
@@ -932,6 +941,9 @@ func TestCommitPagination(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	rd = readyWithTimeout(&n)
+	s.Append(rd.Entries)
+	n.Advance()
 
 	// The 3 proposals will commit in two batches.
 	rd = readyWithTimeout(&n)
