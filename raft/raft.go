@@ -572,6 +572,19 @@ func (r *raft) advance(rd Ready) {
 
 	if len(rd.Entries) > 0 {
 		e := rd.Entries[len(rd.Entries)-1]
+		if r.id == r.lead {
+			// The leader needs to self-ack the entries just appended (since it doesn't
+			// send an MsgApp to itself). This is roughly equivalent to:
+			//
+			//  r.prs.Progress[r.id].MaybeUpdate(e.Index)
+			//  if r.maybeCommit() {
+			//  	r.bcastAppend()
+			//  }
+			_ = r.Step(pb.Message{From: r.id, Type: pb.MsgAppResp, Index: e.Index})
+		}
+		// NB: it's important for performance that this call happens after
+		// r.Step above on the leader. This is because r.Step can then use
+		// a fast-path for `r.raftLog.term()`.
 		r.raftLog.stableTo(e.Index, e.Term)
 	}
 	if !IsEmptySnap(rd.Snapshot) {
@@ -635,9 +648,6 @@ func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 	}
 	// use latest "last" index after truncate/append
 	li = r.raftLog.append(es...)
-	r.prs.Progress[r.id].MaybeUpdate(li)
-	// Regardless of maybeCommit's return, our caller will call bcastAppend.
-	r.maybeCommit()
 	return true
 }
 
@@ -1099,6 +1109,9 @@ func stepLeader(r *raft, m pb.Message) error {
 	}
 	switch m.Type {
 	case pb.MsgAppResp:
+		// NB: this code path is also hit from (*raft).advance, where the leader steps
+		// an MsgAppResp to acknowledge the appended entries in the last Ready.
+
 		pr.RecentActive = true
 
 		if m.Reject {
@@ -1267,7 +1280,9 @@ func stepLeader(r *raft, m pb.Message) error {
 				// replicate, or when freeTo() covers multiple messages). If
 				// we have more entries to send, send as many messages as we
 				// can (without sending empty messages for the commit index)
-				for r.maybeSendAppend(m.From, false) {
+				if r.id != m.From {
+					for r.maybeSendAppend(m.From, false) {
+					}
 				}
 				// Transfer leadership is in progress.
 				if m.From == r.leadTransferee && pr.Match == r.raftLog.lastIndex() {
@@ -1806,6 +1821,11 @@ func numOfPendingConf(ents []pb.Entry) int {
 }
 
 func releasePendingReadIndexMessages(r *raft) {
+	if len(r.pendingReadIndexMessages) == 0 {
+		// Fast path for the common case to avoid a call to storage.LastIndex()
+		// via committedEntryInCurrentTerm.
+		return
+	}
 	if !r.committedEntryInCurrentTerm() {
 		r.logger.Error("pending MsgReadIndex should be released only after first commit in current term")
 		return
