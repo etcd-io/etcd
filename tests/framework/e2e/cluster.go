@@ -179,6 +179,9 @@ type EtcdProcessClusterConfig struct {
 	CompactHashCheckTime    time.Duration
 	GoFailEnabled           bool
 	CompactionBatchLimit    int
+
+	WarningUnaryRequestDuration             time.Duration
+	ExperimentalWarningUnaryRequestDuration time.Duration
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -526,6 +529,12 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if cfg.CompactionBatchLimit != 0 {
 		args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.CompactionBatchLimit))
+	}
+	if cfg.WarningUnaryRequestDuration != 0 {
+		args = append(args, "--warning-unary-request-duration", cfg.WarningUnaryRequestDuration.String())
+	}
+	if cfg.ExperimentalWarningUnaryRequestDuration != 0 {
+		args = append(args, "--experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration.String())
 	}
 	envVars := map[string]string{}
 	for key, value := range cfg.EnvVars {
