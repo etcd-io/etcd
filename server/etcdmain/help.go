@@ -227,7 +227,9 @@ Logging:
   --enable-log-rotation 'false'
     Enable log rotation of a single log-outputs file target.
   --log-rotation-config-json '{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}'
-    Configures log rotation if enabled with a JSON logger config. MaxSize(MB), MaxAge(days,0=no limit), MaxBackups(0=no limit), LocalTime(use computers local time), Compress(gzip)". 
+    Configures log rotation if enabled with a JSON logger config. MaxSize(MB), MaxAge(days,0=no limit), MaxBackups(0=no limit), LocalTime(use computers local time), Compress(gzip)".
+  --warning-unary-request-duration '300ms'
+    Set time duration after which a warning is logged if a unary request takes more than this duration.
 
 Experimental distributed tracing:
   --experimental-enable-distributed-tracing 'false'
@@ -260,8 +262,8 @@ Experimental feature:
     Enable the write transaction to use a shared buffer in its readonly check operations.
   --experimental-bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
-  --experimental-warning-unary-request-duration '300ms'
-    Set time duration after which a warning is generated if a unary request takes more than this duration.
+  --experimental-warning-unary-request-duration '0s'
+    Set time duration after which a warning is generated if a unary request takes more than this duration. It's already deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.
   --experimental-max-learners '1'
     Set the max number of learner members allowed in the cluster membership.
   --experimental-wait-cluster-ready-timeout '5s'
