@@ -21,6 +21,12 @@ v2 v3
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+4
+----
+ok
+
 # Add two "empty" nodes to the cluster, n2 and n3.
 add-nodes 2
 ----
@@ -204,6 +210,12 @@ r2 r3
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+5
+----
+ok
+
 # n1 sends out MsgApps.
 stabilize 1
 ----
@@ -246,6 +258,12 @@ propose 1 bar
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+7
+----
+ok
+
 # n1 switches to the joint config, then initiates a transition into the final
 # config.
 stabilize 1
@@ -260,9 +278,11 @@ stabilize 1
   1->3 MsgApp Term:1 Log:1/6 Commit:5 Entries:[1/7 EntryNormal "foo"]
   1->2 MsgApp Term:1 Log:1/7 Commit:5 Entries:[1/8 EntryNormal "bar"]
   1->3 MsgApp Term:1 Log:1/7 Commit:5 Entries:[1/8 EntryNormal "bar"]
+  1->1 MsgApp Term:1 Log:1/7 Commit:5 Entries:[1/8 EntryNormal "bar"]
 > 1 receiving messages
   2->1 MsgAppResp Term:1 Log:0/6
   3->1 MsgAppResp Term:1 Log:0/6
+  1->1 MsgApp Term:1 Log:1/7 Commit:5 Entries:[1/8 EntryNormal "bar"]
 > 1 handling Ready
   Ready MustSync=false:
   HardState Term:1 Vote:1 Commit:6

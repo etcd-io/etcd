@@ -33,6 +33,12 @@ v3
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+4
+----
+ok
+
 # Commit and fully apply said conf change. n1 and n2 now consider n3 a voter.
 stabilize 1 2
 ----

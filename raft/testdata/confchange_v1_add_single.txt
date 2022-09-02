@@ -20,6 +20,12 @@ v2
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+4
+----
+ok
+
 # Pull n2 out of thin air.
 add-nodes 1
 ----

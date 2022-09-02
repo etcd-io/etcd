@@ -50,6 +50,12 @@ r1 v4
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+4
+----
+ok
+
 # Enter joint config.
 stabilize
 ----
@@ -337,6 +343,12 @@ propose-conf-change 4
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 4
+5
+----
+ok
+
 # The group commits the command and everyone switches to the final config.
 stabilize
 ----
@@ -416,11 +428,16 @@ stabilize
   Messages:
   3->4 MsgAppResp Term:2 Log:0/6
   INFO 3 switched to configuration voters=(2 3 4)
+> 4 handling Ready
+  Ready MustSync=false:
+  Messages:
+  4->4 MsgApp Term:2 Log:2/5 Commit:6 Entries:[2/6 EntryConfChangeV2]
 > 4 receiving messages
   1->4 MsgAppResp Term:2 Log:0/6
   raft: cannot step as peer not found
   2->4 MsgAppResp Term:2 Log:0/6
   3->4 MsgAppResp Term:2 Log:0/6
+  4->4 MsgApp Term:2 Log:2/5 Commit:6 Entries:[2/6 EntryConfChangeV2]
 
 # n1 is out of the configuration.
 raft-state

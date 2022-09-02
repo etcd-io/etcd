@@ -147,6 +147,15 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 		// propose-conf-change 2 v1=true
 		// v5
 		err = env.handleProposeConfChange(t, d)
+	case "report-status":
+		// The leader acknowledges that the Entries has already been
+		// successfully persisted.
+		//
+		// Example:
+		//
+		// report-status 1
+		// 4
+		err = env.handleLeaderReportStatus(t, d)
 	default:
 		err = fmt.Errorf("unknown command")
 	}

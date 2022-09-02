@@ -22,6 +22,12 @@ v2
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+4
+----
+ok
+
 # Pull n2 out of thin air.
 add-nodes 1
 ----
@@ -107,6 +113,12 @@ INFO 1 ignoring conf change {ConfChangeTransitionAuto [{ConfChangeAddNode 3} {Co
 
 # Propose a transition out of the joint config. We'll see this at index 6 below.
 propose-conf-change 1
+----
+ok
+
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+6
 ----
 ok
 

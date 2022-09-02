@@ -33,6 +33,12 @@ r1
 ----
 ok
 
+# The leader acknowledges that the entries has already been persisted.
+report-status 1
+5
+----
+ok
+
 raft-state
 ----
 1: StateLeader (Voter)
