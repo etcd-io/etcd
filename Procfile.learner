@@ -1,4 +1,4 @@
-# Use goreman to run `go get github.com/mattn/goreman`
+# Use goreman to run `go install github.com/mattn/goreman@latest`
 
 # 1. Start the cluster using Procfile
 # 2. Add learner node to the cluster
