@@ -44,11 +44,13 @@ func (e integrationRunner) BeforeTest(t testing.TB) {
 
 func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, cfg config.ClusterConfig) Cluster {
 	var err error
-	var integrationCfg integration.ClusterConfig
-	integrationCfg.Size = cfg.ClusterSize
+	integrationCfg := integration.ClusterConfig{
+		Size:                       cfg.ClusterSize,
+		QuotaBackendBytes:          cfg.QuotaBackendBytes,
+		DisableStrictReconfigCheck: cfg.DisableStrictReconfigCheck,
+		SnapshotCount:              uint64(cfg.SnapshotCount),
+	}
 	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
-	integrationCfg.QuotaBackendBytes = cfg.QuotaBackendBytes
-	integrationCfg.DisableStrictReconfigCheck = cfg.DisableStrictReconfigCheck
 	if err != nil {
 		t.Fatalf("ClientTLS: %s", err)
 	}
