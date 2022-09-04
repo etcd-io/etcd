@@ -41,7 +41,7 @@ func TestCtlV3AuthTxnJWT(t *testing.T)              { testCtl(t, authTestTxn, wi
 func TestCtlV3AuthPrefixPerm(t *testing.T)          { testCtl(t, authTestPrefixPerm) }
 func TestCtlV3AuthMemberAdd(t *testing.T)           { testCtl(t, authTestMemberAdd) }
 func TestCtlV3AuthMemberRemove(t *testing.T) {
-	testCtl(t, authTestMemberRemove, withQuorum(), withNoStrictReconfig())
+	testCtl(t, authTestMemberRemove, withQuorum(), withDisableStrictReconfig())
 }
 func TestCtlV3AuthMemberUpdate(t *testing.T)     { testCtl(t, authTestMemberUpdate) }
 func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }

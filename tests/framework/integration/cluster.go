@@ -169,7 +169,7 @@ type ClusterConfig struct {
 
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
-	StrictReconfigCheck         bool
+	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
 }
 
@@ -283,7 +283,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
 			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
-			StrictReconfigCheck:         c.Cfg.StrictReconfigCheck,
+			DisableStrictReconfigCheck:  c.Cfg.DisableStrictReconfigCheck,
 			CorruptCheckTime:            c.Cfg.CorruptCheckTime,
 		})
 	m.DiscoveryURL = c.Cfg.DiscoveryURL
@@ -604,7 +604,7 @@ type MemberConfig struct {
 	LeaseCheckpointPersist      bool
 	WatchProgressNotifyInterval time.Duration
 	ExperimentalMaxLearners     int
-	StrictReconfigCheck         bool
+	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
 }
 
@@ -720,7 +720,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
 	m.GrpcServerRecorder = &grpc_testing.GrpcRecorder{}
 	m.Logger = memberLogger(t, mcfg.Name)
-	m.StrictReconfigCheck = mcfg.StrictReconfigCheck
+	m.StrictReconfigCheck = !mcfg.DisableStrictReconfigCheck
 	if err := m.listenGRPC(); err != nil {
 		t.Fatalf("listenGRPC FAILED: %v", err)
 	}

@@ -72,7 +72,7 @@ func TestDoubleClusterSizeOf3(t *testing.T) { testDoubleClusterSize(t, 3) }
 
 func testDoubleClusterSize(t *testing.T, size int) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size, DisableStrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	for i := 0; i < size; i++ {
@@ -83,7 +83,12 @@ func testDoubleClusterSize(t *testing.T, size int) {
 
 func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, PeerTLS: &integration.TestTLSInfo})
+	cfg := &integration.ClusterConfig{
+		Size:                       1,
+		PeerTLS:                    &integration.TestTLSInfo,
+		DisableStrictReconfigCheck: true,
+	}
+	c := integration.NewCluster(t, cfg)
 	defer c.Terminate(t)
 
 	for i := 0; i < 3; i++ {
@@ -97,7 +102,7 @@ func TestDecreaseClusterSizeOf5(t *testing.T) { testDecreaseClusterSize(t, 5) }
 
 func testDecreaseClusterSize(t *testing.T, size int) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: size, DisableStrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	// TODO: remove the last but one member
@@ -175,7 +180,7 @@ func TestForceNewCluster(t *testing.T) {
 
 func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	// remove all the previous three members and add in three new members.
@@ -198,7 +203,7 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 // Ensure we can remove a member then add a new one back immediately.
 func TestIssue2681(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5, DisableStrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[4].Server.MemberId())); err != nil {
@@ -219,7 +224,7 @@ func TestIssue2746WithThree(t *testing.T) { testIssue2746(t, 3) }
 
 func testIssue2746(t *testing.T, members int) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: members, SnapshotCount: 10})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: members, SnapshotCount: 10, DisableStrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	// force a snapshot
@@ -241,7 +246,7 @@ func testIssue2746(t *testing.T, members int) {
 func TestIssue2904(t *testing.T) {
 	integration.BeforeTest(t)
 	// start 1-member Cluster to ensure member 0 is the leader of the Cluster.
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 2, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 2, UseBridge: true, DisableStrictReconfigCheck: true})
 	defer c.Terminate(t)
 	c.WaitLeader(t)
 
@@ -276,7 +281,7 @@ func TestIssue2904(t *testing.T) {
 func TestIssue3699(t *testing.T) {
 	// start a Cluster of 3 nodes a, b, c
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true, DisableStrictReconfigCheck: true})
 	defer c.Terminate(t)
 
 	// make node a unavailable
@@ -333,7 +338,7 @@ func TestIssue3699(t *testing.T) {
 // TestRejectUnhealthyAdd ensures an unhealthy cluster rejects adding members.
 func TestRejectUnhealthyAdd(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true, StrictReconfigCheck: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer c.Terminate(t)
 
 	// make Cluster unhealthy and wait for downed peer
@@ -373,7 +378,7 @@ func TestRejectUnhealthyAdd(t *testing.T) {
 // if quorum will be lost.
 func TestRejectUnhealthyRemove(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5, UseBridge: true, StrictReconfigCheck: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5, UseBridge: true})
 	defer c.Terminate(t)
 
 	// make cluster unhealthy and wait for downed peer; (3 up, 2 down)
@@ -418,11 +423,11 @@ func TestRestartRemoved(t *testing.T) {
 	integration.BeforeTest(t)
 
 	// 1. start single-member Cluster
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, StrictReconfigCheck: true})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer c.Terminate(t)
 
 	// 2. add a new member
-	c.Cfg.StrictReconfigCheck = false
+	c.Cfg.DisableStrictReconfigCheck = true
 	c.AddMember(t)
 	c.WaitLeader(t)
 

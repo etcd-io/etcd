@@ -122,11 +122,12 @@ func dialWithSchemeTest(cx ctlCtx) {
 }
 
 type ctlCtx struct {
-	t                *testing.T
-	apiPrefix        string
-	cfg              e2e.EtcdProcessClusterConfig
-	corruptFunc      func(string) error
-	noStrictReconfig bool
+	t         *testing.T
+	apiPrefix string
+	cfg       e2e.EtcdProcessClusterConfig
+
+	corruptFunc                func(string) error
+	disableStrictReconfigCheck bool
 
 	epc *e2e.EtcdProcessCluster
 
@@ -185,8 +186,8 @@ func withCorruptFunc(f func(string) error) ctlOption {
 	return func(cx *ctlCtx) { cx.corruptFunc = f }
 }
 
-func withNoStrictReconfig() ctlOption {
-	return func(cx *ctlCtx) { cx.noStrictReconfig = true }
+func withDisableStrictReconfig() ctlOption {
+	return func(cx *ctlCtx) { cx.disableStrictReconfigCheck = true }
 }
 
 func withApiPrefix(p string) ctlOption {
@@ -226,7 +227,7 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	if !ret.quorum {
 		ret.cfg = *e2e.ConfigStandalone(ret.cfg)
 	}
-	ret.cfg.NoStrictReconfig = ret.noStrictReconfig
+	ret.cfg.DisableStrictReconfigCheck = ret.disableStrictReconfigCheck
 	if ret.initialCorruptCheck {
 		ret.cfg.InitialCorruptCheck = ret.initialCorruptCheck
 	}

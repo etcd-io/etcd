@@ -48,6 +48,7 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, cfg con
 	integrationCfg.Size = cfg.ClusterSize
 	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
 	integrationCfg.QuotaBackendBytes = cfg.QuotaBackendBytes
+	integrationCfg.DisableStrictReconfigCheck = cfg.DisableStrictReconfigCheck
 	if err != nil {
 		t.Fatalf("ClientTLS: %s", err)
 	}
