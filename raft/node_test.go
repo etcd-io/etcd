@@ -35,6 +35,12 @@ import (
 func readyWithTimeout(n Node) Ready {
 	select {
 	case rd := <-n.Ready():
+		if nn, ok := n.(*nodeTestHarness); ok {
+			n = nn.node
+		}
+		if nn, ok := n.(*node); ok {
+			nn.rn.raft.logger.Infof("emitted ready: %s", DescribeReady(rd, nil))
+		}
 		return rd
 	case <-time.After(time.Second):
 		panic("timed out waiting for ready")
