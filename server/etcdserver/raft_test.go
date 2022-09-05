@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/raft/v3"
@@ -281,4 +282,80 @@ func TestExpvarWithNoRaftStatus(t *testing.T) {
 	expvar.Do(func(kv expvar.KeyValue) {
 		_ = kv.Value.String()
 	})
+}
+
+func TestShouldWaitWALSync(t *testing.T) {
+	testcases := []struct {
+		name            string
+		unstableEntries []raftpb.Entry
+		commitedEntries []raftpb.Entry
+		expectedResult  bool
+	}{
+		{
+			name:            "both entries are nil",
+			unstableEntries: nil,
+			commitedEntries: nil,
+			expectedResult:  false,
+		},
+		{
+			name:            "both entries are empty slices",
+			unstableEntries: []raftpb.Entry{},
+			commitedEntries: []raftpb.Entry{},
+			expectedResult:  false,
+		},
+		{
+			name:            "one nil and the other empty",
+			unstableEntries: nil,
+			commitedEntries: []raftpb.Entry{},
+			expectedResult:  false,
+		},
+		{
+			name:            "one nil and the other has data",
+			unstableEntries: nil,
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "one empty and the other has data",
+			unstableEntries: []raftpb.Entry{},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "has different term and index",
+			unstableEntries: []raftpb.Entry{{Term: 5, Index: 11, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  false,
+		},
+		{
+			name:            "has identical data",
+			unstableEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			commitedEntries: []raftpb.Entry{{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}}},
+			expectedResult:  true,
+		},
+		{
+			name: "has overlapped entry",
+			unstableEntries: []raftpb.Entry{
+				{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}},
+				{Term: 4, Index: 11, Type: raftpb.EntryNormal, Data: []byte{0x44, 0x55, 0x66}},
+				{Term: 4, Index: 12, Type: raftpb.EntryNormal, Data: []byte{0x77, 0x88, 0x99}},
+			},
+			commitedEntries: []raftpb.Entry{
+				{Term: 4, Index: 8, Type: raftpb.EntryNormal, Data: []byte{0x07, 0x08, 0x09}},
+				{Term: 4, Index: 9, Type: raftpb.EntryNormal, Data: []byte{0x10, 0x11, 0x12}},
+				{Term: 4, Index: 10, Type: raftpb.EntryNormal, Data: []byte{0x11, 0x22, 0x33}},
+			},
+			expectedResult: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			shouldWALSync := shouldWaitWALSync(raft.Ready{
+				Entries:          tc.unstableEntries,
+				CommittedEntries: tc.commitedEntries,
+			})
+			assert.Equal(t, tc.expectedResult, shouldWALSync)
+		})
+	}
 }
