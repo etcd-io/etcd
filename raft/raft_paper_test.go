@@ -473,9 +473,9 @@ func TestLeaderCommitEntry(t *testing.T) {
 // Reference: section 5.3
 func TestLeaderAcknowledgeCommit(t *testing.T) {
 	tests := []struct {
-		size      int
-		acceptors map[uint64]bool
-		wack      bool
+		size               int
+		nonLeaderAcceptors map[uint64]bool
+		wack               bool
 	}{
 		{1, nil, true},
 		{3, nil, false},
@@ -496,8 +496,9 @@ func TestLeaderAcknowledgeCommit(t *testing.T) {
 		li := r.raftLog.lastIndex()
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
 
+		tt.nonLeaderAcceptors[1] = true // leader always has the entry
 		for _, m := range r.readMessages() {
-			if tt.acceptors[m.To] {
+			if tt.nonLeaderAcceptors[m.To] {
 				r.Step(acceptAndReply(m))
 			}
 		}
