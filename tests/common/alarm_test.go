@@ -104,3 +104,28 @@ func TestAlarm(t *testing.T) {
 		}
 	})
 }
+
+func TestAlarmlistOnMemberRestart(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{
+		ClusterSize:       1,
+		QuotaBackendBytes: int64(13 * os.Getpagesize()),
+		SnapshotCount:     5,
+	})
+	defer clus.Close()
+
+	testutils.ExecuteUntil(ctx, t, func() {
+		for i := 0; i < 6; i++ {
+			if _, err := clus.Client().AlarmList(ctx); err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+		}
+
+		clus.Members()[0].Stop()
+		if err := clus.Members()[0].Start(ctx); err != nil {
+			t.Fatalf("failed to start etcdserver: %v", err)
+		}
+	})
+}

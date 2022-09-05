@@ -100,6 +100,7 @@ func (ep *EtcdServerProcess) EndpointsV3() []string      { return ep.EndpointsV2
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.Murl} }
 
 func (ep *EtcdServerProcess) Start(ctx context.Context) error {
+	ep.donec = make(chan struct{})
 	if ep.proc != nil {
 		panic("already started")
 	}
@@ -121,7 +122,6 @@ func (ep *EtcdServerProcess) Restart(ctx context.Context) error {
 	if err := ep.Stop(); err != nil {
 		return err
 	}
-	ep.donec = make(chan struct{})
 	err := ep.Start(ctx)
 	if err == nil {
 		ep.cfg.lg.Info("restarted server", zap.String("name", ep.cfg.Name))
@@ -135,10 +135,10 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 		return nil
 	}
 	err = ep.proc.Stop()
+	ep.proc = nil
 	if err != nil {
 		return err
 	}
-	ep.proc = nil
 	<-ep.donec
 	ep.donec = make(chan struct{})
 	if ep.cfg.Purl.Scheme == "unix" || ep.cfg.Purl.Scheme == "unixs" {

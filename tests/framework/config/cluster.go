@@ -32,4 +32,5 @@ type ClusterConfig struct {
 	ClientTLS                  TLSConfig
 	QuotaBackendBytes          int64
 	DisableStrictReconfigCheck bool
+	SnapshotCount              int
 }

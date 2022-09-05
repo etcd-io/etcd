@@ -47,6 +47,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, cfg config.Clus
 		ClusterSize:                cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
 		DisableStrictReconfigCheck: cfg.DisableStrictReconfigCheck,
+		SnapshotCount:              cfg.SnapshotCount,
 	}
 	switch cfg.ClientTLS {
 	case config.NoTLS:
@@ -175,7 +176,7 @@ func (m e2eMember) Client() Client {
 }
 
 func (m e2eMember) Start(ctx context.Context) error {
-	return m.Restart(ctx)
+	return m.EtcdProcess.Start(ctx)
 }
 
 func (m e2eMember) Stop() {
