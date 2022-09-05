@@ -740,9 +740,6 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 }
 
 func TestNodeAdvance(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	storage := NewMemoryStorage()
 	c := &Config{
 		ID:              1,
@@ -752,8 +749,8 @@ func TestNodeAdvance(t *testing.T) {
 		MaxSizePerMsg:   noLimit,
 		MaxInflightMsgs: 256,
 	}
-	n := StartNode(c, []Peer{{ID: 1}})
-	defer n.Stop()
+	ctx, cancel, n := newNodeTestHarness(t, context.Background(), c, Peer{ID: 1})
+	defer cancel()
 	rd := <-n.Ready()
 	storage.Append(rd.Entries)
 	n.Advance()

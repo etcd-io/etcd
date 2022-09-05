@@ -211,11 +211,7 @@ type Peer struct {
 	Context []byte
 }
 
-// StartNode returns a new Node given configuration and a list of raft peers.
-// It appends a ConfChangeAddNode entry for each given peer to the initial log.
-//
-// Peers must not be zero length; call RestartNode in that case.
-func StartNode(c *Config, peers []Peer) Node {
+func setupNode(c *Config, peers []Peer) *node {
 	if len(peers) == 0 {
 		panic("no peers given; use RestartNode instead")
 	}
@@ -229,9 +225,17 @@ func StartNode(c *Config, peers []Peer) Node {
 	}
 
 	n := newNode(rn)
-
-	go n.run()
 	return &n
+}
+
+// StartNode returns a new Node given configuration and a list of raft peers.
+// It appends a ConfChangeAddNode entry for each given peer to the initial log.
+//
+// Peers must not be zero length; call RestartNode in that case.
+func StartNode(c *Config, peers []Peer) Node {
+	n := setupNode(c, peers)
+	go n.run()
+	return n
 }
 
 // RestartNode is similar to StartNode but does not take a list of peers.
