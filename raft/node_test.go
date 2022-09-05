@@ -914,15 +914,14 @@ func TestCommitPagination(t *testing.T) {
 	s := newTestMemoryStorage(withPeers(1))
 	cfg := newTestConfig(1, 10, 1, s)
 	cfg.MaxCommittedSizePerReady = 2048
-	rn, err := NewRawNode(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	n := newNode(rn)
-	go n.run()
-	n.Campaign(context.TODO())
+	ctx, cancel, n := newNodeTestHarness(t, context.Background(), cfg)
+	defer cancel()
+	n.Campaign(ctx)
 
-	rd := readyWithTimeout(&n)
+	rd := readyWithTimeout(n)
+	s.Append(rd.Entries)
+	n.Advance()
+	rd = readyWithTimeout(n)
 	if len(rd.CommittedEntries) != 1 {
 		t.Fatalf("expected 1 (empty) entry, got %d", len(rd.CommittedEntries))
 	}
@@ -931,25 +930,32 @@ func TestCommitPagination(t *testing.T) {
 
 	blob := []byte(strings.Repeat("a", 1000))
 	for i := 0; i < 3; i++ {
-		if err := n.Propose(context.TODO(), blob); err != nil {
+		if err := n.Propose(ctx, blob); err != nil {
 			t.Fatal(err)
 		}
 	}
 
+	// First the three proposals have to be appended.
+	rd = readyWithTimeout(n)
+	if len(rd.Entries) != 3 {
+		t.Fatal("expected to see three entries")
+	}
+	s.Append(rd.Entries)
+	n.Advance()
+
 	// The 3 proposals will commit in two batches.
-	rd = readyWithTimeout(&n)
+	rd = readyWithTimeout(n)
 	if len(rd.CommittedEntries) != 2 {
 		t.Fatalf("expected 2 entries in first batch, got %d", len(rd.CommittedEntries))
 	}
 	s.Append(rd.Entries)
 	n.Advance()
-	rd = readyWithTimeout(&n)
+	rd = readyWithTimeout(n)
 	if len(rd.CommittedEntries) != 1 {
 		t.Fatalf("expected 1 entry in second batch, got %d", len(rd.CommittedEntries))
 	}
 	s.Append(rd.Entries)
 	n.Advance()
-	n.Stop()
 }
 
 type ignoreSizeHintMemStorage struct {
