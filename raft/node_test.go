@@ -132,6 +132,10 @@ func TestNodeStepUnblock(t *testing.T) {
 func TestNodePropose(t *testing.T) {
 	var msgs []raftpb.Message
 	appendStep := func(r *raft, m raftpb.Message) error {
+		t.Log(DescribeMessage(m, nil))
+		if m.Type == raftpb.MsgAppResp {
+			return nil // injected by (*raft).advance
+		}
 		msgs = append(msgs, m)
 		return nil
 	}
@@ -314,6 +318,9 @@ func TestNodeReadIndexToOldLeader(t *testing.T) {
 func TestNodeProposeConfig(t *testing.T) {
 	var msgs []raftpb.Message
 	appendStep := func(r *raft, m raftpb.Message) error {
+		if m.Type == raftpb.MsgAppResp {
+			return nil // injected by (*raft).advance
+		}
 		msgs = append(msgs, m)
 		return nil
 	}
