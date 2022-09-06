@@ -1424,14 +1424,14 @@ func TestRaftFreesReadOnlyMem(t *testing.T) {
 // TestMsgAppRespWaitReset verifies the resume behavior of a leader
 // MsgAppResp.
 func TestMsgAppRespWaitReset(t *testing.T) {
-	sm := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
+	s := newTestMemoryStorage(withPeers(1, 2, 3))
+	sm := newTestRaft(1, 5, 1, s)
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
-	// The new leader has just emitted a new Term 4 entry; consume those messages
-	// from the outgoing queue.
-	sm.bcastAppend()
-	sm.readMessages()
+	// Run n1 which includes sending a message like the below
+	// one to n2, but also appending to its own log.
+	nextEnts(sm, s)
 
 	// Node 2 acks the first entry, making it committed.
 	sm.Step(pb.Message{
