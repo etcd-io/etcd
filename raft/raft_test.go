@@ -677,10 +677,12 @@ func TestLogReplication(t *testing.T) {
 
 // TestLearnerLogReplication tests that a learner can receive entries from the leader.
 func TestLearnerLogReplication(t *testing.T) {
-	n1 := newTestLearnerRaft(1, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
+	s1 := newTestMemoryStorage(withPeers(1), withLearners(2))
+	n1 := newTestLearnerRaft(1, 10, 1, s1)
 	n2 := newTestLearnerRaft(2, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
 
 	nt := newNetwork(n1, n2)
+	nt.t = t
 
 	n1.becomeFollower(1, None)
 	n2.becomeFollower(1, None)
@@ -700,10 +702,21 @@ func TestLearnerLogReplication(t *testing.T) {
 		t.Error("peer 2 state: not learner, want yes")
 	}
 
-	nextCommitted := n1.raftLog.committed + 1
-	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+	nextCommitted := uint64(2)
+	{
+		nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+		rd := newReady(n1, &SoftState{}, pb.HardState{})
+		nt.send(rd.Messages...)
+		s1.Append(rd.Entries)
+		n1.advance(rd)
+	}
 	if n1.raftLog.committed != nextCommitted {
 		t.Errorf("peer 1 wants committed to %d, but still %d", nextCommitted, n1.raftLog.committed)
+	}
+
+	{
+		rd := newReady(n1, &SoftState{}, pb.HardState{})
+		nt.send(rd.Messages...)
 	}
 
 	if n1.raftLog.committed != n2.raftLog.committed {
