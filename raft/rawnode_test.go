@@ -968,6 +968,7 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	data := []byte("testdata")
 	testEntry := pb.Entry{Data: data}
 	maxEntrySize := uint64(maxEntries * PayloadSize(testEntry))
+	t.Log("maxEntrySize", maxEntrySize)
 
 	s := newTestMemoryStorage(withPeers(1))
 	cfg := newTestConfig(1, 10, 1, s)
@@ -976,20 +977,16 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rd := rawNode.Ready()
-	s.Append(rd.Entries)
-	rawNode.Advance(rd)
 
-	// Become the leader.
+	// Become the leader and apply empty entry.
 	rawNode.Campaign()
 	for {
-		rd = rawNode.Ready()
+		rd := rawNode.Ready()
 		s.Append(rd.Entries)
-		if rd.SoftState.Lead == rawNode.raft.id {
-			rawNode.Advance(rd)
+		rawNode.Advance(rd)
+		if len(rd.CommittedEntries) > 0 {
 			break
 		}
-		rawNode.Advance(rd)
 	}
 
 	// Simulate a network partition while we make our proposals by never
@@ -1011,12 +1008,25 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 
 	// Recover from the partition. The uncommitted tail of the Raft log should
 	// disappear as entries are committed.
-	rd = rawNode.Ready()
-	if len(rd.CommittedEntries) != maxEntries {
-		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.CommittedEntries))
+	rd := rawNode.Ready()
+	if len(rd.Entries) != maxEntries {
+		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.Entries))
 	}
 	s.Append(rd.Entries)
 	rawNode.Advance(rd)
+
+	// Entries are appended, but not applied.
+	checkUncommitted(maxEntrySize)
+
+	rd = rawNode.Ready()
+	if len(rd.Entries) != 0 {
+		t.Fatalf("unexpected entries: %s", DescribeEntries(rd.Entries, nil))
+	}
+	if len(rd.CommittedEntries) != maxEntries {
+		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.CommittedEntries))
+	}
+	rawNode.Advance(rd)
+
 	checkUncommitted(0)
 }
 
