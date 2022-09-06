@@ -41,7 +41,7 @@ ok
 
 status 1
 ----
-1: StateReplicate match=11 next=12 inactive
+1: StateReplicate match=11 next=12
 2: StateReplicate match=11 next=12
 3: StateProbe match=0 next=11 paused inactive
 
@@ -95,7 +95,7 @@ stabilize 1
 
 status 1
 ----
-1: StateReplicate match=11 next=12 inactive
+1: StateReplicate match=11 next=12
 2: StateReplicate match=11 next=12
 3: StateSnapshot match=0 next=11 paused pendingSnap=11
 
@@ -132,7 +132,7 @@ stabilize 1
 
 status 1
 ----
-1: StateReplicate match=11 next=12 inactive
+1: StateReplicate match=11 next=12
 2: StateReplicate match=11 next=12
 3: StateReplicate match=11 next=12
 
