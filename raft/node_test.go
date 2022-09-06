@@ -173,59 +173,6 @@ func TestNodePropose(t *testing.T) {
 	}
 }
 
-// TestNodeReadIndex ensures that node.ReadIndex sends the MsgReadIndex message to the underlying raft.
-// It also ensures that ReadState can be read out through ready chan.
-func TestNodeReadIndex(t *testing.T) {
-	var msgs []raftpb.Message
-	appendStep := func(r *raft, m raftpb.Message) error {
-		if m.Type == raftpb.MsgAppResp {
-			// See (*raft).advance.
-			return nil
-		}
-		msgs = append(msgs, m)
-		return nil
-	}
-	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
-
-	s := newTestMemoryStorage(withPeers(1))
-	rn := newTestRawNode(1, 10, 1, s)
-	n := newNode(rn)
-	r := rn.raft
-	r.readStates = wrs
-
-	go n.run()
-	n.Campaign(context.TODO())
-	for {
-		rd := <-n.Ready()
-		if !reflect.DeepEqual(rd.ReadStates, wrs) {
-			t.Errorf("ReadStates = %v, want %v", rd.ReadStates, wrs)
-		}
-
-		s.Append(rd.Entries)
-
-		if rd.SoftState.Lead == r.id {
-			n.Advance()
-			break
-		}
-		n.Advance()
-	}
-
-	r.step = appendStep
-	wrequestCtx := []byte("somedata2")
-	n.ReadIndex(context.TODO(), wrequestCtx)
-	n.Stop()
-
-	if len(msgs) != 1 {
-		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
-	}
-	if msgs[0].Type != raftpb.MsgReadIndex {
-		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgReadIndex)
-	}
-	if !bytes.Equal(msgs[0].Entries[0].Data, wrequestCtx) {
-		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, wrequestCtx)
-	}
-}
-
 // TestDisableProposalForwarding ensures that proposals are not forwarded to
 // the leader when DisableProposalForwarding is true.
 func TestDisableProposalForwarding(t *testing.T) {
