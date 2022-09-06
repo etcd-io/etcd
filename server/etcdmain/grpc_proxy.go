@@ -45,6 +45,7 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_ratelimit "github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
@@ -101,6 +102,9 @@ var (
 	grpcKeepAliveMinTime  time.Duration
 	grpcKeepAliveTimeout  time.Duration
 	grpcKeepAliveInterval time.Duration
+
+	grpcProxyRateLimit      int
+	grpcProxyRateLimitBurst int
 
 	maxConcurrentStreams uint32
 )
@@ -166,6 +170,8 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
 	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
 	cmd.Flags().BoolVar(&grpcProxyEnableLogging, "experimental-enable-grpc-logging", false, "logging all grpc requests and responses")
+	cmd.Flags().IntVar(&grpcProxyRateLimit, "grpc-rate-limit", 0, "limit of request rate on grpc-proxy.")
+	cmd.Flags().IntVar(&grpcProxyRateLimitBurst, "grpc-rate-limit-burst", 0, "burst for rate limiting on grpc-proxy.")
 
 	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
 
@@ -454,6 +460,15 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 		grpcChainUnaryList = append(grpcChainUnaryList,
 			grpc_ctxtags.UnaryServerInterceptor(),
 			grpc_zap.PayloadUnaryServerInterceptor(lg, alwaysLoggingDeciderServer),
+		)
+	}
+	if grpcProxyRateLimit > 0 {
+		limiter := NewRateLimiter(grpcProxyRateLimit, grpcProxyRateLimitBurst)
+		grpcChainStreamList = append(grpcChainStreamList,
+			grpc_ratelimit.StreamServerInterceptor(limiter),
+		)
+		grpcChainUnaryList = append(grpcChainUnaryList,
+			grpc_ratelimit.UnaryServerInterceptor(limiter),
 		)
 	}
 
