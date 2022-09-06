@@ -29,13 +29,15 @@ import (
 
 // nextEnts returns the appliable entries and updates the applied index
 func nextEnts(r *raft, s *MemoryStorage) (ents []pb.Entry) {
-	// Transfer all unstable entries to "stable" storage.
-	s.Append(r.raftLog.unstableEntries())
-	r.raftLog.stableTo(r.raftLog.lastIndex(), r.raftLog.lastTerm())
-
-	ents = r.raftLog.nextEnts()
-	r.raftLog.appliedTo(r.raftLog.committed)
-	return ents
+	for {
+		rd := newReady(r, &SoftState{}, pb.HardState{})
+		s.Append(rd.Entries)
+		r.advance(rd)
+		if len(rd.Entries)+len(rd.CommittedEntries) == 0 {
+			return ents
+		}
+		ents = append(ents, rd.CommittedEntries...)
+	}
 }
 
 func mustAppendEntry(r *raft, ents ...pb.Entry) {
