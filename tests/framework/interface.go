@@ -72,6 +72,8 @@ type Client interface {
 	Txn(context context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error)
 
 	MemberList(context context.Context) (*clientv3.MemberListResponse, error)
+	MemberAdd(context context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error)
+	MemberAddAsLearner(context context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error)
 
 	Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan
 }

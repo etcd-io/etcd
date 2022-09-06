@@ -76,14 +76,6 @@ func NewConfigClientTLS() *EtcdProcessClusterConfig {
 	}
 }
 
-func NewConfigClientBoth() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:  1,
-		ClientTLS:    ClientTLSAndNonTLS,
-		InitialToken: "new",
-	}
-}
-
 func NewConfigClientAutoTLS() *EtcdProcessClusterConfig {
 	return &EtcdProcessClusterConfig{
 		ClusterSize:     1,

@@ -329,3 +329,11 @@ func (c integrationClient) Watch(ctx context.Context, key string, opts config.Wa
 
 	return c.Client.Watch(ctx, key, opOpts...)
 }
+
+func (c integrationClient) MemberAdd(ctx context.Context, _ string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
+	return c.Client.MemberAdd(ctx, peerAddrs)
+}
+
+func (c integrationClient) MemberAddAsLearner(ctx context.Context, _ string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
+	return c.Client.MemberAddAsLearner(ctx, peerAddrs)
+}

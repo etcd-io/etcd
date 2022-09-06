@@ -50,19 +50,7 @@ func TestCtlV3MemberRemoveClientAutoTLS(t *testing.T) {
 func TestCtlV3MemberRemovePeerTLS(t *testing.T) {
 	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(*e2e.NewConfigPeerTLS()))
 }
-func TestCtlV3MemberAdd(t *testing.T)      { testCtl(t, memberAddTest) }
-func TestCtlV3MemberAddNoTLS(t *testing.T) { testCtl(t, memberAddTest, withCfg(*e2e.NewConfigNoTLS())) }
-func TestCtlV3MemberAddClientTLS(t *testing.T) {
-	testCtl(t, memberAddTest, withCfg(*e2e.NewConfigClientTLS()))
-}
-func TestCtlV3MemberAddClientAutoTLS(t *testing.T) {
-	testCtl(t, memberAddTest, withCfg(*e2e.NewConfigClientAutoTLS()))
-}
-func TestCtlV3MemberAddPeerTLS(t *testing.T) {
-	testCtl(t, memberAddTest, withCfg(*e2e.NewConfigPeerTLS()))
-}
-func TestCtlV3MemberAddForLearner(t *testing.T) { testCtl(t, memberAddForLearnerTest) }
-func TestCtlV3MemberUpdate(t *testing.T)        { testCtl(t, memberUpdateTest) }
+func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
 func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigNoTLS()))
 }
@@ -176,18 +164,6 @@ func memberRemoveTest(cx ctlCtx) {
 func ctlV3MemberRemove(cx ctlCtx, ep, memberID, clusterID string) error {
 	cmdArgs := append(cx.prefixArgs([]string{ep}), "member", "remove", memberID)
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
-}
-
-func memberAddTest(cx ctlCtx) {
-	if err := ctlV3MemberAdd(cx, fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11), false); err != nil {
-		cx.t.Fatal(err)
-	}
-}
-
-func memberAddForLearnerTest(cx ctlCtx) {
-	if err := ctlV3MemberAdd(cx, fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11), true); err != nil {
-		cx.t.Fatal(err)
-	}
 }
 
 func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {

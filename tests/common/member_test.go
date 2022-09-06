@@ -19,6 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -50,5 +53,102 @@ func TestMemberList(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+func TestMemberAdd(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	learnerTcs := []struct {
+		name    string
+		learner bool
+	}{
+		{
+			name:    "NotLearner",
+			learner: false,
+		},
+		{
+			name:    "Learner",
+			learner: true,
+		},
+	}
+
+	quorumTcs := []struct {
+		name                string
+		strictReconfigCheck bool
+		waitForQuorum       bool
+		expectError         bool
+	}{
+		{
+			name:                "StrictReconfigCheck/WaitForQuorum",
+			strictReconfigCheck: true,
+			waitForQuorum:       true,
+			expectError:         false,
+		},
+		{
+			name:                "StrictReconfigCheck/NoWaitForQuorum",
+			strictReconfigCheck: true,
+			waitForQuorum:       false,
+			expectError:         true,
+		},
+		{
+			name:                "DisableStrictReconfigCheck/WaitForQuorum",
+			strictReconfigCheck: false,
+			waitForQuorum:       true,
+			expectError:         false,
+		},
+		{
+			name:                "DisableStrictReconfigCheck/NoWaitForQuorum",
+			strictReconfigCheck: false,
+			waitForQuorum:       false,
+			expectError:         false,
+		},
+	}
+
+	for _, learnerTc := range learnerTcs {
+		for _, quorumTc := range quorumTcs {
+			for _, clusterTc := range clusterTestCases {
+				t.Run(learnerTc.name+"/"+quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					c := clusterTc.config
+					if !quorumTc.strictReconfigCheck {
+						c.DisableStrictReconfigCheck = true
+					}
+					clus := testRunner.NewCluster(ctx, t, c)
+					defer clus.Close()
+					cc := clus.Client()
+
+					testutils.ExecuteUntil(ctx, t, func() {
+						var addResp *clientv3.MemberAddResponse
+						var err error
+						if quorumTc.waitForQuorum {
+							time.Sleep(etcdserver.HealthInterval)
+						}
+						if learnerTc.learner {
+							addResp, err = cc.MemberAddAsLearner(ctx, "newmember", []string{"http://localhost:123"})
+						} else {
+							addResp, err = cc.MemberAdd(ctx, "newmember", []string{"http://localhost:123"})
+						}
+						if quorumTc.expectError && c.ClusterSize > 1 {
+							// calling MemberAdd/MemberAddAsLearner on a single node will not fail,
+							// whether strictReconfigCheck or whether waitForQuorum
+							require.ErrorContains(t, err, "etcdserver: unhealthy cluster")
+						} else {
+							require.NoError(t, err, "MemberAdd failed")
+							if addResp.Member == nil {
+								t.Fatalf("MemberAdd failed, expected: member != nil, got: member == nil")
+							}
+							if addResp.Member.ID == 0 {
+								t.Fatalf("MemberAdd failed, expected: ID != 0, got: ID == 0")
+							}
+							if len(addResp.Member.PeerURLs) == 0 {
+								t.Fatalf("MemberAdd failed, expected: non-empty PeerURLs, got: empty PeerURLs")
+							}
+						}
+					})
+				})
+			}
+		}
 	}
 }
