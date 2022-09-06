@@ -358,30 +358,34 @@ func TestNodeProposeConfig(t *testing.T) {
 // not affect the later propose to add new node.
 func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	s := newTestMemoryStorage(withPeers(1))
-	rn := newTestRawNode(1, 10, 1, s)
-	n := newNode(rn)
-	go n.run()
-	n.Campaign(context.TODO())
-	rdyEntries := make([]raftpb.Entry, 0)
+	cfg := newTestConfig(1, 10, 1, s)
+	ctx, cancel, n := newNodeTestHarness(t, context.Background(), cfg)
+	defer cancel()
+	n.Campaign(ctx)
+	allCommittedEntries := make([]raftpb.Entry, 0)
 	ticker := time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
-	done := make(chan struct{})
-	stop := make(chan struct{})
+	goroutineStopped := make(chan struct{})
 	applyConfChan := make(chan struct{})
 
+	rd := readyWithTimeout(n)
+	s.Append(rd.Entries)
+	n.Advance()
+
 	go func() {
-		defer close(done)
+		defer close(goroutineStopped)
 		for {
 			select {
-			case <-stop:
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
 				n.Tick()
 			case rd := <-n.Ready():
+				t.Log(DescribeReady(rd, nil))
 				s.Append(rd.Entries)
 				applied := false
-				for _, e := range rd.Entries {
-					rdyEntries = append(rdyEntries, e)
+				for _, e := range rd.CommittedEntries {
+					allCommittedEntries = append(allCommittedEntries, e)
 					switch e.Type {
 					case raftpb.EntryNormal:
 					case raftpb.EntryConfChange:
@@ -401,32 +405,31 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 
 	cc1 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
 	ccdata1, _ := cc1.Marshal()
-	n.ProposeConfChange(context.TODO(), cc1)
+	n.ProposeConfChange(ctx, cc1)
 	<-applyConfChan
 
 	// try add the same node again
-	n.ProposeConfChange(context.TODO(), cc1)
+	n.ProposeConfChange(ctx, cc1)
 	<-applyConfChan
 
 	// the new node join should be ok
 	cc2 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
 	ccdata2, _ := cc2.Marshal()
-	n.ProposeConfChange(context.TODO(), cc2)
+	n.ProposeConfChange(ctx, cc2)
 	<-applyConfChan
 
-	close(stop)
-	<-done
+	cancel()
+	<-goroutineStopped
 
-	if len(rdyEntries) != 4 {
-		t.Errorf("len(entry) = %d, want %d, %v\n", len(rdyEntries), 4, rdyEntries)
+	if len(allCommittedEntries) != 4 {
+		t.Errorf("len(entry) = %d, want %d, %v\n", len(allCommittedEntries), 4, allCommittedEntries)
 	}
-	if !bytes.Equal(rdyEntries[1].Data, ccdata1) {
-		t.Errorf("data = %v, want %v", rdyEntries[1].Data, ccdata1)
+	if !bytes.Equal(allCommittedEntries[1].Data, ccdata1) {
+		t.Errorf("data = %v, want %v", allCommittedEntries[1].Data, ccdata1)
 	}
-	if !bytes.Equal(rdyEntries[3].Data, ccdata2) {
-		t.Errorf("data = %v, want %v", rdyEntries[3].Data, ccdata2)
+	if !bytes.Equal(allCommittedEntries[3].Data, ccdata2) {
+		t.Errorf("data = %v, want %v", allCommittedEntries[3].Data, ccdata2)
 	}
-	n.Stop()
 }
 
 // TestBlockProposal ensures that node will block proposal when it does not
