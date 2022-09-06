@@ -109,11 +109,11 @@ func newTracingExporter(ctx context.Context, cfg *Config) (*tracingExporter, err
 }
 
 func (te *tracingExporter) Close(ctx context.Context) {
-	if te.exporter != nil {
-		te.exporter.Shutdown(ctx)
-	}
 	if te.provider != nil {
 		te.provider.Shutdown(ctx)
+	}
+	if te.exporter != nil {
+		te.exporter.Shutdown(ctx)
 	}
 }
 
