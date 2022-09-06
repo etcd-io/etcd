@@ -826,9 +826,12 @@ func TestCommitWithoutNewTermEntry(t *testing.T) {
 }
 
 func TestDuelingCandidates(t *testing.T) {
-	a := newTestRaft(1, 10, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
-	b := newTestRaft(2, 10, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
-	c := newTestRaft(3, 10, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
+	s1 := newTestMemoryStorage(withPeers(1, 2, 3))
+	s2 := newTestMemoryStorage(withPeers(1, 2, 3))
+	s3 := newTestMemoryStorage(withPeers(1, 2, 3))
+	a := newTestRaft(1, 10, 1, s1)
+	b := newTestRaft(2, 10, 1, s2)
+	c := newTestRaft(3, 10, 1, s3)
 
 	nt := newNetwork(a, b, c)
 	nt.cut(1, 3)
@@ -854,21 +857,19 @@ func TestDuelingCandidates(t *testing.T) {
 	// we expect it to disrupt the leader 1 since it has a higher term
 	// 3 will be follower again since both 1 and 2 rejects its vote request since 3 does not have a long enough log
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
-
-	wlog := &raftLog{
-		storage:   &MemoryStorage{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}}},
-		committed: 1,
-		unstable:  unstable{offset: 2},
+	if sm.state != StateFollower {
+		t.Errorf("state = %s, want %s", sm.state, StateFollower)
 	}
+
 	tests := []struct {
-		sm      *raft
-		state   StateType
-		term    uint64
-		raftLog *raftLog
+		sm        *raft
+		state     StateType
+		term      uint64
+		lastIndex uint64
 	}{
-		{a, StateFollower, 2, wlog},
-		{b, StateFollower, 2, wlog},
-		{c, StateFollower, 2, newLog(NewMemoryStorage(), raftLogger)},
+		{a, StateFollower, 2, 1},
+		{b, StateFollower, 2, 1},
+		{c, StateFollower, 2, 0},
 	}
 
 	for i, tt := range tests {
@@ -878,14 +879,8 @@ func TestDuelingCandidates(t *testing.T) {
 		if g := tt.sm.Term; g != tt.term {
 			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
 		}
-		base := ltoa(tt.raftLog)
-		if sm, ok := nt.peers[1+uint64(i)].(*raft); ok {
-			l := ltoa(sm.raftLog)
-			if g := diffu(base, l); g != "" {
-				t.Errorf("#%d: diff:\n%s", i, g)
-			}
-		} else {
-			t.Logf("#%d: empty log", i)
+		if exp, act := tt.lastIndex, tt.sm.raftLog.lastIndex(); exp != act {
+			t.Errorf("#%d: last index exp = %d, act = %d", i, exp, act)
 		}
 	}
 }
@@ -902,6 +897,7 @@ func TestDuelingPreCandidates(t *testing.T) {
 	c := newRaft(cfgC)
 
 	nt := newNetwork(a, b, c)
+	nt.t = t
 	nt.cut(1, 3)
 
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -925,20 +921,15 @@ func TestDuelingPreCandidates(t *testing.T) {
 	// With PreVote, it does not disrupt the leader.
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
-	wlog := &raftLog{
-		storage:   &MemoryStorage{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}}},
-		committed: 1,
-		unstable:  unstable{offset: 2},
-	}
 	tests := []struct {
-		sm      *raft
-		state   StateType
-		term    uint64
-		raftLog *raftLog
+		sm        *raft
+		state     StateType
+		term      uint64
+		lastIndex uint64
 	}{
-		{a, StateLeader, 1, wlog},
-		{b, StateFollower, 1, wlog},
-		{c, StateFollower, 1, newLog(NewMemoryStorage(), raftLogger)},
+		{a, StateLeader, 1, 1},
+		{b, StateFollower, 1, 1},
+		{c, StateFollower, 1, 0},
 	}
 
 	for i, tt := range tests {
@@ -948,14 +939,8 @@ func TestDuelingPreCandidates(t *testing.T) {
 		if g := tt.sm.Term; g != tt.term {
 			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
 		}
-		base := ltoa(tt.raftLog)
-		if sm, ok := nt.peers[1+uint64(i)].(*raft); ok {
-			l := ltoa(sm.raftLog)
-			if g := diffu(base, l); g != "" {
-				t.Errorf("#%d: diff:\n%s", i, g)
-			}
-		} else {
-			t.Logf("#%d: empty log", i)
+		if exp, act := tt.lastIndex, tt.sm.raftLog.lastIndex(); exp != act {
+			t.Errorf("#%d: last index is %d, exp %d", i, act, exp)
 		}
 	}
 }
@@ -4664,6 +4649,8 @@ func votedWithConfig(configFunc func(*Config), vote, term uint64) *raft {
 }
 
 type network struct {
+	t *testing.T // optional
+
 	peers   map[uint64]stateMachine
 	storage map[uint64]*MemoryStorage
 	dropm   map[connem]float64
@@ -4747,6 +4734,9 @@ func (nw *network) send(msgs ...pb.Message) {
 	for len(msgs) > 0 {
 		m := msgs[0]
 		p := nw.peers[m.To]
+		if nw.t != nil {
+			nw.t.Log(DescribeMessage(m, nil))
+		}
 		p.Step(m)
 		msgs = append(msgs[1:], nw.filter(p.readMessages())...)
 	}
