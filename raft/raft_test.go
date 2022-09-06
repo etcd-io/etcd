@@ -2247,7 +2247,8 @@ func TestReadOnlyOptionSafe(t *testing.T) {
 }
 
 func TestReadOnlyWithLearner(t *testing.T) {
-	a := newTestLearnerRaft(1, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
+	s := newTestMemoryStorage(withPeers(1), withLearners(2))
+	a := newTestLearnerRaft(1, 10, 1, s)
 	b := newTestLearnerRaft(2, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
 
 	nt := newNetwork(a, b)
@@ -2277,6 +2278,7 @@ func TestReadOnlyWithLearner(t *testing.T) {
 	for i, tt := range tests {
 		for j := 0; j < tt.proposals; j++ {
 			nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+			nextEnts(a, s) // append the entries on the leader
 		}
 
 		nt.send(pb.Message{From: tt.sm.id, To: tt.sm.id, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: tt.wctx}}})
