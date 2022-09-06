@@ -178,6 +178,10 @@ func TestNodePropose(t *testing.T) {
 func TestNodeReadIndex(t *testing.T) {
 	var msgs []raftpb.Message
 	appendStep := func(r *raft, m raftpb.Message) error {
+		if m.Type == raftpb.MsgAppResp {
+			// See (*raft).advance.
+			return nil
+		}
 		msgs = append(msgs, m)
 		return nil
 	}
