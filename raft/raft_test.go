@@ -3655,12 +3655,16 @@ func TestLeaderTransferTimeout(t *testing.T) {
 }
 
 func TestLeaderTransferIgnoreProposal(t *testing.T) {
-	nt := newNetwork(nil, nil, nil)
+	s := newTestMemoryStorage(withPeers(1, 2, 3))
+	r := newTestRaft(1, 10, 1, s)
+	nt := newNetwork(r, nil, nil)
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 
 	nt.isolate(3)
 
 	lead := nt.peers[1].(*raft)
+
+	nextEnts(r, s) // handle empty entry
 
 	// Transfer leadership to isolated node to let transfer pending, then send proposal.
 	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
