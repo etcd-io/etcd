@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -83,25 +84,18 @@ func TestMemberAdd(t *testing.T) {
 			name:                "StrictReconfigCheck/WaitForQuorum",
 			strictReconfigCheck: true,
 			waitForQuorum:       true,
-			expectError:         false,
 		},
 		{
 			name:                "StrictReconfigCheck/NoWaitForQuorum",
 			strictReconfigCheck: true,
-			waitForQuorum:       false,
 			expectError:         true,
 		},
 		{
-			name:                "DisableStrictReconfigCheck/WaitForQuorum",
-			strictReconfigCheck: false,
-			waitForQuorum:       true,
-			expectError:         false,
+			name:          "DisableStrictReconfigCheck/WaitForQuorum",
+			waitForQuorum: true,
 		},
 		{
-			name:                "DisableStrictReconfigCheck/NoWaitForQuorum",
-			strictReconfigCheck: false,
-			waitForQuorum:       false,
-			expectError:         false,
+			name: "DisableStrictReconfigCheck/NoWaitForQuorum",
 		},
 	}
 
@@ -112,9 +106,7 @@ func TestMemberAdd(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 					defer cancel()
 					c := clusterTc.config
-					if !quorumTc.strictReconfigCheck {
-						c.DisableStrictReconfigCheck = true
-					}
+					c.DisableStrictReconfigCheck = !quorumTc.strictReconfigCheck
 					clus := testRunner.NewCluster(ctx, t, c)
 					defer clus.Close()
 					cc := clus.Client()
@@ -151,4 +143,123 @@ func TestMemberAdd(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestMemberRemove(t *testing.T) {
+	testRunner.BeforeTest(t)
+
+	tcs := []struct {
+		name                  string
+		strictReconfigCheck   bool
+		waitForQuorum         bool
+		expectSingleNodeError bool
+		expectClusterError    bool
+	}{
+		{
+			name:                  "StrictReconfigCheck/WaitForQuorum",
+			strictReconfigCheck:   true,
+			waitForQuorum:         true,
+			expectSingleNodeError: true,
+		},
+		{
+			name:                  "StrictReconfigCheck/NoWaitForQuorum",
+			strictReconfigCheck:   true,
+			expectSingleNodeError: true,
+			expectClusterError:    true,
+		},
+		{
+			name:          "DisableStrictReconfigCheck/WaitForQuorum",
+			waitForQuorum: true,
+		},
+		{
+			name: "DisableStrictReconfigCheck/NoWaitForQuorum",
+		},
+	}
+
+	for _, quorumTc := range tcs {
+		for _, clusterTc := range clusterTestCases {
+			if !quorumTc.strictReconfigCheck && clusterTc.config.ClusterSize == 1 {
+				// skip these test cases
+				// when strictReconfigCheck is disabled, calling MemberRemove will cause the single node to panic
+				continue
+			}
+			t.Run(quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				c := clusterTc.config
+				c.DisableStrictReconfigCheck = !quorumTc.strictReconfigCheck
+				clus := testRunner.NewCluster(ctx, t, c)
+				defer clus.Close()
+				// client connects to a specific member which won't be removed from cluster
+				cc := clus.Members()[0].Client()
+
+				testutils.ExecuteUntil(ctx, t, func() {
+					if quorumTc.waitForQuorum {
+						time.Sleep(etcdserver.HealthInterval)
+					}
+
+					memberId, clusterId := memberToRemove(ctx, t, cc, c.ClusterSize)
+					removeResp, err := cc.MemberRemove(ctx, memberId)
+
+					if c.ClusterSize == 1 && quorumTc.expectSingleNodeError {
+						require.ErrorContains(t, err, "etcdserver: re-configuration failed due to not enough started members")
+						return
+					}
+
+					if c.ClusterSize > 1 && quorumTc.expectClusterError {
+						require.ErrorContains(t, err, "etcdserver: unhealthy cluster")
+						return
+					}
+
+					require.NoError(t, err, "MemberRemove failed")
+					t.Logf("removeResp.Members:%v", removeResp.Members)
+					if removeResp.Header.ClusterId != clusterId {
+						t.Fatalf("MemberRemove failed, expected ClusterId: %d, got: %d", clusterId, removeResp.Header.ClusterId)
+					}
+					if len(removeResp.Members) != c.ClusterSize-1 {
+						t.Fatalf("MemberRemove failed, expected length of members: %d, got: %d", c.ClusterSize-1, len(removeResp.Members))
+					}
+					for _, m := range removeResp.Members {
+						if m.ID == memberId {
+							t.Fatalf("MemberRemove failed, member(id=%d) is still in cluster", memberId)
+						}
+					}
+				})
+			})
+		}
+	}
+}
+
+// memberToRemove chooses a member to remove.
+// If clusterSize == 1, return the only member.
+// Otherwise, return a member that client has not connected to.
+// It ensures that `MemberRemove` function does not return an "etcdserver: server stopped" error.
+func memberToRemove(ctx context.Context, t *testing.T, client framework.Client, clusterSize int) (memberId uint64, clusterId uint64) {
+	listResp, err := client.MemberList(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clusterId = listResp.Header.ClusterId
+	if clusterSize == 1 {
+		memberId = listResp.Members[0].ID
+	} else {
+		// get status of the specific member that client has connected to
+		statusResp, err := client.Status(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// choose a member that client has not connected to
+		for _, m := range listResp.Members {
+			if m.ID != statusResp[0].Header.MemberId {
+				memberId = m.ID
+				break
+			}
+		}
+		if memberId == 0 {
+			t.Fatalf("memberToRemove failed. listResp:%v, statusResp:%v", listResp, statusResp)
+		}
+	}
+	return memberId, clusterId
 }
