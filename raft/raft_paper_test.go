@@ -894,6 +894,9 @@ func TestLeaderOnlyCommitsLogFromCurrentTerm(t *testing.T) {
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Term: r.Term, Index: tt.index})
+		rd := newReady(r, &SoftState{}, pb.HardState{})
+		storage.Append(rd.Entries)
+		r.advance(rd)
 		if r.raftLog.committed != tt.wcommit {
 			t.Errorf("#%d: commit = %d, want %d", i, r.raftLog.committed, tt.wcommit)
 		}
