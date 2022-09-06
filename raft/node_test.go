@@ -479,6 +479,10 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 			t.Logf("dropping message: %v", m.String())
 			return ErrProposalDropped
 		}
+		if m.Type == raftpb.MsgAppResp {
+			// This is produced by raft internally, see (*raft).advance.
+			return nil
+		}
 		msgs = append(msgs, m)
 		return nil
 	}
@@ -511,7 +515,7 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 
 	n.Stop()
 	if len(msgs) != 0 {
-		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 0)
 	}
 }
 
