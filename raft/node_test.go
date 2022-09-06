@@ -784,7 +784,7 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 }
 
 func TestNodeAdvance(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := newTestMemoryStorage(withPeers(1))
 	c := &Config{
 		ID:              1,
 		ElectionTick:    10,
@@ -793,21 +793,17 @@ func TestNodeAdvance(t *testing.T) {
 		MaxSizePerMsg:   noLimit,
 		MaxInflightMsgs: 256,
 	}
-	ctx, cancel, n := newNodeTestHarness(t, context.Background(), c, Peer{ID: 1})
+	ctx, cancel, n := newNodeTestHarness(t, context.Background(), c)
 	defer cancel()
-	rd := <-n.Ready()
+
+	n.Campaign(ctx)
+	rd := readyWithTimeout(n)
+	// Commit empty entry.
 	storage.Append(rd.Entries)
 	n.Advance()
 
-	n.Campaign(ctx)
-	<-n.Ready()
-
 	n.Propose(ctx, []byte("foo"))
-	select {
-	case rd = <-n.Ready():
-		t.Fatalf("unexpected Ready before Advance: %+v", rd)
-	case <-time.After(time.Millisecond):
-	}
+	rd = readyWithTimeout(n)
 	storage.Append(rd.Entries)
 	n.Advance()
 	select {
