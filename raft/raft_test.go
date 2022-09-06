@@ -59,20 +59,32 @@ func (r *raft) readMessages() []pb.Message {
 }
 
 func TestProgressLeader(t *testing.T) {
-	r := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2)))
+	s := newTestMemoryStorage(withPeers(1, 2))
+	r := newTestRaft(1, 5, 1, s)
 	r.becomeCandidate()
 	r.becomeLeader()
 	r.prs.Progress[2].BecomeReplicate()
 
-	// Send proposals to r1. The first 5 entries should be appended to the log.
+	// Send proposals to r1. The first 5 entries should be queued in the unstable log.
 	propMsg := pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("foo")}}}
 	for i := 0; i < 5; i++ {
-		if pr := r.prs.Progress[r.id]; pr.State != tracker.StateReplicate || pr.Match != uint64(i+1) || pr.Next != pr.Match+1 {
-			t.Errorf("unexpected progress %v", pr)
-		}
 		if err := r.Step(propMsg); err != nil {
 			t.Fatalf("proposal resulted in error: %v", err)
 		}
+	}
+	if m := r.prs.Progress[1].Match; m != 0 {
+		t.Fatalf("expected zero match, got %d", m)
+	}
+	rd := newReady(r, &SoftState{}, pb.HardState{})
+	if len(rd.Entries) != 6 || len(rd.Entries[0].Data) > 0 || string(rd.Entries[5].Data) != "foo" {
+		t.Fatalf("unexpected Entries: %s", DescribeReady(rd, nil))
+	}
+	r.advance(rd)
+	if m := r.prs.Progress[1].Match; m != 6 {
+		t.Fatalf("unexpected Match %d", m)
+	}
+	if m := r.prs.Progress[1].Next; m != 7 {
+		t.Fatalf("unexpected Next %d", m)
 	}
 }
 
