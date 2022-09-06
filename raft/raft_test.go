@@ -730,10 +730,17 @@ func TestLearnerLogReplication(t *testing.T) {
 }
 
 func TestSingleNodeCommit(t *testing.T) {
-	tt := newNetwork(nil)
+	s := newTestMemoryStorage(withPeers(1))
+	cfg := newTestConfig(1, 10, 1, s)
+	r := newRaft(cfg)
+	tt := newNetwork(r)
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
+
+	rd := newReady(r, &SoftState{}, pb.HardState{})
+	s.Append(rd.Entries)
+	r.advance(rd)
 
 	sm := tt.peers[1].(*raft)
 	if sm.raftLog.committed != 3 {
