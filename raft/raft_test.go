@@ -1077,6 +1077,7 @@ func TestProposal(t *testing.T) {
 		// promote 1 to become leader
 		send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 		send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
+		r := tt.network.peers[1].(*raft)
 
 		wantLog := newLog(NewMemoryStorage(), raftLogger)
 		if tt.success {
@@ -1084,8 +1085,8 @@ func TestProposal(t *testing.T) {
 				storage: &MemoryStorage{
 					ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}},
 				},
-				unstable:  unstable{offset: 3},
-				committed: 2}
+				unstable: unstable{offset: 3},
+			}
 		}
 		base := ltoa(wantLog)
 		for i, p := range tt.peers {
@@ -1098,8 +1099,7 @@ func TestProposal(t *testing.T) {
 				t.Logf("#%d: peer %d empty log", j, i)
 			}
 		}
-		sm := tt.network.peers[1].(*raft)
-		if g := sm.Term; g != 1 {
+		if g := r.Term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", j, g, 1)
 		}
 	}
