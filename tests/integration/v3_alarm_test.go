@@ -332,6 +332,32 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	}
 }
 
+// Refer to https://github.com/etcd-io/etcd/issues/14382
+func TestAlarmlistOnMemberRestart(t *testing.T) {
+	BeforeTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{
+		CorruptCheckTime: time.Second,
+		Size:             1,
+		SnapshotCount:    5,
+	})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for i := 0; i < 6; i++ {
+		req := &pb.AlarmRequest{Action: pb.AlarmRequest_GET}
+		if _, err := clus.Members[0].s.Alarm(ctx, req); err != nil {
+			t.Fatalf("unexpected error, %v", err)
+		}
+	}
+
+	clus.Members[0].Stop(t)
+	if err := clus.Members[0].Restart(t); err != nil {
+		t.Fatalf("failed to start member, %v", err)
+	}
+}
+
 func leaseIdToBytes(n int64) []byte {
 	bytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes, uint64(n))
