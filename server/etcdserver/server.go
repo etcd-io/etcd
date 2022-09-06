@@ -2175,7 +2175,6 @@ func (s *EtcdServer) apply(
 // applyEntryNormal apples an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	shouldApplyV3 := membership.ApplyV2storeOnly
-	applyV3Performed := false
 	var ar *applyResult
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
@@ -2185,7 +2184,8 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		defer func() {
 			// The txPostLockInsideApplyHook will not get called in some cases,
 			// in which we should move the consistent index forward directly.
-			if !applyV3Performed || (ar != nil && ar.err != nil) {
+			newIndex := s.consistIndex.ConsistentIndex()
+			if newIndex < e.Index {
 				s.consistIndex.SetConsistentIndex(e.Index, e.Term)
 			}
 		}()
@@ -2235,7 +2235,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
-		applyV3Performed = true
 		ar = s.applyV3.Apply(&raftReq, shouldApplyV3)
 	}
 
