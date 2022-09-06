@@ -496,8 +496,10 @@ func TestLeaderAcknowledgeCommit(t *testing.T) {
 		li := r.raftLog.lastIndex()
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
 
-		tt.nonLeaderAcceptors[1] = true // leader always has the entry
-		for _, m := range r.readMessages() {
+		rd := newReady(r, &SoftState{}, pb.HardState{})
+		s.Append(rd.Entries)
+		r.advance(rd) // simulate having appended entry on leader
+		for _, m := range rd.Messages {
 			if tt.nonLeaderAcceptors[m.To] {
 				r.Step(acceptAndReply(m))
 			}
