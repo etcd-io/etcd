@@ -735,7 +735,11 @@ func (r *raft) becomeLeader() {
 	// (perhaps after having received a snapshot as a result). The leader is
 	// trivially in this state. Note that r.reset() has initialized this
 	// progress with the last index already.
-	r.prs.Progress[r.id].BecomeReplicate()
+	pr := r.prs.Progress[r.id]
+	pr.BecomeReplicate()
+	// The leader always has RecentActive == true; MsgCheckQuorum makes sure to
+	// preserve this.
+	pr.RecentActive = true
 
 	// Conservatively set the pendingConfIndex to the last index in the
 	// log. There may or may not be a pending config change, but it's
@@ -995,15 +999,6 @@ func stepLeader(r *raft, m pb.Message) error {
 		r.bcastHeartbeat()
 		return nil
 	case pb.MsgCheckQuorum:
-		// The leader should always see itself as active. As a precaution, handle
-		// the case in which the leader isn't in the configuration any more (for
-		// example if it just removed itself).
-		//
-		// TODO(tbg): I added a TODO in removeNode, it doesn't seem that the
-		// leader steps down when removing itself. I might be missing something.
-		if pr := r.prs.Progress[r.id]; pr != nil {
-			pr.RecentActive = true
-		}
 		if !r.prs.QuorumActive() {
 			r.logger.Warningf("%x stepped down to follower since quorum is not active", r.id)
 			r.becomeFollower(r.Term, None)
