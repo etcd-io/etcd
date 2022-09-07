@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 
@@ -67,6 +68,53 @@ func TestMaintenanceHashKV(t *testing.T) {
 			t.Fatalf("#%d: hash expected %d, got %d", i, hv, hresp.Hash)
 		}
 	}
+}
+
+// TODO: Change this to fuzz test
+func TestCompactionHash(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cc, err := clus.ClusterClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testutil.TestCompactionHash(context.Background(), t, hashTestCase{cc, clus.Members[0].GRPCURL()}, 1000)
+}
+
+type hashTestCase struct {
+	*clientv3.Client
+	url string
+}
+
+func (tc hashTestCase) Put(ctx context.Context, key, value string) error {
+	_, err := tc.Client.Put(ctx, key, value)
+	return err
+}
+
+func (tc hashTestCase) Delete(ctx context.Context, key string) error {
+	_, err := tc.Client.Delete(ctx, key)
+	return err
+}
+
+func (tc hashTestCase) HashByRev(ctx context.Context, rev int64) (testutil.KeyValueHash, error) {
+	resp, err := tc.Client.HashKV(ctx, tc.url, rev)
+	return testutil.KeyValueHash{Hash: resp.Hash, CompactRevision: resp.CompactRevision, Revision: resp.Header.Revision}, err
+}
+
+func (tc hashTestCase) Defrag(ctx context.Context) error {
+	_, err := tc.Client.Defragment(ctx, tc.url)
+	return err
+}
+
+func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {
+	_, err := tc.Client.Compact(ctx, rev)
+	// Wait for compaction to be compacted
+	time.Sleep(50 * time.Millisecond)
+	return err
 }
 
 func TestMaintenanceMoveLeader(t *testing.T) {

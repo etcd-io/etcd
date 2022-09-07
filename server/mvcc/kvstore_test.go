@@ -332,7 +332,7 @@ func TestStoreCompact(t *testing.T) {
 	fi.indexCompactRespc <- map[revision]struct{}{{1, 0}: {}}
 	key1 := newTestKeyBytes(revision{1, 0}, false)
 	key2 := newTestKeyBytes(revision{2, 0}, false)
-	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
+	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, [][]byte{[]byte("alice"), []byte("bob")}}
 
 	s.Compact(traceutil.TODO(), 3)
 	s.fifoSched.WaitFinish(1)
@@ -552,14 +552,14 @@ func TestHashKVWhenCompacting(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for {
-				hash, _, compactRev, err := s.HashByRev(int64(rev))
+				hash, _, err := s.HashStorage().HashByRev(int64(rev))
 				if err != nil {
 					t.Error(err)
 				}
 				select {
 				case <-donec:
 					return
-				case hashCompactc <- hashKVResult{hash, compactRev}:
+				case hashCompactc <- hashKVResult{hash.Hash, hash.CompactRevision}:
 				}
 			}
 		}()
@@ -614,12 +614,12 @@ func TestHashKVZeroRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	hash1, _, _, err := s.HashByRev(int64(rev))
+	hash1, _, err := s.HashStorage().HashByRev(int64(rev))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var hash2 uint32
-	hash2, _, _, err = s.HashByRev(0)
+	var hash2 KeyValueHash
+	hash2, _, err = s.HashStorage().HashByRev(0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -839,18 +839,11 @@ func newFakeStore() *store {
 	b := &fakeBackend{&fakeBatchTx{
 		Recorder:   &testutil.RecorderBuffered{},
 		rangeRespc: make(chan rangeResp, 5)}}
-	fi := &fakeIndex{
-		Recorder:              &testutil.RecorderBuffered{},
-		indexGetRespc:         make(chan indexGetResp, 1),
-		indexRangeRespc:       make(chan indexRangeResp, 1),
-		indexRangeEventsRespc: make(chan indexRangeEventsResp, 1),
-		indexCompactRespc:     make(chan map[revision]struct{}, 1),
-	}
 	s := &store{
 		cfg:            StoreConfig{CompactionBatchLimit: 10000},
 		b:              b,
 		le:             &lease.FakeLessor{},
-		kvindex:        fi,
+		kvindex:        newFakeIndex(),
 		currentRev:     0,
 		compactMainRev: -1,
 		fifoSched:      schedule.NewFIFOScheduler(),
@@ -858,7 +851,18 @@ func newFakeStore() *store {
 		lg:             zap.NewExample(),
 	}
 	s.ReadView, s.WriteView = &readView{s}, &writeView{s}
+	s.hashes = newHashStorage(zap.NewExample(), s)
 	return s
+}
+
+func newFakeIndex() *fakeIndex {
+	return &fakeIndex{
+		Recorder:              &testutil.RecorderBuffered{},
+		indexGetRespc:         make(chan indexGetResp, 1),
+		indexRangeRespc:       make(chan indexRangeResp, 1),
+		indexRangeEventsRespc: make(chan indexRangeEventsResp, 1),
+		indexCompactRespc:     make(chan map[revision]struct{}, 1),
+	}
 }
 
 type rangeResp struct {

@@ -137,8 +137,10 @@ type ServerConfig struct {
 
 	// InitialCorruptCheck is true to check data corruption on boot
 	// before serving any peer/client traffic.
-	InitialCorruptCheck bool
-	CorruptCheckTime    time.Duration
+	InitialCorruptCheck     bool
+	CorruptCheckTime        time.Duration
+	CompactHashCheckEnabled bool
+	CompactHashCheckTime    time.Duration
 
 	// PreVote is true to enable Raft Pre-Vote.
 	PreVote bool

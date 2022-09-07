@@ -293,6 +293,7 @@ type EtcdServer struct {
 	firstCommitInTermC  chan struct{}
 
 	*AccessController
+	corruptionChecker CorruptionChecker
 }
 
 type backendHooks struct {
@@ -629,6 +630,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			)
 		}
 	}
+	srv.corruptionChecker = newCorruptionChecker(cfg.Logger, srv, srv.kv.HashStorage())
 
 	srv.authStore = auth.NewAuthStore(srv.Logger(), srv.be, tp, int(cfg.BcryptCost))
 
@@ -803,6 +805,7 @@ func (s *EtcdServer) Start() {
 	s.GoAttach(s.monitorVersions)
 	s.GoAttach(s.linearizableReadLoop)
 	s.GoAttach(s.monitorKVHash)
+	s.GoAttach(s.monitorCompactHash)
 	s.GoAttach(s.monitorDowngrade)
 }
 
@@ -2508,6 +2511,51 @@ func (s *EtcdServer) monitorVersions() {
 	}
 }
 
+func (s *EtcdServer) monitorKVHash() {
+	t := s.Cfg.CorruptCheckTime
+	if t == 0 {
+		return
+	}
+
+	lg := s.Logger()
+	lg.Info(
+		"enabled corruption checking",
+		zap.String("local-member-id", s.ID().String()),
+		zap.Duration("interval", t),
+	)
+	for {
+		select {
+		case <-s.stopping:
+			return
+		case <-time.After(t):
+		}
+		if !s.isLeader() {
+			continue
+		}
+		if err := s.corruptionChecker.PeriodicCheck(); err != nil {
+			lg.Warn("failed to check hash KV", zap.Error(err))
+		}
+	}
+}
+
+func (s *EtcdServer) monitorCompactHash() {
+	if !s.Cfg.CompactHashCheckEnabled {
+		return
+	}
+	t := s.Cfg.CompactHashCheckTime
+	for {
+		select {
+		case <-time.After(t):
+		case <-s.stopping:
+			return
+		}
+		if !s.isLeader() {
+			continue
+		}
+		s.corruptionChecker.CompactHashCheck()
+	}
+}
+
 func (s *EtcdServer) updateClusterVersionV2(ver string) {
 	lg := s.Logger()
 
@@ -2744,4 +2792,8 @@ func maybeDefragBackend(cfg config.ServerConfig, be backend.Backend) error {
 		return nil
 	}
 	return be.Defrag()
+}
+
+func (s *EtcdServer) CorruptionChecker() CorruptionChecker {
+	return s.corruptionChecker
 }

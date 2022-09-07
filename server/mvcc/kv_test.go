@@ -605,7 +605,7 @@ func TestKVHash(t *testing.T) {
 		kv := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 		kv.Put([]byte("foo0"), []byte("bar0"), lease.NoLease)
 		kv.Put([]byte("foo1"), []byte("bar0"), lease.NoLease)
-		hashes[i], _, err = kv.Hash()
+		hashes[i], _, err = kv.hash()
 		if err != nil {
 			t.Fatalf("failed to get hash: %v", err)
 		}
