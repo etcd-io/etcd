@@ -1105,3 +1105,90 @@ func TestRawNodeConsumeReady(t *testing.T) {
 		t.Fatalf("expected only m2 in raft.msgs, got %+v", rn.raft.msgs)
 	}
 }
+
+func BenchmarkRawNode(b *testing.B) {
+	b.Run("single-voter", func(b *testing.B) {
+		benchmarkRawNodeImpl(b, 1)
+	})
+	b.Run("two-voters", func(b *testing.B) {
+		benchmarkRawNodeImpl(b, 1, 2)
+	})
+}
+
+func benchmarkRawNodeImpl(b *testing.B, peers ...uint64) {
+
+	const debug = false
+
+	s := newTestMemoryStorage(withPeers(peers...))
+	cfg := newTestConfig(1, 10, 1, s)
+	if !debug {
+		cfg.Logger = discardLogger // avoid distorting benchmark output
+	}
+	rn, err := NewRawNode(cfg)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	run := make(chan struct{}, 1)
+	defer close(run)
+
+	var numReady uint64
+	stabilize := func() (applied uint64) {
+		for rn.HasReady() {
+			numReady++
+			rd := rn.Ready()
+			if debug {
+				b.Log(DescribeReady(rd, nil))
+			}
+			if n := len(rd.CommittedEntries); n > 0 {
+				applied = rd.CommittedEntries[n-1].Index
+			}
+			s.Append(rd.Entries)
+			for _, m := range rd.Messages {
+				if m.Type == pb.MsgVote {
+					resp := pb.Message{To: m.From, From: m.To, Term: m.Term, Type: pb.MsgVoteResp}
+					if debug {
+						b.Log(DescribeMessage(resp, nil))
+					}
+					rn.Step(resp)
+				}
+				if m.Type == pb.MsgApp {
+					idx := m.Index
+					if n := len(m.Entries); n > 0 {
+						idx = m.Entries[n-1].Index
+					}
+					resp := pb.Message{To: m.From, From: m.To, Type: pb.MsgAppResp, Term: m.Term, Index: idx}
+					if debug {
+						b.Log(DescribeMessage(resp, nil))
+					}
+					rn.Step(resp)
+				}
+			}
+			rn.Advance(rd)
+		}
+		return applied
+	}
+
+	rn.Campaign()
+	stabilize()
+
+	if debug {
+		b.N = 1
+	}
+
+	var applied uint64
+	for i := 0; i < b.N; i++ {
+		if err := rn.Propose([]byte("foo")); err != nil {
+			b.Fatal(err)
+		}
+		applied = stabilize()
+	}
+	if applied < uint64(b.N) {
+		b.Fatalf("did not apply everything: %d < %d", applied, b.N)
+	}
+	b.ReportMetric(float64(s.callStats.firstIndex)/float64(b.N), "firstIndex/op")
+	b.ReportMetric(float64(s.callStats.lastIndex)/float64(b.N), "lastIndex/op")
+	b.ReportMetric(float64(s.callStats.term)/float64(b.N), "term/op")
+	b.ReportMetric(float64(numReady)/float64(b.N), "ready/op")
+	b.Logf("storage access stats: %+v", s.callStats)
+}
