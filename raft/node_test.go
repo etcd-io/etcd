@@ -317,7 +317,7 @@ func TestNodeProposeConfig(t *testing.T) {
 func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	s := newTestMemoryStorage(withPeers(1))
 	cfg := newTestConfig(1, 10, 1, s)
-	ctx, cancel, n := newNodeTestHarness(t, context.Background(), cfg)
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, cfg)
 	defer cancel()
 	n.Campaign(ctx)
 	allCommittedEntries := make([]raftpb.Entry, 0)
@@ -590,7 +590,7 @@ func TestNodeStart(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := StartNode(c, []Peer{{ID: 1}})
-	ctx, cancel, n := newNodeTestHarness(t, context.Background(), c, Peer{ID: 1})
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, c, Peer{ID: 1})
 	defer cancel()
 
 	{
@@ -740,7 +740,7 @@ func TestNodeAdvance(t *testing.T) {
 		MaxSizePerMsg:   noLimit,
 		MaxInflightMsgs: 256,
 	}
-	ctx, cancel, n := newNodeTestHarness(t, context.Background(), c)
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, c)
 	defer cancel()
 
 	n.Campaign(ctx)
@@ -895,7 +895,7 @@ func TestCommitPagination(t *testing.T) {
 	s := newTestMemoryStorage(withPeers(1))
 	cfg := newTestConfig(1, 10, 1, s)
 	cfg.MaxCommittedSizePerReady = 2048
-	ctx, cancel, n := newNodeTestHarness(t, context.Background(), cfg)
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, cfg)
 	defer cancel()
 	n.Campaign(ctx)
 

@@ -78,7 +78,7 @@ func (l *nodeTestHarness) Panicf(format string, v ...interface{}) {
 	panic(fmt.Sprintf(format, v...))
 }
 
-func newNodeTestHarness(t *testing.T, ctx context.Context, cfg *Config, peers ...Peer) (_ context.Context, cancel func(), _ *nodeTestHarness) {
+func newNodeTestHarness(ctx context.Context, t *testing.T, cfg *Config, peers ...Peer) (_ context.Context, cancel func(), _ *nodeTestHarness) {
 	// Wrap context in a 10s timeout to make tests more robust. Otherwise,
 	// it's likely that deadlock will occur unless Node behaves exactly as
 	// expected - when you expect a Ready and start waiting on the channel
