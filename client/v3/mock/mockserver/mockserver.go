@@ -132,6 +132,7 @@ func (ms *MockServers) StartAt(idx int) (err error) {
 
 	svr := grpc.NewServer()
 	pb.RegisterKVServer(svr, &mockKVServer{})
+	pb.RegisterLeaseServer(svr, &mockLeaseServer{})
 	ms.Servers[idx].GrpcServer = svr
 
 	ms.wg.Add(1)
@@ -184,4 +185,30 @@ func (m *mockKVServer) Txn(context.Context, *pb.TxnRequest) (*pb.TxnResponse, er
 
 func (m *mockKVServer) Compact(context.Context, *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	return &pb.CompactionResponse{}, nil
+}
+
+func (m *mockKVServer) Lease(context.Context, *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
+	return &pb.LeaseGrantResponse{}, nil
+}
+
+type mockLeaseServer struct{}
+
+func (s mockLeaseServer) LeaseGrant(context.Context, *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
+	return &pb.LeaseGrantResponse{}, nil
+}
+
+func (s *mockLeaseServer) LeaseRevoke(context.Context, *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	return &pb.LeaseRevokeResponse{}, nil
+}
+
+func (s *mockLeaseServer) LeaseKeepAlive(pb.Lease_LeaseKeepAliveServer) error {
+	return nil
+}
+
+func (s *mockLeaseServer) LeaseTimeToLive(context.Context, *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
+	return &pb.LeaseTimeToLiveResponse{}, nil
+}
+
+func (s *mockLeaseServer) LeaseLeases(context.Context, *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
+	return &pb.LeaseLeasesResponse{}, nil
 }
