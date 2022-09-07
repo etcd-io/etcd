@@ -576,11 +576,11 @@ func (r *raft) advance(rd Ready) {
 			// The leader needs to self-ack the entries just appended (since it doesn't
 			// send an MsgApp to itself). This is roughly equivalent to:
 			//
-			r.prs.Progress[r.id].MaybeUpdate(e.Index)
-			if r.maybeCommit() {
-				r.bcastAppend()
-			}
-			// _ = r.Step(pb.Message{From: r.id, Type: pb.MsgAppResp, Index: e.Index})
+			//  r.prs.Progress[r.id].MaybeUpdate(e.Index)
+			//  if r.maybeCommit() {
+			//  	r.bcastAppend()
+			//  }
+			_ = r.Step(pb.Message{From: r.id, Type: pb.MsgAppResp, Index: e.Index})
 		}
 		// NB: it's important for performance that this call happens after
 		// r.Step above on the leader. This is because r.Step can then use
