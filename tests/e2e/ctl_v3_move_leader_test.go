@@ -28,15 +28,31 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3MoveLeaderSecure(t *testing.T) {
-	testCtlV3MoveLeader(t, *e2e.NewConfigTLS())
+func TestCtlV3MoveLeaderScenarios(t *testing.T) {
+	securityParent := map[string]struct {
+		cfg e2e.EtcdProcessClusterConfig
+	}{
+		"Secure":   {cfg: *e2e.NewConfigTLS()},
+		"Insecure": {cfg: *e2e.NewConfigNoTLS()},
+	}
+
+	tests := map[string]struct {
+		env map[string]string
+	}{
+		"happy path":        {env: map[string]string{}},
+		"with env override": {env: map[string]string{"ETCDCTL_ENDPOINTS": "something-else-is-set"}},
+	}
+
+	for testName, tc := range securityParent {
+		for subTestName, tx := range tests {
+			t.Run(testName+" "+subTestName, func(t *testing.T) {
+				testCtlV3MoveLeader(t, tc.cfg, tx.env)
+			})
+		}
+	}
 }
 
-func TestCtlV3MoveLeaderInsecure(t *testing.T) {
-	testCtlV3MoveLeader(t, *e2e.NewConfigNoTLS())
-}
-
-func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig) {
+func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars map[string]string) {
 	e2e.BeforeTest(t)
 
 	epc := setupEtcdctlTest(t, &cfg, true)
@@ -90,6 +106,12 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig) {
 
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
+
+	for k, v := range envVars {
+		os.Setenv(k, v)
+		defer os.Unsetenv(k)
+	}
+
 	cx := ctlCtx{
 		t:           t,
 		cfg:         *e2e.NewConfigNoTLS(),
