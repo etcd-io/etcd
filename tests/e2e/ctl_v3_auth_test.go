@@ -70,6 +70,7 @@ func TestCtlV3AuthSnapshot(t *testing.T)            { testCtl(t, authTestSnapsho
 func TestCtlV3AuthSnapshotJWT(t *testing.T)         { testCtl(t, authTestSnapshot, withCfg(*newConfigJWT())) }
 func TestCtlV3AuthJWTExpire(t *testing.T)           { testCtl(t, authTestJWTExpire, withCfg(*newConfigJWT())) }
 func TestCtlV3AuthRevisionConsistency(t *testing.T) { testCtl(t, authTestRevisionConsistency) }
+func TestCtlV3AuthTestCacheReload(t *testing.T)     { testCtl(t, authTestCacheReload) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -1204,5 +1205,87 @@ func authTestRevisionConsistency(cx ctlCtx) {
 	// assert AuthRevision equal
 	if newAuthRevision != oldAuthRevision {
 		cx.t.Fatalf("auth revison shouldn't change when restarting etcd, expected: %d, got: %d", oldAuthRevision, newAuthRevision)
+	}
+}
+
+// authTestCacheReload tests the permissions when a member restarts
+func authTestCacheReload(cx ctlCtx) {
+
+	authData := []struct {
+		user string
+		role string
+		pass string
+	}{
+		{
+			user: "root",
+			role: "root",
+			pass: "123",
+		},
+		{
+			user: "user0",
+			role: "role0",
+			pass: "123",
+		},
+	}
+
+	node0 := cx.epc.procs[0]
+	endpoint := node0.EndpointsV3()[0]
+
+	// create a client
+	c, err := clientv3.New(clientv3.Config{Endpoints: []string{endpoint}, DialTimeout: 3 * time.Second})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	defer c.Close()
+
+	for _, authObj := range authData {
+		// add role
+		if _, err = c.RoleAdd(context.TODO(), authObj.role); err != nil {
+			cx.t.Fatal(err)
+		}
+
+		// add user
+		if _, err = c.UserAdd(context.TODO(), authObj.user, authObj.pass); err != nil {
+			cx.t.Fatal(err)
+		}
+
+		// grant role to user
+		if _, err = c.UserGrantRole(context.TODO(), authObj.user, authObj.role); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+
+	// role grant permission to role0
+	if _, err = c.RoleGrantPermission(context.TODO(), authData[1].role, "foo", "", clientv3.PermissionType(clientv3.PermReadWrite)); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// enable auth
+	if _, err = c.AuthEnable(context.TODO()); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// create another client with ID:Password
+	c2, err := clientv3.New(clientv3.Config{Endpoints: []string{endpoint}, Username: authData[1].user, Password: authData[1].pass, DialTimeout: 3 * time.Second})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	defer c2.Close()
+
+	// create foo since that is within the permission set
+	// expectation is to succeed
+	if _, err = c2.Put(context.TODO(), "foo", "bar"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// restart the node
+	node0.WithStopSignal(syscall.SIGINT)
+	if err := node0.Restart(); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// nothing has changed, but it fails without refreshing cache after restart
+	if _, err = c2.Put(context.TODO(), "foo", "bar2"); err != nil {
+		cx.t.Fatal(err)
 	}
 }
