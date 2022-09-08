@@ -44,6 +44,7 @@ jobs:
             GOARCH=amd64 PASSES='build' ./test.sh
             GOARCH=386 PASSES='build' ./test.sh
             GO_BUILD_FLAGS='-v -mod=readonly' GOOS=darwin GOARCH=amd64 ./build.sh
+            GO_BUILD_FLAGS='-v -mod=readonly' GOOS=darwin GOARCH=arm64 ./build.sh
             GO_BUILD_FLAGS='-v -mod=readonly' GOOS=windows GOARCH=amd64 ./build.sh
             GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=arm ./build.sh
             GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=arm64 ./build.sh
