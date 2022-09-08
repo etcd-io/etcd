@@ -187,6 +187,13 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 * Fanmin Shi
 * Anthony Romano
 * Brandon Philips
+* Joe Betz
+* Gyuho Lee
+* Jingyi Hu
+* Wenjia Zhang
+* Xiang Li
+* Ben Darnell
+* Tobias Grieger
 
 ### License
 
