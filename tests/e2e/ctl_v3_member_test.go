@@ -28,29 +28,7 @@ import (
 
 func TestCtlV3MemberList(t *testing.T)        { testCtl(t, memberListTest) }
 func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest) }
-func TestCtlV3MemberRemove(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig())
-}
-func TestCtlV3MemberRemoveNoTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(*e2e.NewConfigNoTLS()))
-}
-func TestCtlV3MemberRemoveClientTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(*e2e.NewConfigClientTLS()))
-}
-func TestCtlV3MemberRemoveClientAutoTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(
-		// default ClusterSize is 1
-		e2e.EtcdProcessClusterConfig{
-			ClusterSize:     3,
-			IsClientAutoTLS: true,
-			ClientTLS:       e2e.ClientTLS,
-			InitialToken:    "new",
-		}))
-}
-func TestCtlV3MemberRemovePeerTLS(t *testing.T) {
-	testCtl(t, memberRemoveTest, withQuorum(), withDisableStrictReconfig(), withCfg(*e2e.NewConfigPeerTLS()))
-}
-func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
+func TestCtlV3MemberUpdate(t *testing.T)      { testCtl(t, memberUpdateTest) }
 func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigNoTLS()))
 }
@@ -151,13 +129,6 @@ func memberListWithHexTest(cx ctlCtx) {
 		if !reflect.DeepEqual(resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs) {
 			cx.t.Fatalf("Unexpected member clientURLS, expected %v, got %v", resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs)
 		}
-	}
-}
-
-func memberRemoveTest(cx ctlCtx) {
-	ep, memIDToRemove, clusterID := cx.memberToRemove()
-	if err := ctlV3MemberRemove(cx, ep, memIDToRemove, clusterID); err != nil {
-		cx.t.Fatal(err)
 	}
 }
 

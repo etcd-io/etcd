@@ -337,3 +337,7 @@ func (c integrationClient) MemberAdd(ctx context.Context, _ string, peerAddrs []
 func (c integrationClient) MemberAddAsLearner(ctx context.Context, _ string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
 	return c.Client.MemberAddAsLearner(ctx, peerAddrs)
 }
+
+func (c integrationClient) MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error) {
+	return c.Client.MemberRemove(ctx, id)
+}
