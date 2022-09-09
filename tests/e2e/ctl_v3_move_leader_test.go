@@ -28,15 +28,31 @@ import (
 	"go.etcd.io/etcd/pkg/types"
 )
 
-func TestCtlV3MoveLeaderSecure(t *testing.T) {
-	testCtlV3MoveLeader(t, configTLS)
+func TestCtlV3MoveLeaderScenarios(t *testing.T) {
+	security := map[string]struct {
+		cfg etcdProcessClusterConfig
+	}{
+		"Secure":   {cfg: configTLS},
+		"Insecure": {cfg: configNoTLS},
+	}
+
+	tests := map[string]struct {
+		env map[string]struct{}
+	}{
+		"happy path": {env: nil},
+		"with env":   {env: map[string]struct{}{}},
+	}
+
+	for testName, tx := range tests {
+		for subTestName, tc := range security {
+			t.Run(testName+" "+subTestName, func(t *testing.T) {
+				testCtlV3MoveLeader(t, tc.cfg, tx.env)
+			})
+		}
+	}
 }
 
-func TestCtlV3MoveLeaderInsecure(t *testing.T) {
-	testCtlV3MoveLeader(t, configNoTLS)
-}
-
-func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
+func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig, envVars map[string]struct{}) {
 	defer testutil.AfterTest(t)
 
 	epc := setupEtcdctlTest(t, &cfg, true)
@@ -95,23 +111,37 @@ func testCtlV3MoveLeader(t *testing.T, cfg etcdProcessClusterConfig) {
 		cfg:         configNoTLS,
 		dialTimeout: 7 * time.Second,
 		epc:         epc,
+		envMap:      envVars,
 	}
+
+	defer func() {
+		if cx.envMap != nil {
+			for k := range cx.envMap {
+				os.Unsetenv(k)
+			}
+		}
+	}()
 
 	tests := []struct {
 		prefixes []string
 		expect   string
 	}{
 		{ // request to non-leader
-			cx.prefixArgs([]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]}),
+			[]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]},
 			"no leader endpoint given at ",
 		},
 		{ // request to leader
-			cx.prefixArgs([]string{cx.epc.EndpointsV3()[leadIdx]}),
+			[]string{cx.epc.EndpointsV3()[leadIdx]},
 			fmt.Sprintf("Leadership transferred from %s to %s", types.ID(leaderID), types.ID(transferee)),
+		},
+		{ // request to all endpoints
+			cx.epc.EndpointsV3(),
+			fmt.Sprintf("Leadership transferred"),
 		},
 	}
 	for i, tc := range tests {
-		cmdArgs := append(tc.prefixes, "move-leader", types.ID(transferee).String())
+		pf := cx.prefixArgs(tc.prefixes)
+		cmdArgs := append(pf, "move-leader", types.ID(transferee).String())
 		if err := spawnWithExpect(cmdArgs, tc.expect); err != nil {
 			t.Fatalf("#%d: %v", i, err)
 		}
