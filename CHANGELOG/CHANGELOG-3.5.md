@@ -23,6 +23,12 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
 - Fix [Durability API guarantee broken in single node cluster](https://github.com/etcd-io/etcd/pull/14424)
 - Fix [etcd fails to start after performing alarm list operation and then power off/on](https://github.com/etcd-io/etcd/pull/14429)
+- Fix [authentication data not loaded on member startup](https://github.com/etcd-io/etcd/pull/14409)
+
+### etcdctl v3
+
+- Fix [etcdctl move-leader may fail for multiple endpoints](https://github.com/etcd-io/etcd/pull/14434)
+
 
 ### Other
 - [Bump golang.org/x/crypto to latest version](https://github.com/etcd-io/etcd/pull/13996) to address [CVE-2022-27191](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
