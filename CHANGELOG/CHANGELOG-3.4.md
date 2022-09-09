@@ -9,6 +9,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### etcd server
 - Fix [Durability API guarantee broken in single node cluster](https://github.com/etcd-io/etcd/pull/14423)
 - Fix [Panic due to nil log object](https://github.com/etcd-io/etcd/pull/14420)
+- Fix [authentication data not loaded on member startup](https://github.com/etcd-io/etcd/pull/14410)
+
+### etcdctl v3
+
+- Fix [etcdctl move-leader may fail for multiple endpoints](https://github.com/etcd-io/etcd/pull/14441)
 
 <hr>
 
