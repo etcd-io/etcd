@@ -43,9 +43,10 @@ func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	c := mustClientFromCmd(cmd)
-	eps := c.Endpoints()
-	c.Close()
+	cfg := clientConfigFromCmd(cmd)
+	cli := mustClient(cfg)
+	eps := cli.Endpoints()
+	cli.Close()
 
 	ctx, cancel := commandCtx(cmd)
 
@@ -53,7 +54,6 @@ func transferLeadershipCommandFunc(cmd *cobra.Command, args []string) {
 	var leaderCli *clientv3.Client
 	var leaderID uint64
 	for _, ep := range eps {
-		cfg := clientConfigFromCmd(cmd)
 		cfg.Endpoints = []string{ep}
 		cli := mustClient(cfg)
 		resp, serr := cli.Status(ctx, ep)
