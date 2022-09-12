@@ -45,9 +45,6 @@ type ExpectProcess struct {
 	count int // increment whenever new line gets added
 	cur   int // current read position
 	err   error
-
-	// StopSignal is the signal Stop sends to the process; defaults to SIGTERM.
-	StopSignal os.Signal
 }
 
 // NewExpect creates a new process for expect testing.
@@ -59,7 +56,6 @@ func NewExpect(name string, arg ...string) (ep *ExpectProcess, err error) {
 // NewExpectWithEnv creates a new process with user defined env variables for expect testing.
 func NewExpectWithEnv(name string, args []string, env []string, serverProcessConfigName string) (ep *ExpectProcess, err error) {
 	ep = &ExpectProcess{
-		StopSignal: syscall.SIGTERM,
 		cfg: expectConfig{
 			name: serverProcessConfigName,
 			cmd:  name,
@@ -196,7 +192,7 @@ func (ep *ExpectProcess) close(kill bool) error {
 		return ep.err
 	}
 	if kill {
-		ep.Signal(ep.StopSignal)
+		ep.Signal(syscall.SIGTERM)
 	}
 
 	err := ep.cmd.Wait()

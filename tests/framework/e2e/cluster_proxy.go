@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -100,11 +99,6 @@ func (p *proxyEtcdProcess) Close() error {
 	return err
 }
 
-func (p *proxyEtcdProcess) WithStopSignal(sig os.Signal) os.Signal {
-	p.proxyV3.WithStopSignal(sig)
-	return p.etcdProc.WithStopSignal(sig)
-}
-
 func (p *proxyEtcdProcess) Logs() LogsExpect {
 	return p.etcdProc.Logs()
 }
@@ -152,12 +146,6 @@ func (pp *proxyProc) Stop() error {
 	<-pp.donec
 	pp.donec = make(chan struct{})
 	return nil
-}
-
-func (pp *proxyProc) WithStopSignal(sig os.Signal) os.Signal {
-	ret := pp.proc.StopSignal
-	pp.proc.StopSignal = sig
-	return ret
 }
 
 func (pp *proxyProc) Close() error { return pp.Stop() }

@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -523,11 +522,4 @@ func (epc *EtcdProcessCluster) Close() error {
 	}
 	epc.lg.Info("closed test cluster.")
 	return err
-}
-
-func (epc *EtcdProcessCluster) WithStopSignal(sig os.Signal) (ret os.Signal) {
-	for _, p := range epc.Procs {
-		ret = p.WithStopSignal(sig)
-	}
-	return ret
 }

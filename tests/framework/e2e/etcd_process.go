@@ -45,7 +45,6 @@ type EtcdProcess interface {
 	Restart(ctx context.Context) error
 	Stop() error
 	Close() error
-	WithStopSignal(sig os.Signal) os.Signal
 	Config() *EtcdServerProcessConfig
 	Logs() LogsExpect
 }
@@ -161,12 +160,6 @@ func (ep *EtcdServerProcess) Close() error {
 		return os.RemoveAll(ep.cfg.DataDirPath)
 	}
 	return nil
-}
-
-func (ep *EtcdServerProcess) WithStopSignal(sig os.Signal) os.Signal {
-	ret := ep.proc.StopSignal
-	ep.proc.StopSignal = sig
-	return ret
 }
 
 func (ep *EtcdServerProcess) waitReady(ctx context.Context) error {

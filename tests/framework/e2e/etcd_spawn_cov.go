@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -69,12 +68,7 @@ func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string
 		zap.String("working-dir", wd),
 		zap.String("name", name),
 		zap.Strings("environment-variables", env))
-	ep, err := expect.NewExpectWithEnv(cmd, allArgs, env, name)
-	if err != nil {
-		return nil, err
-	}
-	ep.StopSignal = syscall.SIGTERM
-	return ep, nil
+	return expect.NewExpectWithEnv(cmd, allArgs, env, name)
 }
 
 func getCovArgs() ([]string, error) {
