@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -216,5 +217,16 @@ func TestRemoveMatchFile(t *testing.T) {
 	})
 	if err == nil {
 		t.Errorf("expected error, got nil")
+	}
+}
+
+func TestTouchDirAll(t *testing.T) {
+	tmpdir := t.TempDir()
+	assert.Panics(t, func() {
+		TouchDirAll(nil, tmpdir)
+	}, "expected panic with nil log")
+
+	if err := TouchDirAll(zaptest.NewLogger(t), tmpdir); err != nil {
+		t.Fatal(err)
 	}
 }
