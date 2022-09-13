@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.uber.org/zap"
 )
 
@@ -45,6 +46,7 @@ func IsDirWriteable(dir string) error {
 // TouchDirAll is similar to os.MkdirAll. It creates directories with 0700 permission if any directory
 // does not exists. TouchDirAll also ensures the given directory is writable.
 func TouchDirAll(lg *zap.Logger, dir string) error {
+	verify.Assert(lg != nil, "nil log isn't allowed")
 	// If path is already a directory, MkdirAll does nothing and returns nil, so,
 	// first check if dir exists with an expected permission mode.
 	if Exist(dir) {

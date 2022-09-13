@@ -34,6 +34,7 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 
 	"go.uber.org/zap"
 )
@@ -196,6 +197,7 @@ func (info TLSInfo) Empty() bool {
 }
 
 func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertValidity uint, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
+	verify.Assert(lg != nil, "nil log isn't allowed")
 	info.Logger = lg
 	if selfSignedCertValidity == 0 {
 		err = fmt.Errorf("selfSignedCertValidity is invalid,it should be greater than 0")
