@@ -1,7 +1,7 @@
 name: Bug Report
 description: Report a bug encountered while operating Etcd
 labels:
-- area/bug
+- type/bug
 body:
 - type: markdown
   attributes:
