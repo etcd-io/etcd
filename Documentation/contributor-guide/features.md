@@ -1,60 +1,50 @@
 # Features 
 
-This document provides an overview of etcd features and general guidelines for adding and removing features. The project maintainers can override the guidelines per the need of the project following the project governance.
+This document provides an overview of etcd features and general development guidelines for adding and deprecating them. The project maintainers can override these guidelines per the need of the project following the project governance.
+
+## Overview
 
 The etcd features fall into three stages, experimental, stable, and unsafe.
 
-## Experimental
+### Experimental
 
-Any new feature should be added as an experimental feature. An experimental feature is characterized as below:
-- Might be buggy due to lack of user testing. Enabling the feature may not work as expected.
+Any new feature is usually added as an experimental feature. An experimental feature is characterized as below:
+- Might be buggy due to a lack of user testing. Enabling the feature may not work as expected.
+- Disabled by default when added initially.
 - Support for such a feature may be dropped at any time without notice
-- Disabled by default when added initially
+    - Feature related issues may be given lower priorities.
+    - It can be removed in the next minor or major release without following the feature deprecation policy unless it graduates to the stable future.
 
-### Minimum development requirements
+### Stable
 
-Experimental feature related development work is expected to be high quality, similar to any development work for the project. A related PR should meet the following criteria,
-- Associated with an issue providing a clear need for such a feature
-- Any configuration flags related to the implementation of the feature are prefixed with `experimental` e.g. `--experimental-feature-name`
-- Any variable names related to the implementation of the feature are prefixed with `Experimental` e.g. `ExperimentalFeatureName`
-- Provided with unit tests
-- Provided with e2e test coverage for at least the basic scenario
-- Added a CHANGELOG entry
-- Disabled by default
-- Approved by at least two project maintainers
-
-### Graduation to Stable
-
-It is important that experimental features don't get stuck in that stage. After a release of an intiial enablement (e.g. etcd v3.5), an experimental feature should be revisited in the following release (e.g. etcd v3.6 or after six months if release takes longer) and see if it's ready for graduation to the stable stage in the future release (e.g. etcd v3.7 or v4.0). If it's ready per discussions with the project maintainers, then depending on the scope of the feature, at least the following enhancements should be consiered to be worked on by opening a PR(s) and new issue(s) for tracking as needed,
-- Fix any open issues against the feature
-- Add robust e2e tests
-- Enhance logs for proper debugging
-- Update metrics and benchmarks if needed
-- Upgrade/downgrade tests specially if there are changes in API, Raft, WAL protos.
-- Enable by default if appropriate
-- Modify the feature documentation and add a CHANGELOG entry to reflect that `--experimental` prefix in the feature name is expected to be dropped in the next release e.g. `Expected to be graduated and renamed to --feature-name in the future release`
-- Create a new issue for future graduation with reference to the PR discussed here. Add the release label of the upcoming release for tracking.
-
-One release with above enhancements should give a good idea on the feature's stability. Unless there are open issues that can prevent feature gradution, the feature can move to the stable stage in the next release with a PR on feature rename, doc updates, and an entry in the CHANGELOG. All the related PRs and discussions should be approved by at least two project maintainers.
-
-Patch releases should not be considered for graduation.
-
-## Stable
-
-A stable feature is characterized as below: 
+A stable feature is characterized as below:
 - Supported as part of the supported releases of etcd.
 - May be enabled by default.
-- Discontinuation of support must follow the Feature Deprecation Process.
+- Discontinuation of support must follow the feature deprecation policy.
 
-### Feature Deprecation Process
+### Unsafe
 
-As the project evolves, a stable feature may sometimes need to be deprecated and removed. Such a situation should be handled using the steps below:
-- Provide a deprecation message in the feature usage document before a planned release for feature deprecation. e.g. `To be deprecated in <release>`.
-- Deprecate the feature in the planned release with an appropriate message as part of the feature usage documentation. e.g. `Deprecated`.
-- Deprecated feature then be removed in the following release.
+Unsafe features are rare and listed under the `Unsafe feature:` section in the etcd usage documentation. By default, they are disabled. They should be used with caution following documentation. An unsafe feature can be removed in the next minor or major release without following feature deprecation policy.
 
-Overall, it can take two releases before a stable feature is completely removed. Patch releases should not be considered for deprecation.
+## Development Guidelines
 
-## Unsafe
+### Adding a new feature
 
-Unsafe features are rare and listed under the `Unsafe feature:` section in the etcd usage documentation. By default, they are disabled. They should be used with caution following documentation. Support for such features may be dropped at any time without notice.
+Any new enhancements to the etcd are typically added as an experimental feature. The general development requirements are listed below. They can be somewhat flexible depending on the scope of the feature and review discussions, and will evolve over time.
+- Open an issue
+    - It must provide a clear need for the proposed feature.
+    - It should list development work items as checkboxes. There must be one work item towards future graduation to the stable future.
+    - Keep the issue open for tracking purpose until a decision is made on graduation.
+- Open a Pull Request (PR)
+    - Provide unit tests. Integreation tests are also recommended as possible.
+    - Provide robust e2e test coverage. If the feature being added is complicated or quickly needed, maintainers can decide to go with e2e tests for basic coverage initially and have robust coverage added at the later time before feature graduation to the stable feature.
+    - Provide logs for proper debugging.
+    - Provide metrics and benchmarks as needed.
+    - The Feature should be disabled by default.
+    - Any configuration flags related to the implementation of the feature must be prefixed with `experimental` e.g. `--experimental-feature-name`.
+    - Add a CHANGELOG entry.
+- At least two maintainers must approve feature requirements and related code changes.
+
+### Graduating an Experimental feature to Stable (TODO - spzala)
+
+### Deprecating a feature (TODO - spzala)
