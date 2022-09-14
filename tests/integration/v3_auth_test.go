@@ -492,6 +492,7 @@ func TestV3AuthRestartMember(t *testing.T) {
 	clus.Members[0].Stop(t)
 	err = clus.Members[0].Restart(t)
 	testutil.AssertNil(t, err)
+	integration.WaitClientV3WithKey(t, c2.KV, "foo")
 
 	// nothing has changed, but it fails without refreshing cache after restart
 	_, err = c2.Put(context.TODO(), "foo", "bar2")
