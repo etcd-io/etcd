@@ -34,7 +34,7 @@ import (
 const DEBUG_LINES_TAIL = 40
 
 type ExpectProcess struct {
-	name string
+	cfg expectConfig
 
 	cmd  *exec.Cmd
 	fpty *os.File
@@ -45,9 +45,6 @@ type ExpectProcess struct {
 	count int // increment whenever new line gets added
 	cur   int // current read position
 	err   error
-
-	// StopSignal is the signal Stop sends to the process; defaults to SIGTERM.
-	StopSignal os.Signal
 }
 
 // NewExpect creates a new process for expect testing.
@@ -58,15 +55,15 @@ func NewExpect(name string, arg ...string) (ep *ExpectProcess, err error) {
 
 // NewExpectWithEnv creates a new process with user defined env variables for expect testing.
 func NewExpectWithEnv(name string, args []string, env []string, serverProcessConfigName string) (ep *ExpectProcess, err error) {
-	cmd := exec.Command(name, args...)
-	cmd.Env = env
 	ep = &ExpectProcess{
-		name:       serverProcessConfigName,
-		cmd:        cmd,
-		StopSignal: syscall.SIGTERM,
+		cfg: expectConfig{
+			name: serverProcessConfigName,
+			cmd:  name,
+			args: args,
+			env:  env,
+		},
 	}
-	ep.cmd.Stderr = ep.cmd.Stdout
-	ep.cmd.Stdin = nil
+	ep.cmd = commandFromConfig(ep.cfg)
 
 	if ep.fpty, err = pty.Start(ep.cmd); err != nil {
 		return nil, err
@@ -75,6 +72,21 @@ func NewExpectWithEnv(name string, args []string, env []string, serverProcessCon
 	ep.wg.Add(1)
 	go ep.read()
 	return ep, nil
+}
+
+type expectConfig struct {
+	name string
+	cmd  string
+	args []string
+	env  []string
+}
+
+func commandFromConfig(config expectConfig) *exec.Cmd {
+	cmd := exec.Command(config.cmd, config.args...)
+	cmd.Env = config.env
+	cmd.Stderr = cmd.Stdout
+	cmd.Stdin = nil
+	return cmd
 }
 
 func (ep *ExpectProcess) Pid() int {
@@ -90,7 +102,7 @@ func (ep *ExpectProcess) read() {
 		ep.mu.Lock()
 		if l != "" {
 			if printDebugLines {
-				fmt.Printf("%s (%s) (%d): %s", ep.cmd.Path, ep.name, ep.cmd.Process.Pid, l)
+				fmt.Printf("%s (%s) (%d): %s", ep.cmd.Path, ep.cfg.name, ep.cmd.Process.Pid, l)
 			}
 			ep.lines = append(ep.lines, l)
 			ep.count++
@@ -180,7 +192,7 @@ func (ep *ExpectProcess) close(kill bool) error {
 		return ep.err
 	}
 	if kill {
-		ep.Signal(ep.StopSignal)
+		ep.Signal(syscall.SIGTERM)
 	}
 
 	err := ep.cmd.Wait()
