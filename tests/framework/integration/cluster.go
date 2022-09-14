@@ -1097,11 +1097,15 @@ func (m *Member) WaitStarted(t testutil.TB) {
 }
 
 func WaitClientV3(t testutil.TB, kv clientv3.KV) {
+	WaitClientV3WithKey(t, kv, "/")
+}
+
+func WaitClientV3WithKey(t testutil.TB, kv clientv3.KV, key string) {
 	timeout := time.Now().Add(RequestTimeout)
 	var err error
 	for time.Now().Before(timeout) {
 		ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
-		_, err = kv.Get(ctx, "/")
+		_, err = kv.Get(ctx, key)
 		cancel()
 		if err == nil {
 			return
