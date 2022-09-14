@@ -6,6 +6,6 @@ The minimum recommended etcd versions to run in **production** are v3.4.8+ and v
 
 Running etcd v3.5.2, v3.5.1 and v3.5.0 under high load can cause a data corruption issue.
 If etcd process is killed, occasionally some committed transactions are not reflected on all the members.
-Recommendation is to upgrade to v3.5.3.
+Recommendation is to upgrade to v3.5.4+.
 
 If you have encountered data corruption, please follow instructions on https://etcd.io/docs/v3.5/op-guide/data_corruption/.
