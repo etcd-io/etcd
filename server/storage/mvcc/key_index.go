@@ -37,7 +37,7 @@ var (
 // For example: put(1.0);put(2.0);tombstone(3.0);put(4.0);tombstone(5.0) on key "foo"
 // generate a keyIndex:
 // key:     "foo"
-// rev: 5
+// modified: 5
 // generations:
 //    {empty}
 //    {4.0, 5.0(t)}

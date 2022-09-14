@@ -24,7 +24,7 @@ import (
 
 func TestKeyIndexGet(t *testing.T) {
 	// key: "foo"
-	// rev: 16
+	// modified: 16
 	// generations:
 	//    {empty}
 	//    {{14, 0}[1], {14, 1}[2], {16, 0}(t)[3]}
@@ -680,7 +680,7 @@ func TestGenerationWalk(t *testing.T) {
 
 func newTestKeyIndex(lg *zap.Logger) *keyIndex {
 	// key: "foo"
-	// rev: 16
+	// modified: 16
 	// generations:
 	//    {empty}
 	//    {{14, 0}[1], {14, 1}[2], {16, 0}(t)[3]}
