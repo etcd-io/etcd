@@ -9,9 +9,7 @@ jobs:
     name: Measure Test Flakiness
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-go@v2
-      with:
-        go-version: "1.17.8"
+    - uses: actions/checkout@v2
     - run: "./scripts/measure-test-flakiness.sh"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
