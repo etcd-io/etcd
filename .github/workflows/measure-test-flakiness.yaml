@@ -1,8 +1,6 @@
 name: Measure Test Flakiness
 
-on:
-  schedule:
-    - cron: "0 0 * * 0"
+on: pull_request
 
 jobs:
   measure-test-flakiness:
