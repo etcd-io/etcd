@@ -29,12 +29,12 @@ test-e2e-release: build
 
 # Static analysis
 
-verify: verify-fmt verify-bom verify-lint verify-dep
+verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword verify-govet verify-revive verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck verify-shellws verify-proto-annotations
 update: update-bom update-lint update-dep update-fix
 
-.PHONY: verify-fmt
-verify-fmt:
-	PASSES="fmt" ./scripts/test.sh
+.PHONY: verify-gofmt
+verify-gofmt:
+	PASSES="gofmt" ./scripts/test.sh
 
 .PHONY: verify-bom
 verify-bom:
@@ -63,6 +63,43 @@ update-lint:
 .PHONY: update-fix
 update-fix:
 	./scripts/fix.sh
+
+.PHONY: verify-shellcheck
+verify-shellcheck:
+	PASSES="shellcheck" ./scripts/test.sh
+
+.PHONY: verify-goword
+verify-goword:
+	PASSES="goword" ./scripts/test.sh
+
+.PHONY: verify-govet
+verify-govet:
+	PASSES="govet" ./scripts/test.sh
+
+.PHONY: verify-revive
+verify-revive:
+	PASSES="revive" ./scripts/test.sh
+
+.PHONY: verify-license-header
+verify-license-header:
+	PASSES="license_header" ./scripts/test.sh
+
+.PHONY: verify-receiver-name
+verify-receiver-name:
+	PASSES="receiver_name" ./scripts/test.sh
+
+.PHONY: verify-mod-tidy
+verify-mod-tidy:
+	PASSES="mod_tidy" ./scripts/test.sh
+
+.PHONY: verify-shellws
+verify-shellws:
+	PASSES="shellws" ./scripts/test.sh
+
+.PHONY: verify-proto-annotations
+verify-proto-annotations:
+	PASSES="proto_annotations" ./scripts/test.sh
+
 
 # Cleanup
 
