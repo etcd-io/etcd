@@ -5,13 +5,11 @@ build:
 	./bin/etcdctl version
 	./bin/etcdutl version
 
-.PHONY: test-fmt
-test-fmt:
-	PASSES="fmt" ./scripts/test.sh
+# Tests
 
-.PHONY: test-bom
-test-bom:
-	PASSES="bom" ./scripts/test.sh
+.PHONY: test
+test:
+	PASSES="unit integration release e2e" ./scripts/test.sh
 
 .PHONY: test-unit
 test-unit:
@@ -29,15 +27,44 @@ test-e2e: build
 test-e2e-release: build
 	PASSES="release e2e" ./scripts/test.sh
 
-.PHONY: test-all
-test-all:
-	PASSES="fmt bom dep unit integration release e2e" ./scripts/test.sh
+# Static analysis
 
-lint:
+verify: verify-fmt verify-bom verify-lint verify-dep
+update: update-bom update-lint update-dep update-fix
+
+.PHONY: verify-fmt
+verify-fmt:
+	PASSES="fmt" ./scripts/test.sh
+
+.PHONY: verify-bom
+verify-bom:
+	PASSES="bom" ./scripts/test.sh
+
+.PHONY: update-bom
+update-bom:
+	./scripts/updatebom.sh
+
+.PHONY: verify-dep
+verify-dep:
+	PASSES="dep" ./scripts/test.sh
+
+.PHONY: update-dep
+update-dep:
+	./scripts/update_dep.sh
+
+.PHONY: verify-lint
+verify-lint:
 	golangci-lint run
 
-lint-fix:
+.PHONY: update-lint
+update-lint:
 	golangci-lint run --fix
+
+.PHONY: update-fix
+update-fix:
+	./scripts/fix.sh
+
+# Cleanup
 
 clean:
 	rm -f ./codecov
