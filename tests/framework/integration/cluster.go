@@ -39,7 +39,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/config"
@@ -239,7 +239,7 @@ func (c *Cluster) Launch(t testutil.TB) {
 
 // ProtoMembers returns a list of all active members as client.Members
 func (c *Cluster) ProtoMembers() []*pb.Member {
-	ms := []*pb.Member{}
+	var ms []*pb.Member
 	for _, m := range c.Members {
 		pScheme := SchemeFromTLSInfo(m.PeerTLSInfo)
 		cScheme := SchemeFromTLSInfo(m.ClientTLSInfo)

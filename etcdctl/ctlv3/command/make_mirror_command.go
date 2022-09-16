@@ -27,7 +27,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/mirror"
 
 	"github.com/spf13/cobra"
@@ -191,7 +191,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 		}
 
 		var lastRev int64
-		ops := []clientv3.Op{}
+		var ops []clientv3.Op
 
 		for _, ev := range wr.Events {
 			nextRev := ev.Kv.ModRevision

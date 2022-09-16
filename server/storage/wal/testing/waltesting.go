@@ -52,7 +52,7 @@ func NewTmpWAL(t testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL,
 		if err != nil {
 			t.Fatalf("Failed to read WAL: %v", err)
 		}
-		entries := []raftpb.Entry{}
+		var entries []raftpb.Entry
 		for _, req := range reqs {
 			entries = append(entries, raftpb.Entry{
 				Term:  1,

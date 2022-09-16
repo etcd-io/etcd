@@ -296,8 +296,8 @@ func (clus *Cluster) UpdateDelayLatencyMs() {
 
 func (clus *Cluster) setStresserChecker() {
 	css := &compositeStresser{}
-	lss := []*leaseStresser{}
-	rss := []*runnerStresser{}
+	var lss []*leaseStresser
+	var rss []*runnerStresser
 	for _, m := range clus.Members {
 		sss := newStresser(clus, m)
 		css.stressers = append(css.stressers, &compositeStresser{sss})
@@ -419,7 +419,7 @@ func (clus *Cluster) broadcast(op rpcpb.Operation) error {
 	wg.Wait()
 	close(errc)
 
-	errs := []string{}
+	var errs []string
 	for err := range errc {
 		if err == nil {
 			continue

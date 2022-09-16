@@ -39,7 +39,7 @@ func equal(a, b []string) bool {
 
 func driveSetTests(t *testing.T, s Set) {
 	// Verify operations on an empty set
-	eValues := []string{}
+	var eValues []string
 	values := s.Values()
 	if !reflect.DeepEqual(values, eValues) {
 		t.Fatalf("Expect values=%v got %v", eValues, values)

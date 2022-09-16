@@ -220,7 +220,7 @@ func (s *Snapshotter) snapNames() ([]string, error) {
 }
 
 func (s *Snapshotter) checkSuffix(names []string) []string {
-	snaps := []string{}
+	var snaps []string
 	for i := range names {
 		if strings.HasSuffix(names[i], snapSuffix) {
 			snaps = append(snaps, names[i])

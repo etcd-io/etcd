@@ -18,7 +18,7 @@ import (
 	"context"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 )
 
@@ -162,7 +162,7 @@ func requestOpToOp(union *pb.RequestOp) clientv3.Op {
 }
 
 func RangeRequestToOp(r *pb.RangeRequest) clientv3.Op {
-	opts := []clientv3.OpOption{}
+	var opts []clientv3.OpOption
 	if len(r.RangeEnd) != 0 {
 		opts = append(opts, clientv3.WithRange(string(r.RangeEnd)))
 	}
@@ -190,7 +190,7 @@ func RangeRequestToOp(r *pb.RangeRequest) clientv3.Op {
 }
 
 func PutRequestToOp(r *pb.PutRequest) clientv3.Op {
-	opts := []clientv3.OpOption{}
+	var opts []clientv3.OpOption
 	opts = append(opts, clientv3.WithLease(clientv3.LeaseID(r.Lease)))
 	if r.IgnoreValue {
 		opts = append(opts, clientv3.WithIgnoreValue())
@@ -205,7 +205,7 @@ func PutRequestToOp(r *pb.PutRequest) clientv3.Op {
 }
 
 func DelRequestToOp(r *pb.DeleteRangeRequest) clientv3.Op {
-	opts := []clientv3.OpOption{}
+	var opts []clientv3.OpOption
 	if len(r.RangeEnd) != 0 {
 		opts = append(opts, clientv3.WithRange(string(r.RangeEnd)))
 	}

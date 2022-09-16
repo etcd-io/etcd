@@ -139,7 +139,7 @@ func (d *decoder) isTornEntry(data []byte) bool {
 
 	fileOff := d.lastValidOff + frameSizeBytes
 	curOff := 0
-	chunks := [][]byte{}
+	var chunks [][]byte
 	// split data on sector boundaries
 	for curOff < len(data) {
 		chunkLen := int(minSectorSize - (fileOff % minSectorSize))

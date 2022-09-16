@@ -748,7 +748,7 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 		t.Fatalf("kvc.Txn failed: %+v", tresp)
 	}
 
-	events := []*mvccpb.Event{}
+	var events []*mvccpb.Event
 	for len(events) < 3 {
 		resp, err := wStream.Recv()
 		if err != nil {
@@ -845,7 +845,7 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 		},
 	}
 
-	events := []*mvccpb.Event{}
+	var events []*mvccpb.Event
 	for len(events) < 4 {
 		resp, err := wStream.Recv()
 		if err != nil {

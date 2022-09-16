@@ -143,7 +143,7 @@ func newCluster(lg *zap.Logger, memberCount int, ver semver.Version) *clusterMoc
 
 func (c *clusterMock) StepMonitors() {
 	// Execute monitor functions in random order as it is not guaranteed
-	fs := []func(){}
+	var fs []func()
 	for _, m := range c.members {
 		fs = append(fs, m.monitor.UpdateStorageVersionIfNeeded)
 		if m.isLeader {

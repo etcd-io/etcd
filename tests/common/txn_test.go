@@ -124,7 +124,7 @@ func TestTxnFail(t *testing.T) {
 }
 
 func getRespValues(r *clientv3.TxnResponse) []string {
-	ss := []string{}
+	var ss []string
 	if r.Succeeded {
 		ss = append(ss, "SUCCESS")
 	} else {

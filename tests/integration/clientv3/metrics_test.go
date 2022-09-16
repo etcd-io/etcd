@@ -28,7 +28,7 @@ import (
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 )
@@ -162,7 +162,7 @@ func getHTTPBodyAsLines(t *testing.T, url string) []string {
 	}
 
 	reader := bufio.NewReader(resp.Body)
-	lines := []string{}
+	var lines []string
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {

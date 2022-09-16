@@ -150,7 +150,7 @@ func setupClient(t *testing.T, endpointPattern string, clus *integration.Cluster
 
 func templateEndpoints(t *testing.T, pattern string, clus *integration.Cluster) []string {
 	t.Helper()
-	endpoints := []string{}
+	var endpoints []string
 	for _, m := range clus.Members {
 		ent := pattern
 		if strings.Contains(ent, "%d") {

@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -249,7 +249,7 @@ func TestLeaseKeepAliveNotFound(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
-	lchs := []leaseCh{}
+	var lchs []leaseCh
 	for i := 0; i < 3; i++ {
 		resp, rerr := cli.Grant(context.TODO(), 5)
 		if rerr != nil {
@@ -628,7 +628,7 @@ func TestLeaseLeases(t *testing.T) {
 
 	cli := clus.RandClient()
 
-	ids := []clientv3.LeaseID{}
+	var ids []clientv3.LeaseID
 	for i := 0; i < 5; i++ {
 		resp, err := cli.Grant(context.Background(), 10)
 		if err != nil {

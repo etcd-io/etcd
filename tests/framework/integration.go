@@ -135,7 +135,7 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 		ctx, cancel = context.WithTimeout(ctx, o.Timeout)
 		defer cancel()
 	}
-	clientOpts := []clientv3.OpOption{}
+	var clientOpts []clientv3.OpOption
 	if o.Revision != 0 {
 		clientOpts = append(clientOpts, clientv3.WithRev(int64(o.Revision)))
 	}
@@ -164,7 +164,7 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 }
 
 func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
-	clientOpts := []clientv3.OpOption{}
+	var clientOpts []clientv3.OpOption
 	if opts.LeaseID != 0 {
 		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
 	}
@@ -173,7 +173,7 @@ func (c integrationClient) Put(ctx context.Context, key, value string, opts conf
 }
 
 func (c integrationClient) Delete(ctx context.Context, key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {
-	clientOpts := []clientv3.OpOption{}
+	var clientOpts []clientv3.OpOption
 	if o.Prefix {
 		clientOpts = append(clientOpts, clientv3.WithPrefix())
 	}
@@ -192,7 +192,7 @@ func (c integrationClient) Compact(ctx context.Context, rev int64, o config.Comp
 		ctx, cancel = context.WithTimeout(ctx, o.Timeout)
 		defer cancel()
 	}
-	clientOpts := []clientv3.CompactOption{}
+	var clientOpts []clientv3.CompactOption
 	if o.Physical {
 		clientOpts = append(clientOpts, clientv3.WithCompactPhysical())
 	}
@@ -253,7 +253,7 @@ func (c integrationClient) Defragment(ctx context.Context, o config.DefragOption
 }
 
 func (c integrationClient) TimeToLive(ctx context.Context, id clientv3.LeaseID, o config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {
-	leaseOpts := []clientv3.LeaseOption{}
+	var leaseOpts []clientv3.LeaseOption
 	if o.WithAttachedKeys {
 		leaseOpts = append(leaseOpts, clientv3.WithAttachedKeys())
 	}
@@ -274,7 +274,7 @@ func (c integrationClient) UserChangePass(ctx context.Context, user, newPass str
 
 func (c integrationClient) Txn(ctx context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error) {
 	txn := c.Client.Txn(ctx)
-	cmps := []clientv3.Cmp{}
+	var cmps []clientv3.Cmp
 	for _, c := range compares {
 		cmp, err := etcdctlcmd.ParseCompare(c)
 		if err != nil {
@@ -299,7 +299,7 @@ func (c integrationClient) Txn(ctx context.Context, compares, ifSucess, ifFail [
 }
 
 func getOps(ss []string) ([]clientv3.Op, error) {
-	ops := []clientv3.Op{}
+	var ops []clientv3.Op
 	for _, s := range ss {
 		s = strings.TrimSpace(s)
 		args := etcdctlcmd.Argify(s)
@@ -316,7 +316,7 @@ func getOps(ss []string) ([]clientv3.Op, error) {
 }
 
 func (c integrationClient) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {
-	opOpts := []clientv3.OpOption{}
+	var opOpts []clientv3.OpOption
 	if opts.Prefix {
 		opOpts = append(opOpts, clientv3.WithPrefix())
 	}

@@ -120,7 +120,8 @@ func CorruptBBolt(fpath string) error {
 		if b == nil {
 			return errors.New("got nil bucket for 'key'")
 		}
-		keys, vals := [][]byte{}, [][]byte{}
+		var vals [][]byte
+		var keys [][]byte
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			keys = append(keys, k)

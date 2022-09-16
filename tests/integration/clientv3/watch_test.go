@@ -110,7 +110,7 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 			t.Errorf("expected watcher channel, got nil")
 		}
 		readyc <- struct{}{}
-		evs := []*clientv3.Event{}
+		var evs []*clientv3.Event
 		for i := 0; i < numKeyUpdates*2; i++ {
 			resp, ok := <-prefixc
 			if !ok {
@@ -120,14 +120,14 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 		}
 
 		// check response
-		expected := []string{}
+		var expected []string
 		bkeys := []string{"bar", "baz"}
 		for _, k := range bkeys {
 			for i := 0; i < numKeyUpdates; i++ {
 				expected = append(expected, fmt.Sprintf("%s-%d", k, i))
 			}
 		}
-		got := []string{}
+		var got []string
 		for _, ev := range evs {
 			got = append(got, string(ev.Kv.Value))
 		}

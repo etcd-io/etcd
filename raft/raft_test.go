@@ -640,13 +640,13 @@ func TestLogReplication(t *testing.T) {
 				t.Errorf("#%d.%d: committed = %d, want %d", i, j, sm.raftLog.committed, tt.wcommitted)
 			}
 
-			ents := []pb.Entry{}
+			var ents []pb.Entry
 			for _, e := range nextEnts(sm, tt.network.storage[j]) {
 				if e.Data != nil {
 					ents = append(ents, e)
 				}
 			}
-			props := []pb.Message{}
+			var props []pb.Message
 			for _, m := range tt.msgs {
 				if m.Type == pb.MsgProp {
 					props = append(props, m)
@@ -4747,7 +4747,7 @@ func (nw *network) recover() {
 }
 
 func (nw *network) filter(msgs []pb.Message) []pb.Message {
-	mm := []pb.Message{}
+	var mm []pb.Message
 	for _, m := range msgs {
 		if nw.ignorem[m.Type] {
 			continue

@@ -759,7 +759,7 @@ func (le *lessor) findDueScheduledCheckpoints(checkpointLimit int) []*pb.LeaseCh
 	}
 
 	now := time.Now()
-	cps := []*pb.LeaseCheckpoint{}
+	var cps []*pb.LeaseCheckpoint
 	for le.leaseCheckpointHeap.Len() > 0 && len(cps) < checkpointLimit {
 		lt := le.leaseCheckpointHeap[0]
 		if lt.time.After(now) /* lt.time: next checkpoint time */ {

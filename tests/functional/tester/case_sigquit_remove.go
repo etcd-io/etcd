@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
@@ -36,7 +36,7 @@ func inject_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 
 	var mresp *clientv3.MemberListResponse
 	mresp, err = cli1.MemberList(context.Background())
-	mss := []string{}
+	var mss []string
 	if err == nil && mresp != nil {
 		mss = describeMembers(mresp)
 	}
@@ -161,7 +161,7 @@ func recover_SIGQUIT_ETCD_AND_REMOVE_DATA(clus *Cluster, idx1 int) error {
 
 	var mresp *clientv3.MemberListResponse
 	mresp, err = cli2.MemberList(context.Background())
-	mss := []string{}
+	var mss []string
 	if err == nil && mresp != nil {
 		mss = describeMembers(mresp)
 	}

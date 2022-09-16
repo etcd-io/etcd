@@ -174,7 +174,7 @@ func TestSTMSerialize(t *testing.T) {
 		defer close(updatec)
 		for i := 0; i < 5; i++ {
 			s := fmt.Sprintf("%d", i)
-			ops := []v3.Op{}
+			var ops []v3.Op
 			for _, k := range keys {
 				ops = append(ops, v3.OpPut(k, s))
 			}
@@ -190,7 +190,7 @@ func TestSTMSerialize(t *testing.T) {
 	for range updatec {
 		curEtcdc := clus.RandClient()
 		applyf := func(stm concurrency.STM) error {
-			vs := []string{}
+			var vs []string
 			for i := range keys {
 				vs = append(vs, stm.Get(keys[i]))
 			}

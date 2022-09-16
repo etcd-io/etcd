@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -157,7 +157,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	display.MemberAdd(*resp)
 
 	if _, ok := (display).(*simplePrinter); ok {
-		conf := []string{}
+		var conf []string
 		for _, memb := range resp.Members {
 			for _, u := range memb.PeerURLs {
 				n := memb.Name

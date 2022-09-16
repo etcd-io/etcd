@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/flags"
 
@@ -363,7 +363,7 @@ func endpointsFromFlagValue(cmd *cobra.Command) ([]string, error) {
 		return eps, err
 	}
 	// strip insecure connections
-	ret := []string{}
+	var ret []string
 	for _, ep := range eps {
 		if strings.HasPrefix(ep, "http://") {
 			fmt.Fprintf(os.Stderr, "ignoring discovered insecure endpoint %q\n", ep)
