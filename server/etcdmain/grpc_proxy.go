@@ -31,6 +31,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/leasing"
@@ -41,7 +42,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
-	"go.uber.org/zap/zapgrpc"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -50,6 +50,7 @@ import (
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapgrpc"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -77,12 +78,13 @@ var (
 
 	// tls for clients connecting to proxy
 
-	grpcProxyListenCA      string
-	grpcProxyListenCert    string
-	grpcProxyListenKey     string
-	grpcProxyListenAutoTLS bool
-	grpcProxyListenCRL     string
-	selfSignedCertValidity uint
+	grpcProxyListenCA           string
+	grpcProxyListenCert         string
+	grpcProxyListenKey          string
+	grpcProxyListenCipherSuites []string
+	grpcProxyListenAutoTLS      bool
+	grpcProxyListenCRL          string
+	selfSignedCertValidity      uint
 
 	grpcProxyAdvertiseClientURL string
 	grpcProxyResolverPrefix     string
@@ -158,6 +160,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyListenCert, "cert-file", "", "identify secure connections to the proxy using this TLS certificate file")
 	cmd.Flags().StringVar(&grpcProxyListenKey, "key-file", "", "identify secure connections to the proxy using this TLS key file")
 	cmd.Flags().StringVar(&grpcProxyListenCA, "trusted-ca-file", "", "verify certificates of TLS-enabled secure proxy using this CA bundle")
+	cmd.Flags().StringSliceVar(&grpcProxyListenCipherSuites, "listen-cipher-suites", grpcProxyListenCipherSuites, "Comma-separated list of supported TLS cipher suites between client/proxy (empty will be auto-populated by Go).")
 	cmd.Flags().BoolVar(&grpcProxyListenAutoTLS, "auto-tls", false, "proxy TLS using generated certificates")
 	cmd.Flags().StringVar(&grpcProxyListenCRL, "client-crl-file", "", "proxy client certificate revocation list file.")
 	cmd.Flags().UintVar(&selfSignedCertValidity, "self-signed-cert-validity", 1, "The validity period of the proxy certificates, unit is year")
@@ -192,21 +195,28 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	// The proxy itself (ListenCert) can have not-empty CN.
 	// The empty CN is required for grpcProxyCert.
 	// Please see https://github.com/etcd-io/etcd/issues/11970#issuecomment-687875315  for more context.
-	tlsinfo := newTLS(grpcProxyListenCA, grpcProxyListenCert, grpcProxyListenKey, false)
-
-	if tlsinfo == nil && grpcProxyListenAutoTLS {
+	tlsInfo := newTLS(grpcProxyListenCA, grpcProxyListenCert, grpcProxyListenKey, false)
+	if len(grpcProxyListenCipherSuites) > 0 {
+		cs, err := tlsutil.GetCipherSuites(grpcProxyListenCipherSuites)
+		if err != nil {
+			log.Fatal(err)
+		}
+		tlsInfo.CipherSuites = cs
+	}
+	if tlsInfo == nil && grpcProxyListenAutoTLS {
 		host := []string{"https://" + grpcProxyListenAddr}
 		dir := filepath.Join(grpcProxyDataDir, "fixtures", "proxy")
 		autoTLS, err := transport.SelfCert(lg, dir, host, selfSignedCertValidity)
 		if err != nil {
 			log.Fatal(err)
 		}
-		tlsinfo = &autoTLS
+		tlsInfo = &autoTLS
 	}
-	if tlsinfo != nil {
-		lg.Info("gRPC proxy server TLS", zap.String("tls-info", fmt.Sprintf("%+v", tlsinfo)))
+
+	if tlsInfo != nil {
+		lg.Info("gRPC proxy server TLS", zap.String("tls-info", fmt.Sprintf("%+v", tlsInfo)))
 	}
-	m := mustListenCMux(lg, tlsinfo)
+	m := mustListenCMux(lg, tlsInfo)
 	grpcl := m.Match(cmux.HTTP2())
 	defer func() {
 		grpcl.Close()
@@ -219,11 +229,11 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	// TODO: The mechanism should be refactored to use internal connection.
 	var proxyClient *clientv3.Client
 	if grpcProxyAdvertiseClientURL != "" {
-		proxyClient = mustNewProxyClient(lg, tlsinfo)
+		proxyClient = mustNewProxyClient(lg, tlsInfo)
 	}
 	httpClient := mustNewHTTPClient(lg)
 
-	srvhttp, httpl := mustHTTPListener(lg, m, tlsinfo, client, proxyClient)
+	srvhttp, httpl := mustHTTPListener(lg, m, tlsInfo, client, proxyClient)
 
 	if err := http2.ConfigureServer(srvhttp, &http2.Server{
 		MaxConcurrentStreams: maxConcurrentStreams,
@@ -236,7 +246,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	go func() { errc <- srvhttp.Serve(httpl) }()
 	go func() { errc <- m.Serve() }()
 	if len(grpcProxyMetricsListenAddr) > 0 {
-		mhttpl := mustMetricsListener(lg, tlsinfo)
+		mhttpl := mustMetricsListener(lg, tlsInfo)
 		go func() {
 			mux := http.NewServeMux()
 			grpcproxy.HandleMetrics(mux, httpClient, client.Endpoints())
