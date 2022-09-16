@@ -16,9 +16,10 @@ package grpcproxy
 
 import (
 	"context"
+	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 )
 
@@ -27,10 +28,10 @@ type kvProxy struct {
 	cache cache.Cache
 }
 
-func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
+func NewKvProxy(c *clientv3.Client, kvCacheAge time.Duration) (pb.KVServer, <-chan struct{}) {
 	kv := &kvProxy{
 		kv:    c.KV,
-		cache: cache.NewCache(cache.DefaultMaxEntries),
+		cache: cache.NewCache(cache.DefaultMaxEntries, kvCacheAge),
 	}
 	donec := make(chan struct{})
 	close(donec)
@@ -47,6 +48,8 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 		case cache.ErrCompacted:
 			cacheHits.Inc()
 			return nil, err
+		case cache.ErrExpired:
+			cachedExpired.Inc()
 		}
 
 		cachedMisses.Inc()

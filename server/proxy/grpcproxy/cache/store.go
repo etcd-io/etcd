@@ -19,6 +19,7 @@ package cache
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/golang/groupcache/lru"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -29,6 +30,8 @@ import (
 var (
 	DefaultMaxEntries = 2048
 	ErrCompacted      = rpctypes.ErrGRPCCompacted
+	ErrExpired        = errors.New("value expired")
+	ErrNotExisted     = errors.New("not exist")
 )
 
 type Cache interface {
@@ -50,11 +53,12 @@ func keyFunc(req *pb.RangeRequest) string {
 	return string(b)
 }
 
-func NewCache(maxCacheEntries int) Cache {
+func NewCache(maxCacheEntries int, cacheValidDuration time.Duration) Cache {
 	return &cache{
-		lru:          lru.New(maxCacheEntries),
-		cachedRanges: adt.NewIntervalTree(),
-		compactedRev: -1,
+		lru:           lru.New(maxCacheEntries),
+		cachedRanges:  adt.NewIntervalTree(),
+		compactedRev:  -1,
+		cacheValidAge: cacheValidDuration,
 	}
 }
 
@@ -62,13 +66,24 @@ func (c *cache) Close() {}
 
 // cache implements Cache
 type cache struct {
-	mu  sync.RWMutex
-	lru *lru.Cache
+	mu            sync.RWMutex
+	lru           *lru.Cache
+	cachedRanges  adt.IntervalTree // a reverse index for cache invalidation
+	compactedRev  int64
+	cacheValidAge time.Duration
+}
 
-	// a reverse index for cache invalidation
-	cachedRanges adt.IntervalTree
+// LRUvalue cache value struct
+type LRUvalue struct {
+	response *pb.RangeResponse
+	expire   *time.Time
+}
 
-	compactedRev int64
+func (lv *LRUvalue) IsExpired() bool {
+	if lv.expire == nil {
+		return false
+	}
+	return time.Now().After(*lv.expire)
 }
 
 // Add adds the response of a request to the cache if its revision is larger than the compacted revision of the cache.
@@ -78,8 +93,14 @@ func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// Expire time
+	ex := time.Now().Add(c.cacheValidAge)
+
 	if req.Revision > c.compactedRev {
-		c.lru.Add(key, resp)
+		c.lru.Add(key, &LRUvalue{
+			response: resp,
+			expire:   &ex,
+		})
 	}
 	// we do not need to invalidate a request with a revision specified.
 	// so we do not need to add it into the reverse index.
@@ -122,10 +143,14 @@ func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
 		return nil, ErrCompacted
 	}
 
-	if resp, ok := c.lru.Get(key); ok {
-		return resp.(*pb.RangeResponse), nil
+	cacheValue, ok := c.lru.Get(key)
+	if !ok {
+		return nil, ErrNotExisted
 	}
-	return nil, errors.New("not exist")
+	if cacheValue.(*LRUvalue).IsExpired() {
+		return nil, ErrExpired
+	}
+	return cacheValue.(*LRUvalue).response, nil
 }
 
 // Invalidate invalidates the cache entries that intersecting with the given range from key to endkey.

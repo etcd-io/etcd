@@ -58,6 +58,12 @@ var (
 		Name:      "cache_misses_total",
 		Help:      "Total number of cache misses",
 	})
+	cachedExpired = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "grpc_proxy",
+		Name:      "cache_expired_total",
+		Help:      "Total number of cache expired",
+	})
 )
 
 func init() {
@@ -66,6 +72,7 @@ func init() {
 	prometheus.MustRegister(cacheKeys)
 	prometheus.MustRegister(cacheHits)
 	prometheus.MustRegister(cachedMisses)
+	prometheus.MustRegister(cachedExpired)
 }
 
 // HandleMetrics performs a GET request against etcd endpoint and returns '/metrics'.

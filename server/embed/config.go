@@ -32,7 +32,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/config"
@@ -66,6 +66,9 @@ const (
 	DefaultGRPCKeepAliveTimeout        = 20 * time.Second
 	DefaultDowngradeCheckTime          = 5 * time.Second
 	DefaultWaitClusterReadyTimeout     = 5 * time.Second
+
+	// grpc-proxy kvProxy cache valid age
+	DefaultGrpcProxyKvCacheAge = 10 * time.Second
 
 	DefaultDiscoveryDialTimeout      = 2 * time.Second
 	DefaultDiscoveryRequestTimeOut   = 5 * time.Second

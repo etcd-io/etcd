@@ -23,6 +23,7 @@ import (
 
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/namespace"
+	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/adapter"
 )
@@ -65,7 +66,7 @@ func ToGRPC(c *clientv3.Client) GrpcAPI {
 	c.Watcher = namespace.NewWatcher(c.Watcher, proxyNamespace)
 	c.Lease = namespace.NewLease(c.Lease, proxyNamespace)
 	// test coalescing/caching proxy
-	kvp, kvpch := grpcproxy.NewKvProxy(c)
+	kvp, kvpch := grpcproxy.NewKvProxy(c, embed.DefaultGrpcProxyKvCacheAge)
 	wp, wpch := grpcproxy.NewWatchProxy(ctx, lg, c)
 	lp, lpch := grpcproxy.NewLeaseProxy(ctx, c)
 	mp := grpcproxy.NewMaintenanceProxy(c)

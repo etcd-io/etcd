@@ -94,6 +94,7 @@ var (
 	grpcProxyEnablePprof    bool
 	grpcProxyEnableOrdering bool
 	grpcProxyEnableLogging  bool
+	grpcProxyKvCacheAge     time.Duration
 
 	grpcProxyDebug bool
 
@@ -166,6 +167,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
 	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
 	cmd.Flags().BoolVar(&grpcProxyEnableLogging, "experimental-enable-grpc-logging", false, "logging all grpc requests and responses")
+	cmd.Flags().DurationVar(&grpcProxyKvCacheAge, "experimental-kvproxy-cache-age", embed.DefaultGrpcProxyKvCacheAge, "The validity period of the kvProxy.Range cache. When the 10 seconds expires, the kvProxy.Range request will be passed to the proxied etcd server, and new responses will be cached")
 
 	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
 
@@ -425,7 +427,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 		client.KV, _, _ = leasing.NewKV(client, grpcProxyLeasing)
 	}
 
-	kvp, _ := grpcproxy.NewKvProxy(client)
+	kvp, _ := grpcproxy.NewKvProxy(client, grpcProxyKvCacheAge)
 	watchp, _ := grpcproxy.NewWatchProxy(client.Ctx(), lg, client)
 	if grpcProxyResolverPrefix != "" {
 		grpcproxy.Register(lg, client, grpcProxyResolverPrefix, grpcProxyAdvertiseClientURL, grpcProxyResolverTTL)
