@@ -31,15 +31,11 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - [Always print the raft_term in decimal](https://github.com/etcd-io/etcd/pull/13711) when displaying member list in json.
 - [Add one more field `storageVersion`](https://github.com/etcd-io/etcd/pull/13773) into the response of command `etcdctl endpoint status`.
 - Add [`--max-txn-ops`](https://github.com/etcd-io/etcd/pull/14340) flag to make-mirror command.
-- Fix [etcdctl move-leader may fail for multiple endpoints](https://github.com/etcd-io/etcd/pull/14445)
 
 ### etcdutl v3
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
 - Add `migrate` command for downgrading/upgrading etcd data dir files.
-
-### Package `clientv3`
-- Fix [do not overwrite authTokenBundle on dial](https://github.com/etcd-io/etcd/pull/12992).
 
 ### Package `server`
 
@@ -61,27 +57,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [`etcd --max-concurrent-streams`](https://github.com/etcd-io/etcd/pull/14169) flag to configure the max concurrent streams each client can open at a time, and defaults to math.MaxUint32.
 - Add [`etcd grpc-proxy --experimental-enable-grpc-logging`](https://github.com/etcd-io/etcd/pull/14266) flag to logging all grpc requests and responses.
 - Add [`etcd --experimental-compact-hash-check-enabled --experimental-compact-hash-check-time`](https://github.com/etcd-io/etcd/issues/14039) flags to support enabling reliable corruption detection on compacted revisions.
-- Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/13435)
-- Fix [exclude the same alarm type activated by multiple peers](https://github.com/etcd-io/etcd/pull/13467).
-- Fix [Provide a better liveness probe for when etcd runs as a Kubernetes pod](https://github.com/etcd-io/etcd/pull/13399)
-- Fix [Lease checkpoints don't prevent to reset ttl on leader change](https://github.com/etcd-io/etcd/pull/13508).
-- Fix [assertion failed due to tx closed when recovering v3 backend from a snapshot db](https://github.com/etcd-io/etcd/pull/13500)
-- Fix [A client can panic etcd by passing invalid utf-8 in the client-api-version header](https://github.com/etcd-io/etcd/pull/13560)
-- Fix [etcd gateway doesn't format the endpoint of IPv6 address correctly](https://github.com/etcd-io/etcd/pull/13551)
-- Fix [A client can cause a nil dereference in etcd by passing an invalid SortTarget](https://github.com/etcd-io/etcd/pull/13555)
-- Fix [Grant lease with negative ID can possibly cause db out of sync](https://github.com/etcd-io/etcd/pull/13676)
-- Fix [segmentation violation(SIGSEGV) error due to premature unlocking of watchableStore](https://github.com/etcd-io/etcd/pull/13505)
-- Fix [inconsistent log format](https://github.com/etcd-io/etcd/pull/13864)
-- Fix [Inconsistent revision and data occurs](https://github.com/etcd-io/etcd/pull/13854)
-- Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/13690)
-- Fix [consistent_index coming from snapshot is overwritten by the old local value](https://github.com/etcd-io/etcd/pull/13930)
-- Fix [etcd panic on startup (auth enabled)](https://github.com/etcd-io/etcd/pull/13942)
-- Fix [Defrag unsets backend options](https://github.com/etcd-io/etcd/pull/13679).
-- Fix [Restrict the max size of each WAL entry to the remaining size of the WAL file](https://github.com/etcd-io/etcd/pull/14122).
-- Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14272)
-- Fix [Durability API guarantee broken in single node cluster](https://github.com/etcd-io/etcd/pull/14400)
-- Fix [etcd fails to start after performing alarm list operation and then power off/on](https://github.com/etcd-io/etcd/pull/14419)
-- Fix [authentication data not loaded on member startup](https://github.com/etcd-io/etcd/pull/14358)
 
 ### etcd grpc-proxy
 
@@ -104,6 +79,5 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 ### Other
 
 - Use Distroless as base image to make the image less vulnerable and reduce image size.
-- [Bump golang.org/x/crypto to latest version](https://github.com/etcd-io/etcd/pull/13969) to address [CVE-2022-27191](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
 
 <hr>
