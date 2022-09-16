@@ -64,10 +64,11 @@ Setup environment:
 etcd code should follow coding style suggested by the Golang community.
 See the [style doc](https://github.com/golang/go/wiki/CodeReviewComments) for details.
 
-Please ensure that your change passes static analysis:
-- `make test-fmt` to format code.
-- `make lint` to run linter (requires [golangci-lint](https://golangci-lint.run/usage/install/))
-- `make lint-fix` to fix linter errors (requires [golangci-lint](https://golangci-lint.run/usage/install/))
+Please ensure that your change passes static analysis (requires [golangci-lint](https://golangci-lint.run/usage/install/)):
+- `make verify` to verify if all checks pass.
+- `make verify-*` to verify a single check, for example `make verify-bom` to verify if bill-of-materials.json file is up-to-date.
+- `make update` to fix all checks.
+- `make update-*` to fix a single checks, for example `make update-bom` to update bill-of-materials.json.
 
 Please ensure that your change passes tests.
 - `make test-unit` to run unit tests.

@@ -3,11 +3,6 @@ on: [push, pull_request]
 jobs:
   run:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - linux-amd64-fmt
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -17,17 +12,4 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.49.0
-      - run: date
-      - env:
-          TARGET: ${{ matrix.target }}
-        run: |
-          echo "${TARGET}"
-          case "${TARGET}" in
-            linux-amd64-fmt)
-              GOARCH=amd64 PASSES='fmt bom dep' ./scripts/test.sh
-              ;;
-            *)
-              echo "Failed to find target"
-              exit 1
-              ;;
-          esac
+      - run: make verify
