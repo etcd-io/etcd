@@ -353,17 +353,15 @@ func TestKVDeleteRange(t *testing.T) {
 	ctx := context.TODO()
 
 	tests := []struct {
-		key  string
-		opts []clientv3.OpOption
-
+		key   string
+		opts  []clientv3.OpOption
 		wkeys []string
 	}{
 		// *
 		{
-			key:  "\x00",
-			opts: []clientv3.OpOption{clientv3.WithFromKey()},
-
-			wkeys: []string{},
+			key:   "\x00",
+			opts:  []clientv3.OpOption{clientv3.WithFromKey()},
+			wkeys: nil,
 		},
 	}
 
