@@ -82,6 +82,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Fix [Durability API guarantee broken in single node cluster](https://github.com/etcd-io/etcd/pull/14400)
 - Fix [etcd fails to start after performing alarm list operation and then power off/on](https://github.com/etcd-io/etcd/pull/14419)
 - Fix [authentication data not loaded on member startup](https://github.com/etcd-io/etcd/pull/14358)
+- Fix [server: don't panic in readonly serializable txn](https://github.com/etcd-io/etcd/pull/14149).
 
 ### etcd grpc-proxy
 
