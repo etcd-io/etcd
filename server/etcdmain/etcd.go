@@ -120,10 +120,12 @@ func startEtcdOrProxyV2(args []string) {
 			)
 		}
 	} else {
+		lg.Info(
+			"Initialize and start etcd server",
+			zap.String("data-dir", cfg.ec.Dir),
+			zap.String("dir-type", string(which)),
+		)
 		stopped, errc, err = startEtcd(&cfg.ec)
-		if err != nil {
-			lg.Warn("failed to start etcd", zap.Error(err))
-		}
 	}
 
 	if err != nil {
