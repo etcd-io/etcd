@@ -93,7 +93,7 @@ tools_build() {
     # shellcheck disable=SC2086
     run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
       -installsuffix=cgo \
-      "-ldflags='${GO_LDFLAGS[*]}'" \
+      "-ldflags=${GO_LDFLAGS[*]}" \
       -o="${out}/${tool}" "./${tool}" || return 2
   done
   tests_build "${@}"
