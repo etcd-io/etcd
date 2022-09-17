@@ -123,7 +123,7 @@ func TestKVDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
