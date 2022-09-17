@@ -1,5 +1,4 @@
 run:
-  go: '1.17'
   timeout: 30m
   skip-files:
     - "^zz_generated.*"
