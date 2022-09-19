@@ -85,7 +85,7 @@ func (ro *readOnly) advance(m pb.Message) []*readIndexStatus {
 	)
 
 	ctx := string(m.Context)
-	rss := []*readIndexStatus{}
+	var rss []*readIndexStatus
 
 	for _, okctx := range ro.readIndexQueue {
 		i++

@@ -101,7 +101,7 @@ func getPutOp(args []string) (string, string, []clientv3.OpOption) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("bad lease ID (%v), expecting ID in Hex", err))
 	}
 
-	opts := []clientv3.OpOption{}
+	var opts []clientv3.OpOption
 	if id != 0 {
 		opts = append(opts, clientv3.WithLease(clientv3.LeaseID(id)))
 	}

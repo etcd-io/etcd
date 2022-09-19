@@ -52,7 +52,7 @@ func TestSRVGetCluster(t *testing.T) {
 		{Target: "2.example.com.", Port: 2480},
 		{Target: "3.example.com.", Port: 2480},
 	}
-	srvNone := []*net.SRV{}
+	var srvNone []*net.SRV
 
 	tests := []struct {
 		service    string

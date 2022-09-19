@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -67,7 +67,7 @@ func getDelOp(args []string) (string, []clientv3.OpOption) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("`--prefix` and `--from-key` cannot be set at the same time, choose one"))
 	}
 
-	opts := []clientv3.OpOption{}
+	var opts []clientv3.OpOption
 	key := args[0]
 	if len(args) > 1 {
 		if delPrefix || delFromKey {

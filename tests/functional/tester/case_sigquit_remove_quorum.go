@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
@@ -82,7 +82,7 @@ func (c *fetchSnapshotCaseQuorum) Inject(clus *Cluster) error {
 	defer leaderc.Close()
 	var mresp *clientv3.MemberListResponse
 	mresp, err = leaderc.MemberList(context.Background())
-	mss := []string{}
+	var mss []string
 	if err == nil && mresp != nil {
 		mss = describeMembers(mresp)
 	}
@@ -148,7 +148,7 @@ func (c *fetchSnapshotCaseQuorum) Recover(clus *Cluster) error {
 	clus.Members[oldlead].EtcdOnSnapshotRestore = clus.Members[oldlead].Etcd
 	clus.Members[oldlead].EtcdOnSnapshotRestore.InitialClusterState = "existing"
 	name := clus.Members[oldlead].Etcd.Name
-	initClus := []string{}
+	var initClus []string
 	for _, u := range clus.Members[oldlead].Etcd.AdvertisePeerURLs {
 		initClus = append(initClus, fmt.Sprintf("%s=%s", name, u))
 	}

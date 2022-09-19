@@ -120,7 +120,7 @@ func TestAuthority(t *testing.T) {
 
 func templateEndpoints(t *testing.T, pattern string, clus *e2e.EtcdProcessCluster) []string {
 	t.Helper()
-	endpoints := []string{}
+	var endpoints []string
 	for i := 0; i < clus.Cfg.ClusterSize; i++ {
 		ent := pattern
 		if strings.Contains(ent, "%d") {
@@ -135,7 +135,7 @@ func templateEndpoints(t *testing.T, pattern string, clus *e2e.EtcdProcessCluste
 }
 
 func assertAuthority(t *testing.T, expectAurhority string, clus *e2e.EtcdProcessCluster) {
-	logs := []e2e.LogsExpect{}
+	var logs []e2e.LogsExpect
 	for _, proc := range clus.Procs {
 		logs = append(logs, proc.Logs())
 	}

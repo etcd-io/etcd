@@ -748,7 +748,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	ents := []raftpb.Entry{}
+	var ents []raftpb.Entry
 	for i := 1; i <= 4; i++ {
 		ent := raftpb.Entry{
 			Term:  1,

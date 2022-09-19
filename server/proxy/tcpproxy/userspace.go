@@ -96,7 +96,7 @@ func (tp *TCPProxy) Run() error {
 		tp.remotes = append(tp.remotes, &remote{srv: srv, addr: addr})
 	}
 
-	eps := []string{}
+	var eps []string
 	for _, ep := range tp.Endpoints {
 		eps = append(eps, fmt.Sprintf("%s:%d", ep.Target, ep.Port))
 	}

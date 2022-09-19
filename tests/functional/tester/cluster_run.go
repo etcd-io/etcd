@@ -258,7 +258,7 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 		t.Fatalf("wait full health error: %v", err)
 	}
 
-	checkerFailExceptions := []rpcpb.Checker{}
+	var checkerFailExceptions []rpcpb.Checker
 	switch fcase {
 	case rpcpb.Case_SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH:
 		// TODO: restore from snapshot

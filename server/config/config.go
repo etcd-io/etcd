@@ -271,7 +271,7 @@ func (c *ServerConfig) advertiseMatchesCluster() error {
 		initMap[url.String()] = struct{}{}
 	}
 
-	missing := []string{}
+	var missing []string
 	for url := range initMap {
 		if _, ok := apMap[url]; !ok {
 			missing = append(missing, url)

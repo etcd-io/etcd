@@ -70,7 +70,7 @@ func (d *dispatcherPool) flush() {
 
 	// sort by sockets; preserve the packet ordering within a socket
 	pktmap := make(map[io.Writer][]dispatchPacket)
-	outs := []io.Writer{}
+	var outs []io.Writer
 	for _, pkt := range pkts {
 		opkts, ok := pktmap[pkt.out]
 		if !ok {
@@ -103,7 +103,7 @@ func (d *dispatcherPool) Copy(w io.Writer, f fetchFunc) error {
 			return err
 		}
 
-		pkts := []dispatchPacket{}
+		var pkts []dispatchPacket
 		for len(b) > 0 {
 			pkt := b
 			if len(b) > dispatchPacketBytes {

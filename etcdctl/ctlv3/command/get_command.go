@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -107,7 +107,7 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("`--keys-only` and `--count-only` cannot be set at the same time, choose one"))
 	}
 
-	opts := []clientv3.OpOption{}
+	var opts []clientv3.OpOption
 	switch getConsistency {
 	case "s":
 		opts = append(opts, clientv3.WithSerializable())

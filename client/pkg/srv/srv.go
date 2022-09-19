@@ -45,7 +45,7 @@ func GetCluster(serviceScheme, service, name, dns string, apurls types.URLs) ([]
 		tcp2ap[tcpAddr.String()] = url
 	}
 
-	stringParts := []string{}
+	var stringParts []string
 	updateNodeMap := func(service, scheme string) error {
 		_, addrs, err := lookupSRV(service, "tcp", dns)
 		if err != nil {

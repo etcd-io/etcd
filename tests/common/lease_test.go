@@ -106,7 +106,7 @@ func TestLeaseGrantAndList(t *testing.T) {
 				cc := clus.Client()
 				t.Logf("Created cluster and client")
 				testutils.ExecuteUntil(ctx, t, func() {
-					createdLeases := []clientv3.LeaseID{}
+					var createdLeases []clientv3.LeaseID
 					for i := 0; i < nc.leaseCount; i++ {
 						leaseResp, err := cc.Grant(ctx, 10)
 						t.Logf("Grant returned: resp:%s err:%v", leaseResp.String(), err)
@@ -117,7 +117,7 @@ func TestLeaseGrantAndList(t *testing.T) {
 					// Because we're not guarunteed to talk to the same member, wait for
 					// listing to eventually return true, either by the result propagaing
 					// or by hitting an up to date member.
-					leases := []clientv3.LeaseStatus{}
+					var leases []clientv3.LeaseStatus
 					require.Eventually(t, func() bool {
 						resp, err := cc.Leases(ctx)
 						if err != nil {

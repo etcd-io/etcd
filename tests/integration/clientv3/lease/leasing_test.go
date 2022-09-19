@@ -357,7 +357,7 @@ func TestLeasingGetWithOpts(t *testing.T) {
 		}
 	}
 
-	getOpts := []clientv3.OpOption{}
+	var getOpts []clientv3.OpOption
 	for i := 0; i < len(opts); i++ {
 		getOpts = append(getOpts, opts[rand.Intn(len(opts))])
 	}
@@ -963,7 +963,7 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 		clientv3.WithPrefix())
 	wresp := <-w
 	c := 0
-	evs := []clientv3.Event{}
+	var evs []clientv3.Event
 	for _, ev := range wresp.Events {
 		evs = append(evs, *ev)
 		if ev.Kv.ModRevision == tresp.Header.Revision {
@@ -1021,7 +1021,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	// random list of comparisons, all true
 	cmps, useThen := randCmps("k-", dat)
 	// random list of puts/gets; unique keys
-	ops := []clientv3.Op{}
+	var ops []clientv3.Op
 	usedIdx := make(map[int]struct{})
 	for i := 0; i < keyCount; i++ {
 		idx := rand.Intn(keyCount)

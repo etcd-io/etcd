@@ -124,7 +124,7 @@ func TestNodeStepUnblock(t *testing.T) {
 
 // TestNodePropose ensures that node.Propose sends the given proposal to the underlying raft.
 func TestNodePropose(t *testing.T) {
-	msgs := []raftpb.Message{}
+	var msgs []raftpb.Message
 	appendStep := func(r *raft, m raftpb.Message) error {
 		msgs = append(msgs, m)
 		return nil
@@ -166,7 +166,7 @@ func TestNodePropose(t *testing.T) {
 // TestNodeReadIndex ensures that node.ReadIndex sends the MsgReadIndex message to the underlying raft.
 // It also ensures that ReadState can be read out through ready chan.
 func TestNodeReadIndex(t *testing.T) {
-	msgs := []raftpb.Message{}
+	var msgs []raftpb.Message
 	appendStep := func(r *raft, m raftpb.Message) error {
 		msgs = append(msgs, m)
 		return nil
@@ -306,7 +306,7 @@ func TestNodeReadIndexToOldLeader(t *testing.T) {
 // TestNodeProposeConfig ensures that node.ProposeConfChange sends the given configuration proposal
 // to the underlying raft.
 func TestNodeProposeConfig(t *testing.T) {
-	msgs := []raftpb.Message{}
+	var msgs []raftpb.Message
 	appendStep := func(r *raft, m raftpb.Message) error {
 		msgs = append(msgs, m)
 		return nil
@@ -456,7 +456,7 @@ func TestBlockProposal(t *testing.T) {
 }
 
 func TestNodeProposeWaitDropped(t *testing.T) {
-	msgs := []raftpb.Message{}
+	var msgs []raftpb.Message
 	droppingMsg := []byte("test_dropping")
 	dropStep := func(r *raft, m raftpb.Message) error {
 		if m.Type == raftpb.MsgProp && strings.Contains(m.String(), string(droppingMsg)) {

@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -40,7 +40,7 @@ func TestElectionWait(t *testing.T) {
 	}()
 
 	electedc := make(chan string)
-	nextc := []chan struct{}{}
+	var nextc []chan struct{}
 
 	// wait for all elections
 	donec := make(chan struct{})

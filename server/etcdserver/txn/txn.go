@@ -575,7 +575,7 @@ func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 	rev := int64(0)
 	switch c.Target {
 	case pb.Compare_VALUE:
-		v := []byte{}
+		var v []byte
 		if tv, _ := c.TargetUnion.(*pb.Compare_Value); tv != nil {
 			v = tv.Value
 		}

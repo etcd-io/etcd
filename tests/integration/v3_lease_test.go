@@ -458,7 +458,7 @@ func TestV3LeaseLeases(t *testing.T) {
 	defer cancel0()
 
 	// create leases
-	ids := []int64{}
+	var ids []int64
 	for i := 0; i < 5; i++ {
 		lresp, err := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(
 			ctx0,

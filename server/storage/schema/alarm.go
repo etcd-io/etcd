@@ -79,7 +79,7 @@ func (s *alarmBackend) GetAllAlarms() ([]*etcdserverpb.AlarmMember, error) {
 }
 
 func (s *alarmBackend) unsafeGetAllAlarms(tx backend.ReadTx) ([]*etcdserverpb.AlarmMember, error) {
-	ms := []*etcdserverpb.AlarmMember{}
+	var ms []*etcdserverpb.AlarmMember
 	err := tx.UnsafeForEach(Alarm, func(k, v []byte) error {
 		var m etcdserverpb.AlarmMember
 		if err := m.Unmarshal(k); err != nil {

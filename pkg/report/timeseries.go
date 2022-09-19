@@ -124,7 +124,7 @@ func (t TimeSeries) String() string {
 	if err := wr.Write([]string{"UNIX-SECOND", "MIN-LATENCY-MS", "AVG-LATENCY-MS", "MAX-LATENCY-MS", "AVG-THROUGHPUT"}); err != nil {
 		log.Fatal(err)
 	}
-	rows := [][]string{}
+	var rows [][]string
 	for i := range t {
 		row := []string{
 			fmt.Sprintf("%d", t[i].Timestamp),

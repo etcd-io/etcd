@@ -1009,7 +1009,7 @@ func (i *fakeIndex) KeyIndex(ki *keyIndex) *keyIndex {
 }
 
 func createBytesSlice(bytesN, sliceN int) [][]byte {
-	rs := [][]byte{}
+	var rs [][]byte
 	for len(rs) != sliceN {
 		v := make([]byte, bytesN)
 		if _, err := rand.Read(v); err != nil {

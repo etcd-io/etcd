@@ -28,7 +28,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 
@@ -1111,7 +1111,7 @@ func TestV3DeleteRange(t *testing.T) {
 					dresp.Header.Revision, rresp.Header.Revision)
 			}
 
-			keys := [][]byte{}
+			var keys [][]byte
 			for j := range rresp.Kvs {
 				keys = append(keys, rresp.Kvs[j].Key)
 			}

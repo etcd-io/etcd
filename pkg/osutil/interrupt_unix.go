@@ -36,7 +36,7 @@ var (
 	interruptRegisterMu, interruptExitMu sync.Mutex
 	// interruptHandlers holds all registered InterruptHandlers in order
 	// they will be executed.
-	interruptHandlers = []InterruptHandler{}
+	interruptHandlers []InterruptHandler
 )
 
 // RegisterInterruptHandler registers a new InterruptHandler. Handlers registered

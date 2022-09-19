@@ -222,7 +222,8 @@ func checkCertSAN(ctx context.Context, cert *x509.Certificate, remoteAddr string
 
 func isHostInDNS(ctx context.Context, host string, dnsNames []string) (ok bool, err error) {
 	// reverse lookup
-	wildcards, names := []string{}, []string{}
+	var names []string
+	var wildcards []string
 	for _, dns := range dnsNames {
 		if strings.HasPrefix(dns, "*.") {
 			wildcards = append(wildcards, dns[1:])

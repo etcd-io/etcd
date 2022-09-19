@@ -23,7 +23,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/flags"
 
@@ -101,7 +101,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	ka := keepAliveTimeFromCmd(cmd)
 	kat := keepAliveTimeoutFromCmd(cmd)
 	auth := authCfgFromCmd(cmd)
-	cfgs := []*clientv3.Config{}
+	var cfgs []*clientv3.Config
 	for _, ep := range endpointsFromCluster(cmd) {
 		cfg, err := clientv3.NewClientConfig(&clientv3.ConfigSpec{
 			Endpoints:        []string{ep},
@@ -172,7 +172,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	close(hch)
 
 	errs := false
-	healthList := []epHealth{}
+	var healthList []epHealth
 	for h := range hch {
 		healthList = append(healthList, h)
 		if h.Error != "" {
@@ -193,7 +193,7 @@ type epStatus struct {
 func epStatusCommandFunc(cmd *cobra.Command, args []string) {
 	c := mustClientFromCmd(cmd)
 
-	statusList := []epStatus{}
+	var statusList []epStatus
 	var err error
 	for _, ep := range endpointsFromCluster(cmd) {
 		ctx, cancel := commandCtx(cmd)
@@ -222,7 +222,7 @@ type epHashKV struct {
 func epHashKVCommandFunc(cmd *cobra.Command, args []string) {
 	c := mustClientFromCmd(cmd)
 
-	hashList := []epHashKV{}
+	var hashList []epHashKV
 	var err error
 	for _, ep := range endpointsFromCluster(cmd) {
 		ctx, cancel := commandCtx(cmd)
@@ -288,7 +288,7 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
-	ret := []string{}
+	var ret []string
 	for _, m := range membs.Members {
 		ret = append(ret, m.ClientURLs...)
 	}
