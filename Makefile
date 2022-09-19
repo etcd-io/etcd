@@ -29,7 +29,7 @@ test-e2e-release: build
 
 # Static analysis
 
-verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword verify-govet verify-revive verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck verify-shellws verify-proto-annotations
+verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck verify-shellws verify-proto-annotations
 update: update-bom update-lint update-dep update-fix
 
 .PHONY: verify-gofmt
@@ -75,10 +75,6 @@ verify-goword:
 .PHONY: verify-govet
 verify-govet:
 	PASSES="govet" ./scripts/test.sh
-
-.PHONY: verify-revive
-verify-revive:
-	PASSES="revive" ./scripts/test.sh
 
 .PHONY: verify-license-header
 verify-license-header:
