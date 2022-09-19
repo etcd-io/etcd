@@ -647,7 +647,7 @@ func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 		return false
 	}
 	// use latest "last" index after truncate/append
-	li = r.raftLog.append(es...)
+	r.raftLog.append(es...)
 	return true
 }
 

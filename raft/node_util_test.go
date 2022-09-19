@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2022 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,5 +105,6 @@ func newNodeTestHarness(ctx context.Context, t *testing.T, cfg *Config, peers ..
 		defer n.Stop()
 		n.run()
 	}()
+	t.Cleanup(n.Stop)
 	return ctx, cancel, &nodeTestHarness{node: n, t: t}
 }
