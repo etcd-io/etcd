@@ -189,7 +189,7 @@
 		]
 	},
 	{
-		"project": "github.com/golang-jwt/jwt",
+		"project": "github.com/golang-jwt/jwt/v4",
 		"licenses": [
 			{
 				"type": "MIT License",

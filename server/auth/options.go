@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	jwt "github.com/golang-jwt/jwt"
+	jwt "github.com/golang-jwt/jwt/v4"
 )
 
 const (
