@@ -30,7 +30,7 @@ test-e2e-release: build
 # Static analysis
 
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck verify-shellws verify-proto-annotations
-update: update-bom update-lint update-dep update-fix
+update: update-bom update-lint update-fix
 
 .PHONY: verify-gofmt
 verify-gofmt:
@@ -47,10 +47,6 @@ update-bom:
 .PHONY: verify-dep
 verify-dep:
 	PASSES="dep" ./scripts/test.sh
-
-.PHONY: update-dep
-update-dep:
-	./scripts/update_dep.sh
 
 .PHONY: verify-lint
 verify-lint:
