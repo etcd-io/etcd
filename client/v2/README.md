@@ -18,11 +18,11 @@ go get go.etcd.io/etcd/v3/client
 package main
 
 import (
-	"log"
-	"time"
-	"context"
-
-	"go.etcd.io/etcd/v3/client"
+    "context"
+    "log"
+    "time"
+    
+    "go.etcd.io/etcd/v3/client"
 )
 
 func main() {

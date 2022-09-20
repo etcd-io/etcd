@@ -15,9 +15,10 @@
 package main
 
 import (
-	"go.etcd.io/etcd/raft/v3/raftpb"
 	"reflect"
 	"testing"
+
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 func TestProcessMessages(t *testing.T) {
