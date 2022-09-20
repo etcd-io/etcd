@@ -16,11 +16,11 @@ package clientv3
 
 import (
 	"context"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 
 	"google.golang.org/grpc"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
 
 type (

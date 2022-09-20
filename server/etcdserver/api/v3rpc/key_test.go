@@ -15,9 +15,10 @@
 package v3rpc
 
 import (
+	"testing"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"testing"
 )
 
 func TestCheckRangeRequest(t *testing.T) {

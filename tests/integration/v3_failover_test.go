@@ -18,14 +18,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
+
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
 func TestFailover(t *testing.T) {
