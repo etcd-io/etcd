@@ -30,7 +30,8 @@ test-e2e-release: build
 # Static analysis
 
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck verify-shellws verify-proto-annotations
-update: update-bom update-lint update-fix
+fix: fix-bom fix-lint
+	./scripts/fix.sh
 
 .PHONY: verify-gofmt
 verify-gofmt:
@@ -41,7 +42,7 @@ verify-bom:
 	PASSES="bom" ./scripts/test.sh
 
 .PHONY: update-bom
-update-bom:
+fix-bom:
 	./scripts/updatebom.sh
 
 .PHONY: verify-dep
@@ -53,12 +54,8 @@ verify-lint:
 	golangci-lint run
 
 .PHONY: update-lint
-update-lint:
+fix-lint:
 	golangci-lint run --fix
-
-.PHONY: update-fix
-update-fix:
-	./scripts/fix.sh
 
 .PHONY: verify-shellcheck
 verify-shellcheck:

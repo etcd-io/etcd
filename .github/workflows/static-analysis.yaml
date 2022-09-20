@@ -13,4 +13,4 @@ jobs:
         with:
           version: v1.49.0
       - run: make verify
-      - run: make update
+      - run: make fix

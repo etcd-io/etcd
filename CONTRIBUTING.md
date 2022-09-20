@@ -67,8 +67,8 @@ See the [style doc](https://github.com/golang/go/wiki/CodeReviewComments) for de
 Please ensure that your change passes static analysis (requires [golangci-lint](https://golangci-lint.run/usage/install/)):
 - `make verify` to verify if all checks pass.
 - `make verify-*` to verify a single check, for example `make verify-bom` to verify if bill-of-materials.json file is up-to-date.
-- `make update` to fix all checks.
-- `make update-*` to fix a single checks, for example `make update-bom` to update bill-of-materials.json.
+- `make fix` to fix all checks.
+- `make fix-*` to fix a single checks, for example `make fix-bom` to update bill-of-materials.json.
 
 Please ensure that your change passes tests.
 - `make test-unit` to run unit tests.
