@@ -130,7 +130,7 @@ func (m *httpMembersAPI) List(ctx context.Context) ([]Member, error) {
 		return nil, err
 	}
 
-	return []Member(mCollection), nil
+	return mCollection, nil
 }
 
 func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*Member, error) {

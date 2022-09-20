@@ -130,7 +130,7 @@ func (c *RaftCluster) Members() []*Member {
 		ms = append(ms, m.Clone())
 	}
 	sort.Sort(ms)
-	return []*Member(ms)
+	return ms
 }
 
 func (c *RaftCluster) Member(id types.ID) *Member {
@@ -149,7 +149,7 @@ func (c *RaftCluster) VotingMembers() []*Member {
 		}
 	}
 	sort.Sort(ms)
-	return []*Member(ms)
+	return ms
 }
 
 // MemberByName returns a Member with the given name if exists.

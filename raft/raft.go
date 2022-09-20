@@ -109,7 +109,7 @@ var stmap = [...]string{
 }
 
 func (st StateType) String() string {
-	return stmap[uint64(st)]
+	return stmap[st]
 }
 
 // Config contains the parameters to start a raft.
