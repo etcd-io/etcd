@@ -28,6 +28,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 // NO TLS
@@ -183,19 +184,22 @@ func submitConcurrentWatch(cx ctlCtx, number int, wgDone *sync.WaitGroup, closeC
 		return nil
 	}
 
-	wgSchedule.Add(number)
-	for i := 0; i < number; i++ {
-		go func(i int) {
-			defer wgDone.Done()
+	testutils.ExecuteWithTimeout(cx.t, cx.getTestTimeout(), func() {
+		wgSchedule.Add(number)
 
-			if err := createWatchConnection(); err != nil {
-				cx.t.Fatalf("testV3CurlMaxStream watch failed: %d, error: %v", i, err)
-			}
+		for i := 0; i < number; i++ {
+			go func(i int) {
+				defer wgDone.Done()
 
-		}(i)
-	}
-	// make sure all goroutines have already been scheduled.
-	wgSchedule.Wait()
+				if err := createWatchConnection(); err != nil {
+					cx.t.Fatalf("testV3CurlMaxStream watch failed: %d, error: %v", i, err)
+				}
+			}(i)
+		}
+
+		// make sure all goroutines have already been scheduled.
+		wgSchedule.Wait()
+	})
 }
 
 func submitRangeAfterConcurrentWatch(cx ctlCtx, expectedValue string) {
