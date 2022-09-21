@@ -19,28 +19,27 @@
 //
 // First, create a leasing KV from a clientv3.Client 'cli':
 //
-//     lkv, err := leasing.NewKV(cli, "leasing-prefix")
-//     if err != nil {
-//         // handle error
-//     }
+//	lkv, err := leasing.NewKV(cli, "leasing-prefix")
+//	if err != nil {
+//	    // handle error
+//	}
 //
 // A range request for a key "abc" tries to acquire a leasing key so it can cache the range's
 // key locally. On the server, the leasing key is stored to "leasing-prefix/abc":
 //
-//     resp, err := lkv.Get(context.TODO(), "abc")
+//	resp, err := lkv.Get(context.TODO(), "abc")
 //
 // Future linearized read requests using 'lkv' will be served locally for the lease's lifetime:
 //
-//     resp, err = lkv.Get(context.TODO(), "abc")
+//	resp, err = lkv.Get(context.TODO(), "abc")
 //
 // If another leasing client writes to a leased key, then the owner relinquishes its exclusive
 // access, permitting the writer to modify the key:
 //
-//     lkv2, err := leasing.NewKV(cli, "leasing-prefix")
-//     if err != nil {
-//         // handle error
-//     }
-//     lkv2.Put(context.TODO(), "abc", "456")
-//     resp, err = lkv.Get("abc")
-//
+//	lkv2, err := leasing.NewKV(cli, "leasing-prefix")
+//	if err != nil {
+//	    // handle error
+//	}
+//	lkv2.Put(context.TODO(), "abc", "456")
+//	resp, err = lkv.Get("abc")
 package leasing

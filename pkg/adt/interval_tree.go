@@ -317,48 +317,47 @@ func (ivt *intervalTree) Delete(ivl Interval) bool {
 
 // "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.4, p326
 //
-//	 0. RB-DELETE-FIXUP(T, z)
-//	 1.
-//	 2. while x ≠ T.root and x.color == BLACK
-//	 3. 	if x == x.p.left
-//	 4. 		w = x.p.right
-//	 5. 		if w.color == RED
-//	 6. 			w.color = BLACK
-//	 7. 			x.p.color = RED
-//	 8. 			LEFT-ROTATE(T, x, p)
-//	 9. 		if w.left.color == BLACK and w.right.color == BLACK
-//	10. 			w.color = RED
-//	11. 			x = x.p
-//	12. 		else if w.right.color == BLACK
-//	13. 				w.left.color = BLACK
-//	14. 				w.color = RED
-//	15. 				RIGHT-ROTATE(T, w)
-//	16. 				w = w.p.right
-//	17. 			w.color = x.p.color
-//	18. 			x.p.color = BLACK
-//	19. 			LEFT-ROTATE(T, w.p)
-//	20. 			x = T.root
-//	21. 	else
-//	22. 		w = x.p.left
-//	23. 		if w.color == RED
-//	24. 			w.color = BLACK
-//	25. 			x.p.color = RED
-//	26. 			RIGHT-ROTATE(T, x, p)
-//	27. 		if w.right.color == BLACK and w.left.color == BLACK
-//	28. 			w.color = RED
-//	29. 			x = x.p
-//	30. 		else if w.left.color == BLACK
-//	31. 				w.right.color = BLACK
-//	32. 				w.color = RED
-//	33. 				LEFT-ROTATE(T, w)
-//	34. 				w = w.p.left
-//	35. 			w.color = x.p.color
-//	36. 			x.p.color = BLACK
-//	37. 			RIGHT-ROTATE(T, w.p)
-//	38. 			x = T.root
-//	39.
-//	40. x.color = BLACK
-//
+//  0. RB-DELETE-FIXUP(T, z)
+//     1.
+//  2. while x ≠ T.root and x.color == BLACK
+//  3. if x == x.p.left
+//  4. w = x.p.right
+//  5. if w.color == RED
+//  6. w.color = BLACK
+//  7. x.p.color = RED
+//  8. LEFT-ROTATE(T, x, p)
+//  9. if w.left.color == BLACK and w.right.color == BLACK
+//  10. w.color = RED
+//  11. x = x.p
+//  12. else if w.right.color == BLACK
+//  13. w.left.color = BLACK
+//  14. w.color = RED
+//  15. RIGHT-ROTATE(T, w)
+//  16. w = w.p.right
+//  17. w.color = x.p.color
+//  18. x.p.color = BLACK
+//  19. LEFT-ROTATE(T, w.p)
+//  20. x = T.root
+//  21. else
+//  22. w = x.p.left
+//  23. if w.color == RED
+//  24. w.color = BLACK
+//  25. x.p.color = RED
+//  26. RIGHT-ROTATE(T, x, p)
+//  27. if w.right.color == BLACK and w.left.color == BLACK
+//  28. w.color = RED
+//  29. x = x.p
+//  30. else if w.left.color == BLACK
+//  31. w.right.color = BLACK
+//  32. w.color = RED
+//  33. LEFT-ROTATE(T, w)
+//  34. w = w.p.left
+//  35. w.color = x.p.color
+//  36. x.p.color = BLACK
+//  37. RIGHT-ROTATE(T, w.p)
+//  38. x = T.root
+//     39.
+//  40. x.color = BLACK
 func (ivt *intervalTree) deleteFixup(x *intervalNode) {
 	for x != ivt.root && x.color(ivt.sentinel) == black {
 		if x == x.parent.left { // line 3-20
@@ -499,38 +498,37 @@ func (ivt *intervalTree) Insert(ivl Interval, val interface{}) {
 
 // "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.3, p316
 //
-//	 0. RB-INSERT-FIXUP(T, z)
-//	 1.
-//	 2. while z.p.color == RED
-//	 3. 	if z.p == z.p.p.left
-//	 4. 		y = z.p.p.right
-//	 5. 		if y.color == RED
-//	 6. 			z.p.color = BLACK
-//	 7. 			y.color = BLACK
-//	 8. 			z.p.p.color = RED
-//	 9. 			z = z.p.p
-//	10. 		else if z == z.p.right
-//	11. 				z = z.p
-//	12. 				LEFT-ROTATE(T, z)
-//	13. 			z.p.color = BLACK
-//	14. 			z.p.p.color = RED
-//	15. 			RIGHT-ROTATE(T, z.p.p)
-//	16. 	else
-//	17. 		y = z.p.p.left
-//	18. 		if y.color == RED
-//	19. 			z.p.color = BLACK
-//	20. 			y.color = BLACK
-//	21. 			z.p.p.color = RED
-//	22. 			z = z.p.p
-//	23. 		else if z == z.p.right
-//	24. 				z = z.p
-//	25. 				RIGHT-ROTATE(T, z)
-//	26. 			z.p.color = BLACK
-//	27. 			z.p.p.color = RED
-//	28. 			LEFT-ROTATE(T, z.p.p)
-//	29.
-//	30. T.root.color = BLACK
-//
+//  0. RB-INSERT-FIXUP(T, z)
+//     1.
+//  2. while z.p.color == RED
+//  3. if z.p == z.p.p.left
+//  4. y = z.p.p.right
+//  5. if y.color == RED
+//  6. z.p.color = BLACK
+//  7. y.color = BLACK
+//  8. z.p.p.color = RED
+//  9. z = z.p.p
+//  10. else if z == z.p.right
+//  11. z = z.p
+//  12. LEFT-ROTATE(T, z)
+//  13. z.p.color = BLACK
+//  14. z.p.p.color = RED
+//  15. RIGHT-ROTATE(T, z.p.p)
+//  16. else
+//  17. y = z.p.p.left
+//  18. if y.color == RED
+//  19. z.p.color = BLACK
+//  20. y.color = BLACK
+//  21. z.p.p.color = RED
+//  22. z = z.p.p
+//  23. else if z == z.p.right
+//  24. z = z.p
+//  25. RIGHT-ROTATE(T, z)
+//  26. z.p.color = BLACK
+//  27. z.p.p.color = RED
+//  28. LEFT-ROTATE(T, z.p.p)
+//     29.
+//  30. T.root.color = BLACK
 func (ivt *intervalTree) insertFixup(z *intervalNode) {
 	for z.parent.color(ivt.sentinel) == red {
 		if z.parent == z.parent.parent.left { // line 3-15
@@ -578,26 +576,25 @@ func (ivt *intervalTree) insertFixup(z *intervalNode) {
 //
 // "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.2, p313
 //
-//	 0. LEFT-ROTATE(T, x)
-//	 1.
-//	 2. y = x.right
-//	 3. x.right = y.left
-//	 4.
-//	 5. if y.left ≠ T.nil
-//	 6. 	y.left.p = x
-//	 7.
-//	 8. y.p = x.p
-//	 9.
-//	10. if x.p == T.nil
-//	11. 	T.root = y
-//	12. else if x == x.p.left
-//	13. 	x.p.left = y
-//	14. else
-//	15. 	x.p.right = y
-//	16.
-//	17. y.left = x
-//	18. x.p = y
-//
+//  0. LEFT-ROTATE(T, x)
+//     1.
+//  2. y = x.right
+//  3. x.right = y.left
+//     4.
+//  5. if y.left ≠ T.nil
+//  6. y.left.p = x
+//     7.
+//  8. y.p = x.p
+//     9.
+//  10. if x.p == T.nil
+//  11. T.root = y
+//  12. else if x == x.p.left
+//  13. x.p.left = y
+//  14. else
+//  15. x.p.right = y
+//     16.
+//  17. y.left = x
+//  18. x.p = y
 func (ivt *intervalTree) rotateLeft(x *intervalNode) {
 	// rotateLeft x must have right child
 	if x.right == ivt.sentinel {
@@ -624,26 +621,25 @@ func (ivt *intervalTree) rotateLeft(x *intervalNode) {
 
 // rotateRight moves x so it is right of its left child
 //
-//	 0. RIGHT-ROTATE(T, x)
-//	 1.
-//	 2. y = x.left
-//	 3. x.left = y.right
-//	 4.
-//	 5. if y.right ≠ T.nil
-//	 6. 	y.right.p = x
-//	 7.
-//	 8. y.p = x.p
-//	 9.
-//	10. if x.p == T.nil
-//	11. 	T.root = y
-//	12. else if x == x.p.right
-//	13. 	x.p.right = y
-//	14. else
-//	15. 	x.p.left = y
-//	16.
-//	17. y.right = x
-//	18. x.p = y
-//
+//  0. RIGHT-ROTATE(T, x)
+//     1.
+//  2. y = x.left
+//  3. x.left = y.right
+//     4.
+//  5. if y.right ≠ T.nil
+//  6. y.right.p = x
+//     7.
+//  8. y.p = x.p
+//     9.
+//  10. if x.p == T.nil
+//  11. T.root = y
+//  12. else if x == x.p.right
+//  13. x.p.right = y
+//  14. else
+//  15. x.p.left = y
+//     16.
+//  17. y.right = x
+//  18. x.p = y
 func (ivt *intervalTree) rotateRight(x *intervalNode) {
 	// rotateRight x must have left child
 	if x.left == ivt.sentinel {
