@@ -237,7 +237,7 @@ func TestLogIfLong(t *testing.T) {
 	}{
 		{
 			name:      "When the duration is smaller than threshold",
-			threshold: time.Duration(200 * time.Millisecond),
+			threshold: 200 * time.Millisecond,
 			trace: &Trace{
 				operation: "Test",
 				startTime: time.Now().Add(-100 * time.Millisecond),
@@ -250,7 +250,7 @@ func TestLogIfLong(t *testing.T) {
 		},
 		{
 			name:      "When the duration is longer than threshold",
-			threshold: time.Duration(50 * time.Millisecond),
+			threshold: 50 * time.Millisecond,
 			trace: &Trace{
 				operation: "Test",
 				startTime: time.Now().Add(-100 * time.Millisecond),
@@ -265,7 +265,7 @@ func TestLogIfLong(t *testing.T) {
 		},
 		{
 			name:      "When not all steps are longer than step threshold",
-			threshold: time.Duration(50 * time.Millisecond),
+			threshold: 50 * time.Millisecond,
 			trace: &Trace{
 				operation: "Test",
 				startTime: time.Now().Add(-100 * time.Millisecond),

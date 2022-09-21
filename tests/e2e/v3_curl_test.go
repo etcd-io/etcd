@@ -203,7 +203,7 @@ func testV3CurlAuth(cx ctlCtx) {
 	}
 
 	// create root role
-	rolereq, err := json.Marshal(&pb.AuthRoleAddRequest{Name: string("root")})
+	rolereq, err := json.Marshal(&pb.AuthRoleAddRequest{Name: "root"})
 	testutil.AssertNil(cx.t, err)
 
 	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/auth/role/add"), Value: string(rolereq), Expected: "revision"}); err != nil {
@@ -221,7 +221,7 @@ func testV3CurlAuth(cx ctlCtx) {
 	}
 
 	// enable auth
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/auth/enable"), Value: string("{}"), Expected: "revision"}); err != nil {
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/auth/enable"), Value: "{}", Expected: "revision"}); err != nil {
 		cx.t.Fatalf("failed testV3CurlAuth enable auth with curl using prefix (%s) (%v)", p, err)
 	}
 

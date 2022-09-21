@@ -32,7 +32,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/config"
@@ -572,7 +572,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-peer-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.LPUrls = []url.URL(u)
+		cfg.LPUrls = u
 	}
 
 	if cfg.LCUrlsJSON != "" {
@@ -581,7 +581,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-client-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.LCUrls = []url.URL(u)
+		cfg.LCUrls = u
 	}
 
 	if cfg.APUrlsJSON != "" {
@@ -590,7 +590,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up initial-advertise-peer-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.APUrls = []url.URL(u)
+		cfg.APUrls = u
 	}
 
 	if cfg.ACUrlsJSON != "" {
@@ -599,7 +599,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up advertise-peer-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.ACUrls = []url.URL(u)
+		cfg.ACUrls = u
 	}
 
 	if cfg.ListenMetricsUrlsJSON != "" {
@@ -608,7 +608,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-metrics-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.ListenMetricsUrls = []url.URL(u)
+		cfg.ListenMetricsUrls = u
 	}
 
 	if cfg.CORSJSON != "" {

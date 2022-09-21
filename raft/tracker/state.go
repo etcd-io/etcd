@@ -39,4 +39,4 @@ var prstmap = [...]string{
 	"StateSnapshot",
 }
 
-func (st StateType) String() string { return prstmap[uint64(st)] }
+func (st StateType) String() string { return prstmap[st] }

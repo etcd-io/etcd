@@ -46,12 +46,12 @@ type fakeCluster struct {
 func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
 func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
 func (c *fakeCluster) Members() []*membership.Member {
-	var ms membership.MembersByID
+	ms := make(membership.MembersByID, 0, len(c.members))
 	for _, m := range c.members {
 		ms = append(ms, m)
 	}
 	sort.Sort(ms)
-	return []*membership.Member(ms)
+	return ms
 }
 func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[uint64(id)] }
 func (c *fakeCluster) Version() *semver.Version              { return nil }

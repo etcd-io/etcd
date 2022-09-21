@@ -146,5 +146,5 @@ func GetEffectiveNodeIDsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, en
 		sids = append(sids, id)
 	}
 	sort.Sort(sids)
-	return []uint64(sids)
+	return sids
 }

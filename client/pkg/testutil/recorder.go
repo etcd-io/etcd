@@ -87,7 +87,7 @@ type recorderStream struct {
 }
 
 func NewRecorderStream() Recorder {
-	return NewRecorderStreamWithWaitTimout(time.Duration(5 * time.Second))
+	return NewRecorderStreamWithWaitTimout(5 * time.Second)
 }
 
 func NewRecorderStreamWithWaitTimout(waitTimeout time.Duration) Recorder {
