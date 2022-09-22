@@ -19,7 +19,8 @@ import (
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3"
 )
 
-/**
+/*
+*
 mainWithError is fully analogous to main, but instead of signaling errors
 by os.Exit, it exposes the error explicitly, such that test-logic can intercept
 control to e.g. dump coverage data (even for test-for-failure scenarios).

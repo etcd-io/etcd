@@ -13,10 +13,10 @@
 // limitations under the License.
 
 // Package naming provides:
-//	- subpackage endpoints: an abstraction layer to store and read endpoints
-//		information from etcd.
-//	- subpackage resolver: an etcd-backed gRPC resolver for discovering gRPC
-//		services based on the endpoints configuration
+//   - subpackage endpoints: an abstraction layer to store and read endpoints
+//     information from etcd.
+//   - subpackage resolver: an etcd-backed gRPC resolver for discovering gRPC
+//     services based on the endpoints configuration
 //
 // To use, first import the packages:
 //
@@ -55,5 +55,4 @@
 //		em := endpoints.NewManager(c, service)
 //		return em.AddEndpoint(c.Ctx(), service+"/"+addr, endpoints.Endpoint{Addr:addr}, clientv3.WithLease(lid));
 //	}
-//
 package naming

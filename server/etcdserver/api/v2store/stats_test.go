@@ -98,7 +98,7 @@ func TestStoreStatsDeleteFail(t *testing.T) {
 	assert.Equal(t, uint64(1), s.Stats.DeleteFail, "")
 }
 
-//Ensure that the number of expirations is recorded in the stats.
+// Ensure that the number of expirations is recorded in the stats.
 func TestStoreStatsExpireCount(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
