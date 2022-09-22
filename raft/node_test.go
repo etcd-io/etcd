@@ -35,6 +35,12 @@ import (
 func readyWithTimeout(n Node) Ready {
 	select {
 	case rd := <-n.Ready():
+		if nn, ok := n.(*nodeTestHarness); ok {
+			n = nn.node
+		}
+		if nn, ok := n.(*node); ok {
+			nn.rn.raft.logger.Infof("emitted ready: %s", DescribeReady(rd, nil))
+		}
 		return rd
 	case <-time.After(time.Second):
 		panic("timed out waiting for ready")
@@ -126,6 +132,10 @@ func TestNodeStepUnblock(t *testing.T) {
 func TestNodePropose(t *testing.T) {
 	var msgs []raftpb.Message
 	appendStep := func(r *raft, m raftpb.Message) error {
+		t.Log(DescribeMessage(m, nil))
+		if m.Type == raftpb.MsgAppResp {
+			return nil // injected by (*raft).advance
+		}
 		msgs = append(msgs, m)
 		return nil
 	}
@@ -160,55 +170,6 @@ func TestNodePropose(t *testing.T) {
 	}
 	if !bytes.Equal(msgs[0].Entries[0].Data, []byte("somedata")) {
 		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, []byte("somedata"))
-	}
-}
-
-// TestNodeReadIndex ensures that node.ReadIndex sends the MsgReadIndex message to the underlying raft.
-// It also ensures that ReadState can be read out through ready chan.
-func TestNodeReadIndex(t *testing.T) {
-	var msgs []raftpb.Message
-	appendStep := func(r *raft, m raftpb.Message) error {
-		msgs = append(msgs, m)
-		return nil
-	}
-	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
-
-	s := newTestMemoryStorage(withPeers(1))
-	rn := newTestRawNode(1, 10, 1, s)
-	n := newNode(rn)
-	r := rn.raft
-	r.readStates = wrs
-
-	go n.run()
-	n.Campaign(context.TODO())
-	for {
-		rd := <-n.Ready()
-		if !reflect.DeepEqual(rd.ReadStates, wrs) {
-			t.Errorf("ReadStates = %v, want %v", rd.ReadStates, wrs)
-		}
-
-		s.Append(rd.Entries)
-
-		if rd.SoftState.Lead == r.id {
-			n.Advance()
-			break
-		}
-		n.Advance()
-	}
-
-	r.step = appendStep
-	wrequestCtx := []byte("somedata2")
-	n.ReadIndex(context.TODO(), wrequestCtx)
-	n.Stop()
-
-	if len(msgs) != 1 {
-		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
-	}
-	if msgs[0].Type != raftpb.MsgReadIndex {
-		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgReadIndex)
-	}
-	if !bytes.Equal(msgs[0].Entries[0].Data, wrequestCtx) {
-		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, wrequestCtx)
 	}
 }
 
@@ -308,6 +269,9 @@ func TestNodeReadIndexToOldLeader(t *testing.T) {
 func TestNodeProposeConfig(t *testing.T) {
 	var msgs []raftpb.Message
 	appendStep := func(r *raft, m raftpb.Message) error {
+		if m.Type == raftpb.MsgAppResp {
+			return nil // injected by (*raft).advance
+		}
 		msgs = append(msgs, m)
 		return nil
 	}
@@ -352,30 +316,34 @@ func TestNodeProposeConfig(t *testing.T) {
 // not affect the later propose to add new node.
 func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	s := newTestMemoryStorage(withPeers(1))
-	rn := newTestRawNode(1, 10, 1, s)
-	n := newNode(rn)
-	go n.run()
-	n.Campaign(context.TODO())
-	rdyEntries := make([]raftpb.Entry, 0)
+	cfg := newTestConfig(1, 10, 1, s)
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, cfg)
+	defer cancel()
+	n.Campaign(ctx)
+	allCommittedEntries := make([]raftpb.Entry, 0)
 	ticker := time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
-	done := make(chan struct{})
-	stop := make(chan struct{})
+	goroutineStopped := make(chan struct{})
 	applyConfChan := make(chan struct{})
 
+	rd := readyWithTimeout(n)
+	s.Append(rd.Entries)
+	n.Advance()
+
 	go func() {
-		defer close(done)
+		defer close(goroutineStopped)
 		for {
 			select {
-			case <-stop:
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
 				n.Tick()
 			case rd := <-n.Ready():
+				t.Log(DescribeReady(rd, nil))
 				s.Append(rd.Entries)
 				applied := false
-				for _, e := range rd.Entries {
-					rdyEntries = append(rdyEntries, e)
+				for _, e := range rd.CommittedEntries {
+					allCommittedEntries = append(allCommittedEntries, e)
 					switch e.Type {
 					case raftpb.EntryNormal:
 					case raftpb.EntryConfChange:
@@ -395,32 +363,31 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 
 	cc1 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
 	ccdata1, _ := cc1.Marshal()
-	n.ProposeConfChange(context.TODO(), cc1)
+	n.ProposeConfChange(ctx, cc1)
 	<-applyConfChan
 
 	// try add the same node again
-	n.ProposeConfChange(context.TODO(), cc1)
+	n.ProposeConfChange(ctx, cc1)
 	<-applyConfChan
 
 	// the new node join should be ok
 	cc2 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
 	ccdata2, _ := cc2.Marshal()
-	n.ProposeConfChange(context.TODO(), cc2)
+	n.ProposeConfChange(ctx, cc2)
 	<-applyConfChan
 
-	close(stop)
-	<-done
+	cancel()
+	<-goroutineStopped
 
-	if len(rdyEntries) != 4 {
-		t.Errorf("len(entry) = %d, want %d, %v\n", len(rdyEntries), 4, rdyEntries)
+	if len(allCommittedEntries) != 4 {
+		t.Errorf("len(entry) = %d, want %d, %v\n", len(allCommittedEntries), 4, allCommittedEntries)
 	}
-	if !bytes.Equal(rdyEntries[1].Data, ccdata1) {
-		t.Errorf("data = %v, want %v", rdyEntries[1].Data, ccdata1)
+	if !bytes.Equal(allCommittedEntries[1].Data, ccdata1) {
+		t.Errorf("data = %v, want %v", allCommittedEntries[1].Data, ccdata1)
 	}
-	if !bytes.Equal(rdyEntries[3].Data, ccdata2) {
-		t.Errorf("data = %v, want %v", rdyEntries[3].Data, ccdata2)
+	if !bytes.Equal(allCommittedEntries[3].Data, ccdata2) {
+		t.Errorf("data = %v, want %v", allCommittedEntries[3].Data, ccdata2)
 	}
-	n.Stop()
 }
 
 // TestBlockProposal ensures that node will block proposal when it does not
@@ -463,6 +430,10 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 			t.Logf("dropping message: %v", m.String())
 			return ErrProposalDropped
 		}
+		if m.Type == raftpb.MsgAppResp {
+			// This is produced by raft internally, see (*raft).advance.
+			return nil
+		}
 		msgs = append(msgs, m)
 		return nil
 	}
@@ -495,7 +466,7 @@ func TestNodeProposeWaitDropped(t *testing.T) {
 
 	n.Stop()
 	if len(msgs) != 0 {
-		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 0)
 	}
 }
 
@@ -580,9 +551,6 @@ func TestReadyContainUpdates(t *testing.T) {
 // start with correct configuration change entries, and can accept and commit
 // proposals.
 func TestNodeStart(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
 	ccdata, err := cc.Marshal()
 	if err != nil {
@@ -600,10 +568,16 @@ func TestNodeStart(t *testing.T) {
 			MustSync: true,
 		},
 		{
-			HardState:        raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
+			HardState:        raftpb.HardState{Term: 2, Commit: 2, Vote: 1},
 			Entries:          []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
-			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 2, Data: nil}},
 			MustSync:         true,
+		},
+		{
+			HardState:        raftpb.HardState{Term: 2, Commit: 3, Vote: 1},
+			Entries:          nil,
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			MustSync:         false,
 		},
 	}
 	storage := NewMemoryStorage()
@@ -616,27 +590,44 @@ func TestNodeStart(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := StartNode(c, []Peer{{ID: 1}})
-	defer n.Stop()
-	g := <-n.Ready()
-	if !reflect.DeepEqual(g, wants[0]) {
-		t.Fatalf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
-	} else {
-		storage.Append(g.Entries)
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, c, Peer{ID: 1})
+	defer cancel()
+
+	{
+		rd := <-n.Ready()
+		if !reflect.DeepEqual(rd, wants[0]) {
+			t.Fatalf("#1: rd = %+v,\n             w   %+v", rd, wants[0])
+		}
+		storage.Append(rd.Entries)
 		n.Advance()
 	}
 
 	if err := n.Campaign(ctx); err != nil {
 		t.Fatal(err)
 	}
-	rd := <-n.Ready()
-	storage.Append(rd.Entries)
-	n.Advance()
+
+	{
+		rd := <-n.Ready()
+		storage.Append(rd.Entries)
+		n.Advance()
+	}
 
 	n.Propose(ctx, []byte("foo"))
-	if g2 := <-n.Ready(); !reflect.DeepEqual(g2, wants[1]) {
-		t.Errorf("#%d: g = %+v,\n             w   %+v", 2, g2, wants[1])
-	} else {
-		storage.Append(g2.Entries)
+	{
+		rd := <-n.Ready()
+		if !reflect.DeepEqual(rd, wants[1]) {
+			t.Errorf("#2: rd = %+v,\n             w   %+v", rd, wants[1])
+		}
+		storage.Append(rd.Entries)
+		n.Advance()
+	}
+
+	{
+		rd := <-n.Ready()
+		if !reflect.DeepEqual(rd, wants[2]) {
+			t.Errorf("#3: rd = %+v,\n             w   %+v", rd, wants[2])
+		}
+		storage.Append(rd.Entries)
 		n.Advance()
 	}
 
@@ -740,10 +731,7 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 }
 
 func TestNodeAdvance(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	storage := NewMemoryStorage()
+	storage := newTestMemoryStorage(withPeers(1))
 	c := &Config{
 		ID:              1,
 		ElectionTick:    10,
@@ -752,21 +740,17 @@ func TestNodeAdvance(t *testing.T) {
 		MaxSizePerMsg:   noLimit,
 		MaxInflightMsgs: 256,
 	}
-	n := StartNode(c, []Peer{{ID: 1}})
-	defer n.Stop()
-	rd := <-n.Ready()
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, c)
+	defer cancel()
+
+	n.Campaign(ctx)
+	rd := readyWithTimeout(n)
+	// Commit empty entry.
 	storage.Append(rd.Entries)
 	n.Advance()
 
-	n.Campaign(ctx)
-	<-n.Ready()
-
 	n.Propose(ctx, []byte("foo"))
-	select {
-	case rd = <-n.Ready():
-		t.Fatalf("unexpected Ready before Advance: %+v", rd)
-	case <-time.After(time.Millisecond):
-	}
+	rd = readyWithTimeout(n)
 	storage.Append(rd.Entries)
 	n.Advance()
 	select {
@@ -911,15 +895,14 @@ func TestCommitPagination(t *testing.T) {
 	s := newTestMemoryStorage(withPeers(1))
 	cfg := newTestConfig(1, 10, 1, s)
 	cfg.MaxCommittedSizePerReady = 2048
-	rn, err := NewRawNode(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	n := newNode(rn)
-	go n.run()
-	n.Campaign(context.TODO())
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, cfg)
+	defer cancel()
+	n.Campaign(ctx)
 
-	rd := readyWithTimeout(&n)
+	rd := readyWithTimeout(n)
+	s.Append(rd.Entries)
+	n.Advance()
+	rd = readyWithTimeout(n)
 	if len(rd.CommittedEntries) != 1 {
 		t.Fatalf("expected 1 (empty) entry, got %d", len(rd.CommittedEntries))
 	}
@@ -928,25 +911,32 @@ func TestCommitPagination(t *testing.T) {
 
 	blob := []byte(strings.Repeat("a", 1000))
 	for i := 0; i < 3; i++ {
-		if err := n.Propose(context.TODO(), blob); err != nil {
+		if err := n.Propose(ctx, blob); err != nil {
 			t.Fatal(err)
 		}
 	}
 
+	// First the three proposals have to be appended.
+	rd = readyWithTimeout(n)
+	if len(rd.Entries) != 3 {
+		t.Fatal("expected to see three entries")
+	}
+	s.Append(rd.Entries)
+	n.Advance()
+
 	// The 3 proposals will commit in two batches.
-	rd = readyWithTimeout(&n)
+	rd = readyWithTimeout(n)
 	if len(rd.CommittedEntries) != 2 {
 		t.Fatalf("expected 2 entries in first batch, got %d", len(rd.CommittedEntries))
 	}
 	s.Append(rd.Entries)
 	n.Advance()
-	rd = readyWithTimeout(&n)
+	rd = readyWithTimeout(n)
 	if len(rd.CommittedEntries) != 1 {
 		t.Fatalf("expected 1 entry in second batch, got %d", len(rd.CommittedEntries))
 	}
 	s.Append(rd.Entries)
 	n.Advance()
-	n.Stop()
 }
 
 type ignoreSizeHintMemStorage struct {

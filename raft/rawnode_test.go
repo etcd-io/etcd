@@ -388,122 +388,125 @@ func TestRawNodeJointAutoLeave(t *testing.T) {
 	}
 	exp2Cs := pb.ConfState{Voters: []uint64{1}, Learners: []uint64{2}}
 
-	t.Run("", func(t *testing.T) {
-		s := newTestMemoryStorage(withPeers(1))
-		rawNode, err := NewRawNode(newTestConfig(1, 10, 1, s))
-		if err != nil {
-			t.Fatal(err)
-		}
+	s := newTestMemoryStorage(withPeers(1))
+	rawNode, err := NewRawNode(newTestConfig(1, 10, 1, s))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		rawNode.Campaign()
-		proposed := false
-		var (
-			lastIndex uint64
-			ccdata    []byte
-		)
-		// Propose the ConfChange, wait until it applies, save the resulting
-		// ConfState.
-		var cs *pb.ConfState
-		for cs == nil {
-			rd := rawNode.Ready()
-			s.Append(rd.Entries)
-			for _, ent := range rd.CommittedEntries {
-				var cc pb.ConfChangeI
-				if ent.Type == pb.EntryConfChangeV2 {
-					var ccc pb.ConfChangeV2
-					if err = ccc.Unmarshal(ent.Data); err != nil {
-						t.Fatal(err)
-					}
-					cc = &ccc
-				}
-				if cc != nil {
-					// Force it step down.
-					rawNode.Step(pb.Message{Type: pb.MsgHeartbeatResp, From: 1, Term: rawNode.raft.Term + 1})
-					cs = rawNode.ApplyConfChange(cc)
-				}
-			}
-			rawNode.Advance(rd)
-			// Once we are the leader, propose a command and a ConfChange.
-			if !proposed && rd.SoftState.Lead == rawNode.raft.id {
-				if err = rawNode.Propose([]byte("somedata")); err != nil {
-					t.Fatal(err)
-				}
-				ccdata, err = testCc.Marshal()
-				if err != nil {
-					t.Fatal(err)
-				}
-				rawNode.ProposeConfChange(testCc)
-				proposed = true
-			}
-		}
-
-		// Check that the last index is exactly the conf change we put in,
-		// down to the bits. Note that this comes from the Storage, which
-		// will not reflect any unstable entries that we'll only be presented
-		// with in the next Ready.
-		lastIndex, err = s.LastIndex()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		entries, err := s.Entries(lastIndex-1, lastIndex+1, noLimit)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(entries) != 2 {
-			t.Fatalf("len(entries) = %d, want %d", len(entries), 2)
-		}
-		if !bytes.Equal(entries[0].Data, []byte("somedata")) {
-			t.Errorf("entries[0].Data = %v, want %v", entries[0].Data, []byte("somedata"))
-		}
-		if entries[1].Type != pb.EntryConfChangeV2 {
-			t.Fatalf("type = %v, want %v", entries[1].Type, pb.EntryConfChangeV2)
-		}
-		if !bytes.Equal(entries[1].Data, ccdata) {
-			t.Errorf("data = %v, want %v", entries[1].Data, ccdata)
-		}
-
-		if !reflect.DeepEqual(&expCs, cs) {
-			t.Fatalf("exp:\n%+v\nact:\n%+v", expCs, cs)
-		}
-
-		if rawNode.raft.pendingConfIndex != 0 {
-			t.Fatalf("pendingConfIndex: expected %d, got %d", 0, rawNode.raft.pendingConfIndex)
-		}
-
-		// Move the RawNode along. It should not leave joint because it's follower.
-		rd := rawNode.readyWithoutAccept()
-		// Check that the right ConfChange comes out.
-		if len(rd.Entries) != 0 {
-			t.Fatalf("expected zero entry, got %+v", rd)
-		}
-
-		// Make it leader again. It should leave joint automatically after moving apply index.
-		rawNode.Campaign()
-		rd = rawNode.Ready()
+	rawNode.Campaign()
+	proposed := false
+	var (
+		lastIndex uint64
+		ccdata    []byte
+	)
+	// Propose the ConfChange, wait until it applies, save the resulting
+	// ConfState.
+	var cs *pb.ConfState
+	for cs == nil {
+		rd := rawNode.Ready()
 		s.Append(rd.Entries)
+		for _, ent := range rd.CommittedEntries {
+			var cc pb.ConfChangeI
+			if ent.Type == pb.EntryConfChangeV2 {
+				var ccc pb.ConfChangeV2
+				if err = ccc.Unmarshal(ent.Data); err != nil {
+					t.Fatal(err)
+				}
+				cc = &ccc
+			}
+			if cc != nil {
+				// Force it step down.
+				rawNode.Step(pb.Message{Type: pb.MsgHeartbeatResp, From: 1, Term: rawNode.raft.Term + 1})
+				cs = rawNode.ApplyConfChange(cc)
+			}
+		}
 		rawNode.Advance(rd)
-		rd = rawNode.Ready()
-		s.Append(rd.Entries)
+		// Once we are the leader, propose a command and a ConfChange.
+		if !proposed && rd.SoftState.Lead == rawNode.raft.id {
+			if err = rawNode.Propose([]byte("somedata")); err != nil {
+				t.Fatal(err)
+			}
+			ccdata, err = testCc.Marshal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			rawNode.ProposeConfChange(testCc)
+			proposed = true
+		}
+	}
 
-		// Check that the right ConfChange comes out.
-		if len(rd.Entries) != 1 || rd.Entries[0].Type != pb.EntryConfChangeV2 {
-			t.Fatalf("expected exactly one more entry, got %+v", rd)
-		}
-		var cc pb.ConfChangeV2
-		if err := cc.Unmarshal(rd.Entries[0].Data); err != nil {
-			t.Fatal(err)
-		}
-		if !reflect.DeepEqual(cc, pb.ConfChangeV2{Context: nil}) {
-			t.Fatalf("expected zero ConfChangeV2, got %+v", cc)
-		}
-		// Lie and pretend the ConfChange applied. It won't do so because now
-		// we require the joint quorum and we're only running one node.
-		cs = rawNode.ApplyConfChange(cc)
-		if exp := exp2Cs; !reflect.DeepEqual(&exp, cs) {
-			t.Fatalf("exp:\n%+v\nact:\n%+v", exp, cs)
-		}
-	})
+	// Check that the last index is exactly the conf change we put in,
+	// down to the bits. Note that this comes from the Storage, which
+	// will not reflect any unstable entries that we'll only be presented
+	// with in the next Ready.
+	lastIndex, err = s.LastIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := s.Entries(lastIndex-1, lastIndex+1, noLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("len(entries) = %d, want %d", len(entries), 2)
+	}
+	if !bytes.Equal(entries[0].Data, []byte("somedata")) {
+		t.Errorf("entries[0].Data = %v, want %v", entries[0].Data, []byte("somedata"))
+	}
+	if entries[1].Type != pb.EntryConfChangeV2 {
+		t.Fatalf("type = %v, want %v", entries[1].Type, pb.EntryConfChangeV2)
+	}
+	if !bytes.Equal(entries[1].Data, ccdata) {
+		t.Errorf("data = %v, want %v", entries[1].Data, ccdata)
+	}
+
+	if !reflect.DeepEqual(&expCs, cs) {
+		t.Fatalf("exp:\n%+v\nact:\n%+v", expCs, cs)
+	}
+
+	if rawNode.raft.pendingConfIndex != 0 {
+		t.Fatalf("pendingConfIndex: expected %d, got %d", 0, rawNode.raft.pendingConfIndex)
+	}
+
+	// Move the RawNode along. It should not leave joint because it's follower.
+	rd := rawNode.readyWithoutAccept()
+	// Check that the right ConfChange comes out.
+	if len(rd.Entries) != 0 {
+		t.Fatalf("expected zero entry, got %+v", rd)
+	}
+
+	// Make it leader again. It should leave joint automatically after moving apply index.
+	rawNode.Campaign()
+	rd = rawNode.Ready()
+	t.Log(DescribeReady(rd, nil))
+	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+	rd = rawNode.Ready()
+	t.Log(DescribeReady(rd, nil))
+	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+	rd = rawNode.Ready()
+	t.Log(DescribeReady(rd, nil))
+	s.Append(rd.Entries)
+	// Check that the right ConfChange comes out.
+	if len(rd.Entries) != 1 || rd.Entries[0].Type != pb.EntryConfChangeV2 {
+		t.Fatalf("expected exactly one more entry, got %+v", rd)
+	}
+	var cc pb.ConfChangeV2
+	if err := cc.Unmarshal(rd.Entries[0].Data); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(cc, pb.ConfChangeV2{Context: nil}) {
+		t.Fatalf("expected zero ConfChangeV2, got %+v", cc)
+	}
+	// Lie and pretend the ConfChange applied. It won't do so because now
+	// we require the joint quorum and we're only running one node.
+	cs = rawNode.ApplyConfChange(cc)
+	if exp := exp2Cs; !reflect.DeepEqual(&exp, cs) {
+		t.Fatalf("exp:\n%+v\nact:\n%+v", exp, cs)
+	}
 }
 
 // TestRawNodeProposeAddDuplicateNode ensures that two proposes to add the same node should
@@ -656,18 +659,16 @@ func TestRawNodeReadIndex(t *testing.T) {
 // requires the application to bootstrap the state, i.e. it does not accept peers
 // and will not create faux configuration change entries.
 func TestRawNodeStart(t *testing.T) {
+	entries := []pb.Entry{
+		{Term: 1, Index: 2, Data: nil},           // empty entry
+		{Term: 1, Index: 3, Data: []byte("foo")}, // empty entry
+	}
 	want := Ready{
-		SoftState: &SoftState{Lead: 1, RaftState: StateLeader},
-		HardState: pb.HardState{Term: 1, Commit: 3, Vote: 1},
-		Entries: []pb.Entry{
-			{Term: 1, Index: 2, Data: nil},           // empty entry
-			{Term: 1, Index: 3, Data: []byte("foo")}, // empty entry
-		},
-		CommittedEntries: []pb.Entry{
-			{Term: 1, Index: 2, Data: nil},           // empty entry
-			{Term: 1, Index: 3, Data: []byte("foo")}, // empty entry
-		},
-		MustSync: true,
+		SoftState:        &SoftState{Lead: 1, RaftState: StateLeader},
+		HardState:        pb.HardState{Term: 1, Commit: 3, Vote: 1},
+		Entries:          nil, // emitted & checked in intermediate Ready cycle
+		CommittedEntries: entries,
+		MustSync:         false, // since we're only applying, not appending
 	}
 
 	storage := NewMemoryStorage()
@@ -747,7 +748,22 @@ func TestRawNodeStart(t *testing.T) {
 		t.Fatal("expected a Ready")
 	}
 	rd := rawNode.Ready()
+	if !reflect.DeepEqual(entries, rd.Entries) {
+		t.Fatalf("expected to see entries\n%s, not\n%s", DescribeEntries(entries, nil), DescribeEntries(rd.Entries, nil))
+	}
 	storage.Append(rd.Entries)
+	rawNode.Advance(rd)
+
+	if !rawNode.HasReady() {
+		t.Fatal("expected a Ready")
+	}
+	rd = rawNode.Ready()
+	if len(rd.Entries) != 0 {
+		t.Fatalf("unexpected entries: %s", DescribeEntries(rd.Entries, nil))
+	}
+	if rd.MustSync {
+		t.Fatalf("should not need to sync")
+	}
 	rawNode.Advance(rd)
 
 	rd.SoftState, want.SoftState = nil, nil
@@ -868,17 +884,17 @@ func TestRawNodeStatus(t *testing.T) {
 // TestNodeCommitPaginationAfterRestart. The anomaly here was even worse as the
 // Raft group would forget to apply entries:
 //
-// - node learns that index 11 is committed
-// - nextEnts returns index 1..10 in CommittedEntries (but index 10 already
-//   exceeds maxBytes), which isn't noticed internally by Raft
-// - Commit index gets bumped to 10
-// - the node persists the HardState, but crashes before applying the entries
-// - upon restart, the storage returns the same entries, but `slice` takes a
-//   different code path and removes the last entry.
-// - Raft does not emit a HardState, but when the app calls Advance(), it bumps
-//   its internal applied index cursor to 10 (when it should be 9)
-// - the next Ready asks the app to apply index 11 (omitting index 10), losing a
-//    write.
+//   - node learns that index 11 is committed
+//   - nextEnts returns index 1..10 in CommittedEntries (but index 10 already
+//     exceeds maxBytes), which isn't noticed internally by Raft
+//   - Commit index gets bumped to 10
+//   - the node persists the HardState, but crashes before applying the entries
+//   - upon restart, the storage returns the same entries, but `slice` takes a
+//     different code path and removes the last entry.
+//   - Raft does not emit a HardState, but when the app calls Advance(), it bumps
+//     its internal applied index cursor to 10 (when it should be 9)
+//   - the next Ready asks the app to apply index 11 (omitting index 10), losing a
+//     write.
 func TestRawNodeCommitPaginationAfterRestart(t *testing.T) {
 	s := &ignoreSizeHintMemStorage{
 		MemoryStorage: newTestMemoryStorage(withPeers(1)),
@@ -952,6 +968,7 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	data := []byte("testdata")
 	testEntry := pb.Entry{Data: data}
 	maxEntrySize := uint64(maxEntries * PayloadSize(testEntry))
+	t.Log("maxEntrySize", maxEntrySize)
 
 	s := newTestMemoryStorage(withPeers(1))
 	cfg := newTestConfig(1, 10, 1, s)
@@ -960,20 +977,16 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rd := rawNode.Ready()
-	s.Append(rd.Entries)
-	rawNode.Advance(rd)
 
-	// Become the leader.
+	// Become the leader and apply empty entry.
 	rawNode.Campaign()
 	for {
-		rd = rawNode.Ready()
+		rd := rawNode.Ready()
 		s.Append(rd.Entries)
-		if rd.SoftState.Lead == rawNode.raft.id {
-			rawNode.Advance(rd)
+		rawNode.Advance(rd)
+		if len(rd.CommittedEntries) > 0 {
 			break
 		}
-		rawNode.Advance(rd)
 	}
 
 	// Simulate a network partition while we make our proposals by never
@@ -995,12 +1008,25 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 
 	// Recover from the partition. The uncommitted tail of the Raft log should
 	// disappear as entries are committed.
-	rd = rawNode.Ready()
-	if len(rd.CommittedEntries) != maxEntries {
-		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.CommittedEntries))
+	rd := rawNode.Ready()
+	if len(rd.Entries) != maxEntries {
+		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.Entries))
 	}
 	s.Append(rd.Entries)
 	rawNode.Advance(rd)
+
+	// Entries are appended, but not applied.
+	checkUncommitted(maxEntrySize)
+
+	rd = rawNode.Ready()
+	if len(rd.Entries) != 0 {
+		t.Fatalf("unexpected entries: %s", DescribeEntries(rd.Entries, nil))
+	}
+	if len(rd.CommittedEntries) != maxEntries {
+		t.Fatalf("expected %d entries, got %d", maxEntries, len(rd.CommittedEntries))
+	}
+	rawNode.Advance(rd)
+
 	checkUncommitted(0)
 }
 
@@ -1104,4 +1130,105 @@ func TestRawNodeConsumeReady(t *testing.T) {
 	if len(rn.raft.msgs) != 1 || !reflect.DeepEqual(rn.raft.msgs[0], m2) {
 		t.Fatalf("expected only m2 in raft.msgs, got %+v", rn.raft.msgs)
 	}
+}
+
+func BenchmarkRawNode(b *testing.B) {
+	cases := []struct {
+		name  string
+		peers []uint64
+	}{
+		{
+			name:  "single-voter",
+			peers: []uint64{1},
+		},
+		{
+			name:  "two-voters",
+			peers: []uint64{1, 2},
+		},
+		// You can easily add more cases here.
+	}
+
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			benchmarkRawNodeImpl(b, tc.peers...)
+		})
+	}
+}
+
+func benchmarkRawNodeImpl(b *testing.B, peers ...uint64) {
+
+	const debug = false
+
+	s := newTestMemoryStorage(withPeers(peers...))
+	cfg := newTestConfig(1, 10, 1, s)
+	if !debug {
+		cfg.Logger = discardLogger // avoid distorting benchmark output
+	}
+	rn, err := NewRawNode(cfg)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	run := make(chan struct{}, 1)
+	defer close(run)
+
+	var numReady uint64
+	stabilize := func() (applied uint64) {
+		for rn.HasReady() {
+			numReady++
+			rd := rn.Ready()
+			if debug {
+				b.Log(DescribeReady(rd, nil))
+			}
+			if n := len(rd.CommittedEntries); n > 0 {
+				applied = rd.CommittedEntries[n-1].Index
+			}
+			s.Append(rd.Entries)
+			for _, m := range rd.Messages {
+				if m.Type == pb.MsgVote {
+					resp := pb.Message{To: m.From, From: m.To, Term: m.Term, Type: pb.MsgVoteResp}
+					if debug {
+						b.Log(DescribeMessage(resp, nil))
+					}
+					rn.Step(resp)
+				}
+				if m.Type == pb.MsgApp {
+					idx := m.Index
+					if n := len(m.Entries); n > 0 {
+						idx = m.Entries[n-1].Index
+					}
+					resp := pb.Message{To: m.From, From: m.To, Type: pb.MsgAppResp, Term: m.Term, Index: idx}
+					if debug {
+						b.Log(DescribeMessage(resp, nil))
+					}
+					rn.Step(resp)
+				}
+			}
+			rn.Advance(rd)
+		}
+		return applied
+	}
+
+	rn.Campaign()
+	stabilize()
+
+	if debug {
+		b.N = 1
+	}
+
+	var applied uint64
+	for i := 0; i < b.N; i++ {
+		if err := rn.Propose([]byte("foo")); err != nil {
+			b.Fatal(err)
+		}
+		applied = stabilize()
+	}
+	if applied < uint64(b.N) {
+		b.Fatalf("did not apply everything: %d < %d", applied, b.N)
+	}
+	b.ReportMetric(float64(s.callStats.firstIndex)/float64(b.N), "firstIndex/op")
+	b.ReportMetric(float64(s.callStats.lastIndex)/float64(b.N), "lastIndex/op")
+	b.ReportMetric(float64(s.callStats.term)/float64(b.N), "term/op")
+	b.ReportMetric(float64(numReady)/float64(b.N), "ready/op")
+	b.Logf("storage access stats: %+v", s.callStats)
 }

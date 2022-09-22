@@ -1,0 +1,30 @@
+log-level info
+----
+ok
+
+add-nodes 1 voters=(1) index=3
+----
+INFO 1 switched to configuration voters=(1)
+INFO 1 became follower at term 0
+INFO newRaft 1 [peers: [1], term: 0, commit: 3, applied: 3, lastindex: 3, lastterm: 1]
+
+campaign 1
+----
+INFO 1 is starting a new election at term 0
+INFO 1 became candidate at term 1
+INFO 1 received MsgVoteResp from 1 at term 1
+INFO 1 became leader at term 1
+
+stabilize
+----
+> 1 handling Ready
+  Ready MustSync=true:
+  Lead:1 State:StateLeader
+  HardState Term:1 Vote:1 Commit:3
+  Entries:
+  1/4 EntryNormal ""
+> 1 handling Ready
+  Ready MustSync=false:
+  HardState Term:1 Vote:1 Commit:4
+  CommittedEntries:
+  1/4 EntryNormal ""

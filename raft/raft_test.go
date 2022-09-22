@@ -29,13 +29,15 @@ import (
 
 // nextEnts returns the appliable entries and updates the applied index
 func nextEnts(r *raft, s *MemoryStorage) (ents []pb.Entry) {
-	// Transfer all unstable entries to "stable" storage.
-	s.Append(r.raftLog.unstableEntries())
-	r.raftLog.stableTo(r.raftLog.lastIndex(), r.raftLog.lastTerm())
-
-	ents = r.raftLog.nextEnts()
-	r.raftLog.appliedTo(r.raftLog.committed)
-	return ents
+	for {
+		rd := newReady(r, &SoftState{}, pb.HardState{})
+		s.Append(rd.Entries)
+		r.advance(rd)
+		if len(rd.Entries)+len(rd.CommittedEntries) == 0 {
+			return ents
+		}
+		ents = append(ents, rd.CommittedEntries...)
+	}
 }
 
 func mustAppendEntry(r *raft, ents ...pb.Entry) {
@@ -57,20 +59,32 @@ func (r *raft) readMessages() []pb.Message {
 }
 
 func TestProgressLeader(t *testing.T) {
-	r := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2)))
+	s := newTestMemoryStorage(withPeers(1, 2))
+	r := newTestRaft(1, 5, 1, s)
 	r.becomeCandidate()
 	r.becomeLeader()
 	r.prs.Progress[2].BecomeReplicate()
 
-	// Send proposals to r1. The first 5 entries should be appended to the log.
+	// Send proposals to r1. The first 5 entries should be queued in the unstable log.
 	propMsg := pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("foo")}}}
 	for i := 0; i < 5; i++ {
-		if pr := r.prs.Progress[r.id]; pr.State != tracker.StateReplicate || pr.Match != uint64(i+1) || pr.Next != pr.Match+1 {
-			t.Errorf("unexpected progress %v", pr)
-		}
 		if err := r.Step(propMsg); err != nil {
 			t.Fatalf("proposal resulted in error: %v", err)
 		}
+	}
+	if m := r.prs.Progress[1].Match; m != 0 {
+		t.Fatalf("expected zero match, got %d", m)
+	}
+	rd := newReady(r, &SoftState{}, pb.HardState{})
+	if len(rd.Entries) != 6 || len(rd.Entries[0].Data) > 0 || string(rd.Entries[5].Data) != "foo" {
+		t.Fatalf("unexpected Entries: %s", DescribeReady(rd, nil))
+	}
+	r.advance(rd)
+	if m := r.prs.Progress[1].Match; m != 6 {
+		t.Fatalf("unexpected Match %d", m)
+	}
+	if m := r.prs.Progress[1].Next; m != 7 {
+		t.Fatalf("unexpected Next %d", m)
 	}
 }
 
@@ -663,10 +677,12 @@ func TestLogReplication(t *testing.T) {
 
 // TestLearnerLogReplication tests that a learner can receive entries from the leader.
 func TestLearnerLogReplication(t *testing.T) {
-	n1 := newTestLearnerRaft(1, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
+	s1 := newTestMemoryStorage(withPeers(1), withLearners(2))
+	n1 := newTestLearnerRaft(1, 10, 1, s1)
 	n2 := newTestLearnerRaft(2, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
 
 	nt := newNetwork(n1, n2)
+	nt.t = t
 
 	n1.becomeFollower(1, None)
 	n2.becomeFollower(1, None)
@@ -686,10 +702,21 @@ func TestLearnerLogReplication(t *testing.T) {
 		t.Error("peer 2 state: not learner, want yes")
 	}
 
-	nextCommitted := n1.raftLog.committed + 1
-	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+	nextCommitted := uint64(2)
+	{
+		nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
+		rd := newReady(n1, &SoftState{}, pb.HardState{})
+		nt.send(rd.Messages...)
+		s1.Append(rd.Entries)
+		n1.advance(rd)
+	}
 	if n1.raftLog.committed != nextCommitted {
 		t.Errorf("peer 1 wants committed to %d, but still %d", nextCommitted, n1.raftLog.committed)
+	}
+
+	{
+		rd := newReady(n1, &SoftState{}, pb.HardState{})
+		nt.send(rd.Messages...)
 	}
 
 	if n1.raftLog.committed != n2.raftLog.committed {
@@ -703,10 +730,17 @@ func TestLearnerLogReplication(t *testing.T) {
 }
 
 func TestSingleNodeCommit(t *testing.T) {
-	tt := newNetwork(nil)
+	s := newTestMemoryStorage(withPeers(1))
+	cfg := newTestConfig(1, 10, 1, s)
+	r := newRaft(cfg)
+	tt := newNetwork(r)
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
 	tt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
+
+	rd := newReady(r, &SoftState{}, pb.HardState{})
+	s.Append(rd.Entries)
+	r.advance(rd)
 
 	sm := tt.peers[1].(*raft)
 	if sm.raftLog.committed != 3 {
@@ -792,9 +826,12 @@ func TestCommitWithoutNewTermEntry(t *testing.T) {
 }
 
 func TestDuelingCandidates(t *testing.T) {
-	a := newTestRaft(1, 10, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
-	b := newTestRaft(2, 10, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
-	c := newTestRaft(3, 10, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
+	s1 := newTestMemoryStorage(withPeers(1, 2, 3))
+	s2 := newTestMemoryStorage(withPeers(1, 2, 3))
+	s3 := newTestMemoryStorage(withPeers(1, 2, 3))
+	a := newTestRaft(1, 10, 1, s1)
+	b := newTestRaft(2, 10, 1, s2)
+	c := newTestRaft(3, 10, 1, s3)
 
 	nt := newNetwork(a, b, c)
 	nt.cut(1, 3)
@@ -820,21 +857,19 @@ func TestDuelingCandidates(t *testing.T) {
 	// we expect it to disrupt the leader 1 since it has a higher term
 	// 3 will be follower again since both 1 and 2 rejects its vote request since 3 does not have a long enough log
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
-
-	wlog := &raftLog{
-		storage:   &MemoryStorage{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}}},
-		committed: 1,
-		unstable:  unstable{offset: 2},
+	if sm.state != StateFollower {
+		t.Errorf("state = %s, want %s", sm.state, StateFollower)
 	}
+
 	tests := []struct {
-		sm      *raft
-		state   StateType
-		term    uint64
-		raftLog *raftLog
+		sm        *raft
+		state     StateType
+		term      uint64
+		lastIndex uint64
 	}{
-		{a, StateFollower, 2, wlog},
-		{b, StateFollower, 2, wlog},
-		{c, StateFollower, 2, newLog(NewMemoryStorage(), raftLogger)},
+		{a, StateFollower, 2, 1},
+		{b, StateFollower, 2, 1},
+		{c, StateFollower, 2, 0},
 	}
 
 	for i, tt := range tests {
@@ -844,14 +879,8 @@ func TestDuelingCandidates(t *testing.T) {
 		if g := tt.sm.Term; g != tt.term {
 			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
 		}
-		base := ltoa(tt.raftLog)
-		if sm, ok := nt.peers[1+uint64(i)].(*raft); ok {
-			l := ltoa(sm.raftLog)
-			if g := diffu(base, l); g != "" {
-				t.Errorf("#%d: diff:\n%s", i, g)
-			}
-		} else {
-			t.Logf("#%d: empty log", i)
+		if exp, act := tt.lastIndex, tt.sm.raftLog.lastIndex(); exp != act {
+			t.Errorf("#%d: last index exp = %d, act = %d", i, exp, act)
 		}
 	}
 }
@@ -868,6 +897,7 @@ func TestDuelingPreCandidates(t *testing.T) {
 	c := newRaft(cfgC)
 
 	nt := newNetwork(a, b, c)
+	nt.t = t
 	nt.cut(1, 3)
 
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -891,20 +921,15 @@ func TestDuelingPreCandidates(t *testing.T) {
 	// With PreVote, it does not disrupt the leader.
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
-	wlog := &raftLog{
-		storage:   &MemoryStorage{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}}},
-		committed: 1,
-		unstable:  unstable{offset: 2},
-	}
 	tests := []struct {
-		sm      *raft
-		state   StateType
-		term    uint64
-		raftLog *raftLog
+		sm        *raft
+		state     StateType
+		term      uint64
+		lastIndex uint64
 	}{
-		{a, StateLeader, 1, wlog},
-		{b, StateFollower, 1, wlog},
-		{c, StateFollower, 1, newLog(NewMemoryStorage(), raftLogger)},
+		{a, StateLeader, 1, 1},
+		{b, StateFollower, 1, 1},
+		{c, StateFollower, 1, 0},
 	}
 
 	for i, tt := range tests {
@@ -914,14 +939,8 @@ func TestDuelingPreCandidates(t *testing.T) {
 		if g := tt.sm.Term; g != tt.term {
 			t.Errorf("#%d: term = %d, want %d", i, g, tt.term)
 		}
-		base := ltoa(tt.raftLog)
-		if sm, ok := nt.peers[1+uint64(i)].(*raft); ok {
-			l := ltoa(sm.raftLog)
-			if g := diffu(base, l); g != "" {
-				t.Errorf("#%d: diff:\n%s", i, g)
-			}
-		} else {
-			t.Logf("#%d: empty log", i)
+		if exp, act := tt.lastIndex, tt.sm.raftLog.lastIndex(); exp != act {
+			t.Errorf("#%d: last index is %d, exp %d", i, act, exp)
 		}
 	}
 }
@@ -1058,6 +1077,7 @@ func TestProposal(t *testing.T) {
 		// promote 1 to become leader
 		send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 		send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
+		r := tt.network.peers[1].(*raft)
 
 		wantLog := newLog(NewMemoryStorage(), raftLogger)
 		if tt.success {
@@ -1065,8 +1085,8 @@ func TestProposal(t *testing.T) {
 				storage: &MemoryStorage{
 					ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}, {Term: 1, Index: 2, Data: data}},
 				},
-				unstable:  unstable{offset: 3},
-				committed: 2}
+				unstable: unstable{offset: 3},
+			}
 		}
 		base := ltoa(wantLog)
 		for i, p := range tt.peers {
@@ -1079,8 +1099,7 @@ func TestProposal(t *testing.T) {
 				t.Logf("#%d: peer %d empty log", j, i)
 			}
 		}
-		sm := tt.network.peers[1].(*raft)
-		if g := sm.Term; g != 1 {
+		if g := r.Term; g != 1 {
 			t.Errorf("#%d: term = %d, want %d", j, g, 1)
 		}
 	}
@@ -1405,14 +1424,14 @@ func TestRaftFreesReadOnlyMem(t *testing.T) {
 // TestMsgAppRespWaitReset verifies the resume behavior of a leader
 // MsgAppResp.
 func TestMsgAppRespWaitReset(t *testing.T) {
-	sm := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
+	s := newTestMemoryStorage(withPeers(1, 2, 3))
+	sm := newTestRaft(1, 5, 1, s)
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
-	// The new leader has just emitted a new Term 4 entry; consume those messages
-	// from the outgoing queue.
-	sm.bcastAppend()
-	sm.readMessages()
+	// Run n1 which includes sending a message like the below
+	// one to n2, but also appending to its own log.
+	nextEnts(sm, s)
 
 	// Node 2 acks the first entry, making it committed.
 	sm.Step(pb.Message{
@@ -2228,7 +2247,8 @@ func TestReadOnlyOptionSafe(t *testing.T) {
 }
 
 func TestReadOnlyWithLearner(t *testing.T) {
-	a := newTestLearnerRaft(1, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
+	s := newTestMemoryStorage(withPeers(1), withLearners(2))
+	a := newTestLearnerRaft(1, 10, 1, s)
 	b := newTestLearnerRaft(2, 10, 1, newTestMemoryStorage(withPeers(1), withLearners(2)))
 
 	nt := newNetwork(a, b)
@@ -2258,6 +2278,7 @@ func TestReadOnlyWithLearner(t *testing.T) {
 	for i, tt := range tests {
 		for j := 0; j < tt.proposals; j++ {
 			nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+			nextEnts(a, s) // append the entries on the leader
 		}
 
 		nt.send(pb.Message{From: tt.sm.id, To: tt.sm.id, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: tt.wctx}}})
@@ -3634,12 +3655,16 @@ func TestLeaderTransferTimeout(t *testing.T) {
 }
 
 func TestLeaderTransferIgnoreProposal(t *testing.T) {
-	nt := newNetwork(nil, nil, nil)
+	s := newTestMemoryStorage(withPeers(1, 2, 3))
+	r := newTestRaft(1, 10, 1, s)
+	nt := newNetwork(r, nil, nil)
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 
 	nt.isolate(3)
 
 	lead := nt.peers[1].(*raft)
+
+	nextEnts(r, s) // handle empty entry
 
 	// Transfer leadership to isolated node to let transfer pending, then send proposal.
 	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
@@ -4630,6 +4655,8 @@ func votedWithConfig(configFunc func(*Config), vote, term uint64) *raft {
 }
 
 type network struct {
+	t *testing.T // optional
+
 	peers   map[uint64]stateMachine
 	storage map[uint64]*MemoryStorage
 	dropm   map[connem]float64
@@ -4713,6 +4740,9 @@ func (nw *network) send(msgs ...pb.Message) {
 	for len(msgs) > 0 {
 		m := msgs[0]
 		p := nw.peers[m.To]
+		if nw.t != nil {
+			nw.t.Log(DescribeMessage(m, nil))
+		}
 		p.Step(m)
 		msgs = append(msgs[1:], nw.filter(p.readMessages())...)
 	}

@@ -71,6 +71,10 @@ type Storage interface {
 	Snapshot() (pb.Snapshot, error)
 }
 
+type inMemStorageCallStats struct {
+	initialState, firstIndex, lastIndex, entries, term, snapshot int
+}
+
 // MemoryStorage implements the Storage interface backed by an
 // in-memory array.
 type MemoryStorage struct {
@@ -83,6 +87,8 @@ type MemoryStorage struct {
 	snapshot  pb.Snapshot
 	// ents[i] has raft log position i+snapshot.Metadata.Index
 	ents []pb.Entry
+
+	callStats inMemStorageCallStats
 }
 
 // NewMemoryStorage creates an empty MemoryStorage.
@@ -95,6 +101,7 @@ func NewMemoryStorage() *MemoryStorage {
 
 // InitialState implements the Storage interface.
 func (ms *MemoryStorage) InitialState() (pb.HardState, pb.ConfState, error) {
+	ms.callStats.initialState++
 	return ms.hardState, ms.snapshot.Metadata.ConfState, nil
 }
 
@@ -110,6 +117,7 @@ func (ms *MemoryStorage) SetHardState(st pb.HardState) error {
 func (ms *MemoryStorage) Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 	ms.Lock()
 	defer ms.Unlock()
+	ms.callStats.entries++
 	offset := ms.ents[0].Index
 	if lo <= offset {
 		return nil, ErrCompacted
@@ -130,6 +138,7 @@ func (ms *MemoryStorage) Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
+	ms.callStats.term++
 	offset := ms.ents[0].Index
 	if i < offset {
 		return 0, ErrCompacted
@@ -144,6 +153,7 @@ func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 func (ms *MemoryStorage) LastIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
+	ms.callStats.lastIndex++
 	return ms.lastIndex(), nil
 }
 
@@ -155,6 +165,7 @@ func (ms *MemoryStorage) lastIndex() uint64 {
 func (ms *MemoryStorage) FirstIndex() (uint64, error) {
 	ms.Lock()
 	defer ms.Unlock()
+	ms.callStats.firstIndex++
 	return ms.firstIndex(), nil
 }
 
@@ -166,6 +177,7 @@ func (ms *MemoryStorage) firstIndex() uint64 {
 func (ms *MemoryStorage) Snapshot() (pb.Snapshot, error) {
 	ms.Lock()
 	defer ms.Unlock()
+	ms.callStats.snapshot++
 	return ms.snapshot, nil
 }
 

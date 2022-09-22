@@ -35,10 +35,13 @@ stabilize
 > 1 handling Ready
   Ready MustSync=true:
   Lead:1 State:StateLeader
-  HardState Term:1 Vote:1 Commit:4
+  HardState Term:1 Vote:1 Commit:2
   Entries:
   1/3 EntryNormal ""
   1/4 EntryConfChange v2
+> 1 handling Ready
+  Ready MustSync=false:
+  HardState Term:1 Vote:1 Commit:4
   CommittedEntries:
   1/3 EntryNormal ""
   1/4 EntryConfChange v2
