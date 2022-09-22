@@ -109,10 +109,8 @@ func encodeFrameSize(dataBytes int) (lenField uint64, padBytes int) {
 
 func (e *encoder) flush() error {
 	e.mu.Lock()
-	n, err := e.bw.FlushN()
-	e.mu.Unlock()
-	walWriteBytes.Add(float64(n))
-	return err
+	defer e.mu.Unlock()
+	return e.bw.Flush()
 }
 
 func writeUint64(w io.Writer, n uint64, buf []byte) error {
