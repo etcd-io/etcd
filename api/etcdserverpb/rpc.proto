@@ -695,6 +695,8 @@ message HashKVResponse {
   uint32 hash = 2;
   // compact_revision is the compacted revision of key-value store when hash begins.
   int64 compact_revision = 3;
+  // hash_revision is the revision up to which the hash is calculated.
+  int64 hash_revision = 4;
 }
 
 message HashResponse {
