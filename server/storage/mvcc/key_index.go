@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/btree"
 	"go.uber.org/zap"
 )
 
@@ -305,8 +304,8 @@ func (ki *keyIndex) findGeneration(rev int64) *generation {
 	return nil
 }
 
-func (ki *keyIndex) Less(b btree.Item) bool {
-	return bytes.Compare(ki.key, b.(*keyIndex).key) == -1
+func (ki *keyIndex) Less(bki *keyIndex) bool {
+	return bytes.Compare(ki.key, bki.key) == -1
 }
 
 func (ki *keyIndex) equal(b *keyIndex) bool {

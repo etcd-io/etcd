@@ -270,7 +270,9 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		if !(reflect.DeepEqual(am, keep)) {
 			t.Errorf("#%d: compact keep %v != Keep keep %v", i, am, keep)
 		}
-		wti := &treeIndex{tree: btree.New(32)}
+		wti := &treeIndex{tree: btree.NewG(32, func(aki *keyIndex, bki *keyIndex) bool {
+			return aki.Less(bki)
+		})}
 		for _, tt := range tests {
 			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
 				if tt.remove {
@@ -300,7 +302,9 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		if !(reflect.DeepEqual(am, keep)) {
 			t.Errorf("#%d: compact keep %v != Keep keep %v", i, am, keep)
 		}
-		wti := &treeIndex{tree: btree.New(32)}
+		wti := &treeIndex{tree: btree.NewG(32, func(aki *keyIndex, bki *keyIndex) bool {
+			return aki.Less(bki)
+		})}
 		for _, tt := range tests {
 			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
 				if tt.remove {
@@ -321,12 +325,11 @@ func restore(ti *treeIndex, key []byte, created, modified revision, ver int64) {
 
 	ti.Lock()
 	defer ti.Unlock()
-	item := ti.tree.Get(keyi)
-	if item == nil {
+	okeyi, _ := ti.tree.Get(keyi)
+	if okeyi == nil {
 		keyi.restore(ti.lg, created, modified, ver)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
-	okeyi := item.(*keyIndex)
 	okeyi.put(ti.lg, modified.main, modified.sub)
 }
