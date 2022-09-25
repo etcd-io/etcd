@@ -16,6 +16,7 @@ jobs:
           - linux-arm64
           - linux-ppc64le
           - linux-s390x
+          - linux-riscv64
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -52,6 +53,9 @@ jobs:
               ;;
             linux-s390x)
               GOARCH=s390x GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              ;;
+            linux-riscv64)
+              GOARCH=riscv64 GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             *)
               echo "Failed to find target"
