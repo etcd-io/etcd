@@ -163,7 +163,7 @@ func (rn *RawNode) HasReady() bool {
 	if r.raftLog.hasPendingSnapshot() {
 		return true
 	}
-	if len(r.msgs) > 0 || len(r.raftLog.unstableEntries()) > 0 || r.raftLog.hasNextEnts() {
+	if len(r.msgs) > 0 || len(r.raftLog.unstableEntries()) > 0 || r.raftLog.hasNextCommittedEnts() {
 		return true
 	}
 	if len(r.readStates) != 0 {
