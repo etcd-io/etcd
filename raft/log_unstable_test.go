@@ -197,10 +197,12 @@ func TestUnstableMaybeTerm(t *testing.T) {
 
 func TestUnstableRestore(t *testing.T) {
 	u := unstable{
-		entries:  []pb.Entry{{Index: 5, Term: 1}},
-		offset:   5,
-		snapshot: &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
-		logger:   raftLogger,
+		entries:            []pb.Entry{{Index: 5, Term: 1}},
+		offset:             5,
+		offsetInProgress:   6,
+		snapshot:           &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+		snapshotInProgress: true,
+		logger:             raftLogger,
 	}
 	s := pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 6, Term: 2}}
 	u.restore(s)
@@ -208,92 +210,310 @@ func TestUnstableRestore(t *testing.T) {
 	if u.offset != s.Metadata.Index+1 {
 		t.Errorf("offset = %d, want %d", u.offset, s.Metadata.Index+1)
 	}
+	if u.offsetInProgress != s.Metadata.Index+1 {
+		t.Errorf("offsetInProgress = %d, want %d", u.offsetInProgress, s.Metadata.Index+1)
+	}
 	if len(u.entries) != 0 {
 		t.Errorf("len = %d, want 0", len(u.entries))
 	}
 	if !reflect.DeepEqual(u.snapshot, &s) {
 		t.Errorf("snap = %v, want %v", u.snapshot, &s)
 	}
+	if u.snapshotInProgress {
+		t.Errorf("snapshotInProgress = true, want false")
+	}
 }
 
-func TestUnstableStableTo(t *testing.T) {
+func TestUnstableNextEntries(t *testing.T) {
 	tests := []struct {
-		entries     []pb.Entry
-		offset      uint64
-		snap        *pb.Snapshot
-		index, term uint64
+		entries          []pb.Entry
+		offset           uint64
+		offsetInProgress uint64
 
-		woffset uint64
-		wlen    int
+		wentries []pb.Entry
 	}{
+		// nothing in progress
 		{
-			[]pb.Entry{}, 0, nil,
-			5, 1,
-			0, 0,
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, 5,
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}},
 		},
+		// partially in progress
 		{
-			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
-			5, 1, // stable to the first entry
-			6, 0,
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, 6,
+			[]pb.Entry{{Index: 6, Term: 1}},
 		},
+		// everything in progress
 		{
-			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, nil,
-			5, 1, // stable to the first entry
-			6, 1,
-		},
-		{
-			[]pb.Entry{{Index: 6, Term: 2}}, 6, nil,
-			6, 1, // stable to the first entry and term mismatch
-			6, 1,
-		},
-		{
-			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
-			4, 1, // stable to old entry
-			5, 1,
-		},
-		{
-			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
-			4, 2, // stable to old entry
-			5, 1,
-		},
-		// with snapshot
-		{
-			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
-			5, 1, // stable to the first entry
-			6, 0,
-		},
-		{
-			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
-			5, 1, // stable to the first entry
-			6, 1,
-		},
-		{
-			[]pb.Entry{{Index: 6, Term: 2}}, 6, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 5, Term: 1}},
-			6, 1, // stable to the first entry and term mismatch
-			6, 1,
-		},
-		{
-			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
-			4, 1, // stable to snapshot
-			5, 1,
-		},
-		{
-			[]pb.Entry{{Index: 5, Term: 2}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 2}},
-			4, 1, // stable to old entry
-			5, 1,
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, 7,
+			nil, // nil, not empty slice
 		},
 	}
 
 	for i, tt := range tests {
 		u := unstable{
-			entries:  tt.entries,
-			offset:   tt.offset,
-			snapshot: tt.snap,
-			logger:   raftLogger,
+			entries:          tt.entries,
+			offset:           tt.offset,
+			offsetInProgress: tt.offsetInProgress,
+			logger:           raftLogger,
+		}
+		res := u.nextEntries()
+		if !reflect.DeepEqual(res, tt.wentries) {
+			t.Errorf("#%d: notInProgressEntries() = %v, want %v", i, res, tt.wentries)
+		}
+	}
+}
+
+func TestUnstableNextSnapshot(t *testing.T) {
+	s := &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}}
+	tests := []struct {
+		snapshot           *pb.Snapshot
+		snapshotInProgress bool
+
+		wsnapshot *pb.Snapshot
+	}{
+		// snapshot not unstable
+		{
+			nil, false,
+			nil,
+		},
+		// snapshot not in progress
+		{
+			s, false,
+			s,
+		},
+		// snapshot in progress
+		{
+			s, true,
+			nil,
+		},
+	}
+
+	for i, tt := range tests {
+		u := unstable{
+			snapshot:           tt.snapshot,
+			snapshotInProgress: tt.snapshotInProgress,
+		}
+		res := u.nextSnapshot()
+		if !reflect.DeepEqual(res, tt.wsnapshot) {
+			t.Errorf("#%d: notInProgressSnapshot() = %v, want %v", i, res, tt.wsnapshot)
+		}
+	}
+}
+
+func TestUnstableInProgress(t *testing.T) {
+	tests := []struct {
+		entries            []pb.Entry
+		snapshot           *pb.Snapshot
+		offsetInProgress   uint64
+		snapshotInProgress bool
+
+		woffsetInProgress   uint64
+		wsnapshotInProgress bool
+	}{
+		{
+			[]pb.Entry{}, nil,
+			5,     // no entries
+			false, // snapshot not already in progress
+			5, false,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, nil,
+			5,     // entries not in progress
+			false, // snapshot not already in progress
+			6, false,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, nil,
+			5,     // entries not in progress
+			false, // snapshot not already in progress
+			7, false,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, nil,
+			6,     // in-progress to the first entry
+			false, // snapshot not already in progress
+			7, false,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, nil,
+			7,     // in-progress to the second entry
+			false, // snapshot not already in progress
+			7, false,
+		},
+		// with snapshot
+		{
+			[]pb.Entry{}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5,     // no entries
+			false, // snapshot not already in progress
+			5, true,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5,     // entries not in progress
+			false, // snapshot not already in progress
+			6, true,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5,     // entries not in progress
+			false, // snapshot not already in progress
+			7, true,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			6,     // in-progress to the first entry
+			false, // snapshot not already in progress
+			7, true,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			7,     // in-progress to the second entry
+			false, // snapshot not already in progress
+			7, true,
+		},
+		{
+			[]pb.Entry{}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5,    // entries not in progress
+			true, // snapshot already in progress
+			5, true,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5,    // entries not in progress
+			true, // snapshot already in progress
+			6, true,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5,    // entries not in progress
+			true, // snapshot already in progress
+			7, true,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			6,    // in-progress to the first entry
+			true, // snapshot already in progress
+			7, true,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			7,    // in-progress to the second entry
+			true, // snapshot already in progress
+			7, true,
+		},
+	}
+
+	for i, tt := range tests {
+		u := unstable{
+			entries:            tt.entries,
+			snapshot:           tt.snapshot,
+			offsetInProgress:   tt.offsetInProgress,
+			snapshotInProgress: tt.snapshotInProgress,
+		}
+		u.inProgress()
+		if u.offsetInProgress != tt.woffsetInProgress {
+			t.Errorf("#%d: offsetInProgress = %d, want %d", i, u.offsetInProgress, tt.woffsetInProgress)
+		}
+		if u.snapshotInProgress != tt.wsnapshotInProgress {
+			t.Errorf("#%d: snapshotInProgress = %t, want %t", i, u.snapshotInProgress, tt.wsnapshotInProgress)
+		}
+	}
+}
+
+func TestUnstableStableTo(t *testing.T) {
+	tests := []struct {
+		entries          []pb.Entry
+		offset           uint64
+		offsetInProgress uint64
+		snap             *pb.Snapshot
+		index, term      uint64
+
+		woffset           uint64
+		woffsetInProgress uint64
+		wlen              int
+	}{
+		{
+			[]pb.Entry{}, 0, 0, nil,
+			5, 1,
+			0, 0, 0,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 6, nil,
+			5, 1, // stable to the first entry
+			6, 6, 0,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, 6, nil,
+			5, 1, // stable to the first entry
+			6, 6, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, 7, nil,
+			5, 1, // stable to the first entry and in-progress ahead
+			6, 7, 1,
+		},
+		{
+			[]pb.Entry{{Index: 6, Term: 2}}, 6, 7, nil,
+			6, 1, // stable to the first entry and term mismatch
+			6, 7, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 6, nil,
+			4, 1, // stable to old entry
+			5, 6, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 6, nil,
+			4, 2, // stable to old entry
+			5, 6, 1,
+		},
+		// with snapshot
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 6, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5, 1, // stable to the first entry
+			6, 6, 0,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, 6, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5, 1, // stable to the first entry
+			6, 6, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}}, 5, 7, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			5, 1, // stable to the first entry and in-progress ahead
+			6, 7, 1,
+		},
+		{
+			[]pb.Entry{{Index: 6, Term: 2}}, 6, 7, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 5, Term: 1}},
+			6, 1, // stable to the first entry and term mismatch
+			6, 7, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 6, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			4, 1, // stable to snapshot
+			5, 6, 1,
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 2}}, 5, 6, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 2}},
+			4, 1, // stable to old entry
+			5, 6, 1,
+		},
+	}
+
+	for i, tt := range tests {
+		u := unstable{
+			entries:          tt.entries,
+			offset:           tt.offset,
+			offsetInProgress: tt.offsetInProgress,
+			snapshot:         tt.snap,
+			logger:           raftLogger,
 		}
 		u.stableTo(tt.index, tt.term)
 		if u.offset != tt.woffset {
 			t.Errorf("#%d: offset = %d, want %d", i, u.offset, tt.woffset)
+		}
+		if u.offsetInProgress != tt.woffsetInProgress {
+			t.Errorf("#%d: offsetInProgress = %d, want %d", i, u.offsetInProgress, tt.woffsetInProgress)
 		}
 		if len(u.entries) != tt.wlen {
 			t.Errorf("#%d: len = %d, want %d", i, len(u.entries), tt.wlen)
@@ -303,54 +523,80 @@ func TestUnstableStableTo(t *testing.T) {
 
 func TestUnstableTruncateAndAppend(t *testing.T) {
 	tests := []struct {
-		entries  []pb.Entry
-		offset   uint64
-		snap     *pb.Snapshot
-		toappend []pb.Entry
+		entries          []pb.Entry
+		offset           uint64
+		offsetInProgress uint64
+		snap             *pb.Snapshot
+		toappend         []pb.Entry
 
-		woffset  uint64
-		wentries []pb.Entry
+		woffset           uint64
+		woffsetInProgress uint64
+		wentries          []pb.Entry
 	}{
 		// append to the end
 		{
-			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 5, nil,
 			[]pb.Entry{{Index: 6, Term: 1}, {Index: 7, Term: 1}},
-			5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}},
+			5, 5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}},
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 6, nil,
+			[]pb.Entry{{Index: 6, Term: 1}, {Index: 7, Term: 1}},
+			5, 6, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}},
 		},
 		// replace the unstable entries
 		{
-			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 5, nil,
 			[]pb.Entry{{Index: 5, Term: 2}, {Index: 6, Term: 2}},
-			5, []pb.Entry{{Index: 5, Term: 2}, {Index: 6, Term: 2}},
+			5, 5, []pb.Entry{{Index: 5, Term: 2}, {Index: 6, Term: 2}},
 		},
 		{
-			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 5, nil,
 			[]pb.Entry{{Index: 4, Term: 2}, {Index: 5, Term: 2}, {Index: 6, Term: 2}},
-			4, []pb.Entry{{Index: 4, Term: 2}, {Index: 5, Term: 2}, {Index: 6, Term: 2}},
+			4, 4, []pb.Entry{{Index: 4, Term: 2}, {Index: 5, Term: 2}, {Index: 6, Term: 2}},
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, 6, nil,
+			[]pb.Entry{{Index: 5, Term: 2}, {Index: 6, Term: 2}},
+			5, 5, []pb.Entry{{Index: 5, Term: 2}, {Index: 6, Term: 2}},
 		},
 		// truncate the existing entries and append
 		{
-			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}}, 5, 5, nil,
 			[]pb.Entry{{Index: 6, Term: 2}},
-			5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 2}},
+			5, 5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 2}},
 		},
 		{
-			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}}, 5, nil,
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}}, 5, 5, nil,
 			[]pb.Entry{{Index: 7, Term: 2}, {Index: 8, Term: 2}},
-			5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 2}, {Index: 8, Term: 2}},
+			5, 5, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 2}, {Index: 8, Term: 2}},
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}}, 5, 6, nil,
+			[]pb.Entry{{Index: 6, Term: 2}},
+			5, 6, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 2}},
+		},
+		{
+			[]pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 1}, {Index: 7, Term: 1}}, 5, 7, nil,
+			[]pb.Entry{{Index: 6, Term: 2}},
+			5, 6, []pb.Entry{{Index: 5, Term: 1}, {Index: 6, Term: 2}},
 		},
 	}
 
 	for i, tt := range tests {
 		u := unstable{
-			entries:  tt.entries,
-			offset:   tt.offset,
-			snapshot: tt.snap,
-			logger:   raftLogger,
+			entries:          tt.entries,
+			offset:           tt.offset,
+			offsetInProgress: tt.offsetInProgress,
+			snapshot:         tt.snap,
+			logger:           raftLogger,
 		}
 		u.truncateAndAppend(tt.toappend)
 		if u.offset != tt.woffset {
 			t.Errorf("#%d: offset = %d, want %d", i, u.offset, tt.woffset)
+		}
+		if u.offsetInProgress != tt.woffsetInProgress {
+			t.Errorf("#%d: offsetInProgress = %d, want %d", i, u.offsetInProgress, tt.woffsetInProgress)
 		}
 		if !reflect.DeepEqual(u.entries, tt.wentries) {
 			t.Errorf("#%d: entries = %v, want %v", i, u.entries, tt.wentries)

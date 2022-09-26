@@ -70,8 +70,7 @@ func newLogWithSize(storage Storage, logger Logger, maxNextCommittedEntsSize uin
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
-	log.unstable.offset = lastIndex + 1
-	log.unstable.logger = logger
+	log.unstable.init(lastIndex, logger)
 	// Initialize our committed and applied pointers to the time of the last compaction.
 	log.committed = firstIndex - 1
 	log.applied = firstIndex - 1
@@ -80,7 +79,8 @@ func newLogWithSize(storage Storage, logger Logger, maxNextCommittedEntsSize uin
 }
 
 func (l *raftLog) String() string {
-	return fmt.Sprintf("committed=%d, applied=%d, unstable.offset=%d, len(unstable.Entries)=%d", l.committed, l.applied, l.unstable.offset, len(l.unstable.entries))
+	return fmt.Sprintf("committed=%d, applied=%d, unstable.offset=%d, unstable.offsetInProgress=%d, len(unstable.Entries)=%d",
+		l.committed, l.applied, l.unstable.offset, l.unstable.offsetInProgress, len(l.unstable.entries))
 }
 
 // maybeAppend returns (0, false) if the entries cannot be appended. Otherwise,
@@ -170,18 +170,23 @@ func (l *raftLog) findConflictByTerm(index uint64, term uint64) uint64 {
 	return index
 }
 
-func (l *raftLog) unstableEntries() []pb.Entry {
-	if len(l.unstable.entries) == 0 {
-		return nil
-	}
-	return l.unstable.entries
+// nextUnstableEnts returns all entries that are available to be written to the
+// local stable log and are not already in-progress.
+func (l *raftLog) nextUnstableEnts() []pb.Entry {
+	return l.unstable.nextEntries()
+}
+
+// hasNextUnstableEnts returns if there are any entries that are available to be
+// written to the local stable log and are not already in-progress.
+func (l *raftLog) hasNextUnstableEnts() bool {
+	return len(l.nextUnstableEnts()) > 0
 }
 
 // nextCommittedEnts returns all the available entries for execution.
 // If applied is smaller than the index of snapshot, it returns all committed
 // entries after the index of snapshot.
 func (l *raftLog) nextCommittedEnts() (ents []pb.Entry) {
-	if l.hasPendingSnapshot() {
+	if l.hasNextOrInProgressSnapshot() {
 		// See comment in hasNextCommittedEnts.
 		return nil
 	}
@@ -199,7 +204,7 @@ func (l *raftLog) nextCommittedEnts() (ents []pb.Entry) {
 // hasNextCommittedEnts returns if there is any available entries for execution.
 // This is a fast check without heavy raftLog.slice() in nextCommittedEnts().
 func (l *raftLog) hasNextCommittedEnts() bool {
-	if l.hasPendingSnapshot() {
+	if l.hasNextOrInProgressSnapshot() {
 		// If we have a snapshot to apply, don't also return any committed
 		// entries. Doing so raises questions about what should be applied
 		// first.
@@ -208,8 +213,21 @@ func (l *raftLog) hasNextCommittedEnts() bool {
 	return l.committed > l.applied
 }
 
-// hasPendingSnapshot returns if there is pending snapshot waiting for applying.
-func (l *raftLog) hasPendingSnapshot() bool {
+// nextUnstableSnapshot returns the snapshot, if present, that is available to
+// be applied to the local storage and is not already in-progress.
+func (l *raftLog) nextUnstableSnapshot() *pb.Snapshot {
+	return l.unstable.nextSnapshot()
+}
+
+// hasNextUnstableSnapshot returns if there is a snapshot that is available to
+// be applied to the local storage and is not already in-progress.
+func (l *raftLog) hasNextUnstableSnapshot() bool {
+	return l.unstable.nextSnapshot() != nil
+}
+
+// hasNextOrInProgressSnapshot returns if there is pending snapshot waiting for
+// applying or in the process of being applied.
+func (l *raftLog) hasNextOrInProgressSnapshot() bool {
 	return l.unstable.snapshot != nil
 }
 
@@ -265,6 +283,8 @@ func (l *raftLog) appliedTo(i uint64) {
 func (l *raftLog) stableTo(i, t uint64) { l.unstable.stableTo(i, t) }
 
 func (l *raftLog) stableSnapTo(i uint64) { l.unstable.stableSnapTo(i) }
+
+func (l *raftLog) acceptUnstable() { l.unstable.inProgress() }
 
 func (l *raftLog) lastTerm() uint64 {
 	t, err := l.term(l.lastIndex())

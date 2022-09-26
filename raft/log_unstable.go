@@ -16,6 +16,16 @@ package raft
 
 import pb "go.etcd.io/etcd/raft/v3/raftpb"
 
+// unstable contains "unstable" log entries and snapshot state that has
+// not yet been written to Storage. The type serves two roles. First, it
+// holds on to new log entries and an optional snapshot until they are
+// handed to a Ready struct for persistence. Second, it continues to
+// hold on to this state after it has been handed off to provide raftLog
+// with a view of the in-progress log entries and snapshot until their
+// writes have been stabilized and are guaranteed to be reflected in
+// queries of Storage. After this point, the corresponding log entries
+// and/or snapshot can be cleared from unstable.
+//
 // unstable.entries[i] has raft log position i+unstable.offset.
 // Note that unstable.offset may be less than the highest log
 // position in storage; this means that the next write to storage
@@ -25,9 +35,25 @@ type unstable struct {
 	snapshot *pb.Snapshot
 	// all entries that have not yet been written to storage.
 	entries []pb.Entry
-	offset  uint64
+	// entries[i] has raft log position i+offset.
+	offset uint64
+
+	// if true, snapshot is being written to storage.
+	snapshotInProgress bool
+	// entries[:offsetInProgress-offset] are being written to storage.
+	// Like offset, offsetInProgress is exclusive, meaning that it
+	// contains the index following the largest in-progress entry.
+	// Invariant: offset <= offsetInProgress
+	offsetInProgress uint64
 
 	logger Logger
+}
+
+// init initializes the unstable log.
+func (u *unstable) init(stableLastIndex uint64, logger Logger) {
+	u.offset = stableLastIndex + 1
+	u.offsetInProgress = u.offset
+	u.logger = logger
 }
 
 // maybeFirstIndex returns the index of the first possible entry in entries
@@ -72,6 +98,42 @@ func (u *unstable) maybeTerm(i uint64) (uint64, bool) {
 	return u.entries[i-u.offset].Term, true
 }
 
+// nextEntries returns the unstable entries that are not already in the process
+// of being written to storage.
+func (u *unstable) nextEntries() []pb.Entry {
+	inProgress := int(u.offsetInProgress - u.offset)
+	if len(u.entries) == inProgress {
+		return nil
+	}
+	return u.entries[inProgress:]
+}
+
+// nextSnapshot returns the unstable snapshot, if one exists that is not already
+// in the process of being written to storage.
+func (u *unstable) nextSnapshot() *pb.Snapshot {
+	if u.snapshot == nil || u.snapshotInProgress {
+		return nil
+	}
+	return u.snapshot
+}
+
+// inProgress marks all entries and the snapshot, if any, in the unstable as
+// having begun the process of being written to storage. The entries/snapshot
+// will no longer be returned from nextEntries/nextSnapshot. However, new
+// entries/snapshots added after a call to inProgress will be returned from
+// those methods, until the next call to inProgress.
+func (u *unstable) inProgress() {
+	if len(u.entries) > 0 {
+		// NOTE: +1 because offsetInProgress is exclusive, like offset.
+		u.offsetInProgress = u.entries[len(u.entries)-1].Index + 1
+	}
+	if u.snapshot != nil {
+		u.snapshotInProgress = true
+	}
+}
+
+// stableTo marks entries up to the entry with the specified (index, term) as
+// being successfully written to stable storage.
 func (u *unstable) stableTo(i, t uint64) {
 	gt, ok := u.maybeTerm(i)
 	if !ok {
@@ -84,10 +146,15 @@ func (u *unstable) stableTo(i, t uint64) {
 	}
 	if gt != t {
 		// Term mismatch between unstable entry and specified entry. Ignore.
+		// This is possible if part or all of the unstable log was replaced
+		// between that time that a set of entries started to be written to
+		// stable storage and when they finished.
 		return
 	}
-	u.entries = u.entries[i+1-u.offset:]
+	num := int(i + 1 - u.offset)
+	u.entries = u.entries[num:]
 	u.offset = i + 1
+	u.offsetInProgress = max(u.offsetInProgress, u.offset)
 	u.shrinkEntriesArray()
 }
 
@@ -113,34 +180,40 @@ func (u *unstable) shrinkEntriesArray() {
 func (u *unstable) stableSnapTo(i uint64) {
 	if u.snapshot != nil && u.snapshot.Metadata.Index == i {
 		u.snapshot = nil
+		u.snapshotInProgress = false
 	}
 }
 
 func (u *unstable) restore(s pb.Snapshot) {
 	u.offset = s.Metadata.Index + 1
+	u.offsetInProgress = u.offset
 	u.entries = nil
 	u.snapshot = &s
+	u.snapshotInProgress = false
 }
 
 func (u *unstable) truncateAndAppend(ents []pb.Entry) {
 	after := ents[0].Index
 	switch {
 	case after == u.offset+uint64(len(u.entries)):
-		// after is the next index in the u.entries
-		// directly append
+		// after is the next index in the u.entries directly append.
 		u.entries = append(u.entries, ents...)
 	case after <= u.offset:
 		u.logger.Infof("replace the unstable entries from index %d", after)
 		// The log is being truncated to before our current offset
-		// portion, so set the offset and replace the entries
-		u.offset = after
+		// portion, so set the offset and replace the entries.
 		u.entries = ents
+		u.offset = after
+		u.offsetInProgress = u.offset
 	default:
-		// truncate to after and copy to u.entries
-		// then append
+		// truncate to after and copy to u.entries then append.
 		u.logger.Infof("truncate the unstable entries before index %d", after)
-		u.entries = append([]pb.Entry{}, u.slice(u.offset, after)...)
+		keep := u.slice(u.offset, after)
+		u.entries = append([]pb.Entry{}, keep...)
 		u.entries = append(u.entries, ents...)
+		// Only in-progress entries before after are still considered to be
+		// in-progress.
+		u.offsetInProgress = min(u.offsetInProgress, after)
 	}
 }
 

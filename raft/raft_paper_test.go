@@ -423,7 +423,7 @@ func TestLeaderStartReplication(t *testing.T) {
 	if !reflect.DeepEqual(msgs, wmsgs) {
 		t.Errorf("msgs = %+v, want %+v", msgs, wmsgs)
 	}
-	if g := r.raftLog.unstableEntries(); !reflect.DeepEqual(g, wents) {
+	if g := r.raftLog.nextUnstableEnts(); !reflect.DeepEqual(g, wents) {
 		t.Errorf("ents = %+v, want %+v", g, wents)
 	}
 }
@@ -691,7 +691,7 @@ func TestFollowerAppendEntries(t *testing.T) {
 		if g := r.raftLog.allEntries(); !reflect.DeepEqual(g, tt.wents) {
 			t.Errorf("#%d: ents = %+v, want %+v", i, g, tt.wents)
 		}
-		if g := r.raftLog.unstableEntries(); !reflect.DeepEqual(g, tt.wunstable) {
+		if g := r.raftLog.nextUnstableEnts(); !reflect.DeepEqual(g, tt.wunstable) {
 			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, g, tt.wunstable)
 		}
 	}
@@ -926,7 +926,7 @@ func commitNoopEntry(r *raft, s *MemoryStorage) {
 	}
 	// ignore further messages to refresh followers' commit index
 	r.readMessages()
-	s.Append(r.raftLog.unstableEntries())
+	s.Append(r.raftLog.nextUnstableEnts())
 	r.raftLog.appliedTo(r.raftLog.committed)
 	r.raftLog.stableTo(r.raftLog.lastIndex(), r.raftLog.lastTerm())
 }

@@ -284,7 +284,7 @@ func TestCompactionSideEffects(t *testing.T) {
 		require.True(t, raftLog.matchTerm(j, j))
 	}
 
-	unstableEnts := raftLog.unstableEntries()
+	unstableEnts := raftLog.nextUnstableEnts()
 	require.Equal(t, 250, len(unstableEnts))
 	require.Equal(t, uint64(751), unstableEnts[0].Index)
 
@@ -378,9 +378,9 @@ func TestNextCommittedEnts(t *testing.T) {
 	}
 }
 
-// TestUnstableEnts ensures unstableEntries returns the unstable part of the
+// TestNextUnstableEnts ensures unstableEntries returns the unstable part of the
 // entries correctly.
-func TestUnstableEnts(t *testing.T) {
+func TestNextUnstableEnts(t *testing.T) {
 	previousEnts := []pb.Entry{{Term: 1, Index: 1}, {Term: 2, Index: 2}}
 	tests := []struct {
 		unstable uint64
@@ -400,7 +400,7 @@ func TestUnstableEnts(t *testing.T) {
 			raftLog := newLog(storage, raftLogger)
 			raftLog.append(previousEnts[tt.unstable-1:]...)
 
-			ents := raftLog.unstableEntries()
+			ents := raftLog.nextUnstableEnts()
 			if l := len(ents); l > 0 {
 				raftLog.stableTo(ents[l-1].Index, ents[l-1].Term)
 			}

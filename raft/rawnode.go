@@ -148,6 +148,9 @@ func (rn *RawNode) acceptReady(rd Ready) {
 		rn.raft.readStates = nil
 	}
 	rn.raft.msgs = nil
+	// NB: this does not do anything yet, as entries and snapshots are always
+	// stabilized on the next Advance.
+	rn.raft.raftLog.acceptUnstable()
 }
 
 // HasReady called when RawNode user need to check if any Ready pending.
@@ -159,10 +162,10 @@ func (rn *RawNode) HasReady() bool {
 	if hardSt := r.hardState(); !IsEmptyHardState(hardSt) && !isHardStateEqual(hardSt, rn.prevHardSt) {
 		return true
 	}
-	if r.raftLog.hasPendingSnapshot() {
+	if r.raftLog.hasNextUnstableSnapshot() {
 		return true
 	}
-	if len(r.msgs) > 0 || len(r.raftLog.unstableEntries()) > 0 || r.raftLog.hasNextCommittedEnts() {
+	if len(r.msgs) > 0 || r.raftLog.hasNextUnstableEnts() || r.raftLog.hasNextCommittedEnts() {
 		return true
 	}
 	if len(r.readStates) != 0 {

@@ -561,7 +561,7 @@ func (n *node) ReadIndex(ctx context.Context, rctx []byte) error {
 
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
-		Entries:          r.raftLog.unstableEntries(),
+		Entries:          r.raftLog.nextUnstableEnts(),
 		CommittedEntries: r.raftLog.nextCommittedEnts(),
 		Messages:         r.msgs,
 	}
@@ -571,8 +571,8 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	if hardSt := r.hardState(); !isHardStateEqual(hardSt, prevHardSt) {
 		rd.HardState = hardSt
 	}
-	if r.raftLog.unstable.snapshot != nil {
-		rd.Snapshot = *r.raftLog.unstable.snapshot
+	if r.raftLog.hasNextUnstableSnapshot() {
+		rd.Snapshot = *r.raftLog.nextUnstableSnapshot()
 	}
 	if len(r.readStates) != 0 {
 		rd.ReadStates = r.readStates
