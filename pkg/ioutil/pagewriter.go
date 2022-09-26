@@ -104,11 +104,6 @@ func (pw *PageWriter) Flush() error {
 	return err
 }
 
-// FlushN flushes buffered data and returns the number of written bytes.
-func (pw *PageWriter) FlushN() (int, error) {
-	return pw.flush()
-}
-
 func (pw *PageWriter) flush() (int, error) {
 	if pw.bufferedBytes == 0 {
 		return 0, nil
