@@ -18,7 +18,6 @@ import (
 	"crypto/sha1"
 	"encoding/binary"
 	"fmt"
-	"math/rand"
 	"sort"
 	"strings"
 	"time"
@@ -86,15 +85,6 @@ func newMember(name string, peerURLs types.URLs, memberId types.ID, isLearner bo
 		ID:         memberId,
 	}
 	return m
-}
-
-// PickPeerURL chooses a random address from a given Member's PeerURLs.
-// It will panic if there is no PeerURLs available in Member.
-func (m *Member) PickPeerURL() string {
-	if len(m.PeerURLs) == 0 {
-		panic("member should always have some peer url")
-	}
-	return m.PeerURLs[rand.Intn(len(m.PeerURLs))]
 }
 
 func (m *Member) Clone() *Member {
