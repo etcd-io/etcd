@@ -38,14 +38,16 @@ type index interface {
 
 type treeIndex struct {
 	sync.RWMutex
-	tree *btree.BTree
+	tree *btree.BTreeG[*keyIndex]
 	lg   *zap.Logger
 }
 
 func newTreeIndex(lg *zap.Logger) index {
 	return &treeIndex{
-		tree: btree.New(32),
-		lg:   lg,
+		tree: btree.NewG(32, func(aki *keyIndex, bki *keyIndex) bool {
+			return aki.Less(bki)
+		}),
+		lg: lg,
 	}
 }
 
@@ -54,13 +56,12 @@ func (ti *treeIndex) Put(key []byte, rev revision) {
 
 	ti.Lock()
 	defer ti.Unlock()
-	item := ti.tree.Get(keyi)
-	if item == nil {
+	okeyi, ok := ti.tree.Get(keyi)
+	if !ok {
 		keyi.put(ti.lg, rev.main, rev.sub)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
-	okeyi := item.(*keyIndex)
 	okeyi.put(ti.lg, rev.main, rev.sub)
 }
 
@@ -85,8 +86,8 @@ func (ti *treeIndex) KeyIndex(keyi *keyIndex) *keyIndex {
 }
 
 func (ti *treeIndex) keyIndex(keyi *keyIndex) *keyIndex {
-	if item := ti.tree.Get(keyi); item != nil {
-		return item.(*keyIndex)
+	if ki, ok := ti.tree.Get(keyi); ok {
+		return ki
 	}
 	return nil
 }
@@ -94,11 +95,11 @@ func (ti *treeIndex) keyIndex(keyi *keyIndex) *keyIndex {
 func (ti *treeIndex) unsafeVisit(key, end []byte, f func(ki *keyIndex) bool) {
 	keyi, endi := &keyIndex{key: key}, &keyIndex{key: end}
 
-	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
+	ti.tree.AscendGreaterOrEqual(keyi, func(item *keyIndex) bool {
 		if len(endi.key) > 0 && !item.Less(endi) {
 			return false
 		}
-		if !f(item.(*keyIndex)) {
+		if !f(item) {
 			return false
 		}
 		return true
@@ -180,12 +181,11 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 
 	ti.Lock()
 	defer ti.Unlock()
-	item := ti.tree.Get(keyi)
-	if item == nil {
+	ki, ok := ti.tree.Get(keyi)
+	if !ok {
 		return ErrRevisionNotFound
 	}
 
-	ki := item.(*keyIndex)
 	return ki.tombstone(ti.lg, rev.main, rev.sub)
 }
 
@@ -196,15 +196,14 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	clone := ti.tree.Clone()
 	ti.Unlock()
 
-	clone.Ascend(func(item btree.Item) bool {
-		keyi := item.(*keyIndex)
+	clone.Ascend(func(keyi *keyIndex) bool {
 		// Lock is needed here to prevent modification to the keyIndex while
 		// compaction is going on or revision added to empty before deletion
 		ti.Lock()
 		keyi.compact(ti.lg, rev, available)
 		if keyi.isEmpty() {
-			item := ti.tree.Delete(keyi)
-			if item == nil {
+			_, ok := ti.tree.Delete(keyi)
+			if !ok {
 				ti.lg.Panic("failed to delete during compaction")
 			}
 		}
@@ -219,8 +218,7 @@ func (ti *treeIndex) Keep(rev int64) map[revision]struct{} {
 	available := make(map[revision]struct{})
 	ti.RLock()
 	defer ti.RUnlock()
-	ti.tree.Ascend(func(i btree.Item) bool {
-		keyi := i.(*keyIndex)
+	ti.tree.Ascend(func(keyi *keyIndex) bool {
 		keyi.keep(rev, available)
 		return true
 	})
@@ -236,15 +234,8 @@ func (ti *treeIndex) Equal(bi index) bool {
 
 	equal := true
 
-	ti.tree.Ascend(func(item btree.Item) bool {
-		var aki, bki *keyIndex
-		var ok bool
-		if aki, ok = item.(*keyIndex); !ok {
-			return false
-		}
-		if bki, ok = b.tree.Get(item).(*keyIndex); !ok {
-			return false
-		}
+	ti.tree.Ascend(func(aki *keyIndex) bool {
+		bki, _ := b.tree.Get(aki)
 		if !aki.equal(bki) {
 			equal = false
 			return false
