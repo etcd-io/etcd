@@ -202,13 +202,13 @@ func (s *EtcdServer) checkHashKV() error {
 	}
 
 	alarmed := false
-	mismatch := func(id uint64) {
+	mismatch := func(id types.ID) {
 		if alarmed {
 			return
 		}
 		alarmed = true
 		a := &pb.AlarmRequest{
-			MemberID: id,
+			MemberID: uint64(id),
 			Action:   pb.AlarmRequest_ACTIVATE,
 			Alarm:    pb.AlarmType_CORRUPT,
 		}
@@ -231,7 +231,7 @@ func (s *EtcdServer) checkHashKV() error {
 		} else {
 			plog.Warningf("mismatched hashes %d and %d for revision %d", h, h2, rev)
 		}
-		mismatch(uint64(s.ID()))
+		mismatch(s.ID())
 	}
 
 	checkedCount := 0
@@ -240,7 +240,6 @@ func (s *EtcdServer) checkHashKV() error {
 			continue
 		}
 		checkedCount++
-		id := p.resp.Header.MemberId
 
 		// leader expects follower's latest revision less than or equal to leader's
 		if p.resp.Header.Revision > rev2 {
@@ -249,16 +248,16 @@ func (s *EtcdServer) checkHashKV() error {
 					"revision from follower must be less than or equal to leader's",
 					zap.Int64("leader-revision", rev2),
 					zap.Int64("follower-revision", p.resp.Header.Revision),
-					zap.String("follower-peer-id", types.ID(id).String()),
+					zap.String("follower-peer-id", p.id.String()),
 				)
 			} else {
 				plog.Warningf(
 					"revision %d from member %v, expected at most %d",
 					p.resp.Header.Revision,
-					types.ID(id),
+					p.id,
 					rev2)
 			}
-			mismatch(id)
+			mismatch(p.id)
 		}
 
 		// leader expects follower's latest compact revision less than or equal to leader's
@@ -268,17 +267,17 @@ func (s *EtcdServer) checkHashKV() error {
 					"compact revision from follower must be less than or equal to leader's",
 					zap.Int64("leader-compact-revision", crev2),
 					zap.Int64("follower-compact-revision", p.resp.CompactRevision),
-					zap.String("follower-peer-id", types.ID(id).String()),
+					zap.String("follower-peer-id", p.id.String()),
 				)
 			} else {
 				plog.Warningf(
 					"compact revision %d from member %v, expected at most %d",
 					p.resp.CompactRevision,
-					types.ID(id),
+					p.id,
 					crev2,
 				)
 			}
-			mismatch(id)
+			mismatch(p.id)
 		}
 
 		// follower's compact revision is leader's old one, then hashes must match
@@ -290,18 +289,18 @@ func (s *EtcdServer) checkHashKV() error {
 					zap.Uint32("leader-hash", h),
 					zap.Int64("follower-compact-revision", p.resp.CompactRevision),
 					zap.Uint32("follower-hash", p.resp.Hash),
-					zap.String("follower-peer-id", types.ID(id).String()),
+					zap.String("follower-peer-id", p.id.String()),
 				)
 			} else {
 				plog.Warningf(
 					"hash %d at revision %d from member %v, expected hash %d",
 					p.resp.Hash,
 					rev,
-					types.ID(id),
+					p.id,
 					h,
 				)
 			}
-			mismatch(id)
+			mismatch(p.id)
 		}
 	}
 	if lg != nil {

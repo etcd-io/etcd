@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -36,6 +37,11 @@ func alarmTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 
+	memberList, err := getMemberList(cx)
+	if err != nil {
+		cx.t.Fatalf("Unexpected error: %v", err)
+	}
+
 	// write some chunks to fill up the database
 	buf := strings.Repeat("b", os.Getpagesize())
 	for {
@@ -48,7 +54,7 @@ func alarmTest(cx ctlCtx) {
 	}
 
 	// quota alarm should now be on
-	if err := ctlV3Alarm(cx, "list", "alarm:NOSPACE"); err != nil {
+	if err := ctlV3Alarm(cx, "list", fmt.Sprintf("memberID:%d alarm:NOSPACE", memberList.Members[0].ID)); err != nil {
 		cx.t.Fatal(err)
 	}
 
