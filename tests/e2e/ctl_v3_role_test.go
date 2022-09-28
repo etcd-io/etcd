@@ -77,7 +77,7 @@ func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) err
 	defer proc.Close()
 
 	expStr := fmt.Sprintf("Role %s updated", rolename)
-	_, err = proc.ExpectWithContext(context.Background(), expStr)
+	_, err = proc.ExpectWithContext(context.TODO(), expStr)
 	return err
 }
 
@@ -101,7 +101,7 @@ func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string,
 		return err
 	}
 	defer proc.Close()
-	_, err = proc.ExpectWithContext(context.Background(), expStr)
+	_, err = proc.ExpectWithContext(context.TODO(), expStr)
 	return err
 }
 

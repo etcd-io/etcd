@@ -139,7 +139,7 @@ func runEtcdNode(name, dataDir, clientURL, peerURL, clusterState, initialCluster
 		return nil, err
 	}
 
-	_, err = proc.ExpectWithContext(context.Background(), "ready to serve client requests")
+	_, err = proc.ExpectWithContext(context.TODO(), "ready to serve client requests")
 
 	return proc, err
 }

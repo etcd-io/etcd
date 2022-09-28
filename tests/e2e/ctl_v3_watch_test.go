@@ -52,7 +52,7 @@ func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 		}
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 	for _, elem := range kvs {
 		if _, err = proc.ExpectWithContext(ctx, elem.key); err != nil {
 			return err
@@ -87,7 +87,7 @@ func ctlV3WatchFailPerm(cx ctlCtx, args []string) error {
 	// TODO(mitake): after printing accurate error message that includes
 	// "permission denied", the above string argument of proc.Expect()
 	// should be updated.
-	_, err = proc.ExpectWithContext(context.Background(), "watch is canceled by the server")
+	_, err = proc.ExpectWithContext(context.TODO(), "watch is canceled by the server")
 	if err != nil {
 		return err
 	}

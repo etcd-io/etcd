@@ -37,7 +37,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
+	ctx := context.TODO()
 	_, err = proc.ExpectWithContext(ctx, "compares:")
 	if err != nil {
 		return err

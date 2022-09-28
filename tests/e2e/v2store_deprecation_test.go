@@ -58,7 +58,7 @@ func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath str
 	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
-	_, err = proc.ExpectWithContext(context.Background(), "detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
+	_, err = proc.ExpectWithContext(context.TODO(), "detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
 	assert.NoError(t, err)
 }
 
@@ -67,7 +67,7 @@ func assertVerifyCannotStartV2deprecationNotYet(t testing.TB, dataDirPath string
 	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
-	_, err = proc.ExpectWithContext(context.Background(), `invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
+	_, err = proc.ExpectWithContext(context.TODO(), `invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
 	assert.NoError(t, err)
 }
 

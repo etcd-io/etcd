@@ -62,7 +62,7 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 		return "", err
 	}
 
-	line, err := proc.ExpectWithContext(context.Background(), " granted with TTL(")
+	line, err := proc.ExpectWithContext(context.TODO(), " granted with TTL(")
 	if err != nil {
 		return "", err
 	}
@@ -86,7 +86,7 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 		return err
 	}
 
-	_, err = proc.ExpectWithContext(context.Background(), fmt.Sprintf("lease %s keepalived with TTL(", leaseID))
+	_, err = proc.ExpectWithContext(context.TODO(), fmt.Sprintf("lease %s keepalived with TTL(", leaseID))
 	if err != nil {
 		return err
 	}
