@@ -24,6 +24,7 @@ linters:
     - staticcheck
     - stylecheck
     - unused
+    - unconvert # Remove unnecessary type conversions
     - revive
 
 linters-settings: # please keep this alphabetized
