@@ -31,7 +31,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -165,33 +165,33 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	cancel()
 	_, err = io.Copy(io.Discard, rc1)
 	if err != context.Canceled {
-		t.Errorf("expected %v, got %v", context.Canceled, err)
+		t.Errorf("expected: %v, got: %v", context.Canceled, err)
 	}
 }
 
 // TestMaintenanceSnapshotWithVersionTimeout ensures that SnapshotWithVersion function
 // returns corresponding context errors when context timeout happened before snapshot reading
 func TestMaintenanceSnapshotWithVersionTimeout(t *testing.T) {
-	testMaintenanceSnapshotTimeout(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {
+	testMaintenanceSnapshotTimeout(t, func(ctx context.Context, client *clientv3.Client) (*clientv3.SnapshotResponse, error) {
 		resp, err := client.SnapshotWithVersion(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return resp.Snapshot, nil
+		return resp, nil
 	})
 }
 
 // TestMaintenanceSnapshotTimeout ensures that Snapshot function
 // returns corresponding context errors when context timeout happened before snapshot reading
 func TestMaintenanceSnapshotTimeout(t *testing.T) {
-	testMaintenanceSnapshotTimeout(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {
-		return client.Snapshot(ctx)
+	testMaintenanceSnapshotTimeout(t, func(ctx context.Context, client *clientv3.Client) (*clientv3.SnapshotResponse, error) {
+		return client.SnapshotWithVersion(ctx)
 	})
 }
 
 // testMaintenanceSnapshotTimeout given snapshot function ensures that it
 // returns corresponding context errors when context timeout happened before snapshot reading
-func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
+func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context, *clientv3.Client) (*clientv3.SnapshotResponse, error)) {
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -204,11 +204,11 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rc2.Close()
+	defer rc2.Snapshot.Close()
 
 	time.Sleep(2 * time.Second)
 
-	_, err = io.Copy(io.Discard, rc2)
+	_, err = io.Copy(io.Discard, rc2.Snapshot)
 	if err != nil && !IsClientTimeout(err) {
 		t.Errorf("expected client timeout, got %v", err)
 	}
@@ -217,26 +217,26 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 // TestMaintenanceSnapshotWithVersionErrorInflight ensures that ReaderCloser returned by SnapshotWithVersion function
 // will fail to read with corresponding context errors on inflight context cancel timeout.
 func TestMaintenanceSnapshotWithVersionErrorInflight(t *testing.T) {
-	testMaintenanceSnapshotErrorInflight(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {
+	testMaintenanceSnapshotErrorInflight(t, func(ctx context.Context, client *clientv3.Client) (*clientv3.SnapshotResponse, error) {
 		resp, err := client.SnapshotWithVersion(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return resp.Snapshot, nil
+		return resp, nil
 	})
 }
 
 // TestMaintenanceSnapshotError ensures that ReaderCloser returned by Snapshot function
 // will fail to read with corresponding context errors on inflight context cancel timeout.
 func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
-	testMaintenanceSnapshotErrorInflight(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {
-		return client.Snapshot(ctx)
+	testMaintenanceSnapshotErrorInflight(t, func(ctx context.Context, client *clientv3.Client) (*clientv3.SnapshotResponse, error) {
+		return client.SnapshotWithVersion(ctx)
 	})
 }
 
 // testMaintenanceSnapshotErrorInflight given snapshot function ensures that ReaderCloser returned by it
 // will fail to read with corresponding context errors on inflight context cancel timeout.
-func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
+func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Context, *clientv3.Client) (*clientv3.SnapshotResponse, error)) {
 	integration2.BeforeTest(t)
 	lg := zaptest.NewLogger(t)
 
@@ -262,7 +262,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rc1.Close()
+	defer rc1.Snapshot.Close()
 
 	donec := make(chan struct{})
 	go func() {
@@ -270,7 +270,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 		cancel()
 		close(donec)
 	}()
-	_, err = io.Copy(io.Discard, rc1)
+	_, err = io.Copy(io.Discard, rc1.Snapshot)
 	if err != nil && err != context.Canceled {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
@@ -283,11 +283,11 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rc2.Close()
+	defer rc2.Snapshot.Close()
 
 	// 300ms left and expect timeout while snapshot reading is in progress
 	time.Sleep(700 * time.Millisecond)
-	_, err = io.Copy(io.Discard, rc2)
+	_, err = io.Copy(io.Discard, rc2.Snapshot)
 	if err != nil && !IsClientTimeout(err) {
 		t.Errorf("expected client timeout, got %v", err)
 	}

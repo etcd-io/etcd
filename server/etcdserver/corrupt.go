@@ -465,13 +465,12 @@ func HashByRev(ctx context.Context, cc *http.Client, url string, rev int64) (*pb
 		return nil, err
 	}
 	requestUrl := url + PeerHashKVPath
-	req, err := http.NewRequest(http.MethodGet, requestUrl, bytes.NewReader(hashReqBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl, bytes.NewReader(hashReqBytes))
 	if err != nil {
 		return nil, err
 	}
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
-	req.Cancel = ctx.Done()
 
 	resp, err := cc.Do(req)
 	if err != nil {

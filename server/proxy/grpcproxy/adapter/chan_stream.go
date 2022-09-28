@@ -27,7 +27,7 @@ import (
 type chanServerStream struct {
 	headerc  chan<- metadata.MD
 	trailerc chan<- metadata.MD
-	grpc.Stream
+	grpc.ClientStream
 
 	headers []metadata.MD
 }
@@ -101,6 +101,12 @@ type chanStream struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 }
+
+func (s *chanStream) Header() (metadata.MD, error) { return s.Header() }
+
+func (s *chanStream) Trailer() metadata.MD { return s.Trailer() }
+
+func (s *chanStream) CloseSend() error { return s.CloseSend() }
 
 func (s *chanStream) Context() context.Context { return s.ctx }
 

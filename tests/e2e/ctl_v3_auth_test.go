@@ -895,7 +895,7 @@ func leaseTestGrantLeasesList(cx ctlCtx) error {
 	if err != nil {
 		return fmt.Errorf("lease list failed (%v)", err)
 	}
-	_, err = proc.Expect(id)
+	_, err = proc.ExpectWithContext(context.Background(), id)
 	if err != nil {
 		return fmt.Errorf("lease id not in returned list (%v)", err)
 	}
@@ -1322,7 +1322,7 @@ func ctlV3User(cx ctlCtx, args []string, expStr string, stdIn []string) error {
 		}
 	}
 
-	_, err = proc.Expect(expStr)
+	_, err = proc.ExpectWithContext(context.Background(), expStr)
 	return err
 }
 

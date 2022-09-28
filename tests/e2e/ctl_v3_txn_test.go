@@ -15,6 +15,8 @@
 package e2e
 
 import (
+	"context"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -35,7 +37,8 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 	if err != nil {
 		return err
 	}
-	_, err = proc.Expect("compares:")
+	ctx := context.Background()
+	_, err = proc.ExpectWithContext(ctx, "compares:")
 	if err != nil {
 		return err
 	}
@@ -48,7 +51,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 		return err
 	}
 
-	_, err = proc.Expect("success requests (get, put, del):")
+	_, err = proc.ExpectWithContext(ctx, "success requests (get, put, del):")
 	if err != nil {
 		return err
 	}
@@ -61,7 +64,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 		return err
 	}
 
-	_, err = proc.Expect("failure requests (get, put, del):")
+	_, err = proc.ExpectWithContext(ctx, "failure requests (get, put, del):")
 	if err != nil {
 		return err
 	}
@@ -75,7 +78,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 	}
 
 	for _, line := range rqs.results {
-		_, err = proc.Expect(line)
+		_, err = proc.ExpectWithContext(ctx, line)
 		if err != nil {
 			return err
 		}

@@ -151,12 +151,11 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 	}
 
 	cc := &http.Client{Transport: rt}
-	req, err := http.NewRequest("POST", url, bytes.NewReader(lreq))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(lreq))
 	if err != nil {
 		return -1, err
 	}
 	req.Header.Set("Content-Type", "application/protobuf")
-	req.Cancel = ctx.Done()
 
 	resp, err := cc.Do(req)
 	if err != nil {

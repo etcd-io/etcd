@@ -141,7 +141,7 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 		return snapshot.Status{}, err
 	}
 	var txt string
-	txt, err = proc.Expect("totalKey")
+	txt, err = proc.ExpectWithContext(context.Background(), "totalKey")
 	if err != nil {
 		return snapshot.Status{}, err
 	}
@@ -263,7 +263,7 @@ func testIssue6361(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = nepc.Expect("ready to serve client requests"); err != nil {
+	if _, err = nepc.ExpectWithContext(context.Background(), "ready to serve client requests"); err != nil {
 		t.Fatal(err)
 	}
 

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
@@ -58,7 +58,7 @@ func (lc *shortTTLLeaseExpireChecker) Check() error {
 		return nil
 	}
 
-	cli, err := lc.m.CreateEtcdClient(grpc.WithBackoffMaxDelay(time.Second))
+	cli, err := lc.m.CreateEtcdClient(grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: time.Second}))
 	if err != nil {
 		return fmt.Errorf("%v (%q)", err, lc.m.EtcdClientEndpoint)
 	}

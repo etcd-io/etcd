@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	testpb "google.golang.org/grpc/test/grpc_testing"
 )
 
@@ -68,7 +69,7 @@ func TestEtcdGrpcResolver(t *testing.T) {
 		t.Fatal("failed to new resolver builder", err)
 	}
 
-	conn, err := grpc.Dial("etcd:///foo", grpc.WithInsecure(), grpc.WithResolvers(b))
+	conn, err := grpc.Dial("etcd:///foo", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithResolvers(b))
 	if err != nil {
 		t.Fatal("failed to connect to foo", err)
 	}

@@ -32,3 +32,7 @@ func (c *codec) Unmarshal(data []byte, v interface{}) error {
 func (c *codec) String() string {
 	return "proto"
 }
+
+func (c *codec) Name() string {
+	return "proto"
+}

@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
@@ -135,7 +135,7 @@ func (ls *leaseStresser) Stress() error {
 	ls.ctx = ctx
 	ls.cancel = cancel
 
-	cli, err := ls.m.CreateEtcdClient(grpc.WithBackoffMaxDelay(1 * time.Second))
+	cli, err := ls.m.CreateEtcdClient(grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: 1 * time.Second}))
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, ls.m.EtcdClientEndpoint)
 	}

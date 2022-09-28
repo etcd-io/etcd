@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -65,7 +66,7 @@ func getMemberList(cx ctlCtx) (etcdserverpb.MemberListResponse, error) {
 		return etcdserverpb.MemberListResponse{}, err
 	}
 	var txt string
-	txt, err = proc.Expect("members")
+	txt, err = proc.ExpectWithContext(context.Background(), "members")
 	if err != nil {
 		return etcdserverpb.MemberListResponse{}, err
 	}
@@ -94,7 +95,7 @@ func memberListWithHexTest(cx ctlCtx) {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}
 	var txt string
-	txt, err = proc.Expect("members")
+	txt, err = proc.ExpectWithContext(context.Background(), "members")
 	if err != nil {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}

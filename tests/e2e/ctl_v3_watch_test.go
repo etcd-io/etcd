@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"strings"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -51,15 +52,16 @@ func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 		}
 	}
 
+	ctx := context.Background()
 	for _, elem := range kvs {
-		if _, err = proc.Expect(elem.key); err != nil {
+		if _, err = proc.ExpectWithContext(ctx, elem.key); err != nil {
 			return err
 		}
-		if _, err = proc.Expect(elem.val); err != nil {
+		if _, err = proc.ExpectWithContext(ctx, elem.val); err != nil {
 			return err
 		}
 		if elem.execOutput != "" {
-			if _, err = proc.Expect(elem.execOutput); err != nil {
+			if _, err = proc.ExpectWithContext(ctx, elem.execOutput); err != nil {
 				return err
 			}
 		}
@@ -85,7 +87,7 @@ func ctlV3WatchFailPerm(cx ctlCtx, args []string) error {
 	// TODO(mitake): after printing accurate error message that includes
 	// "permission denied", the above string argument of proc.Expect()
 	// should be updated.
-	_, err = proc.Expect("watch is canceled by the server")
+	_, err = proc.ExpectWithContext(context.Background(), "watch is canceled by the server")
 	if err != nil {
 		return err
 	}

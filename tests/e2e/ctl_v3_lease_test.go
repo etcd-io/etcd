@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -61,7 +62,7 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 		return "", err
 	}
 
-	line, err := proc.Expect(" granted with TTL(")
+	line, err := proc.ExpectWithContext(context.Background(), " granted with TTL(")
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +86,8 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 		return err
 	}
 
-	if _, err = proc.Expect(fmt.Sprintf("lease %s keepalived with TTL(", leaseID)); err != nil {
+	_, err = proc.ExpectWithContext(context.Background(), fmt.Sprintf("lease %s keepalived with TTL(", leaseID))
+	if err != nil {
 		return err
 	}
 	return proc.Stop()

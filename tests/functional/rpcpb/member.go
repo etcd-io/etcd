@@ -25,8 +25,9 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
@@ -75,7 +76,7 @@ func (m *Member) DialEtcdGRPCServer(opts ...grpc.DialOption) (*grpc.ClientConn, 
 		creds := credentials.NewTLS(tlsConfig)
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
 	} else {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 	dialOpts = append(dialOpts, opts...)
 	return grpc.Dial(m.EtcdClientEndpoint, dialOpts...)
