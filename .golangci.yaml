@@ -20,14 +20,17 @@ linters:
   # - deadcode
   # - structcheck
   # - varcheck
+    - goimports
     - ineffassign
+    - revive
     - staticcheck
     - stylecheck
     - unused
     - unconvert # Remove unnecessary type conversions
-    - revive
 
 linters-settings: # please keep this alphabetized
+  goimports:
+    local-prefixes: go.etcd.io/etcd # Put imports beginning with prefix after 3rd-party packages.
   staticcheck:
     checks:
       - "all"
