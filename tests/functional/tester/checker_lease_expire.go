@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
+	"google.golang.org/grpc/backoff"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -63,7 +64,8 @@ func (lc *leaseExpireChecker) Check() error {
 		return nil
 	}
 
-	cli, err := lc.m.CreateEtcdClient(grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: time.Second}))
+	cli, err := lc.m.CreateEtcdClient(
+		grpc.WithConnectParams(grpc.ConnectParams{Backoff: backoff.Config{MaxDelay: time.Second}}))
 	if err != nil {
 		return fmt.Errorf("%v (%q)", err, lc.m.EtcdClientEndpoint)
 	}

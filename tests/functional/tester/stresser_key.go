@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
+	"google.golang.org/grpc/backoff"
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
@@ -76,7 +77,8 @@ type keyStresser struct {
 
 func (s *keyStresser) Stress() error {
 	var err error
-	s.cli, err = s.m.CreateEtcdClient(grpc.WithConnectParams(grpc.ConnectParams{MinConnectTimeout: 1 * time.Second}))
+	s.cli, err = s.m.CreateEtcdClient(
+		grpc.WithConnectParams(grpc.ConnectParams{Backoff: backoff.Config{MaxDelay: 1 * time.Second}}))
 	if err != nil {
 		return fmt.Errorf("%v (%q)", err, s.m.EtcdClientEndpoint)
 	}
