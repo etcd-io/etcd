@@ -393,7 +393,8 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 // know who is the current leader; node will accept proposal when it knows
 // who is the current leader.
 func TestBlockProposal(t *testing.T) {
-	rn := newTestRawNode(1, 10, 1, newTestMemoryStorage(withPeers(1)))
+	s := newTestMemoryStorage(withPeers(1))
+	rn := newTestRawNode(1, 10, 1, s)
 	n := newNode(rn)
 	go n.run()
 	defer n.Stop()
@@ -412,6 +413,9 @@ func TestBlockProposal(t *testing.T) {
 	}
 
 	n.Campaign(context.TODO())
+	rd := <-n.Ready()
+	s.Append(rd.Entries)
+	n.Advance()
 	select {
 	case err := <-errc:
 		if err != nil {
@@ -586,7 +590,12 @@ func TestNodeStart(t *testing.T) {
 	}
 
 	{
+		// Persist vote.
 		rd := <-n.Ready()
+		storage.Append(rd.Entries)
+		n.Advance()
+		// Append empty entry.
+		rd = <-n.Ready()
 		storage.Append(rd.Entries)
 		n.Advance()
 	}
@@ -723,8 +732,12 @@ func TestNodeAdvance(t *testing.T) {
 	defer cancel()
 
 	n.Campaign(ctx)
+	// Persist vote.
 	rd := readyWithTimeout(n)
-	// Commit empty entry.
+	storage.Append(rd.Entries)
+	n.Advance()
+	// Append empty entry.
+	rd = readyWithTimeout(n)
 	storage.Append(rd.Entries)
 	n.Advance()
 
@@ -878,9 +891,15 @@ func TestCommitPagination(t *testing.T) {
 	defer cancel()
 	n.Campaign(ctx)
 
+	// Persist vote.
 	rd := readyWithTimeout(n)
 	s.Append(rd.Entries)
 	n.Advance()
+	// Append empty entry.
+	rd = readyWithTimeout(n)
+	s.Append(rd.Entries)
+	n.Advance()
+	// Apply empty entry.
 	rd = readyWithTimeout(n)
 	if len(rd.CommittedEntries) != 1 {
 		t.Fatalf("expected 1 (empty) entry, got %d", len(rd.CommittedEntries))

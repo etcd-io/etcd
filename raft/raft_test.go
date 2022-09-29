@@ -49,6 +49,7 @@ func mustAppendEntry(r *raft, ents ...pb.Entry) {
 type stateMachine interface {
 	Step(m pb.Message) error
 	readMessages() []pb.Message
+	maybeVoteForSelf() bool
 }
 
 func (r *raft) readMessages() []pb.Message {
@@ -382,6 +383,7 @@ func TestLearnerPromotion(t *testing.T) {
 	setRandomizedElectionTimeout(n1, n1.electionTimeout)
 	for i := 0; i < n1.electionTimeout; i++ {
 		n1.tick()
+		n1.maybeVoteForSelf()
 	}
 
 	if n1.state != StateLeader {
@@ -403,6 +405,7 @@ func TestLearnerPromotion(t *testing.T) {
 	setRandomizedElectionTimeout(n2, n2.electionTimeout)
 	for i := 0; i < n2.electionTimeout; i++ {
 		n2.tick()
+		n2.maybeVoteForSelf()
 	}
 
 	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgBeat})
@@ -700,6 +703,7 @@ func TestLearnerLogReplication(t *testing.T) {
 	setRandomizedElectionTimeout(n1, n1.electionTimeout)
 	for i := 0; i < n1.electionTimeout; i++ {
 		n1.tick()
+		n1.maybeVoteForSelf()
 	}
 
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
@@ -1751,6 +1755,7 @@ func testCandidateResetTerm(t *testing.T, mt pb.MessageType) {
 	c.resetRandomizedElectionTimeout()
 	for i := 0; i < c.randomizedElectionTimeout; i++ {
 		c.tick()
+		c.maybeVoteForSelf()
 	}
 
 	if c.state != StateCandidate {
@@ -1770,6 +1775,90 @@ func testCandidateResetTerm(t *testing.T, mt pb.MessageType) {
 	// follower c term is reset with leader's
 	if a.Term != c.Term {
 		t.Errorf("follower term expected same term as leader's %d, got %d", a.Term, c.Term)
+	}
+}
+
+func TestCandidateSelfVoteAfterLostElection(t *testing.T) {
+	testCandidateSelfVoteAfterLostElection(t, false)
+}
+
+func TestCandidateSelfVoteAfterLostElectionPreVote(t *testing.T) {
+	testCandidateSelfVoteAfterLostElection(t, true)
+}
+
+func testCandidateSelfVoteAfterLostElection(t *testing.T, preVote bool) {
+	sm := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
+	sm.preVote = preVote
+
+	// n1 calls an election.
+	sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	voteMsg := sm.voteSelfOnAdvance
+
+	// n1 hears that n2 already won the election before it has had a
+	// change to sync its vote to disk and account for its self-vote.
+	// Becomes a follower.
+	sm.Step(pb.Message{From: 2, To: 1, Term: sm.Term, Type: pb.MsgHeartbeat})
+	if sm.state != StateFollower {
+		t.Errorf("state = %v, want %v", sm.state, StateFollower)
+	}
+
+	// n1 remains a follower even after its self-vote is delivered.
+	sm.Step(voteMsg)
+	if sm.state != StateFollower {
+		t.Errorf("state = %v, want %v", sm.state, StateFollower)
+	}
+
+	// Its self-vote does not make its way to its ProgressTracker.
+	granted, _, _ := sm.prs.TallyVotes()
+	if granted != 0 {
+		t.Errorf("granted = %v, want %v", granted, 0)
+	}
+}
+
+func TestCandidateDeliversPreCandidateSelfVoteAfterBecomingCandidate(t *testing.T) {
+	sm := newTestRaft(1, 5, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
+	sm.preVote = true
+
+	// n1 calls an election.
+	sm.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	preVoteMsg := sm.voteSelfOnAdvance
+	if sm.state != StatePreCandidate {
+		t.Errorf("state = %v, want %v", sm.state, StatePreCandidate)
+	}
+
+	// n1 receives pre-candidate votes from both other peers before
+	// voting for itself. n1 becomes a candidate.
+	// NB: pre-vote messages carry the local term + 1.
+	sm.Step(pb.Message{From: 2, To: 1, Term: sm.Term + 1, Type: pb.MsgPreVoteResp})
+	sm.Step(pb.Message{From: 3, To: 1, Term: sm.Term + 1, Type: pb.MsgPreVoteResp})
+	if sm.state != StateCandidate {
+		t.Errorf("state = %v, want %v", sm.state, StateCandidate)
+	}
+
+	// n1 remains a candidate even after its delayed pre-vote self-vote is
+	// delivered.
+	sm.Step(preVoteMsg)
+	voteMsg := sm.voteSelfOnAdvance
+	if sm.state != StateCandidate {
+		t.Errorf("state = %v, want %v", sm.state, StateCandidate)
+	}
+
+	// Its pre-vote self-vote does not make its way to its ProgressTracker.
+	granted, _, _ := sm.prs.TallyVotes()
+	if granted != 0 {
+		t.Errorf("granted = %v, want %v", granted, 0)
+	}
+
+	// A single vote from n2 does not move n1 to the leader.
+	sm.Step(pb.Message{From: 2, To: 1, Term: sm.Term, Type: pb.MsgVoteResp})
+	if sm.state != StateCandidate {
+		t.Errorf("state = %v, want %v", sm.state, StateCandidate)
+	}
+
+	// n1 becomes the leader once its self-vote is received.
+	sm.Step(voteMsg)
+	if sm.state != StateLeader {
+		t.Errorf("state = %v, want %v", sm.state, StateLeader)
 	}
 }
 
@@ -3382,11 +3471,15 @@ func testCampaignWhileLeader(t *testing.T, preVote bool) {
 	// We don't call campaign() directly because it comes after the check
 	// for our current state.
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	for r.maybeVoteForSelf() {
+	}
 	if r.state != StateLeader {
 		t.Errorf("expected single-node election to become leader but got %s", r.state)
 	}
 	term := r.Term
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	for r.maybeVoteForSelf() {
+	}
 	if r.state != StateLeader {
 		t.Errorf("expected to remain leader but got %s", r.state)
 	}
@@ -4754,6 +4847,8 @@ func (nw *network) send(msgs ...pb.Message) {
 			nw.t.Log(DescribeMessage(m, nil))
 		}
 		p.Step(m)
+		for p.maybeVoteForSelf() {
+		}
 		msgs = append(msgs[1:], nw.filter(p.readMessages())...)
 	}
 }
@@ -4820,6 +4915,7 @@ type blackHole struct{}
 
 func (blackHole) Step(pb.Message) error      { return nil }
 func (blackHole) readMessages() []pb.Message { return nil }
+func (blackHole) maybeVoteForSelf() bool     { return false }
 
 var nopStepper = &blackHole{}
 

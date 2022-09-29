@@ -185,7 +185,6 @@ stabilize
   INFO 4 [term 1] received MsgTimeoutNow from 1 and starts an election to get leadership.
   INFO 4 is starting a new election at term 1
   INFO 4 became candidate at term 2
-  INFO 4 received MsgVoteResp from 4 at term 2
   INFO 4 [logterm: 1, index: 4] sent MsgVote request to 1 at term 2
   INFO 4 [logterm: 1, index: 4] sent MsgVote request to 2 at term 2
   INFO 4 [logterm: 1, index: 4] sent MsgVote request to 3 at term 2
@@ -197,6 +196,8 @@ stabilize
   4->1 MsgVote Term:2 Log:1/4
   4->2 MsgVote Term:2 Log:1/4
   4->3 MsgVote Term:2 Log:1/4
+  INFO 4 received MsgVoteResp from 4 at term 2
+  INFO 4 has received 1 MsgVoteResp votes and 0 vote rejections
 > 1 receiving messages
   4->1 MsgVote Term:2 Log:1/4
   INFO 1 [term: 1] received a MsgVote message with higher term from 4 [term: 2]

@@ -357,7 +357,6 @@ campaign 1
 ----
 INFO 1 is starting a new election at term 7
 INFO 1 became candidate at term 8
-INFO 1 received MsgVoteResp from 1 at term 8
 INFO 1 [logterm: 6, index: 20] sent MsgVote request to 2 at term 8
 INFO 1 [logterm: 6, index: 20] sent MsgVote request to 3 at term 8
 INFO 1 [logterm: 6, index: 20] sent MsgVote request to 4 at term 8
@@ -379,6 +378,8 @@ stabilize 1
   1->5 MsgVote Term:8 Log:6/20
   1->6 MsgVote Term:8 Log:6/20
   1->7 MsgVote Term:8 Log:6/20
+  INFO 1 received MsgVoteResp from 1 at term 8
+  INFO 1 has received 1 MsgVoteResp votes and 0 vote rejections
 
 stabilize 2 3 4 5 6 7
 ----

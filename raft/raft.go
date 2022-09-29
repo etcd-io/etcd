@@ -278,6 +278,14 @@ type raft struct {
 
 	msgs []pb.Message
 
+	// voteSelfOnAdvance is a marker that the local raft node should vote for
+	// itself upon its next call to advance. This is not meant to be the final
+	// approach towards handling self-votes, but it's a useful intermediate
+	// point to get all tests working and to write some additional tests that
+	// demonstrate possible race conditions when self-voting is asynchronous.
+	// This is replaced in a later commit.
+	voteSelfOnAdvance pb.Message
+
 	// the leader id
 	lead uint64
 	// leadTransferee is id of the leader transfer target when its value is not zero.
@@ -616,6 +624,7 @@ func (r *raft) advance(rd Ready) {
 	if !IsEmptySnap(rd.Snapshot) {
 		r.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
 	}
+	r.maybeVoteForSelf()
 }
 
 // maybeCommit attempts to advance the commit index. Returns true if
@@ -624,6 +633,22 @@ func (r *raft) advance(rd Ready) {
 func (r *raft) maybeCommit() bool {
 	mci := r.prs.Committed()
 	return r.raftLog.maybeCommit(mci, r.Term)
+}
+
+// maybeVoteForSelf attempts to inform a (pre-)candidate node that its
+// vote for itself has been made durable and can now be counted towards
+// the active election, if one is still ongoing. Returns true if the
+// node was informed of a self-vote.
+func (r *raft) maybeVoteForSelf() bool {
+	if r.voteSelfOnAdvance.Type == 0 {
+		return false
+	}
+	voteMsg := r.voteSelfOnAdvance
+	// NB: Clear the voteSelfOnAdvance marker before calling Step.
+	// Step may re-set the marker and cause us to loop.
+	r.voteSelfOnAdvance = pb.Message{}
+	_ = r.Step(voteMsg)
+	return true
 }
 
 func (r *raft) reset(term uint64) {
@@ -840,16 +865,6 @@ func (r *raft) campaign(t CampaignType) {
 		voteMsg = pb.MsgVote
 		term = r.Term
 	}
-	if _, _, res := r.poll(r.id, voteRespMsgType(voteMsg), true); res == quorum.VoteWon {
-		// We won the election after voting for ourselves (which must mean that
-		// this is a single-node cluster). Advance to the next state.
-		if t == campaignPreElection {
-			r.campaign(campaignElection)
-		} else {
-			r.becomeLeader()
-		}
-		return
-	}
 	var ids []uint64
 	{
 		idMap := r.prs.Voters.IDs()
@@ -861,6 +876,7 @@ func (r *raft) campaign(t CampaignType) {
 	}
 	for _, id := range ids {
 		if id == r.id {
+			r.voteSelfOnAdvance = pb.Message{To: id, From: id, Term: term, Type: voteRespMsgType(voteMsg)}
 			continue
 		}
 		r.logger.Infof("%x [logterm: %d, index: %d] sent %s request to %x at term %d",
@@ -870,7 +886,7 @@ func (r *raft) campaign(t CampaignType) {
 		if t == campaignTransfer {
 			ctx = []byte(t)
 		}
-		r.send(pb.Message{Term: term, To: id, Type: voteMsg, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Context: ctx})
+		r.send(pb.Message{To: id, Term: term, Type: voteMsg, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Context: ctx})
 	}
 }
 

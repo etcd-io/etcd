@@ -18,7 +18,6 @@ campaign 1
 ----
 INFO 1 is starting a new election at term 0
 INFO 1 became candidate at term 1
-INFO 1 received MsgVoteResp from 1 at term 1
 INFO 1 [logterm: 1, index: 2] sent MsgVote request to 2 at term 1
 INFO 1 [logterm: 1, index: 2] sent MsgVote request to 3 at term 1
 
@@ -31,6 +30,8 @@ stabilize
   Messages:
   1->2 MsgVote Term:1 Log:1/2
   1->3 MsgVote Term:1 Log:1/2
+  INFO 1 received MsgVoteResp from 1 at term 1
+  INFO 1 has received 1 MsgVoteResp votes and 0 vote rejections
 > 2 receiving messages
   1->2 MsgVote Term:1 Log:1/2
   INFO 2 [term: 0] received a MsgVote message with higher term from 1 [term: 1]

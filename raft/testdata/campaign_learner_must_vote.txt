@@ -54,7 +54,6 @@ campaign 2
 ----
 INFO 2 is starting a new election at term 1
 INFO 2 became candidate at term 2
-INFO 2 received MsgVoteResp from 2 at term 2
 INFO 2 [logterm: 1, index: 4] sent MsgVote request to 1 at term 2
 INFO 2 [logterm: 1, index: 4] sent MsgVote request to 3 at term 2
 
@@ -67,6 +66,8 @@ HardState Term:2 Vote:2 Commit:4
 Messages:
 2->1 MsgVote Term:2 Log:1/4
 2->3 MsgVote Term:2 Log:1/4
+INFO 2 received MsgVoteResp from 2 at term 2
+INFO 2 has received 1 MsgVoteResp votes and 0 vote rejections
 
 # n2 is now campaigning while n1 is down (does not respond). The latest config
 # has n3 as a voter, but n3 doesn't even have the corresponding conf change in

@@ -490,6 +490,10 @@ func TestRawNodeJointAutoLeave(t *testing.T) {
 	rd = rawNode.Ready()
 	t.Log(DescribeReady(rd, nil))
 	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+	rd = rawNode.Ready()
+	t.Log(DescribeReady(rd, nil))
+	s.Append(rd.Entries)
 	// Check that the right ConfChange comes out.
 	if len(rd.Entries) != 1 || rd.Entries[0].Type != pb.EntryConfChangeV2 {
 		t.Fatalf("expected exactly one more entry, got %+v", rd)
@@ -743,11 +747,14 @@ func TestRawNodeStart(t *testing.T) {
 		t.Fatalf("unexpected ready: %+v", rawNode.Ready())
 	}
 	rawNode.Campaign()
+	rd := rawNode.Ready()
+	storage.Append(rd.Entries)
+	rawNode.Advance(rd)
 	rawNode.Propose([]byte("foo"))
 	if !rawNode.HasReady() {
 		t.Fatal("expected a Ready")
 	}
-	rd := rawNode.Ready()
+	rd = rawNode.Ready()
 	if !reflect.DeepEqual(entries, rd.Entries) {
 		t.Fatalf("expected to see entries\n%s, not\n%s", DescribeEntries(entries, nil), DescribeEntries(rd.Entries, nil))
 	}
@@ -861,6 +868,9 @@ func TestRawNodeStatus(t *testing.T) {
 	if err := rn.Campaign(); err != nil {
 		t.Fatal(err)
 	}
+	rd := rn.Ready()
+	s.Append(rd.Entries)
+	rn.Advance(rd)
 	status := rn.Status()
 	if status.Lead != 1 {
 		t.Fatal("not lead")

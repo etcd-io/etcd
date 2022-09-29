@@ -13,7 +13,14 @@ campaign 1
 ----
 INFO 1 is starting a new election at term 0
 INFO 1 became candidate at term 1
+
+process-ready 1
+----
+Ready MustSync=true:
+Lead:0 State:StateCandidate
+HardState Term:1 Vote:1 Commit:2
 INFO 1 received MsgVoteResp from 1 at term 1
+INFO 1 has received 1 MsgVoteResp votes and 0 vote rejections
 INFO 1 became leader at term 1
 
 # Add v2 with an explicit transition.
@@ -36,7 +43,6 @@ stabilize 1 2
 > 1 handling Ready
   Ready MustSync=true:
   Lead:1 State:StateLeader
-  HardState Term:1 Vote:1 Commit:2
   Entries:
   1/3 EntryNormal ""
   1/4 EntryConfChangeV2 v2

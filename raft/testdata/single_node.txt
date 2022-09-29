@@ -12,15 +12,19 @@ campaign 1
 ----
 INFO 1 is starting a new election at term 0
 INFO 1 became candidate at term 1
-INFO 1 received MsgVoteResp from 1 at term 1
-INFO 1 became leader at term 1
 
 stabilize
 ----
 > 1 handling Ready
   Ready MustSync=true:
-  Lead:1 State:StateLeader
+  Lead:0 State:StateCandidate
   HardState Term:1 Vote:1 Commit:3
+  INFO 1 received MsgVoteResp from 1 at term 1
+  INFO 1 has received 1 MsgVoteResp votes and 0 vote rejections
+  INFO 1 became leader at term 1
+> 1 handling Ready
+  Ready MustSync=true:
+  Lead:1 State:StateLeader
   Entries:
   1/4 EntryNormal ""
 > 1 handling Ready

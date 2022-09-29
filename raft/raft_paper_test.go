@@ -162,6 +162,7 @@ func testNonleaderStartElection(t *testing.T, state StateType) {
 	for i := 1; i < 2*et; i++ {
 		r.tick()
 	}
+	r.maybeVoteForSelf()
 
 	if r.Term != 2 {
 		t.Errorf("term = %d, want 2", r.Term)
@@ -218,6 +219,7 @@ func TestLeaderElectionInOneRoundRPC(t *testing.T) {
 		r := newTestRaft(1, 10, 1, newTestMemoryStorage(withPeers(idsBySize(tt.size)...)))
 
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+		r.maybeVoteForSelf()
 		for id, vote := range tt.votes {
 			r.Step(pb.Message{From: id, To: 1, Term: r.Term, Type: pb.MsgVoteResp, Reject: !vote})
 		}
