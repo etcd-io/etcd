@@ -21,10 +21,10 @@ import (
 	"sort"
 
 	"github.com/coreos/go-semver/semver"
-	"go.etcd.io/etcd/server/v3/storage/wal"
-
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+
+	"go.etcd.io/etcd/server/v3/storage/wal"
 )
 
 var (
