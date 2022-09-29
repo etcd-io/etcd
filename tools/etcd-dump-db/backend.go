@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
 
+	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
