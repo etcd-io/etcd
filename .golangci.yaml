@@ -30,7 +30,7 @@ linters:
 
 linters-settings: # please keep this alphabetized
   goimports:
-    local-prefixes: go.etcd.io/etcd # Put imports beginning with prefix after 3rd-party packages.
+    local-prefixes: go.etcd.io # Put imports beginning with prefix after 3rd-party packages.
   staticcheck:
     checks:
       - "all"
