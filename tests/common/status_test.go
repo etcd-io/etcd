@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -32,7 +34,7 @@ func TestStatus(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := clus.Client()
+			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				rs, err := cc.Status(ctx)

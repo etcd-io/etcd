@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -59,7 +60,7 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := clus.Client()
+			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				ttl := int64(10)
@@ -103,7 +104,7 @@ func TestLeaseGrantAndList(t *testing.T) {
 				t.Logf("Creating cluster...")
 				clus := testRunner.NewCluster(ctx, t, tc.config)
 				defer clus.Close()
-				cc := clus.Client()
+				cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 				t.Logf("Created cluster and client")
 				testutils.ExecuteUntil(ctx, t, func() {
 					var createdLeases []clientv3.LeaseID
@@ -150,7 +151,7 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := clus.Client()
+			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(ctx, 2)
@@ -187,7 +188,7 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := clus.Client()
+			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(ctx, 2)
@@ -216,7 +217,7 @@ func TestLeaseGrantRevoke(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := clus.Client()
+			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(ctx, 20)

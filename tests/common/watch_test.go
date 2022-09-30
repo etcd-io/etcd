@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -20,7 +22,7 @@ func TestWatch(t *testing.T) {
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 
 			defer clus.Close()
-			cc := clus.Client()
+			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
 			testutils.ExecuteUntil(ctx, t, func() {
 				tests := []struct {
 					puts     []testutils.KV

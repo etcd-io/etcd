@@ -179,8 +179,7 @@ type Cluster struct {
 	Members       []*Member
 	LastMemberNum int
 
-	mu            sync.Mutex
-	clusterClient *clientv3.Client
+	mu sync.Mutex
 }
 
 func SchemeFromTLSInfo(tls *transport.TLSInfo) string {
@@ -441,7 +440,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 	for _, m := range membs {
 		possibleLead[uint64(m.Server.MemberId())] = true
 	}
-	cc, err := c.ClusterClient()
+	cc, err := c.ClusterClient(t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1378,13 +1377,6 @@ func (c *Cluster) Terminate(t testutil.TB) {
 	if t != nil {
 		t.Logf("========= Cluster termination started =====================")
 	}
-	c.mu.Lock()
-	if c.clusterClient != nil {
-		if err := c.clusterClient.Close(); err != nil {
-			t.Error(err)
-		}
-	}
-	c.mu.Unlock()
 	for _, m := range c.Members {
 		if m.Client != nil {
 			m.Client.Close()
@@ -1420,32 +1412,40 @@ func (c *Cluster) Endpoints() []string {
 	return endpoints
 }
 
-func (c *Cluster) ClusterClient() (client *clientv3.Client, err error) {
-	if c.clusterClient == nil {
-		var endpoints []string
-		for _, m := range c.Members {
-			endpoints = append(endpoints, m.GrpcURL)
-		}
-		cfg := clientv3.Config{
-			Endpoints:          endpoints,
-			DialTimeout:        5 * time.Second,
-			DialOptions:        []grpc.DialOption{grpc.WithBlock()},
-			MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
-			MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
-		}
-		if c.Cfg.ClientTLS != nil {
-			tls, err := c.Cfg.ClientTLS.ClientConfig()
-			if err != nil {
-				return nil, err
-			}
-			cfg.TLS = tls
-		}
-		c.clusterClient, err = newClientV3(cfg)
+func (c *Cluster) ClusterClient(t testing.TB, opts ...func(*clientv3.Config)) (client *clientv3.Client, err error) {
+	cfg, err := c.newClientCfg()
+	if err != nil {
+		return nil, err
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	client, err = newClientV3(*cfg)
+	if err != nil {
+		return nil, err
+	}
+	t.Cleanup(func() {
+		client.Close()
+	})
+	return client, nil
+}
+
+func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
+	cfg := &clientv3.Config{
+		Endpoints:          c.Endpoints(),
+		DialTimeout:        5 * time.Second,
+		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
+		MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
+		MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
+	}
+	if c.Cfg.ClientTLS != nil {
+		tls, err := c.Cfg.ClientTLS.ClientConfig()
 		if err != nil {
 			return nil, err
 		}
+		cfg.TLS = tls
 	}
-	return c.clusterClient, nil
+	return cfg, nil
 }
 
 // NewClientV3 creates a new grpc client connection to the member

@@ -12,26 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config
+package framework
 
-import "time"
-
-type TLSConfig string
-
-const (
-	NoTLS     TLSConfig = ""
-	AutoTLS   TLSConfig = "auto-tls"
-	ManualTLS TLSConfig = "manual-tls"
-
-	TickDuration = 10 * time.Millisecond
-)
-
-type ClusterConfig struct {
-	ClusterSize                int
-	PeerTLS                    TLSConfig
-	ClientTLS                  TLSConfig
-	QuotaBackendBytes          int64
-	DisableStrictReconfigCheck bool
-	AuthToken                  string
-	SnapshotCount              int
+func MustClient(c Client, err error) Client {
+	if err != nil {
+		panic(err)
+	}
+	return c
 }

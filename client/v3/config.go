@@ -121,6 +121,10 @@ type AuthConfig struct {
 	Password string `json:"password"`
 }
 
+func (cfg AuthConfig) Empty() bool {
+	return cfg.Username == "" && cfg.Password == ""
+}
+
 // NewClientConfig creates a Config based on the provided ConfigSpec.
 func NewClientConfig(confSpec *ConfigSpec, lg *zap.Logger) (*Config, error) {
 	tlsCfg, err := newTLSConfig(confSpec.Secure, lg)
