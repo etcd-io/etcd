@@ -565,6 +565,7 @@ func (r *raft) advance(rd Ready) {
 			if !r.appendEntry(ent) {
 				panic("refused un-refusable auto-leaving ConfChangeV2")
 			}
+			r.bcastAppend()
 			r.pendingConfIndex = r.raftLog.lastIndex()
 			r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
 		}
