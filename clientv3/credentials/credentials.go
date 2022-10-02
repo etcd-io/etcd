@@ -24,7 +24,7 @@ import (
 
 	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	grpccredentials "google.golang.org/grpc/credentials"
+	grpccredentials "google.golang.org/grpc/1291/credentials"
 )
 
 // Config defines gRPC credential configuration.

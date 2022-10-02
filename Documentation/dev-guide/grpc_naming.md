@@ -13,7 +13,7 @@ import (
 	"go.etcd.io/etcd/clientv3"
 	etcdnaming "go.etcd.io/etcd/clientv3/naming"
 
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 ...

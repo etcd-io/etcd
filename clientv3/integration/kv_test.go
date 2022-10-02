@@ -29,8 +29,8 @@ import (
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
+	grpc "google.golang.org/grpc/1291"
+	"google.golang.org/grpc/1291/codes"
 )
 
 func TestKVPutError(t *testing.T) {

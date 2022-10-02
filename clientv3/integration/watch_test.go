@@ -30,7 +30,7 @@ import (
 	mvccpb "go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"
 
-	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/1291/metadata"
 )
 
 type watcherTest func(*testing.T, *watchctx)

@@ -27,10 +27,10 @@ import (
 	"go.etcd.io/etcd/pkg/mock/mockserver"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/peer"
-	"google.golang.org/grpc/status"
+	grpc "google.golang.org/grpc/1291"
+	"google.golang.org/grpc/1291/codes"
+	"google.golang.org/grpc/1291/peer"
+	"google.golang.org/grpc/1291/status"
 )
 
 // TestRoundRobinBalancedResolvableNoFailover ensures that

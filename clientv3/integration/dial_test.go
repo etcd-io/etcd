@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
 	"go.etcd.io/etcd/pkg/transport"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 var (

@@ -23,8 +23,8 @@ import (
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
+	grpc "google.golang.org/grpc/1291"
+	"google.golang.org/grpc/1291/metadata"
 )
 
 type (

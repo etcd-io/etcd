@@ -20,7 +20,7 @@ import (
 
 	"go.etcd.io/etcd/pkg/testutil"
 
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	healthpb "google.golang.org/grpc/1291/health/grpc_health_v1"
 )
 
 func TestHealthCheck(t *testing.T) {

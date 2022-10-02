@@ -23,7 +23,7 @@ import (
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/pkg/testutil"
 
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 func TestTLSClientCipherSuitesValid(t *testing.T)    { testTLSCipherSuites(t, true) }

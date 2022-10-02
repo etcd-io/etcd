@@ -28,9 +28,9 @@ import (
 	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/raft"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
+	grpc "google.golang.org/grpc/1291"
+	"google.golang.org/grpc/1291/metadata"
+	"google.golang.org/grpc/1291/peer"
 )
 
 const (

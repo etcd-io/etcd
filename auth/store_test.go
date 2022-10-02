@@ -31,7 +31,7 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/1291/metadata"
 )
 
 func dummyIndexWaiter(index uint64) <-chan struct{} {

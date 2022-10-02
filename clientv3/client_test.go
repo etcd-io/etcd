@@ -24,7 +24,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/testutil"
 
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 func TestDialCancel(t *testing.T) {

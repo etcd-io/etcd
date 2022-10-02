@@ -43,7 +43,7 @@ import (
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
 	"golang.org/x/net/trace"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 type serveCtx struct {

@@ -27,7 +27,7 @@ import (
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 	"golang.org/x/time/rate"
-	gnaming "google.golang.org/grpc/naming"
+	gnaming "google.golang.org/grpc/1291/naming"
 )
 
 // allow maximum 1 retry per second

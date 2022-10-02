@@ -28,8 +28,8 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
+	grpc "google.golang.org/grpc/1291"
+	"google.golang.org/grpc/1291/grpclog"
 )
 
 // GetLogger returns the logger.

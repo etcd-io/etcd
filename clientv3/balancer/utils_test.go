@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"testing"
 
-	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/1291/resolver"
 )
 
 func Test_epsToAddrs(t *testing.T) {

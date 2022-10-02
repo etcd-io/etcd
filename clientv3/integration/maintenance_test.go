@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"

@@ -19,7 +19,7 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 
-	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/1291/grpclog"
 )
 
 func init() {

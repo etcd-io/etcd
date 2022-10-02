@@ -20,7 +20,7 @@ import (
 
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 // Txn is the interface that wraps mini-transactions.

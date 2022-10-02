@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build v2v3
 // +build v2v3
 
 package v2store_test
@@ -25,7 +26,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v2v3"
 	"go.etcd.io/etcd/integration"
 
-	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/1291/grpclog"
 )
 
 func init() {

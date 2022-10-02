@@ -24,9 +24,9 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.etcd.io/etcd/clientv3/credentials"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	grpc "google.golang.org/grpc/1291"
+	"google.golang.org/grpc/1291/health"
+	healthpb "google.golang.org/grpc/1291/health/grpc_health_v1"
 )
 
 const (

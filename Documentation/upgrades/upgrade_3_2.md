@@ -39,7 +39,7 @@ After
 
 ```go
 import "github.com/coreos/etcd/clientv3"
-import "google.golang.org/grpc/grpclog"
+import "google.golang.org/grpc/1291/grpclog"
 clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 
 // log.New above cannot be used (not implement grpclog.LoggerV2 interface)

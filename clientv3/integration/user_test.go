@@ -23,7 +23,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 func TestUserError(t *testing.T) {

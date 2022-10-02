@@ -25,9 +25,9 @@ import (
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/1291/codes"
+	"google.golang.org/grpc/1291/metadata"
+	"google.golang.org/grpc/1291/status"
 )
 
 // TestV3LeasePrmote ensures the newly elected leader can promote itself

@@ -14,7 +14,7 @@
 
 package logutil
 
-import "google.golang.org/grpc/grpclog"
+import "google.golang.org/grpc/1291/grpclog"
 
 // Logger defines logging interface.
 // TODO: deprecate in v3.5.

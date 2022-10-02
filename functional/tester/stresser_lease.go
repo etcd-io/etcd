@@ -28,7 +28,7 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 const (

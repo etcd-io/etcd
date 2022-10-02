@@ -33,9 +33,9 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/1291/credentials"
+	"google.golang.org/grpc/1291/metadata"
+	"google.golang.org/grpc/1291/peer"
 )
 
 var (

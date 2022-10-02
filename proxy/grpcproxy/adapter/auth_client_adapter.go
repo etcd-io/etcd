@@ -19,7 +19,7 @@ import (
 
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
-	grpc "google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 type as2ac struct{ as pb.AuthServer }

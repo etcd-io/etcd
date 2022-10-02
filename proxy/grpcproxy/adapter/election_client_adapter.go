@@ -19,7 +19,7 @@ import (
 
 	"go.etcd.io/etcd/etcdserver/api/v3election/v3electionpb"
 
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 type es2ec struct{ es v3electionpb.ElectionServer }

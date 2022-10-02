@@ -35,7 +35,7 @@ Glossary
 
 *Sub Connection*: gRPC SubConn interface. Each sub-connection contains a list of addresses. Balancer creates a SubConn from a list of resolved addresses. gRPC ClientConn can map to multiple SubConn (e.g. example.com resolves to `10.10.10.1` and `10.10.10.2` of two sub-connections). etcd v3.4 balancer employs internal resolver to establish one sub-connection for each endpoint.
 
-*Transient disconnect*: When gRPC server returns a status error of [`code Unavailable`](https://godoc.org/google.golang.org/grpc/codes#Code).
+*Transient disconnect*: When gRPC server returns a status error of [`code Unavailable`](https://godoc.org/google.golang.org/grpc/1291/codes#Code).
 
 
 Client Requirements
@@ -61,7 +61,7 @@ etcd client implements the following components:
 
 Languages may differ in how to establish an initial connection (e.g. configure TLS), how to encode and send Protocol Buffer messages to server, how to handle stream RPCs, and so on. However, errors returned from etcd server will be the same. So should be error handling and retry policy.
 
-For example, etcd server may return `"rpc error: code = Unavailable desc = etcdserver: request timed out"`, which is transient error that expects retries. Or return `rpc error: code = InvalidArgument desc = etcdserver: key is not provided`, which means request was invalid and should not be retried. Go client can parse errors with `google.golang.org/grpc/status.FromError`, and Java client with `io.grpc.Status.fromThrowable`.
+For example, etcd server may return `"rpc error: code = Unavailable desc = etcdserver: request timed out"`, which is transient error that expects retries. Or return `rpc error: code = InvalidArgument desc = etcdserver: key is not provided`, which means request was invalid and should not be retried. Go client can parse errors with `google.golang.org/grpc/1291/status.FromError`, and Java client with `io.grpc.Status.fromThrowable`.
 
 
 clientv3-grpc1.0: Balancer Overview

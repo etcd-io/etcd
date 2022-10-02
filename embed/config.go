@@ -41,7 +41,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 	"sigs.k8s.io/yaml"
 )
 

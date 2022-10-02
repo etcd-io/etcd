@@ -28,7 +28,7 @@ import (
 
 	context "golang.org/x/net/context"
 
-	grpc "google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 
 	io "io"
 )

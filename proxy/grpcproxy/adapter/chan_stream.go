@@ -17,10 +17,10 @@ package adapter
 import (
 	"context"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
+	grpc "google.golang.org/grpc/1291"
+	"google.golang.org/grpc/1291/codes"
+	"google.golang.org/grpc/1291/metadata"
+	"google.golang.org/grpc/1291/status"
 )
 
 // chanServerStream implements grpc.ServerStream with a chanStream

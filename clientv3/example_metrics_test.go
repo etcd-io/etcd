@@ -27,7 +27,7 @@ import (
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 func ExampleClient_metrics() {

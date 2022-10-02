@@ -24,7 +24,7 @@ import (
 	"go.etcd.io/etcd/functional/rpcpb"
 
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 type leaseExpireChecker struct {

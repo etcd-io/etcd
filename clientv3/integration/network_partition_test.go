@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !cluster_proxy
 // +build !cluster_proxy
 
 package integration
@@ -27,7 +28,7 @@ import (
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/testutil"
-	"google.golang.org/grpc"
+	grpc "google.golang.org/grpc/1291"
 )
 
 var errExpected = errors.New("expected error")
