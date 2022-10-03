@@ -31,13 +31,14 @@ const (
 )
 
 var (
-	restoreCluster      string
-	restoreClusterToken string
-	restoreDataDir      string
-	restoreWalDir       string
-	restorePeerURLs     string
-	restoreName         string
-	skipHashCheck       bool
+	restoreCluster        string
+	restoreClusterToken   string
+	restoreDataDir        string
+	restoreWalDir         string
+	restorePeerURLs       string
+	restoreName           string
+	skipHashCheck         bool
+	ignoreBootstrapVerify bool
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
@@ -75,6 +76,7 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
+	cmd.Flags().BoolVar(&ignoreBootstrapVerify, "ignore-bootstrap-verify", false, "Ignore bootstrap verification")
 
 	cmd.MarkFlagDirname("data-dir")
 	cmd.MarkFlagDirname("wal-dir")
@@ -100,7 +102,7 @@ func SnapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 
 func snapshotRestoreCommandFunc(_ *cobra.Command, args []string) {
 	SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWalDir,
-		restorePeerURLs, restoreName, skipHashCheck, args)
+		restorePeerURLs, restoreName, skipHashCheck, ignoreBootstrapVerify, args)
 }
 
 func SnapshotRestoreCommandFunc(restoreCluster string,
@@ -110,6 +112,7 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 	restorePeerURLs string,
 	restoreName string,
 	skipHashCheck bool,
+	ignoreBootstrapVerify bool,
 	args []string) {
 	if len(args) != 1 {
 		err := fmt.Errorf("snapshot restore requires exactly one argument")
@@ -130,14 +133,15 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 	sp := snapshot.NewV3(lg)
 
 	if err := sp.Restore(snapshot.RestoreConfig{
-		SnapshotPath:        args[0],
-		Name:                restoreName,
-		OutputDataDir:       dataDir,
-		OutputWALDir:        walDir,
-		PeerURLs:            strings.Split(restorePeerURLs, ","),
-		InitialCluster:      restoreCluster,
-		InitialClusterToken: restoreClusterToken,
-		SkipHashCheck:       skipHashCheck,
+		SnapshotPath:          args[0],
+		Name:                  restoreName,
+		OutputDataDir:         dataDir,
+		OutputWALDir:          walDir,
+		PeerURLs:              strings.Split(restorePeerURLs, ","),
+		InitialCluster:        restoreCluster,
+		InitialClusterToken:   restoreClusterToken,
+		SkipHashCheck:         skipHashCheck,
+		IgnoreBootstrapVerify: ignoreBootstrapVerify,
 	}); err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}

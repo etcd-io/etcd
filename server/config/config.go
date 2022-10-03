@@ -44,6 +44,9 @@ type ServerConfig struct {
 	ClientURLs types.URLs
 	PeerURLs   types.URLs
 	DataDir    string
+
+	IgnoreBootstrapVerify bool
+
 	// DedicatedWALDir config will make the etcd to write the WAL to the WALDir
 	// rather than the dataDir/member/wal.
 	DedicatedWALDir string
@@ -214,15 +217,21 @@ func (c *ServerConfig) VerifyBootstrap() error {
 	if err := c.hasLocalMember(); err != nil {
 		return err
 	}
-	if err := c.advertiseMatchesCluster(); err != nil {
-		return err
-	}
 	if CheckDuplicateURL(c.InitialPeerURLsMap) {
 		return fmt.Errorf("initial cluster %s has duplicate url", c.InitialPeerURLsMap)
 	}
 	if c.InitialPeerURLsMap.String() == "" && c.DiscoveryURL == "" {
 		return fmt.Errorf("initial cluster unset and no discovery URL found")
 	}
+	// Ignore any further verification if flag is specified
+	if c.IgnoreBootstrapVerify {
+		c.Logger.Info("Ignore Bootstrap validation", zap.Bool("ignore-verify-bootstap", c.IgnoreBootstrapVerify))
+		return nil
+	}
+	if err := c.advertiseMatchesCluster(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

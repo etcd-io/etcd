@@ -194,6 +194,9 @@ type RestoreConfig struct {
 	// PeerURLs is a list of member's peer URLs to advertise to the rest of the cluster.
 	PeerURLs []string
 
+	//Ignore verification during bootstrap
+	IgnoreBootstrapVerify bool `json:"ignore-bootstrap-verify"`
+
 	// InitialCluster is the initial cluster configuration for restore bootstrap.
 	InitialCluster string
 	// InitialClusterToken is the initial cluster token for etcd cluster during restore bootstrap.
@@ -217,11 +220,12 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	}
 
 	srv := config.ServerConfig{
-		Logger:              s.lg,
-		Name:                cfg.Name,
-		PeerURLs:            pURLs,
-		InitialPeerURLsMap:  ics,
-		InitialClusterToken: cfg.InitialClusterToken,
+		Logger:                s.lg,
+		Name:                  cfg.Name,
+		PeerURLs:              pURLs,
+		InitialPeerURLsMap:    ics,
+		InitialClusterToken:   cfg.InitialClusterToken,
+		IgnoreBootstrapVerify: cfg.IgnoreBootstrapVerify,
 	}
 	if err = srv.VerifyBootstrap(); err != nil {
 		return err
