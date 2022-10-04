@@ -126,7 +126,8 @@ type ClusterConfig struct {
 
 	DiscoveryURL string
 
-	AuthToken string
+	AuthToken    string
+	AuthTokenTTL uint
 
 	UseGRPC bool
 
@@ -285,6 +286,7 @@ func (c *cluster) mustNewMember(t testing.TB) *member {
 		memberConfig{
 			name:                        c.name(rand.Int()),
 			authToken:                   c.cfg.AuthToken,
+			authTokenTTL:                c.cfg.AuthTokenTTL,
 			peerTLS:                     c.cfg.PeerTLS,
 			clientTLS:                   c.cfg.ClientTLS,
 			quotaBackendBytes:           c.cfg.QuotaBackendBytes,
@@ -579,6 +581,7 @@ type memberConfig struct {
 	peerTLS                     *transport.TLSInfo
 	clientTLS                   *transport.TLSInfo
 	authToken                   string
+	authTokenTTL                uint
 	quotaBackendBytes           int64
 	maxTxnOps                   uint
 	maxRequestBytes             uint
@@ -664,6 +667,9 @@ func mustNewMember(t testing.TB, mcfg memberConfig) *member {
 	m.AuthToken = "simple"
 	if mcfg.authToken != "" {
 		m.AuthToken = mcfg.authToken
+	}
+	if mcfg.authTokenTTL != 0 {
+		m.TokenTTL = mcfg.authTokenTTL
 	}
 
 	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
