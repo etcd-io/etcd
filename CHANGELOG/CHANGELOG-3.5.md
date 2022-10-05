@@ -4,6 +4,13 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
+## v3.5.6 (TBD)
+
+### etcd server
+- Fix [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14547)
+
+<hr>
+
 ## v3.5.5 (2022-09-15)
 
 ### Deprecations
