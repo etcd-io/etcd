@@ -2123,6 +2123,11 @@
           "type": "integer",
           "format": "int64"
         },
+        "hash_revision": {
+          "description": "hash_revision is the revision up to which the hash is calculated.",
+          "type": "string",
+          "format": "int64"
+        },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         }
