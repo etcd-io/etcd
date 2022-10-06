@@ -31,7 +31,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -156,6 +156,16 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 
 	// reading snapshot with canceled context should error out
 	ctx, cancel := context.WithCancel(context.Background())
+
+	// Since http2 spec defines the receive windows's size and max size of
+	// frame in the stream, the underlayer - gRPC client can pre-read data
+	// from server even if the application layer hasn't read it yet.
+	//
+	// And the initialized cluster has 20KiB snapshot, which can be
+	// pre-read by underlayer. We should increase the snapshot's size here,
+	// just in case that io.Copy won't return the canceled error.
+	populateDataIntoCluster(t, clus, 3, 1024*1024)
+
 	rc1, err := clus.RandClient().Snapshot(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -200,6 +210,16 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 	// reading snapshot with deadline exceeded should error out
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+
+	// Since http2 spec defines the receive windows's size and max size of
+	// frame in the stream, the underlayer - gRPC client can pre-read data
+	// from server even if the application layer hasn't read it yet.
+	//
+	// And the initialized cluster has 20KiB snapshot, which can be
+	// pre-read by underlayer. We should increase the snapshot's size here,
+	// just in case that io.Copy won't return the timeout error.
+	populateDataIntoCluster(t, clus, 3, 1024*1024)
+
 	rc2, err := snapshot(ctx, clus.RandClient())
 	if err != nil {
 		t.Fatal(err)

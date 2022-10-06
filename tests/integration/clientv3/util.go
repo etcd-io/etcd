@@ -16,11 +16,13 @@ package clientv3test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -100,4 +102,19 @@ func IsUnavailable(err error) bool {
 	}
 	code := ev.Code()
 	return code == codes.Unavailable
+}
+
+// populateDataIntoCluster populates the key-value pairs into cluster and the
+// key will be named by testing.T.Name()-index.
+func populateDataIntoCluster(t *testing.T, cluster *integration2.Cluster, numKeys int, valueSize int) {
+	ctx := context.Background()
+
+	for i := 0; i < numKeys; i++ {
+		_, err := cluster.RandClient().Put(ctx,
+			fmt.Sprintf("%s-%v", t.Name(), i), strings.Repeat("a", valueSize))
+
+		if err != nil {
+			t.Errorf("populating data expected no error, but got %v", err)
+		}
+	}
 }
