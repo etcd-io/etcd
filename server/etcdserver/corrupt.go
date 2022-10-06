@@ -448,6 +448,7 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Header:          &pb.ResponseHeader{Revision: rev},
 		Hash:            hash.Hash,
 		CompactRevision: hash.CompactRevision,
+		HashRevision:    hash.Revision,
 	}
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
