@@ -128,8 +128,12 @@ func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
 }
 
 func (m *Mutex) Unlock(ctx context.Context) error {
+	m.s.Close()
 	client := m.s.Client()
-	if _, err := client.Delete(ctx, m.myKey); err != nil {
+
+	cmp := v3.Compare(v3.CreateRevision(m.myKey), "=", 0)
+	del := v3.OpDelete(m.myKey)
+	if _, err := client.Txn(ctx).If(cmp).Then(del).Commit(); err != nil {
 		return err
 	}
 	m.myKey = "\x00"
