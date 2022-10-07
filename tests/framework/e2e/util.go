@@ -127,6 +127,10 @@ func mergeEnvVariables(envVars map[string]string) []string {
 	currVars := os.Environ()
 	for _, v := range currVars {
 		p := strings.Split(v, "=")
+		// TODO: Remove PATH when we stop using system binaries (`awk`, `echo`)
+		if !strings.HasPrefix(p[0], "ETCD_") && !strings.HasPrefix(p[0], "ETCDCTL_") && !strings.HasPrefix(p[0], "EXPECT_") && p[0] != "PATH" {
+			continue
+		}
 		if _, ok := envVars[p[0]]; !ok {
 			env = append(env, fmt.Sprintf("%s=%s", p[0], p[1]))
 		}
