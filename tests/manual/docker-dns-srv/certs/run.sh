@@ -11,28 +11,28 @@ goreman -f /certs/Procfile start &
 # TODO: remove random sleeps
 sleep 7s
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs/ca.crt \
   --cert=/certs/server.crt \
   --key=/certs/server.key.insecure \
   --discovery-srv etcd.local \
   endpoint health --cluster
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs/ca.crt \
   --cert=/certs/server.crt \
   --key=/certs/server.key.insecure \
   --discovery-srv etcd.local \
   put abc def
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs/ca.crt \
   --cert=/certs/server.crt \
   --key=/certs/server.key.insecure \
   --discovery-srv etcd.local \
   get abc
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs/ca.crt \
   --cert=/certs/server.crt \
   --key=/certs/server.key.insecure \
@@ -40,7 +40,7 @@ ETCDCTL_API=3 ./etcdctl \
   --discovery-srv-name c1 \
   endpoint health --cluster
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs/ca.crt \
   --cert=/certs/server.crt \
   --key=/certs/server.key.insecure \
@@ -48,7 +48,7 @@ ETCDCTL_API=3 ./etcdctl \
   --discovery-srv-name c1 \
   put ghi jkl
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs/ca.crt \
   --cert=/certs/server.crt \
   --key=/certs/server.key.insecure \

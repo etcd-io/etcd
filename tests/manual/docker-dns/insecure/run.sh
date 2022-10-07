@@ -11,15 +11,15 @@ goreman -f /insecure/Procfile start &
 # TODO: remove random sleeps
 sleep 7s
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --endpoints=http://m1.etcd.local:2379 \
   endpoint health --cluster
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --endpoints=http://m1.etcd.local:2379,http://m2.etcd.local:22379,http://m3.etcd.local:32379 \
   put abc def
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --endpoints=http://m1.etcd.local:2379,http://m2.etcd.local:22379,http://m3.etcd.local:32379 \
   get abc
 

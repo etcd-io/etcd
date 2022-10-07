@@ -6,21 +6,21 @@ goreman -f /certs-metrics-proxy/Procfile start &
 # TODO: remove random sleeps
 sleep 7s
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs-metrics-proxy/ca.crt \
   --cert=/certs-metrics-proxy/server.crt \
   --key=/certs-metrics-proxy/server.key.insecure \
   --endpoints=https://localhost:2379 \
   endpoint health --cluster
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs-metrics-proxy/ca.crt \
   --cert=/certs-metrics-proxy/server.crt \
   --key=/certs-metrics-proxy/server.key.insecure \
   --endpoints=https://localhost:2379,https://localhost:22379,https://localhost:32379 \
   put abc def
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs-metrics-proxy/ca.crt \
   --cert=/certs-metrics-proxy/server.crt \
   --key=/certs-metrics-proxy/server.key.insecure \
@@ -86,14 +86,14 @@ curl -L http://localhost:39379/metrics | grep Put | tail -3
 
 #################
 sleep 3s && printf "\n\n" && echo "Requests to gRPC proxy localhost:23790"
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert /certs-metrics-proxy/ca.crt \
   --cert /certs-metrics-proxy/server.crt \
   --key /certs-metrics-proxy/server.key.insecure \
   --endpoints=localhost:23790 \
   put ghi jkl
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert /certs-metrics-proxy/ca.crt \
   --cert /certs-metrics-proxy/server.crt \
   --key /certs-metrics-proxy/server.key.insecure \

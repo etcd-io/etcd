@@ -45,9 +45,6 @@ func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string
 		cmd = cmd + "_test"
 	case strings.HasSuffix(cmd, "/etcdutl"):
 		cmd = cmd + "_test"
-	case strings.HasSuffix(cmd, "/etcdctl3"):
-		cmd = CtlBinPath + "_test"
-		env = append(env, "ETCDCTL_API=3")
 	}
 
 	wd, err := os.Getwd()

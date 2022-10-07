@@ -13,7 +13,7 @@ goreman -f /certs-san-dns/Procfile start &
 # TODO: remove random sleeps
 sleep 7s
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
  --cacert=/certs-san-dns/ca.crt \
  --cert=/certs-san-dns/server-1.crt \
  --key=/certs-san-dns/server-1.key.insecure \
@@ -21,7 +21,7 @@ ETCDCTL_API=3 ./etcdctl \
  endpoint health --cluster
 
 printf "\nPut abc \n"
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
  --cacert=/certs-san-dns/ca.crt \
  --cert=/certs-san-dns/server-2.crt \
  --key=/certs-san-dns/server-2.key.insecure \
@@ -29,7 +29,7 @@ ETCDCTL_API=3 ./etcdctl \
  put abc def
 
 printf "\nGet abc \n"
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
  --cacert=/certs-san-dns/ca.crt \
  --cert=/certs-san-dns/server-3.crt \
  --key=/certs-san-dns/server-3.key.insecure \
@@ -41,7 +41,7 @@ kill $(lsof -t -i:2379)
 sleep 7s
 
 printf "\nGet abc after killing server 1\n"
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
  --cacert=/certs-san-dns/ca.crt \
  --cert=/certs-san-dns/server-2.crt \
  --key=/certs-san-dns/server-2.key.insecure \

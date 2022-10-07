@@ -171,8 +171,6 @@ func testIssue6361(t *testing.T) {
 	}
 
 	e2e.BeforeTest(t)
-	os.Setenv("ETCDCTL_API", "3")
-	defer os.Unsetenv("ETCDCTL_API")
 
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
 		ClusterSize:  1,
