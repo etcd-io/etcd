@@ -952,7 +952,7 @@ func TestRawNodeCommitPaginationAfterRestart(t *testing.T) {
 		rawNode.Step(pb.Message{
 			Type:   pb.MsgHeartbeat,
 			To:     1,
-			From:   1, // illegal, but we get away with it
+			From:   2, // illegal, but we get away with it
 			Term:   1,
 			Commit: 11,
 		})
