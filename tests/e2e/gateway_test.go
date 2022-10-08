@@ -16,7 +16,6 @@ package e2e
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
@@ -39,9 +38,6 @@ func TestGateway(t *testing.T) {
 
 	p := startGateway(t, eps)
 	defer p.Stop()
-
-	os.Setenv("ETCDCTL_API", "3")
-	defer os.Unsetenv("ETCDCTL_API")
 
 	err = e2e.SpawnWithExpect([]string{e2e.CtlBinPath, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
 	if err != nil {

@@ -47,8 +47,8 @@ $ make build-functional
 $ ./bin/etcd-proxy --help
 $ ./bin/etcd-proxy --from localhost:23790 --to localhost:2379 --http-port 2378 --verbose
 
-$ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:2379 put foo bar
-$ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:23790 put foo bar
+$ ./bin/etcdctl --endpoints localhost:2379 put foo bar
+$ ./bin/etcdctl --endpoints localhost:23790 put foo bar
 ```
 
 Proxy overhead per request is under 500μs
@@ -151,7 +151,7 @@ $ curl -L http://localhost:2378/delay-tx -X PUT \
 $ curl -L http://localhost:2378/delay-tx
 # current send latency 4.92143955s
 
-$ ETCDCTL_API=3 ./bin/etcdctl \
+$ ./bin/etcdctl \
   --endpoints localhost:23790 \
   --command-timeout=3s \
   put foo bar
@@ -163,7 +163,7 @@ $ curl -L http://localhost:2378/delay-tx -X DELETE
 $ curl -L http://localhost:2378/delay-tx
 # current send latency 0s
 
-$ ETCDCTL_API=3 ./bin/etcdctl \
+$ ./bin/etcdctl \
   --endpoints localhost:23790 \
   --command-timeout=3s \
   put foo bar
@@ -176,7 +176,7 @@ Pause client transmit
 $ curl -L http://localhost:2378/pause-tx -X PUT
 # paused forwarding [tcp://localhost:23790 -> tcp://localhost:2379]
 
-$ ETCDCTL_API=3 ./bin/etcdctl \
+$ ./bin/etcdctl \
   --endpoints localhost:23790 \
   put foo bar
 # Error: context deadline exceeded
@@ -191,7 +191,7 @@ Drop client packets
 $ curl -L http://localhost:2378/blackhole-tx -X PUT
 # blackholed; dropping packets [tcp://localhost:23790 -> tcp://localhost:2379]
 
-$ ETCDCTL_API=3 ./bin/etcdctl --endpoints localhost:23790 put foo bar
+$ ./bin/etcdctl --endpoints localhost:23790 put foo bar
 # Error: context deadline exceeded
 
 $ curl -L http://localhost:2378/blackhole-tx -X DELETE
@@ -207,7 +207,7 @@ $ make build-functional
 $ rm -rf /tmp/etcd-proxy-data.s*
 $ goreman -f ./functional/Procfile-proxy start
 
-$ ETCDCTL_API=3 ./bin/etcdctl \
+$ ./bin/etcdctl \
   --endpoints localhost:13790,localhost:23790,localhost:33790 \
   member list
 

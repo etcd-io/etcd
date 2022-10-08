@@ -17,7 +17,6 @@ package e2e
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -52,8 +51,6 @@ func TestReleaseUpgrade(t *testing.T) {
 		}
 	}()
 
-	os.Setenv("ETCDCTL_API", "3")
-	defer os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
 		cfg:         *e2e.NewConfigNoTLS(),
@@ -138,8 +135,6 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 		}
 	}()
 
-	os.Setenv("ETCDCTL_API", "3")
-	defer os.Unsetenv("ETCDCTL_API")
 	cx := ctlCtx{
 		t:           t,
 		cfg:         *e2e.NewConfigNoTLS(),

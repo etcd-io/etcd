@@ -45,7 +45,6 @@ var (
 
 func InitFlags() {
 	os.Setenv("ETCD_UNSUPPORTED_ARCH", runtime.GOARCH)
-	os.Unsetenv("ETCDCTL_API")
 
 	binDirDef := integration.MustAbsPath("../../bin")
 	certDirDef := FixturesDir

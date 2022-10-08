@@ -11,21 +11,21 @@ goreman -f /certs-wildcard/Procfile start &
 # TODO: remove random sleeps
 sleep 7s
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs-wildcard/ca.crt \
   --cert=/certs-wildcard/server.crt \
   --key=/certs-wildcard/server.key.insecure \
   --endpoints=https://m1.etcd.local:2379 \
   endpoint health --cluster
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs-wildcard/ca.crt \
   --cert=/certs-wildcard/server.crt \
   --key=/certs-wildcard/server.key.insecure \
   --endpoints=https://m1.etcd.local:2379,https://m2.etcd.local:22379,https://m3.etcd.local:32379 \
   put abc def
 
-ETCDCTL_API=3 ./etcdctl \
+./etcdctl \
   --cacert=/certs-wildcard/ca.crt \
   --cert=/certs-wildcard/server.crt \
   --key=/certs-wildcard/server.key.insecure \

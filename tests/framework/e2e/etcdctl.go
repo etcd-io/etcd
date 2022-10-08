@@ -268,7 +268,7 @@ func (ctl *EtcdctlV3) MemberRemove(ctx context.Context, id uint64) (*clientv3.Me
 }
 
 func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
-	cmdArgs := []string{CtlBinPath + "3"}
+	cmdArgs := []string{CtlBinPath}
 	for k, v := range ctl.flags() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%s", k, v))
 	}

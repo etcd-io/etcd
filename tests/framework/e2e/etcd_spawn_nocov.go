@@ -18,10 +18,8 @@
 package e2e
 
 import (
-	"os"
-	"strings"
-
 	"go.uber.org/zap"
+	"os"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
@@ -34,15 +32,6 @@ func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string
 		return nil, err
 	}
 	env := mergeEnvVariables(envVars)
-	if strings.HasSuffix(args[0], "/etcdctl3") {
-		env = append(env, "ETCDCTL_API=3")
-		lg.Info("spawning process with ETCDCTL_API=3",
-			zap.Strings("args", args),
-			zap.String("working-dir", wd),
-			zap.String("name", name),
-			zap.Strings("environment-variables", env))
-		return expect.NewExpectWithEnv(CtlBinPath, args[1:], env, name)
-	}
 	lg.Info("spawning process",
 		zap.Strings("args", args),
 		zap.String("working-dir", wd),
