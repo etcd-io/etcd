@@ -147,9 +147,6 @@ const (
 	// SIGQUIT_ETCD_AND_ARCHIVE_DATA is sent when consistency check failed,
 	// thus need to archive etcd data directories.
 	Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA Operation = 40
-	// SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT destroys etcd process,
-	// etcd data, and agent server.
-	Operation_SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT Operation = 41
 	// BLACKHOLE_PEER_PORT_TX_RX drops all outgoing/incoming packets from/to
 	// the peer port on target member's peer port.
 	Operation_BLACKHOLE_PEER_PORT_TX_RX Operation = 100
@@ -172,7 +169,6 @@ var Operation_name = map[int32]string{
 	31:  "RESTORE_RESTART_FROM_SNAPSHOT",
 	32:  "RESTART_FROM_SNAPSHOT",
 	40:  "SIGQUIT_ETCD_AND_ARCHIVE_DATA",
-	41:  "SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT",
 	100: "BLACKHOLE_PEER_PORT_TX_RX",
 	101: "UNBLACKHOLE_PEER_PORT_TX_RX",
 	200: "DELAY_PEER_PORT_TX_RX",
@@ -180,20 +176,19 @@ var Operation_name = map[int32]string{
 }
 
 var Operation_value = map[string]int32{
-	"NOT_STARTED":                                 0,
-	"INITIAL_START_ETCD":                          10,
-	"RESTART_ETCD":                                11,
-	"SIGTERM_ETCD":                                20,
-	"SIGQUIT_ETCD_AND_REMOVE_DATA":                21,
-	"SAVE_SNAPSHOT":                               30,
-	"RESTORE_RESTART_FROM_SNAPSHOT":               31,
-	"RESTART_FROM_SNAPSHOT":                       32,
-	"SIGQUIT_ETCD_AND_ARCHIVE_DATA":               40,
-	"SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT": 41,
-	"BLACKHOLE_PEER_PORT_TX_RX":                   100,
-	"UNBLACKHOLE_PEER_PORT_TX_RX":                 101,
-	"DELAY_PEER_PORT_TX_RX":                       200,
-	"UNDELAY_PEER_PORT_TX_RX":                     201,
+	"NOT_STARTED":                   0,
+	"INITIAL_START_ETCD":            10,
+	"RESTART_ETCD":                  11,
+	"SIGTERM_ETCD":                  20,
+	"SIGQUIT_ETCD_AND_REMOVE_DATA":  21,
+	"SAVE_SNAPSHOT":                 30,
+	"RESTORE_RESTART_FROM_SNAPSHOT": 31,
+	"RESTART_FROM_SNAPSHOT":         32,
+	"SIGQUIT_ETCD_AND_ARCHIVE_DATA": 40,
+	"BLACKHOLE_PEER_PORT_TX_RX":     100,
+	"UNBLACKHOLE_PEER_PORT_TX_RX":   101,
+	"DELAY_PEER_PORT_TX_RX":         200,
+	"UNDELAY_PEER_PORT_TX_RX":       201,
 }
 
 func (x Operation) String() string {
