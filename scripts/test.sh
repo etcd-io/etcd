@@ -149,7 +149,9 @@ function generic_checker {
 function killall_functional_test {
   log_callout "Killing all etcd-agent and etcd processes..."
   killall -9 etcd-agent
-  killall -9 etcd
+  # When functional test is successful, the etcd processes have already been
+  # stopped by the agent, so we should ignore the error in this case.
+  killall -9 etcd || true
 }
 
 function functional_pass {

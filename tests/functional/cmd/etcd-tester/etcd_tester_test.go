@@ -47,5 +47,8 @@ func TestFunctional(t *testing.T) {
 		t.Fatal("WaitHealth failed", zap.Error(err))
 	}
 
-	clus.Run(t)
+	if err := clus.Run(t); err == nil {
+		// Only stop etcd and cleanup data when test is successful.
+		clus.Send_SIGQUIT_ETCD_AND_REMOVE_DATA()
+	}
 }

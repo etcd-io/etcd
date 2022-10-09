@@ -395,9 +395,14 @@ func (clus *Cluster) Send_INITIAL_START_ETCD() error {
 	return clus.broadcast(rpcpb.Operation_INITIAL_START_ETCD)
 }
 
-// send_SIGQUIT_ETCD_AND_ARCHIVE_DATA sends "send_SIGQUIT_ETCD_AND_ARCHIVE_DATA" operation.
+// send_SIGQUIT_ETCD_AND_ARCHIVE_DATA sends "Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA" operation.
 func (clus *Cluster) send_SIGQUIT_ETCD_AND_ARCHIVE_DATA() error {
 	return clus.broadcast(rpcpb.Operation_SIGQUIT_ETCD_AND_ARCHIVE_DATA)
+}
+
+// Send_SIGQUIT_ETCD_AND_REMOVE_DATA sends "Operation_SIGQUIT_ETCD_AND_REMOVE_DATA" operation.
+func (clus *Cluster) Send_SIGQUIT_ETCD_AND_REMOVE_DATA() error {
+	return clus.broadcast(rpcpb.Operation_SIGQUIT_ETCD_AND_REMOVE_DATA)
 }
 
 // send_RESTART_ETCD sends restart operation.
