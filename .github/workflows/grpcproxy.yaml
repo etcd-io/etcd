@@ -22,11 +22,11 @@ jobs:
         case "${TARGET}" in
           linux-amd64-grpcproxy-integration)
             PASSES='build grpcproxy_integration'  CPU='4' COVER='false' RACE='true' ./scripts/test.sh 2>&1 | tee test.log
-            ! egrep "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
+            ! grep -E "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
             ;;
           linux-amd64-grpcproxy-e2e)
             PASSES='build grpcproxy_e2e'  CPU='4' COVER='false' RACE='true' ./scripts/test.sh 2>&1 | tee test.log
-            ! egrep "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
+            ! grep -E "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
             ;;
           *)
             echo "Failed to find target"
