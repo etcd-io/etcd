@@ -112,15 +112,6 @@ func (c MajorityConfig) Slice() []uint64 {
 	return sl
 }
 
-func insertionSort(sl []uint64) {
-	a, b := 0, len(sl)
-	for i := a + 1; i < b; i++ {
-		for j := i; j > a && sl[j] < sl[j-1]; j-- {
-			sl[j], sl[j-1] = sl[j-1], sl[j]
-		}
-	}
-}
-
 // CommittedIndex computes the committed index from those supplied via the
 // provided AckedIndexer (for the active config).
 func (c MajorityConfig) CommittedIndex(l AckedIndexer) Index {
@@ -160,9 +151,10 @@ func (c MajorityConfig) CommittedIndex(l AckedIndexer) Index {
 		}
 	}
 
-	// Sort by index. Use a bespoke algorithm (copied from the stdlib's sort
-	// package) to keep srt on the stack.
-	insertionSort(srt)
+	// Sort by index.
+	sort.Slice(srt, func(i, j int) bool {
+		return srt[i] < srt[j]
+	})
 
 	// The smallest index into the array for which the value is acked by a
 	// quorum. In other words, from the end of the slice, move n/2+1 to the
