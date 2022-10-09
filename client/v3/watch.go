@@ -38,6 +38,13 @@ const (
 	EventTypePut    = mvccpb.PUT
 
 	closeSendErrTimeout = 250 * time.Millisecond
+
+	// AutoWatchID is the watcher ID passed in WatchStream.Watch when no
+	// user-provided ID is available. If pass, an ID will automatically be assigned.
+	AutoWatchID = 0
+
+	// InvalidWatchID represents an invalid watch ID and prevents duplication with an existing watch.
+	InvalidWatchID = -1
 )
 
 type Event mvccpb.Event
@@ -451,7 +458,7 @@ func (w *watcher) closeStream(wgs *watchGrpcStream) {
 
 func (w *watchGrpcStream) addSubstream(resp *pb.WatchResponse, ws *watcherStream) {
 	// check watch ID for backward compatibility (<= v3.3)
-	if resp.WatchId == -1 || (resp.Canceled && resp.CancelReason != "") {
+	if resp.WatchId == InvalidWatchID || (resp.Canceled && resp.CancelReason != "") {
 		w.closeErr = v3rpc.Error(errors.New(resp.CancelReason))
 		// failed; no channel
 		close(ws.recvc)
@@ -482,7 +489,7 @@ func (w *watchGrpcStream) closeSubstream(ws *watcherStream) {
 	} else if ws.outc != nil {
 		close(ws.outc)
 	}
-	if ws.id != -1 {
+	if ws.id != InvalidWatchID {
 		delete(w.substreams, ws.id)
 		return
 	}
@@ -544,7 +551,7 @@ func (w *watchGrpcStream) run() {
 				// TODO: pass custom watch ID?
 				ws := &watcherStream{
 					initReq: *wreq,
-					id:      -1,
+					id:      InvalidWatchID,
 					outc:    outc,
 					// unbuffered so resumes won't cause repeat events
 					recvc: make(chan *WatchResponse),
@@ -690,7 +697,7 @@ func (w *watchGrpcStream) run() {
 			if len(w.substreams)+len(w.resuming) == 0 {
 				return
 			}
-			if ws.id != -1 {
+			if ws.id != InvalidWatchID {
 				// client is closing an established watch; close it on the server proactively instead of waiting
 				// to close when the next message arrives
 				cancelSet[ws.id] = struct{}{}
@@ -742,9 +749,9 @@ func (w *watchGrpcStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
 		cancelReason:    pbresp.CancelReason,
 	}
 
-	// watch IDs are zero indexed, so request notify watch responses are assigned a watch ID of -1 to
+	// watch IDs are zero indexed, so request notify watch responses are assigned a watch ID of InvalidWatchID to
 	// indicate they should be broadcast.
-	if wr.IsProgressNotify() && pbresp.WatchId == -1 {
+	if wr.IsProgressNotify() && pbresp.WatchId == InvalidWatchID {
 		return w.broadcastResponse(wr)
 	}
 
@@ -899,7 +906,7 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 	w.resumec = make(chan struct{})
 	w.joinSubstreams()
 	for _, ws := range w.substreams {
-		ws.id = -1
+		ws.id = InvalidWatchID
 		w.resuming = append(w.resuming, ws)
 	}
 	// strip out nils, if any

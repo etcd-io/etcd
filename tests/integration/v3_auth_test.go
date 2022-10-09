@@ -531,3 +531,58 @@ func TestV3AuthWatchAndTokenExpire(t *testing.T) {
 	watchResponse = <-wChan
 	testutil.AssertNil(t, watchResponse.Err())
 }
+
+func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
+	BeforeTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	users := []user{
+		{
+			name:     "user1",
+			password: "user1-123",
+			role:     "role1",
+			key:      "k1",
+			end:      "k2",
+		},
+	}
+
+	authSetupUsers(t, toGRPC(clus.Client(0)).Auth, users)
+
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	c, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	defer c.Close()
+
+	watchStartCh, watchEndCh := make(chan interface{}), make(chan interface{})
+
+	go func() {
+		wChan := c.Watch(ctx, "k1", clientv3.WithRev(1))
+		watchStartCh <- struct{}{}
+		watchResponse := <-wChan
+		t.Logf("watch response from k1: %v", watchResponse)
+		testutil.AssertTrue(t, len(watchResponse.Events) != 0)
+		watchEndCh <- struct{}{}
+	}()
+
+	// Chan for making sure that the above goroutine invokes Watch()
+	// So the above Watch() can get watch ID = 0
+	<-watchStartCh
+
+	wChan := c.Watch(ctx, "non-allowed-key", clientv3.WithRev(1))
+	watchResponse := <-wChan
+	testutil.AssertNotNil(t, watchResponse.Err()) // permission denied
+
+	_, err := c.Put(ctx, "k1", "val")
+	if err != nil {
+		t.Fatalf("Unexpected error from Put: %v", err)
+	}
+
+	<-watchEndCh
+}
