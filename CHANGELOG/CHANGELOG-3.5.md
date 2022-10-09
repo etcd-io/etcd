@@ -8,6 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### etcd server
 - Fix [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14547)
+- Fix [avoid closing a watch with ID 0 incorrectly](https://github.com/etcd-io/etcd/pull/14563)
 
 <hr>
 
