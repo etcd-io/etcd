@@ -19,12 +19,9 @@ import (
 	"errors"
 	"sync"
 
+	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 )
-
-// AutoWatchID is the watcher ID passed in WatchStream.Watch when no
-// user-provided ID is available. If pass, an ID will automatically be assigned.
-const AutoWatchID WatchID = 0
 
 var (
 	ErrWatcherNotExist    = errors.New("mvcc: watcher does not exist")
@@ -118,7 +115,7 @@ func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ..
 		return -1, ErrEmptyWatcherRange
 	}
 
-	if id == AutoWatchID {
+	if id == clientv3.AutoWatchID {
 		for ws.watchers[ws.nextID] != nil {
 			ws.nextID++
 		}

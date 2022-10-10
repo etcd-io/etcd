@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/mvcc/mvccpb"
@@ -396,8 +397,8 @@ func TestV3WatchWrongRange(t *testing.T) {
 		if cresp.Canceled != tt.canceled {
 			t.Fatalf("#%d: canceled %v, want %v", i, tt.canceled, cresp.Canceled)
 		}
-		if tt.canceled && cresp.WatchId != -1 {
-			t.Fatalf("#%d: canceled watch ID %d, want -1", i, cresp.WatchId)
+		if tt.canceled && cresp.WatchId != clientv3.InvalidWatchID {
+			t.Fatalf("#%d: canceled watch ID %d, want %d", i, cresp.WatchId, clientv3.InvalidWatchID)
 		}
 	}
 }
