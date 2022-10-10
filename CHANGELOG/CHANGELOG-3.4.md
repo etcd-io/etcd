@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### etcd server
 - Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14530)
 - Fix [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14548)
+- Fix [avoid closing a watch with ID 0 incorrectly](https://github.com/etcd-io/etcd/pull/14562)
 
 <hr>
 
