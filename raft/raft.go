@@ -415,6 +415,9 @@ func (r *raft) send(m pb.Message) {
 			m.Term = r.Term
 		}
 	}
+	if m.To == r.id {
+		r.logger.Panicf("message should not be self-addressed when sending %s", m.Type)
+	}
 	r.msgs = append(r.msgs, m)
 }
 
@@ -1282,7 +1285,7 @@ func stepLeader(r *raft, m pb.Message) error {
 				// we have more entries to send, send as many messages as we
 				// can (without sending empty messages for the commit index)
 				if r.id != m.From {
-					for r.maybeSendAppend(m.From, false) {
+					for r.maybeSendAppend(m.From, false /* sendIfEmpty */) {
 					}
 				}
 				// Transfer leadership is in progress.
@@ -1699,6 +1702,9 @@ func (r *raft) switchToConfig(cfg tracker.Config, prs tracker.ProgressMap) pb.Co
 		// let them wait out a heartbeat interval (or the next incoming
 		// proposal).
 		r.prs.Visit(func(id uint64, pr *tracker.Progress) {
+			if id == r.id {
+				return
+			}
 			r.maybeSendAppend(id, false /* sendIfEmpty */)
 		})
 	}

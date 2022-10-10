@@ -240,12 +240,12 @@ func TestFollowerVote(t *testing.T) {
 		nvote   uint64
 		wreject bool
 	}{
-		{None, 1, false},
 		{None, 2, false},
-		{1, 1, false},
+		{None, 3, false},
 		{2, 2, false},
-		{1, 2, true},
-		{2, 1, true},
+		{3, 3, false},
+		{2, 3, true},
+		{3, 2, true},
 	}
 	for i, tt := range tests {
 		r := newTestRaft(1, 10, 1, newTestMemoryStorage(withPeers(1, 2, 3)))
