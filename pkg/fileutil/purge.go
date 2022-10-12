@@ -38,6 +38,16 @@ func PurgeFileWithDoneNotify(lg *zap.Logger, dirname string, suffix string, max 
 // if donec is non-nil, the function closes it to notify its exit.
 func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}, purgec chan<- string, donec chan<- struct{}) <-chan error {
 	errC := make(chan error, 1)
+	if lg != nil {
+		lg.Info("started to purge file",
+			zap.String("dir", dirname),
+			zap.String("suffix", suffix),
+			zap.Uint("max", max),
+			zap.Duration("interval", interval))
+	} else {
+		plog.Infof("started to purge file, dir: %s, suffix: %s, max: %d, interval: %v", dirname, suffix, max, interval)
+	}
+
 	go func() {
 		if donec != nil {
 			defer close(donec)
@@ -45,6 +55,11 @@ func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval
 		for {
 			fnames, err := ReadDir(dirname)
 			if err != nil {
+				if lg != nil {
+					lg.Warn("failed to read files", zap.String("dir", dirname), zap.Error(err))
+				} else {
+					plog.Warningf("failed to read files, dir: %s, error: %v", dirname, err)
+				}
 				errC <- err
 				return
 			}
@@ -60,15 +75,25 @@ func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval
 				f := filepath.Join(dirname, newfnames[0])
 				l, err := TryLockFile(f, os.O_WRONLY, PrivateFileMode)
 				if err != nil {
+					if lg != nil {
+						lg.Warn("failed to lock file", zap.String("path", f), zap.Error(err))
+					} else {
+						plog.Warningf("failed to lock file, path: %s, error: %v", f, err)
+					}
 					break
 				}
 				if err = os.Remove(f); err != nil {
+					if lg != nil {
+						lg.Error("failed to remove file", zap.String("path", f), zap.Error(err))
+					} else {
+						plog.Errorf("failed to remove file, path: %s, error: %v", f, err)
+					}
 					errC <- err
 					return
 				}
 				if err = l.Close(); err != nil {
 					if lg != nil {
-						lg.Warn("failed to unlock/close", zap.String("path", l.Name()), zap.Error(err))
+						lg.Error("failed to unlock/close", zap.String("path", l.Name()), zap.Error(err))
 					} else {
 						plog.Errorf("error unlocking %s when purging file (%v)", l.Name(), err)
 					}
