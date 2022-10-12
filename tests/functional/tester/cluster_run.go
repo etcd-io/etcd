@@ -31,7 +31,7 @@ import (
 const compactQPS = 50000
 
 // Run starts tester.
-func (clus *Cluster) Run(t *testing.T) {
+func (clus *Cluster) Run(t *testing.T) error {
 	defer printReport()
 
 	// updateCases must be executed after etcd is started, because the FAILPOINTS case
@@ -46,17 +46,25 @@ func (clus *Cluster) Run(t *testing.T) {
 		)
 	}
 
-	var preModifiedKey int64
+	var (
+		preModifiedKey int64
+		err            error
+	)
 	for round := 0; round < int(clus.Tester.RoundLimit) || clus.Tester.RoundLimit == -1; round++ {
-		t.Run(fmt.Sprintf("round:%v", round), func(t *testing.T) {
-			preModifiedKey = clus.doRoundAndCompact(t, round, preModifiedKey)
+		t.Run(fmt.Sprintf("round-%d", round), func(t *testing.T) {
+			preModifiedKey, err = clus.doRoundAndCompact(t, round, preModifiedKey)
 		})
+
+		if err != nil {
+			clus.failed(err)
+			return err
+		}
 
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			t.Logf("Defragmenting in round: %v", round)
 			if err := clus.defrag(); err != nil {
 				clus.failed(err)
-				return
+				return err
 			}
 		}
 	}
@@ -67,13 +75,14 @@ func (clus *Cluster) Run(t *testing.T) {
 		zap.Int("case", clus.cs),
 		zap.Int("case-total", len(clus.cases)),
 	)
+	return nil
 }
 
-func (clus *Cluster) doRoundAndCompact(t *testing.T, round int, preModifiedKey int64) (postModifiedKey int64) {
+func (clus *Cluster) doRoundAndCompact(t *testing.T, round int, preModifiedKey int64) (postModifiedKey int64, err error) {
 	roundTotalCounter.Inc()
 	clus.rd = round
 
-	if err := clus.doRound(t); err != nil {
+	if err = clus.doRound(t); err != nil {
 		clus.lg.Error(
 			"round FAIL",
 			zap.Int("round", clus.rd),
@@ -81,11 +90,15 @@ func (clus *Cluster) doRoundAndCompact(t *testing.T, round int, preModifiedKey i
 			zap.Int("case-total", len(clus.cases)),
 			zap.Error(err),
 		)
-		if clus.cleanup(err) != nil {
-			return
+		if cerr := clus.cleanup(err); cerr != nil {
+			clus.lg.Warn(
+				"cleanup FAIL",
+				zap.Int("round", clus.rd),
+				zap.Int("case", clus.cs),
+				zap.Int("case-total", len(clus.cases)),
+				zap.Error(cerr),
+			)
 		}
-		// reset preModifiedKey after clean up
-		postModifiedKey = 0
 		return
 	}
 
@@ -104,7 +117,7 @@ func (clus *Cluster) doRoundAndCompact(t *testing.T, round int, preModifiedKey i
 		zap.Int("case-total", len(clus.cases)),
 		zap.Duration("timeout", timeout),
 	)
-	if err := clus.compact(revToCompact, timeout); err != nil {
+	if err = clus.compact(revToCompact, timeout); err != nil {
 		clus.lg.Warn(
 			"compact FAIL",
 			zap.Int("round", clus.rd),
@@ -112,20 +125,19 @@ func (clus *Cluster) doRoundAndCompact(t *testing.T, round int, preModifiedKey i
 			zap.Int("case-total", len(clus.cases)),
 			zap.Error(err),
 		)
-		if err = clus.cleanup(err); err != nil {
+		if cerr := clus.cleanup(err); cerr != nil {
 			clus.lg.Warn(
 				"cleanup FAIL",
 				zap.Int("round", clus.rd),
 				zap.Int("case", clus.cs),
 				zap.Int("case-total", len(clus.cases)),
-				zap.Error(err),
+				zap.Error(cerr),
 			)
-			return
 		}
-		// reset preModifiedKey after clean up
-		return 0
+	} else {
+		postModifiedKey = currentModifiedKey
 	}
-	return currentModifiedKey
+	return
 }
 
 func (clus *Cluster) doRound(t *testing.T) error {
