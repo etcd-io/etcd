@@ -162,7 +162,7 @@ test-full:
 	PASSES="fmt build release unit integration functional e2e grpcproxy" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
 
 ensure-docker-test-image-exists:
-	make pull-docker-test || echo "WARNING: Container Image not found in registry, building locally"; make build-docker-test
+	make pull-docker-test || ( echo "WARNING: Container Image not found in registry, building locally"; make build-docker-test )
 
 docker-test: ensure-docker-test-image-exists
 	$(info GO_VERSION: $(GO_VERSION))
