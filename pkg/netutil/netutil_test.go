@@ -17,6 +17,7 @@ package netutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"reflect"
@@ -166,113 +167,133 @@ func TestURLsEqual(t *testing.T) {
 	}
 
 	tests := []struct {
+		n      int
 		a      []url.URL
 		b      []url.URL
 		expect bool
 		err    error
 	}{
 		{
+			n:      0,
 			a:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}},
 			expect: true,
 		},
 		{
+			n:      1,
 			a:      []url.URL{{Scheme: "http", Host: "example.com:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.10.1:2379"}},
 			expect: true,
 		},
 		{
+			n:      2,
 			a:      []url.URL{{Scheme: "http", Host: "example.com:2379"}},
 			b:      []url.URL{{Scheme: "https", Host: "10.0.10.1:2379"}},
 			expect: false,
-			err:    errors.New(`"http://10.0.10.1:2379"(resolved from "http://example.com:2379") != "https://10.0.10.1:2379"(resolved from "https://10.0.10.1:2379")`),
+			err:    errors.New(`resolved urls: "http://10.0.10.1:2379" != "https://10.0.10.1:2379"`),
 		},
 		{
+			n:      3,
 			a:      []url.URL{{Scheme: "https", Host: "example.com:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.10.1:2379"}},
 			expect: false,
-			err:    errors.New(`"https://10.0.10.1:2379"(resolved from "https://example.com:2379") != "http://10.0.10.1:2379"(resolved from "http://10.0.10.1:2379")`),
+			err:    errors.New(`resolved urls: "https://10.0.10.1:2379" != "http://10.0.10.1:2379"`),
 		},
 		{
+			n:      4,
 			a:      []url.URL{{Scheme: "unix", Host: "abc:2379"}},
 			b:      []url.URL{{Scheme: "unix", Host: "abc:2379"}},
 			expect: true,
 		},
 		{
+			n:      5,
 			a:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: true,
 		},
 		{
+			n:      6,
 			a:      []url.URL{{Scheme: "http", Host: "example.com:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "example.com:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: true,
 		},
 		{
+			n:      7,
 			a:      []url.URL{{Scheme: "http", Host: "10.0.10.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "example.com:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: true,
 		},
 		{
+			n:      8,
 			a:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: false,
-			err:    errors.New(`"http://127.0.0.1:2379"(resolved from "http://127.0.0.1:2379") != "http://127.0.0.1:2380"(resolved from "http://127.0.0.1:2380")`),
+			err:    errors.New(`resolved urls: "http://127.0.0.1:2379" != "http://127.0.0.1:2380"`),
 		},
 		{
+			n:      9,
 			a:      []url.URL{{Scheme: "http", Host: "example.com:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.10.1:2379"}},
 			expect: false,
-			err:    errors.New(`"http://10.0.10.1:2380"(resolved from "http://example.com:2380") != "http://10.0.10.1:2379"(resolved from "http://10.0.10.1:2379")`),
+			err:    errors.New(`resolved urls: "http://10.0.10.1:2380" != "http://10.0.10.1:2379"`),
 		},
 		{
+			n:      10,
 			a:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}},
 			expect: false,
-			err:    errors.New(`"http://127.0.0.1:2379"(resolved from "http://127.0.0.1:2379") != "http://10.0.0.1:2379"(resolved from "http://10.0.0.1:2379")`),
+			err:    errors.New(`resolved urls: "http://127.0.0.1:2379" != "http://10.0.0.1:2379"`),
 		},
 		{
+			n:      11,
 			a:      []url.URL{{Scheme: "http", Host: "example.com:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}},
 			expect: false,
-			err:    errors.New(`"http://10.0.10.1:2379"(resolved from "http://example.com:2379") != "http://10.0.0.1:2379"(resolved from "http://10.0.0.1:2379")`),
+			err:    errors.New(`resolved urls: "http://10.0.10.1:2379" != "http://10.0.0.1:2379"`),
 		},
 		{
+			n:      12,
 			a:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2380"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: false,
-			err:    errors.New(`"http://127.0.0.1:2379"(resolved from "http://127.0.0.1:2379") != "http://127.0.0.1:2380"(resolved from "http://127.0.0.1:2380")`),
+			err:    errors.New(`resolved urls: "http://127.0.0.1:2379" != "http://127.0.0.1:2380"`),
 		},
 		{
+			n:      13,
 			a:      []url.URL{{Scheme: "http", Host: "example.com:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2380"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: false,
-			err:    errors.New(`"http://10.0.10.1:2379"(resolved from "http://example.com:2379") != "http://127.0.0.1:2380"(resolved from "http://127.0.0.1:2380")`),
+			err:    errors.New(`resolved urls: "http://10.0.10.1:2379" != "http://127.0.0.1:2380"`),
 		},
 		{
+			n:      14,
 			a:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: false,
-			err:    errors.New(`"http://127.0.0.1:2379"(resolved from "http://127.0.0.1:2379") != "http://10.0.0.1:2379"(resolved from "http://10.0.0.1:2379")`),
+			err:    errors.New(`resolved urls: "http://127.0.0.1:2379" != "http://10.0.0.1:2379"`),
 		},
 		{
+			n:      15,
 			a:      []url.URL{{Scheme: "http", Host: "example.com:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: false,
-			err:    errors.New(`"http://10.0.10.1:2379"(resolved from "http://example.com:2379") != "http://10.0.0.1:2379"(resolved from "http://10.0.0.1:2379")`),
+			err:    errors.New(`resolved urls: "http://10.0.10.1:2379" != "http://10.0.0.1:2379"`),
 		},
 		{
+			n:      16,
 			a:      []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: false,
 			err:    errors.New(`len(["http://10.0.0.1:2379"]) != len(["http://10.0.0.1:2379" "http://127.0.0.1:2380"])`),
 		},
 		{
+			n:      17,
 			a:      []url.URL{{Scheme: "http", Host: "first.com:2379"}, {Scheme: "http", Host: "second.com:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.11.1:2379"}, {Scheme: "http", Host: "10.0.11.2:2380"}},
 			expect: true,
 		},
 		{
+			n:      18,
 			a:      []url.URL{{Scheme: "http", Host: "second.com:2380"}, {Scheme: "http", Host: "first.com:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.11.1:2379"}, {Scheme: "http", Host: "10.0.11.2:2380"}},
 			expect: true,
@@ -282,21 +303,43 @@ func TestURLsEqual(t *testing.T) {
 	for i, test := range tests {
 		result, err := urlsEqual(context.TODO(), zap.NewExample(), test.a, test.b)
 		if result != test.expect {
-			t.Errorf("#%d: a:%v b:%v, expected %v but %v", i, test.a, test.b, test.expect, result)
+			t.Errorf("idx=%d #%d: a:%v b:%v, expected %v but %v", i, test.n, test.a, test.b, test.expect, result)
 		}
 		if test.err != nil {
 			if err.Error() != test.err.Error() {
-				t.Errorf("#%d: err expected %v but %v", i, test.err, err)
+				t.Errorf("idx=%d #%d: err expected %v but %v", i, test.n, test.err, err)
 			}
 		}
 	}
 }
 func TestURLStringsEqual(t *testing.T) {
-	result, err := URLStringsEqual(context.TODO(), zap.NewExample(), []string{"http://127.0.0.1:8080"}, []string{"http://127.0.0.1:8080"})
-	if !result {
-		t.Errorf("unexpected result %v", result)
+	defer func() { resolveTCPAddr = resolveTCPAddrDefault }()
+	errOnResolve := func(ctx context.Context, addr string) (*net.TCPAddr, error) {
+		return nil, fmt.Errorf("unexpected attempt to resolve: %q", addr)
 	}
-	if err != nil {
-		t.Errorf("unexpected error %v", err)
+	cases := []struct {
+		urlsA    []string
+		urlsB    []string
+		resolver func(ctx context.Context, addr string) (*net.TCPAddr, error)
+	}{
+		{[]string{"http://127.0.0.1:8080"}, []string{"http://127.0.0.1:8080"}, resolveTCPAddrDefault},
+		{[]string{
+			"http://host1:8080",
+			"http://host2:8080",
+		}, []string{
+			"http://host1:8080",
+			"http://host2:8080",
+		}, errOnResolve},
+	}
+	for idx, c := range cases {
+		t.Logf("TestURLStringsEqual, case #%d", idx)
+		resolveTCPAddr = c.resolver
+		result, err := URLStringsEqual(context.TODO(), zap.NewExample(), c.urlsA, c.urlsB)
+		if !result {
+			t.Errorf("unexpected result %v", result)
+		}
+		if err != nil {
+			t.Errorf("unexpected error %v", err)
+		}
 	}
 }
