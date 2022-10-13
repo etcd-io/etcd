@@ -11,6 +11,12 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14548)
 - Fix [avoid closing a watch with ID 0 incorrectly](https://github.com/etcd-io/etcd/pull/14562)
 
+### Package `netutil`
+- Fix [netutil: add url comparison without resolver to URLStringsEqual](https://github.com/etcd-io/etcd/pull/14577)
+
+### Package `clientv3`
+- Fix [Add backoff before retry when watch stream returns unavailable](https://github.com/etcd-io/etcd/pull/14581).
+
 <hr>
 
 ## v3.4.21 (2022-09-15)
