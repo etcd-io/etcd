@@ -29,67 +29,60 @@ import (
 
 func TestAuthority(t *testing.T) {
 	tcs := []struct {
-		name   string
-		useTCP bool
-		useTLS bool
-		// Pattern used to generate endpoints for client. Fields filled
-		// %d - will be filled with member grpc port
-		// %s - will be filled with member name
-		clientURLPattern string
-
-		// Pattern used to validate authority received by server. Fields filled:
-		// %d - will be filled with first member grpc port
-		// %s - will be filled with first member name
+		name                   string
+		useTCP                 bool
+		useTLS                 bool
+		clientURLPattern       string
 		expectAuthorityPattern string
 	}{
 		{
 			name:                   "unix:path",
-			clientURLPattern:       "unix:localhost:%s",
-			expectAuthorityPattern: "localhost:%s",
+			clientURLPattern:       "unix:localhost:${MEMBER_NAME}",
+			expectAuthorityPattern: "localhost:${MEMBER_NAME}",
 		},
 		{
 			name:                   "unix://absolute_path",
-			clientURLPattern:       "unix://localhost:%s",
-			expectAuthorityPattern: "localhost:%s",
+			clientURLPattern:       "unix://localhost:${MEMBER_NAME}",
+			expectAuthorityPattern: "localhost:${MEMBER_NAME}",
 		},
 		// "unixs" is not standard schema supported by etcd
 		{
 			name:                   "unixs:absolute_path",
 			useTLS:                 true,
-			clientURLPattern:       "unixs:localhost:%s",
-			expectAuthorityPattern: "localhost:%s",
+			clientURLPattern:       "unixs:localhost:${MEMBER_NAME}",
+			expectAuthorityPattern: "localhost:${MEMBER_NAME}",
 		},
 		{
 			name:                   "unixs://absolute_path",
 			useTLS:                 true,
-			clientURLPattern:       "unixs://localhost:%s",
-			expectAuthorityPattern: "localhost:%s",
+			clientURLPattern:       "unixs://localhost:${MEMBER_NAME}",
+			expectAuthorityPattern: "localhost:${MEMBER_NAME}",
 		},
 		{
 			name:                   "http://domain[:port]",
 			useTCP:                 true,
-			clientURLPattern:       "http://localhost:%d",
-			expectAuthorityPattern: "localhost:%d",
+			clientURLPattern:       "http://localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://domain[:port]",
 			useTLS:                 true,
 			useTCP:                 true,
-			clientURLPattern:       "https://localhost:%d",
-			expectAuthorityPattern: "localhost:%d",
+			clientURLPattern:       "https://localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
 		},
 		{
 			name:                   "http://address[:port]",
 			useTCP:                 true,
-			clientURLPattern:       "http://127.0.0.1:%d",
-			expectAuthorityPattern: "127.0.0.1:%d",
+			clientURLPattern:       "http://127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://address[:port]",
 			useTCP:                 true,
 			useTLS:                 true,
-			clientURLPattern:       "https://127.0.0.1:%d",
-			expectAuthorityPattern: "127.0.0.1:%d",
+			clientURLPattern:       "https://127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
 		},
 	}
 	for _, tc := range tcs {
@@ -153,15 +146,8 @@ func templateEndpoints(t *testing.T, pattern string, clus *integration.Cluster) 
 	var endpoints []string
 	for _, m := range clus.Members {
 		ent := pattern
-		if strings.Contains(ent, "%d") {
-			ent = fmt.Sprintf(ent, integration.GrpcPortNumber(m.UniqNumber, m.MemberNumber))
-		}
-		if strings.Contains(ent, "%s") {
-			ent = fmt.Sprintf(ent, m.Name)
-		}
-		if strings.Contains(ent, "%") {
-			t.Fatalf("Failed to template pattern, %% symbol left %q", ent)
-		}
+		ent = strings.Replace(ent, "${MEMBER_PORT}", fmt.Sprintf("%d", integration.GrpcPortNumber(m.UniqNumber, m.MemberNumber)), -1)
+		ent = strings.Replace(ent, "${MEMBER_NAME}", m.Name, -1)
 		endpoints = append(endpoints, ent)
 	}
 	return endpoints
@@ -170,15 +156,8 @@ func templateEndpoints(t *testing.T, pattern string, clus *integration.Cluster) 
 func templateAuthority(t *testing.T, pattern string, m *integration.Member) string {
 	t.Helper()
 	authority := pattern
-	if strings.Contains(authority, "%d") {
-		authority = fmt.Sprintf(authority, integration.GrpcPortNumber(m.UniqNumber, m.MemberNumber))
-	}
-	if strings.Contains(authority, "%s") {
-		authority = fmt.Sprintf(authority, m.Name)
-	}
-	if strings.Contains(authority, "%") {
-		t.Fatalf("Failed to template pattern, %% symbol left %q", authority)
-	}
+	authority = strings.Replace(authority, "${MEMBER_PORT}", fmt.Sprintf("%d", integration.GrpcPortNumber(m.UniqNumber, m.MemberNumber)), -1)
+	authority = strings.Replace(authority, "${MEMBER_NAME}", m.Name, -1)
 	return authority
 }
 

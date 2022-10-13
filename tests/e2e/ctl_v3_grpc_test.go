@@ -32,52 +32,47 @@ import (
 
 func TestAuthority(t *testing.T) {
 	tcs := []struct {
-		name           string
-		useTLS         bool
-		useInsecureTLS bool
-		// Pattern used to generate endpoints for client. Fields filled
-		// %d - will be filled with member grpc port
-		clientURLPattern string
-
-		// Pattern used to validate authority received by server. Fields filled:
-		// %d - will be filled with first member grpc port
+		name                   string
+		useTLS                 bool
+		useInsecureTLS         bool
+		clientURLPattern       string
 		expectAuthorityPattern string
 	}{
 		{
 			name:                   "http://domain[:port]",
-			clientURLPattern:       "http://localhost:%d",
-			expectAuthorityPattern: "localhost:%d",
+			clientURLPattern:       "http://localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
 		},
 		{
 			name:                   "http://address[:port]",
-			clientURLPattern:       "http://127.0.0.1:%d",
-			expectAuthorityPattern: "127.0.0.1:%d",
+			clientURLPattern:       "http://127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://domain[:port] insecure",
 			useTLS:                 true,
 			useInsecureTLS:         true,
-			clientURLPattern:       "https://localhost:%d",
-			expectAuthorityPattern: "localhost:%d",
+			clientURLPattern:       "https://localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://address[:port] insecure",
 			useTLS:                 true,
 			useInsecureTLS:         true,
-			clientURLPattern:       "https://127.0.0.1:%d",
-			expectAuthorityPattern: "127.0.0.1:%d",
+			clientURLPattern:       "https://127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://domain[:port]",
 			useTLS:                 true,
-			clientURLPattern:       "https://localhost:%d",
-			expectAuthorityPattern: "localhost:%d",
+			clientURLPattern:       "https://localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://address[:port]",
 			useTLS:                 true,
-			clientURLPattern:       "https://127.0.0.1:%d",
-			expectAuthorityPattern: "127.0.0.1:%d",
+			clientURLPattern:       "https://127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
 		},
 	}
 	for _, tc := range tcs {
@@ -110,7 +105,7 @@ func TestAuthority(t *testing.T) {
 				}
 
 				testutils.ExecuteWithTimeout(t, 5*time.Second, func() {
-					assertAuthority(t, fmt.Sprintf(tc.expectAuthorityPattern, 20000), epc)
+					assertAuthority(t, strings.Replace(tc.expectAuthorityPattern, "${MEMBER_PORT}", "20000", -1), epc)
 				})
 			})
 
@@ -123,12 +118,7 @@ func templateEndpoints(t *testing.T, pattern string, clus *e2e.EtcdProcessCluste
 	var endpoints []string
 	for i := 0; i < clus.Cfg.ClusterSize; i++ {
 		ent := pattern
-		if strings.Contains(ent, "%d") {
-			ent = fmt.Sprintf(ent, e2e.EtcdProcessBasePort+i*5)
-		}
-		if strings.Contains(ent, "%") {
-			t.Fatalf("Failed to template pattern, %% symbol left %q", ent)
-		}
+		ent = strings.Replace(ent, "${MEMBER_PORT}", fmt.Sprintf("%d", e2e.EtcdProcessBasePort+i*5), -1)
 		endpoints = append(endpoints, ent)
 	}
 	return endpoints
