@@ -1,0 +1,22 @@
+name: Fuzzing v3rpc
+on: [push, pull_request]
+jobs:
+  fuzzing:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+          Target: [FuzzRangeRequest, FuzzPutRequest, FuzzDeleteRangeRequest]
+    env:
+      FUZZ_TARGET: ${{matrix.Target}}
+      TARGET_PATH: ./server/etcdserver/api/v3rpc
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.19.1"
+    - run: GOARCH=amd64 CPU=4 make fuzz
+    - uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        path: "${{env.TARGET_PATH}}/testdata/fuzz/${{env.FUZZ_TARGET}}/*"

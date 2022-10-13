@@ -33,6 +33,10 @@ test-e2e-release: build
 test-linearizability: build
 	PASSES="linearizability" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+.PHONY: fuzz
+fuzz: 
+	./scripts/fuzzing.sh
+
 # Static analysis
 
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck verify-shellws verify-proto-annotations
