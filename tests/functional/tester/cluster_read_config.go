@@ -356,17 +356,17 @@ func read(lg *zap.Logger, fpath string) (*Cluster, error) {
 				}
 				clus.Members[i].ClientCertData = string(data)
 			}
+		}
 
-			if len(mem.Etcd.LogOutputs) == 0 {
-				return nil, fmt.Errorf("mem.Etcd.LogOutputs cannot be empty")
-			}
-			for _, v := range mem.Etcd.LogOutputs {
-				switch v {
-				case "stderr", "stdout", "/dev/null", "default":
-				default:
-					if !strings.HasPrefix(v, mem.BaseDir) {
-						return nil, fmt.Errorf("LogOutput %q must be prefixed with BaseDir %q", v, mem.BaseDir)
-					}
+		if len(mem.Etcd.LogOutputs) == 0 {
+			return nil, fmt.Errorf("mem.Etcd.LogOutputs cannot be empty")
+		}
+		for _, v := range mem.Etcd.LogOutputs {
+			switch v {
+			case "stderr", "stdout", "/dev/null", "default":
+			default:
+				if !strings.HasPrefix(v, mem.BaseDir) {
+					return nil, fmt.Errorf("LogOutput %q must be prefixed with BaseDir %q", v, mem.BaseDir)
 				}
 			}
 		}
