@@ -77,7 +77,7 @@ func TestMemberReplace(t *testing.T) {
 	removedMemberPeerUrl := member.Config().Purl.String()
 	_, err = cc.MemberAdd(memberName, []string{removedMemberPeerUrl})
 	require.NoError(t, err)
-	member.Config().Args = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
+	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
 	require.NoError(t, err)
 
 	// Sleep 100ms to bypass the known issue https://github.com/etcd-io/etcd/issues/16687.

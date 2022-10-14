@@ -232,17 +232,6 @@ func (ep *EtcdServerProcess) Logs() LogsExpect {
 	return ep.proc
 }
 
-func (cfg *EtcdServerProcessConfig) SetInitialCluster(nodes []string, initialClusterState string) {
-	cfg.InitialCluster = strings.Join(nodes, ",")
-	cfg.Args = append(cfg.Args, "--initial-cluster", cfg.InitialCluster)
-	cfg.Args = append(cfg.Args, "--initial-cluster-state", initialClusterState)
-}
-
-func (cfg *EtcdServerProcessConfig) EnableDiscovery(token string, endpoints []string) {
-	cfg.Args = append(cfg.Args, fmt.Sprintf("--discovery-token=%s", token))
-	cfg.Args = append(cfg.Args, fmt.Sprintf("--discovery-endpoints=%s", strings.Join(endpoints, ",")))
-}
-
 func (ep *EtcdServerProcess) PeerProxy() proxy.Server {
 	return ep.proxy
 }
