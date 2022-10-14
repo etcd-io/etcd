@@ -2171,7 +2171,10 @@ func (s *EtcdServer) monitorClusterVersions() {
 		if s.Leader() != s.MemberId() {
 			continue
 		}
-		monitor.UpdateClusterVersionIfNeeded()
+		err := monitor.UpdateClusterVersionIfNeeded()
+		if err != nil {
+			s.lg.Error("Failed to monitor cluster version", zap.Error(err))
+		}
 	}
 }
 
