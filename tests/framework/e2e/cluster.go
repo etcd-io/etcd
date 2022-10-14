@@ -200,7 +200,18 @@ func NewEtcdProcessCluster(ctx context.Context, t testing.TB, cfg *EtcdProcessCl
 func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
 	SkipInShortMode(t)
 
-	cfg.InitBaseValues(t)
+	if cfg.Logger == nil {
+		cfg.Logger = zaptest.NewLogger(t)
+	}
+	if cfg.BasePort == 0 {
+		cfg.BasePort = EtcdProcessBasePort
+	}
+	if cfg.ExecPath == "" {
+		cfg.ExecPath = BinPath
+	}
+	if cfg.SnapshotCount == 0 {
+		cfg.SnapshotCount = etcdserver.DefaultSnapshotCount
+	}
 
 	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
 	epc := &EtcdProcessCluster{
@@ -256,21 +267,6 @@ func (cfg *EtcdProcessClusterConfig) PeerScheme() string {
 	return peerScheme
 }
 
-func (cfg *EtcdProcessClusterConfig) InitBaseValues(tb testing.TB) {
-	if cfg.Logger == nil {
-		cfg.Logger = zaptest.NewLogger(tb)
-	}
-	if cfg.BasePort == 0 {
-		cfg.BasePort = EtcdProcessBasePort
-	}
-	if cfg.ExecPath == "" {
-		cfg.ExecPath = BinPath
-	}
-	if cfg.SnapshotCount == 0 {
-		cfg.SnapshotCount = etcdserver.DefaultSnapshotCount
-	}
-}
-
 func (cfg *EtcdProcessClusterConfig) EtcdAllServerProcessConfigs(tb testing.TB) []*EtcdServerProcessConfig {
 	etcdCfgs := make([]*EtcdServerProcessConfig, cfg.ClusterSize)
 	initialCluster := make([]string, cfg.ClusterSize)
@@ -289,11 +285,14 @@ func (cfg *EtcdProcessClusterConfig) EtcdAllServerProcessConfigs(tb testing.TB) 
 
 func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServerProcessConfig, initialCluster []string, initialClusterState string) {
 	if cfg.Discovery == "" && len(cfg.DiscoveryEndpoints) == 0 {
-		serverCfg.SetInitialCluster(initialCluster, initialClusterState)
+		serverCfg.InitialCluster = strings.Join(initialCluster, ",")
+		serverCfg.Args = append(serverCfg.Args, "--initial-cluster", serverCfg.InitialCluster)
+		serverCfg.Args = append(serverCfg.Args, "--initial-cluster-state", initialClusterState)
 	}
 
 	if len(cfg.DiscoveryEndpoints) > 0 {
-		serverCfg.EnableDiscovery(cfg.DiscoveryToken, cfg.DiscoveryEndpoints)
+		serverCfg.Args = append(serverCfg.Args, fmt.Sprintf("--discovery-token=%s", cfg.DiscoveryToken))
+		serverCfg.Args = append(serverCfg.Args, fmt.Sprintf("--discovery-endpoints=%s", strings.Join(cfg.DiscoveryEndpoints, ",")))
 	}
 }
 
@@ -485,7 +484,7 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 
 	// First remove member from the cluster
 
-	memberCtl := epc.CtlClient()
+	memberCtl := epc.Client()
 	memberList, err := memberCtl.MemberList(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get member list: %w", err)
@@ -526,7 +525,7 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, tb testing.TB) 
 	epc.Cfg.SetInitialOrDiscovery(serverCfg, initialCluster, "existing")
 
 	// First add new member to cluster
-	memberCtl := epc.CtlClient()
+	memberCtl := epc.Client()
 	_, err := memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.Purl.String()})
 	if err != nil {
 		return fmt.Errorf("failed to add new member: %w", err)
@@ -602,7 +601,7 @@ func (epc *EtcdProcessCluster) Stop() (err error) {
 	return err
 }
 
-func (epc *EtcdProcessCluster) CtlClient() *EtcdctlV3 {
+func (epc *EtcdProcessCluster) Client() *EtcdctlV3 {
 	return NewEtcdctl(epc.Cfg, epc.EndpointsV3())
 }
 
