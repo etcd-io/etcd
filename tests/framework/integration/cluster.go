@@ -83,9 +83,8 @@ const (
 var (
 	ElectionTicks = 10
 
-	// LocalListenCount integration test uses unique ports, counting up, to listen for each
-	// member, ensuring restarted members can listen on the same port again.
-	LocalListenCount = int32(0)
+	// UniqueCount integration test is used to set unique member ids
+	UniqueCount = int32(0)
 
 	TestTLSInfo = transport.TLSInfo{
 		KeyFile:        MustAbsPath("../fixtures/server.key.insecure"),
@@ -258,6 +257,7 @@ func (c *Cluster) ProtoMembers() []*pb.Member {
 func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 	memberNumber := c.LastMemberNum
 	c.LastMemberNum++
+
 	m := MustNewMember(t,
 		MemberConfig{
 			Name:                        fmt.Sprintf("m%v", memberNumber),
@@ -369,6 +369,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 			}
 		}
 	}
+
 	c.Members = newMembers
 	c.WaitMembersMatch(t, c.ProtoMembers())
 	return nil
@@ -524,7 +525,7 @@ func isMembersEqual(membs []*pb.Member, wmembs []*pb.Member) bool {
 }
 
 func NewLocalListener(t testutil.TB) net.Listener {
-	c := atomic.AddInt32(&LocalListenCount, 1)
+	c := atomic.AddInt32(&UniqueCount, 1)
 	// Go 1.8+ allows only numbers in port
 	addr := fmt.Sprintf("127.0.0.1:%05d%05d", c+BasePort, os.Getpid())
 	return NewListenerWithAddr(t, addr)
@@ -543,6 +544,7 @@ type Member struct {
 	config.ServerConfig
 	UniqNumber                     int
 	MemberNumber                   int
+	Port                           string
 	PeerListeners, ClientListeners []net.Listener
 	GrpcListener                   net.Listener
 	// PeerTLSInfo enables peer TLS when set
@@ -616,7 +618,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	var err error
 	m := &Member{
 		MemberNumber: mcfg.MemberNumber,
-		UniqNumber:   int(atomic.AddInt32(&LocalListenCount, 1)),
+		UniqNumber:   int(atomic.AddInt32(&UniqueCount, 1)),
 	}
 
 	peerScheme := SchemeFromTLSInfo(mcfg.PeerTLS)
@@ -751,7 +753,7 @@ func memberLogger(t testutil.TB, name string) *zap.Logger {
 func (m *Member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
 	network, host, port := m.grpcAddr()
-	grpcAddr := host + ":" + port
+	grpcAddr := net.JoinHostPort(host, port)
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -761,7 +763,17 @@ func (m *Member) listenGRPC() error {
 	if err != nil {
 		return fmt.Errorf("listen failed on grpc socket %s (%v)", grpcAddr, err)
 	}
-	m.GrpcURL = fmt.Sprintf("%s://%s", m.clientScheme(), grpcAddr)
+
+	addr := grpcListener.Addr().String()
+	host, port, err = net.SplitHostPort(addr)
+	if err != nil {
+		return fmt.Errorf("failed to parse grpc listen port from address %s (%v)", addr, err)
+	}
+	m.Port = port
+	m.GrpcURL = fmt.Sprintf("%s://%s", m.clientScheme(), addr)
+	m.Logger.Info("LISTEN GRPC SUCCESS", zap.String("grpcAddr", m.GrpcURL), zap.String("m.Name", m.Name),
+		zap.String("workdir", wd), zap.String("port", m.Port))
+
 	if m.UseBridge {
 		_, err = m.addBridge()
 		if err != nil {
@@ -790,8 +802,12 @@ func (m *Member) clientScheme() string {
 
 func (m *Member) addBridge() (*bridge, error) {
 	network, host, port := m.grpcAddr()
-	grpcAddr := host + ":" + port
-	bridgeAddr := grpcAddr + "0"
+	grpcAddr := net.JoinHostPort(host, m.Port)
+	bridgePort := fmt.Sprintf("%s%s", port, "0")
+	if m.UseTCP {
+		bridgePort = "0"
+	}
+	bridgeAddr := net.JoinHostPort(host, bridgePort)
 	m.Logger.Info("LISTEN BRIDGE", zap.String("grpc-address", bridgeAddr), zap.String("member", m.Name))
 	bridgeListener, err := transport.NewUnixListener(bridgeAddr)
 	if err != nil {
@@ -802,7 +818,9 @@ func (m *Member) addBridge() (*bridge, error) {
 		bridgeListener.Close()
 		return nil, err
 	}
-	m.GrpcURL = m.clientScheme() + "://" + bridgeAddr
+	addr := bridgeListener.Addr().String()
+	m.Logger.Info("LISTEN BRIDGE SUCCESS", zap.String("grpc-address", addr), zap.String("member", m.Name))
+	m.GrpcURL = m.clientScheme() + "://" + addr
 	return m.GrpcBridge, nil
 }
 
@@ -823,15 +841,21 @@ func (m *Member) grpcAddr() (network, host, port string) {
 	if m.UseTCP {
 		network = "tcp"
 	}
+
+	if m.Port != "" {
+		return network, host, m.Port
+	}
+
 	port = m.Name
 	if m.UseTCP {
-		port = fmt.Sprintf("%d", GrpcPortNumber(m.UniqNumber, m.MemberNumber))
+		// let net.Listen choose the port automatically
+		port = fmt.Sprintf("%d", 0)
 	}
 	return network, host, port
 }
 
-func GrpcPortNumber(uniqNumber, memberNumber int) int {
-	return BaseGRPCPort + uniqNumber*10 + memberNumber
+func (m *Member) GrpcPortNumber() string {
+	return m.Port
 }
 
 type dialer struct {
