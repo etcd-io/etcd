@@ -75,6 +75,14 @@ func (m *Monitor) decideClusterVersion() *semver.Version {
 	}
 	downgrade := m.s.GetDowngradeInfo()
 	if downgrade != nil && downgrade.Enabled {
+		if clusterVersion.Equal(*downgrade.GetTargetVersion()) {
+			m.lg.Error("Downgrade already finished, despite enabled downgrade present",
+				zap.String("downgrade-version", downgrade.TargetVersion),
+				zap.String("cluster-version", clusterVersion.String()),
+				zap.String("minimal-server-version", minimalServerVersion.String()),
+			)
+			return downgrade.GetTargetVersion()
+		}
 		if IsValidVersionChange(clusterVersion, downgrade.GetTargetVersion()) && IsValidVersionChange(minimalServerVersion, downgrade.GetTargetVersion()) {
 			return downgrade.GetTargetVersion()
 		}

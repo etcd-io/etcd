@@ -219,6 +219,16 @@ func TestUpdateClusterVersionIfNeeded(t *testing.T) {
 			expectClusterVersion: &version.V3_5,
 		},
 		{
+			name: "Should allow downgrade target version to be equal to current version",
+			memberVersions: map[string]*version.Versions{
+				"a": {Cluster: "3.5.0", Server: "3.5.0"},
+				"b": {Cluster: "3.5.0", Server: "3.5.0"},
+			},
+			clusterVersion:       &version.V3_5,
+			downgrade:            &DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
+			expectClusterVersion: &version.V3_5,
+		},
+		{
 			name: "Don't downgrade below supported range",
 			memberVersions: map[string]*version.Versions{
 				"a": {Cluster: "3.5.0", Server: "3.6.0"},
