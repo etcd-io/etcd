@@ -260,7 +260,7 @@ func checkSupportArch() {
 	if err != nil {
 		panic(err)
 	}
-	// to add a new platform, check https://github.com/etcd-io/website/blob/main/content/en/docs/next/op-guide/supported-platform.md
+	// to add a new platform, check https://github.com/etcd-io/website/blob/main/content/en/docs/v3.5/op-guide/supported-platform.md
 	if runtime.GOARCH == "amd64" ||
 		runtime.GOARCH == "arm64" ||
 		runtime.GOARCH == "ppc64le" ||
