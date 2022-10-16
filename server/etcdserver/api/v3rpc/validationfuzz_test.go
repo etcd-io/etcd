@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-func FuzzRangeRequest(f *testing.F) {
+func FuzzTxnRangeRequest(f *testing.F) {
 	testcases := []pb.RangeRequest{
 		{
 			Key:        []byte{2},
@@ -27,8 +27,9 @@ func FuzzRangeRequest(f *testing.F) {
 	for _, tc := range testcases {
 		soValue := pb.RangeRequest_SortOrder_value[tc.SortOrder.String()]
 		soTarget := pb.RangeRequest_SortTarget_value[tc.SortTarget.String()]
-		f.Add(tc.Key, tc.RangeEnd, tc.Limit, tc.Revision, soValue, soTarget) // Use f.Add to provide a seed corpus
+		f.Add(tc.Key, tc.RangeEnd, tc.Limit, tc.Revision, soValue, soTarget)
 	}
+
 	f.Fuzz(func(t *testing.T,
 		key []byte,
 		rangeEnd []byte,
@@ -37,54 +38,27 @@ func FuzzRangeRequest(f *testing.F) {
 		sortOrder int32,
 		sortTarget int32,
 	) {
-		b, _ := betesting.NewDefaultTmpBackend(t)
-		defer betesting.Close(t, b)
-		s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
-		defer s.Close()
-
-		// setup cancelled context
-		ctx, cancel := context.WithCancel(context.TODO())
-		cancel()
-		// put some data to prevent early termination in rangeKeys
-		// we are expecting failure on cancelled context check
-		s.Put(key, []byte("bar"), lease.NoLease)
-
-		request := &pb.TxnRequest{
-			Success: []*pb.RequestOp{
-				{
-					Request: &pb.RequestOp_RequestRange{
-						RequestRange: &pb.RangeRequest{
-							Key:        key,
-							RangeEnd:   rangeEnd,
-							Limit:      limit,
-							SortOrder:  pb.RangeRequest_SortOrder(sortOrder),
-							SortTarget: pb.RangeRequest_SortTarget(sortTarget),
-						},
-					},
-				},
-			},
-		}
-		errCheck := checkRangeRequest(&pb.RangeRequest{
+		fuzzRequest := &pb.RangeRequest{
 			Key:        key,
 			RangeEnd:   rangeEnd,
 			Limit:      limit,
 			SortOrder:  pb.RangeRequest_SortOrder(sortOrder),
 			SortTarget: pb.RangeRequest_SortTarget(sortTarget),
+		}
+
+		verifyCheck(t, func() error {
+			return checkRangeRequest(fuzzRequest)
 		})
 
-		if errCheck != nil {
-			t.Skip("Validation not passing. Skipping the apply.")
-		}
-
-		_, _, err := txn.Txn(ctx, zaptest.NewLogger(t), request, false, s, &lease.FakeLessor{})
-		if err != nil {
-			t.Logf("Check: %s | Apply: %s", errCheck, err)
-			t.Skip("Application erroring.")
-		}
+		execTransaction(t, &pb.RequestOp{
+			Request: &pb.RequestOp_RequestRange{
+				RequestRange: fuzzRequest,
+			},
+		})
 	})
 }
 
-func FuzzPutRequest(f *testing.F) {
+func FuzzTxnPutRequest(f *testing.F) {
 	testcases := []pb.PutRequest{
 		{
 			Key:         []byte{2},
@@ -97,7 +71,7 @@ func FuzzPutRequest(f *testing.F) {
 	}
 
 	for _, tc := range testcases {
-		f.Add(tc.Key, tc.Value, tc.Lease, tc.PrevKv, tc.IgnoreValue, tc.IgnoreLease) // Use f.Add to provide a seed corpus
+		f.Add(tc.Key, tc.Value, tc.Lease, tc.PrevKv, tc.IgnoreValue, tc.IgnoreLease)
 	}
 
 	f.Fuzz(func(t *testing.T,
@@ -108,56 +82,28 @@ func FuzzPutRequest(f *testing.F) {
 		ignoreValue bool,
 		IgnoreLease bool,
 	) {
-		b, _ := betesting.NewDefaultTmpBackend(t)
-		defer betesting.Close(t, b)
-		s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
-		defer s.Close()
-
-		// setup cancelled context
-		ctx, cancel := context.WithCancel(context.TODO())
-		cancel()
-		// put some data to prevent early termination in rangeKeys
-		// we are expecting failure on cancelled context check
-		s.Put(key, []byte("bar"), lease.NoLease)
-
-		request := &pb.TxnRequest{
-			Success: []*pb.RequestOp{
-				{
-					Request: &pb.RequestOp_RequestPut{
-						RequestPut: &pb.PutRequest{
-							Key:         key,
-							Value:       value,
-							Lease:       leaseValue,
-							PrevKv:      prevKv,
-							IgnoreValue: ignoreValue,
-							IgnoreLease: IgnoreLease,
-						},
-					},
-				},
-			},
-		}
-		errCheck := checkPutRequest(&pb.PutRequest{
+		fuzzRequest := &pb.PutRequest{
 			Key:         key,
 			Value:       value,
 			Lease:       leaseValue,
 			PrevKv:      prevKv,
 			IgnoreValue: ignoreValue,
 			IgnoreLease: IgnoreLease,
+		}
+
+		verifyCheck(t, func() error {
+			return checkPutRequest(fuzzRequest)
 		})
 
-		if errCheck != nil {
-			t.Skip("Validation not passing. Skipping the apply.")
-		}
-
-		_, _, err := txn.Txn(ctx, zaptest.NewLogger(t), request, false, s, &lease.FakeLessor{})
-		if err != nil {
-			t.Logf("Check: %s | Apply: %s", errCheck, err)
-			t.Skip("Application erroring.")
-		}
+		execTransaction(t, &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: fuzzRequest,
+			},
+		})
 	})
 }
 
-func FuzzDeleteRangeRequest(f *testing.F) {
+func FuzzTxnDeleteRangeRequest(f *testing.F) {
 	testcases := []pb.DeleteRangeRequest{
 		{
 			Key:      []byte{2},
@@ -167,7 +113,7 @@ func FuzzDeleteRangeRequest(f *testing.F) {
 	}
 
 	for _, tc := range testcases {
-		f.Add(tc.Key, tc.RangeEnd, tc.PrevKv) // Use f.Add to provide a seed corpus
+		f.Add(tc.Key, tc.RangeEnd, tc.PrevKv)
 	}
 
 	f.Fuzz(func(t *testing.T,
@@ -175,45 +121,47 @@ func FuzzDeleteRangeRequest(f *testing.F) {
 		rangeEnd []byte,
 		prevKv bool,
 	) {
-		b, _ := betesting.NewDefaultTmpBackend(t)
-		defer betesting.Close(t, b)
-		s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
-		defer s.Close()
-
-		// setup cancelled context
-		ctx, cancel := context.WithCancel(context.TODO())
-		cancel()
-		// put some data to prevent early termination in rangeKeys
-		// we are expecting failure on cancelled context check
-		s.Put(key, []byte("bar"), lease.NoLease)
-
-		request := &pb.TxnRequest{
-			Success: []*pb.RequestOp{
-				{
-					Request: &pb.RequestOp_RequestDeleteRange{
-						RequestDeleteRange: &pb.DeleteRangeRequest{
-							Key:      key,
-							RangeEnd: rangeEnd,
-							PrevKv:   prevKv,
-						},
-					},
-				},
-			},
-		}
-		errCheck := checkDeleteRequest(&pb.DeleteRangeRequest{
+		fuzzRequest := &pb.DeleteRangeRequest{
 			Key:      key,
 			RangeEnd: rangeEnd,
 			PrevKv:   prevKv,
+		}
+
+		verifyCheck(t, func() error {
+			return checkDeleteRequest(fuzzRequest)
 		})
 
-		if errCheck != nil {
-			t.Skip("Validation not passing. Skipping the apply.")
-		}
-
-		_, _, err := txn.Txn(ctx, zaptest.NewLogger(t), request, false, s, &lease.FakeLessor{})
-		if err != nil {
-			t.Logf("Check: %s | Apply: %s", errCheck, err)
-			t.Skip("Application erroring.")
-		}
+		execTransaction(t, &pb.RequestOp{
+			Request: &pb.RequestOp_RequestDeleteRange{
+				RequestDeleteRange: fuzzRequest,
+			},
+		})
 	})
+}
+
+func verifyCheck(t *testing.T, check func() error) {
+	errCheck := check()
+	if errCheck != nil {
+		t.Skip("Validation not passing. Skipping the apply.")
+	}
+}
+
+func execTransaction(t *testing.T, req *pb.RequestOp) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
+	s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	defer s.Close()
+
+	// setup cancelled context
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
+
+	request := &pb.TxnRequest{
+		Success: []*pb.RequestOp{req},
+	}
+
+	_, _, err := txn.Txn(ctx, zaptest.NewLogger(t), request, false, s, &lease.FakeLessor{})
+	if err != nil {
+		t.Skipf("Application erroring. %s", err.Error())
+	}
 }
