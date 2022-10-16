@@ -40,7 +40,7 @@ func BenchmarkWarnOfExpensiveRequestNoLog(b *testing.B) {
 			},
 		},
 		Commit:     0,
-		Snapshot:   raftpb.Snapshot{},
+		Snapshot:   nil,
 		Reject:     false,
 		RejectHint: 0,
 		Context:    nil,
