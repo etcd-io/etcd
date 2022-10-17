@@ -147,7 +147,7 @@ func (c *clusterMock) StepMonitors() {
 	for _, m := range c.members {
 		fs = append(fs, m.monitor.UpdateStorageVersionIfNeeded)
 		if m.isLeader {
-			fs = append(fs, m.monitor.CancelDowngradeIfNeeded, m.monitor.UpdateClusterVersionIfNeeded)
+			fs = append(fs, m.monitor.CancelDowngradeIfNeeded, func() { m.monitor.UpdateClusterVersionIfNeeded() })
 		}
 	}
 	rand.Shuffle(len(fs), func(i, j int) {

@@ -2,6 +2,7 @@ package version
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -159,6 +160,7 @@ func TestUpdateClusterVersionIfNeeded(t *testing.T) {
 		memberVersions       map[string]*version.Versions
 		downgrade            *DowngradeInfo
 		expectClusterVersion *semver.Version
+		expectError          error
 	}{
 		{
 			name:                 "Default to 3.0 if there are no members",
@@ -167,24 +169,40 @@ func TestUpdateClusterVersionIfNeeded(t *testing.T) {
 		{
 			name: "Should pick lowest server version from members",
 			memberVersions: map[string]*version.Versions{
-				"a": {Cluster: "3.7.0", Server: "3.6.0"},
-				"b": {Cluster: "3.4.0", Server: "3.5.0"},
+				"a": {Server: "3.6.0"},
+				"b": {Server: "3.5.0"},
+			},
+			expectClusterVersion: &version.V3_5,
+		},
+		{
+			name: "Should support not full releases",
+			memberVersions: map[string]*version.Versions{
+				"b": {Server: "3.5.0-alpha.0"},
 			},
 			expectClusterVersion: &version.V3_5,
 		},
 		{
 			name: "Sets minimal version when member has broken version",
 			memberVersions: map[string]*version.Versions{
-				"a": {Cluster: "3.7.0", Server: "3.6.0"},
-				"b": {Cluster: "xxxx", Server: "yyyy"},
+				"a": {Server: "3.6.0"},
+				"b": {Server: "yyyy"},
 			},
 			expectClusterVersion: &version.V3_0,
 		},
 		{
-			name: "Should pick lowest server version from members (cv already set)",
+			name: "Should not downgrade cluster version without explicit downgrade request",
 			memberVersions: map[string]*version.Versions{
-				"a": {Cluster: "3.7.0", Server: "3.6.0"},
-				"b": {Cluster: "3.4.0", Server: "3.5.0"},
+				"a": {Server: "3.5.0"},
+				"b": {Server: "3.6.0"},
+			},
+			clusterVersion:       &version.V3_6,
+			expectClusterVersion: &version.V3_6,
+		},
+		{
+			name: "Should not upgrade cluster version if there is still member old member",
+			memberVersions: map[string]*version.Versions{
+				"a": {Server: "3.5.0"},
+				"b": {Server: "3.6.0"},
 			},
 			clusterVersion:       &version.V3_5,
 			expectClusterVersion: &version.V3_5,
@@ -192,8 +210,8 @@ func TestUpdateClusterVersionIfNeeded(t *testing.T) {
 		{
 			name: "Should upgrade cluster version if all members have upgraded (have higher server version)",
 			memberVersions: map[string]*version.Versions{
-				"a": {Cluster: "3.5.0", Server: "3.6.0"},
-				"b": {Cluster: "3.5.0", Server: "3.6.0"},
+				"a": {Server: "3.6.0"},
+				"b": {Server: "3.6.0"},
 			},
 			clusterVersion:       &version.V3_5,
 			expectClusterVersion: &version.V3_6,
@@ -201,32 +219,34 @@ func TestUpdateClusterVersionIfNeeded(t *testing.T) {
 		{
 			name: "Should downgrade cluster version if downgrade is set to allow older members to join",
 			memberVersions: map[string]*version.Versions{
-				"a": {Cluster: "3.6.0", Server: "3.6.0"},
-				"b": {Cluster: "3.6.0", Server: "3.6.0"},
+				"a": {Server: "3.6.0"},
+				"b": {Server: "3.6.0"},
 			},
 			clusterVersion:       &version.V3_6,
 			downgrade:            &DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
 			expectClusterVersion: &version.V3_5,
 		},
 		{
-			name: "Should maintain downgrade target version to allow older members to join",
-			memberVersions: map[string]*version.Versions{
-				"a": {Cluster: "3.5.0", Server: "3.6.0"},
-				"b": {Cluster: "3.5.0", Server: "3.6.0"},
-			},
-			clusterVersion:       &version.V3_5,
-			downgrade:            &DowngradeInfo{TargetVersion: "3.5.0", Enabled: true},
-			expectClusterVersion: &version.V3_5,
-		},
-		{
 			name: "Don't downgrade below supported range",
 			memberVersions: map[string]*version.Versions{
-				"a": {Cluster: "3.5.0", Server: "3.6.0"},
-				"b": {Cluster: "3.5.0", Server: "3.6.0"},
+				"a": {Server: "3.6.0"},
+				"b": {Server: "3.6.0"},
 			},
 			clusterVersion:       &version.V3_5,
 			downgrade:            &DowngradeInfo{TargetVersion: "3.4.0", Enabled: true},
 			expectClusterVersion: &version.V3_5,
+			expectError:          fmt.Errorf("invalid downgrade target"),
+		},
+		{
+			name: "Don't downgrade above cluster version",
+			memberVersions: map[string]*version.Versions{
+				"a": {Server: "3.5.0"},
+				"b": {Server: "3.5.0"},
+			},
+			clusterVersion:       &version.V3_5,
+			downgrade:            &DowngradeInfo{TargetVersion: "3.6.0", Enabled: true},
+			expectClusterVersion: &version.V3_5,
+			expectError:          fmt.Errorf("invalid downgrade target"),
 		},
 	}
 
@@ -239,11 +259,14 @@ func TestUpdateClusterVersionIfNeeded(t *testing.T) {
 			}
 			monitor := NewMonitor(zaptest.NewLogger(t), s)
 
-			// Run multiple times to ensure that results are stable
-			for i := 0; i < 3; i++ {
-				monitor.UpdateClusterVersionIfNeeded()
-				assert.Equal(t, tt.expectClusterVersion, s.clusterVersion)
-			}
+			err := monitor.UpdateClusterVersionIfNeeded()
+			assert.Equal(t, tt.expectClusterVersion, s.clusterVersion)
+			assert.Equal(t, tt.expectError, err)
+
+			// Ensure results are stable
+			newVersion, err := monitor.decideClusterVersion()
+			assert.Nil(t, newVersion)
+			assert.Equal(t, tt.expectError, err)
 		})
 	}
 }
