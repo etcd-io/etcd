@@ -23,7 +23,6 @@ import (
 )
 
 var (
-	BinDir  string
 	CertDir string
 
 	CertPath       string
@@ -57,11 +56,11 @@ func InitFlags() {
 	binDirDef := testutils.MustAbsPath("../../bin")
 	certDirDef := FixturesDir
 
-	flag.StringVar(&BinDir, "bin-dir", binDirDef, "The directory for store etcd and etcdctl binaries.")
+	binDir := flag.String("bin-dir", binDirDef, "The directory for store etcd and etcdctl binaries.")
 	flag.StringVar(&CertDir, "cert-dir", certDirDef, "The directory for store certificate files.")
 	flag.Parse()
 
-	BinPath = initBinPath(BinDir)
+	BinPath = initBinPath(*binDir)
 	CertPath = CertDir + "/server.crt"
 	PrivateKeyPath = CertDir + "/server.key.insecure"
 	CaPath = CertDir + "/ca.crt"
