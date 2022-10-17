@@ -51,7 +51,7 @@ func TestClusterVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			binary := e2e.BinDir + "/etcd"
+			binary := e2e.BinPath.Etcd
 			if !fileutil.Exist(binary) {
 				t.Skipf("%q does not exist", binary)
 			}

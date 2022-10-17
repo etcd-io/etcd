@@ -37,7 +37,7 @@ func TestDowngradeUpgradeClusterOf3(t *testing.T) {
 }
 
 func testDowngradeUpgrade(t *testing.T, clusterSize int) {
-	currentEtcdBinary := e2e.BinDir + "/etcd"
+	currentEtcdBinary := e2e.BinPath.Etcd
 	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
