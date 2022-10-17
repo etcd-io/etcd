@@ -16,7 +16,6 @@ package integration
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	grpc_logsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
@@ -111,14 +110,6 @@ func assertInTestContext(t testutil.TB) {
 	if !insideTestContext {
 		t.Errorf("the function can be called only in the test context. Was integration.BeforeTest() called ?")
 	}
-}
-
-func MustAbsPath(path string) string {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		panic(err)
-	}
-	return abs
 }
 
 func NewEmbedConfig(t testing.TB, name string) *embed.Config {

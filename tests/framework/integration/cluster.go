@@ -56,6 +56,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/server/v3/verify"
 	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
@@ -87,44 +88,44 @@ var (
 	UniqueCount = int32(0)
 
 	TestTLSInfo = transport.TLSInfo{
-		KeyFile:        MustAbsPath("../fixtures/server.key.insecure"),
-		CertFile:       MustAbsPath("../fixtures/server.crt"),
-		TrustedCAFile:  MustAbsPath("../fixtures/ca.crt"),
+		KeyFile:        testutils.MustAbsPath("../fixtures/server.key.insecure"),
+		CertFile:       testutils.MustAbsPath("../fixtures/server.crt"),
+		TrustedCAFile:  testutils.MustAbsPath("../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	TestTLSInfoWithSpecificUsage = transport.TLSInfo{
-		KeyFile:        MustAbsPath("../fixtures/server-serverusage.key.insecure"),
-		CertFile:       MustAbsPath("../fixtures/server-serverusage.crt"),
-		ClientKeyFile:  MustAbsPath("../fixtures/client-clientusage.key.insecure"),
-		ClientCertFile: MustAbsPath("../fixtures/client-clientusage.crt"),
-		TrustedCAFile:  MustAbsPath("../fixtures/ca.crt"),
+		KeyFile:        testutils.MustAbsPath("../fixtures/server-serverusage.key.insecure"),
+		CertFile:       testutils.MustAbsPath("../fixtures/server-serverusage.crt"),
+		ClientKeyFile:  testutils.MustAbsPath("../fixtures/client-clientusage.key.insecure"),
+		ClientCertFile: testutils.MustAbsPath("../fixtures/client-clientusage.crt"),
+		TrustedCAFile:  testutils.MustAbsPath("../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	TestTLSInfoIP = transport.TLSInfo{
-		KeyFile:        MustAbsPath("../fixtures/server-ip.key.insecure"),
-		CertFile:       MustAbsPath("../fixtures/server-ip.crt"),
-		TrustedCAFile:  MustAbsPath("../fixtures/ca.crt"),
+		KeyFile:        testutils.MustAbsPath("../fixtures/server-ip.key.insecure"),
+		CertFile:       testutils.MustAbsPath("../fixtures/server-ip.crt"),
+		TrustedCAFile:  testutils.MustAbsPath("../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	TestTLSInfoExpired = transport.TLSInfo{
-		KeyFile:        MustAbsPath("./fixtures-expired/server.key.insecure"),
-		CertFile:       MustAbsPath("./fixtures-expired/server.crt"),
-		TrustedCAFile:  MustAbsPath("./fixtures-expired/ca.crt"),
+		KeyFile:        testutils.MustAbsPath("./fixtures-expired/server.key.insecure"),
+		CertFile:       testutils.MustAbsPath("./fixtures-expired/server.crt"),
+		TrustedCAFile:  testutils.MustAbsPath("./fixtures-expired/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	TestTLSInfoExpiredIP = transport.TLSInfo{
-		KeyFile:        MustAbsPath("./fixtures-expired/server-ip.key.insecure"),
-		CertFile:       MustAbsPath("./fixtures-expired/server-ip.crt"),
-		TrustedCAFile:  MustAbsPath("./fixtures-expired/ca.crt"),
+		KeyFile:        testutils.MustAbsPath("./fixtures-expired/server-ip.key.insecure"),
+		CertFile:       testutils.MustAbsPath("./fixtures-expired/server-ip.crt"),
+		TrustedCAFile:  testutils.MustAbsPath("./fixtures-expired/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	DefaultTokenJWT = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=1s",
-		MustAbsPath("../fixtures/server.crt"), MustAbsPath("../fixtures/server.key.insecure"))
+		testutils.MustAbsPath("../fixtures/server.crt"), testutils.MustAbsPath("../fixtures/server.key.insecure"))
 
 	// UniqueNumber is used to generate unique port numbers
 	// Should only be accessed via atomic package methods.
