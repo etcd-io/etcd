@@ -20,7 +20,6 @@ package e2e
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -35,17 +34,21 @@ var (
 	coverDir = testutils.MustAbsPath(os.Getenv("COVERDIR"))
 )
 
+func init() {
+	initBinPath = initBinPathCov
+}
+
+func initBinPathCov(binDir string) binPath {
+	return binPath{
+		Etcd:    binDir + "/etcd_test",
+		Etcdctl: binDir + "/etcdctl_test",
+		Etcdutl: binDir + "/etcdutl_test",
+	}
+}
+
 func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string, name string) (*expect.ExpectProcess, error) {
 	cmd := args[0]
 	env := mergeEnvVariables(envVars)
-	switch {
-	case strings.HasSuffix(cmd, "/etcd"):
-		cmd = cmd + "_test"
-	case strings.HasSuffix(cmd, "/etcdctl"):
-		cmd = cmd + "_test"
-	case strings.HasSuffix(cmd, "/etcdutl"):
-		cmd = cmd + "_test"
-	}
 
 	wd, err := os.Getwd()
 	if err != nil {

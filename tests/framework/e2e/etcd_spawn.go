@@ -22,18 +22,14 @@ import (
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
+var (
+	initBinPath func(string) binPath
+)
+
 func SpawnCmd(args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
 	return SpawnNamedCmd(strings.Join(args, "_"), args, envVars)
 }
 
 func SpawnNamedCmd(processName string, args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
 	return SpawnCmdWithLogger(zap.NewNop(), args, envVars, processName)
-}
-
-func initBinPath(binDir string) binPath {
-	return binPath{
-		Etcd:    binDir + "/etcd",
-		Etcdctl: binDir + "/etcdctl",
-		Etcdutl: binDir + "/etcdutl",
-	}
 }

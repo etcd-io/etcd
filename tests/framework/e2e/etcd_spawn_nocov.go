@@ -18,13 +18,26 @@
 package e2e
 
 import (
-	"go.uber.org/zap"
 	"os"
+
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
 const noOutputLineCount = 0 // regular binaries emit no extra lines
+
+func init() {
+	initBinPath = initBinPathNoCov
+}
+
+func initBinPathNoCov(binDir string) binPath {
+	return binPath{
+		Etcd:    binDir + "/etcd",
+		Etcdctl: binDir + "/etcdctl",
+		Etcdutl: binDir + "/etcdutl",
+	}
+}
 
 func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string, name string) (*expect.ExpectProcess, error) {
 	wd, err := os.Getwd()
