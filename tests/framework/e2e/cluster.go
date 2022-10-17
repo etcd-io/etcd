@@ -207,7 +207,7 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 		cfg.BasePort = EtcdProcessBasePort
 	}
 	if cfg.ExecPath == "" {
-		cfg.ExecPath = BinPath
+		cfg.ExecPath = BinPath.Etcd
 	}
 	if cfg.SnapshotCount == 0 {
 		cfg.SnapshotCount = etcdserver.DefaultSnapshotCount

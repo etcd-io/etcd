@@ -133,7 +133,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}()
 
 			dialTimeout := 10 * time.Second
-			prefixArgs := []string{e2e.CtlBinPath, "--endpoints", strings.Join(epc.EndpointsV3(), ","), "--dial-timeout", dialTimeout.String()}
+			prefixArgs := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(epc.EndpointsV3(), ","), "--dial-timeout", dialTimeout.String()}
 
 			t.Log("Write keys to ensure wal snapshot is created and all v3.5 fields are set...")
 			for i := 0; i < 10; i++ {
@@ -148,7 +148,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 
 			t.Log("etcdutl migrate...")
-			args := []string{e2e.UtlBinPath, "migrate", "--data-dir", dataDirPath, "--target-version", tc.targetVersion}
+			args := []string{e2e.BinPath.Etcdutl, "migrate", "--data-dir", dataDirPath, "--target-version", tc.targetVersion}
 			if tc.force {
 				args = append(args, "--force")
 			}

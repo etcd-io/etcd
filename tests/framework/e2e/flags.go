@@ -40,12 +40,15 @@ var (
 	RevokedCertPath       string
 	RevokedPrivateKeyPath string
 
-	BinPath    string
-	CtlBinPath string
-	UtlBinPath string
-
+	BinPath     binPath
 	FixturesDir = testutils.MustAbsPath("../fixtures")
 )
+
+type binPath struct {
+	Etcd    string
+	Etcdctl string
+	Etcdutl string
+}
 
 func InitFlags() {
 	os.Setenv("ETCD_UNSUPPORTED_ARCH", runtime.GOARCH)
@@ -57,9 +60,7 @@ func InitFlags() {
 	flag.StringVar(&CertDir, "cert-dir", certDirDef, "The directory for store certificate files.")
 	flag.Parse()
 
-	BinPath = BinDir + "/etcd"
-	CtlBinPath = BinDir + "/etcdctl"
-	UtlBinPath = BinDir + "/etcdutl"
+	BinPath = initBinPath(BinDir)
 	CertPath = CertDir + "/server.crt"
 	PrivateKeyPath = CertDir + "/server.key.insecure"
 	CaPath = CertDir + "/ca.crt"

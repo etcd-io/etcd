@@ -29,3 +29,11 @@ func SpawnCmd(args []string, envVars map[string]string) (*expect.ExpectProcess, 
 func SpawnNamedCmd(processName string, args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
 	return SpawnCmdWithLogger(zap.NewNop(), args, envVars, processName)
 }
+
+func initBinPath(binDir string) binPath {
+	return binPath{
+		Etcd:    binDir + "/etcd",
+		Etcdctl: binDir + "/etcdctl",
+		Etcdutl: binDir + "/etcdutl",
+	}
+}
