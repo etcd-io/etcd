@@ -40,9 +40,10 @@ func init() {
 
 func initBinPathCov(binDir string) binPath {
 	return binPath{
-		Etcd:    binDir + "/etcd_test",
-		Etcdctl: binDir + "/etcdctl_test",
-		Etcdutl: binDir + "/etcdutl_test",
+		Etcd:            binDir + "/etcd_test",
+		EtcdLastRelease: binDir + "/etcd-last-release",
+		Etcdctl:         binDir + "/etcdctl_test",
+		Etcdutl:         binDir + "/etcdutl_test",
 	}
 }
 

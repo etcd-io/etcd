@@ -32,7 +32,7 @@ import (
 )
 
 func TestEtctlutlMigrate(t *testing.T) {
-	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 
 	tcs := []struct {
 		name          string

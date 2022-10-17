@@ -38,7 +38,7 @@ func TestTLSClusterOf3UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t
 func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	e2e.BeforeTest(t)
 
-	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}

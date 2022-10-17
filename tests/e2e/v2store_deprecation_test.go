@@ -75,7 +75,7 @@ func TestV2DeprecationFlags(t *testing.T) {
 	e2e.BeforeTest(t)
 	dataDirPath := t.TempDir()
 
-	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
@@ -101,7 +101,7 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 	currentReleaseBinary := e2e.BinPath.Etcd
 
 	if !fileutil.Exist(lastReleaseBinary) {
@@ -136,7 +136,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 	currentReleaseBinary := e2e.BinPath.Etcd
 
 	if !fileutil.Exist(lastReleaseBinary) {

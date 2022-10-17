@@ -45,9 +45,10 @@ var (
 )
 
 type binPath struct {
-	Etcd    string
-	Etcdctl string
-	Etcdutl string
+	Etcd            string
+	EtcdLastRelease string
+	Etcdctl         string
+	Etcdutl         string
 }
 
 func InitFlags() {
