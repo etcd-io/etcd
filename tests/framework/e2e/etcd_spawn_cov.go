@@ -25,14 +25,14 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"go.uber.org/zap"
 )
 
 const noOutputLineCount = 2 // cov-enabled binaries emit PASS and coverage count lines
 
 var (
-	coverDir = integration.MustAbsPath(os.Getenv("COVERDIR"))
+	coverDir = testutils.MustAbsPath(os.Getenv("COVERDIR"))
 )
 
 func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string, name string) (*expect.ExpectProcess, error) {

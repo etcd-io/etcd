@@ -35,13 +35,14 @@ import (
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        integration2.MustAbsPath("../../fixtures/server.key.insecure"),
-		CertFile:       integration2.MustAbsPath("../../fixtures/server.crt"),
-		TrustedCAFile:  integration2.MustAbsPath("../../fixtures/ca.crt"),
+		KeyFile:        testutils.MustAbsPath("../../fixtures/server.key.insecure"),
+		CertFile:       testutils.MustAbsPath("../../fixtures/server.crt"),
+		TrustedCAFile:  testutils.MustAbsPath("../../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 )

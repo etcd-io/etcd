@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 )
@@ -138,7 +139,7 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 
 // TestCorruptedBackupFileCheck tests if we can correctly identify a corrupted backup file.
 func TestCorruptedBackupFileCheck(t *testing.T) {
-	dbPath := integration2.MustAbsPath("testdata/corrupted_backup.db")
+	dbPath := testutils.MustAbsPath("testdata/corrupted_backup.db")
 	integration2.BeforeTest(t)
 	if _, err := os.Stat(dbPath); err != nil {
 		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)

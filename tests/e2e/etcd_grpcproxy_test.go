@@ -16,14 +16,12 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/expect"
@@ -37,77 +35,46 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var (
-		node1Name      = "node1"
-		node1ClientURL = "http://localhost:12379"
-		node1PeerURL   = "http://localhost:12380"
-
-		node2Name      = "node2"
-		node2ClientURL = "http://localhost:22379"
-		node2PeerURL   = "http://localhost:22380"
-
-		proxyClientURL = "127.0.0.1:32379"
-
-		autoSyncInterval = 1 * time.Second
-	)
-
-	// Run cluster of one node
-	proc1, err := runEtcdNode(
-		node1Name, t.TempDir(),
-		node1ClientURL, node1PeerURL,
-		"new", fmt.Sprintf("%s=%s", node1Name, node1PeerURL),
-	)
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize: 1,
+	})
 	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, epc.Close())
+	}()
 
-	// Run grpc-proxy instance
+	var (
+		node1ClientURL = epc.Procs[0].Config().Acurl
+		proxyClientURL = "127.0.0.1:32379"
+	)
+
+	// Run independent grpc-proxy instance
 	proxyProc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "grpc-proxy", "start",
 		"--advertise-client-url", proxyClientURL, "--listen-addr", proxyClientURL,
 		"--endpoints", node1ClientURL,
-		"--endpoints-auto-sync-interval", autoSyncInterval.String(),
+		"--endpoints-auto-sync-interval", "1s",
 	}, nil)
 	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, proxyProc.Stop())
+	}()
 
 	proxyCtl := e2e.NewEtcdctl(&e2e.EtcdProcessClusterConfig{}, []string{proxyClientURL})
 	err = proxyCtl.Put(ctx, "k1", "v1", config.PutOptions{})
 	require.NoError(t, err)
 
-	memberCtl := e2e.NewEtcdctl(&e2e.EtcdProcessClusterConfig{}, []string{node1ClientURL})
-	_, err = memberCtl.MemberAdd(ctx, node2Name, []string{node2PeerURL})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Run new member
-	proc2, err := runEtcdNode(
-		node2Name, t.TempDir(),
-		node2ClientURL, node2PeerURL,
-		"existing", fmt.Sprintf("%s=%s,%s=%s", node1Name, node1PeerURL, node2Name, node2PeerURL),
-	)
+	// Add and start second member
+	err = epc.StartNewProc(ctx, t)
 	require.NoError(t, err)
 
 	// Wait for auto sync of endpoints
-	err = waitForEndpointInLog(proxyProc, node2ClientURL)
+	err = waitForEndpointInLog(ctx, proxyProc, epc.Procs[1].Config().Acurl)
 	require.NoError(t, err)
 
-	memberList, err := memberCtl.MemberList(ctx)
+	err = epc.CloseProc(ctx, func(proc e2e.EtcdProcess) bool {
+		return proc.Config().Acurl == node1ClientURL
+	})
 	require.NoError(t, err)
-
-	node1MemberID, err := findMemberIDByEndpoint(memberList.Members, node1ClientURL)
-	require.NoError(t, err)
-
-	// Second node could be not ready yet
-	for i := 0; i < 10; i++ {
-		_, err = memberCtl.MemberRemove(ctx, node1MemberID)
-		if err != nil && strings.Contains(err.Error(), rpctypes.ErrGRPCUnhealthy.Error()) {
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
-		break
-	}
-
-	// Remove node1 from member list and stop this nod
-	require.NoError(t, err)
-	require.NoError(t, proc1.Stop())
 
 	var resp *clientv3.GetResponse
 	for i := 0; i < 10; i++ {
@@ -118,50 +85,19 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 		}
 	}
 	require.NoError(t, err)
+
 	kvs := testutils.KeyValuesFromGetResponse(resp)
 	assert.Equal(t, []testutils.KV{{Key: "k1", Val: "v1"}}, kvs)
-
-	require.NoError(t, proc2.Stop())
-	require.NoError(t, proxyProc.Stop())
 }
 
-func runEtcdNode(name, dataDir, clientURL, peerURL, clusterState, initialCluster string) (*expect.ExpectProcess, error) {
-	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd",
-		"--name", name,
-		"--data-dir", dataDir,
-		"--listen-client-urls", clientURL, "--advertise-client-urls", clientURL,
-		"--listen-peer-urls", peerURL, "--initial-advertise-peer-urls", peerURL,
-		"--initial-cluster-token", "etcd-cluster",
-		"--initial-cluster-state", clusterState,
-		"--initial-cluster", initialCluster,
-	}, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = proc.Expect("ready to serve client requests")
-
-	return proc, err
-}
-
-func findMemberIDByEndpoint(members []*etcdserverpb.Member, endpoint string) (uint64, error) {
-	for _, m := range members {
-		if m.ClientURLs[0] == endpoint {
-			return m.ID, nil
-		}
-	}
-
-	return 0, fmt.Errorf("member not found")
-}
-
-func waitForEndpointInLog(proxyProc *expect.ExpectProcess, endpoint string) error {
+func waitForEndpointInLog(ctx context.Context, proxyProc *expect.ExpectProcess, endpoint string) error {
 	endpoint = strings.Replace(endpoint, "http://", "", 1)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	_, err := proxyProc.ExpectFunc(ctx, func(s string) bool {
-		if strings.Contains(s, endpoint) && strings.Contains(s, "Resolver state updated") {
+		if strings.Contains(s, endpoint) {
 			return true
 		}
 		return false
