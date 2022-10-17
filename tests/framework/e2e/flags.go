@@ -19,7 +19,7 @@ import (
 	"os"
 	"runtime"
 
-	"go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 var (
@@ -40,13 +40,13 @@ var (
 	RevokedCertPath       string
 	RevokedPrivateKeyPath string
 
-	FixturesDir = integration.MustAbsPath("../fixtures")
+	FixturesDir = testutils.MustAbsPath("../fixtures")
 )
 
 func InitFlags() {
 	os.Setenv("ETCD_UNSUPPORTED_ARCH", runtime.GOARCH)
 
-	binDirDef := integration.MustAbsPath("../../bin")
+	binDirDef := testutils.MustAbsPath("../../bin")
 	certDirDef := FixturesDir
 
 	flag.StringVar(&BinDir, "bin-dir", binDirDef, "The directory for store etcd and etcdctl binaries.")

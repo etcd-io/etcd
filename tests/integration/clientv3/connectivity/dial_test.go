@@ -25,22 +25,23 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 	"google.golang.org/grpc"
 )
 
 var (
 	testTLSInfo = transport.TLSInfo{
-		KeyFile:        integration2.MustAbsPath("../../../fixtures/server.key.insecure"),
-		CertFile:       integration2.MustAbsPath("../../../fixtures/server.crt"),
-		TrustedCAFile:  integration2.MustAbsPath("../../../fixtures/ca.crt"),
+		KeyFile:        testutils.MustAbsPath("../../../fixtures/server.key.insecure"),
+		CertFile:       testutils.MustAbsPath("../../../fixtures/server.crt"),
+		TrustedCAFile:  testutils.MustAbsPath("../../../fixtures/ca.crt"),
 		ClientCertAuth: true,
 	}
 
 	testTLSInfoExpired = transport.TLSInfo{
-		KeyFile:        integration2.MustAbsPath("../../fixtures-expired/server.key.insecure"),
-		CertFile:       integration2.MustAbsPath("../../fixtures-expired/server.crt"),
-		TrustedCAFile:  integration2.MustAbsPath("../../fixtures-expired/ca.crt"),
+		KeyFile:        testutils.MustAbsPath("../../fixtures-expired/server.key.insecure"),
+		CertFile:       testutils.MustAbsPath("../../fixtures-expired/server.crt"),
+		TrustedCAFile:  testutils.MustAbsPath("../../fixtures-expired/ca.crt"),
 		ClientCertAuth: true,
 	}
 )
