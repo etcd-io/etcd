@@ -40,6 +40,10 @@ var (
 	RevokedCertPath       string
 	RevokedPrivateKeyPath string
 
+	BinPath    string
+	CtlBinPath string
+	UtlBinPath string
+
 	FixturesDir = testutils.MustAbsPath("../fixtures")
 )
 
