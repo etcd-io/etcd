@@ -23,9 +23,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
-	"go.uber.org/zap"
 )
 
 const noOutputLineCount = 2 // cov-enabled binaries emit PASS and coverage count lines
@@ -36,6 +34,7 @@ var (
 
 func init() {
 	initBinPath = initBinPathCov
+	additionalArgs = additionalArgsCov
 }
 
 func initBinPathCov(binDir string) binPath {
@@ -47,32 +46,7 @@ func initBinPathCov(binDir string) binPath {
 	}
 }
 
-func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string, name string) (*expect.ExpectProcess, error) {
-	cmd := args[0]
-	env := mergeEnvVariables(envVars)
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	covArgs, err := getCovArgs()
-	if err != nil {
-		return nil, err
-	}
-	// when withFlagByEnv() is used in testCtl(), env variables for ctl is set to os.env.
-	// they must be included in ctl_cov_env.
-
-	allArgs := append(args[1:], covArgs...)
-	lg.Info("spawning process in cov test",
-		zap.Strings("args", args),
-		zap.String("working-dir", wd),
-		zap.String("name", name),
-		zap.Strings("environment-variables", env))
-	return expect.NewExpectWithEnv(cmd, allArgs, env, name)
-}
-
-func getCovArgs() ([]string, error) {
+func additionalArgsCov() ([]string, error) {
 	if !fileutil.Exist(coverDir) {
 		return nil, fmt.Errorf("could not find coverage folder: %s", coverDir)
 	}
