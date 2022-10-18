@@ -25,9 +25,13 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3CompletionBash(t *testing.T) { testShellCompletion(t, e2e.CtlBinPath, "bash") }
+func TestCtlV3CompletionBash(t *testing.T) {
+	testShellCompletion(t, e2e.BinPath.Etcdctl, "bash")
+}
 
-func TestUtlV3CompletionBash(t *testing.T) { testShellCompletion(t, e2e.UtlBinPath, "bash") }
+func TestUtlV3CompletionBash(t *testing.T) {
+	testShellCompletion(t, e2e.BinPath.Etcdutl, "bash")
+}
 
 func testShellCompletion(t *testing.T, binPath, shellName string) {
 	e2e.BeforeTest(t)

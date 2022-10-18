@@ -17,25 +17,22 @@
 
 package e2e
 
-import (
-	"go.uber.org/zap"
-	"os"
-
-	"go.etcd.io/etcd/pkg/v3/expect"
-)
-
 const noOutputLineCount = 0 // regular binaries emit no extra lines
 
-func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string, name string) (*expect.ExpectProcess, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
+func init() {
+	initBinPath = initBinPathNoCov
+	additionalArgs = additionalArgsNoCov
+}
+
+func initBinPathNoCov(binDir string) binPath {
+	return binPath{
+		Etcd:            binDir + "/etcd",
+		EtcdLastRelease: binDir + "/etcd-last-release",
+		Etcdctl:         binDir + "/etcdctl",
+		Etcdutl:         binDir + "/etcdutl",
 	}
-	env := mergeEnvVariables(envVars)
-	lg.Info("spawning process",
-		zap.Strings("args", args),
-		zap.String("working-dir", wd),
-		zap.String("name", name),
-		zap.Strings("environment-variables", env))
-	return expect.NewExpectWithEnv(args[0], args[1:], env, name)
+}
+
+func additionalArgsNoCov() ([]string, error) {
+	return []string{}, nil
 }

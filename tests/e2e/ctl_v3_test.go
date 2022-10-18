@@ -51,7 +51,7 @@ func TestClusterVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			binary := e2e.BinDir + "/etcd"
+			binary := e2e.BinPath.Etcd
 			if !fileutil.Exist(binary) {
 				t.Skipf("%q does not exist", binary)
 			}
@@ -320,7 +320,7 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 
 	useEnv := cx.envMap != nil
 
-	cmdArgs := []string{e2e.CtlBinPath}
+	cmdArgs := []string{e2e.BinPath.Etcdctl}
 	for k, v := range fmap {
 		if useEnv {
 			ek := flags.FlagToEnv("ETCDCTL", k)
@@ -341,7 +341,7 @@ func (cx *ctlCtx) PrefixArgs() []string {
 // PrefixArgsUtl returns prefix of the command that is etcdutl
 // Please not thet 'utl' compatible commands does not consume --endpoints flag.
 func (cx *ctlCtx) PrefixArgsUtl() []string {
-	return []string{e2e.UtlBinPath}
+	return []string{e2e.BinPath.Etcdutl}
 }
 
 func isGRPCTimedout(err error) bool {

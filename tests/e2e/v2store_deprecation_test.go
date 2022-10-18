@@ -55,7 +55,7 @@ func createV2store(t testing.TB, lastReleaseBinary string, dataDirPath string) {
 
 func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
@@ -64,7 +64,7 @@ func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath str
 
 func assertVerifyCannotStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=not-yet mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect(`invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
@@ -75,7 +75,7 @@ func TestV2DeprecationFlags(t *testing.T) {
 	e2e.BeforeTest(t)
 	dataDirPath := t.TempDir()
 
-	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
+	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
@@ -101,8 +101,8 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
-	currentReleaseBinary := e2e.BinDir + "/etcd"
+	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
+	currentReleaseBinary := e2e.BinPath.Etcd
 
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
@@ -136,8 +136,8 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	lastReleaseBinary := e2e.BinDir + "/etcd-last-release"
-	currentReleaseBinary := e2e.BinDir + "/etcd"
+	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
+	currentReleaseBinary := e2e.BinPath.Etcd
 
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)

@@ -30,9 +30,6 @@ import (
 
 var (
 	EtcdServerReadyLines = []string{"ready to serve client requests"}
-	BinPath              string
-	CtlBinPath           string
-	UtlBinPath           string
 )
 
 // EtcdProcess is a process that serves etcd requests.

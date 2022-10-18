@@ -39,14 +39,14 @@ func TestGateway(t *testing.T) {
 	p := startGateway(t, eps)
 	defer p.Stop()
 
-	err = e2e.SpawnWithExpect([]string{e2e.CtlBinPath, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
+	err = e2e.SpawnWithExpect([]string{e2e.BinPath.Etcdctl, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
 	if err != nil {
 		t.Errorf("failed to finish put request through gateway: %v", err)
 	}
 }
 
 func startGateway(t *testing.T, endpoints string) *expect.ExpectProcess {
-	p, err := expect.NewExpect(e2e.BinPath, "gateway", "--endpoints="+endpoints, "start")
+	p, err := expect.NewExpect(e2e.BinPath.Etcd, "gateway", "--endpoints="+endpoints, "start")
 	if err != nil {
 		t.Fatal(err)
 	}
