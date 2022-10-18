@@ -149,8 +149,13 @@ func (rn *RawNode) acceptReady(rd Ready) {
 	}
 	rn.raft.msgs = nil
 	// NB: this does not do anything yet, as entries and snapshots are always
-	// stabilized on the next Advance.
+	// stabilized on the next Advance and committed entries are always applied
+	// by the next Advance.
 	rn.raft.raftLog.acceptUnstable()
+	if len(rd.CommittedEntries) > 0 {
+		ents := rd.CommittedEntries
+		rn.raft.raftLog.acceptApplying(ents[len(ents)-1].Index)
+	}
 }
 
 // HasReady called when RawNode user need to check if any Ready pending.

@@ -32,8 +32,14 @@ type raftLog struct {
 	// committed is the highest log position that is known to be in
 	// stable storage on a quorum of nodes.
 	committed uint64
+	// applying is the highest log position that the application has
+	// been instructed to apply to its state machine. Some of these
+	// entries may be in the process of applying and have not yet
+	// reached applied.
+	// Invariant: applied <= applying && applying <= committed
+	applying uint64
 	// applied is the highest log position that the application has
-	// been instructed to apply to its state machine.
+	// successfully applied to its state machine.
 	// Invariant: applied <= committed
 	applied uint64
 
@@ -74,13 +80,14 @@ func newLogWithSize(storage Storage, logger Logger, maxNextCommittedEntsSize uin
 	// Initialize our committed and applied pointers to the time of the last compaction.
 	log.committed = firstIndex - 1
 	log.applied = firstIndex - 1
+	log.applying = firstIndex - 1
 
 	return log
 }
 
 func (l *raftLog) String() string {
-	return fmt.Sprintf("committed=%d, applied=%d, unstable.offset=%d, unstable.offsetInProgress=%d, len(unstable.Entries)=%d",
-		l.committed, l.applied, l.unstable.offset, l.unstable.offsetInProgress, len(l.unstable.entries))
+	return fmt.Sprintf("committed=%d, applied=%d, applying=%d, unstable.offset=%d, unstable.offsetInProgress=%d, len(unstable.Entries)=%d",
+		l.committed, l.applied, l.applying, l.unstable.offset, l.unstable.offsetInProgress, len(l.unstable.entries))
 }
 
 // maybeAppend returns (0, false) if the entries cannot be appended. Otherwise,
@@ -190,8 +197,9 @@ func (l *raftLog) nextCommittedEnts() (ents []pb.Entry) {
 		// See comment in hasNextCommittedEnts.
 		return nil
 	}
-	if l.committed > l.applied {
-		lo, hi := l.applied+1, l.committed+1 // [lo, hi)
+	if l.committed > l.applying {
+		lo, hi := l.applying+1, l.committed+1 // [lo, hi)
+		// TODO: handle pagination correctly.
 		ents, err := l.slice(lo, hi, l.maxNextCommittedEntsSize)
 		if err != nil {
 			l.logger.Panicf("unexpected error when getting unapplied entries (%v)", err)
@@ -210,7 +218,7 @@ func (l *raftLog) hasNextCommittedEnts() bool {
 		// first.
 		return false
 	}
-	return l.committed > l.applied
+	return l.committed > l.applying
 }
 
 // nextUnstableSnapshot returns the snapshot, if present, that is available to
@@ -271,13 +279,18 @@ func (l *raftLog) commitTo(tocommit uint64) {
 }
 
 func (l *raftLog) appliedTo(i uint64) {
-	if i == 0 {
-		return
-	}
 	if l.committed < i || i < l.applied {
 		l.logger.Panicf("applied(%d) is out of range [prevApplied(%d), committed(%d)]", i, l.applied, l.committed)
 	}
 	l.applied = i
+	l.applying = max(l.applying, i)
+}
+
+func (l *raftLog) acceptApplying(i uint64) {
+	if l.committed < i {
+		l.logger.Panicf("applying(%d) is out of range [prevApplying(%d), committed(%d)]", i, l.applying, l.committed)
+	}
+	l.applying = i
 }
 
 func (l *raftLog) stableTo(i, t uint64) { l.unstable.stableTo(i, t) }

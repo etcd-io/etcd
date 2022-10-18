@@ -57,6 +57,7 @@ func mustTemp(pre, body string) string {
 func ltoa(l *raftLog) string {
 	s := fmt.Sprintf("lastIndex: %d\n", l.lastIndex())
 	s += fmt.Sprintf("applied:  %d\n", l.applied)
+	s += fmt.Sprintf("applying:  %d\n", l.applying)
 	for i, e := range l.allEntries() {
 		s += fmt.Sprintf("#%d: %+v\n", i, e)
 	}

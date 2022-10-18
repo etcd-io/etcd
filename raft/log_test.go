@@ -308,15 +308,18 @@ func TestHasNextCommittedEnts(t *testing.T) {
 	}
 	tests := []struct {
 		applied  uint64
+		applying uint64
 		snap     bool
 		whasNext bool
 	}{
-		{applied: 0, snap: false, whasNext: true},
-		{applied: 3, snap: false, whasNext: true},
-		{applied: 4, snap: false, whasNext: true},
-		{applied: 5, snap: false, whasNext: false},
+		{applied: 3, applying: 3, snap: false, whasNext: true},
+		{applied: 3, applying: 4, snap: false, whasNext: true},
+		{applied: 3, applying: 5, snap: false, whasNext: false},
+		{applied: 4, applying: 4, snap: false, whasNext: true},
+		{applied: 4, applying: 5, snap: false, whasNext: false},
+		{applied: 5, applying: 5, snap: false, whasNext: false},
 		// With snapshot.
-		{applied: 3, snap: true, whasNext: false},
+		{applied: 3, applying: 3, snap: true, whasNext: false},
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
@@ -327,6 +330,7 @@ func TestHasNextCommittedEnts(t *testing.T) {
 			raftLog.append(ents...)
 			raftLog.maybeCommit(5, 1)
 			raftLog.appliedTo(tt.applied)
+			raftLog.acceptApplying(tt.applying)
 			if tt.snap {
 				newSnap := snap
 				newSnap.Metadata.Index++
@@ -347,16 +351,19 @@ func TestNextCommittedEnts(t *testing.T) {
 		{Term: 1, Index: 6},
 	}
 	tests := []struct {
-		applied uint64
-		snap    bool
-		wents   []pb.Entry
+		applied  uint64
+		applying uint64
+		snap     bool
+		wents    []pb.Entry
 	}{
-		{applied: 0, snap: false, wents: ents[:2]},
-		{applied: 3, snap: false, wents: ents[:2]},
-		{applied: 4, snap: false, wents: ents[1:2]},
-		{applied: 5, snap: false, wents: nil},
+		{applied: 3, applying: 3, snap: false, wents: ents[:2]},
+		{applied: 3, applying: 4, snap: false, wents: ents[1:2]},
+		{applied: 3, applying: 5, snap: false, wents: nil},
+		{applied: 4, applying: 4, snap: false, wents: ents[1:2]},
+		{applied: 4, applying: 5, snap: false, wents: nil},
+		{applied: 5, applying: 5, snap: false, wents: nil},
 		// With snapshot.
-		{applied: 3, snap: true, wents: nil},
+		{applied: 3, applying: 3, snap: true, wents: nil},
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
@@ -367,6 +374,7 @@ func TestNextCommittedEnts(t *testing.T) {
 			raftLog.append(ents...)
 			raftLog.maybeCommit(5, 1)
 			raftLog.appliedTo(tt.applied)
+			raftLog.acceptApplying(tt.applying)
 			if tt.snap {
 				newSnap := snap
 				newSnap.Metadata.Index++
@@ -374,7 +382,6 @@ func TestNextCommittedEnts(t *testing.T) {
 			}
 			require.Equal(t, tt.wents, raftLog.nextCommittedEnts())
 		})
-
 	}
 }
 
