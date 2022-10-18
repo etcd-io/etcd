@@ -349,13 +349,16 @@ func TestHasNextCommittedEnts(t *testing.T) {
 		{Term: 1, Index: 6},
 	}
 	tests := []struct {
-		applied uint64
-		hasNext bool
+		applied  uint64
+		snap     bool
+		whasNext bool
 	}{
-		{0, true},
-		{3, true},
-		{4, true},
-		{5, false},
+		{applied: 0, snap: false, whasNext: true},
+		{applied: 3, snap: false, whasNext: true},
+		{applied: 4, snap: false, whasNext: true},
+		{applied: 5, snap: false, whasNext: false},
+		// With snapshot.
+		{applied: 3, snap: true, whasNext: false},
 	}
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
@@ -364,10 +367,15 @@ func TestHasNextCommittedEnts(t *testing.T) {
 		raftLog.append(ents...)
 		raftLog.maybeCommit(5, 1)
 		raftLog.appliedTo(tt.applied)
+		if tt.snap {
+			newSnap := snap
+			newSnap.Metadata.Index++
+			raftLog.restore(newSnap)
+		}
 
 		hasNext := raftLog.hasNextCommittedEnts()
-		if hasNext != tt.hasNext {
-			t.Errorf("#%d: hasNext = %v, want %v", i, hasNext, tt.hasNext)
+		if hasNext != tt.whasNext {
+			t.Errorf("#%d: hasNext = %v, want %v", i, hasNext, tt.whasNext)
 		}
 	}
 }
@@ -383,12 +391,15 @@ func TestNextCommittedEnts(t *testing.T) {
 	}
 	tests := []struct {
 		applied uint64
+		snap    bool
 		wents   []pb.Entry
 	}{
-		{0, ents[:2]},
-		{3, ents[:2]},
-		{4, ents[1:2]},
-		{5, nil},
+		{applied: 0, snap: false, wents: ents[:2]},
+		{applied: 3, snap: false, wents: ents[:2]},
+		{applied: 4, snap: false, wents: ents[1:2]},
+		{applied: 5, snap: false, wents: nil},
+		// With snapshot.
+		{applied: 3, snap: true, wents: nil},
 	}
 	for i, tt := range tests {
 		storage := NewMemoryStorage()
@@ -397,6 +408,11 @@ func TestNextCommittedEnts(t *testing.T) {
 		raftLog.append(ents...)
 		raftLog.maybeCommit(5, 1)
 		raftLog.appliedTo(tt.applied)
+		if tt.snap {
+			newSnap := snap
+			newSnap.Metadata.Index++
+			raftLog.restore(newSnap)
+		}
 
 		nents := raftLog.nextCommittedEnts()
 		if !reflect.DeepEqual(nents, tt.wents) {
