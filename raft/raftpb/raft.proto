@@ -60,6 +60,9 @@ enum MessageType {
 	MsgReadIndexResp   = 16;
 	MsgPreVote         = 17;
 	MsgPreVoteResp     = 18;
+	// NOTE: when adding new message types, remember to update the isLocalMsg and
+	// isResponseMsg arrays in raft/util.go and update the corresponding tests in
+	// raft/util_test.go.
 }
 
 message Message {
