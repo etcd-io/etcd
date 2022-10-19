@@ -526,27 +526,6 @@ func TestNodeStop(t *testing.T) {
 	n.Stop()
 }
 
-func TestReadyContainUpdates(t *testing.T) {
-	tests := []struct {
-		rd       Ready
-		wcontain bool
-	}{
-		{Ready{}, false},
-		{Ready{SoftState: &SoftState{Lead: 1}}, true},
-		{Ready{HardState: raftpb.HardState{Vote: 1}}, true},
-		{Ready{Entries: make([]raftpb.Entry, 1)}, true},
-		{Ready{CommittedEntries: make([]raftpb.Entry, 1)}, true},
-		{Ready{Messages: make([]raftpb.Message, 1)}, true},
-		{Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}, true},
-	}
-
-	for i, tt := range tests {
-		if g := tt.rd.containsUpdates(); g != tt.wcontain {
-			t.Errorf("#%d: containUpdates = %v, want %v", i, g, tt.wcontain)
-		}
-	}
-}
-
 // TestNodeStart ensures that a node can be started correctly. The node should
 // start with correct configuration change entries, and can accept and commit
 // proposals.
