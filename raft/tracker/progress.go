@@ -141,7 +141,7 @@ func (pr *Progress) UpdateOnEntriesSend(entries int, nextIndex uint64) error {
 		if entries > 0 {
 			last := nextIndex + uint64(entries) - 1
 			pr.OptimisticUpdate(last)
-			pr.Inflights.Add(last)
+			pr.Inflights.Add(last, 0) // TODO: set bytes to sum(Entries[].Size())
 		}
 		// If this message overflows the in-flights tracker, or it was already full,
 		// consider this message being a probe, so that the flow is paused.

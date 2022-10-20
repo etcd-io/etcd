@@ -629,7 +629,7 @@ func (r *raft) reset(term uint64) {
 		*pr = tracker.Progress{
 			Match:     0,
 			Next:      r.raftLog.lastIndex() + 1,
-			Inflights: tracker.NewInflights(r.prs.MaxInflight),
+			Inflights: tracker.NewInflights(r.prs.MaxInflight, 0), // TODO: set maxBytes
 			IsLearner: pr.IsLearner,
 		}
 		if id == r.id {
