@@ -53,9 +53,9 @@ func TestProgressIsPaused(t *testing.T) {
 	}
 	for i, tt := range tests {
 		p := &Progress{
-			State:     tt.state,
+			State:            tt.state,
 			MsgAppFlowPaused: tt.paused,
-			Inflights: NewInflights(256, 0),
+			Inflights:        NewInflights(256, 0),
 		}
 		assert.Equal(t, tt.w, p.IsPaused(), i)
 	}

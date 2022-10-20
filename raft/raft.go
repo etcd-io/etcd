@@ -160,6 +160,16 @@ type Config struct {
 	// overflowing that sending buffer. TODO (xiangli): feedback to application to
 	// limit the proposal rate?
 	MaxInflightMsgs int
+	// MaxInflightBytes limits the number of in-flight bytes in append messages.
+	// Complements MaxInflightMsgs. Ignored if zero.
+	//
+	// This effectively bounds the bandwidth-delay product. Note that especially
+	// in high-latency deployments setting this too low can lead to a dramatic
+	// reduction in throughput. For example, with a peer that has a round-trip
+	// latency of 100ms to the leader and this setting is set to 1 MB, there is a
+	// throughput limit of 10 MB/s for this group. With RTT of 400ms, this drops
+	// to 2.5 MB/s. See Little's law to understand the maths behind.
+	MaxInflightBytes uint64
 
 	// CheckQuorum specifies if the leader should check quorum activity. Leader
 	// steps down when quorum is not active for an electionTimeout.
@@ -227,6 +237,11 @@ func (c *Config) validate() error {
 
 	if c.MaxInflightMsgs <= 0 {
 		return errors.New("max inflight messages must be greater than 0")
+	}
+	if c.MaxInflightBytes == 0 {
+		c.MaxInflightBytes = noLimit
+	} else if c.MaxInflightBytes < c.MaxSizePerMsg {
+		return errors.New("max inflight bytes must be >= max message size")
 	}
 
 	if c.Logger == nil {
@@ -332,7 +347,7 @@ func newRaft(c *Config) *raft {
 		raftLog:                   raftlog,
 		maxMsgSize:                c.MaxSizePerMsg,
 		maxUncommittedSize:        c.MaxUncommittedEntriesSize,
-		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs, 0), // TODO: set maxBytes
+		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs, c.MaxInflightBytes),
 		electionTimeout:           c.ElectionTick,
 		heartbeatTimeout:          c.HeartbeatTick,
 		logger:                    c.Logger,
@@ -484,8 +499,7 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 
 	// Send the actual MsgApp otherwise, and update the progress accordingly.
 	next := pr.Next // save Next for later, as the progress update can change it
-	// TODO(pavelkalinnikov): set bytes to sum(Entries[].Size())
-	if err := pr.UpdateOnEntriesSend(len(ents), 0 /* bytes */, next); err != nil {
+	if err := pr.UpdateOnEntriesSend(len(ents), payloadsSize(ents), next); err != nil {
 		r.logger.Panicf("%x: %v", r.id, err)
 	}
 	r.send(pb.Message{
