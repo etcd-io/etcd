@@ -307,27 +307,37 @@ func TestHasNextCommittedEnts(t *testing.T) {
 		{Term: 1, Index: 6},
 	}
 	tests := []struct {
-		applied  uint64
-		applying uint64
-		snap     bool
-		whasNext bool
+		applied       uint64
+		applying      uint64
+		allowUnstable bool
+		snap          bool
+		whasNext      bool
 	}{
-		{applied: 3, applying: 3, snap: false, whasNext: true},
-		{applied: 3, applying: 4, snap: false, whasNext: true},
-		{applied: 3, applying: 5, snap: false, whasNext: false},
-		{applied: 4, applying: 4, snap: false, whasNext: true},
-		{applied: 4, applying: 5, snap: false, whasNext: false},
-		{applied: 5, applying: 5, snap: false, whasNext: false},
+		{applied: 3, applying: 3, allowUnstable: true, snap: false, whasNext: true},
+		{applied: 3, applying: 4, allowUnstable: true, snap: false, whasNext: true},
+		{applied: 3, applying: 5, allowUnstable: true, snap: false, whasNext: false},
+		{applied: 4, applying: 4, allowUnstable: true, snap: false, whasNext: true},
+		{applied: 4, applying: 5, allowUnstable: true, snap: false, whasNext: false},
+		{applied: 5, applying: 5, allowUnstable: true, snap: false, whasNext: false},
+		// Don't allow unstable entries.
+		{applied: 3, applying: 3, allowUnstable: false, snap: false, whasNext: true},
+		{applied: 3, applying: 4, allowUnstable: false, snap: false, whasNext: false},
+		{applied: 3, applying: 5, allowUnstable: false, snap: false, whasNext: false},
+		{applied: 4, applying: 4, allowUnstable: false, snap: false, whasNext: false},
+		{applied: 4, applying: 5, allowUnstable: false, snap: false, whasNext: false},
+		{applied: 5, applying: 5, allowUnstable: false, snap: false, whasNext: false},
 		// With snapshot.
-		{applied: 3, applying: 3, snap: true, whasNext: false},
+		{applied: 3, applying: 3, allowUnstable: true, snap: true, whasNext: false},
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			storage := NewMemoryStorage()
 			require.NoError(t, storage.ApplySnapshot(snap))
+			require.NoError(t, storage.Append(ents[:1]))
 
 			raftLog := newLog(storage, raftLogger)
 			raftLog.append(ents...)
+			raftLog.stableTo(4, 1)
 			raftLog.maybeCommit(5, 1)
 			raftLog.appliedTo(tt.applied)
 			raftLog.acceptApplying(tt.applying)
@@ -336,7 +346,7 @@ func TestHasNextCommittedEnts(t *testing.T) {
 				newSnap.Metadata.Index++
 				raftLog.restore(newSnap)
 			}
-			require.Equal(t, tt.whasNext, raftLog.hasNextCommittedEnts())
+			require.Equal(t, tt.whasNext, raftLog.hasNextCommittedEnts(tt.allowUnstable))
 		})
 	}
 }
@@ -351,27 +361,37 @@ func TestNextCommittedEnts(t *testing.T) {
 		{Term: 1, Index: 6},
 	}
 	tests := []struct {
-		applied  uint64
-		applying uint64
-		snap     bool
-		wents    []pb.Entry
+		applied       uint64
+		applying      uint64
+		allowUnstable bool
+		snap          bool
+		wents         []pb.Entry
 	}{
-		{applied: 3, applying: 3, snap: false, wents: ents[:2]},
-		{applied: 3, applying: 4, snap: false, wents: ents[1:2]},
-		{applied: 3, applying: 5, snap: false, wents: nil},
-		{applied: 4, applying: 4, snap: false, wents: ents[1:2]},
-		{applied: 4, applying: 5, snap: false, wents: nil},
-		{applied: 5, applying: 5, snap: false, wents: nil},
+		{applied: 3, applying: 3, allowUnstable: true, snap: false, wents: ents[:2]},
+		{applied: 3, applying: 4, allowUnstable: true, snap: false, wents: ents[1:2]},
+		{applied: 3, applying: 5, allowUnstable: true, snap: false, wents: nil},
+		{applied: 4, applying: 4, allowUnstable: true, snap: false, wents: ents[1:2]},
+		{applied: 4, applying: 5, allowUnstable: true, snap: false, wents: nil},
+		{applied: 5, applying: 5, allowUnstable: true, snap: false, wents: nil},
+		// Don't allow unstable entries.
+		{applied: 3, applying: 3, allowUnstable: false, snap: false, wents: ents[:1]},
+		{applied: 3, applying: 4, allowUnstable: false, snap: false, wents: nil},
+		{applied: 3, applying: 5, allowUnstable: false, snap: false, wents: nil},
+		{applied: 4, applying: 4, allowUnstable: false, snap: false, wents: nil},
+		{applied: 4, applying: 5, allowUnstable: false, snap: false, wents: nil},
+		{applied: 5, applying: 5, allowUnstable: false, snap: false, wents: nil},
 		// With snapshot.
-		{applied: 3, applying: 3, snap: true, wents: nil},
+		{applied: 3, applying: 3, allowUnstable: true, snap: true, wents: nil},
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			storage := NewMemoryStorage()
 			require.NoError(t, storage.ApplySnapshot(snap))
+			require.NoError(t, storage.Append(ents[:1]))
 
 			raftLog := newLog(storage, raftLogger)
 			raftLog.append(ents...)
+			raftLog.stableTo(4, 1)
 			raftLog.maybeCommit(5, 1)
 			raftLog.appliedTo(tt.applied)
 			raftLog.acceptApplying(tt.applying)
@@ -380,7 +400,7 @@ func TestNextCommittedEnts(t *testing.T) {
 				newSnap.Metadata.Index++
 				raftLog.restore(newSnap)
 			}
-			require.Equal(t, tt.wents, raftLog.nextCommittedEnts())
+			require.Equal(t, tt.wents, raftLog.nextCommittedEnts(tt.allowUnstable))
 		})
 	}
 }

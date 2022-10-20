@@ -170,7 +170,7 @@ func (rn *RawNode) HasReady() bool {
 	if r.raftLog.hasNextUnstableSnapshot() {
 		return true
 	}
-	if len(r.msgs) > 0 || r.raftLog.hasNextUnstableEnts() || r.raftLog.hasNextCommittedEnts() {
+	if len(r.msgs) > 0 || r.raftLog.hasNextUnstableEnts() || r.raftLog.hasNextCommittedEnts(true /* allowUnstable */) {
 		return true
 	}
 	if len(r.readStates) != 0 {

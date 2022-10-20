@@ -562,7 +562,7 @@ func (n *node) ReadIndex(ctx context.Context, rctx []byte) error {
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.nextUnstableEnts(),
-		CommittedEntries: r.raftLog.nextCommittedEnts(),
+		CommittedEntries: r.raftLog.nextCommittedEnts(true /* allowUnstable */),
 		Messages:         r.msgs,
 	}
 	if softSt := r.softState(); !softSt.equal(prevSoftSt) {

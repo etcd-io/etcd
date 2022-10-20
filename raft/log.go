@@ -192,13 +192,16 @@ func (l *raftLog) hasNextUnstableEnts() bool {
 // nextCommittedEnts returns all the available entries for execution.
 // If applied is smaller than the index of snapshot, it returns all committed
 // entries after the index of snapshot.
-func (l *raftLog) nextCommittedEnts() (ents []pb.Entry) {
+func (l *raftLog) nextCommittedEnts(allowUnstable bool) (ents []pb.Entry) {
 	if l.hasNextOrInProgressSnapshot() {
 		// See comment in hasNextCommittedEnts.
 		return nil
 	}
-	if l.committed > l.applying {
-		lo, hi := l.applying+1, l.committed+1 // [lo, hi)
+	lo, hi := l.applying+1, l.committed+1 // [lo, hi)
+	if !allowUnstable {
+		hi = min(hi, l.unstable.offset)
+	}
+	if lo < hi {
 		// TODO: handle pagination correctly.
 		ents, err := l.slice(lo, hi, l.maxNextCommittedEntsSize)
 		if err != nil {
@@ -211,14 +214,18 @@ func (l *raftLog) nextCommittedEnts() (ents []pb.Entry) {
 
 // hasNextCommittedEnts returns if there is any available entries for execution.
 // This is a fast check without heavy raftLog.slice() in nextCommittedEnts().
-func (l *raftLog) hasNextCommittedEnts() bool {
+func (l *raftLog) hasNextCommittedEnts(allowUnstable bool) bool {
 	if l.hasNextOrInProgressSnapshot() {
 		// If we have a snapshot to apply, don't also return any committed
 		// entries. Doing so raises questions about what should be applied
 		// first.
 		return false
 	}
-	return l.committed > l.applying
+	lo, hi := l.applying+1, l.committed+1 // [lo, hi)
+	if !allowUnstable {
+		hi = min(hi, l.unstable.offset)
+	}
+	return lo < hi
 }
 
 // nextUnstableSnapshot returns the snapshot, if present, that is available to
