@@ -337,8 +337,8 @@ func (ctl *EtcdctlV3) HashKV(ctx context.Context, rev int64) ([]*clientv3.HashKV
 		return nil, err
 	}
 	resp := make([]*clientv3.HashKVResponse, len(epHashKVs))
-	for _, e := range epHashKVs {
-		resp = append(resp, e.HashKV)
+	for i, e := range epHashKVs {
+		resp[i] = e.HashKV
 	}
 	return resp, err
 }
