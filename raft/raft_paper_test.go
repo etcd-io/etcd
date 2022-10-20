@@ -162,7 +162,7 @@ func testNonleaderStartElection(t *testing.T, state StateType) {
 	for i := 1; i < 2*et; i++ {
 		r.tick()
 	}
-	r.maybeVoteForSelf()
+	r.advanceMessagesAfterAppend()
 
 	if r.Term != 2 {
 		t.Errorf("term = %d, want 2", r.Term)
@@ -219,7 +219,7 @@ func TestLeaderElectionInOneRoundRPC(t *testing.T) {
 		r := newTestRaft(1, 10, 1, newTestMemoryStorage(withPeers(idsBySize(tt.size)...)))
 
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
-		r.maybeVoteForSelf()
+		r.advanceMessagesAfterAppend()
 		for id, vote := range tt.votes {
 			r.Step(pb.Message{From: id, To: 1, Term: r.Term, Type: pb.MsgVoteResp, Reject: !vote})
 		}
@@ -255,7 +255,7 @@ func TestFollowerVote(t *testing.T) {
 
 		r.Step(pb.Message{From: tt.nvote, To: 1, Term: 1, Type: pb.MsgVote})
 
-		msgs := r.readMessages()
+		msgs := r.msgsAfterAppend
 		wmsgs := []pb.Message{
 			{From: 1, To: tt.nvote, Term: 1, Type: pb.MsgVoteResp, Reject: tt.wreject},
 		}
@@ -497,11 +497,8 @@ func TestLeaderAcknowledgeCommit(t *testing.T) {
 		commitNoopEntry(r, s)
 		li := r.raftLog.lastIndex()
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("some data")}}})
-
-		rd := newReady(r, &SoftState{}, pb.HardState{})
-		s.Append(rd.Entries)
-		r.advance(rd) // simulate having appended entry on leader
-		for _, m := range rd.Messages {
+		r.advanceMessagesAfterAppend()
+		for _, m := range r.msgs {
 			if tt.nonLeaderAcceptors[m.To] {
 				r.Step(acceptAndReply(m))
 			}
@@ -896,9 +893,7 @@ func TestLeaderOnlyCommitsLogFromCurrentTerm(t *testing.T) {
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 
 		r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Term: r.Term, Index: tt.index})
-		rd := newReady(r, &SoftState{}, pb.HardState{})
-		storage.Append(rd.Entries)
-		r.advance(rd)
+		r.advanceMessagesAfterAppend()
 		if r.raftLog.committed != tt.wcommit {
 			t.Errorf("#%d: commit = %d, want %d", i, r.raftLog.committed, tt.wcommit)
 		}

@@ -342,6 +342,7 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 				if len(rd.Entries) > 0 {
 					t.Fatal("expected no more entries")
 				}
+				rawNode.Advance(rd)
 				if tc.exp2 == nil {
 					return
 				}
@@ -370,6 +371,7 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 			if exp := tc.exp2; !reflect.DeepEqual(exp, cs) {
 				t.Fatalf("exp:\n%+v\nact:\n%+v", exp, cs)
 			}
+			rawNode.Advance(rd)
 		})
 	}
 }

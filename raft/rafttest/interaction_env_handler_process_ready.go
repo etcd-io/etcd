@@ -43,65 +43,39 @@ func (env *InteractionEnv) handleProcessReady(t *testing.T, d datadriven.TestDat
 // ProcessReady runs Ready handling on the node with the given index.
 func (env *InteractionEnv) ProcessReady(idx int) error {
 	// TODO(tbg): Allow simulating crashes here.
-	rn, s := env.Nodes[idx].RawNode, env.Nodes[idx].Storage
-	rd := rn.Ready()
+	n := &env.Nodes[idx]
+	rd := n.Ready()
 	env.Output.WriteString(raft.DescribeReady(rd, defaultEntryFormatter))
-	// TODO(tbg): the order of operations here is not necessarily safe. See:
-	// https://github.com/etcd-io/etcd/pull/10861
-	if !raft.IsEmptyHardState(rd.HardState) {
-		if err := s.SetHardState(rd.HardState); err != nil {
+
+	if !n.Config.AsyncStorageWrites {
+		if err := processAppend(n, rd.HardState, rd.Entries, rd.Snapshot); err != nil {
+			return err
+		}
+		if err := processApply(n, rd.CommittedEntries); err != nil {
 			return err
 		}
 	}
-	if err := s.Append(rd.Entries); err != nil {
-		return err
-	}
-	if !raft.IsEmptySnap(rd.Snapshot) {
-		if err := s.ApplySnapshot(rd.Snapshot); err != nil {
-			return err
-		}
-	}
-	for _, ent := range rd.CommittedEntries {
-		var update []byte
-		var cs *raftpb.ConfState
-		switch ent.Type {
-		case raftpb.EntryConfChange:
-			var cc raftpb.ConfChange
-			if err := cc.Unmarshal(ent.Data); err != nil {
-				return err
+
+	for _, m := range rd.Messages {
+		if raft.IsLocalMsgTarget(m.To) {
+			if !n.Config.AsyncStorageWrites {
+				panic("unexpected local msg target")
 			}
-			update = cc.Context
-			cs = rn.ApplyConfChange(cc)
-		case raftpb.EntryConfChangeV2:
-			var cc raftpb.ConfChangeV2
-			if err := cc.Unmarshal(ent.Data); err != nil {
-				return err
+			switch m.Type {
+			case raftpb.MsgStorageAppend:
+				n.AppendWork = append(n.AppendWork, m)
+			case raftpb.MsgStorageApply:
+				n.ApplyWork = append(n.ApplyWork, m)
+			default:
+				panic(fmt.Sprintf("unexpected message type %s", m.Type))
 			}
-			cs = rn.ApplyConfChange(cc)
-			update = cc.Context
-		default:
-			update = ent.Data
+		} else {
+			env.Messages = append(env.Messages, m)
 		}
-
-		// Record the new state by starting with the current state and applying
-		// the command.
-		lastSnap := env.Nodes[idx].History[len(env.Nodes[idx].History)-1]
-		var snap raftpb.Snapshot
-		snap.Data = append(snap.Data, lastSnap.Data...)
-		// NB: this hard-codes an "appender" state machine.
-		snap.Data = append(snap.Data, update...)
-		snap.Metadata.Index = ent.Index
-		snap.Metadata.Term = ent.Term
-		if cs == nil {
-			sl := env.Nodes[idx].History
-			cs = &sl[len(sl)-1].Metadata.ConfState
-		}
-		snap.Metadata.ConfState = *cs
-		env.Nodes[idx].History = append(env.Nodes[idx].History, snap)
 	}
 
-	env.Messages = append(env.Messages, rd.Messages...)
-
-	rn.Advance(rd)
+	if !n.Config.AsyncStorageWrites {
+		n.Advance(rd)
+	}
 	return nil
 }

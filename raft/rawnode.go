@@ -32,9 +32,10 @@ var ErrStepPeerNotFound = errors.New("raft: cannot step as peer not found")
 // The methods of this struct correspond to the methods of Node and are described
 // more fully there.
 type RawNode struct {
-	raft       *raft
-	prevSoftSt *SoftState
-	prevHardSt pb.HardState
+	raft           *raft
+	prevSoftSt     *SoftState
+	prevHardSt     pb.HardState
+	stepsOnAdvance []pb.Message
 }
 
 // NewRawNode instantiates a RawNode from the given configuration.
@@ -108,14 +109,14 @@ func (rn *RawNode) ApplyConfChange(cc pb.ConfChangeI) *pb.ConfState {
 
 // Step advances the state machine using the given message.
 func (rn *RawNode) Step(m pb.Message) error {
-	// ignore unexpected local messages receiving over network
-	if IsLocalMsg(m.Type) {
+	// Ignore unexpected local messages receiving over network.
+	if IsLocalMsg(m.Type) && !IsLocalMsgTarget(m.From) {
 		return ErrStepLocalMsg
 	}
-	if pr := rn.raft.prs.Progress[m.From]; pr != nil || !IsResponseMsg(m.Type) {
-		return rn.raft.Step(m)
+	if IsResponseMsg(m.Type) && !IsLocalMsgTarget(m.From) && rn.raft.prs.Progress[m.From] == nil {
+		return ErrStepPeerNotFound
 	}
-	return ErrStepPeerNotFound
+	return rn.raft.Step(m)
 }
 
 // Ready returns the outstanding work that the application needs to handle. This
@@ -147,10 +148,26 @@ func (rn *RawNode) acceptReady(rd Ready) {
 	if len(rd.ReadStates) != 0 {
 		rn.raft.readStates = nil
 	}
+	if !rn.raft.asyncStorageWrites {
+		if len(rn.stepsOnAdvance) != 0 {
+			rn.raft.logger.Panicf("two accepted Ready structs without call to Advance")
+		}
+		for _, m := range rn.raft.msgsAfterAppend {
+			if m.To == rn.raft.id {
+				rn.stepsOnAdvance = append(rn.stepsOnAdvance, m)
+			}
+		}
+		if needStorageAppend(rd, false /* haveMsgsAfterAppend */) {
+			m := newStorageAppendRespMsg(rn.raft, rd)
+			rn.stepsOnAdvance = append(rn.stepsOnAdvance, m)
+		}
+		if needStorageApply(rd) {
+			m := newStorageApplyRespMsg(rn.raft, rd.CommittedEntries)
+			rn.stepsOnAdvance = append(rn.stepsOnAdvance, m)
+		}
+	}
 	rn.raft.msgs = nil
-	// NB: this does not do anything yet, as entries and snapshots are always
-	// stabilized on the next Advance and committed entries are always applied
-	// by the next Advance.
+	rn.raft.msgsAfterAppend = nil
 	rn.raft.raftLog.acceptUnstable()
 	if len(rd.CommittedEntries) > 0 {
 		ents := rd.CommittedEntries
@@ -170,7 +187,10 @@ func (rn *RawNode) HasReady() bool {
 	if r.raftLog.hasNextUnstableSnapshot() {
 		return true
 	}
-	if len(r.msgs) > 0 || r.raftLog.hasNextUnstableEnts() || r.raftLog.hasNextCommittedEnts(true /* allowUnstable */) {
+	if len(r.msgs) > 0 || len(r.msgsAfterAppend) > 0 {
+		return true
+	}
+	if r.raftLog.hasNextUnstableEnts() || r.raftLog.hasNextCommittedEnts(!rn.raft.asyncStorageWrites) {
 		return true
 	}
 	if len(r.readStates) != 0 {
@@ -181,8 +201,21 @@ func (rn *RawNode) HasReady() bool {
 
 // Advance notifies the RawNode that the application has applied and saved progress in the
 // last Ready results.
-func (rn *RawNode) Advance(rd Ready) {
-	rn.raft.advance(rd)
+//
+// NOTE: Advance must not be called when using AsyncStorageWrites. Response messages from
+// the local append and apply threads take its place.
+func (rn *RawNode) Advance(_ Ready) {
+	// The actions performed by this function are encoded into stepsOnAdvance in
+	// acceptReady. In earlier versions of this library, they were computed from
+	// the provided Ready struct. Retain the unused parameter for compatability.
+	if rn.raft.asyncStorageWrites {
+		rn.raft.logger.Panicf("Advance must not be called when using AsyncStorageWrites")
+	}
+	for i, m := range rn.stepsOnAdvance {
+		_ = rn.raft.Step(m)
+		rn.stepsOnAdvance[i] = pb.Message{}
+	}
+	rn.stepsOnAdvance = rn.stepsOnAdvance[:0]
 }
 
 // Status returns the current status of the given group. This allocates, see

@@ -43,7 +43,7 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 	case "add-nodes":
 		// Example:
 		//
-		// add-nodes <number-of-nodes-to-add> voters=(1 2 3) learners=(4 5) index=2 content=foo
+		// add-nodes <number-of-nodes-to-add> voters=(1 2 3) learners=(4 5) index=2 content=foo async-storage-writes=true
 		err = env.handleAddNodes(t, d)
 	case "campaign":
 		// Example:
@@ -67,6 +67,16 @@ func (env *InteractionEnv) Handle(t *testing.T, d datadriven.TestData) string {
 		//
 		// process-ready 3
 		err = env.handleProcessReady(t, d)
+	case "process-append-thread":
+		// Example:
+		//
+		// process-append-thread 3
+		err = env.handleProcessAppendThread(t, d)
+	case "process-apply-thread":
+		// Example:
+		//
+		// process-apply-thread 3
+		err = env.handleProcessApplyThread(t, d)
 	case "log-level":
 		// Set the log level. NONE disables all output, including from the test
 		// harness (except errors).

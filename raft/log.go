@@ -189,6 +189,13 @@ func (l *raftLog) hasNextUnstableEnts() bool {
 	return len(l.nextUnstableEnts()) > 0
 }
 
+// hasNextOrInProgressUnstableEnts returns if there are any entries that are
+// available to be written to the local stable log or in the process of being
+// written to the local stable log.
+func (l *raftLog) hasNextOrInProgressUnstableEnts() bool {
+	return len(l.unstable.entries) > 0
+}
+
 // nextCommittedEnts returns all the available entries for execution.
 // If applied is smaller than the index of snapshot, it returns all committed
 // entries after the index of snapshot.

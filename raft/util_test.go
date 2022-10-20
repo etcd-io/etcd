@@ -88,6 +88,10 @@ func TestIsLocalMsg(t *testing.T) {
 		{pb.MsgReadIndexResp, false},
 		{pb.MsgPreVote, false},
 		{pb.MsgPreVoteResp, false},
+		{pb.MsgStorageAppend, true},
+		{pb.MsgStorageAppendResp, true},
+		{pb.MsgStorageApply, true},
+		{pb.MsgStorageApplyResp, true},
 	}
 
 	for _, tt := range tests {
@@ -121,6 +125,10 @@ func TestIsResponseMsg(t *testing.T) {
 		{pb.MsgReadIndexResp, true},
 		{pb.MsgPreVote, false},
 		{pb.MsgPreVoteResp, true},
+		{pb.MsgStorageAppend, false},
+		{pb.MsgStorageAppendResp, true},
+		{pb.MsgStorageApply, false},
+		{pb.MsgStorageApplyResp, true},
 	}
 
 	for i, tt := range tests {

@@ -41,20 +41,26 @@ func max(a, b uint64) uint64 {
 }
 
 var isLocalMsg = [...]bool{
-	pb.MsgHup:         true,
-	pb.MsgBeat:        true,
-	pb.MsgUnreachable: true,
-	pb.MsgSnapStatus:  true,
-	pb.MsgCheckQuorum: true,
+	pb.MsgHup:               true,
+	pb.MsgBeat:              true,
+	pb.MsgUnreachable:       true,
+	pb.MsgSnapStatus:        true,
+	pb.MsgCheckQuorum:       true,
+	pb.MsgStorageAppend:     true,
+	pb.MsgStorageAppendResp: true,
+	pb.MsgStorageApply:      true,
+	pb.MsgStorageApplyResp:  true,
 }
 
 var isResponseMsg = [...]bool{
-	pb.MsgAppResp:       true,
-	pb.MsgVoteResp:      true,
-	pb.MsgHeartbeatResp: true,
-	pb.MsgUnreachable:   true,
-	pb.MsgReadIndexResp: true,
-	pb.MsgPreVoteResp:   true,
+	pb.MsgAppResp:           true,
+	pb.MsgVoteResp:          true,
+	pb.MsgHeartbeatResp:     true,
+	pb.MsgUnreachable:       true,
+	pb.MsgReadIndexResp:     true,
+	pb.MsgPreVoteResp:       true,
+	pb.MsgStorageAppendResp: true,
+	pb.MsgStorageApplyResp:  true,
 }
 
 func isMsgInArray(msgt pb.MessageType, arr []bool) bool {
@@ -68,6 +74,10 @@ func IsLocalMsg(msgt pb.MessageType) bool {
 
 func IsResponseMsg(msgt pb.MessageType) bool {
 	return isMsgInArray(msgt, isResponseMsg[:])
+}
+
+func IsLocalMsgTarget(id uint64) bool {
+	return id == LocalAppendThread || id == LocalApplyThread
 }
 
 // voteResponseType maps vote and prevote message types to their corresponding responses.
@@ -153,7 +163,8 @@ type EntryFormatter func([]byte) string
 // Message for debugging.
 func DescribeMessage(m pb.Message, f EntryFormatter) string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%x->%x %v Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
+	fmt.Fprintf(&buf, "%s->%s %v Term:%d Log:%d/%d",
+		describeTarget(m.From), describeTarget(m.To), m.Type, m.Term, m.LogTerm, m.Index)
 	if m.Reject {
 		fmt.Fprintf(&buf, " Rejected (Hint: %d)", m.RejectHint)
 	}
@@ -170,10 +181,36 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 		}
 		fmt.Fprint(&buf, "]")
 	}
+	if m.HardState != nil {
+		fmt.Fprintf(&buf, " HardState: %s", DescribeHardState(*m.HardState))
+	}
 	if s := m.Snapshot; s != nil && !IsEmptySnap(*s) {
 		fmt.Fprintf(&buf, " Snapshot: %s", DescribeSnapshot(*s))
 	}
+	if len(m.Responses) > 0 {
+		fmt.Fprintf(&buf, " Responses:[")
+		for i, m := range m.Responses {
+			if i != 0 {
+				buf.WriteString(", ")
+			}
+			buf.WriteString(DescribeMessage(m, f))
+		}
+		fmt.Fprintf(&buf, "]")
+	}
 	return buf.String()
+}
+
+func describeTarget(id uint64) string {
+	switch id {
+	case None:
+		return "None"
+	case LocalAppendThread:
+		return "AppendThread"
+	case LocalApplyThread:
+		return "ApplyThread"
+	default:
+		return fmt.Sprintf("%x", id)
+	}
 }
 
 // PayloadSize is the size of the payload of this Entry. Notably, it does not

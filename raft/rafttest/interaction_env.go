@@ -34,8 +34,10 @@ type Node struct {
 	*raft.RawNode
 	Storage
 
-	Config  *raft.Config
-	History []pb.Snapshot
+	Config     *raft.Config
+	AppendWork []pb.Message // []MsgStorageAppend
+	ApplyWork  []pb.Message // []MsgStorageApply
+	History    []pb.Snapshot
 }
 
 // InteractionEnv facilitates testing of complex interactions between the
