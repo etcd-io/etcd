@@ -43,10 +43,9 @@ import (
 type Cluster struct {
 	lg *zap.Logger
 
-	agentConns    []*grpc.ClientConn
-	agentClients  []rpcpb.TransportClient
-	agentStreams  []rpcpb.Transport_TransportClient
-	agentRequests []*rpcpb.Request
+	agentConns   []*grpc.ClientConn
+	agentClients []rpcpb.TransportClient
+	agentStreams []rpcpb.Transport_TransportClient
 
 	testerHTTPServer *http.Server
 
@@ -80,7 +79,6 @@ func NewCluster(lg *zap.Logger, fpath string) (*Cluster, error) {
 	clus.agentConns = make([]*grpc.ClientConn, len(clus.Members))
 	clus.agentClients = make([]rpcpb.TransportClient, len(clus.Members))
 	clus.agentStreams = make([]rpcpb.Transport_TransportClient, len(clus.Members))
-	clus.agentRequests = make([]*rpcpb.Request, len(clus.Members))
 	clus.cases = make([]Case, 0)
 
 	lg.Info("creating members")
@@ -260,16 +258,16 @@ func (clus *Cluster) updateCases() {
 			fpFailures, fperr := failpointFailures(clus)
 			if len(fpFailures) == 0 {
 				clus.lg.Info("no failpoints found!", zap.Error(fperr))
+			} else {
+				clus.cases = append(clus.cases, fpFailures...)
 			}
-			clus.cases = append(clus.cases,
-				fpFailures...)
 		case "FAILPOINTS_WITH_DISK_IO_LATENCY":
 			fpFailures, fperr := failpointDiskIOFailures(clus)
 			if len(fpFailures) == 0 {
 				clus.lg.Info("no failpoints found!", zap.Error(fperr))
+			} else {
+				clus.cases = append(clus.cases, fpFailures...)
 			}
-			clus.cases = append(clus.cases,
-				fpFailures...)
 		}
 	}
 }
@@ -446,13 +444,13 @@ func (clus *Cluster) sendOp(idx int, op rpcpb.Operation) error {
 func (clus *Cluster) sendOpWithResp(idx int, op rpcpb.Operation) (*rpcpb.Response, error) {
 	// maintain the initial member object
 	// throughout the test time
-	clus.agentRequests[idx] = &rpcpb.Request{
+	req := &rpcpb.Request{
 		Operation: op,
 		Member:    clus.Members[idx],
 		Tester:    clus.Tester,
 	}
 
-	err := clus.agentStreams[idx].Send(clus.agentRequests[idx])
+	err := clus.agentStreams[idx].Send(req)
 	clus.lg.Info(
 		"sent request",
 		zap.String("operation", op.String()),

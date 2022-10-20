@@ -54,7 +54,9 @@ type leaseStresser struct {
 	aliveLeases              *atomicLeases
 	alivedLeasesWithShortTTL *atomicLeases
 	revokedLeases            *atomicLeases
-	shortLivedLeases         *atomicLeases
+	// The tester doesn't keep alive the shortLivedLeases,
+	// so they will expire after the TTL.
+	shortLivedLeases *atomicLeases
 
 	runWg   sync.WaitGroup
 	aliveWg sync.WaitGroup
@@ -188,18 +190,16 @@ func (ls *leaseStresser) run() {
 }
 
 func (ls *leaseStresser) restartKeepAlives() {
-	for leaseID := range ls.aliveLeases.getLeasesMap() {
-		ls.aliveWg.Add(1)
-		go func(id int64) {
-			ls.keepLeaseAlive(id)
-		}(leaseID)
+	f := func(leases *atomicLeases) {
+		for leaseID := range leases.getLeasesMap() {
+			ls.aliveWg.Add(1)
+			go func(id int64) {
+				ls.keepLeaseAlive(id)
+			}(leaseID)
+		}
 	}
-	for leaseID := range ls.alivedLeasesWithShortTTL.getLeasesMap() {
-		ls.aliveWg.Add(1)
-		go func(id int64) {
-			ls.keepLeaseAlive(id)
-		}(leaseID)
-	}
+	f(ls.aliveLeases)
+	f(ls.alivedLeasesWithShortTTL)
 }
 
 func (ls *leaseStresser) createLeases() {
@@ -349,7 +349,17 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 	defer ls.aliveWg.Done()
 	ctx, cancel := context.WithCancel(ls.ctx)
 	stream, err := ls.cli.KeepAlive(ctx, clientv3.LeaseID(leaseID))
-	defer func() { cancel() }()
+	if err != nil {
+		ls.lg.Error(
+			"keepLeaseAlive lease creates stream error",
+			zap.String("stress-type", ls.stype.String()),
+			zap.String("endpoint", ls.m.EtcdClientEndpoint),
+			zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
+			zap.Error(err),
+		)
+	}
+	defer cancel()
+
 	for {
 		select {
 		case <-time.After(500 * time.Millisecond):
@@ -361,11 +371,17 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
 				zap.Error(ls.ctx.Err()),
 			)
-			// it is  possible that lease expires at invariant checking phase but not at keepLeaseAlive() phase.
-			// this scenario is possible when alive lease is just about to expire when keepLeaseAlive() exists and expires at invariant checking phase.
-			// to circumvent that scenario, we check each lease before keepalive loop exist to see if it has been renewed in last TTL/2 duration.
-			// if it is renewed, this means that invariant checking have at least ttl/2 time before lease expires which is long enough for the checking to finish.
-			// if it is not renewed, we remove the lease from the alive map so that the lease doesn't expire during invariant checking
+			// It is possible that lease expires at invariant checking phase
+			// but not at keepLeaseAlive() phase. This scenario is possible
+			// when alive lease is just about to expire when keepLeaseAlive()
+			// exists and expires at invariant checking phase. To circumvent
+			// this scenario, we check each lease before keepalive loop exist
+			// to see if it has been renewed in last TTL/2 duration. If it is
+			// renewed, it means that invariant checking have at least ttl/2
+			// time before lease expires which is long enough for the checking
+			// to finish. If it is not renewed, we remove the lease from the
+			// alive map so that the lease doesn't expire during invariant
+			// checking.
 			renewTime, ok := ls.aliveLeases.read(leaseID)
 			if ok && renewTime.Add(defaultTTL/2*time.Second).Before(time.Now()) {
 				ls.aliveLeases.remove(leaseID)
@@ -377,31 +393,6 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 				)
 			}
 			return
-		}
-
-		if err != nil {
-			ls.lg.Debug(
-				"keepLeaseAlive lease creates stream error",
-				zap.String("stress-type", ls.stype.String()),
-				zap.String("endpoint", ls.m.EtcdClientEndpoint),
-				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
-				zap.Error(err),
-			)
-			cancel()
-			ctx, cancel = context.WithCancel(ls.ctx)
-			stream, err = ls.cli.KeepAlive(ctx, clientv3.LeaseID(leaseID))
-			cancel()
-			continue
-		}
-		if err != nil {
-			ls.lg.Debug(
-				"keepLeaseAlive failed to receive lease keepalive response",
-				zap.String("stress-type", ls.stype.String()),
-				zap.String("endpoint", ls.m.EtcdClientEndpoint),
-				zap.String("lease-id", fmt.Sprintf("%016x", leaseID)),
-				zap.Error(err),
-			)
-			continue
 		}
 
 		ls.lg.Debug(

@@ -101,17 +101,6 @@ func (c *caseFollower) Recover(clus *Cluster) error {
 	return c.recoverMember(clus, c.last)
 }
 
-func (c *caseFollower) Desc() string {
-	if c.desc != "" {
-		return c.desc
-	}
-	return c.rpcpbCase.String()
-}
-
-func (c *caseFollower) TestCase() rpcpb.Case {
-	return c.rpcpbCase
-}
-
 type caseLeader struct {
 	caseByFunc
 	last int
@@ -139,10 +128,6 @@ func (c *caseLeader) Recover(clus *Cluster) error {
 	return c.recoverMember(clus, c.last)
 }
 
-func (c *caseLeader) TestCase() rpcpb.Case {
-	return c.rpcpbCase
-}
-
 type caseQuorum struct {
 	caseByFunc
 	injected map[int]struct{}
@@ -165,17 +150,6 @@ func (c *caseQuorum) Recover(clus *Cluster) error {
 		}
 	}
 	return nil
-}
-
-func (c *caseQuorum) Desc() string {
-	if c.desc != "" {
-		return c.desc
-	}
-	return c.rpcpbCase.String()
-}
-
-func (c *caseQuorum) TestCase() rpcpb.Case {
-	return c.rpcpbCase
 }
 
 func pickQuorum(size int) (picked map[int]struct{}) {
@@ -230,15 +204,15 @@ type caseUntilSnapshot struct {
 // all delay failure cases except the ones failing with latency
 // greater than election timeout (trigger leader election and
 // cluster keeps operating anyways)
-var slowCases = map[rpcpb.Case]bool{
-	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER:                        true,
-	rpcpb.Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT:        true,
-	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT: true,
-	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER:                              true,
-	rpcpb.Case_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:              true,
-	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:       true,
-	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM:                              true,
-	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_ALL:                                 true,
+var slowCases = map[rpcpb.Case]struct{}{
+	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER:                        {},
+	rpcpb.Case_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT:        {},
+	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT: {},
+	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER:                              {},
+	rpcpb.Case_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:              {},
+	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT:       {},
+	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM:                              {},
+	rpcpb.Case_RANDOM_DELAY_PEER_PORT_TX_RX_ALL:                                 {},
 }
 
 func (c *caseUntilSnapshot) Inject(clus *Cluster) error {
@@ -268,7 +242,7 @@ func (c *caseUntilSnapshot) Inject(clus *Cluster) error {
 	// healthy cluster could accept 1000 req/sec at least.
 	// 3x time to trigger snapshot.
 	retries := int(snapshotCount) / 1000 * 3
-	if v, ok := slowCases[c.TestCase()]; v && ok {
+	if _, ok := slowCases[c.TestCase()]; ok {
 		// slow network takes more retries
 		retries *= 5
 	}
