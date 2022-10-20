@@ -134,14 +134,15 @@ func (pr *Progress) BecomeSnapshot(snapshoti uint64) {
 }
 
 // UpdateOnEntriesSend updates the progress on the given number of consecutive
-// entries being sent in a MsgApp, appended at and after the given log index.
-func (pr *Progress) UpdateOnEntriesSend(entries int, nextIndex uint64) error {
+// entries being sent in a MsgApp, with the given total bytes size, appended at
+// and after the given log index.
+func (pr *Progress) UpdateOnEntriesSend(entries int, bytes, nextIndex uint64) error {
 	switch pr.State {
 	case StateReplicate:
 		if entries > 0 {
 			last := nextIndex + uint64(entries) - 1
 			pr.OptimisticUpdate(last)
-			pr.Inflights.Add(last, 0) // TODO: set bytes to sum(Entries[].Size())
+			pr.Inflights.Add(last, bytes)
 		}
 		// If this message overflows the in-flights tracker, or it was already full,
 		// consider this message being a probe, so that the flow is paused.

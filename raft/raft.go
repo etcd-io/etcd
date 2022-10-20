@@ -332,7 +332,7 @@ func newRaft(c *Config) *raft {
 		raftLog:                   raftlog,
 		maxMsgSize:                c.MaxSizePerMsg,
 		maxUncommittedSize:        c.MaxUncommittedEntriesSize,
-		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs),
+		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs, 0), // TODO: set maxBytes
 		electionTimeout:           c.ElectionTick,
 		heartbeatTimeout:          c.HeartbeatTick,
 		logger:                    c.Logger,
@@ -484,7 +484,8 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 
 	// Send the actual MsgApp otherwise, and update the progress accordingly.
 	next := pr.Next // save Next for later, as the progress update can change it
-	if err := pr.UpdateOnEntriesSend(len(ents), next); err != nil {
+	// TODO(pavelkalinnikov): set bytes to sum(Entries[].Size())
+	if err := pr.UpdateOnEntriesSend(len(ents), 0 /* bytes */, next); err != nil {
 		r.logger.Panicf("%x: %v", r.id, err)
 	}
 	r.send(pb.Message{
@@ -629,7 +630,7 @@ func (r *raft) reset(term uint64) {
 		*pr = tracker.Progress{
 			Match:     0,
 			Next:      r.raftLog.lastIndex() + 1,
-			Inflights: tracker.NewInflights(r.prs.MaxInflight, 0), // TODO: set maxBytes
+			Inflights: tracker.NewInflights(r.prs.MaxInflight, r.prs.MaxInflightBytes),
 			IsLearner: pr.IsLearner,
 		}
 		if id == r.id {
@@ -1618,7 +1619,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	r.raftLog.restore(s)
 
 	// Reset the configuration and add the (potentially updated) peers in anew.
-	r.prs = tracker.MakeProgressTracker(r.prs.MaxInflight)
+	r.prs = tracker.MakeProgressTracker(r.prs.MaxInflight, r.prs.MaxInflightBytes)
 	cfg, prs, err := confchange.Restore(confchange.Changer{
 		Tracker:   r.prs,
 		LastIndex: r.raftLog.lastIndex(),

@@ -28,7 +28,7 @@ import (
 
 func TestConfChangeDataDriven(t *testing.T) {
 	datadriven.Walk(t, "testdata", func(t *testing.T, path string) {
-		tr := tracker.MakeProgressTracker(10)
+		tr := tracker.MakeProgressTracker(10, 0)
 		c := Changer{
 			Tracker:   tr,
 			LastIndex: 0, // incremented in this test with each cmd

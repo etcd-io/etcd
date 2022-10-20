@@ -86,7 +86,7 @@ func TestRestore(t *testing.T) {
 
 	f := func(cs pb.ConfState) bool {
 		chg := Changer{
-			Tracker:   tracker.MakeProgressTracker(20),
+			Tracker:   tracker.MakeProgressTracker(20, 0),
 			LastIndex: 10,
 		}
 		cfg, prs, err := Restore(chg, cs)

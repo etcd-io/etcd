@@ -121,13 +121,15 @@ type ProgressTracker struct {
 
 	Votes map[uint64]bool
 
-	MaxInflight int
+	MaxInflight      int
+	MaxInflightBytes uint64
 }
 
 // MakeProgressTracker initializes a ProgressTracker.
-func MakeProgressTracker(maxInflight int) ProgressTracker {
+func MakeProgressTracker(maxInflight int, maxBytes uint64) ProgressTracker {
 	p := ProgressTracker{
-		MaxInflight: maxInflight,
+		MaxInflight:      maxInflight,
+		MaxInflightBytes: maxBytes,
 		Config: Config{
 			Voters: quorum.JointConfig{
 				quorum.MajorityConfig{},

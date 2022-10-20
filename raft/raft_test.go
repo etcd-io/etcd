@@ -4706,7 +4706,7 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 				learners[i] = true
 			}
 			v.id = id
-			v.prs = tracker.MakeProgressTracker(v.prs.MaxInflight)
+			v.prs = tracker.MakeProgressTracker(v.prs.MaxInflight, v.prs.MaxInflightBytes)
 			if len(learners) > 0 {
 				v.prs.Learners = map[uint64]struct{}{}
 			}
