@@ -45,12 +45,12 @@ func TestLeaseQueue(t *testing.T) {
 	}
 
 	existExpiredEvent := func() {
-		l, ok, more := le.expireExists()
+		l, more := le.expireExists()
+		if l == nil {
+			t.Fatalf("expect expiry lease exists")
+		}
 		if l.ID != 1 {
 			t.Fatalf("first item expected lease ID %d, got %d", 1, l.ID)
-		}
-		if !ok {
-			t.Fatal("expect expiry lease exists")
 		}
 		if more {
 			t.Fatal("expect no more expiry lease")
@@ -67,8 +67,8 @@ func TestLeaseQueue(t *testing.T) {
 
 	noExpiredEvent := func() {
 		// re-acquire the expired item, nothing exists
-		_, ok, more := le.expireExists()
-		if ok {
+		l, more := le.expireExists()
+		if l != nil {
 			t.Fatal("expect no expiry lease exists")
 		}
 		if more {

@@ -675,12 +675,12 @@ func (le *lessor) clearLeaseExpiredNotifier() {
 	le.leaseExpiredNotifier = newLeaseExpiredNotifier()
 }
 
-// expireExists returns true if expiry items exist.
+// expireExists returns "l" which is not nil if expiry items exist.
 // It pops only when expiry item exists.
 // "next" is true, to indicate that it may exist in next attempt.
-func (le *lessor) expireExists() (l *Lease, ok bool, next bool) {
+func (le *lessor) expireExists() (l *Lease, next bool) {
 	if le.leaseExpiredNotifier.Len() == 0 {
-		return nil, false, false
+		return nil, false
 	}
 
 	item := le.leaseExpiredNotifier.Peek()
@@ -689,19 +689,19 @@ func (le *lessor) expireExists() (l *Lease, ok bool, next bool) {
 		// lease has expired or been revoked
 		// no need to revoke (nothing is expiry)
 		le.leaseExpiredNotifier.Unregister() // O(log N)
-		return nil, false, true
+		return nil, true
 	}
 	now := time.Now()
 	if now.Before(item.time) /* item.time: expiration time */ {
 		// Candidate expirations are caught up, reinsert this item
 		// and no need to revoke (nothing is expiry)
-		return l, false, false
+		return nil, false
 	}
 
 	// recheck if revoke is complete after retry interval
 	item.time = now.Add(le.expiredLeaseRetryInterval)
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
-	return l, true, false
+	return l, false
 }
 
 // findExpiredLeases loops leases in the leaseMap until reaching expired limit
@@ -710,12 +710,9 @@ func (le *lessor) findExpiredLeases(limit int) []*Lease {
 	leases := make([]*Lease, 0, 16)
 
 	for {
-		l, ok, next := le.expireExists()
-		if !ok && !next {
+		l, next := le.expireExists()
+		if l == nil && !next {
 			break
-		}
-		if !ok {
-			continue
 		}
 		if next {
 			continue
