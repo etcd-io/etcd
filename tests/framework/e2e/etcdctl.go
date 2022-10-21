@@ -467,11 +467,7 @@ func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) 
 
 func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) (*clientv3.AuthEnableResponse, error) {
 	args := []string{"auth", "enable"}
-	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), nil)
-	if err != nil {
-		return nil, err
-	}
-	err = cmd.Send(strings.Join(args, " "))
+	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
 	if err != nil {
 		return nil, err
 	}
