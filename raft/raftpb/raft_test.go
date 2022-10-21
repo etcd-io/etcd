@@ -45,7 +45,7 @@ func TestProtoMemorySizes(t *testing.T) {
 	assert(unsafe.Sizeof(s), if64Bit(144, 80), "Snapshot")
 
 	var m Message
-	assert(unsafe.Sizeof(m), if64Bit(128, 92), "Message")
+	assert(unsafe.Sizeof(m), if64Bit(160, 108), "Message")
 
 	var hs HardState
 	assert(unsafe.Sizeof(hs), 24, "HardState")
