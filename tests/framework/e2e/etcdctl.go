@@ -466,15 +466,33 @@ func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) 
 }
 
 func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) (*clientv3.AuthEnableResponse, error) {
-	var resp clientv3.AuthEnableResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "auth", "enable")
-	return &resp, err
+	args := []string{"auth", "enable"}
+	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+	if err != nil {
+		return nil, err
+	}
+	defer cmd.Close()
+
+	_, err = cmd.ExpectWithContext(ctx, "Authentication Enabled")
+	if err != nil {
+		return nil, err
+	}
+	return &clientv3.AuthEnableResponse{}, nil
 }
 
 func (ctl *EtcdctlV3) AuthDisable(ctx context.Context) (*clientv3.AuthDisableResponse, error) {
-	var resp clientv3.AuthDisableResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "auth", "disable")
-	return &resp, err
+	args := []string{"auth", "disable"}
+	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+	if err != nil {
+		return nil, err
+	}
+	defer cmd.Close()
+
+	_, err = cmd.ExpectWithContext(ctx, "Authentication Disabled")
+	if err != nil {
+		return nil, err
+	}
+	return &clientv3.AuthDisableResponse{}, nil
 }
 
 func (ctl *EtcdctlV3) AuthStatus(ctx context.Context) (*clientv3.AuthStatusResponse, error) {
