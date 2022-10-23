@@ -25,7 +25,7 @@ import (
 func TestWaitLeader(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()

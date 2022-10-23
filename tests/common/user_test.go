@@ -61,7 +61,7 @@ func TestUserAdd_Simple(t *testing.T) {
 			password: "bar",
 		},
 	}
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		for _, nc := range tcs {
 			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -96,7 +96,7 @@ func TestUserAdd_Simple(t *testing.T) {
 
 func TestUserAdd_DuplicateUserNotAllowed(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -125,7 +125,7 @@ func TestUserAdd_DuplicateUserNotAllowed(t *testing.T) {
 
 func TestUserList(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -166,7 +166,7 @@ func TestUserList(t *testing.T) {
 
 func TestUserDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -218,7 +218,7 @@ func TestUserDelete(t *testing.T) {
 
 func TestUserChangePassword(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
