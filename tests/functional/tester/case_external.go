@@ -22,8 +22,6 @@ import (
 )
 
 type caseExternal struct {
-	Case
-
 	desc      string
 	rpcpbCase rpcpb.Case
 

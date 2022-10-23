@@ -15,7 +15,7 @@
 package tester
 
 import (
-	"fmt"
+	"errors"
 	"math/rand"
 	"net"
 	"net/url"
@@ -67,7 +67,7 @@ func errsToError(errs []error) error {
 	for i, err := range errs {
 		stringArr[i] = err.Error()
 	}
-	return fmt.Errorf(strings.Join(stringArr, ", "))
+	return errors.New(strings.Join(stringArr, ", "))
 }
 
 func randBytes(size int) []byte {
