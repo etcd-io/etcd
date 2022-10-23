@@ -13,7 +13,7 @@ import (
 func TestWatch(t *testing.T) {
 	testRunner.BeforeTest(t)
 	watchTimeout := 1 * time.Second
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()

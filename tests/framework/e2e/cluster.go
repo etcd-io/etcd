@@ -138,7 +138,7 @@ type EtcdProcessCluster struct {
 
 type EtcdProcessClusterConfig struct {
 	Logger      *zap.Logger
-	ExecPath    string
+	Version     config.ClusterVersion
 	DataDirPath string
 	KeepDataDir bool
 	EnvVars     map[string]string
@@ -207,9 +207,6 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 	}
 	if cfg.BasePort == 0 {
 		cfg.BasePort = EtcdProcessBasePort
-	}
-	if cfg.ExecPath == "" {
-		cfg.ExecPath = BinPath.Etcd
 	}
 	if cfg.SnapshotCount == 0 {
 		cfg.SnapshotCount = etcdserver.DefaultSnapshotCount
@@ -400,9 +397,31 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
 	}
 
+	var execPath string
+	switch cfg.Version {
+	case config.CurrentVersion:
+		execPath = BinPath.Etcd
+	case config.MinorityLastVersion:
+		if i <= cfg.ClusterSize/2 {
+			execPath = BinPath.Etcd
+		} else {
+			execPath = BinPath.EtcdLastRelease
+		}
+	case config.QuorumLastVersion:
+		if i <= cfg.ClusterSize/2 {
+			execPath = BinPath.EtcdLastRelease
+		} else {
+			execPath = BinPath.Etcd
+		}
+	case config.LastVersion:
+		execPath = BinPath.EtcdLastRelease
+	default:
+		panic(fmt.Sprintf("Unknown cluster version %v", cfg.Version))
+	}
+
 	return &EtcdServerProcessConfig{
 		lg:           cfg.Logger,
-		ExecPath:     cfg.ExecPath,
+		ExecPath:     execPath,
 		Args:         args,
 		EnvVars:      envVars,
 		TlsArgs:      cfg.TlsArgs(),

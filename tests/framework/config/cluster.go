@@ -14,14 +14,22 @@
 
 package config
 
-import "time"
+import (
+	"time"
+)
 
 type TLSConfig string
+type ClusterVersion string
 
 const (
 	NoTLS     TLSConfig = ""
 	AutoTLS   TLSConfig = "auto-tls"
 	ManualTLS TLSConfig = "manual-tls"
+
+	CurrentVersion      ClusterVersion = ""
+	MinorityLastVersion ClusterVersion = "minority-last-version"
+	QuorumLastVersion   ClusterVersion = "quorum-last-version"
+	LastVersion         ClusterVersion = "last-version"
 
 	TickDuration = 10 * time.Millisecond
 )
@@ -34,6 +42,12 @@ type ClusterConfig struct {
 	StrictReconfigCheck bool
 	AuthToken           string
 	SnapshotCount       int
+
+	E2eConfig *E2eClusterConfig
+}
+
+type E2eClusterConfig struct {
+	Version ClusterVersion
 }
 
 func DefaultClusterConfig() ClusterConfig {

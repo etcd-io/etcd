@@ -23,21 +23,21 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 // TestReleaseUpgrade ensures that changes to master branch does not affect
 // upgrade from latest etcd releases.
 func TestReleaseUpgrade(t *testing.T) {
-	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
-	if !fileutil.Exist(lastReleaseBinary) {
-		t.Skipf("%q does not exist", lastReleaseBinary)
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
 	e2e.BeforeTest(t)
 
 	copiedCfg := e2e.NewConfigNoTLS()
-	copiedCfg.ExecPath = lastReleaseBinary
+	copiedCfg.Version = config.LastVersion
 	copiedCfg.SnapshotCount = 3
 	copiedCfg.BaseScheme = "unix" // to avoid port conflict
 
@@ -113,15 +113,14 @@ func TestReleaseUpgrade(t *testing.T) {
 }
 
 func TestReleaseUpgradeWithRestart(t *testing.T) {
-	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
-	if !fileutil.Exist(lastReleaseBinary) {
-		t.Skipf("%q does not exist", lastReleaseBinary)
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
 	e2e.BeforeTest(t)
 
 	copiedCfg := e2e.NewConfigNoTLS()
-	copiedCfg.ExecPath = lastReleaseBinary
+	copiedCfg.Version = config.LastVersion
 	copiedCfg.SnapshotCount = 10
 	copiedCfg.BaseScheme = "unix"
 

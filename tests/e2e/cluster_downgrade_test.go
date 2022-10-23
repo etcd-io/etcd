@@ -57,7 +57,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 	e2e.BeforeTest(t)
 
 	t.Logf("Create cluster with version %s", currentVersionStr)
-	epc := newCluster(t, currentEtcdBinary, clusterSize)
+	epc := newCluster(t, clusterSize)
 	for i := 0; i < len(epc.Procs); i++ {
 		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
 			Cluster: currentVersionStr,
@@ -119,9 +119,8 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 	t.Log("Upgrade complete")
 }
 
-func newCluster(t *testing.T, execPath string, clusterSize int) *e2e.EtcdProcessCluster {
+func newCluster(t *testing.T, clusterSize int) *e2e.EtcdProcessCluster {
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-		ExecPath:     execPath,
 		ClusterSize:  clusterSize,
 		InitialToken: "new",
 		KeepDataDir:  true,

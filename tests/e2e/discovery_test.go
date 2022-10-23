@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -38,14 +39,13 @@ func TestTLSClusterOf3UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t
 func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	e2e.BeforeTest(t)
 
-	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
-	if !fileutil.Exist(lastReleaseBinary) {
-		t.Skipf("%q does not exist", lastReleaseBinary)
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
 	dc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
 		BasePort:    2000,
-		ExecPath:    lastReleaseBinary,
+		Version:     config.LastVersion,
 		ClusterSize: 1,
 		EnableV2:    true,
 	})

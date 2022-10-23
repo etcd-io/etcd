@@ -24,7 +24,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -51,13 +50,8 @@ func TestClusterVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			binary := e2e.BinPath.Etcd
-			if !fileutil.Exist(binary) {
-				t.Skipf("%q does not exist", binary)
-			}
 			e2e.BeforeTest(t)
 			cfg := e2e.NewConfigNoTLS()
-			cfg.ExecPath = binary
 			cfg.SnapshotCount = 3
 			cfg.BaseScheme = "unix" // to avoid port conflict
 			cfg.RollingStart = tt.rollingStart

@@ -54,7 +54,7 @@ func TestTxnSucc(t *testing.T) {
 			results:  []string{"SUCCESS", `key "with" space`, "value \x23"},
 		},
 	}
-	for _, cfg := range clusterTestCases {
+	for _, cfg := range clusterTestCases() {
 		t.Run(cfg.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -98,7 +98,7 @@ func TestTxnFail(t *testing.T) {
 			results:  []string{"FAILURE", "OK"},
 		},
 	}
-	for _, cfg := range clusterTestCases {
+	for _, cfg := range clusterTestCases() {
 		t.Run(cfg.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
