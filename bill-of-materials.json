@@ -9,6 +9,15 @@
 		]
 	},
 	{
+		"project": "github.com/anishathalye/porcupine",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/benbjohnson/clock",
 		"licenses": [
 			{

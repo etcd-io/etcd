@@ -33,6 +33,7 @@ type Cluster interface {
 	Client(cfg clientv3.AuthConfig) (Client, error)
 	WaitLeader(t testing.TB) int
 	Close() error
+	Endpoints() []string
 }
 
 type Member interface {

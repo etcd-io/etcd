@@ -124,6 +124,11 @@ function e2e_pass {
   run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
 }
 
+function linearizability_pass {
+  # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
+  run_for_module "tests" go_test "./linearizability/..." "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
+}
+
 function integration_e2e_pass {
   run_pass "integration" "${@}"
   run_pass "e2e" "${@}"

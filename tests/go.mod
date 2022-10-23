@@ -15,6 +15,7 @@ replace (
 )
 
 require (
+	github.com/anishathalye/porcupine v0.1.2
 	github.com/coreos/go-semver v0.3.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gogo/protobuf v1.3.2

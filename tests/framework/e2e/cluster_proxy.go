@@ -103,6 +103,14 @@ func (p *proxyEtcdProcess) Logs() LogsExpect {
 	return p.etcdProc.Logs()
 }
 
+func (p *proxyEtcdProcess) Kill() error {
+	return p.etcdProc.Kill()
+}
+
+func (p *proxyEtcdProcess) Wait() error {
+	return p.etcdProc.Wait()
+}
+
 type proxyProc struct {
 	lg       *zap.Logger
 	name     string

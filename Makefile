@@ -7,25 +7,31 @@ build:
 
 # Tests
 
+GO_TEST_FLAGS?=
+
 .PHONY: test
 test:
-	PASSES="unit integration release e2e" ./scripts/test.sh
+	PASSES="unit integration release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-unit
 test-unit:
-	PASSES="unit" ./scripts/test.sh
+	PASSES="unit" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-integration
 test-integration:
-	PASSES="integration" ./scripts/test.sh
+	PASSES="integration" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-e2e
 test-e2e: build
-	PASSES="e2e" ./scripts/test.sh
+	PASSES="e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-e2e-release
 test-e2e-release: build
-	PASSES="release e2e" ./scripts/test.sh
+	PASSES="release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
+
+.PHONY: test-linearizability
+test-linearizability: build
+	PASSES="linearizability" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 # Static analysis
 
