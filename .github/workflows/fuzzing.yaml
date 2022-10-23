@@ -5,10 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-          Target: [FuzzRangeRequest, FuzzPutRequest, FuzzDeleteRangeRequest]
     env:
-      FUZZ_TARGET: ${{matrix.Target}}
       TARGET_PATH: ./server/etcdserver/api/v3rpc
     steps:
     - uses: actions/checkout@v2
@@ -19,4 +16,4 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: failure()
       with:
-        path: "${{env.TARGET_PATH}}/testdata/fuzz/${{env.FUZZ_TARGET}}/*"
+        path: "${{env.TARGET_PATH}}/testdata/fuzz/**/*"
