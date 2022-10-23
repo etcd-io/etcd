@@ -90,6 +90,10 @@ func startEtcdOrProxyV2(args []string) {
 		lg.Info("failed to detect default host", zap.Error(dhErr))
 	}
 
+	if cfg.ec.Name == embed.DefaultName {
+		lg.Warn("the server is using default name, which might cause error that failed the startup.")
+	}
+
 	if cfg.ec.Dir == "" {
 		cfg.ec.Dir = fmt.Sprintf("%v.etcd", cfg.ec.Name)
 		lg.Warn(
