@@ -17,8 +17,16 @@
 
 package common
 
-import "go.etcd.io/etcd/tests/v3/framework"
+import (
+	"go.etcd.io/etcd/tests/v3/framework"
+	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
+)
 
 func init() {
 	testRunner = framework.E2eTestRunner
+}
+
+func WithAuth(userName, password string) config.ClientOption {
+	return e2e.WithAuth(userName, password)
 }

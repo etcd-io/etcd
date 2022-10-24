@@ -19,8 +19,14 @@ package common
 
 import (
 	"go.etcd.io/etcd/tests/v3/framework"
+	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func init() {
 	testRunner = framework.IntegrationTestRunner
+}
+
+func WithAuth(userName, password string) config.ClientOption {
+	return integration.WithAuth(userName, password)
 }
