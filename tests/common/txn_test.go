@@ -61,7 +61,7 @@ func TestTxnSucc(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, cfg.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
 				if err := cc.Put(ctx, "key1", "value1", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key1", "value1")
@@ -105,7 +105,7 @@ func TestTxnFail(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, cfg.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
 				if err := cc.Put(ctx, "key1", "value1", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key1", "value1")

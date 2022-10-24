@@ -60,7 +60,7 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				ttl := int64(10)
@@ -104,7 +104,7 @@ func TestLeaseGrantAndList(t *testing.T) {
 				t.Logf("Creating cluster...")
 				clus := testRunner.NewCluster(ctx, t, tc.config)
 				defer clus.Close()
-				cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+				cc := framework.MustClient(clus.Client())
 				t.Logf("Created cluster and client")
 				testutils.ExecuteUntil(ctx, t, func() {
 					var createdLeases []clientv3.LeaseID
@@ -151,7 +151,7 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(ctx, 2)
@@ -188,7 +188,7 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(ctx, 2)
@@ -217,7 +217,7 @@ func TestLeaseGrantRevoke(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				leaseResp, err := cc.Grant(ctx, 20)

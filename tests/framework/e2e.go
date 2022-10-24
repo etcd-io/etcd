@@ -22,11 +22,8 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
-	"google.golang.org/grpc"
 )
 
 type e2eRunner struct{}
@@ -90,22 +87,8 @@ type e2eCluster struct {
 	e2e.EtcdProcessCluster
 }
 
-func (c *e2eCluster) Client(cfg clientv3.AuthConfig) (Client, error) {
-	etcdctl := e2e.NewEtcdctl(c.Cfg, c.EndpointsV3())
-	if !cfg.Empty() {
-		// use integration test client to validate if permissions are authorized
-		_, err := integration.NewClient(c.t, clientv3.Config{
-			Endpoints:   c.EndpointsV3(),
-			DialTimeout: 5 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
-			Username:    cfg.Username,
-			Password:    cfg.Password,
-		})
-		if err != nil {
-			return nil, err
-		}
-		etcdctl = etcdctl.WithAuth(cfg.Username, cfg.Password)
-	}
+func (c *e2eCluster) Client(opts ...config.ClientOption) (Client, error) {
+	etcdctl := e2e.NewEtcdctl(c.Cfg, c.EndpointsV3(), opts...)
 	return e2eClient{etcdctl}, nil
 }
 
@@ -131,7 +114,7 @@ func (c *e2eCluster) WaitLeader(t testing.TB) int {
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
 func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []Member) int {
-	cc := MustClient(c.Client(clientv3.AuthConfig{}))
+	cc := MustClient(c.Client())
 
 	// ensure leader is up via linearizable get
 	for {

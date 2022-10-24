@@ -30,7 +30,7 @@ type testRunner interface {
 
 type Cluster interface {
 	Members() []Member
-	Client(cfg clientv3.AuthConfig) (Client, error)
+	Client(opts ...config.ClientOption) (Client, error)
 	WaitLeader(t testing.TB) int
 	Close() error
 	Endpoints() []string

@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -70,7 +69,7 @@ func TestUserAdd_Simple(t *testing.T) {
 				defer cancel()
 				clus := testRunner.NewCluster(ctx, t, tc.config)
 				defer clus.Close()
-				cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+				cc := framework.MustClient(clus.Client())
 
 				testutils.ExecuteUntil(ctx, t, func() {
 					resp, err := cc.UserAdd(ctx, nc.username, nc.password, config.UserAddOptions{NoPassword: nc.noPassword})
@@ -104,7 +103,7 @@ func TestUserAdd_DuplicateUserNotAllowed(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				user := "barb"
@@ -133,7 +132,7 @@ func TestUserList(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				// No Users Yet
@@ -174,7 +173,7 @@ func TestUserDelete(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				user := "barb"
@@ -226,7 +225,7 @@ func TestUserChangePassword(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				user := "barb"
