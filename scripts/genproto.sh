@@ -49,7 +49,7 @@ for dir in ${DIRS}; do
 
     rm -f ./**/*.bak
     run gofmt -s -w ./**/*.pb.go
-    run goimports -w ./**/*.pb.go
+    run_go_tool "golang.org/x/tools/cmd/goimports" -w ./**/*.pb.go
   run popd
 done
 

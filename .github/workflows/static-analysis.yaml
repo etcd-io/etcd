@@ -12,5 +12,9 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.49.0
+      - name: protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.14.0'
       - run: make verify
       - run: make fix
