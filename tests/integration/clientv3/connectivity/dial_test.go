@@ -54,7 +54,7 @@ func TestDialTLSExpired(t *testing.T) {
 
 	tls, err := testTLSInfoExpired.ClientConfig()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("certificate is expired",{err})
 	}
 	// expect remote errors "tls: bad certificate"
 	_, err = integration2.NewClient(t, clientv3.Config{
