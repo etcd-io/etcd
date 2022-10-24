@@ -2711,6 +2711,10 @@
     "etcdserverpbStatusResponse": {
       "type": "object",
       "properties": {
+        "clusterVersion": {
+          "description": "clusterVersion is the minimum cluster protocol version used in the cluster.",
+          "type": "string"
+        },
         "dbSize": {
           "description": "dbSize is the size of the backend database physically allocated, in bytes, of the responding member.",
           "type": "string",

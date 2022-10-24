@@ -239,6 +239,9 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		DbSizeInUse:      ms.bg.Backend().SizeInUse(),
 		IsLearner:        ms.cs.IsLearner(),
 	}
+	if clusterVersion := ms.vs.GetClusterVersion(); clusterVersion != nil {
+		resp.ClusterVersion = clusterVersion.String()
+	}
 	if storageVersion := ms.vs.GetStorageVersion(); storageVersion != nil {
 		resp.StorageVersion = storageVersion.String()
 	}

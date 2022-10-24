@@ -1161,6 +1161,8 @@ message StatusResponse {
   bool isLearner = 10 [(versionpb.etcd_version_field)="3.4"];
   // storageVersion is the version of the db file. It might be get updated with delay in relationship to the target cluster version.
   string storageVersion = 11 [(versionpb.etcd_version_field)="3.6"];
+  // clusterVersion is the minimum cluster protocol version used in the cluster.
+  string clusterVersion = 12 [(versionpb.etcd_version_field)="3.7"];
 }
 
 message AuthEnableRequest {
