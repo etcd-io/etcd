@@ -33,7 +33,7 @@ func TestAlarm(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 1, QuotaBackendBytes: int64(13 * os.Getpagesize())})
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		// test small put still works
 		smallbuf := strings.Repeat("a", 64)
@@ -117,7 +117,7 @@ func TestAlarmlistOnMemberRestart(t *testing.T) {
 		SnapshotCount:     5,
 	})
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+	cc := framework.MustClient(clus.Client())
 
 	testutils.ExecuteUntil(ctx, t, func() {
 		for i := 0; i < 6; i++ {

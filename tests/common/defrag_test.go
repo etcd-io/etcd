@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -31,7 +30,7 @@ func TestDefragOnline(t *testing.T) {
 	defer cancel()
 	options := config.DefragOption{Timeout: 10 * time.Second}
 	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
-	cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		defer clus.Close()
 		var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}

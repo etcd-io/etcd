@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -49,7 +48,7 @@ func TestCompact(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
 				var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 				for i := range kvs {

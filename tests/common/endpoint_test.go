@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -31,7 +30,7 @@ func TestEndpointStatus(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.Status(ctx)
 		if err != nil {
@@ -46,7 +45,7 @@ func TestEndpointHashKV(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.HashKV(ctx, 0)
 		if err != nil {
@@ -61,7 +60,7 @@ func TestEndpointHealth(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		if err := cc.Health(ctx); err != nil {
 			t.Fatalf("get endpoint health error: %v", err)

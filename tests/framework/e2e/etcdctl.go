@@ -35,17 +35,25 @@ type EtcdctlV3 struct {
 	password  string
 }
 
-func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string) *EtcdctlV3 {
-	return &EtcdctlV3{
+func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string, opts ...config.ClientOption) *EtcdctlV3 {
+	ctl := &EtcdctlV3{
 		cfg:       cfg,
 		endpoints: endpoints,
 	}
+
+	for _, opt := range opts {
+		opt(ctl)
+	}
+
+	return ctl
 }
 
-func (ctl *EtcdctlV3) WithAuth(userName, password string) *EtcdctlV3 {
-	ctl.userName = userName
-	ctl.password = password
-	return ctl
+func WithAuth(userName, password string) config.ClientOption {
+	return func(c any) {
+		ctl := c.(*EtcdctlV3)
+		ctl.userName = userName
+		ctl.password = password
+	}
 }
 
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {

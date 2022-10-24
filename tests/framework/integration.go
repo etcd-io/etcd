@@ -118,15 +118,8 @@ func (c *integrationCluster) Close() error {
 	return nil
 }
 
-func (c *integrationCluster) Client(cfg clientv3.AuthConfig) (Client, error) {
-	option := func(_ *clientv3.Config) {}
-	if !cfg.Empty() {
-		option = func(clientCfg *clientv3.Config) {
-			clientCfg.Username = cfg.Username
-			clientCfg.Password = cfg.Password
-		}
-	}
-	cc, err := c.ClusterClient(c.t, option)
+func (c *integrationCluster) Client(opts ...config.ClientOption) (Client, error) {
+	cc, err := c.ClusterClient(c.t, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -34,7 +34,7 @@ func TestKVPut(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				key, value := "foo", "bar"
@@ -68,7 +68,7 @@ func TestKVGet(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				var (
@@ -128,7 +128,7 @@ func TestKVDelete(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, tc.config)
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client(clientv3.AuthConfig{}))
+			cc := framework.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
 				kvs := []string{"a", "b", "c", "c/abc", "d"}
 				tests := []struct {

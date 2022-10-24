@@ -20,6 +20,12 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
+// ClientOption configures the client with additional parameter.
+// For example, if Auth is enabled,
+//  1. e2e test cases use e2e.WithAuth to return a ClientOption;
+//  2. integration test, uses integration.WithAuth to return a ClientOption.
+type ClientOption func(any)
+
 type GetOptions struct {
 	Revision     int
 	End          string

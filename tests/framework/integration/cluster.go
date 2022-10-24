@@ -1437,7 +1437,7 @@ func (c *Cluster) Endpoints() []string {
 	return endpoints
 }
 
-func (c *Cluster) ClusterClient(t testing.TB, opts ...func(*clientv3.Config)) (client *clientv3.Client, err error) {
+func (c *Cluster) ClusterClient(t testing.TB, opts ...framecfg.ClientOption) (client *clientv3.Client, err error) {
 	cfg, err := c.newClientCfg()
 	if err != nil {
 		return nil, err
@@ -1453,6 +1453,14 @@ func (c *Cluster) ClusterClient(t testing.TB, opts ...func(*clientv3.Config)) (c
 		client.Close()
 	})
 	return client, nil
+}
+
+func WithAuth(userName, password string) framecfg.ClientOption {
+	return func(c any) {
+		client := c.(*clientv3.Client)
+		client.Username = userName
+		client.Password = password
+	}
 }
 
 func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
