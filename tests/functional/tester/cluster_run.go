@@ -56,14 +56,14 @@ func (clus *Cluster) Run(t *testing.T) error {
 		})
 
 		if err != nil {
-			clus.failed(err)
+			clus.failed(t, err)
 			return err
 		}
 
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			t.Logf("Defragmenting in round: %v", round)
 			if err := clus.defrag(); err != nil {
-				clus.failed(err)
+				clus.failed(t, err)
 				return err
 			}
 		}
@@ -83,22 +83,7 @@ func (clus *Cluster) doRoundAndCompact(t *testing.T, round int, preModifiedKey i
 	clus.rd = round
 
 	if err = clus.doRound(t); err != nil {
-		clus.lg.Error(
-			"round FAIL",
-			zap.Int("round", clus.rd),
-			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.cases)),
-			zap.Error(err),
-		)
-		if cerr := clus.cleanup(err); cerr != nil {
-			clus.lg.Warn(
-				"cleanup FAIL",
-				zap.Int("round", clus.rd),
-				zap.Int("case", clus.cs),
-				zap.Int("case-total", len(clus.cases)),
-				zap.Error(cerr),
-			)
-		}
+		clus.failed(t, fmt.Errorf("doRound FAIL: %w", err))
 		return
 	}
 
@@ -118,22 +103,7 @@ func (clus *Cluster) doRoundAndCompact(t *testing.T, round int, preModifiedKey i
 		zap.Duration("timeout", timeout),
 	)
 	if err = clus.compact(revToCompact, timeout); err != nil {
-		clus.lg.Warn(
-			"compact FAIL",
-			zap.Int("round", clus.rd),
-			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.cases)),
-			zap.Error(err),
-		)
-		if cerr := clus.cleanup(err); cerr != nil {
-			clus.lg.Warn(
-				"cleanup FAIL",
-				zap.Int("round", clus.rd),
-				zap.Int("case", clus.cs),
-				zap.Int("case-total", len(clus.cases)),
-				zap.Error(cerr),
-			)
-		}
+		clus.failed(t, fmt.Errorf("compact FAIL: %w", err))
 	} else {
 		postModifiedKey = currentModifiedKey
 	}
@@ -185,7 +155,7 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 
 	clus.lg.Info("wait health before injecting failures")
 	if err := clus.WaitHealth(); err != nil {
-		t.Fatalf("wait full health error: %v", err)
+		clus.failed(t, fmt.Errorf("wait full health error before starting test case: %w", err))
 	}
 
 	stressStarted := false
@@ -199,7 +169,7 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 			zap.String("desc", fa.Desc()),
 		)
 		if err := clus.stresser.Stress(); err != nil {
-			t.Fatalf("start stresser error: %v", err)
+			clus.failed(t, fmt.Errorf("start stresser error: %w", err))
 		}
 		stressStarted = true
 	}
@@ -212,7 +182,7 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 		zap.String("desc", fa.Desc()),
 	)
 	if err := fa.Inject(clus); err != nil {
-		t.Fatalf("injection error: %v", err)
+		clus.failed(t, fmt.Errorf("injection error: %w", err))
 	}
 
 	// if run local, recovering server may conflict
@@ -226,7 +196,7 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 		zap.String("desc", fa.Desc()),
 	)
 	if err := fa.Recover(clus); err != nil {
-		t.Fatalf("recovery error: %v", err)
+		clus.failed(t, fmt.Errorf("recovery error: %w", err))
 	}
 
 	if stressStarted {
@@ -254,7 +224,7 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 			// with network delay, some ongoing requests may fail
 			// only return error, if more than 30% of QPS requests fail
 			if cnt > int(float64(clus.Tester.StressQPS)*0.3) {
-				t.Fatalf("expected no error in %q, got %q", fcase.String(), ess)
+				clus.failed(t, fmt.Errorf("expected no error in %q, got %q", fcase.String(), ess))
 			}
 		}
 	}
@@ -267,7 +237,7 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 		zap.String("desc", fa.Desc()),
 	)
 	if err := clus.WaitHealth(); err != nil {
-		t.Fatalf("wait full health error: %v", err)
+		clus.failed(t, fmt.Errorf("wait full health error after test finished: %w", err))
 	}
 
 	var checkerFailExceptions []rpcpb.Checker
@@ -285,7 +255,7 @@ func (clus *Cluster) doTestCase(t *testing.T, fa Case) {
 		zap.String("desc", fa.Desc()),
 	)
 	if err := clus.runCheckers(checkerFailExceptions...); err != nil {
-		t.Fatalf("consistency check error (%v)", err)
+		clus.failed(t, fmt.Errorf("consistency check error: %w", err))
 	}
 	clus.lg.Info(
 		"consistency check PASS",
@@ -345,59 +315,15 @@ func (clus *Cluster) compact(rev int64, timeout time.Duration) (err error) {
 	return nil
 }
 
-func (clus *Cluster) failed(err error) {
+func (clus *Cluster) failed(t *testing.T, err error) {
 	clus.lg.Error(
 		"functional-tester FAIL",
 		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
+		zap.String("case-name", t.Name()),
+		zap.Int("case-number", clus.cs),
 		zap.Int("case-total", len(clus.cases)),
 		zap.Error(err),
 	)
 
 	os.Exit(2)
-}
-
-func (clus *Cluster) cleanup(err error) error {
-	if clus.Tester.ExitOnCaseFail {
-		defer clus.failed(err)
-	}
-
-	roundFailedTotalCounter.Inc()
-	desc := "compact/defrag"
-	if clus.cs != -1 {
-		desc = clus.cases[clus.cs].Desc()
-	}
-	caseFailedTotalCounter.WithLabelValues(desc).Inc()
-
-	clus.lg.Info(
-		"closing stressers before archiving failure data",
-		zap.Int("round", clus.rd),
-		zap.Int("case", clus.cs),
-		zap.Int("case-total", len(clus.cases)),
-	)
-	clus.stresser.Close()
-
-	if err := clus.send_SIGQUIT_ETCD_AND_ARCHIVE_DATA(); err != nil {
-		clus.lg.Warn(
-			"cleanup FAIL",
-			zap.Int("round", clus.rd),
-			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.cases)),
-			zap.Error(err),
-		)
-		return err
-	}
-	if err := clus.send_RESTART_ETCD(); err != nil {
-		clus.lg.Warn(
-			"restart FAIL",
-			zap.Int("round", clus.rd),
-			zap.Int("case", clus.cs),
-			zap.Int("case-total", len(clus.cases)),
-			zap.Error(err),
-		)
-		return err
-	}
-
-	clus.setStresserChecker()
-	return nil
 }
