@@ -21,9 +21,10 @@ import (
 )
 
 // ClientOption configures the client with additional parameter.
-// For example, if Auth is enabled,
-//  1. e2e test cases use e2e.WithAuth to return a ClientOption;
-//  2. integration test, uses integration.WithAuth to return a ClientOption.
+// For example, if Auth is enabled, the common test cases just need to
+// use `WithAuth` to return a ClientOption. Note that the common `WithAuth`
+// function calls `e2e.WithAuth` or `integration.WithAuth`, depending on the
+// build tag (either "e2e" or "integration").
 type ClientOption func(any)
 
 type GetOptions struct {
