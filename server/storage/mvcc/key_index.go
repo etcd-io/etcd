@@ -213,6 +213,11 @@ func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[revision]
 		)
 	}
 
+	if len(ki.generations[0].revs) > 0 &&
+		ki.generations[0].revs[0].main > atRev+1 {
+		return
+	}
+
 	genIdx, revIndex := ki.doCompact(atRev, available)
 
 	g := &ki.generations[genIdx]
