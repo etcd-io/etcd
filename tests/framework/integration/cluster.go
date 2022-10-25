@@ -1457,9 +1457,9 @@ func (c *Cluster) ClusterClient(t testing.TB, opts ...framecfg.ClientOption) (cl
 
 func WithAuth(userName, password string) framecfg.ClientOption {
 	return func(c any) {
-		client := c.(*clientv3.Client)
-		client.Username = userName
-		client.Password = password
+		cfg := c.(*clientv3.Config)
+		cfg.Username = userName
+		cfg.Password = password
 	}
 }
 

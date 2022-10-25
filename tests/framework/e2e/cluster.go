@@ -613,7 +613,11 @@ func (epc *EtcdProcessCluster) Stop() (err error) {
 }
 
 func (epc *EtcdProcessCluster) Client() *EtcdctlV3 {
-	return NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	etcdctl, err := NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	if err != nil {
+		panic(err)
+	}
+	return etcdctl
 }
 
 func (epc *EtcdProcessCluster) Close() error {
