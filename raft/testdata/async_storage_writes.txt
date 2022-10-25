@@ -704,8 +704,10 @@ deliver-msgs 1 2 3
 3->1 MsgAppResp Term:1 Log:0/15
 ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/14
 AppendThread->2 MsgStorageAppendResp Term:1 Log:1/15
+INFO entry at index 15 missing from unstable log; ignoring
 ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/14
 AppendThread->3 MsgStorageAppendResp Term:1 Log:1/15
+INFO entry at index 15 missing from unstable log; ignoring
 ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/14
 
 process-ready 1 2 3
@@ -782,4 +784,5 @@ stabilize
   AppendThread->1 MsgStorageAppendResp Term:1 Log:0/0
 > 1 receiving messages
   AppendThread->1 MsgStorageAppendResp Term:1 Log:1/15
+  INFO entry at index 15 missing from unstable log; ignoring
   AppendThread->1 MsgStorageAppendResp Term:1 Log:0/0

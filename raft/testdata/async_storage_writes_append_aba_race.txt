@@ -1,0 +1,493 @@
+# This test reproduces a scenario similar to the one described in
+# newStorageAppendRespMsg, exercising a few interesting interactions
+# between asynchronous storage writes, term changes, and log truncation.
+
+log-level none
+----
+ok
+
+add-nodes 7 voters=(1,2,3,4,5,6,7) index=10 async-storage-writes=true
+----
+ok
+
+# Step 1: node 2 is the leader.
+
+campaign 2
+----
+ok
+
+stabilize
+----
+ok (quiet)
+
+log-level info
+----
+ok
+
+# Step 2: node 2 proposes some log entries but only node 1 receives these entries.
+
+propose 2 init_prop
+----
+ok
+
+process-ready 2
+----
+Ready MustSync=true:
+Entries:
+1/12 EntryNormal "init_prop"
+Messages:
+2->1 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+2->3 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+2->4 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+2->5 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+2->6 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+2->7 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+2->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/12 EntryNormal "init_prop"] Responses:[2->2 MsgAppResp Term:1 Log:0/12, AppendThread->2 MsgStorageAppendResp Term:1 Log:1/12]
+
+deliver-msgs 1 drop=(3,4,5,6,7)
+----
+2->1 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+dropped: 2->3 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+dropped: 2->4 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+dropped: 2->5 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+dropped: 2->6 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+dropped: 2->7 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "init_prop"]
+
+# Step 3: node 1 gets the Ready and the entries are appended asynchronously.
+
+process-ready 1
+----
+Ready MustSync=true:
+Entries:
+1/12 EntryNormal "init_prop"
+Messages:
+1->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/12 EntryNormal "init_prop"] Responses:[1->2 MsgAppResp Term:1 Log:0/12, AppendThread->1 MsgStorageAppendResp Term:1 Log:1/12]
+
+# Step 4: node 3 becomes the leader after getting a vote from nodes 4, 5, and 6.
+
+campaign 3
+----
+INFO 3 is starting a new election at term 1
+INFO 3 became candidate at term 2
+INFO 3 [logterm: 1, index: 11] sent MsgVote request to 1 at term 2
+INFO 3 [logterm: 1, index: 11] sent MsgVote request to 2 at term 2
+INFO 3 [logterm: 1, index: 11] sent MsgVote request to 4 at term 2
+INFO 3 [logterm: 1, index: 11] sent MsgVote request to 5 at term 2
+INFO 3 [logterm: 1, index: 11] sent MsgVote request to 6 at term 2
+INFO 3 [logterm: 1, index: 11] sent MsgVote request to 7 at term 2
+
+process-ready 3
+----
+Ready MustSync=true:
+Lead:0 State:StateCandidate
+HardState Term:2 Vote:3 Commit:11
+Messages:
+3->1 MsgVote Term:2 Log:1/11
+3->2 MsgVote Term:2 Log:1/11
+3->4 MsgVote Term:2 Log:1/11
+3->5 MsgVote Term:2 Log:1/11
+3->6 MsgVote Term:2 Log:1/11
+3->7 MsgVote Term:2 Log:1/11
+3->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[3->3 MsgVoteResp Term:2 Log:0/0, AppendThread->3 MsgStorageAppendResp Term:2 Log:0/0]
+
+deliver-msgs 4 5 6
+----
+3->4 MsgVote Term:2 Log:1/11
+INFO 4 [term: 1] received a MsgVote message with higher term from 3 [term: 2]
+INFO 4 became follower at term 2
+INFO 4 [logterm: 1, index: 11, vote: 0] cast MsgVote for 3 [logterm: 1, index: 11] at term 2
+3->5 MsgVote Term:2 Log:1/11
+INFO 5 [term: 1] received a MsgVote message with higher term from 3 [term: 2]
+INFO 5 became follower at term 2
+INFO 5 [logterm: 1, index: 11, vote: 0] cast MsgVote for 3 [logterm: 1, index: 11] at term 2
+3->6 MsgVote Term:2 Log:1/11
+INFO 6 [term: 1] received a MsgVote message with higher term from 3 [term: 2]
+INFO 6 became follower at term 2
+INFO 6 [logterm: 1, index: 11, vote: 0] cast MsgVote for 3 [logterm: 1, index: 11] at term 2
+
+process-ready 4 5 6
+----
+> 4 handling Ready
+  Ready MustSync=true:
+  Lead:0 State:StateFollower
+  HardState Term:2 Vote:3 Commit:11
+  Messages:
+  4->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[4->3 MsgVoteResp Term:2 Log:0/0, AppendThread->4 MsgStorageAppendResp Term:2 Log:0/0]
+> 5 handling Ready
+  Ready MustSync=true:
+  Lead:0 State:StateFollower
+  HardState Term:2 Vote:3 Commit:11
+  Messages:
+  5->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[5->3 MsgVoteResp Term:2 Log:0/0, AppendThread->5 MsgStorageAppendResp Term:2 Log:0/0]
+> 6 handling Ready
+  Ready MustSync=true:
+  Lead:0 State:StateFollower
+  HardState Term:2 Vote:3 Commit:11
+  Messages:
+  6->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[6->3 MsgVoteResp Term:2 Log:0/0, AppendThread->6 MsgStorageAppendResp Term:2 Log:0/0]
+
+process-append-thread 3 4 5 6
+----
+> 3 processing append thread
+  Processing:
+  3->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11
+  Responses:
+  3->3 MsgVoteResp Term:2 Log:0/0
+  AppendThread->3 MsgStorageAppendResp Term:2 Log:0/0
+> 4 processing append thread
+  Processing:
+  4->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11
+  Responses:
+  4->3 MsgVoteResp Term:2 Log:0/0
+  AppendThread->4 MsgStorageAppendResp Term:2 Log:0/0
+> 5 processing append thread
+  Processing:
+  5->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11
+  Responses:
+  5->3 MsgVoteResp Term:2 Log:0/0
+  AppendThread->5 MsgStorageAppendResp Term:2 Log:0/0
+> 6 processing append thread
+  Processing:
+  6->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11
+  Responses:
+  6->3 MsgVoteResp Term:2 Log:0/0
+  AppendThread->6 MsgStorageAppendResp Term:2 Log:0/0
+
+deliver-msgs 3
+----
+3->3 MsgVoteResp Term:2 Log:0/0
+INFO 3 received MsgVoteResp from 3 at term 2
+INFO 3 has received 1 MsgVoteResp votes and 0 vote rejections
+AppendThread->3 MsgStorageAppendResp Term:2 Log:0/0
+4->3 MsgVoteResp Term:2 Log:0/0
+INFO 3 received MsgVoteResp from 4 at term 2
+INFO 3 has received 2 MsgVoteResp votes and 0 vote rejections
+5->3 MsgVoteResp Term:2 Log:0/0
+INFO 3 received MsgVoteResp from 5 at term 2
+INFO 3 has received 3 MsgVoteResp votes and 0 vote rejections
+6->3 MsgVoteResp Term:2 Log:0/0
+INFO 3 received MsgVoteResp from 6 at term 2
+INFO 3 has received 4 MsgVoteResp votes and 0 vote rejections
+INFO 3 became leader at term 2
+
+# Step 5: node 3 proposes some log entries and node 1 receives these entries,
+# overwriting the previous unstable log entries that are in the process of being
+# appended. The entries have a larger term than the previous entries but the
+# same indexes. It begins appending these new entries asynchronously.
+
+process-ready 3
+----
+Ready MustSync=true:
+Lead:3 State:StateLeader
+Entries:
+2/12 EntryNormal ""
+Messages:
+3->1 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+3->2 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+3->4 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+3->5 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+3->6 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+3->7 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+3->AppendThread MsgStorageAppend Term:2 Log:0/0 Entries:[2/12 EntryNormal ""] Responses:[3->3 MsgAppResp Term:2 Log:0/12, AppendThread->3 MsgStorageAppendResp Term:2 Log:2/12]
+
+deliver-msgs 1 drop=(2,4,5,6,7)
+----
+3->1 MsgVote Term:2 Log:1/11
+INFO 1 [term: 1] received a MsgVote message with higher term from 3 [term: 2]
+INFO 1 became follower at term 2
+INFO 1 [logterm: 1, index: 12, vote: 0] rejected MsgVote from 3 [logterm: 1, index: 11] at term 2
+3->1 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+INFO found conflict at index 12 [existing term: 1, conflicting term: 2]
+INFO replace the unstable entries from index 12
+dropped: 3->2 MsgVote Term:2 Log:1/11
+dropped: 3->2 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+dropped: 3->4 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+dropped: 3->5 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+dropped: 3->6 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+dropped: 3->7 MsgVote Term:2 Log:1/11
+dropped: 3->7 MsgApp Term:2 Log:1/11 Commit:11 Entries:[2/12 EntryNormal ""]
+
+process-ready 1
+----
+Ready MustSync=true:
+Lead:3 State:StateFollower
+HardState Term:2 Commit:11
+Entries:
+2/12 EntryNormal ""
+Messages:
+1->AppendThread MsgStorageAppend Term:2 Log:0/0 Entries:[2/12 EntryNormal ""] HardState: Term:2 Commit:11 Responses:[1->3 MsgVoteResp Term:2 Log:0/0 Rejected (Hint: 0), 1->3 MsgAppResp Term:2 Log:0/12, AppendThread->1 MsgStorageAppendResp Term:2 Log:2/12]
+
+# Step 6: node 3 crashes and node 4 becomes leader getting the vote from 5, 6, and 7.
+
+campaign 4
+----
+INFO 4 is starting a new election at term 2
+INFO 4 became candidate at term 3
+INFO 4 [logterm: 1, index: 11] sent MsgVote request to 1 at term 3
+INFO 4 [logterm: 1, index: 11] sent MsgVote request to 2 at term 3
+INFO 4 [logterm: 1, index: 11] sent MsgVote request to 3 at term 3
+INFO 4 [logterm: 1, index: 11] sent MsgVote request to 5 at term 3
+INFO 4 [logterm: 1, index: 11] sent MsgVote request to 6 at term 3
+INFO 4 [logterm: 1, index: 11] sent MsgVote request to 7 at term 3
+
+process-ready 4
+----
+Ready MustSync=true:
+Lead:0 State:StateCandidate
+HardState Term:3 Vote:4 Commit:11
+Messages:
+4->1 MsgVote Term:3 Log:1/11
+4->2 MsgVote Term:3 Log:1/11
+4->3 MsgVote Term:3 Log:1/11
+4->5 MsgVote Term:3 Log:1/11
+4->6 MsgVote Term:3 Log:1/11
+4->7 MsgVote Term:3 Log:1/11
+4->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[4->4 MsgVoteResp Term:3 Log:0/0, AppendThread->4 MsgStorageAppendResp Term:3 Log:0/0]
+
+deliver-msgs 5 6 7
+----
+AppendThread->5 MsgStorageAppendResp Term:2 Log:0/0
+4->5 MsgVote Term:3 Log:1/11
+INFO 5 [term: 2] received a MsgVote message with higher term from 4 [term: 3]
+INFO 5 became follower at term 3
+INFO 5 [logterm: 1, index: 11, vote: 0] cast MsgVote for 4 [logterm: 1, index: 11] at term 3
+AppendThread->6 MsgStorageAppendResp Term:2 Log:0/0
+4->6 MsgVote Term:3 Log:1/11
+INFO 6 [term: 2] received a MsgVote message with higher term from 4 [term: 3]
+INFO 6 became follower at term 3
+INFO 6 [logterm: 1, index: 11, vote: 0] cast MsgVote for 4 [logterm: 1, index: 11] at term 3
+4->7 MsgVote Term:3 Log:1/11
+INFO 7 [term: 1] received a MsgVote message with higher term from 4 [term: 3]
+INFO 7 became follower at term 3
+INFO 7 [logterm: 1, index: 11, vote: 0] cast MsgVote for 4 [logterm: 1, index: 11] at term 3
+
+process-ready 5 6 7
+----
+> 5 handling Ready
+  Ready MustSync=true:
+  HardState Term:3 Vote:4 Commit:11
+  Messages:
+  5->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[5->4 MsgVoteResp Term:3 Log:0/0, AppendThread->5 MsgStorageAppendResp Term:3 Log:0/0]
+> 6 handling Ready
+  Ready MustSync=true:
+  HardState Term:3 Vote:4 Commit:11
+  Messages:
+  6->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[6->4 MsgVoteResp Term:3 Log:0/0, AppendThread->6 MsgStorageAppendResp Term:3 Log:0/0]
+> 7 handling Ready
+  Ready MustSync=true:
+  Lead:0 State:StateFollower
+  HardState Term:3 Vote:4 Commit:11
+  Messages:
+  7->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[7->4 MsgVoteResp Term:3 Log:0/0, AppendThread->7 MsgStorageAppendResp Term:3 Log:0/0]
+
+process-append-thread 4 5 6 7
+----
+> 4 processing append thread
+  Processing:
+  4->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11
+  Responses:
+  4->4 MsgVoteResp Term:3 Log:0/0
+  AppendThread->4 MsgStorageAppendResp Term:3 Log:0/0
+> 5 processing append thread
+  Processing:
+  5->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11
+  Responses:
+  5->4 MsgVoteResp Term:3 Log:0/0
+  AppendThread->5 MsgStorageAppendResp Term:3 Log:0/0
+> 6 processing append thread
+  Processing:
+  6->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11
+  Responses:
+  6->4 MsgVoteResp Term:3 Log:0/0
+  AppendThread->6 MsgStorageAppendResp Term:3 Log:0/0
+> 7 processing append thread
+  Processing:
+  7->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11
+  Responses:
+  7->4 MsgVoteResp Term:3 Log:0/0
+  AppendThread->7 MsgStorageAppendResp Term:3 Log:0/0
+
+deliver-msgs 4
+----
+AppendThread->4 MsgStorageAppendResp Term:2 Log:0/0
+4->4 MsgVoteResp Term:3 Log:0/0
+INFO 4 received MsgVoteResp from 4 at term 3
+INFO 4 has received 1 MsgVoteResp votes and 0 vote rejections
+AppendThread->4 MsgStorageAppendResp Term:3 Log:0/0
+5->4 MsgVoteResp Term:3 Log:0/0
+INFO 4 received MsgVoteResp from 5 at term 3
+INFO 4 has received 2 MsgVoteResp votes and 0 vote rejections
+6->4 MsgVoteResp Term:3 Log:0/0
+INFO 4 received MsgVoteResp from 6 at term 3
+INFO 4 has received 3 MsgVoteResp votes and 0 vote rejections
+7->4 MsgVoteResp Term:3 Log:0/0
+INFO 4 received MsgVoteResp from 7 at term 3
+INFO 4 has received 4 MsgVoteResp votes and 0 vote rejections
+INFO 4 became leader at term 3
+
+process-ready 4
+----
+Ready MustSync=true:
+Lead:4 State:StateLeader
+Entries:
+3/12 EntryNormal ""
+Messages:
+4->1 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+4->2 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+4->3 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+4->5 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+4->6 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+4->7 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+4->AppendThread MsgStorageAppend Term:3 Log:0/0 Entries:[3/12 EntryNormal ""] Responses:[4->4 MsgAppResp Term:3 Log:0/12, AppendThread->4 MsgStorageAppendResp Term:3 Log:3/12]
+
+# Step 7: before the new entries reach node 1, it hears of the term change
+# through a heartbeat and persists the new term. Node 1 then receives these
+# entries, overwriting the previous unstable log entries that are in the process
+# of being appended. The entries have a larger term than the previous entries
+# but the same indexes. It begins appending these new entries asynchronously.
+
+deliver-msgs drop=1
+----
+dropped: 4->1 MsgVote Term:3 Log:1/11
+dropped: 4->1 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+
+tick-heartbeat 4
+----
+ok
+
+process-ready 4
+----
+Ready MustSync=false:
+Messages:
+4->1 MsgHeartbeat Term:3 Log:0/0
+4->2 MsgHeartbeat Term:3 Log:0/0
+4->3 MsgHeartbeat Term:3 Log:0/0
+4->5 MsgHeartbeat Term:3 Log:0/0
+4->6 MsgHeartbeat Term:3 Log:0/0
+4->7 MsgHeartbeat Term:3 Log:0/0
+
+deliver-msgs 1
+----
+4->1 MsgHeartbeat Term:3 Log:0/0
+INFO 1 [term: 2] received a MsgHeartbeat message with higher term from 4 [term: 3]
+INFO 1 became follower at term 3
+
+process-ready 1
+----
+Ready MustSync=true:
+Lead:4 State:StateFollower
+HardState Term:3 Commit:11
+Messages:
+1->4 MsgHeartbeatResp Term:3 Log:0/0
+1->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Commit:11 Responses:[AppendThread->1 MsgStorageAppendResp Term:3 Log:2/12]
+
+deliver-msgs 4
+----
+1->4 MsgHeartbeatResp Term:3 Log:0/0
+
+process-ready 4
+----
+Ready MustSync=false:
+Messages:
+4->1 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+
+deliver-msgs 1
+----
+4->1 MsgApp Term:3 Log:1/11 Commit:11 Entries:[3/12 EntryNormal ""]
+INFO found conflict at index 12 [existing term: 2, conflicting term: 3]
+INFO replace the unstable entries from index 12
+
+process-ready 1
+----
+Ready MustSync=true:
+Entries:
+3/12 EntryNormal ""
+Messages:
+1->AppendThread MsgStorageAppend Term:3 Log:0/0 Entries:[3/12 EntryNormal ""] Responses:[1->4 MsgAppResp Term:3 Log:0/12, AppendThread->1 MsgStorageAppendResp Term:3 Log:3/12]
+
+# Step 8: The asynchronous log appends from the first Ready complete and the
+# MsgStorageAppendResp is returned to the raft node state machine. A decision
+# is made about whether to truncate the unstable log.
+
+raft-log 1
+----
+1/11 EntryNormal ""
+
+process-append-thread 1
+----
+Processing:
+1->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/12 EntryNormal "init_prop"]
+Responses:
+1->2 MsgAppResp Term:1 Log:0/12
+AppendThread->1 MsgStorageAppendResp Term:1 Log:1/12
+
+raft-log 1
+----
+1/11 EntryNormal ""
+1/12 EntryNormal "init_prop"
+
+# Step 9: However, the log entries from the second Ready are still in the
+# asynchronous append pipeline and will overwrite (in stable storage) the
+# entries from the first Ready at some future point. We can't truncate the
+# unstable log yet or a future read from Storage might see the entries from step
+# 5 before they have been replaced by the entries from step 7. Instead, we must
+# wait until we are sure that the entries are stable and that no in-progress
+# appends might overwrite them before removing entries from the unstable log.
+
+deliver-msgs 1
+----
+AppendThread->1 MsgStorageAppendResp Term:1 Log:1/12
+INFO 1 [term: 3] ignored a MsgStorageAppendResp message with lower term [term: 1]
+
+process-append-thread 1
+----
+Processing:
+1->AppendThread MsgStorageAppend Term:2 Log:0/0 Entries:[2/12 EntryNormal ""] HardState: Term:2 Commit:11
+Responses:
+1->3 MsgVoteResp Term:2 Log:0/0 Rejected (Hint: 0)
+1->3 MsgAppResp Term:2 Log:0/12
+AppendThread->1 MsgStorageAppendResp Term:2 Log:2/12
+
+raft-log 1
+----
+1/11 EntryNormal ""
+2/12 EntryNormal ""
+
+deliver-msgs 1
+----
+AppendThread->1 MsgStorageAppendResp Term:2 Log:2/12
+INFO 1 [term: 3] ignored a MsgStorageAppendResp message with lower term [term: 2]
+
+process-append-thread 1
+----
+Processing:
+1->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Commit:11
+Responses:
+AppendThread->1 MsgStorageAppendResp Term:3 Log:2/12
+
+raft-log 1
+----
+1/11 EntryNormal ""
+2/12 EntryNormal ""
+
+deliver-msgs 1
+----
+AppendThread->1 MsgStorageAppendResp Term:3 Log:2/12
+INFO entry at (index,term)=(12,2) mismatched with entry at (12,3) in unstable log; ignoring
+
+process-append-thread 1
+----
+Processing:
+1->AppendThread MsgStorageAppend Term:3 Log:0/0 Entries:[3/12 EntryNormal ""]
+Responses:
+1->4 MsgAppResp Term:3 Log:0/12
+AppendThread->1 MsgStorageAppendResp Term:3 Log:3/12
+
+raft-log 1
+----
+1/11 EntryNormal ""
+3/12 EntryNormal ""
+
+deliver-msgs 1
+----
+AppendThread->1 MsgStorageAppendResp Term:3 Log:3/12

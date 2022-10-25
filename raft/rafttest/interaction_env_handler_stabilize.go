@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/datadriven"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -59,7 +60,7 @@ func (env *InteractionEnv) Stabilize(idxs ...int) error {
 			id := rn.Status().ID
 			// NB: we grab the messages just to see whether to print the header.
 			// DeliverMsgs will do it again.
-			if msgs, _ := splitMsgs(env.Messages, id); len(msgs) > 0 {
+			if msgs, _ := splitMsgs(env.Messages, id, false /* drop */); len(msgs) > 0 {
 				fmt.Fprintf(env.Output, "> %d receiving messages\n", id)
 				env.withIndent(func() { env.DeliverMsgs(Recipient{ID: id}) })
 				done = false
@@ -95,14 +96,19 @@ func (env *InteractionEnv) Stabilize(idxs ...int) error {
 	}
 }
 
-func splitMsgs(msgs []raftpb.Message, to uint64) (toMsgs []raftpb.Message, rmdr []raftpb.Message) {
+func splitMsgs(msgs []raftpb.Message, to uint64, drop bool) (toMsgs []raftpb.Message, rmdr []raftpb.Message) {
 	// NB: this method does not reorder messages.
 	for _, msg := range msgs {
-		if msg.To == to {
+		if msg.To == to && !(drop && isLocalMsg(msg)) {
 			toMsgs = append(toMsgs, msg)
 		} else {
 			rmdr = append(rmdr, msg)
 		}
 	}
 	return toMsgs, rmdr
+}
+
+// Don't drop local messages, which require reliable delivery.
+func isLocalMsg(msg raftpb.Message) bool {
+	return msg.From == msg.To || raft.IsLocalMsgTarget(msg.From) || raft.IsLocalMsgTarget(msg.To)
 }

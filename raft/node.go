@@ -759,7 +759,6 @@ func newStorageAppendRespMsg(r *raft, rd Ready) pb.Message {
 		// attest that this (index, term) is correct at the current term, in case the
 		// MsgStorageAppend that contained the last entry in the unstable slice carried
 		// an earlier term and was dropped.
-		// TODO(nvanbenschoten): test this behavior in a data-driven test.
 		m.Index = r.raftLog.lastIndex()
 		m.LogTerm = r.raftLog.lastTerm()
 	}

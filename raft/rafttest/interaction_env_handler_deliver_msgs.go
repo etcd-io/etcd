@@ -72,7 +72,7 @@ func (env *InteractionEnv) DeliverMsgs(rs ...Recipient) int {
 	var n int
 	for _, r := range rs {
 		var msgs []raftpb.Message
-		msgs, env.Messages = splitMsgs(env.Messages, r.ID)
+		msgs, env.Messages = splitMsgs(env.Messages, r.ID, r.Drop)
 		n += len(msgs)
 		for _, msg := range msgs {
 			if r.Drop {

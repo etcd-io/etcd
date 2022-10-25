@@ -138,10 +138,12 @@ func (u *unstable) stableTo(i, t uint64) {
 	gt, ok := u.maybeTerm(i)
 	if !ok {
 		// Unstable entry missing. Ignore.
+		u.logger.Infof("entry at index %d missing from unstable log; ignoring", i)
 		return
 	}
 	if i < u.offset {
 		// Index matched unstable snapshot, not unstable entry. Ignore.
+		u.logger.Infof("entry at index %d matched unstable snapshot; ignoring", i)
 		return
 	}
 	if gt != t {
@@ -149,6 +151,8 @@ func (u *unstable) stableTo(i, t uint64) {
 		// This is possible if part or all of the unstable log was replaced
 		// between that time that a set of entries started to be written to
 		// stable storage and when they finished.
+		u.logger.Infof("entry at (index,term)=(%d,%d) mismatched with "+
+			"entry at (%d,%d) in unstable log; ignoring", i, t, i, gt)
 		return
 	}
 	num := int(i + 1 - u.offset)
