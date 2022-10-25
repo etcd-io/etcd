@@ -29,7 +29,7 @@ func TestDefragOnline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	options := config.DefragOption{Timeout: 10 * time.Second}
-	clus := testRunner.NewCluster(ctx, t, config.ClusterConfig{ClusterSize: 3})
+	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(3))
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		defer clus.Close()

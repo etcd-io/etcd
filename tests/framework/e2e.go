@@ -46,7 +46,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, cfg config.Clus
 		InitialToken:               "new",
 		ClusterSize:                cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
-		DisableStrictReconfigCheck: cfg.DisableStrictReconfigCheck,
+		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
 		AuthTokenOpts:              cfg.AuthToken,
 		SnapshotCount:              cfg.SnapshotCount,
 	}

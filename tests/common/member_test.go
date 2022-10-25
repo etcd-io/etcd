@@ -106,7 +106,7 @@ func TestMemberAdd(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 					defer cancel()
 					c := clusterTc.config
-					c.DisableStrictReconfigCheck = !quorumTc.strictReconfigCheck
+					c.StrictReconfigCheck = quorumTc.strictReconfigCheck
 					clus := testRunner.NewCluster(ctx, t, c)
 					defer clus.Close()
 					cc := framework.MustClient(clus.Client())
@@ -187,7 +187,7 @@ func TestMemberRemove(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 				c := clusterTc.config
-				c.DisableStrictReconfigCheck = !quorumTc.strictReconfigCheck
+				c.StrictReconfigCheck = quorumTc.strictReconfigCheck
 				clus := testRunner.NewCluster(ctx, t, c)
 				defer clus.Close()
 				// client connects to a specific member which won't be removed from cluster

@@ -25,23 +25,23 @@ var testRunner = framework.UnitTestRunner
 var clusterTestCases = []testCase{
 	{
 		name:   "NoTLS",
-		config: config.ClusterConfig{ClusterSize: 1},
+		config: config.NewClusterConfig(1),
 	},
 	{
 		name:   "PeerTLS",
-		config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+		config: config.NewClusterConfig(3, config.WithPeerTLS(config.ManualTLS)),
 	},
 	{
 		name:   "PeerAutoTLS",
-		config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+		config: config.NewClusterConfig(3, config.WithPeerTLS(config.AutoTLS)),
 	},
 	{
 		name:   "ClientTLS",
-		config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		config: config.NewClusterConfig(1, config.WithClientTLS(config.ManualTLS)),
 	},
 	{
 		name:   "ClientAutoTLS",
-		config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+		config: config.NewClusterConfig(1, config.WithClientTLS(config.AutoTLS)),
 	},
 }
 
