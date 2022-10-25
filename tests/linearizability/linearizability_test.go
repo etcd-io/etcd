@@ -60,6 +60,14 @@ func TestLinearizability(t *testing.T) {
 				ClusterSize: 3,
 			},
 		},
+		{
+			name:      "Issue14370",
+			failpoint: RaftBeforeSavePanic,
+			config: e2e.EtcdProcessClusterConfig{
+				ClusterSize:   1,
+				GoFailEnabled: true,
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
