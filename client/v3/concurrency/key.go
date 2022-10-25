@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
 )
@@ -47,19 +46,38 @@ func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) e
 
 // waitDeletes efficiently waits until all keys matching the prefix and no greater
 // than the create revision.
-func waitDeletes(ctx context.Context, client *v3.Client, pfx string, maxCreateRev int64) (*pb.ResponseHeader, error) {
+func waitDeletes(ctx context.Context, client *v3.Client, pfx string, maxCreateRev int64) error {
 	getOpts := append(v3.WithLastCreate(), v3.WithMaxCreateRev(maxCreateRev))
-	for {
-		resp, err := client.Get(ctx, pfx, getOpts...)
+
+	resp, err := client.Get(ctx, pfx, getOpts...)
+	if err != nil {
+		return err
+	}
+	if len(resp.Kvs) == 0 {
+		return nil
+	}
+	errc := make(chan error)
+	closec := make(chan struct{})
+	cctx, cancel := context.WithCancel(ctx)
+	for _, kv := range resp.Kvs {
+		go func(kvKey string) {
+			waitErr := waitDelete(cctx, client, kvKey, resp.Header.Revision)
+			select {
+			case <-closec:
+			case errc <- waitErr:
+				cancel()
+			}
+		}(string(kv.Key))
+	}
+
+	for i := 0; i < len(resp.Kvs); i++ {
+		err = <-errc
 		if err != nil {
-			return nil, err
-		}
-		if len(resp.Kvs) == 0 {
-			return resp.Header, nil
-		}
-		lastKey := string(resp.Kvs[0].Key)
-		if err = waitDelete(ctx, client, lastKey, resp.Header.Revision); err != nil {
-			return nil, err
+			close(closec)
+			close(errc)
+			break
 		}
 	}
+	cancel()
+	return err
 }
