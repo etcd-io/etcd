@@ -134,6 +134,9 @@ func authUsersDecoder(k, v []byte) {
 func metaDecoder(k, v []byte) {
 	if string(k) == string(schema.MetaConsistentIndexKeyName) || string(k) == string(schema.MetaTermKeyName) {
 		fmt.Printf("key=%q, value=%v\n", k, binary.BigEndian.Uint64(v))
+	} else if string(k) == string(schema.ScheduledCompactKeyName) || string(k) == string(schema.FinishedCompactKeyName) {
+		rev := bytesToRev(v)
+		fmt.Printf("key=%q, value=%v\n", k, rev)
 	} else {
 		defaultDecoder(k, v)
 	}
