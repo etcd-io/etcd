@@ -19,6 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -52,6 +55,29 @@ func TestStatus(t *testing.T) {
 				}
 				if len(rs) != len(memberIds) {
 					t.Fatalf("found duplicated members")
+				}
+
+				var minVer *semver.Version
+				for _, r := range rs {
+					if r.Version != version.Version {
+						t.Fatalf("mismatch versions. expected:%s, got:%s", version.Version, r.Version)
+					}
+
+					// Cluster only keeps the major.minor. And semver.New requires a patch version.
+					ver := semver.New(version.Cluster(r.Version) + ".0")
+
+					if minVer == nil {
+						minVer = ver
+					} else {
+						if version.LessThan(*ver, *minVer) {
+							minVer = ver
+						}
+					}
+				}
+				for _, r := range rs {
+					if r.ClusterVersion != minVer.String() {
+						t.Fatalf("mismatch cluster versions. expected:%s, got:%s", r.ClusterVersion, minVer.String())
+					}
 				}
 			})
 		})
