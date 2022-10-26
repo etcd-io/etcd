@@ -45,11 +45,11 @@ func TestWaitLeader_MemberStop(t *testing.T) {
 	tcs := []testCase{
 		{
 			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+			config: config.NewClusterConfig(3, config.WithPeerTLS(config.ManualTLS)),
 		},
 		{
 			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+			config: config.NewClusterConfig(3, config.WithPeerTLS(config.AutoTLS)),
 		},
 	}
 

@@ -27,11 +27,46 @@ const (
 )
 
 type ClusterConfig struct {
-	ClusterSize                int
-	PeerTLS                    TLSConfig
-	ClientTLS                  TLSConfig
-	QuotaBackendBytes          int64
-	DisableStrictReconfigCheck bool
-	AuthToken                  string
-	SnapshotCount              int
+	ClusterSize         int
+	PeerTLS             TLSConfig
+	ClientTLS           TLSConfig
+	QuotaBackendBytes   int64
+	StrictReconfigCheck bool
+	AuthToken           string
+	SnapshotCount       int
+}
+
+func defaultClusterConfig() ClusterConfig {
+	return ClusterConfig{StrictReconfigCheck: true}
+}
+
+func NewClusterConfig(clusterSize int, opts ...ClusterOption) ClusterConfig {
+	c := defaultClusterConfig()
+	c.ClusterSize = clusterSize
+	for _, opt := range opts {
+		opt(&c)
+	}
+	return c
+}
+
+type ClusterOption func(*ClusterConfig)
+
+func WithPeerTLS(tls TLSConfig) ClusterOption {
+	return func(c *ClusterConfig) { c.PeerTLS = tls }
+}
+
+func WithClientTLS(tls TLSConfig) ClusterOption {
+	return func(c *ClusterConfig) { c.ClientTLS = tls }
+}
+
+func WithQuotaBackendBytes(bytes int64) ClusterOption {
+	return func(c *ClusterConfig) { c.QuotaBackendBytes = bytes }
+}
+
+func WithSnapshotCount(count int) ClusterOption {
+	return func(c *ClusterConfig) { c.SnapshotCount = count }
+}
+
+func WithDisableStrictReconfigCheck() ClusterOption {
+	return func(c *ClusterConfig) { c.StrictReconfigCheck = false }
 }

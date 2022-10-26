@@ -47,7 +47,7 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, cfg con
 	integrationCfg := integration.ClusterConfig{
 		Size:                       cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
-		DisableStrictReconfigCheck: cfg.DisableStrictReconfigCheck,
+		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
 		AuthToken:                  cfg.AuthToken,
 		SnapshotCount:              uint64(cfg.SnapshotCount),
 	}
