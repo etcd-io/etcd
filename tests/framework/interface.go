@@ -59,8 +59,8 @@ type Client interface {
 	KeepAliveOnce(context context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error)
 	Revoke(context context.Context, id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error)
 
-	AuthEnable(context context.Context) (*clientv3.AuthEnableResponse, error)
-	AuthDisable(context context.Context) (*clientv3.AuthDisableResponse, error)
+	AuthEnable(context context.Context) error
+	AuthDisable(context context.Context) error
 	AuthStatus(context context.Context) (*clientv3.AuthStatusResponse, error)
 	UserAdd(context context.Context, name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error)
 	UserGet(context context.Context, name string) (*clientv3.AuthUserGetResponse, error)
@@ -75,6 +75,7 @@ type Client interface {
 	RoleList(context context.Context) (*clientv3.AuthRoleListResponse, error)
 	RoleRevokePermission(context context.Context, role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error)
 	RoleDelete(context context.Context, role string) (*clientv3.AuthRoleDeleteResponse, error)
+
 	Txn(context context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error)
 
 	MemberList(context context.Context) (*clientv3.MemberListResponse, error)

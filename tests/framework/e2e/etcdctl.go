@@ -21,21 +21,22 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"google.golang.org/grpc"
 )
 
 type EtcdctlV3 struct {
-	cfg       *EtcdProcessClusterConfig
-	endpoints []string
-	userName  string
-	password  string
+	cfg        *EtcdProcessClusterConfig
+	endpoints  []string
+	authConfig clientv3.AuthConfig
 }
 
-func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string, opts ...config.ClientOption) *EtcdctlV3 {
+func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string, opts ...config.ClientOption) (*EtcdctlV3, error) {
 	ctl := &EtcdctlV3{
 		cfg:       cfg,
 		endpoints: endpoints,
@@ -45,14 +46,28 @@ func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string, opts ...confi
 		opt(ctl)
 	}
 
-	return ctl
+	if !ctl.authConfig.Empty() {
+		client, err := clientv3.New(clientv3.Config{
+			Endpoints:   ctl.endpoints,
+			DialTimeout: 5 * time.Second,
+			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			Username:    ctl.authConfig.Username,
+			Password:    ctl.authConfig.Password,
+		})
+		if err != nil {
+			return nil, err
+		}
+		client.Close()
+	}
+
+	return ctl, nil
 }
 
 func WithAuth(userName, password string) config.ClientOption {
 	return func(c any) {
 		ctl := c.(*EtcdctlV3)
-		ctl.userName = userName
-		ctl.password = password
+		ctl.authConfig.Username = userName
+		ctl.authConfig.Password = password
 	}
 }
 
@@ -300,8 +315,8 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 		}
 	}
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
-	if ctl.userName != "" && ctl.password != "" {
-		fmap["user"] = ctl.userName + ":" + ctl.password
+	if !ctl.authConfig.Empty() {
+		fmap["user"] = ctl.authConfig.Username + ":" + ctl.authConfig.Password
 	}
 	return fmap
 }
@@ -473,34 +488,28 @@ func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) 
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) (*clientv3.AuthEnableResponse, error) {
+func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) error {
 	args := []string{"auth", "enable"}
 	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer cmd.Close()
 
 	_, err = cmd.ExpectWithContext(ctx, "Authentication Enabled")
-	if err != nil {
-		return nil, err
-	}
-	return &clientv3.AuthEnableResponse{}, nil
+	return err
 }
 
-func (ctl *EtcdctlV3) AuthDisable(ctx context.Context) (*clientv3.AuthDisableResponse, error) {
+func (ctl *EtcdctlV3) AuthDisable(ctx context.Context) error {
 	args := []string{"auth", "disable"}
 	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer cmd.Close()
 
 	_, err = cmd.ExpectWithContext(ctx, "Authentication Disabled")
-	if err != nil {
-		return nil, err
-	}
-	return &clientv3.AuthDisableResponse{}, nil
+	return err
 }
 
 func (ctl *EtcdctlV3) AuthStatus(ctx context.Context) (*clientv3.AuthStatusResponse, error) {

@@ -109,10 +109,14 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	}
 	snapshotCount := 10
 	epc := runEtcdAndCreateSnapshot(t, lastReleaseBinary, lastReleaseData, snapshotCount)
-	members1 := addAndRemoveKeysAndMembers(ctx, t, e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3()), snapshotCount)
+	cc1, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	assert.NoError(t, err)
+	members1 := addAndRemoveKeysAndMembers(ctx, t, cc1, snapshotCount)
 	assert.NoError(t, epc.Close())
 	epc = runEtcdAndCreateSnapshot(t, currentReleaseBinary, currentReleaseData, snapshotCount)
-	members2 := addAndRemoveKeysAndMembers(ctx, t, e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3()), snapshotCount)
+	cc2, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	assert.NoError(t, err)
+	members2 := addAndRemoveKeysAndMembers(ctx, t, cc2, snapshotCount)
 	assert.NoError(t, epc.Close())
 
 	assertSnapshotsMatch(t, lastReleaseData, currentReleaseData, func(data []byte) []byte {
@@ -144,7 +148,8 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	}
 	epc := runEtcdAndCreateSnapshot(t, lastReleaseBinary, dataDir, 10)
 
-	cc := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	assert.NoError(t, err)
 
 	lastReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 	assert.NoError(t, err)
@@ -157,7 +162,8 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
 	assert.NoError(t, err)
 
-	cc = e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	cc, err = e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	assert.NoError(t, err)
 	currentReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 	assert.NoError(t, err)
 

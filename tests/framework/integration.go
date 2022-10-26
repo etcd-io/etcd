@@ -274,12 +274,14 @@ func (c integrationClient) Revoke(ctx context.Context, id clientv3.LeaseID) (*cl
 	return c.Client.Revoke(ctx, id)
 }
 
-func (c integrationClient) AuthEnable(ctx context.Context) (*clientv3.AuthEnableResponse, error) {
-	return c.Client.AuthEnable(ctx)
+func (c integrationClient) AuthEnable(ctx context.Context) error {
+	_, err := c.Client.AuthEnable(ctx)
+	return err
 }
 
-func (c integrationClient) AuthDisable(ctx context.Context) (*clientv3.AuthDisableResponse, error) {
-	return c.Client.AuthDisable(ctx)
+func (c integrationClient) AuthDisable(ctx context.Context) error {
+	_, err := c.Client.AuthDisable(ctx)
+	return err
 }
 
 func (c integrationClient) AuthStatus(ctx context.Context) (*clientv3.AuthStatusResponse, error) {

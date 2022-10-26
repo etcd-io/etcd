@@ -98,7 +98,8 @@ func TestAuthority(t *testing.T) {
 				defer epc.Close()
 				endpoints := templateEndpoints(t, tc.clientURLPattern, epc)
 
-				client := e2e.NewEtcdctl(cfg, endpoints)
+				client, err := e2e.NewEtcdctl(cfg, endpoints)
+				assert.NoError(t, err)
 				err = client.Put(ctx, "foo", "bar", config.PutOptions{})
 				if err != nil {
 					t.Fatal(err)
