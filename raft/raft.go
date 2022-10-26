@@ -439,7 +439,18 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 	}
 
 	term, errt := r.raftLog.term(pr.Next - 1)
-	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
+	var ents []pb.Entry
+	var erre error
+	// In a throttled StateReplicate only send empty MsgApp, to ensure progress.
+	// Otherwise, if we had a full Inflights and all inflight messages were in
+	// fact dropped, replication to that follower would stall. Instead, an empty
+	// MsgApp will eventually reach the follower (heartbeats responses prompt the
+	// leader to send an append), allowing it to be acked or rejected, both of
+	// which will clear out Inflights.
+	if pr.State != tracker.StateReplicate || !pr.Inflights.Full() {
+		ents, erre = r.raftLog.entries(pr.Next, r.maxMsgSize)
+	}
+
 	if len(ents) == 0 && !sendIfEmpty {
 		return false
 	}
@@ -1295,10 +1306,10 @@ func stepLeader(r *raft, m pb.Message) error {
 		pr.RecentActive = true
 		pr.ProbeSent = false
 
-		// free one slot for the full inflights window to allow progress.
-		if pr.State == tracker.StateReplicate && pr.Inflights.Full() {
-			pr.Inflights.FreeFirstOne()
-		}
+		// NB: if the follower is paused (full Inflights), this will still send an
+		// empty append, allowing it to recover from situations in which all the
+		// messages that filled up Inflights in the first place were dropped. Note
+		// also that the outgoing heartbeat already communicated the commit index.
 		if pr.Match < r.raftLog.lastIndex() {
 			r.sendAppend(m.From)
 		}

@@ -55,9 +55,13 @@ type Progress struct {
 	// This is always true on the leader.
 	RecentActive bool
 
-	// ProbeSent is used while this follower is in StateProbe. When ProbeSent is
-	// true, raft should pause sending replication message to this peer until
-	// ProbeSent is reset. See ProbeAcked() and IsPaused().
+	// ProbeSent is true when a "probe" MsgApp was sent to this follower recently,
+	// and we haven't heard from it back yet. Used when the MsgApp flow is
+	// throttled, i.e. when State is StateProbe, or StateReplicate with saturated
+	// Inflights. In both cases, we need to continue sending MsgApp once in a
+	// while to guarantee progress, but we only do so when ProbeSent is false (it
+	// is reset on receiving a heartbeat response), to not overflow the receiver.
+	// See IsPaused().
 	ProbeSent bool
 
 	// Inflights is a sliding window for the inflight messages.
@@ -101,13 +105,6 @@ func min(a, b uint64) uint64 {
 	return a
 }
 
-// ProbeAcked is called when this peer has accepted an append. It resets
-// ProbeSent to signal that additional append messages should be sent without
-// further delay.
-func (pr *Progress) ProbeAcked() {
-	pr.ProbeSent = false
-}
-
 // BecomeProbe transitions into StateProbe. Next is reset to Match+1 or,
 // optionally and if larger, the index of the pending snapshot.
 func (pr *Progress) BecomeProbe() {
@@ -147,6 +144,9 @@ func (pr *Progress) UpdateOnEntriesSend(entries int, nextIndex uint64) error {
 			pr.OptimisticUpdate(last)
 			pr.Inflights.Add(last)
 		}
+		// If this message overflows the in-flights tracker, or it was already full,
+		// consider this message being a probe, so that the flow is paused.
+		pr.ProbeSent = pr.Inflights.Full()
 	case StateProbe:
 		// TODO(pavelkalinnikov): this condition captures the previous behaviour,
 		// but we should set ProbeSent unconditionally for simplicity, because any
@@ -168,7 +168,7 @@ func (pr *Progress) MaybeUpdate(n uint64) bool {
 	if pr.Match < n {
 		pr.Match = n
 		updated = true
-		pr.ProbeAcked()
+		pr.ProbeSent = false
 	}
 	pr.Next = max(pr.Next, n+1)
 	return updated
@@ -225,7 +225,7 @@ func (pr *Progress) IsPaused() bool {
 	case StateProbe:
 		return pr.ProbeSent
 	case StateReplicate:
-		return pr.Inflights.Full()
+		return pr.ProbeSent
 	case StateSnapshot:
 		return true
 	default:

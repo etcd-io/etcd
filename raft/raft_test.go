@@ -102,6 +102,10 @@ func TestProgressResumeByHeartbeatResp(t *testing.T) {
 	}
 
 	r.prs.Progress[2].BecomeReplicate()
+	if r.prs.Progress[2].ProbeSent {
+		t.Errorf("paused = %v, want false", r.prs.Progress[2].ProbeSent)
+	}
+	r.prs.Progress[2].ProbeSent = true
 	r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgHeartbeatResp})
 	if r.prs.Progress[2].ProbeSent {
 		t.Errorf("paused = %v, want false", r.prs.Progress[2].ProbeSent)

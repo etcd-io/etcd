@@ -47,7 +47,7 @@ func TestProgressIsPaused(t *testing.T) {
 		{StateProbe, false, false},
 		{StateProbe, true, true},
 		{StateReplicate, false, false},
-		{StateReplicate, true, false},
+		{StateReplicate, true, true},
 		{StateSnapshot, false, true},
 		{StateSnapshot, true, true},
 	}

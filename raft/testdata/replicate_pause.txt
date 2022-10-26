@@ -146,9 +146,9 @@ stabilize 2 3
   Messages:
   3->1 MsgHeartbeatResp Term:1 Log:0/0
 
-# After handling heartbeat responses, node 1 sends a new replication MsgApp to a
-# throttled node 3 which hasn't yet replied to a single MsgApp.
-# TODO(pavelkalinnikov): this should not happen, send empty MsgApp instead.
+# After handling heartbeat responses, node 1 sends an empty MsgApp to a
+# throttled node 3 because it hasn't yet replied to a single MsgApp, and the
+# in-flight tracker is still saturated.
 stabilize 1
 ----
 > 1 receiving messages
@@ -157,13 +157,13 @@ stabilize 1
 > 1 handling Ready
   Ready MustSync=false:
   Messages:
-  1->3 MsgApp Term:1 Log:1/14 Commit:17 Entries:[1/15 EntryNormal "prop_1_15", 1/16 EntryNormal "prop_1_16", 1/17 EntryNormal "prop_1_17"]
+  1->3 MsgApp Term:1 Log:1/14 Commit:17
 
 # Node 3 finally receives a MsgApp, but there was a gap, so it rejects it.
 stabilize 3
 ----
 > 3 receiving messages
-  1->3 MsgApp Term:1 Log:1/14 Commit:17 Entries:[1/15 EntryNormal "prop_1_15", 1/16 EntryNormal "prop_1_16", 1/17 EntryNormal "prop_1_17"]
+  1->3 MsgApp Term:1 Log:1/14 Commit:17
   DEBUG 3 [logterm: 0, index: 14] rejected MsgApp [logterm: 1, index: 14] from 1
 > 3 handling Ready
   Ready MustSync=false:
