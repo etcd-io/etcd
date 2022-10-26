@@ -36,13 +36,15 @@ type ClusterConfig struct {
 	SnapshotCount       int
 }
 
-func defaultClusterConfig() ClusterConfig {
-	return ClusterConfig{StrictReconfigCheck: true}
+func DefaultClusterConfig() ClusterConfig {
+	return ClusterConfig{
+		ClusterSize:         3,
+		StrictReconfigCheck: true,
+	}
 }
 
-func NewClusterConfig(clusterSize int, opts ...ClusterOption) ClusterConfig {
-	c := defaultClusterConfig()
-	c.ClusterSize = clusterSize
+func NewClusterConfig(opts ...ClusterOption) ClusterConfig {
+	c := DefaultClusterConfig()
 	for _, opt := range opts {
 		opt(&c)
 	}
@@ -50,6 +52,10 @@ func NewClusterConfig(clusterSize int, opts ...ClusterOption) ClusterConfig {
 }
 
 type ClusterOption func(*ClusterConfig)
+
+func WithClusterSize(size int) ClusterOption {
+	return func(c *ClusterConfig) { c.ClusterSize = size }
+}
 
 func WithPeerTLS(tls TLSConfig) ClusterOption {
 	return func(c *ClusterConfig) { c.PeerTLS = tls }
