@@ -22,7 +22,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
-type testRunner interface {
+type TestRunner interface {
 	TestMain(m *testing.M)
 	BeforeTest(testing.TB)
 	NewCluster(context.Context, testing.TB, config.ClusterConfig) Cluster

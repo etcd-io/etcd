@@ -21,7 +21,8 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
-var testRunner = framework.UnitTestRunner
+var testRunner framework.TestRunner
+
 var clusterTestCases = []testCase{
 	{
 		name:   "NoTLS",
