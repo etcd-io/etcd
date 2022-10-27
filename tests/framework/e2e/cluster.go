@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
 const EtcdProcessBasePort = 20000
@@ -473,7 +474,7 @@ func (epc *EtcdProcessCluster) Endpoints(f func(ep EtcdProcess) []string) (ret [
 	return ret
 }
 
-func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdProcess) bool) error {
+func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdProcess) bool, opts ...config.ClientOption) error {
 	procIndex := -1
 	for i := range epc.Procs {
 		if finder(epc.Procs[i]) {
@@ -495,7 +496,7 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 
 	// First remove member from the cluster
 
-	memberCtl := epc.Client()
+	memberCtl := epc.Client(opts...)
 	memberList, err := memberCtl.MemberList(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get member list: %w", err)
@@ -522,7 +523,7 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 	return proc.Close()
 }
 
-func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, tb testing.TB) error {
+func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, tb testing.TB, opts ...config.ClientOption) error {
 	serverCfg := epc.Cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
 	epc.nextSeq++
 
@@ -536,7 +537,7 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, tb testing.TB) 
 	epc.Cfg.SetInitialOrDiscovery(serverCfg, initialCluster, "existing")
 
 	// First add new member to cluster
-	memberCtl := epc.Client()
+	memberCtl := epc.Client(opts...)
 	_, err := memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.Purl.String()})
 	if err != nil {
 		return fmt.Errorf("failed to add new member: %w", err)
@@ -612,8 +613,8 @@ func (epc *EtcdProcessCluster) Stop() (err error) {
 	return err
 }
 
-func (epc *EtcdProcessCluster) Client() *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+func (epc *EtcdProcessCluster) Client(opts ...config.ClientOption) *EtcdctlV3 {
+	etcdctl, err := NewEtcdctl(epc.Cfg, epc.EndpointsV3(), opts...)
 	if err != nil {
 		panic(err)
 	}
