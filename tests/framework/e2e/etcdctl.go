@@ -72,6 +72,13 @@ func WithAuth(userName, password string) config.ClientOption {
 	}
 }
 
+func WithEndpoints(endpoints []string) config.ClientOption {
+	return func(c any) {
+		ctl := c.(*EtcdctlV3)
+		ctl.endpoints = endpoints
+	}
+}
+
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {
 	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, "Downgrade enable success")
 	return err

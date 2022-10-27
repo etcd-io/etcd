@@ -131,6 +131,8 @@ func (as *authStore) refreshRangePermCache(tx AuthReadTx) {
 	as.rangePermCacheMu.Lock()
 	defer as.rangePermCacheMu.Unlock()
 
+	as.lg.Debug("Refreshing rangePermCache")
+
 	as.rangePermCache = make(map[string]*unifiedRangePermissions)
 
 	users := tx.UnsafeGetAllUsers()
