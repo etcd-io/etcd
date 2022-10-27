@@ -28,7 +28,7 @@ func TestEndpointStatus(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(3))
+	clus := testRunner.NewCluster(ctx, t, config.DefaultClusterConfig())
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
@@ -43,7 +43,7 @@ func TestEndpointHashKV(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(3))
+	clus := testRunner.NewCluster(ctx, t, config.DefaultClusterConfig())
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
@@ -58,7 +58,7 @@ func TestEndpointHealth(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(3))
+	clus := testRunner.NewCluster(ctx, t, config.DefaultClusterConfig())
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {

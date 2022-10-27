@@ -31,7 +31,11 @@ func TestAlarm(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(1, config.WithQuotaBackendBytes(int64(13*os.Getpagesize()))))
+	cfg := config.NewClusterConfig(
+		config.WithClusterSize(1),
+		config.WithQuotaBackendBytes(int64(13*os.Getpagesize())),
+	)
+	clus := testRunner.NewCluster(ctx, t, cfg)
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
@@ -112,7 +116,7 @@ func TestAlarmlistOnMemberRestart(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(
-		1,
+		config.WithClusterSize(1),
 		config.WithQuotaBackendBytes(int64(13*os.Getpagesize())),
 		config.WithSnapshotCount(5),
 	))
