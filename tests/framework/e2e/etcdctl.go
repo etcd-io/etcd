@@ -23,11 +23,12 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
-	"google.golang.org/grpc"
 )
 
 type EtcdctlV3 struct {
@@ -355,7 +356,7 @@ func (ctl *EtcdctlV3) HashKV(ctx context.Context, rev int64) ([]*clientv3.HashKV
 		Endpoint string
 		HashKV   *clientv3.HashKVResponse
 	}
-	err := ctl.spawnJsonCmd(ctx, &epHashKVs, "endpoint", "hashkv", "--endpoints", strings.Join(ctl.endpoints, ","), "--rev", fmt.Sprint(rev))
+	err := ctl.spawnJsonCmd(ctx, &epHashKVs, "endpoint", "hashkv", "--rev", fmt.Sprint(rev))
 	if err != nil {
 		return nil, err
 	}
