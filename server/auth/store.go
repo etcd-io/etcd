@@ -386,6 +386,7 @@ func (as *authStore) Recover(be AuthBackend) {
 
 	enabled := tx.UnsafeReadAuthEnabled()
 	as.setRevision(tx.UnsafeReadAuthRevision())
+	as.refreshRangePermCache(tx)
 
 	tx.Unlock()
 
