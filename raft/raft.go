@@ -1790,11 +1790,7 @@ func (r *raft) responseToReadIndexReq(req pb.Message, readIndex uint64) pb.Messa
 // Empty payloads are never refused. This is used both for appending an empty
 // entry at a new leader's term, as well as leaving a joint configuration.
 func (r *raft) increaseUncommittedSize(ents []pb.Entry) bool {
-	var s uint64
-	for _, e := range ents {
-		s += uint64(PayloadSize(e))
-	}
-
+	s := payloadsSize(ents)
 	if r.uncommittedSize > 0 && s > 0 && r.uncommittedSize+s > r.maxUncommittedSize {
 		// If the uncommitted tail of the Raft log is empty, allow any size
 		// proposal. Otherwise, limit the size of the uncommitted tail of the
@@ -1816,12 +1812,7 @@ func (r *raft) reduceUncommittedSize(ents []pb.Entry) {
 		// Fast-path for followers, who do not track or enforce the limit.
 		return
 	}
-
-	var s uint64
-	for _, e := range ents {
-		s += uint64(PayloadSize(e))
-	}
-	if s > r.uncommittedSize {
+	if s := payloadsSize(ents); s > r.uncommittedSize {
 		// uncommittedSize may underestimate the size of the uncommitted Raft
 		// log tail but will never overestimate it. Saturate at 0 instead of
 		// allowing overflow.
@@ -1829,6 +1820,14 @@ func (r *raft) reduceUncommittedSize(ents []pb.Entry) {
 	} else {
 		r.uncommittedSize -= s
 	}
+}
+
+func payloadsSize(ents []pb.Entry) uint64 {
+	var s uint64
+	for _, e := range ents {
+		s += uint64(PayloadSize(e))
+	}
+	return s
 }
 
 func numOfPendingConf(ents []pb.Entry) int {
