@@ -765,6 +765,15 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf("--experimental-compact-hash-check-time must be >0 (set to %v)", cfg.ExperimentalCompactHashCheckTime)
 	}
 
+	// If `--name` isn't configured, then multiple members may have the same "default" name.
+	// When adding a new member with the "default" name as well, etcd may regards its peerURL
+	// as one additional peerURL of the existing member which has the same "default" name,
+	// because each member can have multiple client or peer URLs.
+	// Please refer to https://github.com/etcd-io/etcd/issues/13757
+	if cfg.Name == DefaultName {
+		cfg.logger.Warn("the server is using default name, which might cause error that failed the startup.")
+	}
+
 	return nil
 }
 
