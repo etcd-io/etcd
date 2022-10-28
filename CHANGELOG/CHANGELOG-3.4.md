@@ -19,6 +19,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
+## v3.4.22 (TBD)
+
+### etcd grpc-proxy
+- Add [`etcd grpc-proxy start --listen-cipher-suites`](https://github.com/etcd-io/etcd/pull/14601) flag to support adding configurable cipher list.
+
 ## v3.4.21 (2022-09-15)
 
 ### etcd server
