@@ -36,14 +36,14 @@ func TestMsgAppFlowControlFull(t *testing.T) {
 	for i := 0; i < r.prs.MaxInflight; i++ {
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 		ms := r.readMessages()
-		if len(ms) != 1 {
-			t.Fatalf("#%d: len(ms) = %d, want 1", i, len(ms))
+		if len(ms) != 1 || ms[0].Type != pb.MsgApp {
+			t.Fatalf("#%d: len(ms) = %d, want 1 MsgApp", i, len(ms))
 		}
 	}
 
 	// ensure 1
-	if !pr2.Inflights.Full() {
-		t.Fatalf("inflights.full = %t, want %t", pr2.Inflights.Full(), true)
+	if !pr2.IsPaused() {
+		t.Fatal("paused = false, want true")
 	}
 
 	// ensure 2
@@ -84,20 +84,20 @@ func TestMsgAppFlowControlMoveForward(t *testing.T) {
 		// fill in the inflights window again
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 		ms := r.readMessages()
-		if len(ms) != 1 {
-			t.Fatalf("#%d: len(ms) = %d, want 1", tt, len(ms))
+		if len(ms) != 1 || ms[0].Type != pb.MsgApp {
+			t.Fatalf("#%d: len(ms) = %d, want 1 MsgApp", tt, len(ms))
 		}
 
 		// ensure 1
-		if !pr2.Inflights.Full() {
-			t.Fatalf("inflights.full = %t, want %t", pr2.Inflights.Full(), true)
+		if !pr2.IsPaused() {
+			t.Fatalf("#%d: paused = false, want true", tt)
 		}
 
 		// ensure 2
 		for i := 0; i < tt; i++ {
 			r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgAppResp, Index: uint64(i)})
-			if !pr2.Inflights.Full() {
-				t.Fatalf("#%d: inflights.full = %t, want %t", tt, pr2.Inflights.Full(), true)
+			if !pr2.IsPaused() {
+				t.Fatalf("#%d.%d: paused = false, want true", tt, i)
 			}
 		}
 	}
@@ -120,32 +120,35 @@ func TestMsgAppFlowControlRecvHeartbeat(t *testing.T) {
 	}
 
 	for tt := 1; tt < 5; tt++ {
-		if !pr2.Inflights.Full() {
-			t.Fatalf("#%d: inflights.full = %t, want %t", tt, pr2.Inflights.Full(), true)
+		if !pr2.IsPaused() {
+			t.Fatalf("#%d: paused = false, want true", tt)
 		}
 
 		// recv tt msgHeartbeatResp and expect one free slot
 		for i := 0; i < tt; i++ {
 			r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgHeartbeatResp})
-			r.readMessages()
-			if pr2.Inflights.Full() {
-				t.Fatalf("#%d.%d: inflights.full = %t, want %t", tt, i, pr2.Inflights.Full(), false)
+			ms := r.readMessages()
+			if len(ms) != 1 || ms[0].Type != pb.MsgApp || len(ms[0].Entries) != 0 {
+				t.Fatalf("#%d.%d: len(ms) == %d, want 1 empty MsgApp", tt, i, len(ms))
+			}
+			if pr2.IsPaused() {
+				t.Fatalf("#%d.%d: paused = true, want false", tt, i)
 			}
 		}
 
 		// one slot
 		r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
 		ms := r.readMessages()
-		if len(ms) != 1 {
-			t.Fatalf("#%d: free slot = 0, want 1", tt)
+		if len(ms) != 1 || ms[0].Type != pb.MsgApp || len(ms[0].Entries) != 1 {
+			t.Fatalf("#%d: len(ms) == %d, want 1 MsgApp with 1 entry", tt, len(ms))
 		}
 
 		// and just one slot
 		for i := 0; i < 10; i++ {
 			r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: []byte("somedata")}}})
-			ms1 := r.readMessages()
-			if len(ms1) != 0 {
-				t.Fatalf("#%d.%d: len(ms) = %d, want 0", tt, i, len(ms1))
+			ms := r.readMessages()
+			if len(ms) != 0 {
+				t.Fatalf("#%d.%d: len(ms) = %d, want 0", tt, i, len(ms))
 			}
 		}
 
