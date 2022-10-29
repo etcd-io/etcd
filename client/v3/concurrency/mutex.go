@@ -128,6 +128,10 @@ func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
 }
 
 func (m *Mutex) Unlock(ctx context.Context) error {
+	if m.myKey == "" || m.myRev < 0 {
+		panic("inconsistent mutex state")
+	}
+
 	client := m.s.Client()
 	if _, err := client.Delete(ctx, m.myKey); err != nil {
 		return err
