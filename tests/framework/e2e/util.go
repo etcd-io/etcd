@@ -81,6 +81,22 @@ func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string
 	return lines, perr
 }
 
+func RunUtilCompletion(args []string, envVars map[string]string) ([]string, error) {
+	proc, err := SpawnCmd(args, envVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to spawn command: %w", err)
+	}
+	defer proc.Stop()
+
+	perr := proc.Wait()
+	// make sure that all the outputs are received
+	proc.Close()
+	if perr != nil {
+		return nil, fmt.Errorf("unexpected error from command %v: %w", args, perr)
+	}
+	return proc.Lines(), nil
+}
+
 func RandomLeaseID() int64 {
 	return rand.New(rand.NewSource(time.Now().UnixNano())).Int63()
 }
