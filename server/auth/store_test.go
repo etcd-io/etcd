@@ -189,6 +189,30 @@ func TestRecover(t *testing.T) {
 	}
 }
 
+func TestRecoverWithEmptyRangePermCache(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer as.Close()
+	defer tearDown(t)
+
+	as.enabled = false
+	as.rangePermCache = map[string]*unifiedRangePermissions{}
+	as.Recover(as.be)
+
+	if !as.IsAuthEnabled() {
+		t.Fatalf("expected auth enabled got disabled")
+	}
+
+	if len(as.rangePermCache) != 2 {
+		t.Fatalf("rangePermCache should have permission information for 2 users (\"root\" and \"foo\"), but has %d information", len(as.rangePermCache))
+	}
+	if _, ok := as.rangePermCache["root"]; !ok {
+		t.Fatal("user \"root\" should be created by setupAuthStore() but doesn't exist in rangePermCache")
+	}
+	if _, ok := as.rangePermCache["foo"]; !ok {
+		t.Fatal("user \"foo\" should be created by setupAuthStore() but doesn't exist in rangePermCache")
+	}
+}
+
 func TestCheckPassword(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
