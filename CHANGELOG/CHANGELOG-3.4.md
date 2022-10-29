@@ -10,6 +10,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [memberID equals zero in corruption alarm](https://github.com/etcd-io/etcd/pull/14530)
 - Fix [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14548)
 - Fix [avoid closing a watch with ID 0 incorrectly](https://github.com/etcd-io/etcd/pull/14562)
+- Fix [auth: fix data consistency issue caused by recovery from snapshot](https://github.com/etcd-io/etcd/pull/14649)
 
 ### Package `netutil`
 - Fix [netutil: add url comparison without resolver to URLStringsEqual](https://github.com/etcd-io/etcd/pull/14577)
