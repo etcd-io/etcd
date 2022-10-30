@@ -66,7 +66,7 @@ func (c *recordingClient) Get(ctx context.Context, key string) error {
 		ClientId: c.id,
 		Input:    etcdRequest{op: Get, key: key},
 		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{getData: readData},
+		Output:   etcdResponse{getData: readData, revision: resp.Header.Revision},
 		Return:   returnTime.UnixNano(),
 	})
 	return nil
@@ -74,13 +74,17 @@ func (c *recordingClient) Get(ctx context.Context, key string) error {
 
 func (c *recordingClient) Put(ctx context.Context, key, value string) error {
 	callTime := time.Now()
-	_, err := c.client.Put(ctx, key, value)
+	resp, err := c.client.Put(ctx, key, value)
 	returnTime := time.Now()
+	var revision int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+	}
 	c.operations = append(c.operations, porcupine.Operation{
 		ClientId: c.id,
 		Input:    etcdRequest{op: Put, key: key, putData: value},
 		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{err: err},
+		Output:   etcdResponse{err: err, revision: revision},
 		Return:   returnTime.UnixNano(),
 	})
 	return nil
