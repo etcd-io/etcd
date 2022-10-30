@@ -101,12 +101,11 @@ func step(state EtcdState, request etcdRequest, response etcdResponse) (bool, Et
 		if state.Value == response.getData {
 			return true, state
 		}
-		for write := range state.FailedWrites {
-			if write == response.getData {
-				state.Value = response.getData
-				delete(state.FailedWrites, write)
-				return true, state
-			}
+		_, ok := state.FailedWrites[response.getData]
+		if ok {
+			state.Value = response.getData
+			delete(state.FailedWrites, response.getData)
+			return true, state
 		}
 	case Put:
 		if response.err == nil {
