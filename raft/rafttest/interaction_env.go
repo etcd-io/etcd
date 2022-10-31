@@ -84,15 +84,13 @@ type Storage interface {
 	Append([]pb.Entry) error
 }
 
-// defaultRaftConfig sets up a *raft.Config with reasonable testing defaults.
-// In particular, no limits are set.
-func defaultRaftConfig(id uint64, applied uint64, s raft.Storage) *raft.Config {
-	return &raft.Config{
-		ID:              id,
-		Applied:         applied,
+// raftConfigStub sets up a raft.Config stub with reasonable testing defaults.
+// In particular, no limits are set. It is not a complete config: ID and Storage
+// must be set for each node using the stub as a template.
+func raftConfigStub() raft.Config {
+	return raft.Config{
 		ElectionTick:    3,
 		HeartbeatTick:   1,
-		Storage:         s,
 		MaxSizePerMsg:   math.MaxUint64,
 		MaxInflightMsgs: math.MaxInt32,
 	}
