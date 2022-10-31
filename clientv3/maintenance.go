@@ -81,6 +81,7 @@ func NewMaintenance(c *Client) Maintenance {
 		dial: func(endpoint string) (pb.MaintenanceClient, func(), error) {
 			conn, err := c.Dial(endpoint)
 			if err != nil {
+				conn.Close()
 				return nil, nil, fmt.Errorf("failed to dial endpoint %s with maintenance client: %v", endpoint, err)
 			}
 			cancel := func() { conn.Close() }
