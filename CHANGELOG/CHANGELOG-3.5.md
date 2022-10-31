@@ -16,6 +16,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### Package `clientv3`
 - Fix [Add backoff before retry when watch stream returns unavailable](https://github.com/etcd-io/etcd/pull/14582).
+- Fix [stack overflow error in double barrier](https://github.com/etcd-io/etcd/pull/14658)
 
 <hr>
 
