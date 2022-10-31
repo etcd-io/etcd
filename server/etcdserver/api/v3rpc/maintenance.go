@@ -25,7 +25,6 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
@@ -60,11 +59,6 @@ type LeaderTransferrer interface {
 	MoveLeader(ctx context.Context, lead, target uint64) error
 }
 
-type AuthGetter interface {
-	AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error)
-	AuthStore() auth.AuthStore
-}
-
 type ClusterStatusGetter interface {
 	IsLearner() bool
 }
@@ -87,7 +81,7 @@ func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
 	if srv.lg == nil {
 		srv.lg = zap.NewNop()
 	}
-	return &authMaintenanceServer{srv, s}
+	return &authMaintenanceServer{srv, &AuthAdmin{s}}
 }
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
@@ -274,20 +268,11 @@ func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeReque
 
 type authMaintenanceServer struct {
 	*maintenanceServer
-	ag AuthGetter
-}
-
-func (ams *authMaintenanceServer) isAuthenticated(ctx context.Context) error {
-	authInfo, err := ams.ag.AuthInfoFromCtx(ctx)
-	if err != nil {
-		return err
-	}
-
-	return ams.ag.AuthStore().IsAdminPermitted(authInfo)
+	*AuthAdmin
 }
 
 func (ams *authMaintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
-	if err := ams.isAuthenticated(ctx); err != nil {
+	if err := ams.isPermitted(ctx); err != nil {
 		return nil, err
 	}
 
@@ -295,7 +280,7 @@ func (ams *authMaintenanceServer) Defragment(ctx context.Context, sr *pb.Defragm
 }
 
 func (ams *authMaintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance_SnapshotServer) error {
-	if err := ams.isAuthenticated(srv.Context()); err != nil {
+	if err := ams.isPermitted(srv.Context()); err != nil {
 		return err
 	}
 
@@ -303,7 +288,7 @@ func (ams *authMaintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Mainte
 }
 
 func (ams *authMaintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
-	if err := ams.isAuthenticated(ctx); err != nil {
+	if err := ams.isPermitted(ctx); err != nil {
 		return nil, err
 	}
 
@@ -311,20 +296,32 @@ func (ams *authMaintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (
 }
 
 func (ams *authMaintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*pb.HashKVResponse, error) {
-	if err := ams.isAuthenticated(ctx); err != nil {
+	if err := ams.isPermitted(ctx); err != nil {
 		return nil, err
 	}
 	return ams.maintenanceServer.HashKV(ctx, r)
 }
 
 func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
+	if err := ams.isPermitted(ctx); err != nil {
+		return nil, err
+	}
+
 	return ams.maintenanceServer.Status(ctx, ar)
 }
 
 func (ams *authMaintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
+	if err := ams.isPermitted(ctx); err != nil {
+		return nil, err
+	}
+
 	return ams.maintenanceServer.MoveLeader(ctx, tr)
 }
 
 func (ams *authMaintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
+	if err := ams.isPermitted(ctx); err != nil {
+		return nil, err
+	}
+
 	return ams.maintenanceServer.Downgrade(ctx, r)
 }
