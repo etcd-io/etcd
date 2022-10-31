@@ -53,6 +53,10 @@ func NewClusterConfig(opts ...ClusterOption) ClusterConfig {
 
 type ClusterOption func(*ClusterConfig)
 
+func WithClusterConfig(cfg ClusterConfig) ClusterOption {
+	return func(c *ClusterConfig) { *c = cfg }
+}
+
 func WithClusterSize(size int) ClusterOption {
 	return func(c *ClusterConfig) { c.ClusterSize = size }
 }
@@ -73,6 +77,6 @@ func WithSnapshotCount(count int) ClusterOption {
 	return func(c *ClusterConfig) { c.SnapshotCount = count }
 }
 
-func WithDisableStrictReconfigCheck() ClusterOption {
-	return func(c *ClusterConfig) { c.StrictReconfigCheck = false }
+func WithStrictReconfigCheck(strict bool) ClusterOption {
+	return func(c *ClusterConfig) { c.StrictReconfigCheck = strict }
 }

@@ -33,7 +33,7 @@ func TestRoleAdd_Simple(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, tc.config)
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := framework.MustClient(clus.Client())
 
@@ -51,7 +51,7 @@ func TestRoleAdd_Error(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(config.WithClusterSize(1)))
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
@@ -74,7 +74,7 @@ func TestRootRole(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(config.WithClusterSize(1)))
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
@@ -104,7 +104,7 @@ func TestRoleGrantRevokePermission(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(config.WithClusterSize(1)))
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
@@ -139,7 +139,7 @@ func TestRoleDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.NewClusterConfig(config.WithClusterSize(1)))
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {

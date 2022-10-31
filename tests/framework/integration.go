@@ -42,8 +42,9 @@ func (e integrationRunner) BeforeTest(t testing.TB) {
 	integration.BeforeTest(t)
 }
 
-func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, cfg config.ClusterConfig) Cluster {
+func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) Cluster {
 	var err error
+	cfg := config.NewClusterConfig(opts...)
 	integrationCfg := integration.ClusterConfig{
 		Size:                       cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,

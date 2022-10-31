@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/tests/v3/framework"
-	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -28,7 +27,7 @@ func TestEndpointStatus(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.DefaultClusterConfig())
+	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
@@ -43,7 +42,7 @@ func TestEndpointHashKV(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.DefaultClusterConfig())
+	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
@@ -58,7 +57,7 @@ func TestEndpointHealth(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clus := testRunner.NewCluster(ctx, t, config.DefaultClusterConfig())
+	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
 	cc := framework.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {

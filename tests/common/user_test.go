@@ -67,7 +67,7 @@ func TestUserAdd_Simple(t *testing.T) {
 			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
-				clus := testRunner.NewCluster(ctx, t, tc.config)
+				clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 				defer clus.Close()
 				cc := framework.MustClient(clus.Client())
 
@@ -101,7 +101,7 @@ func TestUserAdd_DuplicateUserNotAllowed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, tc.config)
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := framework.MustClient(clus.Client())
 
@@ -130,7 +130,7 @@ func TestUserList(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, tc.config)
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := framework.MustClient(clus.Client())
 
@@ -171,7 +171,7 @@ func TestUserDelete(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, tc.config)
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := framework.MustClient(clus.Client())
 
@@ -223,7 +223,7 @@ func TestUserChangePassword(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, tc.config)
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := framework.MustClient(clus.Client())
 
