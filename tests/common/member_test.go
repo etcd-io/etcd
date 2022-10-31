@@ -23,6 +23,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -33,7 +34,7 @@ func TestMemberList(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, tc.config)
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := framework.MustClient(clus.Client())
 
@@ -107,7 +108,7 @@ func TestMemberAdd(t *testing.T) {
 					defer cancel()
 					c := clusterTc.config
 					c.StrictReconfigCheck = quorumTc.strictReconfigCheck
-					clus := testRunner.NewCluster(ctx, t, c)
+					clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(c))
 					defer clus.Close()
 					cc := framework.MustClient(clus.Client())
 
@@ -188,7 +189,7 @@ func TestMemberRemove(t *testing.T) {
 				defer cancel()
 				c := clusterTc.config
 				c.StrictReconfigCheck = quorumTc.strictReconfigCheck
-				clus := testRunner.NewCluster(ctx, t, c)
+				clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(c))
 				defer clus.Close()
 				// client connects to a specific member which won't be removed from cluster
 				cc := clus.Members()[0].Client()

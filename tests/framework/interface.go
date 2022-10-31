@@ -25,7 +25,7 @@ import (
 type TestRunner interface {
 	TestMain(m *testing.M)
 	BeforeTest(testing.TB)
-	NewCluster(context.Context, testing.TB, config.ClusterConfig) Cluster
+	NewCluster(context.Context, testing.TB, ...config.ClusterOption) Cluster
 }
 
 type Cluster interface {

@@ -29,7 +29,7 @@ func TestWaitLeader(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, tc.config)
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 
 			leader := clus.WaitLeader(t)
@@ -57,7 +57,7 @@ func TestWaitLeader_MemberStop(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, tc.config)
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 
 			lead1 := clus.WaitLeader(t)

@@ -46,7 +46,7 @@ func TestCompact(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			clus := testRunner.NewCluster(ctx, t, config.DefaultClusterConfig())
+			clus := testRunner.NewCluster(ctx, t)
 			defer clus.Close()
 			cc := framework.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
