@@ -151,6 +151,13 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 					"range failed to find revision pair",
 					zap.Int64("revision-main", revpair.main),
 					zap.Int64("revision-sub", revpair.sub),
+					zap.Int64("revision-current", curRev),
+					zap.Int64("range-option-rev", ro.Rev),
+					zap.Int64("range-option-limit", ro.Limit),
+					zap.Binary("key", key),
+					zap.Binary("end", end),
+					zap.Int("len-revpairs", len(revpairs)),
+					zap.Int("len-values", len(vs)),
 				)
 			} else {
 				plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
