@@ -39,7 +39,9 @@ fuzz:
 
 # Static analysis
 
-verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck verify-shellws verify-proto-annotations
+verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
+	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
+	verify-shellws verify-proto-annotations verify-genproto
 fix: fix-bom fix-lint
 	./scripts/fix.sh
 
@@ -98,6 +100,10 @@ verify-shellws:
 .PHONY: verify-proto-annotations
 verify-proto-annotations:
 	PASSES="proto_annotations" ./scripts/test.sh
+
+.PHONY: verify-genproto
+verify-genproto:
+	PASSES="genproto" ./scripts/test.sh
 
 
 # Cleanup

@@ -15,6 +15,6 @@ fi
 echo "Failed proto-annotations-verification!" >&2
 echo "If you are adding new proto fields/messages that will be included in raft log:" >&2
 echo "* Please add etcd_version annotation in *.proto file with next etcd version" >&2
-echo "* Run ./scripts/getproto.sh" >&2
+echo "* Run ./scripts/genproto.sh" >&2
 echo "* Run ./scripts/update_proto_annotations.sh" >&2
 exit 1
