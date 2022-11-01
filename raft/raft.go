@@ -472,20 +472,9 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 	}
 
 	// Send the actual MsgApp otherwise, and update the progress accordingly.
-	// TODO(pavelkalinnikov): factor out the Progress update to a method
 	next := pr.Next // save Next for later, as the progress update can change it
-	if n := len(ents); n != 0 {
-		switch pr.State {
-		// optimistically increase the next when in StateReplicate
-		case tracker.StateReplicate:
-			last := ents[n-1].Index
-			pr.OptimisticUpdate(last)
-			pr.Inflights.Add(last)
-		case tracker.StateProbe:
-			pr.ProbeSent = true
-		default:
-			r.logger.Panicf("%x is sending append in unhandled state %s", r.id, pr.State)
-		}
+	if err := pr.UpdateOnEntriesSend(len(ents), next); err != nil {
+		r.logger.Panicf("%x: %v", r.id, err)
 	}
 	r.send(pb.Message{
 		To:      to,

@@ -137,6 +137,29 @@ func (pr *Progress) BecomeSnapshot(snapshoti uint64) {
 	pr.PendingSnapshot = snapshoti
 }
 
+// UpdateOnEntriesSend updates the progress on the given number of consecutive
+// entries being sent in a MsgApp, appended at and after the given log index.
+func (pr *Progress) UpdateOnEntriesSend(entries int, nextIndex uint64) error {
+	switch pr.State {
+	case StateReplicate:
+		if entries > 0 {
+			last := nextIndex + uint64(entries) - 1
+			pr.OptimisticUpdate(last)
+			pr.Inflights.Add(last)
+		}
+	case StateProbe:
+		// TODO(pavelkalinnikov): this condition captures the previous behaviour,
+		// but we should set ProbeSent unconditionally for simplicity, because any
+		// MsgApp in StateProbe is a probe, not only non-empty ones.
+		if entries > 0 {
+			pr.ProbeSent = true
+		}
+	default:
+		return fmt.Errorf("sending append in unhandled state %s", pr.State)
+	}
+	return nil
+}
+
 // MaybeUpdate is called when an MsgAppResp arrives from the follower, with the
 // index acked by it. The method returns false if the given n index comes from
 // an outdated message. Otherwise it updates the progress and returns true.
