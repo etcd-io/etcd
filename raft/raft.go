@@ -365,9 +365,8 @@ type raft struct {
 	// only leader keeps heartbeatElapsed.
 	heartbeatElapsed int
 
-	asyncStorageWrites bool
-	checkQuorum        bool
-	preVote            bool
+	checkQuorum bool
+	preVote     bool
 
 	heartbeatTimeout int
 	electionTimeout  int
@@ -410,7 +409,6 @@ func newRaft(c *Config) *raft {
 		electionTimeout:           c.ElectionTick,
 		heartbeatTimeout:          c.HeartbeatTick,
 		logger:                    c.Logger,
-		asyncStorageWrites:        c.AsyncStorageWrites,
 		checkQuorum:               c.CheckQuorum,
 		preVote:                   c.PreVote,
 		readOnly:                  newReadOnly(c.ReadOnlyOption),

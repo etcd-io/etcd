@@ -572,10 +572,12 @@ func (n *node) ReadIndex(ctx context.Context, rctx []byte) error {
 	return n.step(ctx, pb.Message{Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: rctx}}})
 }
 
-func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
+// TODO(nvanbenschoten): move this function and the functions below it to
+// rawnode.go.
+func newReady(r *raft, asyncStorageWrites bool, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.nextUnstableEnts(),
-		CommittedEntries: r.raftLog.nextCommittedEnts(!r.asyncStorageWrites),
+		CommittedEntries: r.raftLog.nextCommittedEnts(!asyncStorageWrites),
 		Messages:         r.msgs,
 	}
 	if softSt := r.softState(); !softSt.equal(prevSoftSt) {
@@ -592,7 +594,7 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	}
 	rd.MustSync = MustSync(r.hardState(), prevHardSt, len(rd.Entries))
 
-	if r.asyncStorageWrites {
+	if asyncStorageWrites {
 		// If async storage writes are enabled, enqueue messages to
 		// local storage threads, where applicable.
 		if needStorageAppend(rd, len(r.msgsAfterAppend) > 0) {

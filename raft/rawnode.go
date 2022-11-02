@@ -32,7 +32,10 @@ var ErrStepPeerNotFound = errors.New("raft: cannot step as peer not found")
 // The methods of this struct correspond to the methods of Node and are described
 // more fully there.
 type RawNode struct {
-	raft           *raft
+	raft               *raft
+	asyncStorageWrites bool
+
+	// Mutable fields.
 	prevSoftSt     *SoftState
 	prevHardSt     pb.HardState
 	stepsOnAdvance []pb.Message
@@ -50,6 +53,7 @@ func NewRawNode(config *Config) (*RawNode, error) {
 	rn := &RawNode{
 		raft: r,
 	}
+	rn.asyncStorageWrites = config.AsyncStorageWrites
 	rn.prevSoftSt = r.softState()
 	rn.prevHardSt = r.hardState()
 	return rn, nil
@@ -132,7 +136,7 @@ func (rn *RawNode) Ready() Ready {
 // readyWithoutAccept returns a Ready. This is a read-only operation, i.e. there
 // is no obligation that the Ready must be handled.
 func (rn *RawNode) readyWithoutAccept() Ready {
-	return newReady(rn.raft, rn.prevSoftSt, rn.prevHardSt)
+	return newReady(rn.raft, rn.asyncStorageWrites, rn.prevSoftSt, rn.prevHardSt)
 }
 
 // acceptReady is called when the consumer of the RawNode has decided to go
@@ -148,7 +152,7 @@ func (rn *RawNode) acceptReady(rd Ready) {
 	if len(rd.ReadStates) != 0 {
 		rn.raft.readStates = nil
 	}
-	if !rn.raft.asyncStorageWrites {
+	if !rn.asyncStorageWrites {
 		if len(rn.stepsOnAdvance) != 0 {
 			rn.raft.logger.Panicf("two accepted Ready structs without call to Advance")
 		}
@@ -190,7 +194,7 @@ func (rn *RawNode) HasReady() bool {
 	if len(r.msgs) > 0 || len(r.msgsAfterAppend) > 0 {
 		return true
 	}
-	if r.raftLog.hasNextUnstableEnts() || r.raftLog.hasNextCommittedEnts(!rn.raft.asyncStorageWrites) {
+	if r.raftLog.hasNextUnstableEnts() || r.raftLog.hasNextCommittedEnts(!rn.asyncStorageWrites) {
 		return true
 	}
 	if len(r.readStates) != 0 {
@@ -208,7 +212,7 @@ func (rn *RawNode) Advance(_ Ready) {
 	// The actions performed by this function are encoded into stepsOnAdvance in
 	// acceptReady. In earlier versions of this library, they were computed from
 	// the provided Ready struct. Retain the unused parameter for compatability.
-	if rn.raft.asyncStorageWrites {
+	if rn.asyncStorageWrites {
 		rn.raft.logger.Panicf("Advance must not be called when using AsyncStorageWrites")
 	}
 	for i, m := range rn.stepsOnAdvance {
