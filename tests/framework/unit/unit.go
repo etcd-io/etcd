@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package framework
+package unit
 
 import (
 	"context"
@@ -23,11 +23,16 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
 
 type unitRunner struct{}
 
-var _ TestRunner = (*unitRunner)(nil)
+var _ intf.TestRunner = (*unitRunner)(nil)
+
+func NewUnitRunner() intf.TestRunner {
+	return &unitRunner{}
+}
 
 func (e unitRunner) TestMain(m *testing.M) {
 	flag.Parse()
@@ -40,7 +45,7 @@ func (e unitRunner) TestMain(m *testing.M) {
 func (e unitRunner) BeforeTest(t testing.TB) {
 }
 
-func (e unitRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) Cluster {
+func (e unitRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
 	return nil
 }

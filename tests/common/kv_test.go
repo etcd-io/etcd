@@ -21,7 +21,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -34,7 +33,7 @@ func TestKVPut(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client())
+			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				key, value := "foo", "bar"
@@ -68,7 +67,7 @@ func TestKVGet(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client())
+			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				var (
@@ -128,7 +127,7 @@ func TestKVDelete(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client())
+			cc := testutils.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
 				kvs := []string{"a", "b", "c", "c/abc", "d"}
 				tests := []struct {

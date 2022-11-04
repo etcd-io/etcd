@@ -17,11 +17,11 @@ package common
 import (
 	"testing"
 
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
 
-var testRunner framework.TestRunner
+var testRunner intf.TestRunner
 
 var clusterTestCases = []testCase{
 	{

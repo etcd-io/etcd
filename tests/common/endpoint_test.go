@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -29,7 +28,7 @@ func TestEndpointStatus(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.Status(ctx)
 		if err != nil {
@@ -44,7 +43,7 @@ func TestEndpointHashKV(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.HashKV(ctx, 0)
 		if err != nil {
@@ -59,7 +58,7 @@ func TestEndpointHealth(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		if err := cc.Health(ctx); err != nil {
 			t.Fatalf("get endpoint health error: %v", err)

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package framework
+package e2e
 
 import (
 	"context"
@@ -23,13 +23,18 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 type e2eRunner struct{}
 
+func NewE2eRunner() intf.TestRunner {
+	return &e2eRunner{}
+}
+
 func (e e2eRunner) TestMain(m *testing.M) {
-	e2e.InitFlags()
+	InitFlags()
 	v := m.Run()
 	if v == 0 && testutil.CheckLeakedGoroutine() {
 		os.Exit(1)
@@ -38,12 +43,12 @@ func (e e2eRunner) TestMain(m *testing.M) {
 }
 
 func (e e2eRunner) BeforeTest(t testing.TB) {
-	e2e.BeforeTest(t)
+	BeforeTest(t)
 }
 
-func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) Cluster {
+func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	cfg := config.NewClusterConfig(opts...)
-	e2eConfig := e2e.EtcdProcessClusterConfig{
+	e2eConfig := EtcdProcessClusterConfig{
 		InitialToken:               "new",
 		ClusterSize:                cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
@@ -53,13 +58,13 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 	}
 	switch cfg.ClientTLS {
 	case config.NoTLS:
-		e2eConfig.ClientTLS = e2e.ClientNonTLS
+		e2eConfig.ClientTLS = ClientNonTLS
 	case config.AutoTLS:
 		e2eConfig.IsClientAutoTLS = true
-		e2eConfig.ClientTLS = e2e.ClientTLS
+		e2eConfig.ClientTLS = ClientTLS
 	case config.ManualTLS:
 		e2eConfig.IsClientAutoTLS = false
-		e2eConfig.ClientTLS = e2e.ClientTLS
+		e2eConfig.ClientTLS = ClientTLS
 	default:
 		t.Fatalf("ClientTLS config %q not supported", cfg.ClientTLS)
 	}
@@ -76,7 +81,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 	default:
 		t.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
 	}
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, &e2eConfig)
+	epc, err := NewEtcdProcessCluster(ctx, t, &e2eConfig)
 	if err != nil {
 		t.Fatalf("could not start etcd integrationCluster: %s", err)
 	}
@@ -85,11 +90,11 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 
 type e2eCluster struct {
 	t testing.TB
-	e2e.EtcdProcessCluster
+	EtcdProcessCluster
 }
 
-func (c *e2eCluster) Client(opts ...config.ClientOption) (Client, error) {
-	etcdctl, err := e2e.NewEtcdctl(c.Cfg, c.EndpointsV3(), opts...)
+func (c *e2eCluster) Client(opts ...config.ClientOption) (intf.Client, error) {
+	etcdctl, err := NewEtcdctl(c.Cfg, c.EndpointsV3(), opts...)
 	return e2eClient{etcdctl}, err
 }
 
@@ -97,7 +102,7 @@ func (c *e2eCluster) Endpoints() []string {
 	return c.EndpointsV3()
 }
 
-func (c *e2eCluster) Members() (ms []Member) {
+func (c *e2eCluster) Members() (ms []intf.Member) {
 	for _, proc := range c.EtcdProcessCluster.Procs {
 		ms = append(ms, e2eMember{EtcdProcess: proc, Cfg: c.Cfg})
 	}
@@ -114,8 +119,8 @@ func (c *e2eCluster) WaitLeader(t testing.TB) int {
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []Member) int {
-	cc := MustClient(c.Client())
+func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []intf.Member) int {
+	cc := testutils.MustClient(c.Client())
 
 	// ensure leader is up via linearizable get
 	for {
@@ -171,16 +176,16 @@ func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, mem
 }
 
 type e2eClient struct {
-	*e2e.EtcdctlV3
+	*EtcdctlV3
 }
 
 type e2eMember struct {
-	e2e.EtcdProcess
-	Cfg *e2e.EtcdProcessClusterConfig
+	EtcdProcess
+	Cfg *EtcdProcessClusterConfig
 }
 
-func (m e2eMember) Client() Client {
-	etcdctl, err := e2e.NewEtcdctl(m.Cfg, m.EndpointsV3())
+func (m e2eMember) Client() intf.Client {
+	etcdctl, err := NewEtcdctl(m.Cfg, m.EndpointsV3())
 	if err != nil {
 		panic(err)
 	}
