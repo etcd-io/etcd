@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -27,6 +28,7 @@ import (
 // ErrLocked is returned by TryLock when Mutex is already locked by another session.
 var ErrLocked = errors.New("mutex: Locked by another session")
 var ErrSessionExpired = errors.New("mutex: session is expired")
+var ErrLockReleased = errors.New("the lock has already been released")
 
 // Mutex implements the sync Locker interface with etcd
 type Mutex struct {
@@ -128,8 +130,12 @@ func (m *Mutex) tryAcquire(ctx context.Context) (*v3.TxnResponse, error) {
 }
 
 func (m *Mutex) Unlock(ctx context.Context) error {
-	if m.myKey == "" || m.myRev < 0 {
-		panic("inconsistent mutex state")
+	if m.myKey == "" || m.myRev <= 0 || m.myKey == "\x00" {
+		return ErrLockReleased
+	}
+
+	if !strings.HasPrefix(m.myKey, m.pfx) {
+		return fmt.Errorf("invalid key %q, it should have prefix %q", m.myKey, m.pfx)
 	}
 
 	client := m.s.Client()

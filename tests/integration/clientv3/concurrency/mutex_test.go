@@ -16,6 +16,7 @@ package concurrency_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"go.etcd.io/etcd/client/v3"
@@ -69,4 +70,43 @@ func TestMutexLockSessionExpired(t *testing.T) {
 	}
 
 	<-m2Locked
+}
+
+func TestMutexUnlock(t *testing.T) {
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	s1, err := concurrency.NewSession(cli)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s1.Close()
+
+	m1 := concurrency.NewMutex(s1, "/my-lock/")
+	err = m1.Unlock(context.TODO())
+	if err == nil {
+		t.Fatal("expect lock released error")
+	}
+	if !errors.Is(err, concurrency.ErrLockReleased) {
+		t.Fatal(err)
+	}
+
+	if err := m1.Lock(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := m1.Unlock(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
+
+	err = m1.Unlock(context.TODO())
+	if err == nil {
+		t.Fatal("expect lock released error")
+	}
+	if !errors.Is(err, concurrency.ErrLockReleased) {
+		t.Fatal(err)
+	}
 }
