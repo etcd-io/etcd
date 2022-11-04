@@ -22,8 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -36,7 +36,7 @@ func TestMemberList(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client())
+			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				resp, err := cc.MemberList(ctx)
@@ -110,7 +110,7 @@ func TestMemberAdd(t *testing.T) {
 					c.StrictReconfigCheck = quorumTc.strictReconfigCheck
 					clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(c))
 					defer clus.Close()
-					cc := framework.MustClient(clus.Client())
+					cc := testutils.MustClient(clus.Client())
 
 					testutils.ExecuteUntil(ctx, t, func() {
 						var addResp *clientv3.MemberAddResponse
@@ -235,7 +235,7 @@ func TestMemberRemove(t *testing.T) {
 // If clusterSize == 1, return the only member.
 // Otherwise, return a member that client has not connected to.
 // It ensures that `MemberRemove` function does not return an "etcdserver: server stopped" error.
-func memberToRemove(ctx context.Context, t *testing.T, client framework.Client, clusterSize int) (memberId uint64, clusterId uint64) {
+func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clusterSize int) (memberId uint64, clusterId uint64) {
 	listResp, err := client.MemberList(ctx)
 	if err != nil {
 		t.Fatal(err)

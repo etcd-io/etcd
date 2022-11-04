@@ -14,11 +14,19 @@
 
 package framework
 
+import (
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/unit"
+)
+
 var (
 	// UnitTestRunner only runs in `--short` mode, will fail otherwise. Attempts in cluster creation will result in tests being skipped.
-	UnitTestRunner TestRunner = unitRunner{}
+	UnitTestRunner intf.TestRunner = unit.NewUnitRunner()
 	// E2eTestRunner runs etcd and etcdctl binaries in a separate process.
-	E2eTestRunner = e2eRunner{}
+	E2eTestRunner = e2e.NewE2eRunner()
 	// IntegrationTestRunner runs etcdserver.EtcdServer in separate goroutine and uses client libraries to communicate.
-	IntegrationTestRunner = integrationRunner{}
+	IntegrationTestRunner = integration.NewIntegrationRunner()
 )

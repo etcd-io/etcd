@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package framework
+package integration
 
 import (
 	"context"
@@ -22,30 +22,35 @@ import (
 
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	etcdctlcmd "go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.uber.org/zap"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
 
 type integrationRunner struct{}
+
+func NewIntegrationRunner() intf.TestRunner {
+	return &integrationRunner{}
+}
 
 func (e integrationRunner) TestMain(m *testing.M) {
 	testutil.MustTestMainWithLeakDetection(m)
 }
 
 func (e integrationRunner) BeforeTest(t testing.TB) {
-	integration.BeforeTest(t)
+	BeforeTest(t)
 }
 
-func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) Cluster {
+func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	var err error
 	cfg := config.NewClusterConfig(opts...)
-	integrationCfg := integration.ClusterConfig{
+	integrationCfg := ClusterConfig{
 		Size:                       cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
 		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
@@ -61,7 +66,7 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ..
 		t.Fatalf("PeerTLS: %s", err)
 	}
 	return &integrationCluster{
-		Cluster: integration.NewCluster(t, &integrationCfg),
+		Cluster: NewCluster(t, &integrationCfg),
 		t:       t,
 		ctx:     ctx,
 	}
@@ -78,19 +83,19 @@ func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
 		}
 		return &tls, nil
 	case config.ManualTLS:
-		return &integration.TestTLSInfo, nil
+		return &TestTLSInfo, nil
 	default:
 		return nil, fmt.Errorf("config %q not supported", cfg)
 	}
 }
 
 type integrationCluster struct {
-	*integration.Cluster
+	*Cluster
 	t   testing.TB
 	ctx context.Context
 }
 
-func (c *integrationCluster) Members() (ms []Member) {
+func (c *integrationCluster) Members() (ms []intf.Member) {
 	for _, m := range c.Cluster.Members {
 		ms = append(ms, integrationMember{Member: m, t: c.t})
 	}
@@ -98,11 +103,11 @@ func (c *integrationCluster) Members() (ms []Member) {
 }
 
 type integrationMember struct {
-	*integration.Member
+	*Member
 	t testing.TB
 }
 
-func (m integrationMember) Client() Client {
+func (m integrationMember) Client() intf.Client {
 	return integrationClient{Client: m.Member.Client}
 }
 
@@ -119,7 +124,7 @@ func (c *integrationCluster) Close() error {
 	return nil
 }
 
-func (c *integrationCluster) Client(opts ...config.ClientOption) (Client, error) {
+func (c *integrationCluster) Client(opts ...config.ClientOption) (intf.Client, error) {
 	cc, err := c.ClusterClient(c.t, opts...)
 	if err != nil {
 		return nil, err

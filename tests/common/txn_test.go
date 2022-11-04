@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -61,7 +60,7 @@ func TestTxnSucc(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg.config))
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client())
+			cc := testutils.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
 				if err := cc.Put(ctx, "key1", "value1", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key1", "value1")
@@ -105,7 +104,7 @@ func TestTxnFail(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg.config))
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client())
+			cc := testutils.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
 				if err := cc.Put(ctx, "key1", "value1", config.PutOptions{}); err != nil {
 					t.Fatalf("could not create key:%s, value:%s", "key1", "value1")

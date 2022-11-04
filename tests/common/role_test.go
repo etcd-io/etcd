@@ -22,7 +22,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -35,7 +34,7 @@ func TestRoleAdd_Simple(t *testing.T) {
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
-			cc := framework.MustClient(clus.Client())
+			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				_, err := cc.RoleAdd(ctx, "root")
@@ -53,7 +52,7 @@ func TestRoleAdd_Error(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.RoleAdd(ctx, "test-role")
 		if err != nil {
@@ -76,7 +75,7 @@ func TestRootRole(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.RoleAdd(ctx, "root")
 		if err != nil {
@@ -106,7 +105,7 @@ func TestRoleGrantRevokePermission(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.RoleAdd(ctx, "role1")
 		if err != nil {
@@ -141,7 +140,7 @@ func TestRoleDelete(t *testing.T) {
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(1))
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.RoleAdd(ctx, "role1")
 		if err != nil {

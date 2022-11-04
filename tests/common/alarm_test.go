@@ -22,7 +22,6 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -36,7 +35,7 @@ func TestAlarm(t *testing.T) {
 		config.WithQuotaBackendBytes(int64(13*os.Getpagesize())),
 	)
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		// test small put still works
 		smallbuf := strings.Repeat("a", 64)
@@ -120,7 +119,7 @@ func TestAlarmlistOnMemberRestart(t *testing.T) {
 		config.WithSnapshotCount(5),
 	)
 	defer clus.Close()
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 
 	testutils.ExecuteUntil(ctx, t, func() {
 		for i := 0; i < 6; i++ {

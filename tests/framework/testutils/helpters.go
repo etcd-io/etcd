@@ -19,6 +19,7 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
 
 type KV struct {
@@ -60,4 +61,11 @@ func KeyValuesFromWatchChan(wch clientv3.WatchChan, wantedLen int, timeout time.
 			return nil, errors.New("closed watcher channel should not block")
 		}
 	}
+}
+
+func MustClient(c intf.Client, err error) intf.Client {
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
