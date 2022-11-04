@@ -31,21 +31,14 @@ import (
 )
 
 var (
-	KubernetesTraffic = Config{
-		Name:                           "Kubernetes",
-		minimalQPS:                     200,
-		maximalQPS:                     1000,
-		clientCount:                    12,
-		maxNonUniqueRequestConcurrency: 3,
-		Traffic: kubernetesTraffic{
-			averageKeyCount: 10,
-			resource:        "pods",
-			namespace:       "default",
-			writeChoices: []choiceWeight[KubernetesRequestType]{
-				{choice: KubernetesUpdate, weight: 90},
-				{choice: KubernetesDelete, weight: 5},
-				{choice: KubernetesCreate, weight: 5},
-			},
+	Kubernetes = kubernetesTraffic{
+		averageKeyCount: 10,
+		resource:        "pods",
+		namespace:       "default",
+		writeChoices: []choiceWeight[KubernetesRequestType]{
+			{choice: KubernetesUpdate, weight: 90},
+			{choice: KubernetesDelete, weight: 5},
+			{choice: KubernetesCreate, weight: 5},
 		},
 	}
 )
@@ -59,6 +52,10 @@ type kubernetesTraffic struct {
 
 func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
+}
+
+func (t kubernetesTraffic) Name() string {
+	return "Kubernetes"
 }
 
 func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {

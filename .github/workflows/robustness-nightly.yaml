@@ -12,14 +12,14 @@ jobs:
     uses: ./.github/workflows/robustness-template.yaml
     with:
       etcdBranch: main
-      count: 100
+      count: 80
       testTimeout: 200m
       artifactName: main
   main-arm64:
     uses: ./.github/workflows/robustness-template-arm64.yaml
     with:
       etcdBranch: main
-      count: 100
+      count: 80
       testTimeout: 200m
       artifactName: main-arm64
       runs-on: "['self-hosted', 'Linux', 'ARM64']"
@@ -27,7 +27,7 @@ jobs:
     uses: ./.github/workflows/robustness-template.yaml
     with:
       etcdBranch: release-3.5
-      count: 100
+      count: 80
       testTimeout: 200m
       artifactName: release-35
   release-35-arm64:
@@ -41,6 +41,6 @@ jobs:
     uses: ./.github/workflows/robustness-template.yaml
     with:
       etcdBranch: release-3.4
-      count: 100
+      count: 80
       testTimeout: 200m
       artifactName: release-34

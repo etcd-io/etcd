@@ -7,6 +7,6 @@ jobs:
     uses: ./.github/workflows/robustness-template.yaml
     with:
       etcdBranch: main
-      count: 15
+      count: 12
       testTimeout: 30m
       artifactName: main

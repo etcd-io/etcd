@@ -48,6 +48,18 @@ type binPath struct {
 	EtcdLastRelease string
 	Etcdctl         string
 	Etcdutl         string
+	LazyFS          string
+}
+
+func (bp *binPath) LazyFSAvailable() bool {
+	_, err := os.Stat(bp.LazyFS)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			panic(err)
+		}
+		return false
+	}
+	return true
 }
 
 func InitFlags() {
@@ -65,6 +77,7 @@ func InitFlags() {
 		EtcdLastRelease: *binDir + "/etcd-last-release",
 		Etcdctl:         *binDir + "/etcdctl",
 		Etcdutl:         *binDir + "/etcdutl",
+		LazyFS:          *binDir + "/lazyfs",
 	}
 	CertPath = CertDir + "/server.crt"
 	PrivateKeyPath = CertDir + "/server.key.insecure"

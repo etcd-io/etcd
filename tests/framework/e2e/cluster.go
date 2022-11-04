@@ -185,6 +185,7 @@ type EtcdProcessClusterConfig struct {
 	CompactHashCheckEnabled bool
 	CompactHashCheckTime    time.Duration
 	GoFailEnabled           bool
+	LazyFSEnabled           bool
 	CompactionBatchLimit    int
 	CompactionSleepInterval time.Duration
 
@@ -344,6 +345,10 @@ func WithGoFailEnabled(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.GoFailEnabled = enabled }
 }
 
+func WithLazyFSEnabled(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.LazyFSEnabled = enabled }
+}
+
 func WithWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.WarningUnaryRequestDuration = time }
 }
@@ -407,7 +412,7 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 
 	// launch etcd processes
 	for i := range etcdCfgs {
-		proc, err := NewEtcdProcess(etcdCfgs[i])
+		proc, err := NewEtcdProcess(t, etcdCfgs[i])
 		if err != nil {
 			epc.Close()
 			return nil, fmt.Errorf("cannot configure: %v", err)
@@ -659,6 +664,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		InitialToken:  cfg.InitialToken,
 		GoFailPort:    gofailPort,
 		Proxy:         proxyCfg,
+		LazyFSEnabled: cfg.LazyFSEnabled,
 	}
 }
 
@@ -826,7 +832,7 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProces
 
 	// Then start process
 	tb.Log("start new member")
-	proc, err := NewEtcdProcess(serverCfg)
+	proc, err := NewEtcdProcess(tb, serverCfg)
 	if err != nil {
 		epc.Close()
 		return 0, fmt.Errorf("cannot configure: %v", err)
@@ -855,7 +861,7 @@ func (epc *EtcdProcessCluster) UpdateProcOptions(i int, tb testing.TB, opts ...E
 	}
 	epc.Cfg.SetInitialOrDiscovery(serverCfg, initialCluster, "new")
 
-	proc, err := NewEtcdProcess(serverCfg)
+	proc, err := NewEtcdProcess(tb, serverCfg)
 	if err != nil {
 		return err
 	}
