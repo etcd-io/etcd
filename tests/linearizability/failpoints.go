@@ -21,18 +21,40 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 var (
-	KillFailpoint       Failpoint = killFailpoint{}
-	RaftBeforeSavePanic Failpoint = goFailpoint{"etcdserver/raftBeforeSave", "panic"}
+	KillFailpoint           Failpoint = killFailpoint{}
+	DefragBeforeCopyPanic   Failpoint = goFailpoint{"backend/defragBeforeCopy", "panic", triggerDefrag}
+	DefragBeforeRenamePanic Failpoint = goFailpoint{"backend/defragBeforeRename", "panic", triggerDefrag}
+	BeforeCommitPanic       Failpoint = goFailpoint{"backend/beforeCommit", "panic", nil}
+	AfterCommitPanic        Failpoint = goFailpoint{"backend/afterCommit", "panic", nil}
+	RaftBeforeSavePanic     Failpoint = goFailpoint{"etcdserver/raftBeforeSave", "panic", nil}
+	RaftAfterSavePanic      Failpoint = goFailpoint{"etcdserver/raftAfterSave", "panic", nil}
+	RandomFailpoint         Failpoint = randomFailpoint{[]Failpoint{
+		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic,
+		RaftAfterSavePanic, DefragBeforeCopyPanic, DefragBeforeRenamePanic,
+	}}
+	// TODO: Figure out how to reliably trigger below failpoints and add them to RandomFailpoint
+	raftBeforeLeaderSendPanic   Failpoint = goFailpoint{"etcdserver/raftBeforeLeaderSend", "panic", nil}
+	raftBeforeApplySnapPanic    Failpoint = goFailpoint{"etcdserver/raftBeforeApplySnap", "panic", nil}
+	raftAfterApplySnapPanic     Failpoint = goFailpoint{"etcdserver/raftAfterApplySnap", "panic", nil}
+	raftAfterWALReleasePanic    Failpoint = goFailpoint{"etcdserver/raftAfterWALRelease", "panic", nil}
+	raftBeforeFollowerSendPanic Failpoint = goFailpoint{"etcdserver/raftBeforeFollowerSend", "panic", nil}
+	raftBeforeSaveSnapPanic     Failpoint = goFailpoint{"etcdserver/raftBeforeSaveSnap", "panic", nil}
+	raftAfterSaveSnapPanic      Failpoint = goFailpoint{"etcdserver/raftAfterSaveSnap", "panic", nil}
 )
 
 type Failpoint interface {
 	Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error
+	Name() string
 }
 
 type killFailpoint struct{}
@@ -54,30 +76,41 @@ func (f killFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster
 	return nil
 }
 
+func (f killFailpoint) Name() string {
+	return "Kill"
+}
+
 type goFailpoint struct {
 	failpoint string
 	payload   string
+	trigger   func(ctx context.Context, member e2e.EtcdProcess) error
 }
 
 func (f goFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
-	err := triggerGoFailpoint(address, f.failpoint, f.payload)
+	err := setupGoFailpoint(address, f.failpoint, f.payload)
 	if err != nil {
-		return fmt.Errorf("failed to trigger failpoint %q, err: %v", f.failpoint, err)
+		return fmt.Errorf("gofailpoint setup failed: %w", err)
 	}
-	err = clus.Procs[0].Wait()
+	if f.trigger != nil {
+		err = f.trigger(ctx, member)
+		if err != nil {
+			return fmt.Errorf("triggering gofailpoint failed: %w", err)
+		}
+	}
+	err = member.Wait()
 	if err != nil {
 		return err
 	}
-	err = clus.Procs[0].Start(ctx)
+	err = member.Start(ctx)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func triggerGoFailpoint(host, failpoint, payload string) error {
+func setupGoFailpoint(host, failpoint, payload string) error {
 	failpointUrl := url.URL{
 		Scheme: "http",
 		Host:   host,
@@ -98,6 +131,42 @@ func triggerGoFailpoint(host, failpoint, payload string) error {
 	return nil
 }
 
+func (f goFailpoint) Name() string {
+	return f.failpoint
+}
+
+func triggerDefrag(ctx context.Context, member e2e.EtcdProcess) error {
+	cc, err := clientv3.New(clientv3.Config{
+		Endpoints:            member.EndpointsV3(),
+		Logger:               zap.NewNop(),
+		DialKeepAliveTime:    1 * time.Millisecond,
+		DialKeepAliveTimeout: 5 * time.Millisecond,
+	})
+	if err != nil {
+		return fmt.Errorf("failed creating client: %w", err)
+	}
+	defer cc.Close()
+	_, err = cc.Defragment(ctx, member.EndpointsV3()[0])
+	if err != nil && !strings.Contains(err.Error(), "error reading from server: EOF") {
+		return err
+	}
+	return nil
+}
+
 var httpClient = http.Client{
 	Timeout: 10 * time.Millisecond,
+}
+
+type randomFailpoint struct {
+	failpoints []Failpoint
+}
+
+func (f randomFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+	failpoint := f.failpoints[rand.Int()%len(f.failpoints)]
+	fmt.Printf("Triggering %v failpoint\n", failpoint.Name())
+	return failpoint.Trigger(ctx, clus)
+}
+
+func (f randomFailpoint) Name() string {
+	return "Random"
 }
