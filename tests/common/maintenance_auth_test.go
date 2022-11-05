@@ -22,8 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -47,7 +47,7 @@ func TestDefragmentWithUserAuth(t *testing.T) {
 }
 
 func testDefragmentWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
-	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc framework.Client) error {
+	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
 		return cc.Defragment(ctx, config.DefragOption{Timeout: 10 * time.Second})
 	}, opts...)
 }
@@ -96,7 +96,7 @@ func TestHashKVWithUserAuth(t *testing.T) {
 }
 
 func testHashKVWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
-	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc framework.Client) error {
+	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
 		_, err := cc.HashKV(ctx, 0)
 		return err
 	}, opts...)
@@ -170,13 +170,13 @@ func TestStatusWithUserAuth(t *testing.T) {
 }
 
 func testStatusWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
-	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc framework.Client) error {
+	testMaintenanceOperationWithAuth(t, expectConnectionError, expectOperationError, func(ctx context.Context, cc intf.Client) error {
 		_, err := cc.Status(ctx)
 		return err
 	}, opts...)
 }
 
-func setupAuthForMaintenanceTest(c framework.Client) error {
+func setupAuthForMaintenanceTest(c intf.Client) error {
 	roles := []authRole{
 		{
 			role:       "role0",
@@ -201,7 +201,7 @@ func setupAuthForMaintenanceTest(c framework.Client) error {
 	return setupAuth(c, roles, users)
 }
 
-func testMaintenanceOperationWithAuth(t *testing.T, expectConnectError, expectOperationError bool, f func(context.Context, framework.Client) error, opts ...config.ClientOption) {
+func testMaintenanceOperationWithAuth(t *testing.T, expectConnectError, expectOperationError bool, f func(context.Context, intf.Client) error, opts ...config.ClientOption) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -209,7 +209,7 @@ func testMaintenanceOperationWithAuth(t *testing.T, expectConnectError, expectOp
 	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
 
-	cc := framework.MustClient(clus.Client())
+	cc := testutils.MustClient(clus.Client())
 	err := setupAuthForMaintenanceTest(cc)
 	require.NoError(t, err)
 
