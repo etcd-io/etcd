@@ -35,10 +35,11 @@ func NewDefragCommand() *cobra.Command {
 }
 
 func defragCommandFunc(cmd *cobra.Command, args []string) {
-
 	failures := 0
-	c := mustClientFromCmd(cmd)
+	cfg := clientConfigFromCmd(cmd)
 	for _, ep := range endpointsFromCluster(cmd) {
+		cfg.Endpoints = []string{ep}
+		c := mustClient(cfg)
 		ctx, cancel := commandCtx(cmd)
 		start := time.Now()
 		_, err := c.Defragment(ctx, ep)
@@ -50,6 +51,7 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 		} else {
 			fmt.Printf("Finished defragmenting etcd member[%s]. took %s\n", ep, d.String())
 		}
+		c.Close()
 	}
 
 	if failures != 0 {

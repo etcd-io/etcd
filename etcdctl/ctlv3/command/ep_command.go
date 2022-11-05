@@ -191,14 +191,17 @@ type epStatus struct {
 }
 
 func epStatusCommandFunc(cmd *cobra.Command, args []string) {
-	c := mustClientFromCmd(cmd)
+	cfg := clientConfigFromCmd(cmd)
 
 	var statusList []epStatus
 	var err error
 	for _, ep := range endpointsFromCluster(cmd) {
+		cfg.Endpoints = []string{ep}
+		c := mustClient(cfg)
 		ctx, cancel := commandCtx(cmd)
 		resp, serr := c.Status(ctx, ep)
 		cancel()
+		c.Close()
 		if serr != nil {
 			err = serr
 			fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", ep, serr)
@@ -220,14 +223,17 @@ type epHashKV struct {
 }
 
 func epHashKVCommandFunc(cmd *cobra.Command, args []string) {
-	c := mustClientFromCmd(cmd)
+	cfg := clientConfigFromCmd(cmd)
 
 	var hashList []epHashKV
 	var err error
 	for _, ep := range endpointsFromCluster(cmd) {
+		cfg.Endpoints = []string{ep}
+		c := mustClient(cfg)
 		ctx, cancel := commandCtx(cmd)
 		resp, serr := c.HashKV(ctx, ep, epHashKVRev)
 		cancel()
+		c.Close()
 		if serr != nil {
 			err = serr
 			fmt.Fprintf(os.Stderr, "Failed to get the hash of endpoint %s (%v)\n", ep, serr)
