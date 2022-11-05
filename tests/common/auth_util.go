@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
 
 type authRole struct {
@@ -36,7 +36,7 @@ type authUser struct {
 	role string
 }
 
-func createRoles(c framework.Client, roles []authRole) error {
+func createRoles(c intf.Client, roles []authRole) error {
 	for _, r := range roles {
 		// add role
 		if _, err := c.RoleAdd(context.TODO(), r.role); err != nil {
@@ -52,7 +52,7 @@ func createRoles(c framework.Client, roles []authRole) error {
 	return nil
 }
 
-func createUsers(c framework.Client, users []authUser) error {
+func createUsers(c intf.Client, users []authUser) error {
 	for _, u := range users {
 		// add user
 		if _, err := c.UserAdd(context.TODO(), u.user, u.pass, config.UserAddOptions{}); err != nil {
@@ -68,7 +68,7 @@ func createUsers(c framework.Client, users []authUser) error {
 	return nil
 }
 
-func setupAuth(c framework.Client, roles []authRole, users []authUser) error {
+func setupAuth(c intf.Client, roles []authRole, users []authUser) error {
 	// create roles
 	if err := createRoles(c, roles); err != nil {
 		return err
