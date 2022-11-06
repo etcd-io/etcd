@@ -17,6 +17,7 @@ package clientv3
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -266,6 +267,59 @@ func TestSyncFiltersMembers(t *testing.T) {
 	}
 }
 
+func TestRejectOldCluster(t *testing.T) {
+	testutil.BeforeTest(t)
+
+	var tests = []struct {
+		name      string
+		endpoints []string
+		versions  []string
+		err       error
+	}{
+		{
+			name:      "All endpoint versions are up to date",
+			endpoints: []string{"127.0.0.1:12345", "127.0.0.2:12345", "127.0.0.3:12345"},
+			versions:  []string{"3.5.4", "3.5.4", "3.5.4"},
+			err:       nil,
+		},
+		{
+			name:      "All endpoint versions are out of date",
+			endpoints: []string{"127.0.0.1:12345", "127.0.0.2:12345", "127.0.0.3:12345"},
+			versions:  []string{"3.2", "3.2", "3.1"},
+			err:       ErrOldCluster,
+		},
+		{
+			name:      "Partially endpoint versions are out of date",
+			endpoints: []string{"127.0.0.1:12345", "127.0.0.2:12345", "127.0.0.3:12345"},
+			versions:  []string{"3.5.4", "3.1", "3.4"},
+			err:       ErrOldCluster,
+		},
+	}
+
+	mockMaintenance := &mockMaintenance{}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := NewClient(t, Config{Endpoints: tt.endpoints})
+			if c == nil || err != nil {
+				t.Fatalf("new client should succeed, got %v", err)
+			}
+			defer c.Close()
+
+			mockStatusVersion := make(map[string]string)
+			for j, _ := range tt.endpoints {
+				mockStatusVersion[tt.endpoints[j]] = tt.versions[j]
+			}
+			mockMaintenance.Version = mockStatusVersion
+			c.Maintenance = mockMaintenance
+			err = c.checkVersion()
+			if err != tt.err {
+				t.Errorf("#%d: got error %v, wanted %v", i, err, tt.err)
+			}
+		})
+	}
+}
+
 type mockAuthServer struct {
 	*etcdserverpb.UnimplementedAuthServer
 }
@@ -299,5 +353,45 @@ func (mc *mockCluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []
 }
 
 func (mc *mockCluster) MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error) {
+	return nil, nil
+}
+
+type mockMaintenance struct {
+	Version map[string]string
+}
+
+func (mm *mockMaintenance) Status(ctx context.Context, endpoint string) (*StatusResponse, error) {
+	return &StatusResponse{Version: mm.Version[endpoint]}, nil
+}
+
+func (mm *mockMaintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
+	return nil, nil
+}
+
+func (mm *mockMaintenance) AlarmDisarm(ctx context.Context, m *AlarmMember) (*AlarmResponse, error) {
+	return nil, nil
+}
+
+func (mm *mockMaintenance) Defragment(ctx context.Context, endpoint string) (*DefragmentResponse, error) {
+	return nil, nil
+}
+
+func (mm *mockMaintenance) HashKV(ctx context.Context, endpoint string, rev int64) (*HashKVResponse, error) {
+	return nil, nil
+}
+
+func (mm *mockMaintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotResponse, error) {
+	return nil, nil
+}
+
+func (mm *mockMaintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
+	return nil, nil
+}
+
+func (mm *mockMaintenance) MoveLeader(ctx context.Context, transfereeID uint64) (*MoveLeaderResponse, error) {
+	return nil, nil
+}
+
+func (mm *mockMaintenance) Downgrade(ctx context.Context, action DowngradeAction, version string) (*DowngradeResponse, error) {
 	return nil, nil
 }
