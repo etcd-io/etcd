@@ -36,6 +36,7 @@ type ClusterConfig struct {
 	StrictReconfigCheck bool
 	AuthToken           string
 	SnapshotCount       int
+	WithLearner         bool
 
 	// ClusterContext is used by "e2e" or "integration" to extend the
 	// ClusterConfig. The common test cases shouldn't care about what

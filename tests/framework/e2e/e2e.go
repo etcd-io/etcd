@@ -91,7 +91,24 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 	if err != nil {
 		t.Fatalf("could not start etcd integrationCluster: %s", err)
 	}
-	return &e2eCluster{t, *epc}
+	clus := &e2eCluster{t, *epc}
+	if cfg.WithLearner {
+		cc := testutils.MustClient(clus.Client())
+		addResp, err := cc.MemberAddAsLearner(ctx, "newmember", []string{"http://localhost:123"})
+		if err != nil {
+			t.Fatalf("could not add raft leaner: %s", err)
+		}
+		if addResp.Member == nil {
+			t.Fatalf("MemberAdd failed, expected: member != nil, got: member == nil")
+		}
+		if addResp.Member.ID == 0 {
+			t.Fatalf("MemberAdd failed, expected: ID != 0, got: ID == 0")
+		}
+		if len(addResp.Member.PeerURLs) == 0 {
+			t.Fatalf("MemberAdd failed, expected: non-empty PeerURLs, got: empty PeerURLs")
+		}
+	}
+	return clus
 }
 
 type e2eCluster struct {

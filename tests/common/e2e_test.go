@@ -51,6 +51,10 @@ func e2eClusterTestCases() []testCase {
 			name:   "ClientAutoTLS",
 			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
 		},
+		{
+			name:   "ClusterWithLearner",
+			config: config.ClusterConfig{ClusterSize: 3, ClientTLS: config.AutoTLS, WithLearner: true},
+		},
 	}
 
 	if fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
