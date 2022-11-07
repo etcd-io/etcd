@@ -129,6 +129,27 @@ gofail-disable: install-gofail
 install-gofail:
 	cd tools/mod; go install go.etcd.io/gofail@${GOFAIL_VERSION}
 
+# Reproduce historical issues
+
+.PHONY: reproduce-issue14370
+reproduce-issue14370: ./bin/etcd-v3.5.4-failpoints
+	cp ./bin/etcd-v3.5.4-failpoints ./bin/etcd
+	GO_TEST_FLAGS='-v --run=TestLinearizability/Issue14370 --count 100 --failfast' make test-linearizability
+
+./bin/etcd-v3.5.4-failpoints:
+	rm -rf /tmp/etcd-release-v3.5.4/
+	mkdir -p /tmp/etcd-release-v3.5.4/
+	cd /tmp/etcd-release-v3.5.4/; \
+	  git clone https://github.com/etcd-io/etcd.git .; \
+	  git checkout v3.5.4; \
+	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
+	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  FAILPOINTS=true ./build;
+	mkdir -p ./bin
+	cp /tmp/etcd-release-v3.5.4/bin/etcd ./bin/etcd-v3.5.4-failpoints
+
 # Cleanup
 
 clean:
