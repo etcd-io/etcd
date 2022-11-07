@@ -19,17 +19,11 @@ import (
 )
 
 type TLSConfig string
-type ClusterVersion string
 
 const (
 	NoTLS     TLSConfig = ""
 	AutoTLS   TLSConfig = "auto-tls"
 	ManualTLS TLSConfig = "manual-tls"
-
-	CurrentVersion      ClusterVersion = ""
-	MinorityLastVersion ClusterVersion = "minority-last-version"
-	QuorumLastVersion   ClusterVersion = "quorum-last-version"
-	LastVersion         ClusterVersion = "last-version"
 
 	TickDuration = 10 * time.Millisecond
 )
@@ -43,11 +37,11 @@ type ClusterConfig struct {
 	AuthToken           string
 	SnapshotCount       int
 
-	E2eConfig *E2eClusterConfig
-}
-
-type E2eClusterConfig struct {
-	Version ClusterVersion
+	// ClusterContext is used by "e2e" or "integration" to extend the
+	// ClusterConfig. The common test cases shouldn't care about what
+	// data is encoded or included; instead "e2e" or "integration"
+	// framework should decode or parse it separately.
+	ClusterContext any
 }
 
 func DefaultClusterConfig() ClusterConfig {

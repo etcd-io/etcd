@@ -56,9 +56,12 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 		AuthTokenOpts:              cfg.AuthToken,
 		SnapshotCount:              cfg.SnapshotCount,
 	}
-	if cfg.E2eConfig != nil {
-		e2eConfig.Version = cfg.E2eConfig.Version
+
+	if cfg.ClusterContext != nil {
+		e2eClusterCtx := cfg.ClusterContext.(*ClusterContext)
+		e2eConfig.Version = e2eClusterCtx.Version
 	}
+
 	switch cfg.ClientTLS {
 	case config.NoTLS:
 		e2eConfig.ClientTLS = ClientNonTLS

@@ -52,21 +52,22 @@ func e2eClusterTestCases() []testCase {
 			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
 		},
 	}
+
 	if fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 		tcs = append(tcs, testCase{
 			name: "MinorityLastVersion",
 			config: config.ClusterConfig{
 				ClusterSize: 3,
-				E2eConfig: &config.E2eClusterConfig{
-					Version: config.MinorityLastVersion,
+				ClusterContext: &e2e.ClusterContext{
+					Version: e2e.MinorityLastVersion,
 				},
 			},
 		}, testCase{
 			name: "QuorumLastVersion",
 			config: config.ClusterConfig{
 				ClusterSize: 3,
-				E2eConfig: &config.E2eClusterConfig{
-					Version: config.QuorumLastVersion,
+				ClusterContext: &e2e.ClusterContext{
+					Version: e2e.QuorumLastVersion,
 				},
 			},
 		})

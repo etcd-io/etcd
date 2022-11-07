@@ -138,7 +138,7 @@ type EtcdProcessCluster struct {
 
 type EtcdProcessClusterConfig struct {
 	Logger      *zap.Logger
-	Version     config.ClusterVersion
+	Version     ClusterVersion
 	DataDirPath string
 	KeepDataDir bool
 	EnvVars     map[string]string
@@ -399,21 +399,21 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 	var execPath string
 	switch cfg.Version {
-	case config.CurrentVersion:
+	case CurrentVersion:
 		execPath = BinPath.Etcd
-	case config.MinorityLastVersion:
+	case MinorityLastVersion:
 		if i <= cfg.ClusterSize/2 {
 			execPath = BinPath.Etcd
 		} else {
 			execPath = BinPath.EtcdLastRelease
 		}
-	case config.QuorumLastVersion:
+	case QuorumLastVersion:
 		if i <= cfg.ClusterSize/2 {
 			execPath = BinPath.EtcdLastRelease
 		} else {
 			execPath = BinPath.Etcd
 		}
-	case config.LastVersion:
+	case LastVersion:
 		execPath = BinPath.EtcdLastRelease
 	default:
 		panic(fmt.Sprintf("Unknown cluster version %v", cfg.Version))

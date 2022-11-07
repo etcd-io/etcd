@@ -50,9 +50,7 @@ func (e integrationRunner) BeforeTest(t testing.TB) {
 func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	var err error
 	cfg := config.NewClusterConfig(opts...)
-	if cfg.E2eConfig != nil {
-		t.Fatalf("E2e configuration not expected during integration tests, config: %+v", cfg)
-	}
+
 	integrationCfg := ClusterConfig{
 		Size:                       cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
