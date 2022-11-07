@@ -23,6 +23,11 @@ import (
 
 func init() {
 	testRunner = framework.UnitTestRunner
+	clusterTestCases = unitClusterTestCases
+}
+
+func unitClusterTestCases() []testCase {
+	return nil
 }
 
 // When a build tag (e.g. e2e or integration) isn't configured in IDE,

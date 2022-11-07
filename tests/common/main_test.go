@@ -15,14 +15,16 @@
 package common
 
 import (
-	"go.etcd.io/etcd/tests/v3/framework"
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
 
-var testRunner = framework.UnitTestRunner
-var clusterTestCases = func() []testCase { return nil }
+var (
+	testRunner       intf.TestRunner
+	clusterTestCases func() []testCase
+)
 
 func TestMain(m *testing.M) {
 	testRunner.TestMain(m)

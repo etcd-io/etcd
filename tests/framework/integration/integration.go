@@ -50,7 +50,6 @@ func (e integrationRunner) BeforeTest(t testing.TB) {
 func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	var err error
 	cfg := config.NewClusterConfig(opts...)
-
 	integrationCfg := ClusterConfig{
 		Size:                       cfg.ClusterSize,
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
