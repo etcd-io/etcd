@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -404,7 +403,8 @@ func TestBlockProposal(t *testing.T) {
 		errc <- n.Propose(context.TODO(), []byte("somedata"))
 	}()
 
-	testutil.WaitSchedule()
+	time.Sleep(10 * time.Millisecond)
+
 	select {
 	case err := <-errc:
 		t.Errorf("err = %v, want blocking", err)
