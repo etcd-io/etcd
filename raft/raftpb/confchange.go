@@ -35,7 +35,13 @@ func MarshalConfChange(c ConfChangeI) (EntryType, []byte, error) {
 	var typ EntryType
 	var ccdata []byte
 	var err error
-	if ccv1, ok := c.AsV1(); ok {
+	if c == nil {
+		// A nil data unmarshals into an empty ConfChangeV2 and has the benefit
+		// that appendEntry can never refuse it based on its size (which
+		// registers as zero).
+		typ = EntryConfChangeV2
+		ccdata = nil
+	} else if ccv1, ok := c.AsV1(); ok {
 		typ = EntryConfChange
 		ccdata, err = ccv1.Marshal()
 	} else {

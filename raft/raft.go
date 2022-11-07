@@ -551,26 +551,29 @@ func (r *raft) advance(rd Ready) {
 	// new Commit index, this does not mean that we're also applying
 	// all of the new entries due to commit pagination by size.
 	if newApplied := rd.appliedCursor(); newApplied > 0 {
-		oldApplied := r.raftLog.applied
 		r.raftLog.appliedTo(newApplied)
 
-		if r.prs.Config.AutoLeave && oldApplied <= r.pendingConfIndex && newApplied >= r.pendingConfIndex && r.state == StateLeader {
+		if r.prs.Config.AutoLeave && newApplied >= r.pendingConfIndex && r.state == StateLeader {
 			// If the current (and most recent, at least for this leader's term)
 			// configuration should be auto-left, initiate that now. We use a
 			// nil Data which unmarshals into an empty ConfChangeV2 and has the
 			// benefit that appendEntry can never refuse it based on its size
 			// (which registers as zero).
-			ent := pb.Entry{
-				Type: pb.EntryConfChangeV2,
-				Data: nil,
+			m, err := confChangeToMsg(nil)
+			if err != nil {
+				panic(err)
 			}
-			// There's no way in which this proposal should be able to be rejected.
-			if !r.appendEntry(ent) {
-				panic("refused un-refusable auto-leaving ConfChangeV2")
+			// NB: this proposal can't be dropped due to size, but can be
+			// dropped if a leadership transfer is in progress. We'll keep
+			// checking this condition on each applied entry, so either the
+			// leadership transfer will succeed and the new leader will leave
+			// the joint configuration, or the leadership transfer will fail,
+			// and we will propose the config change on the next advance.
+			if err := r.Step(m); err != nil {
+				r.logger.Debugf("not initiating automatic transition out of joint configuration %s: %v", r.prs.Config, err)
+			} else {
+				r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
 			}
-			r.bcastAppend()
-			r.pendingConfIndex = r.raftLog.lastIndex()
-			r.logger.Infof("initiating automatic transition out of joint configuration %s", r.prs.Config)
 		}
 	}
 
