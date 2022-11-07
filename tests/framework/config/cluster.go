@@ -14,7 +14,9 @@
 
 package config
 
-import "time"
+import (
+	"time"
+)
 
 type TLSConfig string
 
@@ -34,6 +36,12 @@ type ClusterConfig struct {
 	StrictReconfigCheck bool
 	AuthToken           string
 	SnapshotCount       int
+
+	// ClusterContext is used by "e2e" or "integration" to extend the
+	// ClusterConfig. The common test cases shouldn't care about what
+	// data is encoded or included; instead "e2e" or "integration"
+	// framework should decode or parse it separately.
+	ClusterContext any
 }
 
 func DefaultClusterConfig() ClusterConfig {

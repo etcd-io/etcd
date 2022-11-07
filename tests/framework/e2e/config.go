@@ -12,27 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !(e2e || integration)
+package e2e
 
-package common
+type ClusterVersion string
 
-import (
-	"go.etcd.io/etcd/tests/v3/framework"
-	"go.etcd.io/etcd/tests/v3/framework/config"
+const (
+	CurrentVersion      ClusterVersion = ""
+	MinorityLastVersion ClusterVersion = "minority-last-version"
+	QuorumLastVersion   ClusterVersion = "quorum-last-version"
+	LastVersion         ClusterVersion = "last-version"
 )
 
-func init() {
-	testRunner = framework.UnitTestRunner
-	clusterTestCases = unitClusterTestCases
-}
-
-func unitClusterTestCases() []testCase {
-	return nil
-}
-
-// When a build tag (e.g. e2e or integration) isn't configured in IDE,
-// then IDE may complain "Unresolved reference 'WithAuth'". So we need
-// to define a default WithAuth to resolve such case.
-func WithAuth(userName, password string) config.ClientOption {
-	return func(any) {}
+type ClusterContext struct {
+	Version ClusterVersion
 }

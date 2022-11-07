@@ -28,7 +28,7 @@ import (
 func TestLeaseGrantTimeToLive(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -52,7 +52,7 @@ func TestLeaseGrantTimeToLive(t *testing.T) {
 func TestLeaseGrantAndList(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		nestedCases := []struct {
 			name       string
 			leaseCount int
@@ -119,7 +119,7 @@ func TestLeaseGrantAndList(t *testing.T) {
 func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -156,7 +156,7 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -185,7 +185,7 @@ func TestLeaseGrantKeepAliveOnce(t *testing.T) {
 func TestLeaseGrantRevoke(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()

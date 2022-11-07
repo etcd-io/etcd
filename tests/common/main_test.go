@@ -21,30 +21,10 @@ import (
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
 
-var testRunner intf.TestRunner
-
-var clusterTestCases = []testCase{
-	{
-		name:   "NoTLS",
-		config: config.NewClusterConfig(config.WithClusterSize(1)),
-	},
-	{
-		name:   "PeerTLS",
-		config: config.NewClusterConfig(config.WithPeerTLS(config.ManualTLS)),
-	},
-	{
-		name:   "PeerAutoTLS",
-		config: config.NewClusterConfig(config.WithPeerTLS(config.AutoTLS)),
-	},
-	{
-		name:   "ClientTLS",
-		config: config.NewClusterConfig(config.WithClusterSize(1), config.WithClientTLS(config.ManualTLS)),
-	},
-	{
-		name:   "ClientAutoTLS",
-		config: config.NewClusterConfig(config.WithClusterSize(1), config.WithClientTLS(config.AutoTLS)),
-	},
-}
+var (
+	testRunner       intf.TestRunner
+	clusterTestCases func() []testCase
+)
 
 func TestMain(m *testing.M) {
 	testRunner.TestMain(m)

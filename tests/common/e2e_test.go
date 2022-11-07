@@ -18,6 +18,7 @@
 package common
 
 import (
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -25,6 +26,53 @@ import (
 
 func init() {
 	testRunner = framework.E2eTestRunner
+	clusterTestCases = e2eClusterTestCases
+}
+
+func e2eClusterTestCases() []testCase {
+	tcs := []testCase{
+		{
+			name:   "NoTLS",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "PeerTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+		},
+		{
+			name:   "PeerAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
+		},
+		{
+			name:   "ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+		},
+	}
+
+	if fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		tcs = append(tcs, testCase{
+			name: "MinorityLastVersion",
+			config: config.ClusterConfig{
+				ClusterSize: 3,
+				ClusterContext: &e2e.ClusterContext{
+					Version: e2e.MinorityLastVersion,
+				},
+			},
+		}, testCase{
+			name: "QuorumLastVersion",
+			config: config.ClusterConfig{
+				ClusterSize: 3,
+				ClusterContext: &e2e.ClusterContext{
+					Version: e2e.QuorumLastVersion,
+				},
+			},
+		})
+	}
+	return tcs
 }
 
 func WithAuth(userName, password string) config.ClientOption {

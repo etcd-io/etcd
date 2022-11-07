@@ -35,10 +35,10 @@ func TestEtctlutlMigrate(t *testing.T) {
 	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 
 	tcs := []struct {
-		name          string
-		targetVersion string
-		binary        string
-		force         bool
+		name           string
+		targetVersion  string
+		clusterVersion e2e.ClusterVersion
+		force          bool
 
 		expectLogsSubString  string
 		expectStorageVersion *semver.Version
@@ -69,13 +69,13 @@ func TestEtctlutlMigrate(t *testing.T) {
 		},
 		{
 			name:                "Migrate v3.5 to v3.5 is no-op",
-			binary:              lastReleaseBinary,
+			clusterVersion:      e2e.LastVersion,
 			targetVersion:       "3.5",
 			expectLogsSubString: "storage version up-to-date\t" + `{"storage-version": "3.5"}`,
 		},
 		{
 			name:                 "Upgrade v3.5 to v3.6 should work",
-			binary:               lastReleaseBinary,
+			clusterVersion:       e2e.LastVersion,
 			targetVersion:        "3.6",
 			expectStorageVersion: &version.V3_6,
 		},
@@ -109,13 +109,13 @@ func TestEtctlutlMigrate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
 			lg := zaptest.NewLogger(t)
-			if tc.binary != "" && !fileutil.Exist(tc.binary) {
+			if tc.clusterVersion != e2e.CurrentVersion && !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 				t.Skipf("%q does not exist", lastReleaseBinary)
 			}
 			dataDirPath := t.TempDir()
 
 			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-				ExecPath:     tc.binary,
+				Version:      tc.clusterVersion,
 				DataDirPath:  dataDirPath,
 				ClusterSize:  1,
 				InitialToken: "new",

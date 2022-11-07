@@ -27,7 +27,7 @@ import (
 
 func TestKVPut(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -61,7 +61,7 @@ func TestKVPut(t *testing.T) {
 
 func TestKVGet(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -121,7 +121,7 @@ func TestKVGet(t *testing.T) {
 
 func TestKVDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()

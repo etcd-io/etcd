@@ -30,7 +30,7 @@ import (
 func TestMemberList(t *testing.T) {
 	testRunner.BeforeTest(t)
 
-	for _, tc := range clusterTestCases {
+	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -102,7 +102,7 @@ func TestMemberAdd(t *testing.T) {
 
 	for _, learnerTc := range learnerTcs {
 		for _, quorumTc := range quorumTcs {
-			for _, clusterTc := range clusterTestCases {
+			for _, clusterTc := range clusterTestCases() {
 				t.Run(learnerTc.name+"/"+quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
 					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 					defer cancel()
@@ -178,7 +178,7 @@ func TestMemberRemove(t *testing.T) {
 	}
 
 	for _, quorumTc := range tcs {
-		for _, clusterTc := range clusterTestCases {
+		for _, clusterTc := range clusterTestCases() {
 			if !quorumTc.strictReconfigCheck && clusterTc.config.ClusterSize == 1 {
 				// skip these test cases
 				// when strictReconfigCheck is disabled, calling MemberRemove will cause the single node to panic
