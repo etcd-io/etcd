@@ -105,6 +105,25 @@ verify-proto-annotations:
 verify-genproto:
 	PASSES="genproto" ./scripts/test.sh
 
+# Old release builds for reproducing issues
+
+.PHONY: release-issue14370
+release-issue14370: ./bin/etcd-v3.5.4-failpoints
+	cp ./bin/etcd-v3.5.4-failpoints ./bin/etcd
+
+./bin/etcd-v3.5.4-failpoints:
+	rm -rf /tmp/etcd-release-issue14370/
+	mkdir -p /tmp/etcd-release-issue14370/
+	cd /tmp/etcd-release-issue14370/; \
+	  git clone https://github.com/etcd-io/etcd.git .; \
+	  git checkout v3.5.4; \
+	  go get go.etcd.io/gofail/runtime; \
+	  (cd server; go get go.etcd.io/gofail/runtime); \
+	  (cd etcdctl; go get go.etcd.io/gofail/runtime); \
+	  (cd etcdutl; go get go.etcd.io/gofail/runtime); \
+	  FAILPOINTS=true make build;
+	mkdir -p ./bin
+	cp /tmp/etcd-release-issue14370/bin/etcd ./bin/etcd-v3.5.4-failpoints
 
 # Cleanup
 
