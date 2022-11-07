@@ -47,17 +47,19 @@ func TestLinearizability(t *testing.T) {
 		config    e2e.EtcdProcessClusterConfig
 	}{
 		{
-			name:      "KillClusterOfSize1",
-			failpoint: KillFailpoint,
+			name:      "ClusterOfSize1",
+			failpoint: RandomFailpoint,
 			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize: 1,
+				ClusterSize:   1,
+				GoFailEnabled: true,
 			},
 		},
 		{
-			name:      "KillClusterOfSize3",
-			failpoint: KillFailpoint,
+			name:      "ClusterOfSize3",
+			failpoint: RandomFailpoint,
 			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize: 3,
+				ClusterSize:   3,
+				GoFailEnabled: true,
 			},
 		},
 		{
@@ -96,7 +98,7 @@ func testLinearizability(ctx context.Context, t *testing.T, config e2e.EtcdProce
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		defer cancel()
-		err := triggerFailpoints(ctx, clus, failpoint)
+		err := triggerFailpoints(ctx, t, clus, failpoint)
 		if err != nil {
 			t.Error(err)
 		}
@@ -120,7 +122,7 @@ func testLinearizability(ctx context.Context, t *testing.T, config e2e.EtcdProce
 	t.Logf("saving visualization to %q", path)
 }
 
-func triggerFailpoints(ctx context.Context, clus *e2e.EtcdProcessCluster, config FailpointConfig) error {
+func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig) error {
 	var err error
 	successes := 0
 	failures := 0
@@ -128,6 +130,7 @@ func triggerFailpoints(ctx context.Context, clus *e2e.EtcdProcessCluster, config
 	for successes < config.count && failures < config.count {
 		err = config.failpoint.Trigger(ctx, clus)
 		if err != nil {
+			t.Logf("Failed to trigger failpoint %q, err: %v\n", config.failpoint.Name(), err)
 			failures++
 			continue
 		}
