@@ -646,7 +646,7 @@ func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 	}
 	// Track the size of this uncommitted proposal.
 	if !r.increaseUncommittedSize(es) {
-		r.logger.Debugf(
+		r.logger.Warningf(
 			"%x appending new entries to log would exceed uncommitted entry size limit; dropping proposal",
 			r.id,
 		)
