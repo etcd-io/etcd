@@ -27,7 +27,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.uber.org/zap/zaptest"
 )
@@ -38,7 +37,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 	tcs := []struct {
 		name           string
 		targetVersion  string
-		clusterVersion config.ClusterVersion
+		clusterVersion e2e.ClusterVersion
 		force          bool
 
 		expectLogsSubString  string
@@ -70,13 +69,13 @@ func TestEtctlutlMigrate(t *testing.T) {
 		},
 		{
 			name:                "Migrate v3.5 to v3.5 is no-op",
-			clusterVersion:      config.LastVersion,
+			clusterVersion:      e2e.LastVersion,
 			targetVersion:       "3.5",
 			expectLogsSubString: "storage version up-to-date\t" + `{"storage-version": "3.5"}`,
 		},
 		{
 			name:                 "Upgrade v3.5 to v3.6 should work",
-			clusterVersion:       config.LastVersion,
+			clusterVersion:       e2e.LastVersion,
 			targetVersion:        "3.6",
 			expectStorageVersion: &version.V3_6,
 		},
@@ -110,7 +109,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
 			lg := zaptest.NewLogger(t)
-			if tc.clusterVersion != config.CurrentVersion && !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+			if tc.clusterVersion != e2e.CurrentVersion && !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 				t.Skipf("%q does not exist", lastReleaseBinary)
 			}
 			dataDirPath := t.TempDir()

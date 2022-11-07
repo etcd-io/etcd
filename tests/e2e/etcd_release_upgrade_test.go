@@ -23,7 +23,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -37,7 +36,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	e2e.BeforeTest(t)
 
 	copiedCfg := e2e.NewConfigNoTLS()
-	copiedCfg.Version = config.LastVersion
+	copiedCfg.Version = e2e.LastVersion
 	copiedCfg.SnapshotCount = 3
 	copiedCfg.BaseScheme = "unix" // to avoid port conflict
 
@@ -120,7 +119,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	e2e.BeforeTest(t)
 
 	copiedCfg := e2e.NewConfigNoTLS()
-	copiedCfg.Version = config.LastVersion
+	copiedCfg.Version = e2e.LastVersion
 	copiedCfg.SnapshotCount = 10
 	copiedCfg.BaseScheme = "unix"
 

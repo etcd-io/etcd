@@ -27,7 +27,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -45,7 +44,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 
 	dc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
 		BasePort:    2000,
-		Version:     config.LastVersion,
+		Version:     e2e.LastVersion,
 		ClusterSize: 1,
 		EnableV2:    true,
 	})
