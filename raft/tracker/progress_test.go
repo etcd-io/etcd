@@ -22,14 +22,14 @@ func TestProgressString(t *testing.T) {
 	ins := NewInflights(1)
 	ins.Add(123)
 	pr := &Progress{
-		Match:           1,
-		Next:            2,
-		State:           StateSnapshot,
-		PendingSnapshot: 123,
-		RecentActive:    false,
-		ProbeSent:       true,
-		IsLearner:       true,
-		Inflights:       ins,
+		Match:            1,
+		Next:             2,
+		State:            StateSnapshot,
+		PendingSnapshot:  123,
+		RecentActive:     false,
+		MsgAppFlowPaused: true,
+		IsLearner:        true,
+		Inflights:        ins,
 	}
 	const exp = `StateSnapshot match=1 next=2 learner paused pendingSnap=123 inactive inflight=1[full]`
 	if act := pr.String(); act != exp {
@@ -53,9 +53,9 @@ func TestProgressIsPaused(t *testing.T) {
 	}
 	for i, tt := range tests {
 		p := &Progress{
-			State:     tt.state,
-			ProbeSent: tt.paused,
-			Inflights: NewInflights(256),
+			State:            tt.state,
+			MsgAppFlowPaused: tt.paused,
+			Inflights:        NewInflights(256),
 		}
 		if g := p.IsPaused(); g != tt.w {
 			t.Errorf("#%d: paused= %t, want %t", i, g, tt.w)
@@ -64,20 +64,20 @@ func TestProgressIsPaused(t *testing.T) {
 }
 
 // TestProgressResume ensures that MaybeUpdate and MaybeDecrTo will reset
-// ProbeSent.
+// MsgAppFlowPaused.
 func TestProgressResume(t *testing.T) {
 	p := &Progress{
-		Next:      2,
-		ProbeSent: true,
+		Next:             2,
+		MsgAppFlowPaused: true,
 	}
 	p.MaybeDecrTo(1, 1)
-	if p.ProbeSent {
-		t.Errorf("paused= %v, want false", p.ProbeSent)
+	if p.MsgAppFlowPaused {
+		t.Errorf("paused= %v, want false", p.MsgAppFlowPaused)
 	}
-	p.ProbeSent = true
+	p.MsgAppFlowPaused = true
 	p.MaybeUpdate(2)
-	if p.ProbeSent {
-		t.Errorf("paused= %v, want false", p.ProbeSent)
+	if p.MsgAppFlowPaused {
+		t.Errorf("paused= %v, want false", p.MsgAppFlowPaused)
 	}
 }
 

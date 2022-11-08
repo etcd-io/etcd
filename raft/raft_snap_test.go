@@ -83,8 +83,8 @@ func TestSnapshotFailure(t *testing.T) {
 	if sm.prs.Progress[2].Next != 1 {
 		t.Fatalf("Next = %d, want 1", sm.prs.Progress[2].Next)
 	}
-	if !sm.prs.Progress[2].ProbeSent {
-		t.Errorf("ProbeSent = %v, want true", sm.prs.Progress[2].ProbeSent)
+	if !sm.prs.Progress[2].MsgAppFlowPaused {
+		t.Errorf("MsgAppFlowPaused = %v, want true", sm.prs.Progress[2].MsgAppFlowPaused)
 	}
 }
 
@@ -106,8 +106,8 @@ func TestSnapshotSucceed(t *testing.T) {
 	if sm.prs.Progress[2].Next != 12 {
 		t.Fatalf("Next = %d, want 12", sm.prs.Progress[2].Next)
 	}
-	if !sm.prs.Progress[2].ProbeSent {
-		t.Errorf("ProbeSent = %v, want true", sm.prs.Progress[2].ProbeSent)
+	if !sm.prs.Progress[2].MsgAppFlowPaused {
+		t.Errorf("MsgAppFlowPaused = %v, want true", sm.prs.Progress[2].MsgAppFlowPaused)
 	}
 }
 

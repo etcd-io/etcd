@@ -1304,7 +1304,7 @@ func stepLeader(r *raft, m pb.Message) error {
 		}
 	case pb.MsgHeartbeatResp:
 		pr.RecentActive = true
-		pr.ProbeSent = false
+		pr.MsgAppFlowPaused = false
 
 		// NB: if the follower is paused (full Inflights), this will still send an
 		// empty append, allowing it to recover from situations in which all the
@@ -1349,7 +1349,7 @@ func stepLeader(r *raft, m pb.Message) error {
 		// If snapshot finish, wait for the MsgAppResp from the remote node before sending
 		// out the next MsgApp.
 		// If snapshot failure, wait for a heartbeat interval before next try
-		pr.ProbeSent = true
+		pr.MsgAppFlowPaused = true
 	case pb.MsgUnreachable:
 		// During optimistic replication, if the remote becomes unreachable,
 		// there is huge probability that a MsgApp is lost.

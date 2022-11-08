@@ -94,21 +94,21 @@ func TestProgressResumeByHeartbeatResp(t *testing.T) {
 	r.becomeCandidate()
 	r.becomeLeader()
 
-	r.prs.Progress[2].ProbeSent = true
+	r.prs.Progress[2].MsgAppFlowPaused = true
 
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
-	if !r.prs.Progress[2].ProbeSent {
-		t.Errorf("paused = %v, want true", r.prs.Progress[2].ProbeSent)
+	if !r.prs.Progress[2].MsgAppFlowPaused {
+		t.Errorf("paused = %v, want true", r.prs.Progress[2].MsgAppFlowPaused)
 	}
 
 	r.prs.Progress[2].BecomeReplicate()
-	if r.prs.Progress[2].ProbeSent {
-		t.Errorf("paused = %v, want false", r.prs.Progress[2].ProbeSent)
+	if r.prs.Progress[2].MsgAppFlowPaused {
+		t.Errorf("paused = %v, want false", r.prs.Progress[2].MsgAppFlowPaused)
 	}
-	r.prs.Progress[2].ProbeSent = true
+	r.prs.Progress[2].MsgAppFlowPaused = true
 	r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgHeartbeatResp})
-	if r.prs.Progress[2].ProbeSent {
-		t.Errorf("paused = %v, want false", r.prs.Progress[2].ProbeSent)
+	if r.prs.Progress[2].MsgAppFlowPaused {
+		t.Errorf("paused = %v, want false", r.prs.Progress[2].MsgAppFlowPaused)
 	}
 }
 
@@ -2658,8 +2658,8 @@ func TestSendAppendForProgressProbe(t *testing.T) {
 			}
 		}
 
-		if !r.prs.Progress[2].ProbeSent {
-			t.Errorf("paused = %v, want true", r.prs.Progress[2].ProbeSent)
+		if !r.prs.Progress[2].MsgAppFlowPaused {
+			t.Errorf("paused = %v, want true", r.prs.Progress[2].MsgAppFlowPaused)
 		}
 		for j := 0; j < 10; j++ {
 			mustAppendEntry(r, pb.Entry{Data: []byte("somedata")})
@@ -2673,8 +2673,8 @@ func TestSendAppendForProgressProbe(t *testing.T) {
 		for j := 0; j < r.heartbeatTimeout; j++ {
 			r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
 		}
-		if !r.prs.Progress[2].ProbeSent {
-			t.Errorf("paused = %v, want true", r.prs.Progress[2].ProbeSent)
+		if !r.prs.Progress[2].MsgAppFlowPaused {
+			t.Errorf("paused = %v, want true", r.prs.Progress[2].MsgAppFlowPaused)
 		}
 
 		// consume the heartbeat
@@ -2696,8 +2696,8 @@ func TestSendAppendForProgressProbe(t *testing.T) {
 	if msg[0].Index != 0 {
 		t.Errorf("index = %d, want %d", msg[0].Index, 0)
 	}
-	if !r.prs.Progress[2].ProbeSent {
-		t.Errorf("paused = %v, want true", r.prs.Progress[2].ProbeSent)
+	if !r.prs.Progress[2].MsgAppFlowPaused {
+		t.Errorf("paused = %v, want true", r.prs.Progress[2].MsgAppFlowPaused)
 	}
 }
 

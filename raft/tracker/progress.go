@@ -55,14 +55,13 @@ type Progress struct {
 	// This is always true on the leader.
 	RecentActive bool
 
-	// ProbeSent is true when a "probe" MsgApp was sent to this follower recently,
-	// and we haven't heard from it back yet. Used when the MsgApp flow is
-	// throttled, i.e. when State is StateProbe, or StateReplicate with saturated
-	// Inflights. In both cases, we need to continue sending MsgApp once in a
-	// while to guarantee progress, but we only do so when ProbeSent is false (it
-	// is reset on receiving a heartbeat response), to not overflow the receiver.
-	// See IsPaused().
-	ProbeSent bool
+	// MsgAppFlowPaused is used when the MsgApp flow to a node is throttled. This
+	// happens in StateProbe, or StateReplicate with saturated Inflights. In both
+	// cases, we need to continue sending MsgApp once in a while to guarantee
+	// progress, but we only do so when MsgAppFlowPaused is false (it is reset on
+	// receiving a heartbeat response), to not overflow the receiver. See
+	// IsPaused().
+	MsgAppFlowPaused bool
 
 	// Inflights is a sliding window for the inflight messages.
 	// Each inflight message contains one or more log entries.
@@ -82,10 +81,10 @@ type Progress struct {
 	IsLearner bool
 }
 
-// ResetState moves the Progress into the specified State, resetting ProbeSent,
+// ResetState moves the Progress into the specified State, resetting MsgAppFlowPaused,
 // PendingSnapshot, and Inflights.
 func (pr *Progress) ResetState(state StateType) {
-	pr.ProbeSent = false
+	pr.MsgAppFlowPaused = false
 	pr.PendingSnapshot = 0
 	pr.State = state
 	pr.Inflights.reset()
@@ -146,13 +145,13 @@ func (pr *Progress) UpdateOnEntriesSend(entries int, nextIndex uint64) error {
 		}
 		// If this message overflows the in-flights tracker, or it was already full,
 		// consider this message being a probe, so that the flow is paused.
-		pr.ProbeSent = pr.Inflights.Full()
+		pr.MsgAppFlowPaused = pr.Inflights.Full()
 	case StateProbe:
 		// TODO(pavelkalinnikov): this condition captures the previous behaviour,
-		// but we should set ProbeSent unconditionally for simplicity, because any
+		// but we should set MsgAppFlowPaused unconditionally for simplicity, because any
 		// MsgApp in StateProbe is a probe, not only non-empty ones.
 		if entries > 0 {
-			pr.ProbeSent = true
+			pr.MsgAppFlowPaused = true
 		}
 	default:
 		return fmt.Errorf("sending append in unhandled state %s", pr.State)
@@ -168,7 +167,7 @@ func (pr *Progress) MaybeUpdate(n uint64) bool {
 	if pr.Match < n {
 		pr.Match = n
 		updated = true
-		pr.ProbeSent = false
+		pr.MsgAppFlowPaused = false
 	}
 	pr.Next = max(pr.Next, n+1)
 	return updated
@@ -210,7 +209,7 @@ func (pr *Progress) MaybeDecrTo(rejected, matchHint uint64) bool {
 	}
 
 	pr.Next = max(min(rejected, matchHint+1), 1)
-	pr.ProbeSent = false
+	pr.MsgAppFlowPaused = false
 	return true
 }
 
@@ -223,9 +222,9 @@ func (pr *Progress) MaybeDecrTo(rejected, matchHint uint64) bool {
 func (pr *Progress) IsPaused() bool {
 	switch pr.State {
 	case StateProbe:
-		return pr.ProbeSent
+		return pr.MsgAppFlowPaused
 	case StateReplicate:
-		return pr.ProbeSent
+		return pr.MsgAppFlowPaused
 	case StateSnapshot:
 		return true
 	default:
