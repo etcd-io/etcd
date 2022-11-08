@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/golang/protobuf/proto"
+	"go.etcd.io/etcd/api/v3/version"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
@@ -128,6 +129,7 @@ func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) er
 			return nil
 		}
 		msg = proto.MessageReflect(&confChange)
+		return visitor(msg.Descriptor().FullName(), &version.V3_0)
 	case raftpb.EntryConfChangeV2:
 		var confChange raftpb.ConfChangeV2
 		err := pbutil.Unmarshaler(&confChange).Unmarshal(data)
@@ -135,6 +137,7 @@ func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) er
 			return nil
 		}
 		msg = proto.MessageReflect(&confChange)
+		return visitor(msg.Descriptor().FullName(), &version.V3_4)
 	default:
 		panic("unhandled")
 	}
