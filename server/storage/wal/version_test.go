@@ -68,7 +68,7 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 			expect: &version.V3_6,
 		},
 		{
-			name: "Using ConfigChange implies v3.4",
+			name: "Using ConfigChange implies v3.0",
 			input: raftpb.Entry{
 				Term:  1,
 				Index: 2,
