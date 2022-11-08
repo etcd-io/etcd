@@ -105,6 +105,20 @@ func TestInflightFreeTo(t *testing.T) {
 		in.Add(uint64(i))
 	}
 
+	in.FreeLE(0)
+
+	wantIn0 := &Inflights{
+		start: 1,
+		count: 9,
+		size:  10,
+		//                  ↓------------------------
+		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+	}
+
+	if !reflect.DeepEqual(in, wantIn0) {
+		t.Fatalf("in = %+v, want %+v", in, wantIn0)
+	}
+
 	in.FreeLE(4)
 
 	wantIn := &Inflights{
@@ -164,26 +178,5 @@ func TestInflightFreeTo(t *testing.T) {
 
 	if !reflect.DeepEqual(in, wantIn4) {
 		t.Fatalf("in = %+v, want %+v", in, wantIn4)
-	}
-}
-
-func TestInflightFreeFirstOne(t *testing.T) {
-	in := NewInflights(10)
-	for i := 0; i < 10; i++ {
-		in.Add(uint64(i))
-	}
-
-	in.FreeFirstOne()
-
-	wantIn := &Inflights{
-		start: 1,
-		count: 9,
-		size:  10,
-		//                  ↓------------------------
-		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-	}
-
-	if !reflect.DeepEqual(in, wantIn) {
-		t.Fatalf("in = %+v, want %+v", in, wantIn)
 	}
 }

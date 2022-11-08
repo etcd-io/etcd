@@ -28,6 +28,7 @@ import (
 func (env *InteractionEnv) handleAddNodes(t *testing.T, d datadriven.TestData) error {
 	n := firstAsInt(t, d)
 	var snap pb.Snapshot
+	cfg := raftConfigStub()
 	for _, arg := range d.CmdArgs[1:] {
 		for i := range arg.Vals {
 			switch arg.Key {
@@ -39,14 +40,17 @@ func (env *InteractionEnv) handleAddNodes(t *testing.T, d datadriven.TestData) e
 				var id uint64
 				arg.Scan(t, i, &id)
 				snap.Metadata.ConfState.Learners = append(snap.Metadata.ConfState.Learners, id)
+			case "inflight":
+				arg.Scan(t, i, &cfg.MaxInflightMsgs)
 			case "index":
 				arg.Scan(t, i, &snap.Metadata.Index)
+				cfg.Applied = snap.Metadata.Index
 			case "content":
 				arg.Scan(t, i, &snap.Data)
 			}
 		}
 	}
-	return env.AddNodes(n, snap)
+	return env.AddNodes(n, cfg, snap)
 }
 
 type snapOverrideStorage struct {
@@ -63,9 +67,9 @@ func (s snapOverrideStorage) Snapshot() (pb.Snapshot, error) {
 
 var _ raft.Storage = snapOverrideStorage{}
 
-// AddNodes adds n new nodes initializes from the given snapshot (which may be
-// empty). They will be assigned consecutive IDs.
-func (env *InteractionEnv) AddNodes(n int, snap pb.Snapshot) error {
+// AddNodes adds n new nodes initialized from the given snapshot (which may be
+// empty), and using the cfg as template. They will be assigned consecutive IDs.
+func (env *InteractionEnv) AddNodes(n int, cfg raft.Config, snap pb.Snapshot) error {
 	bootstrap := !reflect.DeepEqual(snap, pb.Snapshot{})
 	for i := 0; i < n; i++ {
 		id := uint64(1 + len(env.Nodes))
@@ -103,9 +107,10 @@ func (env *InteractionEnv) AddNodes(n int, snap pb.Snapshot) error {
 				return fmt.Errorf("failed to establish first index %d; got %d", exp, fi)
 			}
 		}
-		cfg := defaultRaftConfig(id, snap.Metadata.Index, s)
+		cfg := cfg // fork the config stub
+		cfg.ID, cfg.Storage = id, s
 		if env.Options.OnConfig != nil {
-			env.Options.OnConfig(cfg)
+			env.Options.OnConfig(&cfg)
 			if cfg.ID != id {
 				// This could be supported but then we need to do more work
 				// translating back and forth -- not worth it.
@@ -117,7 +122,7 @@ func (env *InteractionEnv) AddNodes(n int, snap pb.Snapshot) error {
 		}
 		cfg.Logger = env.Output
 
-		rn, err := raft.NewRawNode(cfg)
+		rn, err := raft.NewRawNode(&cfg)
 		if err != nil {
 			return err
 		}
@@ -127,7 +132,7 @@ func (env *InteractionEnv) AddNodes(n int, snap pb.Snapshot) error {
 			// TODO(tbg): allow a more general Storage, as long as it also allows
 			// us to apply snapshots, append entries, and update the HardState.
 			Storage: s,
-			Config:  cfg,
+			Config:  &cfg,
 			History: []pb.Snapshot{snap},
 		}
 		env.Nodes = append(env.Nodes, node)

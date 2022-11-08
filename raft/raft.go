@@ -437,11 +437,20 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 	if pr.IsPaused() {
 		return false
 	}
-	m := pb.Message{}
-	m.To = to
 
 	term, errt := r.raftLog.term(pr.Next - 1)
-	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
+	var ents []pb.Entry
+	var erre error
+	// In a throttled StateReplicate only send empty MsgApp, to ensure progress.
+	// Otherwise, if we had a full Inflights and all inflight messages were in
+	// fact dropped, replication to that follower would stall. Instead, an empty
+	// MsgApp will eventually reach the follower (heartbeats responses prompt the
+	// leader to send an append), allowing it to be acked or rejected, both of
+	// which will clear out Inflights.
+	if pr.State != tracker.StateReplicate || !pr.Inflights.Full() {
+		ents, erre = r.raftLog.entries(pr.Next, r.maxMsgSize)
+	}
+
 	if len(ents) == 0 && !sendIfEmpty {
 		return false
 	}
@@ -452,7 +461,6 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 			return false
 		}
 
-		m.Type = pb.MsgSnap
 		snapshot, err := r.raftLog.snapshot()
 		if err != nil {
 			if err == ErrSnapshotTemporarilyUnavailable {
@@ -464,33 +472,29 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 		if IsEmptySnap(snapshot) {
 			panic("need non-empty snapshot")
 		}
-		m.Snapshot = snapshot
 		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
 		r.logger.Debugf("%x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
 			r.id, r.raftLog.firstIndex(), r.raftLog.committed, sindex, sterm, to, pr)
 		pr.BecomeSnapshot(sindex)
 		r.logger.Debugf("%x paused sending replication messages to %x [%s]", r.id, to, pr)
-	} else {
-		m.Type = pb.MsgApp
-		m.Index = pr.Next - 1
-		m.LogTerm = term
-		m.Entries = ents
-		m.Commit = r.raftLog.committed
-		if n := len(m.Entries); n != 0 {
-			switch pr.State {
-			// optimistically increase the next when in StateReplicate
-			case tracker.StateReplicate:
-				last := m.Entries[n-1].Index
-				pr.OptimisticUpdate(last)
-				pr.Inflights.Add(last)
-			case tracker.StateProbe:
-				pr.ProbeSent = true
-			default:
-				r.logger.Panicf("%x is sending append in unhandled state %s", r.id, pr.State)
-			}
-		}
+
+		r.send(pb.Message{To: to, Type: pb.MsgSnap, Snapshot: snapshot})
+		return true
 	}
-	r.send(m)
+
+	// Send the actual MsgApp otherwise, and update the progress accordingly.
+	next := pr.Next // save Next for later, as the progress update can change it
+	if err := pr.UpdateOnEntriesSend(len(ents), next); err != nil {
+		r.logger.Panicf("%x: %v", r.id, err)
+	}
+	r.send(pb.Message{
+		To:      to,
+		Type:    pb.MsgApp,
+		Index:   next - 1,
+		LogTerm: term,
+		Entries: ents,
+		Commit:  r.raftLog.committed,
+	})
 	return true
 }
 
@@ -1300,12 +1304,12 @@ func stepLeader(r *raft, m pb.Message) error {
 		}
 	case pb.MsgHeartbeatResp:
 		pr.RecentActive = true
-		pr.ProbeSent = false
+		pr.MsgAppFlowPaused = false
 
-		// free one slot for the full inflights window to allow progress.
-		if pr.State == tracker.StateReplicate && pr.Inflights.Full() {
-			pr.Inflights.FreeFirstOne()
-		}
+		// NB: if the follower is paused (full Inflights), this will still send an
+		// empty append, allowing it to recover from situations in which all the
+		// messages that filled up Inflights in the first place were dropped. Note
+		// also that the outgoing heartbeat already communicated the commit index.
 		if pr.Match < r.raftLog.lastIndex() {
 			r.sendAppend(m.From)
 		}
@@ -1345,7 +1349,7 @@ func stepLeader(r *raft, m pb.Message) error {
 		// If snapshot finish, wait for the MsgAppResp from the remote node before sending
 		// out the next MsgApp.
 		// If snapshot failure, wait for a heartbeat interval before next try
-		pr.ProbeSent = true
+		pr.MsgAppFlowPaused = true
 	case pb.MsgUnreachable:
 		// During optimistic replication, if the remote becomes unreachable,
 		// there is huge probability that a MsgApp is lost.

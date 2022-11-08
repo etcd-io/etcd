@@ -1,0 +1,190 @@
+# This test ensures that MsgApp stream to a follower is paused when the
+# in-flight state exceeds the configured limits. This is a regression test for
+# the issue fixed by https://github.com/etcd-io/etcd/pull/14633.
+
+# Turn off output during the setup of the test.
+log-level none
+----
+ok
+
+# Start with 3 nodes, with a limited in-flight capacity.
+add-nodes 3 voters=(1,2,3) index=10 inflight=3
+----
+ok
+
+campaign 1
+----
+ok
+
+stabilize
+----
+ok (quiet)
+
+# Propose 3 entries.
+propose 1 prop_1_12
+----
+ok
+
+propose 1 prop_1_13
+----
+ok
+
+propose 1 prop_1_14
+----
+ok
+
+# Store entries and send proposals.
+process-ready 1
+----
+ok (quiet)
+
+# Re-enable log messages.
+log-level debug
+----
+ok
+
+# Expect that in-flight tracking to nodes 2 and 3 is saturated.
+status 1
+----
+1: StateReplicate match=14 next=15
+2: StateReplicate match=11 next=15 paused inflight=3[full]
+3: StateReplicate match=11 next=15 paused inflight=3[full]
+
+log-level none
+----
+ok
+
+# Commit entries between nodes 1 and 2.
+stabilize 1 2
+----
+ok (quiet)
+
+log-level debug
+----
+ok
+
+# Expect that the entries are committed and stored on nodes 1 and 2.
+status 1
+----
+1: StateReplicate match=14 next=15
+2: StateReplicate match=14 next=15
+3: StateReplicate match=11 next=15 paused inflight=3[full]
+
+# Drop append messages to node 3.
+deliver-msgs drop=3
+----
+dropped: 1->3 MsgApp Term:1 Log:1/11 Commit:11 Entries:[1/12 EntryNormal "prop_1_12"]
+dropped: 1->3 MsgApp Term:1 Log:1/12 Commit:11 Entries:[1/13 EntryNormal "prop_1_13"]
+dropped: 1->3 MsgApp Term:1 Log:1/13 Commit:11 Entries:[1/14 EntryNormal "prop_1_14"]
+
+
+# Repeat committing 3 entries.
+propose 1 prop_1_15
+----
+ok
+
+propose 1 prop_1_16
+----
+ok
+
+propose 1 prop_1_17
+----
+ok
+
+# In-flight tracking to nodes 2 and 3 is saturated, but node 3 is behind.
+status 1
+----
+1: StateReplicate match=14 next=15
+2: StateReplicate match=14 next=18 paused inflight=3[full]
+3: StateReplicate match=11 next=15 paused inflight=3[full]
+
+log-level none
+----
+ok
+
+# Commit entries between nodes 1 and 2 again.
+stabilize 1 2
+----
+ok (quiet)
+
+log-level debug
+----
+ok
+
+# Expect that the entries are committed and stored only on nodes 1 and 2.
+status 1
+----
+1: StateReplicate match=17 next=18
+2: StateReplicate match=17 next=18
+3: StateReplicate match=11 next=15 paused inflight=3[full]
+
+# Make a heartbeat roundtrip.
+tick-heartbeat 1
+----
+ok
+
+stabilize 1
+----
+> 1 handling Ready
+  Ready MustSync=false:
+  Messages:
+  1->2 MsgHeartbeat Term:1 Log:0/0 Commit:17
+  1->3 MsgHeartbeat Term:1 Log:0/0 Commit:11
+
+stabilize 2 3
+----
+> 2 receiving messages
+  1->2 MsgHeartbeat Term:1 Log:0/0 Commit:17
+> 3 receiving messages
+  1->3 MsgHeartbeat Term:1 Log:0/0 Commit:11
+> 2 handling Ready
+  Ready MustSync=false:
+  Messages:
+  2->1 MsgHeartbeatResp Term:1 Log:0/0
+> 3 handling Ready
+  Ready MustSync=false:
+  Messages:
+  3->1 MsgHeartbeatResp Term:1 Log:0/0
+
+# After handling heartbeat responses, node 1 sends an empty MsgApp to a
+# throttled node 3 because it hasn't yet replied to a single MsgApp, and the
+# in-flight tracker is still saturated.
+stabilize 1
+----
+> 1 receiving messages
+  2->1 MsgHeartbeatResp Term:1 Log:0/0
+  3->1 MsgHeartbeatResp Term:1 Log:0/0
+> 1 handling Ready
+  Ready MustSync=false:
+  Messages:
+  1->3 MsgApp Term:1 Log:1/14 Commit:17
+
+# Node 3 finally receives a MsgApp, but there was a gap, so it rejects it.
+stabilize 3
+----
+> 3 receiving messages
+  1->3 MsgApp Term:1 Log:1/14 Commit:17
+  DEBUG 3 [logterm: 0, index: 14] rejected MsgApp [logterm: 1, index: 14] from 1
+> 3 handling Ready
+  Ready MustSync=false:
+  Messages:
+  3->1 MsgAppResp Term:1 Log:1/14 Rejected (Hint: 11)
+
+log-level none
+----
+ok
+
+stabilize
+----
+ok (quiet)
+
+log-level debug
+----
+ok
+
+# Eventually all nodes catch up on the committed state.
+status 1
+----
+1: StateReplicate match=17 next=18
+2: StateReplicate match=17 next=18
+3: StateReplicate match=17 next=18
