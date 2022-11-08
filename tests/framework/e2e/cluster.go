@@ -47,80 +47,64 @@ const (
 var testNameCleanRegex = regexp.MustCompile(`[^a-zA-Z0-9 \-_]+`)
 
 func NewConfigNoTLS() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{ClusterSize: 3,
-		InitialToken: "new",
-	}
+	return DefaultConfig()
 }
 
 func NewConfigAutoTLS() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:   3,
-		IsPeerTLS:     true,
-		IsPeerAutoTLS: true,
-		InitialToken:  "new",
-	}
+	return NewConfig(
+		WithIsPeerTLS(true),
+		WithIsPeerAutoTLS(true),
+	)
 }
 
 func NewConfigTLS() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:  3,
-		ClientTLS:    ClientTLS,
-		IsPeerTLS:    true,
-		InitialToken: "new",
-	}
+	return NewConfig(
+		WithClientTLS(ClientTLS),
+		WithIsPeerTLS(true),
+	)
 }
 
 func NewConfigClientTLS() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:  3,
-		ClientTLS:    ClientTLS,
-		InitialToken: "new",
-	}
+	return NewConfig(WithClientTLS(ClientTLS))
 }
 
 func NewConfigClientAutoTLS() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:     1,
-		IsClientAutoTLS: true,
-		ClientTLS:       ClientTLS,
-		InitialToken:    "new",
-	}
+	return NewConfig(
+		WithClusterSize(1),
+		WithIsClientAutoTLS(true),
+		WithClientTLS(ClientTLS),
+	)
 }
 
 func NewConfigPeerTLS() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:  3,
-		IsPeerTLS:    true,
-		InitialToken: "new",
-	}
+	return NewConfig(
+		WithIsPeerTLS(true),
+	)
 }
 
 func NewConfigClientTLSCertAuth() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:           1,
-		ClientTLS:             ClientTLS,
-		InitialToken:          "new",
-		ClientCertAuthEnabled: true,
-	}
+	return NewConfig(
+		WithClusterSize(1),
+		WithClientTLS(ClientTLS),
+		WithClientCertAuthEnabled(true),
+	)
 }
 
 func NewConfigClientTLSCertAuthWithNoCN() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:           1,
-		ClientTLS:             ClientTLS,
-		InitialToken:          "new",
-		ClientCertAuthEnabled: true,
-		NoCN:                  true,
-	}
+	return NewConfig(
+		WithClusterSize(1),
+		WithClientTLS(ClientTLS),
+		WithClientCertAuthEnabled(true),
+		WithNoCN(true),
+	)
 }
 
 func NewConfigJWT() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
-		ClusterSize:  1,
-		InitialToken: "new",
-		AuthTokenOpts: "jwt,pub-key=" + path.Join(FixturesDir, "server.crt") +
-			",priv-key=" + path.Join(FixturesDir, "server.key.insecure") + ",sign-method=RS256,ttl=1s",
-	}
+	return NewConfig(
+		WithClusterSize(1),
+		WithAuthTokenOpts("jwt,pub-key="+path.Join(FixturesDir, "server.crt")+
+			",priv-key="+path.Join(FixturesDir, "server.key.insecure")+",sign-method=RS256,ttl=1s"),
+	)
 }
 
 func ConfigStandalone(cfg EtcdProcessClusterConfig) *EtcdProcessClusterConfig {
@@ -184,6 +168,131 @@ type EtcdProcessClusterConfig struct {
 	CompactHashCheckEnabled bool
 	CompactHashCheckTime    time.Duration
 	GoFailEnabled           bool
+}
+
+func DefaultConfig() *EtcdProcessClusterConfig {
+	return &EtcdProcessClusterConfig{
+		ClusterSize:  3,
+		InitialToken: "new",
+	}
+}
+
+func NewConfig(opts ...EPClusterOption) *EtcdProcessClusterConfig {
+	c := DefaultConfig()
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+type EPClusterOption func(*EtcdProcessClusterConfig)
+
+func WithConfig(cfg *EtcdProcessClusterConfig) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { *c = *cfg }
+}
+
+func WithDataDirPath(path string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.DataDirPath = path }
+}
+
+func WithKeepDataDir(keep bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.KeepDataDir = keep }
+}
+
+func WithSnapshotCount(count int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.SnapshotCount = count }
+}
+
+func WithClusterSize(size int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ClusterSize = size }
+}
+
+func WithBaseScheme(scheme string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.BaseScheme = scheme }
+}
+
+func WithBasePort(port int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.BasePort = port }
+}
+
+func WithClientTLS(clientTLS ClientConnType) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ClientTLS = clientTLS }
+}
+
+func WithClientCertAuthEnabled(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ClientCertAuthEnabled = enabled }
+}
+
+func WithIsPeerTLS(isPeerTLS bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.IsPeerTLS = isPeerTLS }
+}
+
+func WithIsPeerAutoTLS(isPeerAutoTLS bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.IsPeerAutoTLS = isPeerAutoTLS }
+}
+
+func WithIsClientAutoTLS(isClientAutoTLS bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.IsClientAutoTLS = isClientAutoTLS }
+}
+
+func WithIsClientCRL(isClientCRL bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.IsClientCRL = isClientCRL }
+}
+
+func WithNoCN(noCN bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.NoCN = noCN }
+}
+
+func WithQuotaBackendBytes(bytes int64) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.QuotaBackendBytes = bytes }
+}
+
+func WithDisableStrictReconfigCheck(disable bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.DisableStrictReconfigCheck = disable }
+}
+
+func WithEnableV2(enable bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.EnableV2 = enable }
+}
+
+func WithAuthTokenOpts(token string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.AuthTokenOpts = token }
+}
+
+func WithRollingStart(rolling bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.RollingStart = rolling }
+}
+
+func WithDiscovery(discovery string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.Discovery = discovery }
+}
+
+func WithDiscoveryEndpoints(endpoints []string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.DiscoveryEndpoints = endpoints }
+}
+
+func WithDiscoveryToken(token string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.DiscoveryToken = token }
+}
+
+func WithLogLevel(level string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.LogLevel = level }
+}
+
+func WithCorruptCheckTime(time time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.CorruptCheckTime = time }
+}
+
+func WithCompactHashCheckEnabled(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.CompactHashCheckEnabled = enabled }
+}
+
+func WithCompactHashCheckTime(time time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.CompactHashCheckTime = time }
+}
+
+func WithGoFailEnabled(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.GoFailEnabled = enabled }
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
