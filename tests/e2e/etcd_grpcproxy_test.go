@@ -65,7 +65,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add and start second member
-	err = epc.StartNewProc(ctx, t)
+	err = epc.StartNewProc(ctx, nil, t)
 	require.NoError(t, err)
 
 	// Wait for auto sync of endpoints

@@ -604,11 +604,15 @@ func (epc *EtcdProcessCluster) Endpoints(f func(ep EtcdProcess) []string) (ret [
 
 func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdProcess) bool, opts ...config.ClientOption) error {
 	procIndex := -1
-	for i := range epc.Procs {
-		if finder(epc.Procs[i]) {
-			procIndex = i
-			break
+	if finder != nil {
+		for i := range epc.Procs {
+			if finder(epc.Procs[i]) {
+				procIndex = i
+				break
+			}
 		}
+	} else {
+		procIndex = len(epc.Procs) - 1
 	}
 
 	if procIndex == -1 {
@@ -651,8 +655,14 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 	return proc.Close()
 }
 
-func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, tb testing.TB, opts ...config.ClientOption) error {
-	serverCfg := epc.Cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
+func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProcessClusterConfig, tb testing.TB, opts ...config.ClientOption) error {
+	var serverCfg *EtcdServerProcessConfig
+	if cfg != nil {
+		serverCfg = cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
+	} else {
+		serverCfg = epc.Cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
+	}
+
 	epc.nextSeq++
 
 	initialCluster := []string{
