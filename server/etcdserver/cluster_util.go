@@ -224,7 +224,7 @@ func isCompatibleWithVers(lg *zap.Logger, vers map[string]*version.Versions, loc
 				"cluster version of remote member is not compatible; too high",
 				zap.String("remote-member-id", id),
 				zap.String("remote-member-cluster-version", clusterv.String()),
-				zap.String("minimum-cluster-version-supported", minV.String()),
+				zap.String("maximum-cluster-version-supported", maxV.String()),
 			)
 			return false
 		}
