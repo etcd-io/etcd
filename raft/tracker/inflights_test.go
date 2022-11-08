@@ -15,8 +15,9 @@
 package tracker
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestInflightsAdd(t *testing.T) {
@@ -37,10 +38,7 @@ func TestInflightsAdd(t *testing.T) {
 		//               ↓------------
 		buffer: []uint64{0, 1, 2, 3, 4, 0, 0, 0, 0, 0},
 	}
-
-	if !reflect.DeepEqual(in, wantIn) {
-		t.Fatalf("in = %+v, want %+v", in, wantIn)
-	}
+	require.Equal(t, wantIn, in)
 
 	for i := 5; i < 10; i++ {
 		in.Add(uint64(i))
@@ -53,10 +51,7 @@ func TestInflightsAdd(t *testing.T) {
 		//               ↓---------------------------
 		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
-
-	if !reflect.DeepEqual(in, wantIn2) {
-		t.Fatalf("in = %+v, want %+v", in, wantIn2)
-	}
+	require.Equal(t, wantIn2, in)
 
 	// rotating case
 	in2 := &Inflights{
@@ -76,10 +71,7 @@ func TestInflightsAdd(t *testing.T) {
 		//                              ↓------------
 		buffer: []uint64{0, 0, 0, 0, 0, 0, 1, 2, 3, 4},
 	}
-
-	if !reflect.DeepEqual(in2, wantIn21) {
-		t.Fatalf("in = %+v, want %+v", in2, wantIn21)
-	}
+	require.Equal(t, wantIn21, in2)
 
 	for i := 5; i < 10; i++ {
 		in2.Add(uint64(i))
@@ -92,10 +84,7 @@ func TestInflightsAdd(t *testing.T) {
 		//               -------------- ↓------------
 		buffer: []uint64{5, 6, 7, 8, 9, 0, 1, 2, 3, 4},
 	}
-
-	if !reflect.DeepEqual(in2, wantIn22) {
-		t.Fatalf("in = %+v, want %+v", in2, wantIn22)
-	}
+	require.Equal(t, wantIn22, in2)
 }
 
 func TestInflightFreeTo(t *testing.T) {
@@ -114,10 +103,7 @@ func TestInflightFreeTo(t *testing.T) {
 		//                  ↓------------------------
 		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
-
-	if !reflect.DeepEqual(in, wantIn0) {
-		t.Fatalf("in = %+v, want %+v", in, wantIn0)
-	}
+	require.Equal(t, wantIn0, in)
 
 	in.FreeLE(4)
 
@@ -128,10 +114,7 @@ func TestInflightFreeTo(t *testing.T) {
 		//                              ↓------------
 		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
-
-	if !reflect.DeepEqual(in, wantIn) {
-		t.Fatalf("in = %+v, want %+v", in, wantIn)
-	}
+	require.Equal(t, wantIn, in)
 
 	in.FreeLE(8)
 
@@ -142,10 +125,7 @@ func TestInflightFreeTo(t *testing.T) {
 		//                                          ↓
 		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
-
-	if !reflect.DeepEqual(in, wantIn2) {
-		t.Fatalf("in = %+v, want %+v", in, wantIn2)
-	}
+	require.Equal(t, wantIn2, in)
 
 	// rotating case
 	for i := 10; i < 15; i++ {
@@ -161,10 +141,7 @@ func TestInflightFreeTo(t *testing.T) {
 		//                           ↓-----
 		buffer: []uint64{10, 11, 12, 13, 14, 5, 6, 7, 8, 9},
 	}
-
-	if !reflect.DeepEqual(in, wantIn3) {
-		t.Fatalf("in = %+v, want %+v", in, wantIn3)
-	}
+	require.Equal(t, wantIn3, in)
 
 	in.FreeLE(14)
 
@@ -175,8 +152,5 @@ func TestInflightFreeTo(t *testing.T) {
 		//               ↓
 		buffer: []uint64{10, 11, 12, 13, 14, 5, 6, 7, 8, 9},
 	}
-
-	if !reflect.DeepEqual(in, wantIn4) {
-		t.Fatalf("in = %+v, want %+v", in, wantIn4)
-	}
+	require.Equal(t, wantIn4, in)
 }

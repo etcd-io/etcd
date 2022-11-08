@@ -16,6 +16,8 @@ package tracker
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestProgressString(t *testing.T) {
@@ -32,9 +34,7 @@ func TestProgressString(t *testing.T) {
 		Inflights:        ins,
 	}
 	const exp = `StateSnapshot match=1 next=2 learner paused pendingSnap=123 inactive inflight=1[full]`
-	if act := pr.String(); act != exp {
-		t.Errorf("exp: %s\nact: %s", exp, act)
-	}
+	assert.Equal(t, exp, pr.String())
 }
 
 func TestProgressIsPaused(t *testing.T) {
@@ -57,9 +57,7 @@ func TestProgressIsPaused(t *testing.T) {
 			MsgAppFlowPaused: tt.paused,
 			Inflights:        NewInflights(256),
 		}
-		if g := p.IsPaused(); g != tt.w {
-			t.Errorf("#%d: paused= %t, want %t", i, g, tt.w)
-		}
+		assert.Equal(t, tt.w, p.IsPaused(), i)
 	}
 }
 
@@ -71,14 +69,10 @@ func TestProgressResume(t *testing.T) {
 		MsgAppFlowPaused: true,
 	}
 	p.MaybeDecrTo(1, 1)
-	if p.MsgAppFlowPaused {
-		t.Errorf("paused= %v, want false", p.MsgAppFlowPaused)
-	}
+	assert.False(t, p.MsgAppFlowPaused)
 	p.MsgAppFlowPaused = true
 	p.MaybeUpdate(2)
-	if p.MsgAppFlowPaused {
-		t.Errorf("paused= %v, want false", p.MsgAppFlowPaused)
-	}
+	assert.False(t, p.MsgAppFlowPaused)
 }
 
 func TestProgressBecomeProbe(t *testing.T) {
@@ -104,46 +98,26 @@ func TestProgressBecomeProbe(t *testing.T) {
 	}
 	for i, tt := range tests {
 		tt.p.BecomeProbe()
-		if tt.p.State != StateProbe {
-			t.Errorf("#%d: state = %s, want %s", i, tt.p.State, StateProbe)
-		}
-		if tt.p.Match != match {
-			t.Errorf("#%d: match = %d, want %d", i, tt.p.Match, match)
-		}
-		if tt.p.Next != tt.wnext {
-			t.Errorf("#%d: next = %d, want %d", i, tt.p.Next, tt.wnext)
-		}
+		assert.Equal(t, StateProbe, tt.p.State, i)
+		assert.Equal(t, match, tt.p.Match, i)
+		assert.Equal(t, tt.wnext, tt.p.Next, i)
 	}
 }
 
 func TestProgressBecomeReplicate(t *testing.T) {
 	p := &Progress{State: StateProbe, Match: 1, Next: 5, Inflights: NewInflights(256)}
 	p.BecomeReplicate()
-
-	if p.State != StateReplicate {
-		t.Errorf("state = %s, want %s", p.State, StateReplicate)
-	}
-	if p.Match != 1 {
-		t.Errorf("match = %d, want 1", p.Match)
-	}
-	if w := p.Match + 1; p.Next != w {
-		t.Errorf("next = %d, want %d", p.Next, w)
-	}
+	assert.Equal(t, StateReplicate, p.State)
+	assert.Equal(t, uint64(1), p.Match)
+	assert.Equal(t, p.Match+1, p.Next)
 }
 
 func TestProgressBecomeSnapshot(t *testing.T) {
 	p := &Progress{State: StateProbe, Match: 1, Next: 5, Inflights: NewInflights(256)}
 	p.BecomeSnapshot(10)
-
-	if p.State != StateSnapshot {
-		t.Errorf("state = %s, want %s", p.State, StateSnapshot)
-	}
-	if p.Match != 1 {
-		t.Errorf("match = %d, want 1", p.Match)
-	}
-	if p.PendingSnapshot != 10 {
-		t.Errorf("pendingSnapshot = %d, want 10", p.PendingSnapshot)
-	}
+	assert.Equal(t, StateSnapshot, p.State)
+	assert.Equal(t, uint64(1), p.Match)
+	assert.Equal(t, uint64(10), p.PendingSnapshot)
 }
 
 func TestProgressUpdate(t *testing.T) {
@@ -165,16 +139,9 @@ func TestProgressUpdate(t *testing.T) {
 			Match: prevM,
 			Next:  prevN,
 		}
-		ok := p.MaybeUpdate(tt.update)
-		if ok != tt.wok {
-			t.Errorf("#%d: ok= %v, want %v", i, ok, tt.wok)
-		}
-		if p.Match != tt.wm {
-			t.Errorf("#%d: match= %d, want %d", i, p.Match, tt.wm)
-		}
-		if p.Next != tt.wn {
-			t.Errorf("#%d: next= %d, want %d", i, p.Next, tt.wn)
-		}
+		assert.Equal(t, tt.wok, p.MaybeUpdate(tt.update), i)
+		assert.Equal(t, tt.wm, p.Match, i)
+		assert.Equal(t, tt.wn, p.Next, i)
 	}
 }
 
@@ -237,14 +204,8 @@ func TestProgressMaybeDecr(t *testing.T) {
 			Match: tt.m,
 			Next:  tt.n,
 		}
-		if g := p.MaybeDecrTo(tt.rejected, tt.last); g != tt.w {
-			t.Errorf("#%d: maybeDecrTo= %t, want %t", i, g, tt.w)
-		}
-		if gm := p.Match; gm != tt.m {
-			t.Errorf("#%d: match= %d, want %d", i, gm, tt.m)
-		}
-		if gn := p.Next; gn != tt.wn {
-			t.Errorf("#%d: next= %d, want %d", i, gn, tt.wn)
-		}
+		assert.Equal(t, tt.w, p.MaybeDecrTo(tt.rejected, tt.last), i)
+		assert.Equal(t, tt.m, p.Match, i)
+		assert.Equal(t, tt.wn, p.Next, i)
 	}
 }
