@@ -1640,7 +1640,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 			t.Fatal(terr)
 		}
 		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp); err != nil {
-			t.Fatal(err)
+			t.Fatal("certificate is expired", err)
 		}
 		return tlsInfo
 	}
@@ -1685,7 +1685,7 @@ func TestTLSReloadCopy(t *testing.T) {
 	}
 	replaceFunc := func() {
 		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDir); err != nil {
-			t.Fatal(err)
+			t.Fatal("certificate is expired", err)
 		}
 	}
 	revertFunc := func() {
