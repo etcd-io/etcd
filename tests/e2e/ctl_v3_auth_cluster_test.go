@@ -65,7 +65,7 @@ func TestAuthCluster(t *testing.T) {
 	}
 
 	// start second process
-	if err := epc.StartNewProc(ctx, t, rootUserClientOpts); err != nil {
+	if err := epc.StartNewProc(ctx, nil, t, rootUserClientOpts); err != nil {
 		t.Fatalf("could not start second etcd process (%v)", err)
 	}
 
