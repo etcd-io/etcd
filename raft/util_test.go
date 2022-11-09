@@ -16,10 +16,10 @@ package raft
 
 import (
 	"math"
-	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	pb "go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -34,16 +34,8 @@ func TestDescribeEntry(t *testing.T) {
 		Type:  pb.EntryNormal,
 		Data:  []byte("hello\x00world"),
 	}
-
-	defaultFormatted := DescribeEntry(entry, nil)
-	if defaultFormatted != "1/2 EntryNormal \"hello\\x00world\"" {
-		t.Errorf("unexpected default output: %s", defaultFormatted)
-	}
-
-	customFormatted := DescribeEntry(entry, testFormatter)
-	if customFormatted != "1/2 EntryNormal HELLO\x00WORLD" {
-		t.Errorf("unexpected custom output: %s", customFormatted)
-	}
+	require.Equal(t, "1/2 EntryNormal \"hello\\x00world\"", DescribeEntry(entry, nil))
+	require.Equal(t, "1/2 EntryNormal HELLO\x00WORLD", DescribeEntry(entry, testFormatter))
 }
 
 func TestLimitSize(t *testing.T) {
@@ -64,10 +56,8 @@ func TestLimitSize(t *testing.T) {
 		{uint64(ents[0].Size() + ents[1].Size() + ents[2].Size()), []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 5}, {Index: 6, Term: 6}}},
 	}
 
-	for i, tt := range tests {
-		if !reflect.DeepEqual(limitSize(ents, tt.maxsize), tt.wentries) {
-			t.Errorf("#%d: entries = %v, want %v", i, limitSize(ents, tt.maxsize), tt.wentries)
-		}
+	for _, tt := range tests {
+		require.Equal(t, tt.wentries, limitSize(ents, tt.maxsize))
 	}
 }
 
@@ -97,10 +87,7 @@ func TestIsLocalMsg(t *testing.T) {
 		{pb.MsgPreVoteResp, false},
 	}
 
-	for i, tt := range tests {
-		got := IsLocalMsg(tt.msgt)
-		if got != tt.isLocal {
-			t.Errorf("#%d: got %v, want %v", i, got, tt.isLocal)
-		}
+	for _, tt := range tests {
+		require.Equal(t, tt.isLocal, IsLocalMsg(tt.msgt))
 	}
 }
