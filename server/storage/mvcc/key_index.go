@@ -329,6 +329,12 @@ func (ki *keyIndex) equal(b *keyIndex) bool {
 
 func (ki *keyIndex) String() string {
 	var s string
+	if len(ki.key) > 128 {
+		s += string(ki.key[:128]) + "...\n"
+	} else {
+		s += string(ki.key[:]) + "\n"
+	}
+	s += fmt.Sprintf("modified[%d]\n", ki.modified)
 	for _, g := range ki.generations {
 		s += g.String()
 	}
