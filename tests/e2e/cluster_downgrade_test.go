@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -47,12 +48,21 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	currentVersion := semver.New(version.Version)
-	lastVersion := semver.Version{Major: currentVersion.Major, Minor: currentVersion.Minor - 1}
-
+	currentVersion, err := getVersionFromBinary(currentEtcdBinary)
+	require.NoError(t, err)
+	// wipe any pre-release suffix like -alpha.0 we see commonly in builds
 	currentVersion.PreRelease = ""
+
+	lastVersion, err := getVersionFromBinary(lastReleaseBinary)
+	require.NoError(t, err)
+
+	require.Equalf(t, lastVersion.Minor, currentVersion.Minor-1, "unexpected minor version difference")
 	currentVersionStr := currentVersion.String()
 	lastVersionStr := lastVersion.String()
+
+	lastClusterVersion := semver.New(lastVersionStr)
+	lastClusterVersion.Patch = 0
+	lastClusterVersionStr := lastClusterVersion.String()
 
 	e2e.BeforeTest(t)
 
@@ -73,9 +83,9 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 	t.Log("Downgrade enabled, validating if cluster is ready for downgrade")
 	for i := 0; i < len(epc.Procs); i++ {
 		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
-			Cluster: lastVersionStr,
+			Cluster: lastClusterVersionStr,
 			Server:  version.Version,
-			Storage: lastVersionStr,
+			Storage: lastClusterVersionStr,
 		})
 		e2e.AssertProcessLogs(t, epc.Procs[i], "The server is ready to downgrade")
 	}
@@ -92,7 +102,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 	e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
 	for i := 0; i < len(epc.Procs); i++ {
 		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
-			Cluster: lastVersionStr,
+			Cluster: lastClusterVersionStr,
 			Server:  lastVersionStr,
 		})
 	}
@@ -144,7 +154,7 @@ func startEtcd(t *testing.T, ep e2e.EtcdProcess, execPath string) {
 	}
 }
 
-func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver semver.Version) {
+func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver *semver.Version) {
 	c, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
 	assert.NoError(t, err)
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
@@ -234,4 +244,20 @@ func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdPr
 		return version.Versions{}, fmt.Errorf("failed to unmarshal (%v): %w", data, err)
 	}
 	return result, nil
+}
+
+func getVersionFromBinary(binaryPath string) (*semver.Version, error) {
+	lines, err := e2e.RunUtilCompletion([]string{binaryPath, "--version"}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not find binary version from %s, err: %w", binaryPath, err)
+	}
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "etcd Version:") {
+			versionString := strings.TrimSpace(strings.SplitAfter(line, ":")[1])
+			return semver.NewVersion(versionString)
+		}
+	}
+
+	return nil, fmt.Errorf("could not find version in binary output of %s, lines outputted were %v", binaryPath, lines)
 }
