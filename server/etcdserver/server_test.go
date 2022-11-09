@@ -1138,7 +1138,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		// Snapshot first triggers raftnode to persists the snapshot onto disk
 		// before renaming db snapshot file to db
 		snapMsg.Snapshot.Metadata.Index = 1
-		n.readyc <- raft.Ready{Snapshot: snapMsg.Snapshot}
+		n.readyc <- raft.Ready{Snapshot: *snapMsg.Snapshot}
 	}()
 
 	ac := <-p.Chan()
@@ -1318,7 +1318,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		if snapMsg.Snapshot.Metadata.Index == idx {
 			idx++
 			snapMsg.Snapshot.Metadata.Index = idx
-			ready = raft.Ready{Snapshot: snapMsg.Snapshot}
+			ready = raft.Ready{Snapshot: *snapMsg.Snapshot}
 			n.readyc <- ready
 			accepted++
 		} else {

@@ -76,7 +76,11 @@ message Message {
 	optional uint64      index       = 6  [(gogoproto.nullable) = false];
 	repeated Entry       entries     = 7  [(gogoproto.nullable) = false];
 	optional uint64      commit      = 8  [(gogoproto.nullable) = false];
-	optional Snapshot    snapshot    = 9  [(gogoproto.nullable) = false];
+	// snapshot is non-nil and non-empty for MsgSnap messages and nil for all other
+	// message types. However, peer nodes running older binary versions may send a
+	// non-nil, empty value for the snapshot field of non-MsgSnap messages. Code
+	// should be prepared to handle such messages.
+	optional Snapshot    snapshot    = 9  [(gogoproto.nullable) = true];
 	optional bool        reject      = 10 [(gogoproto.nullable) = false];
 	optional uint64      rejectHint  = 11 [(gogoproto.nullable) = false];
 	optional bytes       context     = 12;

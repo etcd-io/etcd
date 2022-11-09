@@ -3067,7 +3067,7 @@ func TestIgnoreProvidingSnap(t *testing.T) {
 }
 
 func TestRestoreFromSnapMsg(t *testing.T) {
-	s := pb.Snapshot{
+	s := &pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
 			Index:     11, // magic number
 			Term:      11, // magic number

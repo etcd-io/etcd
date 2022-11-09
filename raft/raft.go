@@ -478,7 +478,7 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 		pr.BecomeSnapshot(sindex)
 		r.logger.Debugf("%x paused sending replication messages to %x [%s]", r.id, to, pr)
 
-		r.send(pb.Message{To: to, Type: pb.MsgSnap, Snapshot: snapshot})
+		r.send(pb.Message{To: to, Type: pb.MsgSnap, Snapshot: &snapshot})
 		return true
 	}
 
@@ -1537,8 +1537,14 @@ func (r *raft) handleHeartbeat(m pb.Message) {
 }
 
 func (r *raft) handleSnapshot(m pb.Message) {
-	sindex, sterm := m.Snapshot.Metadata.Index, m.Snapshot.Metadata.Term
-	if r.restore(m.Snapshot) {
+	// MsgSnap messages should always carry a non-nil Snapshot, but err on the
+	// side of safety and treat a nil Snapshot as a zero-valued Snapshot.
+	var s pb.Snapshot
+	if m.Snapshot != nil {
+		s = *m.Snapshot
+	}
+	sindex, sterm := s.Metadata.Index, s.Metadata.Term
+	if r.restore(s) {
 		r.logger.Infof("%x [commit: %d] restored snapshot [index: %d, term: %d]",
 			r.id, r.raftLog.committed, sindex, sterm)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
