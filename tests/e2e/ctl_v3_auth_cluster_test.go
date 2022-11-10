@@ -29,15 +29,13 @@ import (
 
 func TestAuthCluster(t *testing.T) {
 	e2e.BeforeTest(t)
-	cfg := &e2e.EtcdProcessClusterConfig{
-		ClusterSize:   1,
-		InitialToken:  "new",
-		SnapshotCount: 2,
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, cfg)
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, nil,
+		e2e.WithClusterSize(1),
+		e2e.WithSnapshotCount(2),
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

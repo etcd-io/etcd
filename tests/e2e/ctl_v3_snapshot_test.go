@@ -172,11 +172,10 @@ func testIssue6361(t *testing.T) {
 
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-		ClusterSize:  1,
-		InitialToken: "new",
-		KeepDataDir:  true,
-	})
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+		e2e.WithClusterSize(1),
+		e2e.WithKeepDataDir(true),
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -284,7 +283,7 @@ func testIssue6361(t *testing.T) {
 // For storageVersion to be stored, all fields expected 3.6 fields need to be set. This happens after first WAL snapshot.
 // In this test we lower SnapshotCount to 1 to ensure WAL snapshot is triggered.
 func TestCtlV3SnapshotVersion(t *testing.T) {
-	testCtl(t, snapshotVersionTest, withCfg(e2e.EtcdProcessClusterConfig{SnapshotCount: 1}))
+	testCtl(t, snapshotVersionTest, withCfg(*e2e.NewConfig(e2e.WithSnapshotCount(1))))
 }
 
 func snapshotVersionTest(cx ctlCtx) {

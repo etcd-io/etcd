@@ -39,14 +39,13 @@ func TestCtlV3GetCountOnly(t *testing.T) { testCtl(t, getCountOnlyTest) }
 func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDialTimeout(0)) }
 
 func TestCtlV3GetRevokedCRL(t *testing.T) {
-	cfg := e2e.EtcdProcessClusterConfig{
-		ClusterSize:           1,
-		InitialToken:          "new",
-		ClientTLS:             e2e.ClientTLS,
-		IsClientCRL:           true,
-		ClientCertAuthEnabled: true,
-	}
-	testCtl(t, testGetRevokedCRL, withCfg(cfg))
+	cfg := e2e.NewConfig(
+		e2e.WithClusterSize(1),
+		e2e.WithClientTLS(e2e.ClientTLS),
+		e2e.WithIsClientCRL(true),
+		e2e.WithClientCertAuthEnabled(true),
+	)
+	testCtl(t, testGetRevokedCRL, withCfg(*cfg))
 }
 
 func testGetRevokedCRL(cx ctlCtx) {
