@@ -17,6 +17,7 @@ package linearizability
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -104,22 +105,11 @@ func testLinearizability(ctx context.Context, t *testing.T, config e2e.EtcdProce
 		}
 	}()
 	operations := simulateTraffic(ctx, t, clus, traffic)
-	clus.Close()
-
-	linearizable, info := porcupine.CheckOperationsVerbose(etcdModel, operations, 0)
-	if linearizable != porcupine.Ok {
-		t.Error("Model is not linearizable")
-	}
-
-	path, err := filepath.Abs(filepath.Join(resultsDirectory, strings.Replace(t.Name(), "/", "_", -1)+".html"))
+	err = clus.Stop()
 	if err != nil {
 		t.Error(err)
 	}
-	err = porcupine.VisualizePath(etcdModel, info, path)
-	if err != nil {
-		t.Errorf("Failed to visualize, err: %v", err)
-	}
-	t.Logf("saving visualization to %q", path)
+	checkOperationsAndPersistResults(t, operations, clus)
 }
 
 func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig) error {
@@ -191,4 +181,51 @@ type trafficConfig struct {
 	maximalQPS  float64
 	clientCount int
 	traffic     Traffic
+}
+
+func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
+	path, err := testResultsDirectory(t)
+	if err != nil {
+		t.Error(err)
+	}
+
+	linearizable, info := porcupine.CheckOperationsVerbose(etcdModel, operations, 0)
+	if linearizable != porcupine.Ok {
+		t.Error("Model is not linearizable")
+		persistMemberDataDir(t, clus, path)
+	}
+
+	visualizationPath := filepath.Join(path, "history.html")
+	t.Logf("saving visualization to %q", visualizationPath)
+	err = porcupine.VisualizePath(etcdModel, info, visualizationPath)
+	if err != nil {
+		t.Errorf("Failed to visualize, err: %v", err)
+	}
+}
+
+func persistMemberDataDir(t *testing.T, clus *e2e.EtcdProcessCluster, path string) {
+	for _, member := range clus.Procs {
+		memberDataDir := filepath.Join(path, member.Config().Name)
+		err := os.RemoveAll(memberDataDir)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("saving %s data dir to %q", member.Config().Name, memberDataDir)
+		err = os.Rename(member.Config().DataDirPath, memberDataDir)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+func testResultsDirectory(t *testing.T) (string, error) {
+	path, err := filepath.Abs(filepath.Join(resultsDirectory, strings.Replace(t.Name(), "/", "_", -1)))
+	if err != nil {
+		return path, err
+	}
+	err = os.MkdirAll(path, 0700)
+	if err != nil {
+		return path, err
+	}
+	return path, nil
 }
