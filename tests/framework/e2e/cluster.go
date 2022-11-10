@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -298,11 +299,14 @@ func WithGoFailEnabled(enabled bool) EPClusterOption {
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+	t.Log("###### IN NewEtcdProcessCluster")
 	epc, err := InitEtcdProcessCluster(t, cfg)
 	if err != nil {
+		t.Logf("###### Failed to call InitEtcdProcessCluster: %v", err)
 		return nil, err
 	}
 
+	t.Log("###### Calling StartEtcdProcessCluster")
 	return StartEtcdProcessCluster(ctx, epc, cfg)
 }
 
@@ -344,6 +348,7 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 
 // StartEtcdProcessCluster launches a new cluster from etcd processes.
 func StartEtcdProcessCluster(ctx context.Context, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+	fmt.Printf("###### IN StartEtcdProcessCluster, cfg.RollingStart: %t\n", cfg.RollingStart)
 	if cfg.RollingStart {
 		if err := epc.RollingStart(ctx); err != nil {
 			return nil, fmt.Errorf("cannot rolling-start: %v", err)
@@ -423,7 +428,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	purl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", port+1)}
 
 	name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
-	dataDirPath := cfg.DataDirPath
+	dataDirPath := filepath.Join(cfg.DataDirPath, name)
 	if cfg.DataDirPath == "" {
 		dataDirPath = tb.TempDir()
 	}

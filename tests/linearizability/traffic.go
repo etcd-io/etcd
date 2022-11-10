@@ -33,7 +33,7 @@ type Traffic interface {
 type putGetTraffic struct{}
 
 func (t putGetTraffic) Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter) {
-	maxOperationsPerClient := 1000000
+	maxOperationsPerClient := 10
 	id := maxOperationsPerClient * c.id
 	key := "key"
 
