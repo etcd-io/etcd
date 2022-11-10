@@ -47,26 +47,10 @@ func TestLinearizability(t *testing.T) {
 		config    e2e.EtcdProcessClusterConfig
 	}{
 		{
-			name:      "ClusterOfSize1",
-			failpoint: RandomFailpoint,
-			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize:   1,
-				GoFailEnabled: true,
-			},
-		},
-		{
 			name:      "ClusterOfSize3",
 			failpoint: RandomFailpoint,
 			config: e2e.EtcdProcessClusterConfig{
 				ClusterSize:   3,
-				GoFailEnabled: true,
-			},
-		},
-		{
-			name:      "Issue14370",
-			failpoint: RaftBeforeSavePanic,
-			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize:   1,
 				GoFailEnabled: true,
 			},
 		},
