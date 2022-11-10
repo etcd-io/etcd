@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -121,8 +122,13 @@ type EtcdProcessCluster struct {
 }
 
 type EtcdProcessClusterConfig struct {
-	Logger      *zap.Logger
-	Version     ClusterVersion
+	Logger  *zap.Logger
+	Version ClusterVersion
+	// DataDirPath specifies the data-dir for the members. If test cases
+	// do not specify `DataDirPath`, then e2e framework creates a
+	// temporary directory for each member; otherwise, it creates a
+	// subdirectory (e.g. member-0, member-1 and member-2) under the given
+	// `DataDirPath` for each member.
 	DataDirPath string
 	KeepDataDir bool
 	EnvVars     map[string]string
@@ -423,9 +429,17 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	purl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", port+1)}
 
 	name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
+
 	dataDirPath := cfg.DataDirPath
 	if cfg.DataDirPath == "" {
 		dataDirPath = tb.TempDir()
+	} else {
+		// When test cases specify the DataDirPath and there are more than
+		// one member in the cluster, we need to create a subdirectory for
+		// each member to avoid conflict.
+		// We also create a subdirectory for one-member cluster, because we
+		// support dynamically adding new member.
+		dataDirPath = filepath.Join(cfg.DataDirPath, fmt.Sprintf("member-%d", i))
 	}
 
 	args := []string{

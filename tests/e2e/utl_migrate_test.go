@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -148,7 +149,8 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 
 			t.Log("etcdutl migrate...")
-			args := []string{e2e.BinPath.Etcdutl, "migrate", "--data-dir", dataDirPath, "--target-version", tc.targetVersion}
+			memberDataDir := epc.Procs[0].Config().DataDirPath
+			args := []string{e2e.BinPath.Etcdutl, "migrate", "--data-dir", memberDataDir, "--target-version", tc.targetVersion}
 			if tc.force {
 				args = append(args, "--force")
 			}
@@ -158,7 +160,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 
 			t.Log("etcdutl migrate...")
-			be := backend.NewDefaultBackend(lg, dataDirPath+"/member/snap/db")
+			be := backend.NewDefaultBackend(lg, filepath.Join(memberDataDir, "member/snap/db"))
 			defer be.Close()
 
 			ver := schema.ReadStorageVersion(be.ReadTx())
