@@ -32,12 +32,13 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-func createV2store(t testing.TB, dataDirPath string) {
+func createV2store(t testing.TB, dataDirPath string) string {
 	t.Log("Creating not-yet v2-deprecated etcd")
 
 	cfg := e2e.ConfigStandalone(e2e.EtcdProcessClusterConfig{Version: e2e.LastVersion, EnableV2: true, DataDirPath: dataDirPath, SnapshotCount: 5})
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
 	assert.NoError(t, err)
+	memberDataDir := epc.Procs[0].Config().DataDirPath
 
 	defer func() {
 		assert.NoError(t, epc.Stop())
@@ -51,6 +52,7 @@ func createV2store(t testing.TB, dataDirPath string) {
 			t.Fatalf("failed put with curl (%v)", err)
 		}
 	}
+	return memberDataDir
 }
 
 func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath string) {
@@ -79,16 +81,17 @@ func TestV2DeprecationFlags(t *testing.T) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
+	var memberDataDir string
 	t.Run("create-storev2-data", func(t *testing.T) {
-		createV2store(t, dataDirPath)
+		memberDataDir = createV2store(t, dataDirPath)
 	})
 
 	t.Run("--v2-deprecation=not-yet fails", func(t *testing.T) {
-		assertVerifyCannotStartV2deprecationNotYet(t, dataDirPath)
+		assertVerifyCannotStartV2deprecationNotYet(t, memberDataDir)
 	})
 
 	t.Run("--v2-deprecation=write-only fails", func(t *testing.T) {
-		assertVerifyCannotStartV2deprecationWriteOnly(t, dataDirPath)
+		assertVerifyCannotStartV2deprecationWriteOnly(t, memberDataDir)
 	})
 
 }
@@ -105,17 +108,19 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	}
 	snapshotCount := 10
 	epc := runEtcdAndCreateSnapshot(t, e2e.LastVersion, lastReleaseData, snapshotCount)
+	oldMemberDataDir := epc.Procs[0].Config().DataDirPath
 	cc1, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
 	assert.NoError(t, err)
 	members1 := addAndRemoveKeysAndMembers(ctx, t, cc1, snapshotCount)
 	assert.NoError(t, epc.Close())
 	epc = runEtcdAndCreateSnapshot(t, e2e.CurrentVersion, currentReleaseData, snapshotCount)
+	newMemberDataDir := epc.Procs[0].Config().DataDirPath
 	cc2, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
 	assert.NoError(t, err)
 	members2 := addAndRemoveKeysAndMembers(ctx, t, cc2, snapshotCount)
 	assert.NoError(t, epc.Close())
 
-	assertSnapshotsMatch(t, lastReleaseData, currentReleaseData, func(data []byte) []byte {
+	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
 		// Patch cluster version
 		data = bytes.Replace(data, []byte("3.5.0"), []byte("X.X.X"), -1)
 		data = bytes.Replace(data, []byte("3.6.0"), []byte("X.X.X"), -1)
