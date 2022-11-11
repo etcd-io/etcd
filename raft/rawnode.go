@@ -151,7 +151,6 @@ func (rn *RawNode) acceptReady(rd Ready) {
 }
 
 // HasReady called when RawNode user need to check if any Ready pending.
-// Checking logic in this method should be consistent with Ready.containsUpdates().
 func (rn *RawNode) HasReady() bool {
 	r := rn.raft
 	if !r.softState().equal(rn.prevSoftSt) {

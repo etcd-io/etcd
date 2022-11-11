@@ -103,12 +103,6 @@ func IsEmptySnap(sp pb.Snapshot) bool {
 	return sp.Metadata.Index == 0
 }
 
-func (rd Ready) containsUpdates() bool {
-	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) ||
-		!IsEmptySnap(rd.Snapshot) || len(rd.Entries) > 0 ||
-		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0 || len(rd.ReadStates) != 0
-}
-
 // appliedCursor extracts from the Ready the highest index the client has
 // applied (once the Ready is confirmed via Advance). If no information is
 // contained in the Ready, returns zero.
