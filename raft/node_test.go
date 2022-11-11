@@ -931,8 +931,8 @@ func (s *ignoreSizeHintMemStorage) Entries(lo, hi uint64, maxSize uint64) ([]raf
 // internal one. The original bug was the following:
 //
 //   - node learns that index 11 (or 100, doesn't matter) is committed
-//   - nextEnts returns index 1..10 in CommittedEntries due to size limiting. However,
-//     index 10 already exceeds maxBytes, due to a user-provided impl of Entries.
+//   - nextCommittedEnts returns index 1..10 in CommittedEntries due to size limiting.
+//     However, index 10 already exceeds maxBytes, due to a user-provided impl of Entries.
 //   - Commit index gets bumped to 10
 //   - the node persists the HardState, but crashes before applying the entries
 //   - upon restart, the storage returns the same entries, but `slice` takes a different code path

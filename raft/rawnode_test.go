@@ -885,8 +885,8 @@ func TestRawNodeStatus(t *testing.T) {
 // Raft group would forget to apply entries:
 //
 //   - node learns that index 11 is committed
-//   - nextEnts returns index 1..10 in CommittedEntries (but index 10 already
-//     exceeds maxBytes), which isn't noticed internally by Raft
+//   - nextCommittedEnts returns index 1..10 in CommittedEntries (but index 10
+//     already exceeds maxBytes), which isn't noticed internally by Raft
 //   - Commit index gets bumped to 10
 //   - the node persists the HardState, but crashes before applying the entries
 //   - upon restart, the storage returns the same entries, but `slice` takes a

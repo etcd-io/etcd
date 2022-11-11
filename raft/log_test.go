@@ -339,7 +339,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	}
 }
 
-func TestHasNextEnts(t *testing.T) {
+func TestHasNextCommittedEnts(t *testing.T) {
 	snap := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{Term: 1, Index: 3},
 	}
@@ -365,14 +365,14 @@ func TestHasNextEnts(t *testing.T) {
 		raftLog.maybeCommit(5, 1)
 		raftLog.appliedTo(tt.applied)
 
-		hasNext := raftLog.hasNextEnts()
+		hasNext := raftLog.hasNextCommittedEnts()
 		if hasNext != tt.hasNext {
 			t.Errorf("#%d: hasNext = %v, want %v", i, hasNext, tt.hasNext)
 		}
 	}
 }
 
-func TestNextEnts(t *testing.T) {
+func TestNextCommittedEnts(t *testing.T) {
 	snap := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{Term: 1, Index: 3},
 	}
@@ -398,7 +398,7 @@ func TestNextEnts(t *testing.T) {
 		raftLog.maybeCommit(5, 1)
 		raftLog.appliedTo(tt.applied)
 
-		nents := raftLog.nextEnts()
+		nents := raftLog.nextCommittedEnts()
 		if !reflect.DeepEqual(nents, tt.wents) {
 			t.Errorf("#%d: nents = %+v, want %+v", i, nents, tt.wents)
 		}
