@@ -10,6 +10,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14547)
 - Fix [avoid closing a watch with ID 0 incorrectly](https://github.com/etcd-io/etcd/pull/14563)
 - Fix [auth: fix data consistency issue caused by recovery from snapshot](https://github.com/etcd-io/etcd/pull/14648)
+- Fix [revision might be inconsistency between members when etcd crashes during processing defragmentation operation](https://github.com/etcd-io/etcd/pull/14733)
 
 ### Package `netutil`
 - Fix [netutil: add url comparison without resolver to URLStringsEqual](https://github.com/etcd-io/etcd/pull/14573)
