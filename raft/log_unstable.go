@@ -75,16 +75,20 @@ func (u *unstable) maybeTerm(i uint64) (uint64, bool) {
 func (u *unstable) stableTo(i, t uint64) {
 	gt, ok := u.maybeTerm(i)
 	if !ok {
+		// Unstable entry missing. Ignore.
 		return
 	}
-	// if i < offset, term is matched with the snapshot
-	// only update the unstable entries if term is matched with
-	// an unstable entry.
-	if gt == t && i >= u.offset {
-		u.entries = u.entries[i+1-u.offset:]
-		u.offset = i + 1
-		u.shrinkEntriesArray()
+	if i < u.offset {
+		// Index matched unstable snapshot, not unstable entry. Ignore.
+		return
 	}
+	if gt != t {
+		// Term mismatch between unstable entry and specified entry. Ignore.
+		return
+	}
+	u.entries = u.entries[i+1-u.offset:]
+	u.offset = i + 1
+	u.shrinkEntriesArray()
 }
 
 // shrinkEntriesArray discards the underlying array used by the entries slice
