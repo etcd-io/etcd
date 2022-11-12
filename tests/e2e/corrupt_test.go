@@ -102,11 +102,10 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, &e2e.EtcdProcessClusterConfig{
-		ClusterSize:      3,
-		KeepDataDir:      true,
-		CorruptCheckTime: time.Second,
-	})
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, nil,
+		e2e.WithKeepDataDir(true),
+		e2e.WithCorruptCheckTime(time.Second),
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -150,12 +149,11 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, &e2e.EtcdProcessClusterConfig{
-		ClusterSize:             3,
-		KeepDataDir:             true,
-		CompactHashCheckEnabled: true,
-		CompactHashCheckTime:    checkTime,
-	})
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, nil,
+		e2e.WithKeepDataDir(true),
+		e2e.WithCompactHashCheckEnabled(true),
+		e2e.WithCompactHashCheckTime(checkTime),
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

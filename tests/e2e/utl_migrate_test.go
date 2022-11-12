@@ -115,15 +115,14 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 			dataDirPath := t.TempDir()
 
-			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-				Version:      tc.clusterVersion,
-				DataDirPath:  dataDirPath,
-				ClusterSize:  1,
-				InitialToken: "new",
-				KeepDataDir:  true,
+			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+				e2e.WithVersion(tc.clusterVersion),
+				e2e.WithDataDirPath(dataDirPath),
+				e2e.WithClusterSize(1),
+				e2e.WithKeepDataDir(true),
 				// Set low SnapshotCount to ensure wal snapshot is done
-				SnapshotCount: 1,
-			})
+				e2e.WithSnapshotCount(1),
+			)
 			if err != nil {
 				t.Fatalf("could not start etcd process cluster (%v)", err)
 			}

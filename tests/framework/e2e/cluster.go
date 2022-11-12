@@ -197,6 +197,10 @@ func WithConfig(cfg *EtcdProcessClusterConfig) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { *c = *cfg }
 }
 
+func WithVersion(version ClusterVersion) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.Version = version }
+}
+
 func WithDataDirPath(path string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.DataDirPath = path }
 }
@@ -303,7 +307,14 @@ func WithGoFailEnabled(enabled bool) EPClusterOption {
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
-func NewEtcdProcessCluster(ctx context.Context, t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+func NewEtcdProcessCluster(ctx context.Context, t testing.TB, cfg *EtcdProcessClusterConfig, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
+	if cfg == nil {
+		cfg = NewConfig(opts...)
+	} else {
+		for _, opt := range opts {
+			opt(cfg)
+		}
+	}
 	epc, err := InitEtcdProcessCluster(t, cfg)
 	if err != nil {
 		return nil, err
