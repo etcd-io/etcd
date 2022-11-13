@@ -48,13 +48,12 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	e2e.BeforeTest(t)
 
 	// step 1: start the discovery service
-	ds, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-		InitialToken:    "new",
-		BasePort:        2000,
-		ClusterSize:     discoveryClusterSize,
-		ClientTLS:       clientTlsType,
-		IsClientAutoTLS: isClientAutoTls,
-	})
+	ds, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+		e2e.WithBasePort(2000),
+		e2e.WithClusterSize(discoveryClusterSize),
+		e2e.WithClientTLS(clientTlsType),
+		e2e.WithIsClientAutoTLS(isClientAutoTls),
+	)
 	if err != nil {
 		t.Fatalf("could not start discovery etcd cluster (%v)", err)
 	}
@@ -87,14 +86,14 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 
 func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []string, discoveryToken string, clusterSize int, clientTlsType e2e.ClientConnType, isClientAutoTls bool) (*e2e.EtcdProcessCluster, error) {
 	// cluster configuration
-	cfg := &e2e.EtcdProcessClusterConfig{
-		BasePort:           3000,
-		ClusterSize:        clusterSize,
-		IsPeerTLS:          true,
-		IsPeerAutoTLS:      true,
-		DiscoveryToken:     discoveryToken,
-		DiscoveryEndpoints: discoveryEndpoints,
-	}
+	cfg := e2e.NewConfig(
+		e2e.WithBasePort(3000),
+		e2e.WithClusterSize(clusterSize),
+		e2e.WithIsPeerTLS(true),
+		e2e.WithIsPeerAutoTLS(true),
+		e2e.WithDiscoveryToken(discoveryToken),
+		e2e.WithDiscoveryEndpoints(discoveryEndpoints),
+	)
 
 	// initialize the cluster
 	epc, err := e2e.InitEtcdProcessCluster(t, cfg)

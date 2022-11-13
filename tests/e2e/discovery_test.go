@@ -42,12 +42,12 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
-	dc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-		BasePort:    2000,
-		Version:     e2e.LastVersion,
-		ClusterSize: 1,
-		EnableV2:    true,
-	})
+	dc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+		e2e.WithBasePort(2000),
+		e2e.WithVersion(e2e.LastVersion),
+		e2e.WithClusterSize(1),
+		e2e.WithEnableV2(true),
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -61,12 +61,12 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	}
 	cancel()
 
-	c, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-		BasePort:    3000,
-		ClusterSize: size,
-		IsPeerTLS:   peerTLS,
-		Discovery:   dc.EndpointsV2()[0] + "/v2/keys",
-	})
+	c, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+		e2e.WithBasePort(3000),
+		e2e.WithClusterSize(size),
+		e2e.WithIsPeerTLS(peerTLS),
+		e2e.WithDiscovery(dc.EndpointsV2()[0]+"/v2/keys"),
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
