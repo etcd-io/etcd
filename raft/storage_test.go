@@ -16,9 +16,9 @@ package raft
 
 import (
 	"math"
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	pb "go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -38,26 +38,19 @@ func TestStorageTerm(t *testing.T) {
 		{6, ErrUnavailable, 0, false},
 	}
 
-	for i, tt := range tests {
-		s := &MemoryStorage{ents: ents}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
 
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					if !tt.wpanic {
-						t.Errorf("%d: panic = %v, want %v", i, true, tt.wpanic)
-					}
-				}
-			}()
-
+			if tt.wpanic {
+				require.Panics(t, func() {
+					_, _ = s.Term(tt.i)
+				})
+			}
 			term, err := s.Term(tt.i)
-			if err != tt.werr {
-				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-			}
-			if term != tt.wterm {
-				t.Errorf("#%d: term = %d, want %d", i, term, tt.wterm)
-			}
-		}()
+			require.Equal(t, tt.werr, err)
+			require.Equal(t, tt.wterm, term)
+		})
 	}
 }
 
@@ -85,15 +78,13 @@ func TestStorageEntries(t *testing.T) {
 		{4, 7, uint64(ents[1].Size() + ents[2].Size() + ents[3].Size()), nil, []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 5}, {Index: 6, Term: 6}}},
 	}
 
-	for i, tt := range tests {
-		s := &MemoryStorage{ents: ents}
-		entries, err := s.Entries(tt.lo, tt.hi, tt.maxsize)
-		if err != tt.werr {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-		}
-		if !reflect.DeepEqual(entries, tt.wentries) {
-			t.Errorf("#%d: entries = %v, want %v", i, entries, tt.wentries)
-		}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
+			entries, err := s.Entries(tt.lo, tt.hi, tt.maxsize)
+			require.Equal(t, tt.werr, err)
+			require.Equal(t, tt.wentries, entries)
+		})
 	}
 }
 
@@ -102,21 +93,13 @@ func TestStorageLastIndex(t *testing.T) {
 	s := &MemoryStorage{ents: ents}
 
 	last, err := s.LastIndex()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if last != 5 {
-		t.Errorf("last = %d, want %d", last, 5)
-	}
+	require.NoError(t, err)
+	require.Equal(t, uint64(5), last)
 
-	s.Append([]pb.Entry{{Index: 6, Term: 5}})
+	require.NoError(t, s.Append([]pb.Entry{{Index: 6, Term: 5}}))
 	last, err = s.LastIndex()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if last != 6 {
-		t.Errorf("last = %d, want %d", last, 6)
-	}
+	require.NoError(t, err)
+	require.Equal(t, uint64(6), last)
 }
 
 func TestStorageFirstIndex(t *testing.T) {
@@ -124,21 +107,13 @@ func TestStorageFirstIndex(t *testing.T) {
 	s := &MemoryStorage{ents: ents}
 
 	first, err := s.FirstIndex()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if first != 4 {
-		t.Errorf("first = %d, want %d", first, 4)
-	}
+	require.NoError(t, err)
+	require.Equal(t, uint64(4), first)
 
-	s.Compact(4)
+	require.NoError(t, s.Compact(4))
 	first, err = s.FirstIndex()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if first != 5 {
-		t.Errorf("first = %d, want %d", first, 5)
-	}
+	require.NoError(t, err)
+	require.Equal(t, uint64(5), first)
 }
 
 func TestStorageCompact(t *testing.T) {
@@ -157,21 +132,14 @@ func TestStorageCompact(t *testing.T) {
 		{5, nil, 5, 5, 1},
 	}
 
-	for i, tt := range tests {
-		s := &MemoryStorage{ents: ents}
-		err := s.Compact(tt.i)
-		if err != tt.werr {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-		}
-		if s.ents[0].Index != tt.windex {
-			t.Errorf("#%d: index = %d, want %d", i, s.ents[0].Index, tt.windex)
-		}
-		if s.ents[0].Term != tt.wterm {
-			t.Errorf("#%d: term = %d, want %d", i, s.ents[0].Term, tt.wterm)
-		}
-		if len(s.ents) != tt.wlen {
-			t.Errorf("#%d: len = %d, want %d", i, len(s.ents), tt.wlen)
-		}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
+			require.Equal(t, tt.werr, s.Compact(tt.i))
+			require.Equal(t, tt.windex, s.ents[0].Index)
+			require.Equal(t, tt.wterm, s.ents[0].Term)
+			require.Equal(t, tt.wlen, len(s.ents))
+		})
 	}
 }
 
@@ -190,15 +158,13 @@ func TestStorageCreateSnapshot(t *testing.T) {
 		{5, nil, pb.Snapshot{Data: data, Metadata: pb.SnapshotMetadata{Index: 5, Term: 5, ConfState: *cs}}},
 	}
 
-	for i, tt := range tests {
-		s := &MemoryStorage{ents: ents}
-		snap, err := s.CreateSnapshot(tt.i, cs, data)
-		if err != tt.werr {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-		}
-		if !reflect.DeepEqual(snap, tt.wsnap) {
-			t.Errorf("#%d: snap = %+v, want %+v", i, snap, tt.wsnap)
-		}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
+			snap, err := s.CreateSnapshot(tt.i, cs, data)
+			require.Equal(t, tt.werr, err)
+			require.Equal(t, tt.wsnap, snap)
+		})
 	}
 }
 
@@ -230,19 +196,19 @@ func TestStorageAppend(t *testing.T) {
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}, {Index: 6, Term: 5}},
 		},
-		// truncate incoming entries, truncate the existing entries and append
+		// Truncate incoming entries, truncate the existing entries and append.
 		{
 			[]pb.Entry{{Index: 2, Term: 3}, {Index: 3, Term: 3}, {Index: 4, Term: 5}},
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 5}},
 		},
-		// truncate the existing entries and append
+		// Truncate the existing entries and append.
 		{
 			[]pb.Entry{{Index: 4, Term: 5}},
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 5}},
 		},
-		// direct append
+		// Direct append.
 		{
 			[]pb.Entry{{Index: 6, Term: 5}},
 			nil,
@@ -250,15 +216,12 @@ func TestStorageAppend(t *testing.T) {
 		},
 	}
 
-	for i, tt := range tests {
-		s := &MemoryStorage{ents: ents}
-		err := s.Append(tt.entries)
-		if err != tt.werr {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-		}
-		if !reflect.DeepEqual(s.ents, tt.wentries) {
-			t.Errorf("#%d: entries = %v, want %v", i, s.ents, tt.wentries)
-		}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
+			require.Equal(t, tt.werr, s.Append(tt.entries))
+			require.Equal(t, tt.wentries, s.ents)
+		})
 	}
 }
 
@@ -272,19 +235,12 @@ func TestStorageApplySnapshot(t *testing.T) {
 
 	s := NewMemoryStorage()
 
-	//Apply Snapshot successful
 	i := 0
 	tt := tests[i]
-	err := s.ApplySnapshot(tt)
-	if err != nil {
-		t.Errorf("#%d: err = %v, want %v", i, err, nil)
-	}
+	require.NoError(t, s.ApplySnapshot(tt))
 
-	//Apply Snapshot fails due to ErrSnapOutOfDate
+	// ApplySnapshot fails due to ErrSnapOutOfDate.
 	i = 1
 	tt = tests[i]
-	err = s.ApplySnapshot(tt)
-	if err != ErrSnapOutOfDate {
-		t.Errorf("#%d: err = %v, want %v", i, err, ErrSnapOutOfDate)
-	}
+	require.Equal(t, ErrSnapOutOfDate, s.ApplySnapshot(tt))
 }
