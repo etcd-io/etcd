@@ -15,6 +15,7 @@
 package raft
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -34,7 +35,7 @@ func TestDescribeEntry(t *testing.T) {
 		Type:  pb.EntryNormal,
 		Data:  []byte("hello\x00world"),
 	}
-	require.Equal(t, "1/2 EntryNormal \"hello\\x00world\"", DescribeEntry(entry, nil))
+	require.Equal(t, `1/2 EntryNormal "hello\x00world"`, DescribeEntry(entry, nil))
 	require.Equal(t, "1/2 EntryNormal HELLO\x00WORLD", DescribeEntry(entry, testFormatter))
 }
 
@@ -45,19 +46,21 @@ func TestLimitSize(t *testing.T) {
 		wentries []pb.Entry
 	}{
 		{math.MaxUint64, []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 5}, {Index: 6, Term: 6}}},
-		// even if maxsize is zero, the first entry should be returned
+		// Even if maxsize is zero, the first entry should be returned.
 		{0, []pb.Entry{{Index: 4, Term: 4}}},
-		// limit to 2
+		// Limit to 2.
 		{uint64(ents[0].Size() + ents[1].Size()), []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 5}}},
-		// limit to 2
+		// Limit to 2.
 		{uint64(ents[0].Size() + ents[1].Size() + ents[2].Size()/2), []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 5}}},
 		{uint64(ents[0].Size() + ents[1].Size() + ents[2].Size() - 1), []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 5}}},
-		// all
+		// All.
 		{uint64(ents[0].Size() + ents[1].Size() + ents[2].Size()), []pb.Entry{{Index: 4, Term: 4}, {Index: 5, Term: 5}, {Index: 6, Term: 6}}},
 	}
 
 	for _, tt := range tests {
-		require.Equal(t, tt.wentries, limitSize(ents, tt.maxsize))
+		t.Run("", func(t *testing.T) {
+			require.Equal(t, tt.wentries, limitSize(ents, tt.maxsize))
+		})
 	}
 }
 
@@ -88,6 +91,8 @@ func TestIsLocalMsg(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		require.Equal(t, tt.isLocal, IsLocalMsg(tt.msgt))
+		t.Run(fmt.Sprint(tt.msgt), func(t *testing.T) {
+			require.Equal(t, tt.isLocal, IsLocalMsg(tt.msgt))
+		})
 	}
 }

@@ -38,22 +38,19 @@ func TestStorageTerm(t *testing.T) {
 		{6, ErrUnavailable, 0, false},
 	}
 
-	for i, tt := range tests {
-		s := &MemoryStorage{ents: ents}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
 
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					if !tt.wpanic {
-						t.Errorf("%d: panic = %v, want %v", i, true, tt.wpanic)
-					}
-				}
-			}()
-
+			if tt.wpanic {
+				require.Panics(t, func() {
+					_, _ = s.Term(tt.i)
+				})
+			}
 			term, err := s.Term(tt.i)
-			require.Equal(t, tt.werr, err, "#%d", i)
-			require.Equal(t, tt.wterm, term, "#%d", i)
-		}()
+			require.Equal(t, tt.werr, err)
+			require.Equal(t, tt.wterm, term)
+		})
 	}
 }
 
@@ -82,10 +79,12 @@ func TestStorageEntries(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		s := &MemoryStorage{ents: ents}
-		entries, err := s.Entries(tt.lo, tt.hi, tt.maxsize)
-		require.Equal(t, tt.werr, err)
-		require.Equal(t, tt.wentries, entries)
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
+			entries, err := s.Entries(tt.lo, tt.hi, tt.maxsize)
+			require.Equal(t, tt.werr, err)
+			require.Equal(t, tt.wentries, entries)
+		})
 	}
 }
 
@@ -97,7 +96,7 @@ func TestStorageLastIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(5), last)
 
-	s.Append([]pb.Entry{{Index: 6, Term: 5}})
+	require.NoError(t, s.Append([]pb.Entry{{Index: 6, Term: 5}}))
 	last, err = s.LastIndex()
 	require.NoError(t, err)
 	require.Equal(t, uint64(6), last)
@@ -111,7 +110,7 @@ func TestStorageFirstIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(4), first)
 
-	s.Compact(4)
+	require.NoError(t, s.Compact(4))
 	first, err = s.FirstIndex()
 	require.NoError(t, err)
 	require.Equal(t, uint64(5), first)
@@ -134,11 +133,13 @@ func TestStorageCompact(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		s := &MemoryStorage{ents: ents}
-		require.Equal(t, tt.werr, s.Compact(tt.i))
-		require.Equal(t, tt.windex, s.ents[0].Index)
-		require.Equal(t, tt.wterm, s.ents[0].Term)
-		require.Equal(t, tt.wlen, len(s.ents))
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
+			require.Equal(t, tt.werr, s.Compact(tt.i))
+			require.Equal(t, tt.windex, s.ents[0].Index)
+			require.Equal(t, tt.wterm, s.ents[0].Term)
+			require.Equal(t, tt.wlen, len(s.ents))
+		})
 	}
 }
 
@@ -158,10 +159,12 @@ func TestStorageCreateSnapshot(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		s := &MemoryStorage{ents: ents}
-		snap, err := s.CreateSnapshot(tt.i, cs, data)
-		require.Equal(t, tt.werr, err)
-		require.Equal(t, tt.wsnap, snap)
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
+			snap, err := s.CreateSnapshot(tt.i, cs, data)
+			require.Equal(t, tt.werr, err)
+			require.Equal(t, tt.wsnap, snap)
+		})
 	}
 }
 
@@ -193,19 +196,19 @@ func TestStorageAppend(t *testing.T) {
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}, {Index: 6, Term: 5}},
 		},
-		// truncate incoming entries, truncate the existing entries and append
+		// Truncate incoming entries, truncate the existing entries and append.
 		{
 			[]pb.Entry{{Index: 2, Term: 3}, {Index: 3, Term: 3}, {Index: 4, Term: 5}},
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 5}},
 		},
-		// truncate the existing entries and append
+		// Truncate the existing entries and append.
 		{
 			[]pb.Entry{{Index: 4, Term: 5}},
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 5}},
 		},
-		// direct append
+		// Direct append.
 		{
 			[]pb.Entry{{Index: 6, Term: 5}},
 			nil,
@@ -214,9 +217,11 @@ func TestStorageAppend(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		s := &MemoryStorage{ents: ents}
-		require.Equal(t, tt.werr, s.Append(tt.entries))
-		require.Equal(t, tt.wentries, s.ents)
+		t.Run("", func(t *testing.T) {
+			s := &MemoryStorage{ents: ents}
+			require.Equal(t, tt.werr, s.Append(tt.entries))
+			require.Equal(t, tt.wentries, s.ents)
+		})
 	}
 }
 
@@ -230,12 +235,11 @@ func TestStorageApplySnapshot(t *testing.T) {
 
 	s := NewMemoryStorage()
 
-	//Apply Snapshot successful
 	i := 0
 	tt := tests[i]
 	require.NoError(t, s.ApplySnapshot(tt))
 
-	//Apply Snapshot fails due to ErrSnapOutOfDate
+	// ApplySnapshot fails due to ErrSnapOutOfDate.
 	i = 1
 	tt = tests[i]
 	require.Equal(t, ErrSnapOutOfDate, s.ApplySnapshot(tt))
