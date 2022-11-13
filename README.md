@@ -186,7 +186,6 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 * Wenjia Zhang
 * Xiang Li
 * Ben Darnell
-* Tobias Grieger
 
 ### License
 
