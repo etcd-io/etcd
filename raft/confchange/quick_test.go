@@ -89,7 +89,7 @@ func TestConfChangeQuick(t *testing.T) {
 
 	wrapper := func(invoke testFunc) func(setup initialChanges, ccs confChanges) (*Changer, error) {
 		return func(setup initialChanges, ccs confChanges) (*Changer, error) {
-			tr := tracker.MakeProgressTracker(10)
+			tr := tracker.MakeProgressTracker(10, 0)
 			c := &Changer{
 				Tracker:   tr,
 				LastIndex: 10,

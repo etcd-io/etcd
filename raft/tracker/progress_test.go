@@ -21,8 +21,8 @@ import (
 )
 
 func TestProgressString(t *testing.T) {
-	ins := NewInflights(1)
-	ins.Add(123)
+	ins := NewInflights(1, 0)
+	ins.Add(123, 1)
 	pr := &Progress{
 		Match:            1,
 		Next:             2,
@@ -55,7 +55,7 @@ func TestProgressIsPaused(t *testing.T) {
 		p := &Progress{
 			State:            tt.state,
 			MsgAppFlowPaused: tt.paused,
-			Inflights:        NewInflights(256),
+			Inflights:        NewInflights(256, 0),
 		}
 		assert.Equal(t, tt.w, p.IsPaused(), i)
 	}
@@ -82,17 +82,17 @@ func TestProgressBecomeProbe(t *testing.T) {
 		wnext uint64
 	}{
 		{
-			&Progress{State: StateReplicate, Match: match, Next: 5, Inflights: NewInflights(256)},
+			&Progress{State: StateReplicate, Match: match, Next: 5, Inflights: NewInflights(256, 0)},
 			2,
 		},
 		{
 			// snapshot finish
-			&Progress{State: StateSnapshot, Match: match, Next: 5, PendingSnapshot: 10, Inflights: NewInflights(256)},
+			&Progress{State: StateSnapshot, Match: match, Next: 5, PendingSnapshot: 10, Inflights: NewInflights(256, 0)},
 			11,
 		},
 		{
 			// snapshot failure
-			&Progress{State: StateSnapshot, Match: match, Next: 5, PendingSnapshot: 0, Inflights: NewInflights(256)},
+			&Progress{State: StateSnapshot, Match: match, Next: 5, PendingSnapshot: 0, Inflights: NewInflights(256, 0)},
 			2,
 		},
 	}
@@ -105,7 +105,7 @@ func TestProgressBecomeProbe(t *testing.T) {
 }
 
 func TestProgressBecomeReplicate(t *testing.T) {
-	p := &Progress{State: StateProbe, Match: 1, Next: 5, Inflights: NewInflights(256)}
+	p := &Progress{State: StateProbe, Match: 1, Next: 5, Inflights: NewInflights(256, 0)}
 	p.BecomeReplicate()
 	assert.Equal(t, StateReplicate, p.State)
 	assert.Equal(t, uint64(1), p.Match)
@@ -113,7 +113,7 @@ func TestProgressBecomeReplicate(t *testing.T) {
 }
 
 func TestProgressBecomeSnapshot(t *testing.T) {
-	p := &Progress{State: StateProbe, Match: 1, Next: 5, Inflights: NewInflights(256)}
+	p := &Progress{State: StateProbe, Match: 1, Next: 5, Inflights: NewInflights(256, 0)}
 	p.BecomeSnapshot(10)
 	assert.Equal(t, StateSnapshot, p.State)
 	assert.Equal(t, uint64(1), p.Match)

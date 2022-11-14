@@ -14,6 +14,12 @@
 
 package tracker
 
+// inflight describes an in-flight MsgApp message.
+type inflight struct {
+	index uint64 // the index of the last entry inside the message
+	bytes uint64 // the total byte size of the entries in the message
+}
+
 // Inflights limits the number of MsgApp (represented by the largest index
 // contained within) sent to followers but not yet acknowledged by them. Callers
 // use Full() to check whether more messages can be sent, call Add() whenever
@@ -22,21 +28,25 @@ package tracker
 type Inflights struct {
 	// the starting index in the buffer
 	start int
-	// number of inflights in the buffer
-	count int
 
-	// the size of the buffer
-	size int
+	count int    // number of inflight messages in the buffer
+	bytes uint64 // number of inflight bytes
 
-	// buffer contains the index of the last entry
-	// inside one message.
-	buffer []uint64
+	size     int    // the max number of inflight messages
+	maxBytes uint64 // the max total byte size of inflight messages
+
+	// buffer is a ring buffer containing info about all in-flight messages.
+	buffer []inflight
 }
 
-// NewInflights sets up an Inflights that allows up to 'size' inflight messages.
-func NewInflights(size int) *Inflights {
+// NewInflights sets up an Inflights that allows up to size inflight messages,
+// with the total byte size up to maxBytes. If maxBytes is 0 then there is no
+// byte size limit. The maxBytes limit is soft, i.e. we accept a single message
+// that brings it from size < maxBytes to size >= maxBytes.
+func NewInflights(size int, maxBytes uint64) *Inflights {
 	return &Inflights{
-		size: size,
+		size:     size,
+		maxBytes: maxBytes,
 	}
 }
 
@@ -44,15 +54,15 @@ func NewInflights(size int) *Inflights {
 // the receiver.
 func (in *Inflights) Clone() *Inflights {
 	ins := *in
-	ins.buffer = append([]uint64(nil), in.buffer...)
+	ins.buffer = append([]inflight(nil), in.buffer...)
 	return &ins
 }
 
-// Add notifies the Inflights that a new message with the given index is being
-// dispatched. Full() must be called prior to Add() to verify that there is room
-// for one more message, and consecutive calls to add Add() must provide a
-// monotonic sequence of indexes.
-func (in *Inflights) Add(inflight uint64) {
+// Add notifies the Inflights that a new message with the given index and byte
+// size is being dispatched. Full() must be called prior to Add() to verify that
+// there is room for one more message, and consecutive calls to Add() must
+// provide a monotonic sequence of indexes.
+func (in *Inflights) Add(index, bytes uint64) {
 	if in.Full() {
 		panic("cannot add into a Full inflights")
 	}
@@ -64,8 +74,9 @@ func (in *Inflights) Add(inflight uint64) {
 	if next >= len(in.buffer) {
 		in.grow()
 	}
-	in.buffer[next] = inflight
+	in.buffer[next] = inflight{index: index, bytes: bytes}
 	in.count++
+	in.bytes += bytes
 }
 
 // grow the inflight buffer by doubling up to inflights.size. We grow on demand
@@ -78,24 +89,26 @@ func (in *Inflights) grow() {
 	} else if newSize > in.size {
 		newSize = in.size
 	}
-	newBuffer := make([]uint64, newSize)
+	newBuffer := make([]inflight, newSize)
 	copy(newBuffer, in.buffer)
 	in.buffer = newBuffer
 }
 
 // FreeLE frees the inflights smaller or equal to the given `to` flight.
 func (in *Inflights) FreeLE(to uint64) {
-	if in.count == 0 || to < in.buffer[in.start] {
+	if in.count == 0 || to < in.buffer[in.start].index {
 		// out of the left side of the window
 		return
 	}
 
 	idx := in.start
 	var i int
+	var bytes uint64
 	for i = 0; i < in.count; i++ {
-		if to < in.buffer[idx] { // found the first large inflight
+		if to < in.buffer[idx].index { // found the first large inflight
 			break
 		}
+		bytes += in.buffer[idx].bytes
 
 		// increase index and maybe rotate
 		size := in.size
@@ -105,6 +118,7 @@ func (in *Inflights) FreeLE(to uint64) {
 	}
 	// free i inflights and set new start index
 	in.count -= i
+	in.bytes -= bytes
 	in.start = idx
 	if in.count == 0 {
 		// inflights is empty, reset the start index so that we don't grow the
@@ -115,7 +129,7 @@ func (in *Inflights) FreeLE(to uint64) {
 
 // Full returns true if no more messages can be sent at the moment.
 func (in *Inflights) Full() bool {
-	return in.count == in.size
+	return in.count == in.size || (in.maxBytes != 0 && in.bytes >= in.maxBytes)
 }
 
 // Count returns the number of inflight messages.

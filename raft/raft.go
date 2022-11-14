@@ -160,6 +160,16 @@ type Config struct {
 	// overflowing that sending buffer. TODO (xiangli): feedback to application to
 	// limit the proposal rate?
 	MaxInflightMsgs int
+	// MaxInflightBytes limits the number of in-flight bytes in append messages.
+	// Complements MaxInflightMsgs. Ignored if zero.
+	//
+	// This effectively bounds the bandwidth-delay product. Note that especially
+	// in high-latency deployments setting this too low can lead to a dramatic
+	// reduction in throughput. For example, with a peer that has a round-trip
+	// latency of 100ms to the leader and this setting is set to 1 MB, there is a
+	// throughput limit of 10 MB/s for this group. With RTT of 400ms, this drops
+	// to 2.5 MB/s. See Little's law to understand the maths behind.
+	MaxInflightBytes uint64
 
 	// CheckQuorum specifies if the leader should check quorum activity. Leader
 	// steps down when quorum is not active for an electionTimeout.
@@ -227,6 +237,11 @@ func (c *Config) validate() error {
 
 	if c.MaxInflightMsgs <= 0 {
 		return errors.New("max inflight messages must be greater than 0")
+	}
+	if c.MaxInflightBytes == 0 {
+		c.MaxInflightBytes = noLimit
+	} else if c.MaxInflightBytes < c.MaxSizePerMsg {
+		return errors.New("max inflight bytes must be >= max message size")
 	}
 
 	if c.Logger == nil {
@@ -332,7 +347,7 @@ func newRaft(c *Config) *raft {
 		raftLog:                   raftlog,
 		maxMsgSize:                c.MaxSizePerMsg,
 		maxUncommittedSize:        c.MaxUncommittedEntriesSize,
-		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs),
+		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs, c.MaxInflightBytes),
 		electionTimeout:           c.ElectionTick,
 		heartbeatTimeout:          c.HeartbeatTick,
 		logger:                    c.Logger,
@@ -484,7 +499,7 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 
 	// Send the actual MsgApp otherwise, and update the progress accordingly.
 	next := pr.Next // save Next for later, as the progress update can change it
-	if err := pr.UpdateOnEntriesSend(len(ents), next); err != nil {
+	if err := pr.UpdateOnEntriesSend(len(ents), payloadsSize(ents), next); err != nil {
 		r.logger.Panicf("%x: %v", r.id, err)
 	}
 	r.send(pb.Message{
@@ -629,7 +644,7 @@ func (r *raft) reset(term uint64) {
 		*pr = tracker.Progress{
 			Match:     0,
 			Next:      r.raftLog.lastIndex() + 1,
-			Inflights: tracker.NewInflights(r.prs.MaxInflight),
+			Inflights: tracker.NewInflights(r.prs.MaxInflight, r.prs.MaxInflightBytes),
 			IsLearner: pr.IsLearner,
 		}
 		if id == r.id {
@@ -1618,7 +1633,7 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	r.raftLog.restore(s)
 
 	// Reset the configuration and add the (potentially updated) peers in anew.
-	r.prs = tracker.MakeProgressTracker(r.prs.MaxInflight)
+	r.prs = tracker.MakeProgressTracker(r.prs.MaxInflight, r.prs.MaxInflightBytes)
 	cfg, prs, err := confchange.Restore(confchange.Changer{
 		Tracker:   r.prs,
 		LastIndex: r.raftLog.lastIndex(),
@@ -1789,11 +1804,7 @@ func (r *raft) responseToReadIndexReq(req pb.Message, readIndex uint64) pb.Messa
 // Empty payloads are never refused. This is used both for appending an empty
 // entry at a new leader's term, as well as leaving a joint configuration.
 func (r *raft) increaseUncommittedSize(ents []pb.Entry) bool {
-	var s uint64
-	for _, e := range ents {
-		s += uint64(PayloadSize(e))
-	}
-
+	s := payloadsSize(ents)
 	if r.uncommittedSize > 0 && s > 0 && r.uncommittedSize+s > r.maxUncommittedSize {
 		// If the uncommitted tail of the Raft log is empty, allow any size
 		// proposal. Otherwise, limit the size of the uncommitted tail of the
@@ -1815,12 +1826,7 @@ func (r *raft) reduceUncommittedSize(ents []pb.Entry) {
 		// Fast-path for followers, who do not track or enforce the limit.
 		return
 	}
-
-	var s uint64
-	for _, e := range ents {
-		s += uint64(PayloadSize(e))
-	}
-	if s > r.uncommittedSize {
+	if s := payloadsSize(ents); s > r.uncommittedSize {
 		// uncommittedSize may underestimate the size of the uncommitted Raft
 		// log tail but will never overestimate it. Saturate at 0 instead of
 		// allowing overflow.
@@ -1828,6 +1834,14 @@ func (r *raft) reduceUncommittedSize(ents []pb.Entry) {
 	} else {
 		r.uncommittedSize -= s
 	}
+}
+
+func payloadsSize(ents []pb.Entry) uint64 {
+	var s uint64
+	for _, e := range ents {
+		s += uint64(PayloadSize(e))
+	}
+	return s
 }
 
 func numOfPendingConf(ents []pb.Entry) int {
