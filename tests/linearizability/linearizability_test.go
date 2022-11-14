@@ -83,7 +83,7 @@ func TestLinearizability(t *testing.T) {
 				minimalQPS:  minimalQPS,
 				maximalQPS:  maximalQPS,
 				clientCount: 8,
-				traffic:     PutGetTraffic,
+				traffic:     DefaultTraffic,
 			}
 			testLinearizability(context.Background(), t, tc.config, failpoint, traffic)
 		})
