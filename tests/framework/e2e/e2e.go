@@ -17,14 +17,11 @@ package e2e
 import (
 	"context"
 	"os"
-	"strings"
 	"testing"
-	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 type e2eRunner struct{}
@@ -112,72 +109,6 @@ func (c *e2eCluster) Members() (ms []intf.Member) {
 		ms = append(ms, e2eMember{EtcdProcess: proc, Cfg: c.Cfg})
 	}
 	return ms
-}
-
-// WaitLeader returns index of the member in c.Members() that is leader
-// or fails the test (if not established in 30s).
-func (c *e2eCluster) WaitLeader(t testing.TB) int {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	return c.WaitMembersForLeader(ctx, t, c.Members())
-}
-
-// WaitMembersForLeader waits until given members agree on the same leader,
-// and returns its 'index' in the 'membs' list
-func (c *e2eCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []intf.Member) int {
-	cc := testutils.MustClient(c.Client())
-
-	// ensure leader is up via linearizable get
-	for {
-		select {
-		case <-ctx.Done():
-			t.Fatal("WaitMembersForLeader timeout")
-		default:
-		}
-		_, err := cc.Get(ctx, "0", config.GetOptions{Timeout: 10*config.TickDuration + time.Second})
-		if err == nil || strings.Contains(err.Error(), "Key not found") {
-			break
-		}
-	}
-
-	leaders := make(map[uint64]struct{})
-	members := make(map[uint64]int)
-	for {
-		select {
-		case <-ctx.Done():
-			t.Fatal("WaitMembersForLeader timeout")
-		default:
-		}
-		for i := range membs {
-			resp, err := membs[i].Client().Status(ctx)
-			if err != nil {
-				if strings.Contains(err.Error(), "connection refused") {
-					// if member[i] has stopped
-					continue
-				} else {
-					t.Fatal(err)
-				}
-			}
-			members[resp[0].Header.MemberId] = i
-			leaders[resp[0].Leader] = struct{}{}
-		}
-		// members agree on the same leader
-		if len(leaders) == 1 {
-			break
-		}
-		leaders = make(map[uint64]struct{})
-		members = make(map[uint64]int)
-		time.Sleep(10 * config.TickDuration)
-	}
-	for l := range leaders {
-		if index, ok := members[l]; ok {
-			t.Logf("members agree on a leader, members:%v , leader:%v", members, l)
-			return index
-		}
-		t.Fatalf("members agree on a leader which is not one of members, members:%v , leader:%v", members, l)
-	}
-	t.Fatal("impossible path of execution")
-	return -1
 }
 
 type e2eClient struct {

@@ -56,8 +56,8 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 	t.Log("Create etcd cluster")
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithClusterSize(1),
-		e2e.WithClientTLS(e2e.ClientTLS),
-		e2e.WithClientCertAuthEnabled(true),
+		e2e.WithClientConnType(e2e.ClientTLS),
+		e2e.WithClientCertAuthority(true),
 	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
