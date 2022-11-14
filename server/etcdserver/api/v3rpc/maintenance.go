@@ -202,7 +202,12 @@ func (ms *maintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*
 		return nil, togRPCError(err)
 	}
 
-	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: h.Hash, CompactRevision: h.CompactRevision}
+	resp := &pb.HashKVResponse{
+		Header:          &pb.ResponseHeader{Revision: rev},
+		Hash:            h.Hash,
+		CompactRevision: h.CompactRevision,
+		HashRevision:    h.Revision,
+	}
 	ms.hdr.fill(resp.Header)
 	return resp, nil
 }
