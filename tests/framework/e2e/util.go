@@ -50,7 +50,11 @@ func SpawnWithExpectWithEnv(args []string, envVars map[string]string, expected s
 }
 
 func SpawnWithExpects(args []string, envVars map[string]string, xs ...string) error {
-	_, err := SpawnWithExpectLines(context.TODO(), args, envVars, xs...)
+	return SpawnWithExpectsContext(context.TODO(), args, envVars, xs...)
+}
+
+func SpawnWithExpectsContext(ctx context.Context, args []string, envVars map[string]string, xs ...string) error {
+	_, err := SpawnWithExpectLines(ctx, args, envVars, xs...)
 	return err
 }
 
@@ -74,26 +78,29 @@ func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string
 		lines = append(lines, l)
 	}
 	perr := proc.Close()
+	if perr != nil {
+		return lines, fmt.Errorf("err: %w, with output lines %v", perr, proc.Lines())
+	}
+
 	l := proc.LineCount()
 	if len(xs) == 0 && l != noOutputLineCount { // expect no output
 		return nil, fmt.Errorf("unexpected output from %v (got lines %q, line count %d) %v. Try EXPECT_DEBUG=TRUE", args, lines, l, l != noOutputLineCount)
 	}
-	return lines, perr
+	return lines, nil
 }
 
 func RunUtilCompletion(args []string, envVars map[string]string) ([]string, error) {
 	proc, err := SpawnCmd(args, envVars)
 	if err != nil {
-		return nil, fmt.Errorf("failed to spawn command: %w", err)
+		return nil, fmt.Errorf("failed to spawn command %v with error: %w", args, err)
 	}
-	defer proc.Stop()
 
-	perr := proc.Wait()
-	// make sure that all the outputs are received
-	proc.Close()
-	if perr != nil {
-		return nil, fmt.Errorf("unexpected error from command %v: %w", args, perr)
+	proc.Wait()
+	err = proc.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close command %v with error: %w", args, err)
 	}
+
 	return proc.Lines(), nil
 }
 

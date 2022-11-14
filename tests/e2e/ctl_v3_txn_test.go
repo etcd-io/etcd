@@ -19,13 +19,13 @@ import (
 )
 
 type txnRequests struct {
-	compare  []string
-	ifSucess []string
-	ifFail   []string
-	results  []string
+	compare   []string
+	ifSuccess []string
+	ifFail    []string
+	results   []string
 }
 
-func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
+func ctlV3Txn(cx ctlCtx, rqs txnRequests, expectedExitErr bool) error {
 	// TODO: support non-interactive mode
 	cmdArgs := append(cx.PrefixArgs(), "txn")
 	if cx.interactive {
@@ -52,7 +52,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 	if err != nil {
 		return err
 	}
-	for _, req := range rqs.ifSucess {
+	for _, req := range rqs.ifSuccess {
 		if err = proc.Send(req + "\r"); err != nil {
 			return err
 		}
@@ -80,5 +80,11 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 			return err
 		}
 	}
-	return proc.Close()
+
+	err = proc.Close()
+	if expectedExitErr {
+		return nil
+	}
+
+	return err
 }

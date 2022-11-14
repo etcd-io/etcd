@@ -15,9 +15,11 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"strings"
+	"time"
 )
 
 type CURLReq struct {
@@ -36,6 +38,15 @@ type CURLReq struct {
 	MetricsURLScheme string
 
 	Ciphers string
+}
+
+func (r CURLReq) timeoutDuration() time.Duration {
+	if r.Timeout != 0 {
+		return time.Duration(r.Timeout) * time.Second
+	}
+
+	// assume a sane default to finish a curl request
+	return 5 * time.Second
 }
 
 // CURLPrefixArgs builds the beginning of a curl command for a given key
@@ -94,13 +105,20 @@ func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method st
 }
 
 func CURLPost(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", req), req.Expected)
+	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
+	defer cancel()
+	return SpawnWithExpectsContext(ctx, CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", req), nil, req.Expected)
 }
 
 func CURLPut(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "PUT", req), req.Expected)
+	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
+	defer cancel()
+	return SpawnWithExpectsContext(ctx, CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "PUT", req), nil, req.Expected)
 }
 
 func CURLGet(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "GET", req), req.Expected)
+	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
+	defer cancel()
+
+	return SpawnWithExpectsContext(ctx, CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "GET", req), nil, req.Expected)
 }

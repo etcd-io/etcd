@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -29,7 +30,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -664,17 +664,22 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 		return fmt.Errorf("failed to find member ID: %w", err)
 	}
 
+	memberRemoved := false
 	for i := 0; i < 10; i++ {
-		_, err = memberCtl.MemberRemove(ctx, memberID)
-		if err != nil && strings.Contains(err.Error(), rpctypes.ErrGRPCUnhealthy.Error()) {
-			time.Sleep(500 * time.Millisecond)
-			continue
+		_, err := memberCtl.MemberRemove(ctx, memberID)
+		if err != nil && strings.Contains(err.Error(), "member not found") {
+			memberRemoved = true
+			break
 		}
-		break
+
+		time.Sleep(500 * time.Millisecond)
 	}
-	if err != nil {
-		return fmt.Errorf("failed to remove member: %w", err)
+
+	if !memberRemoved {
+		return errors.New("failed to remove member after 10 tries")
 	}
+
+	epc.lg.Info("successfully removed member", zap.String("acurl", proc.Config().Acurl))
 
 	// Then stop process
 	return proc.Close()

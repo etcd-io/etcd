@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v3"
@@ -110,27 +111,34 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 	}
 
 	tests := []struct {
-		eps    []string
-		expect string
+		eps       []string
+		expect    string
+		expectErr bool
 	}{
 		{ // request to non-leader
 			[]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]},
 			"no leader endpoint given at ",
+			true,
 		},
 		{ // request to leader
 			[]string{cx.epc.EndpointsV3()[leadIdx]},
 			fmt.Sprintf("Leadership transferred from %s to %s", types.ID(leaderID), types.ID(transferee)),
+			false,
 		},
 		{ // request to all endpoints
 			cx.epc.EndpointsV3(),
 			fmt.Sprintf("Leadership transferred"),
+			false,
 		},
 	}
 	for i, tc := range tests {
 		prefix := cx.prefixArgs(tc.eps)
 		cmdArgs := append(prefix, "move-leader", types.ID(transferee).String())
-		if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, tc.expect); err != nil {
-			t.Fatalf("#%d: %v", i, err)
+		err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, tc.expect)
+		if tc.expectErr {
+			require.ErrorContains(t, err, tc.expect)
+		} else {
+			require.Nilf(t, err, "#%d: %v", i, err)
 		}
 	}
 }

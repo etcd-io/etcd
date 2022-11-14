@@ -15,10 +15,12 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
-	"strings"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -50,9 +52,9 @@ func TestCtlV3GetRevokedCRL(t *testing.T) {
 
 func testGetRevokedCRL(cx ctlCtx) {
 	// test reject
-	if err := ctlV3Put(cx, "k", "v", ""); err == nil || !strings.Contains(err.Error(), "Error:") {
-		cx.t.Fatalf("expected reset connection on put, got %v", err)
-	}
+	err := ctlV3Put(cx, "k", "v", "")
+	require.ErrorContains(cx.t, err, "context deadline exceeded")
+
 	// test accept
 	cx.epc.Cfg.IsClientCRL = false
 	if err := ctlV3Put(cx, "k", "v", ""); err != nil {
@@ -216,9 +218,13 @@ func getKeysOnlyTest(cx ctlCtx) {
 	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "key"); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "val"); err == nil {
-		cx.t.Fatalf("got value but passed --keys-only")
-	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	lines, err := e2e.SpawnWithExpectLines(ctx, cmdArgs, cx.envMap, "key")
+	require.NoError(cx.t, err)
+	require.NotContains(cx.t, lines, "val", "got value but passed --keys-only")
 }
 
 func getCountOnlyTest(cx ctlCtx) {
@@ -250,13 +256,14 @@ func getCountOnlyTest(cx ctlCtx) {
 	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 3"); err != nil {
 		cx.t.Fatal(err)
 	}
-	expected := []string{
-		"\"Count\" : 3",
-	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key3", "--prefix", "--write-out=fields"}...)
-	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, expected...); err == nil {
-		cx.t.Fatal(err)
-	}
+	lines, err := e2e.SpawnWithExpectLines(ctx, cmdArgs, cx.envMap, "\"Count\"")
+	require.NoError(cx.t, err)
+	require.NotContains(cx.t, lines, "\"Count\" : 3")
 }
 
 func delTest(cx ctlCtx) {

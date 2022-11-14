@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -79,8 +80,10 @@ func testLock(cx ctlCtx) {
 	if err = blocked.Signal(os.Interrupt); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err = e2e.CloseWithTimeout(blocked, time.Second); err != nil {
-		cx.t.Fatal(err)
+	err = e2e.CloseWithTimeout(blocked, time.Second)
+	if err != nil {
+		// due to being blocked, this can potentially get killed and thus exit non-zero sometimes
+		require.ErrorContains(cx.t, err, "unexpected exit code")
 	}
 
 	// kill the holder with clean shutdown
@@ -113,9 +116,8 @@ func testLockWithCmd(cx ctlCtx) {
 	code := 3
 	awkCmd := []string{"awk", fmt.Sprintf("BEGIN{exit %d}", code)}
 	expect := fmt.Sprintf("Error: exit status %d", code)
-	if err := ctlV3LockWithCmd(cx, awkCmd, expect); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := ctlV3LockWithCmd(cx, awkCmd, expect)
+	require.ErrorContains(cx.t, err, expect)
 }
 
 // ctlV3Lock creates a lock process with a channel listening for when it acquires the lock.
@@ -130,7 +132,7 @@ func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, er
 	go func() {
 		s, xerr := proc.ExpectFunc(context.TODO(), func(string) bool { return true })
 		if xerr != nil {
-			cx.t.Errorf("expect failed (%v)", xerr)
+			require.ErrorContains(cx.t, xerr, "Error: context canceled")
 		}
 		outc <- s
 	}()
@@ -142,5 +144,7 @@ func ctlV3LockWithCmd(cx ctlCtx, execCmd []string, as ...string) error {
 	// use command as lock name
 	cmdArgs := append(cx.PrefixArgs(), "lock", execCmd[0])
 	cmdArgs = append(cmdArgs, execCmd...)
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, as...)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return e2e.SpawnWithExpectsContext(ctx, cmdArgs, cx.envMap, as...)
 }

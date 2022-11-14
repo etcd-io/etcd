@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -155,7 +156,11 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 			err = e2e.SpawnWithExpect(args, tc.expectLogsSubString)
 			if err != nil {
-				t.Fatal(err)
+				if tc.expectLogsSubString != "" {
+					require.ErrorContains(t, err, tc.expectLogsSubString)
+				} else {
+					t.Fatal(err)
+				}
 			}
 
 			t.Log("etcdutl migrate...")

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -52,24 +53,16 @@ func cipherSuiteTestValid(cx ctlCtx) {
 		MetricsURLScheme: cx.cfg.MetricsURLScheme,
 		Ciphers:          "ECDHE-RSA-AES128-GCM-SHA256", // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 	}); err != nil {
-		cx.t.Fatalf("failed get with curl (%v)", err)
+		require.ErrorContains(cx.t, err, fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version))
 	}
 }
 
 func cipherSuiteTestMismatch(cx ctlCtx) {
-	var err error
-	for _, exp := range []string{"alert handshake failure", "failed setting cipher list"} {
-		err = e2e.CURLGet(cx.epc, e2e.CURLReq{
-			Endpoint:         "/metrics",
-			Expected:         exp,
-			MetricsURLScheme: cx.cfg.MetricsURLScheme,
-			Ciphers:          "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
-		})
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		cx.t.Fatalf("failed get with curl (%v)", err)
-	}
+	err := e2e.CURLGet(cx.epc, e2e.CURLReq{
+		Endpoint:         "/metrics",
+		Expected:         "failed setting cipher list",
+		MetricsURLScheme: cx.cfg.MetricsURLScheme,
+		Ciphers:          "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+	})
+	require.ErrorContains(cx.t, err, "curl: (59) failed setting cipher list")
 }

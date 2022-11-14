@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -118,9 +119,8 @@ func authDisableTest(cx ctlCtx) {
 
 	// test-user doesn't have the permission, it must fail
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3PutFailPerm(cx, "hoo", "bar"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := ctlV3PutFailPerm(cx, "hoo", "bar")
+	require.ErrorContains(cx.t, err, "permission denied")
 
 	cx.user, cx.pass = "root", "root"
 	if err := ctlV3AuthDisable(cx); err != nil {
@@ -241,9 +241,9 @@ func authCredWriteKeyTest(cx ctlCtx) {
 
 	// try invalid user
 	cx.user, cx.pass = "a", "b"
-	if err := ctlV3PutFailAuth(cx, "foo", "bar"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := ctlV3PutFailAuth(cx, "foo", "bar")
+	require.ErrorContains(cx.t, err, "authentication failed")
+
 	// confirm put failed
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
@@ -262,9 +262,9 @@ func authCredWriteKeyTest(cx ctlCtx) {
 
 	// try bad password
 	cx.user, cx.pass = "test-user", "badpass"
-	if err := ctlV3PutFailAuth(cx, "foo", "baz"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = ctlV3PutFailAuth(cx, "foo", "baz")
+	require.ErrorContains(cx.t, err, "authentication failed")
+
 	// confirm put failed
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar2"}}...); err != nil {
@@ -286,9 +286,8 @@ func authRoleUpdateTest(cx ctlCtx) {
 
 	// try put to not granted key
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3PutFailPerm(cx, "hoo", "bar"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := ctlV3PutFailPerm(cx, "hoo", "bar")
+	require.ErrorContains(cx.t, err, "permission denied")
 
 	// grant a new key
 	cx.user, cx.pass = "root", "root"
@@ -314,9 +313,8 @@ func authRoleUpdateTest(cx ctlCtx) {
 
 	// try put to the revoked key
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3PutFailPerm(cx, "hoo", "bar"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = ctlV3PutFailPerm(cx, "hoo", "bar")
+	require.ErrorContains(cx.t, err, "permission denied")
 
 	// confirm a key still granted can be accessed
 	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
@@ -355,9 +353,8 @@ func authUserDeleteDuringOpsTest(cx ctlCtx) {
 
 	// check the user is deleted
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3PutFailAuth(cx, "foo", "baz"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = ctlV3PutFailAuth(cx, "foo", "baz")
+	require.ErrorContains(cx.t, err, "authentication failed")
 }
 
 func authRoleRevokeDuringOpsTest(cx ctlCtx) {
@@ -415,9 +412,8 @@ func authRoleRevokeDuringOpsTest(cx ctlCtx) {
 
 	// check the role is revoked and permission is lost from the user
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3PutFailPerm(cx, "foo", "baz"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = ctlV3PutFailPerm(cx, "foo", "baz")
+	require.ErrorContains(cx.t, err, "permission denied")
 
 	// try a key that can be accessed from the remaining role
 	cx.user, cx.pass = "test-user", "pass"
@@ -492,45 +488,45 @@ func authTestTxn(cx ctlCtx) {
 	cx.user, cx.pass = "test-user", "pass"
 
 	rqs := txnRequests{
-		compare:  []string{`version("c2") = "1"`},
-		ifSucess: []string{"get s2"},
-		ifFail:   []string{"get f2"},
-		results:  []string{"SUCCESS", "s2", "v"},
+		compare:   []string{`version("c2") = "1"`},
+		ifSuccess: []string{"get s2"},
+		ifFail:    []string{"get f2"},
+		results:   []string{"SUCCESS", "s2", "v"},
 	}
-	if err := ctlV3Txn(cx, rqs); err != nil {
+	if err := ctlV3Txn(cx, rqs, false); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	// a key of compare case isn't granted
 	rqs = txnRequests{
-		compare:  []string{`version("c1") = "1"`},
-		ifSucess: []string{"get s2"},
-		ifFail:   []string{"get f2"},
-		results:  []string{"Error: etcdserver: permission denied"},
+		compare:   []string{`version("c1") = "1"`},
+		ifSuccess: []string{"get s2"},
+		ifFail:    []string{"get f2"},
+		results:   []string{"Error: etcdserver: permission denied"},
 	}
-	if err := ctlV3Txn(cx, rqs); err != nil {
+	if err := ctlV3Txn(cx, rqs, true); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	// a key of success case isn't granted
 	rqs = txnRequests{
-		compare:  []string{`version("c2") = "1"`},
-		ifSucess: []string{"get s1"},
-		ifFail:   []string{"get f2"},
-		results:  []string{"Error: etcdserver: permission denied"},
+		compare:   []string{`version("c2") = "1"`},
+		ifSuccess: []string{"get s1"},
+		ifFail:    []string{"get f2"},
+		results:   []string{"Error: etcdserver: permission denied"},
 	}
-	if err := ctlV3Txn(cx, rqs); err != nil {
+	if err := ctlV3Txn(cx, rqs, true); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	// a key of failure case isn't granted
 	rqs = txnRequests{
-		compare:  []string{`version("c2") = "1"`},
-		ifSucess: []string{"get s2"},
-		ifFail:   []string{"get f1"},
-		results:  []string{"Error: etcdserver: permission denied"},
+		compare:   []string{`version("c2") = "1"`},
+		ifSuccess: []string{"get s2"},
+		ifFail:    []string{"get f1"},
+		results:   []string{"Error: etcdserver: permission denied"},
 	}
-	if err := ctlV3Txn(cx, rqs); err != nil {
+	if err := ctlV3Txn(cx, rqs, true); err != nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -559,9 +555,8 @@ func authTestPrefixPerm(cx ctlCtx) {
 		}
 	}
 
-	if err := ctlV3PutFailPerm(cx, clientv3.GetPrefixRangeEnd(prefix), "baz"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := ctlV3PutFailPerm(cx, clientv3.GetPrefixRangeEnd(prefix), "baz")
+	require.ErrorContains(cx.t, err, "permission denied")
 
 	// grant the entire keys to test-user
 	cx.user, cx.pass = "root", "root"
@@ -679,11 +674,10 @@ func authTestCertCN(cx ctlCtx) {
 		cx.t.Error(err)
 	}
 
-	// try a non granted key
+	// try a non-granted key
 	cx.user, cx.pass = "", ""
-	if err := ctlV3PutFailPerm(cx, "baz", "bar"); err != nil {
-		cx.t.Error(err)
-	}
+	err := ctlV3PutFailPerm(cx, "baz", "bar")
+	require.ErrorContains(cx.t, err, "permission denied")
 }
 
 func authTestRevokeWithDelete(cx ctlCtx) {
@@ -766,9 +760,8 @@ func authTestFromKeyPerm(cx ctlCtx) {
 	}
 
 	// try a non granted key
-	if err := ctlV3PutFailPerm(cx, "x", "baz"); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := ctlV3PutFailPerm(cx, "x", "baz")
+	require.ErrorContains(cx.t, err, "permission denied")
 
 	// revoke the open ended permission
 	cx.user, cx.pass = "root", "root"
@@ -780,9 +773,8 @@ func authTestFromKeyPerm(cx ctlCtx) {
 	cx.user, cx.pass = "test-user", "pass"
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("z%d", i)
-		if err := ctlV3PutFailPerm(cx, key, "val"); err != nil {
-			cx.t.Fatal(err)
-		}
+		err := ctlV3PutFailPerm(cx, key, "val")
+		require.ErrorContains(cx.t, err, "permission denied")
 	}
 
 	// grant the entire keys
@@ -810,9 +802,8 @@ func authTestFromKeyPerm(cx ctlCtx) {
 	cx.user, cx.pass = "test-user", "pass"
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("z%d", i)
-		if err := ctlV3PutFailPerm(cx, key, "val"); err != nil {
-			cx.t.Fatal(err)
-		}
+		err := ctlV3PutFailPerm(cx, key, "val")
+		require.ErrorContains(cx.t, err, "permission denied")
 	}
 }
 
@@ -848,9 +839,8 @@ func authLeaseTestTimeToLiveExpired(cx ctlCtx) {
 	authSetupTestUser(cx)
 
 	ttl := 3
-	if err := leaseTestTimeToLiveExpire(cx, ttl); err != nil {
-		cx.t.Fatalf("leaseTestTimeToLiveExpire: error (%v)", err)
-	}
+	err := leaseTestTimeToLiveExpire(cx, ttl)
+	require.NoError(cx.t, err)
 }
 
 func leaseTestTimeToLiveExpire(cx ctlCtx, ttl int) error {
@@ -984,14 +974,13 @@ func authTestWatch(cx ctlCtx) {
 		var err error
 		if tt.want {
 			err = ctlV3Watch(cx, tt.args, tt.wkv...)
-		} else {
-			err = ctlV3WatchFailPerm(cx, tt.args)
-		}
-
-		if err != nil {
-			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
+			if err != nil && cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
 			}
+		} else {
+			err = ctlV3WatchFailPerm(cx, tt.args)
+			// this will not have any meaningful error output, but the process fails due to the cancellation
+			require.ErrorContains(cx.t, err, "unexpected exit code")
 		}
 
 		<-donec
@@ -1025,9 +1014,8 @@ func authTestRoleGet(cx ctlCtx) {
 	expected = []string{
 		"Error: etcdserver: permission denied",
 	}
-	if err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "role", "get", "root"), cx.envMap, expected...); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "role", "get", "root"), cx.envMap, expected...)
+	require.ErrorContains(cx.t, err, "permission denied")
 }
 
 func authTestUserGet(cx ctlCtx) {
@@ -1056,9 +1044,8 @@ func authTestUserGet(cx ctlCtx) {
 	expected = []string{
 		"Error: etcdserver: permission denied",
 	}
-	if err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "user", "get", "root"), cx.envMap, expected...); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "user", "get", "root"), cx.envMap, expected...)
+	require.ErrorContains(cx.t, err, "permission denied")
 }
 
 func authTestRoleList(cx ctlCtx) {
@@ -1207,16 +1194,14 @@ func certCNAndUsername(cx ctlCtx, noPassword bool) {
 		cx.t.Error(err)
 	}
 
-	// try a non granted key for both of them
+	// try a non-granted key for both of them
 	cx.user, cx.pass = "", ""
-	if err := ctlV3PutFailPerm(cx, "baz", "bar"); err != nil {
-		cx.t.Error(err)
-	}
+	err := ctlV3PutFailPerm(cx, "baz", "bar")
+	require.ErrorContains(cx.t, err, "permission denied")
 
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3PutFailPerm(cx, "baz", "bar"); err != nil {
-		cx.t.Error(err)
-	}
+	err = ctlV3PutFailPerm(cx, "baz", "bar")
+	require.ErrorContains(cx.t, err, "permission denied")
 }
 
 func authTestCertCNAndUsername(cx ctlCtx) {

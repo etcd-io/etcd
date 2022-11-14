@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -212,7 +213,7 @@ func submitRangeAfterConcurrentWatch(cx ctlCtx, expectedValue string) {
 
 	cx.t.Log("Submitting range request...")
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Expected: expectedValue, Timeout: 5}); err != nil {
-		cx.t.Fatalf("testV3CurlMaxStream get failed, error: %v", err)
+		require.ErrorContains(cx.t, err, expectedValue)
 	}
 	cx.t.Log("range request done")
 }
