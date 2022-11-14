@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !cov
+// +build !cov
+
 package e2e
 
 import (
@@ -33,6 +36,14 @@ func TestUtlV3CompletionBash(t *testing.T) {
 	testShellCompletion(t, e2e.BinPath.Etcdutl, "bash")
 }
 
+// testShellCompletion can only run in non-coverage mode. The etcdctl and etcdutl
+// built with `-tags cov` mode will show go-test result after each execution, like
+//
+//	PASS
+//	coverage: 0.0% of statements in ./...
+//
+// Since the PASS is not real command, the `source completion" fails with
+// command-not-found error.
 func testShellCompletion(t *testing.T, binPath, shellName string) {
 	e2e.BeforeTest(t)
 
