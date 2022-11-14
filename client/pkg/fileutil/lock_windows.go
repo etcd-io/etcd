@@ -54,7 +54,7 @@ func LockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 
 func open(path string, flag int, perm os.FileMode) (*os.File, error) {
 	if path == "" {
-		return nil, fmt.Errorf("cannot open empty filename")
+		return nil, errors.New("cannot open empty filename")
 	}
 	var access uint32
 	switch flag {

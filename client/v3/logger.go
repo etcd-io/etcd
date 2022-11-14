@@ -52,7 +52,7 @@ func etcdClientDebugLevel() zapcore.Level {
 	}
 	var l zapcore.Level
 	if err := l.Set(envLevel); err != nil {
-		log.Printf("Invalid value for environment variable 'ETCD_CLIENT_DEBUG'. Using default level: 'info'")
+		log.Print("Invalid value for environment variable 'ETCD_CLIENT_DEBUG'. Using default level: 'info'")
 		return zapcore.InfoLevel
 	}
 	return l

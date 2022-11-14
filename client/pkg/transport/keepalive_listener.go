@@ -16,6 +16,7 @@ package transport
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -38,7 +39,7 @@ func NewKeepAliveListener(l net.Listener, scheme string, tlscfg *tls.Config) (ne
 
 	if scheme == "https" {
 		if tlscfg == nil {
-			return nil, fmt.Errorf("cannot listen on TLS for given listener: KeyFile and CertFile are not presented")
+			return nil, errors.New("cannot listen on TLS for given listener: KeyFile and CertFile are not presented")
 		}
 		return newTLSKeepaliveListener(kal, tlscfg), nil
 	}
