@@ -16,68 +16,112 @@ package linearizability
 
 import (
 	"errors"
-	"github.com/anishathalye/porcupine"
 	"testing"
 )
 
 func TestModel(t *testing.T) {
 	tcs := []struct {
-		name          string
-		okOperations  []porcupine.Operation
-		failOperation *porcupine.Operation
+		name       string
+		operations []testOperation
 	}{
 		{
-			name: "Etcd must return what was written",
-			okOperations: []porcupine.Operation{
-				{Input: etcdRequest{op: Put, key: "key", putData: "1"}, Output: etcdResponse{}},
-				{Input: etcdRequest{op: Get, key: "key"}, Output: etcdResponse{getData: "1"}},
-			},
-			failOperation: &porcupine.Operation{Input: etcdRequest{op: Get, key: "key"}, Output: etcdResponse{getData: "2"}},
-		},
-		{
-			name: "Etcd can crash after storing result but before returning success to client",
-			okOperations: []porcupine.Operation{
-				{Input: etcdRequest{op: Put, key: "key", putData: "1"}, Output: etcdResponse{err: errors.New("failed")}},
-				{Input: etcdRequest{op: Get, key: "key"}, Output: etcdResponse{getData: "1"}},
+			name: "First Get can start from non-empty value and non-zero revision",
+			operations: []testOperation{
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 42}},
 			},
 		},
 		{
-			name: "Etcd can crash before storing result",
-			okOperations: []porcupine.Operation{
-				{Input: etcdRequest{op: Put, key: "key", putData: "1"}, Output: etcdResponse{err: errors.New("failed")}},
-				{Input: etcdRequest{op: Get, key: "key"}, Output: etcdResponse{getData: ""}},
+			name: "First Put can start from non-zero revision",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 42}},
 			},
 		},
 		{
-			name: "Etcd can continue errored request after it failed",
-			okOperations: []porcupine.Operation{
-				{Input: etcdRequest{op: Put, key: "key", putData: "1"}, Output: etcdResponse{err: errors.New("failed")}},
-				{Input: etcdRequest{op: Get, key: "key"}, Output: etcdResponse{getData: ""}},
-				{Input: etcdRequest{op: Put, key: "key"}, Output: etcdResponse{getData: "2"}},
-				{Input: etcdRequest{op: Get, key: "key"}, Output: etcdResponse{getData: "1"}},
+			name: "Get response data should match PUT",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 1}, failure: true},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "1", revision: 1}},
 			},
-			failOperation: &porcupine.Operation{Input: etcdRequest{op: Get, key: "key"}, Output: etcdResponse{getData: ""}},
+		},
+		{
+			name: "Get response revision should be equal or greater then put",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key"}, resp: etcdResponse{revision: 2}},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{revision: 1}, failure: true},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{revision: 2}},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{revision: 4}},
+			},
+		},
+		{
+			name: "Put bumps revision",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
+				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 1}, failure: true},
+				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 2}},
+			},
+		},
+		{
+			name: "Put can fail and be lost",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
+				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{err: errors.New("failed")}},
+				{req: etcdRequest{op: Put, key: "key", putData: "3"}, resp: etcdResponse{revision: 2}},
+			},
+		},
+		{
+			name: "Put can fail but bump revision",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
+				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{err: errors.New("failed")}},
+				{req: etcdRequest{op: Put, key: "key", putData: "3"}, resp: etcdResponse{revision: 3}},
+			},
+		},
+		{
+			name: "Put can fail but be persisted and bump revision",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
+				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{err: errors.New("failed")}},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 1}, failure: true},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 2}},
+			},
+		},
+		{
+			name: "Put can fail but be persisted later",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{err: errors.New("failed")}},
+				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 2}},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 2}},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "1", revision: 3}},
+			},
+		},
+		{
+			name: "Put can fail but bump revision later",
+			operations: []testOperation{
+				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{err: errors.New("failed")}},
+				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 2}},
+				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 2}},
+				{req: etcdRequest{op: Put, key: "key", putData: "3"}, resp: etcdResponse{revision: 4}},
+			},
 		},
 	}
 	for _, tc := range tcs {
 		var ok bool
 		t.Run(tc.name, func(t *testing.T) {
 			state := etcdModel.Init()
-			for _, op := range tc.okOperations {
+			for _, op := range tc.operations {
 				t.Logf("state: %v", state)
-				ok, state = etcdModel.Step(state, op.Input, op.Output)
-				if !ok {
-					t.Errorf("Unexpected failed operation: %s", etcdModel.DescribeOperation(op.Input, op.Output))
+				ok, state = etcdModel.Step(state, op.req, op.resp)
+				if ok != !op.failure {
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, etcdModel.DescribeOperation(op.req, op.resp))
 				}
-			}
-			if tc.failOperation != nil {
-				t.Logf("state: %v", state)
-				ok, state = etcdModel.Step(state, tc.failOperation.Input, tc.failOperation.Output)
-				if ok {
-					t.Errorf("Unexpected succesfull operation: %s", etcdModel.DescribeOperation(tc.failOperation.Input, tc.failOperation.Output))
-				}
-
 			}
 		})
 	}
+}
+
+type testOperation struct {
+	req     etcdRequest
+	resp    etcdResponse
+	failure bool
 }

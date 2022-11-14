@@ -33,13 +33,15 @@ type etcdRequest struct {
 }
 
 type etcdResponse struct {
-	getData string
-	err     error
+	getData  string
+	revision int64
+	err      error
 }
 
 type EtcdState struct {
 	Key          string
 	Value        string
+	LastRevision int64
 	FailedWrites map[string]struct{}
 }
 
@@ -51,9 +53,6 @@ var etcdModel = porcupine.Model{
 		if err != nil {
 			panic(err)
 		}
-		if state.FailedWrites == nil {
-			state.FailedWrites = map[string]struct{}{}
-		}
 		ok, state := step(state, in.(etcdRequest), out.(etcdResponse))
 		data, err := json.Marshal(state)
 		if err != nil {
@@ -64,22 +63,19 @@ var etcdModel = porcupine.Model{
 	DescribeOperation: func(in, out interface{}) string {
 		request := in.(etcdRequest)
 		response := out.(etcdResponse)
-		var resp string
 		switch request.op {
 		case Get:
 			if response.err != nil {
-				resp = response.err.Error()
+				return fmt.Sprintf("get(%q) -> %q", request.key, response.err)
 			} else {
-				resp = response.getData
+				return fmt.Sprintf("get(%q) -> %q, rev: %d", request.key, response.getData, response.revision)
 			}
-			return fmt.Sprintf("get(%q) -> %q", request.key, resp)
 		case Put:
 			if response.err != nil {
-				resp = response.err.Error()
+				return fmt.Sprintf("put(%q, %q) -> %s", request.key, request.putData, response.err)
 			} else {
-				resp = "ok"
+				return fmt.Sprintf("put(%q, %q) -> ok, rev: %d", request.key, request.putData, response.revision)
 			}
-			return fmt.Sprintf("put(%q, %q) -> %s", request.key, request.putData, resp)
 		default:
 			return "<invalid>"
 		}
@@ -88,33 +84,68 @@ var etcdModel = porcupine.Model{
 
 func step(state EtcdState, request etcdRequest, response etcdResponse) (bool, EtcdState) {
 	if request.key == "" {
-		panic("Invalid request")
+		panic("invalid request")
 	}
 	if state.Key == "" {
-		state.Key = request.key
+		return true, initState(request, response)
 	}
 	if state.Key != request.key {
 		panic("Multiple keys not supported")
 	}
 	switch request.op {
 	case Get:
-		if state.Value == response.getData {
-			return true, state
-		}
-		for write := range state.FailedWrites {
-			if write == response.getData {
-				state.Value = response.getData
-				delete(state.FailedWrites, write)
-				return true, state
-			}
-		}
+		return stepGet(state, request, response)
+	case Put:
+		return stepPut(state, request, response)
+	default:
+		panic("Unknown operation")
+	}
+}
+
+func initState(request etcdRequest, response etcdResponse) EtcdState {
+	state := EtcdState{
+		Key:          request.key,
+		LastRevision: response.revision,
+		FailedWrites: map[string]struct{}{},
+	}
+	switch request.op {
+	case Get:
+		state.Value = response.getData
 	case Put:
 		if response.err == nil {
 			state.Value = request.putData
 		} else {
 			state.FailedWrites[request.putData] = struct{}{}
 		}
+	default:
+		panic("Unknown operation")
+	}
+	return state
+}
+
+func stepGet(state EtcdState, request etcdRequest, response etcdResponse) (bool, EtcdState) {
+	if state.Value == response.getData && state.LastRevision <= response.revision {
+		return true, state
+	}
+	_, ok := state.FailedWrites[response.getData]
+	if ok && state.LastRevision < response.revision {
+		state.Value = response.getData
+		state.LastRevision = response.revision
+		delete(state.FailedWrites, response.getData)
 		return true, state
 	}
 	return false, state
+}
+
+func stepPut(state EtcdState, request etcdRequest, response etcdResponse) (bool, EtcdState) {
+	if response.err != nil {
+		state.FailedWrites[request.putData] = struct{}{}
+		return true, state
+	}
+	if state.LastRevision >= response.revision {
+		return false, state
+	}
+	state.Value = request.putData
+	state.LastRevision = response.revision
+	return true, state
 }
