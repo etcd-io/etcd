@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -90,10 +91,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 			fpath),
 		cx.envMap,
 		"expected sha256")
-
-	if serr != nil {
-		cx.t.Fatal(serr)
-	}
+	require.ErrorContains(cx.t, serr, "Error: expected sha256")
 }
 
 // This test ensures that the snapshot status does not modify the snapshot file

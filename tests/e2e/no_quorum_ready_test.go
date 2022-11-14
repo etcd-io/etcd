@@ -28,6 +28,8 @@ func TestInitDaemonNotifyWithoutQuorum(t *testing.T) {
 		t.Fatalf("Failed to initilize the etcd cluster: %v", err)
 	}
 
+	defer epc.Close()
+
 	// Remove two members, so that only one etcd will get started
 	epc.Procs = epc.Procs[:1]
 
@@ -40,6 +42,4 @@ func TestInitDaemonNotifyWithoutQuorum(t *testing.T) {
 	e2e.AssertProcessLogs(t, epc.Procs[0], "startEtcd: timed out waiting for the ready notification")
 	// Expect log message indicating systemd notify message has been sent
 	e2e.AssertProcessLogs(t, epc.Procs[0], "notifying init daemon")
-
-	epc.Close()
 }

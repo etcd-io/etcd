@@ -248,9 +248,8 @@ func runCtlTest(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx
 			cx.envMap = make(map[string]string)
 		}
 		if cx.epc != nil {
-			if errC := cx.epc.Close(); errC != nil {
-				t.Fatalf("error closing etcd processes (%v)", errC)
-			}
+			cx.epc.Stop()
+			cx.epc.Close()
 		}
 	}()
 
@@ -270,6 +269,7 @@ func runCtlTest(t *testing.T, testFunc func(ctlCtx), testOfflineFunc func(ctlCtx
 	}
 
 	t.Log("closing test cluster...")
+	assert.NoError(t, cx.epc.Stop())
 	assert.NoError(t, cx.epc.Close())
 	cx.epc = nil
 	t.Log("closed test cluster...")

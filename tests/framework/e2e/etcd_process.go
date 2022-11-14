@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -134,9 +135,16 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 	if ep == nil || ep.proc == nil {
 		return nil
 	}
+	defer func() {
+		ep.proc = nil
+	}()
+
 	err = ep.proc.Stop()
-	ep.proc = nil
 	if err != nil {
+		return err
+	}
+	err = ep.proc.Close()
+	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 		return err
 	}
 	<-ep.donec
@@ -183,11 +191,7 @@ func (ep *EtcdServerProcess) Kill() error {
 }
 
 func (ep *EtcdServerProcess) Wait() error {
-	err := ep.proc.Wait()
-	if err != nil {
-		ep.cfg.lg.Error("failed to wait for server exit", zap.String("name", ep.cfg.Name))
-		return err
-	}
+	ep.proc.Wait()
 	ep.cfg.lg.Info("server exited", zap.String("name", ep.cfg.Name))
 	ep.proc = nil
 	return nil

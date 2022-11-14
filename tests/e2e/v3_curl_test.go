@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -141,9 +142,8 @@ func testV3CurlWatch(cx ctlCtx) {
 		cx.t.Fatalf("failed testV3CurlWatch put with curl using prefix (%s) (%v)", p, err)
 	}
 	// expects "bar", timeout after 2 seconds since stream waits forever
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/watch"), Value: wstr, Expected: `"YmFy"`, Timeout: 2}); err != nil {
-		cx.t.Fatalf("failed testV3CurlWatch watch with curl using prefix (%s) (%v)", p, err)
-	}
+	err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/watch"), Value: wstr, Expected: `"YmFy"`, Timeout: 2})
+	require.ErrorContains(cx.t, err, "unexpected exit code")
 }
 
 func testV3CurlTxn(cx ctlCtx) {

@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -57,6 +58,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 		for i := range procs {
 			if procs[i] != nil {
 				procs[i].Stop()
+				procs[i].Close()
 			}
 		}
 	}()
@@ -128,6 +130,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 		for i := range procs {
 			if procs[i] != nil {
 				procs[i].Stop()
+				procs[i].Close()
 			}
 		}
 	}()
@@ -206,6 +209,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 		for i := range procs {
 			if procs[i] != nil {
 				procs[i].Stop()
+				procs[i].Close()
 			}
 			os.RemoveAll(tmpdirs[i])
 		}
@@ -287,9 +291,7 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 	}
 
 	err := e2e.SpawnWithExpect(argsWithNonEmptyCN, "cert has non empty Common Name")
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-	}
+	require.ErrorContains(t, err, "cert has non empty Common Name")
 
 	p, err := e2e.SpawnCmd(argsWithEmptyCN, nil)
 	defer func() {

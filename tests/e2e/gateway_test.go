@@ -37,7 +37,10 @@ func TestGateway(t *testing.T) {
 	eps := strings.Join(ec.EndpointsV3(), ",")
 
 	p := startGateway(t, eps)
-	defer p.Stop()
+	defer func() {
+		p.Stop()
+		p.Close()
+	}()
 
 	err = e2e.SpawnWithExpect([]string{e2e.BinPath.Etcdctl, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
 	if err != nil {

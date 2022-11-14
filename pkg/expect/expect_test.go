@@ -19,9 +19,11 @@ package expect
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,9 +67,57 @@ func TestExpectFuncTimeout(t *testing.T) {
 
 	require.ErrorAs(t, err, &context.DeadlineExceeded)
 
-	if err = ep.Stop(); err != nil {
+	if err := ep.Stop(); err != nil {
 		t.Fatal(err)
 	}
+
+	err = ep.Close()
+	require.ErrorContains(t, err, "unexpected exit code [-1] after running [/usr/bin/tail -f /dev/null]")
+	require.Equal(t, -1, ep.exitCode)
+}
+
+func TestExpectFuncExitFailure(t *testing.T) {
+	// tail -x should not exist and return a non-zero exit code
+	ep, err := NewExpect("tail", "-x")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	_, err = ep.ExpectFunc(ctx, func(s string) bool {
+		return strings.Contains(s, "something entirely unexpected")
+	})
+	require.ErrorContains(t, err, "unexpected exit code [1] after running [/usr/bin/tail -x]")
+	require.Equal(t, 1, ep.exitCode)
+}
+
+func TestExpectFuncExitFailureStop(t *testing.T) {
+	// tail -x should not exist and return a non-zero exit code
+	ep, err := NewExpect("tail", "-x")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	_, err = ep.ExpectFunc(ctx, func(s string) bool {
+		return strings.Contains(s, "something entirely unexpected")
+	})
+	require.ErrorContains(t, err, "unexpected exit code [1] after running [/usr/bin/tail -x]")
+	exitCode, err := ep.ExitCode()
+	require.Equal(t, 0, exitCode)
+	require.Equal(t, err, ErrProcessRunning)
+	if err := ep.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	err = ep.Close()
+	require.ErrorContains(t, err, "unexpected exit code [1] after running [/usr/bin/tail -x]")
+	exitCode, err = ep.ExitCode()
+	require.Equal(t, 1, exitCode)
+	require.NoError(t, err)
 }
 
 func TestEcho(t *testing.T) {
@@ -138,10 +188,8 @@ func TestSignal(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		werr := "signal: interrupt"
-		if cerr := ep.Close(); cerr == nil || cerr.Error() != werr {
-			t.Errorf("got error %v, wanted error %s", cerr, werr)
-		}
+		err = ep.Close()
+		assert.ErrorContains(t, err, "unexpected exit code [-1] after running [/usr/bin/sleep 100]")
 	}()
 	select {
 	case <-time.After(5 * time.Second):

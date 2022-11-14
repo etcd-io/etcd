@@ -19,6 +19,7 @@ package expect
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -33,6 +34,10 @@ import (
 
 const DEBUG_LINES_TAIL = 40
 
+var (
+	ErrProcessRunning = fmt.Errorf("process is still running")
+)
+
 type ExpectProcess struct {
 	cfg expectConfig
 
@@ -40,11 +45,12 @@ type ExpectProcess struct {
 	fpty *os.File
 	wg   sync.WaitGroup
 
-	mu    sync.Mutex // protects lines and err
-	lines []string
-	count int // increment whenever new line gets added
-	cur   int // current read position
-	err   error
+	mu       sync.Mutex // protects lines, count, cur, exitErr and exitCode
+	lines    []string
+	count    int   // increment whenever new line gets added
+	cur      int   // current read position
+	exitErr  error // process exit error
+	exitCode int
 }
 
 // NewExpect creates a new process for expect testing.
@@ -69,8 +75,9 @@ func NewExpectWithEnv(name string, args []string, env []string, serverProcessCon
 		return nil, err
 	}
 
-	ep.wg.Add(1)
+	ep.wg.Add(2)
 	go ep.read()
+	go ep.waitSaveExitErr()
 	return ep, nil
 }
 
@@ -95,46 +102,83 @@ func (ep *ExpectProcess) Pid() int {
 
 func (ep *ExpectProcess) read() {
 	defer ep.wg.Done()
-	printDebugLines := os.Getenv("EXPECT_DEBUG") != ""
+	defer func(fpty *os.File) {
+		err := fpty.Close()
+		if err != nil {
+			// we deliberately only log the error here, closing the PTY should mostly be (expected) broken pipes
+			fmt.Printf("error while closing fpty: %v", err)
+		}
+	}(ep.fpty)
+
 	r := bufio.NewReader(ep.fpty)
 	for {
-		l, err := r.ReadString('\n')
-		ep.mu.Lock()
-		if l != "" {
-			if printDebugLines {
-				fmt.Printf("%s (%s) (%d): %s", ep.cmd.Path, ep.cfg.name, ep.cmd.Process.Pid, l)
-			}
-			ep.lines = append(ep.lines, l)
-			ep.count++
-		}
+		err := ep.tryReadNextLine(r)
 		if err != nil {
-			ep.err = err
-			ep.mu.Unlock()
 			break
 		}
-		ep.mu.Unlock()
+	}
+}
+
+func (ep *ExpectProcess) tryReadNextLine(r *bufio.Reader) error {
+	printDebugLines := os.Getenv("EXPECT_DEBUG") != ""
+	l, err := r.ReadString('\n')
+
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+
+	if l != "" {
+		if printDebugLines {
+			fmt.Printf("%s (%s) (%d): %s", ep.cmd.Path, ep.cfg.name, ep.cmd.Process.Pid, l)
+		}
+		ep.lines = append(ep.lines, l)
+		ep.count++
+	}
+
+	// we're checking the error here at the bottom to ensure any leftover reads are still taken into account
+	return err
+}
+
+func (ep *ExpectProcess) waitSaveExitErr() {
+	defer ep.wg.Done()
+	err := ep.waitProcess()
+
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+	if err != nil {
+		ep.exitErr = err
 	}
 }
 
 // ExpectFunc returns the first line satisfying the function f.
 func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (string, error) {
 	i := 0
-
 	for {
-		ep.mu.Lock()
-		for i < len(ep.lines) {
-			line := ep.lines[i]
-			i++
-			if f(line) {
-				ep.mu.Unlock()
-				return line, nil
+		line, errsFound := func() (string, bool) {
+			ep.mu.Lock()
+			defer ep.mu.Unlock()
+
+			// check if this expect has been already closed
+			if ep.cmd == nil {
+				return "", true
 			}
+
+			for i < len(ep.lines) {
+				line := ep.lines[i]
+				i++
+				if f(line) {
+					return line, false
+				}
+			}
+			return "", ep.exitErr != nil
+		}()
+
+		if line != "" {
+			return line, nil
 		}
-		if ep.err != nil {
-			ep.mu.Unlock()
+
+		if errsFound {
 			break
 		}
-		ep.mu.Unlock()
 
 		select {
 		case <-ctx.Done():
@@ -143,16 +187,18 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 			// continue loop
 		}
 	}
+
 	ep.mu.Lock()
+	defer ep.mu.Unlock()
+
 	lastLinesIndex := len(ep.lines) - DEBUG_LINES_TAIL
 	if lastLinesIndex < 0 {
 		lastLinesIndex = 0
 	}
 	lastLines := strings.Join(ep.lines[lastLinesIndex:], "")
-	ep.mu.Unlock()
-	return "", fmt.Errorf("match not found."+
-		" Set EXPECT_DEBUG for more info Err: %v, last lines:\n%s",
-		ep.err, lastLines)
+	return "", fmt.Errorf("match not found. "+
+		" Set EXPECT_DEBUG for more info Errs: [%v], last lines:\n%s",
+		ep.exitErr, lastLines)
 }
 
 // ExpectWithContext returns the first line containing the given string.
@@ -174,61 +220,90 @@ func (ep *ExpectProcess) LineCount() int {
 	return ep.count
 }
 
-// Stop kills the expect process and waits for it to exit.
-func (ep *ExpectProcess) Stop() error { return ep.close(true) }
+// ExitCode returns the exit code of this process.
+// If the process is still running, it returns exit code 0 and ErrProcessRunning.
+func (ep *ExpectProcess) ExitCode() (int, error) {
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+
+	if ep.cmd == nil {
+		return ep.exitCode, nil
+	}
+
+	return 0, ErrProcessRunning
+}
+
+// ExitError returns the exit error of this process (if any).
+// If the process is still running, it returns ErrProcessRunning instead.
+func (ep *ExpectProcess) ExitError() error {
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+
+	if ep.cmd == nil {
+		return ep.exitErr
+	}
+
+	return ErrProcessRunning
+}
+
+// Stop signals the process to terminate via SIGTERM
+func (ep *ExpectProcess) Stop() error {
+	err := ep.Signal(syscall.SIGTERM)
+	if err != nil && strings.Contains(err.Error(), "os: process already finished") {
+		return nil
+	}
+	return err
+}
 
 // Signal sends a signal to the expect process
 func (ep *ExpectProcess) Signal(sig os.Signal) error {
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+
+	if ep.cmd == nil {
+		return errors.New("expect process already closed")
+	}
+
 	return ep.cmd.Process.Signal(sig)
 }
 
-func (ep *ExpectProcess) Wait() error {
-	_, err := ep.cmd.Process.Wait()
-	return err
+func (ep *ExpectProcess) waitProcess() error {
+	state, err := ep.cmd.Process.Wait()
+	if err != nil {
+		return err
+	}
+
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+	ep.exitCode = state.ExitCode()
+
+	if !state.Success() {
+		return fmt.Errorf("unexpected exit code [%d] after running [%s]", ep.exitCode, ep.cmd.String())
+	}
+
+	return nil
 }
 
-// Close waits for the expect process to exit.
-// Close currently does not return error if process exited with !=0 status.
-// TODO: Close should expose underlying process failure by default.
-func (ep *ExpectProcess) Close() error { return ep.close(false) }
+// Wait waits for the process to finish.
+func (ep *ExpectProcess) Wait() {
+	ep.wg.Wait()
+}
 
-func (ep *ExpectProcess) close(kill bool) error {
-	if ep.cmd == nil {
-		return ep.err
-	}
-	if kill {
-		ep.Signal(syscall.SIGTERM)
-	}
-
-	err := ep.cmd.Wait()
-	ep.fpty.Close()
+// Close waits for the expect process to exit and return its error.
+func (ep *ExpectProcess) Close() error {
 	ep.wg.Wait()
 
-	if err != nil {
-		if !kill && strings.Contains(err.Error(), "exit status") {
-			// non-zero exit code
-			err = nil
-		} else if kill && strings.Contains(err.Error(), "signal:") {
-			err = nil
-		}
-	}
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
 
+	// this signals to other funcs that the process has finished
 	ep.cmd = nil
-	return err
+	return ep.exitErr
 }
 
 func (ep *ExpectProcess) Send(command string) error {
 	_, err := io.WriteString(ep.fpty, command)
 	return err
-}
-
-func (ep *ExpectProcess) ProcessError() error {
-	if strings.Contains(ep.err.Error(), "input/output error") {
-		// TODO: The expect library should not return
-		// `/dev/ptmx: input/output error` when process just exits.
-		return nil
-	}
-	return ep.err
 }
 
 func (ep *ExpectProcess) Lines() []string {

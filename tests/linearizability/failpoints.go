@@ -69,7 +69,7 @@ func (f killFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster
 		return err
 	}
 	err = member.Wait()
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 		return err
 	}
 	err = member.Start(ctx)
@@ -103,7 +103,7 @@ func (f goFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) 
 		}
 	}
 	err = member.Wait()
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 		return err
 	}
 	err = member.Start(ctx)
