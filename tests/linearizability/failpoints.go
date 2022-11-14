@@ -31,16 +31,19 @@ import (
 )
 
 var (
-	KillFailpoint           Failpoint = killFailpoint{}
-	DefragBeforeCopyPanic   Failpoint = goFailpoint{"backend/defragBeforeCopy", "panic", triggerDefrag}
-	DefragBeforeRenamePanic Failpoint = goFailpoint{"backend/defragBeforeRename", "panic", triggerDefrag}
-	BeforeCommitPanic       Failpoint = goFailpoint{"backend/beforeCommit", "panic", nil}
-	AfterCommitPanic        Failpoint = goFailpoint{"backend/afterCommit", "panic", nil}
-	RaftBeforeSavePanic     Failpoint = goFailpoint{"etcdserver/raftBeforeSave", "panic", nil}
-	RaftAfterSavePanic      Failpoint = goFailpoint{"etcdserver/raftAfterSave", "panic", nil}
-	RandomFailpoint         Failpoint = randomFailpoint{[]Failpoint{
+	KillFailpoint                  Failpoint = killFailpoint{}
+	DefragBeforeCopyPanic          Failpoint = goFailpoint{"backend/defragBeforeCopy", "panic", triggerDefrag}
+	DefragBeforeRenamePanic        Failpoint = goFailpoint{"backend/defragBeforeRename", "panic", triggerDefrag}
+	BeforeCommitPanic              Failpoint = goFailpoint{"backend/beforeCommit", "panic", nil}
+	AfterCommitPanic               Failpoint = goFailpoint{"backend/afterCommit", "panic", nil}
+	RaftBeforeSavePanic            Failpoint = goFailpoint{"etcdserver/raftBeforeSave", "panic", nil}
+	RaftAfterSavePanic             Failpoint = goFailpoint{"etcdserver/raftAfterSave", "panic", nil}
+	CommitBeforePreCommitHookPanic Failpoint = goFailpoint{"backend/commitBeforePreCommitHook", "panic", nil}
+	CommitAfterPreCommitHookPanic  Failpoint = goFailpoint{"backend/commitAfterPreCommitHook", "panic", nil}
+	RandomFailpoint                Failpoint = randomFailpoint{[]Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic,
 		RaftAfterSavePanic, DefragBeforeCopyPanic, DefragBeforeRenamePanic,
+		CommitBeforePreCommitHookPanic, CommitAfterPreCommitHookPanic,
 	}}
 	// TODO: Figure out how to reliably trigger below failpoints and add them to RandomFailpoint
 	raftBeforeLeaderSendPanic   Failpoint = goFailpoint{"etcdserver/raftBeforeLeaderSend", "panic", nil}
