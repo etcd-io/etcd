@@ -40,13 +40,34 @@ func max(a, b uint64) uint64 {
 	return b
 }
 
+var isLocalMsg = [...]bool{
+	pb.MsgHup:         true,
+	pb.MsgBeat:        true,
+	pb.MsgUnreachable: true,
+	pb.MsgSnapStatus:  true,
+	pb.MsgCheckQuorum: true,
+}
+
+var isResponseMsg = [...]bool{
+	pb.MsgAppResp:       true,
+	pb.MsgVoteResp:      true,
+	pb.MsgHeartbeatResp: true,
+	pb.MsgUnreachable:   true,
+	pb.MsgReadIndexResp: true,
+	pb.MsgPreVoteResp:   true,
+}
+
+func isMsgInArray(msgt pb.MessageType, arr []bool) bool {
+	i := int(msgt)
+	return i < len(arr) && arr[i]
+}
+
 func IsLocalMsg(msgt pb.MessageType) bool {
-	return msgt == pb.MsgHup || msgt == pb.MsgBeat || msgt == pb.MsgUnreachable ||
-		msgt == pb.MsgSnapStatus || msgt == pb.MsgCheckQuorum
+	return isMsgInArray(msgt, isLocalMsg[:])
 }
 
 func IsResponseMsg(msgt pb.MessageType) bool {
-	return msgt == pb.MsgAppResp || msgt == pb.MsgVoteResp || msgt == pb.MsgHeartbeatResp || msgt == pb.MsgUnreachable || msgt == pb.MsgPreVoteResp
+	return isMsgInArray(msgt, isResponseMsg[:])
 }
 
 // voteResponseType maps vote and prevote message types to their corresponding responses.

@@ -96,3 +96,37 @@ func TestIsLocalMsg(t *testing.T) {
 		})
 	}
 }
+
+func TestIsResponseMsg(t *testing.T) {
+	tests := []struct {
+		msgt       pb.MessageType
+		isResponse bool
+	}{
+		{pb.MsgHup, false},
+		{pb.MsgBeat, false},
+		{pb.MsgUnreachable, true},
+		{pb.MsgSnapStatus, false},
+		{pb.MsgCheckQuorum, false},
+		{pb.MsgTransferLeader, false},
+		{pb.MsgProp, false},
+		{pb.MsgApp, false},
+		{pb.MsgAppResp, true},
+		{pb.MsgVote, false},
+		{pb.MsgVoteResp, true},
+		{pb.MsgSnap, false},
+		{pb.MsgHeartbeat, false},
+		{pb.MsgHeartbeatResp, true},
+		{pb.MsgTimeoutNow, false},
+		{pb.MsgReadIndex, false},
+		{pb.MsgReadIndexResp, true},
+		{pb.MsgPreVote, false},
+		{pb.MsgPreVoteResp, true},
+	}
+
+	for i, tt := range tests {
+		got := IsResponseMsg(tt.msgt)
+		if got != tt.isResponse {
+			t.Errorf("#%d: got %v, want %v", i, got, tt.isResponse)
+		}
+	}
+}
