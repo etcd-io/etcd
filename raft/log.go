@@ -181,9 +181,13 @@ func (l *raftLog) unstableEntries() []pb.Entry {
 // If applied is smaller than the index of snapshot, it returns all committed
 // entries after the index of snapshot.
 func (l *raftLog) nextCommittedEnts() (ents []pb.Entry) {
-	off := max(l.applied+1, l.firstIndex())
-	if l.committed+1 > off {
-		ents, err := l.slice(off, l.committed+1, l.maxNextCommittedEntsSize)
+	if l.hasPendingSnapshot() {
+		// See comment in hasNextCommittedEnts.
+		return nil
+	}
+	if l.committed > l.applied {
+		lo, hi := l.applied+1, l.committed+1 // [lo, hi)
+		ents, err := l.slice(lo, hi, l.maxNextCommittedEntsSize)
 		if err != nil {
 			l.logger.Panicf("unexpected error when getting unapplied entries (%v)", err)
 		}
@@ -195,13 +199,18 @@ func (l *raftLog) nextCommittedEnts() (ents []pb.Entry) {
 // hasNextCommittedEnts returns if there is any available entries for execution.
 // This is a fast check without heavy raftLog.slice() in nextCommittedEnts().
 func (l *raftLog) hasNextCommittedEnts() bool {
-	off := max(l.applied+1, l.firstIndex())
-	return l.committed+1 > off
+	if l.hasPendingSnapshot() {
+		// If we have a snapshot to apply, don't also return any committed
+		// entries. Doing so raises questions about what should be applied
+		// first.
+		return false
+	}
+	return l.committed > l.applied
 }
 
 // hasPendingSnapshot returns if there is pending snapshot waiting for applying.
 func (l *raftLog) hasPendingSnapshot() bool {
-	return l.unstable.snapshot != nil && !IsEmptySnap(*l.unstable.snapshot)
+	return l.unstable.snapshot != nil
 }
 
 func (l *raftLog) snapshot() (pb.Snapshot, error) {
