@@ -18,7 +18,7 @@ GO_BUILD_ENV=("CGO_ENABLED=0" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS}" "GOOS=${GOOS}" 
 toggle_failpoints() {
   mode="$1"
   if command -v gofail >/dev/null 2>&1; then
-    run gofail "$mode" server/etcdserver/ server/storage/backend/
+    run gofail "$mode" server/etcdserver/ server/storage/backend/ server/storage/mvcc/
     (
       cd ./server
       run go get go.etcd.io/gofail/runtime
