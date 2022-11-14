@@ -219,7 +219,7 @@ func persistMemberDataDir(t *testing.T, clus *e2e.EtcdProcessCluster, path strin
 }
 
 func testResultsDirectory(t *testing.T) (string, error) {
-	path, err := filepath.Abs(filepath.Join(resultsDirectory, strings.Replace(t.Name(), "/", "_", -1)))
+	path, err := filepath.Abs(filepath.Join(resultsDirectory, strings.ReplaceAll(t.Name(), "/", "_")))
 	if err != nil {
 		return path, err
 	}

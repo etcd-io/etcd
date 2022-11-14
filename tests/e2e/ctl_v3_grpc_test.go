@@ -106,7 +106,7 @@ func TestAuthority(t *testing.T) {
 				}
 
 				testutils.ExecuteWithTimeout(t, 5*time.Second, func() {
-					assertAuthority(t, strings.Replace(tc.expectAuthorityPattern, "${MEMBER_PORT}", "20000", -1), epc)
+					assertAuthority(t, strings.ReplaceAll(tc.expectAuthorityPattern, "${MEMBER_PORT}", "20000"), epc)
 				})
 			})
 
@@ -119,7 +119,7 @@ func templateEndpoints(t *testing.T, pattern string, clus *e2e.EtcdProcessCluste
 	var endpoints []string
 	for i := 0; i < clus.Cfg.ClusterSize; i++ {
 		ent := pattern
-		ent = strings.Replace(ent, "${MEMBER_PORT}", fmt.Sprintf("%d", e2e.EtcdProcessBasePort+i*5), -1)
+		ent = strings.ReplaceAll(ent, "${MEMBER_PORT}", fmt.Sprintf("%d", e2e.EtcdProcessBasePort+i*5))
 		endpoints = append(endpoints, ent)
 	}
 	return endpoints

@@ -96,8 +96,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func escape(s string) string {
-	escaped := strings.Replace(s, "\n", " ", -1)
-	escaped = strings.Replace(escaped, "\r", " ", -1)
+	escaped := strings.ReplaceAll(s, "\n", " ")
+	escaped = strings.ReplaceAll(escaped, "\r", " ")
 	return escaped
 }
 
