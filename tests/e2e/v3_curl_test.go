@@ -113,7 +113,7 @@ func testV3CurlPutGet(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/range"), Value: string(rangeData), Expected: expectGet}); err != nil {
 		cx.t.Fatalf("failed testV3CurlPutGet get with curl using prefix (%s) (%v)", p, err)
 	}
-	if cx.cfg.ClientTLS == e2e.ClientTLSAndNonTLS {
+	if cx.cfg.Client.ConnectionType == e2e.ClientTLSAndNonTLS {
 		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/range"), Value: string(rangeData), Expected: expectGet, IsTLS: true}); err != nil {
 			cx.t.Fatalf("failed testV3CurlPutGet get with curl using prefix (%s) (%v)", p, err)
 		}

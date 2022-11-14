@@ -57,7 +57,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 		assert.NoError(t, proxyProc.Stop())
 	}()
 
-	proxyCtl, err := e2e.NewEtcdctl(e2e.DefaultConfig(), []string{proxyClientURL})
+	proxyCtl, err := e2e.NewEtcdctl(e2e.ClientConfig{}, []string{proxyClientURL})
 	require.NoError(t, err)
 	err = proxyCtl.Put(ctx, "k1", "v1", config.PutOptions{})
 	require.NoError(t, err)

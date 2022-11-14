@@ -51,8 +51,8 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	ds, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithBasePort(2000),
 		e2e.WithClusterSize(discoveryClusterSize),
-		e2e.WithClientTLS(clientTlsType),
-		e2e.WithIsClientAutoTLS(isClientAutoTls),
+		e2e.WithClientConnType(clientTlsType),
+		e2e.WithClientAutoTLS(isClientAutoTls),
 	)
 	if err != nil {
 		t.Fatalf("could not start discovery etcd cluster (%v)", err)

@@ -295,11 +295,11 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 	fmap := make(map[string]string)
 	fmap["endpoints"] = strings.Join(eps, ",")
 	fmap["dial-timeout"] = cx.dialTimeout.String()
-	if cx.epc.Cfg.ClientTLS == e2e.ClientTLS {
-		if cx.epc.Cfg.IsClientAutoTLS {
+	if cx.epc.Cfg.Client.ConnectionType == e2e.ClientTLS {
+		if cx.epc.Cfg.Client.AutoTLS {
 			fmap["insecure-transport"] = "false"
 			fmap["insecure-skip-tls-verify"] = "true"
-		} else if cx.epc.Cfg.IsClientCRL {
+		} else if cx.epc.Cfg.Client.RevokeCerts {
 			fmap["cacert"] = e2e.CaPath
 			fmap["cert"] = e2e.RevokedCertPath
 			fmap["key"] = e2e.RevokedPrivateKeyPath

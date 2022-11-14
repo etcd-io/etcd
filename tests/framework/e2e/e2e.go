@@ -63,13 +63,13 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 
 	switch cfg.ClientTLS {
 	case config.NoTLS:
-		e2eConfig.ClientTLS = ClientNonTLS
+		e2eConfig.Client.ConnectionType = ClientNonTLS
 	case config.AutoTLS:
-		e2eConfig.IsClientAutoTLS = true
-		e2eConfig.ClientTLS = ClientTLS
+		e2eConfig.Client.AutoTLS = true
+		e2eConfig.Client.ConnectionType = ClientTLS
 	case config.ManualTLS:
-		e2eConfig.IsClientAutoTLS = false
-		e2eConfig.ClientTLS = ClientTLS
+		e2eConfig.Client.AutoTLS = false
+		e2eConfig.Client.ConnectionType = ClientTLS
 	default:
 		t.Fatalf("ClientTLS config %q not supported", cfg.ClientTLS)
 	}
@@ -99,7 +99,7 @@ type e2eCluster struct {
 }
 
 func (c *e2eCluster) Client(opts ...config.ClientOption) (intf.Client, error) {
-	etcdctl, err := NewEtcdctl(c.Cfg, c.EndpointsV3(), opts...)
+	etcdctl, err := NewEtcdctl(c.Cfg.Client, c.EndpointsV3(), opts...)
 	return e2eClient{etcdctl}, err
 }
 
@@ -190,7 +190,7 @@ type e2eMember struct {
 }
 
 func (m e2eMember) Client() intf.Client {
-	etcdctl, err := NewEtcdctl(m.Cfg, m.EndpointsV3())
+	etcdctl, err := NewEtcdctl(m.Cfg.Client, m.EndpointsV3())
 	if err != nil {
 		panic(err)
 	}

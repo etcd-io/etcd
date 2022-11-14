@@ -28,6 +28,7 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
 var (
@@ -39,6 +40,7 @@ type EtcdProcess interface {
 	EndpointsV2() []string
 	EndpointsV3() []string
 	EndpointsMetrics() []string
+	Client(opts ...config.ClientOption) *EtcdctlV3
 
 	Wait() error
 	Start(ctx context.Context) error
@@ -69,6 +71,7 @@ type EtcdServerProcessConfig struct {
 	TlsArgs  []string
 	EnvVars  map[string]string
 
+	Client      ClientConfig
 	DataDirPath string
 	KeepDataDir bool
 
@@ -99,6 +102,14 @@ func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, err
 func (ep *EtcdServerProcess) EndpointsV2() []string      { return []string{ep.cfg.Acurl} }
 func (ep *EtcdServerProcess) EndpointsV3() []string      { return ep.EndpointsV2() }
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.Murl} }
+
+func (epc *EtcdServerProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
+	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsV3(), opts...)
+	if err != nil {
+		panic(err)
+	}
+	return etcdctl
+}
 
 func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 	ep.donec = make(chan struct{})
