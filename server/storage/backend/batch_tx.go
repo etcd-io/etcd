@@ -337,7 +337,9 @@ func (t *batchTxBuffered) commit(stop bool) {
 
 func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	if t.backend.hooks != nil {
+		// gofail: var commitBeforePreCommitHook struct{}
 		t.backend.hooks.OnPreCommitUnsafe(t)
+		// gofail: var commitAfterPreCommitHook struct{}
 	}
 
 	if t.backend.readTx.tx != nil {
