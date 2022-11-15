@@ -200,7 +200,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	verify.Assert(lg != nil, "nil log isn't allowed")
 	info.Logger = lg
 	if selfSignedCertValidity == 0 {
-		err = fmt.Errorf("selfSignedCertValidity is invalid,it should be greater than 0")
+		err = errors.New("selfSignedCertValidity is invalid,it should be greater than 0")
 		info.Logger.Warn(
 			"cannot generate cert",
 			zap.Error(err),

@@ -410,7 +410,7 @@ func newClient(cfg *Config) (*Client, error) {
 
 	if len(cfg.Endpoints) < 1 {
 		client.cancel()
-		return nil, fmt.Errorf("at least one Endpoint is required in client config")
+		return nil, errors.New("at least one Endpoint is required in client config")
 	}
 	client.SetEndpoints(cfg.Endpoints...)
 

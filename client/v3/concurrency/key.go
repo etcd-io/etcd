@@ -16,7 +16,7 @@ package concurrency
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -42,7 +42,7 @@ func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) e
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return fmt.Errorf("lost watcher waiting for delete")
+	return errors.New("lost watcher waiting for delete")
 }
 
 // waitDeletes efficiently waits until all keys matching the prefix and no greater

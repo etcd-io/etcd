@@ -48,7 +48,7 @@ func CheckLeakedGoroutine() bool {
 		stackCount[normalized]++
 	}
 
-	fmt.Fprintf(os.Stderr, "Unexpected goroutines running after all test(s).\n")
+	fmt.Fprint(os.Stderr, "Unexpected goroutines running after all test(s).\n")
 	for stack, count := range stackCount {
 		fmt.Fprintf(os.Stderr, "%d instances of:\n%s\n", count, stack)
 	}

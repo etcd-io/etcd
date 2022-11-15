@@ -17,7 +17,6 @@ package client
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -429,7 +428,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 				rand: rand.New(rand.NewSource(0)),
 			},
 			ctx:        context.WithValue(context.Background(), &oneShotCtxValue, &oneShotCtxValue),
-			wantErr:    fmt.Errorf("client: etcd member  returns server error [Bad Gateway]"),
+			wantErr:    errors.New("client: etcd member  returns server error [Bad Gateway]"),
 			wantPinned: 1,
 		},
 	}

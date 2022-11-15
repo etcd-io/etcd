@@ -16,7 +16,7 @@ package clientv3
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -152,7 +152,7 @@ func TestDialNoTimeout(t *testing.T) {
 }
 
 func TestIsHaltErr(t *testing.T) {
-	if !isHaltErr(context.TODO(), fmt.Errorf("etcdserver: some etcdserver error")) {
+	if !isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")) {
 		t.Errorf(`error prefixed with "etcdserver: " should be Halted by default`)
 	}
 	if isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped) {
