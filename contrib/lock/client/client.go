@@ -115,7 +115,7 @@ func main() {
 		log.Fatalf("failed to create a session: %s", err)
 	}
 
-	log.Printf("created etcd client and session")
+	log.Print("created etcd client and session")
 
 	locker := concurrency.NewLocker(session, "/lock")
 	locker.Lock()
@@ -127,9 +127,9 @@ func main() {
 		log.Printf("please manually revoke the lease using 'etcdctl lease revoke %x' or wait for it to expire, then start executing client 2 and hit any key...", version)
 		reader := bufio.NewReader(os.Stdin)
 		_, _ = reader.ReadByte()
-		log.Printf("resuming client 1")
+		log.Print("resuming client 1")
 	} else {
-		log.Printf("this is client 2, continuing\n")
+		log.Print("this is client 2, continuing\n")
 	}
 
 	err = write("key0", fmt.Sprintf("value from client %x", mode), int64(version))

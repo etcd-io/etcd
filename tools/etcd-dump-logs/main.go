@@ -98,7 +98,7 @@ and output a hex encoded line of binary for each input line`)
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
 				walsnap.Term, walsnap.Index, nodes, confStateJSON)
 		case snap.ErrNoSnapshot:
-			fmt.Printf("Snapshot:\nempty\n")
+			fmt.Print("Snapshot:\nempty\n")
 		default:
 			log.Fatalf("Failed loading snapshot: %v", err)
 		}
@@ -131,7 +131,7 @@ and output a hex encoded line of binary for each input line`)
 
 	fmt.Printf("%4s\t%10s\ttype\tdata", "term", "index")
 	if *streamdecoder != "" {
-		fmt.Printf("\tdecoder_status\tdecoded_data")
+		fmt.Print("\tdecoder_status\tdecoded_data")
 	}
 	fmt.Println()
 
@@ -255,10 +255,10 @@ func printUnknownNormal(entry raftpb.Entry) {
 
 func printConfChange(entry raftpb.Entry) {
 	fmt.Printf("%4d\t%10d", entry.Term, entry.Index)
-	fmt.Printf("\tconf")
+	fmt.Print("\tconf")
 	var r raftpb.ConfChange
 	if err := r.Unmarshal(entry.Data); err != nil {
-		fmt.Printf("\t???")
+		fmt.Print("\t???")
 	} else {
 		fmt.Printf("\tmethod=%s id=%s", r.Type, types.ID(r.NodeID))
 	}
@@ -270,7 +270,7 @@ func printRequest(entry raftpb.Entry) {
 		fmt.Printf("%4d\t%10d\tnorm", entry.Term, entry.Index)
 		switch r.Method {
 		case "":
-			fmt.Printf("\tnoop")
+			fmt.Print("\tnoop")
 		case "SYNC":
 			fmt.Printf("\tmethod=SYNC time=%q", time.Unix(0, r.Time).UTC())
 		case "QGET", "DELETE":

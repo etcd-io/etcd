@@ -138,7 +138,7 @@ func copyFloats(s []float64) (c []float64) {
 
 func (r *report) String() (s string) {
 	if len(r.stats.Lats) > 0 {
-		s += fmt.Sprintf("\nSummary:\n")
+		s += "\nSummary:\n"
 		s += fmt.Sprintf("  Total:\t%s.\n", r.sec2str(r.stats.Total.Seconds()))
 		s += fmt.Sprintf("  Slowest:\t%s.\n", r.sec2str(r.stats.Slowest))
 		s += fmt.Sprintf("  Fastest:\t%s.\n", r.sec2str(r.stats.Fastest))
@@ -226,7 +226,7 @@ func percentiles(nums []float64) (data []float64) {
 
 func (r *report) sprintLatencies() string {
 	data := percentiles(r.stats.Lats)
-	s := fmt.Sprintf("\nLatency distribution:\n")
+	s := "\nLatency distribution:\n"
 	for i := 0; i < len(pctls); i++ {
 		if data[i] > 0 {
 			s += fmt.Sprintf("  %v%% in %s.\n", pctls[i], r.sec2str(data[i]))
@@ -257,7 +257,7 @@ func (r *report) histogram() string {
 			bi++
 		}
 	}
-	s := fmt.Sprintf("\nResponse time histogram:\n")
+	s := "\nResponse time histogram:\n"
 	for i := 0; i < len(buckets); i++ {
 		// Normalize bar lengths.
 		var barLen int
@@ -270,7 +270,7 @@ func (r *report) histogram() string {
 }
 
 func (r *report) errors() string {
-	s := fmt.Sprintf("\nError distribution:\n")
+	s := "\nError distribution:\n"
 	for err, num := range r.stats.ErrorDist {
 		s += fmt.Sprintf("  [%d]\t%s\n", num, err)
 	}

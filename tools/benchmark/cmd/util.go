@@ -63,7 +63,7 @@ func mustFindLeaderEndpoints(c *clientv3.Client) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "failed to find a leader endpoint\n")
+	fmt.Fprint(os.Stderr, "failed to find a leader endpoint\n")
 	os.Exit(1)
 }
 

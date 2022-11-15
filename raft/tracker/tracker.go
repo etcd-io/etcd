@@ -87,7 +87,7 @@ func (c Config) String() string {
 		fmt.Fprintf(&buf, " learners_next=%s", quorum.MajorityConfig(c.LearnersNext).String())
 	}
 	if c.AutoLeave {
-		fmt.Fprintf(&buf, " autoleave")
+		fmt.Fprint(&buf, " autoleave")
 	}
 	return buf.String()
 }

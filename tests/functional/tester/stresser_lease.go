@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 
 	"go.uber.org/zap"
@@ -445,7 +445,7 @@ func (ls *leaseStresser) attachKeysWithLease(leaseID int64) error {
 	for j := 0; j < ls.keysPerLease; j++ {
 		txnput := clientv3.OpPut(
 			fmt.Sprintf("%d%s%d", leaseID, "_", j),
-			fmt.Sprintf("bar"),
+			"bar",
 			clientv3.WithLease(clientv3.LeaseID(leaseID)),
 		)
 		txnPuts = append(txnPuts, txnput)

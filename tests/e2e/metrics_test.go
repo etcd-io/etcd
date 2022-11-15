@@ -45,12 +45,12 @@ func metricsTest(cx ctlCtx) {
 	for _, test := range []struct {
 		endpoint, expected string
 	}{
-		{"/metrics", fmt.Sprintf("etcd_mvcc_put_total 2")},
-		{"/metrics", fmt.Sprintf("etcd_debugging_mvcc_keys_total 1")},
-		{"/metrics", fmt.Sprintf("etcd_mvcc_delete_total 3")},
+		{"/metrics", "etcd_mvcc_put_total 2"},
+		{"/metrics", "etcd_debugging_mvcc_keys_total 1"},
+		{"/metrics", "etcd_mvcc_delete_total 3"},
 		{"/metrics", fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version)},
 		{"/metrics", fmt.Sprintf(`etcd_cluster_version{cluster_version="%s"} 1`, version.Cluster(version.Version))},
-		{"/metrics", fmt.Sprintf(`grpc_server_handled_total{grpc_code="Canceled",grpc_method="Watch",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"} 6`)},
+		{"/metrics", `grpc_server_handled_total{grpc_code="Canceled",grpc_method="Watch",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"} 6`},
 		{"/health", `{"health":"true","reason":""}`},
 	} {
 		i++

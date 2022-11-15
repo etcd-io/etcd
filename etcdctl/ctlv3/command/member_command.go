@@ -172,7 +172,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 		fmt.Printf("ETCD_NAME=%q\n", newMemberName)
 		fmt.Printf("ETCD_INITIAL_CLUSTER=%q\n", strings.Join(conf, ","))
 		fmt.Printf("ETCD_INITIAL_ADVERTISE_PEER_URLS=%q\n", memberPeerURLs)
-		fmt.Printf("ETCD_INITIAL_CLUSTER_STATE=\"existing\"\n")
+		fmt.Print("ETCD_INITIAL_CLUSTER_STATE=\"existing\"\n")
 	}
 }
 
