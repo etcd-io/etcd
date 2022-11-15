@@ -21,10 +21,12 @@ import (
 	"github.com/anishathalye/porcupine"
 )
 
-type Operation int8
+type Operation string
 
-const Get Operation = 0
-const Put Operation = 1
+const (
+	Get Operation = "get"
+	Put Operation = "put"
+)
 
 type etcdRequest struct {
 	op      Operation
