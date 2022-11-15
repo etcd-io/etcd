@@ -157,7 +157,7 @@ func authGracefulDisableTest(cx ctlCtx) {
 		defer close(donec)
 
 		// sleep a bit to let the watcher connects while auth is still enabled
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(time.Second)
 
 		// now disable auth...
 		if err := ctlV3AuthDisable(cx); err != nil {

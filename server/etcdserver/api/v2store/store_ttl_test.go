@@ -328,7 +328,7 @@ func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 	s.clock = fc
 
 	s.Create("/_foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
-	s.Create("/foofoo", false, "barbarbar", false, TTLOptionSet{ExpireTime: fc.Now().Add(1000 * time.Millisecond)})
+	s.Create("/foofoo", false, "barbarbar", false, TTLOptionSet{ExpireTime: fc.Now().Add(time.Second)})
 
 	w, _ := s.Watch("/", true, false, 0)
 	c := w.EventChan()
