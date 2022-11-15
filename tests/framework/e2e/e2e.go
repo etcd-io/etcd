@@ -48,14 +48,13 @@ func (e e2eRunner) BeforeTest(t testing.TB) {
 
 func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	cfg := config.NewClusterConfig(opts...)
-	e2eConfig := EtcdProcessClusterConfig{
-		InitialToken:               "new",
-		ClusterSize:                cfg.ClusterSize,
-		QuotaBackendBytes:          cfg.QuotaBackendBytes,
-		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
-		AuthTokenOpts:              cfg.AuthToken,
-		SnapshotCount:              cfg.SnapshotCount,
-	}
+	e2eConfig := NewConfig(
+		WithClusterSize(cfg.ClusterSize),
+		WithQuotaBackendBytes(cfg.QuotaBackendBytes),
+		WithDisableStrictReconfigCheck(!cfg.StrictReconfigCheck),
+		WithAuthTokenOpts(cfg.AuthToken),
+		WithSnapshotCount(cfg.SnapshotCount),
+	)
 
 	if cfg.ClusterContext != nil {
 		e2eClusterCtx := cfg.ClusterContext.(*ClusterContext)
@@ -87,7 +86,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 	default:
 		t.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
 	}
-	epc, err := NewEtcdProcessCluster(ctx, t, &e2eConfig)
+	epc, err := NewEtcdProcessCluster(ctx, t, e2eConfig)
 	if err != nil {
 		t.Fatalf("could not start etcd integrationCluster: %s", err)
 	}

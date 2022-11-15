@@ -51,10 +51,11 @@ func TestClusterVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
-			cfg := e2e.NewConfigNoTLS()
-			cfg.SnapshotCount = 3
-			cfg.BaseScheme = "unix" // to avoid port conflict
-			cfg.RollingStart = tt.rollingStart
+			cfg := e2e.NewConfig(
+				e2e.WithSnapshotCount(3),
+				e2e.WithBaseScheme("unix"), // to avoid port conflict)
+				e2e.WithRollingStart(tt.rollingStart),
+			)
 
 			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
 			if err != nil {
