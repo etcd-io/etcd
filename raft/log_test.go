@@ -15,8 +15,10 @@
 package raft
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -45,13 +47,11 @@ func TestFindConflict(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		raftLog := newLog(NewMemoryStorage(), raftLogger)
-		raftLog.append(previousEnts...)
-
-		gconflict := raftLog.findConflict(tt.ents)
-		if gconflict != tt.wconflict {
-			t.Errorf("#%d: conflict = %d, want %d", i, gconflict, tt.wconflict)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			raftLog := newLog(NewMemoryStorage(), raftLogger)
+			raftLog.append(previousEnts...)
+			require.Equal(t, tt.wconflict, raftLog.findConflict(tt.ents))
+		})
 	}
 }
 
@@ -79,10 +79,9 @@ func TestIsUpToDate(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gUpToDate := raftLog.isUpToDate(tt.lastIndex, tt.term)
-		if gUpToDate != tt.wUpToDate {
-			t.Errorf("#%d: uptodate = %v, want %v", i, gUpToDate, tt.wUpToDate)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			require.Equal(t, tt.wUpToDate, raftLog.isUpToDate(tt.lastIndex, tt.term))
+		})
 	}
 }
 
@@ -123,24 +122,16 @@ func TestAppend(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		storage := NewMemoryStorage()
-		storage.Append(previousEnts)
-		raftLog := newLog(storage, raftLogger)
-
-		index := raftLog.append(tt.ents...)
-		if index != tt.windex {
-			t.Errorf("#%d: lastIndex = %d, want %d", i, index, tt.windex)
-		}
-		g, err := raftLog.entries(1, noLimit)
-		if err != nil {
-			t.Fatalf("#%d: unexpected error %v", i, err)
-		}
-		if !reflect.DeepEqual(g, tt.wents) {
-			t.Errorf("#%d: logEnts = %+v, want %+v", i, g, tt.wents)
-		}
-		if goff := raftLog.unstable.offset; goff != tt.wunstable {
-			t.Errorf("#%d: unstable = %d, want %d", i, goff, tt.wunstable)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			storage := NewMemoryStorage()
+			storage.Append(previousEnts)
+			raftLog := newLog(storage, raftLogger)
+			require.Equal(t, tt.windex, raftLog.append(tt.ents...))
+			g, err := raftLog.entries(1, noLimit)
+			require.NoError(t, err)
+			require.Equal(t, tt.wents, g)
+			require.Equal(t, tt.wunstable, raftLog.unstable.offset)
+		})
 	}
 }
 
@@ -241,36 +232,23 @@ func TestLogMaybeAppend(t *testing.T) {
 		raftLog := newLog(NewMemoryStorage(), raftLogger)
 		raftLog.append(previousEnts...)
 		raftLog.committed = commit
-		func() {
+
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
-					if !tt.wpanic {
-						t.Errorf("%d: panic = %v, want %v", i, true, tt.wpanic)
-					}
+					require.True(t, tt.wpanic)
 				}
 			}()
 			glasti, gappend := raftLog.maybeAppend(tt.index, tt.logTerm, tt.committed, tt.ents...)
-			gcommit := raftLog.committed
-
-			if glasti != tt.wlasti {
-				t.Errorf("#%d: lastindex = %d, want %d", i, glasti, tt.wlasti)
-			}
-			if gappend != tt.wappend {
-				t.Errorf("#%d: append = %v, want %v", i, gappend, tt.wappend)
-			}
-			if gcommit != tt.wcommit {
-				t.Errorf("#%d: committed = %d, want %d", i, gcommit, tt.wcommit)
-			}
+			require.Equal(t, tt.wlasti, glasti)
+			require.Equal(t, tt.wappend, gappend)
+			require.Equal(t, tt.wcommit, raftLog.committed)
 			if gappend && len(tt.ents) != 0 {
 				gents, err := raftLog.slice(raftLog.lastIndex()-uint64(len(tt.ents))+1, raftLog.lastIndex()+1, noLimit)
-				if err != nil {
-					t.Fatalf("unexpected error %v", err)
-				}
-				if !reflect.DeepEqual(tt.ents, gents) {
-					t.Errorf("#%d: appended entries = %v, want %v", i, gents, tt.ents)
-				}
+				require.NoError(t, err)
+				require.Equal(t, tt.ents, gents)
 			}
-		}()
+		})
 	}
 }
 
@@ -291,52 +269,32 @@ func TestCompactionSideEffects(t *testing.T) {
 		raftLog.append(pb.Entry{Term: i + 1, Index: i + 1})
 	}
 
-	ok := raftLog.maybeCommit(lastIndex, lastTerm)
-	if !ok {
-		t.Fatalf("maybeCommit returned false")
-	}
+	require.True(t, raftLog.maybeCommit(lastIndex, lastTerm))
 	raftLog.appliedTo(raftLog.committed)
 
 	offset := uint64(500)
 	storage.Compact(offset)
+	require.Equal(t, lastIndex, raftLog.lastIndex())
 
-	if raftLog.lastIndex() != lastIndex {
-		t.Errorf("lastIndex = %d, want %d", raftLog.lastIndex(), lastIndex)
+	for j := offset; j <= raftLog.lastIndex(); j++ {
+		require.Equal(t, j, mustTerm(raftLog.term(j)))
 	}
 
 	for j := offset; j <= raftLog.lastIndex(); j++ {
-		if mustTerm(raftLog.term(j)) != j {
-			t.Errorf("term(%d) = %d, want %d", j, mustTerm(raftLog.term(j)), j)
-		}
-	}
-
-	for j := offset; j <= raftLog.lastIndex(); j++ {
-		if !raftLog.matchTerm(j, j) {
-			t.Errorf("matchTerm(%d) = false, want true", j)
-		}
+		require.True(t, raftLog.matchTerm(j, j))
 	}
 
 	unstableEnts := raftLog.unstableEntries()
-	if g := len(unstableEnts); g != 250 {
-		t.Errorf("len(unstableEntries) = %d, want = %d", g, 250)
-	}
-	if unstableEnts[0].Index != 751 {
-		t.Errorf("Index = %d, want = %d", unstableEnts[0].Index, 751)
-	}
+	require.Equal(t, 250, len(unstableEnts))
+	require.Equal(t, uint64(751), unstableEnts[0].Index)
 
 	prev := raftLog.lastIndex()
 	raftLog.append(pb.Entry{Index: raftLog.lastIndex() + 1, Term: raftLog.lastIndex() + 1})
-	if raftLog.lastIndex() != prev+1 {
-		t.Errorf("lastIndex = %d, want = %d", raftLog.lastIndex(), prev+1)
-	}
+	require.Equal(t, prev+1, raftLog.lastIndex())
 
 	ents, err := raftLog.entries(raftLog.lastIndex(), noLimit)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if len(ents) != 1 {
-		t.Errorf("len(entries) = %d, want = %d", len(ents), 1)
-	}
+	require.NoError(t, err)
+	require.Equal(t, 1, len(ents))
 }
 
 func TestHasNextCommittedEnts(t *testing.T) {
@@ -361,22 +319,21 @@ func TestHasNextCommittedEnts(t *testing.T) {
 		{applied: 3, snap: true, whasNext: false},
 	}
 	for i, tt := range tests {
-		storage := NewMemoryStorage()
-		storage.ApplySnapshot(snap)
-		raftLog := newLog(storage, raftLogger)
-		raftLog.append(ents...)
-		raftLog.maybeCommit(5, 1)
-		raftLog.appliedTo(tt.applied)
-		if tt.snap {
-			newSnap := snap
-			newSnap.Metadata.Index++
-			raftLog.restore(newSnap)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			storage := NewMemoryStorage()
+			require.NoError(t, storage.ApplySnapshot(snap))
 
-		hasNext := raftLog.hasNextCommittedEnts()
-		if hasNext != tt.whasNext {
-			t.Errorf("#%d: hasNext = %v, want %v", i, hasNext, tt.whasNext)
-		}
+			raftLog := newLog(storage, raftLogger)
+			raftLog.append(ents...)
+			raftLog.maybeCommit(5, 1)
+			raftLog.appliedTo(tt.applied)
+			if tt.snap {
+				newSnap := snap
+				newSnap.Metadata.Index++
+				raftLog.restore(newSnap)
+			}
+			require.Equal(t, tt.whasNext, raftLog.hasNextCommittedEnts())
+		})
 	}
 }
 
@@ -402,22 +359,22 @@ func TestNextCommittedEnts(t *testing.T) {
 		{applied: 3, snap: true, wents: nil},
 	}
 	for i, tt := range tests {
-		storage := NewMemoryStorage()
-		storage.ApplySnapshot(snap)
-		raftLog := newLog(storage, raftLogger)
-		raftLog.append(ents...)
-		raftLog.maybeCommit(5, 1)
-		raftLog.appliedTo(tt.applied)
-		if tt.snap {
-			newSnap := snap
-			newSnap.Metadata.Index++
-			raftLog.restore(newSnap)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			storage := NewMemoryStorage()
+			require.NoError(t, storage.ApplySnapshot(snap))
 
-		nents := raftLog.nextCommittedEnts()
-		if !reflect.DeepEqual(nents, tt.wents) {
-			t.Errorf("#%d: nents = %+v, want %+v", i, nents, tt.wents)
-		}
+			raftLog := newLog(storage, raftLogger)
+			raftLog.append(ents...)
+			raftLog.maybeCommit(5, 1)
+			raftLog.appliedTo(tt.applied)
+			if tt.snap {
+				newSnap := snap
+				newSnap.Metadata.Index++
+				raftLog.restore(newSnap)
+			}
+			require.Equal(t, tt.wents, raftLog.nextCommittedEnts())
+		})
+
 	}
 }
 
@@ -434,25 +391,22 @@ func TestUnstableEnts(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		// append stable entries to storage
-		storage := NewMemoryStorage()
-		storage.Append(previousEnts[:tt.unstable-1])
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			// append stable entries to storage
+			storage := NewMemoryStorage()
+			require.NoError(t, storage.Append(previousEnts[:tt.unstable-1]))
 
-		// append unstable entries to raftlog
-		raftLog := newLog(storage, raftLogger)
-		raftLog.append(previousEnts[tt.unstable-1:]...)
+			// append unstable entries to raftlog
+			raftLog := newLog(storage, raftLogger)
+			raftLog.append(previousEnts[tt.unstable-1:]...)
 
-		ents := raftLog.unstableEntries()
-		if l := len(ents); l > 0 {
-			raftLog.stableTo(ents[l-1].Index, ents[l-1].Term)
-		}
-		if !reflect.DeepEqual(ents, tt.wents) {
-			t.Errorf("#%d: unstableEnts = %+v, want %+v", i, ents, tt.wents)
-		}
-		w := previousEnts[len(previousEnts)-1].Index + 1
-		if g := raftLog.unstable.offset; g != w {
-			t.Errorf("#%d: unstable = %d, want %d", i, g, w)
-		}
+			ents := raftLog.unstableEntries()
+			if l := len(ents); l > 0 {
+				raftLog.stableTo(ents[l-1].Index, ents[l-1].Term)
+			}
+			require.Equal(t, tt.wents, ents)
+			require.Equal(t, previousEnts[len(previousEnts)-1].Index+1, raftLog.unstable.offset)
+		})
 	}
 }
 
@@ -469,22 +423,18 @@ func TestCommitTo(t *testing.T) {
 		{4, 0, true},  // commit out of range -> panic
 	}
 	for i, tt := range tests {
-		func() {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
-					if !tt.wpanic {
-						t.Errorf("%d: panic = %v, want %v", i, true, tt.wpanic)
-					}
+					require.True(t, tt.wpanic)
 				}
 			}()
 			raftLog := newLog(NewMemoryStorage(), raftLogger)
 			raftLog.append(previousEnts...)
 			raftLog.committed = commit
 			raftLog.commitTo(tt.commit)
-			if raftLog.committed != tt.wcommit {
-				t.Errorf("#%d: committed = %d, want %d", i, raftLog.committed, tt.wcommit)
-			}
-		}()
+			require.Equal(t, tt.wcommit, raftLog.committed)
+		})
 	}
 }
 
@@ -500,12 +450,12 @@ func TestStableTo(t *testing.T) {
 		{3, 1, 1}, // bad index
 	}
 	for i, tt := range tests {
-		raftLog := newLog(NewMemoryStorage(), raftLogger)
-		raftLog.append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}...)
-		raftLog.stableTo(tt.stablei, tt.stablet)
-		if raftLog.unstable.offset != tt.wunstable {
-			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable.offset, tt.wunstable)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			raftLog := newLog(NewMemoryStorage(), raftLogger)
+			raftLog.append([]pb.Entry{{Index: 1, Term: 1}, {Index: 2, Term: 2}}...)
+			raftLog.stableTo(tt.stablei, tt.stablet)
+			require.Equal(t, tt.wunstable, raftLog.unstable.offset)
+		})
 	}
 }
 
@@ -535,14 +485,15 @@ func TestStableToWithSnap(t *testing.T) {
 		{snapi - 1, snapt + 1, []pb.Entry{{Index: snapi + 1, Term: snapt}}, snapi + 1},
 	}
 	for i, tt := range tests {
-		s := NewMemoryStorage()
-		s.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: snapi, Term: snapt}})
-		raftLog := newLog(s, raftLogger)
-		raftLog.append(tt.newEnts...)
-		raftLog.stableTo(tt.stablei, tt.stablet)
-		if raftLog.unstable.offset != tt.wunstable {
-			t.Errorf("#%d: unstable = %d, want %d", i, raftLog.unstable.offset, tt.wunstable)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			s := NewMemoryStorage()
+			require.NoError(t, s.ApplySnapshot(pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: snapi, Term: snapt}}))
+			raftLog := newLog(s, raftLogger)
+			raftLog.append(tt.newEnts...)
+			raftLog.stableTo(tt.stablei, tt.stablet)
+			require.Equal(t, tt.wunstable, raftLog.unstable.offset)
+		})
+
 	}
 }
 
@@ -562,36 +513,30 @@ func TestCompaction(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		func() {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
-					if tt.wallow {
-						t.Errorf("%d: allow = %v, want %v: %v", i, false, true, r)
-					}
+					require.False(t, tt.wallow)
 				}
 			}()
-
 			storage := NewMemoryStorage()
 			for i := uint64(1); i <= tt.lastIndex; i++ {
 				storage.Append([]pb.Entry{{Index: i}})
 			}
 			raftLog := newLog(storage, raftLogger)
 			raftLog.maybeCommit(tt.lastIndex, 0)
-			raftLog.appliedTo(raftLog.committed)
 
+			raftLog.appliedTo(raftLog.committed)
 			for j := 0; j < len(tt.compact); j++ {
 				err := storage.Compact(tt.compact[j])
 				if err != nil {
-					if tt.wallow {
-						t.Errorf("#%d.%d allow = %t, want %t", i, j, false, tt.wallow)
-					}
+					require.False(t, tt.wallow)
 					continue
 				}
-				if len(raftLog.allEntries()) != tt.wleft[j] {
-					t.Errorf("#%d.%d len = %d, want %d", i, j, len(raftLog.allEntries()), tt.wleft[j])
-				}
+				require.Equal(t, tt.wleft[j], len(raftLog.allEntries()))
 			}
-		}()
+
+		})
 	}
 }
 
@@ -603,21 +548,11 @@ func TestLogRestore(t *testing.T) {
 	storage.ApplySnapshot(pb.Snapshot{Metadata: snap})
 	raftLog := newLog(storage, raftLogger)
 
-	if len(raftLog.allEntries()) != 0 {
-		t.Errorf("len = %d, want 0", len(raftLog.allEntries()))
-	}
-	if raftLog.firstIndex() != index+1 {
-		t.Errorf("firstIndex = %d, want %d", raftLog.firstIndex(), index+1)
-	}
-	if raftLog.committed != index {
-		t.Errorf("committed = %d, want %d", raftLog.committed, index)
-	}
-	if raftLog.unstable.offset != index+1 {
-		t.Errorf("unstable = %d, want %d", raftLog.unstable.offset, index+1)
-	}
-	if mustTerm(raftLog.term(index)) != term {
-		t.Errorf("term = %d, want %d", mustTerm(raftLog.term(index)), term)
-	}
+	require.Zero(t, len(raftLog.allEntries()))
+	require.Equal(t, index+1, raftLog.firstIndex())
+	require.Equal(t, index, raftLog.committed)
+	require.Equal(t, index+1, raftLog.unstable.offset)
+	require.Equal(t, term, mustTerm(raftLog.term(index)))
 }
 
 func TestIsOutOfBounds(t *testing.T) {
@@ -679,25 +614,17 @@ func TestIsOutOfBounds(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		func() {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
-					if !tt.wpanic {
-						t.Errorf("%d: panic = %v, want %v: %v", i, true, false, r)
-					}
+					require.True(t, tt.wpanic)
 				}
 			}()
 			err := l.mustCheckOutOfBounds(tt.lo, tt.hi)
-			if tt.wpanic {
-				t.Errorf("#%d: panic = %v, want %v", i, false, true)
-			}
-			if tt.wErrCompacted && err != ErrCompacted {
-				t.Errorf("#%d: err = %v, want %v", i, err, ErrCompacted)
-			}
-			if !tt.wErrCompacted && err != nil {
-				t.Errorf("#%d: unexpected err %v", i, err)
-			}
-		}()
+			require.False(t, tt.wpanic)
+			require.False(t, tt.wErrCompacted && err != ErrCompacted)
+			require.False(t, !tt.wErrCompacted && err != nil)
+		})
 	}
 }
 
@@ -725,10 +652,9 @@ func TestTerm(t *testing.T) {
 	}
 
 	for j, tt := range tests {
-		term := mustTerm(l.term(tt.index))
-		if term != tt.w {
-			t.Errorf("#%d: at = %d, want %d", j, term, tt.w)
-		}
+		t.Run(fmt.Sprint(j), func(t *testing.T) {
+			require.Equal(t, tt.w, mustTerm(l.term(tt.index)))
+		})
 	}
 }
 
@@ -755,10 +681,9 @@ func TestTermWithUnstableSnapshot(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		term := mustTerm(l.term(tt.index))
-		if term != tt.w {
-			t.Errorf("#%d: at = %d, want %d", i, term, tt.w)
-		}
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			require.Equal(t, tt.w, mustTerm(l.term(tt.index)))
+		})
 	}
 }
 
@@ -807,25 +732,17 @@ func TestSlice(t *testing.T) {
 	}
 
 	for j, tt := range tests {
-		func() {
+		t.Run(fmt.Sprint(j), func(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
-					if !tt.wpanic {
-						t.Errorf("%d: panic = %v, want %v: %v", j, true, false, r)
-					}
+					require.True(t, tt.wpanic)
 				}
 			}()
 			g, err := l.slice(tt.from, tt.to, tt.limit)
-			if tt.from <= offset && err != ErrCompacted {
-				t.Fatalf("#%d: err = %v, want %v", j, err, ErrCompacted)
-			}
-			if tt.from > offset && err != nil {
-				t.Fatalf("#%d: unexpected error %v", j, err)
-			}
-			if !reflect.DeepEqual(g, tt.w) {
-				t.Errorf("#%d: from %d to %d = %v, want %v", j, tt.from, tt.to, g, tt.w)
-			}
-		}()
+			require.False(t, tt.from <= offset && err != ErrCompacted)
+			require.False(t, tt.from > offset && err != nil)
+			require.Equal(t, tt.w, g)
+		})
 	}
 }
 
