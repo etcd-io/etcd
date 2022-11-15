@@ -19,22 +19,24 @@ toggle_failpoints() {
   mode="$1"
   if command -v gofail >/dev/null 2>&1; then
     run gofail "$mode" server/etcdserver/ server/storage/backend/ server/storage/mvcc/
-    (
-      cd ./server
-      run go get go.etcd.io/gofail/runtime
-    ) || exit 2
-    (
-      cd ./etcdutl
-      run go get go.etcd.io/gofail/runtime
-    ) || exit 2
-    (
-      cd ./etcdctl
-      run go get go.etcd.io/gofail/runtime
-    ) || exit 2
-    (
-      cd ./tests
-      run go get go.etcd.io/gofail/runtime
-    ) || exit 2
+    if [[ "$mode" == "enable" ]]; then
+      (
+        cd ./server
+        run go get go.etcd.io/gofail/runtime
+      ) || exit 2
+      (
+        cd ./etcdutl
+        run go get go.etcd.io/gofail/runtime
+      ) || exit 2
+      (
+        cd ./etcdctl
+        run go get go.etcd.io/gofail/runtime
+      ) || exit 2
+      (
+        cd ./tests
+        run go get go.etcd.io/gofail/runtime
+      ) || exit 2
+    fi
   elif [[ "$mode" != "disable" ]]; then
     log_error "FAILPOINTS set but gofail not found"
     exit 1
