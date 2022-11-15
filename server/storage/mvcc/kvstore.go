@@ -216,7 +216,9 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, int64, error) {
 
 	SetScheduledCompact(s.b.BatchTx(), rev)
 	// ensure that desired compaction is persisted
+	// gofail: var compactBeforeCommitScheduledCompact struct{}
 	s.b.ForceCommit()
+	// gofail: var compactAfterCommitScheduledCompact struct{}
 
 	s.revMu.Unlock()
 

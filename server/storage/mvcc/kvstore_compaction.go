@@ -59,8 +59,10 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 		}
 
 		if len(keys) < batchNum {
+			// gofail: var compactBeforeSetFinishedCompact struct{}
 			UnsafeSetFinishedCompact(tx, compactMainRev)
 			tx.Unlock()
+			// gofail: var compactAfterSetFinishedCompact struct{}
 			hash := h.Hash()
 			s.lg.Info(
 				"finished scheduled compaction",
@@ -75,7 +77,9 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 		// update last
 		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
 		// Immediately commit the compaction deletes instead of letting them accumulate in the write buffer
+		// gofail: var compactBeforeCommitBatch struct{}
 		s.b.ForceCommit()
+		// gofail: var compactAfterCommitBatch struct{}
 		dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 
 		select {
