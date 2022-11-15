@@ -51,16 +51,18 @@ func TestLinearizability(t *testing.T) {
 			name:      "ClusterOfSize1",
 			failpoint: RandomFailpoint,
 			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize:   1,
-				GoFailEnabled: true,
+				ClusterSize:          1,
+				GoFailEnabled:        true,
+				CompactionBatchLimit: 100, // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			},
 		},
 		{
 			name:      "ClusterOfSize3",
 			failpoint: RandomFailpoint,
 			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize:   3,
-				GoFailEnabled: true,
+				ClusterSize:          3,
+				GoFailEnabled:        true,
+				CompactionBatchLimit: 100, // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			},
 		},
 		{
