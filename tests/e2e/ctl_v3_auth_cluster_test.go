@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -95,6 +96,28 @@ func TestAuthCluster(t *testing.T) {
 		return true
 	}, time.Second*5, time.Millisecond*100)
 
+}
+
+func applyTLSWithRootCommonName() func() {
+	var (
+		oldCertPath       = e2e.CertPath
+		oldPrivateKeyPath = e2e.PrivateKeyPath
+		oldCaPath         = e2e.CaPath
+
+		newCertPath       = filepath.Join(e2e.FixturesDir, "CommonName-root.crt")
+		newPrivateKeyPath = filepath.Join(e2e.FixturesDir, "CommonName-root.key")
+		newCaPath         = filepath.Join(e2e.FixturesDir, "CommonName-root.crt")
+	)
+
+	e2e.CertPath = newCertPath
+	e2e.PrivateKeyPath = newPrivateKeyPath
+	e2e.CaPath = newCaPath
+
+	return func() {
+		e2e.CertPath = oldCertPath
+		e2e.PrivateKeyPath = oldPrivateKeyPath
+		e2e.CaPath = oldCaPath
+	}
 }
 
 func createUsers(ctx context.Context, t *testing.T, client *e2e.EtcdctlV3) {
