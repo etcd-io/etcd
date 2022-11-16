@@ -35,7 +35,12 @@ import (
 func createV2store(t testing.TB, dataDirPath string) string {
 	t.Log("Creating not-yet v2-deprecated etcd")
 
-	cfg := e2e.ConfigStandalone(e2e.EtcdProcessClusterConfig{Version: e2e.LastVersion, EnableV2: true, DataDirPath: dataDirPath, SnapshotCount: 5})
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
+		e2e.WithVersion(e2e.LastVersion),
+		e2e.WithEnableV2(true),
+		e2e.WithDataDirPath(dataDirPath),
+		e2e.WithSnapshotCount(5),
+	))
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
 	assert.NoError(t, err)
 	memberDataDir := epc.Procs[0].Config().DataDirPath
@@ -156,7 +161,10 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NoError(t, epc.Close())
-	cfg := e2e.ConfigStandalone(e2e.EtcdProcessClusterConfig{Version: e2e.CurrentVersion, DataDirPath: dataDir})
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
+		e2e.WithVersion(e2e.CurrentVersion),
+		e2e.WithDataDirPath(dataDir),
+	))
 	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
 	assert.NoError(t, err)
 
@@ -174,7 +182,12 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 }
 
 func runEtcdAndCreateSnapshot(t testing.TB, serverVersion e2e.ClusterVersion, dataDir string, snapshotCount int) *e2e.EtcdProcessCluster {
-	cfg := e2e.ConfigStandalone(e2e.EtcdProcessClusterConfig{Version: serverVersion, DataDirPath: dataDir, SnapshotCount: snapshotCount, KeepDataDir: true})
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
+		e2e.WithVersion(serverVersion),
+		e2e.WithDataDirPath(dataDir),
+		e2e.WithSnapshotCount(snapshotCount),
+		e2e.WithKeepDataDir(true),
+	))
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
 	assert.NoError(t, err)
 	return epc

@@ -306,6 +306,10 @@ func WithGoFailEnabled(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.GoFailEnabled = enabled }
 }
 
+func WithCompactionBatchLimit(limit int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.CompactionBatchLimit = limit }
+}
+
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, t testing.TB, cfg *EtcdProcessClusterConfig, opts ...EPClusterOption) (*EtcdProcessCluster, error) {

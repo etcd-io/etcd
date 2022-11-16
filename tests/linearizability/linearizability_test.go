@@ -50,28 +50,27 @@ func TestLinearizability(t *testing.T) {
 		{
 			name:      "ClusterOfSize1",
 			failpoint: RandomFailpoint,
-			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize:          1,
-				GoFailEnabled:        true,
-				CompactionBatchLimit: 100, // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
-			},
+			config: *e2e.NewConfig(
+				e2e.WithClusterSize(1),
+				e2e.WithGoFailEnabled(true),
+				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+			),
 		},
 		{
 			name:      "ClusterOfSize3",
 			failpoint: RandomFailpoint,
-			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize:          3,
-				GoFailEnabled:        true,
-				CompactionBatchLimit: 100, // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
-			},
+			config: *e2e.NewConfig(
+				e2e.WithGoFailEnabled(true),
+				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+			),
 		},
 		{
 			name:      "Issue14370",
 			failpoint: RaftBeforeSavePanic,
-			config: e2e.EtcdProcessClusterConfig{
-				ClusterSize:   1,
-				GoFailEnabled: true,
-			},
+			config: *e2e.NewConfig(
+				e2e.WithClusterSize(1),
+				e2e.WithGoFailEnabled(true),
+			),
 		},
 	}
 	for _, tc := range tcs {
