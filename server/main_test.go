@@ -51,7 +51,7 @@ func TestEmpty(t *testing.T) {}
 func TestMain(m *testing.M) {
 	// don't launch etcd server when invoked via go test
 	if strings.HasSuffix(os.Args[0], ".test") {
-		log.Printf("skip launching etcd server when invoked via go test")
+		log.Print("skip launching etcd server when invoked via go test")
 		return
 	}
 

@@ -246,7 +246,7 @@ func (pr *Progress) String() string {
 		fmt.Fprintf(&buf, " pendingSnap=%d", pr.PendingSnapshot)
 	}
 	if !pr.RecentActive {
-		fmt.Fprintf(&buf, " inactive")
+		fmt.Fprint(&buf, " inactive")
 	}
 	if n := pr.Inflights.Count(); n > 0 {
 		fmt.Fprintf(&buf, " inflight=%d", n)

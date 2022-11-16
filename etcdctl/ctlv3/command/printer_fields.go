@@ -241,7 +241,7 @@ func (p *fieldsPrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 func (p *fieldsPrinter) RoleDelete(role string, r v3.AuthRoleDeleteResponse) { p.hdr(r.Header) }
 func (p *fieldsPrinter) RoleList(r v3.AuthRoleListResponse) {
 	p.hdr(r.Header)
-	fmt.Printf(`"Roles" :`)
+	fmt.Print(`"Roles" :`)
 	for _, r := range r.Roles {
 		fmt.Printf(" %q", r)
 	}

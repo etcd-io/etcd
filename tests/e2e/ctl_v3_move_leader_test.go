@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -127,7 +127,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 		},
 		{ // request to all endpoints
 			cx.epc.EndpointsV3(),
-			fmt.Sprintf("Leadership transferred"),
+			"Leadership transferred",
 			false,
 		},
 	}

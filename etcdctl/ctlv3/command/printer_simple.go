@@ -213,7 +213,7 @@ func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 		if v3.GetPrefixRangeEnd(sKey) == sRangeEnd && len(sKey) > 0 {
 			fmt.Printf(" (prefix %s)", sKey)
 		}
-		fmt.Printf("\n")
+		fmt.Print("\n")
 	}
 
 	for _, perm := range r.Perm {
@@ -269,11 +269,11 @@ func (s *simplePrinter) UserAdd(name string, r v3.AuthUserAddResponse) {
 
 func (s *simplePrinter) UserGet(name string, r v3.AuthUserGetResponse) {
 	fmt.Printf("User: %s\n", name)
-	fmt.Printf("Roles:")
+	fmt.Print("Roles:")
 	for _, role := range r.Roles {
 		fmt.Printf(" %s", role)
 	}
-	fmt.Printf("\n")
+	fmt.Print("\n")
 }
 
 func (s *simplePrinter) UserChangePassword(v3.AuthUserChangePasswordResponse) {

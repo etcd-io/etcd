@@ -32,7 +32,7 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -90,7 +90,7 @@ func TestEmbedEtcd(t *testing.T) {
 	tests[7].cfg.LCUrls = []url.URL{*dnsURL}
 	tests[8].cfg.LPUrls = []url.URL{*dnsURL}
 
-	dir := filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd"))
+	dir := filepath.Join(t.TempDir(), "embed-etcd")
 
 	for i, tt := range tests {
 		tests[i].cfg.Dir = dir
@@ -144,7 +144,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	urls := newEmbedURLs(secure, 2)
 	setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
 
-	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd"))
+	cfg.Dir = filepath.Join(t.TempDir(), "embed-etcd")
 
 	e, err := embed.StartEtcd(cfg)
 	if err != nil {

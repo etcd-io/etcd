@@ -161,14 +161,14 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 		fmt.Fprintf(&buf, " Commit:%d", m.Commit)
 	}
 	if len(m.Entries) > 0 {
-		fmt.Fprintf(&buf, " Entries:[")
+		fmt.Fprint(&buf, " Entries:[")
 		for i, e := range m.Entries {
 			if i != 0 {
 				buf.WriteString(", ")
 			}
 			buf.WriteString(DescribeEntry(e, f))
 		}
-		fmt.Fprintf(&buf, "]")
+		fmt.Fprint(&buf, "]")
 	}
 	if s := m.Snapshot; s != nil && !IsEmptySnap(*s) {
 		fmt.Fprintf(&buf, " Snapshot: %s", DescribeSnapshot(*s))
