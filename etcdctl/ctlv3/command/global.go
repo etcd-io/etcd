@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
+	"go.etcd.io/etcd/client/pkg/v3/flagutil"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -43,10 +44,10 @@ type GlobalFlags struct {
 	InsecureSkipVerify    bool
 	InsecureDiscovery     bool
 	Endpoints             []string
-	DialTimeout           time.Duration
-	CommandTimeOut        time.Duration
-	KeepAliveTime         time.Duration
-	KeepAliveTimeout      time.Duration
+	DialTimeout           flagutil.Duration
+	CommandTimeOut        flagutil.Duration
+	KeepAliveTime         flagutil.Duration
+	KeepAliveTimeout      flagutil.Duration
 	DNSClusterServiceName string
 
 	TLS transport.TLSInfo

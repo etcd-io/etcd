@@ -20,8 +20,11 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/client/pkg/v3/flagutil"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.uber.org/zap"
 
 	"github.com/spf13/cobra"
 )
@@ -29,15 +32,15 @@ import (
 const (
 	cliName        = "etcdctl"
 	cliDescription = "A simple command line client for etcd3."
-
-	defaultDialTimeout      = 2 * time.Second
-	defaultCommandTimeOut   = 5 * time.Second
-	defaultKeepAliveTime    = 2 * time.Second
-	defaultKeepAliveTimeOut = 6 * time.Second
 )
 
 var (
 	globalFlags = command.GlobalFlags{}
+
+	defaultDialTimeout      = flagutil.ToDuration(2 * time.Second)
+	defaultCommandTimeOut   = flagutil.ToDuration(5 * time.Second)
+	defaultKeepAliveTime    = flagutil.ToDuration(2 * time.Second)
+	defaultKeepAliveTimeOut = flagutil.ToDuration(6 * time.Second)
 )
 
 var (
@@ -58,10 +61,14 @@ func init() {
 		return []string{"fields", "json", "protobuf", "simple", "table"}, cobra.ShellCompDirectiveDefault
 	})
 
-	rootCmd.PersistentFlags().DurationVar(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
-	rootCmd.PersistentFlags().DurationVar(&globalFlags.CommandTimeOut, "command-timeout", defaultCommandTimeOut, "timeout for short running command (excluding dial timeout)")
-	rootCmd.PersistentFlags().DurationVar(&globalFlags.KeepAliveTime, "keepalive-time", defaultKeepAliveTime, "keepalive time for client connections")
-	rootCmd.PersistentFlags().DurationVar(&globalFlags.KeepAliveTimeout, "keepalive-timeout", defaultKeepAliveTimeOut, "keepalive timeout for client connections")
+	// flagutil.DurationFlag acts like a wrapper over pflag.(*FlagSet).DurationVar,
+	// which lets to input integer values for duration-based input flags.
+	// Input formats now: 2, 2ns, 2us (for µs), 2ms, 2s, 2m, 2h
+	// Default unit is seconds. i.e., --flagname=2 and --flagname=2s gives the same result.
+	rootCmd.PersistentFlags().AddFlag(flagutil.DurationFlag(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections", true))
+	rootCmd.PersistentFlags().AddFlag(flagutil.DurationFlag(&globalFlags.CommandTimeOut, "command-timeout", defaultCommandTimeOut, "timeout for short running command (excluding dial timeout)", true))
+	rootCmd.PersistentFlags().AddFlag(flagutil.DurationFlag(&globalFlags.KeepAliveTime, "keepalive-time", defaultKeepAliveTime, "keepalive time for client connections", true))
+	rootCmd.PersistentFlags().AddFlag(flagutil.DurationFlag(&globalFlags.KeepAliveTimeout, "keepalive-timeout", defaultKeepAliveTimeOut, "keepalive timeout for client connections", true))
 
 	// TODO: secure by default when etcd enables secure gRPC by default.
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.Insecure, "insecure-transport", true, "disable transport security for client connections")
@@ -120,6 +127,22 @@ func MustStart() {
 		} else {
 			os.Exit(cobrautl.ExitError)
 		}
+	}
+
+	if globalFlags.Debug {
+		lg, err := logutil.CreateDefaultZapLogger(zap.DebugLevel)
+		if err != nil {
+			cobrautl.ExitWithError(cobrautl.ExitError, err)
+		}
+
+		// Only logging duration-based input flags for now for specific e2e test. Add other flags if required.
+		lg.Debug(
+			"input flag configs",
+			zap.Stringer("dial-timeout", globalFlags.DialTimeout),
+			zap.Stringer("command-timeout", globalFlags.CommandTimeOut),
+			zap.Stringer("keepalive-time", globalFlags.KeepAliveTime),
+			zap.Stringer("keepalive-timeout", globalFlags.KeepAliveTimeout),
+		)
 	}
 }
 
