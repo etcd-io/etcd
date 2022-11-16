@@ -35,12 +35,11 @@ func TestReleaseUpgrade(t *testing.T) {
 
 	e2e.BeforeTest(t)
 
-	copiedCfg := e2e.NewConfigNoTLS()
-	copiedCfg.Version = e2e.LastVersion
-	copiedCfg.SnapshotCount = 3
-	copiedCfg.BaseScheme = "unix" // to avoid port conflict
-
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, copiedCfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+		e2e.WithVersion(e2e.LastVersion),
+		e2e.WithSnapshotCount(3),
+		e2e.WithBaseScheme("unix"), // to avoid port conflict
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -118,12 +117,12 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 
 	e2e.BeforeTest(t)
 
-	copiedCfg := e2e.NewConfigNoTLS()
-	copiedCfg.Version = e2e.LastVersion
-	copiedCfg.SnapshotCount = 10
-	copiedCfg.BaseScheme = "unix"
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+		e2e.WithVersion(e2e.LastVersion),
+		e2e.WithSnapshotCount(10),
+		e2e.WithBaseScheme("unix"),
+	)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, copiedCfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

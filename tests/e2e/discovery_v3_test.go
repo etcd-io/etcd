@@ -48,7 +48,7 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	e2e.BeforeTest(t)
 
 	// step 1: start the discovery service
-	ds, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+	ds, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithBasePort(2000),
 		e2e.WithClusterSize(discoveryClusterSize),
 		e2e.WithClientTLS(clientTlsType),

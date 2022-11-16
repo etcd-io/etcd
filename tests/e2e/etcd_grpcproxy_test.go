@@ -35,7 +35,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, nil, e2e.WithClusterSize(1))
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithClusterSize(1))
 	require.NoError(t, err)
 	defer func() {
 		assert.NoError(t, epc.Close())

@@ -66,14 +66,11 @@ func mixVersionsSnapshotTest(t *testing.T, clusterVersion, newInstanceVersion e2
 	}
 
 	// Create an etcd cluster with 1 member
-	cfg := &e2e.EtcdProcessClusterConfig{
-		ClusterSize:   1,
-		InitialToken:  "new",
-		SnapshotCount: 10,
-		Version:       clusterVersion,
-	}
-
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+		e2e.WithClusterSize(1),
+		e2e.WithSnapshotCount(10),
+		e2e.WithVersion(clusterVersion),
+	)
 	if err != nil {
 		t.Fatalf("failed to start etcd cluster: %v", err)
 	}

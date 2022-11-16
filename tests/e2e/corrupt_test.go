@@ -102,7 +102,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, nil,
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithKeepDataDir(true),
 		e2e.WithCorruptCheckTime(time.Second),
 	)
@@ -149,7 +149,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, nil,
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithKeepDataDir(true),
 		e2e.WithCompactHashCheckEnabled(true),
 		e2e.WithCompactHashCheckTime(checkTime),

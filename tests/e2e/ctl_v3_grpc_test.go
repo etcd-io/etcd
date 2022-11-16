@@ -91,7 +91,7 @@ func TestAuthority(t *testing.T) {
 				// Enable debug mode to get logs with http2 headers (including authority)
 				cfg.EnvVars = map[string]string{"GODEBUG": "http2debug=2"}
 
-				epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
+				epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
 				if err != nil {
 					t.Fatalf("could not start etcd process cluster (%v)", err)
 				}
