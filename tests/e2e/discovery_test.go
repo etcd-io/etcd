@@ -42,7 +42,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
-	dc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+	dc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithBasePort(2000),
 		e2e.WithVersion(e2e.LastVersion),
 		e2e.WithClusterSize(1),
@@ -61,7 +61,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	}
 	cancel()
 
-	c, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+	c, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithBasePort(3000),
 		e2e.WithClusterSize(size),
 		e2e.WithIsPeerTLS(peerTLS),

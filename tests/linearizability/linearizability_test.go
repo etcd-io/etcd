@@ -92,7 +92,7 @@ func TestLinearizability(t *testing.T) {
 }
 
 func testLinearizability(ctx context.Context, t *testing.T, config e2e.EtcdProcessClusterConfig, failpoint FailpointConfig, traffic trafficConfig) {
-	clus, err := e2e.NewEtcdProcessCluster(ctx, t, &config)
+	clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
 	if err != nil {
 		t.Fatal(err)
 	}

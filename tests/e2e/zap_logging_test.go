@@ -29,7 +29,7 @@ import (
 func TestServerJsonLogging(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithClusterSize(1),
 		e2e.WithLogLevel("debug"),
 	)

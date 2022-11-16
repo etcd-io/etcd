@@ -312,14 +312,8 @@ func WithCompactionBatchLimit(limit int) EPClusterOption {
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
-func NewEtcdProcessCluster(ctx context.Context, t testing.TB, cfg *EtcdProcessClusterConfig, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
-	if cfg == nil {
-		cfg = NewConfig(opts...)
-	} else {
-		for _, opt := range opts {
-			opt(cfg)
-		}
-	}
+func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
+	cfg := NewConfig(opts...)
 	epc, err := InitEtcdProcessCluster(t, cfg)
 	if err != nil {
 		return nil, err

@@ -89,7 +89,7 @@ func testV3CurlMaxStream(t *testing.T, reachLimit bool, opts ...ctlOption) {
 
 	// Step 2: create the cluster
 	t.Log("Creating an etcd cluster")
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &cx.cfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(&cx.cfg))
 	if err != nil {
 		t.Fatalf("Failed to start etcd cluster: %v", err)
 	}

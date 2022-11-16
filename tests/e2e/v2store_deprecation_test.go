@@ -41,7 +41,7 @@ func createV2store(t testing.TB, dataDirPath string) string {
 		e2e.WithDataDirPath(dataDirPath),
 		e2e.WithSnapshotCount(5),
 	))
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
 	assert.NoError(t, err)
 	memberDataDir := epc.Procs[0].Config().DataDirPath
 
@@ -165,7 +165,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 		e2e.WithVersion(e2e.CurrentVersion),
 		e2e.WithDataDirPath(dataDir),
 	))
-	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
+	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
 	assert.NoError(t, err)
 
 	cc, err = e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
@@ -188,7 +188,7 @@ func runEtcdAndCreateSnapshot(t testing.TB, serverVersion e2e.ClusterVersion, da
 		e2e.WithSnapshotCount(snapshotCount),
 		e2e.WithKeepDataDir(true),
 	))
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, cfg)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
 	assert.NoError(t, err)
 	return epc
 }

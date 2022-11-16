@@ -116,7 +116,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 			dataDirPath := t.TempDir()
 
-			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 				e2e.WithVersion(tc.clusterVersion),
 				e2e.WithDataDirPath(dataDirPath),
 				e2e.WithClusterSize(1),

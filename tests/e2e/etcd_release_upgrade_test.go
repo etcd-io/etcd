@@ -35,7 +35,7 @@ func TestReleaseUpgrade(t *testing.T) {
 
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithVersion(e2e.LastVersion),
 		e2e.WithSnapshotCount(3),
 		e2e.WithBaseScheme("unix"), // to avoid port conflict
@@ -117,7 +117,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, nil,
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithVersion(e2e.LastVersion),
 		e2e.WithSnapshotCount(10),
 		e2e.WithBaseScheme("unix"),
