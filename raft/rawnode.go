@@ -160,11 +160,11 @@ func (rn *RawNode) readyWithoutAccept() Ready {
 	if rn.asyncStorageWrites {
 		// If async storage writes are enabled, enqueue messages to
 		// local storage threads, where applicable.
-		if needStorageAppend(rd, len(r.msgsAfterAppend) > 0) {
+		if needStorageAppendMsg(r, rd) {
 			m := newStorageAppendMsg(r, rd)
 			rd.Messages = append(rd.Messages, m)
 		}
-		if needStorageApply(rd) {
+		if needStorageApplyMsg(rd) {
 			m := newStorageApplyMsg(r, rd)
 			rd.Messages = append(rd.Messages, m)
 		}
@@ -194,14 +194,22 @@ func MustSync(st, prevst pb.HardState, entsnum int) bool {
 	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term
 }
 
-func needStorageAppend(rd Ready, haveMsgsAfterAppend bool) bool {
+func needStorageAppendMsg(r *raft, rd Ready) bool {
 	// Return true if log entries, hard state, or a snapshot need to be written
 	// to stable storage. Also return true if any messages are contingent on all
 	// prior MsgStorageAppend being processed.
 	return len(rd.Entries) > 0 ||
 		!IsEmptyHardState(rd.HardState) ||
 		!IsEmptySnap(rd.Snapshot) ||
-		haveMsgsAfterAppend
+		len(r.msgsAfterAppend) > 0
+}
+
+func needStorageAppendRespMsg(r *raft, rd Ready) bool {
+	// Return true if raft needs to hear about stabilized entries or an applied
+	// snapshot. See the comment in newStorageAppendRespMsg, which explains why
+	// we check hasNextOrInProgressUnstableEnts instead of len(rd.Entries) > 0.
+	return r.raftLog.hasNextOrInProgressUnstableEnts() ||
+		!IsEmptySnap(rd.Snapshot)
 }
 
 // newStorageAppendMsg creates the message that should be sent to the local
@@ -235,7 +243,9 @@ func newStorageAppendMsg(r *raft, rd Ready) pb.Message {
 	// handling to use a fast-path in r.raftLog.term() before the newly appended
 	// entries are removed from the unstable log.
 	m.Responses = r.msgsAfterAppend
-	m.Responses = append(m.Responses, newStorageAppendRespMsg(r, rd))
+	if needStorageAppendRespMsg(r, rd) {
+		m.Responses = append(m.Responses, newStorageAppendRespMsg(r, rd))
+	}
 	return m
 }
 
@@ -332,9 +342,8 @@ func newStorageAppendRespMsg(r *raft, rd Ready) pb.Message {
 	return m
 }
 
-func needStorageApply(rd Ready) bool {
-	return len(rd.CommittedEntries) > 0
-}
+func needStorageApplyMsg(rd Ready) bool     { return len(rd.CommittedEntries) > 0 }
+func needStorageApplyRespMsg(rd Ready) bool { return needStorageApplyMsg(rd) }
 
 // newStorageApplyMsg creates the message that should be sent to the local
 // apply thread to instruct it to apply committed log entries. The message
@@ -396,11 +405,11 @@ func (rn *RawNode) acceptReady(rd Ready) {
 				rn.stepsOnAdvance = append(rn.stepsOnAdvance, m)
 			}
 		}
-		if needStorageAppend(rd, false /* haveMsgsAfterAppend */) {
+		if needStorageAppendRespMsg(rn.raft, rd) {
 			m := newStorageAppendRespMsg(rn.raft, rd)
 			rn.stepsOnAdvance = append(rn.stepsOnAdvance, m)
 		}
-		if needStorageApply(rd) {
+		if needStorageApplyRespMsg(rd) {
 			m := newStorageApplyRespMsg(rn.raft, rd.CommittedEntries)
 			rn.stepsOnAdvance = append(rn.stepsOnAdvance, m)
 		}

@@ -88,7 +88,7 @@ Messages:
 3->5 MsgVote Term:2 Log:1/11
 3->6 MsgVote Term:2 Log:1/11
 3->7 MsgVote Term:2 Log:1/11
-3->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[3->3 MsgVoteResp Term:2 Log:0/0, AppendThread->3 MsgStorageAppendResp Term:2 Log:0/0]
+3->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[3->3 MsgVoteResp Term:2 Log:0/0]
 
 deliver-msgs 4 5 6
 ----
@@ -112,19 +112,19 @@ process-ready 4 5 6
   Lead:0 State:StateFollower
   HardState Term:2 Vote:3 Commit:11
   Messages:
-  4->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[4->3 MsgVoteResp Term:2 Log:0/0, AppendThread->4 MsgStorageAppendResp Term:2 Log:0/0]
+  4->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[4->3 MsgVoteResp Term:2 Log:0/0]
 > 5 handling Ready
   Ready MustSync=true:
   Lead:0 State:StateFollower
   HardState Term:2 Vote:3 Commit:11
   Messages:
-  5->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[5->3 MsgVoteResp Term:2 Log:0/0, AppendThread->5 MsgStorageAppendResp Term:2 Log:0/0]
+  5->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[5->3 MsgVoteResp Term:2 Log:0/0]
 > 6 handling Ready
   Ready MustSync=true:
   Lead:0 State:StateFollower
   HardState Term:2 Vote:3 Commit:11
   Messages:
-  6->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[6->3 MsgVoteResp Term:2 Log:0/0, AppendThread->6 MsgStorageAppendResp Term:2 Log:0/0]
+  6->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11 Responses:[6->3 MsgVoteResp Term:2 Log:0/0]
 
 process-append-thread 3 4 5 6
 ----
@@ -133,32 +133,27 @@ process-append-thread 3 4 5 6
   3->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11
   Responses:
   3->3 MsgVoteResp Term:2 Log:0/0
-  AppendThread->3 MsgStorageAppendResp Term:2 Log:0/0
 > 4 processing append thread
   Processing:
   4->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11
   Responses:
   4->3 MsgVoteResp Term:2 Log:0/0
-  AppendThread->4 MsgStorageAppendResp Term:2 Log:0/0
 > 5 processing append thread
   Processing:
   5->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11
   Responses:
   5->3 MsgVoteResp Term:2 Log:0/0
-  AppendThread->5 MsgStorageAppendResp Term:2 Log:0/0
 > 6 processing append thread
   Processing:
   6->AppendThread MsgStorageAppend Term:2 Log:0/0 HardState: Term:2 Vote:3 Commit:11
   Responses:
   6->3 MsgVoteResp Term:2 Log:0/0
-  AppendThread->6 MsgStorageAppendResp Term:2 Log:0/0
 
 deliver-msgs 3
 ----
 3->3 MsgVoteResp Term:2 Log:0/0
 INFO 3 received MsgVoteResp from 3 at term 2
 INFO 3 has received 1 MsgVoteResp votes and 0 vote rejections
-AppendThread->3 MsgStorageAppendResp Term:2 Log:0/0
 4->3 MsgVoteResp Term:2 Log:0/0
 INFO 3 received MsgVoteResp from 4 at term 2
 INFO 3 has received 2 MsgVoteResp votes and 0 vote rejections
@@ -242,16 +237,14 @@ Messages:
 4->5 MsgVote Term:3 Log:1/11
 4->6 MsgVote Term:3 Log:1/11
 4->7 MsgVote Term:3 Log:1/11
-4->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[4->4 MsgVoteResp Term:3 Log:0/0, AppendThread->4 MsgStorageAppendResp Term:3 Log:0/0]
+4->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[4->4 MsgVoteResp Term:3 Log:0/0]
 
 deliver-msgs 5 6 7
 ----
-AppendThread->5 MsgStorageAppendResp Term:2 Log:0/0
 4->5 MsgVote Term:3 Log:1/11
 INFO 5 [term: 2] received a MsgVote message with higher term from 4 [term: 3]
 INFO 5 became follower at term 3
 INFO 5 [logterm: 1, index: 11, vote: 0] cast MsgVote for 4 [logterm: 1, index: 11] at term 3
-AppendThread->6 MsgStorageAppendResp Term:2 Log:0/0
 4->6 MsgVote Term:3 Log:1/11
 INFO 6 [term: 2] received a MsgVote message with higher term from 4 [term: 3]
 INFO 6 became follower at term 3
@@ -267,18 +260,18 @@ process-ready 5 6 7
   Ready MustSync=true:
   HardState Term:3 Vote:4 Commit:11
   Messages:
-  5->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[5->4 MsgVoteResp Term:3 Log:0/0, AppendThread->5 MsgStorageAppendResp Term:3 Log:0/0]
+  5->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[5->4 MsgVoteResp Term:3 Log:0/0]
 > 6 handling Ready
   Ready MustSync=true:
   HardState Term:3 Vote:4 Commit:11
   Messages:
-  6->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[6->4 MsgVoteResp Term:3 Log:0/0, AppendThread->6 MsgStorageAppendResp Term:3 Log:0/0]
+  6->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[6->4 MsgVoteResp Term:3 Log:0/0]
 > 7 handling Ready
   Ready MustSync=true:
   Lead:0 State:StateFollower
   HardState Term:3 Vote:4 Commit:11
   Messages:
-  7->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[7->4 MsgVoteResp Term:3 Log:0/0, AppendThread->7 MsgStorageAppendResp Term:3 Log:0/0]
+  7->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11 Responses:[7->4 MsgVoteResp Term:3 Log:0/0]
 
 process-append-thread 4 5 6 7
 ----
@@ -287,33 +280,27 @@ process-append-thread 4 5 6 7
   4->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11
   Responses:
   4->4 MsgVoteResp Term:3 Log:0/0
-  AppendThread->4 MsgStorageAppendResp Term:3 Log:0/0
 > 5 processing append thread
   Processing:
   5->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11
   Responses:
   5->4 MsgVoteResp Term:3 Log:0/0
-  AppendThread->5 MsgStorageAppendResp Term:3 Log:0/0
 > 6 processing append thread
   Processing:
   6->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11
   Responses:
   6->4 MsgVoteResp Term:3 Log:0/0
-  AppendThread->6 MsgStorageAppendResp Term:3 Log:0/0
 > 7 processing append thread
   Processing:
   7->AppendThread MsgStorageAppend Term:3 Log:0/0 HardState: Term:3 Vote:4 Commit:11
   Responses:
   7->4 MsgVoteResp Term:3 Log:0/0
-  AppendThread->7 MsgStorageAppendResp Term:3 Log:0/0
 
 deliver-msgs 4
 ----
-AppendThread->4 MsgStorageAppendResp Term:2 Log:0/0
 4->4 MsgVoteResp Term:3 Log:0/0
 INFO 4 received MsgVoteResp from 4 at term 3
 INFO 4 has received 1 MsgVoteResp votes and 0 vote rejections
-AppendThread->4 MsgStorageAppendResp Term:3 Log:0/0
 5->4 MsgVoteResp Term:3 Log:0/0
 INFO 4 received MsgVoteResp from 5 at term 3
 INFO 4 has received 2 MsgVoteResp votes and 0 vote rejections
