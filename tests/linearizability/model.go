@@ -24,8 +24,9 @@ import (
 type Operation string
 
 const (
-	Get Operation = "get"
-	Put Operation = "put"
+	Get    Operation = "get"
+	Put    Operation = "put"
+	Delete Operation = "delete"
 )
 
 type etcdRequest struct {
@@ -37,6 +38,7 @@ type etcdRequest struct {
 type etcdResponse struct {
 	getData  string
 	revision int64
+	deleted  int64
 	err      error
 }
 
@@ -78,6 +80,12 @@ var etcdModel = porcupine.Model{
 			} else {
 				return fmt.Sprintf("put(%q, %q) -> ok, rev: %d", request.key, request.putData, response.revision)
 			}
+		case Delete:
+			if response.err != nil {
+				return fmt.Sprintf("delete(%q) -> %s", request.key, response.err)
+			} else {
+				return fmt.Sprintf("delete(%q) -> ok, rev: %d deleted:%d", request.key, response.revision, response.deleted)
+			}
 		default:
 			return "<invalid>"
 		}
@@ -99,6 +107,8 @@ func step(state EtcdState, request etcdRequest, response etcdResponse) (bool, Et
 		return stepGet(state, request, response)
 	case Put:
 		return stepPut(state, request, response)
+	case Delete:
+		return stepDelete(state, request, response)
 	default:
 		panic("Unknown operation")
 	}
@@ -119,6 +129,9 @@ func initState(request etcdRequest, response etcdResponse) EtcdState {
 		} else {
 			state.FailedWrites[request.putData] = struct{}{}
 		}
+	case Delete:
+		//TODO should state have 'deleted' field?
+		state.Value = ""
 	default:
 		panic("Unknown operation")
 	}
@@ -148,6 +161,18 @@ func stepPut(state EtcdState, request etcdRequest, response etcdResponse) (bool,
 		return false, state
 	}
 	state.Value = request.putData
+	state.LastRevision = response.revision
+	return true, state
+}
+
+func stepDelete(state EtcdState, request etcdRequest, response etcdResponse) (bool, EtcdState) {
+	if response.err != nil {
+		state.FailedWrites[request.putData] = struct{}{}
+		return true, state
+	}
+	if response.deleted == 1 && state.LastRevision >= response.revision {
+		return false, state
+	}
 	state.LastRevision = response.revision
 	return true, state
 }

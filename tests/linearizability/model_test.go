@@ -104,6 +104,18 @@ func TestModel(t *testing.T) {
 				{req: etcdRequest{op: Put, key: "key", putData: "3"}, resp: etcdResponse{revision: 4}},
 			},
 		},
+		{
+			name: "Deleting non existent key does not change revision",
+			operations: []testOperation{
+				{req: etcdRequest{op: Delete, key: "NotThere"}, resp: etcdResponse{deleted: 0, revision: 4}},
+			},
+		},
+		{
+			name: "Deleting  existent key bumps up revision",
+			operations: []testOperation{
+				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 1, revision: 5}},
+			},
+		},
 	}
 	for _, tc := range tcs {
 		var ok bool
