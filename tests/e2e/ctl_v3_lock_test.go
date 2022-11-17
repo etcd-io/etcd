@@ -69,7 +69,12 @@ func testLock(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatal(err)
 	}
-	defer blockAcquire.Stop()
+	defer func(blockAcquire *expect.ExpectProcess) {
+		err = blockAcquire.Stop()
+		require.NoError(cx.t, err)
+		blockAcquire.Wait()
+	}(blockAcquire)
+
 	select {
 	case <-time.After(100 * time.Millisecond):
 	case <-ch:
@@ -130,7 +135,10 @@ func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, er
 		return proc, outc, err
 	}
 	go func() {
-		s, xerr := proc.ExpectFunc(context.TODO(), func(string) bool { return true })
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		s, xerr := proc.ExpectFunc(ctx, func(string) bool { return true })
 		if xerr != nil {
 			require.ErrorContains(cx.t, xerr, "Error: context canceled")
 		}
