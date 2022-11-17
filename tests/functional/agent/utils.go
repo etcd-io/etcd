@@ -25,15 +25,17 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+
+	"go.uber.org/zap"
 )
 
 // TODO: support separate WAL directory
-func archive(baseDir, etcdLogPath, dataDir string) error {
+func archive(lg *zap.Logger, baseDir, etcdLogPath, dataDir string) error {
 	dir := filepath.Join(baseDir, "etcd-failure-archive", time.Now().Format(time.RFC3339))
 	if existDir(dir) {
 		dir = filepath.Join(baseDir, "etcd-failure-archive", time.Now().Add(time.Second).Format(time.RFC3339))
 	}
-	if err := fileutil.TouchDirAll(dir); err != nil {
+	if err := fileutil.TouchDirAll(lg, dir); err != nil {
 		return err
 	}
 

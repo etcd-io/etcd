@@ -37,7 +37,7 @@ func (clus *Cluster) Run() {
 	// needs to obtain all the failpoints from the etcd member.
 	clus.updateCases()
 
-	if err := fileutil.TouchDirAll(clus.Tester.DataDir); err != nil {
+	if err := fileutil.TouchDirAll(clus.lg, clus.Tester.DataDir); err != nil {
 		clus.lg.Panic(
 			"failed to create test data directory",
 			zap.String("dir", clus.Tester.DataDir),
