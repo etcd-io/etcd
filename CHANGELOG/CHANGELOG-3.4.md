@@ -958,7 +958,7 @@ See [security doc](https://etcd.io/docs/latest/op-guide/security/) for more deta
   - If watch response events exceed this server-side request limit and watch request is created with `fragment` field `true`, the server will split watch events into a set of chunks, each of which is a subset of watch events below server-side request limit.
   - Useful when client-side has limited bandwidths.
   - For example, watch response contains 10 events, where each event is 1 MiB. And server `etcd --max-request-bytes` flag value is 1 MiB. Then, server will send 10 separate fragmented events to the client.
-  - For example, watch response contains 5 events, where each event is 2 MiB. And server `etcd --max-request-bytes` flag value is 1 MiB and `clientv3.Config.MaxCallRecvMsgSize` is 1 MiB. Then, server will try to send 5 separate fragmented events to the client, and the client will error with `"code = ResourceExhausted desc = grpc: received message larger than max (...)"`.
+  - For example, watch response contains 5 events, where each event is 2 MiB. And server `etcd --max-recv-bytes` flag value is 1 MiB and `clientv3.Config.MaxCallRecvMsgSize` is 1 MiB. Then, server will try to send 5 separate fragmented events to the client, and the client will error with `"code = ResourceExhausted desc = grpc: received message larger than max (...)"`.
   - Client must implement fragmented watch event merge (which `clientv3` does in etcd v3.4).
 - Add [`raftAppliedIndex` field to `etcdserverpb.StatusResponse`](https://github.com/etcd-io/etcd/pull/9176) for current Raft applied index.
 - Add [`errors` field to `etcdserverpb.StatusResponse`](https://github.com/etcd-io/etcd/pull/9206) for server-side error.
