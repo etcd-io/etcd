@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
@@ -98,6 +99,28 @@ func authEnable(cx ctlCtx) error {
 		return fmt.Errorf("authEnableTest ctlV3AuthEnable error (%v)", err)
 	}
 	return nil
+}
+
+func applyTLSWithRootCommonName() func() {
+	var (
+		oldCertPath       = certPath
+		oldPrivateKeyPath = privateKeyPath
+		oldCaPath         = caPath
+
+		newCertPath       = filepath.Join(fixturesDir, "CommonName-root.crt")
+		newPrivateKeyPath = filepath.Join(fixturesDir, "CommonName-root.key")
+		newCaPath         = filepath.Join(fixturesDir, "CommonName-root.crt")
+	)
+
+	certPath = newCertPath
+	privateKeyPath = newPrivateKeyPath
+	caPath = newCaPath
+
+	return func() {
+		certPath = oldCertPath
+		privateKeyPath = oldPrivateKeyPath
+		caPath = oldCaPath
+	}
 }
 
 func ctlV3AuthEnable(cx ctlCtx) error {
