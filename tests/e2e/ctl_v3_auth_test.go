@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
@@ -71,6 +72,28 @@ func TestCtlV3AuthTestCacheReload(t *testing.T) { testCtl(t, authTestCacheReload
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
 		cx.t.Fatal(err)
+	}
+}
+
+func applyTLSWithRootCommonName() func() {
+	var (
+		oldCertPath       = certPath
+		oldPrivateKeyPath = privateKeyPath
+		oldCaPath         = caPath
+
+		newCertPath       = filepath.Join(certDir, "CommonName-root.crt")
+		newPrivateKeyPath = filepath.Join(certDir, "CommonName-root.key")
+		newCaPath         = filepath.Join(certDir, "CommonName-root.crt")
+	)
+
+	certPath = newCertPath
+	privateKeyPath = newPrivateKeyPath
+	caPath = newCaPath
+
+	return func() {
+		certPath = oldCertPath
+		privateKeyPath = oldPrivateKeyPath
+		caPath = oldCaPath
 	}
 }
 
