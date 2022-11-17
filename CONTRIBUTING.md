@@ -33,7 +33,7 @@ Issues should be properly labeled making it easy to find something for you.
 Depending on your interest and experience you should check different labels:
 * If you are just starting, check issues labeled with [good first issue].
 * When you feel more conformable in your contributions, checkout [help wanted].
-* Advanced contributors can try to help with issues labeled [important] covering most relevant work at the time.
+* Advanced contributors can try to help with issues labeled [priority/important] covering most relevant work at the time.
 
 If any of aforementioned labels don't have unassigned issues, please [contact] one of the [maintainers] asking to triage more issues.
 
@@ -41,7 +41,7 @@ If any of aforementioned labels don't have unassigned issues, please [contact] o
 [good first issue]: https://github.com/etcd-io/etcd/labels/good%20first%20issue
 [help wanted]: https://github.com/etcd-io/etcd/labels/help%20wanted
 [maintainers]: https://github.com/etcd-io/etcd/blob/main/MAINTAINERS
-[important]: https://github.com/etcd-io/etcd/labels/important
+[priority/important]: https://github.com/etcd-io/etcd/labels/priority%2Fimportant
 
 ## Setup development environment
 
