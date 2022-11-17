@@ -15,9 +15,10 @@
 package raft
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	pb "go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -51,19 +52,18 @@ func TestUnstableMaybeFirstIndex(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		u := unstable{
-			entries:  tt.entries,
-			offset:   tt.offset,
-			snapshot: tt.snap,
-			logger:   raftLogger,
-		}
-		index, ok := u.maybeFirstIndex()
-		if ok != tt.wok {
-			t.Errorf("#%d: ok = %t, want %t", i, ok, tt.wok)
-		}
-		if index != tt.windex {
-			t.Errorf("#%d: index = %d, want %d", i, index, tt.windex)
-		}
+		tt := tt
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			u := unstable{
+				entries:  tt.entries,
+				offset:   tt.offset,
+				snapshot: tt.snap,
+				logger:   raftLogger,
+			}
+			index, ok := u.maybeFirstIndex()
+			require.Equal(t, tt.wok, ok)
+			require.Equal(t, tt.windex, index)
+		})
 	}
 }
 
@@ -98,19 +98,18 @@ func TestMaybeLastIndex(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		u := unstable{
-			entries:  tt.entries,
-			offset:   tt.offset,
-			snapshot: tt.snap,
-			logger:   raftLogger,
-		}
-		index, ok := u.maybeLastIndex()
-		if ok != tt.wok {
-			t.Errorf("#%d: ok = %t, want %t", i, ok, tt.wok)
-		}
-		if index != tt.windex {
-			t.Errorf("#%d: index = %d, want %d", i, index, tt.windex)
-		}
+		tt := tt
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			u := unstable{
+				entries:  tt.entries,
+				offset:   tt.offset,
+				snapshot: tt.snap,
+				logger:   raftLogger,
+			}
+			index, ok := u.maybeLastIndex()
+			require.Equal(t, tt.wok, ok)
+			require.Equal(t, tt.windex, index)
+		})
 	}
 }
 
@@ -179,19 +178,18 @@ func TestUnstableMaybeTerm(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		u := unstable{
-			entries:  tt.entries,
-			offset:   tt.offset,
-			snapshot: tt.snap,
-			logger:   raftLogger,
-		}
-		term, ok := u.maybeTerm(tt.index)
-		if ok != tt.wok {
-			t.Errorf("#%d: ok = %t, want %t", i, ok, tt.wok)
-		}
-		if term != tt.wterm {
-			t.Errorf("#%d: term = %d, want %d", i, term, tt.wterm)
-		}
+		tt := tt
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			u := unstable{
+				entries:  tt.entries,
+				offset:   tt.offset,
+				snapshot: tt.snap,
+				logger:   raftLogger,
+			}
+			term, ok := u.maybeTerm(tt.index)
+			require.Equal(t, tt.wok, ok)
+			require.Equal(t, tt.wterm, term)
+		})
 	}
 }
 
@@ -205,15 +203,9 @@ func TestUnstableRestore(t *testing.T) {
 	s := pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 6, Term: 2}}
 	u.restore(s)
 
-	if u.offset != s.Metadata.Index+1 {
-		t.Errorf("offset = %d, want %d", u.offset, s.Metadata.Index+1)
-	}
-	if len(u.entries) != 0 {
-		t.Errorf("len = %d, want 0", len(u.entries))
-	}
-	if !reflect.DeepEqual(u.snapshot, &s) {
-		t.Errorf("snap = %v, want %v", u.snapshot, &s)
-	}
+	require.Equal(t, s.Metadata.Index+1, u.offset)
+	require.Zero(t, len(u.entries))
+	require.Equal(t, &s, u.snapshot)
 }
 
 func TestUnstableStableTo(t *testing.T) {
@@ -285,19 +277,18 @@ func TestUnstableStableTo(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		u := unstable{
-			entries:  tt.entries,
-			offset:   tt.offset,
-			snapshot: tt.snap,
-			logger:   raftLogger,
-		}
-		u.stableTo(tt.index, tt.term)
-		if u.offset != tt.woffset {
-			t.Errorf("#%d: offset = %d, want %d", i, u.offset, tt.woffset)
-		}
-		if len(u.entries) != tt.wlen {
-			t.Errorf("#%d: len = %d, want %d", i, len(u.entries), tt.wlen)
-		}
+		tt := tt
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			u := unstable{
+				entries:  tt.entries,
+				offset:   tt.offset,
+				snapshot: tt.snap,
+				logger:   raftLogger,
+			}
+			u.stableTo(tt.index, tt.term)
+			require.Equal(t, tt.woffset, u.offset)
+			require.Equal(t, tt.wlen, len(u.entries))
+		})
 	}
 }
 
@@ -342,18 +333,17 @@ func TestUnstableTruncateAndAppend(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		u := unstable{
-			entries:  tt.entries,
-			offset:   tt.offset,
-			snapshot: tt.snap,
-			logger:   raftLogger,
-		}
-		u.truncateAndAppend(tt.toappend)
-		if u.offset != tt.woffset {
-			t.Errorf("#%d: offset = %d, want %d", i, u.offset, tt.woffset)
-		}
-		if !reflect.DeepEqual(u.entries, tt.wentries) {
-			t.Errorf("#%d: entries = %v, want %v", i, u.entries, tt.wentries)
-		}
+		tt := tt
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			u := unstable{
+				entries:  tt.entries,
+				offset:   tt.offset,
+				snapshot: tt.snap,
+				logger:   raftLogger,
+			}
+			u.truncateAndAppend(tt.toappend)
+			require.Equal(t, tt.woffset, u.offset)
+			require.Equal(t, tt.wentries, u.entries)
+		})
 	}
 }
