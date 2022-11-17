@@ -54,7 +54,7 @@ type Config struct {
 	// If 0, it defaults to "math.MaxInt32", because range response can
 	// easily exceed request send limits.
 	// Make sure that "MaxCallRecvMsgSize" >= server-side default send/recv limit.
-	// ("--max-request-bytes" flag to etcd or "embed.Config.MaxRequestBytes").
+	// ("--max-recv-bytes" flag to etcd).
 	MaxCallRecvMsgSize int
 
 	// TLS holds the client secure credentials, if any.
