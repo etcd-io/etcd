@@ -23,7 +23,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
