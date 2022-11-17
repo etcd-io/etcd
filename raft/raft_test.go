@@ -1798,6 +1798,10 @@ func testCandidateResetTerm(t *testing.T, mt pb.MessageType) {
 	}
 }
 
+// The following three tests exercise the behavior of a (pre-)candidate when its
+// own self-vote is delivered back to itself after the peer has already learned
+// that it has lost the election. The self-vote should be ignored in these cases.
+
 func TestCandidateSelfVoteAfterLostElection(t *testing.T) {
 	testCandidateSelfVoteAfterLostElection(t, false)
 }
@@ -1875,7 +1879,8 @@ func TestCandidateDeliversPreCandidateSelfVoteAfterBecomingCandidate(t *testing.
 		t.Errorf("state = %v, want %v", sm.state, StateCandidate)
 	}
 
-	// n1 becomes the leader once its self-vote is received.
+	// n1 becomes the leader once its self-vote is received because now
+	// quorum is reached.
 	sm.stepOrSend(steps)
 	if sm.state != StateLeader {
 		t.Errorf("state = %v, want %v", sm.state, StateLeader)
