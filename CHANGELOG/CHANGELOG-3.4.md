@@ -4,6 +4,14 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
+## v3.4.23 (TBD)
+
+### Package `clientv3`
+- Fix [Refreshing token on CommonName based authentication causes segmentation violation in client](https://github.com/etcd-io/etcd/pull/14792).
+
+
+<hr>
+
 ## v3.4.22 (2022-11-02)
 
 ### etcd server

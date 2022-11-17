@@ -18,13 +18,12 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Package `clientv3`
 - Fix [Add backoff before retry when watch stream returns unavailable](https://github.com/etcd-io/etcd/pull/14582).
 - Fix [stack overflow error in double barrier](https://github.com/etcd-io/etcd/pull/14658)
-
-<hr>
-
-## v3.5.6 (TBD)
+- Fix [Refreshing token on CommonName based authentication causes segmentation violation in client](https://github.com/etcd-io/etcd/pull/14790).
 
 ### etcd grpc-proxy
 - Add [`etcd grpc-proxy start --listen-cipher-suites`](https://github.com/etcd-io/etcd/pull/14500) flag to support adding configurable cipher list.
+
+<hr>
 
 ## v3.5.5 (2022-09-15)
 
