@@ -190,10 +190,11 @@ func (u *unstable) restore(s pb.Snapshot) {
 }
 
 func (u *unstable) truncateAndAppend(ents []pb.Entry) {
+	// TODO(nvanbenschoten): rename this variable to firstAppIndex.
 	after := ents[0].Index
 	switch {
 	case after == u.offset+uint64(len(u.entries)):
-		// after is the next index in the u.entries directly append.
+		// after is the next index in the u.entries, so append directly.
 		u.entries = append(u.entries, ents...)
 	case after <= u.offset:
 		u.logger.Infof("replace the unstable entries from index %d", after)
@@ -214,6 +215,9 @@ func (u *unstable) truncateAndAppend(ents []pb.Entry) {
 	}
 }
 
+// slice returns the entries from the unstable log with indexes in the
+// range [lo, hi). The entire range must be stored in the unstable log
+// or the method will panic.
 func (u *unstable) slice(lo uint64, hi uint64) []pb.Entry {
 	u.mustCheckOutOfBounds(lo, hi)
 	return u.entries[lo-u.offset : hi-u.offset]
