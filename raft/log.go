@@ -209,7 +209,7 @@ func (l *raftLog) nextCommittedEnts(allowUnstable bool) (ents []pb.Entry) {
 		hi = min(hi, l.unstable.offset)
 	}
 	if lo < hi {
-		// TODO: handle pagination correctly.
+		// TODO(before merge): handle pagination correctly.
 		ents, err := l.slice(lo, hi, l.maxNextCommittedEntsSize)
 		if err != nil {
 			l.logger.Panicf("unexpected error when getting unapplied entries (%v)", err)
