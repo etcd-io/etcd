@@ -76,7 +76,9 @@ func newLogWithSize(storage Storage, logger Logger, maxNextCommittedEntsSize uin
 	if err != nil {
 		panic(err) // TODO(bdarnell)
 	}
-	log.unstable.init(lastIndex, logger)
+	log.unstable.offset = lastIndex + 1
+	log.unstable.offsetInProgress = lastIndex + 1
+	log.unstable.logger = logger
 	// Initialize our committed and applied pointers to the time of the last compaction.
 	log.committed = firstIndex - 1
 	log.applied = firstIndex - 1

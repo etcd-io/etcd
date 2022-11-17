@@ -49,13 +49,6 @@ type unstable struct {
 	logger Logger
 }
 
-// init initializes the unstable log.
-func (u *unstable) init(stableLastIndex uint64, logger Logger) {
-	u.offset = stableLastIndex + 1
-	u.offsetInProgress = u.offset
-	u.logger = logger
-}
-
 // maybeFirstIndex returns the index of the first possible entry in entries
 // if it has a snapshot.
 func (u *unstable) maybeFirstIndex() (uint64, bool) {
