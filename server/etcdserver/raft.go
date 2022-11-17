@@ -157,7 +157,7 @@ func (r *raftNode) tick() {
 // to modify the fields after it has been started.
 func (r *raftNode) start(rh *raftReadyHandler) {
 	internalTimeout := time.Second
-
+	// gofail: var raftBeforeStart struct{}
 	go func() {
 		defer r.onStop()
 		islead := false

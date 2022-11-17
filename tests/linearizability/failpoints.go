@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -31,6 +32,7 @@ import (
 )
 
 var (
+	SleepFailPoint                           Failpoint = sleepFailpoint{"etcdserver/sleepFailPoint", "sleep(200)"}
 	KillFailpoint                            Failpoint = killFailpoint{}
 	DefragBeforeCopyPanic                    Failpoint = goFailpoint{"backend/defragBeforeCopy", "panic", triggerDefrag}
 	DefragBeforeRenamePanic                  Failpoint = goFailpoint{"backend/defragBeforeRename", "panic", triggerDefrag}
@@ -73,6 +75,58 @@ var (
 type Failpoint interface {
 	Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error
 	Name() string
+}
+
+type sleepFailpoint struct {
+	failpoint string
+	payload   string
+}
+
+func (sf sleepFailpoint) Name() string {
+	return sf.failpoint
+}
+
+func (sf sleepFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
+	err := setupSleepFailpoint(address, sf.failpoint, sf.payload)
+	if err != nil {
+		return fmt.Errorf("sleep gofailpoint setup failed: %w", err)
+	}
+	return nil
+}
+
+func setupSleepFailpoint(host, failpoint, payload string) error {
+	//payload should be in the form of: 'sleep(600)'
+	err := setupGoFailpoint(host, failpoint, payload)
+	if err != nil {
+		return err
+	}
+	failpointsUrl := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   failpoint,
+	}
+	//check whether sleep was enabled
+	r, err := http.NewRequest("GET", failpointsUrl.String(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	respStr := strings.TrimSpace(string(body))
+
+	if !strings.Contains(payload, respStr) {
+		return fmt.Errorf("sleep gofailpoint is not enabled: %s: ", failpoint)
+	}
+	return nil
 }
 
 type killFailpoint struct{}
