@@ -15,7 +15,7 @@ require (
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
 	github.com/mgechev/revive v1.2.1
 	github.com/mikefarah/yq/v4 v4.24.2
-	go.etcd.io/gofail v0.0.0-20220826035847-d0d2a96a6ef0
+	go.etcd.io/gofail v0.0.0-20221118034130-cb2ba30a3077
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	gotest.tools/gotestsum v1.7.0
 	gotest.tools/v3 v3.1.0
