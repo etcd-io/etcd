@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -29,11 +29,10 @@ import (
 func TestWarningApplyDuration(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-		ClusterSize: 1,
-		//Set very small duration to trigger warning
-		WarningUnaryRequestDuration: time.Microsecond,
-	})
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+		e2e.WithClusterSize(1),
+		e2e.WithWarningUnaryRequestDuration(time.Microsecond),
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -43,7 +42,7 @@ func TestWarningApplyDuration(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
 	require.NoError(t, err)
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
 	assert.NoError(t, err, "error on put")
@@ -57,11 +56,10 @@ func TestWarningApplyDuration(t *testing.T) {
 func TestExperimentalWarningApplyDuration(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-		ClusterSize: 1,
-		//Set very small duration to trigger warning
-		ExperimentalWarningUnaryRequestDuration: time.Microsecond,
-	})
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+		e2e.WithClusterSize(1),
+		e2e.WithExperimentalWarningUnaryRequestDuration(time.Microsecond),
+	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -71,7 +69,7 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
 	require.NoError(t, err)
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
 	assert.NoError(t, err, "error on put")
@@ -83,11 +81,11 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 func TestBothWarningApplyDurationFlagsFail(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	_, err := e2e.NewEtcdProcessCluster(context.TODO(), t, &e2e.EtcdProcessClusterConfig{
-		ClusterSize:                             1,
-		WarningUnaryRequestDuration:             time.Second,
-		ExperimentalWarningUnaryRequestDuration: time.Second,
-	})
+	_, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+		e2e.WithClusterSize(1),
+		e2e.WithWarningUnaryRequestDuration(time.Second),
+		e2e.WithExperimentalWarningUnaryRequestDuration(time.Second),
+	)
 	if err == nil {
 		t.Fatal("Expected process to fail")
 	}

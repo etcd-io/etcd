@@ -313,6 +313,16 @@ func WithGoFailEnabled(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.GoFailEnabled = enabled }
 }
 
+func WithWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.WarningUnaryRequestDuration = time }
+}
+
+// WithExperimentalWarningUnaryRequestDuration sets a value for `-experimental-warning-unary-request-duration`.
+// TODO(ahrtr): remove this function when the corresponding experimental flag is decommissioned.
+func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ExperimentalWarningUnaryRequestDuration = time }
+}
+
 func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.CompactionBatchLimit = limit }
 }
