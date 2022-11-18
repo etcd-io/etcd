@@ -325,15 +325,18 @@ func (l *raftLog) lastTerm() uint64 {
 }
 
 func (l *raftLog) term(i uint64) (uint64, error) {
-	// the valid term range is [index of dummy entry, last index]
+	// Check the unstable log first, even before computing the valid term range,
+	// which may need to access stable Storage. If we find the entry's term in
+	// the unstable log, we know it was in the valid range.
+	if t, ok := l.unstable.maybeTerm(i); ok {
+		return t, nil
+	}
+
+	// The valid term range is [index of dummy entry, last index].
 	dummyIndex := l.firstIndex() - 1
 	if i < dummyIndex || i > l.lastIndex() {
 		// TODO: return an error instead?
 		return 0, nil
-	}
-
-	if t, ok := l.unstable.maybeTerm(i); ok {
-		return t, nil
 	}
 
 	t, err := l.storage.Term(i)
