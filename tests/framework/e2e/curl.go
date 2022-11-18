@@ -58,12 +58,12 @@ func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method st
 	)
 	if req.MetricsURLScheme != "https" {
 		if req.IsTLS {
-			if cfg.ClientTLS != ClientTLSAndNonTLS {
+			if cfg.Client.ConnectionType != ClientTLSAndNonTLS {
 				panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
 			}
 			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
 			acurl = ToTLS(member.Config().Acurl)
-		} else if cfg.ClientTLS == ClientTLS {
+		} else if cfg.Client.ConnectionType == ClientTLS {
 			if !cfg.NoCN {
 				cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
 			} else {

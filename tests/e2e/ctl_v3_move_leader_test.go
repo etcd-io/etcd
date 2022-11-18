@@ -61,7 +61,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 	}()
 
 	var tcfg *tls.Config
-	if cfg.ClientTLS == e2e.ClientTLS {
+	if cfg.Client.ConnectionType == e2e.ClientTLS {
 		tinfo := transport.TLSInfo{
 			CertFile:      e2e.CertPath,
 			KeyFile:       e2e.PrivateKeyPath,

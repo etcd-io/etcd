@@ -115,7 +115,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
@@ -163,7 +163,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 
 	for i := 0; i < 10; i++ {

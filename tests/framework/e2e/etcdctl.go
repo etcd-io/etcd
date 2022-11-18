@@ -32,12 +32,12 @@ import (
 )
 
 type EtcdctlV3 struct {
-	cfg        *EtcdProcessClusterConfig
+	cfg        ClientConfig
 	endpoints  []string
 	authConfig clientv3.AuthConfig
 }
 
-func NewEtcdctl(cfg *EtcdProcessClusterConfig, endpoints []string, opts ...config.ClientOption) (*EtcdctlV3, error) {
+func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOption) (*EtcdctlV3, error) {
 	ctl := &EtcdctlV3{
 		cfg:       cfg,
 		endpoints: endpoints,
@@ -308,11 +308,11 @@ func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
 
 func (ctl *EtcdctlV3) flags() map[string]string {
 	fmap := make(map[string]string)
-	if ctl.cfg.ClientTLS == ClientTLS {
-		if ctl.cfg.IsClientAutoTLS {
+	if ctl.cfg.ConnectionType == ClientTLS {
+		if ctl.cfg.AutoTLS {
 			fmap["insecure-transport"] = "false"
 			fmap["insecure-skip-tls-verify"] = "true"
-		} else if ctl.cfg.IsClientCRL {
+		} else if ctl.cfg.RevokeCerts {
 			fmap["cacert"] = CaPath
 			fmap["cert"] = RevokedCertPath
 			fmap["key"] = RevokedPrivateKeyPath

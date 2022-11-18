@@ -43,9 +43,9 @@ func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDialTimeout(0))
 func TestCtlV3GetRevokedCRL(t *testing.T) {
 	cfg := e2e.NewConfig(
 		e2e.WithClusterSize(1),
-		e2e.WithClientTLS(e2e.ClientTLS),
-		e2e.WithIsClientCRL(true),
-		e2e.WithClientCertAuthEnabled(true),
+		e2e.WithClientConnType(e2e.ClientTLS),
+		e2e.WithClientRevokeCerts(true),
+		e2e.WithClientCertAuthority(true),
 	)
 	testCtl(t, testGetRevokedCRL, withCfg(*cfg))
 }
@@ -56,7 +56,7 @@ func testGetRevokedCRL(cx ctlCtx) {
 	require.ErrorContains(cx.t, err, "context deadline exceeded")
 
 	// test accept
-	cx.epc.Cfg.IsClientCRL = false
+	cx.epc.Cfg.Client.RevokeCerts = false
 	if err := ctlV3Put(cx, "k", "v", ""); err != nil {
 		cx.t.Fatal(err)
 	}

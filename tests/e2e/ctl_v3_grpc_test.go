@@ -85,9 +85,9 @@ func TestAuthority(t *testing.T) {
 				cfg := e2e.NewConfigNoTLS()
 				cfg.ClusterSize = clusterSize
 				if tc.useTLS {
-					cfg.ClientTLS = e2e.ClientTLS
+					cfg.Client.ConnectionType = e2e.ClientTLS
 				}
-				cfg.IsClientAutoTLS = tc.useInsecureTLS
+				cfg.Client.AutoTLS = tc.useInsecureTLS
 				// Enable debug mode to get logs with http2 headers (including authority)
 				cfg.EnvVars = map[string]string{"GODEBUG": "http2debug=2"}
 
@@ -98,7 +98,7 @@ func TestAuthority(t *testing.T) {
 				defer epc.Close()
 				endpoints := templateEndpoints(t, tc.clientURLPattern, epc)
 
-				client, err := e2e.NewEtcdctl(cfg, endpoints)
+				client, err := e2e.NewEtcdctl(cfg.Client, endpoints)
 				assert.NoError(t, err)
 				err = client.Put(ctx, "foo", "bar", config.PutOptions{})
 				if err != nil {

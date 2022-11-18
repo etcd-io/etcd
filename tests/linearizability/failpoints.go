@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"testing"
 	"time"
 
 	"go.uber.org/zap"
@@ -32,24 +33,25 @@ import (
 
 var (
 	KillFailpoint                            Failpoint = killFailpoint{}
-	DefragBeforeCopyPanic                    Failpoint = goFailpoint{"backend/defragBeforeCopy", "panic", triggerDefrag}
-	DefragBeforeRenamePanic                  Failpoint = goFailpoint{"backend/defragBeforeRename", "panic", triggerDefrag}
-	BeforeCommitPanic                        Failpoint = goFailpoint{"backend/beforeCommit", "panic", nil}
-	AfterCommitPanic                         Failpoint = goFailpoint{"backend/afterCommit", "panic", nil}
-	RaftBeforeSavePanic                      Failpoint = goFailpoint{"etcdserver/raftBeforeSave", "panic", nil}
-	RaftAfterSavePanic                       Failpoint = goFailpoint{"etcdserver/raftAfterSave", "panic", nil}
-	BackendBeforePreCommitHookPanic          Failpoint = goFailpoint{"backend/commitBeforePreCommitHook", "panic", nil}
-	BackendAfterPreCommitHookPanic           Failpoint = goFailpoint{"backend/commitAfterPreCommitHook", "panic", nil}
-	BackendBeforeStartDBTxnPanic             Failpoint = goFailpoint{"backend/beforeStartDBTxn", "panic", nil}
-	BackendAfterStartDBTxnPanic              Failpoint = goFailpoint{"backend/afterStartDBTxn", "panic", nil}
-	BackendBeforeWritebackBufPanic           Failpoint = goFailpoint{"backend/beforeWritebackBuf", "panic", nil}
-	BackendAfterWritebackBufPanic            Failpoint = goFailpoint{"backend/afterWritebackBuf", "panic", nil}
-	CompactBeforeCommitScheduledCompactPanic Failpoint = goFailpoint{"mvcc/compactBeforeCommitScheduledCompact", "panic", triggerCompact}
-	CompactAfterCommitScheduledCompactPanic  Failpoint = goFailpoint{"mvcc/compactAfterCommitScheduledCompact", "panic", triggerCompact}
-	CompactBeforeSetFinishedCompactPanic     Failpoint = goFailpoint{"mvcc/compactBeforeSetFinishedCompact", "panic", triggerCompact}
-	CompactAfterSetFinishedCompactPanic      Failpoint = goFailpoint{"mvcc/compactAfterSetFinishedCompact", "panic", triggerCompact}
-	CompactBeforeCommitBatchPanic            Failpoint = goFailpoint{"mvcc/compactBeforeCommitBatch", "panic", triggerCompact}
-	CompactAfterCommitBatchPanic             Failpoint = goFailpoint{"mvcc/compactAfterCommitBatch", "panic", triggerCompact}
+	DefragBeforeCopyPanic                    Failpoint = goFailpoint{"backend/defragBeforeCopy", "panic", triggerDefrag, AnyMember}
+	DefragBeforeRenamePanic                  Failpoint = goFailpoint{"backend/defragBeforeRename", "panic", triggerDefrag, AnyMember}
+	BeforeCommitPanic                        Failpoint = goFailpoint{"backend/beforeCommit", "panic", nil, AnyMember}
+	AfterCommitPanic                         Failpoint = goFailpoint{"backend/afterCommit", "panic", nil, AnyMember}
+	RaftBeforeSavePanic                      Failpoint = goFailpoint{"etcdserver/raftBeforeSave", "panic", nil, AnyMember}
+	RaftAfterSavePanic                       Failpoint = goFailpoint{"etcdserver/raftAfterSave", "panic", nil, AnyMember}
+	BackendBeforePreCommitHookPanic          Failpoint = goFailpoint{"backend/commitBeforePreCommitHook", "panic", nil, AnyMember}
+	BackendAfterPreCommitHookPanic           Failpoint = goFailpoint{"backend/commitAfterPreCommitHook", "panic", nil, AnyMember}
+	BackendBeforeStartDBTxnPanic             Failpoint = goFailpoint{"backend/beforeStartDBTxn", "panic", nil, AnyMember}
+	BackendAfterStartDBTxnPanic              Failpoint = goFailpoint{"backend/afterStartDBTxn", "panic", nil, AnyMember}
+	BackendBeforeWritebackBufPanic           Failpoint = goFailpoint{"backend/beforeWritebackBuf", "panic", nil, AnyMember}
+	BackendAfterWritebackBufPanic            Failpoint = goFailpoint{"backend/afterWritebackBuf", "panic", nil, AnyMember}
+	CompactBeforeCommitScheduledCompactPanic Failpoint = goFailpoint{"mvcc/compactBeforeCommitScheduledCompact", "panic", triggerCompact, AnyMember}
+	CompactAfterCommitScheduledCompactPanic  Failpoint = goFailpoint{"mvcc/compactAfterCommitScheduledCompact", "panic", triggerCompact, AnyMember}
+	CompactBeforeSetFinishedCompactPanic     Failpoint = goFailpoint{"mvcc/compactBeforeSetFinishedCompact", "panic", triggerCompact, AnyMember}
+	CompactAfterSetFinishedCompactPanic      Failpoint = goFailpoint{"mvcc/compactAfterSetFinishedCompact", "panic", triggerCompact, AnyMember}
+	CompactBeforeCommitBatchPanic            Failpoint = goFailpoint{"mvcc/compactBeforeCommitBatch", "panic", triggerCompact, AnyMember}
+	CompactAfterCommitBatchPanic             Failpoint = goFailpoint{"mvcc/compactAfterCommitBatch", "panic", triggerCompact, AnyMember}
+	RaftBeforeLeaderSendPanic                Failpoint = goFailpoint{"etcdserver/raftBeforeLeaderSend", "panic", nil, Leader}
 	RandomFailpoint                          Failpoint = randomFailpoint{[]Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic,
 		RaftAfterSavePanic, DefragBeforeCopyPanic, DefragBeforeRenamePanic,
@@ -59,25 +61,25 @@ var (
 		CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
 		CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic,
 		CompactBeforeCommitBatchPanic, CompactAfterCommitBatchPanic,
+		RaftBeforeLeaderSendPanic,
 	}}
 	// TODO: Figure out how to reliably trigger below failpoints and add them to RandomFailpoint
-	raftBeforeLeaderSendPanic   Failpoint = goFailpoint{"etcdserver/raftBeforeLeaderSend", "panic", nil}
-	raftBeforeApplySnapPanic    Failpoint = goFailpoint{"etcdserver/raftBeforeApplySnap", "panic", nil}
-	raftAfterApplySnapPanic     Failpoint = goFailpoint{"etcdserver/raftAfterApplySnap", "panic", nil}
-	raftAfterWALReleasePanic    Failpoint = goFailpoint{"etcdserver/raftAfterWALRelease", "panic", nil}
-	raftBeforeFollowerSendPanic Failpoint = goFailpoint{"etcdserver/raftBeforeFollowerSend", "panic", nil}
-	raftBeforeSaveSnapPanic     Failpoint = goFailpoint{"etcdserver/raftBeforeSaveSnap", "panic", nil}
-	raftAfterSaveSnapPanic      Failpoint = goFailpoint{"etcdserver/raftAfterSaveSnap", "panic", nil}
+	raftBeforeApplySnapPanic    Failpoint = goFailpoint{"etcdserver/raftBeforeApplySnap", "panic", nil, AnyMember}
+	raftAfterApplySnapPanic     Failpoint = goFailpoint{"etcdserver/raftAfterApplySnap", "panic", nil, AnyMember}
+	raftAfterWALReleasePanic    Failpoint = goFailpoint{"etcdserver/raftAfterWALRelease", "panic", nil, AnyMember}
+	raftBeforeFollowerSendPanic Failpoint = goFailpoint{"etcdserver/raftBeforeFollowerSend", "panic", nil, AnyMember}
+	raftBeforeSaveSnapPanic     Failpoint = goFailpoint{"etcdserver/raftBeforeSaveSnap", "panic", nil, AnyMember}
+	raftAfterSaveSnapPanic      Failpoint = goFailpoint{"etcdserver/raftAfterSaveSnap", "panic", nil, AnyMember}
 )
 
 type Failpoint interface {
-	Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error
+	Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error
 	Name() string
 }
 
 type killFailpoint struct{}
 
-func (f killFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	err := member.Kill()
 	if err != nil {
@@ -102,10 +104,26 @@ type goFailpoint struct {
 	failpoint string
 	payload   string
 	trigger   func(ctx context.Context, member e2e.EtcdProcess) error
+	target    failpointTarget
 }
 
-func (f goFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
-	member := clus.Procs[rand.Int()%len(clus.Procs)]
+type failpointTarget string
+
+const (
+	AnyMember failpointTarget = "AnyMember"
+	Leader    failpointTarget = "Leader"
+)
+
+func (f goFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+	var member e2e.EtcdProcess
+	switch f.target {
+	case AnyMember:
+		member = clus.Procs[rand.Int()%len(clus.Procs)]
+	case Leader:
+		member = clus.Procs[clus.WaitLeader(t)]
+	default:
+		panic("unknown target")
+	}
 	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
 	err := setupGoFailpoint(address, f.failpoint, f.payload)
 	if err != nil {
@@ -201,10 +219,10 @@ type randomFailpoint struct {
 	failpoints []Failpoint
 }
 
-func (f randomFailpoint) Trigger(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
 	failpoint := f.failpoints[rand.Int()%len(f.failpoints)]
-	fmt.Printf("Triggering %v failpoint\n", failpoint.Name())
-	return failpoint.Trigger(ctx, clus)
+	t.Logf("Triggering %v failpoint\n", failpoint.Name())
+	return failpoint.Trigger(t, ctx, clus)
 }
 
 func (f randomFailpoint) Name() string {
