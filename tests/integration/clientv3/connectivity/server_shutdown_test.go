@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.etcd.io/etcd/tests/v3/integration/clientv3"
+	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
 // TestBalancerUnderServerShutdownWatch expects that watch client

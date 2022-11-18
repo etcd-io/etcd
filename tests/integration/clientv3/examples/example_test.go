@@ -19,7 +19,7 @@ import (
 	"log"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 func mockConfig_insecure() {}

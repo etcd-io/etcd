@@ -16,7 +16,7 @@
 package clientv3util
 
 import (
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 // KeyExists returns a comparison operation that evaluates to true iff the given

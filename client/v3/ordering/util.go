@@ -18,7 +18,7 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 type OrderViolationFunc func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error
