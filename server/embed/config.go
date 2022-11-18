@@ -342,8 +342,10 @@ type Config struct {
 	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
 	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
-	// ExperimentalWarningUnaryRequestDuration is the time duration after which a warning is generated if applying
+	// WarningUnaryRequestDuration is the time duration after which a warning is generated if applying
 	// unary request takes more time than this value.
+	WarningUnaryRequestDuration time.Duration `json:"warning-unary-request-duration"`
+	// ExperimentalWarningUnaryRequestDuration is deprecated, please use WarningUnaryRequestDuration instead.
 	ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration"`
 	// ExperimentalMaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
 	ExperimentalMaxLearners int `json:"experimental-max-learners"`
@@ -473,8 +475,6 @@ func NewConfig() *Config {
 		MaxRequestBytes:                  DefaultMaxRequestBytes,
 		MaxConcurrentStreams:             DefaultMaxConcurrentStreams,
 		ExperimentalWarningApplyDuration: DefaultWarningApplyDuration,
-
-		ExperimentalWarningUnaryRequestDuration: DefaultWarningUnaryRequestDuration,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,

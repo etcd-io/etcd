@@ -17,10 +17,12 @@
 package etcdmain
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
+	"time"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -270,7 +272,8 @@ func newConfig() *config {
 	fs.DurationVar(&cfg.ec.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ec.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
 	fs.DurationVar(&cfg.ec.ExperimentalDowngradeCheckTime, "experimental-downgrade-check-time", cfg.ec.ExperimentalDowngradeCheckTime, "Duration of time between two downgrade status check.")
 	fs.DurationVar(&cfg.ec.ExperimentalWarningApplyDuration, "experimental-warning-apply-duration", cfg.ec.ExperimentalWarningApplyDuration, "Time duration after which a warning is generated if request takes more time.")
-	fs.DurationVar(&cfg.ec.ExperimentalWarningUnaryRequestDuration, "experimental-warning-unary-request-duration", cfg.ec.ExperimentalWarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
+	fs.DurationVar(&cfg.ec.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.ec.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
+	fs.DurationVar(&cfg.ec.ExperimentalWarningUnaryRequestDuration, "experimental-warning-unary-request-duration", cfg.ec.ExperimentalWarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time. It's deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.")
 	fs.BoolVar(&cfg.ec.ExperimentalMemoryMlock, "experimental-memory-mlock", cfg.ec.ExperimentalMemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
 	fs.BoolVar(&cfg.ec.ExperimentalTxnModeWriteWithSharedBuffer, "experimental-txn-mode-write-with-shared-buffer", true, "Enable the write transaction to use a shared buffer in its readonly check operations.")
 	fs.UintVar(&cfg.ec.ExperimentalBootstrapDefragThresholdMegabytes, "experimental-bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.")
@@ -333,6 +336,11 @@ func (cfg *config) parse(arguments []string) error {
 
 	if cfg.ec.V2Deprecation == "" {
 		cfg.ec.V2Deprecation = cconfig.V2_DEPR_DEFAULT
+	}
+
+	cfg.ec.WarningUnaryRequestDuration, perr = cfg.parseWarningUnaryRequestDuration()
+	if perr != nil {
+		return perr
 	}
 
 	// now logger is set up
@@ -421,4 +429,25 @@ func (cfg *config) validate() error {
 		return fmt.Errorf("v2 proxy is deprecated, and --discovery-fallback can't be configured as %q", fallbackFlagProxy)
 	}
 	return cfg.ec.Validate()
+}
+
+func (cfg *config) parseWarningUnaryRequestDuration() (time.Duration, error) {
+	if cfg.ec.ExperimentalWarningUnaryRequestDuration != 0 && cfg.ec.WarningUnaryRequestDuration != 0 {
+		return 0, errors.New(
+			"both --experimental-warning-unary-request-duration and --warning-unary-request-duration flags are set. " +
+				"Use only --warning-unary-request-duration")
+	}
+
+	if cfg.ec.WarningUnaryRequestDuration != 0 {
+		return cfg.ec.WarningUnaryRequestDuration, nil
+	}
+
+	if cfg.ec.ExperimentalWarningUnaryRequestDuration != 0 {
+		cfg.ec.GetLogger().Warn(
+			"--experimental-warning-unary-request-duration is deprecated, and will be decommissioned in v3.7. " +
+				"Use --warning-unary-request-duration instead.")
+		return cfg.ec.ExperimentalWarningUnaryRequestDuration, nil
+	}
+
+	return embed.DefaultWarningUnaryRequestDuration, nil
 }
