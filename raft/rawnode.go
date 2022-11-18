@@ -268,10 +268,10 @@ func newStorageAppendRespMsg(r *raft, rd Ready) pb.Message {
 		// (index, term) match the unstable log by the time the response is received,
 		// the unstable log can be truncated.
 		//
-		// However, with just this logic, there would be an ABA problem that could lead
-		// to the unstable log and the stable log getting out of sync temporarily and
-		// leading to an inconsistent view. Consider the following example with 5 nodes,
-		// A B C D E:
+		// However, with just this logic, there would be an ABA problem[^1] that could
+		// lead to the unstable log and the stable log getting out of sync temporarily
+		// and leading to an inconsistent view. Consider the following example with 5
+		// nodes, A B C D E:
 		//
 		//  1. A is the leader.
 		//  2. A proposes some log entries but only B receives these entries.
@@ -332,6 +332,8 @@ func newStorageAppendRespMsg(r *raft, rd Ready) pb.Message {
 		// attest that this (index, term) is correct at the current term, in case the
 		// MsgStorageAppend that contained the last entry in the unstable slice carried
 		// an earlier term and was dropped.
+		//
+		// [^1]: https://en.wikipedia.org/wiki/ABA_problem
 		m.Index = r.raftLog.lastIndex()
 		m.LogTerm = r.raftLog.lastTerm()
 	}
@@ -455,7 +457,7 @@ func (rn *RawNode) HasReady() bool {
 func (rn *RawNode) Advance(_ Ready) {
 	// The actions performed by this function are encoded into stepsOnAdvance in
 	// acceptReady. In earlier versions of this library, they were computed from
-	// the provided Ready struct. Retain the unused parameter for compatability.
+	// the provided Ready struct. Retain the unused parameter for compatibility.
 	if rn.asyncStorageWrites {
 		rn.raft.logger.Panicf("Advance must not be called when using AsyncStorageWrites")
 	}

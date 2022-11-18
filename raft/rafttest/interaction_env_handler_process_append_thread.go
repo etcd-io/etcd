@@ -45,7 +45,8 @@ func (env *InteractionEnv) handleProcessAppendThread(t *testing.T, d datadriven.
 func (env *InteractionEnv) ProcessAppendThread(idx int) error {
 	n := &env.Nodes[idx]
 	if len(n.AppendWork) == 0 {
-		return fmt.Errorf("no append work to perform")
+		env.Output.WriteString("no append work to perform")
+		return nil
 	}
 	m := n.AppendWork[0]
 	n.AppendWork = n.AppendWork[1:]

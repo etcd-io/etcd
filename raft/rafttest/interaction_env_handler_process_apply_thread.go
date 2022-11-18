@@ -45,7 +45,8 @@ func (env *InteractionEnv) handleProcessApplyThread(t *testing.T, d datadriven.T
 func (env *InteractionEnv) ProcessApplyThread(idx int) error {
 	n := &env.Nodes[idx]
 	if len(n.ApplyWork) == 0 {
-		return fmt.Errorf("no apply work to perform")
+		env.Output.WriteString("no apply work to perform")
+		return nil
 	}
 	m := n.ApplyWork[0]
 	n.ApplyWork = n.ApplyWork[1:]
