@@ -33,6 +33,7 @@ type RangeResult struct {
 	KVs   []mvccpb.KeyValue
 	Rev   int64
 	Count int
+	More  bool
 }
 
 type ReadView interface {

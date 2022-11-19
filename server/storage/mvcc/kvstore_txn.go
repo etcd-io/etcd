@@ -92,7 +92,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 	}
 
 	limit := int(ro.Limit)
-	if limit <= 0 || limit > len(revpairs) {
+	if limit <= 0 || limit >= len(revpairs) {
 		limit = len(revpairs)
 	}
 
@@ -128,7 +128,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 		}
 	}
 	tr.trace.Step("range keys from bolt db")
-	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
+	return &RangeResult{KVs: kvs, Count: total, Rev: curRev, More: total > len(kvs)}, nil
 }
 
 func (tr *storeTxnRead) End() {
