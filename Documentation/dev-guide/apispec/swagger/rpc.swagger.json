@@ -2665,6 +2665,11 @@
           "type": "string",
           "format": "int64",
           "description": "max_create_revision is the upper bound for returned key create revisions; all keys with\ngreater create revisions will be filtered away."
+        },
+        "max_bytes": {
+          "type": "string",
+          "format": "int64",
+          "description": "max_bytes is a limit on the total size of key-value pairs returned for the\nrequest. When max_bytes is set to 0, it is treated as no limit."
         }
       }
     },
