@@ -254,6 +254,53 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	}
 }
 
+func TestKVRangeMaxBytes(t *testing.T)    { testKVRangeMaxBytes(t, normalRangeFunc) }
+func TestKVTxnRangeMaxBytes(t *testing.T) { testKVRangeMaxBytes(t, txnRangeFunc) }
+
+func testKVRangeMaxBytes(t *testing.T, f rangeFunc) {
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b, tmpPath)
+
+	kvs := put3TestKVs(s)
+
+	kvsSize := func(kvs []mvccpb.KeyValue) int64 {
+		var s int
+		for _, kv := range kvs {
+			s += kv.Size()
+		}
+		return int64(s)
+	}
+
+	wrev := int64(4)
+	tests := []struct {
+		maxBytes int64
+		wcounts  int64
+		wkvs     []mvccpb.KeyValue
+		wmore    bool
+	}{
+		// no limit
+		{-1, 3, kvs, false},
+		// no limit
+		{0, 3, kvs, false},
+		{kvsSize(kvs[:1]), 3, kvs[:1], true},
+		{kvsSize(kvs[:2]), 3, kvs[:2], true},
+		{kvsSize(kvs), 3, kvs, false},
+		{1000, 3, kvs, false},
+	}
+	for i, tt := range tests {
+		tt := tt
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{MaxBytes: tt.maxBytes})
+			require.Nil(t, err)
+			require.Equal(t, tt.wkvs, r.KVs)
+			require.Equal(t, wrev, r.Rev)
+			require.Equal(t, len(kvs), r.Count)
+			require.Equal(t, tt.wmore, r.More)
+		})
+	}
+}
+
 func TestKVPutMultipleTimes(t *testing.T)    { testKVPutMultipleTimes(t, normalPutFunc) }
 func TestKVTxnPutMultipleTimes(t *testing.T) { testKVPutMultipleTimes(t, txnPutFunc) }
 

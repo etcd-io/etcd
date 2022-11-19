@@ -93,6 +93,7 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 
 	kvs := make([]mvccpb.KeyValue, limit)
 	revBytes := newRevBytes()
+	var totalBytes int64
 	for i, revpair := range revpairs[:len(kvs)] {
 		select {
 		case <-ctx.Done():
@@ -114,6 +115,11 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 				zap.Int("len-revpairs", len(revpairs)),
 				zap.Int("len-values", len(vs)),
 			)
+		}
+		totalBytes += int64(len(vs[0]))
+		if ro.MaxBytes > 0 && totalBytes > ro.MaxBytes {
+			kvs = kvs[:i]
+			break
 		}
 		if err := kvs[i].Unmarshal(vs[0]); err != nil {
 			tr.s.lg.Fatal(
