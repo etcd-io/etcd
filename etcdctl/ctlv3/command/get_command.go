@@ -27,6 +27,7 @@ import (
 var (
 	getConsistency string
 	getLimit       int64
+	getMaxBytes    int64
 	getSortOrder   string
 	getSortTarget  string
 	getPrefix      bool
@@ -49,6 +50,7 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().StringVar(&getSortOrder, "order", "", "Order of results; ASCEND or DESCEND (ASCEND by default)")
 	cmd.Flags().StringVar(&getSortTarget, "sort-by", "", "Sort target; CREATE, KEY, MODIFY, VALUE, or VERSION")
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "Maximum number of results")
+	cmd.Flags().Int64Var(&getMaxBytes, "max-bytes", 0, "Maximum bytes of results")
 	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "Get keys with matching prefix")
 	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "Get keys that are greater than or equal to the given key using byte compare")
 	cmd.Flags().Int64Var(&getRev, "rev", 0, "Specify the kv revision")
@@ -126,6 +128,7 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 	}
 
 	opts = append(opts, clientv3.WithLimit(getLimit))
+	opts = append(opts, clientv3.WithMaxBytes(getMaxBytes))
 	if getRev > 0 {
 		opts = append(opts, clientv3.WithRev(getRev))
 	}
