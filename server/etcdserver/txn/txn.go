@@ -150,18 +150,20 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
 
-	limit := r.Limit
+	limit, maxBytes := r.Limit, r.MaxBytes
 	if r.SortOrder != pb.RangeRequest_NONE ||
 		r.MinModRevision != 0 || r.MaxModRevision != 0 ||
 		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
 		// fetch everything; sort and truncate afterwards
 		limit = 0
+		maxBytes = 0
 	}
 
 	ro := mvcc.RangeOptions{
-		Limit: limit,
-		Rev:   r.Revision,
-		Count: r.CountOnly,
+		Limit:    limit,
+		MaxBytes: maxBytes,
+		Rev:      r.Revision,
+		Count:    r.CountOnly,
 	}
 
 	rr, err := txnRead.Range(ctx, r.Key, mkGteRange(r.RangeEnd), ro)
@@ -226,6 +228,17 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 	if r.Limit > 0 && len(rr.KVs) > int(r.Limit) {
 		rr.KVs = rr.KVs[:r.Limit]
 		resp.More = true
+	}
+	if r.MaxBytes > 0 && maxBytes == 0 {
+		var totalBytes int64
+		for i, kv := range rr.KVs {
+			totalBytes += int64(kv.Size())
+			if totalBytes > r.MaxBytes {
+				resp.More = true
+				rr.KVs = rr.KVs[:i]
+				break
+			}
+		}
 	}
 
 	trace.Step("filter and sort the key-value pairs")

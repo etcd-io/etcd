@@ -36,6 +36,7 @@ type Op struct {
 
 	// for range
 	limit        int64
+	maxBytes     int64
 	sort         *SortOption
 	serializable bool
 	keysOnly     bool
@@ -157,6 +158,7 @@ func (op Op) toRangeRequest() *pb.RangeRequest {
 		Key:               op.key,
 		RangeEnd:          op.end,
 		Limit:             op.limit,
+		MaxBytes:          op.maxBytes,
 		Revision:          op.rev,
 		Serializable:      op.serializable,
 		KeysOnly:          op.keysOnly,
@@ -267,6 +269,8 @@ func OpDelete(key string, opts ...OpOption) Op {
 		panic("unexpected filter in delete")
 	case ret.createdNotify:
 		panic("unexpected createdNotify in delete")
+	case ret.maxBytes != 0:
+		panic("unexpected maxBytes in delete")
 	}
 	return ret
 }
@@ -296,6 +300,8 @@ func OpPut(key, val string, opts ...OpOption) Op {
 		panic("unexpected filter in put")
 	case ret.createdNotify:
 		panic("unexpected createdNotify in put")
+	case ret.maxBytes != 0:
+		panic("unexpected maxBytes in delete")
 	}
 	return ret
 }
@@ -323,6 +329,8 @@ func opWatch(key string, opts ...OpOption) Op {
 		panic("unexpected mod revision filter in watch")
 	case ret.minCreateRev != 0, ret.maxCreateRev != 0:
 		panic("unexpected create revision filter in watch")
+	case ret.maxBytes != 0:
+		panic("unexpected maxBytes in delete")
 	}
 	return ret
 }
@@ -344,6 +352,10 @@ func WithLease(leaseID LeaseID) OpOption {
 // WithLimit limits the number of results to return from 'Get' request.
 // If WithLimit is given a 0 limit, it is treated as no limit.
 func WithLimit(n int64) OpOption { return func(op *Op) { op.limit = n } }
+
+// WithMaxBytes limits the size in bytes of results to return from 'Get' request.
+// If WithMaxBytes is given a 0 limit, it is treated as no limit.
+func WithMaxBytes(n int64) OpOption { return func(op *Op) { op.maxBytes = n } }
 
 // WithRev specifies the store revision for 'Get' request.
 // Or the start revision of 'Watch' request.
