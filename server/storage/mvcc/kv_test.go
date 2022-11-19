@@ -33,6 +33,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/stretchr/testify/require"
 )
 
 // Functional tests for features implemented in v3 store. It treats v3 store
@@ -225,34 +226,31 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 		limit   int64
 		wcounts int64
 		wkvs    []mvccpb.KeyValue
+		wmore   bool
 	}{
 		// no limit
-		{-1, 3, kvs},
+		{-1, 3, kvs, false},
 		// no limit
-		{0, 3, kvs},
-		{1, 3, kvs[:1]},
-		{2, 3, kvs[:2]},
-		{3, 3, kvs},
-		{100, 3, kvs},
+		{0, 3, kvs, false},
+		{1, 3, kvs[:1], true},
+		{2, 3, kvs[:2], true},
+		{3, 3, kvs, false},
+		{100, 3, kvs, false},
 	}
 	for i, tt := range tests {
-		r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Limit: tt.limit})
-		if err != nil {
-			t.Fatalf("#%d: range error (%v)", i, err)
-		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
-		}
-		if r.Rev != wrev {
-			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, wrev)
-		}
-		if tt.limit <= 0 || int(tt.limit) > len(kvs) {
-			if r.Count != len(kvs) {
-				t.Errorf("#%d: count = %d, want %d", i, r.Count, len(kvs))
+		tt := tt
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Limit: tt.limit})
+			require.Nil(t, err)
+			require.Equal(t, tt.wkvs, r.KVs)
+			require.Equal(t, wrev, r.Rev)
+			if tt.limit <= 0 || int(tt.limit) > len(kvs) {
+				require.Equal(t, len(kvs), r.Count)
+			} else {
+				require.Equal(t, int(tt.wcounts), r.Count)
 			}
-		} else if r.Count != int(tt.wcounts) {
-			t.Errorf("#%d: count = %d, want %d", i, r.Count, tt.limit)
-		}
+			require.Equal(t, tt.wmore, r.More)
+		})
 	}
 }
 

@@ -132,10 +132,6 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, txnRead mvcc.TxnRead
 		// fetch everything; sort and truncate afterwards
 		limit = 0
 	}
-	if limit > 0 {
-		// fetch one extra for 'more' flag
-		limit = limit + 1
-	}
 
 	ro := mvcc.RangeOptions{
 		Limit: limit,
@@ -201,10 +197,12 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, txnRead mvcc.TxnRead
 		}
 	}
 
+	resp.More = rr.More
 	if r.Limit > 0 && len(rr.KVs) > int(r.Limit) {
 		rr.KVs = rr.KVs[:r.Limit]
 		resp.More = true
 	}
+
 	trace.Step("filter and sort the key-value pairs")
 	resp.Header.Revision = rr.Rev
 	resp.Count = int64(rr.Count)
