@@ -19,9 +19,12 @@ import (
 	"time"
 
 	v3 "go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 )
 
 const defaultSessionTTL = 60
+
+var logger *zap.Logger
 
 // Session represents a lease kept alive for the lifetime of a client.
 // Fault-tolerant applications may use sessions to reason about liveness.
@@ -36,6 +39,7 @@ type Session struct {
 
 // NewSession gets the leased session for a client.
 func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
+	logger = client.GetLogger()
 	ops := &sessionOptions{ttl: defaultSessionTTL, ctx: client.Ctx()}
 	for _, opt := range opts {
 		opt(ops)
@@ -116,6 +120,8 @@ func WithTTL(ttl int) SessionOption {
 	return func(so *sessionOptions) {
 		if ttl > 0 {
 			so.ttl = ttl
+		} else {
+			logger.Info("TTL should be > 0, defaulting to 60")
 		}
 	}
 }
