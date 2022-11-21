@@ -212,6 +212,7 @@ func (p *fieldsPrinter) EndpointHashKV(hs []epHashKV) {
 		p.hdr(h.Resp.Header)
 		fmt.Printf("\"Endpoint\" : %q\n", h.Ep)
 		fmt.Println(`"Hash" :`, h.Resp.Hash)
+		fmt.Println(`"HashRevision" :`, h.Resp.HashRevision)
 		fmt.Println()
 	}
 }
