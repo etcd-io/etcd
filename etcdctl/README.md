@@ -837,28 +837,73 @@ Prints a line of JSON encoding each endpoint URL and KV history hash.
 Get the hash for the default endpoint:
 
 ```bash
-./etcdctl endpoint hashkv
-# 127.0.0.1:2379, 1084519789
+./etcdctl endpoint hashkv --cluster
+http://127.0.0.1:2379, 2064120424, 13
+http://127.0.0.1:22379, 2064120424, 13
+http://127.0.0.1:32379, 2064120424, 13
 ```
 
 Get the status for the default endpoint as JSON:
 
 ```bash
-./etcdctl -w json endpoint hashkv
-# [{"Endpoint":"127.0.0.1:2379","Hash":{"header":{"cluster_id":14841639068965178418,"member_id":10276657743932975437,"revision":1,"raft_term":3},"hash":1084519789,"compact_revision":-1}}]
+./etcdctl endpoint hash --cluster -w json | jq
+[
+  {
+    "Endpoint": "http://127.0.0.1:2379",
+    "HashKV": {
+      "header": {
+        "cluster_id": 17237436991929494000,
+        "member_id": 9372538179322590000,
+        "revision": 13,
+        "raft_term": 2
+      },
+      "hash": 2064120424,
+      "compact_revision": -1,
+      "hash_revision": 13
+    }
+  },
+  {
+    "Endpoint": "http://127.0.0.1:22379",
+    "HashKV": {
+      "header": {
+        "cluster_id": 17237436991929494000,
+        "member_id": 10501334649042878000,
+        "revision": 13,
+        "raft_term": 2
+      },
+      "hash": 2064120424,
+      "compact_revision": -1,
+      "hash_revision": 13
+    }
+  },
+  {
+    "Endpoint": "http://127.0.0.1:32379",
+    "HashKV": {
+      "header": {
+        "cluster_id": 17237436991929494000,
+        "member_id": 18249187646912140000,
+        "revision": 13,
+        "raft_term": 2
+      },
+      "hash": 2064120424,
+      "compact_revision": -1,
+      "hash_revision": 13
+    }
+  }
+]
 ```
 
 Get the status for all endpoints in the cluster associated with the default endpoint:
 
 ```bash
-./etcdctl -w table endpoint --cluster hashkv
-+------------------------+------------+
-|        ENDPOINT        |    HASH    |
-+------------------------+------------+
-| http://127.0.0.1:2379  | 1084519789 |
-| http://127.0.0.1:22379 | 1084519789 |
-| http://127.0.0.1:32379 | 1084519789 |
-+------------------------+------------+
+$ ./etcdctl endpoint hash --cluster -w table
++------------------------+------------+----------+
+|        ENDPOINT        |    HASH    | REVISION |
++------------------------+------------+----------+
+|  http://127.0.0.1:2379 | 2064120424 |       13 |
+| http://127.0.0.1:22379 | 2064120424 |       13 |
+| http://127.0.0.1:32379 | 2064120424 |       13 |
++------------------------+------------+----------+
 ```
 
 ### ALARM \<subcommand\>
