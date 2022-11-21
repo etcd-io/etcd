@@ -9,12 +9,12 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/urfave/cli v1.22.4
-	go.etcd.io/etcd/api/v3 v3.5.5
-	go.etcd.io/etcd/client/pkg/v3 v3.5.5
-	go.etcd.io/etcd/client/v2 v2.305.5
-	go.etcd.io/etcd/client/v3 v3.5.5
-	go.etcd.io/etcd/etcdutl/v3 v3.5.5
-	go.etcd.io/etcd/pkg/v3 v3.5.5
+	go.etcd.io/etcd/api/v3 v3.5.6
+	go.etcd.io/etcd/client/pkg/v3 v3.5.6
+	go.etcd.io/etcd/client/v2 v2.305.6
+	go.etcd.io/etcd/client/v3 v3.5.6
+	go.etcd.io/etcd/etcdutl/v3 v3.5.6
+	go.etcd.io/etcd/pkg/v3 v3.5.6
 	go.uber.org/zap v1.17.0
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
 	google.golang.org/grpc v1.41.0
