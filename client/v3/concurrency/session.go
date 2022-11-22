@@ -119,7 +119,7 @@ func WithTTL(ttl int) SessionOption {
 		if ttl > 0 {
 			so.ttl = ttl
 		} else {
-			logger.Info("TTL should be > 0, defaulting to 60")
+			logger.Info("TTL should be > 0, using default", zap.Int64("default-session-ttl", defaultSessionTTL))
 		}
 	}
 }
