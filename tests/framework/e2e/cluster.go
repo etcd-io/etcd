@@ -103,7 +103,7 @@ func NewConfigClientTLSCertAuthWithNoCN() *EtcdProcessClusterConfig {
 		WithClusterSize(1),
 		WithClientConnType(ClientTLS),
 		WithClientCertAuthority(true),
-		WithNoCN(true),
+		WithCN(false),
 	)
 }
 
@@ -152,18 +152,18 @@ type EtcdProcessClusterConfig struct {
 	Client        ClientConfig
 	IsPeerTLS     bool
 	IsPeerAutoTLS bool
-	NoCN          bool
+	CN            bool
 
 	CipherSuites []string
 
-	ForceNewCluster            bool
-	InitialToken               string
-	QuotaBackendBytes          int64
-	DisableStrictReconfigCheck bool
-	EnableV2                   bool
-	InitialCorruptCheck        bool
-	AuthTokenOpts              string
-	V2deprecation              string
+	ForceNewCluster     bool
+	InitialToken        string
+	QuotaBackendBytes   int64
+	StrictReconfigCheck bool
+	EnableV2            bool
+	InitialCorruptCheck bool
+	AuthTokenOpts       string
+	V2deprecation       string
 
 	RollingStart bool
 
@@ -186,8 +186,10 @@ type EtcdProcessClusterConfig struct {
 
 func DefaultConfig() *EtcdProcessClusterConfig {
 	return &EtcdProcessClusterConfig{
-		ClusterSize:  3,
-		InitialToken: "new",
+		ClusterSize:         3,
+		InitialToken:        "new",
+		StrictReconfigCheck: true,
+		CN:                  true,
 	}
 }
 
@@ -257,16 +259,16 @@ func WithClientRevokeCerts(isClientCRL bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.Client.RevokeCerts = isClientCRL }
 }
 
-func WithNoCN(noCN bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.NoCN = noCN }
+func WithCN(cn bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.CN = cn }
 }
 
 func WithQuotaBackendBytes(bytes int64) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.QuotaBackendBytes = bytes }
 }
 
-func WithDisableStrictReconfigCheck(disable bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.DisableStrictReconfigCheck = disable }
+func WithStrictReconfigCheck(strict bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.StrictReconfigCheck = strict }
 }
 
 func WithEnableV2(enable bool) EPClusterOption {
@@ -488,7 +490,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 			"--quota-backend-bytes", fmt.Sprintf("%d", cfg.QuotaBackendBytes),
 		)
 	}
-	if cfg.DisableStrictReconfigCheck {
+	if !cfg.StrictReconfigCheck {
 		args = append(args, "--strict-reconfig-check=false")
 	}
 	if cfg.EnableV2 {

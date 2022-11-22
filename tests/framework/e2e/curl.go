@@ -64,7 +64,7 @@ func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method st
 			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
 			acurl = ToTLS(member.Config().Acurl)
 		} else if cfg.Client.ConnectionType == ClientTLS {
-			if !cfg.NoCN {
+			if cfg.CN {
 				cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
 			} else {
 				cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath3, "--key", PrivateKeyPath3)
