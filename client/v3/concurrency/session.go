@@ -24,8 +24,6 @@ import (
 
 const defaultSessionTTL = 60
 
-var logger *zap.Logger
-
 // Session represents a lease kept alive for the lifetime of a client.
 // Fault-tolerant applications may use sessions to reason about liveness.
 type Session struct {
@@ -39,10 +37,10 @@ type Session struct {
 
 // NewSession gets the leased session for a client.
 func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
-	logger = client.GetLogger()
+	logger := client.GetLogger()
 	ops := &sessionOptions{ttl: defaultSessionTTL, ctx: client.Ctx()}
 	for _, opt := range opts {
-		opt(ops)
+		opt(ops, logger)
 	}
 
 	id := ops.leaseID
@@ -112,12 +110,12 @@ type sessionOptions struct {
 }
 
 // SessionOption configures Session.
-type SessionOption func(*sessionOptions)
+type SessionOption func(*sessionOptions, *zap.Logger)
 
 // WithTTL configures the session's TTL in seconds.
 // If TTL is <= 0, the default 60 seconds TTL will be used.
 func WithTTL(ttl int) SessionOption {
-	return func(so *sessionOptions) {
+	return func(so *sessionOptions, logger *zap.Logger) {
 		if ttl > 0 {
 			so.ttl = ttl
 		} else {
@@ -130,7 +128,7 @@ func WithTTL(ttl int) SessionOption {
 // This is useful in process restart scenario, for example, to reclaim
 // leadership from an election prior to restart.
 func WithLease(leaseID v3.LeaseID) SessionOption {
-	return func(so *sessionOptions) {
+	return func(so *sessionOptions, logger *zap.Logger) {
 		so.leaseID = leaseID
 	}
 }
@@ -141,7 +139,7 @@ func WithLease(leaseID v3.LeaseID) SessionOption {
 // context is canceled before Close() completes, the session's lease will be
 // abandoned and left to expire instead of being revoked.
 func WithContext(ctx context.Context) SessionOption {
-	return func(so *sessionOptions) {
+	return func(so *sessionOptions, logger *zap.Logger) {
 		so.ctx = ctx
 	}
 }
