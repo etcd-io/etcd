@@ -46,7 +46,7 @@ func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) e
 }
 
 // waitDeletes efficiently waits until all keys matching the prefix and no greater
-// than the create revision.
+// than the create revision are deleted.
 func waitDeletes(ctx context.Context, client *v3.Client, pfx string, maxCreateRev int64) (*pb.ResponseHeader, error) {
 	getOpts := append(v3.WithLastCreate(), v3.WithMaxCreateRev(maxCreateRev))
 	for {
