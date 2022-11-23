@@ -126,7 +126,7 @@ function e2e_pass {
 
 function robustness_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  run_for_module "tests" go_test "./robustness/..." "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
+  run_for_module "tests" go_test "./robustness" "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
 }
 
 function integration_e2e_pass {
