@@ -279,7 +279,7 @@ func (cm *corruptionChecker) CompactHashCheck() {
 //	false: skipped some members, so need to check next hash
 func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers []*peerHashKVResp) bool {
 	leaderId := cm.hasher.MemberId()
-	hashMap := map[uint32]types.IDSlice{leaderHash.Hash: {leaderId}}
+	hash2members := map[uint32]types.IDSlice{leaderHash.Hash: {leaderId}}
 
 	peersChecked := 0
 	// group all peers by hash
@@ -304,16 +304,16 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 		}
 
 		peersChecked++
-		if ids, ok := hashMap[peer.resp.Hash]; !ok {
-			hashMap[peer.resp.Hash] = []types.ID{peer.id}
+		if ids, ok := hash2members[peer.resp.Hash]; !ok {
+			hash2members[peer.resp.Hash] = []types.ID{peer.id}
 		} else {
 			ids = append(ids, peer.id)
-			hashMap[peer.resp.Hash] = ids
+			hash2members[peer.resp.Hash] = ids
 		}
 	}
 
 	// All members have the same CompactRevision and Hash.
-	if len(hashMap) == 1 {
+	if len(hash2members) == 1 {
 		if peersChecked == len(peers) {
 			cm.lg.Info("successfully checked hash on whole cluster",
 				zap.Int("number-of-peers-checked", peersChecked),
@@ -342,32 +342,25 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 	memberCnt := len(peers) + 1
 	quorum := memberCnt/2 + 1
 	quorumExist := false
-	for k, v := range hashMap {
+	for k, v := range hash2members {
 		if len(v) >= quorum {
 			quorumExist = true
 			// remove the majority, and we might raise alarms for the left members.
-			delete(hashMap, k)
+			delete(hash2members, k)
 			break
 		}
 	}
 
 	if !quorumExist {
-		// If quorumExist doesn't exist, then only raise alarm for the least minority
-		cm.lg.Error("Detected compaction hash mismatch but can't identify the corrupted members, so only raise alarm for the least minority",
-			zap.String("leader-id", leaderId.String()),
-			zap.Int64("leader-revision", leaderHash.Revision),
-			zap.Int64("leader-compact-revision", leaderHash.CompactRevision),
-			zap.Uint32("leader-hash", leaderHash.Hash),
-		)
-
-		// find out the members which are the least minority
+		// If quorumExist doesn't exist, then only raise alarm for the least minority.
+		// The first step is to find out the members which are the least minority.
 		var (
 			minCnt    int = math.MaxInt
 			hashVal   uint32
 			memberIDs types.IDSlice
 		)
 
-		for k, v := range hashMap {
+		for k, v := range hash2members {
 			if v.Len() < minCnt {
 				minCnt = v.Len()
 				hashVal = k
@@ -375,10 +368,11 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 			}
 		}
 
+		// raise alarms
 		for _, pid := range memberIDs {
 			cm.hasher.TriggerCorruptAlarm(pid)
 		}
-		delete(hashMap, hashVal)
+		delete(hash2members, hashVal)
 
 		cm.lg.Error("Detected compaction hash mismatch but can't identify the corrupted members, so only raise alarm for the least minority",
 			zap.String("leader-id", leaderId.String()),
@@ -392,12 +386,13 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 
 	// Raise alarm for the left members if the quorum is present.
 	// But we should always generate error log for debugging.
-	for k, v := range hashMap {
-		for _, pid := range v {
-			if quorumExist {
+	for k, v := range hash2members {
+		if quorumExist {
+			for _, pid := range v {
 				cm.hasher.TriggerCorruptAlarm(pid)
 			}
 		}
+
 		cm.lg.Error("Detected compaction hash mismatch",
 			zap.String("leader-id", leaderId.String()),
 			zap.Int64("leader-revision", leaderHash.Revision),

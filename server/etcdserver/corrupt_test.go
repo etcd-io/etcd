@@ -290,6 +290,24 @@ func TestCompactHashCheck(t *testing.T) {
 			expectCorrupt: true,
 		},
 		{
+			name: "Peer returned same compaction revision but all members have different hash",
+			hasher: fakeHasher{
+				hashes: []mvcc.KeyValueHash{{Revision: 1, CompactRevision: 1, Hash: 1}, {Revision: 2, CompactRevision: 1, Hash: 2}},
+				// Each member is the least minority, and etcd may trigger alarm for any one.
+				// So intentionally set the same member id for all members.
+				peerHashes: []*peerHashKVResp{
+					{peerInfo: peerInfo{id: 42}, resp: &pb.HashKVResponse{CompactRevision: 1, Hash: 3}},
+					{peerInfo: peerInfo{id: 42}, resp: &pb.HashKVResponse{CompactRevision: 1, Hash: 4}},
+					{peerInfo: peerInfo{id: 42}, resp: &pb.HashKVResponse{CompactRevision: 1, Hash: 5}},
+					{peerInfo: peerInfo{id: 42}, resp: &pb.HashKVResponse{CompactRevision: 1, Hash: 6}},
+					{peerInfo: peerInfo{id: 42}, resp: &pb.HashKVResponse{CompactRevision: 1, Hash: 7}},
+					{peerInfo: peerInfo{id: 42}, resp: &pb.HashKVResponse{CompactRevision: 1, Hash: 8}},
+				},
+			},
+			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(2)", "MemberId()", "TriggerCorruptAlarm(42)"},
+			expectCorrupt: true,
+		},
+		{
 			name: "Peer returned same hash bumps last revision checked",
 			hasher: fakeHasher{
 				hashes:     []mvcc.KeyValueHash{{Revision: 1, CompactRevision: 1, Hash: 1}, {Revision: 2, CompactRevision: 1, Hash: 1}},
