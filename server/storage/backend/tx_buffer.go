@@ -223,9 +223,9 @@ func (bb *bucketBuffer) Swap(i, j int) { bb.buf[i], bb.buf[j] = bb.buf[j], bb.bu
 
 func (bb *bucketBuffer) Copy() *bucketBuffer {
 	bbCopy := bucketBuffer{
-		buf:  make([]kv, len(bb.buf)),
+		buf:  make([]kv, bb.used),
 		used: bb.used,
 	}
-	copy(bbCopy.buf, bb.buf)
+	copy(bbCopy.buf, bb.buf[:bb.used])
 	return &bbCopy
 }
