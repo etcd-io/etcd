@@ -57,6 +57,21 @@ Setup environment:
   - For ubuntu and debian run `sudo apt-get install build-essentials`
 - Verify that everything is installed by running `make build`
 
+Development environment for etcd client:
+
+If you want to quickly test the sanity of your code changes to the etcd client. You can create a project that depends on the local etcd client as such:
+
+- Create a go project
+- Use [go mod replace](https://go.dev/ref/mod#go-mod-file-replace) to use depend on local code instead of the published one.
+- Replacing `client/v3` is not sufficient because the client further depends on `api/v3` and `client/pkg/v3` so run: `go mod edit -replace go.etcd.io/etcd/client/v3=<path-to-local-client>`, `go mod edit -replace go.etcd.io/etcd/api/v3=<path-to-local-api/v3>`, and `go mod edit -replace go.etcd.io/etcd/client/pkg/v3=<path-to-local-pkg/v3>`.
+- Your final go.mod file should look something like this:
+```
+replace go.etcd.io/etcd/client/v3 => ../etcd/client/v3
+replace go.etcd.io/etcd/api/v3 => ../etcd/api
+replace go.etcd.io/etcd/client/pkg/v3 => ../etcd/client/pkg
+```
+
+
 [file an issue]: https://github.com/etcd-io/etcd/issues/new/choose
 
 ## Implement your change
