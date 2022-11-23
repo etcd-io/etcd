@@ -222,7 +222,7 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	if !ret.quorum {
 		ret.cfg = *e2e.ConfigStandalone(ret.cfg)
 	}
-	ret.cfg.DisableStrictReconfigCheck = ret.disableStrictReconfigCheck
+	ret.cfg.StrictReconfigCheck = !ret.disableStrictReconfigCheck
 	if ret.initialCorruptCheck {
 		ret.cfg.InitialCorruptCheck = ret.initialCorruptCheck
 	}
