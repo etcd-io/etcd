@@ -223,6 +223,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
 		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
 		V2Deprecation:                                 cfg.V2DeprecationEffective(),
+		WalSegmentSizeBytes:                           cfg.WalSegmentSizeBytes,
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
