@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
+// TestMixVersionsSendSnapshot tests the mix version send snapshots
 // TODO(ahrtr): add network partition scenario to trigger snapshots.
 func TestMixVersionsSendSnapshot(t *testing.T) {
 	cases := []struct {

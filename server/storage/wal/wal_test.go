@@ -252,6 +252,7 @@ func TestVerify(t *testing.T) {
 	}
 }
 
+// TestCut tests cut
 // TODO: split it into smaller tests for better readability
 func TestCut(t *testing.T) {
 	p := t.TempDir()

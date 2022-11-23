@@ -87,7 +87,7 @@ func TestV3PutOverwrite(t *testing.T) {
 	}
 }
 
-// TestPutRestart checks if a put after an unrelated member restart succeeds
+// TestV3PutRestart checks if a put after an unrelated member restart succeeds
 func TestV3PutRestart(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
@@ -395,7 +395,7 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 	}
 }
 
-// Testv3TxnRevision tests that the transaction header revision is set as expected.
+// TestV3TxnRevision tests that the transaction header revision is set as expected.
 func TestV3TxnRevision(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
@@ -445,7 +445,7 @@ func TestV3TxnRevision(t *testing.T) {
 	}
 }
 
-// Testv3TxnCmpHeaderRev tests that the txn header revision is set as expected
+// TestV3TxnCmpHeaderRev tests that the txn header revision is set as expected
 // when compared to the Succeeded field in the txn response.
 func TestV3TxnCmpHeaderRev(t *testing.T) {
 	integration.BeforeTest(t)
@@ -613,7 +613,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 	}
 }
 
-// TestV3TxnNested tests nested txns follow paths as expected.
+// TestV3TxnNestedPath tests nested txns follow paths as expected.
 func TestV3TxnNestedPath(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})

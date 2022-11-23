@@ -70,6 +70,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 	}
 }
 
+// TestCompactionHash tests compaction hash
 // TODO: Change this to fuzz test
 func TestCompactionHash(t *testing.T) {
 	integration2.BeforeTest(t)
@@ -246,7 +247,7 @@ func TestMaintenanceSnapshotWithVersionErrorInflight(t *testing.T) {
 	})
 }
 
-// TestMaintenanceSnapshotError ensures that ReaderCloser returned by Snapshot function
+// TestMaintenanceSnapshotErrorInflight ensures that ReaderCloser returned by Snapshot function
 // will fail to read with corresponding context errors on inflight context cancel timeout.
 func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 	testMaintenanceSnapshotErrorInflight(t, func(ctx context.Context, client *clientv3.Client) (io.ReadCloser, error) {

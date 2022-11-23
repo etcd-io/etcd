@@ -51,6 +51,7 @@ func TestWarningApplyDuration(t *testing.T) {
 	e2e.AssertProcessLogs(t, epc.Procs[0], "request stats")
 }
 
+// TestExperimentalWarningApplyDuration tests the experimental warning apply duration
 // TODO: this test is a duplicate of TestWarningApplyDuration except it uses --experimental-warning-unary-request-duration
 // Remove this test after --experimental-warning-unary-request-duration flag is removed.
 func TestExperimentalWarningApplyDuration(t *testing.T) {

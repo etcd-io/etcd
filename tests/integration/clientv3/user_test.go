@@ -110,7 +110,8 @@ func authSetupRoot(t *testing.T, auth clientv3.Auth) {
 	}
 }
 
-// Client can connect to etcd even if they supply credentials and the server is in AuthDisable mode.
+// TestGetTokenWithoutAuth is when Client can connect to etcd even if they
+// supply credentials and the server is in AuthDisable mode.
 func TestGetTokenWithoutAuth(t *testing.T) {
 	integration2.BeforeTest(t)
 

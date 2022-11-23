@@ -30,9 +30,9 @@ func unitClusterTestCases() []testCase {
 	return nil
 }
 
-// When a build tag (e.g. e2e or integration) isn't configured in IDE,
-// then IDE may complain "Unresolved reference 'WithAuth'". So we need
-// to define a default WithAuth to resolve such case.
+// WithAuth is when a build tag (e.g. e2e or integration) isn't configured
+// in IDE, then IDE may complain "Unresolved reference 'WithAuth'".
+// So we need to define a default WithAuth to resolve such case.
 func WithAuth(userName, password string) config.ClientOption {
 	return func(any) {}
 }

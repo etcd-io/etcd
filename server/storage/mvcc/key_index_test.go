@@ -530,7 +530,8 @@ func cloneGeneration(g *generation) *generation {
 	return &generation{g.ver, g.created, tmp}
 }
 
-// test that compact on version that higher than last modified version works well
+// TestKeyIndexCompactOnFurtherRev tests that compact on version that
+// higher than last modified version works well
 func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
 	ki.put(zaptest.NewLogger(t), 1, 0)

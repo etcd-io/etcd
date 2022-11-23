@@ -68,7 +68,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	}
 }
 
-// TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
+// TestNewAuthStoreBcryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
 func TestNewAuthStoreBcryptCost(t *testing.T) {
 	tp, err := NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
@@ -779,7 +779,7 @@ func TestIsAuthEnabled(t *testing.T) {
 	}
 }
 
-// TestAuthRevisionRace ensures that access to authStore.revision is thread-safe.
+// TestAuthInfoFromCtxRace ensures that access to authStore.revision is thread-safe.
 func TestAuthInfoFromCtxRace(t *testing.T) {
 	tp, err := NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {

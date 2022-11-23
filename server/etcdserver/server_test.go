@@ -1014,7 +1014,7 @@ func TestSyncTrigger(t *testing.T) {
 	<-n.Chan()
 }
 
-// snapshot should snapshot the store and cut the persistent
+// TestSnapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 
@@ -1170,7 +1170,7 @@ func TestSnapshotOrdering(t *testing.T) {
 	}
 }
 
-// Applied > SnapshotCount should trigger a SaveSnap event
+// TestTriggerSnap for Applied > SnapshotCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(t)
 	defer func() {
@@ -1519,7 +1519,7 @@ func TestPublishV3(t *testing.T) {
 		Name: "node1", ClientUrls: []string{"http://a", "http://b"}}}, r.ClusterMemberAttrSet)
 }
 
-// TestPublishStopped tests that publish will be stopped if server is stopped.
+// TestPublishV3Stopped tests that publish will be stopped if server is stopped.
 func TestPublishV3Stopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	r := newRaftNode(raftNodeConfig{
@@ -1547,7 +1547,7 @@ func TestPublishV3Stopped(t *testing.T) {
 	srv.publishV3(time.Hour)
 }
 
-// TestPublishRetry tests that publish will keep retry until success.
+// TestPublishV3Retry tests that publish will keep retry until success.
 func TestPublishV3Retry(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	n := newNodeRecorderStream()

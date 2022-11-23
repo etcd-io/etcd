@@ -35,7 +35,7 @@ type fakeKVForClusterSize struct {
 	clusterSizeStr string
 }
 
-// We only need to overwrite the method `Get`.
+// Get when we only need to overwrite the method `Get`.
 func (fkv *fakeKVForClusterSize) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
 	if fkv.clusterSizeStr == "" {
 		// cluster size isn't configured in this case.
@@ -108,7 +108,7 @@ type fakeKVForClusterMembers struct {
 	members []memberInfo
 }
 
-// We only need to overwrite method `Get`.
+// Get when we only need to overwrite method `Get`.
 func (fkv *fakeKVForClusterMembers) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
 	kvs := memberInfoToKeyValues(fkv.members)
 
@@ -230,7 +230,7 @@ type fakeKVForCheckCluster struct {
 	getMembersRetries int
 }
 
-// We only need to overwrite method `Get`.
+// Get when we only need to overwrite method `Get`.
 func (fkv *fakeKVForCheckCluster) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
 	clusterSizeKey := fmt.Sprintf("/_etcd/registry/%s/_config/size", fkv.token)
 	clusterMembersKey := fmt.Sprintf("/_etcd/registry/%s/members", fkv.token)
@@ -420,7 +420,7 @@ type fakeKVForRegisterSelf struct {
 	retries          int
 }
 
-// We only need to overwrite method `Put`.
+// Put when we only need to overwrite method `Put`.
 func (fkv *fakeKVForRegisterSelf) Put(ctx context.Context, key string, val string, opts ...clientv3.OpOption) (*clientv3.PutResponse, error) {
 	if key != fkv.expectedRegKey {
 		fkv.t.Errorf("unexpected register key, expected: %s, got: %s", fkv.expectedRegKey, key)
@@ -515,7 +515,7 @@ type fakeWatcherForWaitPeers struct {
 	members []memberInfo
 }
 
-// We only need to overwrite method `Watch`.
+// Watch we only need to overwrite method `Watch`.
 func (fw *fakeWatcherForWaitPeers) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
 	expectedWatchKey := fmt.Sprintf("/_etcd/registry/%s/members", fw.token)
 	if key != expectedWatchKey {
