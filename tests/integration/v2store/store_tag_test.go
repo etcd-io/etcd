@@ -23,7 +23,7 @@ import (
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-// Ensure that the store can recover from a previously saved state.
+// TestStoreRecover ensures that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
 	integration2.BeforeTest(t)
 	s := v2store.New()
