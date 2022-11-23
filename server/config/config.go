@@ -172,6 +172,8 @@ type ServerConfig struct {
 
 	EnableGRPCGateway bool
 
+	WalSegmentSizeBytes int64
+
 	// ExperimentalEnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.
 	ExperimentalEnableDistributedTracing bool
 	// ExperimentalTracerOptions are options for OpenTelemetry gRPC interceptor.

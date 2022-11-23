@@ -75,6 +75,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		return nil, err
 	}
 
+	wal.SegmentSizeBytes = cfg.WalSegmentSizeBytes
 	haveWAL := wal.Exist(cfg.WALDir())
 	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 	backend, err := bootstrapBackend(cfg, haveWAL, st, ss)

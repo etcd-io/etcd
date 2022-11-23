@@ -98,6 +98,9 @@ const (
 	// It's enabled by default.
 	DefaultStrictReconfigCheck = true
 
+	// DefaultWalSegmentSizeBytes is the default value for "--wal-segment-size-bytes" flag
+	DefaultWalSegmentSizeBytes = 64 * 1000 * 1000 // 64MB
+
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed on etcd.io/docs > version > tuning/#time-parameters
 	maxElectionMs = 50000
@@ -424,6 +427,9 @@ type Config struct {
 
 	// V2Deprecation describes phase of API & Storage V2 support
 	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
+
+	// WalSegmentSizeBytes Setting the preallocated size of each wal segment file.
+	WalSegmentSizeBytes int64 `json:"wal-segment-size-bytes"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -526,6 +532,8 @@ func NewConfig() *Config {
 
 		ExperimentalCompactHashCheckEnabled: false,
 		ExperimentalCompactHashCheckTime:    time.Minute,
+
+		WalSegmentSizeBytes: DefaultWalSegmentSizeBytes,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 
