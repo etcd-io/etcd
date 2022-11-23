@@ -93,30 +93,13 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	leader := clus.WaitLeader(t)
 
-	// Get sorted member IDs
-	members, err := cc.MemberList(ctx)
-	assert.NoError(t, err, "error on member list %v")
-
-	// NOTE: If the corrupted member has been elected as leader, the
-	// alarm will show the smaller member.
-	var expectedID = uint64(clus.Members[0].ID())
-	if leader == 0 {
-		for _, m := range members.Members {
-			if m.Name != clus.Members[0].Name {
-				expectedID = m.ID
-				break
-			}
-		}
-
-	}
-
 	err = clus.Members[leader].Server.CorruptionChecker().PeriodicCheck()
 	assert.NoError(t, err, "error on periodic check")
 	time.Sleep(50 * time.Millisecond)
 
 	alarmResponse, err := cc.AlarmList(ctx)
 	assert.NoError(t, err, "error on alarm list")
-	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: expectedID}}, alarmResponse.Alarms)
+	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: uint64(clus.Members[0].ID())}}, alarmResponse.Alarms)
 }
 
 func TestCompactHashCheck(t *testing.T) {
@@ -186,26 +169,9 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	leader := clus.WaitLeader(t)
 
-	// Get sorted member IDs
-	members, err := cc.MemberList(ctx)
-	assert.NoError(t, err, "error on member list %v")
-
-	// NOTE: If the corrupted member has been elected as leader, the
-	// alarm will show the smaller member.
-	var expectedID = uint64(clus.Members[0].ID())
-	if leader == 0 {
-		for _, m := range members.Members {
-			if m.Name != clus.Members[0].Name {
-				expectedID = m.ID
-				break
-			}
-		}
-
-	}
-
 	clus.Members[leader].Server.CorruptionChecker().CompactHashCheck()
 	time.Sleep(50 * time.Millisecond)
 	alarmResponse, err := cc.AlarmList(ctx)
 	assert.NoError(t, err, "error on alarm list")
-	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: expectedID}}, alarmResponse.Alarms)
+	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: uint64(clus.Members[0].ID())}}, alarmResponse.Alarms)
 }
