@@ -27,6 +27,7 @@ import (
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
+// TestCompactionHash tests the compaction hash
 // TODO: Change this to fuzz test
 func TestCompactionHash(t *testing.T) {
 	integration2.BeforeTest(t)

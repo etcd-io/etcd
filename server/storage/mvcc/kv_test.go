@@ -394,7 +394,8 @@ func testKVPutWithSameLease(t *testing.T, f putFunc) {
 	}
 }
 
-// test that range, put, delete on single key in sequence repeatedly works correctly.
+// TestKVOperationInSequence tests that range, put, delete on single key in
+// sequence repeatedly works correctly.
 func TestKVOperationInSequence(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
@@ -496,7 +497,8 @@ func TestKVTxnNonBlockRange(t *testing.T) {
 	}
 }
 
-// test that txn range, put, delete on single key in sequence repeatedly works correctly.
+// TestKVTxnOperationInSequence tests that txn range, put, delete on single key
+// in sequence repeatedly works correctly.
 func TestKVTxnOperationInSequence(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})

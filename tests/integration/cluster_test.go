@@ -58,8 +58,9 @@ func TestTLSClusterOf3(t *testing.T) {
 	clusterMustProgress(t, c.Members)
 }
 
-// Test that a cluster can progress when using separate client and server certs when peering. This supports certificate
-// authorities that don't issue dual-usage certificates.
+// TestTLSClusterOf3WithSpecificUsage tests that a cluster can progress when
+// using separate client and server certs when peering. This supports
+// certificate authorities that don't issue dual-usage certificates.
 func TestTLSClusterOf3WithSpecificUsage(t *testing.T) {
 	integration.BeforeTest(t)
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, PeerTLS: &integration.TestTLSInfoWithSpecificUsage})
@@ -200,7 +201,7 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 	clusterMustProgress(t, c.Members)
 }
 
-// Ensure we can remove a member then add a new one back immediately.
+// TestIssue2681 ensures we can remove a member then add a new one back immediately.
 func TestIssue2681(t *testing.T) {
 	integration.BeforeTest(t)
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5, DisableStrictReconfigCheck: true})
@@ -216,10 +217,10 @@ func TestIssue2681(t *testing.T) {
 	clusterMustProgress(t, c.Members)
 }
 
-// Ensure we can remove a member after a snapshot then add a new one back.
+// TestIssue2746 ensures we can remove a member after a snapshot then add a new one back.
 func TestIssue2746(t *testing.T) { testIssue2746(t, 5) }
 
-// With 3 nodes TestIssue2476 sometimes had a shutdown with an inflight snapshot.
+// TestIssue2746WithThree tests with 3 nodes TestIssue2476 sometimes had a shutdown with an inflight snapshot.
 func TestIssue2746WithThree(t *testing.T) { testIssue2746(t, 3) }
 
 func testIssue2746(t *testing.T, members int) {
@@ -242,7 +243,7 @@ func testIssue2746(t *testing.T, members int) {
 	clusterMustProgress(t, c.Members)
 }
 
-// Ensure etcd will not panic when removing a just started member.
+// TestIssue2904 ensures etcd will not panic when removing a just started member.
 func TestIssue2904(t *testing.T) {
 	integration.BeforeTest(t)
 	// start 1-member Cluster to ensure member 0 is the leader of the Cluster.

@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// TestV3LeasePrmote ensures the newly elected leader can promote itself
+// TestV3LeasePromote ensures the newly elected leader can promote itself
 // to the primary lessor, refresh the leases and start to manage leases.
 // TODO: use customized clock to make this test go faster?
 func TestV3LeasePromote(t *testing.T) {
@@ -108,7 +108,7 @@ func TestV3LeaseRevoke(t *testing.T) {
 	})
 }
 
-// TestV3LeaseGrantById ensures leases may be created by a given id.
+// TestV3LeaseGrantByID ensures leases may be created by a given id.
 func TestV3LeaseGrantByID(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})

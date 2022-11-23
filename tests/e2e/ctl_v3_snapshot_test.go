@@ -94,7 +94,8 @@ func snapshotCorruptTest(cx ctlCtx) {
 	require.ErrorContains(cx.t, serr, "Error: expected sha256")
 }
 
-// This test ensures that the snapshot status does not modify the snapshot file
+// TestCtlV3SnapshotStatusBeforeRestore ensures that the snapshot
+// status does not modify the snapshot file
 func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) {
 	testCtl(t, snapshotStatusBeforeRestoreTest)
 }
@@ -278,7 +279,8 @@ func testIssue6361(t *testing.T) {
 	t.Log("Test logic done")
 }
 
-// For storageVersion to be stored, all fields expected 3.6 fields need to be set. This happens after first WAL snapshot.
+// TestCtlV3SnapshotVersion is for storageVersion to be stored, all fields
+// expected 3.6 fields need to be set. This happens after first WAL snapshot.
 // In this test we lower SnapshotCount to 1 to ensure WAL snapshot is triggered.
 func TestCtlV3SnapshotVersion(t *testing.T) {
 	testCtl(t, snapshotVersionTest, withCfg(*e2e.NewConfig(e2e.WithSnapshotCount(1))))

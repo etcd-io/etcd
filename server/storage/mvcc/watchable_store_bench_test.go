@@ -112,11 +112,12 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	}
 }
 
-// Benchmarks on cancel function performance for unsynced watchers
-// in a WatchableStore. It creates k*N watchers to populate unsynced
-// with a reasonably large number of watchers. And measures the time it
-// takes to cancel N watchers out of k*N watchers. The performance is
-// expected to differ depending on the unsynced member implementation.
+// BenchmarkWatchableStoreUnsyncedCancel benchmarks on cancel function
+// performance for unsynced watchers in a WatchableStore. It creates
+// k*N watchers to populate unsynced with a reasonably large number of
+// watchers. And measures the time it takes to cancel N watchers out
+// of k*N watchers. The performance is expected to differ depending on
+// the unsynced member implementation.
 // TODO: k is an arbitrary constant. We need to figure out what factor
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {

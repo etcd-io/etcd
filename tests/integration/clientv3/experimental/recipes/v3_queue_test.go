@@ -135,7 +135,7 @@ func TestPrQueueManyReaderManyWriter(t *testing.T) {
 	testReadersWriters(t, rqs, wqs)
 }
 
-// BenchmarkQueue benchmarks Queues using n/n readers/writers
+// BenchmarkPrQueueOneReaderOneWriter benchmarks Queues using n/n readers/writers
 func BenchmarkPrQueueOneReaderOneWriter(b *testing.B) {
 	integration2.BeforeTest(b)
 

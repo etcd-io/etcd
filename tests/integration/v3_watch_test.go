@@ -1033,7 +1033,7 @@ func TestWatchWithProgressNotify(t *testing.T) {
 	}
 }
 
-// TestV3WatcMultiOpenhClose opens many watchers concurrently on multiple streams.
+// TestV3WatchClose opens many watchers concurrently on multiple streams.
 func TestV3WatchClose(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
