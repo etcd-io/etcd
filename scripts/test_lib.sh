@@ -71,7 +71,8 @@ function relativePath {
   local commonPart=$source
   local result=""
 
-  while [[ "${target#$commonPart}" == "${target}" ]]; do
+  # Refer to https://www.shellcheck.net/wiki/SC2295
+  while [[ "${target#"$commonPart"}" == "${target}" ]]; do
     # no match, means that candidate common part is not correct
     # go up one level (reduce common part)
     commonPart="$(dirname "$commonPart")"
@@ -90,7 +91,8 @@ function relativePath {
 
   # since we now have identified the common part,
   # compute the non-common part
-  local forwardPart="${target#$commonPart}"
+  # Refer to https://www.shellcheck.net/wiki/SC2295
+  local forwardPart="${target#"$commonPart"}"
 
   # and now stick all parts together
   if [[ -n $result ]] && [[ -n $forwardPart ]]; then
