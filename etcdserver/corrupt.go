@@ -207,8 +207,12 @@ func (s *EtcdServer) checkHashKV() error {
 			return
 		}
 		alarmed = true
+		// It isn't clear which member's data is corrupted, so we
+		// intentionally set the memberID as 0. We will identify
+		// the corrupted members using quorum in 3.6. Please see
+		// discussion in https://github.com/etcd-io/etcd/pull/14828.
 		a := &pb.AlarmRequest{
-			MemberID: uint64(id),
+			MemberID: 0,
 			Action:   pb.AlarmRequest_ACTIVATE,
 			Alarm:    pb.AlarmType_CORRUPT,
 		}
