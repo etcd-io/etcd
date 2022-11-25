@@ -4,6 +4,14 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
+## v3.5.7 (TBD)
+
+### etcd server
+- Fix [Remove memberID from data corrupt alarm](https://github.com/etcd-io/etcd/pull/14852).
+
+
+<hr>
+
 ## v3.5.6 (2022-11-21)
 
 ### etcd server
