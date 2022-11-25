@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"sort"
 	"strings"
@@ -343,36 +342,16 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 	}
 
 	if !quorumExist {
-		// If quorumExist doesn't exist, then only raise alarm for the least minority.
-		// The first step is to find out the members which are the least minority.
-		var (
-			minCnt    int = math.MaxInt
-			hashVal   uint32
-			memberIDs types.IDSlice
-		)
-
-		for k, v := range hash2members {
-			if v.Len() < minCnt {
-				minCnt = v.Len()
-				hashVal = k
-				memberIDs = v
-			}
-		}
-
-		// raise alarms
-		for _, pid := range memberIDs {
-			cm.hasher.TriggerCorruptAlarm(pid)
-		}
-		delete(hash2members, hashVal)
-
-		cm.lg.Error("Detected compaction hash mismatch but can't identify the corrupted members, so only raise alarm for the least minority",
+		// If quorum doesn't exist, we don't know which members data are
+		// corrupted. In such situation, we intentionally set the memberID
+		// as 0, it means it affects the whole cluster.
+		cm.lg.Error("Detected compaction hash mismatch but cannot identify the corrupted members, so intentionally set the memberID as 0",
 			zap.String("leader-id", leaderId.String()),
 			zap.Int64("leader-revision", leaderHash.Revision),
 			zap.Int64("leader-compact-revision", leaderHash.CompactRevision),
 			zap.Uint32("leader-hash", leaderHash.Hash),
-			zap.Uint32("peer-hash", hashVal),
-			zap.String("peer-ids", memberIDs.String()),
 		)
+		cm.hasher.TriggerCorruptAlarm(0)
 	}
 
 	// Raise alarm for the left members if the quorum is present.
@@ -391,7 +370,7 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 			zap.Uint32("leader-hash", leaderHash.Hash),
 			zap.Uint32("peer-hash", k),
 			zap.String("peer-ids", v.String()),
-			zap.Bool("alarm-raised", quorumExist),
+			zap.Bool("quorum-exist", quorumExist),
 		)
 	}
 
