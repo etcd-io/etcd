@@ -252,6 +252,17 @@ func (cm *corruptionChecker) PeriodicCheck() error {
 	return nil
 }
 
+// CompactHashCheck is based on the fact that 'compactions' are coordinated
+// between raft members and performed at the same revision. For each compacted
+// revision there is KV store hash computed and saved for some time.
+//
+// This method communicates with peers to find a recent common revision across
+// members, and raises alarm if 2 or more members at the same compact revision
+// have different hashes.
+//
+// We might miss opportunity to perform the check if the compaction is still
+// ongoing on one of the members or it was unresponsive. In such situation the
+// method still passes without raising alarm.
 func (cm *corruptionChecker) CompactHashCheck() {
 	cm.lg.Info("starting compact hash check",
 		zap.String("local-member-id", cm.hasher.MemberId().String()),
@@ -314,27 +325,7 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 
 	// All members have the same CompactRevision and Hash.
 	if len(hash2members) == 1 {
-		if peersChecked == len(peers) {
-			cm.lg.Info("successfully checked hash on whole cluster",
-				zap.Int("number-of-peers-checked", peersChecked),
-				zap.Int64("revision", leaderHash.Revision),
-				zap.Int64("compactRevision", leaderHash.CompactRevision),
-			)
-			cm.mux.Lock()
-			if leaderHash.Revision > cm.latestRevisionChecked {
-				cm.latestRevisionChecked = leaderHash.Revision
-			}
-			cm.mux.Unlock()
-			return true
-		}
-		cm.lg.Warn("skipped revision in compaction hash check; was not able to check all peers",
-			zap.Int("number-of-peers-checked", peersChecked),
-			zap.Int("number-of-peers", len(peers)),
-			zap.Int64("revision", leaderHash.Revision),
-			zap.Int64("compactRevision", leaderHash.CompactRevision),
-		)
-		// The only case which needs to check next hash
-		return false
+		return cm.handleConsistentHash(leaderHash, peersChecked, len(peers))
 	}
 
 	// Detected hashes mismatch
@@ -405,6 +396,30 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 	}
 
 	return true
+}
+
+func (cm *corruptionChecker) handleConsistentHash(hash mvcc.KeyValueHash, peersChecked, peerCnt int) bool {
+	if peersChecked == peerCnt {
+		cm.lg.Info("successfully checked hash on whole cluster",
+			zap.Int("number-of-peers-checked", peersChecked),
+			zap.Int64("revision", hash.Revision),
+			zap.Int64("compactRevision", hash.CompactRevision),
+		)
+		cm.mux.Lock()
+		if hash.Revision > cm.latestRevisionChecked {
+			cm.latestRevisionChecked = hash.Revision
+		}
+		cm.mux.Unlock()
+		return true
+	}
+	cm.lg.Warn("skipped revision in compaction hash check; was not able to check all peers",
+		zap.Int("number-of-peers-checked", peersChecked),
+		zap.Int("number-of-peers", peerCnt),
+		zap.Int64("revision", hash.Revision),
+		zap.Int64("compactRevision", hash.CompactRevision),
+	)
+	// The only case which needs to check next hash
+	return false
 }
 
 func (cm *corruptionChecker) uncheckedRevisions() []mvcc.KeyValueHash {
