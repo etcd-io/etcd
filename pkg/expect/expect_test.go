@@ -189,7 +189,8 @@ func TestSignal(t *testing.T) {
 	go func() {
 		defer close(donec)
 		err = ep.Close()
-		assert.ErrorContains(t, err, "unexpected exit code [-1] after running [/usr/bin/sleep 100]")
+		assert.ErrorContains(t, err, "unexpected exit code [-1]")
+		assert.ErrorContains(t, err, "sleep 100")
 	}()
 	select {
 	case <-time.After(5 * time.Second):
