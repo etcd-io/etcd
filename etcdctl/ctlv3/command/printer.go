@@ -233,7 +233,7 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 }
 
 func makeEndpointHashKVTable(hashList []epHashKV) (hdr []string, rows [][]string) {
-	hdr = []string{"endpoint", "hash", "revision"}
+	hdr = []string{"endpoint", "hash", "hash_revision"}
 	for _, h := range hashList {
 		rows = append(rows, []string{
 			h.Ep,
