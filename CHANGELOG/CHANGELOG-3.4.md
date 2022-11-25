@@ -9,6 +9,8 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### Package `clientv3`
 - Fix [Refreshing token on CommonName based authentication causes segmentation violation in client](https://github.com/etcd-io/etcd/pull/14792).
 
+### etcd server
+- Fix [Remove memberID from data corrupt alarm](https://github.com/etcd-io/etcd/pull/14853).
 
 <hr>
 
