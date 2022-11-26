@@ -8,13 +8,13 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.8.1
 )
 
 require (
 	github.com/cockroachdb/errors v1.2.4 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f // indirect
-	github.com/davecgh/go-spew v1.1.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
