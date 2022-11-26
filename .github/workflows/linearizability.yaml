@@ -9,9 +9,9 @@ jobs:
       with:
         go-version: "1.19.3"
     - run: |
-        pushd tools/mod; go install go.etcd.io/gofail; popd
+        make gofail-enable
+        make build
         mkdir -p /tmp/linearizability
-        FAILPOINTS=true make build
         cat server/etcdserver/raft.fail.go
         EXPECT_DEBUG=true GO_TEST_FLAGS=-v RESULTS_DIR=/tmp/linearizability make test-linearizability
     - uses: actions/upload-artifact@v2
