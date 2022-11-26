@@ -6,7 +6,7 @@ source ./scripts/test_lib.sh
 
 VER=$1
 PROJ="etcd"
-REPOSITORY="${REPOSITORY:-https://github.com/etcd-io/etcd.git}"
+REPOSITORY="${REPOSITORY:-git@github.com:etcd-io/etcd.git}"
 
 if [ -z "$1" ]; then
 	echo "Usage: ${0} VERSION" >> /dev/stderr

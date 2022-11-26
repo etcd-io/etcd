@@ -23,6 +23,7 @@ help() {
   echo "  flags:"
   echo "    --no-upload: skip gs://etcd binary artifact uploads."
   echo "    --no-docker-push: skip docker image pushes."
+  echo "    --in-place: build binaries using current branch."
   echo ""
 }
 
@@ -34,7 +35,15 @@ main() {
   fi
   RELEASE_VERSION="v${VERSION}"
   MINOR_VERSION=$(echo "${VERSION}" | cut -d. -f 1-2)
-  BRANCH="release-${MINOR_VERSION}"
+
+  if [ "${IN_PLACE}" == 1 ]; then
+      # Trigger release in current branch
+      REPOSITORY=$(pwd)
+      BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  else
+      REPOSITORY=${REPOSITORY:-"https://github.com/etcd-io/etcd.git"}
+      BRANCH=${BRANCH:-"release-${MINOR_VERSION}"}
+  fi
 
   log_warning "DRY_RUN=${DRY_RUN}"
   log_callout "RELEASE_VERSION=${RELEASE_VERSION}"
@@ -53,13 +62,17 @@ main() {
   # Set up release directory.
   local reldir="/tmp/etcd-release-${VERSION}"
   log_callout "Preparing temporary directory: ${reldir}"
-  if [ ! -d "${reldir}/etcd" ]; then
+  if [ ! -d "${reldir}/etcd" ] && [ "${IN_PLACE}" == 0 ]; then
     mkdir -p "${reldir}"
     cd "${reldir}"
-    git clone https://github.com/etcd-io/etcd.git --branch "${BRANCH}"
-  fi
-  cd "${reldir}/etcd"
+    git clone "${REPOSITORY}" --branch "${BRANCH}"
+    cd "${reldir}/etcd" || exit 2
+    git checkout "${BRANCH}" || exit 2
+    git pull origin
 
+    git_assert_branch_in_sync || exit 2
+  fi
+  
   # If a release version tag already exists, use it.
   log_callout "Checking tag: ${RELEASE_VERSION}"
   local remote_tag_exists
@@ -80,6 +93,7 @@ main() {
   fi
 
   # If the release tag does not already exist remotely, create it.
+  log_callout "Create tag if not present"
   if [ "${remote_tag_exists}" -eq 0 ]; then
     # Bump version/version.go to release version.
     local source_version
@@ -140,21 +154,40 @@ main() {
       exit 1
     fi
 
-    # Verify the version tag is on the right branch
-    # shellcheck disable=SC2155
-    local branch=$(git for-each-ref --contains "${RELEASE_VERSION}" --format="%(refname)" 'refs/heads' | cut -d '/' -f 3)
-    if [ "${branch}" != "release-${MINOR_VERSION}" ]; then
-      log_error "Error: Git tag ${RELEASE_VERSION} should be on branch release-${MINOR_VERSION} but is on ${branch}"
-      exit 1
-    fi
-
-    # Push the tag change if it's not already been pushed.
-    if [ "$DRY_RUN" != "true" ]; then
-      read -p "Push etcd ${RELEASE_VERSION} tag [y/N]? " -r confirm
-      [[ "${confirm,,}" == "y" ]] || exit 1
-      git push origin "tags/${RELEASE_VERSION}"
+    if [ "${IN_PLACE}" == 0 ]; then
+      # Tried with `local branch=$(git branch -a --contains tags/"${RELEASE_VERSION}")`
+      # so as to work with both current branch and main/release-3.X.
+      # But got error below on current branch mode,
+      # Error: Git tag v3.6.99 should be on branch '* (HEAD detached at pull/14860/merge)' but is on '* (HEAD detached from pull/14860/merge)'
+      #
+      # Verify the version tag is on the right branch
+      # shellcheck disable=SC2155
+      local branch=$(git for-each-ref --contains "${RELEASE_VERSION}" --format="%(refname)" 'refs/heads' | cut -d '/' -f 3)
+      if [ "${branch}" != "${BRANCH}" ]; then
+        log_error "Error: Git tag ${RELEASE_VERSION} should be on branch '${BRANCH}' but is on '${branch}'"
+        exit 1
+      fi
     fi
   fi
+
+  log_callout "Verify the latest commit has the version tag"
+  # Verify the latest commit has the version tag
+  # shellcheck disable=SC2155
+  local tag="$(git describe --exact-match HEAD)"
+  if [ "${tag}" != "${RELEASE_VERSION}" ]; then
+    log_error "Error: Expected HEAD to be tagged with ${RELEASE_VERSION}, but 'git describe --exact-match HEAD' reported: ${tag}"
+    exit 1
+  fi
+
+  log_callout "Verify the work space is clean"
+  # Verify the clean working tree
+  # shellcheck disable=SC2155
+  local diff="$(git diff HEAD --stat)"
+  if [[ "${diff}" != '' ]]; then
+    log_error "Error: Expected clean working tree, but 'git diff --stat' reported: ${diff}"
+    exit 1
+  fi
+  
 
   # Build release.
   # TODO: check the release directory for all required build artifacts.
@@ -261,6 +294,7 @@ main() {
 POSITIONAL=()
 NO_UPLOAD=0
 NO_DOCKER_PUSH=0
+IN_PLACE=0
 
 while test $# -gt 0; do
         case "$1" in
@@ -268,6 +302,10 @@ while test $# -gt 0; do
             shift
             help
             exit 0
+            ;;
+          --in-place)
+            IN_PLACE=1
+            shift
             ;;
           --no-upload)
             NO_UPLOAD=1
@@ -288,6 +326,13 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 if [[ ! $# -eq 1 ]]; then
   help
   exit 1
+fi
+
+# Note that we shouldn't upload artifacts in --in-place mode, so it
+# must be called with DRY_RUN=true
+if [ "${DRY_RUN}" != "true" ] && [ "${IN_PLACE}" == 1 ]; then
+   log_error "--in-place should only be called with DRY_RUN=true"
+   exit 1
 fi
 
 main "$1"
