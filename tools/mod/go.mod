@@ -15,7 +15,7 @@ require (
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
 	github.com/mgechev/revive v1.2.1
 	github.com/mikefarah/yq/v4 v4.24.2
-	go.etcd.io/gofail v0.0.0-20221118034130-cb2ba30a3077
+	go.etcd.io/gofail v0.0.0-20221125214112-fc21f61ba88a
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	gotest.tools/gotestsum v1.7.0
 	gotest.tools/v3 v3.1.0
@@ -84,5 +84,5 @@ require (
 	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884 // indirect
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

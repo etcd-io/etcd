@@ -31,7 +31,7 @@ test-e2e-release: build
 
 .PHONY: test-linearizability
 test-linearizability:
-	FAILPOINTS=true PASSES="linearizability" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="linearizability" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: fuzz
 fuzz: 
@@ -105,6 +105,29 @@ verify-proto-annotations:
 verify-genproto:
 	PASSES="genproto" ./scripts/test.sh
 
+# Failpoints
+
+GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
+
+.PHONY: gofail-enable
+gofail-enable: install-gofail
+	gofail enable server/etcdserver/ server/storage/backend/ server/storage/mvcc/
+	cd ./server && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+	cd ./etcdutl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+	cd ./etcdctl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+	cd ./tests && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+
+.PHONY: gofail-disable
+gofail-disable: install-gofail
+	gofail disable server/etcdserver/ server/storage/backend/ server/storage/mvcc/
+	cd ./server && go mod tidy
+	cd ./etcdutl && go mod tidy
+	cd ./etcdctl && go mod tidy
+	cd ./tests && go mod tidy
+
+.PHONY: install-gofail
+install-gofail:
+	cd tools/mod; go install go.etcd.io/gofail@${GOFAIL_VERSION}
 
 # Cleanup
 

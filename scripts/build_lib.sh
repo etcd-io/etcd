@@ -3,10 +3,6 @@
 source ./scripts/test_lib.sh
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
-if [[ -n "$FAILPOINTS" ]]; then
-  GIT_SHA="$GIT_SHA"-FAILPOINTS
-fi
-
 VERSION_SYMBOL="${ROOT_MODULE}/api/v3/version.GitSHA"
 
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
@@ -14,45 +10,9 @@ VERSION_SYMBOL="${ROOT_MODULE}/api/v3/version.GitSHA"
 GO_LDFLAGS=(${GO_LDFLAGS} "-X=${VERSION_SYMBOL}=${GIT_SHA}")
 GO_BUILD_ENV=("CGO_ENABLED=0" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS}" "GOOS=${GOOS}" "GOARCH=${GOARCH}")
 
-# enable/disable failpoints
-toggle_failpoints() {
-  mode="$1"
-  if command -v gofail >/dev/null 2>&1; then
-    run gofail "$mode" server/etcdserver/ server/storage/backend/ server/storage/mvcc/
-    if [[ "$mode" == "enable" ]]; then
-      (
-        cd ./server
-        run go get go.etcd.io/gofail/runtime
-      ) || exit 2
-      (
-        cd ./etcdutl
-        run go get go.etcd.io/gofail/runtime
-      ) || exit 2
-      (
-        cd ./etcdctl
-        run go get go.etcd.io/gofail/runtime
-      ) || exit 2
-      (
-        cd ./tests
-        run go get go.etcd.io/gofail/runtime
-      ) || exit 2
-    fi
-  elif [[ "$mode" != "disable" ]]; then
-    log_error "FAILPOINTS set but gofail not found"
-    exit 1
-  fi
-}
-
-toggle_failpoints_default() {
-  mode="disable"
-  if [[ -n "$FAILPOINTS" ]]; then mode="enable"; fi
-  toggle_failpoints "$mode"
-}
-
 etcd_build() {
   out="bin"
   if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
-  toggle_failpoints_default
 
   run rm -f "${out}/etcd"
   (
@@ -138,5 +98,3 @@ run_build() {
     exit 2
   fi
 }
-
-toggle_failpoints_default
