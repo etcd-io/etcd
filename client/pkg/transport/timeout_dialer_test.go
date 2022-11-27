@@ -82,7 +82,7 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 	}
 
 	if operr, ok := err.(*net.OpError); !ok || operr.Op != "read" || !operr.Timeout() {
-		t.Errorf("err = %v, want write i/o timeout error", err)
+		t.Errorf("err = %v, want read i/o timeout error", err)
 	}
 }
 
