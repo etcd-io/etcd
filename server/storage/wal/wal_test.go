@@ -16,6 +16,7 @@ package wal
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -195,7 +196,7 @@ func TestOpenAtIndex(t *testing.T) {
 	w.Close()
 
 	emptydir := t.TempDir()
-	if _, err = Open(zaptest.NewLogger(t), emptydir, walpb.Snapshot{}); err != ErrFileNotFound {
+	if _, err = Open(zaptest.NewLogger(t), emptydir, walpb.Snapshot{}); !errors.Is(err, ErrFileNotFound) {
 		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
