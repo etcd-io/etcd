@@ -16,6 +16,7 @@ package wal
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -225,7 +226,7 @@ func TestOpenAtIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(emptydir)
-	if _, err = Open(zap.NewExample(), emptydir, walpb.Snapshot{}); err != ErrFileNotFound {
+	if _, err = Open(zap.NewExample(), emptydir, walpb.Snapshot{}); !errors.Is(err, ErrFileNotFound) {
 		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
@@ -584,7 +585,7 @@ func TestRecoverAfterCut(t *testing.T) {
 		w, err := Open(zap.NewExample(), p, walpb.Snapshot{Index: uint64(i), Term: 1})
 		if err != nil {
 			if i <= 4 {
-				if err != ErrFileNotFound {
+				if !errors.Is(err, ErrFileNotFound) {
 					t.Errorf("#%d: err = %v, want %v", i, err, ErrFileNotFound)
 				}
 			} else {

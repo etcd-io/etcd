@@ -310,10 +310,10 @@ func (w *WAL) renameWALUnlock(tmpdirpath string) (*WAL, error) {
 func Open(lg *zap.Logger, dirpath string, snap walpb.Snapshot) (*WAL, error) {
 	w, err := openAtIndex(lg, dirpath, snap, true)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("openAtIndex failed: %w", err)
 	}
 	if w.dirFile, err = fileutil.OpenDir(w.dir); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fileutil.OpenDir failed: %w", err)
 	}
 	return w, nil
 }
@@ -330,12 +330,12 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 	}
 	names, nameIndex, err := selectWALFiles(lg, dirpath, snap)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[openAtIndex] selectWALFiles failed: %w", err)
 	}
 
 	rs, ls, closer, err := openWALFiles(lg, dirpath, names, nameIndex, write)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[openAtIndex] openWALFiles failed: %w", err)
 	}
 
 	// create a WAL ready for reading
@@ -354,7 +354,7 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 		w.readClose = nil
 		if _, _, err := parseWALName(filepath.Base(w.tail().Name())); err != nil {
 			closer()
-			return nil, err
+			return nil, fmt.Errorf("[openAtIndex] parseWALName failed: %w", err)
 		}
 		w.fp = newFilePipeline(lg, w.dir, SegmentSizeBytes)
 	}
@@ -365,7 +365,7 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 func selectWALFiles(lg *zap.Logger, dirpath string, snap walpb.Snapshot) ([]string, int, error) {
 	names, err := readWALNames(lg, dirpath)
 	if err != nil {
-		return nil, -1, err
+		return nil, -1, fmt.Errorf("readWALNames failed: %w", err)
 	}
 
 	nameIndex, ok := searchIndex(lg, names, snap.Index)
@@ -388,7 +388,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 			l, err := fileutil.TryLockFile(p, os.O_RDWR, fileutil.PrivateFileMode)
 			if err != nil {
 				closeAll(lg, rcs...)
-				return nil, nil, nil, err
+				return nil, nil, nil, fmt.Errorf("[openWALFiles] fileutil.TryLockFile failed: %w", err)
 			}
 			ls = append(ls, l)
 			rcs = append(rcs, l)
@@ -397,7 +397,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 			rf, err := os.OpenFile(p, os.O_RDONLY, fileutil.PrivateFileMode)
 			if err != nil {
 				closeAll(lg, rcs...)
-				return nil, nil, nil, err
+				return nil, nil, nil, fmt.Errorf("[openWALFiles] os.OpenFile failed (%q): %w", p, err)
 			}
 			ls = append(ls, nil)
 			rcs = append(rcs, rf)

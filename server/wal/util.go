@@ -72,7 +72,7 @@ func isValidSeq(lg *zap.Logger, names []string) bool {
 func readWALNames(lg *zap.Logger, dirpath string) ([]string, error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[readWALNames] fileutil.ReadDir failed: %w", err)
 	}
 	wnames := checkWalNames(lg, names)
 	if len(wnames) == 0 {
