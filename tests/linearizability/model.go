@@ -130,8 +130,10 @@ func initState(request etcdRequest, response etcdResponse) EtcdState {
 			state.FailedWrites[request.putData] = struct{}{}
 		}
 	case Delete:
-		//TODO should state have 'deleted' field?
-		state.Value = ""
+		if response.err != nil {
+			state.FailedWrites[""] = struct{}{}
+		}
+		//TODO preserve information about failed deletes
 	default:
 		panic("Unknown operation")
 	}
@@ -167,12 +169,26 @@ func stepPut(state EtcdState, request etcdRequest, response etcdResponse) (bool,
 
 func stepDelete(state EtcdState, request etcdRequest, response etcdResponse) (bool, EtcdState) {
 	if response.err != nil {
-		state.FailedWrites[request.putData] = struct{}{}
+		state.FailedWrites[""] = struct{}{}
 		return true, state
 	}
-	if response.deleted == 1 && state.LastRevision >= response.revision {
+	deleteSucceeded := response.deleted != 0
+	keySet := state.Value != ""
+
+	//non-existent key cannot be deleted.
+	if deleteSucceeded != keySet {
 		return false, state
 	}
+	//if key was deleted, response revision should go up
+	if deleteSucceeded && state.LastRevision >= response.revision {
+		return false, state
+	}
+	//if key was not deleted, response revision should not change
+	if !deleteSucceeded && state.LastRevision != response.revision {
+		return false, state
+	}
+
+	state.Value = ""
 	state.LastRevision = response.revision
 	return true, state
 }

@@ -105,15 +105,13 @@ func TestModel(t *testing.T) {
 			},
 		},
 		{
-			name: "Deleting non existent key does not change revision",
+			name: "Delete only increases revision on success",
 			operations: []testOperation{
-				{req: etcdRequest{op: Delete, key: "NotThere"}, resp: etcdResponse{deleted: 0, revision: 4}},
-			},
-		},
-		{
-			name: "Deleting  existent key bumps up revision",
-			operations: []testOperation{
-				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 1, revision: 5}},
+				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
+				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 1, revision: 1}, failure: true},
+				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 1, revision: 2}},
+				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 0, revision: 3}, failure: true},
+				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 0, revision: 2}},
 			},
 		},
 	}
