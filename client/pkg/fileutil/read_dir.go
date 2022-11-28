@@ -15,6 +15,7 @@
 package fileutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -47,13 +48,13 @@ func ReadDir(d string, opts ...ReadDirOption) ([]string, error) {
 
 	dir, err := os.Open(d)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[ReadDir] os.Open failed: %w", err)
 	}
 	defer dir.Close()
 
 	names, err := dir.Readdirnames(-1)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[ReadDir] dir.Readdirnames failed: %w", err)
 	}
 	sort.Strings(names)
 

@@ -18,6 +18,7 @@
 package fileutil
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 )
@@ -25,14 +26,14 @@ import (
 func flockTryLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 	f, err := os.OpenFile(path, flag, perm)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[flockTryLockFile] os.OpenFile failed (%q): %w", path, err)
 	}
 	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		f.Close()
 		if err == syscall.EWOULDBLOCK {
-			err = ErrLocked
+			return nil, ErrLocked
 		}
-		return nil, err
+		return nil, fmt.Errorf("[flockTryLockFile] syscall.Flock failed (%q): %w", path, err)
 	}
 	return &LockedFile{f}, nil
 }

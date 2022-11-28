@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -225,7 +226,8 @@ func TestOpenAtIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(emptydir)
-	if _, err = Open(zap.NewExample(), emptydir, walpb.Snapshot{}); err != ErrFileNotFound {
+	_, err = Open(zap.NewExample(), emptydir, walpb.Snapshot{})
+	if !strings.Contains(err.Error(), ErrFileNotFound.Error()) {
 		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
 	}
 }
