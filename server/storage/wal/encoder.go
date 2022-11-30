@@ -19,7 +19,6 @@ import (
 	"hash"
 	"io"
 	"os"
-	"sync"
 
 	"go.etcd.io/etcd/pkg/v3/crc"
 	"go.etcd.io/etcd/pkg/v3/ioutil"
@@ -32,7 +31,6 @@ import (
 const walPageBytes = 8 * minSectorSize
 
 type encoder struct {
-	mu sync.Mutex
 	bw *ioutil.PageWriter
 
 	crc       hash.Hash32
@@ -60,9 +58,6 @@ func newFileEncoder(f *os.File, prevCrc uint32) (*encoder, error) {
 }
 
 func (e *encoder) encode(rec *walpb.Record) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	e.crc.Write(rec.Data)
 	rec.Crc = e.crc.Sum32()
 	var (
@@ -108,8 +103,6 @@ func encodeFrameSize(dataBytes int) (lenField uint64, padBytes int) {
 }
 
 func (e *encoder) flush() error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
 	return e.bw.Flush()
 }
 
