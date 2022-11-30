@@ -133,7 +133,6 @@ func initState(request etcdRequest, response etcdResponse) EtcdState {
 		if response.err != nil {
 			state.FailedWrites[""] = struct{}{}
 		}
-		//TODO preserve information about failed deletes
 	default:
 		panic("Unknown operation")
 	}
