@@ -94,9 +94,6 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	callTime := time.Now()
 	resp, err := c.client.Delete(ctx, key)
 	returnTime := time.Now()
-	if err != nil {
-		return err
-	}
 	var revision int64
 	var deleted int64
 	if resp != nil && resp.Header != nil {
@@ -107,7 +104,7 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 		ClientId: c.id,
 		Input:    etcdRequest{op: Delete, key: key},
 		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{revision: revision, deleted: deleted},
+		Output:   etcdResponse{revision: revision, deleted: deleted, err: err},
 		Return:   returnTime.UnixNano(),
 	})
 	return nil
