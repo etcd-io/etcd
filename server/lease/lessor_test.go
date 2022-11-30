@@ -207,6 +207,29 @@ func TestLessorRevoke(t *testing.T) {
 	}
 }
 
+func renew(t *testing.T, le *lessor, id LeaseID) int64 {
+	ch := make(chan int64, 1)
+	errch := make(chan error, 1)
+	go func() {
+		ttl, err := le.Renew(id)
+		if err != nil {
+			errch <- err
+		} else {
+			ch <- ttl
+		}
+	}()
+
+	select {
+	case ttl := <-ch:
+		return ttl
+	case err := <-errch:
+		t.Fatalf("failed to renew lease (%v)", err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out while renewing lease")
+	}
+	panic("unreachable")
+}
+
 // TestLessorRenew ensures Lessor can renew an existing lease.
 func TestLessorRenew(t *testing.T) {
 	lg := zap.NewNop()
@@ -227,10 +250,7 @@ func TestLessorRenew(t *testing.T) {
 	le.mu.Lock()
 	l.ttl = 10
 	le.mu.Unlock()
-	ttl, err := le.Renew(l.ID)
-	if err != nil {
-		t.Fatalf("failed to renew lease (%v)", err)
-	}
+	ttl := renew(t, le, l.ID)
 	if ttl != l.ttl {
 		t.Errorf("ttl = %d, want %d", ttl, l.ttl)
 	}
@@ -268,10 +288,7 @@ func TestLessorRenewWithCheckpointer(t *testing.T) {
 	l.ttl = 10
 	l.remainingTTL = 10
 	le.mu.Unlock()
-	ttl, err := le.Renew(l.ID)
-	if err != nil {
-		t.Fatalf("failed to renew lease (%v)", err)
-	}
+	ttl := renew(t, le, l.ID)
 	if ttl != l.ttl {
 		t.Errorf("ttl = %d, want %d", ttl, l.ttl)
 	}
