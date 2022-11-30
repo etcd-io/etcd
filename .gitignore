@@ -34,3 +34,4 @@ hack/tls-setup/certs
 /tools/proto-annotations/proto-annotations
 /tools/benchmark/benchmark
 /out
+shellcheck*

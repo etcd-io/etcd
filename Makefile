@@ -1,3 +1,8 @@
+# Variables
+SHELLCHECK_VERSION=v0.8.0
+
+# Build
+
 .PHONY: build
 build:
 	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v" ./scripts/build.sh
@@ -39,6 +44,12 @@ fuzz:
 
 # Static analysis
 
+.PHONY: install-shellcheck
+install-shellcheck:
+	[ -f "shellcheck" ] || \
+	wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" | \
+	tar -xJv --strip-components 1 shellcheck-${SHELLCHECK_VERSION}/shellcheck
+
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
 	verify-shellws verify-proto-annotations verify-genproto
@@ -70,7 +81,7 @@ fix-lint:
 	golangci-lint run --fix
 
 .PHONY: verify-shellcheck
-verify-shellcheck:
+verify-shellcheck: install-shellcheck
 	PASSES="shellcheck" ./scripts/test.sh
 
 .PHONY: verify-goword
@@ -142,3 +153,4 @@ clean:
 	rm -rf ./coverage/*.err ./coverage/*.out
 	rm -rf ./tests/e2e/default.proxy
 	find ./ -name "127.0.0.1:*" -o -name "localhost:*" -o -name "*.log" -o -name "agent-*" -o -name "*.coverprofile" -o -name "testname-proxy-*" -delete
+	rm -rf shellcheck*

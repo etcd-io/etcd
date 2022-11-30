@@ -388,9 +388,15 @@ function cov_pass {
 ######### Code formatting checkers #############################################
 
 function shellcheck_pass {
-  if tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
-    generic_checker run shellcheck -fgcc scripts/*.sh
+  if tool_exists "${PWD}/shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
+    log_info "shellcheck binary found: ${PWD}/shellcheck"
+    generic_checker run "${PWD}/shellcheck" -fgcc scripts/*.sh
+
+    return 0
   fi
+
+  log_error "shellcheck binary not found in project root"
+  return 255
 }
 
 function shellws_pass {
