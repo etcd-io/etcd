@@ -224,7 +224,7 @@ func renew(t *testing.T, le *lessor, id LeaseID) int64 {
 		return ttl
 	case err := <-errch:
 		t.Fatalf("failed to renew lease (%v)", err)
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("timed out while renewing lease")
 	}
 	panic("unreachable")
