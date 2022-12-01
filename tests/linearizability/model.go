@@ -139,8 +139,7 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 }
 
 func stepGet(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-	if state.Value == response.GetData && state.LastRevision <= response.Revision {
-		state.LastRevision = response.Revision
+	if state.Value == response.GetData && state.LastRevision == response.Revision {
 		state.FailedWrite = nil
 		return true, state
 	}

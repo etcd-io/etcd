@@ -52,24 +52,21 @@ func TestModel(t *testing.T) {
 			},
 		},
 		{
-			name: "Get response revision should be equal or greater then put",
+			name: "Get revision should be equal to put",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Put, Key: "key"}, resp: EtcdResponse{Revision: 2}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 3}, failure: true},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2}},
-				{req: EtcdRequest{Op: Put, Key: "key"}, resp: EtcdResponse{Revision: 3}},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2}, failure: true},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 5}},
 			},
 		},
 		{
-			name: "Put must increase revision at least by 1",
+			name: "Put must increase revision by 1",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 3}, failure: true},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Revision: 2}},
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 2}, failure: true},
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Revision: 4}},
 			},
 		},
 		{
@@ -79,11 +76,12 @@ func TestModel(t *testing.T) {
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 2}, failure: true},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}, failure: true},
 			},
 		},
 		{
-			name: "Put can fail but bump revision before put",
+			name: "Put can fail but be persisted and increase revision before put",
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
@@ -96,7 +94,7 @@ func TestModel(t *testing.T) {
 			},
 		},
 		{
-			name: "Put can fail but be persisted before get",
+			name: "Put can fail but be persisted and increase revision before get",
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
