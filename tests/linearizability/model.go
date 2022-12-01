@@ -46,7 +46,7 @@ type EtcdState struct {
 	Key          string
 	Value        string
 	LastRevision int64
-	FailedWrites map[string]struct{}
+	FailedWrite  *EtcdRequest
 }
 
 var etcdModel = porcupine.Model{
@@ -118,7 +118,6 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 	state := EtcdState{
 		Key:          request.Key,
 		LastRevision: response.Revision,
-		FailedWrites: map[string]struct{}{},
 	}
 	switch request.Op {
 	case Get:
@@ -127,11 +126,11 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 		if response.Err == nil {
 			state.Value = request.PutData
 		} else {
-			state.FailedWrites[request.PutData] = struct{}{}
+			state.FailedWrite = &request
 		}
 	case Delete:
 		if response.Err != nil {
-			state.FailedWrites[""] = struct{}{}
+			state.FailedWrite = &request
 		}
 	default:
 		panic("Unknown operation")
@@ -141,49 +140,71 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 
 func stepGet(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
 	if state.Value == response.GetData && state.LastRevision <= response.Revision {
+		state.LastRevision = response.Revision
+		state.FailedWrite = nil
 		return true, state
 	}
-	_, ok := state.FailedWrites[response.GetData]
-	if ok && state.LastRevision < response.Revision {
-		state.Value = response.GetData
-		state.LastRevision = response.Revision
-		delete(state.FailedWrites, response.GetData)
-		return true, state
+	if state.FailedWrite != nil && state.LastRevision < response.Revision {
+		var ok bool
+		switch state.FailedWrite.Op {
+		case Get:
+			panic("Expected write")
+		case Put:
+			ok = response.GetData == state.FailedWrite.PutData
+		case Delete:
+			ok = response.GetData == ""
+		default:
+			panic("Unknown operation")
+		}
+		if ok {
+			state.Value = response.GetData
+			state.LastRevision = response.Revision
+			state.FailedWrite = nil
+			return true, state
+		}
 	}
 	return false, state
 }
 
 func stepPut(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
 	if response.Err != nil {
-		state.FailedWrites[request.PutData] = struct{}{}
+		state.FailedWrite = &request
 		return true, state
 	}
-	if state.LastRevision >= response.Revision {
+	if response.Revision <= state.LastRevision {
+		return false, state
+	}
+	if response.Revision != state.LastRevision+1 && state.FailedWrite == nil {
 		return false, state
 	}
 	state.Value = request.PutData
 	state.LastRevision = response.Revision
+	state.FailedWrite = nil
 	return true, state
 }
 
 func stepDelete(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
 	if response.Err != nil {
-		state.FailedWrites[""] = struct{}{}
+		state.FailedWrite = &request
 		return true, state
+	}
+	// revision should never decrease
+	if response.Revision < state.LastRevision {
+		return false, state
 	}
 	deleteSucceeded := response.Deleted != 0
 	keySet := state.Value != ""
 
-	//non-existent key cannot be deleted.
-	if deleteSucceeded != keySet {
+	// non-existent key cannot be deleted.
+	if deleteSucceeded != keySet && state.FailedWrite == nil {
 		return false, state
 	}
-	//if key was deleted, response revision should go up
-	if deleteSucceeded && state.LastRevision >= response.Revision {
+	//if key was deleted, response revision should increase
+	if deleteSucceeded && (response.Revision != state.LastRevision+1 || !keySet) && (state.FailedWrite == nil || response.Revision < state.LastRevision+2) {
 		return false, state
 	}
 	//if key was not deleted, response revision should not change
-	if !deleteSucceeded && state.LastRevision != response.Revision {
+	if !deleteSucceeded && state.LastRevision != response.Revision && state.FailedWrite == nil {
 		return false, state
 	}
 

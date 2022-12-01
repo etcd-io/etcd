@@ -87,24 +87,6 @@ func TestModel(t *testing.T) {
 			},
 		},
 		{
-			name: "Put can fail but be persisted later",
-			operations: []testOperation{
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Revision: 2}},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 3}},
-			},
-		},
-		{
-			name: "Put can fail but bump revision later",
-			operations: []testOperation{
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Revision: 2}},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}},
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 4}},
-			},
-		},
-		{
 			name: "Delete only increases revision on success",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
