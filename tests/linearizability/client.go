@@ -30,7 +30,7 @@ type recordingClient struct {
 	operations []porcupine.Operation
 }
 
-func NewClient(endpoints []string, id int) (*recordingClient, error) {
+func NewClient(endpoints []string, ids idProvider) (*recordingClient, error) {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
 		Logger:               zap.NewNop(),
@@ -42,7 +42,7 @@ func NewClient(endpoints []string, id int) (*recordingClient, error) {
 	}
 	return &recordingClient{
 		client:     *cc,
-		id:         id,
+		id:         ids.ClientId(),
 		operations: []porcupine.Operation{},
 	}, nil
 }

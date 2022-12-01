@@ -28,7 +28,7 @@ var (
 )
 
 type Traffic interface {
-	Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter)
+	Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider)
 }
 
 type readWriteSingleKey struct {
@@ -41,12 +41,9 @@ type opChance struct {
 	chance    int
 }
 
-func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter) {
-	maxOperationsPerClient := 1000000
-	minId := maxOperationsPerClient * c.id
-	maxId := maxOperationsPerClient * (c.id + 1)
+func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider) {
 
-	for writeId := minId; writeId < maxId; {
+	for {
 		select {
 		case <-ctx.Done():
 			return
@@ -58,10 +55,8 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
-		t.Write(ctx, c, limiter, writeId)
-		writeId++
+		t.Write(ctx, c, limiter, ids.RequestId())
 	}
-	return
 }
 
 func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter) error {

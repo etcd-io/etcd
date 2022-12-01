@@ -144,6 +144,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsV3()
 
+	ids := newIdProvider()
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
@@ -151,7 +152,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 	for i := 0; i < config.clientCount; i++ {
 		wg.Add(1)
 		endpoints := []string{endpoints[i%len(endpoints)]}
-		c, err := NewClient(endpoints, i)
+		c, err := NewClient(endpoints, ids)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -159,7 +160,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 			defer wg.Done()
 			defer c.Close()
 
-			config.traffic.Run(ctx, c, limiter)
+			config.traffic.Run(ctx, c, limiter, ids)
 			mux.Lock()
 			operations = append(operations, c.operations...)
 			mux.Unlock()
