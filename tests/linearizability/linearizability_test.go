@@ -162,7 +162,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 
 			config.traffic.Run(ctx, c, limiter, ids)
 			mux.Lock()
-			operations = append(operations, c.operations...)
+			operations = append(operations, c.Operations()...)
 			mux.Unlock()
 		}(c)
 	}

@@ -25,9 +25,13 @@ import (
 
 type recordingClient struct {
 	client clientv3.Client
-	id     int
+
+	// id of the next write operation. If needed a new id might be requested from idProvider.
+	id         int
+	idProvider idProvider
 
 	operations []porcupine.Operation
+	failed     []porcupine.Operation
 }
 
 func NewClient(endpoints []string, ids idProvider) (*recordingClient, error) {
@@ -43,7 +47,9 @@ func NewClient(endpoints []string, ids idProvider) (*recordingClient, error) {
 	return &recordingClient{
 		client:     *cc,
 		id:         ids.ClientId(),
+		idProvider: ids,
 		operations: []porcupine.Operation{},
+		failed:     []porcupine.Operation{},
 	}, nil
 }
 
@@ -76,6 +82,19 @@ func (c *recordingClient) Put(ctx context.Context, key, value string) error {
 	callTime := time.Now()
 	resp, err := c.client.Put(ctx, key, value)
 	returnTime := time.Now()
+	if err != nil {
+		c.failed = append(c.failed, porcupine.Operation{
+			ClientId: c.id,
+			Input:    etcdRequest{op: Put, key: key, putData: value},
+			Call:     callTime.UnixNano(),
+			Output:   etcdResponse{err: err},
+			Return:   0, // For failed writes we don't know when request has really finished.
+		})
+		// Operations of single client needs to be sequential.
+		// As we don't know return time of failed operations, all new writes need to be done with new client id.
+		c.id = c.idProvider.ClientId()
+		return err
+	}
 	var revision int64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
@@ -94,6 +113,19 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	callTime := time.Now()
 	resp, err := c.client.Delete(ctx, key)
 	returnTime := time.Now()
+	if err != nil {
+		c.failed = append(c.failed, porcupine.Operation{
+			ClientId: c.id,
+			Input:    etcdRequest{op: Delete, key: key},
+			Call:     callTime.UnixNano(),
+			Output:   etcdResponse{err: err},
+			Return:   0, // For failed writes we don't know when request has really finished.
+		})
+		// Operations of single client needs to be sequential.
+		// As we don't know return time of failed operations, all new writes need to be done with new client id.
+		c.id = c.idProvider.ClientId()
+		return err
+	}
 	var revision int64
 	var deleted int64
 	if resp != nil && resp.Header != nil {
@@ -108,4 +140,23 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 		Return:   returnTime.UnixNano(),
 	})
 	return nil
+}
+
+func (c *recordingClient) Operations() []porcupine.Operation {
+	operations := make([]porcupine.Operation, 0, len(c.operations)+len(c.failed))
+	var maxTime int64
+	for _, op := range c.operations {
+		operations = append(operations, op)
+		if op.Return > maxTime {
+			maxTime = op.Return
+		}
+	}
+	for _, op := range c.failed {
+		if op.Call > maxTime {
+			continue
+		}
+		op.Return = maxTime + 1
+		operations = append(operations, op)
+	}
+	return operations
 }
