@@ -119,8 +119,8 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 	var err error
 	successes := 0
 	failures := 0
-	time.Sleep(config.waitBetweenTriggers)
 	for successes < config.count && failures < config.count {
+		time.Sleep(config.waitBetweenTriggers)
 		err = config.failpoint.Trigger(t, ctx, clus)
 		if err != nil {
 			t.Logf("Failed to trigger failpoint %q, err: %v\n", config.failpoint.Name(), err)
@@ -128,8 +128,8 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 			continue
 		}
 		successes++
-		time.Sleep(config.waitBetweenTriggers)
 	}
+	time.Sleep(config.waitBetweenTriggers)
 	if successes < config.count || failures >= config.count {
 		return fmt.Errorf("failed to trigger failpoints enough times, err: %v", err)
 	}
