@@ -70,9 +70,9 @@ func (c *recordingClient) Get(ctx context.Context, key string) error {
 	}
 	c.operations = append(c.operations, porcupine.Operation{
 		ClientId: c.id,
-		Input:    etcdRequest{op: Get, key: key},
+		Input:    EtcdRequest{Op: Get, Key: key},
 		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{getData: readData, revision: resp.Header.Revision},
+		Output:   EtcdResponse{GetData: readData, Revision: resp.Header.Revision},
 		Return:   returnTime.UnixNano(),
 	})
 	return nil
@@ -85,9 +85,9 @@ func (c *recordingClient) Put(ctx context.Context, key, value string) error {
 	if err != nil {
 		c.failed = append(c.failed, porcupine.Operation{
 			ClientId: c.id,
-			Input:    etcdRequest{op: Put, key: key, putData: value},
+			Input:    EtcdRequest{Op: Put, Key: key, PutData: value},
 			Call:     callTime.UnixNano(),
-			Output:   etcdResponse{err: err},
+			Output:   EtcdResponse{Err: err},
 			Return:   0, // For failed writes we don't know when request has really finished.
 		})
 		// Operations of single client needs to be sequential.
@@ -101,9 +101,9 @@ func (c *recordingClient) Put(ctx context.Context, key, value string) error {
 	}
 	c.operations = append(c.operations, porcupine.Operation{
 		ClientId: c.id,
-		Input:    etcdRequest{op: Put, key: key, putData: value},
+		Input:    EtcdRequest{Op: Put, Key: key, PutData: value},
 		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{err: err, revision: revision},
+		Output:   EtcdResponse{Err: err, Revision: revision},
 		Return:   returnTime.UnixNano(),
 	})
 	return nil
@@ -116,9 +116,9 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	if err != nil {
 		c.failed = append(c.failed, porcupine.Operation{
 			ClientId: c.id,
-			Input:    etcdRequest{op: Delete, key: key},
+			Input:    EtcdRequest{Op: Delete, Key: key},
 			Call:     callTime.UnixNano(),
-			Output:   etcdResponse{err: err},
+			Output:   EtcdResponse{Err: err},
 			Return:   0, // For failed writes we don't know when request has really finished.
 		})
 		// Operations of single client needs to be sequential.
@@ -134,9 +134,9 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	}
 	c.operations = append(c.operations, porcupine.Operation{
 		ClientId: c.id,
-		Input:    etcdRequest{op: Delete, key: key},
+		Input:    EtcdRequest{Op: Delete, Key: key},
 		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{revision: revision, deleted: deleted, err: err},
+		Output:   EtcdResponse{Revision: revision, Deleted: deleted, Err: err},
 		Return:   returnTime.UnixNano(),
 	})
 	return nil
