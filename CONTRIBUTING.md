@@ -57,6 +57,11 @@ Setup environment:
   - For ubuntu and debian run `sudo apt-get install build-essentials`
 - Verify that everything is installed by running `make build`
 
+Note: `make build` runs with `-v`. Other build flags can be added through env `GO_BUILD_FLAGS`, **if required**. Eg.,
+```console
+GO_BUILD_FLAGS="-buildmode=pie" make build
+```
+
 [file an issue]: https://github.com/etcd-io/etcd/issues/new/choose
 
 ## Implement your change

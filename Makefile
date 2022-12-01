@@ -1,6 +1,6 @@
 .PHONY: build
 build:
-	GO_BUILD_FLAGS="-v" ./scripts/build.sh
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v" ./scripts/build.sh
 	./bin/etcd --version
 	./bin/etcdctl version
 	./bin/etcdutl version
