@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"testing"
 
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func TestProcessMessages(t *testing.T) {
