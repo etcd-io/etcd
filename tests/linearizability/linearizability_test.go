@@ -79,6 +79,7 @@ func TestLinearizability(t *testing.T) {
 				failpoint := FailpointConfig{
 					failpoint:           tc.failpoint,
 					count:               1,
+					retries:             3,
 					waitBetweenTriggers: waitBetweenFailpointTriggers,
 				}
 				traffic := trafficConfig{
@@ -119,7 +120,7 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 	var err error
 	successes := 0
 	failures := 0
-	for successes < config.count && failures < config.count {
+	for successes < config.count && failures < config.retries {
 		time.Sleep(config.waitBetweenTriggers)
 		err = config.failpoint.Trigger(t, ctx, clus)
 		if err != nil {
@@ -129,16 +130,17 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 		}
 		successes++
 	}
-	time.Sleep(config.waitBetweenTriggers)
-	if successes < config.count || failures >= config.count {
+	if successes < config.count || failures >= config.retries {
 		return fmt.Errorf("failed to trigger failpoints enough times, err: %v", err)
 	}
+	time.Sleep(config.waitBetweenTriggers)
 	return nil
 }
 
 type FailpointConfig struct {
 	failpoint           Failpoint
 	count               int
+	retries             int
 	waitBetweenTriggers time.Duration
 }
 
