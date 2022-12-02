@@ -19,10 +19,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 type BackendHooks struct {

@@ -36,6 +36,7 @@ import (
 	_ "github.com/mikefarah/yq/v4"
 	_ "go.etcd.io/gofail"
 	_ "go.etcd.io/protodoc"
+	_ "go.etcd.io/raft/v3"
 	_ "gotest.tools/gotestsum"
 	_ "gotest.tools/v3"
 	_ "honnef.co/go/tools/cmd/staticcheck"

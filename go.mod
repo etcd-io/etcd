@@ -10,7 +10,6 @@ replace (
 	go.etcd.io/etcd/etcdctl/v3 => ./etcdctl
 	go.etcd.io/etcd/etcdutl/v3 => ./etcdutl
 	go.etcd.io/etcd/pkg/v3 => ./pkg
-	go.etcd.io/etcd/raft/v3 => ./raft
 	go.etcd.io/etcd/server/v3 => ./server
 	go.etcd.io/etcd/tests/v3 => ./tests
 )
@@ -29,9 +28,9 @@ require (
 	go.etcd.io/etcd/etcdctl/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/etcdutl/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/pkg/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/raft/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/server/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/tests/v3 v3.6.0-alpha.0
+	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
 	go.uber.org/zap v1.21.0
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858
 	google.golang.org/grpc v1.51.0

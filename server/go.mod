@@ -28,7 +28,7 @@ require (
 	go.etcd.io/etcd/client/v2 v2.306.0-alpha.0
 	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/pkg/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/raft/v3 v3.6.0-alpha.0
+	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.32.0
 	go.opentelemetry.io/otel v1.7.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.7.0
@@ -81,7 +81,6 @@ replace (
 	go.etcd.io/etcd/client/v2 => ../client/v2
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/pkg/v3 => ../pkg
-	go.etcd.io/etcd/raft/v3 => ../raft
 )
 
 // Bad imports are sometimes causing attempts to pull that code.
