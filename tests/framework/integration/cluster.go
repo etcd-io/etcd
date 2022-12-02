@@ -41,7 +41,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
-	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -57,6 +56,7 @@ import (
 	"go.etcd.io/etcd/server/v3/verify"
 	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	"go.etcd.io/raft/v3"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 

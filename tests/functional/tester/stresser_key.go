@@ -25,9 +25,9 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
+	"go.etcd.io/raft/v3"
 
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
