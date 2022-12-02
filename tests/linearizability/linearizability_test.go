@@ -74,20 +74,22 @@ func TestLinearizability(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			failpoint := FailpointConfig{
-				failpoint:           tc.failpoint,
-				count:               failpointTriggersCount,
-				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}
-			traffic := trafficConfig{
-				minimalQPS:  minimalQPS,
-				maximalQPS:  maximalQPS,
-				clientCount: 8,
-				traffic:     DefaultTraffic,
-			}
-			testLinearizability(context.Background(), t, tc.config, failpoint, traffic)
-		})
+		for i := 0; i < failpointTriggersCount; i++ {
+			t.Run(tc.name, func(t *testing.T) {
+				failpoint := FailpointConfig{
+					failpoint:           tc.failpoint,
+					count:               1,
+					waitBetweenTriggers: waitBetweenFailpointTriggers,
+				}
+				traffic := trafficConfig{
+					minimalQPS:  minimalQPS,
+					maximalQPS:  maximalQPS,
+					clientCount: 8,
+					traffic:     DefaultTraffic,
+				}
+				testLinearizability(context.Background(), t, tc.config, failpoint, traffic)
+			})
+		}
 	}
 }
 
