@@ -23,6 +23,7 @@ GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-ge
 SWAGGER_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger)
 GOGOPROTO_ROOT="$(tool_pkg_dir github.com/gogo/protobuf/proto)/.."
 GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)/.."
+RAFT_ROOT="$(tool_pkg_dir go.etcd.io/raft/v3/raftpb)/.."
 
 echo
 echo "Resolved binary and packages versions:"
@@ -31,6 +32,7 @@ echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
 echo "  - swagger:                 ${SWAGGER_BIN}"
 echo "  - gogoproto-root:          ${GOGOPROTO_ROOT}"
 echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
+echo "  - raft-root:               ${RAFT_ROOT}"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 
 # directories containing protos to be built
@@ -40,10 +42,11 @@ log_callout -e "\\nRunning gofast (gogo) proto generation..."
 
 for dir in ${DIRS}; do
   run pushd "${dir}"
-    run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${ETCD_ROOT_DIR}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
+    run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
       --plugin="${GOFAST_BIN}" ./**/*.proto
 
     run sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./**/*.pb.go
+    run sed -i.bak -E 's|"raftpb"|"go.etcd.io/raft/v3/raftpb"|g' ./**/*.pb.go
     run sed -i.bak -E 's|"google/protobuf"|"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"|g' ./**/*.pb.go
 
     rm -f ./**/*.bak
@@ -62,6 +65,7 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
       -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
       -I"${GOGOPROTO_PATH}" \
       -I"${ETCD_ROOT_DIR}/.." \
+      -I"${RAFT_ROOT}" \
       --grpc-gateway_out=logtostderr=true,paths=source_relative:. \
       --swagger_out=logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
       --plugin="${SWAGGER_BIN}" --plugin="${GRPC_GATEWAY_BIN}" \

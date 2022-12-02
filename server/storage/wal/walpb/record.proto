@@ -2,7 +2,7 @@ syntax = "proto2";
 package walpb;
 
 import "gogoproto/gogo.proto";
-import "raft/raftpb/raft.proto";
+import "raftpb/raft.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
