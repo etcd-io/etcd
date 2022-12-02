@@ -32,7 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.uber.org/zap/zaptest"
 )
