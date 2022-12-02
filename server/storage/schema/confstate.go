@@ -18,8 +18,8 @@ import (
 	"encoding/json"
 	"log"
 
-	"go.etcd.io/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/raft/v3/raftpb"
 	"go.uber.org/zap"
 )
 

@@ -22,10 +22,10 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 
 	"github.com/xiang90/probing"
 	"go.uber.org/zap"

@@ -26,10 +26,10 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/raft/v3"
 	"go.uber.org/zap/zaptest"
 )
 

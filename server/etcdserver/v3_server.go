@@ -25,7 +25,6 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
-	"go.etcd.io/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
@@ -34,6 +33,7 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/raft/v3"
 
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"

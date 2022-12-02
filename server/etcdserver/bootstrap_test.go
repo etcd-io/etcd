@@ -37,12 +37,12 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
