@@ -164,7 +164,7 @@ function run_for_module {
 }
 
 function module_dirs() {
-  echo "api pkg raft client/pkg client/v2 client/v3 server etcdutl etcdctl tests ."
+  echo "api pkg client/pkg client/v2 client/v3 server etcdutl etcdctl tests ."
 }
 
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
@@ -180,7 +180,6 @@ function modules() {
   modules=(
     "${ROOT_MODULE}/api/v3"
     "${ROOT_MODULE}/pkg/v3"
-    "${ROOT_MODULE}/raft/v3"
     "${ROOT_MODULE}/client/pkg/v3"
     "${ROOT_MODULE}/client/v2"
     "${ROOT_MODULE}/client/v3"
