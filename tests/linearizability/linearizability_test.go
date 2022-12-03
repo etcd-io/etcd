@@ -34,8 +34,6 @@ const (
 	minimalQPS = 100.0
 	// maximalQPS limits number of requests send to etcd to avoid linearizability analysis taking too long.
 	maximalQPS = 200.0
-	// failpointTriggersCount
-	failpointTriggersCount = 60
 	// waitBetweenFailpointTriggers
 	waitBetweenFailpointTriggers = time.Second
 )
@@ -74,23 +72,21 @@ func TestLinearizability(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		for i := 0; i < failpointTriggersCount; i++ {
-			t.Run(tc.name, func(t *testing.T) {
-				failpoint := FailpointConfig{
-					failpoint:           tc.failpoint,
-					count:               1,
-					retries:             3,
-					waitBetweenTriggers: waitBetweenFailpointTriggers,
-				}
-				traffic := trafficConfig{
-					minimalQPS:  minimalQPS,
-					maximalQPS:  maximalQPS,
-					clientCount: 8,
-					traffic:     DefaultTraffic,
-				}
-				testLinearizability(context.Background(), t, tc.config, failpoint, traffic)
-			})
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			failpoint := FailpointConfig{
+				failpoint:           tc.failpoint,
+				count:               1,
+				retries:             3,
+				waitBetweenTriggers: waitBetweenFailpointTriggers,
+			}
+			traffic := trafficConfig{
+				minimalQPS:  minimalQPS,
+				maximalQPS:  maximalQPS,
+				clientCount: 8,
+				traffic:     DefaultTraffic,
+			}
+			testLinearizability(context.Background(), t, tc.config, failpoint, traffic)
+		})
 	}
 }
 
