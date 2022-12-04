@@ -31,9 +31,9 @@ import (
 // TODO(ahrtr): add network partition scenario to trigger snapshots.
 func TestMixVersionsSendSnapshot(t *testing.T) {
 	cases := []struct {
-		name              string
-		clusterVersion    e2e.ClusterVersion
-		newInstaceVersion e2e.ClusterVersion
+		name               string
+		clusterVersion     e2e.ClusterVersion
+		newInstanceVersion e2e.ClusterVersion
 	}{
 		// etcd doesn't support adding a new member of old version into
 		// a cluster with higher version. For example, etcd cluster
@@ -46,15 +46,15 @@ func TestMixVersionsSendSnapshot(t *testing.T) {
 			newInstaceVersion: e2e.LastVersion,
 		},*/
 		{
-			name:              "etcd instance with current version receives snapshot from the leader with last version",
-			clusterVersion:    e2e.LastVersion,
-			newInstaceVersion: e2e.CurrentVersion,
+			name:               "etcd instance with current version receives snapshot from the leader with last version",
+			clusterVersion:     e2e.LastVersion,
+			newInstanceVersion: e2e.CurrentVersion,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			mixVersionsSnapshotTest(t, tc.clusterVersion, tc.newInstaceVersion)
+			mixVersionsSnapshotTest(t, tc.clusterVersion, tc.newInstanceVersion)
 		})
 	}
 }
