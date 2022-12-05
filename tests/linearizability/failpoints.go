@@ -31,6 +31,10 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
+const (
+	triggerTimeout = time.Second
+)
+
 var (
 	KillFailpoint                            Failpoint = killFailpoint{}
 	DefragBeforeCopyPanic                    Failpoint = goFailpoint{"backend/defragBeforeCopy", "panic", triggerDefrag, AnyMember}
@@ -81,15 +85,21 @@ type killFailpoint struct{}
 
 func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
-	err := member.Kill()
-	if err != nil {
-		return err
+
+	killCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
+	defer cancel()
+	for member.IsRunning() {
+		err := member.Kill()
+		if err != nil {
+			t.Logf("sending kill signal failed: %v", err)
+		}
+		err = member.Wait(killCtx)
+		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
+		}
 	}
-	err = member.Wait()
-	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
-		return err
-	}
-	err = member.Start(ctx)
+
+	err := member.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -118,21 +128,27 @@ func (f goFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdPr
 	member := f.pickMember(t, clus)
 	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
 
-	err := setupGoFailpoint(address, f.failpoint, f.payload)
-	if err != nil {
-		return fmt.Errorf("gofailpoint setup failed: %w", err)
-	}
-	if f.trigger != nil {
-		err = f.trigger(ctx, member)
+	triggerCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
+	defer cancel()
+
+	for member.IsRunning() {
+		err := setupGoFailpoint(triggerCtx, address, f.failpoint, f.payload)
 		if err != nil {
-			return fmt.Errorf("triggering gofailpoint failed: %w", err)
+			t.Logf("gofailpoint setup failed: %v", err)
+		}
+		if f.trigger != nil {
+			err = f.trigger(triggerCtx, member)
+			if err != nil {
+				t.Logf("triggering gofailpoint failed: %v", err)
+			}
+		}
+		err = member.Wait(triggerCtx)
+		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+			return fmt.Errorf("failed to trigger a process panic within %s, err: %w", triggerTimeout, err)
 		}
 	}
-	err = member.Wait()
-	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
-		return err
-	}
-	err = member.Start(ctx)
+
+	err := member.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -150,13 +166,13 @@ func (f goFailpoint) pickMember(t *testing.T, clus *e2e.EtcdProcessCluster) e2e.
 	}
 }
 
-func setupGoFailpoint(host, failpoint, payload string) error {
+func setupGoFailpoint(ctx context.Context, host, failpoint, payload string) error {
 	failpointUrl := url.URL{
 		Scheme: "http",
 		Host:   host,
 		Path:   failpoint,
 	}
-	r, err := http.NewRequest("PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
+	r, err := http.NewRequestWithContext(ctx, "PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
 	if err != nil {
 		return err
 	}

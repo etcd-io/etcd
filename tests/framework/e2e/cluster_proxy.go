@@ -116,8 +116,12 @@ func (p *proxyEtcdProcess) Kill() error {
 	return p.etcdProc.Kill()
 }
 
-func (p *proxyEtcdProcess) Wait() error {
-	return p.etcdProc.Wait()
+func (p *proxyEtcdProcess) IsRunning() bool {
+	return p.etcdProc.IsRunning()
+}
+
+func (p *proxyEtcdProcess) Wait(ctx context.Context) error {
+	return p.etcdProc.Wait(ctx)
 }
 
 type proxyProc struct {
