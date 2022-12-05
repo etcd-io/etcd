@@ -47,15 +47,19 @@ func (c *recordingClient) Close() error {
 	return c.client.Close()
 }
 
-func (c *recordingClient) Get(ctx context.Context, key string) error {
+func (c *recordingClient) Get(ctx context.Context, key string) (string, error) {
 	callTime := time.Now()
 	resp, err := c.client.Get(ctx, key)
 	returnTime := time.Now()
 	if err != nil {
-		return err
+		return "", err
 	}
 	c.history.AppendGet(key, callTime, returnTime, resp)
-	return nil
+	var value string
+	if len(resp.Kvs) > 0 {
+		value = string(resp.Kvs[0].Value)
+	}
+	return value, nil
 }
 
 func (c *recordingClient) Put(ctx context.Context, key, value string) error {
@@ -72,4 +76,23 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	returnTime := time.Now()
 	c.history.AppendDelete(key, callTime, returnTime, resp, err)
 	return nil
+}
+
+func (c *recordingClient) Txn(ctx context.Context, key, expectedValue, newValue string) error {
+	callTime := time.Now()
+	txn := c.client.Txn(ctx)
+	var cmp clientv3.Cmp
+	if expectedValue == "" {
+		cmp = clientv3.Compare(clientv3.CreateRevision(key), "=", 0)
+	} else {
+		cmp = clientv3.Compare(clientv3.Value(key), "=", expectedValue)
+	}
+	resp, err := txn.If(
+		cmp,
+	).Then(
+		clientv3.OpPut(key, newValue),
+	).Commit()
+	returnTime := time.Now()
+	c.history.AppendTxn(key, expectedValue, newValue, callTime, returnTime, resp, err)
+	return err
 }

@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	DefaultTraffic Traffic = readWriteSingleKey{key: "key", writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 10}}}
+	DefaultTraffic Traffic = readWriteSingleKey{key: "key", writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
 )
 
 type Traffic interface {
@@ -50,27 +50,27 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 		default:
 		}
 		// Execute one read per one write to avoid operation history include too many failed writes when etcd is down.
-		err := t.Read(ctx, c, limiter)
+		resp, err := t.Read(ctx, c, limiter)
 		if err != nil {
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
-		t.Write(ctx, c, limiter, ids.RequestId())
+		t.Write(ctx, c, limiter, ids.RequestId(), resp)
 	}
 }
 
-func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter) error {
-	getCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
-	err := c.Get(getCtx, t.key)
+func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter) (string, error) {
+	getCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	resp, err := c.Get(getCtx, t.key)
 	cancel()
 	if err == nil {
 		limiter.Wait(ctx)
 	}
-	return err
+	return resp, err
 }
 
-func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, id int) error {
-	putCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
+func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, id int, readResponse string) error {
+	putCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 
 	var err error
 	switch t.pickWriteOperation() {
@@ -78,6 +78,14 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 		err = c.Put(putCtx, t.key, fmt.Sprintf("%d", id))
 	case Delete:
 		err = c.Delete(putCtx, t.key)
+	case Txn:
+		var value string
+		if readResponse == "" {
+			value = fmt.Sprintf("%d", id)
+		} else {
+			value = fmt.Sprintf("%s,%d", readResponse, id)
+		}
+		err = c.Txn(putCtx, t.key, readResponse, value)
 	default:
 		panic("invalid operation")
 	}
