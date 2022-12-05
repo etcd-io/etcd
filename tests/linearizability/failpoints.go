@@ -115,16 +115,9 @@ const (
 )
 
 func (f goFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
-	var member e2e.EtcdProcess
-	switch f.target {
-	case AnyMember:
-		member = clus.Procs[rand.Int()%len(clus.Procs)]
-	case Leader:
-		member = clus.Procs[clus.WaitLeader(t)]
-	default:
-		panic("unknown target")
-	}
+	member := f.pickMember(t, clus)
 	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
+
 	err := setupGoFailpoint(address, f.failpoint, f.payload)
 	if err != nil {
 		return fmt.Errorf("gofailpoint setup failed: %w", err)
@@ -144,6 +137,17 @@ func (f goFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdPr
 		return err
 	}
 	return nil
+}
+
+func (f goFailpoint) pickMember(t *testing.T, clus *e2e.EtcdProcessCluster) e2e.EtcdProcess {
+	switch f.target {
+	case AnyMember:
+		return clus.Procs[rand.Int()%len(clus.Procs)]
+	case Leader:
+		return clus.Procs[clus.WaitLeader(t)]
+	default:
+		panic("unknown target")
+	}
 }
 
 func setupGoFailpoint(host, failpoint, payload string) error {
