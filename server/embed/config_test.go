@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -200,6 +201,14 @@ func TestAutoCompactionModeParse(t *testing.T) {
 		// err mode
 		{"errmode", "1", false, 0},
 		{"errmode", "1h", false, time.Hour},
+		{"errmode", "0", false, 0},
+		{"errmode", "0h", false, 0},
+		// empty mode
+		{"", "0", false, 0},
+		{"", "0h", false, 0},
+		{"", "1", true, 0},
+		{"", "1h", true, 0},
+		{"", "-1", true, 0},
 	}
 
 	hasErr := func(err error) bool {

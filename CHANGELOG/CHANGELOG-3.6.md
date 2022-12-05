@@ -67,6 +67,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [Protection on maintenance request when auth is enabled](https://github.com/etcd-io/etcd/pull/14663).
 - Graduated [`--experimental-warning-unary-request-duration` to `--warning-unary-request-duration`](https://github.com/etcd-io/etcd/pull/14414). Note the experimental flag is deprecated and will be decommissioned in v3.7.
 - Add [field `hash_revision` into `HashKVResponse`](https://github.com/etcd-io/etcd/pull/14537).
+- Require [Set auto-compaction-mode explicitly in config file](https://github.com/etcd-io/etcd/pull/14896).
 
 ### etcd grpc-proxy
 

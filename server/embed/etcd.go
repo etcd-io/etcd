@@ -799,12 +799,23 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 			ret = time.Duration(int64(h))
 		case CompactorModePeriodic:
 			ret = time.Duration(int64(h)) * time.Hour
+		default:
+			if h > 0 {
+				return 0, fmt.Errorf("unsupported compaction mode: %q", mode)
+			}
 		}
-	} else {
-		// periodic compaction
-		ret, err = time.ParseDuration(retention)
-		if err != nil {
-			return 0, fmt.Errorf("error parsing CompactionRetention: %v", err)
+		return ret, nil
+	}
+	// periodic compaction
+	ret, err = time.ParseDuration(retention)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing CompactionRetention: %v", err)
+	}
+	if ret > 0 {
+		switch mode {
+		case CompactorModeRevision, CompactorModePeriodic:
+		default:
+			return 0, fmt.Errorf("unsupported compaction mode: %q", mode)
 		}
 	}
 	return ret, nil
