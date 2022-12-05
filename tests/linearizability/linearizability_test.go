@@ -34,8 +34,6 @@ const (
 	minimalQPS = 100.0
 	// maximalQPS limits number of requests send to etcd to avoid linearizability analysis taking too long.
 	maximalQPS = 200.0
-	// failpointTriggersCount
-	failpointTriggersCount = 60
 	// waitBetweenFailpointTriggers
 	waitBetweenFailpointTriggers = time.Second
 )
@@ -77,7 +75,8 @@ func TestLinearizability(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			failpoint := FailpointConfig{
 				failpoint:           tc.failpoint,
-				count:               failpointTriggersCount,
+				count:               1,
+				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
 			}
 			traffic := trafficConfig{
@@ -117,8 +116,8 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 	var err error
 	successes := 0
 	failures := 0
-	time.Sleep(config.waitBetweenTriggers)
-	for successes < config.count && failures < config.count {
+	for successes < config.count && failures < config.retries {
+		time.Sleep(config.waitBetweenTriggers)
 		err = config.failpoint.Trigger(t, ctx, clus)
 		if err != nil {
 			t.Logf("Failed to trigger failpoint %q, err: %v\n", config.failpoint.Name(), err)
@@ -126,17 +125,18 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 			continue
 		}
 		successes++
-		time.Sleep(config.waitBetweenTriggers)
 	}
-	if successes < config.count || failures >= config.count {
+	if successes < config.count || failures >= config.retries {
 		return fmt.Errorf("failed to trigger failpoints enough times, err: %v", err)
 	}
+	time.Sleep(config.waitBetweenTriggers)
 	return nil
 }
 
 type FailpointConfig struct {
 	failpoint           Failpoint
 	count               int
+	retries             int
 	waitBetweenTriggers time.Duration
 }
 
