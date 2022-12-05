@@ -140,11 +140,12 @@ type FailpointConfig struct {
 	waitBetweenTriggers time.Duration
 }
 
-func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config trafficConfig) (operations []porcupine.Operation) {
+func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config trafficConfig) []porcupine.Operation {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsV3()
 
 	ids := newIdProvider()
+	h := history{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
@@ -162,12 +163,13 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 
 			config.traffic.Run(ctx, c, limiter, ids)
 			mux.Lock()
-			operations = append(operations, c.history.Operations()...)
+			h = h.Merge(c.history.history)
 			mux.Unlock()
 		}(c)
 	}
 	wg.Wait()
 	endTime := time.Now()
+	operations := h.Operations()
 	t.Logf("Recorded %d operations", len(operations))
 
 	qps := float64(len(operations)) / float64(endTime.Sub(startTime)) * float64(time.Second)

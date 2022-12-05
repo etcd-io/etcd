@@ -21,30 +21,31 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-type history struct {
+type appendableHistory struct {
 	// id of the next write operation. If needed a new id might be requested from idProvider.
 	id         int
 	idProvider idProvider
 
-	operations []porcupine.Operation
-	failed     []porcupine.Operation
+	history
 }
 
-func NewHistory(ids idProvider) *history {
-	return &history{
+func newAppendableHistory(ids idProvider) *appendableHistory {
+	return &appendableHistory{
 		id:         ids.ClientId(),
 		idProvider: ids,
-		operations: []porcupine.Operation{},
-		failed:     []porcupine.Operation{},
+		history: history{
+			successful: []porcupine.Operation{},
+			failed:     []porcupine.Operation{},
+		},
 	}
 }
 
-func (h *history) AppendGet(key string, start, end time.Time, resp *clientv3.GetResponse) {
+func (h *appendableHistory) AppendGet(key string, start, end time.Time, resp *clientv3.GetResponse) {
 	var readData string
 	if len(resp.Kvs) == 1 {
 		readData = string(resp.Kvs[0].Value)
 	}
-	h.operations = append(h.operations, porcupine.Operation{
+	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    EtcdRequest{Op: Get, Key: key},
 		Call:     start.UnixNano(),
@@ -53,7 +54,7 @@ func (h *history) AppendGet(key string, start, end time.Time, resp *clientv3.Get
 	})
 }
 
-func (h *history) AppendPut(key, value string, start, end time.Time, resp *clientv3.PutResponse, err error) {
+func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, resp *clientv3.PutResponse, err error) {
 	if err != nil {
 		h.failed = append(h.failed, porcupine.Operation{
 			ClientId: h.id,
@@ -71,7 +72,7 @@ func (h *history) AppendPut(key, value string, start, end time.Time, resp *clien
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
 	}
-	h.operations = append(h.operations, porcupine.Operation{
+	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    EtcdRequest{Op: Put, Key: key, PutData: value},
 		Call:     start.UnixNano(),
@@ -80,7 +81,7 @@ func (h *history) AppendPut(key, value string, start, end time.Time, resp *clien
 	})
 }
 
-func (h *history) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
+func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
 	if err != nil {
 		h.failed = append(h.failed, porcupine.Operation{
 			ClientId: h.id,
@@ -100,7 +101,7 @@ func (h *history) AppendDelete(key string, start, end time.Time, resp *clientv3.
 		revision = resp.Header.Revision
 		deleted = resp.Deleted
 	}
-	h.operations = append(h.operations, porcupine.Operation{
+	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    EtcdRequest{Op: Delete, Key: key},
 		Call:     start.UnixNano(),
@@ -109,10 +110,28 @@ func (h *history) AppendDelete(key string, start, end time.Time, resp *clientv3.
 	})
 }
 
-func (h *history) Operations() []porcupine.Operation {
-	operations := make([]porcupine.Operation, 0, len(h.operations)+len(h.failed))
+type history struct {
+	successful []porcupine.Operation
+	// failed requests are kept separate as we don't know return time of failed operations.
+	failed []porcupine.Operation
+}
+
+func (h history) Merge(h2 history) history {
+	result := history{
+		successful: make([]porcupine.Operation, 0, len(h.successful)+len(h2.successful)),
+		failed:     make([]porcupine.Operation, 0, len(h.failed)+len(h2.failed)),
+	}
+	result.successful = append(result.successful, h.successful...)
+	result.successful = append(result.successful, h2.successful...)
+	result.failed = append(result.failed, h.failed...)
+	result.failed = append(result.failed, h2.failed...)
+	return result
+}
+
+func (h history) Operations() []porcupine.Operation {
+	operations := make([]porcupine.Operation, 0, len(h.successful)+len(h.failed))
 	var maxTime int64
-	for _, op := range h.operations {
+	for _, op := range h.successful {
 		operations = append(operations, op)
 		if op.Return > maxTime {
 			maxTime = op.Return

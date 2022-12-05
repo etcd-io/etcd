@@ -24,7 +24,7 @@ import (
 
 type recordingClient struct {
 	client  clientv3.Client
-	history *history
+	history *appendableHistory
 }
 
 func NewClient(endpoints []string, ids idProvider) (*recordingClient, error) {
@@ -39,7 +39,7 @@ func NewClient(endpoints []string, ids idProvider) (*recordingClient, error) {
 	}
 	return &recordingClient{
 		client:  *cc,
-		history: NewHistory(ids),
+		history: newAppendableHistory(ids),
 	}, nil
 }
 
