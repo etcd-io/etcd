@@ -53,6 +53,7 @@ fi
 
 PASSES=${PASSES:-"fmt bom dep build unit"}
 PKG=${PKG:-}
+SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.8.0"}
 
 if [ -z "$GOARCH" ]; then
   GOARCH=$(go env GOARCH);
@@ -388,9 +389,15 @@ function cov_pass {
 ######### Code formatting checkers #############################################
 
 function shellcheck_pass {
-  if tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
-    generic_checker run shellcheck -fgcc scripts/*.sh
+  SHELLCHECK=shellcheck
+  if ! tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
+    log_callout "Installing shellcheck $SHELLCHECK_VERSION"
+    wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" | tar -xJv -C /tmp/ --strip-components=1
+    mkdir -p ./bin
+    mv /tmp/shellcheck ./bin/
+    SHELLCHECK=./bin/shellcheck
   fi
+  generic_checker run ${SHELLCHECK} -fgcc scripts/*.sh
 }
 
 function shellws_pass {
