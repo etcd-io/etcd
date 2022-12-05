@@ -27,19 +27,23 @@ const (
 	Get    Operation = "get"
 	Put    Operation = "put"
 	Delete Operation = "delete"
+	Txn    Operation = "txn"
 )
 
 type EtcdRequest struct {
-	Op      Operation
-	Key     string
-	PutData string
+	Op            Operation
+	Key           string
+	PutData       string
+	TxnExpectData string
+	TxnNewData    string
 }
 
 type EtcdResponse struct {
-	GetData  string
-	Revision int64
-	Deleted  int64
-	Err      error
+	GetData      string
+	Revision     int64
+	Deleted      int64
+	TxnSucceeded bool
+	Err          error
 }
 
 type EtcdState struct {
@@ -88,6 +92,12 @@ var etcdModel = porcupine.Model{
 				return fmt.Sprintf("delete(%q) -> %s", request.Key, response.Err)
 			} else {
 				return fmt.Sprintf("delete(%q) -> ok, rev: %d deleted:%d", request.Key, response.Revision, response.Deleted)
+			}
+		case Txn:
+			if response.Err != nil {
+				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %s", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.Err)
+			} else {
+				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %v, rev: %d", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.TxnSucceeded, response.Revision)
 			}
 		default:
 			return "<invalid>"
@@ -145,6 +155,14 @@ func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v V
 			Value:    "",
 			Revision: response.Revision,
 		}
+	case Txn:
+		if response.TxnSucceeded {
+			return true, ValueRevision{
+				Value:    request.TxnNewData,
+				Revision: response.Revision,
+			}
+		}
+		return false, ValueRevision{}
 	default:
 		panic("Unknown operation")
 	}
@@ -163,6 +181,12 @@ func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdRespons
 			v.Value = ""
 			v.Revision += 1
 			resp.Deleted = 1
+		}
+	case Txn:
+		if v.Value == request.TxnExpectData {
+			v.Value = request.TxnNewData
+			v.Revision += 1
+			resp.TxnSucceeded = true
 		}
 	default:
 		panic("unsupported operation")
