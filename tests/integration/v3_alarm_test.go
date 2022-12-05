@@ -90,6 +90,30 @@ func TestV3StorageQuotaApply(t *testing.T) {
 		}
 	}
 
+	// txn with non-mutating Ops should go through when NOSPACE alarm is raised
+	_, err = kvc0.Txn(context.TODO(), &pb.TxnRequest{
+		Compare: []*pb.Compare{
+			{
+				Key:         key,
+				Result:      pb.Compare_EQUAL,
+				Target:      pb.Compare_CREATE,
+				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 0},
+			},
+		},
+		Success: []*pb.RequestOp{
+			{
+				Request: &pb.RequestOp_RequestDeleteRange{
+					RequestDeleteRange: &pb.DeleteRangeRequest{
+						Key: key,
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.TODO(), RequestWaitTimeout)
 	defer cancel()
 
