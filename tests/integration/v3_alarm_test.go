@@ -89,7 +89,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
-	
+
 	// txn with non-mutating Ops should go through when NOSPACE alarm is raised
 	_, err = kvc0.Txn(context.TODO(), &pb.TxnRequest{
 		Compare: []*pb.Compare{
