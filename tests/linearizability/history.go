@@ -55,17 +55,9 @@ func (h *appendableHistory) AppendGet(key string, start, end time.Time, resp *cl
 }
 
 func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, resp *clientv3.PutResponse, err error) {
+	request := EtcdRequest{Op: Put, Key: key, PutData: value}
 	if err != nil {
-		h.failed = append(h.failed, porcupine.Operation{
-			ClientId: h.id,
-			Input:    EtcdRequest{Op: Put, Key: key, PutData: value},
-			Call:     start.UnixNano(),
-			Output:   EtcdResponse{Err: err},
-			Return:   0, // For failed writes we don't know when request has really finished.
-		})
-		// Operations of single client needs to be sequential.
-		// As we don't know return time of failed operations, all new writes need to be done with new client id.
-		h.id = h.idProvider.ClientId()
+		h.appendFailed(request, start, err)
 		return
 	}
 	var revision int64
@@ -82,17 +74,9 @@ func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, r
 }
 
 func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
+	request := EtcdRequest{Op: Delete, Key: key}
 	if err != nil {
-		h.failed = append(h.failed, porcupine.Operation{
-			ClientId: h.id,
-			Input:    EtcdRequest{Op: Delete, Key: key},
-			Call:     start.UnixNano(),
-			Output:   EtcdResponse{Err: err},
-			Return:   0, // For failed writes we don't know when request has really finished.
-		})
-		// Operations of single client needs to be sequential.
-		// As we don't know return time of failed operations, all new writes need to be done with new client id.
-		h.id = h.idProvider.ClientId()
+		h.appendFailed(request, start, err)
 		return
 	}
 	var revision int64
@@ -103,11 +87,24 @@ func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp 
 	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
-		Input:    EtcdRequest{Op: Delete, Key: key},
+		Input:    request,
 		Call:     start.UnixNano(),
 		Output:   EtcdResponse{Revision: revision, Deleted: deleted, Err: err},
 		Return:   end.UnixNano(),
 	})
+}
+
+func (h *appendableHistory) appendFailed(request EtcdRequest, start time.Time, err error) {
+	h.failed = append(h.failed, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.UnixNano(),
+		Output:   EtcdResponse{Err: err},
+		Return:   0, // For failed writes we don't know when request has really finished.
+	})
+	// Operations of single client needs to be sequential.
+	// As we don't know return time of failed operations, all new writes need to be done with new client id.
+	h.id = h.idProvider.ClientId()
 }
 
 type history struct {
