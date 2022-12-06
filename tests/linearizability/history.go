@@ -113,6 +113,7 @@ func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp 
 type history struct {
 	successful []porcupine.Operation
 	// failed requests are kept separate as we don't know return time of failed operations.
+	// Based on https://github.com/anishathalye/porcupine/issues/10
 	failed []porcupine.Operation
 }
 
@@ -137,6 +138,8 @@ func (h history) Operations() []porcupine.Operation {
 			maxTime = op.Return
 		}
 	}
+	// Failed requests don't have a known return time.
+	// We simulate Infinity by using return time of latest successfully request.
 	for _, op := range h.failed {
 		if op.Call > maxTime {
 			continue
