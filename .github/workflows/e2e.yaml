@@ -1,8 +1,11 @@
 name: E2E
 on: [push, pull_request]
+permissions: read-all
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       fail-fast: true
       matrix:

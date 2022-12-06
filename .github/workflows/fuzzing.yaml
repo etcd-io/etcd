@@ -1,5 +1,6 @@
 name: Fuzzing v3rpc
 on: [push, pull_request]
+permissions: read-all
 jobs:
   fuzzing:
     runs-on: ubuntu-latest
