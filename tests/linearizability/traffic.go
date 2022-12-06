@@ -25,6 +25,7 @@ import (
 
 var (
 	DefaultTraffic Traffic = readWriteSingleKey{key: "key", writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
+	AppendOnly     Traffic = readWriteSingleKey{key: "key", writes: []opChance{{operation: Txn, chance: 100}}}
 )
 
 type Traffic interface {

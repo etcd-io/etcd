@@ -123,7 +123,7 @@ func (h *appendableHistory) appendFailed(request EtcdRequest, start time.Time, e
 	})
 	// Operations of single client needs to be sequential.
 	// As we don't know return time of failed operations, all new writes need to be done with new client id.
-	h.id = h.idProvider.ClientId()
+	//h.id = h.idProvider.ClientId()
 }
 
 type history struct {

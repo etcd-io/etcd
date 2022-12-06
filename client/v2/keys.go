@@ -147,7 +147,7 @@ type WatcherOptions struct {
 
 type CreateInOrderOptions struct {
 	// TTL defines a period of time after-which the Node should
-	// expire and no longer exist. Values <= 0 are ignored. Given
+	// expire and no longer exist. Elements <= 0 are ignored. Given
 	// that the zero-value is ignored, TTL cannot be used to set
 	// a TTL of 0.
 	TTL time.Duration
@@ -177,7 +177,7 @@ type SetOptions struct {
 	PrevExist PrevExistType
 
 	// TTL defines a period of time after-which the Node should
-	// expire and no longer exist. Values <= 0 are ignored. Given
+	// expire and no longer exist. Elements <= 0 are ignored. Given
 	// that the zero-value is ignored, TTL cannot be used to set
 	// a TTL of 0.
 	TTL time.Duration

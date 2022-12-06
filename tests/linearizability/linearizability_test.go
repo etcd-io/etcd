@@ -43,31 +43,15 @@ func TestLinearizability(t *testing.T) {
 	tcs := []struct {
 		name      string
 		failpoint Failpoint
+		traffic   Traffic
 		config    e2e.EtcdProcessClusterConfig
 	}{
 		{
-			name:      "ClusterOfSize1",
-			failpoint: RandomFailpoint,
+			name:      "Issue14890",
+			traffic:   AppendOnly,
+			failpoint: KillFailpoint,
 			config: *e2e.NewConfig(
-				e2e.WithClusterSize(1),
-				e2e.WithGoFailEnabled(true),
-				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
-			),
-		},
-		{
-			name:      "ClusterOfSize3",
-			failpoint: RandomFailpoint,
-			config: *e2e.NewConfig(
-				e2e.WithGoFailEnabled(true),
-				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
-			),
-		},
-		{
-			name:      "Issue14370",
-			failpoint: RaftBeforeSavePanic,
-			config: *e2e.NewConfig(
-				e2e.WithClusterSize(1),
-				e2e.WithGoFailEnabled(true),
+				e2e.WithClusterSize(5),
 			),
 		},
 	}
@@ -75,15 +59,18 @@ func TestLinearizability(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			failpoint := FailpointConfig{
 				failpoint:           tc.failpoint,
-				count:               1,
+				count:               60,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
 			}
 			traffic := trafficConfig{
-				minimalQPS:  minimalQPS,
-				maximalQPS:  maximalQPS,
-				clientCount: 8,
-				traffic:     DefaultTraffic,
+				minimalQPS:  100,
+				maximalQPS:  1000,
+				traffic:     tc.traffic,
+				clientCount: 10,
+			}
+			if tc.traffic == nil {
+				tc.traffic = DefaultTraffic
 			}
 			testLinearizability(context.Background(), t, tc.config, failpoint, traffic)
 		})
@@ -193,18 +180,63 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 		t.Error(err)
 	}
 
-	linearizable, info := porcupine.CheckOperationsVerbose(etcdModel, operations, 0)
-	if linearizable != porcupine.Ok {
-		t.Error("Model is not linearizable")
-		persistMemberDataDir(t, clus, path)
+	appendOperations := []porcupine.Operation{}
+	isAppendOnly := true
+appendCheck:
+	for _, op := range operations {
+		req := op.Input.(EtcdRequest)
+		resp := op.Output.(EtcdResponse)
+		switch req.Op {
+		case Get:
+			appendOperations = append(appendOperations, porcupine.Operation{
+				ClientId: op.ClientId,
+				Input:    AppendRequest{Op: Get, Key: req.Key},
+				Call:     op.Call,
+				Output:   AppendResponse{GetData: resp.GetData},
+				Return:   op.Return,
+			})
+		case Txn:
+			if resp.Err != nil || !resp.TxnSucceeded {
+				continue
+			}
+			elements := strings.Split(req.TxnNewData, ",")
+			appendOperations = append(appendOperations, porcupine.Operation{
+				ClientId: op.ClientId,
+				Input:    AppendRequest{Op: Append, Key: req.Key, AppendData: elements[len(elements)-1]},
+				Call:     op.Call,
+				Output:   AppendResponse{GetData: resp.GetData},
+				Return:   op.Return,
+			})
+		default:
+			isAppendOnly = false
+			break appendCheck
+		}
 	}
-
 	visualizationPath := filepath.Join(path, "history.html")
-	t.Logf("saving visualization to %q", visualizationPath)
-	err = porcupine.VisualizePath(etcdModel, info, visualizationPath)
-	if err != nil {
-		t.Errorf("Failed to visualize, err: %v", err)
+	if isAppendOnly {
+		t.Log("Using append model")
+		linearizable, info := porcupine.CheckOperationsVerbose(appendModel, appendOperations, 0)
+		if linearizable != porcupine.Ok {
+			t.Error("Model is not linearizable")
+			persistMemberDataDir(t, clus, path)
+		}
+		err = porcupine.VisualizePath(appendModel, info, visualizationPath)
+		if err != nil {
+			t.Errorf("Failed to visualize, err: %v", err)
+		}
+	} else {
+		t.Error("Using etcd model")
+		linearizable, info := porcupine.CheckOperationsVerbose(etcdModel, operations, 0)
+		if linearizable != porcupine.Ok {
+			t.Error("Model is not linearizable")
+			persistMemberDataDir(t, clus, path)
+		}
+		err = porcupine.VisualizePath(etcdModel, info, visualizationPath)
+		if err != nil {
+			t.Errorf("Failed to visualize, err: %v", err)
+		}
 	}
+	t.Logf("saving visualization to %q", visualizationPath)
 }
 
 func persistMemberDataDir(t *testing.T, clus *e2e.EtcdProcessCluster, path string) {
