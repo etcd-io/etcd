@@ -11,6 +11,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ### etcd server
 - Fix [Remove memberID from data corrupt alarm](https://github.com/etcd-io/etcd/pull/14853).
+- Fix [nil pointer panic for readonly txn due to nil response](https://github.com/etcd-io/etcd/pull/14900).
 
 <hr>
 
@@ -62,7 +63,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [remove temp files in snap dir when etcdserver starting](https://github.com/etcd-io/etcd/pull/14246)
 - Fix [Etcdserver is still in progress of processing LeaseGrantRequest when it receives a LeaseKeepAliveRequest on the same leaseID](https://github.com/etcd-io/etcd/pull/14177)
 - Fix [Grant lease with negative ID can possibly cause db out of sync](https://github.com/etcd-io/etcd/pull/14239)
-- Fix [non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/14254)
+- Fix [Allow non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/14254)
 
 <hr>
 
