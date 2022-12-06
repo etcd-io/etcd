@@ -70,6 +70,14 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithGoFailEnabled(true),
 			),
 		},
+		{
+			name:      "Issue14685",
+			failpoint: DefragBeforeCopyPanic,
+			config: *e2e.NewConfig(
+				e2e.WithClusterSize(1),
+				e2e.WithGoFailEnabled(true),
+			),
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
