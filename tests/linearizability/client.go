@@ -89,3 +89,23 @@ func (c *recordingClient) Put(ctx context.Context, key, value string) error {
 	})
 	return nil
 }
+
+func (c *recordingClient) Delete(ctx context.Context, key string) error {
+	callTime := time.Now()
+	resp, err := c.client.Delete(ctx, key)
+	returnTime := time.Now()
+	var revision int64
+	var deleted int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+		deleted = resp.Deleted
+	}
+	c.operations = append(c.operations, porcupine.Operation{
+		ClientId: c.id,
+		Input:    etcdRequest{op: Delete, key: key},
+		Call:     callTime.UnixNano(),
+		Output:   etcdResponse{revision: revision, deleted: deleted, err: err},
+		Return:   returnTime.UnixNano(),
+	})
+	return nil
+}
