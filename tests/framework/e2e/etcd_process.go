@@ -42,7 +42,8 @@ type EtcdProcess interface {
 	EndpointsMetrics() []string
 	Client(opts ...config.ClientOption) *EtcdctlV3
 
-	Wait() error
+	IsRunning() bool
+	Wait(ctx context.Context) error
 	Start(ctx context.Context) error
 	Restart(ctx context.Context) error
 	Stop() error
@@ -201,11 +202,35 @@ func (ep *EtcdServerProcess) Kill() error {
 	return ep.proc.Signal(syscall.SIGKILL)
 }
 
-func (ep *EtcdServerProcess) Wait() error {
-	ep.proc.Wait()
+func (ep *EtcdServerProcess) Wait(ctx context.Context) error {
+	ch := make(chan struct{})
+	go func() {
+		defer close(ch)
+		if ep.proc != nil {
+			ep.proc.Wait()
+			ep.cfg.lg.Info("server exited", zap.String("name", ep.cfg.Name))
+		}
+	}()
+	select {
+	case <-ch:
+		ep.proc = nil
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (ep *EtcdServerProcess) IsRunning() bool {
+	if ep.proc == nil {
+		return false
+	}
+	_, err := ep.proc.ExitCode()
+	if err == expect.ErrProcessRunning {
+		return true
+	}
 	ep.cfg.lg.Info("server exited", zap.String("name", ep.cfg.Name))
 	ep.proc = nil
-	return nil
+	return false
 }
 
 func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
