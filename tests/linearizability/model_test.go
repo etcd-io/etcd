@@ -27,91 +27,195 @@ func TestModel(t *testing.T) {
 		{
 			name: "First Get can start from non-empty value and non-zero revision",
 			operations: []testOperation{
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 42}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 42}},
 			},
 		},
 		{
 			name: "First Put can start from non-zero revision",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 42}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Revision: 42}},
 			},
 		},
 		{
-			name: "Get response data should match PUT",
+			name: "First delete can start from non-zero revision",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 1}, failure: true},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "1", revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Revision: 42}},
 			},
 		},
 		{
-			name: "Get response revision should be equal or greater then put",
+			name: "Get response data should match put",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key"}, resp: etcdResponse{revision: 2}},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{revision: 1}, failure: true},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{revision: 2}},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{revision: 4}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
 			},
 		},
 		{
-			name: "Put bumps revision",
+			name: "Get revision should be equal to put",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
-				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 1}, failure: true},
-				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 2}},
+				{req: EtcdRequest{Op: Put, Key: "key"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 3}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2}},
+			},
+		},
+		{
+			name: "Put must increase revision by 1",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 3}, failure: true},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Revision: 2}},
 			},
 		},
 		{
 			name: "Put can fail and be lost",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
-				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{err: errors.New("failed")}},
-				{req: etcdRequest{op: Put, key: "key", putData: "3"}, resp: etcdResponse{revision: 2}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}, failure: true},
 			},
 		},
 		{
-			name: "Put can fail but bump revision",
+			name: "Put can fail but be persisted and increase revision before put",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
-				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{err: errors.New("failed")}},
-				{req: etcdRequest{op: Put, key: "key", putData: "3"}, resp: etcdResponse{revision: 3}},
+				// One failed request, one persisted.
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 3}},
+				// Two failed request, two persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "5"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "6"}, resp: EtcdResponse{Revision: 6}},
 			},
 		},
 		{
-			name: "Put can fail but be persisted and bump revision",
+			name: "Put can fail but be persisted and increase revision before get",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
-				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{err: errors.New("failed")}},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 1}, failure: true},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 2}},
+				// One failed request, one persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}},
+				// Two failed request, two persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 3}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 4}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "4", Revision: 4}},
 			},
 		},
 		{
-			name: "Put can fail but be persisted later",
+			name: "Put can fail but be persisted and increase revision before delete",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{err: errors.New("failed")}},
-				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 2}},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 2}},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "1", revision: 3}},
-			},
-		},
-		{
-			name: "Put can fail but bump revision later",
-			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{err: errors.New("failed")}},
-				{req: etcdRequest{op: Put, key: "key", putData: "2"}, resp: etcdResponse{revision: 2}},
-				{req: etcdRequest{op: Get, key: "key"}, resp: etcdResponse{getData: "2", revision: 2}},
-				{req: etcdRequest{op: Put, key: "key", putData: "3"}, resp: etcdResponse{revision: 4}},
+				// One failed request, one persisted.
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 3}},
+				// Two failed request, two persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Revision: 4}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "5"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "6"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 7}},
+				// Two failed request, one persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "8"}, resp: EtcdResponse{Revision: 8}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "9"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "10"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 10}},
 			},
 		},
 		{
 			name: "Delete only increases revision on success",
 			operations: []testOperation{
-				{req: etcdRequest{op: Put, key: "key", putData: "1"}, resp: etcdResponse{revision: 1}},
-				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 1, revision: 1}, failure: true},
-				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 1, revision: 2}},
-				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 0, revision: 3}, failure: true},
-				{req: etcdRequest{op: Delete, key: "key"}, resp: etcdResponse{deleted: 0, revision: 2}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 2}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 0, Revision: 3}, failure: true},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 0, Revision: 2}},
+			},
+		},
+		{
+			name: "Delete clears value",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 2}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2}},
+			},
+		},
+		{
+			name: "Delete can fail and be lost before get",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2}, failure: true},
+			},
+		},
+		{
+			name: "Delete can fail and be lost before delete",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 2}},
+			},
+		},
+		{
+			name: "Delete can fail and be lost before put",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Revision: 2}},
+			},
+		},
+		{
+			name: "Delete can fail but be persisted before get",
+			operations: []testOperation{
+				// One failed request, one persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2}},
+				// Two failed request, one persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 3}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 4}},
+			},
+		},
+		{
+			name: "Delete can fail but be persisted before put",
+			operations: []testOperation{
+				// One failed request, one persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 3}},
+				// Two failed request, one persisted.
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "5"}, resp: EtcdResponse{Revision: 5}},
+			},
+		},
+		{
+			name: "Delete can fail but be persisted before delete",
+			operations: []testOperation{
+				// One failed request, one persisted.
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 3}},
+				// Two failed request, one persisted.
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Revision: 4}},
 			},
 		},
 	}
@@ -131,7 +235,7 @@ func TestModel(t *testing.T) {
 }
 
 type testOperation struct {
-	req     etcdRequest
-	resp    etcdResponse
+	req     EtcdRequest
+	resp    EtcdResponse
 	failure bool
 }

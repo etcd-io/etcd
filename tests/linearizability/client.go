@@ -18,19 +18,16 @@ import (
 	"context"
 	"time"
 
-	"github.com/anishathalye/porcupine"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
 )
 
 type recordingClient struct {
-	client clientv3.Client
-	id     int
-
-	operations []porcupine.Operation
+	client  clientv3.Client
+	history *appendableHistory
 }
 
-func NewClient(endpoints []string, id int) (*recordingClient, error) {
+func NewClient(endpoints []string, ids idProvider) (*recordingClient, error) {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
 		Logger:               zap.NewNop(),
@@ -41,9 +38,8 @@ func NewClient(endpoints []string, id int) (*recordingClient, error) {
 		return nil, err
 	}
 	return &recordingClient{
-		client:     *cc,
-		id:         id,
-		operations: []porcupine.Operation{},
+		client:  *cc,
+		history: newAppendableHistory(ids),
 	}, nil
 }
 
@@ -58,17 +54,7 @@ func (c *recordingClient) Get(ctx context.Context, key string) error {
 	if err != nil {
 		return err
 	}
-	var readData string
-	if len(resp.Kvs) == 1 {
-		readData = string(resp.Kvs[0].Value)
-	}
-	c.operations = append(c.operations, porcupine.Operation{
-		ClientId: c.id,
-		Input:    etcdRequest{op: Get, key: key},
-		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{getData: readData, revision: resp.Header.Revision},
-		Return:   returnTime.UnixNano(),
-	})
+	c.history.AppendGet(key, callTime, returnTime, resp)
 	return nil
 }
 
@@ -76,36 +62,14 @@ func (c *recordingClient) Put(ctx context.Context, key, value string) error {
 	callTime := time.Now()
 	resp, err := c.client.Put(ctx, key, value)
 	returnTime := time.Now()
-	var revision int64
-	if resp != nil && resp.Header != nil {
-		revision = resp.Header.Revision
-	}
-	c.operations = append(c.operations, porcupine.Operation{
-		ClientId: c.id,
-		Input:    etcdRequest{op: Put, key: key, putData: value},
-		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{err: err, revision: revision},
-		Return:   returnTime.UnixNano(),
-	})
-	return nil
+	c.history.AppendPut(key, value, callTime, returnTime, resp, err)
+	return err
 }
 
 func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	callTime := time.Now()
 	resp, err := c.client.Delete(ctx, key)
 	returnTime := time.Now()
-	var revision int64
-	var deleted int64
-	if resp != nil && resp.Header != nil {
-		revision = resp.Header.Revision
-		deleted = resp.Deleted
-	}
-	c.operations = append(c.operations, porcupine.Operation{
-		ClientId: c.id,
-		Input:    etcdRequest{op: Delete, key: key},
-		Call:     callTime.UnixNano(),
-		Output:   etcdResponse{revision: revision, deleted: deleted, err: err},
-		Return:   returnTime.UnixNano(),
-	})
+	c.history.AppendDelete(key, callTime, returnTime, resp, err)
 	return nil
 }
