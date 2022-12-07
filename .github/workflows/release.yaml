@@ -3,8 +3,6 @@ on: [push, pull_request]
 permissions: read-all
 jobs:
   main:
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
