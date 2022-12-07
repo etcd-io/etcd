@@ -19,12 +19,19 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
+
 	"go.uber.org/zap/zaptest"
 )
 
 // TestWarnOfExpensiveReadOnlyTxnRequest verifies WarnOfExpensiveReadOnlyTxnRequest
 // never panic no matter what data the txnResponse contains.
 func TestWarnOfExpensiveReadOnlyTxnRequest(t *testing.T) {
+	kvs := []*mvccpb.KeyValue{
+		&mvccpb.KeyValue{Key: []byte("k1"), Value: []byte("v1")},
+		&mvccpb.KeyValue{Key: []byte("k2"), Value: []byte("v2")},
+	}
+
 	testCases := []struct {
 		name    string
 		txnResp *pb.TxnResponse
@@ -35,7 +42,9 @@ func TestWarnOfExpensiveReadOnlyTxnRequest(t *testing.T) {
 				Responses: []*pb.ResponseOp{
 					{
 						Response: &pb.ResponseOp_ResponseRange{
-							ResponseRange: &pb.RangeResponse{},
+							ResponseRange: &pb.RangeResponse{
+								Kvs: kvs,
+							},
 						},
 					},
 					{
@@ -58,6 +67,13 @@ func TestWarnOfExpensiveReadOnlyTxnRequest(t *testing.T) {
 					{
 						Response: &pb.ResponseOp_ResponseRange{
 							ResponseRange: nil,
+						},
+					},
+					{
+						Response: &pb.ResponseOp_ResponseRange{
+							ResponseRange: &pb.RangeResponse{
+								Kvs: kvs,
+							},
 						},
 					},
 				},

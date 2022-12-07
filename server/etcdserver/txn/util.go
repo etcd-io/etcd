@@ -61,10 +61,10 @@ func WarnOfExpensiveReadOnlyTxnRequest(lg *zap.Logger, warningApplyDuration time
 	if !isNil(txnResponse) {
 		var resps []string
 		for _, r := range txnResponse.Responses {
-			switch op := r.Response.(type) {
+			switch r.Response.(type) {
 			case *pb.ResponseOp_ResponseRange:
-				if op.ResponseRange != nil {
-					resps = append(resps, fmt.Sprintf("range_response_count:%d", len(op.ResponseRange.Kvs)))
+				if op := r.GetResponseRange(); op != nil {
+					resps = append(resps, fmt.Sprintf("range_response_count:%d", len(op.GetKvs())))
 				} else {
 					resps = append(resps, "range_response:nil")
 				}
