@@ -387,11 +387,13 @@ stale log entries:
 	'MsgStorageAppend' is a message from a node to its local append storage
 	thread to write entries, hard state, and/or a snapshot to stable storage.
 	The message will carry one or more responses, one of which will be a
-	'MsgStorageAppendResp' back to itself. Used with AsynchronousStorageWrites.
+	'MsgStorageAppendResp' back to itself. The responses can also contain
+	'MsgAppResp', 'MsgVoteResp', and 'MsgPreVoteResp' messages. Used with
+	AsynchronousStorageWrites.
 
 	'MsgStorageApply' is a message from a node to its local apply storage
-	thread to apply committed entries. The message will carry one or more
-	responses, one of which will be a 'MsgStorageApplyResp' back to itself.
-	Used with AsynchronousStorageWrites.
+	thread to apply committed entries. The message will carry one response,
+	which will be a 'MsgStorageApplyResp' back to itself. Used with
+	AsynchronousStorageWrites.
 */
 package raft
