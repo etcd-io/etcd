@@ -199,6 +199,10 @@ func (l *raftLog) hasNextOrInProgressUnstableEnts() bool {
 }
 
 // nextCommittedEnts returns all the available entries for execution.
+// Entries can be committed even when the local raft instance has not durably
+// appended them to the local raft log yet. If allowUnstable is true, committed
+// entries from the unstable log may be returned; otherwise, only entries known
+// to reside locally on stable storage will be returned.
 func (l *raftLog) nextCommittedEnts(allowUnstable bool) (ents []pb.Entry) {
 	if l.hasNextOrInProgressSnapshot() {
 		// See comment in hasNextCommittedEnts.
