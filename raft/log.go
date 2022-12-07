@@ -199,8 +199,6 @@ func (l *raftLog) hasNextOrInProgressUnstableEnts() bool {
 }
 
 // nextCommittedEnts returns all the available entries for execution.
-// If applied is smaller than the index of snapshot, it returns all committed
-// entries after the index of snapshot.
 func (l *raftLog) nextCommittedEnts(allowUnstable bool) (ents []pb.Entry) {
 	if l.hasNextOrInProgressSnapshot() {
 		// See comment in hasNextCommittedEnts.
