@@ -1,5 +1,6 @@
 name: Coverage
 on: [push]
+permissions: read-all
 jobs:
   coverage:
     runs-on: ubuntu-latest

@@ -1,5 +1,6 @@
 name: Static Analysis
 on: [push, pull_request]
+permissions: read-all
 jobs:
   run:
     runs-on: ubuntu-latest

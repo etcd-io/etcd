@@ -1,5 +1,6 @@
 name: Release
 on: [push, pull_request]
+permissions: read-all
 jobs:
   main:
     runs-on: ubuntu-latest
