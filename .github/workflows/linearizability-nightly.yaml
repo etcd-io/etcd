@@ -1,0 +1,25 @@
+name: Linearizability Nightly
+on:
+  # schedules always run against the main branch
+  schedule:
+    - cron: '25 9 * * *'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # GHA has a maximum amount of 6h execution time, we try to get done within 3h
+    timeout-minutes: 180
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: "1.19.3"
+    - run: |
+        make gofail-enable
+        make build
+        mkdir -p /tmp/linearizability
+        cat server/etcdserver/raft.fail.go
+        EXPECT_DEBUG=true GO_TEST_FLAGS='-v --count 500 --failfast --run TestLinearizability' RESULTS_DIR=/tmp/linearizability make test-linearizability
+    - uses: actions/upload-artifact@v2
+      if: always()
+      with:
+        path: /tmp/linearizability/*
