@@ -15,6 +15,12 @@ To get a mixed read/write performance evaluation result:
 Note: the result csv file will be saved to current working directory. The working directory is where etcd database is saved. The working directory is designed for scenarios where a different mounted disk is preferred.
 
 ### Plot Graphs
+Get the dependencies via pip:
+
+```sh
+pip3 install -r requirements.txt
+```
+
 To generate two images (read and write) based on the benchmark result csv file:
 ```sh
 # to generate a pair of read & write images from one data csv file
