@@ -427,6 +427,7 @@ func (rn *RawNode) acceptReady(rd Ready) {
 
 // HasReady called when RawNode user need to check if any Ready pending.
 func (rn *RawNode) HasReady() bool {
+	// TODO(nvanbenschoten): order these cases in terms of cost and frequency.
 	r := rn.raft
 	if !r.softState().equal(rn.prevSoftSt) {
 		return true
