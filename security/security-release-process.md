@@ -8,14 +8,10 @@ Security vulnerabilities should be handled quickly and sometimes privately. The 
 
 The PSC is responsible for organizing the entire response including internal communication and external disclosure but will need help from relevant developers and release leads to successfully run this process.
 
-The initial PSC will consist of volunteers who have been involved in the initial discussion:
+The PSC consists of the following:
 
-- Brandon Philips (**[@philips](https://github.com/philips)**) [4096R/154343260542DF34]
-- Gyuho Lee (**[@gyuho](https://github.com/gyuho)**)
-- Joe Betz (**[@jpbetz](https://github.com/jpbetz)**)
-- Sahdev Zala (**[@spzala](https://github.com/spzala)**)
-- Sam Batschelet (**[@hexfusion](https://github.com/hexfusion)**)
-- Xiang Li (**[@xiang90](https://github.com/xiang90)**)
+- Maintainers
+- Volunteer members as described in the [Product Security Committee Membership](#Product-Security-Committee-Membership)
 
 The PSC members will share various tasks as listed below:
 
@@ -32,7 +28,7 @@ Contact the team by sending email to [security@etcd.io](mailto:security@etcd.io)
 
 #### Joining
 
-The PSC should be consist of 2-4 members. New potential members to the PSC can express their interest to the PSC members. These individuals can be nominated by PSC members or etcd maintainers.
+New potential members to the PSC can express their interest to the PSC members. These individuals can be nominated by PSC members or etcd maintainers.
 
 If representation changes due to job shifts then PSC members are encouraged to grow the team or replace themselves through mentoring new members.
 
