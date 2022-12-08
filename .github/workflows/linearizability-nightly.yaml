@@ -1,25 +1,31 @@
 name: Linearizability Nightly
 on:
-  # schedules always run against the main branch
+  # schedules always run against the main branch, hence we have to create separate jobs
+  # with individual checkout actions for each of the active release branches
   schedule:
-    - cron: '25 9 * * *'
+    - cron: '25 9 * * *' # runs every day at 09:25 UTC
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  test-main:
     # GHA has a maximum amount of 6h execution time, we try to get done within 3h
     timeout-minutes: 180
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
-      with:
-        go-version: "1.19.3"
-    - run: |
-        make gofail-enable
-        make build
-        mkdir -p /tmp/linearizability
-        cat server/etcdserver/raft.fail.go
-        EXPECT_DEBUG=true GO_TEST_FLAGS='-v --count 500 --failfast --run TestLinearizability' RESULTS_DIR=/tmp/linearizability make test-linearizability
-    - uses: actions/upload-artifact@v2
-      if: always()
-      with:
-        path: /tmp/linearizability/*
+    uses: ./.github/workflows/linearizability-workflow.yaml
+    with:
+      ref: main
+      count: 500
+      timeoutDuration: 3h
+  test-3.5:
+    timeout-minutes: 180
+    uses: ./.github/workflows/linearizability-workflow.yaml
+    with:
+      ref: release-3.5
+      count: 500
+      timeoutDuration: 3h
+      goVersion: '1.16.15'
+  test-3.4:
+    timeout-minutes: 180
+    uses: ./.github/workflows/linearizability-workflow.yaml
+    with:
+      ref: release-3.4
+      count: 500
+      timeoutDuration: 3h
+      goVersion: '1.16.15'

@@ -1,0 +1,39 @@
+name: Reusable Linearizability Workflow
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      count:
+        required: true
+        type: number
+      timeoutDuration:
+        required: false
+        type: string
+        default: '30m'
+      goVersion:
+        required: false
+        type: string
+        default: '1.19.3'
+permissions: read-all
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ inputs.goVersion }}
+      - run: |
+          make gofail-enable
+          make build
+          mkdir -p /tmp/linearizability
+          cat server/etcdserver/raft.fail.go
+          EXPECT_DEBUG=true TIMEOUT=${{ inputs.timeoutDuration }} GO_TEST_FLAGS='-v --count ${{ inputs.count }} --failfast --run TestLinearizability' RESULTS_DIR=/tmp/linearizability make test-linearizability
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          path: /tmp/linearizability/*
