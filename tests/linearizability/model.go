@@ -43,10 +43,8 @@ type EtcdResponse struct {
 }
 
 type EtcdState struct {
-	Key          string
-	Value        string
-	LastRevision int64
-	FailedWrite  *EtcdRequest
+	Key            string
+	PossibleValues map[string]int64 // Value -> Revision mapping
 }
 
 var etcdModel = porcupine.Model{
@@ -96,12 +94,19 @@ func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, Et
 	if request.Key == "" {
 		panic("invalid request")
 	}
-	if state.Key == "" {
-		return true, initState(request, response)
+	if len(state.PossibleValues) == 0 {
+		state.Key = request.Key
+		if ok, val, rev := initValueRevision(request, response); ok {
+			state.PossibleValues = map[string]int64{
+				val: rev,
+			}
+		}
+		return true, state
 	}
 	if state.Key != request.Key {
 		panic("Multiple keys not supported")
 	}
+
 	switch request.Op {
 	case Get:
 		return stepGet(state, request, response)
@@ -114,100 +119,102 @@ func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, Et
 	}
 }
 
-func initState(request EtcdRequest, response EtcdResponse) EtcdState {
-	state := EtcdState{
-		Key:          request.Key,
-		LastRevision: response.Revision,
+func initValueRevision(request EtcdRequest, response EtcdResponse) (bool, string, int64) {
+	if response.Err != nil {
+		return false, "", -1
 	}
 	switch request.Op {
 	case Get:
-		state.Value = response.GetData
+		return true, response.GetData, response.Revision
 	case Put:
-		if response.Err == nil {
-			state.Value = request.PutData
-		} else {
-			state.FailedWrite = &request
-		}
+		return true, request.PutData, response.Revision
 	case Delete:
-		if response.Err != nil {
-			state.FailedWrite = &request
-		}
+		return true, "", response.Revision
 	default:
 		panic("Unknown operation")
 	}
-	return state
 }
 
 func stepGet(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-	if state.Value == response.GetData && state.LastRevision == response.Revision {
-		state.FailedWrite = nil
-		return true, state
-	}
-	if state.FailedWrite != nil && state.LastRevision < response.Revision {
-		var ok bool
-		switch state.FailedWrite.Op {
-		case Get:
-			panic("Expected write")
-		case Put:
-			ok = response.GetData == state.FailedWrite.PutData
-		case Delete:
-			ok = response.GetData == ""
-		default:
-			panic("Unknown operation")
-		}
-		if ok {
-			state.Value = response.GetData
-			state.LastRevision = response.Revision
-			state.FailedWrite = nil
-			return true, state
+	// The returned value (and revision) must be one of the historical possible values
+	matched := false
+	for val, rev := range state.PossibleValues {
+		if val == response.GetData {
+			// The revision should never decrease.
+			if response.Revision < rev {
+				matched = false
+				break
+			}
+			// Normal case: the read revision matches previous revision
+			if response.Revision == rev {
+				matched = true
+				continue
+			}
+			// Abnormal case: previous write operation failed.
+			if rev == -1 {
+				matched = true
+				continue
+			}
 		}
 	}
-	return false, state
+	// Always cleanup all historical data, and only keep the latest value & revision.
+	return matched, EtcdState{
+		Key: request.Key,
+		PossibleValues: map[string]int64{
+			response.GetData: response.Revision,
+		},
+	}
 }
 
 func stepPut(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
 	if response.Err != nil {
-		state.FailedWrite = &request
+		state.PossibleValues[request.PutData] = -1
 		return true, state
 	}
-	if response.Revision <= state.LastRevision {
-		return false, state
+	matched := true
+	for _, rev := range state.PossibleValues {
+		// response.Revision must be at least `kv.Revision + 1`
+		if response.Revision < (rev + 1) {
+			matched = false
+			break
+		}
 	}
-	if response.Revision != state.LastRevision+1 && state.FailedWrite == nil {
-		return false, state
+
+	// Always cleanup all historical data, and only keep the latest value & revision.
+	return matched, EtcdState{
+		Key: request.Key,
+		PossibleValues: map[string]int64{
+			request.PutData: response.Revision,
+		},
 	}
-	state.Value = request.PutData
-	state.LastRevision = response.Revision
-	state.FailedWrite = nil
-	return true, state
 }
 
 func stepDelete(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
 	if response.Err != nil {
-		state.FailedWrite = &request
+		// -1 means the request fails
+		// TODO(ahrtr): The downside is the history entry with empty value is overwritten.
+		state.PossibleValues[""] = -1
 		return true, state
 	}
-	// revision should never decrease
-	if response.Revision < state.LastRevision {
-		return false, state
-	}
-	deleteSucceeded := response.Deleted != 0
-	keySet := state.Value != ""
 
-	// non-existent key cannot be deleted.
-	if deleteSucceeded != keySet && state.FailedWrite == nil {
-		return false, state
-	}
-	//if key was deleted, response revision should increase
-	if deleteSucceeded && (response.Revision != state.LastRevision+1 || !keySet) && (state.FailedWrite == nil || response.Revision < state.LastRevision+2) {
-		return false, state
-	}
-	//if key was not deleted, response revision should not change
-	if !deleteSucceeded && state.LastRevision != response.Revision && state.FailedWrite == nil {
-		return false, state
+	matched := true
+	var revAdded int64 = 0
+	if response.Deleted != 0 {
+		revAdded = 1
 	}
 
-	state.Value = ""
-	state.LastRevision = response.Revision
-	return true, state
+	for _, rev := range state.PossibleValues {
+		if response.Revision < (rev + revAdded) {
+			matched = false
+			break
+		}
+	}
+
+	// Always cleanup all historical data, and only keep the latest value & revision.
+	return matched, EtcdState{
+		Key: request.Key,
+		PossibleValues: map[string]int64{
+			"": response.Revision,
+		},
+	}
 }
