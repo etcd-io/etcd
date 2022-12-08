@@ -105,8 +105,6 @@ func TestModel(t *testing.T) {
 				// Two failed request, two persisted.
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 3}, failure: true},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 4}, failure: true},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "4", Revision: 4}},
 			},
 		},
@@ -220,14 +218,17 @@ func TestModel(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		var ok bool
 		t.Run(tc.name, func(t *testing.T) {
 			state := etcdModel.Init()
 			for _, op := range tc.operations {
-				t.Logf("state: %v", state)
-				ok, state = etcdModel.Step(state, op.req, op.resp)
+				ok, newState := etcdModel.Step(state, op.req, op.resp)
 				if ok != !op.failure {
+					t.Logf("state: %v", state)
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, etcdModel.DescribeOperation(op.req, op.resp))
+				}
+				if ok {
+					state = newState
+					t.Logf("state: %v", state)
 				}
 			}
 		})

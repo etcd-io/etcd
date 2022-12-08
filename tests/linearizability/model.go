@@ -43,10 +43,13 @@ type EtcdResponse struct {
 }
 
 type EtcdState struct {
-	Key          string
-	Value        string
-	LastRevision int64
-	FailedWrite  *EtcdRequest
+	Key            string
+	PossibleValues []ValueRevision
+}
+
+type ValueRevision struct {
+	Value    string
+	Revision int64
 }
 
 var etcdModel = porcupine.Model{
@@ -93,121 +96,77 @@ var etcdModel = porcupine.Model{
 }
 
 func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-	if request.Key == "" {
-		panic("invalid request")
-	}
-	if state.Key == "" {
-		return true, initState(request, response)
+	if len(state.PossibleValues) == 0 {
+		state.Key = request.Key
+		if ok, v := initValueRevision(request, response); ok {
+			state.PossibleValues = append(state.PossibleValues, v)
+		}
+		return true, state
 	}
 	if state.Key != request.Key {
-		panic("Multiple keys not supported")
+		panic("multiple keys not supported")
+	}
+	if response.Err != nil {
+		for _, v := range state.PossibleValues {
+			newV, _ := stepValue(v, request)
+			state.PossibleValues = append(state.PossibleValues, newV)
+		}
+	} else {
+		var i = 0
+		for _, v := range state.PossibleValues {
+			newV, expectedResponse := stepValue(v, request)
+			if expectedResponse == response {
+				state.PossibleValues[i] = newV
+				i++
+			}
+		}
+		state.PossibleValues = state.PossibleValues[:i]
+	}
+	return len(state.PossibleValues) > 0, state
+}
+
+func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v ValueRevision) {
+	if response.Err != nil {
+		return false, ValueRevision{}
 	}
 	switch request.Op {
 	case Get:
-		return stepGet(state, request, response)
+		return true, ValueRevision{
+			Value:    response.GetData,
+			Revision: response.Revision,
+		}
 	case Put:
-		return stepPut(state, request, response)
+		return true, ValueRevision{
+			Value:    request.PutData,
+			Revision: response.Revision,
+		}
 	case Delete:
-		return stepDelete(state, request, response)
+		return true, ValueRevision{
+			Value:    "",
+			Revision: response.Revision,
+		}
 	default:
 		panic("Unknown operation")
 	}
 }
 
-func initState(request EtcdRequest, response EtcdResponse) EtcdState {
-	state := EtcdState{
-		Key:          request.Key,
-		LastRevision: response.Revision,
-	}
+func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdResponse) {
+	resp := EtcdResponse{}
 	switch request.Op {
 	case Get:
-		state.Value = response.GetData
+		resp.GetData = v.Value
 	case Put:
-		if response.Err == nil {
-			state.Value = request.PutData
-		} else {
-			state.FailedWrite = &request
-		}
+		v.Value = request.PutData
+		v.Revision += 1
 	case Delete:
-		if response.Err != nil {
-			state.FailedWrite = &request
+		if v.Value != "" {
+			v.Value = ""
+			v.Revision += 1
+			resp.Deleted = 1
 		}
 	default:
-		panic("Unknown operation")
+		panic("unsupported operation")
 	}
-	return state
-}
-
-func stepGet(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-	if state.Value == response.GetData && state.LastRevision == response.Revision {
-		state.FailedWrite = nil
-		return true, state
-	}
-	if state.FailedWrite != nil && state.LastRevision < response.Revision {
-		var ok bool
-		switch state.FailedWrite.Op {
-		case Get:
-			panic("Expected write")
-		case Put:
-			ok = response.GetData == state.FailedWrite.PutData
-		case Delete:
-			ok = response.GetData == ""
-		default:
-			panic("Unknown operation")
-		}
-		if ok {
-			state.Value = response.GetData
-			state.LastRevision = response.Revision
-			state.FailedWrite = nil
-			return true, state
-		}
-	}
-	return false, state
-}
-
-func stepPut(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-	if response.Err != nil {
-		state.FailedWrite = &request
-		return true, state
-	}
-	if response.Revision <= state.LastRevision {
-		return false, state
-	}
-	if response.Revision != state.LastRevision+1 && state.FailedWrite == nil {
-		return false, state
-	}
-	state.Value = request.PutData
-	state.LastRevision = response.Revision
-	state.FailedWrite = nil
-	return true, state
-}
-
-func stepDelete(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-	if response.Err != nil {
-		state.FailedWrite = &request
-		return true, state
-	}
-	// revision should never decrease
-	if response.Revision < state.LastRevision {
-		return false, state
-	}
-	deleteSucceeded := response.Deleted != 0
-	keySet := state.Value != ""
-
-	// non-existent key cannot be deleted.
-	if deleteSucceeded != keySet && state.FailedWrite == nil {
-		return false, state
-	}
-	//if key was deleted, response revision should increase
-	if deleteSucceeded && (response.Revision != state.LastRevision+1 || !keySet) && (state.FailedWrite == nil || response.Revision < state.LastRevision+2) {
-		return false, state
-	}
-	//if key was not deleted, response revision should not change
-	if !deleteSucceeded && state.LastRevision != response.Revision && state.FailedWrite == nil {
-		return false, state
-	}
-
-	state.Value = ""
-	state.LastRevision = response.Revision
-	return true, state
+	resp.Revision = v.Revision
+	return v, resp
 }
