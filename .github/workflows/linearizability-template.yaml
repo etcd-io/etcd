@@ -1,0 +1,49 @@
+name: Reusable Linearizability Workflow
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      count:
+        required: true
+        type: number
+      testTimeout:
+        required: false
+        type: string
+        default: '30m'
+permissions: read-all
+jobs:
+  test:
+    timeout-minutes: 180
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+    - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+      with:
+        go-version: '1.19.5'
+    - name: build
+      env:
+        GITHUB_REF: ${{ inputs.ref }}
+      run: |
+        case "${GITHUB_REF}" in
+          release-3.5)
+            make build-failpoints-release-3.5
+            ./bin/etcd --version
+            ;;
+          release-3.4)
+            make build-failpoints-release-3.4
+            ./bin/etcd --version
+            ;;
+          *)
+            make gofail-enable
+            make build
+            ;;
+          esac
+    - name: test-linearizability
+      run: |
+        EXPECT_DEBUG=true GO_TEST_FLAGS='-v --count ${{ inputs.count }} --timeout ${{ inputs.testTimeout }} --failfast --run TestLinearizability' RESULTS_DIR=/tmp/linearizability make test-linearizability
+    - uses: actions/upload-artifact@v2
+      if: always()
+      with:
+        path: /tmp/linearizability/*
