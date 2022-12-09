@@ -94,6 +94,25 @@ func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp 
 	})
 }
 
+func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, end time.Time, resp *clientv3.TxnResponse, err error) {
+	request := EtcdRequest{Op: Txn, Key: key, TxnExpectData: expectValue, TxnNewData: newValue}
+	if err != nil {
+		h.appendFailed(request, start, err)
+		return
+	}
+	var revision int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+	}
+	h.successful = append(h.successful, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.UnixNano(),
+		Output:   EtcdResponse{Err: err, Revision: revision, TxnSucceeded: resp.Succeeded},
+		Return:   end.UnixNano(),
+	})
+}
+
 func (h *appendableHistory) appendFailed(request EtcdRequest, start time.Time, err error) {
 	h.failed = append(h.failed, porcupine.Operation{
 		ClientId: h.id,

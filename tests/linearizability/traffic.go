@@ -20,11 +20,12 @@ import (
 	"math/rand"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	"golang.org/x/time/rate"
 )
 
 var (
-	DefaultTraffic Traffic = readWriteSingleKey{key: "key", writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 10}}}
+	DefaultTraffic Traffic = readWriteSingleKey{key: "key", writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
 )
 
 type Traffic interface {
@@ -50,26 +51,26 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 		default:
 		}
 		// Execute one read per one write to avoid operation history include too many failed writes when etcd is down.
-		err := t.Read(ctx, c, limiter)
+		resp, err := t.Read(ctx, c, limiter)
 		if err != nil {
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
-		t.Write(ctx, c, limiter, ids.RequestId())
+		t.Write(ctx, c, limiter, ids.RequestId(), resp)
 	}
 }
 
-func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter) error {
+func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter) ([]*mvccpb.KeyValue, error) {
 	getCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
-	err := c.Get(getCtx, t.key)
+	resp, err := c.Get(getCtx, t.key)
 	cancel()
 	if err == nil {
 		limiter.Wait(ctx)
 	}
-	return err
+	return resp, err
 }
 
-func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, id int) error {
+func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, id int, kvs []*mvccpb.KeyValue) error {
 	putCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
 
 	var err error
@@ -78,6 +79,12 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 		err = c.Put(putCtx, t.key, fmt.Sprintf("%d", id))
 	case Delete:
 		err = c.Delete(putCtx, t.key)
+	case Txn:
+		var value string
+		if len(kvs) != 0 {
+			value = string(kvs[0].Value)
+		}
+		err = c.Txn(putCtx, t.key, value, fmt.Sprintf("%d", id))
 	default:
 		panic("invalid operation")
 	}
