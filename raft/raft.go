@@ -342,6 +342,9 @@ type raft struct {
 	// has already been handed out in a prior Ready struct) to complete.
 	//
 	// Messages in this list may target other nodes or may target this node.
+	//
+	// Messages in this list have the type MsgAppResp, MsgVoteResp, or
+	// MsgPreVoteResp. See the comment in raft.send for details.
 	msgsAfterAppend []pb.Message
 
 	// the leader id

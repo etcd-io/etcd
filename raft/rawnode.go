@@ -226,6 +226,13 @@ func newStorageAppendMsg(r *raft, rd Ready) pb.Message {
 		Entries: rd.Entries,
 	}
 	if !IsEmptyHardState(rd.HardState) {
+		// TODO(nvanbenschoten): we could avoid this heap allocation by
+		// replacing the pb.Message.HardState field with a Vote uint64 field. We
+		// would then need to teach apps to construct a HardState from these
+		// three fields, or supply a function/method that does so.
+		//  m.Term = rd.Term
+		//  m.Vote = rd.Vote
+		//  m.Commit = rd.Commit
 		hs := rd.HardState
 		m.HardState = &hs
 	}
