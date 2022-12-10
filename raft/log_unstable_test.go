@@ -300,7 +300,7 @@ func TestUnstableNextSnapshot(t *testing.T) {
 	}
 }
 
-func TestUnstableInProgress(t *testing.T) {
+func TestUnstableAcceptInProgress(t *testing.T) {
 	tests := []struct {
 		entries            []pb.Entry
 		snapshot           *pb.Snapshot
@@ -410,7 +410,7 @@ func TestUnstableInProgress(t *testing.T) {
 			offsetInProgress:   tt.offsetInProgress,
 			snapshotInProgress: tt.snapshotInProgress,
 		}
-		u.inProgress()
+		u.acceptInProgress()
 		if u.offsetInProgress != tt.woffsetInProgress {
 			t.Errorf("#%d: offsetInProgress = %d, want %d", i, u.offsetInProgress, tt.woffsetInProgress)
 		}

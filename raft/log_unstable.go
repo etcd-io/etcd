@@ -110,12 +110,12 @@ func (u *unstable) nextSnapshot() *pb.Snapshot {
 	return u.snapshot
 }
 
-// inProgress marks all entries and the snapshot, if any, in the unstable as
-// having begun the process of being written to storage. The entries/snapshot
+// acceptInProgress marks all entries and the snapshot, if any, in the unstable
+// as having begun the process of being written to storage. The entries/snapshot
 // will no longer be returned from nextEntries/nextSnapshot. However, new
-// entries/snapshots added after a call to inProgress will be returned from
-// those methods, until the next call to inProgress.
-func (u *unstable) inProgress() {
+// entries/snapshots added after a call to acceptInProgress will be returned
+// from those methods, until the next call to acceptInProgress.
+func (u *unstable) acceptInProgress() {
 	if len(u.entries) > 0 {
 		// NOTE: +1 because offsetInProgress is exclusive, like offset.
 		u.offsetInProgress = u.entries[len(u.entries)-1].Index + 1

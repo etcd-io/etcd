@@ -370,7 +370,7 @@ func (l *raftLog) stableSnapTo(i uint64) { l.unstable.stableSnapTo(i) }
 // unstable entries in storage, and that the current unstable entries are thus
 // to be marked as being in-progress, to avoid returning them with future calls
 // to Ready().
-func (l *raftLog) acceptUnstable() { l.unstable.inProgress() }
+func (l *raftLog) acceptUnstable() { l.unstable.acceptInProgress() }
 
 func (l *raftLog) lastTerm() uint64 {
 	t, err := l.term(l.lastIndex())
