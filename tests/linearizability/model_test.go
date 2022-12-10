@@ -51,19 +51,16 @@ func TestModel(t *testing.T) {
 		{
 			name: "Get response data should match put",
 			operations: []testOperation{
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 1}, failure: true},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}, failure: true},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-			},
-		},
-		{
-			name: "Get revision should be equal to put",
-			operations: []testOperation{
-				{req: EtcdRequest{Op: Put, Key: "key"}, resp: EtcdResponse{Revision: 2}},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}, failure: true},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 3}, failure: true},
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: Put, Key: "key1", PutData: "11"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Put, Key: "key2", PutData: "12"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: Get, Key: "key1"}, resp: EtcdResponse{GetData: "11", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key1"}, resp: EtcdResponse{GetData: "12", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key1"}, resp: EtcdResponse{GetData: "12", Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key1"}, resp: EtcdResponse{GetData: "11", Revision: 2}},
+				{req: EtcdRequest{Op: Get, Key: "key2"}, resp: EtcdResponse{GetData: "11", Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key2"}, resp: EtcdResponse{GetData: "12", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key2"}, resp: EtcdResponse{GetData: "11", Revision: 1}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key2"}, resp: EtcdResponse{GetData: "12", Revision: 2}},
 			},
 		},
 		{
@@ -97,7 +94,7 @@ func TestModel(t *testing.T) {
 		{
 			name: "Put can fail and be lost before delete",
 			operations: []testOperation{
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Revision: 1}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Revision: 1}},
 			},
@@ -138,7 +135,7 @@ func TestModel(t *testing.T) {
 			name: "Put can fail but be persisted and increase revision before delete",
 			operations: []testOperation{
 				// One failed request, one persisted.
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Revision: 1}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 1}, failure: true},
 				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 2}, failure: true},
@@ -173,11 +170,20 @@ func TestModel(t *testing.T) {
 		{
 			name: "Delete only increases revision on success",
 			operations: []testOperation{
-				{req: EtcdRequest{Op: Put, Key: "key", PutData: "1"}, resp: EtcdResponse{Revision: 1}},
-				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 1}, failure: true},
-				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 2}},
-				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 0, Revision: 3}, failure: true},
-				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 0, Revision: 2}},
+				{req: EtcdRequest{Op: Put, Key: "key1", PutData: "11"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Put, Key: "key2", PutData: "12"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: Delete, Key: "key1"}, resp: EtcdResponse{Deleted: 1, Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Delete, Key: "key1"}, resp: EtcdResponse{Deleted: 1, Revision: 3}},
+				{req: EtcdRequest{Op: Delete, Key: "key1"}, resp: EtcdResponse{Deleted: 0, Revision: 4}, failure: true},
+				{req: EtcdRequest{Op: Delete, Key: "key1"}, resp: EtcdResponse{Deleted: 0, Revision: 3}},
+			},
+		},
+		{
+			name: "Delete not existing key",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 0, Revision: 1}},
 			},
 		},
 		{
@@ -287,8 +293,10 @@ func TestModel(t *testing.T) {
 		{
 			name: "Txn can expect on empty key",
 			operations: []testOperation{
-				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "", TxnNewData: "2"}, resp: EtcdResponse{Revision: 2, TxnSucceeded: true}},
+				{req: EtcdRequest{Op: Get, Key: "key1"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Txn, Key: "key1", TxnExpectData: "", TxnNewData: "2"}, resp: EtcdResponse{Revision: 2, TxnSucceeded: true}},
+				{req: EtcdRequest{Op: Txn, Key: "key2", TxnExpectData: "", TxnNewData: "3"}, resp: EtcdResponse{Revision: 3, TxnSucceeded: true}},
+				{req: EtcdRequest{Op: Txn, Key: "key3", TxnExpectData: "4", TxnNewData: "4"}, resp: EtcdResponse{Revision: 4}, failure: true},
 			},
 		},
 		{

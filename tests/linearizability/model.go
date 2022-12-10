@@ -47,9 +47,8 @@ type EtcdResponse struct {
 }
 
 type EtcdState struct {
-	Revision int64
-	Key      string
-	Value    string
+	Revision  int64
+	KeyValues map[string]string
 }
 
 var etcdModel = porcupine.Model{
@@ -140,20 +139,20 @@ func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 		return []EtcdState{}
 	}
 	state := EtcdState{
-		Key:      request.Key,
-		Revision: response.Revision,
+		Revision:  response.Revision,
+		KeyValues: map[string]string{},
 	}
 	switch request.Op {
 	case Get:
 		if response.GetData != "" {
-			state.Value = response.GetData
+			state.KeyValues[request.Key] = response.GetData
 		}
 	case Put:
-		state.Value = request.PutData
+		state.KeyValues[request.Key] = request.PutData
 	case Delete:
 	case Txn:
 		if response.TxnSucceeded {
-			state.Value = request.TxnNewData
+			state.KeyValues[request.Key] = request.TxnNewData
 		}
 		return []EtcdState{}
 	default:
@@ -163,25 +162,27 @@ func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 }
 
 func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
-	if s.Key != request.Key {
-		panic("multiple keys not supported")
+	newKVs := map[string]string{}
+	for k, v := range s.KeyValues {
+		newKVs[k] = v
 	}
+	s.KeyValues = newKVs
 	resp := EtcdResponse{}
 	switch request.Op {
 	case Get:
-		resp.GetData = s.Value
+		resp.GetData = s.KeyValues[request.Key]
 	case Put:
-		s.Value = request.PutData
+		s.KeyValues[request.Key] = request.PutData
 		s.Revision += 1
 	case Delete:
-		if s.Value != "" {
-			s.Value = ""
+		if _, ok := s.KeyValues[request.Key]; ok {
+			delete(s.KeyValues, request.Key)
 			s.Revision += 1
 			resp.Deleted = 1
 		}
 	case Txn:
-		if s.Value == request.TxnExpectData {
-			s.Value = request.TxnNewData
+		if val := s.KeyValues[request.Key]; val == request.TxnExpectData {
+			s.KeyValues[request.Key] = request.TxnNewData
 			s.Revision += 1
 			resp.TxnSucceeded = true
 		}
