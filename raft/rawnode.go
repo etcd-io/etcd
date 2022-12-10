@@ -262,11 +262,11 @@ func newStorageAppendRespMsg(r *raft, rd Ready) pb.Message {
 		Term: r.Term,
 	}
 	if r.raftLog.hasNextOrInProgressUnstableEnts() {
-		// If the raft log has unstable entries, attach the last index and term to the
-		// response message. This (index, term) tuple will be handed back and consulted
-		// when the stability of those log entries is signaled to the unstable. If the
-		// (index, term) match the unstable log by the time the response is received,
-		// the unstable log can be truncated.
+		// If the raft log has unstable entries, attach the last index and term of the
+		// append to the response message. This (index, term) tuple will be handed back
+		// and consulted when the stability of those log entries is signaled to the
+		// unstable. If the (index, term) match the unstable log by the time the
+		// response is received (unstable.stableTo), the unstable log can be truncated.
 		//
 		// However, with just this logic, there would be an ABA problem[^1] that could
 		// lead to the unstable log and the stable log getting out of sync temporarily
@@ -332,6 +332,14 @@ func newStorageAppendRespMsg(r *raft, rd Ready) pb.Message {
 		// attest that this (index, term) is correct at the current term, in case the
 		// MsgStorageAppend that contained the last entry in the unstable slice carried
 		// an earlier term and was dropped.
+		//
+		// A MsgStorageAppend with a new HardState is emitted on each term change. This
+		// is the same condition that causes MsgStorageAppendResp messages with earlier
+		// terms to be ignored. As a result, we are guaranteed that, assuming a bounded
+		// number of term changes, there will eventually be a MsgStorageAppendResp
+		// message that is not ignored. This means that entries in the unstable log
+		// which have been appended to stable storage will eventually be truncated and
+		// dropped from memory.
 		//
 		// [^1]: https://en.wikipedia.org/wiki/ABA_problem
 		m.Index = r.raftLog.lastIndex()
