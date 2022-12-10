@@ -37,25 +37,25 @@ const (
 
 var (
 	KillFailpoint                            Failpoint = killFailpoint{}
-	DefragBeforeCopyPanic                    Failpoint = goPanicFailpoint{"backend/defragBeforeCopy", triggerDefrag, AnyMember}
-	DefragBeforeRenamePanic                  Failpoint = goPanicFailpoint{"backend/defragBeforeRename", triggerDefrag, AnyMember}
-	BeforeCommitPanic                        Failpoint = goPanicFailpoint{"backend/beforeCommit", nil, AnyMember}
-	AfterCommitPanic                         Failpoint = goPanicFailpoint{"backend/afterCommit", nil, AnyMember}
-	RaftBeforeSavePanic                      Failpoint = goPanicFailpoint{"etcdserver/raftBeforeSave", nil, AnyMember}
-	RaftAfterSavePanic                       Failpoint = goPanicFailpoint{"etcdserver/raftAfterSave", nil, AnyMember}
-	BackendBeforePreCommitHookPanic          Failpoint = goPanicFailpoint{"backend/commitBeforePreCommitHook", nil, AnyMember}
-	BackendAfterPreCommitHookPanic           Failpoint = goPanicFailpoint{"backend/commitAfterPreCommitHook", nil, AnyMember}
-	BackendBeforeStartDBTxnPanic             Failpoint = goPanicFailpoint{"backend/beforeStartDBTxn", nil, AnyMember}
-	BackendAfterStartDBTxnPanic              Failpoint = goPanicFailpoint{"backend/afterStartDBTxn", nil, AnyMember}
-	BackendBeforeWritebackBufPanic           Failpoint = goPanicFailpoint{"backend/beforeWritebackBuf", nil, AnyMember}
-	BackendAfterWritebackBufPanic            Failpoint = goPanicFailpoint{"backend/afterWritebackBuf", nil, AnyMember}
-	CompactBeforeCommitScheduledCompactPanic Failpoint = goPanicFailpoint{"mvcc/compactBeforeCommitScheduledCompact", triggerCompact, AnyMember}
-	CompactAfterCommitScheduledCompactPanic  Failpoint = goPanicFailpoint{"mvcc/compactAfterCommitScheduledCompact", triggerCompact, AnyMember}
-	CompactBeforeSetFinishedCompactPanic     Failpoint = goPanicFailpoint{"mvcc/compactBeforeSetFinishedCompact", triggerCompact, AnyMember}
-	CompactAfterSetFinishedCompactPanic      Failpoint = goPanicFailpoint{"mvcc/compactAfterSetFinishedCompact", triggerCompact, AnyMember}
-	CompactBeforeCommitBatchPanic            Failpoint = goPanicFailpoint{"mvcc/compactBeforeCommitBatch", triggerCompact, AnyMember}
-	CompactAfterCommitBatchPanic             Failpoint = goPanicFailpoint{"mvcc/compactAfterCommitBatch", triggerCompact, AnyMember}
-	RaftBeforeLeaderSendPanic                Failpoint = goPanicFailpoint{"etcdserver/raftBeforeLeaderSend", nil, Leader}
+	DefragBeforeCopyPanic                    Failpoint = goPanicFailpoint{"defragBeforeCopy", triggerDefrag, AnyMember}
+	DefragBeforeRenamePanic                  Failpoint = goPanicFailpoint{"defragBeforeRename", triggerDefrag, AnyMember}
+	BeforeCommitPanic                        Failpoint = goPanicFailpoint{"beforeCommit", nil, AnyMember}
+	AfterCommitPanic                         Failpoint = goPanicFailpoint{"afterCommit", nil, AnyMember}
+	RaftBeforeSavePanic                      Failpoint = goPanicFailpoint{"raftBeforeSave", nil, AnyMember}
+	RaftAfterSavePanic                       Failpoint = goPanicFailpoint{"raftAfterSave", nil, AnyMember}
+	BackendBeforePreCommitHookPanic          Failpoint = goPanicFailpoint{"commitBeforePreCommitHook", nil, AnyMember}
+	BackendAfterPreCommitHookPanic           Failpoint = goPanicFailpoint{"commitAfterPreCommitHook", nil, AnyMember}
+	BackendBeforeStartDBTxnPanic             Failpoint = goPanicFailpoint{"beforeStartDBTxn", nil, AnyMember}
+	BackendAfterStartDBTxnPanic              Failpoint = goPanicFailpoint{"afterStartDBTxn", nil, AnyMember}
+	BackendBeforeWritebackBufPanic           Failpoint = goPanicFailpoint{"beforeWritebackBuf", nil, AnyMember}
+	BackendAfterWritebackBufPanic            Failpoint = goPanicFailpoint{"afterWritebackBuf", nil, AnyMember}
+	CompactBeforeCommitScheduledCompactPanic Failpoint = goPanicFailpoint{"compactBeforeCommitScheduledCompact", triggerCompact, AnyMember}
+	CompactAfterCommitScheduledCompactPanic  Failpoint = goPanicFailpoint{"compactAfterCommitScheduledCompact", triggerCompact, AnyMember}
+	CompactBeforeSetFinishedCompactPanic     Failpoint = goPanicFailpoint{"compactBeforeSetFinishedCompact", triggerCompact, AnyMember}
+	CompactAfterSetFinishedCompactPanic      Failpoint = goPanicFailpoint{"compactAfterSetFinishedCompact", triggerCompact, AnyMember}
+	CompactBeforeCommitBatchPanic            Failpoint = goPanicFailpoint{"compactBeforeCommitBatch", triggerCompact, AnyMember}
+	CompactAfterCommitBatchPanic             Failpoint = goPanicFailpoint{"compactAfterCommitBatch", triggerCompact, AnyMember}
+	RaftBeforeLeaderSendPanic                Failpoint = goPanicFailpoint{"raftBeforeLeaderSend", nil, Leader}
 	RandomFailpoint                          Failpoint = randomFailpoint{[]Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic,
 		RaftAfterSavePanic, DefragBeforeCopyPanic, DefragBeforeRenamePanic,
@@ -68,12 +68,12 @@ var (
 		RaftBeforeLeaderSendPanic,
 	}}
 	// TODO: Figure out how to reliably trigger below failpoints and add them to RandomFailpoint
-	raftBeforeApplySnapPanic    Failpoint = goPanicFailpoint{"etcdserver/raftBeforeApplySnap", nil, AnyMember}
-	raftAfterApplySnapPanic     Failpoint = goPanicFailpoint{"etcdserver/raftAfterApplySnap", nil, AnyMember}
-	raftAfterWALReleasePanic    Failpoint = goPanicFailpoint{"etcdserver/raftAfterWALRelease", nil, AnyMember}
-	raftBeforeFollowerSendPanic Failpoint = goPanicFailpoint{"etcdserver/raftBeforeFollowerSend", nil, AnyMember}
-	raftBeforeSaveSnapPanic     Failpoint = goPanicFailpoint{"etcdserver/raftBeforeSaveSnap", nil, AnyMember}
-	raftAfterSaveSnapPanic      Failpoint = goPanicFailpoint{"etcdserver/raftAfterSaveSnap", nil, AnyMember}
+	raftBeforeApplySnapPanic    Failpoint = goPanicFailpoint{"raftBeforeApplySnap", nil, AnyMember}
+	raftAfterApplySnapPanic     Failpoint = goPanicFailpoint{"raftAfterApplySnap", nil, AnyMember}
+	raftAfterWALReleasePanic    Failpoint = goPanicFailpoint{"raftAfterWALRelease", nil, AnyMember}
+	raftBeforeFollowerSendPanic Failpoint = goPanicFailpoint{"raftBeforeFollowerSend", nil, AnyMember}
+	raftBeforeSaveSnapPanic     Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", nil, AnyMember}
+	raftAfterSaveSnapPanic      Failpoint = goPanicFailpoint{"raftAfterSaveSnap", nil, AnyMember}
 )
 
 type Failpoint interface {
