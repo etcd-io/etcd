@@ -424,7 +424,7 @@ raft-log 1
 deliver-msgs 1
 ----
 AppendThread->1 MsgStorageAppendResp Term:1 Log:1/12
-INFO 1 [term: 3] ignored a MsgStorageAppendResp message with lower term [term: 1]
+INFO 1 [term: 3] ignored entry appends from a MsgStorageAppendResp message with lower term [term: 1]
 
 process-append-thread 1
 ----
@@ -443,7 +443,7 @@ raft-log 1
 deliver-msgs 1
 ----
 AppendThread->1 MsgStorageAppendResp Term:2 Log:2/12
-INFO 1 [term: 3] ignored a MsgStorageAppendResp message with lower term [term: 2]
+INFO 1 [term: 3] ignored entry appends from a MsgStorageAppendResp message with lower term [term: 2]
 
 process-append-thread 1
 ----

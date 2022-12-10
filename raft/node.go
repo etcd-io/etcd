@@ -87,8 +87,8 @@ type Ready struct {
 	Snapshot pb.Snapshot
 
 	// CommittedEntries specifies entries to be committed to a
-	// store/state-machine. These have previously been committed to stable
-	// store.
+	// store/state-machine. These have previously been appended to stable
+	// storage.
 	//
 	// If async storage writes are enabled, this field does not need to be acted
 	// on immediately. It will be reflected in a MsgStorageApply message in the
@@ -98,15 +98,19 @@ type Ready struct {
 	// Messages specifies outbound messages.
 	//
 	// If async storage writes are not enabled, these messages must be sent
-	// AFTER Entries are committed to stable storage. If async storage writes
-	// are enabled, they can be sent immediately.
+	// AFTER Entries are appended to stable storage.
+	//
+	// If async storage writes are enabled, these messages can be sent
+	// immediately as the messages that have the completion of the async writes
+	// as a precondition are attached to the individual MsgStorage{Append,Apply}
+	// messages instead.
 	//
 	// If it contains a MsgSnap message, the application MUST report back to raft
 	// when the snapshot has been received or has failed by calling ReportSnapshot.
 	Messages []pb.Message
 
-	// MustSync indicates whether the HardState and Entries must be synchronously
-	// written to disk or if an asynchronous write is permissible.
+	// MustSync indicates whether the HardState and Entries must be durably
+	// written to disk or if a non-durable write is permissible.
 	MustSync bool
 }
 
@@ -321,9 +325,7 @@ func (n *node) run() {
 	lead := None
 
 	for {
-		if advancec != nil {
-			readyc = nil
-		} else if n.rn.HasReady() {
+		if advancec == nil && n.rn.HasReady() {
 			// Populate a Ready. Note that this Ready is not guaranteed to
 			// actually be handled. We will arm readyc, but there's no guarantee
 			// that we will actually send on it. It's possible that we will
@@ -406,7 +408,12 @@ func (n *node) run() {
 			n.rn.Tick()
 		case readyc <- rd:
 			n.rn.acceptReady(rd)
-			advancec = n.advancec
+			if !n.rn.asyncStorageWrites {
+				advancec = n.advancec
+			} else {
+				rd = Ready{}
+			}
+			readyc = nil
 		case <-advancec:
 			n.rn.Advance(rd)
 			rd = Ready{}

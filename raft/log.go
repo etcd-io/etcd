@@ -366,6 +366,10 @@ func (l *raftLog) stableTo(i, t uint64) { l.unstable.stableTo(i, t) }
 
 func (l *raftLog) stableSnapTo(i uint64) { l.unstable.stableSnapTo(i) }
 
+// acceptUnstable indicates that the application has started persisting the
+// unstable entries in storage, and that the current unstable entries are thus
+// to be marked as being in-progress, to avoid returning them with future calls
+// to Ready().
 func (l *raftLog) acceptUnstable() { l.unstable.inProgress() }
 
 func (l *raftLog) lastTerm() uint64 {

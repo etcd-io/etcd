@@ -168,12 +168,16 @@ type Config struct {
 	// reordered. Messages to different targets can be processed in any order.
 	//
 	// MsgStorageAppend carries Raft log entries to append, election votes to
-	// persist, and snapshots to apply. All writes performed in response to a
-	// MsgStorageAppend are expected to be durable. The message assumes the role
-	// of the Entries, HardState, and Snapshot fields in Ready.
+	// persist, and snapshots to apply. All writes performed in service of a
+	// MsgStorageAppend must be durable before response messages are delivered.
+	// However, if the MsgStorageAppend carries no response messages, durability
+	// is not required. The message assumes the role of the Entries, HardState,
+	// and Snapshot fields in Ready.
 	//
-	// MsgStorageApply carries committed entries to apply. The message assumes
-	// the role of the CommittedEntries field in Ready.
+	// MsgStorageApply carries committed entries to apply. Writes performed in
+	// service of a MsgStorageApply need not be durable before response messages
+	// are delivered. The message assumes the role of the CommittedEntries field
+	// in Ready.
 	//
 	// Local messages each carry one or more response messages which should be
 	// delivered after the corresponding storage write has been completed. These
@@ -1054,7 +1058,7 @@ func (r *raft) Step(m pb.Message) error {
 				// they may have been overwritten in the unstable log during a
 				// later term. See the comment in newStorageAppendResp for more
 				// about this race.
-				r.logger.Infof("%x [term: %d] ignored a %s message with lower term [term: %d]",
+				r.logger.Infof("%x [term: %d] ignored entry appends from a %s message with lower term [term: %d]",
 					r.id, r.Term, m.Type, m.Term)
 			}
 			if m.Snapshot != nil {

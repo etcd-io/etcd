@@ -127,6 +127,10 @@ func (u *unstable) inProgress() {
 
 // stableTo marks entries up to the entry with the specified (index, term) as
 // being successfully written to stable storage.
+//
+// The method should only be called when the caller can attest that the entries
+// can not be overwritten by an in-progress log append. See the related comment
+// in newStorageAppendRespMsg.
 func (u *unstable) stableTo(i, t uint64) {
 	gt, ok := u.maybeTerm(i)
 	if !ok {
