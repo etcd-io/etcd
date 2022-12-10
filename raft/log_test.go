@@ -270,7 +270,7 @@ func TestCompactionSideEffects(t *testing.T) {
 	}
 
 	require.True(t, raftLog.maybeCommit(lastIndex, lastTerm))
-	raftLog.appliedTo(raftLog.committed)
+	raftLog.appliedTo(raftLog.committed, 0 /* size */)
 
 	offset := uint64(500)
 	storage.Compact(offset)
@@ -310,22 +310,25 @@ func TestHasNextCommittedEnts(t *testing.T) {
 		applied       uint64
 		applying      uint64
 		allowUnstable bool
+		paused        bool
 		snap          bool
 		whasNext      bool
 	}{
-		{applied: 3, applying: 3, allowUnstable: true, snap: false, whasNext: true},
-		{applied: 3, applying: 4, allowUnstable: true, snap: false, whasNext: true},
-		{applied: 3, applying: 5, allowUnstable: true, snap: false, whasNext: false},
-		{applied: 4, applying: 4, allowUnstable: true, snap: false, whasNext: true},
-		{applied: 4, applying: 5, allowUnstable: true, snap: false, whasNext: false},
-		{applied: 5, applying: 5, allowUnstable: true, snap: false, whasNext: false},
+		{applied: 3, applying: 3, allowUnstable: true, whasNext: true},
+		{applied: 3, applying: 4, allowUnstable: true, whasNext: true},
+		{applied: 3, applying: 5, allowUnstable: true, whasNext: false},
+		{applied: 4, applying: 4, allowUnstable: true, whasNext: true},
+		{applied: 4, applying: 5, allowUnstable: true, whasNext: false},
+		{applied: 5, applying: 5, allowUnstable: true, whasNext: false},
 		// Don't allow unstable entries.
-		{applied: 3, applying: 3, allowUnstable: false, snap: false, whasNext: true},
-		{applied: 3, applying: 4, allowUnstable: false, snap: false, whasNext: false},
-		{applied: 3, applying: 5, allowUnstable: false, snap: false, whasNext: false},
-		{applied: 4, applying: 4, allowUnstable: false, snap: false, whasNext: false},
-		{applied: 4, applying: 5, allowUnstable: false, snap: false, whasNext: false},
-		{applied: 5, applying: 5, allowUnstable: false, snap: false, whasNext: false},
+		{applied: 3, applying: 3, allowUnstable: false, whasNext: true},
+		{applied: 3, applying: 4, allowUnstable: false, whasNext: false},
+		{applied: 3, applying: 5, allowUnstable: false, whasNext: false},
+		{applied: 4, applying: 4, allowUnstable: false, whasNext: false},
+		{applied: 4, applying: 5, allowUnstable: false, whasNext: false},
+		{applied: 5, applying: 5, allowUnstable: false, whasNext: false},
+		// Paused.
+		{applied: 3, applying: 3, allowUnstable: true, paused: true, whasNext: false},
 		// With snapshot.
 		{applied: 3, applying: 3, allowUnstable: true, snap: true, whasNext: false},
 	}
@@ -339,8 +342,9 @@ func TestHasNextCommittedEnts(t *testing.T) {
 			raftLog.append(ents...)
 			raftLog.stableTo(4, 1)
 			raftLog.maybeCommit(5, 1)
-			raftLog.appliedTo(tt.applied)
-			raftLog.acceptApplying(tt.applying)
+			raftLog.appliedTo(tt.applied, 0 /* size */)
+			raftLog.acceptApplying(tt.applying, 0 /* size */, tt.allowUnstable)
+			raftLog.applyingEntsPaused = tt.paused
 			if tt.snap {
 				newSnap := snap
 				newSnap.Metadata.Index++
@@ -364,22 +368,25 @@ func TestNextCommittedEnts(t *testing.T) {
 		applied       uint64
 		applying      uint64
 		allowUnstable bool
+		paused        bool
 		snap          bool
 		wents         []pb.Entry
 	}{
-		{applied: 3, applying: 3, allowUnstable: true, snap: false, wents: ents[:2]},
-		{applied: 3, applying: 4, allowUnstable: true, snap: false, wents: ents[1:2]},
-		{applied: 3, applying: 5, allowUnstable: true, snap: false, wents: nil},
-		{applied: 4, applying: 4, allowUnstable: true, snap: false, wents: ents[1:2]},
-		{applied: 4, applying: 5, allowUnstable: true, snap: false, wents: nil},
-		{applied: 5, applying: 5, allowUnstable: true, snap: false, wents: nil},
+		{applied: 3, applying: 3, allowUnstable: true, wents: ents[:2]},
+		{applied: 3, applying: 4, allowUnstable: true, wents: ents[1:2]},
+		{applied: 3, applying: 5, allowUnstable: true, wents: nil},
+		{applied: 4, applying: 4, allowUnstable: true, wents: ents[1:2]},
+		{applied: 4, applying: 5, allowUnstable: true, wents: nil},
+		{applied: 5, applying: 5, allowUnstable: true, wents: nil},
 		// Don't allow unstable entries.
-		{applied: 3, applying: 3, allowUnstable: false, snap: false, wents: ents[:1]},
-		{applied: 3, applying: 4, allowUnstable: false, snap: false, wents: nil},
-		{applied: 3, applying: 5, allowUnstable: false, snap: false, wents: nil},
-		{applied: 4, applying: 4, allowUnstable: false, snap: false, wents: nil},
-		{applied: 4, applying: 5, allowUnstable: false, snap: false, wents: nil},
-		{applied: 5, applying: 5, allowUnstable: false, snap: false, wents: nil},
+		{applied: 3, applying: 3, allowUnstable: false, wents: ents[:1]},
+		{applied: 3, applying: 4, allowUnstable: false, wents: nil},
+		{applied: 3, applying: 5, allowUnstable: false, wents: nil},
+		{applied: 4, applying: 4, allowUnstable: false, wents: nil},
+		{applied: 4, applying: 5, allowUnstable: false, wents: nil},
+		{applied: 5, applying: 5, allowUnstable: false, wents: nil},
+		// Paused.
+		{applied: 3, applying: 3, allowUnstable: true, paused: true, wents: nil},
 		// With snapshot.
 		{applied: 3, applying: 3, allowUnstable: true, snap: true, wents: nil},
 	}
@@ -393,14 +400,122 @@ func TestNextCommittedEnts(t *testing.T) {
 			raftLog.append(ents...)
 			raftLog.stableTo(4, 1)
 			raftLog.maybeCommit(5, 1)
-			raftLog.appliedTo(tt.applied)
-			raftLog.acceptApplying(tt.applying)
+			raftLog.appliedTo(tt.applied, 0 /* size */)
+			raftLog.acceptApplying(tt.applying, 0 /* size */, tt.allowUnstable)
+			raftLog.applyingEntsPaused = tt.paused
 			if tt.snap {
 				newSnap := snap
 				newSnap.Metadata.Index++
 				raftLog.restore(newSnap)
 			}
 			require.Equal(t, tt.wents, raftLog.nextCommittedEnts(tt.allowUnstable))
+		})
+	}
+}
+
+func TestAcceptApplying(t *testing.T) {
+	maxSize := entryEncodingSize(100)
+	snap := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{Term: 1, Index: 3},
+	}
+	ents := []pb.Entry{
+		{Term: 1, Index: 4},
+		{Term: 1, Index: 5},
+		{Term: 1, Index: 6},
+	}
+	tests := []struct {
+		index         uint64
+		allowUnstable bool
+		size          entryEncodingSize
+		wpaused       bool
+	}{
+		{index: 3, allowUnstable: true, size: maxSize - 1, wpaused: true},
+		{index: 3, allowUnstable: true, size: maxSize, wpaused: true},
+		{index: 3, allowUnstable: true, size: maxSize + 1, wpaused: true},
+		{index: 4, allowUnstable: true, size: maxSize - 1, wpaused: true},
+		{index: 4, allowUnstable: true, size: maxSize, wpaused: true},
+		{index: 4, allowUnstable: true, size: maxSize + 1, wpaused: true},
+		{index: 5, allowUnstable: true, size: maxSize - 1, wpaused: false},
+		{index: 5, allowUnstable: true, size: maxSize, wpaused: true},
+		{index: 5, allowUnstable: true, size: maxSize + 1, wpaused: true},
+		// Don't allow unstable entries.
+		{index: 3, allowUnstable: false, size: maxSize - 1, wpaused: true},
+		{index: 3, allowUnstable: false, size: maxSize, wpaused: true},
+		{index: 3, allowUnstable: false, size: maxSize + 1, wpaused: true},
+		{index: 4, allowUnstable: false, size: maxSize - 1, wpaused: false},
+		{index: 4, allowUnstable: false, size: maxSize, wpaused: true},
+		{index: 4, allowUnstable: false, size: maxSize + 1, wpaused: true},
+		{index: 5, allowUnstable: false, size: maxSize - 1, wpaused: false},
+		{index: 5, allowUnstable: false, size: maxSize, wpaused: true},
+		{index: 5, allowUnstable: false, size: maxSize + 1, wpaused: true},
+	}
+	for i, tt := range tests {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			storage := NewMemoryStorage()
+			require.NoError(t, storage.ApplySnapshot(snap))
+			require.NoError(t, storage.Append(ents[:1]))
+
+			raftLog := newLogWithSize(storage, raftLogger, maxSize)
+			raftLog.append(ents...)
+			raftLog.stableTo(4, 1)
+			raftLog.maybeCommit(5, 1)
+			raftLog.appliedTo(3, 0 /* size */)
+
+			raftLog.acceptApplying(tt.index, tt.size, tt.allowUnstable)
+			require.Equal(t, tt.wpaused, raftLog.applyingEntsPaused)
+		})
+	}
+}
+
+func TestAppliedTo(t *testing.T) {
+	maxSize := entryEncodingSize(100)
+	overshoot := entryEncodingSize(5)
+	snap := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{Term: 1, Index: 3},
+	}
+	ents := []pb.Entry{
+		{Term: 1, Index: 4},
+		{Term: 1, Index: 5},
+		{Term: 1, Index: 6},
+	}
+	tests := []struct {
+		index         uint64
+		size          entryEncodingSize
+		wapplyingSize entryEncodingSize
+		wpaused       bool
+	}{
+		// Apply some of in-progress entries (applying = 5 below).
+		{index: 4, size: overshoot - 1, wapplyingSize: maxSize + 1, wpaused: true},
+		{index: 4, size: overshoot, wapplyingSize: maxSize, wpaused: true},
+		{index: 4, size: overshoot + 1, wapplyingSize: maxSize - 1, wpaused: false},
+		// Apply all of in-progress entries.
+		{index: 5, size: overshoot - 1, wapplyingSize: maxSize + 1, wpaused: true},
+		{index: 5, size: overshoot, wapplyingSize: maxSize, wpaused: true},
+		{index: 5, size: overshoot + 1, wapplyingSize: maxSize - 1, wpaused: false},
+		// Apply all of outstanding bytes.
+		{index: 4, size: maxSize + overshoot, wapplyingSize: 0, wpaused: false},
+		// Apply more than outstanding bytes.
+		// Incorrect accounting doesn't underflow applyingSize.
+		{index: 4, size: maxSize + overshoot + 1, wapplyingSize: 0, wpaused: false},
+	}
+	for i, tt := range tests {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			storage := NewMemoryStorage()
+			require.NoError(t, storage.ApplySnapshot(snap))
+			require.NoError(t, storage.Append(ents[:1]))
+
+			raftLog := newLogWithSize(storage, raftLogger, maxSize)
+			raftLog.append(ents...)
+			raftLog.stableTo(4, 1)
+			raftLog.maybeCommit(5, 1)
+			raftLog.appliedTo(3, 0 /* size */)
+			raftLog.acceptApplying(5, maxSize+overshoot, false /* allowUnstable */)
+
+			raftLog.appliedTo(tt.index, tt.size)
+			require.Equal(t, tt.index, raftLog.applied)
+			require.Equal(t, uint64(5), raftLog.applying)
+			require.Equal(t, tt.wapplyingSize, raftLog.applyingEntsSize)
+			require.Equal(t, tt.wpaused, raftLog.applyingEntsPaused)
 		})
 	}
 }
@@ -553,7 +668,7 @@ func TestCompaction(t *testing.T) {
 			raftLog := newLog(storage, raftLogger)
 			raftLog.maybeCommit(tt.lastIndex, 0)
 
-			raftLog.appliedTo(raftLog.committed)
+			raftLog.appliedTo(raftLog.committed, 0 /* size */)
 			for j := 0; j < len(tt.compact); j++ {
 				err := storage.Compact(tt.compact[j])
 				if err != nil {
@@ -765,7 +880,7 @@ func TestSlice(t *testing.T) {
 					require.True(t, tt.wpanic)
 				}
 			}()
-			g, err := l.slice(tt.from, tt.to, tt.limit)
+			g, err := l.slice(tt.from, tt.to, entryEncodingSize(tt.limit))
 			require.False(t, tt.from <= offset && err != ErrCompacted)
 			require.False(t, tt.from > offset && err != nil)
 			require.Equal(t, tt.w, g)

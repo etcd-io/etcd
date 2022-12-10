@@ -59,7 +59,7 @@ func TestLimitSize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
-			require.Equal(t, tt.wentries, limitSize(ents, tt.maxsize))
+			require.Equal(t, tt.wentries, limitSize(ents, entryEncodingSize(tt.maxsize)))
 		})
 	}
 }

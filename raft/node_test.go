@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
@@ -935,6 +936,153 @@ func TestCommitPagination(t *testing.T) {
 	}
 	s.Append(rd.Entries)
 	n.Advance()
+}
+
+func TestCommitPaginationWithAsyncStorageWrites(t *testing.T) {
+	s := newTestMemoryStorage(withPeers(1))
+	cfg := newTestConfig(1, 10, 1, s)
+	cfg.MaxCommittedSizePerReady = 2048
+	cfg.AsyncStorageWrites = true
+	ctx, cancel, n := newNodeTestHarness(context.Background(), t, cfg)
+	defer cancel()
+	n.Campaign(ctx)
+
+	// Persist vote.
+	rd := readyWithTimeout(n)
+	require.Len(t, rd.Messages, 1)
+	m := rd.Messages[0]
+	require.Equal(t, raftpb.MsgStorageAppend, m.Type)
+	require.NoError(t, s.Append(m.Entries))
+	for _, resp := range m.Responses {
+		require.NoError(t, n.Step(ctx, resp))
+	}
+	// Append empty entry.
+	rd = readyWithTimeout(n)
+	require.Len(t, rd.Messages, 1)
+	m = rd.Messages[0]
+	require.Equal(t, raftpb.MsgStorageAppend, m.Type)
+	require.NoError(t, s.Append(m.Entries))
+	for _, resp := range m.Responses {
+		require.NoError(t, n.Step(ctx, resp))
+	}
+	// Apply empty entry.
+	rd = readyWithTimeout(n)
+	require.Len(t, rd.Messages, 2)
+	for _, m := range rd.Messages {
+		switch m.Type {
+		case raftpb.MsgStorageAppend:
+			require.NoError(t, s.Append(m.Entries))
+			for _, resp := range m.Responses {
+				require.NoError(t, n.Step(ctx, resp))
+			}
+		case raftpb.MsgStorageApply:
+			if len(m.Entries) != 1 {
+				t.Fatalf("expected 1 (empty) entry, got %d", len(m.Entries))
+			}
+			require.Len(t, m.Responses, 1)
+			require.NoError(t, n.Step(ctx, m.Responses[0]))
+		default:
+			t.Fatalf("unexpected: %v", m)
+		}
+	}
+
+	// Propose first entry.
+	blob := []byte(strings.Repeat("a", 1024))
+	require.NoError(t, n.Propose(ctx, blob))
+
+	// Append first entry.
+	rd = readyWithTimeout(n)
+	require.Len(t, rd.Messages, 1)
+	m = rd.Messages[0]
+	require.Equal(t, raftpb.MsgStorageAppend, m.Type)
+	require.Len(t, m.Entries, 1)
+	require.NoError(t, s.Append(m.Entries))
+	for _, resp := range m.Responses {
+		require.NoError(t, n.Step(ctx, resp))
+	}
+
+	// Propose second entry.
+	require.NoError(t, n.Propose(ctx, blob))
+
+	// Append second entry. Don't apply first entry yet.
+	rd = readyWithTimeout(n)
+	require.Len(t, rd.Messages, 2)
+	var applyResps []raftpb.Message
+	for _, m := range rd.Messages {
+		switch m.Type {
+		case raftpb.MsgStorageAppend:
+			require.NoError(t, s.Append(m.Entries))
+			for _, resp := range m.Responses {
+				require.NoError(t, n.Step(ctx, resp))
+			}
+		case raftpb.MsgStorageApply:
+			if len(m.Entries) != 1 {
+				t.Fatalf("expected 1 (empty) entry, got %d", len(m.Entries))
+			}
+			require.Len(t, m.Responses, 1)
+			applyResps = append(applyResps, m.Responses[0])
+		default:
+			t.Fatalf("unexpected: %v", m)
+		}
+	}
+
+	// Propose third entry.
+	require.NoError(t, n.Propose(ctx, blob))
+
+	// Append third entry. Don't apply second entry yet.
+	rd = readyWithTimeout(n)
+	require.Len(t, rd.Messages, 2)
+	for _, m := range rd.Messages {
+		switch m.Type {
+		case raftpb.MsgStorageAppend:
+			require.NoError(t, s.Append(m.Entries))
+			for _, resp := range m.Responses {
+				require.NoError(t, n.Step(ctx, resp))
+			}
+		case raftpb.MsgStorageApply:
+			if len(m.Entries) != 1 {
+				t.Fatalf("expected 1 (empty) entry, got %d", len(m.Entries))
+			}
+			require.Len(t, m.Responses, 1)
+			applyResps = append(applyResps, m.Responses[0])
+		default:
+			t.Fatalf("unexpected: %v", m)
+		}
+	}
+
+	// Third entry should not be returned to be applied until first entry's
+	// application is acknowledged.
+	drain := true
+	for drain {
+		select {
+		case rd := <-n.Ready():
+			for _, m := range rd.Messages {
+				if m.Type == raftpb.MsgStorageApply {
+					t.Fatalf("expected MsgStorageApply, %v", m)
+				}
+			}
+		case <-time.After(10 * time.Millisecond):
+			drain = false
+		}
+	}
+
+	// Acknowledged first entry application.
+	require.NoError(t, n.Step(ctx, applyResps[0]))
+	applyResps = applyResps[1:]
+
+	// Third entry now returned for application.
+	rd = readyWithTimeout(n)
+	require.Len(t, rd.Messages, 1)
+	m = rd.Messages[0]
+	require.Equal(t, raftpb.MsgStorageApply, m.Type)
+	require.Len(t, m.Entries, 1)
+	applyResps = append(applyResps, m.Responses[0])
+
+	// Acknowledged second and third entry application.
+	for _, resp := range applyResps {
+		require.NoError(t, n.Step(ctx, resp))
+	}
+	applyResps = nil
 }
 
 type ignoreSizeHintMemStorage struct {

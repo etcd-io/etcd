@@ -190,7 +190,11 @@ type Config struct {
 	// 0 for at most one entry per message.
 	MaxSizePerMsg uint64
 	// MaxCommittedSizePerReady limits the size of the committed entries which
-	// can be applied.
+	// can be applying at the same time.
+	//
+	// Despite its name (preserved for compatibility), this quota applies across
+	// Ready structs to encompass all outstanding entries in unacknowledged
+	// MsgStorageApply messages when AsyncStorageWrites is enabled.
 	MaxCommittedSizePerReady uint64
 	// MaxUncommittedEntriesSize limits the aggregate byte size of the
 	// uncommitted entries that may be appended to a leader's log. Once this
@@ -312,8 +316,8 @@ type raft struct {
 	// the log
 	raftLog *raftLog
 
-	maxMsgSize         uint64
-	maxUncommittedSize uint64
+	maxMsgSize         entryEncodingSize
+	maxUncommittedSize entryPayloadSize
 	// TODO(tbg): rename to trk.
 	prs tracker.ProgressTracker
 
@@ -351,7 +355,7 @@ type raft struct {
 	// an estimate of the size of the uncommitted tail of the Raft log. Used to
 	// prevent unbounded log growth. Only maintained by the leader. Reset on
 	// term changes.
-	uncommittedSize uint64
+	uncommittedSize entryPayloadSize
 
 	readOnly *readOnly
 
@@ -392,7 +396,7 @@ func newRaft(c *Config) *raft {
 	if err := c.validate(); err != nil {
 		panic(err.Error())
 	}
-	raftlog := newLogWithSize(c.Storage, c.Logger, c.MaxCommittedSizePerReady)
+	raftlog := newLogWithSize(c.Storage, c.Logger, entryEncodingSize(c.MaxCommittedSizePerReady))
 	hs, cs, err := c.Storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
@@ -403,8 +407,8 @@ func newRaft(c *Config) *raft {
 		lead:                      None,
 		isLearner:                 false,
 		raftLog:                   raftlog,
-		maxMsgSize:                c.MaxSizePerMsg,
-		maxUncommittedSize:        c.MaxUncommittedEntriesSize,
+		maxMsgSize:                entryEncodingSize(c.MaxSizePerMsg),
+		maxUncommittedSize:        entryPayloadSize(c.MaxUncommittedEntriesSize),
 		prs:                       tracker.MakeProgressTracker(c.MaxInflightMsgs, c.MaxInflightBytes),
 		electionTimeout:           c.ElectionTick,
 		heartbeatTimeout:          c.HeartbeatTick,
@@ -428,7 +432,7 @@ func newRaft(c *Config) *raft {
 		r.loadState(hs)
 	}
 	if c.Applied > 0 {
-		raftlog.appliedTo(c.Applied)
+		raftlog.appliedTo(c.Applied, 0 /* size */)
 	}
 	r.becomeFollower(r.Term, None)
 
@@ -606,7 +610,7 @@ func (r *raft) maybeSendAppend(to uint64, sendIfEmpty bool) bool {
 
 	// Send the actual MsgApp otherwise, and update the progress accordingly.
 	next := pr.Next // save Next for later, as the progress update can change it
-	if err := pr.UpdateOnEntriesSend(len(ents), payloadsSize(ents), next); err != nil {
+	if err := pr.UpdateOnEntriesSend(len(ents), uint64(payloadsSize(ents)), next); err != nil {
 		r.logger.Panicf("%x: %v", r.id, err)
 	}
 	r.send(pb.Message{
@@ -669,10 +673,10 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 	})
 }
 
-func (r *raft) appliedTo(index uint64) {
+func (r *raft) appliedTo(index uint64, size entryEncodingSize) {
 	oldApplied := r.raftLog.applied
 	newApplied := max(index, oldApplied)
-	r.raftLog.appliedTo(newApplied)
+	r.raftLog.appliedTo(newApplied, size)
 
 	if r.prs.Config.AutoLeave && newApplied >= r.pendingConfIndex && r.state == StateLeader {
 		// If the current (and most recent, at least for this leader's term)
@@ -701,7 +705,7 @@ func (r *raft) appliedTo(index uint64) {
 func (r *raft) appliedSnap(snap *pb.Snapshot) {
 	index := snap.Metadata.Index
 	r.raftLog.stableSnapTo(index)
-	r.appliedTo(index)
+	r.appliedTo(index, 0 /* size */)
 }
 
 // maybeCommit attempts to advance the commit index. Returns true if
@@ -1084,10 +1088,11 @@ func (r *raft) Step(m pb.Message) error {
 		}
 
 	case pb.MsgStorageApplyResp:
-		r.appliedTo(m.Index)
-		// NOTE: we abuse the LogTerm field to store the aggregate entry size so
-		// that we don't need to introduce a new field on Message.
-		r.reduceUncommittedSize(m.LogTerm)
+		if len(m.Entries) > 0 {
+			index := m.Entries[len(m.Entries)-1].Index
+			r.appliedTo(index, entsSize(m.Entries))
+			r.reduceUncommittedSize(payloadsSize(m.Entries))
+		}
 
 	case pb.MsgVote, pb.MsgPreVote:
 		// We can vote if this is a repeat of a vote we've already cast...
@@ -1941,18 +1946,9 @@ func (r *raft) increaseUncommittedSize(ents []pb.Entry) bool {
 	return true
 }
 
-// getUncommittedSize computes the aggregate size of the provided entries.
-func (r *raft) getUncommittedSize(ents []pb.Entry) uint64 {
-	if r.uncommittedSize == 0 {
-		// Fast-path for followers, who do not track or enforce the limit.
-		return 0
-	}
-	return payloadsSize(ents)
-}
-
 // reduceUncommittedSize accounts for the newly committed entries by decreasing
 // the uncommitted entry size limit.
-func (r *raft) reduceUncommittedSize(s uint64) {
+func (r *raft) reduceUncommittedSize(s entryPayloadSize) {
 	if s > r.uncommittedSize {
 		// uncommittedSize may underestimate the size of the uncommitted Raft
 		// log tail but will never overestimate it. Saturate at 0 instead of
@@ -1961,14 +1957,6 @@ func (r *raft) reduceUncommittedSize(s uint64) {
 	} else {
 		r.uncommittedSize -= s
 	}
-}
-
-func payloadsSize(ents []pb.Entry) uint64 {
-	var s uint64
-	for _, e := range ents {
-		s += uint64(PayloadSize(e))
-	}
-	return s
 }
 
 func numOfPendingConf(ents []pb.Entry) int {

@@ -131,7 +131,7 @@ func (ms *MemoryStorage) Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 	}
 
 	ents := ms.ents[lo-offset : hi-offset]
-	return limitSize(ents, maxSize), nil
+	return limitSize(ents, entryEncodingSize(maxSize)), nil
 }
 
 // Term implements the Storage interface.

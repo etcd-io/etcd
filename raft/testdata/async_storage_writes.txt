@@ -139,7 +139,7 @@ stabilize
   1->2 MsgApp Term:1 Log:1/11 Commit:11
   1->3 MsgApp Term:1 Log:1/11 Commit:11
   1->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:11
-  1->ApplyThread MsgStorageApply Term:0 Log:0/11 Entries:[1/11 EntryNormal ""] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/11]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/11 EntryNormal ""] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]]
 > 2 receiving messages
   1->2 MsgApp Term:1 Log:1/11 Commit:11
 > 3 receiving messages
@@ -150,9 +150,9 @@ stabilize
   Responses:
 > 1 processing apply thread
   Processing:
-  1->ApplyThread MsgStorageApply Term:0 Log:0/11 Entries:[1/11 EntryNormal ""]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
   Responses:
-  ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/11
+  ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
 > 2 handling Ready
   Ready MustSync=false:
   HardState Term:1 Vote:1 Commit:11
@@ -160,7 +160,7 @@ stabilize
   1/11 EntryNormal ""
   Messages:
   2->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:11 Responses:[2->1 MsgAppResp Term:1 Log:0/11]
-  2->ApplyThread MsgStorageApply Term:0 Log:0/11 Entries:[1/11 EntryNormal ""] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/11]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/11 EntryNormal ""] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]]
 > 3 handling Ready
   Ready MustSync=false:
   HardState Term:1 Vote:1 Commit:11
@@ -168,9 +168,9 @@ stabilize
   1/11 EntryNormal ""
   Messages:
   3->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:11 Responses:[3->1 MsgAppResp Term:1 Log:0/11]
-  3->ApplyThread MsgStorageApply Term:0 Log:0/11 Entries:[1/11 EntryNormal ""] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/11]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/11 EntryNormal ""] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]]
 > 1 receiving messages
-  ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/11
+  ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
 > 2 processing append thread
   Processing:
   2->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:11
@@ -183,21 +183,21 @@ stabilize
   3->1 MsgAppResp Term:1 Log:0/11
 > 2 processing apply thread
   Processing:
-  2->ApplyThread MsgStorageApply Term:0 Log:0/11 Entries:[1/11 EntryNormal ""]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
   Responses:
-  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/11
+  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
 > 3 processing apply thread
   Processing:
-  3->ApplyThread MsgStorageApply Term:0 Log:0/11 Entries:[1/11 EntryNormal ""]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
   Responses:
-  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/11
+  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
 > 1 receiving messages
   2->1 MsgAppResp Term:1 Log:0/11
   3->1 MsgAppResp Term:1 Log:0/11
 > 2 receiving messages
-  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/11
+  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
 > 3 receiving messages
-  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/11
+  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/11 EntryNormal ""]
 
 propose 1 prop_1
 ----
@@ -330,7 +330,7 @@ process-ready 1 2 3
   1->2 MsgApp Term:1 Log:1/13 Commit:12 Entries:[1/14 EntryNormal "prop_3"]
   1->3 MsgApp Term:1 Log:1/13 Commit:12 Entries:[1/14 EntryNormal "prop_3"]
   1->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/14 EntryNormal "prop_3"] HardState: Term:1 Vote:1 Commit:12 Responses:[1->1 MsgAppResp Term:1 Log:0/14, AppendThread->1 MsgStorageAppendResp Term:1 Log:1/14]
-  1->ApplyThread MsgStorageApply Term:0 Log:0/12 Entries:[1/12 EntryNormal "prop_1"] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/12]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]]
 > 2 handling Ready
   <empty Ready>
 > 3 handling Ready
@@ -356,7 +356,7 @@ process-ready 1 2 3
   1/12 EntryNormal "prop_1"
   Messages:
   2->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/14 EntryNormal "prop_3"] HardState: Term:1 Vote:1 Commit:12 Responses:[2->1 MsgAppResp Term:1 Log:0/13, 2->1 MsgAppResp Term:1 Log:0/14, AppendThread->2 MsgStorageAppendResp Term:1 Log:1/14]
-  2->ApplyThread MsgStorageApply Term:0 Log:0/12 Entries:[1/12 EntryNormal "prop_1"] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/12]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]]
 > 3 handling Ready
   Ready MustSync=true:
   HardState Term:1 Vote:1 Commit:12
@@ -366,7 +366,7 @@ process-ready 1 2 3
   1/12 EntryNormal "prop_1"
   Messages:
   3->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/14 EntryNormal "prop_3"] HardState: Term:1 Vote:1 Commit:12 Responses:[3->1 MsgAppResp Term:1 Log:0/13, 3->1 MsgAppResp Term:1 Log:0/14, AppendThread->3 MsgStorageAppendResp Term:1 Log:1/14]
-  3->ApplyThread MsgStorageApply Term:0 Log:0/12 Entries:[1/12 EntryNormal "prop_1"] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/12]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]]
 
 process-append-thread 1 2 3
 ----
@@ -417,7 +417,7 @@ process-ready 1 2 3
   1->2 MsgApp Term:1 Log:1/14 Commit:13 Entries:[1/15 EntryNormal "prop_4"]
   1->3 MsgApp Term:1 Log:1/14 Commit:13 Entries:[1/15 EntryNormal "prop_4"]
   1->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/15 EntryNormal "prop_4"] HardState: Term:1 Vote:1 Commit:13 Responses:[1->1 MsgAppResp Term:1 Log:0/15, AppendThread->1 MsgStorageAppendResp Term:1 Log:1/15]
-  1->ApplyThread MsgStorageApply Term:0 Log:0/13 Entries:[1/13 EntryNormal "prop_2"] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/13]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]]
 > 2 handling Ready
   <empty Ready>
 > 3 handling Ready
@@ -443,7 +443,7 @@ process-ready 1 2 3
   1/13 EntryNormal "prop_2"
   Messages:
   2->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/15 EntryNormal "prop_4"] HardState: Term:1 Vote:1 Commit:13 Responses:[2->1 MsgAppResp Term:1 Log:0/14, 2->1 MsgAppResp Term:1 Log:0/15, AppendThread->2 MsgStorageAppendResp Term:1 Log:1/15]
-  2->ApplyThread MsgStorageApply Term:0 Log:0/13 Entries:[1/13 EntryNormal "prop_2"] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/13]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]]
 > 3 handling Ready
   Ready MustSync=true:
   HardState Term:1 Vote:1 Commit:13
@@ -453,7 +453,7 @@ process-ready 1 2 3
   1/13 EntryNormal "prop_2"
   Messages:
   3->AppendThread MsgStorageAppend Term:1 Log:0/0 Entries:[1/15 EntryNormal "prop_4"] HardState: Term:1 Vote:1 Commit:13 Responses:[3->1 MsgAppResp Term:1 Log:0/14, 3->1 MsgAppResp Term:1 Log:0/15, AppendThread->3 MsgStorageAppendResp Term:1 Log:1/15]
-  3->ApplyThread MsgStorageApply Term:0 Log:0/13 Entries:[1/13 EntryNormal "prop_2"] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/13]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]]
 
 process-append-thread 1 2 3
 ----
@@ -482,19 +482,19 @@ process-apply-thread 1 2 3
 ----
 > 1 processing apply thread
   Processing:
-  1->ApplyThread MsgStorageApply Term:0 Log:0/12 Entries:[1/12 EntryNormal "prop_1"]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
   Responses:
-  ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/12
+  ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
 > 2 processing apply thread
   Processing:
-  2->ApplyThread MsgStorageApply Term:0 Log:0/12 Entries:[1/12 EntryNormal "prop_1"]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
   Responses:
-  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/12
+  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
 > 3 processing apply thread
   Processing:
-  3->ApplyThread MsgStorageApply Term:0 Log:0/12 Entries:[1/12 EntryNormal "prop_1"]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
   Responses:
-  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/12
+  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
 
 deliver-msgs 1 2 3
 ----
@@ -504,11 +504,11 @@ AppendThread->1 MsgStorageAppendResp Term:1 Log:1/14
 2->1 MsgAppResp Term:1 Log:0/14
 3->1 MsgAppResp Term:1 Log:0/13
 3->1 MsgAppResp Term:1 Log:0/14
-ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/12
+ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
 AppendThread->2 MsgStorageAppendResp Term:1 Log:1/14
-ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/12
+ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
 AppendThread->3 MsgStorageAppendResp Term:1 Log:1/14
-ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/12
+ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/12 EntryNormal "prop_1"]
 
 process-ready 1 2 3
 ----
@@ -521,7 +521,7 @@ process-ready 1 2 3
   1->2 MsgApp Term:1 Log:1/15 Commit:14
   1->3 MsgApp Term:1 Log:1/15 Commit:14
   1->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:14 Responses:[AppendThread->1 MsgStorageAppendResp Term:1 Log:1/15]
-  1->ApplyThread MsgStorageApply Term:0 Log:0/14 Entries:[1/14 EntryNormal "prop_3"] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/14]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]]
 > 2 handling Ready
   <empty Ready>
 > 3 handling Ready
@@ -543,7 +543,7 @@ process-ready 1 2 3
   1/14 EntryNormal "prop_3"
   Messages:
   2->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:14 Responses:[2->1 MsgAppResp Term:1 Log:0/15, AppendThread->2 MsgStorageAppendResp Term:1 Log:1/15]
-  2->ApplyThread MsgStorageApply Term:0 Log:0/14 Entries:[1/14 EntryNormal "prop_3"] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/14]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]]
 > 3 handling Ready
   Ready MustSync=false:
   HardState Term:1 Vote:1 Commit:14
@@ -551,7 +551,7 @@ process-ready 1 2 3
   1/14 EntryNormal "prop_3"
   Messages:
   3->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:14 Responses:[3->1 MsgAppResp Term:1 Log:0/15, AppendThread->3 MsgStorageAppendResp Term:1 Log:1/15]
-  3->ApplyThread MsgStorageApply Term:0 Log:0/14 Entries:[1/14 EntryNormal "prop_3"] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/14]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]]
 
 process-append-thread 1 2 3
 ----
@@ -580,19 +580,19 @@ process-apply-thread 1 2 3
 ----
 > 1 processing apply thread
   Processing:
-  1->ApplyThread MsgStorageApply Term:0 Log:0/13 Entries:[1/13 EntryNormal "prop_2"]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
   Responses:
-  ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/13
+  ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
 > 2 processing apply thread
   Processing:
-  2->ApplyThread MsgStorageApply Term:0 Log:0/13 Entries:[1/13 EntryNormal "prop_2"]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
   Responses:
-  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/13
+  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
 > 3 processing apply thread
   Processing:
-  3->ApplyThread MsgStorageApply Term:0 Log:0/13 Entries:[1/13 EntryNormal "prop_2"]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
   Responses:
-  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/13
+  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
 
 deliver-msgs 1 2 3
 ----
@@ -602,11 +602,11 @@ AppendThread->1 MsgStorageAppendResp Term:1 Log:1/15
 2->1 MsgAppResp Term:1 Log:0/15
 3->1 MsgAppResp Term:1 Log:0/14
 3->1 MsgAppResp Term:1 Log:0/15
-ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/13
+ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
 AppendThread->2 MsgStorageAppendResp Term:1 Log:1/15
-ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/13
+ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
 AppendThread->3 MsgStorageAppendResp Term:1 Log:1/15
-ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/13
+ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/13 EntryNormal "prop_2"]
 
 process-ready 1 2 3
 ----
@@ -619,7 +619,7 @@ process-ready 1 2 3
   1->2 MsgApp Term:1 Log:1/15 Commit:15
   1->3 MsgApp Term:1 Log:1/15 Commit:15
   1->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:15
-  1->ApplyThread MsgStorageApply Term:0 Log:0/15 Entries:[1/15 EntryNormal "prop_4"] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/15]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"] Responses:[ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]]
 > 2 handling Ready
   <empty Ready>
 > 3 handling Ready
@@ -641,7 +641,7 @@ process-ready 1 2 3
   1/15 EntryNormal "prop_4"
   Messages:
   2->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:15 Responses:[2->1 MsgAppResp Term:1 Log:0/15]
-  2->ApplyThread MsgStorageApply Term:0 Log:0/15 Entries:[1/15 EntryNormal "prop_4"] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/15]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"] Responses:[ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]]
 > 3 handling Ready
   Ready MustSync=false:
   HardState Term:1 Vote:1 Commit:15
@@ -649,7 +649,7 @@ process-ready 1 2 3
   1/15 EntryNormal "prop_4"
   Messages:
   3->AppendThread MsgStorageAppend Term:1 Log:0/0 HardState: Term:1 Vote:1 Commit:15 Responses:[3->1 MsgAppResp Term:1 Log:0/15]
-  3->ApplyThread MsgStorageApply Term:0 Log:0/15 Entries:[1/15 EntryNormal "prop_4"] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/15]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"] Responses:[ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]]
 
 process-append-thread 2 3
 ----
@@ -670,31 +670,31 @@ process-apply-thread 1 2 3
 ----
 > 1 processing apply thread
   Processing:
-  1->ApplyThread MsgStorageApply Term:0 Log:0/14 Entries:[1/14 EntryNormal "prop_3"]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
   Responses:
-  ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/14
+  ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
 > 2 processing apply thread
   Processing:
-  2->ApplyThread MsgStorageApply Term:0 Log:0/14 Entries:[1/14 EntryNormal "prop_3"]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
   Responses:
-  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/14
+  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
 > 3 processing apply thread
   Processing:
-  3->ApplyThread MsgStorageApply Term:0 Log:0/14 Entries:[1/14 EntryNormal "prop_3"]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
   Responses:
-  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/14
+  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
 
 deliver-msgs 1 2 3
 ----
 2->1 MsgAppResp Term:1 Log:0/15
 3->1 MsgAppResp Term:1 Log:0/15
-ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/14
+ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
 AppendThread->2 MsgStorageAppendResp Term:1 Log:1/15
 INFO entry at index 15 missing from unstable log; ignoring
-ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/14
+ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
 AppendThread->3 MsgStorageAppendResp Term:1 Log:1/15
 INFO entry at index 15 missing from unstable log; ignoring
-ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/14
+ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/14 EntryNormal "prop_3"]
 
 process-ready 1 2 3
 ----
@@ -722,27 +722,27 @@ process-apply-thread 1 2 3
 ----
 > 1 processing apply thread
   Processing:
-  1->ApplyThread MsgStorageApply Term:0 Log:0/15 Entries:[1/15 EntryNormal "prop_4"]
+  1->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
   Responses:
-  ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/15
+  ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
 > 2 processing apply thread
   Processing:
-  2->ApplyThread MsgStorageApply Term:0 Log:0/15 Entries:[1/15 EntryNormal "prop_4"]
+  2->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
   Responses:
-  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/15
+  ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
 > 3 processing apply thread
   Processing:
-  3->ApplyThread MsgStorageApply Term:0 Log:0/15 Entries:[1/15 EntryNormal "prop_4"]
+  3->ApplyThread MsgStorageApply Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
   Responses:
-  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/15
+  ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
 
 deliver-msgs 1 2 3
 ----
 2->1 MsgAppResp Term:1 Log:0/15
 3->1 MsgAppResp Term:1 Log:0/15
-ApplyThread->1 MsgStorageApplyResp Term:0 Log:6/15
-ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/15
-ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/15
+ApplyThread->1 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
+ApplyThread->2 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
+ApplyThread->3 MsgStorageApplyResp Term:0 Log:0/0 Entries:[1/15 EntryNormal "prop_4"]
 
 process-ready 1 2 3
 ----

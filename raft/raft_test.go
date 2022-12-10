@@ -38,7 +38,7 @@ func nextEnts(r *raft, s *MemoryStorage) (ents []pb.Entry) {
 
 	// Return committed entries.
 	ents = r.raftLog.nextCommittedEnts(true)
-	r.raftLog.appliedTo(r.raftLog.committed)
+	r.raftLog.appliedTo(r.raftLog.committed, 0 /* size */)
 	return ents
 }
 
@@ -240,9 +240,9 @@ func TestUncommittedEntryLimit(t *testing.T) {
 	// writing, the former).
 	const maxEntries = 1024
 	testEntry := pb.Entry{Data: []byte("testdata")}
-	maxEntrySize := maxEntries * PayloadSize(testEntry)
+	maxEntrySize := maxEntries * payloadSize(testEntry)
 
-	if n := PayloadSize(pb.Entry{Data: nil}); n != 0 {
+	if n := payloadSize(pb.Entry{Data: nil}); n != 0 {
 		t.Fatal("entry with no Data must have zero payload size")
 	}
 
@@ -283,7 +283,7 @@ func TestUncommittedEntryLimit(t *testing.T) {
 	if e := maxEntries * numFollowers; len(ms) != e {
 		t.Fatalf("expected %d messages, got %d", e, len(ms))
 	}
-	r.reduceUncommittedSize(r.getUncommittedSize(propEnts))
+	r.reduceUncommittedSize(payloadsSize(propEnts))
 	if r.uncommittedSize != 0 {
 		t.Fatalf("committed everything, but still tracking %d", r.uncommittedSize)
 	}
@@ -319,7 +319,7 @@ func TestUncommittedEntryLimit(t *testing.T) {
 	if e := 2 * numFollowers; len(ms) != e {
 		t.Fatalf("expected %d messages, got %d", e, len(ms))
 	}
-	r.reduceUncommittedSize(r.getUncommittedSize(propEnts))
+	r.reduceUncommittedSize(payloadsSize(propEnts))
 	if n := r.uncommittedSize; n != 0 {
 		t.Fatalf("expected zero uncommitted size, got %d", n)
 	}

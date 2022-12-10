@@ -979,12 +979,12 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 	const maxEntries = 16
 	data := []byte("testdata")
 	testEntry := pb.Entry{Data: data}
-	maxEntrySize := uint64(maxEntries * PayloadSize(testEntry))
+	maxEntrySize := maxEntries * payloadSize(testEntry)
 	t.Log("maxEntrySize", maxEntrySize)
 
 	s := newTestMemoryStorage(withPeers(1))
 	cfg := newTestConfig(1, 10, 1, s)
-	cfg.MaxUncommittedEntriesSize = maxEntrySize
+	cfg.MaxUncommittedEntriesSize = uint64(maxEntrySize)
 	rawNode, err := NewRawNode(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -1010,7 +1010,7 @@ func TestRawNodeBoundedLogGrowthWithPartition(t *testing.T) {
 
 	// Check the size of leader's uncommitted log tail. It should not exceed the
 	// MaxUncommittedEntriesSize limit.
-	checkUncommitted := func(exp uint64) {
+	checkUncommitted := func(exp entryPayloadSize) {
 		t.Helper()
 		if a := rawNode.raft.uncommittedSize; exp != a {
 			t.Fatalf("expected %d uncommitted entry bytes, found %d", exp, a)

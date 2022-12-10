@@ -213,12 +213,6 @@ func describeTarget(id uint64) string {
 	}
 }
 
-// PayloadSize is the size of the payload of this Entry. Notably, it does not
-// depend on its Index or Term.
-func PayloadSize(e pb.Entry) int {
-	return len(e.Data)
-}
-
 // DescribeEntry returns a concise human-readable description of an
 // Entry for debugging.
 func DescribeEntry(e pb.Entry, f EntryFormatter) string {
@@ -267,7 +261,19 @@ func DescribeEntries(ents []pb.Entry, f EntryFormatter) string {
 	return buf.String()
 }
 
-func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
+// entryEncodingSize represents the protocol buffer encoding size of one or more
+// entries.
+type entryEncodingSize uint64
+
+func entsSize(ents []pb.Entry) entryEncodingSize {
+	var size entryEncodingSize
+	for _, ent := range ents {
+		size += entryEncodingSize(ent.Size())
+	}
+	return size
+}
+
+func limitSize(ents []pb.Entry, maxSize entryEncodingSize) []pb.Entry {
 	if len(ents) == 0 {
 		return ents
 	}
@@ -275,11 +281,31 @@ func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
 	var limit int
 	for limit = 1; limit < len(ents); limit++ {
 		size += ents[limit].Size()
-		if uint64(size) > maxSize {
+		if entryEncodingSize(size) > maxSize {
 			break
 		}
 	}
 	return ents[:limit]
+}
+
+// entryPayloadSize represents the size of one or more entries' payloads.
+// Notably, it does not depend on its Index or Term. Entries with empty
+// payloads, like those proposed after a leadership change, are considered
+// to be zero size.
+type entryPayloadSize uint64
+
+// payloadSize is the size of the payload of the provided entry.
+func payloadSize(e pb.Entry) entryPayloadSize {
+	return entryPayloadSize(len(e.Data))
+}
+
+// payloadsSize is the size of the payloads of the provided entries.
+func payloadsSize(ents []pb.Entry) entryPayloadSize {
+	var s entryPayloadSize
+	for _, e := range ents {
+		s += payloadSize(e)
+	}
+	return s
 }
 
 func assertConfStatesEquivalent(l Logger, cs1, cs2 pb.ConfState) {
