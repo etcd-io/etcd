@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	DefaultTraffic Traffic = readWriteSingleKey{key: "key", writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
+	DefaultTraffic Traffic = readWriteSingleKey{keyCount: 5, writes: []opChance{{operation: Put, chance: 60}, {operation: Delete, chance: 20}, {operation: Txn, chance: 20}}}
 )
 
 type Traffic interface {
@@ -33,8 +33,8 @@ type Traffic interface {
 }
 
 type readWriteSingleKey struct {
-	key    string
-	writes []opChance
+	keyCount int
+	writes   []opChance
 }
 
 type opChance struct {
@@ -50,19 +50,20 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 			return
 		default:
 		}
+		key := fmt.Sprintf("%d", rand.Int()%t.keyCount)
 		// Execute one read per one write to avoid operation history include too many failed writes when etcd is down.
-		resp, err := t.Read(ctx, c, limiter)
+		resp, err := t.Read(ctx, c, limiter, key)
 		if err != nil {
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
-		t.Write(ctx, c, limiter, ids.RequestId(), resp)
+		t.Write(ctx, c, limiter, key, fmt.Sprintf("%d", ids.RequestId()), resp)
 	}
 }
 
-func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter) ([]*mvccpb.KeyValue, error) {
+func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string) ([]*mvccpb.KeyValue, error) {
 	getCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
-	resp, err := c.Get(getCtx, t.key)
+	resp, err := c.Get(getCtx, key)
 	cancel()
 	if err == nil {
 		limiter.Wait(ctx)
@@ -70,21 +71,21 @@ func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limite
 	return resp, err
 }
 
-func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, id int, kvs []*mvccpb.KeyValue) error {
+func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lastValues []*mvccpb.KeyValue) error {
 	putCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
 
 	var err error
 	switch t.pickWriteOperation() {
 	case Put:
-		err = c.Put(putCtx, t.key, fmt.Sprintf("%d", id))
+		err = c.Put(putCtx, key, newValue)
 	case Delete:
-		err = c.Delete(putCtx, t.key)
+		err = c.Delete(putCtx, key)
 	case Txn:
-		var value string
-		if len(kvs) != 0 {
-			value = string(kvs[0].Value)
+		var expectValue string
+		if len(lastValues) != 0 {
+			expectValue = string(lastValues[0].Value)
 		}
-		err = c.Txn(putCtx, t.key, value, fmt.Sprintf("%d", id))
+		err = c.Txn(putCtx, key, expectValue, newValue)
 	default:
 		panic("invalid operation")
 	}
