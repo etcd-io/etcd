@@ -31,24 +31,32 @@ const (
 )
 
 type EtcdRequest struct {
-	Op            Operation
-	Key           string
+	Op  Operation
+	Key string
+
 	PutData       string
 	TxnExpectData string
 	TxnNewData    string
 }
 
 type EtcdResponse struct {
-	GetData      string
-	Revision     int64
-	Deleted      int64
-	TxnSucceeded bool
-	Err          error
+	Revision int64
+	Err      error
+
+	GetData        string
+	GetModRevision int64
+	Deleted        int64
+	TxnSucceeded   bool
 }
 
 type EtcdState struct {
 	Revision  int64
-	KeyValues map[string]string
+	KeyValues map[string]Value
+}
+
+type Value struct {
+	Data        string
+	ModRevision int64
 }
 
 var etcdModel = porcupine.Model{
@@ -74,7 +82,7 @@ var etcdModel = porcupine.Model{
 			if response.Err != nil {
 				return fmt.Sprintf("get(%q) -> %q", request.Key, response.Err)
 			} else {
-				return fmt.Sprintf("get(%q) -> %q, rev: %d", request.Key, response.GetData, response.Revision)
+				return fmt.Sprintf("get(%q) -> %q, mod-rev: %d, rev: %d", request.Key, response.GetData, response.GetModRevision, response.Revision)
 			}
 		case Put:
 			if response.Err != nil {
@@ -86,7 +94,7 @@ var etcdModel = porcupine.Model{
 			if response.Err != nil {
 				return fmt.Sprintf("delete(%q) -> %s", request.Key, response.Err)
 			} else {
-				return fmt.Sprintf("delete(%q) -> ok, rev: %d deleted:%d", request.Key, response.Revision, response.Deleted)
+				return fmt.Sprintf("delete(%q) -> deleted:%d, rev: %d", request.Key, response.Revision, response.Deleted)
 			}
 		case Txn:
 			if response.Err != nil {
@@ -140,19 +148,19 @@ func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 	}
 	state := EtcdState{
 		Revision:  response.Revision,
-		KeyValues: map[string]string{},
+		KeyValues: map[string]Value{},
 	}
 	switch request.Op {
 	case Get:
 		if response.GetData != "" {
-			state.KeyValues[request.Key] = response.GetData
+			state.KeyValues[request.Key] = Value{Data: response.GetData, ModRevision: response.GetModRevision}
 		}
 	case Put:
-		state.KeyValues[request.Key] = request.PutData
+		state.KeyValues[request.Key] = Value{Data: request.PutData, ModRevision: response.Revision}
 	case Delete:
 	case Txn:
 		if response.TxnSucceeded {
-			state.KeyValues[request.Key] = request.TxnNewData
+			state.KeyValues[request.Key] = Value{Data: request.TxnNewData, ModRevision: response.Revision}
 		}
 		return []EtcdState{}
 	default:
@@ -162,7 +170,7 @@ func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 }
 
 func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
-	newKVs := map[string]string{}
+	newKVs := map[string]Value{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
 	}
@@ -170,10 +178,11 @@ func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
 	resp := EtcdResponse{}
 	switch request.Op {
 	case Get:
-		resp.GetData = s.KeyValues[request.Key]
+		resp.GetData = s.KeyValues[request.Key].Data
+		resp.GetModRevision = s.KeyValues[request.Key].ModRevision
 	case Put:
-		s.KeyValues[request.Key] = request.PutData
 		s.Revision += 1
+		s.KeyValues[request.Key] = Value{Data: request.PutData, ModRevision: s.Revision}
 	case Delete:
 		if _, ok := s.KeyValues[request.Key]; ok {
 			delete(s.KeyValues, request.Key)
@@ -181,9 +190,9 @@ func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
 			resp.Deleted = 1
 		}
 	case Txn:
-		if val := s.KeyValues[request.Key]; val == request.TxnExpectData {
-			s.KeyValues[request.Key] = request.TxnNewData
+		if val := s.KeyValues[request.Key]; val.Data == request.TxnExpectData {
 			s.Revision += 1
+			s.KeyValues[request.Key] = Value{Data: request.TxnNewData, ModRevision: s.Revision}
 			resp.TxnSucceeded = true
 		}
 	default:

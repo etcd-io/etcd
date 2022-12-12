@@ -42,14 +42,16 @@ func newAppendableHistory(ids idProvider) *appendableHistory {
 
 func (h *appendableHistory) AppendGet(key string, start, end time.Time, resp *clientv3.GetResponse) {
 	var readData string
+	var modRevision int64
 	if len(resp.Kvs) == 1 {
 		readData = string(resp.Kvs[0].Value)
+		modRevision = resp.Kvs[0].ModRevision
 	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    EtcdRequest{Op: Get, Key: key},
 		Call:     start.UnixNano(),
-		Output:   EtcdResponse{GetData: readData, Revision: resp.Header.Revision},
+		Output:   EtcdResponse{GetData: readData, GetModRevision: modRevision, Revision: resp.Header.Revision},
 		Return:   end.UnixNano(),
 	})
 }
