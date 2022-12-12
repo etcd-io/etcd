@@ -113,6 +113,18 @@ func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, 
 	})
 }
 
+func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
+	//TODO
+}
+
+func (h *appendableHistory) AppendLeaseRevoke(leaseId clientv3.LeaseID, start, end time.Time, resp *clientv3.LeaseRevokeResponse, err error) {
+	//TODO
+}
+
+func (h *appendableHistory) AppendLeaseRenew(leaseId clientv3.LeaseID, start, end time.Time, resp *clientv3.LeaseKeepAliveResponse, err error) {
+	//TODO
+}
+
 func (h *appendableHistory) appendFailed(request EtcdRequest, start time.Time, err error) {
 	h.failed = append(h.failed, porcupine.Operation{
 		ClientId: h.id,
