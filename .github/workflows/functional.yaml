@@ -10,8 +10,13 @@ jobs:
         target:
         - linux-amd64-functional
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - name: Harden Runner
+      uses: step-security/harden-runner@ebacdc22ef6c2cfb85ee5ded8f2e640f4c776dd5 # v2.0.0
+      with:
+        egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+    - uses: actions/checkout@e2f20e631ae6d7dd3b768f56a5d2af784dd54791 # v2.5.0
+    - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
       with:
         go-version: "1.19.4"
     - run: date
