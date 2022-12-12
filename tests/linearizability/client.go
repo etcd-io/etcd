@@ -75,21 +75,15 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *recordingClient) Txn(ctx context.Context, key, expectedValue, newValue string) error {
+func (c *recordingClient) Txn(ctx context.Context, compare []clientv3.Cmp, onSuccess []clientv3.Op) error {
 	callTime := time.Now()
 	txn := c.client.Txn(ctx)
-	var cmp clientv3.Cmp
-	if expectedValue == "" {
-		cmp = clientv3.Compare(clientv3.CreateRevision(key), "=", 0)
-	} else {
-		cmp = clientv3.Compare(clientv3.Value(key), "=", expectedValue)
-	}
 	resp, err := txn.If(
-		cmp,
+		compare...,
 	).Then(
-		clientv3.OpPut(key, newValue),
+		onSuccess...,
 	).Commit()
 	returnTime := time.Now()
-	c.history.AppendTxn(key, expectedValue, newValue, callTime, returnTime, resp, err)
+	c.history.AppendTxn(compare, onSuccess, callTime, returnTime, resp, err)
 	return err
 }

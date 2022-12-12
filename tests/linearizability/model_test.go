@@ -17,6 +17,8 @@ package linearizability
 import (
 	"errors"
 	"testing"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 func TestModel(t *testing.T) {
@@ -45,7 +47,7 @@ func TestModel(t *testing.T) {
 		{
 			name: "First Txn can start from non-zero revision",
 			operations: []testOperation{
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "", TxnNewData: "42"}, resp: EtcdResponse{Revision: 42}},
+				{req: EtcdRequest{Op: Txn, TxnOnSuccess: txnPut("key", "42")}, resp: EtcdResponse{Revision: 42}},
 			},
 		},
 		{
@@ -105,11 +107,11 @@ func TestModel(t *testing.T) {
 				// Txn failure
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2", TxnNewData: "3"}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{Revision: 1}},
 				// Txn success
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Revision: 2}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2", TxnNewData: "3"}, resp: EtcdResponse{TxnSucceeded: true, Revision: 3}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{TxnSucceeded: true, Revision: 3}},
 			},
 		},
 		{
@@ -158,11 +160,11 @@ func TestModel(t *testing.T) {
 				// Txn success
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2"}, resp: EtcdResponse{TxnSucceeded: true, Revision: 2}, failure: true},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2"}, resp: EtcdResponse{TxnSucceeded: true, Revision: 3}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{TxnSucceeded: true, Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{TxnSucceeded: true, Revision: 3}},
 				// Txn failure
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Revision: 4}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "5"}, resp: EtcdResponse{Revision: 4}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "5")}, resp: EtcdResponse{Revision: 4}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "5"}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 5, GetData: "5"}},
 			},
@@ -269,21 +271,21 @@ func TestModel(t *testing.T) {
 				// Txn success
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
 				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "", TxnNewData: "1"}, resp: EtcdResponse{TxnSucceeded: true, Revision: 3}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEmpty("key"), TxnOnSuccess: txnPut("key", "1")}, resp: EtcdResponse{TxnSucceeded: true, Revision: 3}},
 				// Txn failure
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Revision: 4}},
 				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "4", TxnNewData: "5"}, resp: EtcdResponse{TxnSucceeded: false, Revision: 5}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "4"), TxnOnSuccess: txnPut("key", "5")}, resp: EtcdResponse{TxnSucceeded: false, Revision: 5}},
 			},
 		},
 		{
 			name: "Txn sets new value if value matches expected",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Revision: 1, TxnSucceeded: true}, failure: true},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Revision: 2, TxnSucceeded: false}, failure: true},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Revision: 1, TxnSucceeded: false}, failure: true},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Revision: 2, TxnSucceeded: true}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Revision: 1, TxnSucceeded: true}, failure: true},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Revision: 2, TxnSucceeded: false}, failure: true},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Revision: 1, TxnSucceeded: false}, failure: true},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Revision: 2, TxnSucceeded: true}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}, failure: true},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 2}, failure: true},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 1}, failure: true},
@@ -294,19 +296,19 @@ func TestModel(t *testing.T) {
 			name: "Txn can expect on empty key",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Get, Key: "key1"}, resp: EtcdResponse{Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key1", TxnExpectData: "", TxnNewData: "2"}, resp: EtcdResponse{Revision: 2, TxnSucceeded: true}},
-				{req: EtcdRequest{Op: Txn, Key: "key2", TxnExpectData: "", TxnNewData: "3"}, resp: EtcdResponse{Revision: 3, TxnSucceeded: true}},
-				{req: EtcdRequest{Op: Txn, Key: "key3", TxnExpectData: "4", TxnNewData: "4"}, resp: EtcdResponse{Revision: 4}, failure: true},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEmpty("key1"), TxnOnSuccess: txnPut("key1", "2")}, resp: EtcdResponse{Revision: 2, TxnSucceeded: true}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEmpty("key2"), TxnOnSuccess: txnPut("key2", "3")}, resp: EtcdResponse{Revision: 3, TxnSucceeded: true}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key3", "4"), TxnOnSuccess: txnPut("key", "4")}, resp: EtcdResponse{Revision: 4}, failure: true},
 			},
 		},
 		{
 			name: "Txn doesn't do anything if value doesn't match expected",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2", TxnNewData: "3"}, resp: EtcdResponse{Revision: 2, TxnSucceeded: true}, failure: true},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2", TxnNewData: "3"}, resp: EtcdResponse{Revision: 1, TxnSucceeded: true}, failure: true},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2", TxnNewData: "3"}, resp: EtcdResponse{Revision: 2, TxnSucceeded: false}, failure: true},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2", TxnNewData: "3"}, resp: EtcdResponse{Revision: 1, TxnSucceeded: false}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{Revision: 2, TxnSucceeded: true}, failure: true},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{Revision: 1, TxnSucceeded: true}, failure: true},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{Revision: 2, TxnSucceeded: false}, failure: true},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{Revision: 1, TxnSucceeded: false}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 1}, failure: true},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}, failure: true},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 1}, failure: true},
@@ -318,7 +320,7 @@ func TestModel(t *testing.T) {
 			name: "Txn can fail and be lost before get",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2, GetData: "2"}, failure: true},
 			},
@@ -327,7 +329,7 @@ func TestModel(t *testing.T) {
 			name: "Txn can fail and be lost before delete",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 2}},
 			},
 		},
@@ -335,7 +337,7 @@ func TestModel(t *testing.T) {
 			name: "Txn can fail and be lost before put",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 2}},
 			},
 		},
@@ -344,13 +346,13 @@ func TestModel(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 1, GetData: "2"}, failure: true},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 2, GetData: "2"}},
 				// Two failed request, two persisted.
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 3}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "3", TxnNewData: "4"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "4", TxnNewData: "5"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "3"), TxnOnSuccess: txnPut("key", "4")}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "4"), TxnOnSuccess: txnPut("key", "5")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{Revision: 5, GetData: "5"}},
 			},
 		},
@@ -359,12 +361,12 @@ func TestModel(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 3}},
 				// Two failed request, two persisted.
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Revision: 4}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "4", TxnNewData: "5"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "5", TxnNewData: "6"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "4"), TxnOnSuccess: txnPut("key", "5")}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "5"), TxnOnSuccess: txnPut("key", "6")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "7"}, resp: EtcdResponse{Revision: 7}},
 			},
 		},
@@ -373,12 +375,12 @@ func TestModel(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 3}},
 				// Two failed request, two persisted.
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Revision: 4}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "4", TxnNewData: "5"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "5", TxnNewData: "6"}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "4"), TxnOnSuccess: txnPut("key", "5")}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "5"), TxnOnSuccess: txnPut("key", "6")}, resp: EtcdResponse{Err: errors.New("failed")}},
 				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Deleted: 1, Revision: 7}},
 			},
 		},
@@ -387,17 +389,17 @@ func TestModel(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted with success.
 				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "1", Revision: 1}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "1", TxnNewData: "2"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "2", TxnNewData: "3"}, resp: EtcdResponse{Revision: 3, TxnSucceeded: true}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "1"), TxnOnSuccess: txnPut("key", "2")}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "2"), TxnOnSuccess: txnPut("key", "3")}, resp: EtcdResponse{Revision: 3, TxnSucceeded: true}},
 				// Two failed request, two persisted with success.
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "4"}, resp: EtcdResponse{Revision: 4}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "4", TxnNewData: "5"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "5", TxnNewData: "6"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "6", TxnNewData: "7"}, resp: EtcdResponse{Revision: 7, TxnSucceeded: true}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "4"), TxnOnSuccess: txnPut("key", "5")}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "5"), TxnOnSuccess: txnPut("key", "6")}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "6"), TxnOnSuccess: txnPut("key", "7")}, resp: EtcdResponse{Revision: 7, TxnSucceeded: true}},
 				// One failed request, one persisted with failure.
 				{req: EtcdRequest{Op: Put, Key: "key", PutData: "8"}, resp: EtcdResponse{Revision: 8}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "8", TxnNewData: "9"}, resp: EtcdResponse{Err: errors.New("failed")}},
-				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "8", TxnNewData: "10"}, resp: EtcdResponse{Revision: 9}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "8"), TxnOnSuccess: txnPut("key", "9")}, resp: EtcdResponse{Err: errors.New("failed")}},
+				{req: EtcdRequest{Op: Txn, TxnCondition: txnValueEqual("key", "8"), TxnOnSuccess: txnPut("key", "10")}, resp: EtcdResponse{Revision: 9}},
 			},
 		},
 	}
@@ -423,4 +425,16 @@ type testOperation struct {
 	req     EtcdRequest
 	resp    EtcdResponse
 	failure bool
+}
+
+func txnValueEmpty(key string) []clientv3.Cmp {
+	return []clientv3.Cmp{clientv3.Compare(clientv3.CreateRevision(key), "=", 0)}
+}
+
+func txnValueEqual(key, value string) []clientv3.Cmp {
+	return []clientv3.Cmp{clientv3.Compare(clientv3.Value(key), "=", value)}
+}
+
+func txnPut(key, value string) []clientv3.Op {
+	return []clientv3.Op{clientv3.OpPut(key, value)}
 }

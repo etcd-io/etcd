@@ -94,8 +94,8 @@ func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp 
 	})
 }
 
-func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, end time.Time, resp *clientv3.TxnResponse, err error) {
-	request := EtcdRequest{Op: Txn, Key: key, TxnExpectData: expectValue, TxnNewData: newValue}
+func (h *appendableHistory) AppendTxn(compare []clientv3.Cmp, onSuccess []clientv3.Op, start, end time.Time, resp *clientv3.TxnResponse, err error) {
+	request := EtcdRequest{Op: Txn, TxnCondition: compare, TxnOnSuccess: onSuccess}
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return

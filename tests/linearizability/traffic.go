@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"golang.org/x/time/rate"
 )
 
@@ -81,11 +82,13 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 	case Delete:
 		err = c.Delete(putCtx, key)
 	case Txn:
-		var expectValue string
-		if len(lastValues) != 0 {
-			expectValue = string(lastValues[0].Value)
+		var cmp clientv3.Cmp
+		if len(lastValues) == 0 {
+			cmp = clientv3.Compare(clientv3.CreateRevision(key), "=", 0)
+		} else {
+			cmp = clientv3.Compare(clientv3.Value(key), "=", string(lastValues[0].Value))
 		}
-		err = c.Txn(putCtx, key, expectValue, newValue)
+		err = c.Txn(putCtx, []clientv3.Cmp{cmp}, []clientv3.Op{clientv3.OpPut(key, newValue)})
 	default:
 		panic("invalid operation")
 	}

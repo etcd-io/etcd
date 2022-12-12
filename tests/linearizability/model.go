@@ -17,8 +17,11 @@ package linearizability
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/anishathalye/porcupine"
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 type Operation string
@@ -31,11 +34,11 @@ const (
 )
 
 type EtcdRequest struct {
-	Op            Operation
-	Key           string
-	PutData       string
-	TxnExpectData string
-	TxnNewData    string
+	Op           Operation
+	Key          string
+	PutData      string
+	TxnCondition []clientv3.Cmp
+	TxnOnSuccess []clientv3.Op
 }
 
 type EtcdResponse struct {
@@ -89,10 +92,32 @@ var etcdModel = porcupine.Model{
 				return fmt.Sprintf("delete(%q) -> ok, rev: %d deleted:%d", request.Key, response.Revision, response.Deleted)
 			}
 		case Txn:
+			// TODO better print
+			var conditions []string
+			for _, cond := range request.TxnCondition {
+				switch cond.Target {
+				case etcdserverpb.Compare_VALUE:
+					conditions = append(conditions, fmt.Sprintf("value(%q)=%q", string(cond.Key), string(cond.ValueBytes())))
+				case etcdserverpb.Compare_CREATE:
+					conditions = append(conditions, fmt.Sprintf("exists(%q)", string(cond.Key)))
+				default:
+					panic("target not supported")
+				}
+			}
+			var onSuccess []string
+			for _, op := range request.TxnOnSuccess {
+				switch {
+				case op.IsPut():
+					onSuccess = append(onSuccess, fmt.Sprintf("put(%q, %q)", string(op.KeyBytes()), string(op.ValueBytes())))
+				default:
+					panic("operation not supported")
+				}
+			}
+
 			if response.Err != nil {
-				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %s", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.Err)
+				return fmt.Sprintf("txn.if(%s).then(%s) -> %s", strings.Join(conditions, ","), strings.Join(onSuccess, ","), response.Err)
 			} else {
-				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %v, rev: %d", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.TxnSucceeded, response.Revision)
+				return fmt.Sprintf("txn.if(%s).then(%s) -> %v, rev: %d", strings.Join(conditions, ","), strings.Join(onSuccess, ","), response.TxnSucceeded, response.Revision)
 			}
 		default:
 			return "<invalid>"
@@ -152,7 +177,14 @@ func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 	case Delete:
 	case Txn:
 		if response.TxnSucceeded {
-			state.KeyValues[request.Key] = request.TxnNewData
+			for _, op := range request.TxnOnSuccess {
+				switch {
+				case op.IsPut():
+					state.KeyValues[string(op.KeyBytes())] = string(op.ValueBytes())
+				default:
+					panic("Unhandled txn operation")
+				}
+			}
 		}
 		return []EtcdState{}
 	default:
@@ -181,14 +213,42 @@ func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
 			resp.Deleted = 1
 		}
 	case Txn:
-		if val := s.KeyValues[request.Key]; val == request.TxnExpectData {
-			s.KeyValues[request.Key] = request.TxnNewData
-			s.Revision += 1
-			resp.TxnSucceeded = true
+		resp.TxnSucceeded = checkTxn(s, request)
+		if resp.TxnSucceeded {
+			for _, op := range request.TxnOnSuccess {
+				switch {
+				case op.IsPut():
+					s.KeyValues[string(op.KeyBytes())] = string(op.ValueBytes())
+					s.Revision += 1
+				default:
+					panic("Unhandled txn operation")
+				}
+			}
 		}
 	default:
 		panic("unsupported operation")
 	}
 	resp.Revision = s.Revision
 	return s, resp
+}
+
+func checkTxn(s EtcdState, request EtcdRequest) bool {
+	for _, cmp := range request.TxnCondition {
+		switch cmp.Target {
+		case etcdserverpb.Compare_VALUE:
+			if val, ok := s.KeyValues[string(cmp.Key)]; !ok || val != string(cmp.ValueBytes()) {
+				return false
+			}
+		case etcdserverpb.Compare_CREATE:
+			if (cmp.TargetUnion.(*etcdserverpb.Compare_CreateRevision)).CreateRevision != 0 {
+				panic("Unsupported create revision condition")
+			}
+			if _, ok := s.KeyValues[string(cmp.Key)]; ok {
+				return false
+			}
+		default:
+			panic("Unsupported condition")
+		}
+	}
+	return true
 }
