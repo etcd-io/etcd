@@ -11,7 +11,7 @@ jobs:
     name: Measure Test Flakiness
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@e2f20e631ae6d7dd3b768f56a5d2af784dd54791 # v2.5.0
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
     - run: "./scripts/measure-test-flakiness.sh"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
