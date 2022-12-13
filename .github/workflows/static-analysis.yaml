@@ -10,7 +10,7 @@ jobs:
         with:
           go-version: "1.19.4"
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@07db5389c99593f11ad7b44463c2d4233066a9b1 # v3.3.0
+        uses: golangci/golangci-lint-action@0ad9a0988b3973e851ab0a07adf248ec2e100376 # v3.3.1
         with:
           version: v1.49.0
       - name: protoc
