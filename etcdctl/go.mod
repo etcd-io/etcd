@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
-	github.com/cheggaaa/pb/v3 v3.0.8
+	github.com/cheggaaa/pb/v3 v3.1.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.6.1
