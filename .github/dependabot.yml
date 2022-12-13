@@ -1,0 +1,62 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /api
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /client/pkg
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /client/v2
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /client/v3
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /etcdctl
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /etcdutl
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /pkg
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /server
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /tests
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /tools/mod
+    schedule:
+      interval: daily
+
