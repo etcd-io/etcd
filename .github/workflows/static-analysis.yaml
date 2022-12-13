@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
-      - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2.2.0
+      - uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
         with:
           go-version: "1.19.4"
       - name: golangci-lint
