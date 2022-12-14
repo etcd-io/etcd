@@ -26,10 +26,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3AuthEnable(t *testing.T) {
-	testCtl(t, authEnableTest)
-}
-func TestCtlV3AuthDisable(t *testing.T)             { testCtl(t, authDisableTest) }
 func TestCtlV3AuthGracefulDisable(t *testing.T)     { testCtl(t, authGracefulDisableTest) }
 func TestCtlV3AuthStatus(t *testing.T)              { testCtl(t, authStatusTest) }
 func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKeyTest) }
@@ -76,14 +72,7 @@ func TestCtlV3AuthJWTExpire(t *testing.T) {
 	testCtl(t, authTestJWTExpire, withCfg(*e2e.NewConfigJWT()))
 }
 func TestCtlV3AuthRevisionConsistency(t *testing.T) { testCtl(t, authTestRevisionConsistency) }
-
-func TestCtlV3AuthTestCacheReload(t *testing.T) { testCtl(t, authTestCacheReload) }
-
-func authEnableTest(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-}
+func TestCtlV3AuthTestCacheReload(t *testing.T)     { testCtl(t, authTestCacheReload) }
 
 func authEnable(cx ctlCtx) error {
 	// create root user with root role
@@ -102,46 +91,6 @@ func authEnable(cx ctlCtx) error {
 func ctlV3AuthEnable(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "enable")
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "Authentication Enabled")
-}
-
-func authDisableTest(cx ctlCtx) {
-	// a key that isn't granted to test-user
-	if err := ctlV3Put(cx, "hoo", "a", ""); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	// test-user doesn't have the permission, it must fail
-	cx.user, cx.pass = "test-user", "pass"
-	err := ctlV3PutFailPerm(cx, "hoo", "bar")
-	require.ErrorContains(cx.t, err, "permission denied")
-
-	cx.user, cx.pass = "root", "root"
-	if err := ctlV3AuthDisable(cx); err != nil {
-		cx.t.Fatalf("authDisableTest ctlV3AuthDisable error (%v)", err)
-	}
-
-	// now ErrAuthNotEnabled of Authenticate() is simply ignored
-	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// now the key can be accessed
-	cx.user, cx.pass = "", ""
-	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
-		cx.t.Fatal(err)
-	}
-	// confirm put succeeded
-	if err := ctlV3Get(cx, []string{"hoo"}, []kv{{"hoo", "bar"}}...); err != nil {
-		cx.t.Fatal(err)
-	}
 }
 
 func authGracefulDisableTest(cx ctlCtx) {
