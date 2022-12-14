@@ -576,6 +576,15 @@
 		]
 	},
 	{
+		"project": "go.opentelemetry.io/otel/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "go.opentelemetry.io/otel/sdk",
 		"licenses": [
 			{
