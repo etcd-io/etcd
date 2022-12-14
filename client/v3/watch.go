@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -589,26 +588,6 @@ func (w *watchGrpcStream) run() {
 
 			switch {
 			case pbresp.Created:
-				cancelReasonError := v3rpc.Error(errors.New(pbresp.CancelReason))
-				if shouldRetryWatch(cancelReasonError) {
-					var newErr error
-					if wc, newErr = w.newWatchClient(); newErr != nil {
-						w.lg.Error("failed to create a new watch client", zap.Error(newErr))
-						return
-					}
-
-					if len(w.resuming) != 0 {
-						if ws := w.resuming[0]; ws != nil {
-							if err := wc.Send(ws.initReq.toPB()); err != nil {
-								w.lg.Debug("error when sending request", zap.Error(err))
-							}
-						}
-					}
-
-					cur = nil
-					continue
-				}
-
 				// response to head of queue creation
 				if len(w.resuming) != 0 {
 					if ws := w.resuming[0]; ws != nil {
@@ -716,11 +695,6 @@ func (w *watchGrpcStream) run() {
 			}
 		}
 	}
-}
-
-func shouldRetryWatch(cancelReasonError error) bool {
-	return (strings.Compare(cancelReasonError.Error(), v3rpc.ErrGRPCInvalidAuthToken.Error()) == 0) ||
-		(strings.Compare(cancelReasonError.Error(), v3rpc.ErrGRPCAuthOldRevision.Error()) == 0)
 }
 
 // nextResume chooses the next resuming to register with the grpc stream. Abandoned
