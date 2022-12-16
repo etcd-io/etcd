@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2022 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,11 @@
 
 package etcdserver
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestOriginAllowed(t *testing.T) {
 	tests := []struct {
@@ -59,16 +63,14 @@ func TestOriginAllowed(t *testing.T) {
 		},
 	}
 
-	for i, tt := range tests {
+	for _, tt := range tests {
 		allowed := tt.accessController.OriginAllowed(tt.origin)
-		if allowed != tt.allowed {
-			t.Fatalf("#%d: allowd = %t, want %t", i, allowed, tt.allowed)
-		}
+		assert.Equal(t, allowed, tt.allowed)
 	}
 }
 
 func TestIsHostWhitelisted(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		accessController *AccessController
 		host             string
 		whitelisted      bool
@@ -110,10 +112,8 @@ func TestIsHostWhitelisted(t *testing.T) {
 		},
 	}
 
-	for i, tt := range tests {
+	for _, tt := range tests {
 		whitelisted := tt.accessController.IsHostWhitelisted(tt.host)
-		if whitelisted != tt.whitelisted {
-			t.Fatalf("#%d:whitelisted = %t, want %t", i, whitelisted, tt.whitelisted)
-		}
+		assert.Equal(t, whitelisted, tt.whitelisted)
 	}
 }
