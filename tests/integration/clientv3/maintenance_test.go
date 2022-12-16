@@ -17,17 +17,14 @@ package clientv3test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.uber.org/zap/zaptest"
-	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
@@ -35,6 +32,12 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
+	"google.golang.org/grpc"
 )
 
 func TestMaintenanceHashKV(t *testing.T) {
@@ -336,6 +339,52 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 	if resp.Version != "3.6.0" {
 		t.Errorf("unexpected version, expected %q, got %q", version.Version, resp.Version)
 	}
+}
+
+func TestMaintenanceSnapshotContentDigest(t *testing.T) {
+	integration2.BeforeTest(t)
+
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	populateDataIntoCluster(t, clus, 3, 1024*1024)
+
+	// reading snapshot with canceled context should error out
+	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
+	require.NoError(t, err)
+	defer resp.Snapshot.Close()
+
+	tmpDir := t.TempDir()
+	snapFile, err := os.Create(filepath.Join(tmpDir, t.Name()))
+	require.NoError(t, err)
+	defer snapFile.Close()
+
+	snapSize, err := io.Copy(snapFile, resp.Snapshot)
+	require.NoError(t, err)
+
+	// read the checksum
+	checksumSize := int64(sha256.Size)
+	_, err = snapFile.Seek(-checksumSize, io.SeekEnd)
+	require.NoError(t, err)
+
+	checksumInBytes, err := io.ReadAll(snapFile)
+	require.NoError(t, err)
+	require.Equal(t, int(checksumSize), len(checksumInBytes))
+
+	// remove the checksum part and rehash
+	err = snapFile.Truncate(snapSize - checksumSize)
+	require.NoError(t, err)
+
+	_, err = snapFile.Seek(0, io.SeekStart)
+	require.NoError(t, err)
+
+	hashWriter := sha256.New()
+	_, err = io.Copy(hashWriter, snapFile)
+	require.NoError(t, err)
+
+	// compare the checksum
+	actualChecksum := hashWriter.Sum(nil)
+	require.Equal(t, checksumInBytes, actualChecksum)
 }
 
 func TestMaintenanceStatus(t *testing.T) {
