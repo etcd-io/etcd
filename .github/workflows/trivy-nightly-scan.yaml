@@ -1,0 +1,35 @@
+name: Trivy Nightly Scan
+on:
+  schedule:
+    - cron: '0 2 * * *' # run at 2 AM UTC
+
+permissions: read-all 
+jobs:
+  nightly-scan:
+    name: Trivy Scan nightly
+    strategy:
+      fail-fast: false
+      matrix:
+        # maintain the versions of etcd that need to be actively
+        # security scanned
+        versions: [v3.5.6]
+    permissions:
+      security-events: write  # for github/codeql-action/upload-sarif to upload SARIF results
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # v3.1.0
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5 # master
+        with:
+          image-ref: 'gcr.io/etcd-development/etcd:${{ matrix.versions }}'
+          severity: 'CRITICAL,HIGH'
+          format: 'template'
+          template: '@/contrib/sarif.tpl'
+          output: 'trivy-results-3-5.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@a669cc5936cc5e1b6a362ec1ff9e410dc570d190 # v2.1.36
+        with:
+          sarif_file: 'trivy-results-3-5.sarif'
