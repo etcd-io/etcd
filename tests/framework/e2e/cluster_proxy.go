@@ -159,9 +159,20 @@ func (pp *proxyProc) Stop() error {
 	if pp.proc == nil {
 		return nil
 	}
-	if err := pp.proc.Stop(); err != nil && !strings.Contains(err.Error(), "exit status 1") {
-		// v2proxy exits with status 1 on auto tls; not sure why
+	err := pp.proc.Stop()
+	if err != nil {
 		return err
+	}
+
+	err = pp.proc.Close()
+	if err != nil {
+		// proxy received SIGTERM signal
+		if !(strings.Contains(err.Error(), "unexpected exit code") ||
+			// v2proxy exits with status 1 on auto tls; not sure why
+			strings.Contains(err.Error(), "exit status 1")) {
+
+			return err
+		}
 	}
 	pp.proc = nil
 	<-pp.donec
