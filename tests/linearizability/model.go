@@ -17,17 +17,19 @@ package linearizability
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/anishathalye/porcupine"
+	"time"
 )
 
 type Operation string
 
 const (
-	Get    Operation = "get"
-	Put    Operation = "put"
-	Delete Operation = "delete"
-	Txn    Operation = "txn"
+	Get          Operation = "get"
+	Put          Operation = "put"
+	Delete       Operation = "delete"
+	Txn          Operation = "txn"
+	PutWithLease Operation = "putWithLease"
+	LeaseGrant   Operation = "leaseGrant"
 )
 
 type EtcdRequest struct {
@@ -36,6 +38,7 @@ type EtcdRequest struct {
 	PutData       string
 	TxnExpectData string
 	TxnNewData    string
+	leaseID       int64
 }
 
 type EtcdResponse struct {
@@ -43,17 +46,27 @@ type EtcdResponse struct {
 	Revision     int64
 	Deleted      int64
 	TxnSucceeded bool
+	leaseID      int64
+	leaseExpiry  time.Time
 	Err          error
+}
+
+type EtcdLease struct {
+	LeaseID     int64
+	LeaseExpiry time.Time
 }
 
 type EtcdState struct {
 	Key            string
 	PossibleValues []ValueRevision
+	Leases         map[int64]EtcdLease
 }
 
 type ValueRevision struct {
-	Value    string
-	Revision int64
+	Value        string
+	Revision     int64
+	LeaseID      int64
+	LeaseExpired bool
 }
 
 var etcdModel = porcupine.Model{
@@ -83,9 +96,9 @@ var etcdModel = porcupine.Model{
 			}
 		case Put:
 			if response.Err != nil {
-				return fmt.Sprintf("put(%q, %q) -> %s", request.Key, request.PutData, response.Err)
+				return fmt.Sprintf("put(%q, %q, %d) -> %s", request.Key, request.PutData, request.leaseID, response.Err)
 			} else {
-				return fmt.Sprintf("put(%q, %q) -> ok, rev: %d", request.Key, request.PutData, response.Revision)
+				return fmt.Sprintf("put(%q, %q, %d) -> ok, rev: %d", request.Key, request.PutData, request.leaseID, response.Revision)
 			}
 		case Delete:
 			if response.Err != nil {
@@ -98,6 +111,13 @@ var etcdModel = porcupine.Model{
 				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %s", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.Err)
 			} else {
 				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %v, rev: %d", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.TxnSucceeded, response.Revision)
+			}
+		case LeaseGrant:
+			if response.Err != nil {
+				//TODO leaseID may not be populated if the lease req is failing
+				return fmt.Sprintf("leaseGrant(%q) -> %q", response.leaseID, response.Err)
+			} else {
+				return fmt.Sprintf("leaseGrant(%q) -> %q", response.leaseID, response.leaseExpiry)
 			}
 		default:
 			return "<invalid>"
@@ -113,9 +133,14 @@ func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, Et
 		}
 		return true, state
 	}
+	if newLease, lease := stepLease(request, response); newLease {
+		state.Leases[lease.LeaseID] = lease
+	}
+
 	if state.Key != request.Key {
 		panic("multiple keys not supported")
 	}
+
 	if response.Err != nil {
 		for _, v := range state.PossibleValues {
 			newV, _ := stepValue(v, request)
@@ -124,6 +149,12 @@ func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, Et
 	} else {
 		var i = 0
 		for _, v := range state.PossibleValues {
+			v.LeaseExpired = false
+			if lease, ok := state.Leases[v.LeaseID]; ok {
+				if lease.LeaseExpiry.Before(time.Now()) {
+					v.LeaseExpired = true
+				}
+			}
 			newV, expectedResponse := stepValue(v, request)
 			if expectedResponse == response {
 				state.PossibleValues[i] = newV
@@ -170,16 +201,41 @@ func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v V
 
 func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdResponse) {
 	resp := EtcdResponse{}
+
+	//increment revision and delete the key if the key was under lease and that lease has expired.
+	//clear out the lease id for the state at that point.
+	if v.LeaseExpired {
+		//value should not be empty at this point.
+		if v.Value == "" {
+			panic("Odd..value is blank")
+		}
+		v.Revision += 1
+		v.Value = ""
+	}
+
 	switch request.Op {
 	case Get:
+		//if the key is attached to a lease and the lease has expired, the key should not be there
+		//when the lease expires, the revision increments.
 		resp.GetData = v.Value
 	case Put:
 		v.Value = request.PutData
 		v.Revision += 1
+		//a Put with no lease on the same key will detach the key from the lease
+		v.LeaseID = 0
+		v.LeaseExpired = false
+	case PutWithLease:
+		if !v.LeaseExpired {
+			//only update if the lease is ok
+			v.Value = request.PutData
+			v.Revision += 1
+			v.LeaseID = request.leaseID
+		}
 	case Delete:
 		if v.Value != "" {
 			v.Value = ""
 			v.Revision += 1
+			v.LeaseID = 0
 			resp.Deleted = 1
 		}
 	case Txn:
@@ -191,6 +247,18 @@ func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdRespons
 	default:
 		panic("unsupported operation")
 	}
+
 	resp.Revision = v.Revision
 	return v, resp
+}
+
+// return true with a lease object if a new lease was acquired
+func stepLease(request EtcdRequest, resp EtcdResponse) (bool, EtcdLease) {
+	switch request.Op {
+	case LeaseGrant:
+		lease := EtcdLease{LeaseID: resp.leaseID, LeaseExpiry: resp.leaseExpiry}
+		return true, lease
+	default:
+		return false, EtcdLease{}
+	}
 }

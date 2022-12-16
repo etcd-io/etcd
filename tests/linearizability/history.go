@@ -56,8 +56,18 @@ func (h *appendableHistory) AppendGet(key string, start, end time.Time, resp *cl
 
 func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, resp *clientv3.PutResponse, err error) {
 	request := EtcdRequest{Op: Put, Key: key, PutData: value}
+	h.appendPut(request, start, end, resp, err)
+}
+
+func (h *appendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Time, resp *clientv3.PutResponse, err error) {
+	request := EtcdRequest{Op: Put, Key: key, PutData: value, leaseID: leaseID}
+	h.appendPut(request, start, end, resp, err)
+}
+
+// TODO This can be made more generic - appendReq - to accept req and resp. That way it can be used for all operations.
+func (h *appendableHistory) appendPut(req EtcdRequest, start, end time.Time, resp *clientv3.PutResponse, err error) {
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(req, start, err)
 		return
 	}
 	var revision int64
@@ -66,11 +76,12 @@ func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, r
 	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
-		Input:    EtcdRequest{Op: Put, Key: key, PutData: value},
+		Input:    req,
 		Call:     start.UnixNano(),
 		Output:   EtcdResponse{Err: err, Revision: revision},
 		Return:   end.UnixNano(),
 	})
+
 }
 
 func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
@@ -113,16 +124,23 @@ func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, 
 	})
 }
 
-func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
-	//TODO
-}
-
-func (h *appendableHistory) AppendLeaseRevoke(leaseId clientv3.LeaseID, start, end time.Time, resp *clientv3.LeaseRevokeResponse, err error) {
-	//TODO
-}
-
-func (h *appendableHistory) AppendLeaseRenew(leaseId clientv3.LeaseID, start, end time.Time, resp *clientv3.LeaseKeepAliveResponse, err error) {
-	//TODO
+func (h *appendableHistory) AppendLeaseGrant(leaseExpiry time.Time, start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
+	request := EtcdRequest{Op: LeaseGrant, leaseID: int64(resp.ID)}
+	if err != nil {
+		h.appendFailed(request, start, err)
+		return
+	}
+	var revision int64
+	if resp != nil && resp.ResponseHeader != nil {
+		revision = resp.ResponseHeader.Revision
+	}
+	h.successful = append(h.successful, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.UnixNano(),
+		Output:   EtcdResponse{Err: err, Revision: revision, leaseExpiry: leaseExpiry},
+		Return:   end.UnixNano(),
+	})
 }
 
 func (h *appendableHistory) appendFailed(request EtcdRequest, start time.Time, err error) {

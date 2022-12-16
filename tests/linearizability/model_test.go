@@ -392,6 +392,14 @@ func TestModel(t *testing.T) {
 				{req: EtcdRequest{Op: Txn, Key: "key", TxnExpectData: "8", TxnNewData: "10"}, resp: EtcdResponse{Revision: 9}},
 			},
 		},
+		{
+			name: "Put with valid lease id should succeed. Put with invalid lease id should fail",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: LeaseGrant}, resp: EtcdResponse{leaseID: 1, Revision: 1}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 1}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 2}, resp: EtcdResponse{Revision: 2}, failure: true},
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -404,7 +412,7 @@ func TestModel(t *testing.T) {
 				}
 				if ok {
 					state = newState
-					t.Logf("state: %v", state)
+					t.Logf("geetasg state: %v", state)
 				}
 			}
 		})

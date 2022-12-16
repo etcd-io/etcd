@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	DefaultTraffic Traffic = readWriteSingleKey{key: "key", writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
+	DefaultTraffic Traffic = readWriteSingleKey{key: "key", leaseTTL: 2, writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
 )
 
 type Traffic interface {
@@ -33,8 +33,10 @@ type Traffic interface {
 }
 
 type readWriteSingleKey struct {
-	key    string
-	writes []opChance
+	key      string
+	leaseId  int64
+	leaseTTL int64
+	writes   []opChance
 }
 
 type opChance struct {
@@ -77,6 +79,11 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 	switch t.pickWriteOperation() {
 	case Put:
 		err = c.Put(putCtx, t.key, fmt.Sprintf("%d", id))
+	case PutWithLease:
+		err = c.PutWithLease(putCtx, t.key, fmt.Sprintf("%d", id), t.leaseId)
+	//TODO should this be in write function? leases are orthogonal to writes
+	case LeaseGrant:
+		t.leaseId, err = c.LeaseGrant(putCtx, t.leaseTTL)
 	case Delete:
 		err = c.Delete(putCtx, t.key)
 	case Txn:

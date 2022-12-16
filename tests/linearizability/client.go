@@ -94,34 +94,19 @@ func (c *recordingClient) Txn(ctx context.Context, key, expectedValue, newValue 
 	return err
 }
 
-func (c *recordingClient) LeaseGrant(ctx context.Context, ttl int64) error {
+func (c *recordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, error) {
 	callTime := time.Now()
 	resp, err := c.client.Lease.Grant(ctx, ttl)
 	returnTime := time.Now()
-	c.history.AppendLeaseGrant(callTime, returnTime, resp, err)
-	return nil
+	c.history.AppendLeaseGrant(returnTime.Add(time.Duration(ttl)*time.Second), callTime, returnTime, resp, err)
+	return int64(resp.ID), err
 }
 
-func (c *recordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId clientv3.LeaseID) error {
+func (c *recordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) error {
 	callTime := time.Now()
-	resp, err := c.client.Put(ctx, key, value, clientv3.WithLease(leaseId))
+	opts := clientv3.WithLease(clientv3.LeaseID(leaseId))
+	resp, err := c.client.Put(ctx, key, value, opts)
 	returnTime := time.Now()
-	c.history.AppendPut(key, value, callTime, returnTime, resp, err)
+	c.history.AppendPutWithLease(key, value, int64(leaseId), callTime, returnTime, resp, err)
 	return err
-}
-
-func (c *recordingClient) LeaseRevoke(ctx context.Context, leaseId clientv3.LeaseID) error {
-	callTime := time.Now()
-	resp, err := c.client.Lease.Revoke(ctx, leaseId)
-	returnTime := time.Now()
-	c.history.AppendLeaseRevoke(leaseId, callTime, returnTime, resp, err)
-	return nil
-}
-
-func (c *recordingClient) LeaseRenew(ctx context.Context, leaseId clientv3.LeaseID) error {
-	callTime := time.Now()
-	resp, err := c.client.Lease.KeepAliveOnce(ctx, leaseId)
-	returnTime := time.Now()
-	c.history.AppendLeaseRenew(leaseId, callTime, returnTime, resp, err)
-	return nil
 }
