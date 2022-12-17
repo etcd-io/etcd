@@ -20,7 +20,28 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
-	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
+	"go.etcd.io/etcd/tests/v3/framework/interfaces"
+)
+
+const (
+	rootUserName = "root"
+	rootRoleName = "root"
+	rootPassword = "rootPassword"
+	testUserName = "test-user"
+	testRoleName = "test-role"
+	testPassword = "pass"
+)
+
+var (
+	rootUser = authUser{user: rootUserName, pass: rootPassword, role: rootRoleName}
+	testUser = authUser{user: testUserName, pass: testPassword, role: testRoleName}
+
+	testRole = authRole{
+		role:       testRoleName,
+		permission: clientv3.PermissionType(clientv3.PermReadWrite),
+		key:        "foo",
+		keyEnd:     "",
+	}
 )
 
 type authRole struct {
@@ -36,7 +57,7 @@ type authUser struct {
 	role string
 }
 
-func createRoles(c intf.Client, roles []authRole) error {
+func createRoles(c interfaces.Client, roles []authRole) error {
 	for _, r := range roles {
 		// add role
 		if _, err := c.RoleAdd(context.TODO(), r.role); err != nil {
@@ -52,7 +73,7 @@ func createRoles(c intf.Client, roles []authRole) error {
 	return nil
 }
 
-func createUsers(c intf.Client, users []authUser) error {
+func createUsers(c interfaces.Client, users []authUser) error {
 	for _, u := range users {
 		// add user
 		if _, err := c.UserAdd(context.TODO(), u.user, u.pass, config.UserAddOptions{}); err != nil {
@@ -68,7 +89,7 @@ func createUsers(c intf.Client, users []authUser) error {
 	return nil
 }
 
-func setupAuth(c intf.Client, roles []authRole, users []authUser) error {
+func setupAuth(c interfaces.Client, roles []authRole, users []authUser) error {
 	// create roles
 	if err := createRoles(c, roles); err != nil {
 		return err
