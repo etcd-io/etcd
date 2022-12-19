@@ -97,7 +97,7 @@ tools_build() {
     run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
       -trimpath \
       -installsuffix=cgo \
-      "-ldflags='${GO_LDFLAGS[*]}'" \
+      "-ldflags=${GO_LDFLAGS[*]}" \
       -o="${out}/${tool}" "./${tool}" || return 2
   done
   tests_build "${@}"
@@ -120,7 +120,7 @@ tests_build() {
       # shellcheck disable=SC2086
       run env CGO_ENABLED=0 GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" go build ${GO_BUILD_FLAGS} \
         -installsuffix=cgo \
-        "-ldflags='${GO_LDFLAGS[*]}'" \
+        "-ldflags=${GO_LDFLAGS[*]}" \
         -o="../${out}/${tool}" "./${tool}" || return 2
     done
   ) || return 2
