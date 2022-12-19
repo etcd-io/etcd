@@ -1,6 +1,6 @@
 module go.etcd.io/etcd/tests/v3
 
-go 1.16
+go 1.17
 
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
