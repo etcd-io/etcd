@@ -20,16 +20,16 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
       with:
-        go-version: "1.16.15"
+        go-version: "1.17.13"
     - run: date
     - env:
         TARGET: ${{ matrix.target }}
       run: |
         go version
         echo ${GOROOT}
-        # The version of ${GOROOT} is 1.16.15, while the `/usr/bin/go` links to go1.17.11.
+        # The version of ${GOROOT} is 1.17.13, while the `/usr/bin/go` links to go1.17.11.
         # We need to make sure they are linking to the same go version; otherwise, we will
-        # run into issue: "compile: version go1.16.15 does not match go tool version go1.17.11".
+        # run into issue: "compile: version go1.17.13 does not match go tool version go1.17.11".
         # Refer to https://github.com/actions/setup-go/issues/107 as well.
         sudo unlink /usr/bin/go; sudo ln -s ${GOROOT}/bin/go /usr/bin/go; ls -lrt /usr/bin/go
 
