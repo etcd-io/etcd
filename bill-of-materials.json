@@ -657,7 +657,7 @@
 		]
 	},
 	{
-		"project": "golang.org/x/sys",
+		"project": "golang.org/x/sys/unix",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
