@@ -1,5 +1,8 @@
-# TODO: move to k8s.gcr.io/build-image/debian-base-arm64:bullseye-1.y.z when patched
-FROM arm64v8/debian:bullseye-20210927
+FROM --platform=linux/arm64 busybox:1.34.1 as source
+FROM --platform=linux/arm64 gcr.io/distroless/base-debian11
+
+COPY --from=source /bin/sh /bin/sh
+COPY --from=source /bin/mkdir /bin/mkdir
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
