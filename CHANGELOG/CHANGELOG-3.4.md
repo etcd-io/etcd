@@ -13,6 +13,14 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [Remove memberID from data corrupt alarm](https://github.com/etcd-io/etcd/pull/14853).
 - Fix [nil pointer panic for readonly txn due to nil response](https://github.com/etcd-io/etcd/pull/14900).
 
+### Security
+- Use [distroless base image](https://github.com/etcd-io/etcd/pull/15017) to address critical Vulnerabilities.
+- Bumped [some dependencies](https://github.com/etcd-io/etcd/pull/15019) to address some HIGH Vulnerabilities.
+
+### Go
+- Require [Go 1.17+](https://github.com/etcd-io/etcd/pull/15019).
+- Compile with [Go 1.17+](https://go.dev/doc/devel/release#go1.17)
+
 <hr>
 
 ## v3.4.22 (2022-11-02)

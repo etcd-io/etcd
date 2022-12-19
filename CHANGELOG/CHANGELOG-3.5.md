@@ -14,6 +14,14 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Package `clientv3`
 - Reverted the fix to [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14995).
 
+### Security
+- Use [distroless base image](https://github.com/etcd-io/etcd/pull/15016) to address critical Vulnerabilities.
+- Bumped [some dependencies](https://github.com/etcd-io/etcd/pull/15018) to address some HIGH Vulnerabilities.
+
+### Go
+- Require [Go 1.17+](https://github.com/etcd-io/etcd/pull/15019).
+- Compile with [Go 1.17+](https://go.dev/doc/devel/release#go1.17)
+
 
 <hr>
 
