@@ -16,7 +16,9 @@ package recipes_test
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -51,26 +53,27 @@ func TestMutexLockMultiNode(t *testing.T) {
 
 func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
 	// stream lock acquisitions
-	lockedC := make(chan *concurrency.Mutex)
-	stopC := make(chan struct{})
-	defer close(stopC)
+	lockedC := make(chan *concurrency.Mutex, waiters)
+	errC := make(chan error, waiters)
+
+	var wg sync.WaitGroup
+	wg.Add(waiters)
 
 	for i := 0; i < waiters; i++ {
-		go func() {
+		go func(i int) {
+			defer wg.Done()
 			session, err := concurrency.NewSession(chooseClient())
 			if err != nil {
-				t.Error(err)
+				errC <- fmt.Errorf("#%d: failed to create new session: %w", i, err)
+				return
 			}
 			m := concurrency.NewMutex(session, "test-mutex")
 			if err := m.Lock(context.TODO()); err != nil {
-				t.Errorf("could not wait on lock (%v)", err)
+				errC <- fmt.Errorf("#%d: failed to wait on lock: %w", i, err)
+				return
 			}
-			select {
-			case lockedC <- m:
-			case <-stopC:
-			}
-
-		}()
+			lockedC <- m
+		}(i)
 	}
 	// unlock locked mutexes
 	timerC := time.After(time.Duration(waiters) * time.Second)
@@ -78,6 +81,8 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 		select {
 		case <-timerC:
 			t.Fatalf("timed out waiting for lock %d", i)
+		case err := <-errC:
+			t.Fatalf("Unexpected error: %v", err)
 		case m := <-lockedC:
 			// lock acquired with m
 			select {
@@ -90,6 +95,7 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 			}
 		}
 	}
+	wg.Wait()
 }
 
 func TestMutexTryLockSingleNode(t *testing.T) {

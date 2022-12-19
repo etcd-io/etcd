@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -44,6 +43,11 @@ const (
 
 	// InvalidWatchID represents an invalid watch ID and prevents duplication with an existing watch.
 	InvalidWatchID = -1
+)
+
+var (
+	errMsgGRPCInvalidAuthToken = v3rpc.ErrGRPCInvalidAuthToken.Error()
+	errMsgGRPCAuthOldRevision  = v3rpc.ErrGRPCAuthOldRevision.Error()
 )
 
 type Event mvccpb.Event
@@ -588,8 +592,7 @@ func (w *watchGrpcStream) run() {
 
 			switch {
 			case pbresp.Created:
-				cancelReasonError := v3rpc.Error(errors.New(pbresp.CancelReason))
-				if shouldRetryWatch(cancelReasonError) {
+				if pbresp.Canceled && shouldRetryWatch(pbresp.CancelReason) {
 					var newErr error
 					if wc, newErr = w.newWatchClient(); newErr != nil {
 						w.lg.Error("failed to create a new watch client", zap.Error(newErr))
@@ -717,9 +720,12 @@ func (w *watchGrpcStream) run() {
 	}
 }
 
-func shouldRetryWatch(cancelReasonError error) bool {
-	return (strings.Compare(cancelReasonError.Error(), v3rpc.ErrGRPCInvalidAuthToken.Error()) == 0) ||
-		(strings.Compare(cancelReasonError.Error(), v3rpc.ErrGRPCAuthOldRevision.Error()) == 0)
+func shouldRetryWatch(cancelReason string) bool {
+	if cancelReason == "" {
+		return false
+	}
+	return (cancelReason == errMsgGRPCInvalidAuthToken) ||
+		(cancelReason == errMsgGRPCAuthOldRevision)
 }
 
 // nextResume chooses the next resuming to register with the grpc stream. Abandoned

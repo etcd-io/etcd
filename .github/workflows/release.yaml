@@ -5,8 +5,8 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
+    - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
       with:
         go-version: "1.19.4"
     - run: |
@@ -22,4 +22,4 @@ jobs:
         Name-Email: github-action@etcd.io
         Expire-Date: 0
         EOF
-        DRY_RUN=true BRANCH=main ./scripts/release.sh --no-upload --no-docker-push 3.6.99
+        DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.6.99

@@ -5,8 +5,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/checkout@755da8c3cf115ac066823e79a1e1788f8940201b # v3.2.0
+    - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
       with:
         go-version: "1.19.4"
     - run: |
@@ -15,7 +15,7 @@ jobs:
         mkdir -p /tmp/linearizability
         cat server/etcdserver/raft.fail.go
         EXPECT_DEBUG=true GO_TEST_FLAGS='-v --count 60 --failfast --run TestLinearizability' RESULTS_DIR=/tmp/linearizability make test-linearizability
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb # v3.1.1
       if: always()
       with:
         path: /tmp/linearizability/*
