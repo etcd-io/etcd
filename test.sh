@@ -567,6 +567,20 @@ function bom_pass {
     "${modules[@]}")
   code="$?"
 
+  if [ "${code}" -ne 0 ] ; then
+    # license-bill-of-materials.go has a bug, it may get `go list ...` output
+    # included in the `names`. See,
+    # https://github.com/coreos/license-bill-of-materials/blob/13baff47494e3f89fe1b67818363c3bc2fb12b8a/license-bill-of-materials.go#L204-L222
+    # So we need to try one more time.
+    # ${HOME}/go/pkg/mod.
+    # TODO(ahrtr): get rid of https://github.com/coreos/license-bill-of-materials.
+
+    output=$(GOFLAGS=-mod=mod run_go_tool github.com/coreos/license-bill-of-materials \
+      --override-file ./bill-of-materials.override.json \
+      "${modules[@]}")
+    code="$?"
+  fi
+
   run cp go.sum.tmp go.sum || return 2
   run cp go.mod.tmp go.mod || return 2
 
