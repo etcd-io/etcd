@@ -158,29 +158,59 @@ func TestIsHaltErr(t *testing.T) {
 	assert.Equal(t,
 		isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
 		true,
-		`error prefixed with "etcdserver: " should be Halted by default`,
+		`error prefixed with "etcdserver: " should be halt error by default`,
 	)
 	assert.Equal(t,
 		isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped),
 		false,
-		fmt.Sprintf("error %v should not halt", rpctypes.ErrGRPCStopped),
+		fmt.Sprintf(`error "%v" should not be halt error`, rpctypes.ErrGRPCStopped),
 	)
 	assert.Equal(t,
 		isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader),
 		false,
-		fmt.Sprintf("error %v should not halt", rpctypes.ErrGRPCNoLeader),
+		fmt.Sprintf(`error "%v" should not be halt error`, rpctypes.ErrGRPCNoLeader),
 	)
 	ctx, cancel := context.WithCancel(context.TODO())
 	assert.Equal(t,
 		isHaltErr(ctx, nil),
 		false,
-		"no error and active context should not be Halted",
+		"no error and active context should be halt error",
 	)
 	cancel()
 	assert.Equal(t,
 		isHaltErr(ctx, nil),
 		true,
-		"cancel on context should be Halted",
+		"cancel on context should be halte error",
+	)
+}
+
+func TestIsUnavailableErr(t *testing.T) {
+	assert.Equal(t,
+		isUnavailableErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
+		false,
+		`error prefixed with "etcdserver: " should not be unavailable error by default`,
+	)
+	assert.Equal(t,
+		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCStopped),
+		true,
+		fmt.Sprintf(`error "%v" should be unavailable error`, rpctypes.ErrGRPCStopped),
+	)
+	assert.Equal(t,
+		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCNotCapable),
+		false,
+		fmt.Sprintf("error %v should not be unavailable error", rpctypes.ErrGRPCNotCapable),
+	)
+	ctx, cancel := context.WithCancel(context.TODO())
+	assert.Equal(t,
+		isUnavailableErr(ctx, nil),
+		false,
+		"no error and active context should not be unavailable error",
+	)
+	cancel()
+	assert.Equal(t,
+		isUnavailableErr(ctx, nil),
+		false,
+		"cancel on context should not be unavailable error",
 	)
 }
 
