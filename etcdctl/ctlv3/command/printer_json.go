@@ -84,7 +84,7 @@ func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
 			return
 		}
 		buffer.Write(b)
-		buffer.WriteString(",\"clientURLS\":")
+		buffer.WriteString(",\"clientURLs\":")
 		b, err = json.Marshal(r.Members[i].ClientURLs)
 		if err != nil {
 			return
