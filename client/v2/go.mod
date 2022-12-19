@@ -9,6 +9,11 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.6
 )
 
+require (
+	github.com/coreos/go-semver v0.3.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+)
+
 replace (
 	go.etcd.io/etcd/api/v3 => ../../api
 	go.etcd.io/etcd/client/pkg/v3 => ../pkg
