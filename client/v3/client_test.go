@@ -17,11 +17,14 @@ package clientv3
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -152,23 +155,33 @@ func TestDialNoTimeout(t *testing.T) {
 }
 
 func TestIsHaltErr(t *testing.T) {
-	if !isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")) {
-		t.Errorf(`error prefixed with "etcdserver: " should be Halted by default`)
-	}
-	if isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped) {
-		t.Errorf("error %v should not halt", rpctypes.ErrGRPCStopped)
-	}
-	if isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader) {
-		t.Errorf("error %v should not halt", rpctypes.ErrGRPCNoLeader)
-	}
+	assert.Equal(t,
+		isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
+		true,
+		`error prefixed with "etcdserver: " should be Halted by default`,
+	)
+	assert.Equal(t,
+		isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped),
+		false,
+		fmt.Sprintf("error %v should not halt", rpctypes.ErrGRPCStopped),
+	)
+	assert.Equal(t,
+		isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader),
+		false,
+		fmt.Sprintf("error %v should not halt", rpctypes.ErrGRPCNoLeader),
+	)
 	ctx, cancel := context.WithCancel(context.TODO())
-	if isHaltErr(ctx, nil) {
-		t.Errorf("no error and active context should not be Halted")
-	}
+	assert.Equal(t,
+		isHaltErr(ctx, nil),
+		false,
+		"no error and active context should not be Halted",
+	)
 	cancel()
-	if !isHaltErr(ctx, nil) {
-		t.Errorf("cancel on context should be Halted")
-	}
+	assert.Equal(t,
+		isHaltErr(ctx, nil),
+		true,
+		"cancel on context should be Halted",
+	)
 }
 
 func TestCloseCtxClient(t *testing.T) {
