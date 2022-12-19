@@ -27,15 +27,6 @@
 		]
 	},
 	{
-		"project": "github.com/certifi/gocertifi",
-		"licenses": [
-			{
-				"type": "Mozilla Public License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/cespare/xxhash/v2",
 		"licenses": [
 			{
@@ -64,6 +55,15 @@
 	},
 	{
 		"project": "github.com/cockroachdb/logtags",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/cockroachdb/redact",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -135,11 +135,11 @@
 		]
 	},
 	{
-		"project": "github.com/getsentry/raven-go",
+		"project": "github.com/getsentry/sentry-go",
 		"licenses": [
 			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
+				"type": "BSD 2-clause \"Simplified\" License",
+				"confidence": 1
 			}
 		]
 	},
@@ -252,6 +252,24 @@
 		]
 	},
 	{
+		"project": "github.com/kr/pretty",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
+		"project": "github.com/kr/text",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
 		"project": "github.com/mattn/go-runewidth",
 		"licenses": [
 			{
@@ -347,6 +365,15 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/rogpeppe/go-internal/fmtsort",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
 			}
 		]
 	},
