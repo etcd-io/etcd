@@ -624,7 +624,6 @@ function fmt_pass {
 			goword \
 			gofmt \
 			govet \
-			govet_shadow \
 			revive \
 			license_header \
 			receiver_name \
