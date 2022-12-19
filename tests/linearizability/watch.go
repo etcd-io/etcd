@@ -28,17 +28,20 @@ import (
 	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) [][]watchEvent {
+func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, authEnabled bool) [][]watchEvent {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
 	memberEvents := make([][]watchEvent, len(clus.Procs))
 	for i, member := range clus.Procs {
-		c, err := clientv3.New(clientv3.Config{
+		cfg := &clientv3.Config{
 			Endpoints:            member.EndpointsV3(),
 			Logger:               zap.NewNop(),
 			DialKeepAliveTime:    1 * time.Millisecond,
 			DialKeepAliveTimeout: 5 * time.Millisecond,
-		})
+		}
+		opt := clientOption(authEnabled)
+		opt(cfg)
+		c, err := clientv3.New(*cfg)
 		if err != nil {
 			t.Fatal(err)
 		}

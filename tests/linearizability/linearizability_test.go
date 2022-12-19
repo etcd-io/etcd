@@ -28,10 +28,14 @@ import (
 	"github.com/anishathalye/porcupine"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/linearizability/identity"
 	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
@@ -54,15 +58,22 @@ var (
 		clientCount: 12,
 		traffic:     DefaultTraffic,
 	}
+	AuthTrafficConfig = trafficConfig{
+		minimalQPS:  100,
+		maximalQPS:  200,
+		clientCount: 8,
+		traffic:     DefaultTrafficWithAuth,
+	}
 )
 
 func TestLinearizability(t *testing.T) {
 	testRunner.BeforeTest(t)
 	tcs := []struct {
-		name      string
-		failpoint Failpoint
-		config    e2e.EtcdProcessClusterConfig
-		traffic   *trafficConfig
+		name        string
+		failpoint   Failpoint
+		config      e2e.EtcdProcessClusterConfig
+		traffic     *trafficConfig
+		clientCount int
 	}{
 		{
 			name:      "ClusterOfSize1",
@@ -111,10 +122,24 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithSnapshotCount(100),
 			),
 		},
+		{
+			name:      "Issue14571",
+			failpoint: EnableAuthKillFailpoint,
+			traffic:   &AuthTrafficConfig,
+			config: *e2e.NewConfig(
+				e2e.WithClusterSize(3),
+				e2e.WithSnapshotCount(2),
+				e2e.WithSnapshotCatchUpEntries(1),
+			),
+			clientCount: 3, // actual client count = 9; 3 + (2 test user * 3 endpoints) = 9 clients
+		},
 	}
 	for _, tc := range tcs {
 		if tc.traffic == nil {
 			tc.traffic = &DefaultTrafficConfig
+		}
+		if tc.clientCount == 0 {
+			tc.clientCount = 8
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
@@ -124,39 +149,40 @@ func TestLinearizability(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer clus.Close()
+			lg := zaptest.NewLogger(t, zaptest.WrapOptions(zap.AddCaller())).Named(tc.name)
 			operations, events := testLinearizability(ctx, t, clus, FailpointConfig{
 				failpoint:           tc.failpoint,
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}, *tc.traffic)
+			}, *tc.traffic, lg)
 			longestHistory, remainingEvents := pickLongestHistory(events)
 			validateEventsMatch(t, longestHistory, remainingEvents)
 			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
-			checkOperationsAndPersistResults(t, operations, clus)
+			checkOperationsAndPersistResults(t, operations, clus, lg)
 		})
 	}
 }
 
-func testLinearizability(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, events [][]watchEvent) {
+func testLinearizability(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig, lg *zap.Logger) (operations []porcupine.Operation, events [][]watchEvent) {
 	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
 	g := errgroup.Group{}
 	trafficCtx, trafficCancel := context.WithCancel(ctx)
 	g.Go(func() error {
-		triggerFailpoints(ctx, t, clus, failpoint)
+		triggerFailpoints(ctx, t, clus, failpoint, lg)
 		time.Sleep(time.Second)
 		trafficCancel()
 		return nil
 	})
 	watchCtx, watchCancel := context.WithCancel(ctx)
 	g.Go(func() error {
-		operations = simulateTraffic(trafficCtx, t, clus, traffic)
+		operations = simulateTraffic(trafficCtx, t, clus, traffic, lg)
 		time.Sleep(time.Second)
 		watchCancel()
 		return nil
 	})
 	g.Go(func() error {
-		events = collectClusterWatchEvents(watchCtx, t, clus)
+		events = collectClusterWatchEvents(watchCtx, t, clus, traffic.traffic.AuthEnabled())
 		return nil
 	})
 	g.Wait()
@@ -245,7 +271,7 @@ func hasWriteOperation(op porcupine.Operation) bool {
 	return false
 }
 
-func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
+func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig, lg *zap.Logger) {
 	var err error
 	successes := 0
 	failures := 0
@@ -257,7 +283,7 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 	}
 	for successes < config.count && failures < config.retries {
 		time.Sleep(config.waitBetweenTriggers)
-		err = config.failpoint.Trigger(t, ctx, clus)
+		err = config.failpoint.Trigger(t, ctx, clus, lg)
 		if err != nil {
 			t.Logf("Failed to trigger failpoint %q, err: %v\n", config.failpoint.Name(), err)
 			failures++
@@ -277,21 +303,26 @@ type FailpointConfig struct {
 	waitBetweenTriggers time.Duration
 }
 
-func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config trafficConfig) []porcupine.Operation {
+func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config trafficConfig, lg *zap.Logger) []porcupine.Operation {
+	require.NoError(t, config.traffic.PreRun(ctx, clus.Client(), lg))
+
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsV3()
 
 	ids := identity.NewIdProvider()
 	lm := identity.NewLeaseIdStorage()
-	h := model.History{}
+	h := &model.History{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
 	wg := sync.WaitGroup{}
+
 	for i := 0; i < config.clientCount; i++ {
+		i := i
+
 		wg.Add(1)
 		endpoints := []string{endpoints[i%len(endpoints)]}
-		c, err := NewClient(endpoints, ids)
+		c, err := NewClient(endpoints, ids, clientOption(config.traffic.AuthEnabled()))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -301,21 +332,60 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 
 			config.traffic.Run(ctx, clientId, c, limiter, ids, lm)
 			mux.Lock()
-			h = h.Merge(c.history.History)
+			h.Merge(c.history.History)
 			mux.Unlock()
 		}(c, i)
 	}
+
+	simulatePostFailpointTraffic(ctx, &wg, endpoints, config.clientCount, ids, h, &mux, config, limiter, lm)
+
 	wg.Wait()
 	endTime := time.Now()
 	operations := h.Operations()
-	t.Logf("Recorded %d operations", len(operations))
+	lg.Info("Recorded operations", zap.Int("num-of-operation", len(operations)))
 
 	qps := float64(len(operations)) / float64(endTime.Sub(startTime)) * float64(time.Second)
-	t.Logf("Average traffic: %f qps", qps)
+	lg.Info("Average traffic", zap.Float64("qps", qps))
 	if qps < config.minimalQPS {
 		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", config.minimalQPS, qps)
 	}
 	return operations
+}
+
+func simulatePostFailpointTraffic(ctx context.Context, wg *sync.WaitGroup, endpoints []string, clientId int, ids identity.Provider, h *model.History, mux *sync.Mutex, config trafficConfig, limiter *rate.Limiter, lm identity.LeaseIdStorage) {
+	if !config.traffic.AuthEnabled() {
+		return
+	}
+
+	// each endpoint has a client with each auth user
+	for _, ep := range endpoints {
+		eps := []string{ep}
+		for _, user := range users {
+			user := user
+			wg.Add(1)
+			i := clientId + 1
+			go func(clientId int) {
+				defer wg.Done()
+				select {
+				case <-ctx.Done():
+					// Triggering failpoint is finished, start the traffic
+				}
+				c, err := NewClient(eps, ids, integration.WithAuth(user.userName, user.userPassword))
+				if err != nil {
+					panic(err)
+				}
+				defer c.Close()
+				cctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				config.traffic.Run(cctx, clientId, c, limiter, ids, lm)
+				mux.Lock()
+				h.Merge(c.history.History)
+				mux.Unlock()
+			}(i)
+
+			clientId++
+		}
+	}
 }
 
 type trafficConfig struct {
@@ -342,12 +412,14 @@ func validateEventsMatch(t *testing.T, longestHistory []watchEvent, other [][]wa
 	}
 }
 
-func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
+func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster, lg *zap.Logger) {
 	path, err := testResultsDirectory(t)
 	if err != nil {
 		t.Error(err)
 	}
 
+	lg.Info("start evaluating operations", zap.Int("num-of-operations", len(operations)))
+	start := time.Now()
 	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, time.Minute)
 	if linearizable == porcupine.Illegal {
 		t.Error("Model is not linearizable")
@@ -358,6 +430,8 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 	if linearizable != porcupine.Ok {
 		persistOperationHistory(t, path, operations)
 		persistMemberDataDir(t, clus, path)
+	} else {
+		lg.Info("operations is evaluated. Model is linearizable", zap.Duration("took", time.Since(start)))
 	}
 
 	visualizationPath := filepath.Join(path, "history.html")
@@ -389,6 +463,7 @@ func persistOperationHistory(t *testing.T, path string, operations []porcupine.O
 func persistMemberDataDir(t *testing.T, clus *e2e.EtcdProcessCluster, path string) {
 	for _, member := range clus.Procs {
 		memberDataDir := filepath.Join(path, member.Config().Name)
+		// TODO it conflicts with embed.Etcd Close verification tries to open db file which caused panic
 		err := os.RemoveAll(memberDataDir)
 		if err != nil {
 			t.Error(err)

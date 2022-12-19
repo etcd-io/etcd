@@ -31,7 +31,7 @@ type TestRunner interface {
 type Cluster interface {
 	Members() []Member
 	Client(opts ...config.ClientOption) (Client, error)
-	WaitLeader(t testing.TB) int
+	WaitLeader(t testing.TB, opts ...config.ClientOption) int
 	Close() error
 	Endpoints() []string
 }

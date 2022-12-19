@@ -22,7 +22,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/tests/v3/framework/config"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -33,7 +36,8 @@ const (
 )
 
 var (
-	KillFailpoint                            Failpoint = killFailpoint{}
+	KillFailpoint                            Failpoint = killFailpoint{target: AnyMember}
+	EnableAuthKillFailpoint                  Failpoint = killFailpoint{enableAuth: true, target: Follower}
 	DefragBeforeCopyPanic                    Failpoint = goPanicFailpoint{"defragBeforeCopy", triggerDefrag, AnyMember}
 	DefragBeforeRenamePanic                  Failpoint = goPanicFailpoint{"defragBeforeRename", triggerDefrag, AnyMember}
 	BeforeCommitPanic                        Failpoint = goPanicFailpoint{"beforeCommit", nil, AnyMember}
@@ -78,15 +82,22 @@ var (
 )
 
 type Failpoint interface {
-	Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error
+	Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster, lg *zap.Logger) error
 	Name() string
 	Available(e2e.EtcdProcess) bool
 }
 
-type killFailpoint struct{}
+type killFailpoint struct {
+	enableAuth bool
+	target     failpointTarget
+}
 
-func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
-	member := clus.Procs[rand.Int()%len(clus.Procs)]
+func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster, lg *zap.Logger) error {
+	opt := func(any) {}
+	if f.enableAuth {
+		opt = e2e.WithAuth(rootUserName, rootUserPassword)
+	}
+	member := pickMember(f.target, t, clus, opt)
 
 	killCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
@@ -101,11 +112,19 @@ func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.Etcd
 		}
 	}
 
-	err := member.Start(ctx)
-	if err != nil {
-		return err
+	// get endpoints excluding the killed member client URLs
+	endpoints := make([]string, 0, len(clus.EndpointsV3()))
+	for _, ed := range clus.EndpointsV3() {
+		if ed != member.EndpointsV3()[0] {
+			endpoints = append(endpoints, ed)
+		}
 	}
-	return nil
+
+	if f.enableAuth {
+		require.NoError(t, addTestUserAuth(ctx, endpoints))
+	}
+
+	return member.Start(ctx)
 }
 
 func (f killFailpoint) Name() string {
@@ -114,6 +133,38 @@ func (f killFailpoint) Name() string {
 
 func (f killFailpoint) Available(e2e.EtcdProcess) bool {
 	return true
+}
+
+func addTestUserAuth(ctx context.Context, endpoints []string) (err error) {
+	cc, err := clientv3.New(clientv3.Config{
+		Endpoints:            endpoints,
+		Logger:               zap.NewNop(),
+		DialKeepAliveTime:    1 * time.Millisecond,
+		DialKeepAliveTimeout: 5 * time.Millisecond,
+		Username:             rootUserName,
+		Password:             rootUserPassword,
+	})
+	defer func() {
+		if cc != nil {
+			cc.Close()
+		}
+	}()
+	if err != nil {
+		return err
+	}
+	if _, err := cc.UserAdd(ctx, testUserName, testUserPassword); err != nil {
+		return err
+	}
+	if _, err := cc.RoleAdd(ctx, testRoleName); err != nil {
+		return err
+	}
+	if _, err := cc.UserGrantRole(ctx, testUserName, testRoleName); err != nil {
+		return err
+	}
+	if _, err := cc.RoleGrantPermission(ctx, testRoleName, startKey, endKey, clientv3.PermissionType(clientv3.PermReadWrite)); err != nil {
+		return err
+	}
+	return nil
 }
 
 type goPanicFailpoint struct {
@@ -127,10 +178,11 @@ type failpointTarget string
 const (
 	AnyMember failpointTarget = "AnyMember"
 	Leader    failpointTarget = "Leader"
+	Follower  failpointTarget = "Follower"
 )
 
-func (f goPanicFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
-	member := f.pickMember(t, clus)
+func (f goPanicFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster, lg *zap.Logger) error {
+	member := pickMember(f.target, t, clus)
 
 	triggerCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
@@ -159,12 +211,17 @@ func (f goPanicFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.E
 	return nil
 }
 
-func (f goPanicFailpoint) pickMember(t *testing.T, clus *e2e.EtcdProcessCluster) e2e.EtcdProcess {
-	switch f.target {
+func pickMember(target failpointTarget, t *testing.T, clus *e2e.EtcdProcessCluster, opts ...config.ClientOption) e2e.EtcdProcess {
+	switch target {
 	case AnyMember:
 		return clus.Procs[rand.Int()%len(clus.Procs)]
 	case Leader:
-		return clus.Procs[clus.WaitLeader(t)]
+		return clus.Procs[clus.WaitLeader(t, opts...)]
+	case Follower:
+		if len(clus.Procs) == 1 {
+			panic("single node cluster does not have follower")
+		}
+		return clus.Procs[(clus.WaitLeader(t, opts...)+1)%len(clus.Procs)]
 	default:
 		panic("unknown target")
 	}
@@ -228,7 +285,7 @@ type randomFailpoint struct {
 	failpoints []Failpoint
 }
 
-func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster, lg *zap.Logger) error {
 	availableFailpoints := make([]Failpoint, 0, len(f.failpoints))
 	for _, failpoint := range f.failpoints {
 		count := 0
@@ -243,7 +300,7 @@ func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.Et
 	}
 	failpoint := availableFailpoints[rand.Int()%len(availableFailpoints)]
 	t.Logf("Triggering %v failpoint\n", failpoint.Name())
-	return failpoint.Trigger(t, ctx, clus)
+	return failpoint.Trigger(t, ctx, clus, lg)
 }
 
 func (f randomFailpoint) Name() string {
@@ -258,7 +315,7 @@ type blackholePeerNetworkFailpoint struct {
 	duration time.Duration
 }
 
-func (f blackholePeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f blackholePeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster, lg *zap.Logger) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	proxy := member.PeerProxy()
 
@@ -286,7 +343,7 @@ type delayPeerNetworkFailpoint struct {
 	randomizedLatency time.Duration
 }
 
-func (f delayPeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f delayPeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster, lg *zap.Logger) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	proxy := member.PeerProxy()
 

@@ -405,18 +405,18 @@ func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
 
 // WaitLeader returns index of the member in c.Members that is leader
 // or fails the test (if not established in 30s).
-func (c *Cluster) WaitLeader(t testing.TB) int {
-	return c.WaitMembersForLeader(t, c.Members)
+func (c *Cluster) WaitLeader(t testing.TB, opts ...framecfg.ClientOption) int {
+	return c.WaitMembersForLeader(t, c.Members, opts...)
 }
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (c *Cluster) WaitMembersForLeader(t testing.TB, membs []*Member) int {
+func (c *Cluster) WaitMembersForLeader(t testing.TB, membs []*Member, opts ...framecfg.ClientOption) int {
 	t.Logf("WaitMembersForLeader")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	l := 0
-	for l = c.waitMembersForLeader(ctx, t, membs); l < 0; {
+	for l = c.waitMembersForLeader(ctx, t, membs, opts...); l < 0; {
 		if ctx.Err() != nil {
 			t.Fatalf("WaitLeader FAILED: %v", ctx.Err())
 		}
@@ -437,13 +437,13 @@ func (c *Cluster) WaitMembersForLeader(t testing.TB, membs []*Member) int {
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs []*Member) int {
+func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs []*Member, opts ...framecfg.ClientOption) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
 		possibleLead[uint64(m.Server.MemberId())] = true
 	}
-	cc, err := c.ClusterClient(t)
+	cc, err := c.ClusterClient(t, opts...)
 	if err != nil {
 		t.Fatal(err)
 	}

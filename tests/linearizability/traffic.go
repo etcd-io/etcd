@@ -17,30 +17,41 @@ package linearizability
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/interfaces"
 	"go.etcd.io/etcd/tests/v3/linearizability/identity"
 	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
 var (
-	DefaultLeaseTTL int64   = 7200
-	RequestTimeout          = 40 * time.Millisecond
-	DefaultTraffic  Traffic = readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 50}, {operation: model.Delete, chance: 10}, {operation: model.PutWithLease, chance: 10}, {operation: model.LeaseRevoke, chance: 10}, {operation: model.Txn, chance: 20}}}
+	startKey                       = "0"
+	endKey                         = fmt.Sprintf("%d", math.MaxInt)
+	DefaultLeaseTTL        int64   = 7200
+	RequestTimeout                 = 40 * time.Millisecond
+	DefaultTraffic         Traffic = readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 50}, {operation: model.Delete, chance: 10}, {operation: model.PutWithLease, chance: 10}, {operation: model.LeaseRevoke, chance: 10}, {operation: model.Txn, chance: 20}}}
+	DefaultTrafficWithAuth Traffic = readWriteSingleKey{authEnabled: true, keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 50}, {operation: model.Delete, chance: 10}, {operation: model.PutWithLease, chance: 10}, {operation: model.LeaseRevoke, chance: 10}, {operation: model.Txn, chance: 20}}}
 )
 
 type Traffic interface {
+	PreRun(ctx context.Context, c interfaces.Client, lg *zap.Logger) error
 	Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage)
+	AuthEnabled() bool
 }
 
 type readWriteSingleKey struct {
 	keyCount int
 	writes   []opChance
 	leaseTTL int64
+
+	authEnabled bool
 }
 
 type opChance struct {
@@ -48,8 +59,15 @@ type opChance struct {
 	chance    int
 }
 
-func (t readWriteSingleKey) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
+func (t readWriteSingleKey) PreRun(ctx context.Context, c interfaces.Client, lg *zap.Logger) error {
+	if t.AuthEnabled() {
+		lg.Info("set up auth")
+		return setupAuth(ctx, c)
+	}
+	return nil
+}
 
+func (t readWriteSingleKey) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -65,6 +83,10 @@ func (t readWriteSingleKey) Run(ctx context.Context, clientId int, c *recordingC
 		// Provide each write with unique id to make it easier to validate operation history.
 		t.Write(ctx, c, limiter, key, fmt.Sprintf("%d", ids.RequestId()), lm, clientId, resp)
 	}
+}
+
+func (t readWriteSingleKey) AuthEnabled() bool {
+	return t.authEnabled
 }
 
 func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string) ([]*mvccpb.KeyValue, error) {
@@ -138,4 +160,39 @@ func (t readWriteSingleKey) pickWriteOperation() model.OperationType {
 		roll -= op.chance
 	}
 	panic("unexpected")
+}
+
+var (
+	users = []struct {
+		userName     string
+		userPassword string
+	}{
+		{rootUserName, rootUserPassword},
+		{testUserName, testUserPassword},
+	}
+)
+
+const (
+	rootUserName     = "root"
+	rootRoleName     = "root"
+	rootUserPassword = "123"
+	testUserName     = "test-user"
+	testRoleName     = "test-role"
+	testUserPassword = "abc"
+)
+
+func setupAuth(ctx context.Context, c interfaces.Client) error {
+	if _, err := c.UserAdd(ctx, rootUserName, rootUserPassword, config.UserAddOptions{}); err != nil {
+		return err
+	}
+	if _, err := c.RoleAdd(ctx, rootRoleName); err != nil {
+		return err
+	}
+	if _, err := c.UserGrantRole(ctx, rootUserName, rootRoleName); err != nil {
+		return err
+	}
+	if err := c.AuthEnable(ctx); err != nil {
+		return err
+	}
+	return nil
 }

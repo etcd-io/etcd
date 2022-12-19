@@ -875,16 +875,16 @@ func findMemberIDByEndpoint(members []*etcdserverpb.Member, endpoint string) (ui
 
 // WaitLeader returns index of the member in c.Members() that is leader
 // or fails the test (if not established in 30s).
-func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
+func (epc *EtcdProcessCluster) WaitLeader(t testing.TB, opts ...config.ClientOption) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	return epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	return epc.WaitMembersForLeader(ctx, t, epc.Procs, opts...)
 }
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess) int {
-	cc := epc.Client()
+func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess, opts ...config.ClientOption) int {
+	cc := epc.Client(opts...)
 
 	// ensure leader is up via linearizable get
 	for {
@@ -908,7 +908,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 		default:
 		}
 		for i := range membs {
-			resp, err := membs[i].Client().Status(ctx)
+			resp, err := membs[i].Client(opts...).Status(ctx)
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {
 					// if member[i] has stopped

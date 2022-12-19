@@ -188,6 +188,7 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Time, e
 		Output:   failedResponse(err),
 		Return:   0, // For failed writes we don't know when request has really finished.
 	})
+
 	// Operations of single client needs to be sequential.
 	// As we don't know return time of failed operations, all new writes need to be done with new client id.
 	h.id = h.idProvider.ClientId()
@@ -264,19 +265,12 @@ type History struct {
 	failed []porcupine.Operation
 }
 
-func (h History) Merge(h2 History) History {
-	result := History{
-		successful: make([]porcupine.Operation, 0, len(h.successful)+len(h2.successful)),
-		failed:     make([]porcupine.Operation, 0, len(h.failed)+len(h2.failed)),
-	}
-	result.successful = append(result.successful, h.successful...)
-	result.successful = append(result.successful, h2.successful...)
-	result.failed = append(result.failed, h.failed...)
-	result.failed = append(result.failed, h2.failed...)
-	return result
+func (h *History) Merge(h2 History) {
+	h.successful = append(h.successful, h2.successful...)
+	h.failed = append(h.failed, h2.failed...)
 }
 
-func (h History) Operations() []porcupine.Operation {
+func (h *History) Operations() []porcupine.Operation {
 	operations := make([]porcupine.Operation, 0, len(h.successful)+len(h.failed))
 	var maxTime int64
 	for _, op := range h.successful {
