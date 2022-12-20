@@ -158,7 +158,7 @@ func TestIsHaltErr(t *testing.T) {
 	assert.Equal(t,
 		isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
 		true,
-		`error prefixed with "etcdserver: " should be halt error by default`,
+		"error created by errors.New should not be unavailable error",
 	)
 	assert.Equal(t,
 		isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped),
@@ -188,7 +188,7 @@ func TestIsUnavailableErr(t *testing.T) {
 	assert.Equal(t,
 		isUnavailableErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
 		false,
-		`error prefixed with "etcdserver: " should not be unavailable error by default`,
+		"error created by errors.New should not be unavailable error",
 	)
 	assert.Equal(t,
 		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCStopped),
