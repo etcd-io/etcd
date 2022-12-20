@@ -17,5 +17,6 @@ jobs:
         uses: arduino/setup-protoc@64c0c85d18e984422218383b81c52f8b077404d3 # v1.1.2
         with:
           version: '3.14.0'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: make verify
       - run: make fix

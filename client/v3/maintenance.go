@@ -239,6 +239,7 @@ func (m *maintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotRespons
 	resp, err := ss.Recv()
 	if err != nil {
 		m.logAndCloseWithError(err, pw)
+		return nil, err
 	}
 	go func() {
 		// Saving response is blocking
@@ -260,10 +261,11 @@ func (m *maintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotRespons
 			}
 		}
 	}()
+
 	return &SnapshotResponse{
-		Header:   resp.Header,
+		Header:   resp.GetHeader(),
 		Snapshot: &snapshotReadCloser{ctx: ctx, ReadCloser: pr},
-		Version:  resp.Version,
+		Version:  resp.GetVersion(),
 	}, err
 }
 

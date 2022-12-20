@@ -3,8 +3,14 @@
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.3.md).
 
 <hr>
+## v3.4.24 (TBD)
 
-## v3.4.23 (TBD)
+### Other
+- Updated [base image from base-debian11 to static-debian11 and removed dependency on busybox](https://github.com/etcd-io/etcd/pull/15038).
+
+<hr>
+
+## v3.4.23 (2022-12-21)
 
 ### Package `clientv3`
 - Fix [Refreshing token on CommonName based authentication causes segmentation violation in client](https://github.com/etcd-io/etcd/pull/14792).

@@ -68,7 +68,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	start := time.Now()
 	resp, err := cli.SnapshotWithVersion(ctx)
 	if err != nil {
-		return resp.Version, err
+		return "", err
 	}
 	defer resp.Snapshot.Close()
 	lg.Info("fetching snapshot", zap.String("endpoint", cfg.Endpoints[0]))
@@ -98,17 +98,4 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	}
 	lg.Info("saved", zap.String("path", dbPath))
 	return resp.Version, nil
-}
-
-// Save fetches snapshot from remote etcd server and saves data
-// to target path. If the context "ctx" is canceled or timed out,
-// snapshot save stream will error out (e.g. context.Canceled,
-// context.DeadlineExceeded). Make sure to specify only one endpoint
-// in client configuration. Snapshot API must be requested to a
-// selected node, and saved snapshot is the point-in-time state of
-// the selected node.
-// Deprecated: Use SaveWithVersion instead.
-func Save(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) error {
-	_, err := SaveWithVersion(ctx, lg, cfg, dbPath)
-	return err
 }
