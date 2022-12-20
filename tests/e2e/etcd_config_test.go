@@ -20,10 +20,14 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"golang.org/x/sync/errgroup"
+
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -359,4 +363,64 @@ func TestBootstrapDefragFlag(t *testing.T) {
 	if err = proc.Stop(); err != nil {
 		t.Fatal(err)
 	}
+
+	// wait for the process to exit, otherwise test will have leaked goroutine
+	if err := proc.Close(); err != nil {
+		t.Logf("etcd process closed with error %v", err)
+	}
+}
+
+func TestSnapshotCatchupEntriesFlag(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-snapshot-catchup-entries", "1000"}, nil)
+	require.NoError(t, err)
+	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"\"snapshot-catchup-entries\":1000"}))
+	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"serving client traffic"}))
+	require.NoError(t, proc.Stop())
+
+	// wait for the process to exit, otherwise test will have leaked goroutine
+	if err := proc.Close(); err != nil {
+		t.Logf("etcd process closed with error %v", err)
+	}
+}
+
+// TestEtcdHealthyWithTinySnapshotCatchupEntries ensures multi-node etcd cluster remains healthy with 1 snapshot catch up entry
+func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
+	e2e.BeforeTest(t)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+		e2e.WithClusterSize(3),
+		e2e.WithSnapshotCount(1),
+		e2e.WithSnapshotCatchUpEntries(1),
+	)
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
+	t.Cleanup(func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+
+	// simulate 10 clients keep writing to etcd in parallel with no error
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	g, ctx := errgroup.WithContext(ctx)
+	for i := 0; i < 10; i++ {
+		clientId := i
+		g.Go(func() error {
+			cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+			if err != nil {
+				return err
+			}
+			for j := 0; j < 100; j++ {
+				if err = cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientId), config.PutOptions{}); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+	require.NoError(t, g.Wait())
 }

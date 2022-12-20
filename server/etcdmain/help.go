@@ -269,6 +269,8 @@ Experimental feature:
     Set the max number of learner members allowed in the cluster membership.
   --experimental-wait-cluster-ready-timeout '5s'
     Set the maximum time duration to wait for the cluster to be ready.
+  --experimental-snapshot-catch-up-entries '5000'
+    Number of entries for a slow follower to catch up after compacting the the raft storage entries.
 
 Unsafe feature:
   --force-new-cluster 'false'
