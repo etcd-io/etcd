@@ -1,14 +1,11 @@
-FROM --platform=linux/ppc64le busybox:1.34.1 as source
-FROM --platform=linux/ppc64le gcr.io/distroless/base-debian11
-
-COPY --from=source /bin/sh /bin/sh
-COPY --from=source /bin/mkdir /bin/mkdir
+FROM --platform=linux/ppc64le gcr.io/distroless/static-debian11
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
 ADD etcdutl /usr/local/bin/
-ADD var/etcd /var/etcd
-ADD var/lib/etcd /var/lib/etcd
+
+WORKDIR /var/etcd/
+WORKDIR /var/lib/etcd/
 
 EXPOSE 2379 2380
 
