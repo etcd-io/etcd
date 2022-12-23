@@ -302,7 +302,7 @@ func TestCut(t *testing.T) {
 	}
 	defer f.Close()
 	nw := &WAL{
-		decoder: newDecoder(fileutil.NewFileReader(f)),
+		decoder: NewDecoder(fileutil.NewFileReader(f)),
 		start:   snap,
 	}
 	_, gst, _, err := nw.ReadAll()

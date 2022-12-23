@@ -33,6 +33,13 @@ const minSectorSize = 512
 // frameSizeBytes is frame size in bytes, including record size and padding size.
 const frameSizeBytes = 8
 
+type Decoder interface {
+	Decode(rec *walpb.Record) error
+	LastOffset() int64
+	LastCRC() uint32
+	UpdateCRC(prevCrc uint32)
+}
+
 type decoder struct {
 	mu  sync.Mutex
 	brs []*fileutil.FileBufReader
@@ -43,11 +50,11 @@ type decoder struct {
 
 	// continueOnCrcError - causes the decoder to continue working even in case of crc mismatch.
 	// This is a desired mode for tools performing inspection of the corrupted WAL logs.
-	// See comments on 'decode' method for semantic.
+	// See comments on 'Decode' method for semantic.
 	continueOnCrcError bool
 }
 
-func newDecoder(r ...fileutil.FileReader) *decoder {
+func NewDecoder(r ...fileutil.FileReader) Decoder {
 	readers := make([]*fileutil.FileBufReader, len(r))
 	for i := range r {
 		readers[i] = fileutil.NewFileBufReader(r[i])
@@ -58,12 +65,12 @@ func newDecoder(r ...fileutil.FileReader) *decoder {
 	}
 }
 
-// decode reads the next record out of the file.
+// Decode reads the next record out of the file.
 // In the success path, fills 'rec' and returns nil.
 // When it fails, it returns err and usually resets 'rec' to the defaults.
 // When continueOnCrcError is set, the method may return ErrUnexpectedEOF or ErrCRCMismatch, but preserve the read
 // (potentially corrupted) record content.
-func (d *decoder) decode(rec *walpb.Record) error {
+func (d *decoder) Decode(rec *walpb.Record) error {
 	rec.Reset()
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -116,7 +123,10 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 
 	// skip crc checking if the record type is crcType
 	if rec.Type != crcType {
-		d.crc.Write(rec.Data)
+		_, err := d.crc.Write(rec.Data)
+		if err != nil {
+			return err
+		}
 		if err := rec.Validate(d.crc.Sum32()); err != nil {
 			if !d.continueOnCrcError {
 				rec.Reset()
@@ -184,15 +194,15 @@ func (d *decoder) isTornEntry(data []byte) bool {
 	return false
 }
 
-func (d *decoder) updateCRC(prevCrc uint32) {
+func (d *decoder) UpdateCRC(prevCrc uint32) {
 	d.crc = crc.New(prevCrc, crcTable)
 }
 
-func (d *decoder) lastCRC() uint32 {
+func (d *decoder) LastCRC() uint32 {
 	return d.crc.Sum32()
 }
 
-func (d *decoder) lastOffset() int64 { return d.lastValidOff }
+func (d *decoder) LastOffset() int64 { return d.lastValidOff }
 
 func mustUnmarshalEntry(d []byte) raftpb.Entry {
 	var e raftpb.Entry

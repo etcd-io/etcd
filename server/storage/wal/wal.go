@@ -81,8 +81,8 @@ type WAL struct {
 	state    raftpb.HardState // hardstate recorded at the head of WAL
 
 	start     walpb.Snapshot // snapshot to start reading
-	decoder   *decoder       // decoder to decode records
-	readClose func() error   // closer for decode reader
+	decoder   Decoder        // decoder to Decode records
+	readClose func() error   // closer for Decode reader
 
 	unsafeNoSync bool // if set, do not fsync
 
@@ -351,7 +351,7 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 		lg:        lg,
 		dir:       dirpath,
 		start:     snap,
-		decoder:   newDecoder(rs...),
+		decoder:   NewDecoder(rs...),
 		readClose: closer,
 		locks:     ls,
 	}
@@ -452,7 +452,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	decoder := w.decoder
 
 	var match bool
-	for err = decoder.decode(rec); err == nil; err = decoder.decode(rec) {
+	for err = decoder.Decode(rec); err == nil; err = decoder.Decode(rec) {
 		switch rec.Type {
 		case entryType:
 			e := mustUnmarshalEntry(rec.Data)
@@ -480,14 +480,14 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 			metadata = rec.Data
 
 		case crcType:
-			crc := decoder.crc.Sum32()
+			crc := decoder.LastCRC()
 			// current crc of decoder must match the crc of the record.
 			// do no need to match 0 crc, since the decoder is a new one at this case.
 			if crc != 0 && rec.Validate(crc) != nil {
 				state.Reset()
 				return nil, state, nil, ErrCRCMismatch
 			}
-			decoder.updateCRC(rec.Crc)
+			decoder.UpdateCRC(rec.Crc)
 
 		case snapshotType:
 			var snap walpb.Snapshot
@@ -527,7 +527,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		// not all, will cause CRC errors on WAL open. Since the records
 		// were never fully synced to disk in the first place, it's safe
 		// to zero them out to avoid any CRC errors from new writes.
-		if _, err = w.tail().Seek(w.decoder.lastOffset(), io.SeekStart); err != nil {
+		if _, err = w.tail().Seek(w.decoder.LastOffset(), io.SeekStart); err != nil {
 			return nil, state, nil, err
 		}
 		if err = fileutil.ZeroToEnd(w.tail().File); err != nil {
@@ -551,7 +551,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 
 	if w.tail() != nil {
 		// create encoder (chain crc with the decoder), enable appending
-		w.encoder, err = newFileEncoder(w.tail().File, w.decoder.lastCRC())
+		w.encoder, err = newFileEncoder(w.tail().File, w.decoder.LastCRC())
 		if err != nil {
 			return
 		}
@@ -587,9 +587,9 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]walpb.Snapshot, erro
 	}()
 
 	// create a new decoder from the readers on the WAL files
-	decoder := newDecoder(rs...)
+	decoder := NewDecoder(rs...)
 
-	for err = decoder.decode(rec); err == nil; err = decoder.decode(rec) {
+	for err = decoder.Decode(rec); err == nil; err = decoder.Decode(rec) {
 		switch rec.Type {
 		case snapshotType:
 			var loadedSnap walpb.Snapshot
@@ -598,13 +598,13 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]walpb.Snapshot, erro
 		case stateType:
 			state = mustUnmarshalState(rec.Data)
 		case crcType:
-			crc := decoder.crc.Sum32()
+			crc := decoder.LastCRC()
 			// current crc of decoder must match the crc of the record.
 			// do no need to match 0 crc, since the decoder is a new one at this case.
 			if crc != 0 && rec.Validate(crc) != nil {
 				return nil, ErrCRCMismatch
 			}
-			decoder.updateCRC(rec.Crc)
+			decoder.UpdateCRC(rec.Crc)
 		}
 	}
 	// We do not have to read out all the WAL entries
@@ -661,9 +661,9 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) (*raftpb.HardSta
 	}()
 
 	// create a new decoder from the readers on the WAL files
-	decoder := newDecoder(rs...)
+	decoder := NewDecoder(rs...)
 
-	for err = decoder.decode(rec); err == nil; err = decoder.decode(rec) {
+	for err = decoder.Decode(rec); err == nil; err = decoder.Decode(rec) {
 		switch rec.Type {
 		case metadataType:
 			if metadata != nil && !bytes.Equal(metadata, rec.Data) {
@@ -671,13 +671,13 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) (*raftpb.HardSta
 			}
 			metadata = rec.Data
 		case crcType:
-			crc := decoder.crc.Sum32()
+			crc := decoder.LastCRC()
 			// Current crc of decoder must match the crc of the record.
 			// We need not match 0 crc, since the decoder is a new one at this point.
 			if crc != 0 && rec.Validate(crc) != nil {
 				return nil, ErrCRCMismatch
 			}
-			decoder.updateCRC(rec.Crc)
+			decoder.UpdateCRC(rec.Crc)
 		case snapshotType:
 			var loadedSnap walpb.Snapshot
 			pbutil.MustUnmarshal(&loadedSnap, rec.Data)

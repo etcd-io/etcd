@@ -57,8 +57,8 @@ func TestReadRecord(t *testing.T) {
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
-		decoder := newDecoder(fileutil.NewFileReader(f))
-		e := decoder.decode(rec)
+		decoder := NewDecoder(fileutil.NewFileReader(f))
+		e := decoder.Decode(rec)
 		if !reflect.DeepEqual(rec, tt.wr) {
 			t.Errorf("#%d: block = %v, want %v", i, rec, tt.wr)
 		}
@@ -81,8 +81,8 @@ func TestWriteRecord(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	decoder := newDecoder(fileutil.NewFileReader(f))
-	err = decoder.decode(b)
+	decoder := NewDecoder(fileutil.NewFileReader(f))
+	err = decoder.Decode(b)
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
