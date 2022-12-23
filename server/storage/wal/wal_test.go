@@ -74,16 +74,16 @@ func TestNew(t *testing.T) {
 
 	var wb bytes.Buffer
 	e := newEncoder(&wb, 0, 0)
-	err = e.encode(&walpb.Record{Type: crcType, Crc: 0})
+	err = e.encode(&walpb.Record{Type: CrcType, Crc: 0})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	err = e.encode(&walpb.Record{Type: metadataType, Data: []byte("somedata")})
+	err = e.encode(&walpb.Record{Type: MetadataType, Data: []byte("somedata")})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
 	r := &walpb.Record{
-		Type: snapshotType,
+		Type: SnapshotType,
 		Data: pbutil.MustMarshal(&walpb.Snapshot{}),
 	}
 	if err = e.encode(r); err != nil {

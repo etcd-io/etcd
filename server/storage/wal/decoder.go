@@ -121,8 +121,8 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 		return err
 	}
 
-	// skip crc checking if the record type is crcType
-	if rec.Type != crcType {
+	// skip crc checking if the record type is CrcType
+	if rec.Type != CrcType {
 		_, err := d.crc.Write(rec.Data)
 		if err != nil {
 			return err
@@ -204,13 +204,13 @@ func (d *decoder) LastCRC() uint32 {
 
 func (d *decoder) LastOffset() int64 { return d.lastValidOff }
 
-func mustUnmarshalEntry(d []byte) raftpb.Entry {
+func MustUnmarshalEntry(d []byte) raftpb.Entry {
 	var e raftpb.Entry
 	pbutil.MustUnmarshal(&e, d)
 	return e
 }
 
-func mustUnmarshalState(d []byte) raftpb.HardState {
+func MustUnmarshalState(d []byte) raftpb.HardState {
 	var s raftpb.HardState
 	pbutil.MustUnmarshal(&s, d)
 	return s
