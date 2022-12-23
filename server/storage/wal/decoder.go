@@ -40,6 +40,11 @@ type decoder struct {
 	// lastValidOff file offset following the last valid decoded record
 	lastValidOff int64
 	crc          hash.Hash32
+
+	// continueOnCrcError - causes the decoder to continue working even in case of crc mismatch.
+	// This is a desired mode for tools performing inspection of the corrupted WAL logs.
+	// See comments on 'decode' method for semantic.
+	continueOnCrcError bool
 }
 
 func newDecoder(r ...fileutil.FileReader) *decoder {
@@ -53,6 +58,11 @@ func newDecoder(r ...fileutil.FileReader) *decoder {
 	}
 }
 
+// decode reads the next record out of the file.
+// In the success path, fills 'rec' and returns nil.
+// When it fails, it returns err and usually resets 'rec' to the defaults.
+// When continueOnCrcError is set, the method may return ErrUnexpectedEOF or ErrCRCMismatch, but preserve the read
+// (potentially corrupted) record content.
 func (d *decoder) decode(rec *walpb.Record) error {
 	rec.Reset()
 	d.mu.Lock()
@@ -108,6 +118,13 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 	if rec.Type != crcType {
 		d.crc.Write(rec.Data)
 		if err := rec.Validate(d.crc.Sum32()); err != nil {
+			if !d.continueOnCrcError {
+				rec.Reset()
+			} else {
+				// If we continue, we want to update lastValidOff, such that following errors are consistent
+				defer func() { d.lastValidOff += frameSizeBytes + recBytes + padBytes }()
+			}
+
 			if d.isTornEntry(data) {
 				return fmt.Errorf("%w: in file '%s' at position: %d", io.ErrUnexpectedEOF, fileBufReader.FileInfo().Name(), d.lastValidOff)
 			}
