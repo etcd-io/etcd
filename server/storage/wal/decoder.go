@@ -109,9 +109,9 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 		d.crc.Write(rec.Data)
 		if err := rec.Validate(d.crc.Sum32()); err != nil {
 			if d.isTornEntry(data) {
-				return io.ErrUnexpectedEOF
+				return fmt.Errorf("%w: in file '%s' at position: %d", io.ErrUnexpectedEOF, fileBufReader.FileInfo().Name(), d.lastValidOff)
 			}
-			return err
+			return fmt.Errorf("%w: in file '%s' at position: %d", err, fileBufReader.FileInfo().Name(), d.lastValidOff)
 		}
 	}
 	// record decoded as valid; point last valid offset to end of record
