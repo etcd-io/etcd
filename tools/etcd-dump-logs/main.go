@@ -56,8 +56,10 @@ IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke, IRRLeaseCheckpoint`)
 	streamdecoder := flag.String("stream-decoder", "", `The name of an executable decoding tool, the executable must process
 hex encoded lines of binary input (from etcd-dump-logs)
 and output a hex encoded line of binary for each input line`)
+	raw := flag.Bool("raw", false, "Read the logs in the low-level form")
 
 	flag.Parse()
+	lg := zap.NewExample()
 
 	if len(flag.Args()) != 1 {
 		log.Fatalf("Must provide data-dir argument (got %+v)", flag.Args())
@@ -68,6 +70,37 @@ and output a hex encoded line of binary for each input line`)
 		log.Fatal("start-snap and start-index flags cannot be used together.")
 	}
 
+	if !*raw {
+		ents := readUsingReadAll(lg, index, snapfile, dataDir, waldir)
+
+		fmt.Printf("WAL entries: %d\n", len(ents))
+		if len(ents) > 0 {
+			fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].Index)
+		}
+
+		fmt.Printf("%4s\t%10s\ttype\tdata", "term", "index")
+		if *streamdecoder != "" {
+			fmt.Print("\tdecoder_status\tdecoded_data")
+		}
+		fmt.Println()
+
+		listEntriesType(*entrytype, *streamdecoder, ents)
+	} else {
+		if *snapfile != "" ||
+			*entrytype != defaultEntryTypes ||
+			*streamdecoder != "" {
+			log.Fatalf("Flags --entry-type, --stream-decoder, --entrytype not supported in the RAW mode.")
+		}
+
+		wd := *waldir
+		if wd == "" {
+			wd = walDir(dataDir)
+		}
+		readRaw(lg, index, wd, os.Stdout)
+	}
+}
+
+func readUsingReadAll(lg *zap.Logger, index *uint64, snapfile *string, dataDir string, waldir *string) []raftpb.Entry {
 	var (
 		walsnap  walpb.Snapshot
 		snapshot *raftpb.Snapshot
@@ -84,7 +117,7 @@ and output a hex encoded line of binary for each input line`)
 			ss := snap.New(zap.NewExample(), snapDir(dataDir))
 			snapshot, err = ss.Load()
 		} else {
-			snapshot, err = snap.Read(zap.NewExample(), filepath.Join(snapDir(dataDir), *snapfile))
+			snapshot, err = snap.Read(lg, filepath.Join(snapDir(dataDir), *snapfile))
 		}
 
 		switch err {
@@ -123,19 +156,7 @@ and output a hex encoded line of binary for each input line`)
 	vid := types.ID(state.Vote)
 	fmt.Printf("WAL metadata:\nnodeID=%s clusterID=%s term=%d commitIndex=%d vote=%s\n",
 		id, cid, state.Term, state.Commit, vid)
-
-	fmt.Printf("WAL entries: %d\n", len(ents))
-	if len(ents) > 0 {
-		fmt.Printf("lastIndex=%d\n", ents[len(ents)-1].Index)
-	}
-
-	fmt.Printf("%4s\t%10s\ttype\tdata", "term", "index")
-	if *streamdecoder != "" {
-		fmt.Print("\tdecoder_status\tdecoded_data")
-	}
-	fmt.Println()
-
-	listEntriesType(*entrytype, *streamdecoder, ents)
+	return ents
 }
 
 func walDir(dataDir string) string { return filepath.Join(dataDir, "member", "wal") }
@@ -360,7 +381,7 @@ func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry
 			printer(e)
 			if streamdecoder == "" {
 				fmt.Println()
-				continue
+				//continue
 			}
 
 			// if decoder is set, pass the e.Data to stdin and read the stdout from decoder

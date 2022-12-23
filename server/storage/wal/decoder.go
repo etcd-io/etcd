@@ -54,15 +54,20 @@ type decoder struct {
 	continueOnCrcError bool
 }
 
-func NewDecoder(r ...fileutil.FileReader) Decoder {
+func NewDecoderAdvanced(continueOnCrcError bool, r ...fileutil.FileReader) Decoder {
 	readers := make([]*fileutil.FileBufReader, len(r))
 	for i := range r {
 		readers[i] = fileutil.NewFileBufReader(r[i])
 	}
 	return &decoder{
-		brs: readers,
-		crc: crc.New(0, crcTable),
+		brs:                readers,
+		crc:                crc.New(0, crcTable),
+		continueOnCrcError: continueOnCrcError,
 	}
+}
+
+func NewDecoder(r ...fileutil.FileReader) Decoder {
+	return NewDecoderAdvanced(false, r...)
 }
 
 // Decode reads the next record out of the file.
