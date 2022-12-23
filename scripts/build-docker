@@ -32,6 +32,8 @@ mkdir -p "${IMAGEDIR}"/var/etcd
 mkdir -p "${IMAGEDIR}"/var/lib/etcd
 cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR}"
 
+cp ./nsswitch.conf "${IMAGEDIR}"
+
 cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 
 if [ -z "$TAG" ]; then
