@@ -17,33 +17,47 @@ package linearizability
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/anishathalye/porcupine"
 )
 
-type Operation string
+type OperationType string
 
 const (
-	Get    Operation = "get"
-	Put    Operation = "put"
-	Delete Operation = "delete"
-	Txn    Operation = "txn"
+	Get    OperationType = "get"
+	Put    OperationType = "put"
+	Delete OperationType = "delete"
+	Txn    OperationType = "txn"
 )
 
 type EtcdRequest struct {
-	Op            Operation
+	Conds []EtcdCondition
+	Ops   []EtcdOperation
+}
+
+type EtcdCondition struct {
 	Key           string
-	PutData       string
-	TxnExpectData string
-	TxnNewData    string
+	ExpectedValue string
+}
+
+type EtcdOperation struct {
+	Type  OperationType
+	Key   string
+	Value string
 }
 
 type EtcdResponse struct {
-	GetData      string
-	Revision     int64
-	Deleted      int64
-	TxnSucceeded bool
-	Err          error
+	Err        error
+	Revision   int64
+	TxnFailure bool
+	Result     []EtcdOperationResult
+}
+
+type EtcdOperationResult struct {
+	Value   string
+	Deleted int64
 }
 
 type PossibleStates []EtcdState
@@ -71,37 +85,81 @@ var etcdModel = porcupine.Model{
 		return ok, string(data)
 	},
 	DescribeOperation: func(in, out interface{}) string {
-		request := in.(EtcdRequest)
-		response := out.(EtcdResponse)
-		switch request.Op {
-		case Get:
-			if response.Err != nil {
-				return fmt.Sprintf("get(%q) -> %q", request.Key, response.Err)
-			} else {
-				return fmt.Sprintf("get(%q) -> %q, rev: %d", request.Key, response.GetData, response.Revision)
-			}
-		case Put:
-			if response.Err != nil {
-				return fmt.Sprintf("put(%q, %q) -> %s", request.Key, request.PutData, response.Err)
-			} else {
-				return fmt.Sprintf("put(%q, %q) -> ok, rev: %d", request.Key, request.PutData, response.Revision)
-			}
-		case Delete:
-			if response.Err != nil {
-				return fmt.Sprintf("delete(%q) -> %s", request.Key, response.Err)
-			} else {
-				return fmt.Sprintf("delete(%q) -> ok, rev: %d deleted:%d", request.Key, response.Revision, response.Deleted)
-			}
-		case Txn:
-			if response.Err != nil {
-				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %s", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.Err)
-			} else {
-				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %v, rev: %d", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.TxnSucceeded, response.Revision)
-			}
-		default:
-			return "<invalid>"
-		}
+		return describeEtcdRequestResponse(in.(EtcdRequest), out.(EtcdResponse))
 	},
+}
+
+func describeEtcdRequestResponse(request EtcdRequest, response EtcdResponse) string {
+	prefix := describeEtcdOperations(request.Ops)
+	if len(request.Conds) != 0 {
+		prefix = fmt.Sprintf("if(%s).then(%s)", describeEtcdConditions(request.Conds), prefix)
+	}
+
+	return fmt.Sprintf("%s -> %s", prefix, describeEtcdResponse(request.Ops, response))
+}
+
+func describeEtcdConditions(conds []EtcdCondition) string {
+	opsDescription := make([]string, len(conds))
+	for i := range conds {
+		opsDescription[i] = fmt.Sprintf("%s==%q", conds[i].Key, conds[i].ExpectedValue)
+	}
+	return strings.Join(opsDescription, " && ")
+}
+
+func describeEtcdOperations(ops []EtcdOperation) string {
+	opsDescription := make([]string, len(ops))
+	for i := range ops {
+		opsDescription[i] = describeEtcdOperation(ops[i])
+	}
+	return strings.Join(opsDescription, ", ")
+}
+
+func describeEtcdResponse(ops []EtcdOperation, response EtcdResponse) string {
+	if response.Err != nil {
+		return fmt.Sprintf("err: %q", response.Err)
+	}
+	if response.TxnFailure {
+		return fmt.Sprintf("txn failed, rev: %d", response.Revision)
+	}
+	respDescription := make([]string, len(response.Result))
+	for i := range response.Result {
+		respDescription[i] = describeEtcdOperationResponse(ops[i].Type, response.Result[i])
+	}
+	respDescription = append(respDescription, fmt.Sprintf("rev: %d", response.Revision))
+	return strings.Join(respDescription, ", ")
+}
+
+func describeEtcdOperation(op EtcdOperation) string {
+	switch op.Type {
+	case Get:
+		return fmt.Sprintf("get(%q)", op.Key)
+	case Put:
+		return fmt.Sprintf("put(%q, %q)", op.Key, op.Value)
+	case Delete:
+		return fmt.Sprintf("delete(%q)", op.Key)
+	case Txn:
+		return "<! unsupported: nested transaction !>"
+	default:
+		return fmt.Sprintf("<! unknown op: %q !>", op.Type)
+	}
+}
+
+func describeEtcdOperationResponse(op OperationType, resp EtcdOperationResult) string {
+	switch op {
+	case Get:
+		if resp.Value == "" {
+			return "nil"
+		}
+		return fmt.Sprintf("%q", resp.Value)
+	case Put:
+		return fmt.Sprintf("ok")
+	case Delete:
+		return fmt.Sprintf("deleted: %d", resp.Deleted)
+	case Txn:
+		return "<! unsupported: nested transaction !>"
+	default:
+		return fmt.Sprintf("<! unknown op: %q !>", op)
+	}
 }
 
 func step(states PossibleStates, request EtcdRequest, response EtcdResponse) (bool, PossibleStates) {
@@ -126,20 +184,22 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 		Revision:  response.Revision,
 		KeyValues: map[string]string{},
 	}
-	switch request.Op {
-	case Get:
-		if response.GetData != "" {
-			state.KeyValues[request.Key] = response.GetData
+	if response.TxnFailure {
+		return state
+	}
+	for i, op := range request.Ops {
+		opResp := response.Result[i]
+		switch op.Type {
+		case Get:
+			if opResp.Value != "" {
+				state.KeyValues[op.Key] = opResp.Value
+			}
+		case Put:
+			state.KeyValues[op.Key] = op.Value
+		case Delete:
+		default:
+			panic("Unknown operation")
 		}
-	case Put:
-		state.KeyValues[request.Key] = request.PutData
-	case Delete:
-	case Txn:
-		if response.TxnSucceeded {
-			state.KeyValues[request.Key] = request.TxnNewData
-		}
-	default:
-		panic("Unknown operation")
 	}
 	return state
 }
@@ -158,7 +218,7 @@ func applyRequest(states PossibleStates, request EtcdRequest, response EtcdRespo
 	newStates := make(PossibleStates, 0, len(states))
 	for _, s := range states {
 		newState, expectResponse := applyRequestToSingleState(s, request)
-		if expectResponse == response {
+		if reflect.DeepEqual(expectResponse, response) {
 			newStates = append(newStates, newState)
 		}
 	}
@@ -167,33 +227,42 @@ func applyRequest(states PossibleStates, request EtcdRequest, response EtcdRespo
 
 // applyRequestToSingleState handles a successful request, returning updated state and response it would generate.
 func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
+	success := true
+	for _, cond := range request.Conds {
+		if val := s.KeyValues[cond.Key]; val != cond.ExpectedValue {
+			success = false
+			break
+		}
+	}
+	if !success {
+		return s, EtcdResponse{Revision: s.Revision, TxnFailure: true}
+	}
 	newKVs := map[string]string{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
 	}
 	s.KeyValues = newKVs
-	resp := EtcdResponse{}
-	switch request.Op {
-	case Get:
-		resp.GetData = s.KeyValues[request.Key]
-	case Put:
-		s.KeyValues[request.Key] = request.PutData
-		s.Revision += 1
-	case Delete:
-		if _, ok := s.KeyValues[request.Key]; ok {
-			delete(s.KeyValues, request.Key)
-			s.Revision += 1
-			resp.Deleted = 1
+	opResp := make([]EtcdOperationResult, len(request.Ops))
+	increaseRevision := false
+	for i, op := range request.Ops {
+		switch op.Type {
+		case Get:
+			opResp[i].Value = s.KeyValues[op.Key]
+		case Put:
+			s.KeyValues[op.Key] = op.Value
+			increaseRevision = true
+		case Delete:
+			if _, ok := s.KeyValues[op.Key]; ok {
+				delete(s.KeyValues, op.Key)
+				increaseRevision = true
+				opResp[i].Deleted = 1
+			}
+		default:
+			panic("unsupported operation")
 		}
-	case Txn:
-		if val := s.KeyValues[request.Key]; val == request.TxnExpectData {
-			s.KeyValues[request.Key] = request.TxnNewData
-			s.Revision += 1
-			resp.TxnSucceeded = true
-		}
-	default:
-		panic("unsupported operation")
 	}
-	resp.Revision = s.Revision
-	return s, resp
+	if increaseRevision {
+		s.Revision += 1
+	}
+	return s, EtcdResponse{Result: opResp, Revision: s.Revision}
 }
