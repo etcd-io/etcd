@@ -47,25 +47,21 @@ type EtcdResponse struct {
 }
 
 type EtcdState struct {
-	Key            string
-	PossibleValues []ValueRevision
-}
-
-type ValueRevision struct {
-	Value    string
 	Revision int64
+	Key      string
+	Value    string
 }
 
 var etcdModel = porcupine.Model{
-	Init: func() interface{} { return "{}" },
+	Init: func() interface{} { return "[]" },
 	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
-		var state EtcdState
-		err := json.Unmarshal([]byte(st.(string)), &state)
+		var states []EtcdState
+		err := json.Unmarshal([]byte(st.(string)), &states)
 		if err != nil {
 			panic(err)
 		}
-		ok, state := step(state, in.(EtcdRequest), out.(EtcdResponse))
-		data, err := json.Marshal(state)
+		ok, states := step(states, in.(EtcdRequest), out.(EtcdResponse))
+		data, err := json.Marshal(states)
 		if err != nil {
 			panic(err)
 		}
@@ -105,92 +101,93 @@ var etcdModel = porcupine.Model{
 	},
 }
 
-func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-	if len(state.PossibleValues) == 0 {
-		state.Key = request.Key
-		if ok, v := initValueRevision(request, response); ok {
-			state.PossibleValues = append(state.PossibleValues, v)
-		}
-		return true, state
-	}
-	if state.Key != request.Key {
-		panic("multiple keys not supported")
+func step(states []EtcdState, request EtcdRequest, response EtcdResponse) (bool, []EtcdState) {
+	if len(states) == 0 {
+		return true, initStates(request, response)
 	}
 	if response.Err != nil {
-		for _, v := range state.PossibleValues {
-			newV, _ := stepValue(v, request)
-			state.PossibleValues = append(state.PossibleValues, newV)
-		}
+		// Add addition states for failed request in case of failed request was persisted.
+		states = append(states, applyRequest(states, request)...)
 	} else {
-		var i = 0
-		for _, v := range state.PossibleValues {
-			newV, expectedResponse := stepValue(v, request)
-			if expectedResponse == response {
-				state.PossibleValues[i] = newV
-				i++
-			}
-		}
-		state.PossibleValues = state.PossibleValues[:i]
+		// Remove states that didn't lead to response we got.
+		states = filterStateMatchesResponse(states, request, response)
 	}
-	return len(state.PossibleValues) > 0, state
+	return len(states) > 0, states
 }
 
-func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v ValueRevision) {
+func applyRequest(states []EtcdState, request EtcdRequest) []EtcdState {
+	newStates := make([]EtcdState, 0, len(states))
+	for _, s := range states {
+		newState, _ := stepState(s, request)
+		newStates = append(newStates, newState)
+	}
+	return newStates
+}
+
+func filterStateMatchesResponse(states []EtcdState, request EtcdRequest, response EtcdResponse) []EtcdState {
+	newStates := make([]EtcdState, 0, len(states))
+	for _, s := range states {
+		newState, expectResponse := stepState(s, request)
+		if expectResponse == response {
+			newStates = append(newStates, newState)
+		}
+	}
+	return newStates
+}
+
+func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 	if response.Err != nil {
-		return false, ValueRevision{}
+		return []EtcdState{}
+	}
+	state := EtcdState{
+		Key:      request.Key,
+		Revision: response.Revision,
 	}
 	switch request.Op {
 	case Get:
-		return true, ValueRevision{
-			Value:    response.GetData,
-			Revision: response.Revision,
+		if response.GetData != "" {
+			state.Value = response.GetData
 		}
 	case Put:
-		return true, ValueRevision{
-			Value:    request.PutData,
-			Revision: response.Revision,
-		}
+		state.Value = request.PutData
 	case Delete:
-		return true, ValueRevision{
-			Value:    "",
-			Revision: response.Revision,
-		}
 	case Txn:
 		if response.TxnSucceeded {
-			return true, ValueRevision{
-				Value:    request.TxnNewData,
-				Revision: response.Revision,
-			}
+			state.Value = request.TxnNewData
 		}
-		return false, ValueRevision{}
+		return []EtcdState{}
 	default:
 		panic("Unknown operation")
 	}
+	return []EtcdState{state}
 }
 
-func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdResponse) {
+func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
+	if s.Key != request.Key {
+		panic("multiple keys not supported")
+	}
 	resp := EtcdResponse{}
 	switch request.Op {
 	case Get:
-		resp.GetData = v.Value
+		resp.GetData = s.Value
 	case Put:
-		v.Value = request.PutData
-		v.Revision += 1
+		s.Value = request.PutData
+		s.Revision += 1
 	case Delete:
-		if v.Value != "" {
-			v.Value = ""
-			v.Revision += 1
+		if s.Value != "" {
+			s.Value = ""
+			s.Revision += 1
 			resp.Deleted = 1
 		}
 	case Txn:
-		if v.Value == request.TxnExpectData {
-			v.Value = request.TxnNewData
-			v.Revision += 1
+		if s.Value == request.TxnExpectData {
+			s.Value = request.TxnNewData
+			s.Revision += 1
 			resp.TxnSucceeded = true
 		}
 	default:
 		panic("unsupported operation")
 	}
-	resp.Revision = v.Revision
-	return v, resp
+	resp.Revision = s.Revision
+	return s, resp
 }
