@@ -127,6 +127,11 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 	var err error
 	successes := 0
 	failures := 0
+	for _, proc := range clus.Procs {
+		if !config.failpoint.Available(proc) {
+			return fmt.Errorf("failpoint %q not available on %s", config.failpoint.Name(), proc.Config().Name)
+		}
+	}
 	for successes < config.count && failures < config.retries {
 		time.Sleep(config.waitBetweenTriggers)
 		err = config.failpoint.Trigger(t, ctx, clus)

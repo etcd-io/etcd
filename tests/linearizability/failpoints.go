@@ -15,12 +15,9 @@
 package linearizability
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
-	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -83,6 +80,7 @@ var (
 type Failpoint interface {
 	Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error
 	Name() string
+	Available(e2e.EtcdProcess) bool
 }
 
 type killFailpoint struct{}
@@ -114,6 +112,10 @@ func (f killFailpoint) Name() string {
 	return "Kill"
 }
 
+func (f killFailpoint) Available(e2e.EtcdProcess) bool {
+	return true
+}
+
 type goPanicFailpoint struct {
 	failpoint string
 	trigger   func(ctx context.Context, member e2e.EtcdProcess) error
@@ -129,13 +131,12 @@ const (
 
 func (f goPanicFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
 	member := f.pickMember(t, clus)
-	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
 
 	triggerCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 
 	for member.IsRunning() {
-		err := setupGoFailpoint(triggerCtx, address, f.failpoint, "panic")
+		err := member.Failpoints().Setup(triggerCtx, f.failpoint, "panic")
 		if err != nil {
 			t.Logf("gofailpoint setup failed: %v", err)
 		}
@@ -169,25 +170,14 @@ func (f goPanicFailpoint) pickMember(t *testing.T, clus *e2e.EtcdProcessCluster)
 	}
 }
 
-func setupGoFailpoint(ctx context.Context, host, failpoint, payload string) error {
-	failpointUrl := url.URL{
-		Scheme: "http",
-		Host:   host,
-		Path:   failpoint,
+func (f goPanicFailpoint) Available(member e2e.EtcdProcess) bool {
+	memberFailpoints := member.Failpoints()
+	if memberFailpoints == nil {
+		return false
 	}
-	r, err := http.NewRequestWithContext(ctx, "PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
-	if err != nil {
-		return err
-	}
-	resp, err := httpClient.Do(r)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("bad status code: %d", resp.StatusCode)
-	}
-	return nil
+	available := memberFailpoints.Available()
+	_, found := available[f.failpoint]
+	return found
 }
 
 func (f goPanicFailpoint) Name() string {
@@ -234,22 +224,34 @@ func triggerCompact(ctx context.Context, member e2e.EtcdProcess) error {
 	return nil
 }
 
-var httpClient = http.Client{
-	Timeout: 10 * time.Millisecond,
-}
-
 type randomFailpoint struct {
 	failpoints []Failpoint
 }
 
 func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
-	failpoint := f.failpoints[rand.Int()%len(f.failpoints)]
+	availableFailpoints := make([]Failpoint, 0, len(f.failpoints))
+	for _, failpoint := range f.failpoints {
+		count := 0
+		for _, proc := range clus.Procs {
+			if failpoint.Available(proc) {
+				count++
+			}
+		}
+		if count == len(clus.Procs) {
+			availableFailpoints = append(availableFailpoints, failpoint)
+		}
+	}
+	failpoint := availableFailpoints[rand.Int()%len(availableFailpoints)]
 	t.Logf("Triggering %v failpoint\n", failpoint.Name())
 	return failpoint.Trigger(t, ctx, clus)
 }
 
 func (f randomFailpoint) Name() string {
 	return "Random"
+}
+
+func (f randomFailpoint) Available(e2e.EtcdProcess) bool {
+	return true
 }
 
 type blackholePeerNetworkFailpoint struct {
@@ -274,6 +276,10 @@ func (f blackholePeerNetworkFailpoint) Name() string {
 	return "blackhole"
 }
 
+func (f blackholePeerNetworkFailpoint) Available(clus e2e.EtcdProcess) bool {
+	return clus.PeerProxy() != nil
+}
+
 type delayPeerNetworkFailpoint struct {
 	duration          time.Duration
 	baseLatency       time.Duration
@@ -296,4 +302,8 @@ func (f delayPeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, cl
 
 func (f delayPeerNetworkFailpoint) Name() string {
 	return "delay"
+}
+
+func (f delayPeerNetworkFailpoint) Available(clus e2e.EtcdProcess) bool {
+	return clus.PeerProxy() != nil
 }

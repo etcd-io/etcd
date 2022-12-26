@@ -128,6 +128,10 @@ func (p *proxyEtcdProcess) PeerProxy() proxy.Server {
 	return nil
 }
 
+func (p *proxyEtcdProcess) Failpoints() *BinaryFailpoints {
+	return p.etcdProc.Failpoints()
+}
+
 type proxyProc struct {
 	lg       *zap.Logger
 	name     string
