@@ -56,6 +56,8 @@ var (
 	CompactBeforeCommitBatchPanic            Failpoint = goPanicFailpoint{"compactBeforeCommitBatch", triggerCompact, AnyMember}
 	CompactAfterCommitBatchPanic             Failpoint = goPanicFailpoint{"compactAfterCommitBatch", triggerCompact, AnyMember}
 	RaftBeforeLeaderSendPanic                Failpoint = goPanicFailpoint{"raftBeforeLeaderSend", nil, Leader}
+	BlackholePeerNetwork                     Failpoint = blackholePeerNetworkFailpoint{duration: time.Second}
+	DelayPeerNetwork                         Failpoint = delayPeerNetworkFailpoint{duration: time.Second, baseLatency: 75 * time.Millisecond, randomizedLatency: 50 * time.Millisecond}
 	RandomFailpoint                          Failpoint = randomFailpoint{[]Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic,
 		RaftAfterSavePanic, DefragBeforeCopyPanic, DefragBeforeRenamePanic,
@@ -66,6 +68,8 @@ var (
 		CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic,
 		CompactBeforeCommitBatchPanic, CompactAfterCommitBatchPanic,
 		RaftBeforeLeaderSendPanic,
+		BlackholePeerNetwork,
+		DelayPeerNetwork,
 	}}
 	// TODO: Figure out how to reliably trigger below failpoints and add them to RandomFailpoint
 	raftBeforeApplySnapPanic    Failpoint = goPanicFailpoint{"raftBeforeApplySnap", nil, AnyMember}
@@ -246,4 +250,50 @@ func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.Et
 
 func (f randomFailpoint) Name() string {
 	return "Random"
+}
+
+type blackholePeerNetworkFailpoint struct {
+	duration time.Duration
+}
+
+func (f blackholePeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	proxy := member.PeerProxy()
+
+	proxy.BlackholeTx()
+	proxy.BlackholeRx()
+	t.Logf("Blackholing traffic from and to %s", member.Config().Name)
+	time.Sleep(f.duration)
+	t.Logf("Traffic restored for %s", member.Config().Name)
+	proxy.UnblackholeTx()
+	proxy.UnblackholeRx()
+	return nil
+}
+
+func (f blackholePeerNetworkFailpoint) Name() string {
+	return "blackhole"
+}
+
+type delayPeerNetworkFailpoint struct {
+	duration          time.Duration
+	baseLatency       time.Duration
+	randomizedLatency time.Duration
+}
+
+func (f delayPeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	proxy := member.PeerProxy()
+
+	proxy.DelayRx(f.baseLatency, f.randomizedLatency)
+	proxy.DelayTx(f.baseLatency, f.randomizedLatency)
+	t.Logf("Delaying traffic from and to %s by %v +/- %v", member.Config().Name, f.baseLatency, f.randomizedLatency)
+	time.Sleep(f.duration)
+	t.Logf("Traffic delay removed for %s", member.Config().Name)
+	proxy.UndelayRx()
+	proxy.UndelayTx()
+	return nil
+}
+
+func (f delayPeerNetworkFailpoint) Name() string {
+	return "delay"
 }

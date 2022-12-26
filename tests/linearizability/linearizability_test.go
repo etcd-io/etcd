@@ -50,6 +50,7 @@ func TestLinearizability(t *testing.T) {
 			failpoint: RandomFailpoint,
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
+				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			),
@@ -58,6 +59,7 @@ func TestLinearizability(t *testing.T) {
 			name:      "ClusterOfSize3",
 			failpoint: RandomFailpoint,
 			config: *e2e.NewConfig(
+				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			),

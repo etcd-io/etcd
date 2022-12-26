@@ -29,6 +29,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
@@ -124,6 +125,10 @@ func (p *proxyEtcdProcess) Wait(ctx context.Context) error {
 	return p.etcdProc.Wait(ctx)
 }
 
+func (p *proxyEtcdProcess) PeerProxy() proxy.Server {
+	return nil
+}
+
 type proxyProc struct {
 	lg       *zap.Logger
 	name     string
@@ -188,7 +193,7 @@ type proxyV2Proc struct {
 }
 
 func proxyListenURL(cfg *EtcdServerProcessConfig, portOffset int) string {
-	u, err := url.Parse(cfg.Acurl)
+	u, err := url.Parse(cfg.ClientURL)
 	if err != nil {
 		panic(err)
 	}
@@ -206,7 +211,7 @@ func newProxyV2Proc(cfg *EtcdServerProcessConfig) *proxyV2Proc {
 		"--name", name,
 		"--proxy", "on",
 		"--listen-client-urls", listenAddr,
-		"--initial-cluster", cfg.Name + "=" + cfg.Purl.String(),
+		"--initial-cluster", cfg.Name + "=" + cfg.PeerURL.String(),
 		"--data-dir", dataDir,
 	}
 	return &proxyV2Proc{
@@ -232,13 +237,13 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 		"grpc-proxy",
 		"start",
 		"--listen-addr", strings.Split(listenAddr, "/")[2],
-		"--endpoints", cfg.Acurl,
+		"--endpoints", cfg.ClientURL,
 		// pass-through member RPCs
 		"--advertise-client-url", "",
 		"--data-dir", cfg.DataDirPath,
 	}
 	murl := ""
-	if cfg.Murl != "" {
+	if cfg.MetricsURL != "" {
 		murl = proxyListenURL(cfg, 4)
 		args = append(args, "--metrics-addr", murl)
 	}

@@ -42,7 +42,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 	}()
 
 	var (
-		node1ClientURL = epc.Procs[0].Config().Acurl
+		node1ClientURL = epc.Procs[0].Config().ClientURL
 		proxyClientURL = "127.0.0.1:32379"
 	)
 
@@ -67,11 +67,11 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for auto sync of endpoints
-	err = waitForEndpointInLog(ctx, proxyProc, epc.Procs[1].Config().Acurl)
+	err = waitForEndpointInLog(ctx, proxyProc, epc.Procs[1].Config().ClientURL)
 	require.NoError(t, err)
 
 	err = epc.CloseProc(ctx, func(proc e2e.EtcdProcess) bool {
-		return proc.Config().Acurl == node1ClientURL
+		return proc.Config().ClientURL == node1ClientURL
 	})
 	require.NoError(t, err)
 
