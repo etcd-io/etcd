@@ -102,6 +102,14 @@ func (c *recordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, err
 	return int64(resp.ID), err
 }
 
+func (c *recordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error {
+	callTime := time.Now()
+	resp, err := c.client.Lease.Revoke(ctx, clientv3.LeaseID(leaseId))
+	returnTime := time.Now()
+	c.history.AppendLeaseRevoke(leaseId, callTime, returnTime, resp, err)
+	return err
+}
+
 func (c *recordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) error {
 	callTime := time.Now()
 	opts := clientv3.WithLease(clientv3.LeaseID(leaseId))

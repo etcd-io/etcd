@@ -25,7 +25,9 @@ import (
 )
 
 var (
-	DefaultTraffic Traffic = readWriteSingleKey{key: "key", leaseTTL: 2, writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
+	// DefaultLeaseTTL is set such that the lease does not expire on server side during the test. The test will exercise lease expiry using explicit lease revoke.
+	DefaultLeaseTTL int64   = 7200
+	DefaultTraffic  Traffic = readWriteSingleKey{key: "key", leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
 )
 
 type Traffic interface {
@@ -53,11 +55,13 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 		default:
 		}
 		// Execute one read per one write to avoid operation history include too many failed writes when etcd is down.
+		fmt.Printf("submit read req\n")
 		resp, err := t.Read(ctx, c, limiter)
 		if err != nil {
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
+		fmt.Printf("submit write req\n")
 		t.Write(ctx, c, limiter, ids.RequestId(), resp)
 	}
 }

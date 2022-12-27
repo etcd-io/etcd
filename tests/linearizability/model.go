@@ -30,6 +30,7 @@ const (
 	Txn          Operation = "txn"
 	PutWithLease Operation = "putWithLease"
 	LeaseGrant   Operation = "leaseGrant"
+	LeaseRevoke  Operation = "leaseRevoke"
 )
 
 type EtcdRequest struct {
@@ -119,6 +120,12 @@ var etcdModel = porcupine.Model{
 			} else {
 				return fmt.Sprintf("leaseGrant(%q) -> %q", response.leaseID, response.leaseExpiry)
 			}
+		case LeaseRevoke:
+			if response.Err != nil {
+				return fmt.Sprintf("leaseRevoke(%q) -> %q", request.leaseID, response.Err)
+			} else {
+				return fmt.Sprintf("leaseRevoke(%q) -> %q", request.leaseID, response.Revision)
+			}
 		default:
 			return "<invalid>"
 		}
@@ -133,8 +140,9 @@ func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, Et
 		}
 		return true, state
 	}
-	if newLease, lease := stepLease(request, response); newLease {
-		state.Leases[lease.LeaseID] = lease
+
+	if !stepLease(request, response, state) {
+		return len(state.PossibleValues) > 0, state
 	}
 
 	if state.Key != request.Key {
@@ -150,8 +158,8 @@ func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, Et
 		var i = 0
 		for _, v := range state.PossibleValues {
 			v.LeaseExpired = false
-			if lease, ok := state.Leases[v.LeaseID]; ok {
-				if lease.LeaseExpiry.Before(time.Now()) {
+			if _, ok := state.Leases[v.LeaseID]; !ok {
+				if v.LeaseID != 0 {
 					v.LeaseExpired = true
 				}
 			}
@@ -194,6 +202,7 @@ func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v V
 			}
 		}
 		return false, ValueRevision{}
+		//TODO anything here for lease operations?
 	default:
 		panic("Unknown operation")
 	}
@@ -201,17 +210,6 @@ func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v V
 
 func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdResponse) {
 	resp := EtcdResponse{}
-
-	//increment revision and delete the key if the key was under lease and that lease has expired.
-	//clear out the lease id for the state at that point.
-	if v.LeaseExpired {
-		//value should not be empty at this point.
-		if v.Value == "" {
-			panic("Odd..value is blank")
-		}
-		v.Revision += 1
-		v.Value = ""
-	}
 
 	switch request.Op {
 	case Get:
@@ -236,6 +234,8 @@ func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdRespons
 			v.Value = ""
 			v.Revision += 1
 			v.LeaseID = 0
+			//reset to default value
+			v.LeaseExpired = false
 			resp.Deleted = 1
 		}
 	case Txn:
@@ -243,6 +243,18 @@ func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdRespons
 			v.Value = request.TxnNewData
 			v.Revision += 1
 			resp.TxnSucceeded = true
+		}
+	case LeaseRevoke:
+		//If the lease is attached, delete the key
+		if v.LeaseID == request.leaseID {
+			//key gets deleted.
+			if v.Value != "" {
+				v.Value = ""
+				v.Revision += 1
+				v.LeaseID = 0
+				//reset to default value
+				v.LeaseExpired = false
+			}
 		}
 	default:
 		panic("unsupported operation")
@@ -253,12 +265,26 @@ func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdRespons
 }
 
 // return true with a lease object if a new lease was acquired
-func stepLease(request EtcdRequest, resp EtcdResponse) (bool, EtcdLease) {
+func stepLease(request EtcdRequest, resp EtcdResponse, state EtcdState) bool {
+	proceedToNextStep := false
 	switch request.Op {
 	case LeaseGrant:
+		if resp.Err != nil {
+			proceedToNextStep = false
+			break
+		}
 		lease := EtcdLease{LeaseID: resp.leaseID, LeaseExpiry: resp.leaseExpiry}
-		return true, lease
+		state.Leases[resp.leaseID] = lease
+		proceedToNextStep = true
+	case LeaseRevoke:
+		if resp.Err != nil {
+			proceedToNextStep = false
+			break
+		}
+		delete(state.Leases, resp.leaseID)
+		proceedToNextStep = true
 	default:
-		return false, EtcdLease{}
+		proceedToNextStep = true
 	}
+	return proceedToNextStep
 }
