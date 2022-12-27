@@ -3,8 +3,14 @@
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.3.md).
 
 <hr>
+## v3.4.24 (TBD)
 
-## v3.4.23 (TBD)
+### Other
+- Updated [base image from base-debian11 to static-debian11 and removed dependency on busybox](https://github.com/etcd-io/etcd/pull/15038).
+
+<hr>
+
+## v3.4.23 (2022-12-21)
 
 ### Package `clientv3`
 - Fix [Refreshing token on CommonName based authentication causes segmentation violation in client](https://github.com/etcd-io/etcd/pull/14792).
@@ -12,6 +18,14 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### etcd server
 - Fix [Remove memberID from data corrupt alarm](https://github.com/etcd-io/etcd/pull/14853).
 - Fix [nil pointer panic for readonly txn due to nil response](https://github.com/etcd-io/etcd/pull/14900).
+
+### Security
+- Use [distroless base image](https://github.com/etcd-io/etcd/pull/15017) to address critical Vulnerabilities.
+- Bumped [some dependencies](https://github.com/etcd-io/etcd/pull/15019) to address some HIGH Vulnerabilities.
+
+### Go
+- Require [Go 1.17+](https://github.com/etcd-io/etcd/pull/15019).
+- Compile with [Go 1.17+](https://go.dev/doc/devel/release#go1.17)
 
 <hr>
 
