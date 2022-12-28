@@ -1272,11 +1272,11 @@ func (s *EtcdServer) stopWithDelay(d time.Duration, err error) {
 	}
 }
 
-// StopNotify returns a channel that receives a empty struct
+// StopNotify returns a channel that receives an empty struct
 // when the server is stopped.
 func (s *EtcdServer) StopNotify() <-chan struct{} { return s.done }
 
-// StoppingNotify returns a channel that receives a empty struct
+// StoppingNotify returns a channel that receives an empty struct
 // when the server is being stopped.
 func (s *EtcdServer) StoppingNotify() <-chan struct{} { return s.stopping }
 
