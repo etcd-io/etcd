@@ -98,8 +98,12 @@ func (c *recordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, err
 	callTime := time.Now()
 	resp, err := c.client.Lease.Grant(ctx, ttl)
 	returnTime := time.Now()
-	c.history.AppendLeaseGrant(returnTime.Add(time.Duration(ttl)*time.Second), callTime, returnTime, resp, err)
-	return int64(resp.ID), err
+	c.history.AppendLeaseGrant(callTime, returnTime, resp, err)
+	var leaseId int64
+	if resp != nil {
+		leaseId = int64(resp.ID)
+	}
+	return leaseId, err
 }
 
 func (c *recordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error {

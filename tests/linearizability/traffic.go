@@ -27,7 +27,7 @@ import (
 var (
 	// DefaultLeaseTTL is set such that the lease does not expire on server side during the test. The test will exercise lease expiry using explicit lease revoke.
 	DefaultLeaseTTL int64   = 7200
-	DefaultTraffic  Traffic = readWriteSingleKey{key: "key", leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 90}, {operation: Delete, chance: 5}, {operation: Txn, chance: 5}}}
+	DefaultTraffic  Traffic = readWriteSingleKey{key: "key", leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 80}, {operation: PutWithLease, chance: 5}, {operation: Delete, chance: 5}, {operation: LeaseRevoke, chance: 5}, {operation: Txn, chance: 5}}}
 )
 
 type Traffic interface {
@@ -55,13 +55,11 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 		default:
 		}
 		// Execute one read per one write to avoid operation history include too many failed writes when etcd is down.
-		fmt.Printf("submit read req\n")
 		resp, err := t.Read(ctx, c, limiter)
 		if err != nil {
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
-		fmt.Printf("submit write req\n")
 		t.Write(ctx, c, limiter, ids.RequestId(), resp)
 	}
 }
@@ -84,10 +82,10 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 	case Put:
 		err = c.Put(putCtx, t.key, fmt.Sprintf("%d", id))
 	case PutWithLease:
+		if t.leaseId == 0 {
+			t.leaseId, err = c.LeaseGrant(context.TODO(), t.leaseTTL)
+		}
 		err = c.PutWithLease(putCtx, t.key, fmt.Sprintf("%d", id), t.leaseId)
-	//TODO should this be in write function? leases are orthogonal to writes
-	case LeaseGrant:
-		t.leaseId, err = c.LeaseGrant(putCtx, t.leaseTTL)
 	case Delete:
 		err = c.Delete(putCtx, t.key)
 	case Txn:
@@ -96,6 +94,11 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 			value = string(kvs[0].Value)
 		}
 		err = c.Txn(putCtx, t.key, value, fmt.Sprintf("%d", id))
+	case LeaseRevoke:
+		err = c.LeaseRevoke(putCtx, t.leaseId)
+		if err == nil {
+			t.leaseId = 0
+		}
 	default:
 		panic("invalid operation")
 	}
