@@ -126,6 +126,12 @@ var etcdModel = porcupine.Model{
 			} else {
 				return fmt.Sprintf("leaseRevoke(%q) -> %q", request.leaseID, response.Revision)
 			}
+		case PutWithLease:
+			if response.Err != nil {
+				return fmt.Sprintf("putWithLease(%q, %q, %d) -> %s", request.Key, request.PutData, request.leaseID, response.Err)
+			} else {
+				return fmt.Sprintf("putWithLease(%q, %q, %d) -> ok, rev: %d", request.Key, request.PutData, request.leaseID, response.Revision)
+			}
 		default:
 			return "<invalid>"
 		}
@@ -133,16 +139,21 @@ var etcdModel = porcupine.Model{
 }
 
 func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-	if len(state.PossibleValues) == 0 {
-		state.Key = request.Key
-		if ok, v := initValueRevision(request, response); ok {
-			state.PossibleValues = append(state.PossibleValues, v)
-		}
+
+	if state.Leases == nil {
+		state.Leases = make(map[int64]EtcdLease)
+	}
+
+	if !stepLease(request, response, &state) {
 		return true, state
 	}
 
-	if !stepLease(request, response, state) {
-		return len(state.PossibleValues) > 0, state
+	if len(state.PossibleValues) == 0 {
+		state.Key = request.Key
+		if ok, v := initValueRevision(request, response, state); ok {
+			state.PossibleValues = append(state.PossibleValues, v)
+		}
+		return true, state
 	}
 
 	if state.Key != request.Key {
@@ -151,19 +162,13 @@ func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, Et
 
 	if response.Err != nil {
 		for _, v := range state.PossibleValues {
-			newV, _ := stepValue(v, request)
+			newV, _ := stepValue(v, request, state)
 			state.PossibleValues = append(state.PossibleValues, newV)
 		}
 	} else {
 		var i = 0
 		for _, v := range state.PossibleValues {
-			v.LeaseExpired = false
-			if _, ok := state.Leases[v.LeaseID]; !ok {
-				if v.LeaseID != 0 {
-					v.LeaseExpired = true
-				}
-			}
-			newV, expectedResponse := stepValue(v, request)
+			newV, expectedResponse := stepValue(v, request, state)
 			if expectedResponse == response {
 				state.PossibleValues[i] = newV
 				i++
@@ -174,7 +179,7 @@ func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, Et
 	return len(state.PossibleValues) > 0, state
 }
 
-func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v ValueRevision) {
+func initValueRevision(request EtcdRequest, response EtcdResponse, state EtcdState) (ok bool, v ValueRevision) {
 	if response.Err != nil {
 		return false, ValueRevision{}
 	}
@@ -189,6 +194,17 @@ func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v V
 			Value:    request.PutData,
 			Revision: response.Revision,
 		}
+	case PutWithLease:
+		if lease, ok := state.Leases[request.leaseID]; ok {
+			fmt.Println("$$$$$$$$$updating from init$$$$$$$$$$")
+			return true, ValueRevision{
+				Value:        request.PutData,
+				Revision:     response.Revision,
+				LeaseID:      lease.LeaseID,
+				LeaseExpired: false,
+			}
+		}
+		return false, ValueRevision{}
 	case Delete:
 		return true, ValueRevision{
 			Value:    "",
@@ -202,13 +218,17 @@ func initValueRevision(request EtcdRequest, response EtcdResponse) (ok bool, v V
 			}
 		}
 		return false, ValueRevision{}
-		//TODO anything here for lease operations?
+	case LeaseRevoke:
+		return true, ValueRevision{
+			Value:    "",
+			Revision: response.Revision,
+		}
 	default:
 		panic("Unknown operation")
 	}
 }
 
-func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdResponse) {
+func stepValue(v ValueRevision, request EtcdRequest, state EtcdState) (ValueRevision, EtcdResponse) {
 	resp := EtcdResponse{}
 
 	switch request.Op {
@@ -223,19 +243,20 @@ func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdRespons
 		v.LeaseID = 0
 		v.LeaseExpired = false
 	case PutWithLease:
-		if !v.LeaseExpired {
+		fmt.Printf("################PutWithLease leaseID:%d PutData:%s\n", request.leaseID, request.PutData)
+		if _, ok := state.Leases[request.leaseID]; ok {
 			//only update if the lease is ok
+			fmt.Println("$$$$$$$$$updating$$$$$$$$$$")
 			v.Value = request.PutData
 			v.Revision += 1
 			v.LeaseID = request.leaseID
 		}
 	case Delete:
 		if v.Value != "" {
+			fmt.Printf("Deleting key %s current val:%s, current rev:%d\n", request.Key, v.Value, v.Revision)
 			v.Value = ""
 			v.Revision += 1
 			v.LeaseID = 0
-			//reset to default value
-			v.LeaseExpired = false
 			resp.Deleted = 1
 		}
 	case Txn:
@@ -265,23 +286,21 @@ func stepValue(v ValueRevision, request EtcdRequest) (ValueRevision, EtcdRespons
 }
 
 // return true with a lease object if a new lease was acquired
-func stepLease(request EtcdRequest, resp EtcdResponse, state EtcdState) bool {
+func stepLease(request EtcdRequest, resp EtcdResponse, state *EtcdState) bool {
 	proceedToNextStep := false
 	switch request.Op {
 	case LeaseGrant:
 		if resp.Err != nil {
-			proceedToNextStep = false
 			break
 		}
 		lease := EtcdLease{LeaseID: resp.leaseID, LeaseExpiry: resp.leaseExpiry}
 		state.Leases[resp.leaseID] = lease
-		proceedToNextStep = true
 	case LeaseRevoke:
 		if resp.Err != nil {
-			proceedToNextStep = false
 			break
 		}
-		delete(state.Leases, resp.leaseID)
+		fmt.Printf("Deleting lease %d", request.leaseID)
+		delete(state.Leases, request.leaseID)
 		proceedToNextStep = true
 	default:
 		proceedToNextStep = true

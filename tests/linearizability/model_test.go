@@ -395,9 +395,50 @@ func TestModel(t *testing.T) {
 		{
 			name: "Put with valid lease id should succeed. Put with invalid lease id should fail",
 			operations: []testOperation{
-				{req: EtcdRequest{Op: LeaseGrant}, resp: EtcdResponse{leaseID: 1, Revision: 1}},
-				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 1}, resp: EtcdResponse{Revision: 2}},
-				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 2}, resp: EtcdResponse{Revision: 2}, failure: true},
+				{req: EtcdRequest{Op: LeaseGrant, Key: "key"}, resp: EtcdResponse{leaseID: 1, Revision: 1}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 1, PutData: "2"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 2, PutData: "3"}, resp: EtcdResponse{Revision: 3}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}},
+			},
+		},
+		{
+			name: "Put with valid lease id should succeed. Put with expired lease id should fail",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: LeaseGrant, Key: "key"}, resp: EtcdResponse{leaseID: 1, Revision: 1}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 1, PutData: "2"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "2", Revision: 2}},
+				{req: EtcdRequest{Op: LeaseRevoke, leaseID: 1, Key: "key"}, resp: EtcdResponse{Revision: 3}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 1, PutData: "4"}, resp: EtcdResponse{Revision: 4}, failure: true},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "", Revision: 3}},
+			},
+		},
+		{
+			name: "Revoke should increment the revision",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: LeaseGrant, Key: "key"}, resp: EtcdResponse{leaseID: 1, Revision: 1}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", PutData: "2", leaseID: 1}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: LeaseRevoke, leaseID: 1, Key: "key"}, resp: EtcdResponse{Revision: 3}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "", Revision: 3}},
+			},
+		},
+		{
+			name: "Put following a PutWithLease will detach the key from the lease",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: LeaseGrant, Key: "key"}, resp: EtcdResponse{leaseID: 1, Revision: 1}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 1, PutData: "2"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: Put, Key: "key", PutData: "3"}, resp: EtcdResponse{Revision: 3}},
+				{req: EtcdRequest{Op: LeaseRevoke, leaseID: 1, Key: "key"}, resp: EtcdResponse{Revision: 3}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 3}},
+			},
+		},
+		{
+			name: "Deleting a leased key - revoke should not increment revision",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: LeaseGrant, Key: "key"}, resp: EtcdResponse{leaseID: 1, Revision: 1}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", leaseID: 1, PutData: "2"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: Delete, Key: "key"}, resp: EtcdResponse{Revision: 3, Deleted: 1}},
+				{req: EtcdRequest{Op: LeaseRevoke, leaseID: 1, Key: "key"}, resp: EtcdResponse{Revision: 4}, failure: true},
+				{req: EtcdRequest{Op: LeaseRevoke, leaseID: 1, Key: "key"}, resp: EtcdResponse{Revision: 3}},
 			},
 		},
 	}
@@ -406,13 +447,14 @@ func TestModel(t *testing.T) {
 			state := etcdModel.Init()
 			for _, op := range tc.operations {
 				ok, newState := etcdModel.Step(state, op.req, op.resp)
+				//TODO remove following log
+				t.Logf("Ran op. Operation result, expect: %v, got: %v, operation: %s state:%v newState:%v", !op.failure, ok, etcdModel.DescribeOperation(op.req, op.resp), state, newState)
 				if ok != !op.failure {
 					t.Logf("state: %v", state)
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, etcdModel.DescribeOperation(op.req, op.resp))
 				}
 				if ok {
 					state = newState
-					t.Logf("geetasg state: %v", state)
 				}
 			}
 		})
