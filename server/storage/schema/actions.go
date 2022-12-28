@@ -15,8 +15,9 @@
 package schema
 
 import (
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 type action interface {

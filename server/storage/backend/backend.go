@@ -25,8 +25,9 @@ import (
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
-	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
+
+	bolt "go.etcd.io/bbolt"
 )
 
 var (

@@ -26,11 +26,12 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/raft/v3"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
 const (

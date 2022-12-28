@@ -20,10 +20,11 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
-	"go.uber.org/zap"
 )
 
 // HandleHealth registers health handler on '/health'.

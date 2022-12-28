@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -38,7 +40,6 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 
 	bolt "go.etcd.io/bbolt"
-	"go.uber.org/zap"
 )
 
 var (

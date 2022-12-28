@@ -19,8 +19,9 @@ import (
 	"errors"
 
 	"github.com/coreos/go-semver/semver"
-	"go.etcd.io/etcd/api/v3/version"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/api/v3/version"
 )
 
 // Monitor contains logic used by cluster leader to monitor version changes and decide on cluster version or downgrade progress.
