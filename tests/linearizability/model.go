@@ -46,15 +46,19 @@ type EtcdResponse struct {
 	Err          error
 }
 
+type PossibleStates []EtcdState
+
 type EtcdState struct {
 	Revision  int64
 	KeyValues map[string]string
 }
 
 var etcdModel = porcupine.Model{
-	Init: func() interface{} { return "[]" },
+	Init: func() interface{} {
+		return "[]" // empty PossibleStates
+	},
 	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
-		var states []EtcdState
+		var states PossibleStates
 		err := json.Unmarshal([]byte(st.(string)), &states)
 		if err != nil {
 			panic(err)
@@ -100,44 +104,24 @@ var etcdModel = porcupine.Model{
 	},
 }
 
-func step(states []EtcdState, request EtcdRequest, response EtcdResponse) (bool, []EtcdState) {
+func step(states PossibleStates, request EtcdRequest, response EtcdResponse) (bool, PossibleStates) {
 	if len(states) == 0 {
-		return true, initStates(request, response)
+		// states were not initialized
+		if response.Err != nil {
+			return true, nil
+		}
+		return true, PossibleStates{initState(request, response)}
 	}
 	if response.Err != nil {
-		// Add addition states for failed request in case of failed request was persisted.
-		states = append(states, applyRequest(states, request)...)
+		states = applyFailedRequest(states, request)
 	} else {
-		// Remove states that didn't lead to response we got.
-		states = filterStateMatchesResponse(states, request, response)
+		states = applyRequest(states, request, response)
 	}
 	return len(states) > 0, states
 }
 
-func applyRequest(states []EtcdState, request EtcdRequest) []EtcdState {
-	newStates := make([]EtcdState, 0, len(states))
-	for _, s := range states {
-		newState, _ := stepState(s, request)
-		newStates = append(newStates, newState)
-	}
-	return newStates
-}
-
-func filterStateMatchesResponse(states []EtcdState, request EtcdRequest, response EtcdResponse) []EtcdState {
-	newStates := make([]EtcdState, 0, len(states))
-	for _, s := range states {
-		newState, expectResponse := stepState(s, request)
-		if expectResponse == response {
-			newStates = append(newStates, newState)
-		}
-	}
-	return newStates
-}
-
-func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
-	if response.Err != nil {
-		return []EtcdState{}
-	}
+// initState tries to create etcd state based on the first request.
+func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 	state := EtcdState{
 		Revision:  response.Revision,
 		KeyValues: map[string]string{},
@@ -154,14 +138,35 @@ func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 		if response.TxnSucceeded {
 			state.KeyValues[request.Key] = request.TxnNewData
 		}
-		return []EtcdState{}
 	default:
 		panic("Unknown operation")
 	}
-	return []EtcdState{state}
+	return state
 }
 
-func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
+// applyFailedRequest handles a failed requests, one that it's not known if it was persisted or not.
+func applyFailedRequest(states PossibleStates, request EtcdRequest) PossibleStates {
+	for _, s := range states {
+		newState, _ := applyRequestToSingleState(s, request)
+		states = append(states, newState)
+	}
+	return states
+}
+
+// applyRequest handles a successful request by applying it to possible states and checking if they match the response.
+func applyRequest(states PossibleStates, request EtcdRequest, response EtcdResponse) PossibleStates {
+	newStates := make(PossibleStates, 0, len(states))
+	for _, s := range states {
+		newState, expectResponse := applyRequestToSingleState(s, request)
+		if expectResponse == response {
+			newStates = append(newStates, newState)
+		}
+	}
+	return newStates
+}
+
+// applyRequestToSingleState handles a successful request, returning updated state and response it would generate.
+func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
 	newKVs := map[string]string{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
