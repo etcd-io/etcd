@@ -1557,7 +1557,7 @@ func (c *Cluster) GetLearnerMembers() ([]*pb.Member, error) {
 	return learners, nil
 }
 
-// AddAndLaunchLearnerMember creates a leaner member, adds it to Cluster
+// AddAndLaunchLearnerMember creates a learner member, adds it to Cluster
 // via v3 MemberAdd API, and then launches the new member.
 func (c *Cluster) AddAndLaunchLearnerMember(t testutil.TB) {
 	m := c.mustNewMember(t)
