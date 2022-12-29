@@ -28,7 +28,8 @@ import (
 var (
 	// DefaultLeaseTTL is set such that the lease does not expire on server side during the test. The test will exercise lease expiry using explicit lease revoke.
 	DefaultLeaseTTL int64   = 7200
-	DefaultTraffic  Traffic = readWriteSingleKey{key: "key", leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 80}, {operation: PutWithLease, chance: 5}, {operation: Delete, chance: 5}, {operation: LeaseRevoke, chance: 5}, {operation: Txn, chance: 5}}}
+	DefaultKey              = "key"
+	DefaultTraffic  Traffic = readWriteSingleKey{key: DefaultKey, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 80}, {operation: PutWithLease, chance: 5}, {operation: Delete, chance: 5}, {operation: LeaseRevoke, chance: 5}, {operation: Txn, chance: 5}}}
 )
 
 type Traffic interface {

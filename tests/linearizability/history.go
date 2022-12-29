@@ -126,7 +126,7 @@ func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, 
 }
 
 func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
-	request := EtcdRequest{Op: LeaseGrant, LeaseID: int64(resp.ID)}
+	request := EtcdRequest{Op: LeaseGrant, LeaseID: int64(resp.ID), Key: DefaultKey}
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
@@ -145,7 +145,7 @@ func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv
 }
 
 func (h *appendableHistory) AppendLeaseRevoke(id int64, start time.Time, end time.Time, resp *clientv3.LeaseRevokeResponse, err error) {
-	request := EtcdRequest{Op: LeaseRevoke, LeaseID: id}
+	request := EtcdRequest{Op: LeaseRevoke, LeaseID: id, Key: DefaultKey}
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
