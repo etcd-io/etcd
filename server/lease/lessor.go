@@ -24,12 +24,13 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.uber.org/zap"
 )
 
 // NoLease is a special LeaseID representing the absence of a lease.

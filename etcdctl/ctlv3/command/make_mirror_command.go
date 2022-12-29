@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
+
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"

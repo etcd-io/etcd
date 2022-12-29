@@ -18,8 +18,9 @@ import (
 	"context"
 	"time"
 
-	v3 "go.etcd.io/etcd/client/v3"
 	"go.uber.org/zap"
+
+	v3 "go.etcd.io/etcd/client/v3"
 )
 
 const defaultSessionTTL = 60

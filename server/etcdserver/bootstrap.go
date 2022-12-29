@@ -25,8 +25,9 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/dustin/go-humanize"
-	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"

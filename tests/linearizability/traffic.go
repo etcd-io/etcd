@@ -20,8 +20,9 @@ import (
 	"math/rand"
 	"time"
 
-	"go.etcd.io/etcd/api/v3/mvccpb"
 	"golang.org/x/time/rate"
+
+	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
 var (

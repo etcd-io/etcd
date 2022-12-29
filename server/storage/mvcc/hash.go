@@ -20,9 +20,10 @@ import (
 	"sort"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.uber.org/zap"
 )
 
 const (

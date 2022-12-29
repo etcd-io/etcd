@@ -17,10 +17,11 @@ package etcdhttp
 import (
 	"net/http"
 
+	"go.uber.org/zap"
+
 	httptypes "go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
-	"go.uber.org/zap"
 )
 
 func allowMethod(w http.ResponseWriter, r *http.Request, m string) bool {

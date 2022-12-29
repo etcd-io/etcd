@@ -17,6 +17,8 @@ package apply
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -33,7 +35,6 @@ import (
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.uber.org/zap"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/gogo/protobuf/proto"

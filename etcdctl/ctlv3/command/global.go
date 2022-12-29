@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
+
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"

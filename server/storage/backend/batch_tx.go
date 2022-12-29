@@ -21,8 +21,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
+
+	bolt "go.etcd.io/bbolt"
 )
 
 type BucketID int

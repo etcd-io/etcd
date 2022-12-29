@@ -19,9 +19,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"golang.org/x/crypto/bcrypt"
+
 	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (

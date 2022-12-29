@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 
 	"go.uber.org/zap"

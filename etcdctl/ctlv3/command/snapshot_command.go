@@ -19,10 +19,11 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	snapshot "go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-	"go.uber.org/zap"
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
