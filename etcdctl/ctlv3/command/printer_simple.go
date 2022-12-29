@@ -126,7 +126,11 @@ func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
 }
 
 func (s *simplePrinter) MemberAdd(r v3.MemberAddResponse) {
-	fmt.Printf("Member %16x added to cluster %16x\n", r.Member.ID, r.Header.ClusterId)
+	asLearner := " "
+	if r.Member.IsLearner {
+		asLearner = " as learner "
+	}
+	fmt.Printf("Member %16x added%sto cluster %16x\n", r.Member.ID, asLearner, r.Header.ClusterId)
 }
 
 func (s *simplePrinter) MemberRemove(id uint64, r v3.MemberRemoveResponse) {

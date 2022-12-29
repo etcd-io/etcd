@@ -28,7 +28,11 @@ import (
 
 func TestCtlV3MemberList(t *testing.T)        { testCtl(t, memberListTest) }
 func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest) }
-func TestCtlV3MemberUpdate(t *testing.T)      { testCtl(t, memberUpdateTest) }
+
+func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
+func TestCtlV3MemberAddAsLearner(t *testing.T) { testCtl(t, memberAddAsLearnerTest) }
+
+func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
 func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigNoTLS()))
 }
@@ -137,12 +141,28 @@ func ctlV3MemberRemove(cx ctlCtx, ep, memberID, clusterID string) error {
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
 }
 
+func memberAddTest(cx ctlCtx) {
+	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
+	if err := ctlV3MemberAdd(cx, peerURL, false); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func memberAddAsLearnerTest(cx ctlCtx) {
+	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
+	if err := ctlV3MemberAdd(cx, peerURL, true); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
 func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL))
+	asLearner := " "
 	if isLearner {
 		cmdArgs = append(cmdArgs, "--learner")
+		asLearner = " as learner "
 	}
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, " added to cluster ")
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf(" added%sto cluster ", asLearner))
 }
 
 func memberUpdateTest(cx ctlCtx) {
