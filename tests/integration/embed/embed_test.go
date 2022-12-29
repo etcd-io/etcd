@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build !cluster_proxy
-// +build !cluster_proxy
 
 // Keep the test in a separate package from other tests such that
 // .setupLogging method does not race with other (previously running) servers (grpclog is global).

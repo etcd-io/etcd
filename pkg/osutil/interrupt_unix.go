@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build !windows && !plan9
-// +build !windows,!plan9
 
 package osutil
 

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build tools
-// +build tools
 
 // This file implements that pattern:
 // https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module

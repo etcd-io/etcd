@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build cov
-// +build cov
 
 package e2e
 

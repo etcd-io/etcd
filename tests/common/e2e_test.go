@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build e2e
-// +build e2e
 
 package common
 

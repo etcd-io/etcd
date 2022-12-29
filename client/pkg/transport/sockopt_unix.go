@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build !windows && !solaris
-// +build !windows,!solaris
 
 package transport
 
