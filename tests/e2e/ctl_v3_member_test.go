@@ -32,7 +32,7 @@ func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest
 func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
 func TestCtlV3MemberAddAsLearner(t *testing.T) { testCtl(t, memberAddAsLearnerTest) }
 
-func TestCtlV3MemberUpdate(t *testing.T)      { testCtl(t, memberUpdateTest) }
+func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
 func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigNoTLS()))
 }
