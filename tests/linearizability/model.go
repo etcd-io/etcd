@@ -17,19 +17,17 @@ package linearizability
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/anishathalye/porcupine"
 )
 
 type Operation string
 
 const (
-	Get          Operation = "get"
-	Put          Operation = "put"
-	Delete       Operation = "delete"
-	Txn          Operation = "txn"
-	PutWithLease Operation = "putWithLease"
-	LeaseGrant   Operation = "leaseGrant"
-	LeaseRevoke  Operation = "leaseRevoke"
+	Get    Operation = "get"
+	Put    Operation = "put"
+	Delete Operation = "delete"
+	Txn    Operation = "txn"
 )
 
 type EtcdRequest struct {
@@ -38,7 +36,6 @@ type EtcdRequest struct {
 	PutData       string
 	TxnExpectData string
 	TxnNewData    string
-	leaseID       int64
 }
 
 type EtcdResponse struct {
@@ -46,37 +43,25 @@ type EtcdResponse struct {
 	Revision     int64
 	Deleted      int64
 	TxnSucceeded bool
-	leaseID      int64
 	Err          error
 }
 
-type EtcdLease struct {
-	LeaseID int64
-	//TODO state about key attachment?
-}
-
 type EtcdState struct {
-	Key            string
-	PossibleValues []ValueRevision
-	Leases         map[int64]EtcdLease
-}
-
-type ValueRevision struct {
-	Value    string
 	Revision int64
-	LeaseID  int64
+	Key      string
+	Value    string
 }
 
 var etcdModel = porcupine.Model{
-	Init: func() interface{} { return "{}" },
+	Init: func() interface{} { return "[]" },
 	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
-		var state EtcdState
-		err := json.Unmarshal([]byte(st.(string)), &state)
+		var states []EtcdState
+		err := json.Unmarshal([]byte(st.(string)), &states)
 		if err != nil {
 			panic(err)
 		}
-		ok, state := step(state, in.(EtcdRequest), out.(EtcdResponse))
-		data, err := json.Marshal(state)
+		ok, states := step(states, in.(EtcdRequest), out.(EtcdResponse))
+		data, err := json.Marshal(states)
 		if err != nil {
 			panic(err)
 		}
@@ -94,9 +79,9 @@ var etcdModel = porcupine.Model{
 			}
 		case Put:
 			if response.Err != nil {
-				return fmt.Sprintf("put(%q, %q, %d) -> %s", request.Key, request.PutData, request.leaseID, response.Err)
+				return fmt.Sprintf("put(%q, %q) -> %s", request.Key, request.PutData, response.Err)
 			} else {
-				return fmt.Sprintf("put(%q, %q, %d) -> ok, rev: %d", request.Key, request.PutData, request.leaseID, response.Revision)
+				return fmt.Sprintf("put(%q, %q) -> ok, rev: %d", request.Key, request.PutData, response.Revision)
 			}
 		case Delete:
 			if response.Err != nil {
@@ -110,191 +95,99 @@ var etcdModel = porcupine.Model{
 			} else {
 				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %v, rev: %d", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.TxnSucceeded, response.Revision)
 			}
-		case LeaseGrant:
-			if response.Err != nil {
-				return fmt.Sprintf("leaseGrant(%q) -> %q", response.leaseID, response.Err)
-			} else {
-				return fmt.Sprintf("leaseGrant(%q) -> ok rev: %q", response.leaseID, response.Revision)
-			}
-		case LeaseRevoke:
-			if response.Err != nil {
-				return fmt.Sprintf("leaseRevoke(%q) -> %q", request.leaseID, response.Err)
-			} else {
-				return fmt.Sprintf("leaseRevoke(%q) -> ok rev: %q", request.leaseID, response.Revision)
-			}
-		case PutWithLease:
-			if response.Err != nil {
-				return fmt.Sprintf("putWithLease(%q, %q, %d) -> %s", request.Key, request.PutData, request.leaseID, response.Err)
-			} else {
-				return fmt.Sprintf("putWithLease(%q, %q, %d) -> ok, rev: %d", request.Key, request.PutData, request.leaseID, response.Revision)
-			}
 		default:
 			return "<invalid>"
 		}
 	},
 }
 
-func step(state EtcdState, request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
-
-	if state.Leases == nil {
-		state.Leases = make(map[int64]EtcdLease)
+func step(states []EtcdState, request EtcdRequest, response EtcdResponse) (bool, []EtcdState) {
+	if len(states) == 0 {
+		return true, initStates(request, response)
 	}
-
-	if valueCanChange := stepLease(request, response, &state); !valueCanChange {
-		//lease requests that do not affect the value are orthogonal
-		return true, state
-	}
-
-	if len(state.PossibleValues) == 0 {
-		state.Key = request.Key
-		if ok, v := initValueRevision(request, response, state); ok {
-			state.PossibleValues = append(state.PossibleValues, v)
-		}
-		return true, state
-	}
-
-	if state.Key != request.Key {
-		panic("multiple keys not supported")
-	}
-
 	if response.Err != nil {
-		for _, v := range state.PossibleValues {
-			newV, _ := stepValue(v, request, state)
-			state.PossibleValues = append(state.PossibleValues, newV)
-		}
+		// Add addition states for failed request in case of failed request was persisted.
+		states = append(states, applyRequest(states, request)...)
 	} else {
-		var i = 0
-		for _, v := range state.PossibleValues {
-			newV, expectedResponse := stepValue(v, request, state)
-			if expectedResponse == response {
-				state.PossibleValues[i] = newV
-				i++
-			}
-		}
-		state.PossibleValues = state.PossibleValues[:i]
+		// Remove states that didn't lead to response we got.
+		states = filterStateMatchesResponse(states, request, response)
 	}
-	return len(state.PossibleValues) > 0, state
+	return len(states) > 0, states
 }
 
-func initValueRevision(request EtcdRequest, response EtcdResponse, state EtcdState) (ok bool, v ValueRevision) {
+func applyRequest(states []EtcdState, request EtcdRequest) []EtcdState {
+	newStates := make([]EtcdState, 0, len(states))
+	for _, s := range states {
+		newState, _ := stepState(s, request)
+		newStates = append(newStates, newState)
+	}
+	return newStates
+}
+
+func filterStateMatchesResponse(states []EtcdState, request EtcdRequest, response EtcdResponse) []EtcdState {
+	newStates := make([]EtcdState, 0, len(states))
+	for _, s := range states {
+		newState, expectResponse := stepState(s, request)
+		if expectResponse == response {
+			newStates = append(newStates, newState)
+		}
+	}
+	return newStates
+}
+
+func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 	if response.Err != nil {
-		return false, ValueRevision{}
+		return []EtcdState{}
+	}
+	state := EtcdState{
+		Key:      request.Key,
+		Revision: response.Revision,
 	}
 	switch request.Op {
 	case Get:
-		return true, ValueRevision{
-			Value:    response.GetData,
-			Revision: response.Revision,
+		if response.GetData != "" {
+			state.Value = response.GetData
 		}
 	case Put:
-		return true, ValueRevision{
-			Value:    request.PutData,
-			Revision: response.Revision,
-			LeaseID:  0,
-		}
-	case PutWithLease:
-		if lease, ok := state.Leases[request.leaseID]; ok {
-			return true, ValueRevision{
-				Value:    request.PutData,
-				Revision: response.Revision,
-				LeaseID:  lease.LeaseID,
-			}
-		}
-		return false, ValueRevision{}
+		state.Value = request.PutData
 	case Delete:
-		return true, ValueRevision{
-			Value:    "",
-			Revision: response.Revision,
-		}
 	case Txn:
 		if response.TxnSucceeded {
-			return true, ValueRevision{
-				Value:    request.TxnNewData,
-				Revision: response.Revision,
-			}
+			state.Value = request.TxnNewData
 		}
-		return false, ValueRevision{}
-	case LeaseRevoke:
-		if request.leaseID == v.LeaseID {
-			//same as delete
-			return true, ValueRevision{
-				Value:    "",
-				Revision: response.Revision,
-			}
-		}
-		return false, ValueRevision{}
+		return []EtcdState{}
 	default:
 		panic("Unknown operation")
 	}
+	return []EtcdState{state}
 }
 
-func stepValue(v ValueRevision, request EtcdRequest, state EtcdState) (ValueRevision, EtcdResponse) {
+func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
+	if s.Key != request.Key {
+		panic("multiple keys not supported")
+	}
 	resp := EtcdResponse{}
-
 	switch request.Op {
 	case Get:
-		resp.GetData = v.Value
+		resp.GetData = s.Value
 	case Put:
-		v.Value = request.PutData
-		v.Revision += 1
-		//a Put with no lease on the same key will detach the key from the lease
-		v.LeaseID = 0
-	case PutWithLease:
-		if _, ok := state.Leases[request.leaseID]; ok {
-			//only update if the lease is ok
-			v.Value = request.PutData
-			v.Revision += 1
-			v.LeaseID = request.leaseID
-		}
+		s.Value = request.PutData
+		s.Revision += 1
 	case Delete:
-		if v.Value != "" {
-			v.Value = ""
-			v.Revision += 1
-			v.LeaseID = 0
+		if s.Value != "" {
+			s.Value = ""
+			s.Revision += 1
 			resp.Deleted = 1
 		}
 	case Txn:
-		if v.Value == request.TxnExpectData {
-			v.Value = request.TxnNewData
-			v.Revision += 1
+		if s.Value == request.TxnExpectData {
+			s.Value = request.TxnNewData
+			s.Revision += 1
 			resp.TxnSucceeded = true
-		}
-	case LeaseRevoke:
-		//If the lease is attached, delete the key
-		if v.LeaseID == request.leaseID {
-			//same as delete.
-			if v.Value != "" {
-				v.Value = ""
-				v.Revision += 1
-				v.LeaseID = 0
-			}
 		}
 	default:
 		panic("unsupported operation")
 	}
-
-	resp.Revision = v.Revision
-	return v, resp
-}
-
-// stepLease will return true if the given request may affect the value of the key
-func stepLease(request EtcdRequest, resp EtcdResponse, state *EtcdState) bool {
-	valueCanChange := false
-	switch request.Op {
-	case LeaseGrant:
-		if resp.Err != nil {
-			break
-		}
-		lease := EtcdLease{LeaseID: resp.leaseID}
-		state.Leases[resp.leaseID] = lease
-	case LeaseRevoke:
-		if resp.Err != nil {
-			break
-		}
-		delete(state.Leases, request.leaseID)
-		valueCanChange = true
-	default:
-		valueCanChange = true
-	}
-	return valueCanChange
+	resp.Revision = s.Revision
+	return s, resp
 }
