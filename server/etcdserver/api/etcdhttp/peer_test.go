@@ -29,6 +29,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"github.com/coreos/go-semver/semver"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"

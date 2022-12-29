@@ -19,9 +19,10 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.uber.org/zap/zaptest"
 
 	"github.com/jonboulle/clockwork"
 )

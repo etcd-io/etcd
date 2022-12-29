@@ -21,12 +21,13 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/reflect/protoreflect"
+
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/raft/v3/raftpb"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func TestEtcdVersionFromEntry(t *testing.T) {

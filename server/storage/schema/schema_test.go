@@ -20,6 +20,8 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/api/v3/version"
@@ -28,7 +30,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	waltesting "go.etcd.io/etcd/server/v3/storage/wal/testing"
 	"go.etcd.io/raft/v3/raftpb"
-	"go.uber.org/zap"
 )
 
 func TestValidate(t *testing.T) {

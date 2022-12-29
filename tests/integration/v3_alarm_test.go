@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -30,7 +32,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.uber.org/zap/zaptest"
 )
 
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply

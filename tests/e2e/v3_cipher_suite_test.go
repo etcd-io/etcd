@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )

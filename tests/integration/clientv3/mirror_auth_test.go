@@ -22,11 +22,12 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/mirror"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"google.golang.org/grpc"
 )
 
 func TestMirrorSync_Authenticated(t *testing.T) {

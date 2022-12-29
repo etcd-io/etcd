@@ -22,10 +22,11 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.uber.org/zap/zaptest"
 )
 
 // TestWatcherWatchID tests that each watcher provides unique watchID,

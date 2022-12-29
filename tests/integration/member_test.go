@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 

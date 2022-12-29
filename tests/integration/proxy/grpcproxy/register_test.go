@@ -18,11 +18,12 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestRegister(t *testing.T) {

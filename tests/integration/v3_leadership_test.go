@@ -21,10 +21,11 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
-	"golang.org/x/sync/errgroup"
 )
 
 func TestMoveLeader(t *testing.T)        { testMoveLeader(t, true) }
