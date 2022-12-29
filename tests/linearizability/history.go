@@ -60,7 +60,7 @@ func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, r
 }
 
 func (h *appendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Time, resp *clientv3.PutResponse, err error) {
-	request := EtcdRequest{Op: PutWithLease, Key: key, PutData: value, leaseID: leaseID}
+	request := EtcdRequest{Op: PutWithLease, Key: key, PutData: value, LeaseID: leaseID}
 	h.appendPut(request, start, end, resp, err)
 }
 
@@ -125,7 +125,7 @@ func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, 
 }
 
 func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
-	request := EtcdRequest{Op: LeaseGrant}
+	request := EtcdRequest{Op: LeaseGrant, LeaseID: int64(resp.ID)}
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
@@ -138,13 +138,13 @@ func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.UnixNano(),
-		Output:   EtcdResponse{Err: err, Revision: revision, leaseID: int64(resp.ID)},
+		Output:   EtcdResponse{Err: err, Revision: revision},
 		Return:   end.UnixNano(),
 	})
 }
 
 func (h *appendableHistory) AppendLeaseRevoke(id int64, start time.Time, end time.Time, resp *clientv3.LeaseRevokeResponse, err error) {
-	request := EtcdRequest{Op: LeaseRevoke, leaseID: id}
+	request := EtcdRequest{Op: LeaseRevoke, LeaseID: id}
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return

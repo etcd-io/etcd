@@ -17,17 +17,19 @@ package linearizability
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/anishathalye/porcupine"
 )
 
 type Operation string
 
 const (
-	Get    Operation = "get"
-	Put    Operation = "put"
-	Delete Operation = "delete"
-	Txn    Operation = "txn"
+	Get          Operation = "get"
+	Put          Operation = "put"
+	Delete       Operation = "delete"
+	Txn          Operation = "txn"
+	PutWithLease Operation = "putWithLease"
+	LeaseGrant   Operation = "leaseGrant"
+	LeaseRevoke  Operation = "leaseRevoke"
 )
 
 type EtcdRequest struct {
@@ -36,6 +38,7 @@ type EtcdRequest struct {
 	PutData       string
 	TxnExpectData string
 	TxnNewData    string
+	LeaseID       int64
 }
 
 type EtcdResponse struct {
@@ -46,10 +49,17 @@ type EtcdResponse struct {
 	Err          error
 }
 
+type EtcdLease struct {
+	LeaseID int64
+	//TODO state about key attachment?
+}
+
 type EtcdState struct {
 	Revision int64
 	Key      string
 	Value    string
+	Leases   map[int64]EtcdLease
+	LeaseID  int64
 }
 
 var etcdModel = porcupine.Model{
@@ -94,6 +104,24 @@ var etcdModel = porcupine.Model{
 				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %s", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.Err)
 			} else {
 				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %v, rev: %d", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.TxnSucceeded, response.Revision)
+			}
+		case LeaseGrant:
+			if response.Err != nil {
+				return fmt.Sprintf("leaseGrant(%q) -> %q", request.LeaseID, response.Err)
+			} else {
+				return fmt.Sprintf("leaseGrant(%q) -> ok rev: %q", request.LeaseID, response.Revision)
+			}
+		case LeaseRevoke:
+			if response.Err != nil {
+				return fmt.Sprintf("leaseRevoke(%q) -> %q", request.LeaseID, response.Err)
+			} else {
+				return fmt.Sprintf("leaseRevoke(%q) -> ok rev: %q", request.LeaseID, response.Revision)
+			}
+		case PutWithLease:
+			if response.Err != nil {
+				return fmt.Sprintf("putWithLease(%q, %q, %d) -> %s", request.Key, request.PutData, request.LeaseID, response.Err)
+			} else {
+				return fmt.Sprintf("putWithLease(%q, %q, %d) -> ok, rev: %d", request.Key, request.PutData, request.LeaseID, response.Revision)
 			}
 		default:
 			return "<invalid>"
@@ -143,6 +171,8 @@ func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 		Key:      request.Key,
 		Revision: response.Revision,
 	}
+	state.Leases = make(map[int64]EtcdLease)
+
 	switch request.Op {
 	case Get:
 		if response.GetData != "" {
@@ -156,6 +186,14 @@ func initStates(request EtcdRequest, response EtcdResponse) []EtcdState {
 			state.Value = request.TxnNewData
 		}
 		return []EtcdState{}
+	case PutWithLease:
+		if _, ok := state.Leases[request.LeaseID]; ok {
+			state.Value = request.PutData
+		}
+	case LeaseGrant:
+		lease := EtcdLease{LeaseID: request.LeaseID}
+		state.Leases[request.LeaseID] = lease
+	case LeaseRevoke:
 	default:
 		panic("Unknown operation")
 	}
@@ -173,6 +211,7 @@ func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
 	case Put:
 		s.Value = request.PutData
 		s.Revision += 1
+		s.LeaseID = 0
 	case Delete:
 		if s.Value != "" {
 			s.Value = ""
@@ -185,6 +224,26 @@ func stepState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
 			s.Revision += 1
 			resp.TxnSucceeded = true
 		}
+	case PutWithLease:
+		if _, ok := s.Leases[request.LeaseID]; ok {
+			//same as put but only update if the lease is ok
+			s.Value = request.PutData
+			s.Revision += 1
+			s.LeaseID = request.LeaseID
+		}
+	case LeaseRevoke:
+		delete(s.Leases, request.LeaseID)
+		//If the lease is attached, delete the key
+		if s.LeaseID == request.LeaseID {
+			//same as delete.
+			if s.Value != "" {
+				s.Value = ""
+				s.Revision += 1
+			}
+		}
+	case LeaseGrant:
+		lease := EtcdLease{LeaseID: request.LeaseID}
+		s.Leases[request.LeaseID] = lease
 	default:
 		panic("unsupported operation")
 	}
