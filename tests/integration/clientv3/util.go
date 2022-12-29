@@ -21,10 +21,11 @@ import (
 	"testing"
 	"time"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // MustWaitPinReady waits up to 3-second until connection is up (pin endpoint).

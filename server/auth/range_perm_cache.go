@@ -15,9 +15,10 @@
 package auth
 
 import (
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/pkg/v3/adt"
-	"go.uber.org/zap"
 )
 
 func getMergedPerms(tx AuthReadTx, userName string) *unifiedRangePermissions {

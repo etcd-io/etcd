@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"sort"
 
+	"go.uber.org/zap"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -27,7 +29,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.uber.org/zap"
 )
 
 func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, txnWrite mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {

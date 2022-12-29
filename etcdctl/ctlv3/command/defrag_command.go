@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 

@@ -17,6 +17,8 @@ package verify
 import (
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
@@ -24,7 +26,6 @@ import (
 	wal2 "go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
-	"go.uber.org/zap"
 )
 
 const ENV_VERIFY_VALUE_STORAGE_WAL verify.VerificationType = "storage_wal"

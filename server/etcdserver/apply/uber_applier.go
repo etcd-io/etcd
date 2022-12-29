@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	"go.uber.org/zap"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -27,7 +29,6 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.uber.org/zap"
 )
 
 type UberApplier interface {

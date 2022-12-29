@@ -21,8 +21,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 func NewTmpBackendFromCfg(t testing.TB, bcfg backend.BackendConfig) (backend.Backend, string) {

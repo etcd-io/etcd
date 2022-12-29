@@ -18,10 +18,11 @@ import (
 	"log"
 	"os"
 
-	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc/grpclog"
+
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 )
 
 func init() {

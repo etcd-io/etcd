@@ -26,6 +26,8 @@ import (
 	"reflect"
 	"strings"
 
+	"go.uber.org/zap"
+
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -45,7 +47,6 @@ import (
 	"go.etcd.io/etcd/server/v3/verify"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
-	"go.uber.org/zap"
 )
 
 // Manager defines snapshot methods.

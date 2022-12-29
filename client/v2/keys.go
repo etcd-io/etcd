@@ -25,8 +25,9 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/pathutil"
 	kjson "sigs.k8s.io/json"
+
+	"go.etcd.io/etcd/client/pkg/v3/pathutil"
 )
 
 const (

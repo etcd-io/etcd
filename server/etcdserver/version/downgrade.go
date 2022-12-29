@@ -16,8 +16,9 @@ package version
 
 import (
 	"github.com/coreos/go-semver/semver"
-	"go.etcd.io/etcd/api/v3/version"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/api/v3/version"
 )
 
 type DowngradeInfo struct {

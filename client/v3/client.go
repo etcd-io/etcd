@@ -23,11 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/pkg/v3/logutil"
-	"go.etcd.io/etcd/client/v3/credentials"
-	"go.etcd.io/etcd/client/v3/internal/endpoint"
-	"go.etcd.io/etcd/client/v3/internal/resolver"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -35,6 +30,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
+
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/v3/credentials"
+	"go.etcd.io/etcd/client/v3/internal/endpoint"
+	"go.etcd.io/etcd/client/v3/internal/resolver"
 )
 
 var (
