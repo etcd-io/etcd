@@ -453,6 +453,7 @@ func TestModel(t *testing.T) {
 				}
 				if ok {
 					state = newState
+					t.Logf("state: %v", state)
 				}
 			}
 		})

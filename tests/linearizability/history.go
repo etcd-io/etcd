@@ -66,9 +66,9 @@ func (h *appendableHistory) AppendPutWithLease(key, value string, leaseID int64,
 }
 
 // TODO This can be made more generic - appendReq - to accept req and resp. That way it can be used for all operations.
-func (h *appendableHistory) appendPut(req EtcdRequest, start, end time.Time, resp *clientv3.PutResponse, err error) {
+func (h *appendableHistory) appendPut(request EtcdRequest, start, end time.Time, resp *clientv3.PutResponse, err error) {
 	if err != nil {
-		h.appendFailed(req, start, err)
+		h.appendFailed(request, start, err)
 		return
 	}
 	var revision int64
@@ -77,7 +77,7 @@ func (h *appendableHistory) appendPut(req EtcdRequest, start, end time.Time, res
 	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
-		Input:    req,
+		Input:    request,
 		Call:     start.UnixNano(),
 		Output:   EtcdResponse{Err: err, Revision: revision},
 		Return:   end.UnixNano(),
