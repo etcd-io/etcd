@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build linux && !cov
-// +build linux,!cov
 
 package osutil
 
