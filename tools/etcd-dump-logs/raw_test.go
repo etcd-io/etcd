@@ -18,14 +18,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap/zaptest"
 )
 
 func Test_readRaw(t *testing.T) {
 	path := t.TempDir()
 	mustCreateWalLog(t, path)
 	var out bytes.Buffer
-	readRaw(zaptest.NewLogger(t), nil, walDir(path), &out)
+	readRaw(nil, walDir(path), &out)
 	assert.Equal(t,
 		`CRC: 0
 Metadata: 

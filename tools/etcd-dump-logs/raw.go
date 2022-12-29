@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
-
-	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -32,19 +31,20 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-func readRaw(lg *zap.Logger, fromIndex *uint64, waldir string, out io.Writer) {
+func readRaw(fromIndex *uint64, waldir string, out io.Writer) {
 	var walReaders []fileutil.FileReader
 	files, err := ioutil.ReadDir(waldir)
 	if err != nil {
-		lg.Fatal("Failed to read directory.", zap.String("directory", waldir), zap.Error(err))
+		log.Fatalf("Error: Failed to read directory '%s' error:%v", waldir, err)
 	}
 	for _, finfo := range files {
 		if filepath.Ext(finfo.Name()) != ".wal" {
-			lg.Warn("Ignoring not .wal file", zap.String("filename", finfo.Name()))
+			log.Printf("Warning: Ignoring not .wal file: %s", finfo.Name())
+			continue
 		}
 		f, err := os.Open(filepath.Join(waldir, finfo.Name()))
 		if err != nil {
-			lg.Fatal("Failed to read file", zap.String("filename", finfo.Name()), zap.Error(err))
+			log.Printf("Error: Failed to read file: %s . error:%v", finfo.Name(), err)
 		}
 		walReaders = append(walReaders, fileutil.NewFileReader(f))
 	}
@@ -56,10 +56,10 @@ func readRaw(lg *zap.Logger, fromIndex *uint64, waldir string, out io.Writer) {
 		err := decoder.Decode(&rec)
 		if err == nil || errors.Is(err, walpb.ErrCRCMismatch) {
 			if err != nil && !crcDesync {
-				lg.Warn("Reading entry failed with CRC error", zap.Error(err))
+				log.Printf("Error: Reading entry failed with CRC error: %c", err)
 				crcDesync = true
 			}
-			printRec(lg, &rec, fromIndex, out)
+			printRec(&rec, fromIndex, out)
 			if rec.Type == wal.CrcType {
 				decoder.UpdateCRC(rec.Crc)
 				crcDesync = false
@@ -70,13 +70,13 @@ func readRaw(lg *zap.Logger, fromIndex *uint64, waldir string, out io.Writer) {
 			fmt.Fprintf(out, "EOF: All entries were processed.\n")
 			break
 		} else {
-			lg.Error("Reading failed", zap.Error(err))
+			log.Printf("Error: Reading failed: %v", err)
 			break
 		}
 	}
 }
 
-func printRec(lg *zap.Logger, rec *walpb.Record, fromIndex *uint64, out io.Writer) {
+func printRec(rec *walpb.Record, fromIndex *uint64, out io.Writer) {
 	switch rec.Type {
 	case wal.MetadataType:
 		var metadata etcdserverpb.Metadata
@@ -102,6 +102,6 @@ func printRec(lg *zap.Logger, rec *walpb.Record, fromIndex *uint64, out io.Write
 			fmt.Fprintf(out, "HardState: %s\n", state.String())
 		}
 	default:
-		lg.Error("Unexpected WAL log type", zap.Int64("type", rec.Type))
+		log.Printf("Unexpected WAL log type: %d", rec.Type)
 	}
 }

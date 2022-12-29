@@ -96,7 +96,7 @@ and output a hex encoded line of binary for each input line`)
 		if wd == "" {
 			wd = walDir(dataDir)
 		}
-		readRaw(lg, index, wd, os.Stdout)
+		readRaw(index, wd, os.Stdout)
 	}
 }
 
@@ -114,7 +114,7 @@ func readUsingReadAll(lg *zap.Logger, index *uint64, snapfile *string, dataDir s
 		walsnap.Index = *index
 	} else {
 		if *snapfile == "" {
-			ss := snap.New(zap.NewExample(), snapDir(dataDir))
+			ss := snap.New(lg, snapDir(dataDir))
 			snapshot, err = ss.Load()
 		} else {
 			snapshot, err = snap.Read(lg, filepath.Join(snapDir(dataDir), *snapfile))
@@ -381,7 +381,7 @@ func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry
 			printer(e)
 			if streamdecoder == "" {
 				fmt.Println()
-				//continue
+				continue
 			}
 
 			// if decoder is set, pass the e.Data to stdin and read the stdout from decoder
