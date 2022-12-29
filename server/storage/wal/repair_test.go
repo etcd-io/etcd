@@ -57,7 +57,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	require.NoError(t, err)
 
 	for _, es := range ents {
-		assert.NoError(t, w.Save(raftpb.HardState{}, es))
+		require.NoError(t, w.Save(raftpb.HardState{}, es))
 	}
 
 	offset, err := w.tail().Seek(0, io.SeekCurrent)

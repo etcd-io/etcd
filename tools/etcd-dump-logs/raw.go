@@ -67,7 +67,7 @@ func readRaw(lg *zap.Logger, fromIndex *uint64, waldir string, out io.Writer) {
 			continue
 		}
 		if errors.Is(err, io.EOF) {
-			lg.Info("EOF: All entries were processed")
+			fmt.Fprintf(out, "EOF: All entries were processed.\n")
 			break
 		} else {
 			lg.Error("Reading failed", zap.Error(err))
