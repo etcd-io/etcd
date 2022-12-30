@@ -106,6 +106,9 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 	if o.Limit != 0 {
 		args = append(args, fmt.Sprintf("--limit=%d", o.Limit))
 	}
+	if o.MaxBytes != 0 {
+		args = append(args, fmt.Sprintf("--max-bytes=%d", o.MaxBytes))
+	}
 	if o.FromKey {
 		args = append(args, "--from-key")
 	}
