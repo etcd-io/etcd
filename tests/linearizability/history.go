@@ -78,6 +78,67 @@ func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, r
 	})
 }
 
+func (h *appendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Time, resp *clientv3.PutResponse, err error) {
+	request := putWithLeaseRequest(key, value, leaseID)
+	if err != nil {
+		h.appendFailed(request, start, err)
+		return
+	}
+	var revision int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+	}
+	h.successful = append(h.successful, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.UnixNano(),
+		Output:   putResponse(revision),
+		Return:   end.UnixNano(),
+	})
+}
+
+func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
+	var leaseID int64
+	if resp != nil {
+		leaseID = int64(resp.ID)
+	}
+	request := leaseGrantRequest(leaseID)
+	if err != nil {
+		h.appendFailed(request, start, err)
+		return
+	}
+	var revision int64
+	if resp != nil && resp.ResponseHeader != nil {
+		revision = resp.ResponseHeader.Revision
+	}
+	h.successful = append(h.successful, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.UnixNano(),
+		Output:   leaseGrantResponse(revision),
+		Return:   end.UnixNano(),
+	})
+}
+
+func (h *appendableHistory) AppendLeaseRevoke(id int64, start time.Time, end time.Time, resp *clientv3.LeaseRevokeResponse, err error) {
+	request := leaseRevokeRequest(id)
+	if err != nil {
+		h.appendFailed(request, start, err)
+		return
+	}
+	var revision int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+	}
+	h.successful = append(h.successful, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.UnixNano(),
+		Output:   leaseRevokeResponse(revision),
+		Return:   end.UnixNano(),
+	})
+}
+
 func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
 	request := deleteRequest(key)
 	if err != nil {
@@ -169,6 +230,26 @@ func txnResponse(succeeded bool, revision int64) EtcdResponse {
 		result = []EtcdOperationResult{{}}
 	}
 	return EtcdResponse{Result: result, TxnFailure: !succeeded, Revision: revision}
+}
+
+func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
+	return EtcdRequest{Ops: []EtcdOperation{{Type: PutWithLease, Key: key, Value: value, LeaseID: leaseID}}}
+}
+
+func leaseGrantRequest(leaseID int64) EtcdRequest {
+	return EtcdRequest{Ops: []EtcdOperation{{Type: LeaseGrant, LeaseID: leaseID}}}
+}
+
+func leaseGrantResponse(revision int64) EtcdResponse {
+	return EtcdResponse{Result: []EtcdOperationResult{{}}, Revision: revision}
+}
+
+func leaseRevokeRequest(leaseID int64) EtcdRequest {
+	return EtcdRequest{Ops: []EtcdOperation{{Type: LeaseRevoke, LeaseID: leaseID}}}
+}
+
+func leaseRevokeResponse(revision int64) EtcdResponse {
+	return EtcdResponse{Result: []EtcdOperationResult{{}}, Revision: revision}
 }
 
 type history struct {

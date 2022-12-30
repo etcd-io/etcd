@@ -402,6 +402,122 @@ func TestModelStep(t *testing.T) {
 				{req: txnRequest("key", "8", "10"), resp: txnResponse(false, 9)},
 			},
 		},
+		{
+			name: "Put with valid lease id should succeed. Put with invalid lease id should fail",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key", "3", 2), resp: putResponse(3), failure: true},
+				{req: getRequest("key"), resp: getResponse("2", 2)},
+			},
+		},
+		{
+			name: "Put with valid lease id should succeed. Put with expired lease id should fail",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: getRequest("key"), resp: getResponse("2", 2)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: putWithLeaseRequest("key", "4", 1), resp: putResponse(4), failure: true},
+				{req: getRequest("key"), resp: getResponse("", 3)},
+			},
+		},
+		{
+			name: "Revoke should increment the revision",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: getRequest("key"), resp: getResponse("", 3)},
+			},
+		},
+		{
+			name: "Put following a PutWithLease will detach the key from the lease",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: putRequest("key", "3"), resp: putResponse(3)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: getRequest("key"), resp: getResponse("3", 3)},
+			},
+		},
+		{
+			name: "Change lease. Revoking older lease should not increment revision",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: leaseGrantRequest(2), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key", "3", 2), resp: putResponse(3)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: getRequest("key"), resp: getResponse("3", 3)},
+				{req: leaseRevokeRequest(2), resp: leaseRevokeResponse(4)},
+				{req: getRequest("key"), resp: getResponse("", 4)},
+			},
+		},
+		{
+			name: "Update key with same lease",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key", "3", 1), resp: putResponse(3)},
+				{req: getRequest("key"), resp: getResponse("3", 3)},
+			},
+		},
+		{
+			name: "Deleting a leased key - revoke should not increment revision",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: deleteRequest("key"), resp: deleteResponse(1, 3)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(4), failure: true},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+			},
+		},
+		{
+			name: "Lease a few keys - revoke should increment revision only once",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key1", "1", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key2", "2", 1), resp: putResponse(3)},
+				{req: putWithLeaseRequest("key3", "3", 1), resp: putResponse(4)},
+				{req: putWithLeaseRequest("key4", "4", 1), resp: putResponse(5)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(6)},
+			},
+		},
+		{
+			name: "Lease some keys then delete some of them. Revoke should increment revision since some keys were still leased",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key1", "1", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key2", "2", 1), resp: putResponse(3)},
+				{req: putWithLeaseRequest("key3", "3", 1), resp: putResponse(4)},
+				{req: putWithLeaseRequest("key4", "4", 1), resp: putResponse(5)},
+				{req: deleteRequest("key1"), resp: deleteResponse(1, 6)},
+				{req: deleteRequest("key3"), resp: deleteResponse(1, 7)},
+				{req: deleteRequest("key4"), resp: deleteResponse(1, 8)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(9)},
+				{req: deleteRequest("key2"), resp: deleteResponse(0, 9)},
+				{req: getRequest("key1"), resp: getResponse("", 9)},
+				{req: getRequest("key2"), resp: getResponse("", 9)},
+				{req: getRequest("key3"), resp: getResponse("", 9)},
+				{req: getRequest("key4"), resp: getResponse("", 9)},
+			},
+		},
+		{
+			name: "Lease some keys then delete all of them. Revoke should not increment",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key1", "1", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key2", "2", 1), resp: putResponse(3)},
+				{req: putWithLeaseRequest("key3", "3", 1), resp: putResponse(4)},
+				{req: putWithLeaseRequest("key4", "4", 1), resp: putResponse(5)},
+				{req: deleteRequest("key1"), resp: deleteResponse(1, 6)},
+				{req: deleteRequest("key2"), resp: deleteResponse(1, 7)},
+				{req: deleteRequest("key3"), resp: deleteResponse(1, 8)},
+				{req: deleteRequest("key4"), resp: deleteResponse(1, 9)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(9)},
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

@@ -26,16 +26,18 @@ import (
 )
 
 var (
-	DefaultTraffic Traffic = readWriteSingleKey{keyCount: 4, writes: []opChance{{operation: Put, chance: 60}, {operation: Delete, chance: 20}, {operation: Txn, chance: 20}}}
+	DefaultLeaseTTL int64   = 7200
+	DefaultTraffic  Traffic = readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 50}, {operation: Delete, chance: 10}, {operation: PutWithLease, chance: 10}, {operation: LeaseRevoke, chance: 10}, {operation: Txn, chance: 20}}}
 )
 
 type Traffic interface {
-	Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider)
+	Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider, lm clientId2LeaseIdMapper)
 }
 
 type readWriteSingleKey struct {
 	keyCount int
 	writes   []opChance
+	leaseTTL int64
 }
 
 type opChance struct {
@@ -43,7 +45,7 @@ type opChance struct {
 	chance    int
 }
 
-func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider) {
+func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider, lm clientId2LeaseIdMapper) {
 
 	for {
 		select {
@@ -58,7 +60,7 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
-		t.Write(ctx, c, limiter, key, fmt.Sprintf("%d", ids.RequestId()), resp)
+		t.Write(ctx, c, limiter, key, fmt.Sprintf("%d", ids.RequestId()), lm, c.history.id, resp)
 	}
 }
 
@@ -72,7 +74,7 @@ func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limite
 	return resp, err
 }
 
-func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lastValues []*mvccpb.KeyValue) error {
+func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lm clientId2LeaseIdMapper, cid int, lastValues []*mvccpb.KeyValue) error {
 	putCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
 
 	var err error
@@ -87,6 +89,24 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 			expectValue = string(lastValues[0].Value)
 		}
 		err = c.Txn(putCtx, key, expectValue, newValue)
+	case PutWithLease:
+		leaseId := lm.LeaseId(cid)
+		if leaseId == 0 {
+			leaseId, err = c.LeaseGrant(ctx, t.leaseTTL)
+			lm.AddLeaseId(cid, leaseId)
+		}
+		if leaseId != 0 {
+			err = c.PutWithLease(putCtx, key, newValue, leaseId)
+		}
+	case LeaseRevoke:
+		leaseId := lm.LeaseId(cid)
+		if leaseId != 0 {
+			err = c.LeaseRevoke(putCtx, leaseId)
+			//if LeaseRevoke has failed, do not remove the mapping.
+			if err == nil {
+				lm.RemoveLeaseId(cid)
+			}
+		}
 	default:
 		panic("invalid operation")
 	}
