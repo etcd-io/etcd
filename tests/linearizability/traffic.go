@@ -26,7 +26,8 @@ import (
 )
 
 var (
-	DefaultTraffic Traffic = readWriteSingleKey{keyCount: 4, writes: []opChance{{operation: Put, chance: 60}, {operation: Delete, chance: 20}, {operation: Txn, chance: 20}}}
+	DefaultLeaseTTL int64   = 7200
+	DefaultTraffic  Traffic = readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 50}, {operation: Delete, chance: 10}, {operation: PutWithLease, chance: 10}, {operation: LeaseRevoke, chance: 10}, {operation: Txn, chance: 20}}}
 )
 
 type Traffic interface {
@@ -36,6 +37,8 @@ type Traffic interface {
 type readWriteSingleKey struct {
 	keyCount int
 	writes   []opChance
+	leaseId  int64
+	leaseTTL int64
 }
 
 type opChance struct {
@@ -87,6 +90,20 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 			expectValue = string(lastValues[0].Value)
 		}
 		err = c.Txn(putCtx, key, expectValue, newValue)
+	case PutWithLease:
+		if t.leaseId == 0 {
+			t.leaseId, err = c.LeaseGrant(context.TODO(), t.leaseTTL)
+		}
+		if t.leaseId != 0 {
+			err = c.PutWithLease(putCtx, key, newValue, t.leaseId)
+		}
+	case LeaseRevoke:
+		if t.leaseId != 0 {
+			err = c.LeaseRevoke(putCtx, t.leaseId)
+			if err == nil {
+				t.leaseId = 0
+			}
+		}
 	default:
 		panic("invalid operation")
 	}

@@ -24,10 +24,13 @@ import (
 type Operation string
 
 const (
-	Get    Operation = "get"
-	Put    Operation = "put"
-	Delete Operation = "delete"
-	Txn    Operation = "txn"
+	Get          Operation = "get"
+	Put          Operation = "put"
+	Delete       Operation = "delete"
+	Txn          Operation = "txn"
+	PutWithLease Operation = "putWithLease"
+	LeaseGrant   Operation = "leaseGrant"
+	LeaseRevoke  Operation = "leaseRevoke"
 )
 
 type EtcdRequest struct {
@@ -36,6 +39,7 @@ type EtcdRequest struct {
 	PutData       string
 	TxnExpectData string
 	TxnNewData    string
+	LeaseID       int64
 }
 
 type EtcdResponse struct {
@@ -46,11 +50,17 @@ type EtcdResponse struct {
 	Err          error
 }
 
+type EtcdLease struct {
+	LeaseID int64
+	Keys    map[string]bool
+}
 type PossibleStates []EtcdState
 
 type EtcdState struct {
 	Revision  int64
 	KeyValues map[string]string
+	KeyLeases map[string]int64
+	Leases    map[int64]EtcdLease
 }
 
 var etcdModel = porcupine.Model{
@@ -98,6 +108,24 @@ var etcdModel = porcupine.Model{
 			} else {
 				return fmt.Sprintf("txn(if(value(%q)=%q).then(put(%q, %q)) -> %v, rev: %d", request.Key, request.TxnExpectData, request.Key, request.TxnNewData, response.TxnSucceeded, response.Revision)
 			}
+		case LeaseGrant:
+			if response.Err != nil {
+				return fmt.Sprintf("leaseGrant(%q) -> %q", request.LeaseID, response.Err)
+			} else {
+				return fmt.Sprintf("leaseGrant(%q) -> ok rev: %q", request.LeaseID, response.Revision)
+			}
+		case LeaseRevoke:
+			if response.Err != nil {
+				return fmt.Sprintf("leaseRevoke(%q) -> %q", request.LeaseID, response.Err)
+			} else {
+				return fmt.Sprintf("leaseRevoke(%q) -> ok rev: %q", request.LeaseID, response.Revision)
+			}
+		case PutWithLease:
+			if response.Err != nil {
+				return fmt.Sprintf("putWithLease(%q, %q, %d) -> %s", request.Key, request.PutData, request.LeaseID, response.Err)
+			} else {
+				return fmt.Sprintf("putWithLease(%q, %q, %d) -> ok, rev: %d", request.Key, request.PutData, request.LeaseID, response.Revision)
+			}
 		default:
 			return "<invalid>"
 		}
@@ -125,6 +153,8 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 	state := EtcdState{
 		Revision:  response.Revision,
 		KeyValues: map[string]string{},
+		KeyLeases: map[string]int64{},
+		Leases:    map[int64]EtcdLease{},
 	}
 	switch request.Op {
 	case Get:
@@ -138,6 +168,24 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 		if response.TxnSucceeded {
 			state.KeyValues[request.Key] = request.TxnNewData
 		}
+	case PutWithLease:
+		if _, ok := state.Leases[request.LeaseID]; ok {
+			state.KeyValues[request.Key] = request.PutData
+			//detach from old lease id but we dont expect that at init
+			if _, ok := state.KeyLeases[request.Key]; ok {
+				panic("old lease id found at init")
+			}
+			//attach to new lease id
+			state.KeyLeases[request.Key] = request.LeaseID
+			state.Leases[request.LeaseID].Keys[request.Key] = true
+		}
+	case LeaseGrant:
+		lease := EtcdLease{
+			LeaseID: request.LeaseID,
+			Keys:    map[string]bool{},
+		}
+		state.Leases[request.LeaseID] = lease
+	case LeaseRevoke:
 	default:
 		panic("Unknown operation")
 	}
@@ -179,9 +227,15 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 	case Put:
 		s.KeyValues[request.Key] = request.PutData
 		s.Revision += 1
+		//Put following PutWithLease will detach the key from the lease
+		if oldLeaseId, ok := s.KeyLeases[request.Key]; ok {
+			delete(s.Leases[oldLeaseId].Keys, request.Key)
+			delete(s.KeyLeases, request.Key)
+		}
 	case Delete:
 		if _, ok := s.KeyValues[request.Key]; ok {
 			delete(s.KeyValues, request.Key)
+			delete(s.KeyLeases, request.Key)
 			s.Revision += 1
 			resp.Deleted = 1
 		}
@@ -191,6 +245,45 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 			s.Revision += 1
 			resp.TxnSucceeded = true
 		}
+	case PutWithLease:
+		if _, ok := s.Leases[request.LeaseID]; ok {
+			//handle put request.
+			s.KeyValues[request.Key] = request.PutData
+			s.Revision += 1
+
+			//detach from old lease id
+			if oldLeaseId, ok := s.KeyLeases[request.Key]; ok {
+				delete(s.Leases[oldLeaseId].Keys, request.Key)
+			}
+			//attach to new lease id
+			s.KeyLeases[request.Key] = request.LeaseID
+			s.Leases[request.LeaseID].Keys[request.Key] = true
+		}
+	case LeaseRevoke:
+		//Delete the keys attached to the lease
+		keyDeleted := false
+		for key, _ := range s.Leases[request.LeaseID].Keys {
+			//same as delete.
+			if _, ok := s.KeyValues[key]; ok {
+				if !keyDeleted {
+					keyDeleted = true
+				}
+				delete(s.KeyValues, key)
+				delete(s.KeyLeases, key)
+			}
+		}
+		//delete the lease
+		delete(s.Leases, request.LeaseID)
+
+		if keyDeleted {
+			s.Revision += 1
+		}
+	case LeaseGrant:
+		lease := EtcdLease{
+			LeaseID: request.LeaseID,
+			Keys:    map[string]bool{},
+		}
+		s.Leases[request.LeaseID] = lease
 	default:
 		panic("unsupported operation")
 	}
