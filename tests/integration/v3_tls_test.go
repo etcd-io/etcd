@@ -20,9 +20,10 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
-	"google.golang.org/grpc"
 )
 
 func TestTLSClientCipherSuitesValid(t *testing.T)    { testTLSCipherSuites(t, true) }

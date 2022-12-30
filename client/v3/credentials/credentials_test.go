@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
 

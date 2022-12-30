@@ -23,11 +23,12 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestWatch(t *testing.T) {

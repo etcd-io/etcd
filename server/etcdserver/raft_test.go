@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -29,7 +31,6 @@ import (
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestGetIDs(t *testing.T) {

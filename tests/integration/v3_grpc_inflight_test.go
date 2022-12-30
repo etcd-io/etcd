@@ -20,12 +20,13 @@ import (
 	"testing"
 	"time"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestV3MaintenanceDefragmentInflightRange ensures inflight range requests

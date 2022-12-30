@@ -21,7 +21,6 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -29,6 +28,7 @@ import (
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestEtcdVersionFromWAL(t *testing.T) {

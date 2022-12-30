@@ -26,11 +26,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 
 	"google.golang.org/grpc"
 )

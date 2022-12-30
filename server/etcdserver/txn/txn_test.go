@@ -19,11 +19,12 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.uber.org/zap/zaptest"
 
 	"github.com/stretchr/testify/assert"
 )

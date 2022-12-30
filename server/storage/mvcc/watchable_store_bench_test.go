@@ -19,10 +19,11 @@ import (
 	"os"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.uber.org/zap/zaptest"
 )
 
 func BenchmarkWatchableStorePut(b *testing.B) {

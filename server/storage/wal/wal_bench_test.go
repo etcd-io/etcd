@@ -17,8 +17,9 @@ package wal
 import (
 	"testing"
 
-	"go.etcd.io/raft/v3/raftpb"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func BenchmarkWrite100EntryWithoutBatch(b *testing.B) { benchmarkWriteEntry(b, 100, 0) }

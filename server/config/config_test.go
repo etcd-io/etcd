@@ -18,8 +18,9 @@ import (
 	"net/url"
 	"testing"
 
-	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
 func mustNewURLs(t *testing.T, urls []string) []url.URL {

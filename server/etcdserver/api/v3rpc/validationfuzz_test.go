@@ -18,12 +18,13 @@ import (
 	"context"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	txn "go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-	"go.uber.org/zap/zaptest"
 )
 
 func FuzzTxnRangeRequest(f *testing.F) {

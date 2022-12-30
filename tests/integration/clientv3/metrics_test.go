@@ -27,10 +27,11 @@ import (
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"google.golang.org/grpc"
+
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"google.golang.org/grpc"
 )
 
 func TestV3ClientMetrics(t *testing.T) {

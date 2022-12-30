@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 

@@ -22,8 +22,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.etcd.io/etcd/server/v3/embed"
 	"sigs.k8s.io/yaml"
+
+	"go.etcd.io/etcd/server/v3/embed"
 )
 
 func TestConfigParsingMemberFlags(t *testing.T) {

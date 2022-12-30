@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap/zaptest"
 
-	"github.com/jonboulle/clockwork"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func TestPeriodicHourly(t *testing.T) {
