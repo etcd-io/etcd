@@ -52,38 +52,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 
 	p := t.TempDir()
 
-	memberdir := filepath.Join(p, "member")
-	err = os.Mkdir(memberdir, 0744)
-	if err != nil {
-		t.Fatal(err)
-	}
-	waldir := walDir(p)
-	snapdir := snapDir(p)
-
-	w, err := wal.Create(zaptest.NewLogger(t), waldir, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = os.Mkdir(snapdir, 0744)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ents := make([]raftpb.Entry, 0)
-
-	// append entries into wal log
-	appendConfigChangeEnts(&ents)
-	appendNormalRequestEnts(&ents)
-	appendNormalIRREnts(&ents)
-	appendUnknownNormalEnts(&ents)
-
-	// force commit newly appended entries
-	err = w.Save(raftpb.HardState{}, ents)
-	if err != nil {
-		t.Fatal(err)
-	}
-	w.Close()
+	mustCreateWalLog(t, p)
 
 	argtests := []struct {
 		name         string
@@ -126,6 +95,41 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 		})
 	}
 
+}
+
+func mustCreateWalLog(t *testing.T, path string) {
+	memberdir := filepath.Join(path, "member")
+	err := os.Mkdir(memberdir, 0744)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waldir := walDir(path)
+	snapdir := snapDir(path)
+
+	w, err := wal.Create(zaptest.NewLogger(t), waldir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = os.Mkdir(snapdir, 0744)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ents := make([]raftpb.Entry, 0)
+
+	// append entries into wal log
+	appendConfigChangeEnts(&ents)
+	appendNormalRequestEnts(&ents)
+	appendNormalIRREnts(&ents)
+	appendUnknownNormalEnts(&ents)
+
+	// force commit newly appended entries
+	err = w.Save(raftpb.HardState{}, ents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
 }
 
 func appendConfigChangeEnts(ents *[]raftpb.Entry) {
