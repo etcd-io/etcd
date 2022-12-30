@@ -142,6 +142,7 @@ func getTest(cx ctlCtx) {
 		{[]string{"", "--from-key"}, kvs},
 		{[]string{"key", "--prefix"}, kvs},
 		{[]string{"key", "--prefix", "--limit=2"}, kvs[:2]},
+		{[]string{"key", "--prefix", "--max-bytes=36"}, kvs[:2]},
 		{[]string{"key", "--prefix", "--order=ASCEND", "--sort-by=MODIFY"}, kvs},
 		{[]string{"key", "--prefix", "--order=ASCEND", "--sort-by=VERSION"}, kvs},
 		{[]string{"key", "--prefix", "--sort-by=CREATE"}, kvs}, // ASCEND by default
