@@ -440,6 +440,28 @@ func TestModel(t *testing.T) {
 			},
 		},
 		{
+			name: "Change lease. Revoking older lease should not increment revision",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: LeaseGrant, LeaseID: 1}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: LeaseGrant, LeaseID: 2}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", LeaseID: 1, PutData: "2"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", LeaseID: 2, PutData: "3"}, resp: EtcdResponse{Revision: 3}},
+				{req: EtcdRequest{Op: LeaseRevoke, LeaseID: 1}, resp: EtcdResponse{Revision: 3}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 3}},
+				{req: EtcdRequest{Op: LeaseRevoke, LeaseID: 2}, resp: EtcdResponse{Revision: 4}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "", Revision: 4}},
+			},
+		},
+		{
+			name: "Update key with same lease",
+			operations: []testOperation{
+				{req: EtcdRequest{Op: LeaseGrant, LeaseID: 1}, resp: EtcdResponse{Revision: 1}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", LeaseID: 1, PutData: "2"}, resp: EtcdResponse{Revision: 2}},
+				{req: EtcdRequest{Op: PutWithLease, Key: "key", LeaseID: 1, PutData: "3"}, resp: EtcdResponse{Revision: 3}},
+				{req: EtcdRequest{Op: Get, Key: "key"}, resp: EtcdResponse{GetData: "3", Revision: 3}},
+			},
+		},
+		{
 			name: "Deleting a leased key - revoke should not increment revision",
 			operations: []testOperation{
 				{req: EtcdRequest{Op: LeaseGrant, LeaseID: 1}, resp: EtcdResponse{Revision: 1}},

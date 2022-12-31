@@ -110,15 +110,15 @@ var etcdModel = porcupine.Model{
 			}
 		case LeaseGrant:
 			if response.Err != nil {
-				return fmt.Sprintf("leaseGrant(%q) -> %q", request.LeaseID, response.Err)
+				return fmt.Sprintf("leaseGrant(%d) -> %q", request.LeaseID, response.Err)
 			} else {
-				return fmt.Sprintf("leaseGrant(%q) -> ok rev: %q", request.LeaseID, response.Revision)
+				return fmt.Sprintf("leaseGrant(%d) -> ok rev: %d", request.LeaseID, response.Revision)
 			}
 		case LeaseRevoke:
 			if response.Err != nil {
-				return fmt.Sprintf("leaseRevoke(%q) -> %q", request.LeaseID, response.Err)
+				return fmt.Sprintf("leaseRevoke(%d) -> %q", request.LeaseID, response.Err)
 			} else {
-				return fmt.Sprintf("leaseRevoke(%q) -> ok rev: %q", request.LeaseID, response.Revision)
+				return fmt.Sprintf("leaseRevoke(%d) -> ok rev: %d", request.LeaseID, response.Revision)
 			}
 		case PutWithLease:
 			if response.Err != nil {
@@ -234,14 +234,24 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 		}
 	case Delete:
 		if _, ok := s.KeyValues[request.Key]; ok {
+			//detach from old lease id
+			if oldLeaseId, ok := s.KeyLeases[request.Key]; ok {
+				delete(s.Leases[oldLeaseId].Keys, request.Key)
+				delete(s.KeyLeases, request.Key)
+			}
 			delete(s.KeyValues, request.Key)
-			delete(s.KeyLeases, request.Key)
 			s.Revision += 1
 			resp.Deleted = 1
 		}
 	case Txn:
 		if val := s.KeyValues[request.Key]; val == request.TxnExpectData {
 			s.KeyValues[request.Key] = request.TxnNewData
+			//detach from old lease id
+			//Txn put following PutWithLease will detach the key from the lease
+			if oldLeaseId, ok := s.KeyLeases[request.Key]; ok {
+				delete(s.Leases[oldLeaseId].Keys, request.Key)
+				delete(s.KeyLeases, request.Key)
+			}
 			s.Revision += 1
 			resp.TxnSucceeded = true
 		}

@@ -85,7 +85,11 @@ func (h *appendableHistory) appendPut(request EtcdRequest, start, end time.Time,
 
 }
 func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
-	request := EtcdRequest{Op: LeaseGrant, LeaseID: int64(resp.ID)}
+	var leaseId int64
+	if resp != nil {
+		leaseId = int64(resp.ID)
+	}
+	request := EtcdRequest{Op: LeaseGrant, LeaseID: leaseId}
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return

@@ -31,13 +31,12 @@ var (
 )
 
 type Traffic interface {
-	Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider)
+	Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider, lp leaseIdProvider)
 }
 
 type readWriteSingleKey struct {
 	keyCount int
 	writes   []opChance
-	leaseId  int64
 	leaseTTL int64
 }
 
@@ -46,7 +45,7 @@ type opChance struct {
 	chance    int
 }
 
-func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider) {
+func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider, lp leaseIdProvider) {
 
 	for {
 		select {
@@ -61,7 +60,7 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
-		t.Write(ctx, c, limiter, key, fmt.Sprintf("%d", ids.RequestId()), resp)
+		t.Write(ctx, c, limiter, key, fmt.Sprintf("%d", ids.RequestId()), lp, c.history.id, resp)
 	}
 }
 
@@ -75,7 +74,7 @@ func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limite
 	return resp, err
 }
 
-func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lastValues []*mvccpb.KeyValue) error {
+func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lp leaseIdProvider, cid int, lastValues []*mvccpb.KeyValue) error {
 	putCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
 
 	var err error
@@ -91,17 +90,20 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 		}
 		err = c.Txn(putCtx, key, expectValue, newValue)
 	case PutWithLease:
-		if t.leaseId == 0 {
-			t.leaseId, err = c.LeaseGrant(context.TODO(), t.leaseTTL)
+		leaseId := lp.LeaseId(cid)
+		if leaseId == 0 {
+			leaseId, err = c.LeaseGrant(ctx, t.leaseTTL)
+			lp.AddLeaseId(cid, leaseId)
 		}
-		if t.leaseId != 0 {
-			err = c.PutWithLease(putCtx, key, newValue, t.leaseId)
+		if leaseId != 0 {
+			err = c.PutWithLease(putCtx, key, newValue, leaseId)
 		}
 	case LeaseRevoke:
-		if t.leaseId != 0 {
-			err = c.LeaseRevoke(putCtx, t.leaseId)
+		leaseId := lp.LeaseId(cid)
+		if leaseId != 0 {
+			err = c.LeaseRevoke(putCtx, leaseId)
 			if err == nil {
-				t.leaseId = 0
+				lp.RemoveLeaseId(cid, leaseId)
 			}
 		}
 	default:
