@@ -17,9 +17,11 @@ package linearizability
 import (
 	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestModel(t *testing.T) {
+func TestModelStep(t *testing.T) {
 	tcs := []struct {
 		name       string
 		operations []testOperation
@@ -423,4 +425,61 @@ type testOperation struct {
 	req     EtcdRequest
 	resp    EtcdResponse
 	failure bool
+}
+
+func TestModelDescribe(t *testing.T) {
+	tcs := []struct {
+		req            EtcdRequest
+		resp           EtcdResponse
+		expectDescribe string
+	}{
+		{
+			req:            EtcdRequest{Op: Get, Key: "key1"},
+			resp:           EtcdResponse{Revision: 1},
+			expectDescribe: `get("key1") -> "", rev: 1`,
+		},
+		{
+			req:            EtcdRequest{Op: Get, Key: "key2"},
+			resp:           EtcdResponse{GetData: "2", Revision: 2},
+			expectDescribe: `get("key2") -> "2", rev: 2`,
+		},
+		{
+			req:            EtcdRequest{Op: Put, Key: "key3", PutData: "3"},
+			resp:           EtcdResponse{Revision: 3},
+			expectDescribe: `put("key3", "3") -> ok, rev: 3`,
+		},
+		{
+			req:            EtcdRequest{Op: Put, Key: "key4", PutData: "4"},
+			resp:           EtcdResponse{Err: errors.New("failed")},
+			expectDescribe: `put("key4", "4") -> failed`,
+		},
+		{
+			req:            EtcdRequest{Op: Delete, Key: "key5"},
+			resp:           EtcdResponse{Revision: 5, Deleted: 1},
+			expectDescribe: `delete("key5") -> ok, rev: 5 deleted:1`,
+		},
+		{
+			req:            EtcdRequest{Op: Delete, Key: "key6"},
+			resp:           EtcdResponse{Err: errors.New("failed")},
+			expectDescribe: `delete("key6") -> failed`,
+		},
+		{
+			req:            EtcdRequest{Op: Txn, Key: "key7", TxnExpectData: "7", TxnNewData: "77"},
+			resp:           EtcdResponse{Revision: 7},
+			expectDescribe: `txn(if(value("key7")="7").then(put("key7", "77")) -> false, rev: 7`,
+		},
+		{
+			req:            EtcdRequest{Op: Txn, Key: "key8", TxnExpectData: "8", TxnNewData: "88"},
+			resp:           EtcdResponse{TxnSucceeded: true, Revision: 8},
+			expectDescribe: `txn(if(value("key8")="8").then(put("key8", "88")) -> true, rev: 8`,
+		},
+		{
+			req:            EtcdRequest{Op: Txn, Key: "key9", TxnExpectData: "9", TxnNewData: "99"},
+			resp:           EtcdResponse{Err: errors.New("failed")},
+			expectDescribe: `txn(if(value("key9")="9").then(put("key9", "99")) -> failed`,
+		},
+	}
+	for _, tc := range tcs {
+		assert.Equal(t, tc.expectDescribe, etcdModel.DescribeOperation(tc.req, tc.resp))
+	}
 }
