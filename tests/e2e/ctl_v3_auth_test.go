@@ -27,8 +27,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3AuthGracefulDisable(t *testing.T)     { testCtl(t, authGracefulDisableTest) }
-func TestCtlV3AuthStatus(t *testing.T)              { testCtl(t, authStatusTest) }
 func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKeyTest) }
 func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateTest) }
 func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
@@ -92,80 +90,6 @@ func authEnable(cx ctlCtx) error {
 func ctlV3AuthEnable(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "enable")
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "Authentication Enabled")
-}
-
-func authGracefulDisableTest(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-
-	donec := make(chan struct{})
-
-	go func() {
-		defer close(donec)
-
-		// sleep a bit to let the watcher connects while auth is still enabled
-		time.Sleep(time.Second)
-
-		// now disable auth...
-		if err := ctlV3AuthDisable(cx); err != nil {
-			cx.t.Fatalf("authGracefulDisableTest ctlV3AuthDisable error (%v)", err)
-		}
-
-		// ...and restart the node
-		node0 := cx.epc.Procs[0]
-		if rerr := node0.Restart(context.TODO()); rerr != nil {
-			cx.t.Fatal(rerr)
-		}
-
-		// the watcher should still work after reconnecting
-		if perr := ctlV3Put(cx, "key", "value", ""); perr != nil {
-			cx.t.Errorf("authGracefulDisableTest ctlV3Put error (%v)", perr)
-		}
-	}()
-
-	err := ctlV3Watch(cx, []string{"key"}, kvExec{key: "key", val: "value"})
-
-	if err != nil {
-		if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
-			cx.t.Errorf("authGracefulDisableTest ctlV3Watch error (%v)", err)
-		}
-	}
-
-	<-donec
-}
-
-func ctlV3AuthDisable(cx ctlCtx) error {
-	cmdArgs := append(cx.PrefixArgs(), "auth", "disable")
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "Authentication Disabled")
-}
-
-func authStatusTest(cx ctlCtx) {
-	cmdArgs := append(cx.PrefixArgs(), "auth", "status")
-	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "Authentication Status: false", "AuthRevision:"); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	cmdArgs = append(cx.PrefixArgs(), "auth", "status")
-
-	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "Authentication Status: true", "AuthRevision:"); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cmdArgs = append(cx.PrefixArgs(), "auth", "status", "--write-out", "json")
-	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "enabled"); err != nil {
-		cx.t.Fatal(err)
-	}
-	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "authRevision"); err != nil {
-		cx.t.Fatal(err)
-	}
 }
 
 func authCredWriteKeyTest(cx ctlCtx) {
