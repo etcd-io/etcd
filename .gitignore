@@ -33,5 +33,8 @@ hack/tls-setup/certs
 /tools/local-tester/bridge/bridge
 /tools/proto-annotations/proto-annotations
 /tools/benchmark/benchmark
+/tools/rw-benchmark/rw-benchmark
+/tools/rw-benchmark/rw_benchmark.html
+/tools/rw-benchmark/*.csv
 /out
 /etcd-dump-logs

@@ -9,6 +9,15 @@
 		]
 	},
 	{
+		"project": "github.com/ahrtr/gocontainer",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/anishathalye/porcupine",
 		"licenses": [
 			{
@@ -118,6 +127,15 @@
 	},
 	{
 		"project": "github.com/fatih/color",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/go-echarts/go-echarts/v2",
 		"licenses": [
 			{
 				"type": "MIT License",

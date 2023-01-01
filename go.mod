@@ -15,10 +15,12 @@ replace (
 )
 
 require (
+	github.com/ahrtr/gocontainer v0.3.0
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/cheggaaa/pb/v3 v3.1.2
 	github.com/coreos/go-semver v0.3.1
 	github.com/dustin/go-humanize v1.0.1
+	github.com/go-echarts/go-echarts/v2 v2.2.5-0.20211021024243-33ae1aa415d6
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.2
 	go.etcd.io/bbolt v1.3.7

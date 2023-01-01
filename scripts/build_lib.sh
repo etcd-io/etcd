@@ -72,6 +72,7 @@ tools_build() {
   out="bin"
   if [[ -n "${BINDIR:-}" ]]; then out="${BINDIR}"; fi
   tools_path="tools/benchmark
+    tools/rw-benchmark
     tools/etcd-dump-db
     tools/etcd-dump-logs
     tools/local-tester/bridge"

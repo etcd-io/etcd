@@ -81,9 +81,10 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [`etcd grpc-proxy start --endpoints-auto-sync-interval`](https://github.com/etcd-io/etcd/pull/14354) flag to enable and configure interval of auto sync of endpoints with server.
 - Add [`etcd grpc-proxy start --listen-cipher-suites`](https://github.com/etcd-io/etcd/pull/14308) flag to support adding configurable cipher list.
 
-### tools/benchmark
+### tools
 
-- [Add etcd client autoSync flag](https://github.com/etcd-io/etcd/pull/13416)
+- [Add etcd client autoSync flag for benchmark](https://github.com/etcd-io/etcd/pull/13416)
+- [Reimplement the rw-heatmaps using Golang and rename it to rw-benchmark](https://github.com/etcd-io/etcd/pull/15060)
 
 ### Metrics, Monitoring
 
