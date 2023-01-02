@@ -30,11 +30,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
-	"go.uber.org/zap/zaptest"
 )
 
 var (
@@ -73,16 +74,16 @@ func TestNew(t *testing.T) {
 
 	var wb bytes.Buffer
 	e := newEncoder(&wb, 0, 0)
-	err = e.encode(&walpb.Record{Type: crcType, Crc: 0})
+	err = e.encode(&walpb.Record{Type: CrcType, Crc: 0})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	err = e.encode(&walpb.Record{Type: metadataType, Data: []byte("somedata")})
+	err = e.encode(&walpb.Record{Type: MetadataType, Data: []byte("somedata")})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
 	r := &walpb.Record{
-		Type: snapshotType,
+		Type: SnapshotType,
 		Data: pbutil.MustMarshal(&walpb.Snapshot{}),
 	}
 	if err = e.encode(r); err != nil {
@@ -301,7 +302,7 @@ func TestCut(t *testing.T) {
 	}
 	defer f.Close()
 	nw := &WAL{
-		decoder: newDecoder(fileutil.NewFileReader(f)),
+		decoder: NewDecoder(fileutil.NewFileReader(f)),
 		start:   snap,
 	}
 	_, gst, _, err := nw.ReadAll()

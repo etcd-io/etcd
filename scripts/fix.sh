@@ -33,8 +33,9 @@ function bash_ws_fix {
 
 function go_imports_fix {
   GOFILES=$(run ${GO_CMD} list  --f "{{with \$d:=.}}{{range .GoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...)
+  TESTGOFILES=$(run ${GO_CMD} list  --f "{{with \$d:=.}}{{range .TestGoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...)
   cd "${ROOTDIR}/tools/mod"
-  echo "${GOFILES}" | grep -v '.gw.go' | grep -v '.pb.go' | xargs -n 100 go run golang.org/x/tools/cmd/goimports -w -local go.etcd.io
+  echo "${GOFILES}" "${TESTGOFILES}" | grep -v '.gw.go' | grep -v '.pb.go' | xargs -n 100 go run golang.org/x/tools/cmd/goimports -w -local go.etcd.io
 }
 
 log_callout -e "\\nFixing etcd code for you...\n"

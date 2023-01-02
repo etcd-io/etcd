@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/descriptor"
+
 	"go.etcd.io/raft/v3/raftpb"
 )
 

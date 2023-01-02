@@ -25,8 +25,9 @@ import (
 	"time"
 
 	"github.com/anishathalye/porcupine"
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"golang.org/x/time/rate"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 const (

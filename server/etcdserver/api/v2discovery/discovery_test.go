@@ -27,9 +27,10 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v2"
-	"go.uber.org/zap/zaptest"
 
 	"github.com/jonboulle/clockwork"
 )

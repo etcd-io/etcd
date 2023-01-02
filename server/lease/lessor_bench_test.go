@@ -19,8 +19,9 @@ import (
 	"testing"
 	"time"
 
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.uber.org/zap"
+
+	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
 func BenchmarkLessorGrant1000(b *testing.B)   { benchmarkLessorGrant(1000, b) }

@@ -19,11 +19,12 @@ import (
 	"flag"
 	"testing"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.etcd.io/etcd/tests/v3/functional/tester"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/tests/v3/functional/tester"
 )
 
 var config = flag.String("config", "../../functional.yaml", "path to tester configuration")

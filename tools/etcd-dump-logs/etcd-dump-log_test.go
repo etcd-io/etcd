@@ -15,13 +15,14 @@
 package main
 
 import (
-	"bytes"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"go.uber.org/zap/zaptest"
 
@@ -40,6 +41,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// TODO(ptabor): The test does not run by default from ./scripts/test.sh.
 	dumpLogsBinary := path.Join(binDir + "/etcd-dump-logs")
 	if !fileutil.Exist(dumpLogsBinary) {
 		t.Skipf("%q does not exist", dumpLogsBinary)
@@ -50,38 +52,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 
 	p := t.TempDir()
 
-	memberdir := filepath.Join(p, "member")
-	err = os.Mkdir(memberdir, 0744)
-	if err != nil {
-		t.Fatal(err)
-	}
-	waldir := walDir(p)
-	snapdir := snapDir(p)
-
-	w, err := wal.Create(zaptest.NewLogger(t), waldir, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = os.Mkdir(snapdir, 0744)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ents := make([]raftpb.Entry, 0)
-
-	// append entries into wal log
-	appendConfigChangeEnts(&ents)
-	appendNormalRequestEnts(&ents)
-	appendNormalIRREnts(&ents)
-	appendUnknownNormalEnts(&ents)
-
-	// force commit newly appended entries
-	err = w.Save(raftpb.HardState{}, ents)
-	if err != nil {
-		t.Fatal(err)
-	}
-	w.Close()
+	mustCreateWalLog(t, p)
 
 	argtests := []struct {
 		name         string
@@ -116,19 +87,49 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !bytes.Equal(actual, expected) {
-				t.Errorf(`Got input of length %d, wanted input of length %d
-==== BEGIN RECEIVED FILE ====
-%s
-==== END RECEIVED FILE ====
-==== BEGIN EXPECTED FILE ====
-%s
-==== END EXPECTED FILE ====
-`, len(actual), len(expected), actual, expected)
-			}
+
+			assert.EqualValues(t, string(expected), string(actual))
+			// The output files contains a lot of trailing whitespaces... difficult to diagnose without printing them explicitly.
+			// TODO(ptabor): Get rid of the whitespaces both in code and the test-files.
+			assert.EqualValues(t, strings.ReplaceAll(string(expected), " ", "_"), strings.ReplaceAll(string(actual), " ", "_"))
 		})
 	}
 
+}
+
+func mustCreateWalLog(t *testing.T, path string) {
+	memberdir := filepath.Join(path, "member")
+	err := os.Mkdir(memberdir, 0744)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waldir := walDir(path)
+	snapdir := snapDir(path)
+
+	w, err := wal.Create(zaptest.NewLogger(t), waldir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = os.Mkdir(snapdir, 0744)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ents := make([]raftpb.Entry, 0)
+
+	// append entries into wal log
+	appendConfigChangeEnts(&ents)
+	appendNormalRequestEnts(&ents)
+	appendNormalIRREnts(&ents)
+	appendUnknownNormalEnts(&ents)
+
+	// force commit newly appended entries
+	err = w.Save(raftpb.HardState{}, ents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
 }
 
 func appendConfigChangeEnts(ents *[]raftpb.Entry) {

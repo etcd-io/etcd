@@ -19,8 +19,9 @@ import (
 	"sort"
 	"testing"
 
-	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/tests/v3/functional/rpcpb"
 )
 
 func Test_read(t *testing.T) {

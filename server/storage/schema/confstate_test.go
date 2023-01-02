@@ -18,9 +18,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zaptest"
+
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/raft/v3/raftpb"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestConfStateFromBackendInOneTx(t *testing.T) {

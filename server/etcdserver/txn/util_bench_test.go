@@ -19,8 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/raft/v3/raftpb"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func BenchmarkWarnOfExpensiveRequestNoLog(b *testing.B) {
