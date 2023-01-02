@@ -25,6 +25,7 @@ import (
 
 	"github.com/anishathalye/porcupine"
 	"github.com/google/go-cmp/cmp"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -84,51 +85,52 @@ func TestLinearizability(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			failpoint := FailpointConfig{
+			ctx := context.Background()
+			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&tc.config))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer clus.Close()
+			operations, events := testLinearizability(ctx, t, clus, FailpointConfig{
 				failpoint:           tc.failpoint,
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}
-			traffic := trafficConfig{
+			}, trafficConfig{
 				minimalQPS:  minimalQPS,
 				maximalQPS:  maximalQPS,
 				clientCount: 8,
 				traffic:     DefaultTraffic,
-			}
-			testLinearizability(context.Background(), t, tc.config, failpoint, traffic)
+			})
+			validateEventsMatch(t, events)
+			checkOperationsAndPersistResults(t, operations, clus)
 		})
 	}
 }
 
-func testLinearizability(ctx context.Context, t *testing.T, config e2e.EtcdProcessClusterConfig, failpoint FailpointConfig, traffic trafficConfig) {
-	clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clus.Close()
+func testLinearizability(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, events [][]watchEvent) {
+	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
+	g := errgroup.Group{}
 	trafficCtx, trafficCancel := context.WithCancel(ctx)
-	go func() {
-		defer trafficCancel()
+	g.Go(func() error {
 		triggerFailpoints(ctx, t, clus, failpoint)
-		// Wait second to collect traffic after triggering last failpoint.
 		time.Sleep(time.Second)
-	}()
+		trafficCancel()
+		return nil
+	})
 	watchCtx, watchCancel := context.WithCancel(ctx)
-	var operations []porcupine.Operation
-	go func() {
-		defer watchCancel()
+	g.Go(func() error {
 		operations = simulateTraffic(trafficCtx, t, clus, traffic)
-		// Wait second to collect watch events after all traffic was sent.
 		time.Sleep(time.Second)
-	}()
-	events := collectClusterWatchEvents(watchCtx, t, clus)
-	err = clus.Stop()
-	if err != nil {
-		t.Error(err)
-	}
-	validateEventsMatch(t, events)
-	checkOperationsAndPersistResults(t, operations, clus)
+		watchCancel()
+		return nil
+	})
+	g.Go(func() error {
+		events = collectClusterWatchEvents(watchCtx, t, clus)
+		return nil
+	})
+	g.Wait()
+	return operations, events
 }
 
 func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
