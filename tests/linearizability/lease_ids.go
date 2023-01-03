@@ -34,19 +34,19 @@ type atomicLeaseIdProvider struct {
 }
 
 func (lp *atomicLeaseIdProvider) LeaseId(clientId int) int64 {
-    lp.RLock()
-    defer lp.RUnlock()
-    return lp.m[clientId]
+	lp.RLock()
+	defer lp.RUnlock()
+	return lp.m[clientId]
 }
 
 func (lp *atomicLeaseIdProvider) AddLeaseId(clientId int, leaseId int64) {
-    lp.Lock()
-    defer lp.Unlock()
-    lp.m[clientId] = leaseId
+	lp.Lock()
+	defer lp.Unlock()
+	lp.m[clientId] = leaseId
 }
 
 func (lp *atomicLeaseIdProvider) RemoveLeaseId(clientId int, leaseId int64) {
-    lp.Lock()
-    defer lp.Unlock()
-    delete(lp.m, clientId)
+	lp.Lock()
+	defer lp.Unlock()
+	delete(lp.m, clientId)
 }
