@@ -60,10 +60,10 @@ func resolveTCPAddrDefault(ctx context.Context, addr string) (*net.TCPAddr, erro
 	return &net.TCPAddr{IP: ip.IP, Port: portnum, Zone: ip.Zone}, nil
 }
 
-// resolveTCPAddrs is a convenience wrapper for net.ResolveTCPAddr.
-// resolveTCPAddrs return a new set of url.URLs, in which all DNS hostnames
+// ResolveTCPAddrs is a convenience wrapper for net.ResolveTCPAddr.
+// ResolveTCPAddrs return a new set of url.URLs, in which all DNS hostnames
 // are resolved.
-func resolveTCPAddrs(ctx context.Context, lg *zap.Logger, urls [][]url.URL) ([][]url.URL, error) {
+func ResolveTCPAddrs(ctx context.Context, lg *zap.Logger, urls [][]url.URL) ([][]url.URL, error) {
 	newurls := make([][]url.URL, 0)
 	for _, us := range urls {
 		nus := make([]url.URL, len(us))
@@ -163,7 +163,7 @@ func urlsEqual(ctx context.Context, lg *zap.Logger, a []url.URL, b []url.URL) (b
 	}
 
 	// If URLs are not equal, try to resolve it and compare again.
-	urls, err := resolveTCPAddrs(ctx, lg, [][]url.URL{a, b})
+	urls, err := ResolveTCPAddrs(ctx, lg, [][]url.URL{a, b})
 	if err != nil {
 		return false, err
 	}

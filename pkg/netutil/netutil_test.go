@@ -130,7 +130,7 @@ func TestResolveTCPAddrs(t *testing.T) {
 			return &net.TCPAddr{IP: net.ParseIP(tt.hostMap[host]), Port: i, Zone: ""}, nil
 		}
 		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
-		urls, err := resolveTCPAddrs(ctx, zap.NewExample(), tt.urls)
+		urls, err := ResolveTCPAddrs(ctx, zap.NewExample(), tt.urls)
 		cancel()
 		if tt.hasError {
 			if err == nil {

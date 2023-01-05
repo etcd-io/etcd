@@ -17,8 +17,8 @@ package config
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -240,11 +240,17 @@ func (c *ServerConfig) hasLocalMember() error {
 
 // advertiseMatchesCluster confirms peer URLs match those in the cluster peer list.
 func (c *ServerConfig) advertiseMatchesCluster() error {
-	urls, apurls := c.InitialPeerURLsMap[c.Name], c.PeerURLs.StringSlice()
-	urls.Sort()
-	sort.Strings(apurls)
+	urls := c.InitialPeerURLsMap[c.Name]
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
+
+	// try to resolve the urls that were passed to fail early on bootstrap
+	_, err := netutil.ResolveTCPAddrs(ctx, c.Logger, [][]url.URL{urls, c.PeerURLs})
+	if err != nil {
+		return fmt.Errorf("failed to resolve addresses: --initial-cluster=%s --initial-advertise-peer-urls=%s (%v)", urls, c.PeerURLs, err)
+	}
+
+	apurls := c.PeerURLs.StringSlice()
 	ok, err := netutil.URLStringsEqual(ctx, c.Logger, apurls, urls.StringSlice())
 	if ok {
 		return nil
