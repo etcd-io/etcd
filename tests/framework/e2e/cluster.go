@@ -147,7 +147,8 @@ type EtcdProcessClusterConfig struct {
 
 	MetricsURLScheme string
 
-	SnapshotCount int // default is 10000
+	SnapshotCount          int // default is 100000
+	SnapshotCatchUpEntries int // default is 5000
 
 	Client        ClientConfig
 	IsPeerTLS     bool
@@ -221,6 +222,10 @@ func WithKeepDataDir(keep bool) EPClusterOption {
 
 func WithSnapshotCount(count int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.SnapshotCount = count }
+}
+
+func WithSnapshotCatchUpEntries(count int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.SnapshotCatchUpEntries = count }
 }
 
 func WithClusterSize(size int) EPClusterOption {
@@ -547,6 +552,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if cfg.ExperimentalWarningUnaryRequestDuration != 0 {
 		args = append(args, "--experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration.String())
+	}
+	if cfg.SnapshotCatchUpEntries > 0 {
+		args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.SnapshotCatchUpEntries))
 	}
 	envVars := map[string]string{}
 	for key, value := range cfg.EnvVars {

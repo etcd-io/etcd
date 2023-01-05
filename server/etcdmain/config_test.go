@@ -34,6 +34,7 @@ func TestConfigParsingMemberFlags(t *testing.T) {
 		"-max-wals=10",
 		"-max-snapshots=10",
 		"-snapshot-count=10",
+		"-experimental-snapshot-catchup-entries=1000",
 		"-listen-peer-urls=http://localhost:8000,https://localhost:8001",
 		"-listen-client-urls=http://localhost:7000,https://localhost:7001",
 		// it should be set if -listen-client-urls is set
@@ -51,20 +52,22 @@ func TestConfigParsingMemberFlags(t *testing.T) {
 
 func TestConfigFileMemberFields(t *testing.T) {
 	yc := struct {
-		Dir           string `json:"data-dir"`
-		MaxSnapFiles  uint   `json:"max-snapshots"`
-		MaxWalFiles   uint   `json:"max-wals"`
-		Name          string `json:"name"`
-		SnapshotCount uint64 `json:"snapshot-count"`
-		LPUrls        string `json:"listen-peer-urls"`
-		LCUrls        string `json:"listen-client-urls"`
-		AcurlsCfgFile string `json:"advertise-client-urls"`
+		Dir                    string `json:"data-dir"`
+		MaxSnapFiles           uint   `json:"max-snapshots"`
+		MaxWalFiles            uint   `json:"max-wals"`
+		Name                   string `json:"name"`
+		SnapshotCount          uint64 `json:"snapshot-count"`
+		SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
+		LPUrls                 string `json:"listen-peer-urls"`
+		LCUrls                 string `json:"listen-client-urls"`
+		AcurlsCfgFile          string `json:"advertise-client-urls"`
 	}{
 		"testdir",
 		10,
 		10,
 		"testname",
 		10,
+		1000,
 		"http://localhost:8000,https://localhost:8001",
 		"http://localhost:7000,https://localhost:7001",
 		"http://localhost:7000,https://localhost:7001",
@@ -392,13 +395,14 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 
 func validateMemberFlags(t *testing.T, cfg *config) {
 	wcfg := &embed.Config{
-		Dir:           "testdir",
-		LPUrls:        []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}},
-		LCUrls:        []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}},
-		MaxSnapFiles:  10,
-		MaxWalFiles:   10,
-		Name:          "testname",
-		SnapshotCount: 10,
+		Dir:                    "testdir",
+		LPUrls:                 []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}},
+		LCUrls:                 []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}},
+		MaxSnapFiles:           10,
+		MaxWalFiles:            10,
+		Name:                   "testname",
+		SnapshotCount:          10,
+		SnapshotCatchUpEntries: 1000,
 	}
 
 	if cfg.ec.Dir != wcfg.Dir {
@@ -415,6 +419,9 @@ func validateMemberFlags(t *testing.T, cfg *config) {
 	}
 	if cfg.ec.SnapshotCount != wcfg.SnapshotCount {
 		t.Errorf("snapcount = %v, want %v", cfg.ec.SnapshotCount, wcfg.SnapshotCount)
+	}
+	if cfg.ec.SnapshotCatchUpEntries != wcfg.SnapshotCatchUpEntries {
+		t.Errorf("snapshot catch up entries = %v, want %v", cfg.ec.SnapshotCatchUpEntries, wcfg.SnapshotCatchUpEntries)
 	}
 	if !reflect.DeepEqual(cfg.ec.LPUrls, wcfg.LPUrls) {
 		t.Errorf("listen-peer-urls = %v, want %v", cfg.ec.LPUrls, wcfg.LPUrls)
