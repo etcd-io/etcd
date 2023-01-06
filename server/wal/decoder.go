@@ -16,7 +16,6 @@ package wal
 
 import (
 	"encoding/binary"
-	"fmt"
 	"hash"
 	"io"
 	"sync"
@@ -84,8 +83,9 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 	// The length of current WAL entry must be less than the remaining file size.
 	maxEntryLimit := fileBufReader.FileInfo().Size() - d.lastValidOff - padBytes
 	if recBytes > maxEntryLimit {
-		return fmt.Errorf("wal: max entry size limit exceeded, recBytes: %d, fileSize(%d) - offset(%d) - padBytes(%d) = entryLimit(%d)",
-			recBytes, fileBufReader.FileInfo().Size(), d.lastValidOff, padBytes, maxEntryLimit)
+		return io.ErrUnexpectedEOF
+		/* return fmt.Errorf("%w, wal: max entry size limit exceeded when reading %s, recBytes: %d, fileSize(%d) - offset(%d) - padBytes(%d) = entryLimit(%d)",
+		io.ErrUnexpectedEOF, fileBufReader.FileInfo().Name(), recBytes, fileBufReader.FileInfo().Size(), d.lastValidOff, padBytes, maxEntryLimit) */
 	}
 
 	data := make([]byte, recBytes+padBytes)
