@@ -510,14 +510,14 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 	case nil:
 		// We do not have to read out all entries in read mode.
 		// The last record maybe a partial written one, so
-		// ErrunexpectedEOF might be returned.
-		if err != io.EOF && err != io.ErrUnexpectedEOF {
+		// `io.ErrUnexpectedEOF` might be returned.
+		if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 			state.Reset()
 			return nil, state, nil, err
 		}
 	default:
-		// We must read all of the entries if WAL is opened in write mode.
-		if err != io.EOF {
+		// We must read all the entries if WAL is opened in write mode.
+		if !errors.Is(err, io.EOF) {
 			state.Reset()
 			return nil, state, nil, err
 		}
@@ -609,7 +609,7 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]walpb.Snapshot, erro
 	}
 	// We do not have to read out all the WAL entries
 	// as the decoder is opened in read mode.
-	if err != io.EOF && err != io.ErrUnexpectedEOF {
+	if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return nil, err
 	}
 
@@ -699,7 +699,7 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) (*raftpb.HardSta
 
 	// We do not have to read out all the WAL entries
 	// as the decoder is opened in read mode.
-	if err != io.EOF && err != io.ErrUnexpectedEOF {
+	if !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return nil, err
 	}
 

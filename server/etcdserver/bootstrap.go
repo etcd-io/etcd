@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,8 +27,6 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -42,6 +41,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	servererrors "go.etcd.io/etcd/server/v3/etcdserver/errors"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -339,7 +339,7 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*
 			str, err = v3discovery.JoinCluster(cfg.Logger, &cfg.DiscoveryCfg, m.ID, cfg.InitialPeerURLsMap.String())
 		}
 		if err != nil {
-			return nil, &errors.DiscoveryError{Op: "join", Err: err}
+			return nil, &servererrors.DiscoveryError{Op: "join", Err: err}
 		}
 		var urlsmap types.URLsMap
 		urlsmap, err = types.NewURLsMap(str)
@@ -614,7 +614,7 @@ func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*w
 		if err != nil {
 			w.Close()
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
-			if repaired || err != io.ErrUnexpectedEOF {
+			if repaired || !errors.Is(err, io.ErrUnexpectedEOF) {
 				cfg.Logger.Fatal("failed to read WAL, cannot be repaired", zap.Error(err))
 			}
 			if !wal.Repair(cfg.Logger, cfg.WALDir()) {
