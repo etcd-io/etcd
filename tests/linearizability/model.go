@@ -50,9 +50,11 @@ type EtcdResponse struct {
 	Err          error
 }
 
+var leased = struct{}{}
+
 type EtcdLease struct {
 	LeaseID int64
-	Keys    map[string]bool
+	Keys    map[string]struct{}
 }
 type PossibleStates []EtcdState
 
@@ -177,12 +179,12 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 			}
 			//attach to new lease id
 			state.KeyLeases[request.Key] = request.LeaseID
-			state.Leases[request.LeaseID].Keys[request.Key] = true
+			state.Leases[request.LeaseID].Keys[request.Key] = leased
 		}
 	case LeaseGrant:
 		lease := EtcdLease{
 			LeaseID: request.LeaseID,
-			Keys:    map[string]bool{},
+			Keys:    map[string]struct{}{},
 		}
 		state.Leases[request.LeaseID] = lease
 	case LeaseRevoke:
@@ -267,7 +269,7 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 			}
 			//attach to new lease id
 			s.KeyLeases[request.Key] = request.LeaseID
-			s.Leases[request.LeaseID].Keys[request.Key] = true
+			s.Leases[request.LeaseID].Keys[request.Key] = leased
 		}
 	case LeaseRevoke:
 		//Delete the keys attached to the lease
@@ -291,7 +293,7 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 	case LeaseGrant:
 		lease := EtcdLease{
 			LeaseID: request.LeaseID,
-			Keys:    map[string]bool{},
+			Keys:    map[string]struct{}{},
 		}
 		s.Leases[request.LeaseID] = lease
 	default:
