@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -33,11 +32,15 @@ import (
 
 func readRaw(fromIndex *uint64, waldir string, out io.Writer) {
 	var walReaders []fileutil.FileReader
-	files, err := ioutil.ReadDir(waldir)
+	dirEntry, err := os.ReadDir(waldir)
 	if err != nil {
 		log.Fatalf("Error: Failed to read directory '%s' error:%v", waldir, err)
 	}
-	for _, finfo := range files {
+	for _, e := range dirEntry {
+		finfo, err := e.Info()
+		if err != nil {
+			log.Fatalf("Error: failed to get fileInfo of file: %s, error: %v", e.Name(), err)
+		}
 		if filepath.Ext(finfo.Name()) != ".wal" {
 			log.Printf("Warning: Ignoring not .wal file: %s", finfo.Name())
 			continue
