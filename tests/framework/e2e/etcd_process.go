@@ -28,6 +28,7 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
@@ -49,6 +50,7 @@ type EtcdProcess interface {
 	Stop() error
 	Close() error
 	Config() *EtcdServerProcessConfig
+	PeerProxy() proxy.Server
 	Logs() LogsExpect
 	Kill() error
 }
@@ -62,6 +64,7 @@ type LogsExpect interface {
 type EtcdServerProcess struct {
 	cfg   *EtcdServerProcessConfig
 	proc  *expect.ExpectProcess
+	proxy proxy.Server
 	donec chan struct{} // closed when Interact() terminates
 }
 
@@ -78,14 +81,15 @@ type EtcdServerProcessConfig struct {
 
 	Name string
 
-	Purl url.URL
-
-	Acurl string
-	Murl  string
+	PeerURL    url.URL
+	ClientURL  string
+	MetricsURL string
 
 	InitialToken   string
 	InitialCluster string
 	GoFailPort     int
+
+	Proxy *proxy.ServerConfig
 }
 
 func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
@@ -100,9 +104,9 @@ func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, err
 	return &EtcdServerProcess{cfg: cfg, donec: make(chan struct{})}, nil
 }
 
-func (ep *EtcdServerProcess) EndpointsV2() []string      { return []string{ep.cfg.Acurl} }
+func (ep *EtcdServerProcess) EndpointsV2() []string      { return []string{ep.cfg.ClientURL} }
 func (ep *EtcdServerProcess) EndpointsV3() []string      { return ep.EndpointsV2() }
-func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.Murl} }
+func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.MetricsURL} }
 
 func (epc *EtcdServerProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
 	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsV3(), opts...)
@@ -116,6 +120,15 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 	ep.donec = make(chan struct{})
 	if ep.proc != nil {
 		panic("already started")
+	}
+	if ep.cfg.Proxy != nil && ep.proxy == nil {
+		ep.cfg.lg.Info("starting proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.Proxy.From.String()), zap.String("to", ep.cfg.Proxy.To.String()))
+		ep.proxy = proxy.NewServer(*ep.cfg.Proxy)
+		select {
+		case <-ep.proxy.Ready():
+		case err := <-ep.proxy.Error():
+			return err
+		}
 	}
 	ep.cfg.lg.Info("starting server...", zap.String("name", ep.cfg.Name))
 	proc, err := SpawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.ExecPath}, ep.cfg.Args...), ep.cfg.EnvVars, ep.cfg.Name)
@@ -161,8 +174,8 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 	}
 	<-ep.donec
 	ep.donec = make(chan struct{})
-	if ep.cfg.Purl.Scheme == "unix" || ep.cfg.Purl.Scheme == "unixs" {
-		err = os.Remove(ep.cfg.Purl.Host + ep.cfg.Purl.Path)
+	if ep.cfg.PeerURL.Scheme == "unix" || ep.cfg.PeerURL.Scheme == "unixs" {
+		err = os.Remove(ep.cfg.PeerURL.Host + ep.cfg.PeerURL.Path)
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -176,6 +189,15 @@ func (ep *EtcdServerProcess) Close() error {
 	if err := ep.Stop(); err != nil {
 		return err
 	}
+	if ep.proxy != nil {
+		ep.cfg.lg.Info("closing proxy...", zap.String("name", ep.cfg.Name))
+		err := ep.proxy.Close()
+		if err != nil {
+			return err
+		}
+		ep.proxy = nil
+	}
+
 	if !ep.cfg.KeepDataDir {
 		ep.cfg.lg.Info("removing directory", zap.String("data-dir", ep.cfg.DataDirPath))
 		return os.RemoveAll(ep.cfg.DataDirPath)
@@ -242,4 +264,8 @@ func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func (ep *EtcdServerProcess) PeerProxy() proxy.Server {
+	return ep.proxy
 }

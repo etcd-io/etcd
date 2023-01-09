@@ -54,7 +54,7 @@ func (r CURLReq) timeoutDuration() time.Duration {
 func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method string, req CURLReq) []string {
 	var (
 		cmdArgs = []string{"curl"}
-		acurl   = member.Config().Acurl
+		acurl   = member.Config().ClientURL
 	)
 	if req.MetricsURLScheme != "https" {
 		if req.IsTLS {
@@ -62,7 +62,7 @@ func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method st
 				panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
 			}
 			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
-			acurl = ToTLS(member.Config().Acurl)
+			acurl = ToTLS(member.Config().ClientURL)
 		} else if cfg.Client.ConnectionType == ClientTLS {
 			if cfg.CN {
 				cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)

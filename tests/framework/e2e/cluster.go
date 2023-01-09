@@ -30,6 +30,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -183,6 +184,7 @@ type EtcdProcessClusterConfig struct {
 
 	WarningUnaryRequestDuration             time.Duration
 	ExperimentalWarningUnaryRequestDuration time.Duration
+	PeerProxy                               bool
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -334,6 +336,10 @@ func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.CompactionBatchLimit = limit }
 }
 
+func WithPeerProxy(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.PeerProxy = enabled }
+}
+
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
@@ -421,7 +427,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdAllServerProcessConfigs(tb testing.TB) 
 
 	for i := 0; i < cfg.ClusterSize; i++ {
 		etcdCfgs[i] = cfg.EtcdServerProcessConfig(tb, i)
-		initialCluster[i] = fmt.Sprintf("%s=%s", etcdCfgs[i].Name, etcdCfgs[i].Purl.String())
+		initialCluster[i] = fmt.Sprintf("%s=%s", etcdCfgs[i].Name, etcdCfgs[i].PeerURL.String())
 	}
 
 	for i := range etcdCfgs {
@@ -448,8 +454,12 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	var curls []string
 	var curl, curltls string
 	port := cfg.BasePort + 5*i
-	curlHost := fmt.Sprintf("localhost:%d", port)
+	clientPort := port
+	peerPort := port + 1
+	metricsPort := port + 2
+	peer2Port := port + 3
 
+	curlHost := fmt.Sprintf("localhost:%d", clientPort)
 	switch cfg.Client.ConnectionType {
 	case ClientNonTLS, ClientTLS:
 		curl = (&url.URL{Scheme: cfg.ClientScheme(), Host: curlHost}).String()
@@ -460,7 +470,17 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		curls = []string{curl, curltls}
 	}
 
-	purl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", port+1)}
+	peerListenUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
+	peerAdvertiseUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
+	var proxyCfg *proxy.ServerConfig
+	if cfg.PeerProxy {
+		peerAdvertiseUrl.Host = fmt.Sprintf("localhost:%d", peer2Port)
+		proxyCfg = &proxy.ServerConfig{
+			Logger: zap.NewNop(),
+			To:     peerListenUrl,
+			From:   peerAdvertiseUrl,
+		}
+	}
 
 	name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
 
@@ -480,8 +500,8 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--name", name,
 		"--listen-client-urls", strings.Join(curls, ","),
 		"--advertise-client-urls", strings.Join(curls, ","),
-		"--listen-peer-urls", purl.String(),
-		"--initial-advertise-peer-urls", purl.String(),
+		"--listen-peer-urls", peerListenUrl.String(),
+		"--initial-advertise-peer-urls", peerAdvertiseUrl.String(),
 		"--initial-cluster-token", cfg.InitialToken,
 		"--data-dir", dataDirPath,
 		"--snapshot-count", fmt.Sprintf("%d", cfg.SnapshotCount),
@@ -508,7 +528,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if cfg.MetricsURLScheme != "" {
 		murl = (&url.URL{
 			Scheme: cfg.MetricsURLScheme,
-			Host:   fmt.Sprintf("localhost:%d", port+2),
+			Host:   fmt.Sprintf("localhost:%d", metricsPort),
 		}).String()
 		args = append(args, "--listen-metrics-urls", murl)
 	}
@@ -598,11 +618,12 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		DataDirPath:  dataDirPath,
 		KeepDataDir:  cfg.KeepDataDir,
 		Name:         name,
-		Purl:         purl,
-		Acurl:        curl,
-		Murl:         murl,
+		PeerURL:      peerAdvertiseUrl,
+		ClientURL:    curl,
+		MetricsURL:   murl,
 		InitialToken: cfg.InitialToken,
 		GoFailPort:   gofailPort,
+		Proxy:        proxyCfg,
 	}
 }
 
@@ -695,7 +716,7 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 		return fmt.Errorf("failed to get member list: %w", err)
 	}
 
-	memberID, err := findMemberIDByEndpoint(memberList.Members, proc.Config().Acurl)
+	memberID, err := findMemberIDByEndpoint(memberList.Members, proc.Config().ClientURL)
 	if err != nil {
 		return fmt.Errorf("failed to find member ID: %w", err)
 	}
@@ -715,7 +736,7 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 		return errors.New("failed to remove member after 10 tries")
 	}
 
-	epc.lg.Info("successfully removed member", zap.String("acurl", proc.Config().Acurl))
+	epc.lg.Info("successfully removed member", zap.String("acurl", proc.Config().ClientURL))
 
 	// Then stop process
 	return proc.Close()
@@ -732,17 +753,17 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProces
 	epc.nextSeq++
 
 	initialCluster := []string{
-		fmt.Sprintf("%s=%s", serverCfg.Name, serverCfg.Purl.String()),
+		fmt.Sprintf("%s=%s", serverCfg.Name, serverCfg.PeerURL.String()),
 	}
 	for _, p := range epc.Procs {
-		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", p.Config().Name, p.Config().Purl.String()))
+		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", p.Config().Name, p.Config().PeerURL.String()))
 	}
 
 	epc.Cfg.SetInitialOrDiscovery(serverCfg, initialCluster, "existing")
 
 	// First add new member to cluster
 	memberCtl := epc.Client(opts...)
-	_, err := memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.Purl.String()})
+	_, err := memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.PeerURL.String()})
 	if err != nil {
 		return fmt.Errorf("failed to add new member: %w", err)
 	}
