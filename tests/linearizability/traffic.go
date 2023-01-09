@@ -39,7 +39,7 @@ type readWriteSingleKey struct {
 }
 
 type opChance struct {
-	operation Operation
+	operation OperationType
 	chance    int
 }
 
@@ -97,7 +97,7 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 	return err
 }
 
-func (t readWriteSingleKey) pickWriteOperation() Operation {
+func (t readWriteSingleKey) pickWriteOperation() OperationType {
 	sum := 0
 	for _, op := range t.writes {
 		sum += op.chance

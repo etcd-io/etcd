@@ -46,17 +46,21 @@ func (h *appendableHistory) AppendGet(key string, start, end time.Time, resp *cl
 	if len(resp.Kvs) == 1 {
 		readData = string(resp.Kvs[0].Value)
 	}
+	var revision int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
-		Input:    EtcdRequest{Op: Get, Key: key},
+		Input:    getRequest(key),
 		Call:     start.UnixNano(),
-		Output:   EtcdResponse{GetData: readData, Revision: resp.Header.Revision},
+		Output:   getResponse(readData, revision),
 		Return:   end.UnixNano(),
 	})
 }
 
 func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, resp *clientv3.PutResponse, err error) {
-	request := EtcdRequest{Op: Put, Key: key, PutData: value}
+	request := putRequest(key, value)
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
@@ -67,15 +71,15 @@ func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, r
 	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
-		Input:    EtcdRequest{Op: Put, Key: key, PutData: value},
+		Input:    request,
 		Call:     start.UnixNano(),
-		Output:   EtcdResponse{Err: err, Revision: revision},
+		Output:   putResponse(revision),
 		Return:   end.UnixNano(),
 	})
 }
 
 func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
-	request := EtcdRequest{Op: Delete, Key: key}
+	request := deleteRequest(key)
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
@@ -90,13 +94,13 @@ func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp 
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.UnixNano(),
-		Output:   EtcdResponse{Revision: revision, Deleted: deleted, Err: err},
+		Output:   deleteResponse(deleted, revision),
 		Return:   end.UnixNano(),
 	})
 }
 
 func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, end time.Time, resp *clientv3.TxnResponse, err error) {
-	request := EtcdRequest{Op: Txn, Key: key, TxnExpectData: expectValue, TxnNewData: newValue}
+	request := txnRequest(key, expectValue, newValue)
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
@@ -109,7 +113,7 @@ func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, 
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.UnixNano(),
-		Output:   EtcdResponse{Err: err, Revision: revision, TxnSucceeded: resp.Succeeded},
+		Output:   txnResponse(resp.Succeeded, revision),
 		Return:   end.UnixNano(),
 	})
 }
@@ -119,12 +123,52 @@ func (h *appendableHistory) appendFailed(request EtcdRequest, start time.Time, e
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.UnixNano(),
-		Output:   EtcdResponse{Err: err},
+		Output:   failedResponse(err),
 		Return:   0, // For failed writes we don't know when request has really finished.
 	})
 	// Operations of single client needs to be sequential.
 	// As we don't know return time of failed operations, all new writes need to be done with new client id.
 	h.id = h.idProvider.ClientId()
+}
+
+func getRequest(key string) EtcdRequest {
+	return EtcdRequest{Ops: []EtcdOperation{{Type: Get, Key: key}}}
+}
+
+func getResponse(value string, revision int64) EtcdResponse {
+	return EtcdResponse{Result: []EtcdOperationResult{{Value: value}}, Revision: revision}
+}
+
+func failedResponse(err error) EtcdResponse {
+	return EtcdResponse{Err: err}
+}
+
+func putRequest(key, value string) EtcdRequest {
+	return EtcdRequest{Ops: []EtcdOperation{{Type: Put, Key: key, Value: value}}}
+}
+
+func putResponse(revision int64) EtcdResponse {
+	return EtcdResponse{Result: []EtcdOperationResult{{}}, Revision: revision}
+}
+
+func deleteRequest(key string) EtcdRequest {
+	return EtcdRequest{Ops: []EtcdOperation{{Type: Delete, Key: key}}}
+}
+
+func deleteResponse(deleted int64, revision int64) EtcdResponse {
+	return EtcdResponse{Result: []EtcdOperationResult{{Deleted: deleted}}, Revision: revision}
+}
+
+func txnRequest(key, expectValue, newValue string) EtcdRequest {
+	return EtcdRequest{Conds: []EtcdCondition{{Key: key, ExpectedValue: expectValue}}, Ops: []EtcdOperation{{Type: Put, Key: key, Value: newValue}}}
+}
+
+func txnResponse(succeeded bool, revision int64) EtcdResponse {
+	var result []EtcdOperationResult
+	if succeeded {
+		result = []EtcdOperationResult{{}}
+	}
+	return EtcdResponse{Result: result, TxnFailure: !succeeded, Revision: revision}
 }
 
 type history struct {
