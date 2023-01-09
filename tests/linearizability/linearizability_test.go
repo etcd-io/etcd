@@ -142,6 +142,19 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithSnapshotCount(100),
 			),
 		},
+		// TODO: investigate periodic `Model is not linearizable` failures
+		// see https://github.com/etcd-io/etcd/pull/15104#issuecomment-1416371288
+		/*{
+			name:      "Snapshot",
+			failpoint: RandomSnapshotFailpoint,
+			traffic:   &HighTraffic,
+			config: *e2e.NewConfig(
+				e2e.WithGoFailEnabled(true),
+				e2e.WithSnapshotCount(100),
+				e2e.WithSnapshotCatchUpEntries(100),
+				e2e.WithPeerProxy(true),
+			),
+		},*/
 	}...)
 	for _, scenario := range scenarios {
 		if scenario.traffic == nil {
