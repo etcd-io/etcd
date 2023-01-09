@@ -14,7 +14,7 @@ jobs:
       with:
         go-version: "1.19.4"
     - run: GOARCH=amd64 CPU=4 make fuzz
-    - uses: actions/upload-artifact@83fd05a356d7e2593de66fc9913b3002723633cb # v3.1.1
+    - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       if: failure()
       with:
         path: "${{env.TARGET_PATH}}/testdata/fuzz/**/*"
