@@ -570,6 +570,11 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `put("key4", "4") -> err: "failed"`,
 		},
 		{
+			req:            putRequest("key4b", "4b"),
+			resp:           unknownResponse(42),
+			expectDescribe: `put("key4b", "4b") -> unknown, rev: 42`,
+		},
+		{
 			req:            deleteRequest("key5"),
 			resp:           deleteResponse(1, 5),
 			expectDescribe: `delete("key5") -> deleted: 1, rev: 5`,
@@ -597,5 +602,152 @@ func TestModelDescribe(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		assert.Equal(t, tc.expectDescribe, etcdModel.DescribeOperation(tc.req, tc.resp))
+	}
+}
+
+func TestModelResponseMatch(t *testing.T) {
+	tcs := []struct {
+		resp1       EtcdResponse
+		resp2       EtcdResponse
+		expectMatch bool
+	}{
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       getResponse("a", 1),
+			expectMatch: true,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       getResponse("b", 1),
+			expectMatch: false,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       getResponse("a", 2),
+			expectMatch: false,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       unknownResponse(1),
+			expectMatch: true,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       putResponse(3),
+			expectMatch: true,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       putResponse(4),
+			expectMatch: false,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       unknownResponse(3),
+			expectMatch: true,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       deleteResponse(1, 5),
+			expectMatch: true,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       deleteResponse(0, 5),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       deleteResponse(1, 6),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       unknownResponse(5),
+			expectMatch: true,
+		},
+		{
+			resp1:       deleteResponse(0, 5),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(0, 5),
+			resp2:       unknownResponse(2),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       txnResponse(false, 7),
+			expectMatch: true,
+		},
+		{
+			resp1:       txnResponse(true, 7),
+			resp2:       txnResponse(false, 7),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       txnResponse(false, 8),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(true, 7),
+			resp2:       unknownResponse(7),
+			expectMatch: true,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       unknownResponse(7),
+			expectMatch: true,
+		},
+		{
+			resp1:       txnResponse(true, 7),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+	}
+	for i, tc := range tcs {
+		assert.Equal(t, tc.expectMatch, Match(tc.resp1, tc.resp2), "%d %+v %+v", i, tc.resp1, tc.resp2)
 	}
 }

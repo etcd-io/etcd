@@ -35,6 +35,14 @@ const (
 	LeaseRevoke  OperationType = "leaseRevoke"
 )
 
+func isWrite(t OperationType) bool {
+	return t == Put || t == Delete || t == PutWithLease || t == LeaseRevoke || t == LeaseGrant
+}
+
+func inUnique(t OperationType) bool {
+	return t == Put || t == PutWithLease
+}
+
 type EtcdRequest struct {
 	Conds []EtcdCondition
 	Ops   []EtcdOperation
@@ -53,10 +61,15 @@ type EtcdOperation struct {
 }
 
 type EtcdResponse struct {
-	Err        error
-	Revision   int64
-	TxnFailure bool
-	Result     []EtcdOperationResult
+	Err           error
+	Revision      int64
+	ResultUnknown bool
+	TxnResult     bool
+	OpsResult     []EtcdOperationResult
+}
+
+func Match(r1, r2 EtcdResponse) bool {
+	return ((r1.ResultUnknown || r2.ResultUnknown) && (r1.Revision == r2.Revision)) || reflect.DeepEqual(r1, r2)
 }
 
 type EtcdOperationResult struct {
@@ -70,7 +83,6 @@ type EtcdLease struct {
 	LeaseID int64
 	Keys    map[string]struct{}
 }
-
 type PossibleStates []EtcdState
 
 type EtcdState struct {
@@ -131,12 +143,15 @@ func describeEtcdResponse(ops []EtcdOperation, response EtcdResponse) string {
 	if response.Err != nil {
 		return fmt.Sprintf("err: %q", response.Err)
 	}
-	if response.TxnFailure {
+	if response.ResultUnknown {
+		return fmt.Sprintf("unknown, rev: %d", response.Revision)
+	}
+	if response.TxnResult {
 		return fmt.Sprintf("txn failed, rev: %d", response.Revision)
 	}
-	respDescription := make([]string, len(response.Result))
-	for i := range response.Result {
-		respDescription[i] = describeEtcdOperationResponse(ops[i].Type, response.Result[i])
+	respDescription := make([]string, len(response.OpsResult))
+	for i := range response.OpsResult {
+		respDescription[i] = describeEtcdOperationResponse(ops[i].Type, response.OpsResult[i])
 	}
 	respDescription = append(respDescription, fmt.Sprintf("rev: %d", response.Revision))
 	return strings.Join(respDescription, ", ")
@@ -190,7 +205,7 @@ func describeEtcdOperationResponse(op OperationType, resp EtcdOperationResult) s
 func step(states PossibleStates, request EtcdRequest, response EtcdResponse) (bool, PossibleStates) {
 	if len(states) == 0 {
 		// states were not initialized
-		if response.Err != nil {
+		if response.Err != nil || response.ResultUnknown {
 			return true, nil
 		}
 		return true, PossibleStates{initState(request, response)}
@@ -211,11 +226,11 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 		KeyLeases: map[string]int64{},
 		Leases:    map[int64]EtcdLease{},
 	}
-	if response.TxnFailure {
+	if response.TxnResult {
 		return state
 	}
 	for i, op := range request.Ops {
-		opResp := response.Result[i]
+		opResp := response.OpsResult[i]
 		switch op.Type {
 		case Get:
 			if opResp.Value != "" {
@@ -263,7 +278,7 @@ func applyRequest(states PossibleStates, request EtcdRequest, response EtcdRespo
 	newStates := make(PossibleStates, 0, len(states))
 	for _, s := range states {
 		newState, expectResponse := applyRequestToSingleState(s, request)
-		if reflect.DeepEqual(expectResponse, response) {
+		if Match(expectResponse, response) {
 			newStates = append(newStates, newState)
 		}
 	}
@@ -280,7 +295,7 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 		}
 	}
 	if !success {
-		return s, EtcdResponse{Revision: s.Revision, TxnFailure: true}
+		return s, EtcdResponse{Revision: s.Revision, TxnResult: true}
 	}
 	newKVs := map[string]string{}
 	for k, v := range s.KeyValues {
@@ -346,7 +361,7 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 		s.Revision += 1
 	}
 
-	return s, EtcdResponse{Result: opResp, Revision: s.Revision}
+	return s, EtcdResponse{OpsResult: opResp, Revision: s.Revision}
 }
 
 func detachFromOldLease(s EtcdState, op EtcdOperation) EtcdState {
