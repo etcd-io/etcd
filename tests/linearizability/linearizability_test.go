@@ -16,7 +16,6 @@ package linearizability
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,6 +24,8 @@ import (
 	"time"
 
 	"github.com/anishathalye/porcupine"
+	"github.com/google/go-cmp/cmp"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -84,52 +85,62 @@ func TestLinearizability(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			failpoint := FailpointConfig{
+			ctx := context.Background()
+			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&tc.config))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer clus.Close()
+			operations, events := testLinearizability(ctx, t, clus, FailpointConfig{
 				failpoint:           tc.failpoint,
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}
-			traffic := trafficConfig{
+			}, trafficConfig{
 				minimalQPS:  minimalQPS,
 				maximalQPS:  maximalQPS,
 				clientCount: 8,
 				traffic:     DefaultTraffic,
-			}
-			testLinearizability(context.Background(), t, tc.config, failpoint, traffic)
+			})
+			validateEventsMatch(t, events)
+			checkOperationsAndPersistResults(t, operations, clus)
 		})
 	}
 }
 
-func testLinearizability(ctx context.Context, t *testing.T, config e2e.EtcdProcessClusterConfig, failpoint FailpointConfig, traffic trafficConfig) {
-	clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clus.Close()
-	ctx, cancel := context.WithCancel(ctx)
-	go func() {
-		defer cancel()
-		err := triggerFailpoints(ctx, t, clus, failpoint)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
-	operations := simulateTraffic(ctx, t, clus, traffic)
-	err = clus.Stop()
-	if err != nil {
-		t.Error(err)
-	}
-	checkOperationsAndPersistResults(t, operations, clus)
+func testLinearizability(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, events [][]watchEvent) {
+	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
+	g := errgroup.Group{}
+	trafficCtx, trafficCancel := context.WithCancel(ctx)
+	g.Go(func() error {
+		triggerFailpoints(ctx, t, clus, failpoint)
+		time.Sleep(time.Second)
+		trafficCancel()
+		return nil
+	})
+	watchCtx, watchCancel := context.WithCancel(ctx)
+	g.Go(func() error {
+		operations = simulateTraffic(trafficCtx, t, clus, traffic)
+		time.Sleep(time.Second)
+		watchCancel()
+		return nil
+	})
+	g.Go(func() error {
+		events = collectClusterWatchEvents(watchCtx, t, clus)
+		return nil
+	})
+	g.Wait()
+	return operations, events
 }
 
-func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig) error {
+func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
 	var err error
 	successes := 0
 	failures := 0
 	for _, proc := range clus.Procs {
 		if !config.failpoint.Available(proc) {
-			return fmt.Errorf("failpoint %q not available on %s", config.failpoint.Name(), proc.Config().Name)
+			t.Errorf("Failpoint %q not available on %s", config.failpoint.Name(), proc.Config().Name)
+			return
 		}
 	}
 	for successes < config.count && failures < config.retries {
@@ -143,10 +154,8 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 		successes++
 	}
 	if successes < config.count || failures >= config.retries {
-		return fmt.Errorf("failed to trigger failpoints enough times, err: %v", err)
+		t.Errorf("failed to trigger failpoints enough times, err: %v", err)
 	}
-	time.Sleep(config.waitBetweenTriggers)
-	return nil
 }
 
 type FailpointConfig struct {
@@ -201,6 +210,25 @@ type trafficConfig struct {
 	maximalQPS  float64
 	clientCount int
 	traffic     Traffic
+}
+
+func validateEventsMatch(t *testing.T, ops [][]watchEvent) {
+	// Move longest history to ops[0]
+	maxLength := len(ops[0])
+	for i := 1; i < len(ops); i++ {
+		if len(ops[i]) > maxLength {
+			maxLength = len(ops[i])
+			ops[0], ops[i] = ops[i], ops[0]
+		}
+	}
+
+	for i := 1; i < len(ops); i++ {
+		length := len(ops[i])
+		// We compare prefix of watch events, as we are not guaranteed to collect all events from each node.
+		if diff := cmp.Diff(ops[0][:length], ops[i][:length]); diff != "" {
+			t.Errorf("Events in watches do not match, %s", diff)
+		}
+	}
 }
 
 func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
