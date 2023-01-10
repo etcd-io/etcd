@@ -15,8 +15,11 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -51,6 +54,7 @@ type EtcdProcess interface {
 	Close() error
 	Config() *EtcdServerProcessConfig
 	PeerProxy() proxy.Server
+	Failpoints() *BinaryFailpoints
 	Logs() LogsExpect
 	Kill() error
 }
@@ -62,10 +66,11 @@ type LogsExpect interface {
 }
 
 type EtcdServerProcess struct {
-	cfg   *EtcdServerProcessConfig
-	proc  *expect.ExpectProcess
-	proxy proxy.Server
-	donec chan struct{} // closed when Interact() terminates
+	cfg        *EtcdServerProcessConfig
+	proc       *expect.ExpectProcess
+	proxy      proxy.Server
+	failpoints *BinaryFailpoints
+	donec      chan struct{} // closed when Interact() terminates
 }
 
 type EtcdServerProcessConfig struct {
@@ -101,7 +106,11 @@ func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, err
 			return nil, err
 		}
 	}
-	return &EtcdServerProcess{cfg: cfg, donec: make(chan struct{})}, nil
+	ep := &EtcdServerProcess{cfg: cfg, donec: make(chan struct{})}
+	if cfg.GoFailPort != 0 {
+		ep.failpoints = &BinaryFailpoints{member: ep}
+	}
+	return ep, nil
 }
 
 func (ep *EtcdServerProcess) EndpointsV2() []string      { return []string{ep.cfg.ClientURL} }
@@ -268,4 +277,73 @@ func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
 
 func (ep *EtcdServerProcess) PeerProxy() proxy.Server {
 	return ep.proxy
+}
+
+func (ep *EtcdServerProcess) Failpoints() *BinaryFailpoints {
+	return ep.failpoints
+}
+
+type BinaryFailpoints struct {
+	member         EtcdProcess
+	availableCache map[string]struct{}
+}
+
+func (f *BinaryFailpoints) Setup(ctx context.Context, failpoint, payload string) error {
+	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
+	failpointUrl := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   failpoint,
+	}
+	r, err := http.NewRequestWithContext(ctx, "PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
+	if err != nil {
+		return err
+	}
+	resp, err := httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+var httpClient = http.Client{
+	Timeout: 10 * time.Millisecond,
+}
+
+func (f *BinaryFailpoints) Available() map[string]struct{} {
+	if f.availableCache == nil {
+		fs, err := fetchFailpoints(f.member)
+		if err != nil {
+			panic(err)
+		}
+		f.availableCache = fs
+	}
+	return f.availableCache
+}
+
+func fetchFailpoints(member EtcdProcess) (map[string]struct{}, error) {
+	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
+	failpointUrl := url.URL{
+		Scheme: "http",
+		Host:   address,
+	}
+	resp, err := http.Get(failpointUrl.String())
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	text := strings.ReplaceAll(string(body), "=", "")
+	failpoints := map[string]struct{}{}
+	for _, f := range strings.Split(text, "\n") {
+		failpoints[f] = struct{}{}
+	}
+	return failpoints, nil
 }
