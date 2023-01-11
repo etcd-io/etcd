@@ -3,6 +3,7 @@
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.3.md).
 
 <hr>
+
 ## v3.4.24 (TBD)
 
 ### Other
