@@ -170,6 +170,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 	endpoints := clus.EndpointsV3()
 
 	ids := newIdProvider()
+	lm := newClientId2LeaseIdMapper()
 	h := history{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
@@ -186,7 +187,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 			defer wg.Done()
 			defer c.Close()
 
-			config.traffic.Run(ctx, c, limiter, ids)
+			config.traffic.Run(ctx, c, limiter, ids, lm)
 			mux.Lock()
 			h = h.Merge(c.history.history)
 			mux.Unlock()

@@ -26,10 +26,13 @@ import (
 type OperationType string
 
 const (
-	Get    OperationType = "get"
-	Put    OperationType = "put"
-	Delete OperationType = "delete"
-	Txn    OperationType = "txn"
+	Get          OperationType = "get"
+	Put          OperationType = "put"
+	Delete       OperationType = "delete"
+	Txn          OperationType = "txn"
+	PutWithLease OperationType = "putWithLease"
+	LeaseGrant   OperationType = "leaseGrant"
+	LeaseRevoke  OperationType = "leaseRevoke"
 )
 
 type EtcdRequest struct {
@@ -43,9 +46,10 @@ type EtcdCondition struct {
 }
 
 type EtcdOperation struct {
-	Type  OperationType
-	Key   string
-	Value string
+	Type    OperationType
+	Key     string
+	Value   string
+	LeaseID int64
 }
 
 type EtcdResponse struct {
@@ -60,11 +64,20 @@ type EtcdOperationResult struct {
 	Deleted int64
 }
 
+var leased = struct{}{}
+
+type EtcdLease struct {
+	LeaseID int64
+	Keys    map[string]struct{}
+}
+
 type PossibleStates []EtcdState
 
 type EtcdState struct {
 	Revision  int64
 	KeyValues map[string]string
+	KeyLeases map[string]int64
+	Leases    map[int64]EtcdLease
 }
 
 var etcdModel = porcupine.Model{
@@ -139,6 +152,12 @@ func describeEtcdOperation(op EtcdOperation) string {
 		return fmt.Sprintf("delete(%q)", op.Key)
 	case Txn:
 		return "<! unsupported: nested transaction !>"
+	case LeaseGrant:
+		return fmt.Sprintf("leaseGrant(%d)", op.LeaseID)
+	case LeaseRevoke:
+		return fmt.Sprintf("leaseRevoke(%d)", op.LeaseID)
+	case PutWithLease:
+		return fmt.Sprintf("putWithLease(%q, %q, %d)", op.Key, op.Value, op.LeaseID)
 	default:
 		return fmt.Sprintf("<! unknown op: %q !>", op.Type)
 	}
@@ -157,6 +176,12 @@ func describeEtcdOperationResponse(op OperationType, resp EtcdOperationResult) s
 		return fmt.Sprintf("deleted: %d", resp.Deleted)
 	case Txn:
 		return "<! unsupported: nested transaction !>"
+	case LeaseGrant:
+		return fmt.Sprintf("ok")
+	case LeaseRevoke:
+		return fmt.Sprintf("ok")
+	case PutWithLease:
+		return fmt.Sprintf("ok")
 	default:
 		return fmt.Sprintf("<! unknown op: %q !>", op)
 	}
@@ -183,6 +208,8 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 	state := EtcdState{
 		Revision:  response.Revision,
 		KeyValues: map[string]string{},
+		KeyLeases: map[string]int64{},
+		Leases:    map[int64]EtcdLease{},
 	}
 	if response.TxnFailure {
 		return state
@@ -197,6 +224,24 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 		case Put:
 			state.KeyValues[op.Key] = op.Value
 		case Delete:
+		case PutWithLease:
+			if _, ok := state.Leases[op.LeaseID]; ok {
+				state.KeyValues[op.Key] = op.Value
+				//detach from old lease id but we dont expect that at init
+				if _, ok := state.KeyLeases[op.Key]; ok {
+					panic("old lease id found at init")
+				}
+				//attach to new lease id
+				state.KeyLeases[op.Key] = op.LeaseID
+				state.Leases[op.LeaseID].Keys[op.Key] = leased
+			}
+		case LeaseGrant:
+			lease := EtcdLease{
+				LeaseID: op.LeaseID,
+				Keys:    map[string]struct{}{},
+			}
+			state.Leases[op.LeaseID] = lease
+		case LeaseRevoke:
 		default:
 			panic("Unknown operation")
 		}
@@ -244,6 +289,7 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 	s.KeyValues = newKVs
 	opResp := make([]EtcdOperationResult, len(request.Ops))
 	increaseRevision := false
+
 	for i, op := range request.Ops {
 		switch op.Type {
 		case Get:
@@ -251,18 +297,68 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 		case Put:
 			s.KeyValues[op.Key] = op.Value
 			increaseRevision = true
+			s = detachFromOldLease(s, op)
 		case Delete:
 			if _, ok := s.KeyValues[op.Key]; ok {
 				delete(s.KeyValues, op.Key)
 				increaseRevision = true
+				s = detachFromOldLease(s, op)
 				opResp[i].Deleted = 1
 			}
+		case PutWithLease:
+			if _, ok := s.Leases[op.LeaseID]; ok {
+				//handle put op.
+				s.KeyValues[op.Key] = op.Value
+				increaseRevision = true
+				s = detachFromOldLease(s, op)
+				s = attachToNewLease(s, op)
+			}
+		case LeaseRevoke:
+			//Delete the keys attached to the lease
+			keyDeleted := false
+			for key, _ := range s.Leases[op.LeaseID].Keys {
+				//same as delete.
+				if _, ok := s.KeyValues[key]; ok {
+					if !keyDeleted {
+						keyDeleted = true
+					}
+					delete(s.KeyValues, key)
+					delete(s.KeyLeases, key)
+				}
+			}
+			//delete the lease
+			delete(s.Leases, op.LeaseID)
+			if keyDeleted {
+				increaseRevision = true
+			}
+		case LeaseGrant:
+			lease := EtcdLease{
+				LeaseID: op.LeaseID,
+				Keys:    map[string]struct{}{},
+			}
+			s.Leases[op.LeaseID] = lease
 		default:
 			panic("unsupported operation")
 		}
 	}
+
 	if increaseRevision {
 		s.Revision += 1
 	}
+
 	return s, EtcdResponse{Result: opResp, Revision: s.Revision}
+}
+
+func detachFromOldLease(s EtcdState, op EtcdOperation) EtcdState {
+	if oldLeaseId, ok := s.KeyLeases[op.Key]; ok {
+		delete(s.Leases[oldLeaseId].Keys, op.Key)
+		delete(s.KeyLeases, op.Key)
+	}
+	return s
+}
+
+func attachToNewLease(s EtcdState, op EtcdOperation) EtcdState {
+	s.KeyLeases[op.Key] = op.LeaseID
+	s.Leases[op.LeaseID].Keys[op.Key] = leased
+	return s
 }
