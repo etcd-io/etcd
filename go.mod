@@ -18,7 +18,7 @@ require (
 	github.com/google/uuid v1.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.1-0.20190118093823-f849b5445de4
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/grpc-ecosystem/grpc-gateway v1.9.5
+	github.com/grpc-ecosystem/grpc-gateway v1.11.0
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/json-iterator/go v1.1.11
 	github.com/modern-go/reflect2 v1.0.1

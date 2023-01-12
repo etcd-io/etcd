@@ -343,7 +343,12 @@ func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
 	if err = cURLPost(cx.epc, cURLReq{
 		endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
 		value:    string(pdata),
-		expected: `{"error":"\"leader\" field must be provided","message":"\"leader\" field must be provided","code":2}`,
+		// NOTE: The order of json fields is aligned with the runtime.errorBody
+		//
+		// REF:
+		// 1. https://github.com/grpc-ecosystem/grpc-gateway/blob/v1.11.0/runtime/errors.go#L73
+		// 2. https://github.com/grpc/grpc/blob/master/src/proto/grpc/status/status.proto#L82
+		expected: `{"error":"\"leader\" field must be provided","code":2,"message":"\"leader\" field must be provided"}`,
 	}); err != nil {
 		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
 	}
@@ -359,7 +364,12 @@ func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
 	if err := cURLPost(cx.epc, cURLReq{
 		endpoint: path.Join(cx.apiPrefix, "/election/resign"),
 		value:    `{}`,
-		expected: `{"error":"\"leader\" field must be provided","message":"\"leader\" field must be provided","code":2}`,
+		// NOTE: The order of json fields is aligned with the runtime.errorBody
+		//
+		// REF:
+		// 1. https://github.com/grpc-ecosystem/grpc-gateway/blob/v1.11.0/runtime/errors.go#L73
+		// 2. https://github.com/grpc/grpc/blob/master/src/proto/grpc/status/status.proto#L82
+		expected: `{"error":"\"leader\" field must be provided","code":2,"message":"\"leader\" field must be provided"}`,
 	}); err != nil {
 		cx.t.Fatalf("failed post resign request (%s) (%v)", cx.apiPrefix, err)
 	}
