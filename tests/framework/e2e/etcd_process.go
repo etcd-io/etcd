@@ -190,6 +190,14 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 		}
 	}
 	ep.cfg.lg.Info("stopped server.", zap.String("name", ep.cfg.Name))
+	if ep.proxy != nil {
+		ep.cfg.lg.Info("stopping proxy...", zap.String("name", ep.cfg.Name))
+		err := ep.proxy.Close()
+		ep.proxy = nil
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -197,14 +205,6 @@ func (ep *EtcdServerProcess) Close() error {
 	ep.cfg.lg.Info("closing server...", zap.String("name", ep.cfg.Name))
 	if err := ep.Stop(); err != nil {
 		return err
-	}
-	if ep.proxy != nil {
-		ep.cfg.lg.Info("closing proxy...", zap.String("name", ep.cfg.Name))
-		err := ep.proxy.Close()
-		if err != nil {
-			return err
-		}
-		ep.proxy = nil
 	}
 
 	if !ep.cfg.KeepDataDir {
