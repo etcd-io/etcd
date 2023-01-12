@@ -172,8 +172,6 @@ func (c *Client) refreshToken(ctx context.Context) error {
 		// clients just need to retry the operations (e.g. Put, Delete etc).
 		return nil
 	}
-	// clear auth token before refreshing it.
-	//c.authTokenBundle.UpdateAuthToken("")
 	return c.getToken(ctx)
 }
 
