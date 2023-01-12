@@ -240,16 +240,7 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 			state.KeyValues[op.Key] = op.Value
 		case Delete:
 		case PutWithLease:
-			if _, ok := state.Leases[op.LeaseID]; ok {
-				state.KeyValues[op.Key] = op.Value
-				//detach from old lease id but we dont expect that at init
-				if _, ok := state.KeyLeases[op.Key]; ok {
-					panic("old lease id found at init")
-				}
-				//attach to new lease id
-				state.KeyLeases[op.Key] = op.LeaseID
-				state.Leases[op.LeaseID].Keys[op.Key] = leased
-			}
+			//nop here since lease wont be there
 		case LeaseGrant:
 			lease := EtcdLease{
 				LeaseID: op.LeaseID,
@@ -312,12 +303,12 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 		case Put:
 			s.KeyValues[op.Key] = op.Value
 			increaseRevision = true
-			s = detachFromOldLease(s, op)
+			s = detachFromOldLease(s, op.Key)
 		case Delete:
 			if _, ok := s.KeyValues[op.Key]; ok {
 				delete(s.KeyValues, op.Key)
 				increaseRevision = true
-				s = detachFromOldLease(s, op)
+				s = detachFromOldLease(s, op.Key)
 				opResp[i].Deleted = 1
 			}
 		case PutWithLease:
@@ -325,8 +316,8 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 				//handle put op.
 				s.KeyValues[op.Key] = op.Value
 				increaseRevision = true
-				s = detachFromOldLease(s, op)
-				s = attachToNewLease(s, op)
+				s = detachFromOldLease(s, op.Key)
+				s = attachToNewLease(s, op.LeaseID, op.Key)
 			}
 		case LeaseRevoke:
 			//Delete the keys attached to the lease
@@ -364,16 +355,16 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 	return s, EtcdResponse{OpsResult: opResp, Revision: s.Revision}
 }
 
-func detachFromOldLease(s EtcdState, op EtcdOperation) EtcdState {
-	if oldLeaseId, ok := s.KeyLeases[op.Key]; ok {
-		delete(s.Leases[oldLeaseId].Keys, op.Key)
-		delete(s.KeyLeases, op.Key)
+func detachFromOldLease(s EtcdState, key string) EtcdState {
+	if oldLeaseId, ok := s.KeyLeases[key]; ok {
+		delete(s.Leases[oldLeaseId].Keys, key)
+		delete(s.KeyLeases, key)
 	}
 	return s
 }
 
-func attachToNewLease(s EtcdState, op EtcdOperation) EtcdState {
-	s.KeyLeases[op.Key] = op.LeaseID
-	s.Leases[op.LeaseID].Keys[op.Key] = leased
+func attachToNewLease(s EtcdState, leaseID int64, key string) EtcdState {
+	s.KeyLeases[key] = leaseID
+	s.Leases[leaseID].Keys[key] = leased
 	return s
 }
