@@ -197,11 +197,15 @@ func getRequest(key string) EtcdRequest {
 }
 
 func getResponse(value string, revision int64) EtcdResponse {
-	return EtcdResponse{Result: []EtcdOperationResult{{Value: value}}, Revision: revision}
+	return EtcdResponse{OpsResult: []EtcdOperationResult{{Value: value}}, Revision: revision}
 }
 
 func failedResponse(err error) EtcdResponse {
 	return EtcdResponse{Err: err}
+}
+
+func unknownResponse(revision int64) EtcdResponse {
+	return EtcdResponse{ResultUnknown: true, Revision: revision}
 }
 
 func putRequest(key, value string) EtcdRequest {
@@ -209,7 +213,7 @@ func putRequest(key, value string) EtcdRequest {
 }
 
 func putResponse(revision int64) EtcdResponse {
-	return EtcdResponse{Result: []EtcdOperationResult{{}}, Revision: revision}
+	return EtcdResponse{OpsResult: []EtcdOperationResult{{}}, Revision: revision}
 }
 
 func deleteRequest(key string) EtcdRequest {
@@ -217,7 +221,7 @@ func deleteRequest(key string) EtcdRequest {
 }
 
 func deleteResponse(deleted int64, revision int64) EtcdResponse {
-	return EtcdResponse{Result: []EtcdOperationResult{{Deleted: deleted}}, Revision: revision}
+	return EtcdResponse{OpsResult: []EtcdOperationResult{{Deleted: deleted}}, Revision: revision}
 }
 
 func txnRequest(key, expectValue, newValue string) EtcdRequest {
@@ -229,7 +233,7 @@ func txnResponse(succeeded bool, revision int64) EtcdResponse {
 	if succeeded {
 		result = []EtcdOperationResult{{}}
 	}
-	return EtcdResponse{Result: result, TxnFailure: !succeeded, Revision: revision}
+	return EtcdResponse{OpsResult: result, TxnResult: !succeeded, Revision: revision}
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
@@ -241,7 +245,7 @@ func leaseGrantRequest(leaseID int64) EtcdRequest {
 }
 
 func leaseGrantResponse(revision int64) EtcdResponse {
-	return EtcdResponse{Result: []EtcdOperationResult{{}}, Revision: revision}
+	return EtcdResponse{OpsResult: []EtcdOperationResult{{}}, Revision: revision}
 }
 
 func leaseRevokeRequest(leaseID int64) EtcdRequest {
@@ -249,7 +253,7 @@ func leaseRevokeRequest(leaseID int64) EtcdRequest {
 }
 
 func leaseRevokeResponse(revision int64) EtcdResponse {
-	return EtcdResponse{Result: []EtcdOperationResult{{}}, Revision: revision}
+	return EtcdResponse{OpsResult: []EtcdOperationResult{{}}, Revision: revision}
 }
 
 type history struct {
