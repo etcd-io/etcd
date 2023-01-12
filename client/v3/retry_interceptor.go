@@ -173,7 +173,7 @@ func (c *Client) refreshToken(ctx context.Context) error {
 		return nil
 	}
 	// clear auth token before refreshing it.
-	c.authTokenBundle.UpdateAuthToken("")
+	//c.authTokenBundle.UpdateAuthToken("")
 	return c.getToken(ctx)
 }
 
