@@ -4,7 +4,7 @@
 /gopath
 /gopath.proto
 /release
-/bin
+bin/
 *.etcd
 *.log
 *.swp
@@ -35,3 +35,4 @@ hack/tls-setup/certs
 /tools/benchmark/benchmark
 /out
 /etcd-dump-logs
+/cluster
