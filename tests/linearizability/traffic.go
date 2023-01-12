@@ -27,6 +27,7 @@ import (
 
 var (
 	DefaultLeaseTTL int64   = 7200
+	RequestTimeout          = 40 * time.Millisecond
 	DefaultTraffic  Traffic = readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 50}, {operation: Delete, chance: 10}, {operation: PutWithLease, chance: 10}, {operation: LeaseRevoke, chance: 10}, {operation: Txn, chance: 20}}}
 )
 
@@ -65,7 +66,7 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 }
 
 func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string) ([]*mvccpb.KeyValue, error) {
-	getCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
+	getCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	resp, err := c.Get(getCtx, key)
 	cancel()
 	if err == nil {
@@ -75,33 +76,38 @@ func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limite
 }
 
 func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lm clientId2LeaseIdMapper, cid int, lastValues []*mvccpb.KeyValue) error {
-	putCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
+	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
 	switch t.pickWriteOperation() {
 	case Put:
-		err = c.Put(putCtx, key, newValue)
+		err = c.Put(writeCtx, key, newValue)
 	case Delete:
-		err = c.Delete(putCtx, key)
+		err = c.Delete(writeCtx, key)
 	case Txn:
 		var expectValue string
 		if len(lastValues) != 0 {
 			expectValue = string(lastValues[0].Value)
 		}
-		err = c.Txn(putCtx, key, expectValue, newValue)
+		err = c.Txn(writeCtx, key, expectValue, newValue)
 	case PutWithLease:
 		leaseId := lm.LeaseId(cid)
 		if leaseId == 0 {
-			leaseId, err = c.LeaseGrant(ctx, t.leaseTTL)
-			lm.AddLeaseId(cid, leaseId)
+			leaseId, err = c.LeaseGrant(writeCtx, t.leaseTTL)
+			if err == nil {
+				lm.AddLeaseId(cid, leaseId)
+				limiter.Wait(ctx)
+			}
 		}
 		if leaseId != 0 {
+			putCtx, putCancel := context.WithTimeout(ctx, RequestTimeout)
 			err = c.PutWithLease(putCtx, key, newValue, leaseId)
+			putCancel()
 		}
 	case LeaseRevoke:
 		leaseId := lm.LeaseId(cid)
 		if leaseId != 0 {
-			err = c.LeaseRevoke(putCtx, leaseId)
+			err = c.LeaseRevoke(writeCtx, leaseId)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
 				lm.RemoveLeaseId(cid)
