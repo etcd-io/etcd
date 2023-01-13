@@ -1744,6 +1744,10 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 // Note: it will return nil if member is not found in cluster or if member is not learner.
 // These two conditions will be checked before apply phase later.
 func (s *EtcdServer) isLearnerReady(id uint64) error {
+	if err := s.waitAppliedIndex(); err != nil {
+		return err
+	}
+
 	rs := s.raftStatus()
 
 	// leader's raftStatus.Progress is not nil
@@ -1763,12 +1767,16 @@ func (s *EtcdServer) isLearnerReady(id uint64) error {
 		}
 	}
 
-	if isFound {
-		leaderMatch := rs.Progress[leaderID].Match
-		// the learner's Match not caught up with leader yet
-		if float64(learnerMatch) < float64(leaderMatch)*readyPercent {
-			return ErrLearnerNotReady
-		}
+	// We should return an error in API directly, to avoid the request
+	// being unnecessarily delivered to raft.
+	if !isFound {
+		return membership.ErrIDNotFound
+	}
+
+	leaderMatch := rs.Progress[leaderID].Match
+	// the learner's Match not caught up with leader yet
+	if float64(learnerMatch) < float64(leaderMatch)*readyPercent {
+		return ErrLearnerNotReady
 	}
 
 	return nil
