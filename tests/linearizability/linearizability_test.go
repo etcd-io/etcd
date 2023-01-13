@@ -143,11 +143,11 @@ func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEve
 	for _, op := range watchEvents {
 		persisted[op.Op] = op
 	}
-	lastObservedEventTime := watchEvents[len(watchEvents)-1].Time
+	lastObservedOperation := lastOperationObservedInWatch(operations, persisted)
 
 	for _, op := range operations {
 		resp := op.Output.(EtcdResponse)
-		if resp.Err == nil || op.Call > lastObservedEventTime.UnixNano() {
+		if resp.Err == nil || op.Call > lastObservedOperation.Call {
 			// No need to patch successfully requests and cannot patch requests outside observed window.
 			newOperations = append(newOperations, op)
 			continue
@@ -171,6 +171,19 @@ func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEve
 		// Remove non persisted operations
 	}
 	return newOperations
+}
+
+func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[EtcdOperation]watchEvent) porcupine.Operation {
+	var maxCallTime int64
+	var lastOperation porcupine.Operation
+	for _, op := range operations {
+		event, _ := matchWatchEvent(op, watchEvents)
+		if event != nil && op.Call > maxCallTime {
+			maxCallTime = op.Call
+			lastOperation = op
+		}
+	}
+	return lastOperation
 }
 
 func matchWatchEvent(op porcupine.Operation, watchEvents map[EtcdOperation]watchEvent) (event *watchEvent, hasUniqueWriteOperation bool) {
