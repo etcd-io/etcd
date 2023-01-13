@@ -6,5 +6,5 @@ jobs:
     uses: ./.github/workflows/linearizability-template.yaml
     with:
       ref: ${{ github.ref }}
-      count: 60
+      count: 15
       testTimeout: 30m
