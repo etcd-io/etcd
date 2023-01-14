@@ -284,12 +284,14 @@ func (h history) Operations() []porcupine.Operation {
 			maxTime = op.Return
 		}
 	}
-	// Failed requests don't have a known return time.
-	// We simulate Infinity by using return time of latest successfully request.
 	for _, op := range h.failed {
 		if op.Call > maxTime {
-			continue
+			maxTime = op.Call
 		}
+	}
+	// Failed requests don't have a known return time.
+	// Simulate Infinity by using last observed time.
+	for _, op := range h.failed {
 		op.Return = maxTime + 1
 		operations = append(operations, op)
 	}
