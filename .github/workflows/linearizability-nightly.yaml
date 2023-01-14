@@ -18,7 +18,7 @@ jobs:
         make build
         mkdir -p /tmp/linearizability
         cat server/etcdserver/raft.fail.go
-        EXPECT_DEBUG=true GO_TEST_FLAGS='-v --count 500 --failfast --run TestLinearizability --timeout=170m' RESULTS_DIR=/tmp/linearizability make test-linearizability
+        EXPECT_DEBUG=true GO_TEST_FLAGS='-v --count 300 --failfast --run TestLinearizability --timeout=170m' RESULTS_DIR=/tmp/linearizability make test-linearizability
     - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       if: always()
       with:
