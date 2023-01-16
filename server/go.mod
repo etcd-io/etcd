@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd/v22 v22.5.0
-	github.com/dustin/go-humanize v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
