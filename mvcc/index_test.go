@@ -194,6 +194,80 @@ func TestIndexRangeSince(t *testing.T) {
 	}
 }
 
+func TestIndexRevision(t *testing.T) {
+	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
+	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}, {main: 4}, {main: 5}, {main: 6}}
+
+	ti := newTreeIndex(zap.NewExample())
+	for i := range allKeys {
+		ti.Put(allKeys[i], allRevs[i])
+	}
+
+	tests := []struct {
+		key, end []byte
+		atRev    int64
+		wrevs    []revision
+		wcounts  int
+	}{
+		// single key that not found
+		{
+			[]byte("bar"), nil, 6, nil, 0,
+		},
+		// single key that found
+		{
+			[]byte("foo"), nil, 6, []revision{{main: 6}}, 1,
+		},
+		// various range keys, fixed atRev
+		{
+			[]byte("foo"), []byte("foo1"), 6, []revision{{main: 6}}, 1,
+		},
+		{
+			[]byte("foo"), []byte("foo2"), 6, []revision{{main: 6}, {main: 5}}, 2,
+		},
+		{
+			[]byte("foo"), []byte("fop"), 6, []revision{{main: 6}, {main: 5}, {main: 4}}, 3,
+		},
+		{
+			[]byte("foo1"), []byte("fop"), 6, []revision{{main: 5}, {main: 4}}, 2,
+		},
+		{
+			[]byte("foo2"), []byte("fop"), 6, []revision{{main: 4}}, 1,
+		},
+		{
+			[]byte("foo3"), []byte("fop"), 6, nil, 0,
+		},
+		// fixed range keys, various atRev
+		{
+			[]byte("foo1"), []byte("fop"), 1, nil, 0,
+		},
+		{
+			[]byte("foo1"), []byte("fop"), 2, []revision{{main: 2}}, 1,
+		},
+		{
+			[]byte("foo1"), []byte("fop"), 3, []revision{{main: 2}, {main: 3}}, 2,
+		},
+		{
+			[]byte("foo1"), []byte("fop"), 4, []revision{{main: 2}, {main: 4}}, 2,
+		},
+		{
+			[]byte("foo1"), []byte("fop"), 5, []revision{{main: 5}, {main: 4}}, 2,
+		},
+		{
+			[]byte("foo1"), []byte("fop"), 6, []revision{{main: 5}, {main: 4}}, 2,
+		},
+	}
+	for i, tt := range tests {
+		revs := ti.Revisions(tt.key, tt.end, tt.atRev)
+		if !reflect.DeepEqual(revs, tt.wrevs) {
+			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
+		}
+		count := ti.CountRevisions(tt.key, tt.end, tt.atRev)
+		if count != tt.wcounts {
+			t.Errorf("#%d: count = %d, want %v", i, count, tt.wcounts)
+		}
+	}
+}
+
 func TestIndexCompactAndKeep(t *testing.T) {
 	maxRev := int64(20)
 	tests := []struct {
