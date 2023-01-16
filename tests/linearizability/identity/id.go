@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearizability
+package identity
 
 import "sync/atomic"
 
-type idProvider interface {
+type Provider interface {
 	ClientId() int
 	RequestId() int
 }
 
-func newIdProvider() idProvider {
+func NewIdProvider() Provider {
 	return &atomicProvider{}
 }
 

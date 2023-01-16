@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearizability
+package model
 
 import (
 	"errors"
@@ -521,12 +521,12 @@ func TestModelStep(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			state := etcdModel.Init()
+			state := Etcd.Init()
 			for _, op := range tc.operations {
-				ok, newState := etcdModel.Step(state, op.req, op.resp)
+				ok, newState := Etcd.Step(state, op.req, op.resp)
 				if ok != !op.failure {
 					t.Logf("state: %v", state)
-					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, etcdModel.DescribeOperation(op.req, op.resp))
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, Etcd.DescribeOperation(op.req, op.resp))
 				}
 				if ok {
 					state = newState
@@ -601,7 +601,7 @@ func TestModelDescribe(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		assert.Equal(t, tc.expectDescribe, etcdModel.DescribeOperation(tc.req, tc.resp))
+		assert.Equal(t, tc.expectDescribe, Etcd.DescribeOperation(tc.req, tc.resp))
 	}
 }
 

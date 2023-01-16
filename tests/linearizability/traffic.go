@@ -23,16 +23,18 @@ import (
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/tests/v3/linearizability/identity"
+	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
 var (
 	DefaultLeaseTTL int64   = 7200
 	RequestTimeout          = 40 * time.Millisecond
-	DefaultTraffic  Traffic = readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: Put, chance: 50}, {operation: Delete, chance: 10}, {operation: PutWithLease, chance: 10}, {operation: LeaseRevoke, chance: 10}, {operation: Txn, chance: 20}}}
+	DefaultTraffic  Traffic = readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 50}, {operation: model.Delete, chance: 10}, {operation: model.PutWithLease, chance: 10}, {operation: model.LeaseRevoke, chance: 10}, {operation: model.Txn, chance: 20}}}
 )
 
 type Traffic interface {
-	Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider, lm clientId2LeaseIdMapper)
+	Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage)
 }
 
 type readWriteSingleKey struct {
@@ -42,11 +44,11 @@ type readWriteSingleKey struct {
 }
 
 type opChance struct {
-	operation OperationType
+	operation model.OperationType
 	chance    int
 }
 
-func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter *rate.Limiter, ids idProvider, lm clientId2LeaseIdMapper) {
+func (t readWriteSingleKey) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
 
 	for {
 		select {
@@ -61,7 +63,7 @@ func (t readWriteSingleKey) Run(ctx context.Context, c *recordingClient, limiter
 			continue
 		}
 		// Provide each write with unique id to make it easier to validate operation history.
-		t.Write(ctx, c, limiter, key, fmt.Sprintf("%d", ids.RequestId()), lm, c.history.id, resp)
+		t.Write(ctx, c, limiter, key, fmt.Sprintf("%d", ids.RequestId()), lm, clientId, resp)
 	}
 }
 
@@ -75,22 +77,22 @@ func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limite
 	return resp, err
 }
 
-func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lm clientId2LeaseIdMapper, cid int, lastValues []*mvccpb.KeyValue) error {
+func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lm identity.LeaseIdStorage, cid int, lastValues []*mvccpb.KeyValue) error {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
 	switch t.pickWriteOperation() {
-	case Put:
+	case model.Put:
 		err = c.Put(writeCtx, key, newValue)
-	case Delete:
+	case model.Delete:
 		err = c.Delete(writeCtx, key)
-	case Txn:
+	case model.Txn:
 		var expectValue string
 		if len(lastValues) != 0 {
 			expectValue = string(lastValues[0].Value)
 		}
 		err = c.Txn(writeCtx, key, expectValue, newValue)
-	case PutWithLease:
+	case model.PutWithLease:
 		leaseId := lm.LeaseId(cid)
 		if leaseId == 0 {
 			leaseId, err = c.LeaseGrant(writeCtx, t.leaseTTL)
@@ -104,7 +106,7 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 			err = c.PutWithLease(putCtx, key, newValue, leaseId)
 			putCancel()
 		}
-	case LeaseRevoke:
+	case model.LeaseRevoke:
 		leaseId := lm.LeaseId(cid)
 		if leaseId != 0 {
 			err = c.LeaseRevoke(writeCtx, leaseId)
@@ -123,7 +125,7 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 	return err
 }
 
-func (t readWriteSingleKey) pickWriteOperation() OperationType {
+func (t readWriteSingleKey) pickWriteOperation() model.OperationType {
 	sum := 0
 	for _, op := range t.writes {
 		sum += op.chance
