@@ -18,7 +18,7 @@ require (
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
-	gotest.tools/gotestsum v1.8.2
+	gotest.tools/gotestsum v1.9.0
 	gotest.tools/v3 v3.4.0
 	honnef.co/go/tools v0.3.3
 	mvdan.cc/unparam v0.0.0-20220316160445-06cc5682983b
