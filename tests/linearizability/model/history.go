@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearizability
+package model
 
 import (
 	"time"
@@ -20,28 +20,29 @@ import (
 	"github.com/anishathalye/porcupine"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/linearizability/identity"
 )
 
-type appendableHistory struct {
+type AppendableHistory struct {
 	// id of the next write operation. If needed a new id might be requested from idProvider.
 	id         int
-	idProvider idProvider
+	idProvider identity.Provider
 
-	history
+	History
 }
 
-func newAppendableHistory(ids idProvider) *appendableHistory {
-	return &appendableHistory{
+func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
+	return &AppendableHistory{
 		id:         ids.ClientId(),
 		idProvider: ids,
-		history: history{
+		History: History{
 			successful: []porcupine.Operation{},
 			failed:     []porcupine.Operation{},
 		},
 	}
 }
 
-func (h *appendableHistory) AppendGet(key string, start, end time.Time, resp *clientv3.GetResponse) {
+func (h *AppendableHistory) AppendGet(key string, start, end time.Time, resp *clientv3.GetResponse) {
 	var readData string
 	if len(resp.Kvs) == 1 {
 		readData = string(resp.Kvs[0].Value)
@@ -59,7 +60,7 @@ func (h *appendableHistory) AppendGet(key string, start, end time.Time, resp *cl
 	})
 }
 
-func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, resp *clientv3.PutResponse, err error) {
+func (h *AppendableHistory) AppendPut(key, value string, start, end time.Time, resp *clientv3.PutResponse, err error) {
 	request := putRequest(key, value)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -78,7 +79,7 @@ func (h *appendableHistory) AppendPut(key, value string, start, end time.Time, r
 	})
 }
 
-func (h *appendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Time, resp *clientv3.PutResponse, err error) {
+func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Time, resp *clientv3.PutResponse, err error) {
 	request := putWithLeaseRequest(key, value, leaseID)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -97,7 +98,7 @@ func (h *appendableHistory) AppendPutWithLease(key, value string, leaseID int64,
 	})
 }
 
-func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
+func (h *AppendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
 	var leaseID int64
 	if resp != nil {
 		leaseID = int64(resp.ID)
@@ -120,7 +121,7 @@ func (h *appendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv
 	})
 }
 
-func (h *appendableHistory) AppendLeaseRevoke(id int64, start time.Time, end time.Time, resp *clientv3.LeaseRevokeResponse, err error) {
+func (h *AppendableHistory) AppendLeaseRevoke(id int64, start time.Time, end time.Time, resp *clientv3.LeaseRevokeResponse, err error) {
 	request := leaseRevokeRequest(id)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -139,7 +140,7 @@ func (h *appendableHistory) AppendLeaseRevoke(id int64, start time.Time, end tim
 	})
 }
 
-func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
+func (h *AppendableHistory) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
 	request := deleteRequest(key)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -160,7 +161,7 @@ func (h *appendableHistory) AppendDelete(key string, start, end time.Time, resp 
 	})
 }
 
-func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, end time.Time, resp *clientv3.TxnResponse, err error) {
+func (h *AppendableHistory) AppendTxn(key, expectValue, newValue string, start, end time.Time, resp *clientv3.TxnResponse, err error) {
 	request := txnRequest(key, expectValue, newValue)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -179,7 +180,7 @@ func (h *appendableHistory) AppendTxn(key, expectValue, newValue string, start, 
 	})
 }
 
-func (h *appendableHistory) appendFailed(request EtcdRequest, start time.Time, err error) {
+func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Time, err error) {
 	h.failed = append(h.failed, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
@@ -256,15 +257,15 @@ func leaseRevokeResponse(revision int64) EtcdResponse {
 	return EtcdResponse{OpsResult: []EtcdOperationResult{{}}, Revision: revision}
 }
 
-type history struct {
+type History struct {
 	successful []porcupine.Operation
 	// failed requests are kept separate as we don't know return time of failed operations.
 	// Based on https://github.com/anishathalye/porcupine/issues/10
 	failed []porcupine.Operation
 }
 
-func (h history) Merge(h2 history) history {
-	result := history{
+func (h History) Merge(h2 History) History {
+	result := History{
 		successful: make([]porcupine.Operation, 0, len(h.successful)+len(h2.successful)),
 		failed:     make([]porcupine.Operation, 0, len(h.failed)+len(h2.failed)),
 	}
@@ -275,7 +276,7 @@ func (h history) Merge(h2 history) history {
 	return result
 }
 
-func (h history) Operations() []porcupine.Operation {
+func (h History) Operations() []porcupine.Operation {
 	operations := make([]porcupine.Operation, 0, len(h.successful)+len(h.failed))
 	var maxTime int64
 	for _, op := range h.successful {

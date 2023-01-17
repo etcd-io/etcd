@@ -31,6 +31,8 @@ import (
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/linearizability/identity"
+	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
 const (
@@ -139,14 +141,14 @@ func testLinearizability(ctx context.Context, t *testing.T, clus *e2e.EtcdProces
 
 func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEvents []watchEvent) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
-	persisted := map[EtcdOperation]watchEvent{}
+	persisted := map[model.EtcdOperation]watchEvent{}
 	for _, op := range watchEvents {
 		persisted[op.Op] = op
 	}
 	lastObservedOperation := lastOperationObservedInWatch(operations, persisted)
 
 	for _, op := range operations {
-		resp := op.Output.(EtcdResponse)
+		resp := op.Output.(model.EtcdResponse)
 		if resp.Err == nil || op.Call > lastObservedOperation.Call {
 			// No need to patch successfully requests and cannot patch requests outside observed window.
 			newOperations = append(newOperations, op)
@@ -156,7 +158,7 @@ func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEve
 		if event != nil {
 			// Set revision and time based on watchEvent.
 			op.Return = event.Time.UnixNano()
-			op.Output = EtcdResponse{
+			op.Output = model.EtcdResponse{
 				Revision:      event.Revision,
 				ResultUnknown: true,
 			}
@@ -173,7 +175,7 @@ func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEve
 	return newOperations
 }
 
-func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[EtcdOperation]watchEvent) porcupine.Operation {
+func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.EtcdOperation]watchEvent) porcupine.Operation {
 	var maxCallTime int64
 	var lastOperation porcupine.Operation
 	for _, op := range operations {
@@ -186,17 +188,17 @@ func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents 
 	return lastOperation
 }
 
-func matchWatchEvent(op porcupine.Operation, watchEvents map[EtcdOperation]watchEvent) (event *watchEvent, hasUniqueWriteOperation bool) {
-	request := op.Input.(EtcdRequest)
+func matchWatchEvent(op porcupine.Operation, watchEvents map[model.EtcdOperation]watchEvent) (event *watchEvent, hasUniqueWriteOperation bool) {
+	request := op.Input.(model.EtcdRequest)
 	for _, etcdOp := range request.Ops {
-		if isWrite(etcdOp.Type) && inUnique(etcdOp.Type) {
+		if model.IsWrite(etcdOp.Type) && model.IsUnique(etcdOp.Type) {
 			// We expect all put to be unique as they write unique value.
 			hasUniqueWriteOperation = true
 			opType := etcdOp.Type
-			if opType == PutWithLease {
-				opType = Put
+			if opType == model.PutWithLease {
+				opType = model.Put
 			}
-			event, ok := watchEvents[EtcdOperation{
+			event, ok := watchEvents[model.EtcdOperation{
 				Type:  opType,
 				Key:   etcdOp.Key,
 				Value: etcdOp.Value,
@@ -210,9 +212,9 @@ func matchWatchEvent(op porcupine.Operation, watchEvents map[EtcdOperation]watch
 }
 
 func hasWriteOperation(op porcupine.Operation) bool {
-	request := op.Input.(EtcdRequest)
+	request := op.Input.(model.EtcdRequest)
 	for _, etcdOp := range request.Ops {
-		if isWrite(etcdOp.Type) {
+		if model.IsWrite(etcdOp.Type) {
 			return true
 		}
 	}
@@ -255,9 +257,9 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsV3()
 
-	ids := newIdProvider()
-	lm := newClientId2LeaseIdMapper()
-	h := history{}
+	ids := identity.NewIdProvider()
+	lm := identity.NewLeaseIdStorage()
+	h := model.History{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
@@ -269,15 +271,15 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 		if err != nil {
 			t.Fatal(err)
 		}
-		go func(c *recordingClient) {
+		go func(c *recordingClient, clientId int) {
 			defer wg.Done()
 			defer c.Close()
 
-			config.traffic.Run(ctx, c, limiter, ids, lm)
+			config.traffic.Run(ctx, clientId, c, limiter, ids, lm)
 			mux.Lock()
-			h = h.Merge(c.history.history)
+			h = h.Merge(c.history.History)
 			mux.Unlock()
-		}(c)
+		}(c, i)
 	}
 	wg.Wait()
 	endTime := time.Now()
@@ -322,7 +324,7 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 		t.Error(err)
 	}
 
-	linearizable, info := porcupine.CheckOperationsVerbose(etcdModel, operations, 0)
+	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, 0)
 	if linearizable != porcupine.Ok {
 		t.Error("Model is not linearizable")
 		persistMemberDataDir(t, clus, path)
@@ -330,7 +332,7 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 
 	visualizationPath := filepath.Join(path, "history.html")
 	t.Logf("saving visualization to %q", visualizationPath)
-	err = porcupine.VisualizePath(etcdModel, info, visualizationPath)
+	err = porcupine.VisualizePath(model.Etcd, info, visualizationPath)
 	if err != nil {
 		t.Errorf("Failed to visualize, err: %v", err)
 	}

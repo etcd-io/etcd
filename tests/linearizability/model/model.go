@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearizability
+package model
 
 import (
 	"encoding/json"
@@ -35,11 +35,33 @@ const (
 	LeaseRevoke  OperationType = "leaseRevoke"
 )
 
-func isWrite(t OperationType) bool {
+var Etcd = porcupine.Model{
+	Init: func() interface{} {
+		return "[]" // empty PossibleStates
+	},
+	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
+		var states PossibleStates
+		err := json.Unmarshal([]byte(st.(string)), &states)
+		if err != nil {
+			panic(err)
+		}
+		ok, states := step(states, in.(EtcdRequest), out.(EtcdResponse))
+		data, err := json.Marshal(states)
+		if err != nil {
+			panic(err)
+		}
+		return ok, string(data)
+	},
+	DescribeOperation: func(in, out interface{}) string {
+		return describeEtcdRequestResponse(in.(EtcdRequest), out.(EtcdResponse))
+	},
+}
+
+func IsWrite(t OperationType) bool {
 	return t == Put || t == Delete || t == PutWithLease || t == LeaseRevoke || t == LeaseGrant
 }
 
-func inUnique(t OperationType) bool {
+func IsUnique(t OperationType) bool {
 	return t == Put || t == PutWithLease
 }
 
@@ -90,28 +112,6 @@ type EtcdState struct {
 	KeyValues map[string]string
 	KeyLeases map[string]int64
 	Leases    map[int64]EtcdLease
-}
-
-var etcdModel = porcupine.Model{
-	Init: func() interface{} {
-		return "[]" // empty PossibleStates
-	},
-	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
-		var states PossibleStates
-		err := json.Unmarshal([]byte(st.(string)), &states)
-		if err != nil {
-			panic(err)
-		}
-		ok, states := step(states, in.(EtcdRequest), out.(EtcdResponse))
-		data, err := json.Marshal(states)
-		if err != nil {
-			panic(err)
-		}
-		return ok, string(data)
-	},
-	DescribeOperation: func(in, out interface{}) string {
-		return describeEtcdRequestResponse(in.(EtcdRequest), out.(EtcdResponse))
-	},
 }
 
 func describeEtcdRequestResponse(request EtcdRequest, response EtcdResponse) string {

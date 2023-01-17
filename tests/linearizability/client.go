@@ -22,14 +22,16 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/linearizability/identity"
+	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
 type recordingClient struct {
 	client  clientv3.Client
-	history *appendableHistory
+	history *model.AppendableHistory
 }
 
-func NewClient(endpoints []string, ids idProvider) (*recordingClient, error) {
+func NewClient(endpoints []string, ids identity.Provider) (*recordingClient, error) {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
 		Logger:               zap.NewNop(),
@@ -41,7 +43,7 @@ func NewClient(endpoints []string, ids idProvider) (*recordingClient, error) {
 	}
 	return &recordingClient{
 		client:  *cc,
-		history: newAppendableHistory(ids),
+		history: model.NewAppendableHistory(ids),
 	}, nil
 }
 

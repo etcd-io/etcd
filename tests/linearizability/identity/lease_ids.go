@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearizability
+package identity
 
 import (
 	"sync"
 )
 
-type clientId2LeaseIdMapper interface {
+type LeaseIdStorage interface {
 	LeaseId(int) int64
 	AddLeaseId(int, int64)
 	RemoveLeaseId(int)
 }
 
-func newClientId2LeaseIdMapper() clientId2LeaseIdMapper {
+func NewLeaseIdStorage() LeaseIdStorage {
 	return &atomicClientId2LeaseIdMapper{m: map[int]int64{}}
 }
 
