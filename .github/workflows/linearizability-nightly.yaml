@@ -11,16 +11,16 @@ jobs:
     with:
       ref: main
       count: 300
-      timeoutDuration: 170m
+      testTimeout: 170m
   test-35:
     uses: ./.github/workflows/linearizability-template.yaml
     with:
       ref: release-3.5
       count: 300
-      timeoutDuration: 170m
+      testTimeout: 170m
   test-34:
     uses: ./.github/workflows/linearizability-template.yaml
     with:
       ref: release-3.4
       count: 300
-      timeoutDuration: 170m
+      testTimeout: 170m
