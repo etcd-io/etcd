@@ -41,38 +41,38 @@ func TestAuthority(t *testing.T) {
 		{
 			name:                   "http://domain[:port]",
 			clientURLPattern:       "http://localhost:${MEMBER_PORT}",
-			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost",
 		},
 		{
 			name:                   "http://address[:port]",
 			clientURLPattern:       "http://127.0.0.1:${MEMBER_PORT}",
-			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1",
 		},
 		{
 			name:                   "https://domain[:port] insecure",
 			useTLS:                 true,
 			useInsecureTLS:         true,
 			clientURLPattern:       "https://localhost:${MEMBER_PORT}",
-			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost",
 		},
 		{
 			name:                   "https://address[:port] insecure",
 			useTLS:                 true,
 			useInsecureTLS:         true,
 			clientURLPattern:       "https://127.0.0.1:${MEMBER_PORT}",
-			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1",
 		},
 		{
 			name:                   "https://domain[:port]",
 			useTLS:                 true,
 			clientURLPattern:       "https://localhost:${MEMBER_PORT}",
-			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost",
 		},
 		{
 			name:                   "https://address[:port]",
 			useTLS:                 true,
 			clientURLPattern:       "https://127.0.0.1:${MEMBER_PORT}",
-			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1",
 		},
 	}
 	for _, tc := range tcs {

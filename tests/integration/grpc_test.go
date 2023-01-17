@@ -39,51 +39,51 @@ func TestAuthority(t *testing.T) {
 		{
 			name:                   "unix:path",
 			clientURLPattern:       "unix:localhost:${MEMBER_NAME}",
-			expectAuthorityPattern: "localhost:${MEMBER_NAME}",
+			expectAuthorityPattern: "localhost",
 		},
 		{
 			name:                   "unix://absolute_path",
 			clientURLPattern:       "unix://localhost:${MEMBER_NAME}",
-			expectAuthorityPattern: "localhost:${MEMBER_NAME}",
+			expectAuthorityPattern: "localhost",
 		},
 		// "unixs" is not standard schema supported by etcd
 		{
 			name:                   "unixs:absolute_path",
 			useTLS:                 true,
 			clientURLPattern:       "unixs:localhost:${MEMBER_NAME}",
-			expectAuthorityPattern: "localhost:${MEMBER_NAME}",
+			expectAuthorityPattern: "localhost",
 		},
 		{
 			name:                   "unixs://absolute_path",
 			useTLS:                 true,
 			clientURLPattern:       "unixs://localhost:${MEMBER_NAME}",
-			expectAuthorityPattern: "localhost:${MEMBER_NAME}",
+			expectAuthorityPattern: "localhost",
 		},
 		{
 			name:                   "http://domain[:port]",
 			useTCP:                 true,
 			clientURLPattern:       "http://localhost:${MEMBER_PORT}",
-			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost",
 		},
 		{
 			name:                   "https://domain[:port]",
 			useTLS:                 true,
 			useTCP:                 true,
 			clientURLPattern:       "https://localhost:${MEMBER_PORT}",
-			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+			expectAuthorityPattern: "localhost",
 		},
 		{
 			name:                   "http://address[:port]",
 			useTCP:                 true,
 			clientURLPattern:       "http://127.0.0.1:${MEMBER_PORT}",
-			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1",
 		},
 		{
 			name:                   "https://address[:port]",
 			useTCP:                 true,
 			useTLS:                 true,
 			clientURLPattern:       "https://127.0.0.1:${MEMBER_PORT}",
-			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
+			expectAuthorityPattern: "127.0.0.1",
 		},
 	}
 	for _, tc := range tcs {
