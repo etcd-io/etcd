@@ -36,12 +36,23 @@ import (
 )
 
 const (
-	// minimalQPS is used to validate if enough traffic is send to make tests accurate.
-	minimalQPS = 100.0
-	// maximalQPS limits number of requests send to etcd to avoid linearizability analysis taking too long.
-	maximalQPS = 200.0
 	// waitBetweenFailpointTriggers
 	waitBetweenFailpointTriggers = time.Second
+)
+
+var (
+	DefaultTrafficConfig = trafficConfig{
+		minimalQPS:  100,
+		maximalQPS:  200,
+		clientCount: 8,
+		traffic:     DefaultTraffic,
+	}
+	HighTrafficConfig = trafficConfig{
+		minimalQPS:  200,
+		maximalQPS:  1000,
+		clientCount: 12,
+		traffic:     DefaultTraffic,
+	}
 )
 
 func TestLinearizability(t *testing.T) {
@@ -50,12 +61,15 @@ func TestLinearizability(t *testing.T) {
 		name      string
 		failpoint Failpoint
 		config    e2e.EtcdProcessClusterConfig
+		traffic   *trafficConfig
 	}{
 		{
 			name:      "ClusterOfSize1",
 			failpoint: RandomFailpoint,
+			traffic:   &HighTrafficConfig,
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
+				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
@@ -64,7 +78,9 @@ func TestLinearizability(t *testing.T) {
 		{
 			name:      "ClusterOfSize3",
 			failpoint: RandomFailpoint,
+			traffic:   &HighTrafficConfig,
 			config: *e2e.NewConfig(
+				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
@@ -86,8 +102,20 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithGoFailEnabled(true),
 			),
 		},
+		{
+			name:      "Issue13766",
+			failpoint: KillFailpoint,
+			traffic:   &HighTrafficConfig,
+			config: *e2e.NewConfig(
+				e2e.WithSnapshotCount(100),
+			),
+		},
 	}
 	for _, tc := range tcs {
+		if tc.traffic == nil {
+			tc.traffic = &DefaultTrafficConfig
+		}
+
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&tc.config))
@@ -100,12 +128,7 @@ func TestLinearizability(t *testing.T) {
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}, trafficConfig{
-				minimalQPS:  minimalQPS,
-				maximalQPS:  maximalQPS,
-				clientCount: 8,
-				traffic:     DefaultTraffic,
-			})
+			}, *tc.traffic)
 			longestHistory, remainingEvents := pickLongestHistory(events)
 			validateEventsMatch(t, longestHistory, remainingEvents)
 			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
