@@ -41,9 +41,10 @@ func TestCtlV3GetPeerTLS(t *testing.T)       { testCtl(t, getTest, withCfg(confi
 func TestCtlV3GetTimeout(t *testing.T)       { testCtl(t, getTest, withDialTimeout(0)) }
 func TestCtlV3GetQuorum(t *testing.T)        { testCtl(t, getTest, withQuorum()) }
 
-func TestCtlV3GetFormat(t *testing.T)   { testCtl(t, getFormatTest) }
-func TestCtlV3GetRev(t *testing.T)      { testCtl(t, getRevTest) }
-func TestCtlV3GetKeysOnly(t *testing.T) { testCtl(t, getKeysOnlyTest) }
+func TestCtlV3GetFormat(t *testing.T)    { testCtl(t, getFormatTest) }
+func TestCtlV3GetRev(t *testing.T)       { testCtl(t, getRevTest) }
+func TestCtlV3GetKeysOnly(t *testing.T)  { testCtl(t, getKeysOnlyTest) }
+func TestCtlV3GetCountOnly(t *testing.T) { testCtl(t, getCountOnlyTest) }
 
 func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
 func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoTLS)) }
@@ -232,6 +233,44 @@ func getKeysOnlyTest(cx ctlCtx) {
 	}
 	if err := spawnWithExpects(cmdArgs, "val"); err == nil {
 		cx.t.Fatalf("got value but passed --keys-only")
+	}
+}
+
+func getCountOnlyTest(cx ctlCtx) {
+	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
+	if err := spawnWithExpects(cmdArgs, "\"Count\" : 0"); err != nil {
+		cx.t.Fatal(err)
+	}
+	if err := ctlV3Put(cx, "key", "val", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
+	if err := spawnWithExpects(cmdArgs, "\"Count\" : 1"); err != nil {
+		cx.t.Fatal(err)
+	}
+	if err := ctlV3Put(cx, "key1", "val", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+	if err := ctlV3Put(cx, "key1", "val", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
+	if err := spawnWithExpects(cmdArgs, "\"Count\" : 2"); err != nil {
+		cx.t.Fatal(err)
+	}
+	if err := ctlV3Put(cx, "key2", "val", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
+	if err := spawnWithExpects(cmdArgs, "\"Count\" : 3"); err != nil {
+		cx.t.Fatal(err)
+	}
+	expected := []string{
+		"\"Count\" : 3",
+	}
+	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key3", "--prefix", "--write-out=fields"}...)
+	if err := spawnWithExpects(cmdArgs, expected...); err == nil {
+		cx.t.Fatal(err)
 	}
 }
 

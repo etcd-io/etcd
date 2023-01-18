@@ -125,14 +125,15 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 	if rev < tr.s.compactMainRev {
 		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrCompacted
 	}
-
+	if ro.Count {
+		total := tr.s.kvindex.CountRevisions(key, end, rev)
+		tr.trace.Step("count revisions from in-memory index tree")
+		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil
+	}
 	revpairs := tr.s.kvindex.Revisions(key, end, rev)
 	tr.trace.Step("range keys from in-memory index tree")
 	if len(revpairs) == 0 {
 		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
-	}
-	if ro.Count {
-		return &RangeResult{KVs: nil, Count: len(revpairs), Rev: curRev}, nil
 	}
 
 	limit := int(ro.Limit)
