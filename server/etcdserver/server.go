@@ -2206,6 +2206,8 @@ func (s *EtcdServer) monitorKVHash() {
 	if t == 0 {
 		return
 	}
+	checkTicker := time.NewTicker(t)
+	defer checkTicker.Stop()
 
 	lg := s.Logger()
 	lg.Info(
@@ -2217,7 +2219,7 @@ func (s *EtcdServer) monitorKVHash() {
 		select {
 		case <-s.stopping:
 			return
-		case <-time.After(t):
+		case <-checkTicker.C:
 		}
 		if !s.isLeader() {
 			continue

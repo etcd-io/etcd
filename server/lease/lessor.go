@@ -607,12 +607,15 @@ func (le *lessor) Stop() {
 func (le *lessor) runLoop() {
 	defer close(le.doneC)
 
+	delayTicker := time.NewTicker(500 * time.Millisecond)
+	defer delayTicker.Stop()
+
 	for {
 		le.revokeExpiredLeases()
 		le.checkpointScheduledLeases()
 
 		select {
-		case <-time.After(500 * time.Millisecond):
+		case <-delayTicker.C:
 		case <-le.stopC:
 			return
 		}
