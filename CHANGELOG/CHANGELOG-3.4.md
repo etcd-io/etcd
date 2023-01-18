@@ -8,6 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ### etcd server
 - Fix [etcdserver might promote a non-started learner](https://github.com/etcd-io/etcd/pull/15097).
+- Improve [mvcc: reduce count-only range overhead](https://github.com/etcd-io/etcd/pull/15099)
 
 ### Dependency
 - Upgrade [github.com/grpc-ecosystem/grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway/releases) from [v1.9.5](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.9.5) to [v1.11.0](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.11.0).
