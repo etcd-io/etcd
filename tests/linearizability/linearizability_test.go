@@ -42,17 +42,17 @@ const (
 )
 
 var (
-	DefaultTrafficConfig = trafficConfig{
+	LowTrafficAllRequests = trafficConfig{
 		minimalQPS:  100,
 		maximalQPS:  200,
 		clientCount: 8,
-		traffic:     DefaultTraffic,
+		traffic:     readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 50}, {operation: model.Delete, chance: 10}, {operation: model.PutWithLease, chance: 10}, {operation: model.LeaseRevoke, chance: 10}, {operation: model.Txn, chance: 20}}},
 	}
-	HighTrafficConfig = trafficConfig{
+	HighTrafficPut = trafficConfig{
 		minimalQPS:  200,
 		maximalQPS:  1000,
 		clientCount: 12,
-		traffic:     DefaultTraffic,
+		traffic:     readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 100}}},
 	}
 )
 
@@ -67,7 +67,6 @@ func TestLinearizability(t *testing.T) {
 		{
 			name:      "ClusterOfSize1",
 			failpoint: RandomFailpoint,
-			traffic:   &HighTrafficConfig,
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithSnapshotCount(100),
@@ -79,7 +78,29 @@ func TestLinearizability(t *testing.T) {
 		{
 			name:      "ClusterOfSize3",
 			failpoint: RandomFailpoint,
-			traffic:   &HighTrafficConfig,
+			config: *e2e.NewConfig(
+				e2e.WithSnapshotCount(100),
+				e2e.WithPeerProxy(true),
+				e2e.WithGoFailEnabled(true),
+				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+			),
+		},
+		{
+			name:      "HighTrafficClusterOfSize1",
+			failpoint: RandomFailpoint,
+			traffic:   &HighTrafficPut,
+			config: *e2e.NewConfig(
+				e2e.WithClusterSize(1),
+				e2e.WithSnapshotCount(100),
+				e2e.WithPeerProxy(true),
+				e2e.WithGoFailEnabled(true),
+				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+			),
+		},
+		{
+			name:      "HighTrafficClusterOfSize3",
+			failpoint: RandomFailpoint,
+			traffic:   &HighTrafficPut,
 			config: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
@@ -106,7 +127,7 @@ func TestLinearizability(t *testing.T) {
 		{
 			name:      "Issue13766",
 			failpoint: KillFailpoint,
-			traffic:   &HighTrafficConfig,
+			traffic:   &HighTrafficPut,
 			config: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
 			),
@@ -114,7 +135,7 @@ func TestLinearizability(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		if tc.traffic == nil {
-			tc.traffic = &DefaultTrafficConfig
+			tc.traffic = &LowTrafficAllRequests
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
@@ -348,7 +369,7 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 		t.Error(err)
 	}
 
-	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, time.Minute)
+	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, 5*time.Minute)
 	if linearizable == porcupine.Illegal {
 		t.Error("Model is not linearizable")
 	}
