@@ -16,6 +16,7 @@ package linearizability
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -347,9 +348,15 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 		t.Error(err)
 	}
 
-	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, 0)
-	if linearizable != porcupine.Ok {
+	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, time.Minute)
+	if linearizable == porcupine.Illegal {
 		t.Error("Model is not linearizable")
+	}
+	if linearizable == porcupine.Unknown {
+		t.Error("Linearization timed out")
+	}
+	if linearizable != porcupine.Ok {
+		persistOperationHistory(t, path, operations)
 		persistMemberDataDir(t, clus, path)
 	}
 
@@ -358,6 +365,24 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 	err = porcupine.VisualizePath(model.Etcd, info, visualizationPath)
 	if err != nil {
 		t.Errorf("Failed to visualize, err: %v", err)
+	}
+}
+
+func persistOperationHistory(t *testing.T, path string, operations []porcupine.Operation) {
+	historyFilePath := filepath.Join(path, "history.json")
+	t.Logf("saving operation history to %q", historyFilePath)
+	file, err := os.OpenFile(historyFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		t.Errorf("Failed to save operation history: %v", err)
+		return
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	for _, op := range operations {
+		err := encoder.Encode(op)
+		if err != nil {
+			t.Errorf("Failed to encode operation: %v", err)
+		}
 	}
 }
 
