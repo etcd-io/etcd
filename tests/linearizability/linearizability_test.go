@@ -353,6 +353,7 @@ func persistOperationHistory(t *testing.T, path string, operations []porcupine.O
 		t.Errorf("Failed to save operation history: %v", err)
 		return
 	}
+	defer file.Close()
 	encoder := json.NewEncoder(file)
 	for _, op := range operations {
 		err := encoder.Encode(op)
