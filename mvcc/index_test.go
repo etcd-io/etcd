@@ -206,60 +206,80 @@ func TestIndexRevision(t *testing.T) {
 	tests := []struct {
 		key, end []byte
 		atRev    int64
+		limit    int
 		wrevs    []revision
 		wcounts  int
 	}{
 		// single key that not found
 		{
-			[]byte("bar"), nil, 6, nil, 0,
+			[]byte("bar"), nil, 6, 0, nil, 0,
 		},
 		// single key that found
 		{
-			[]byte("foo"), nil, 6, []revision{{main: 6}}, 1,
+			[]byte("foo"), nil, 6, 0, []revision{{main: 6}}, 1,
 		},
-		// various range keys, fixed atRev
+		// various range keys, fixed atRev, unlimited
 		{
-			[]byte("foo"), []byte("foo1"), 6, []revision{{main: 6}}, 1,
-		},
-		{
-			[]byte("foo"), []byte("foo2"), 6, []revision{{main: 6}, {main: 5}}, 2,
+			[]byte("foo"), []byte("foo1"), 6, 0, []revision{{main: 6}}, 1,
 		},
 		{
-			[]byte("foo"), []byte("fop"), 6, []revision{{main: 6}, {main: 5}, {main: 4}}, 3,
+			[]byte("foo"), []byte("foo2"), 6, 0, []revision{{main: 6}, {main: 5}}, 2,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 6, []revision{{main: 5}, {main: 4}}, 2,
+			[]byte("foo"), []byte("fop"), 6, 0, []revision{{main: 6}, {main: 5}, {main: 4}}, 3,
 		},
 		{
-			[]byte("foo2"), []byte("fop"), 6, []revision{{main: 4}}, 1,
+			[]byte("foo1"), []byte("fop"), 6, 0, []revision{{main: 5}, {main: 4}}, 2,
 		},
 		{
-			[]byte("foo3"), []byte("fop"), 6, nil, 0,
-		},
-		// fixed range keys, various atRev
-		{
-			[]byte("foo1"), []byte("fop"), 1, nil, 0,
+			[]byte("foo2"), []byte("fop"), 6, 0, []revision{{main: 4}}, 1,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 2, []revision{{main: 2}}, 1,
+			[]byte("foo3"), []byte("fop"), 6, 0, nil, 0,
+		},
+		// fixed range keys, various atRev, unlimited
+		{
+			[]byte("foo1"), []byte("fop"), 1, 0, nil, 0,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 3, []revision{{main: 2}, {main: 3}}, 2,
+			[]byte("foo1"), []byte("fop"), 2, 0, []revision{{main: 2}}, 1,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 4, []revision{{main: 2}, {main: 4}}, 2,
+			[]byte("foo1"), []byte("fop"), 3, 0, []revision{{main: 2}, {main: 3}}, 2,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 5, []revision{{main: 5}, {main: 4}}, 2,
+			[]byte("foo1"), []byte("fop"), 4, 0, []revision{{main: 2}, {main: 4}}, 2,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 6, []revision{{main: 5}, {main: 4}}, 2,
+			[]byte("foo1"), []byte("fop"), 5, 0, []revision{{main: 5}, {main: 4}}, 2,
+		},
+		{
+			[]byte("foo1"), []byte("fop"), 6, 0, []revision{{main: 5}, {main: 4}}, 2,
+		},
+		// fixed range keys, fixed atRev, various limit
+		{
+			[]byte("foo"), []byte("fop"), 6, 1, []revision{{main: 6}}, 3,
+		},
+		{
+			[]byte("foo"), []byte("fop"), 6, 2, []revision{{main: 6}, {main: 5}}, 3,
+		},
+		{
+			[]byte("foo"), []byte("fop"), 6, 3, []revision{{main: 6}, {main: 5}, {main: 4}}, 3,
+		},
+		{
+			[]byte("foo"), []byte("fop"), 3, 1, []revision{{main: 1}}, 3,
+		},
+		{
+			[]byte("foo"), []byte("fop"), 3, 2, []revision{{main: 1}, {main: 2}}, 3,
+		},
+		{
+			[]byte("foo"), []byte("fop"), 3, 3, []revision{{main: 1}, {main: 2}, {main: 3}}, 3,
 		},
 	}
 	for i, tt := range tests {
-		revs := ti.Revisions(tt.key, tt.end, tt.atRev)
+		revs, _ := ti.Revisions(tt.key, tt.end, tt.atRev, tt.limit)
 		if !reflect.DeepEqual(revs, tt.wrevs) {
-			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
+			t.Errorf("#%d limit %d: revs = %+v, want %+v", i, tt.limit, revs, tt.wrevs)
 		}
 		count := ti.CountRevisions(tt.key, tt.end, tt.atRev)
 		if count != tt.wcounts {
