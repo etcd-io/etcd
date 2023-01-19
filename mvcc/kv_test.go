@@ -219,17 +219,18 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 
 	wrev := int64(4)
 	tests := []struct {
-		limit int64
-		wkvs  []mvccpb.KeyValue
+		limit   int64
+		wcounts int64
+		wkvs    []mvccpb.KeyValue
 	}{
 		// no limit
-		{-1, kvs},
+		{-1, 3, kvs},
 		// no limit
-		{0, kvs},
-		{1, kvs[:1]},
-		{2, kvs[:2]},
-		{3, kvs},
-		{100, kvs},
+		{0, 3, kvs},
+		{1, 3, kvs[:1]},
+		{2, 3, kvs[:2]},
+		{3, 3, kvs},
+		{100, 3, kvs},
 	}
 	for i, tt := range tests {
 		r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Limit: tt.limit})
@@ -242,8 +243,12 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 		if r.Rev != wrev {
 			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, wrev)
 		}
-		if r.Count != len(kvs) {
-			t.Errorf("#%d: count = %d, want %d", i, r.Count, len(kvs))
+		if tt.limit <= 0 || int(tt.limit) > len(kvs) {
+			if r.Count != len(kvs) {
+				t.Errorf("#%d: count = %d, want %d", i, r.Count, len(kvs))
+			}
+		} else if r.Count != int(tt.wcounts) {
+			t.Errorf("#%d: count = %d, want %d", i, r.Count, tt.limit)
 		}
 	}
 }

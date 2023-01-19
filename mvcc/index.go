@@ -25,7 +25,7 @@ import (
 type index interface {
 	Get(key []byte, atRev int64) (rev, created revision, ver int64, err error)
 	Range(key, end []byte, atRev int64) ([][]byte, []revision)
-	Revisions(key, end []byte, atRev int64) []revision
+	Revisions(key, end []byte, atRev int64, limit int) ([]revision, int)
 	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev revision)
 	Tombstone(key []byte, rev revision) error
@@ -89,7 +89,7 @@ func (ti *treeIndex) keyIndex(keyi *keyIndex) *keyIndex {
 	return nil
 }
 
-func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex)) {
+func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex) bool) {
 	keyi, endi := &keyIndex{key: key}, &keyIndex{key: end}
 
 	ti.RLock()
@@ -99,25 +99,31 @@ func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex)) {
 		if len(endi.key) > 0 && !item.Less(endi) {
 			return false
 		}
-		f(item.(*keyIndex))
+		if !f(item.(*keyIndex)) {
+			return false
+		}
 		return true
 	})
 }
 
-func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision) {
+func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []revision, total int) {
 	if end == nil {
 		rev, _, _, err := ti.Get(key, atRev)
 		if err != nil {
-			return nil
+			return nil, 0
 		}
-		return []revision{rev}
+		return []revision{rev}, 1
 	}
-	ti.visit(key, end, func(ki *keyIndex) {
+	ti.visit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			revs = append(revs, rev)
+			if limit <= 0 || len(revs) < limit {
+				revs = append(revs, rev)
+			}
+			total++
 		}
+		return true
 	})
-	return revs
+	return revs, total
 }
 
 func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
@@ -129,10 +135,11 @@ func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
 		return 1
 	}
 	total := 0
-	ti.visit(key, end, func(ki *keyIndex) {
+	ti.visit(key, end, func(ki *keyIndex) bool {
 		if _, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			total++
 		}
+		return true
 	})
 	return total
 }
@@ -145,11 +152,12 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 		}
 		return [][]byte{key}, []revision{rev}
 	}
-	ti.visit(key, end, func(ki *keyIndex) {
+	ti.visit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
 			revs = append(revs, rev)
 			keys = append(keys, ki.key)
 		}
+		return true
 	})
 	return keys, revs
 }
