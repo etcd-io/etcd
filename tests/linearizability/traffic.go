@@ -28,9 +28,8 @@ import (
 )
 
 var (
-	DefaultLeaseTTL int64   = 7200
-	RequestTimeout          = 40 * time.Millisecond
-	DefaultTraffic  Traffic = readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 50}, {operation: model.Delete, chance: 10}, {operation: model.PutWithLease, chance: 10}, {operation: model.LeaseRevoke, chance: 10}, {operation: model.Txn, chance: 20}}}
+	DefaultLeaseTTL int64 = 7200
+	RequestTimeout        = 40 * time.Millisecond
 )
 
 type Traffic interface {

@@ -1,4 +1,5 @@
 name: Linearizability Nightly
+permissions: read-all
 on:
   # schedules always run against the main branch, hence we have to create separate jobs
   # with individual checkout actions for each of the active release branches
