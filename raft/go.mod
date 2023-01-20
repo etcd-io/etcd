@@ -6,7 +6,7 @@ require (
 	github.com/cockroachdb/datadriven v0.0.0-20200714090401-bf6692d28da5
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
-	go.etcd.io/etcd/client/pkg/v3 v3.5.6
+	go.etcd.io/etcd/client/pkg/v3 v3.5.7
 )
 
 require (
