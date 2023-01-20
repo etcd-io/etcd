@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"regexp"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -87,9 +88,18 @@ func stripSchema(eps []string) []string {
 		if u, err := url.Parse(ep); err == nil && u.Host != "" {
 			ep = u.Host
 		}
+		ep = appendPort(ep)
 		endpoints = append(endpoints, ep)
 	}
 	return endpoints
+}
+
+func appendPort(ep string) string {
+	portRegex := regexp.MustCompile(`:[0-9]+$`)
+	if !portRegex.MatchString(ep) {
+		ep += ":2379"
+	}
+	return ep
 }
 
 func startGateway(cmd *cobra.Command, args []string) {
