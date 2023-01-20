@@ -13,15 +13,18 @@ jobs:
       ref: main
       count: 100
       testTimeout: 200m
+      artifactName: test-main
   test-35:
     uses: ./.github/workflows/linearizability-template.yaml
     with:
       ref: release-3.5
       count: 100
       testTimeout: 200m
+      artifactName: test-35
   test-34:
     uses: ./.github/workflows/linearizability-template.yaml
     with:
       ref: release-3.4
       count: 100
       testTimeout: 200m
+      artifactName: test-34
