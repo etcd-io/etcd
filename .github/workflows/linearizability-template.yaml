@@ -12,6 +12,9 @@ on:
         required: false
         type: string
         default: '30m'
+      artifactName:
+        required: true
+        type: string
 permissions: read-all
 jobs:
   test:
@@ -46,4 +49,5 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: always()
       with:
+        name: ${{ inputs.artifactName }}
         path: /tmp/linearizability/*

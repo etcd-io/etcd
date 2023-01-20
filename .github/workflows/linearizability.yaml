@@ -8,3 +8,4 @@ jobs:
       ref: ${{ github.ref }}
       count: 15
       testTimeout: 30m
+      artifactName: test
