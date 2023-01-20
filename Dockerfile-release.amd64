@@ -7,11 +7,6 @@ ADD etcdutl /usr/local/bin/
 WORKDIR /var/etcd/
 WORKDIR /var/lib/etcd/
 
-# Alpine Linux doesn't use pam, which means that there is no /etc/nsswitch.conf,
-# but Golang relies on /etc/nsswitch.conf to check the order of DNS resolving
-# (see https://github.com/golang/go/commit/9dee7771f561cf6aee081c0af6658cc81fac3918)
-ADD nsswitch.conf /etc/nsswitch.conf
-
 EXPOSE 2379 2380
 
 # Define default command.
