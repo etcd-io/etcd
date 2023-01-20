@@ -171,6 +171,18 @@ func urlsEqual(ctx context.Context, lg *zap.Logger, a []url.URL, b []url.URL) (b
 	sort.Sort(types.URLs(a))
 	sort.Sort(types.URLs(b))
 	for i := range a {
+		// get Host、Port
+		h1, p1, err := net.SplitHostPort(a[i].Host)
+		if err != nil {
+			return false, fmt.Errorf("failed get host and port %q (%v)", a[i].Host, err)
+		}
+		h2, p2, err := net.SplitHostPort(b[i].Host)
+		if err != nil {
+			return false, fmt.Errorf("failed get host and port %q (%v)", b[i].Host, err)
+		}
+		// format IPV6 IP
+		a[i].Host = net.JoinHostPort(net.ParseIP(h1).String(), p1)
+		b[i].Host = net.JoinHostPort(net.ParseIP(h2).String(), p2)
 		if !reflect.DeepEqual(a[i], b[i]) {
 			return false, fmt.Errorf("resolved urls: %q != %q", a[i].String(), b[i].String())
 		}
