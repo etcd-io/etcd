@@ -272,11 +272,14 @@ func (sws *serverWatchStream) recvLoop() error {
 			err := sws.isWatchPermitted(creq)
 			if err != nil {
 				var cancelReason string
+				var retry bool
 				switch err {
 				case auth.ErrInvalidAuthToken:
 					cancelReason = rpctypes.ErrGRPCInvalidAuthToken.Error()
+					retry = true
 				case auth.ErrAuthOldRevision:
 					cancelReason = rpctypes.ErrGRPCAuthOldRevision.Error()
+					retry = true
 				case auth.ErrUserEmpty:
 					cancelReason = rpctypes.ErrGRPCUserEmpty.Error()
 				default:
@@ -292,6 +295,7 @@ func (sws *serverWatchStream) recvLoop() error {
 					Canceled:     true,
 					Created:      true,
 					CancelReason: cancelReason,
+					Retry:        retry,
 				}
 
 				select {

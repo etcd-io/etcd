@@ -2921,6 +2921,10 @@
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
+        "retry": {
+          "description": "retry is true if watcher should be retried on cancel.",
+          "type": "boolean"
+        },
         "watch_id": {
           "description": "watch_id is the ID of the watcher that corresponds to the response.",
           "type": "string",

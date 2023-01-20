@@ -112,6 +112,9 @@ type WatchResponse struct {
 
 	// cancelReason is a reason of canceling watch
 	cancelReason string
+
+	// retry is true if watcher should be retried on cancel.
+	retry bool
 }
 
 // IsCreate returns true if the event tells that the key is newly created.
@@ -593,7 +596,7 @@ func (w *watchGrpcStream) run() {
 
 			switch {
 			case pbresp.Created:
-				if pbresp.Canceled && shouldRetryWatch(pbresp.CancelReason) {
+				if pbresp.Canceled && pbresp.Retry {
 					var newErr error
 					if wc, newErr = w.newWatchClient(); newErr != nil {
 						w.lg.Error("failed to create a new watch client", zap.Error(newErr))
@@ -721,14 +724,6 @@ func (w *watchGrpcStream) run() {
 	}
 }
 
-func shouldRetryWatch(cancelReason string) bool {
-	if cancelReason == "" {
-		return false
-	}
-	return (cancelReason == errMsgGRPCInvalidAuthToken) ||
-		(cancelReason == errMsgGRPCAuthOldRevision)
-}
-
 // nextResume chooses the next resuming to register with the grpc stream. Abandoned
 // streams are marked as nil in the queue since the head must wait for its inflight registration.
 func (w *watchGrpcStream) nextResume() *watcherStream {
@@ -755,6 +750,7 @@ func (w *watchGrpcStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
 		Created:         pbresp.Created,
 		Canceled:        pbresp.Canceled,
 		cancelReason:    pbresp.CancelReason,
+		retry:           pbresp.Retry,
 	}
 
 	// watch IDs are zero indexed, so request notify watch responses are assigned a watch ID of InvalidWatchID to

@@ -834,6 +834,9 @@ message WatchResponse {
   // framgment is true if large watch response was split over multiple responses.
   bool fragment = 7 [(versionpb.etcd_version_field)="3.4"];
 
+  // retry is true if watcher should be retried on cancel.
+  bool retry = 8 [(versionpb.etcd_version_field)="3.5"];
+
   repeated mvccpb.Event events = 11;
 }
 
