@@ -1,0 +1,4 @@
+# Use goreman to run `go install github.com/mattn/goreman@latest`
+electionexample1: ../../bin/contrib/election --id 1 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379
+electionexample2: ../../bin/contrib/election --id 2 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379
+electionexample3: ../../bin/contrib/election --id 3 --cluster http://127.0.0.1:12379,http://127.0.0.1:22379,http://127.0.0.1:32379
