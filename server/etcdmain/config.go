@@ -303,7 +303,7 @@ func (cfg *config) parse(arguments []string) error {
 		os.Exit(2)
 	}
 	if len(cfg.cf.flagSet.Args()) != 0 {
-		return fmt.Errorf("'%s' is not a valid flag", cfg.cf.flagSet.Arg(0))
+		return fmt.Errorf("%q is not a valid flag", cfg.cf.flagSet.Arg(0))
 	}
 
 	if cfg.printVersion {
