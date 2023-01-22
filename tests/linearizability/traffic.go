@@ -24,12 +24,22 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/tests/v3/linearizability/identity"
-	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
 var (
 	DefaultLeaseTTL int64 = 7200
 	RequestTimeout        = 40 * time.Millisecond
+)
+
+type TrafficRequestType string
+
+const (
+	Get           TrafficRequestType = "get"
+	Put           TrafficRequestType = "put"
+	Delete        TrafficRequestType = "delete"
+	PutWithLease  TrafficRequestType = "putWithLease"
+	LeaseRevoke   TrafficRequestType = "leaseRevoke"
+	CompareAndSet TrafficRequestType = "compareAndSet"
 )
 
 type Traffic interface {
@@ -38,12 +48,12 @@ type Traffic interface {
 
 type readWriteSingleKey struct {
 	keyCount int
-	writes   []opChance
+	writes   []requestChance
 	leaseTTL int64
 }
 
-type opChance struct {
-	operation model.OperationType
+type requestChance struct {
+	operation TrafficRequestType
 	chance    int
 }
 
@@ -80,18 +90,18 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
-	switch t.pickWriteOperation() {
-	case model.Put:
+	switch t.pickWriteRequest() {
+	case Put:
 		err = c.Put(writeCtx, key, newValue)
-	case model.Delete:
+	case Delete:
 		err = c.Delete(writeCtx, key)
-	case model.Txn:
+	case CompareAndSet:
 		var expectValue string
 		if len(lastValues) != 0 {
 			expectValue = string(lastValues[0].Value)
 		}
-		err = c.Txn(writeCtx, key, expectValue, newValue)
-	case model.PutWithLease:
+		err = c.CompareAndSet(writeCtx, key, expectValue, newValue)
+	case PutWithLease:
 		leaseId := lm.LeaseId(cid)
 		if leaseId == 0 {
 			leaseId, err = c.LeaseGrant(writeCtx, t.leaseTTL)
@@ -105,7 +115,7 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 			err = c.PutWithLease(putCtx, key, newValue, leaseId)
 			putCancel()
 		}
-	case model.LeaseRevoke:
+	case LeaseRevoke:
 		leaseId := lm.LeaseId(cid)
 		if leaseId != 0 {
 			err = c.LeaseRevoke(writeCtx, leaseId)
@@ -124,7 +134,7 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 	return err
 }
 
-func (t readWriteSingleKey) pickWriteOperation() model.OperationType {
+func (t readWriteSingleKey) pickWriteRequest() TrafficRequestType {
 	sum := 0
 	for _, op := range t.writes {
 		sum += op.chance

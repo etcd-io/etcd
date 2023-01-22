@@ -562,17 +562,22 @@ func TestModelDescribe(t *testing.T) {
 		{
 			req:            putRequest("key3", "3"),
 			resp:           putResponse(3),
-			expectDescribe: `put("key3", "3") -> ok, rev: 3`,
+			expectDescribe: `put("key3", "3", nil) -> ok, rev: 3`,
+		},
+		{
+			req:            putWithLeaseRequest("key3b", "3b", 3),
+			resp:           putResponse(3),
+			expectDescribe: `put("key3b", "3b", 3) -> ok, rev: 3`,
 		},
 		{
 			req:            putRequest("key4", "4"),
 			resp:           failedResponse(errors.New("failed")),
-			expectDescribe: `put("key4", "4") -> err: "failed"`,
+			expectDescribe: `put("key4", "4", nil) -> err: "failed"`,
 		},
 		{
 			req:            putRequest("key4b", "4b"),
 			resp:           unknownResponse(42),
-			expectDescribe: `put("key4b", "4b") -> unknown, rev: 42`,
+			expectDescribe: `put("key4b", "4b", nil) -> unknown, rev: 42`,
 		},
 		{
 			req:            deleteRequest("key5"),
@@ -587,17 +592,17 @@ func TestModelDescribe(t *testing.T) {
 		{
 			req:            txnRequest("key7", "7", "77"),
 			resp:           txnResponse(false, 7),
-			expectDescribe: `if(key7=="7").then(put("key7", "77")) -> txn failed, rev: 7`,
+			expectDescribe: `if(key7=="7").then(put("key7", "77", nil)) -> txn failed, rev: 7`,
 		},
 		{
 			req:            txnRequest("key8", "8", "88"),
 			resp:           txnResponse(true, 8),
-			expectDescribe: `if(key8=="8").then(put("key8", "88")) -> ok, rev: 8`,
+			expectDescribe: `if(key8=="8").then(put("key8", "88", nil)) -> ok, rev: 8`,
 		},
 		{
 			req:            txnRequest("key9", "9", "99"),
 			resp:           failedResponse(errors.New("failed")),
-			expectDescribe: `if(key9=="9").then(put("key9", "99")) -> err: "failed"`,
+			expectDescribe: `if(key9=="9").then(put("key9", "99", nil)) -> err: "failed"`,
 		},
 	}
 	for _, tc := range tcs {
