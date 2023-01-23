@@ -78,14 +78,14 @@ func (c *Client) unaryClientInterceptor(optFuncs ...retryOption) grpc.UnaryClien
 				continue
 			}
 			if c.shouldRefreshToken(lastErr, callOpts) {
-				gterr := c.refreshToken(ctx)
-				if gterr != nil {
+				gtErr := c.refreshToken(ctx)
+				if gtErr != nil {
 					c.GetLogger().Warn(
 						"retrying of unary invoker failed to fetch new auth token",
 						zap.String("target", cc.Target()),
-						zap.Error(gterr),
+						zap.Error(gtErr),
 					)
-					return gterr // lastErr must be invalid auth token
+					return gtErr // lastErr must be invalid auth token
 				}
 				continue
 			}
@@ -169,8 +169,7 @@ func (c *Client) refreshToken(ctx context.Context) error {
 		// clients just need to retry the operations (e.g. Put, Delete etc).
 		return nil
 	}
-	// clear auth token before refreshing it.
-	c.authTokenBundle.UpdateAuthToken("")
+
 	return c.getToken(ctx)
 }
 
@@ -272,9 +271,9 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}
 		return true, err
 	}
 	if s.client.shouldRefreshToken(err, s.callOpts) {
-		gterr := s.client.refreshToken(s.ctx)
-		if gterr != nil {
-			s.client.lg.Warn("retry failed to fetch new auth token", zap.Error(gterr))
+		gtErr := s.client.refreshToken(s.ctx)
+		if gtErr != nil {
+			s.client.lg.Warn("retry failed to fetch new auth token", zap.Error(gtErr))
 			return false, err // return the original error for simplicity
 		}
 		return true, err
