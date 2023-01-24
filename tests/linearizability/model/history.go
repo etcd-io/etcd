@@ -194,11 +194,11 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Time, e
 }
 
 func getRequest(key string) EtcdRequest {
-	return EtcdRequest{Ops: []EtcdOperation{{Type: Get, Key: key}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Get, Key: key}}}}
 }
 
 func getResponse(value string, revision int64) EtcdResponse {
-	return EtcdResponse{OpsResult: []EtcdOperationResult{{Value: value}}, Revision: revision}
+	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{Value: value}}}, Revision: revision}
 }
 
 func failedResponse(err error) EtcdResponse {
@@ -210,23 +210,23 @@ func unknownResponse(revision int64) EtcdResponse {
 }
 
 func putRequest(key, value string) EtcdRequest {
-	return EtcdRequest{Ops: []EtcdOperation{{Type: Put, Key: key, Value: value}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Put, Key: key, Value: value}}}}
 }
 
 func putResponse(revision int64) EtcdResponse {
-	return EtcdResponse{OpsResult: []EtcdOperationResult{{}}, Revision: revision}
+	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{}}}, Revision: revision}
 }
 
 func deleteRequest(key string) EtcdRequest {
-	return EtcdRequest{Ops: []EtcdOperation{{Type: Delete, Key: key}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Delete, Key: key}}}}
 }
 
 func deleteResponse(deleted int64, revision int64) EtcdResponse {
-	return EtcdResponse{OpsResult: []EtcdOperationResult{{Deleted: deleted}}, Revision: revision}
+	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}
 }
 
 func txnRequest(key, expectValue, newValue string) EtcdRequest {
-	return EtcdRequest{Conds: []EtcdCondition{{Key: key, ExpectedValue: expectValue}}, Ops: []EtcdOperation{{Type: Put, Key: key, Value: newValue}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Conds: []EtcdCondition{{Key: key, ExpectedValue: expectValue}}, Ops: []EtcdOperation{{Type: Put, Key: key, Value: newValue}}}}
 }
 
 func txnResponse(succeeded bool, revision int64) EtcdResponse {
@@ -234,27 +234,27 @@ func txnResponse(succeeded bool, revision int64) EtcdResponse {
 	if succeeded {
 		result = []EtcdOperationResult{{}}
 	}
-	return EtcdResponse{OpsResult: result, TxnResult: !succeeded, Revision: revision}
+	return EtcdResponse{Txn: &TxnResponse{OpsResult: result, TxnResult: !succeeded}, Revision: revision}
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
-	return EtcdRequest{Ops: []EtcdOperation{{Type: PutWithLease, Key: key, Value: value, LeaseID: leaseID}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Put, Key: key, Value: value, LeaseID: leaseID}}}}
 }
 
 func leaseGrantRequest(leaseID int64) EtcdRequest {
-	return EtcdRequest{Ops: []EtcdOperation{{Type: LeaseGrant, LeaseID: leaseID}}}
+	return EtcdRequest{Type: LeaseGrant, LeaseGrant: &LeaseGrantRequest{LeaseID: leaseID}}
 }
 
 func leaseGrantResponse(revision int64) EtcdResponse {
-	return EtcdResponse{OpsResult: []EtcdOperationResult{{}}, Revision: revision}
+	return EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision}
 }
 
 func leaseRevokeRequest(leaseID int64) EtcdRequest {
-	return EtcdRequest{Ops: []EtcdOperation{{Type: LeaseRevoke, LeaseID: leaseID}}}
+	return EtcdRequest{Type: LeaseRevoke, LeaseRevoke: &LeaseRevokeRequest{LeaseID: leaseID}}
 }
 
 func leaseRevokeResponse(revision int64) EtcdResponse {
-	return EtcdResponse{OpsResult: []EtcdOperationResult{{}}, Revision: revision}
+	return EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision}
 }
 
 type History struct {

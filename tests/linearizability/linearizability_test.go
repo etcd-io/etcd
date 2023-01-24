@@ -46,13 +46,19 @@ var (
 		minimalQPS:  100,
 		maximalQPS:  200,
 		clientCount: 8,
-		traffic:     readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 50}, {operation: model.Delete, chance: 10}, {operation: model.PutWithLease, chance: 10}, {operation: model.LeaseRevoke, chance: 10}, {operation: model.Txn, chance: 20}}},
+		traffic: readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []requestChance{
+			{operation: Put, chance: 50},
+			{operation: Delete, chance: 10},
+			{operation: PutWithLease, chance: 10},
+			{operation: LeaseRevoke, chance: 10},
+			{operation: CompareAndSet, chance: 20},
+		}},
 	}
 	HighTrafficPut = trafficConfig{
 		minimalQPS:  200,
 		maximalQPS:  1000,
 		clientCount: 12,
-		traffic:     readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []opChance{{operation: model.Put, chance: 100}}},
+		traffic:     readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []requestChance{{operation: Put, chance: 100}}},
 	}
 )
 
@@ -193,13 +199,14 @@ func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEve
 	lastObservedOperation := lastOperationObservedInWatch(operations, persisted)
 
 	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
 		resp := op.Output.(model.EtcdResponse)
-		if resp.Err == nil || op.Call > lastObservedOperation.Call {
-			// No need to patch successfully requests and cannot patch requests outside observed window.
+		if resp.Err == nil || op.Call > lastObservedOperation.Call || request.Type != model.Txn {
+			// Cannot patch those requests.
 			newOperations = append(newOperations, op)
 			continue
 		}
-		event, hasUniqueWriteOperation := matchWatchEvent(op, persisted)
+		event := matchWatchEvent(request.Txn, persisted)
 		if event != nil {
 			// Set revision and time based on watchEvent.
 			op.Return = event.Time.UnixNano()
@@ -210,7 +217,7 @@ func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEve
 			newOperations = append(newOperations, op)
 			continue
 		}
-		if hasWriteOperation(op) && !hasUniqueWriteOperation {
+		if hasNonUniqueWriteOperation(request.Txn) && !hasUniqueWriteOperation(request.Txn) {
 			// Leave operation as it is as we cannot match non-unique operations to watch events.
 			newOperations = append(newOperations, op)
 			continue
@@ -224,7 +231,11 @@ func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents 
 	var maxCallTime int64
 	var lastOperation porcupine.Operation
 	for _, op := range operations {
-		event, _ := matchWatchEvent(op, watchEvents)
+		request := op.Input.(model.EtcdRequest)
+		if request.Type != model.Txn {
+			continue
+		}
+		event := matchWatchEvent(request.Txn, watchEvents)
 		if event != nil && op.Call > maxCallTime {
 			maxCallTime = op.Call
 			lastOperation = op
@@ -233,33 +244,35 @@ func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents 
 	return lastOperation
 }
 
-func matchWatchEvent(op porcupine.Operation, watchEvents map[model.EtcdOperation]watchEvent) (event *watchEvent, hasUniqueWriteOperation bool) {
-	request := op.Input.(model.EtcdRequest)
+func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperation]watchEvent) *watchEvent {
 	for _, etcdOp := range request.Ops {
-		if model.IsWrite(etcdOp.Type) && model.IsUnique(etcdOp.Type) {
-			// We expect all put to be unique as they write unique value.
-			hasUniqueWriteOperation = true
-			opType := etcdOp.Type
-			if opType == model.PutWithLease {
-				opType = model.Put
-			}
+		if etcdOp.Type == model.Put {
+			// Remove LeaseID which is not exposed in watch.
 			event, ok := watchEvents[model.EtcdOperation{
-				Type:  opType,
+				Type:  etcdOp.Type,
 				Key:   etcdOp.Key,
 				Value: etcdOp.Value,
 			}]
 			if ok {
-				return &event, hasUniqueWriteOperation
+				return &event
 			}
 		}
 	}
-	return nil, hasUniqueWriteOperation
+	return nil
 }
 
-func hasWriteOperation(op porcupine.Operation) bool {
-	request := op.Input.(model.EtcdRequest)
+func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
 	for _, etcdOp := range request.Ops {
-		if model.IsWrite(etcdOp.Type) {
+		if etcdOp.Type == model.Put || etcdOp.Type == model.Delete {
+			return true
+		}
+	}
+	return false
+}
+
+func hasUniqueWriteOperation(request *model.TxnRequest) bool {
+	for _, etcdOp := range request.Ops {
+		if etcdOp.Type == model.Put {
 			return true
 		}
 	}

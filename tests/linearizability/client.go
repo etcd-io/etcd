@@ -78,7 +78,7 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *recordingClient) Txn(ctx context.Context, key, expectedValue, newValue string) error {
+func (c *recordingClient) CompareAndSet(ctx context.Context, key, expectedValue, newValue string) error {
 	callTime := time.Now()
 	txn := c.client.Txn(ctx)
 	var cmp clientv3.Cmp

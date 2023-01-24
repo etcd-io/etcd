@@ -17,22 +17,17 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/anishathalye/porcupine"
 	"reflect"
 	"strings"
-
-	"github.com/anishathalye/porcupine"
 )
 
 type OperationType string
 
 const (
-	Get          OperationType = "get"
-	Put          OperationType = "put"
-	Delete       OperationType = "delete"
-	Txn          OperationType = "txn"
-	PutWithLease OperationType = "putWithLease"
-	LeaseGrant   OperationType = "leaseGrant"
-	LeaseRevoke  OperationType = "leaseRevoke"
+	Get    OperationType = "get"
+	Put    OperationType = "put"
+	Delete OperationType = "delete"
 )
 
 var Etcd = porcupine.Model{
@@ -57,15 +52,22 @@ var Etcd = porcupine.Model{
 	},
 }
 
-func IsWrite(t OperationType) bool {
-	return t == Put || t == Delete || t == PutWithLease || t == LeaseRevoke || t == LeaseGrant
-}
+type RequestType string
 
-func IsUnique(t OperationType) bool {
-	return t == Put || t == PutWithLease
-}
+const (
+	Txn         RequestType = "txn"
+	LeaseGrant  RequestType = "leaseGrant"
+	LeaseRevoke RequestType = "leaseRevoke"
+)
 
 type EtcdRequest struct {
+	Type        RequestType
+	LeaseGrant  *LeaseGrantRequest
+	LeaseRevoke *LeaseRevokeRequest
+	Txn         *TxnRequest
+}
+
+type TxnRequest struct {
 	Conds []EtcdCondition
 	Ops   []EtcdOperation
 }
@@ -82,13 +84,31 @@ type EtcdOperation struct {
 	LeaseID int64
 }
 
+type LeaseGrantRequest struct {
+	LeaseID int64
+}
+type LeaseRevokeRequest struct {
+	LeaseID int64
+}
+
 type EtcdResponse struct {
 	Err           error
 	Revision      int64
 	ResultUnknown bool
-	TxnResult     bool
-	OpsResult     []EtcdOperationResult
+	Txn           *TxnResponse
+	LeaseGrant    *LeaseGrantReponse
+	LeaseRevoke   *LeaseRevokeResponse
 }
+
+type TxnResponse struct {
+	TxnResult bool
+	OpsResult []EtcdOperationResult
+}
+
+type LeaseGrantReponse struct {
+	LeaseID int64
+}
+type LeaseRevokeResponse struct{}
 
 func Match(r1, r2 EtcdResponse) bool {
 	return ((r1.ResultUnknown || r2.ResultUnknown) && (r1.Revision == r2.Revision)) || reflect.DeepEqual(r1, r2)
@@ -115,12 +135,38 @@ type EtcdState struct {
 }
 
 func describeEtcdRequestResponse(request EtcdRequest, response EtcdResponse) string {
-	prefix := describeEtcdOperations(request.Ops)
-	if len(request.Conds) != 0 {
-		prefix = fmt.Sprintf("if(%s).then(%s)", describeEtcdConditions(request.Conds), prefix)
-	}
+	return fmt.Sprintf("%s -> %s", describeEtcdRequest(request), describeEtcdResponse(request, response))
+}
 
-	return fmt.Sprintf("%s -> %s", prefix, describeEtcdResponse(request.Ops, response))
+func describeEtcdResponse(request EtcdRequest, response EtcdResponse) string {
+	if response.Err != nil {
+		return fmt.Sprintf("err: %q", response.Err)
+	}
+	if response.ResultUnknown {
+		return fmt.Sprintf("unknown, rev: %d", response.Revision)
+	}
+	if request.Type == Txn {
+		return fmt.Sprintf("%s, rev: %d", describeTxnResponse(request.Txn, response.Txn), response.Revision)
+	} else {
+		return fmt.Sprintf("ok, rev: %d", response.Revision)
+	}
+}
+
+func describeEtcdRequest(request EtcdRequest) string {
+	switch request.Type {
+	case Txn:
+		describeOperations := describeEtcdOperations(request.Txn.Ops)
+		if len(request.Txn.Conds) != 0 {
+			return fmt.Sprintf("if(%s).then(%s)", describeEtcdConditions(request.Txn.Conds), describeOperations)
+		}
+		return describeOperations
+	case LeaseGrant:
+		return fmt.Sprintf("leaseGrant(%d)", request.LeaseGrant.LeaseID)
+	case LeaseRevoke:
+		return fmt.Sprintf("leaseRevoke(%d)", request.LeaseRevoke.LeaseID)
+	default:
+		return fmt.Sprintf("<! unknown request type: %q !>", request.Type)
+	}
 }
 
 func describeEtcdConditions(conds []EtcdCondition) string {
@@ -139,21 +185,14 @@ func describeEtcdOperations(ops []EtcdOperation) string {
 	return strings.Join(opsDescription, ", ")
 }
 
-func describeEtcdResponse(ops []EtcdOperation, response EtcdResponse) string {
-	if response.Err != nil {
-		return fmt.Sprintf("err: %q", response.Err)
-	}
-	if response.ResultUnknown {
-		return fmt.Sprintf("unknown, rev: %d", response.Revision)
-	}
+func describeTxnResponse(request *TxnRequest, response *TxnResponse) string {
 	if response.TxnResult {
-		return fmt.Sprintf("txn failed, rev: %d", response.Revision)
+		return fmt.Sprintf("txn failed")
 	}
 	respDescription := make([]string, len(response.OpsResult))
 	for i := range response.OpsResult {
-		respDescription[i] = describeEtcdOperationResponse(ops[i].Type, response.OpsResult[i])
+		respDescription[i] = describeEtcdOperationResponse(request.Ops[i].Type, response.OpsResult[i])
 	}
-	respDescription = append(respDescription, fmt.Sprintf("rev: %d", response.Revision))
 	return strings.Join(respDescription, ", ")
 }
 
@@ -162,17 +201,12 @@ func describeEtcdOperation(op EtcdOperation) string {
 	case Get:
 		return fmt.Sprintf("get(%q)", op.Key)
 	case Put:
-		return fmt.Sprintf("put(%q, %q)", op.Key, op.Value)
+		if op.LeaseID != 0 {
+			return fmt.Sprintf("put(%q, %q, %d)", op.Key, op.Value, op.LeaseID)
+		}
+		return fmt.Sprintf("put(%q, %q, nil)", op.Key, op.Value)
 	case Delete:
 		return fmt.Sprintf("delete(%q)", op.Key)
-	case Txn:
-		return "<! unsupported: nested transaction !>"
-	case LeaseGrant:
-		return fmt.Sprintf("leaseGrant(%d)", op.LeaseID)
-	case LeaseRevoke:
-		return fmt.Sprintf("leaseRevoke(%d)", op.LeaseID)
-	case PutWithLease:
-		return fmt.Sprintf("putWithLease(%q, %q, %d)", op.Key, op.Value, op.LeaseID)
 	default:
 		return fmt.Sprintf("<! unknown op: %q !>", op.Type)
 	}
@@ -189,14 +223,6 @@ func describeEtcdOperationResponse(op OperationType, resp EtcdOperationResult) s
 		return fmt.Sprintf("ok")
 	case Delete:
 		return fmt.Sprintf("deleted: %d", resp.Deleted)
-	case Txn:
-		return "<! unsupported: nested transaction !>"
-	case LeaseGrant:
-		return fmt.Sprintf("ok")
-	case LeaseRevoke:
-		return fmt.Sprintf("ok")
-	case PutWithLease:
-		return fmt.Sprintf("ok")
 	default:
 		return fmt.Sprintf("<! unknown op: %q !>", op)
 	}
@@ -226,31 +252,34 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 		KeyLeases: map[string]int64{},
 		Leases:    map[int64]EtcdLease{},
 	}
-	if response.TxnResult {
-		return state
-	}
-	for i, op := range request.Ops {
-		opResp := response.OpsResult[i]
-		switch op.Type {
-		case Get:
-			if opResp.Value != "" {
-				state.KeyValues[op.Key] = opResp.Value
-			}
-		case Put:
-			state.KeyValues[op.Key] = op.Value
-		case Delete:
-		case PutWithLease:
-			//nop here since lease wont be there
-		case LeaseGrant:
-			lease := EtcdLease{
-				LeaseID: op.LeaseID,
-				Keys:    map[string]struct{}{},
-			}
-			state.Leases[op.LeaseID] = lease
-		case LeaseRevoke:
-		default:
-			panic("Unknown operation")
+	switch request.Type {
+	case Txn:
+		if response.Txn.TxnResult {
+			return state
 		}
+		for i, op := range request.Txn.Ops {
+			opResp := response.Txn.OpsResult[i]
+			switch op.Type {
+			case Get:
+				if opResp.Value != "" {
+					state.KeyValues[op.Key] = opResp.Value
+				}
+			case Put:
+				state.KeyValues[op.Key] = op.Value
+			case Delete:
+			default:
+				panic("Unknown operation")
+			}
+		}
+	case LeaseGrant:
+		lease := EtcdLease{
+			LeaseID: request.LeaseGrant.LeaseID,
+			Keys:    map[string]struct{}{},
+		}
+		state.Leases[request.LeaseGrant.LeaseID] = lease
+	case LeaseRevoke:
+	default:
+		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
 	return state
 }
@@ -278,81 +307,84 @@ func applyRequest(states PossibleStates, request EtcdRequest, response EtcdRespo
 
 // applyRequestToSingleState handles a successful request, returning updated state and response it would generate.
 func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
-	success := true
-	for _, cond := range request.Conds {
-		if val := s.KeyValues[cond.Key]; val != cond.ExpectedValue {
-			success = false
-			break
-		}
-	}
-	if !success {
-		return s, EtcdResponse{Revision: s.Revision, TxnResult: true}
-	}
 	newKVs := map[string]string{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
 	}
 	s.KeyValues = newKVs
-	opResp := make([]EtcdOperationResult, len(request.Ops))
-	increaseRevision := false
-
-	for i, op := range request.Ops {
-		switch op.Type {
-		case Get:
-			opResp[i].Value = s.KeyValues[op.Key]
-		case Put:
-			s.KeyValues[op.Key] = op.Value
-			increaseRevision = true
-			s = detachFromOldLease(s, op.Key)
-		case Delete:
-			if _, ok := s.KeyValues[op.Key]; ok {
-				delete(s.KeyValues, op.Key)
-				increaseRevision = true
-				s = detachFromOldLease(s, op.Key)
-				opResp[i].Deleted = 1
+	switch request.Type {
+	case Txn:
+		success := true
+		for _, cond := range request.Txn.Conds {
+			if val := s.KeyValues[cond.Key]; val != cond.ExpectedValue {
+				success = false
+				break
 			}
-		case PutWithLease:
-			if _, ok := s.Leases[op.LeaseID]; ok {
-				//handle put op.
+		}
+		if !success {
+			return s, EtcdResponse{Revision: s.Revision, Txn: &TxnResponse{TxnResult: true}}
+		}
+		opResp := make([]EtcdOperationResult, len(request.Txn.Ops))
+		increaseRevision := false
+		for i, op := range request.Txn.Ops {
+			switch op.Type {
+			case Get:
+				opResp[i].Value = s.KeyValues[op.Key]
+			case Put:
+				_, leaseExists := s.Leases[op.LeaseID]
+				if op.LeaseID != 0 && !leaseExists {
+					break
+				}
 				s.KeyValues[op.Key] = op.Value
 				increaseRevision = true
 				s = detachFromOldLease(s, op.Key)
-				s = attachToNewLease(s, op.LeaseID, op.Key)
-			}
-		case LeaseRevoke:
-			//Delete the keys attached to the lease
-			keyDeleted := false
-			for key, _ := range s.Leases[op.LeaseID].Keys {
-				//same as delete.
-				if _, ok := s.KeyValues[key]; ok {
-					if !keyDeleted {
-						keyDeleted = true
-					}
-					delete(s.KeyValues, key)
-					delete(s.KeyLeases, key)
+				if leaseExists {
+					s = attachToNewLease(s, op.LeaseID, op.Key)
 				}
+			case Delete:
+				if _, ok := s.KeyValues[op.Key]; ok {
+					delete(s.KeyValues, op.Key)
+					increaseRevision = true
+					s = detachFromOldLease(s, op.Key)
+					opResp[i].Deleted = 1
+				}
+			default:
+				panic("unsupported operation")
 			}
-			//delete the lease
-			delete(s.Leases, op.LeaseID)
-			if keyDeleted {
-				increaseRevision = true
-			}
-		case LeaseGrant:
-			lease := EtcdLease{
-				LeaseID: op.LeaseID,
-				Keys:    map[string]struct{}{},
-			}
-			s.Leases[op.LeaseID] = lease
-		default:
-			panic("unsupported operation")
 		}
+		if increaseRevision {
+			s.Revision += 1
+		}
+		return s, EtcdResponse{Txn: &TxnResponse{OpsResult: opResp}, Revision: s.Revision}
+	case LeaseGrant:
+		lease := EtcdLease{
+			LeaseID: request.LeaseGrant.LeaseID,
+			Keys:    map[string]struct{}{},
+		}
+		s.Leases[request.LeaseGrant.LeaseID] = lease
+		return s, EtcdResponse{Revision: s.Revision, LeaseGrant: &LeaseGrantReponse{}}
+	case LeaseRevoke:
+		//Delete the keys attached to the lease
+		keyDeleted := false
+		for key, _ := range s.Leases[request.LeaseRevoke.LeaseID].Keys {
+			//same as delete.
+			if _, ok := s.KeyValues[key]; ok {
+				if !keyDeleted {
+					keyDeleted = true
+				}
+				delete(s.KeyValues, key)
+				delete(s.KeyLeases, key)
+			}
+		}
+		//delete the lease
+		delete(s.Leases, request.LeaseRevoke.LeaseID)
+		if keyDeleted {
+			s.Revision += 1
+		}
+		return s, EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}
+	default:
+		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
-
-	if increaseRevision {
-		s.Revision += 1
-	}
-
-	return s, EtcdResponse{OpsResult: opResp, Revision: s.Revision}
 }
 
 func detachFromOldLease(s EtcdState, key string) EtcdState {
