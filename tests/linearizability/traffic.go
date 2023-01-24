@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -36,6 +37,7 @@ type TrafficRequestType string
 const (
 	Get           TrafficRequestType = "get"
 	Put           TrafficRequestType = "put"
+	LargePut      TrafficRequestType = "largePut"
 	Delete        TrafficRequestType = "delete"
 	PutWithLease  TrafficRequestType = "putWithLease"
 	LeaseRevoke   TrafficRequestType = "leaseRevoke"
@@ -47,10 +49,11 @@ type Traffic interface {
 	Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage)
 }
 
-type readWriteSingleKey struct {
-	keyCount int
-	writes   []requestChance
-	leaseTTL int64
+type traffic struct {
+	keyCount     int
+	writes       []requestChance
+	leaseTTL     int64
+	largePutSize int
 }
 
 type requestChance struct {
@@ -58,7 +61,7 @@ type requestChance struct {
 	chance    int
 }
 
-func (t readWriteSingleKey) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
+func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
 
 	for {
 		select {
@@ -77,7 +80,7 @@ func (t readWriteSingleKey) Run(ctx context.Context, clientId int, c *recordingC
 	}
 }
 
-func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string) ([]*mvccpb.KeyValue, error) {
+func (t traffic) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string) ([]*mvccpb.KeyValue, error) {
 	getCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	resp, err := c.Get(getCtx, key)
 	cancel()
@@ -87,13 +90,15 @@ func (t readWriteSingleKey) Read(ctx context.Context, c *recordingClient, limite
 	return resp, err
 }
 
-func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lm identity.LeaseIdStorage, cid int, lastValues []*mvccpb.KeyValue) error {
+func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, newValue string, lm identity.LeaseIdStorage, cid int, lastValues []*mvccpb.KeyValue) error {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
 	switch t.pickWriteRequest() {
 	case Put:
 		err = c.Put(writeCtx, key, newValue)
+	case LargePut:
+		err = c.Put(writeCtx, key, randString(t.largePutSize))
 	case Delete:
 		err = c.Delete(writeCtx, key)
 	case CompareAndSet:
@@ -137,7 +142,7 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 	return err
 }
 
-func (t readWriteSingleKey) pickWriteRequest() TrafficRequestType {
+func (t traffic) pickWriteRequest() TrafficRequestType {
 	sum := 0
 	for _, op := range t.writes {
 		sum += op.chance
@@ -150,4 +155,13 @@ func (t readWriteSingleKey) pickWriteRequest() TrafficRequestType {
 		roll -= op.chance
 	}
 	panic("unexpected")
+}
+
+func randString(size int) string {
+	data := strings.Builder{}
+	data.Grow(size)
+	for i := 0; i < size; i++ {
+		data.WriteByte(byte(int('a') + rand.Intn(26)))
+	}
+	return data.String()
 }

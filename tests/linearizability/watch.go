@@ -83,7 +83,7 @@ func collectMemberWatchEvents(ctx context.Context, t *testing.T, c *clientv3.Cli
 					Op: model.EtcdOperation{
 						Type:  op,
 						Key:   string(event.Kv.Key),
-						Value: string(event.Kv.Value),
+						Value: model.ToValueOrHash(string(event.Kv.Value)),
 					},
 				})
 			}

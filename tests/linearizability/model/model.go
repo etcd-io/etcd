@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/anishathalye/porcupine"
+	"hash/fnv"
 	"reflect"
 	"strings"
 )
@@ -76,13 +77,13 @@ type TxnRequest struct {
 
 type EtcdCondition struct {
 	Key           string
-	ExpectedValue string
+	ExpectedValue ValueOrHash
 }
 
 type EtcdOperation struct {
 	Type    OperationType
 	Key     string
-	Value   string
+	Value   ValueOrHash
 	LeaseID int64
 }
 
@@ -120,7 +121,7 @@ func Match(r1, r2 EtcdResponse) bool {
 }
 
 type EtcdOperationResult struct {
-	Value   string
+	Value   ValueOrHash
 	Deleted int64
 }
 
@@ -134,9 +135,26 @@ type PossibleStates []EtcdState
 
 type EtcdState struct {
 	Revision  int64
-	KeyValues map[string]string
+	KeyValues map[string]ValueOrHash
 	KeyLeases map[string]int64
 	Leases    map[int64]EtcdLease
+}
+
+type ValueOrHash struct {
+	Value string
+	Hash  uint32
+}
+
+func ToValueOrHash(value string) ValueOrHash {
+	v := ValueOrHash{}
+	if len(value) < 20 {
+		v.Value = value
+	} else {
+		h := fnv.New32a()
+		h.Write([]byte(value))
+		v.Hash = h.Sum32()
+	}
+	return v
 }
 
 func describeEtcdRequestResponse(request EtcdRequest, response EtcdResponse) string {
@@ -181,7 +199,7 @@ func describeEtcdRequest(request EtcdRequest) string {
 func describeEtcdConditions(conds []EtcdCondition) string {
 	opsDescription := make([]string, len(conds))
 	for i := range conds {
-		opsDescription[i] = fmt.Sprintf("%s==%q", conds[i].Key, conds[i].ExpectedValue)
+		opsDescription[i] = fmt.Sprintf("%s==%s", conds[i].Key, describeValueOrHash(conds[i].ExpectedValue))
 	}
 	return strings.Join(opsDescription, " && ")
 }
@@ -211,9 +229,9 @@ func describeEtcdOperation(op EtcdOperation) string {
 		return fmt.Sprintf("get(%q)", op.Key)
 	case Put:
 		if op.LeaseID != 0 {
-			return fmt.Sprintf("put(%q, %q, %d)", op.Key, op.Value, op.LeaseID)
+			return fmt.Sprintf("put(%q, %s, %d)", op.Key, describeValueOrHash(op.Value), op.LeaseID)
 		}
-		return fmt.Sprintf("put(%q, %q, nil)", op.Key, op.Value)
+		return fmt.Sprintf("put(%q, %s, nil)", op.Key, describeValueOrHash(op.Value))
 	case Delete:
 		return fmt.Sprintf("delete(%q)", op.Key)
 	default:
@@ -224,10 +242,7 @@ func describeEtcdOperation(op EtcdOperation) string {
 func describeEtcdOperationResponse(op OperationType, resp EtcdOperationResult) string {
 	switch op {
 	case Get:
-		if resp.Value == "" {
-			return "nil"
-		}
-		return fmt.Sprintf("%q", resp.Value)
+		return describeValueOrHash(resp.Value)
 	case Put:
 		return fmt.Sprintf("ok")
 	case Delete:
@@ -235,6 +250,16 @@ func describeEtcdOperationResponse(op OperationType, resp EtcdOperationResult) s
 	default:
 		return fmt.Sprintf("<! unknown op: %q !>", op)
 	}
+}
+
+func describeValueOrHash(value ValueOrHash) string {
+	if value.Hash != 0 {
+		return fmt.Sprintf("hash: %d", value.Hash)
+	}
+	if value.Value == "" {
+		return "nil"
+	}
+	return fmt.Sprintf("%q", value.Value)
 }
 
 func step(states PossibleStates, request EtcdRequest, response EtcdResponse) (bool, PossibleStates) {
@@ -257,7 +282,7 @@ func step(states PossibleStates, request EtcdRequest, response EtcdResponse) (bo
 func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 	state := EtcdState{
 		Revision:  response.Revision,
-		KeyValues: map[string]string{},
+		KeyValues: map[string]ValueOrHash{},
 		KeyLeases: map[string]int64{},
 		Leases:    map[int64]EtcdLease{},
 	}
@@ -270,7 +295,7 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 			opResp := response.Txn.OpsResult[i]
 			switch op.Type {
 			case Get:
-				if opResp.Value != "" {
+				if opResp.Value.Value != "" && opResp.Value.Hash == 0 {
 					state.KeyValues[op.Key] = opResp.Value
 				}
 			case Put:
@@ -319,7 +344,7 @@ func applyRequest(states PossibleStates, request EtcdRequest, response EtcdRespo
 
 // applyRequestToSingleState handles a successful request, returning updated state and response it would generate.
 func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
-	newKVs := map[string]string{}
+	newKVs := map[string]ValueOrHash{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
 	}

@@ -47,24 +47,36 @@ var (
 		minimalQPS:  100,
 		maximalQPS:  200,
 		clientCount: 8,
-		traffic: readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []requestChance{
-			{operation: Put, chance: 50},
-			{operation: Delete, chance: 10},
-			{operation: PutWithLease, chance: 10},
-			{operation: LeaseRevoke, chance: 10},
-			{operation: CompareAndSet, chance: 10},
-			{operation: Defragment, chance: 10},
-		}},
+		traffic: traffic{
+			keyCount:     4,
+			leaseTTL:     DefaultLeaseTTL,
+			largePutSize: 32769,
+			writes: []requestChance{
+				{operation: Put, chance: 50},
+				{operation: LargePut, chance: 5},
+				{operation: Delete, chance: 10},
+				{operation: PutWithLease, chance: 10},
+				{operation: LeaseRevoke, chance: 10},
+				{operation: CompareAndSet, chance: 10},
+				{operation: Defragment, chance: 5},
+			},
+		},
 	}
 	HighTraffic = trafficConfig{
 		name:        "HighTraffic",
 		minimalQPS:  200,
 		maximalQPS:  1000,
 		clientCount: 12,
-		traffic: readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []requestChance{
-			{operation: Put, chance: 90},
-			{operation: Defragment, chance: 10},
-		}},
+		traffic: traffic{
+			keyCount:     4,
+			largePutSize: 32769,
+			leaseTTL:     DefaultLeaseTTL,
+			writes: []requestChance{
+				{operation: Put, chance: 90},
+				{operation: LargePut, chance: 5},
+				{operation: Defragment, chance: 5},
+			},
+		},
 	}
 	defaultTraffic = LowTraffic
 	trafficList    = []trafficConfig{
