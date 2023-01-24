@@ -157,6 +157,7 @@ func TestLinearizability(t *testing.T) {
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
 			}, *tc.traffic)
+			clus.Stop()
 			longestHistory, remainingEvents := pickLongestHistory(events)
 			validateEventsMatch(t, longestHistory, remainingEvents)
 			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
