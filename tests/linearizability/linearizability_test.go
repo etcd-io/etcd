@@ -42,8 +42,8 @@ const (
 )
 
 var (
-	LowTrafficAllRequests = trafficConfig{
-		name:        "LowTrafficAllRequests",
+	LowTraffic = trafficConfig{
+		name:        "LowTraffic",
 		minimalQPS:  100,
 		maximalQPS:  200,
 		clientCount: 8,
@@ -52,19 +52,23 @@ var (
 			{operation: Delete, chance: 10},
 			{operation: PutWithLease, chance: 10},
 			{operation: LeaseRevoke, chance: 10},
-			{operation: CompareAndSet, chance: 20},
+			{operation: CompareAndSet, chance: 10},
+			{operation: Defragment, chance: 10},
 		}},
 	}
-	HighTrafficPut = trafficConfig{
-		name:        "HighTrafficPut",
+	HighTraffic = trafficConfig{
+		name:        "HighTraffic",
 		minimalQPS:  200,
 		maximalQPS:  1000,
 		clientCount: 12,
-		traffic:     readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []requestChance{{operation: Put, chance: 100}}},
+		traffic: readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []requestChance{
+			{operation: Put, chance: 90},
+			{operation: Defragment, chance: 10},
+		}},
 	}
-	defaultTraffic = LowTrafficAllRequests
+	defaultTraffic = LowTraffic
 	trafficList    = []trafficConfig{
-		LowTrafficAllRequests, HighTrafficPut,
+		LowTraffic, HighTraffic,
 	}
 )
 
@@ -122,7 +126,7 @@ func TestLinearizability(t *testing.T) {
 		{
 			name:      "Issue13766",
 			failpoint: KillFailpoint,
-			traffic:   &HighTrafficPut,
+			traffic:   &HighTraffic,
 			config: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
 			),

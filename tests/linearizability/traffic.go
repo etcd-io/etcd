@@ -40,6 +40,7 @@ const (
 	PutWithLease  TrafficRequestType = "putWithLease"
 	LeaseRevoke   TrafficRequestType = "leaseRevoke"
 	CompareAndSet TrafficRequestType = "compareAndSet"
+	Defragment    TrafficRequestType = "defragment"
 )
 
 type Traffic interface {
@@ -124,6 +125,8 @@ func (t readWriteSingleKey) Write(ctx context.Context, c *recordingClient, limit
 				lm.RemoveLeaseId(cid)
 			}
 		}
+	case Defragment:
+		err = c.Defragment(writeCtx)
 	default:
 		panic("invalid operation")
 	}
