@@ -58,6 +58,7 @@ const (
 	Txn         RequestType = "txn"
 	LeaseGrant  RequestType = "leaseGrant"
 	LeaseRevoke RequestType = "leaseRevoke"
+	Defragment  RequestType = "defragment"
 )
 
 type EtcdRequest struct {
@@ -65,6 +66,7 @@ type EtcdRequest struct {
 	LeaseGrant  *LeaseGrantRequest
 	LeaseRevoke *LeaseRevokeRequest
 	Txn         *TxnRequest
+	Defragment  *DefragmentRequest
 }
 
 type TxnRequest struct {
@@ -90,6 +92,7 @@ type LeaseGrantRequest struct {
 type LeaseRevokeRequest struct {
 	LeaseID int64
 }
+type DefragmentRequest struct{}
 
 type EtcdResponse struct {
 	Err           error
@@ -98,6 +101,7 @@ type EtcdResponse struct {
 	Txn           *TxnResponse
 	LeaseGrant    *LeaseGrantReponse
 	LeaseRevoke   *LeaseRevokeResponse
+	Defragment    *DefragmentResponse
 }
 
 type TxnResponse struct {
@@ -109,6 +113,7 @@ type LeaseGrantReponse struct {
 	LeaseID int64
 }
 type LeaseRevokeResponse struct{}
+type DefragmentResponse struct{}
 
 func Match(r1, r2 EtcdResponse) bool {
 	return ((r1.ResultUnknown || r2.ResultUnknown) && (r1.Revision == r2.Revision)) || reflect.DeepEqual(r1, r2)
@@ -147,9 +152,11 @@ func describeEtcdResponse(request EtcdRequest, response EtcdResponse) string {
 	}
 	if request.Type == Txn {
 		return fmt.Sprintf("%s, rev: %d", describeTxnResponse(request.Txn, response.Txn), response.Revision)
-	} else {
-		return fmt.Sprintf("ok, rev: %d", response.Revision)
 	}
+	if response.Revision == 0 {
+		return "ok"
+	}
+	return fmt.Sprintf("ok, rev: %d", response.Revision)
 }
 
 func describeEtcdRequest(request EtcdRequest) string {
@@ -164,6 +171,8 @@ func describeEtcdRequest(request EtcdRequest) string {
 		return fmt.Sprintf("leaseGrant(%d)", request.LeaseGrant.LeaseID)
 	case LeaseRevoke:
 		return fmt.Sprintf("leaseRevoke(%d)", request.LeaseRevoke.LeaseID)
+	case Defragment:
+		return fmt.Sprintf("defragment()")
 	default:
 		return fmt.Sprintf("<! unknown request type: %q !>", request.Type)
 	}
@@ -231,7 +240,7 @@ func describeEtcdOperationResponse(op OperationType, resp EtcdOperationResult) s
 func step(states PossibleStates, request EtcdRequest, response EtcdResponse) (bool, PossibleStates) {
 	if len(states) == 0 {
 		// states were not initialized
-		if response.Err != nil || response.ResultUnknown {
+		if response.Err != nil || response.ResultUnknown || response.Revision == 0 {
 			return true, nil
 		}
 		return true, PossibleStates{initState(request, response)}
@@ -278,6 +287,7 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 		}
 		state.Leases[request.LeaseGrant.LeaseID] = lease
 	case LeaseRevoke:
+	case Defragment:
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
@@ -288,7 +298,9 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 func applyFailedRequest(states PossibleStates, request EtcdRequest) PossibleStates {
 	for _, s := range states {
 		newState, _ := applyRequestToSingleState(s, request)
-		states = append(states, newState)
+		if !reflect.DeepEqual(newState, s) {
+			states = append(states, newState)
+		}
 	}
 	return states
 }
@@ -382,6 +394,8 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 			s.Revision += 1
 		}
 		return s, EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}
+	case Defragment:
+		return s, defragmentResponse()
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}

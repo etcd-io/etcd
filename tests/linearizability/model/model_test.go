@@ -518,6 +518,59 @@ func TestModelStep(t *testing.T) {
 				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(9)},
 			},
 		},
+		{
+			name: "All request types",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "1", 1), resp: putResponse(2)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: putRequest("key", "4"), resp: putResponse(4)},
+				{req: getRequest("key"), resp: getResponse("4", 4)},
+				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+			},
+		},
+		{
+			name: "Defragment success between all other request types",
+			operations: []testOperation{
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: putWithLeaseRequest("key", "1", 1), resp: putResponse(2)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: putRequest("key", "4"), resp: putResponse(4)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: getRequest("key"), resp: getResponse("4", 4)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+			},
+		},
+		{
+			name: "Defragment failures between all other request types",
+			operations: []testOperation{
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: putWithLeaseRequest("key", "1", 1), resp: putResponse(2)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: putRequest("key", "4"), resp: putResponse(4)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: getRequest("key"), resp: getResponse("4", 4)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -603,6 +656,11 @@ func TestModelDescribe(t *testing.T) {
 			req:            txnRequest("key9", "9", "99"),
 			resp:           failedResponse(errors.New("failed")),
 			expectDescribe: `if(key9=="9").then(put("key9", "99", nil)) -> err: "failed"`,
+		},
+		{
+			req:            defragmentRequest(),
+			resp:           defragmentResponse(),
+			expectDescribe: `defragment() -> ok`,
 		},
 	}
 	for _, tc := range tcs {

@@ -125,3 +125,11 @@ func (c *recordingClient) PutWithLease(ctx context.Context, key string, value st
 	c.history.AppendPutWithLease(key, value, int64(leaseId), callTime, returnTime, resp, err)
 	return err
 }
+
+func (c *recordingClient) Defragment(ctx context.Context) error {
+	callTime := time.Now()
+	resp, err := c.client.Defragment(ctx, c.client.Endpoints()[0])
+	returnTime := time.Now()
+	c.history.AppendDefragment(callTime, returnTime, resp, err)
+	return err
+}

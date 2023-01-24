@@ -180,6 +180,21 @@ func (h *AppendableHistory) AppendTxn(key, expectValue, newValue string, start, 
 	})
 }
 
+func (h *AppendableHistory) AppendDefragment(start, end time.Time, resp *clientv3.DefragmentResponse, err error) {
+	request := defragmentRequest()
+	if err != nil {
+		h.appendFailed(request, start, err)
+		return
+	}
+	h.successful = append(h.successful, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.UnixNano(),
+		Output:   defragmentResponse(),
+		Return:   end.UnixNano(),
+	})
+}
+
 func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Time, err error) {
 	h.failed = append(h.failed, porcupine.Operation{
 		ClientId: h.id,
@@ -255,6 +270,14 @@ func leaseRevokeRequest(leaseID int64) EtcdRequest {
 
 func leaseRevokeResponse(revision int64) EtcdResponse {
 	return EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision}
+}
+
+func defragmentRequest() EtcdRequest {
+	return EtcdRequest{Type: Defragment, Defragment: &DefragmentRequest{}}
+}
+
+func defragmentResponse() EtcdResponse {
+	return EtcdResponse{Defragment: &DefragmentResponse{}}
 }
 
 type History struct {
