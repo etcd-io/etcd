@@ -66,6 +66,17 @@ func TestModelStep(t *testing.T) {
 			},
 		},
 		{
+			name: "Get response data should match large put",
+			operations: []testOperation{
+				{req: putRequest("key", "012345678901234567890"), resp: putResponse(1)},
+				{req: getRequest("key"), resp: getResponse("123456789012345678901", 1), failure: true},
+				{req: getRequest("key"), resp: getResponse("012345678901234567890", 1)},
+				{req: putRequest("key", "123456789012345678901"), resp: putResponse(2)},
+				{req: getRequest("key"), resp: getResponse("123456789012345678901", 2)},
+				{req: getRequest("key"), resp: getResponse("012345678901234567890", 2), failure: true},
+			},
+		},
+		{
 			name: "Put must increase revision by 1",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("", 1)},
@@ -613,6 +624,11 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `get("key2") -> "2", rev: 2`,
 		},
 		{
+			req:            getRequest("key2b"),
+			resp:           getResponse("01234567890123456789", 2),
+			expectDescribe: `get("key2b") -> hash: 2945867837, rev: 2`,
+		},
+		{
 			req:            putRequest("key3", "3"),
 			resp:           putResponse(3),
 			expectDescribe: `put("key3", "3", nil) -> ok, rev: 3`,
@@ -621,6 +637,11 @@ func TestModelDescribe(t *testing.T) {
 			req:            putWithLeaseRequest("key3b", "3b", 3),
 			resp:           putResponse(3),
 			expectDescribe: `put("key3b", "3b", 3) -> ok, rev: 3`,
+		},
+		{
+			req:            putRequest("key3c", "01234567890123456789"),
+			resp:           putResponse(3),
+			expectDescribe: `put("key3c", hash: 2945867837, nil) -> ok, rev: 3`,
 		},
 		{
 			req:            putRequest("key4", "4"),
