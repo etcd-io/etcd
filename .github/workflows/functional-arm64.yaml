@@ -1,5 +1,7 @@
 name: functional-arm64-tests
-on: [push, pull_request]
+on:
+  schedule:
+    - cron: '0 0/4 * * *' # runs every 4 hours
 permissions: read-all
 jobs:
   test:
@@ -13,6 +15,7 @@ jobs:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
         with:
+          ref: main
           go-version: "1.19.5"
       - run: date
       - env:
