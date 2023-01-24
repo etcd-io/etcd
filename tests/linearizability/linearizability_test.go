@@ -43,6 +43,7 @@ const (
 
 var (
 	LowTrafficAllRequests = trafficConfig{
+		name:        "LowTrafficAllRequests",
 		minimalQPS:  100,
 		maximalQPS:  200,
 		clientCount: 8,
@@ -55,24 +56,32 @@ var (
 		}},
 	}
 	HighTrafficPut = trafficConfig{
+		name:        "HighTrafficPut",
 		minimalQPS:  200,
 		maximalQPS:  1000,
 		clientCount: 12,
 		traffic:     readWriteSingleKey{keyCount: 4, leaseTTL: DefaultLeaseTTL, writes: []requestChance{{operation: Put, chance: 100}}},
 	}
+	defaultTraffic = LowTrafficAllRequests
+	trafficList    = []trafficConfig{
+		LowTrafficAllRequests, HighTrafficPut,
+	}
 )
 
 func TestLinearizability(t *testing.T) {
 	testRunner.BeforeTest(t)
-	tcs := []struct {
+	type scenario struct {
 		name      string
 		failpoint Failpoint
 		config    e2e.EtcdProcessClusterConfig
 		traffic   *trafficConfig
-	}{
-		{
-			name:      "ClusterOfSize1",
+	}
+	scenarios := []scenario{}
+	for _, traffic := range trafficList {
+		scenarios = append(scenarios, scenario{
+			name:      "ClusterOfSize1/" + traffic.name,
 			failpoint: RandomFailpoint,
+			traffic:   &traffic,
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithSnapshotCount(100),
@@ -80,40 +89,20 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			),
-		},
-		{
-			name:      "ClusterOfSize3",
+		})
+		scenarios = append(scenarios, scenario{
+			name:      "ClusterOfSize3/" + traffic.name,
 			failpoint: RandomFailpoint,
+			traffic:   &traffic,
 			config: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			),
-		},
-		{
-			name:      "HighTrafficClusterOfSize1",
-			failpoint: RandomFailpoint,
-			traffic:   &HighTrafficPut,
-			config: *e2e.NewConfig(
-				e2e.WithClusterSize(1),
-				e2e.WithSnapshotCount(100),
-				e2e.WithPeerProxy(true),
-				e2e.WithGoFailEnabled(true),
-				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
-			),
-		},
-		{
-			name:      "HighTrafficClusterOfSize3",
-			failpoint: RandomFailpoint,
-			traffic:   &HighTrafficPut,
-			config: *e2e.NewConfig(
-				e2e.WithSnapshotCount(100),
-				e2e.WithPeerProxy(true),
-				e2e.WithGoFailEnabled(true),
-				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
-			),
-		},
+		})
+	}
+	scenarios = append(scenarios, []scenario{
 		{
 			name:      "Issue14370",
 			failpoint: RaftBeforeSavePanic,
@@ -138,25 +127,25 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithSnapshotCount(100),
 			),
 		},
-	}
-	for _, tc := range tcs {
-		if tc.traffic == nil {
-			tc.traffic = &LowTrafficAllRequests
+	}...)
+	for _, scenario := range scenarios {
+		if scenario.traffic == nil {
+			scenario.traffic = &defaultTraffic
 		}
 
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(scenario.name, func(t *testing.T) {
 			ctx := context.Background()
-			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&tc.config))
+			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&scenario.config))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer clus.Close()
 			operations, events := testLinearizability(ctx, t, clus, FailpointConfig{
-				failpoint:           tc.failpoint,
+				failpoint:           scenario.failpoint,
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}, *tc.traffic)
+			}, *scenario.traffic)
 			clus.Stop()
 			longestHistory, remainingEvents := pickLongestHistory(events)
 			validateEventsMatch(t, longestHistory, remainingEvents)
@@ -354,6 +343,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 }
 
 type trafficConfig struct {
+	name        string
 	minimalQPS  float64
 	maximalQPS  float64
 	clientCount int
