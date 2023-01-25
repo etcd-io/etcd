@@ -22,7 +22,10 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc/metadata"
 )
+
+const watchStreamContextKey = "watch-stream-key"
 
 var (
 	ErrElectionNotLeader = errors.New("election: not leader")
@@ -217,6 +220,8 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 		}
 
 		cctx, cancel := context.WithCancel(ctx)
+		//Create a new stream with a new ctxKey.Otherwise,client will get cached stream if the client has used by others.
+		cctx = metadata.AppendToOutgoingContext(cctx, watchStreamContextKey, string(kv.Key))
 		wch := client.Watch(cctx, string(kv.Key), v3.WithRev(hdr.Revision+1))
 		keyDeleted := false
 		for !keyDeleted {
