@@ -198,6 +198,7 @@ for RATIO_STR in ${RATIO_LIST}; do
         fi
         LINE="${LINE},${RD_QPS}:${WR_QPS}"
       done
+      LINE="${LINE},"
       END=$(date +%s)
       DIFF=$((${END} - ${START}))
       echo "took ${DIFF} seconds"
