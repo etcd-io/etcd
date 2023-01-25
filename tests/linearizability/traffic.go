@@ -122,12 +122,12 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 			putCancel()
 		}
 	case LeaseRevoke:
-		leaseId := lm.LeaseId(cid)
+		clientId, leaseId := lm.GetRandomClientWithLease()
 		if leaseId != 0 {
 			err = c.LeaseRevoke(writeCtx, leaseId)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
-				lm.RemoveLeaseId(cid)
+				lm.RemoveLeaseId(clientId)
 			}
 		}
 	case Defragment:
