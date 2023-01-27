@@ -65,7 +65,7 @@ func init() {
 // toApply contains entries, snapshot to be applied. Once
 // an toApply is consumed, the entries will be persisted to
 // to raft storage concurrently; the application must read
-// raftDone before assuming the raft messages are stable.
+// notifyc before assuming the raft messages are stable.
 type toApply struct {
 	entries  []raftpb.Entry
 	snapshot raftpb.Snapshot
@@ -269,7 +269,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				r.raftStorage.Append(rd.Entries)
 
 				if !islead {
-					// finish processing incoming messages before we signal raftdone chan
+					// finish processing incoming messages before we signal notifyc chan
 					msgs := r.processMessages(rd.Messages)
 
 					// now unblocks 'applyAll' that waits on Raft log disk writes before triggering snapshots
