@@ -127,7 +127,7 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 	if err = db.View(func(tx *bolt.Tx) error {
 		// check snapshot file integrity first
 		var dbErrStrings []string
-		for dbErr := range tx.Check() {
+		for dbErr := range tx.Check(bolt.HexKVStringer()) {
 			dbErrStrings = append(dbErrStrings, dbErr.Error())
 		}
 		if len(dbErrStrings) > 0 {
