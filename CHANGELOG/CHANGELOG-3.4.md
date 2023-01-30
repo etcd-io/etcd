@@ -14,6 +14,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ### Dependency
 - Upgrade [github.com/grpc-ecosystem/grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway/releases) from [v1.9.5](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.9.5) to [v1.11.0](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.11.0).
+- Bump bbolt to [v1.3.7](https://github.com/etcd-io/etcd/pull/15223).
 
 ### Other
 - Updated [base image from base-debian11 to static-debian11 and removed dependency on busybox](https://github.com/etcd-io/etcd/pull/15038).
