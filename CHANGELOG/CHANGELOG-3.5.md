@@ -4,6 +4,13 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
+## v3.5.8 (TBD)
+
+### Package `netutil`
+- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187)
+
+<hr>
+
 ## v3.5.7 (2023-01-20)
 
 ### etcd server

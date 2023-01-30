@@ -17,10 +17,11 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/anishathalye/porcupine"
 	"hash/fnv"
 	"reflect"
 	"strings"
+
+	"github.com/anishathalye/porcupine"
 )
 
 type OperationType string
