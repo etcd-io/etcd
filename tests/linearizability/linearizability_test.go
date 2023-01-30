@@ -28,6 +28,8 @@ import (
 	"github.com/anishathalye/porcupine"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
@@ -150,13 +152,15 @@ func TestLinearizability(t *testing.T) {
 		}
 
 		t.Run(scenario.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			scenario.config.Logger = lg
 			ctx := context.Background()
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&scenario.config))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer clus.Close()
-			operations, events := testLinearizability(ctx, t, clus, FailpointConfig{
+			operations, events := testLinearizability(ctx, t, lg, clus, FailpointConfig{
 				failpoint:           scenario.failpoint,
 				count:               1,
 				retries:             3,
@@ -166,30 +170,30 @@ func TestLinearizability(t *testing.T) {
 			longestHistory, remainingEvents := pickLongestHistory(events)
 			validateEventsMatch(t, longestHistory, remainingEvents)
 			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
-			checkOperationsAndPersistResults(t, operations, clus)
+			checkOperationsAndPersistResults(t, lg, operations, clus)
 		})
 	}
 }
 
-func testLinearizability(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, events [][]watchEvent) {
+func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, events [][]watchEvent) {
 	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
 	g := errgroup.Group{}
 	trafficCtx, trafficCancel := context.WithCancel(ctx)
 	g.Go(func() error {
-		triggerFailpoints(ctx, t, clus, failpoint)
+		triggerFailpoints(ctx, t, lg, clus, failpoint)
 		time.Sleep(time.Second)
 		trafficCancel()
 		return nil
 	})
 	watchCtx, watchCancel := context.WithCancel(ctx)
 	g.Go(func() error {
-		operations = simulateTraffic(trafficCtx, t, clus, traffic)
+		operations = simulateTraffic(trafficCtx, t, lg, clus, traffic)
 		time.Sleep(time.Second)
 		watchCancel()
 		return nil
 	})
 	g.Go(func() error {
-		events = collectClusterWatchEvents(watchCtx, t, clus)
+		events = collectClusterWatchEvents(watchCtx, t, lg, clus)
 		return nil
 	})
 	g.Wait()
@@ -285,7 +289,7 @@ func hasUniqueWriteOperation(request *model.TxnRequest) bool {
 	return false
 }
 
-func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
+func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
 	var err error
 	successes := 0
 	failures := 0
@@ -297,9 +301,10 @@ func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessC
 	}
 	for successes < config.count && failures < config.retries {
 		time.Sleep(config.waitBetweenTriggers)
-		err = config.failpoint.Trigger(t, ctx, clus)
+		lg.Info("Triggering failpoint\n", zap.String("failpoint", config.failpoint.Name()))
+		err = config.failpoint.Trigger(ctx, t, lg, clus)
 		if err != nil {
-			t.Logf("Failed to trigger failpoint %q, err: %v\n", config.failpoint.Name(), err)
+			lg.Info("Failed to trigger failpoint", zap.String("failpoint", config.failpoint.Name()), zap.Error(err))
 			failures++
 			continue
 		}
@@ -317,7 +322,7 @@ type FailpointConfig struct {
 	waitBetweenTriggers time.Duration
 }
 
-func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config trafficConfig) []porcupine.Operation {
+func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config trafficConfig) []porcupine.Operation {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsV3()
 
@@ -348,10 +353,10 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 	wg.Wait()
 	endTime := time.Now()
 	operations := h.Operations()
-	t.Logf("Recorded %d operations", len(operations))
+	lg.Info("Recorded operations", zap.Int("count", len(operations)))
 
 	qps := float64(len(operations)) / float64(endTime.Sub(startTime)) * float64(time.Second)
-	t.Logf("Average traffic: %f qps", qps)
+	lg.Info("Average traffic", zap.Float64("qps", qps))
 	if qps < config.minimalQPS {
 		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", config.minimalQPS, qps)
 	}
@@ -383,7 +388,7 @@ func validateEventsMatch(t *testing.T, longestHistory []watchEvent, other [][]wa
 	}
 }
 
-func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
+func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
 	path, err := testResultsDirectory(t)
 	if err != nil {
 		t.Error(err)
@@ -397,21 +402,21 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 		t.Error("Linearization timed out")
 	}
 	if linearizable != porcupine.Ok {
-		persistOperationHistory(t, path, operations)
-		persistMemberDataDir(t, clus, path)
+		persistOperationHistory(t, lg, path, operations)
+		persistMemberDataDir(t, lg, clus, path)
 	}
 
 	visualizationPath := filepath.Join(path, "history.html")
-	t.Logf("saving visualization to %q", visualizationPath)
+	lg.Info("Saving visualization", zap.String("path", visualizationPath))
 	err = porcupine.VisualizePath(model.Etcd, info, visualizationPath)
 	if err != nil {
 		t.Errorf("Failed to visualize, err: %v", err)
 	}
 }
 
-func persistOperationHistory(t *testing.T, path string, operations []porcupine.Operation) {
+func persistOperationHistory(t *testing.T, lg *zap.Logger, path string, operations []porcupine.Operation) {
 	historyFilePath := filepath.Join(path, "history.json")
-	t.Logf("saving operation history to %q", historyFilePath)
+	lg.Info("Saving operation history", zap.String("path", historyFilePath))
 	file, err := os.OpenFile(historyFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		t.Errorf("Failed to save operation history: %v", err)
@@ -427,14 +432,14 @@ func persistOperationHistory(t *testing.T, path string, operations []porcupine.O
 	}
 }
 
-func persistMemberDataDir(t *testing.T, clus *e2e.EtcdProcessCluster, path string) {
+func persistMemberDataDir(t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, path string) {
 	for _, member := range clus.Procs {
 		memberDataDir := filepath.Join(path, member.Config().Name)
 		err := os.RemoveAll(memberDataDir)
 		if err != nil {
 			t.Error(err)
 		}
-		t.Logf("saving %s data dir to %q", member.Config().Name, memberDataDir)
+		lg.Info("Saving member data dir", zap.String("member", member.Config().Name), zap.String("path", memberDataDir))
 		err = os.Rename(member.Config().DataDirPath, memberDataDir)
 		if err != nil {
 			t.Error(err)
