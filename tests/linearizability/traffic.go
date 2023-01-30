@@ -108,11 +108,11 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 		}
 		err = c.CompareAndSet(writeCtx, key, expectValue, newValue)
 	case PutWithLease:
-		leaseId := lm.LeaseId(cid)
+		leaseId := lm.Take()
 		if leaseId == 0 {
 			leaseId, err = c.LeaseGrant(writeCtx, t.leaseTTL)
 			if err == nil {
-				lm.AddLeaseId(cid, leaseId)
+				lm.Add(leaseId)
 				limiter.Wait(ctx)
 			}
 		}
@@ -120,14 +120,15 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 			putCtx, putCancel := context.WithTimeout(ctx, RequestTimeout)
 			err = c.PutWithLease(putCtx, key, newValue, leaseId)
 			putCancel()
+			lm.Return(leaseId)
 		}
 	case LeaseRevoke:
-		clientId, leaseId := lm.GetRandomClientWithLease()
+		leaseId := lm.GetRandom()
 		if leaseId != 0 {
 			err = c.LeaseRevoke(writeCtx, leaseId)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
-				lm.RemoveLeaseId(clientId)
+				lm.Remove(leaseId)
 			}
 		}
 	case Defragment:
