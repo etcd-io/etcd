@@ -15,8 +15,8 @@ replace (
 
 require (
 	github.com/anishathalye/porcupine v0.1.4
-	github.com/coreos/go-semver v0.3.0
-	github.com/dustin/go-humanize v1.0.0
+	github.com/coreos/go-semver v0.3.1
+	github.com/dustin/go-humanize v1.0.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.9

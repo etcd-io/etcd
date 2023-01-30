@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
 func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) [][]watchEvent {
@@ -67,19 +68,23 @@ func collectMemberWatchEvents(ctx context.Context, t *testing.T, c *clientv3.Cli
 		}
 		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision)) {
 			lastRevision = resp.Header.Revision
+			time := time.Now()
 			for _, event := range resp.Events {
-				var op OperationType
+				var op model.OperationType
 				switch event.Type {
 				case mvccpb.PUT:
-					op = Put
+					op = model.Put
 				case mvccpb.DELETE:
-					op = Delete
+					op = model.Delete
 				}
 				events = append(events, watchEvent{
-					Op:       op,
-					Key:      string(event.Kv.Key),
-					Value:    string(event.Kv.Value),
+					Time:     time,
 					Revision: event.Kv.ModRevision,
+					Op: model.EtcdOperation{
+						Type:  op,
+						Key:   string(event.Kv.Key),
+						Value: model.ToValueOrHash(string(event.Kv.Value)),
+					},
 				})
 			}
 			if resp.Err() != nil {
@@ -90,8 +95,7 @@ func collectMemberWatchEvents(ctx context.Context, t *testing.T, c *clientv3.Cli
 }
 
 type watchEvent struct {
-	Op       OperationType
-	Key      string
-	Value    string
+	Op       model.EtcdOperation
 	Revision int64
+	Time     time.Time
 }

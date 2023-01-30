@@ -3,19 +3,9 @@ on: [push, pull_request]
 permissions: read-all
 jobs:
   test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
-    - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
-      with:
-        go-version: "1.19.5"
-    - run: |
-        make gofail-enable
-        make build
-        mkdir -p /tmp/linearizability
-        cat server/etcdserver/raft.fail.go
-        EXPECT_DEBUG=true GO_TEST_FLAGS='-v --count 60 --failfast --run TestLinearizability' RESULTS_DIR=/tmp/linearizability make test-linearizability
-    - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-      if: always()
-      with:
-        path: /tmp/linearizability/*
+    uses: ./.github/workflows/linearizability-template.yaml
+    with:
+      ref: ${{ github.ref }}
+      count: 15
+      testTimeout: 30m
+      artifactName: test

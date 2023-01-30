@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearizability
+package model
 
 import (
 	"errors"
@@ -63,6 +63,17 @@ func TestModelStep(t *testing.T) {
 				{req: getRequest("key2"), resp: getResponse("12", 1), failure: true},
 				{req: getRequest("key2"), resp: getResponse("11", 1), failure: true},
 				{req: getRequest("key2"), resp: getResponse("12", 2)},
+			},
+		},
+		{
+			name: "Get response data should match large put",
+			operations: []testOperation{
+				{req: putRequest("key", "012345678901234567890"), resp: putResponse(1)},
+				{req: getRequest("key"), resp: getResponse("123456789012345678901", 1), failure: true},
+				{req: getRequest("key"), resp: getResponse("012345678901234567890", 1)},
+				{req: putRequest("key", "123456789012345678901"), resp: putResponse(2)},
+				{req: getRequest("key"), resp: getResponse("123456789012345678901", 2)},
+				{req: getRequest("key"), resp: getResponse("012345678901234567890", 2), failure: true},
 			},
 		},
 		{
@@ -402,15 +413,184 @@ func TestModelStep(t *testing.T) {
 				{req: txnRequest("key", "8", "10"), resp: txnResponse(false, 9)},
 			},
 		},
+		{
+			name: "Put with valid lease id should succeed. Put with invalid lease id should fail",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key", "3", 2), resp: putResponse(3), failure: true},
+				{req: getRequest("key"), resp: getResponse("2", 2)},
+			},
+		},
+		{
+			name: "Put with valid lease id should succeed. Put with expired lease id should fail",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: getRequest("key"), resp: getResponse("2", 2)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: putWithLeaseRequest("key", "4", 1), resp: putResponse(4), failure: true},
+				{req: getRequest("key"), resp: getResponse("", 3)},
+			},
+		},
+		{
+			name: "Revoke should increment the revision",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: getRequest("key"), resp: getResponse("", 3)},
+			},
+		},
+		{
+			name: "Put following a PutWithLease will detach the key from the lease",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: putRequest("key", "3"), resp: putResponse(3)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: getRequest("key"), resp: getResponse("3", 3)},
+			},
+		},
+		{
+			name: "Change lease. Revoking older lease should not increment revision",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: leaseGrantRequest(2), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key", "3", 2), resp: putResponse(3)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: getRequest("key"), resp: getResponse("3", 3)},
+				{req: leaseRevokeRequest(2), resp: leaseRevokeResponse(4)},
+				{req: getRequest("key"), resp: getResponse("", 4)},
+			},
+		},
+		{
+			name: "Update key with same lease",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key", "3", 1), resp: putResponse(3)},
+				{req: getRequest("key"), resp: getResponse("3", 3)},
+			},
+		},
+		{
+			name: "Deleting a leased key - revoke should not increment revision",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "2", 1), resp: putResponse(2)},
+				{req: deleteRequest("key"), resp: deleteResponse(1, 3)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(4), failure: true},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+			},
+		},
+		{
+			name: "Lease a few keys - revoke should increment revision only once",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key1", "1", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key2", "2", 1), resp: putResponse(3)},
+				{req: putWithLeaseRequest("key3", "3", 1), resp: putResponse(4)},
+				{req: putWithLeaseRequest("key4", "4", 1), resp: putResponse(5)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(6)},
+			},
+		},
+		{
+			name: "Lease some keys then delete some of them. Revoke should increment revision since some keys were still leased",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key1", "1", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key2", "2", 1), resp: putResponse(3)},
+				{req: putWithLeaseRequest("key3", "3", 1), resp: putResponse(4)},
+				{req: putWithLeaseRequest("key4", "4", 1), resp: putResponse(5)},
+				{req: deleteRequest("key1"), resp: deleteResponse(1, 6)},
+				{req: deleteRequest("key3"), resp: deleteResponse(1, 7)},
+				{req: deleteRequest("key4"), resp: deleteResponse(1, 8)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(9)},
+				{req: deleteRequest("key2"), resp: deleteResponse(0, 9)},
+				{req: getRequest("key1"), resp: getResponse("", 9)},
+				{req: getRequest("key2"), resp: getResponse("", 9)},
+				{req: getRequest("key3"), resp: getResponse("", 9)},
+				{req: getRequest("key4"), resp: getResponse("", 9)},
+			},
+		},
+		{
+			name: "Lease some keys then delete all of them. Revoke should not increment",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key1", "1", 1), resp: putResponse(2)},
+				{req: putWithLeaseRequest("key2", "2", 1), resp: putResponse(3)},
+				{req: putWithLeaseRequest("key3", "3", 1), resp: putResponse(4)},
+				{req: putWithLeaseRequest("key4", "4", 1), resp: putResponse(5)},
+				{req: deleteRequest("key1"), resp: deleteResponse(1, 6)},
+				{req: deleteRequest("key2"), resp: deleteResponse(1, 7)},
+				{req: deleteRequest("key3"), resp: deleteResponse(1, 8)},
+				{req: deleteRequest("key4"), resp: deleteResponse(1, 9)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(9)},
+			},
+		},
+		{
+			name: "All request types",
+			operations: []testOperation{
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: putWithLeaseRequest("key", "1", 1), resp: putResponse(2)},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: putRequest("key", "4"), resp: putResponse(4)},
+				{req: getRequest("key"), resp: getResponse("4", 4)},
+				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+			},
+		},
+		{
+			name: "Defragment success between all other request types",
+			operations: []testOperation{
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: putWithLeaseRequest("key", "1", 1), resp: putResponse(2)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: putRequest("key", "4"), resp: putResponse(4)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: getRequest("key"), resp: getResponse("4", 4)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
+				{req: defragmentRequest(), resp: defragmentResponse()},
+			},
+		},
+		{
+			name: "Defragment failures between all other request types",
+			operations: []testOperation{
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: putWithLeaseRequest("key", "1", 1), resp: putResponse(2)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: putRequest("key", "4"), resp: putResponse(4)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: getRequest("key"), resp: getResponse("4", 4)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
+				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			state := etcdModel.Init()
+			state := Etcd.Init()
 			for _, op := range tc.operations {
-				ok, newState := etcdModel.Step(state, op.req, op.resp)
+				ok, newState := Etcd.Step(state, op.req, op.resp)
 				if ok != !op.failure {
 					t.Logf("state: %v", state)
-					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, etcdModel.DescribeOperation(op.req, op.resp))
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, Etcd.DescribeOperation(op.req, op.resp))
 				}
 				if ok {
 					state = newState
@@ -444,14 +624,34 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `get("key2") -> "2", rev: 2`,
 		},
 		{
+			req:            getRequest("key2b"),
+			resp:           getResponse("01234567890123456789", 2),
+			expectDescribe: `get("key2b") -> hash: 2945867837, rev: 2`,
+		},
+		{
 			req:            putRequest("key3", "3"),
 			resp:           putResponse(3),
-			expectDescribe: `put("key3", "3") -> ok, rev: 3`,
+			expectDescribe: `put("key3", "3", nil) -> ok, rev: 3`,
+		},
+		{
+			req:            putWithLeaseRequest("key3b", "3b", 3),
+			resp:           putResponse(3),
+			expectDescribe: `put("key3b", "3b", 3) -> ok, rev: 3`,
+		},
+		{
+			req:            putRequest("key3c", "01234567890123456789"),
+			resp:           putResponse(3),
+			expectDescribe: `put("key3c", hash: 2945867837, nil) -> ok, rev: 3`,
 		},
 		{
 			req:            putRequest("key4", "4"),
 			resp:           failedResponse(errors.New("failed")),
-			expectDescribe: `put("key4", "4") -> err: "failed"`,
+			expectDescribe: `put("key4", "4", nil) -> err: "failed"`,
+		},
+		{
+			req:            putRequest("key4b", "4b"),
+			resp:           unknownResponse(42),
+			expectDescribe: `put("key4b", "4b", nil) -> unknown, rev: 42`,
 		},
 		{
 			req:            deleteRequest("key5"),
@@ -466,20 +666,172 @@ func TestModelDescribe(t *testing.T) {
 		{
 			req:            txnRequest("key7", "7", "77"),
 			resp:           txnResponse(false, 7),
-			expectDescribe: `if(key7=="7").then(put("key7", "77")) -> txn failed, rev: 7`,
+			expectDescribe: `if(key7=="7").then(put("key7", "77", nil)) -> txn failed, rev: 7`,
 		},
 		{
 			req:            txnRequest("key8", "8", "88"),
 			resp:           txnResponse(true, 8),
-			expectDescribe: `if(key8=="8").then(put("key8", "88")) -> ok, rev: 8`,
+			expectDescribe: `if(key8=="8").then(put("key8", "88", nil)) -> ok, rev: 8`,
 		},
 		{
 			req:            txnRequest("key9", "9", "99"),
 			resp:           failedResponse(errors.New("failed")),
-			expectDescribe: `if(key9=="9").then(put("key9", "99")) -> err: "failed"`,
+			expectDescribe: `if(key9=="9").then(put("key9", "99", nil)) -> err: "failed"`,
+		},
+		{
+			req:            defragmentRequest(),
+			resp:           defragmentResponse(),
+			expectDescribe: `defragment() -> ok`,
 		},
 	}
 	for _, tc := range tcs {
-		assert.Equal(t, tc.expectDescribe, etcdModel.DescribeOperation(tc.req, tc.resp))
+		assert.Equal(t, tc.expectDescribe, Etcd.DescribeOperation(tc.req, tc.resp))
+	}
+}
+
+func TestModelResponseMatch(t *testing.T) {
+	tcs := []struct {
+		resp1       EtcdResponse
+		resp2       EtcdResponse
+		expectMatch bool
+	}{
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       getResponse("a", 1),
+			expectMatch: true,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       getResponse("b", 1),
+			expectMatch: false,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       getResponse("a", 2),
+			expectMatch: false,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       unknownResponse(1),
+			expectMatch: true,
+		},
+		{
+			resp1:       getResponse("a", 1),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       putResponse(3),
+			expectMatch: true,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       putResponse(4),
+			expectMatch: false,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       unknownResponse(3),
+			expectMatch: true,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       deleteResponse(1, 5),
+			expectMatch: true,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       deleteResponse(0, 5),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       deleteResponse(1, 6),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       unknownResponse(5),
+			expectMatch: true,
+		},
+		{
+			resp1:       deleteResponse(0, 5),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(1, 5),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(0, 5),
+			resp2:       unknownResponse(2),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       txnResponse(false, 7),
+			expectMatch: true,
+		},
+		{
+			resp1:       txnResponse(true, 7),
+			resp2:       txnResponse(false, 7),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       txnResponse(false, 8),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(true, 7),
+			resp2:       unknownResponse(7),
+			expectMatch: true,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       unknownResponse(7),
+			expectMatch: true,
+		},
+		{
+			resp1:       txnResponse(true, 7),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+		{
+			resp1:       txnResponse(false, 7),
+			resp2:       unknownResponse(0),
+			expectMatch: false,
+		},
+	}
+	for i, tc := range tcs {
+		assert.Equal(t, tc.expectMatch, Match(tc.resp1, tc.resp2), "%d %+v %+v", i, tc.resp1, tc.resp2)
 	}
 }

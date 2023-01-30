@@ -6,8 +6,19 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.24 (TBD)
 
+### etcd server
+- Fix [etcdserver might promote a non-started learner](https://github.com/etcd-io/etcd/pull/15097).
+- Improve [mvcc: reduce count-only range overhead](https://github.com/etcd-io/etcd/pull/15099)
+- Improve [mvcc: push down RangeOptions.limit argv into index tree to reduce memory overhead](https://github.com/etcd-io/etcd/pull/15137)
+
+### Dependency
+- Upgrade [github.com/grpc-ecosystem/grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway/releases) from [v1.9.5](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.9.5) to [v1.11.0](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.11.0).
+
 ### Other
 - Updated [base image from base-debian11 to static-debian11 and removed dependency on busybox](https://github.com/etcd-io/etcd/pull/15038).
+
+### Package `netutil`
+- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15188)
 
 <hr>
 

@@ -7,18 +7,18 @@ require (
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e
 	github.com/gogo/protobuf v1.3.2
-	github.com/google/addlicense v1.1.0
+	github.com/google/addlicense v1.1.1
 	github.com/gordonklaus/ineffassign v0.0.0-20210914165742-4cc7213b9bc8
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/gyuho/gocovmerge v0.0.0-20171205171859-50c7e6afd535
 	github.com/hexfusion/schwag v0.0.0-20211117114134-3ceb0191ccbf
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
 	github.com/mgechev/revive v1.2.4
-	github.com/mikefarah/yq/v4 v4.30.6
+	github.com/mikefarah/yq/v4 v4.30.8
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
-	gotest.tools/gotestsum v1.8.2
+	gotest.tools/gotestsum v1.9.0
 	gotest.tools/v3 v3.4.0
 	honnef.co/go/tools v0.3.3
 	mvdan.cc/unparam v0.0.0-20220316160445-06cc5682983b
@@ -51,7 +51,7 @@ require (
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/goccy/go-json v0.10.0 // indirect
-	github.com/goccy/go-yaml v1.9.7 // indirect
+	github.com/goccy/go-yaml v1.9.8 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect

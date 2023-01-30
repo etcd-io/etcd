@@ -16,8 +16,10 @@ package linearizability
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -25,47 +27,98 @@ import (
 
 	"github.com/anishathalye/porcupine"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/linearizability/identity"
+	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
 const (
-	// minimalQPS is used to validate if enough traffic is send to make tests accurate.
-	minimalQPS = 100.0
-	// maximalQPS limits number of requests send to etcd to avoid linearizability analysis taking too long.
-	maximalQPS = 200.0
 	// waitBetweenFailpointTriggers
 	waitBetweenFailpointTriggers = time.Second
 )
 
+var (
+	LowTraffic = trafficConfig{
+		name:        "LowTraffic",
+		minimalQPS:  100,
+		maximalQPS:  200,
+		clientCount: 8,
+		traffic: traffic{
+			keyCount:     4,
+			leaseTTL:     DefaultLeaseTTL,
+			largePutSize: 32769,
+			writes: []requestChance{
+				{operation: Put, chance: 50},
+				{operation: LargePut, chance: 5},
+				{operation: Delete, chance: 10},
+				{operation: PutWithLease, chance: 10},
+				{operation: LeaseRevoke, chance: 10},
+				{operation: CompareAndSet, chance: 10},
+				{operation: Defragment, chance: 5},
+			},
+		},
+	}
+	HighTraffic = trafficConfig{
+		name:        "HighTraffic",
+		minimalQPS:  200,
+		maximalQPS:  1000,
+		clientCount: 12,
+		traffic: traffic{
+			keyCount:     4,
+			largePutSize: 32769,
+			leaseTTL:     DefaultLeaseTTL,
+			writes: []requestChance{
+				{operation: Put, chance: 90},
+				{operation: LargePut, chance: 5},
+				{operation: Defragment, chance: 5},
+			},
+		},
+	}
+	defaultTraffic = LowTraffic
+	trafficList    = []trafficConfig{
+		LowTraffic, HighTraffic,
+	}
+)
+
 func TestLinearizability(t *testing.T) {
 	testRunner.BeforeTest(t)
-	tcs := []struct {
+	type scenario struct {
 		name      string
 		failpoint Failpoint
 		config    e2e.EtcdProcessClusterConfig
-	}{
-		{
-			name:      "ClusterOfSize1",
+		traffic   *trafficConfig
+	}
+	scenarios := []scenario{}
+	for _, traffic := range trafficList {
+		scenarios = append(scenarios, scenario{
+			name:      "ClusterOfSize1/" + traffic.name,
 			failpoint: RandomFailpoint,
+			traffic:   &traffic,
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
+				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			),
-		},
-		{
-			name:      "ClusterOfSize3",
+		})
+		scenarios = append(scenarios, scenario{
+			name:      "ClusterOfSize3/" + traffic.name,
 			failpoint: RandomFailpoint,
+			traffic:   &traffic,
 			config: *e2e.NewConfig(
+				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			),
-		},
+		})
+	}
+	scenarios = append(scenarios, []scenario{
 		{
 			name:      "Issue14370",
 			failpoint: RaftBeforeSavePanic,
@@ -82,27 +135,37 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithGoFailEnabled(true),
 			),
 		},
-	}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
+		{
+			name:      "Issue13766",
+			failpoint: KillFailpoint,
+			traffic:   &HighTraffic,
+			config: *e2e.NewConfig(
+				e2e.WithSnapshotCount(100),
+			),
+		},
+	}...)
+	for _, scenario := range scenarios {
+		if scenario.traffic == nil {
+			scenario.traffic = &defaultTraffic
+		}
+
+		t.Run(scenario.name, func(t *testing.T) {
 			ctx := context.Background()
-			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&tc.config))
+			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&scenario.config))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer clus.Close()
 			operations, events := testLinearizability(ctx, t, clus, FailpointConfig{
-				failpoint:           tc.failpoint,
+				failpoint:           scenario.failpoint,
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}, trafficConfig{
-				minimalQPS:  minimalQPS,
-				maximalQPS:  maximalQPS,
-				clientCount: 8,
-				traffic:     DefaultTraffic,
-			})
-			validateEventsMatch(t, events)
+			}, *scenario.traffic)
+			clus.Stop()
+			longestHistory, remainingEvents := pickLongestHistory(events)
+			validateEventsMatch(t, longestHistory, remainingEvents)
+			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
 			checkOperationsAndPersistResults(t, operations, clus)
 		})
 	}
@@ -131,6 +194,95 @@ func testLinearizability(ctx context.Context, t *testing.T, clus *e2e.EtcdProces
 	})
 	g.Wait()
 	return operations, events
+}
+
+func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEvents []watchEvent) []porcupine.Operation {
+	newOperations := make([]porcupine.Operation, 0, len(operations))
+	persisted := map[model.EtcdOperation]watchEvent{}
+	for _, op := range watchEvents {
+		persisted[op.Op] = op
+	}
+	lastObservedOperation := lastOperationObservedInWatch(operations, persisted)
+
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		resp := op.Output.(model.EtcdResponse)
+		if resp.Err == nil || op.Call > lastObservedOperation.Call || request.Type != model.Txn {
+			// Cannot patch those requests.
+			newOperations = append(newOperations, op)
+			continue
+		}
+		event := matchWatchEvent(request.Txn, persisted)
+		if event != nil {
+			// Set revision and time based on watchEvent.
+			op.Return = event.Time.UnixNano()
+			op.Output = model.EtcdResponse{
+				Revision:      event.Revision,
+				ResultUnknown: true,
+			}
+			newOperations = append(newOperations, op)
+			continue
+		}
+		if hasNonUniqueWriteOperation(request.Txn) && !hasUniqueWriteOperation(request.Txn) {
+			// Leave operation as it is as we cannot match non-unique operations to watch events.
+			newOperations = append(newOperations, op)
+			continue
+		}
+		// Remove non persisted operations
+	}
+	return newOperations
+}
+
+func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.EtcdOperation]watchEvent) porcupine.Operation {
+	var maxCallTime int64
+	var lastOperation porcupine.Operation
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		if request.Type != model.Txn {
+			continue
+		}
+		event := matchWatchEvent(request.Txn, watchEvents)
+		if event != nil && op.Call > maxCallTime {
+			maxCallTime = op.Call
+			lastOperation = op
+		}
+	}
+	return lastOperation
+}
+
+func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperation]watchEvent) *watchEvent {
+	for _, etcdOp := range request.Ops {
+		if etcdOp.Type == model.Put {
+			// Remove LeaseID which is not exposed in watch.
+			event, ok := watchEvents[model.EtcdOperation{
+				Type:  etcdOp.Type,
+				Key:   etcdOp.Key,
+				Value: etcdOp.Value,
+			}]
+			if ok {
+				return &event
+			}
+		}
+	}
+	return nil
+}
+
+func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
+	for _, etcdOp := range request.Ops {
+		if etcdOp.Type == model.Put || etcdOp.Type == model.Delete {
+			return true
+		}
+	}
+	return false
+}
+
+func hasUniqueWriteOperation(request *model.TxnRequest) bool {
+	for _, etcdOp := range request.Ops {
+		if etcdOp.Type == model.Put {
+			return true
+		}
+	}
+	return false
 }
 
 func triggerFailpoints(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
@@ -169,8 +321,9 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsV3()
 
-	ids := newIdProvider()
-	h := history{}
+	ids := identity.NewIdProvider()
+	lm := identity.NewLeaseIdStorage()
+	h := model.History{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
@@ -182,15 +335,15 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 		if err != nil {
 			t.Fatal(err)
 		}
-		go func(c *recordingClient) {
+		go func(c *recordingClient, clientId int) {
 			defer wg.Done()
 			defer c.Close()
 
-			config.traffic.Run(ctx, c, limiter, ids)
+			config.traffic.Run(ctx, clientId, c, limiter, ids, lm)
 			mux.Lock()
-			h = h.Merge(c.history.history)
+			h = h.Merge(c.history.History)
 			mux.Unlock()
-		}(c)
+		}(c, i)
 	}
 	wg.Wait()
 	endTime := time.Now()
@@ -206,26 +359,25 @@ func simulateTraffic(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessClu
 }
 
 type trafficConfig struct {
+	name        string
 	minimalQPS  float64
 	maximalQPS  float64
 	clientCount int
 	traffic     Traffic
 }
 
-func validateEventsMatch(t *testing.T, ops [][]watchEvent) {
-	// Move longest history to ops[0]
-	maxLength := len(ops[0])
-	for i := 1; i < len(ops); i++ {
-		if len(ops[i]) > maxLength {
-			maxLength = len(ops[i])
-			ops[0], ops[i] = ops[i], ops[0]
-		}
-	}
+func pickLongestHistory(ops [][]watchEvent) (longest []watchEvent, rest [][]watchEvent) {
+	sort.Slice(ops, func(i, j int) bool {
+		return len(ops[i]) > len(ops[j])
+	})
+	return ops[0], ops[1:]
+}
 
-	for i := 1; i < len(ops); i++ {
-		length := len(ops[i])
+func validateEventsMatch(t *testing.T, longestHistory []watchEvent, other [][]watchEvent) {
+	for i := 0; i < len(other); i++ {
+		length := len(other[i])
 		// We compare prefix of watch events, as we are not guaranteed to collect all events from each node.
-		if diff := cmp.Diff(ops[0][:length], ops[i][:length]); diff != "" {
+		if diff := cmp.Diff(longestHistory[:length], other[i][:length], cmpopts.IgnoreFields(watchEvent{}, "Time")); diff != "" {
 			t.Errorf("Events in watches do not match, %s", diff)
 		}
 	}
@@ -237,17 +389,41 @@ func checkOperationsAndPersistResults(t *testing.T, operations []porcupine.Opera
 		t.Error(err)
 	}
 
-	linearizable, info := porcupine.CheckOperationsVerbose(etcdModel, operations, 0)
-	if linearizable != porcupine.Ok {
+	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, 5*time.Minute)
+	if linearizable == porcupine.Illegal {
 		t.Error("Model is not linearizable")
+	}
+	if linearizable == porcupine.Unknown {
+		t.Error("Linearization timed out")
+	}
+	if linearizable != porcupine.Ok {
+		persistOperationHistory(t, path, operations)
 		persistMemberDataDir(t, clus, path)
 	}
 
 	visualizationPath := filepath.Join(path, "history.html")
 	t.Logf("saving visualization to %q", visualizationPath)
-	err = porcupine.VisualizePath(etcdModel, info, visualizationPath)
+	err = porcupine.VisualizePath(model.Etcd, info, visualizationPath)
 	if err != nil {
 		t.Errorf("Failed to visualize, err: %v", err)
+	}
+}
+
+func persistOperationHistory(t *testing.T, path string, operations []porcupine.Operation) {
+	historyFilePath := filepath.Join(path, "history.json")
+	t.Logf("saving operation history to %q", historyFilePath)
+	file, err := os.OpenFile(historyFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		t.Errorf("Failed to save operation history: %v", err)
+		return
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	for _, op := range operations {
+		err := encoder.Encode(op)
+		if err != nil {
+			t.Errorf("Failed to encode operation: %v", err)
+		}
 	}
 }
 

@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/cheggaaa/pb/v3 v3.1.0
-	github.com/dustin/go-humanize v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/VividCortex/ewma v1.1.1 // indirect
-	github.com/coreos/go-semver v0.3.0 // indirect
+	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

@@ -1484,6 +1484,10 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 // Note: it will return nil if member is not found in cluster or if member is not learner.
 // These two conditions will be checked before toApply phase later.
 func (s *EtcdServer) isLearnerReady(id uint64) error {
+	if err := s.waitAppliedIndex(); err != nil {
+		return err
+	}
+
 	rs := s.raftStatus()
 
 	// leader's raftStatus.Progress is not nil
@@ -1503,12 +1507,16 @@ func (s *EtcdServer) isLearnerReady(id uint64) error {
 		}
 	}
 
-	if isFound {
-		leaderMatch := rs.Progress[leaderID].Match
-		// the learner's Match not caught up with leader yet
-		if float64(learnerMatch) < float64(leaderMatch)*readyPercent {
-			return errors.ErrLearnerNotReady
-		}
+	// We should return an error in API directly, to avoid the request
+	// being unnecessarily delivered to raft.
+	if !isFound {
+		return membership.ErrIDNotFound
+	}
+
+	leaderMatch := rs.Progress[leaderID].Match
+	// the learner's Match not caught up with leader yet
+	if float64(learnerMatch) < float64(leaderMatch)*readyPercent {
+		return errors.ErrLearnerNotReady
 	}
 
 	return nil
@@ -2198,6 +2206,8 @@ func (s *EtcdServer) monitorKVHash() {
 	if t == 0 {
 		return
 	}
+	checkTicker := time.NewTicker(t)
+	defer checkTicker.Stop()
 
 	lg := s.Logger()
 	lg.Info(
@@ -2209,7 +2219,7 @@ func (s *EtcdServer) monitorKVHash() {
 		select {
 		case <-s.stopping:
 			return
-		case <-time.After(t):
+		case <-checkTicker.C:
 		}
 		if !s.isLeader() {
 			continue

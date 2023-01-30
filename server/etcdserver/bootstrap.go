@@ -52,7 +52,6 @@ import (
 )
 
 func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
-
 	if cfg.MaxRequestBytes > recommendedMaxRequestBytes {
 		cfg.Logger.Warn(
 			"exceeded recommended request limit",
@@ -82,9 +81,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 	if err != nil {
 		return nil, err
 	}
-	var (
-		bwal *bootstrappedWAL
-	)
+	var bwal *bootstrappedWAL
 
 	if haveWAL {
 		if err = fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
@@ -105,8 +102,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		return nil, err
 	}
 
-	err = cluster.Finalize(cfg, s)
-	if err != nil {
+	if err = cluster.Finalize(cfg, s); err != nil {
 		backend.Close()
 		return nil, err
 	}
@@ -223,9 +219,7 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 	cfg.Logger.Debug("restore consistentIndex", zap.Uint64("index", ci.ConsistentIndex()))
 
 	// TODO(serathius): Implement schema setup in fresh storage
-	var (
-		snapshot *raftpb.Snapshot
-	)
+	var snapshot *raftpb.Snapshot
 	if haveWAL {
 		snapshot, be, err = recoverSnapshot(cfg, st, be, beExist, beHooks, ci, ss)
 		if err != nil {
@@ -233,8 +227,7 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 		}
 	}
 	if beExist {
-		err = schema.Validate(cfg.Logger, be.ReadTx())
-		if err != nil {
+		if err = schema.Validate(cfg.Logger, be.ReadTx()); err != nil {
 			cfg.Logger.Error("Failed to validate schema", zap.Error(err))
 			return nil, err
 		}
@@ -394,7 +387,7 @@ func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 	// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
 	// bwal log entries
 	snapshot, err := ss.LoadNewestAvailable(walSnaps)
-	if err != nil && err != snap.ErrNoSnapshot {
+	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
 		return nil, be, err
 	}
 

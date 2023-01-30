@@ -4,13 +4,21 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.7 (TBD)
+## v3.5.8 (TBD)
+
+### Package `netutil`
+- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187)
+
+<hr>
+
+## v3.5.7 (2023-01-20)
 
 ### etcd server
 - Fix [Remove memberID from data corrupt alarm](https://github.com/etcd-io/etcd/pull/14852).
 - Fix [Allow non mutating requests pass through quotaKVServer when NOSPACE](https://github.com/etcd-io/etcd/pull/14884).
 - Fix [nil pointer panic for readonly txn due to nil response](https://github.com/etcd-io/etcd/pull/14899).
 - Fix [The last record which was partially synced to disk isn't automatically repaired](https://github.com/etcd-io/etcd/pull/15069).
+- Fix [etcdserver might promote a non-started learner](https://github.com/etcd-io/etcd/pull/15096).
 
 ### Package `clientv3`
 - Reverted the fix to [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14995).

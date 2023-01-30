@@ -894,7 +894,10 @@ func newFakeStore(lg *zap.Logger) *store {
 		Recorder:   &testutil.RecorderBuffered{},
 		rangeRespc: make(chan rangeResp, 5)}}
 	s := &store{
-		cfg:            StoreConfig{CompactionBatchLimit: 10000},
+		cfg: StoreConfig{
+			CompactionBatchLimit:    10000,
+			CompactionSleepInterval: minimumBatchInterval,
+		},
 		b:              b,
 		le:             &lease.FakeLessor{},
 		kvindex:        newFakeIndex(),

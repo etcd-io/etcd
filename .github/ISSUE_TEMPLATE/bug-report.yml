@@ -70,7 +70,7 @@ body:
 - type: textarea
   id: etcdDebugInformation
   attributes:
-    label: Etcd debug information (please run commands blow, feel free to obfuscate the IP address or FQDN in the output)
+    label: Etcd debug information (please run commands below, feel free to obfuscate the IP address or FQDN in the output)
     value: |
       <details>
 
