@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	triggerTimeout = time.Second
+	triggerTimeout = 2 * time.Second
 )
 
 var (
@@ -136,20 +136,28 @@ func (f goPanicFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.E
 	defer cancel()
 
 	for member.IsRunning() {
+		t.Logf("setting up gofailpoint %q", f.Name())
 		err := member.Failpoints().Setup(triggerCtx, f.failpoint, "panic")
 		if err != nil {
 			t.Logf("gofailpoint setup failed: %v", err)
 		}
+		if !member.IsRunning() {
+			// TODO: Check member logs that etcd not running is caused panic caused by proper gofailpoint.
+			break
+		}
 		if f.trigger != nil {
+			t.Logf("triggering gofailpoint")
 			err = f.trigger(triggerCtx, member)
 			if err != nil {
 				t.Logf("triggering gofailpoint failed: %v", err)
 			}
 		}
+		t.Logf("waiting for process to exist")
 		err = member.Wait(triggerCtx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
-			return fmt.Errorf("failed to trigger a process panic within %s, err: %w", triggerTimeout, err)
+			return fmt.Errorf("failed to trigger a gofailpoint within %s, err: %w", triggerTimeout, err)
 		}
+		t.Logf("process existed")
 	}
 
 	err := member.Start(ctx)
