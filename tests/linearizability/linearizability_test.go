@@ -50,6 +50,7 @@ var (
 		traffic: traffic{
 			keyCount:     4,
 			leaseTTL:     DefaultLeaseTTL,
+			maxLeases:    5,
 			largePutSize: 32769,
 			writes: []requestChance{
 				{operation: Put, chance: 50},

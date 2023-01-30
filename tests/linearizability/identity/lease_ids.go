@@ -33,6 +33,9 @@ type LeaseIdStorage interface {
 
 	// GetRandom returns a random lease (could be in use or not)
 	GetRandom() int64
+
+	// Count returns count of leases (could be in use or not)
+	Count() int
 }
 
 func NewLeaseIdStorage() LeaseIdStorage {
@@ -151,4 +154,11 @@ func (lm *atomicLeaseKeeper) Return(leaseId int64) {
 		return
 	}
 	lm.addToFreeUnsafe(leaseId)
+}
+
+func (lm *atomicLeaseKeeper) Count() int {
+	lm.RLock()
+	defer lm.RUnlock()
+
+	return len(lm.la)
 }

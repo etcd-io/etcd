@@ -16,6 +16,7 @@ package linearizability
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -30,6 +31,7 @@ import (
 var (
 	DefaultLeaseTTL int64 = 7200
 	RequestTimeout        = 40 * time.Millisecond
+	MaxLeases             = 5
 )
 
 type TrafficRequestType string
@@ -53,6 +55,7 @@ type traffic struct {
 	keyCount     int
 	writes       []requestChance
 	leaseTTL     int64
+	maxLeases    int
 	largePutSize int
 }
 
@@ -110,6 +113,11 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 	case PutWithLease:
 		leaseId := lm.Take()
 		if leaseId == 0 {
+			if lm.Count() >= t.maxLeases {
+				err = errors.New("too many leases")
+				break
+			}
+
 			leaseId, err = c.LeaseGrant(writeCtx, t.leaseTTL)
 			if err == nil {
 				lm.Add(leaseId)
