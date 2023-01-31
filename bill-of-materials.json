@@ -45,33 +45,6 @@
 		]
 	},
 	{
-		"project": "github.com/cockroachdb/errors",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/cockroachdb/logtags",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/cockroachdb/redact",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/coreos/go-semver/semver",
 		"licenses": [
 			{
@@ -130,15 +103,6 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/getsentry/sentry-go",
-		"licenses": [
-			{
-				"type": "BSD 2-clause \"Simplified\" License",
 				"confidence": 1
 			}
 		]
@@ -252,24 +216,6 @@
 		]
 	},
 	{
-		"project": "github.com/kr/pretty",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
-		"project": "github.com/kr/text",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
 		"project": "github.com/mattn/go-runewidth",
 		"licenses": [
 			{
@@ -315,15 +261,6 @@
 		]
 	},
 	{
-		"project": "github.com/pkg/errors",
-		"licenses": [
-			{
-				"type": "BSD 2-clause \"Simplified\" License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/pmezard/go-difflib/difflib",
 		"licenses": [
 			{
@@ -365,15 +302,6 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/rogpeppe/go-internal/fmtsort",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
 			}
 		]
 	},
@@ -684,7 +612,7 @@
 		]
 	},
 	{
-		"project": "golang.org/x/sys",
+		"project": "golang.org/x/sys/unix",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
