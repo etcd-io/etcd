@@ -58,7 +58,6 @@ var (
 				{operation: PutWithLease, chance: 10},
 				{operation: LeaseRevoke, chance: 10},
 				{operation: CompareAndSet, chance: 10},
-				{operation: Defragment, chance: 5},
 			},
 		},
 	}
@@ -74,7 +73,6 @@ var (
 			writes: []requestChance{
 				{operation: Put, chance: 90},
 				{operation: LargePut, chance: 5},
-				{operation: Defragment, chance: 5},
 			},
 		},
 	}
