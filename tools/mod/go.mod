@@ -17,7 +17,7 @@ require (
 	github.com/mikefarah/yq/v4 v4.30.8
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
-	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
+	go.etcd.io/raft/v3 v3.0.0-20230111134043-eb615dae0bdf
 	gotest.tools/gotestsum v1.9.0
 	gotest.tools/v3 v3.4.0
 	honnef.co/go/tools v0.3.3

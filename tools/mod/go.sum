@@ -264,6 +264,8 @@ go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116 h1:QQiUXlqz+d96jyNG71NE+I
 go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116/go.mod h1:F9kog+iVAuvPJucb1dkYcDcbV0g4uyGEHllTP5NrXiw=
 go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a h1:Znv2XJyAf/fsJsFNt9toO8uyXwwHQ44wxqsvdSxipj4=
 go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a/go.mod h1:eMshmuwXLWZrjHXN8ZgYrOMQRSbHqi5M84DEZWhG+o4=
+go.etcd.io/raft/v3 v3.0.0-20230111134043-eb615dae0bdf h1:UgQcVW7Cz97JjoNFabljuigB0gnLsgQbTTb6fzdrV0g=
+go.etcd.io/raft/v3 v3.0.0-20230111134043-eb615dae0bdf/go.mod h1:oTXKy7NiLJEZJCgBcn6XIguP+I3pHO0JTADhkkyBVUw=
 go.mongodb.org/mongo-driver v1.7.3 h1:G4l/eYY9VrQAK/AUgkV0koQKzQnyddnWxrd/Etf0jIs=
 go.mongodb.org/mongo-driver v1.7.3/go.mod h1:NqaYOwnXWr5Pm7AOpO5QFxKJ503nbMse/R79oO62zWg=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
