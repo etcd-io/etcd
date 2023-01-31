@@ -360,10 +360,9 @@ func (sws *serverWatchStream) recvLoop() error {
 			}
 		case *pb.WatchRequest_ProgressRequest:
 			if uv.ProgressRequest != nil {
-				sws.ctrlStream <- &pb.WatchResponse{
-					Header:  sws.newResponseHeader(sws.watchStream.Rev()),
-					WatchId: clientv3.InvalidWatchID, // response is not associated with any WatchId and will be broadcast to all watch channels
-				}
+				// Request progress for all watchers,
+				// force generation of a response
+				sws.watchStream.RequestProgressAll(true)
 			}
 		default:
 			// we probably should not shutdown the entire stream when
@@ -408,6 +407,7 @@ func (sws *serverWatchStream) sendLoop() {
 			// either return []*mvccpb.Event from the mvcc package
 			// or define protocol buffer with []mvccpb.Event.
 			evs := wresp.Events
+			progressNotify := len(evs) == 0
 			events := make([]*mvccpb.Event, len(evs))
 			sws.mu.RLock()
 			needPrevKV := sws.prevKV[wresp.WatchID]
@@ -432,11 +432,15 @@ func (sws *serverWatchStream) sendLoop() {
 				Canceled:        canceled,
 			}
 
-			if _, okID := ids[wresp.WatchID]; !okID {
-				// buffer if id not yet announced
-				wrs := append(pending[wresp.WatchID], wr)
-				pending[wresp.WatchID] = wrs
-				continue
+			// Progress notifications can have WatchID -1
+			// if they announce on behalf of multiple watchers
+			if !progressNotify || wresp.WatchID != clientv3.InvalidWatchID {
+				if _, okID := ids[wresp.WatchID]; !okID {
+					// buffer if id not yet announced
+					wrs := append(pending[wresp.WatchID], wr)
+					pending[wresp.WatchID] = wrs
+					continue
+				}
 			}
 
 			mvcc.ReportEventReceived(len(evs))

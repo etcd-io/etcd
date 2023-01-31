@@ -58,6 +58,14 @@ type WatchStream interface {
 	// of the watchers since the watcher is currently synced.
 	RequestProgress(id WatchID)
 
+	// RequestProgressAll requests a progress notification for the
+	// entire watcher group.  The response will only be sent if
+	// all watchers are synced - or once they become synced, if
+	// forced.  The responses will be sent through the
+	// WatchRespone Chan of the first watcher of this stream, if
+	// any.
+	RequestProgressAll(force bool)
+
 	// Cancel cancels a watcher by giving its ID. If watcher does not exist, an error will be
 	// returned.
 	Cancel(id WatchID) error
@@ -187,4 +195,8 @@ func (ws *watchStream) RequestProgress(id WatchID) {
 		return
 	}
 	ws.watchable.progress(w)
+}
+
+func (ws *watchStream) RequestProgressAll(force bool) {
+	ws.watchable.progress_all(force)
 }

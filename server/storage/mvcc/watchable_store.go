@@ -41,6 +41,7 @@ var (
 type watchable interface {
 	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
 	progress(w *watcher)
+	progress_all(force bool)
 	rev() int64
 }
 
@@ -62,6 +63,9 @@ type watchableStore struct {
 	// The key of the map is the key that the watcher watches on.
 	synced watcherGroup
 
+	// Whether to generate a progress notification once all watchers are synchronised
+	progressOnSync bool
+
 	stopc chan struct{}
 	wg    sync.WaitGroup
 }
@@ -79,11 +83,12 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg S
 		lg = zap.NewNop()
 	}
 	s := &watchableStore{
-		store:    NewStore(lg, b, le, cfg),
-		victimc:  make(chan struct{}, 1),
-		unsynced: newWatcherGroup(),
-		synced:   newWatcherGroup(),
-		stopc:    make(chan struct{}),
+		store:          NewStore(lg, b, le, cfg),
+		victimc:        make(chan struct{}, 1),
+		unsynced:       newWatcherGroup(),
+		synced:         newWatcherGroup(),
+		stopc:          make(chan struct{}),
+		progressOnSync: false,
 	}
 	s.store.ReadView = &readView{s}
 	s.store.WriteView = &writeView{s}
@@ -407,6 +412,15 @@ func (s *watchableStore) syncWatchers() int {
 	}
 	slowWatcherGauge.Set(float64(s.unsynced.size() + vsz))
 
+	// Deferred progress notification left to send when synced?
+	if s.progressOnSync && s.unsynced.size() == 0 {
+		for w, _ := range s.synced.watchers {
+			w.send(WatchResponse{WatchID: -1, Revision: s.rev()})
+			break
+		}
+		s.progressOnSync = false
+	}
+
 	return s.unsynced.size()
 }
 
@@ -479,6 +493,27 @@ func (s *watchableStore) progress(w *watcher) {
 		w.send(WatchResponse{WatchID: w.id, Revision: s.rev()})
 		// If the ch is full, this watcher is receiving events.
 		// We do not need to send progress at all.
+	}
+}
+
+func (s *watchableStore) progress_all(force bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Any watcher unsynced?
+	if s.unsynced.size() > 0 {
+		// If forced: Defer progress until successfully synced
+		if force {
+			s.progressOnSync = true
+		}
+
+	} else {
+		// If all watchers are synchronised, send out progress
+		// watch response on first watcher (if any)
+		for w, _ := range s.synced.watchers {
+			w.send(WatchResponse{WatchID: -1, Revision: s.rev()})
+			break
+		}
 	}
 }
 
