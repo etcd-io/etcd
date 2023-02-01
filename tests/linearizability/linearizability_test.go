@@ -101,7 +101,6 @@ func TestLinearizability(t *testing.T) {
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithSnapshotCount(100),
-				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			),
