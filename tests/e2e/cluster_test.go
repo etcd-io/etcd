@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"go.etcd.io/etcd/etcdserver"
 )
@@ -135,7 +136,8 @@ type etcdProcessClusterConfig struct {
 	initialCorruptCheck bool
 	authTokenOpts       string
 
-	MaxConcurrentStreams uint32 // default is math.MaxUint32
+	MaxConcurrentStreams       uint32 // default is math.MaxUint32
+	WatchProcessNotifyInterval time.Duration
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -267,6 +269,10 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 
 		if cfg.MaxConcurrentStreams != 0 {
 			args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.MaxConcurrentStreams))
+		}
+
+		if cfg.WatchProcessNotifyInterval != 0 {
+			args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
