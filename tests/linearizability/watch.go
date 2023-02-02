@@ -16,6 +16,9 @@ package linearizability
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -58,15 +61,33 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, lg *zap.Logger
 }
 
 func collectMemberWatchEvents(ctx context.Context, lg *zap.Logger, c *clientv3.Client) []watchEvent {
+	gotProcessNotify := false
 	events := []watchEvent{}
-	var lastRevision int64 = 1
+	operations := map[model.EtcdOperation]clientv3.WatchResponse{}
+	var lastRevision int64 = 0
 	for {
 		select {
 		case <-ctx.Done():
+			if !gotProcessNotify {
+				panic("Expected at least one notify")
+			}
 			return events
 		default:
 		}
-		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision)) {
+		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision+1)) {
+			if resp.Header.Revision < lastRevision {
+				panic("Revision should never decrease")
+			}
+			if resp.Header.Revision == lastRevision && len(resp.Events) != 0 {
+				panic("Got two non-empty responses about same revision")
+			}
+			if resp.IsProgressNotify() {
+				gotProcessNotify = true
+			}
+			err := c.RequestProgress(ctx)
+			if err != nil && !errors.Is(err, context.Canceled) {
+				panic(err)
+			}
 			lastRevision = resp.Header.Revision
 			time := time.Now()
 			for _, event := range resp.Events {
@@ -77,7 +98,7 @@ func collectMemberWatchEvents(ctx context.Context, lg *zap.Logger, c *clientv3.C
 				case mvccpb.DELETE:
 					op = model.Delete
 				}
-				events = append(events, watchEvent{
+				event := watchEvent{
 					Time:     time,
 					Revision: event.Kv.ModRevision,
 					Op: model.EtcdOperation{
@@ -85,7 +106,21 @@ func collectMemberWatchEvents(ctx context.Context, lg *zap.Logger, c *clientv3.C
 						Key:   string(event.Kv.Key),
 						Value: model.ToValueOrHash(string(event.Kv.Value)),
 					},
-				})
+				}
+				if prev, found := operations[event.Op]; found {
+					currentResponse, err := json.MarshalIndent(resp, "", "    ")
+					if err != nil {
+						panic(fmt.Sprintf("Failed to marshal response, err: %v", err))
+					}
+					previousResponse, err := json.MarshalIndent(prev, "", "    ")
+					if err != nil {
+						panic(fmt.Sprintf("Failed to marshal response, err: %v", err))
+					}
+
+					panic(fmt.Sprintf("duplicate operation in two responses on revision %d\n---\nfirst:\n%s\n---\nsecond:\n%s", event.Revision, previousResponse, currentResponse))
+				}
+				operations[event.Op] = resp
+				events = append(events, event)
 			}
 			if resp.Err() != nil {
 				lg.Info("Watch error", zap.Error(resp.Err()))
