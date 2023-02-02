@@ -103,6 +103,7 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithSnapshotCount(100),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
 			),
 		})
 		scenarios = append(scenarios, scenario{
@@ -114,6 +115,7 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
 			),
 		})
 	}
@@ -177,7 +179,8 @@ func TestLinearizability(t *testing.T) {
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
 			}, *scenario.traffic)
 			forcestopCluster(clus)
-			validateWatchResponses(t, watchResponses)
+			watchProgressNotifyEnabled := clus.Cfg.WatchProcessNotifyInterval != 0
+			validateWatchResponses(t, watchResponses, watchProgressNotifyEnabled)
 			longestHistory, remainingEvents := watchEventHistory(watchResponses)
 			validateEventsMatch(t, longestHistory, remainingEvents)
 			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
