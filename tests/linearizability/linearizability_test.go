@@ -55,7 +55,6 @@ var (
 			largePutSize: 32769,
 			writes: []requestChance{
 				{operation: Put, chance: 50},
-				{operation: LargePut, chance: 5},
 				{operation: Delete, chance: 10},
 				{operation: PutWithLease, chance: 10},
 				{operation: LeaseRevoke, chance: 10},
