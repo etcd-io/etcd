@@ -177,10 +177,11 @@ type etcdProcessClusterConfig struct {
 	rollingStart bool
 	logLevel     string
 
-	MaxConcurrentStreams    uint32 // default is math.MaxUint32
-	CorruptCheckTime        time.Duration
-	CompactHashCheckEnabled bool
-	CompactHashCheckTime    time.Duration
+	MaxConcurrentStreams       uint32 // default is math.MaxUint32
+	CorruptCheckTime           time.Duration
+	CompactHashCheckEnabled    bool
+	CompactHashCheckTime       time.Duration
+	WatchProcessNotifyInterval time.Duration
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -337,6 +338,9 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 		}
 		if cfg.CompactHashCheckTime != 0 {
 			args = append(args, "--experimental-compact-hash-check-time", cfg.CompactHashCheckTime.String())
+		}
+		if cfg.WatchProcessNotifyInterval != 0 {
+			args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
