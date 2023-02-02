@@ -56,6 +56,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, lg *zap.Logger
 	wg.Wait()
 	return memberResponses
 }
+
 func watchMember(ctx context.Context, lg *zap.Logger, c *clientv3.Client) (resps []watchResponse) {
 	var lastRevision int64 = 0
 	for {
@@ -64,7 +65,7 @@ func watchMember(ctx context.Context, lg *zap.Logger, c *clientv3.Client) (resps
 			return resps
 		default:
 		}
-		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision+1)) {
+		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision+1), clientv3.WithProgressNotify()) {
 			resps = append(resps, watchResponse{resp, time.Now()})
 			lastRevision = resp.Header.Revision
 			if resp.Err() != nil {
@@ -74,17 +75,21 @@ func watchMember(ctx context.Context, lg *zap.Logger, c *clientv3.Client) (resps
 	}
 }
 
-func validateWatchResponses(t *testing.T, responses [][]watchResponse) {
+func validateWatchResponses(t *testing.T, responses [][]watchResponse, expectProgressNotify bool) {
 	for _, memberResponses := range responses {
-		validateMemberWatchResponses(t, memberResponses)
+		validateMemberWatchResponses(t, memberResponses, expectProgressNotify)
 	}
 }
 
-func validateMemberWatchResponses(t *testing.T, responses []watchResponse) {
+func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
+	var gotProgressNotify = false
 	var lastRevision int64 = 1
 	for _, resp := range responses {
 		if resp.Header.Revision < lastRevision {
 			t.Errorf("Revision should never decrease")
+		}
+		if resp.IsProgressNotify() && resp.Header.Revision == lastRevision {
+			gotProgressNotify = true
 		}
 		if resp.Header.Revision == lastRevision && len(resp.Events) != 0 {
 			t.Errorf("Got two non-empty responses about same revision")
@@ -99,6 +104,9 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse) {
 			t.Errorf("Expect response revision equal last event mod revision")
 		}
 		lastRevision = resp.Header.Revision
+	}
+	if gotProgressNotify != expectProgressNotify {
+		t.Errorf("Expected progress notify: %v, got: %v", expectProgressNotify, gotProgressNotify)
 	}
 }
 
