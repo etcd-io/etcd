@@ -103,6 +103,7 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithSnapshotCount(100),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
 			),
 		})
 		scenarios = append(scenarios, scenario{
@@ -114,6 +115,7 @@ func TestLinearizability(t *testing.T) {
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
 			),
 		})
 	}
@@ -124,6 +126,7 @@ func TestLinearizability(t *testing.T) {
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithGoFailEnabled(true),
+				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
 			),
 		},
 		{
@@ -132,6 +135,7 @@ func TestLinearizability(t *testing.T) {
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithGoFailEnabled(true),
+				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
 			),
 		},
 		{
@@ -140,6 +144,7 @@ func TestLinearizability(t *testing.T) {
 			traffic:   &HighTraffic,
 			config: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
+				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
 			),
 		},
 	}...)

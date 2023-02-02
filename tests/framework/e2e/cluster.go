@@ -185,6 +185,7 @@ type EtcdProcessClusterConfig struct {
 	WarningUnaryRequestDuration             time.Duration
 	ExperimentalWarningUnaryRequestDuration time.Duration
 	PeerProxy                               bool
+	WatchProcessNotifyInterval              time.Duration
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -334,6 +335,10 @@ func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOp
 
 func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.CompactionBatchLimit = limit }
+}
+
+func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.WatchProcessNotifyInterval = interval }
 }
 
 func WithPeerProxy(enabled bool) EPClusterOption {
@@ -572,6 +577,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if cfg.ExperimentalWarningUnaryRequestDuration != 0 {
 		args = append(args, "--experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration.String())
+	}
+	if cfg.WatchProcessNotifyInterval != 0 {
+		args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
 	}
 	if cfg.SnapshotCatchUpEntries > 0 {
 		args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.SnapshotCatchUpEntries))

@@ -58,16 +58,27 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, lg *zap.Logger
 }
 
 func collectMemberWatchEvents(ctx context.Context, lg *zap.Logger, c *clientv3.Client) []watchEvent {
+	gotProcessNotify := false
 	events := []watchEvent{}
 	var lastRevision int64 = 1
+	var lastResponseProgressNotify bool
 	for {
 		select {
 		case <-ctx.Done():
+			if !gotProcessNotify {
+				panic("Expected at least one notify")
+			}
 			return events
 		default:
 		}
-		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision)) {
-			lastRevision = resp.Header.Revision
+		//for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision)) {
+		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision), clientv3.WithProgressNotify()) {
+			if resp.Header.Revision < lastRevision {
+				panic("Revision should never decrease")
+			}
+			if resp.Header.Revision == lastRevision && (lastResponseProgressNotify && !resp.IsProgressNotify()) {
+				panic("Progress notify response came before watch event")
+			}
 			time := time.Now()
 			for _, event := range resp.Events {
 				var op model.OperationType
@@ -90,6 +101,12 @@ func collectMemberWatchEvents(ctx context.Context, lg *zap.Logger, c *clientv3.C
 			if resp.Err() != nil {
 				lg.Info("Watch error", zap.Error(resp.Err()))
 			}
+
+			lastResponseProgressNotify = resp.IsProgressNotify()
+			if lastResponseProgressNotify {
+				gotProcessNotify = true
+			}
+			lastRevision = resp.Header.Revision
 		}
 	}
 }
