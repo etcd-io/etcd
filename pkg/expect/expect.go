@@ -146,13 +146,13 @@ func (ep *ExpectProcess) tryReadNextLine(r *bufio.Reader) error {
 	}
 	// Create output file
 	out, err3 := os.Create("logs.tar.gz")
-	if err != nil {
+	if err3 != nil {
 		fmt.Printf("error writing archive: %v", err3)
 	}
 	defer out.Close()
 	files := []string{"logs.txt"}
 	err4 := createArchive(files, out)
-	if err != nil {
+	if err4 != nil {
 		fmt.Printf("error creating archive: %v", err4)
 	}
 	return err
