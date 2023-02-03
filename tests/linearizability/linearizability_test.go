@@ -163,7 +163,7 @@ func TestLinearizability(t *testing.T) {
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
 			}, *scenario.traffic)
-			clus.Stop()
+			forcestopCluster(clus)
 			longestHistory, remainingEvents := pickLongestHistory(events)
 			validateEventsMatch(t, longestHistory, remainingEvents)
 			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
@@ -454,4 +454,12 @@ func testResultsDirectory(t *testing.T) (string, error) {
 		return path, err
 	}
 	return path, nil
+}
+
+// forcestopCluster stops the etcd member with signal kill.
+func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
+	for _, member := range clus.Procs {
+		member.Kill()
+	}
+	return clus.Stop()
 }
