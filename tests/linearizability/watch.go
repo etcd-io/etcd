@@ -28,7 +28,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) [][]watchEvent {
+func collectClusterWatchEvents(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) [][]watchEvent {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
 	memberEvents := make([][]watchEvent, len(clus.Procs))
@@ -47,7 +47,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 		go func(i int, c *clientv3.Client) {
 			defer wg.Done()
 			defer c.Close()
-			events := collectMemberWatchEvents(ctx, t, c)
+			events := collectMemberWatchEvents(ctx, lg, c)
 			mux.Lock()
 			memberEvents[i] = events
 			mux.Unlock()
@@ -57,7 +57,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 	return memberEvents
 }
 
-func collectMemberWatchEvents(ctx context.Context, t *testing.T, c *clientv3.Client) []watchEvent {
+func collectMemberWatchEvents(ctx context.Context, lg *zap.Logger, c *clientv3.Client) []watchEvent {
 	events := []watchEvent{}
 	var lastRevision int64 = 1
 	for {
@@ -88,7 +88,7 @@ func collectMemberWatchEvents(ctx context.Context, t *testing.T, c *clientv3.Cli
 				})
 			}
 			if resp.Err() != nil {
-				t.Logf("Watch error: %v", resp.Err())
+				lg.Info("Watch error", zap.Error(resp.Err()))
 			}
 		}
 	}

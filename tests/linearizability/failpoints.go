@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	triggerTimeout = time.Second
+	triggerTimeout = 2 * time.Second
 )
 
 var (
@@ -78,14 +78,14 @@ var (
 )
 
 type Failpoint interface {
-	Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error
+	Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error
 	Name() string
 	Available(e2e.EtcdProcess) bool
 }
 
 type killFailpoint struct{}
 
-func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f killFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 
 	killCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
@@ -93,10 +93,11 @@ func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.Etcd
 	for member.IsRunning() {
 		err := member.Kill()
 		if err != nil {
-			t.Logf("sending kill signal failed: %v", err)
+			lg.Info("Sending kill signal failed", zap.Error(err))
 		}
 		err = member.Wait(killCtx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+			lg.Info("Failed to kill the process", zap.Error(err))
 			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
 		}
 	}
@@ -129,27 +130,36 @@ const (
 	Leader    failpointTarget = "Leader"
 )
 
-func (f goPanicFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f goPanicFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := f.pickMember(t, clus)
 
 	triggerCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 
 	for member.IsRunning() {
+		lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
 		err := member.Failpoints().Setup(triggerCtx, f.failpoint, "panic")
 		if err != nil {
-			t.Logf("gofailpoint setup failed: %v", err)
+			lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
+		}
+		if !member.IsRunning() {
+			// TODO: Check member logs that etcd not running is caused panic caused by proper gofailpoint.
+			break
 		}
 		if f.trigger != nil {
+			lg.Info("Triggering gofailpoint", zap.String("failpoint", f.Name()))
 			err = f.trigger(triggerCtx, member)
 			if err != nil {
-				t.Logf("triggering gofailpoint failed: %v", err)
+				lg.Info("gofailpoint trigger failed", zap.String("failpoint", f.Name()), zap.Error(err))
 			}
 		}
+		lg.Info("Waiting for member to exist", zap.String("member", member.Config().Name))
 		err = member.Wait(triggerCtx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
-			return fmt.Errorf("failed to trigger a process panic within %s, err: %w", triggerTimeout, err)
+			lg.Info("Member didn't exit as expected", zap.String("member", member.Config().Name), zap.Error(err))
+			return fmt.Errorf("member didn't exit as expected: %v", err)
 		}
+		lg.Info("Member existed as expected", zap.String("member", member.Config().Name))
 	}
 
 	err := member.Start(ctx)
@@ -228,7 +238,7 @@ type randomFailpoint struct {
 	failpoints []Failpoint
 }
 
-func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f randomFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	availableFailpoints := make([]Failpoint, 0, len(f.failpoints))
 	for _, failpoint := range f.failpoints {
 		count := 0
@@ -242,8 +252,8 @@ func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.Et
 		}
 	}
 	failpoint := availableFailpoints[rand.Int()%len(availableFailpoints)]
-	t.Logf("Triggering %v failpoint\n", failpoint.Name())
-	return failpoint.Trigger(t, ctx, clus)
+	lg.Info("Triggering failpoint\n", zap.String("failpoint", failpoint.Name()))
+	return failpoint.Trigger(ctx, t, lg, clus)
 }
 
 func (f randomFailpoint) Name() string {
@@ -258,15 +268,15 @@ type blackholePeerNetworkFailpoint struct {
 	duration time.Duration
 }
 
-func (f blackholePeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f blackholePeerNetworkFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	proxy := member.PeerProxy()
 
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
-	t.Logf("Blackholing traffic from and to %s", member.Config().Name)
+	lg.Info("Blackholing traffic from and to member", zap.String("member", member.Config().Name))
 	time.Sleep(f.duration)
-	t.Logf("Traffic restored for %s", member.Config().Name)
+	lg.Info("Traffic restored from and to member", zap.String("member", member.Config().Name))
 	proxy.UnblackholeTx()
 	proxy.UnblackholeRx()
 	return nil
@@ -286,15 +296,15 @@ type delayPeerNetworkFailpoint struct {
 	randomizedLatency time.Duration
 }
 
-func (f delayPeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f delayPeerNetworkFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	proxy := member.PeerProxy()
 
 	proxy.DelayRx(f.baseLatency, f.randomizedLatency)
 	proxy.DelayTx(f.baseLatency, f.randomizedLatency)
-	t.Logf("Delaying traffic from and to %s by %v +/- %v", member.Config().Name, f.baseLatency, f.randomizedLatency)
+	lg.Info("Delaying traffic from and to member", zap.String("member", member.Config().Name), zap.Duration("baseLatency", f.baseLatency), zap.Duration("randomizedLatency", f.randomizedLatency))
 	time.Sleep(f.duration)
-	t.Logf("Traffic delay removed for %s", member.Config().Name)
+	lg.Info("Traffic delay removed", zap.String("member", member.Config().Name))
 	proxy.UndelayRx()
 	proxy.UndelayTx()
 	return nil

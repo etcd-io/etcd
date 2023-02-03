@@ -5,6 +5,10 @@ build:
 	./bin/etcdctl version
 	./bin/etcdutl version
 
+.PHONY: tools
+tools:
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v" ./scripts/build_tools.sh
+
 # Tests
 
 GO_TEST_FLAGS?=

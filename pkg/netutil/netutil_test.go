@@ -120,12 +120,15 @@ func TestResolveTCPAddrs(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			if tt.hostMap[host] == "" {
-				return nil, errors.New("cannot resolve host")
-			}
 			i, err := strconv.Atoi(port)
 			if err != nil {
 				return nil, err
+			}
+			if ip := net.ParseIP(host); ip != nil {
+				return &net.TCPAddr{IP: ip, Port: i, Zone: ""}, nil
+			}
+			if tt.hostMap[host] == "" {
+				return nil, errors.New("cannot resolve host")
 			}
 			return &net.TCPAddr{IP: net.ParseIP(tt.hostMap[host]), Port: i, Zone: ""}, nil
 		}
@@ -152,16 +155,19 @@ func TestURLsEqual(t *testing.T) {
 		"second.com":  "10.0.11.2",
 	}
 	resolveTCPAddr = func(ctx context.Context, addr string) (*net.TCPAddr, error) {
-		host, port, herr := net.SplitHostPort(addr)
-		if herr != nil {
-			return nil, herr
-		}
-		if _, ok := hostm[host]; !ok {
-			return nil, errors.New("cannot resolve host.")
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, err
 		}
 		i, err := strconv.Atoi(port)
 		if err != nil {
 			return nil, err
+		}
+		if ip := net.ParseIP(host); ip != nil {
+			return &net.TCPAddr{IP: ip, Port: i, Zone: ""}, nil
+		}
+		if hostm[host] == "" {
+			return nil, errors.New("cannot resolve host")
 		}
 		return &net.TCPAddr{IP: net.ParseIP(hostm[host]), Port: i, Zone: ""}, nil
 	}
@@ -330,6 +336,11 @@ func TestURLStringsEqual(t *testing.T) {
 			"http://host1:8080",
 			"http://host2:8080",
 		}, errOnResolve},
+		{
+			urlsA:    []string{"https://[c262:266f:fa53:0ee6:966e:e3f0:d68f:b046]:2380"},
+			urlsB:    []string{"https://[c262:266f:fa53:ee6:966e:e3f0:d68f:b046]:2380"},
+			resolver: resolveTCPAddrDefault,
+		},
 	}
 	for idx, c := range cases {
 		t.Logf("TestURLStringsEqual, case #%d", idx)

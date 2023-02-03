@@ -4,6 +4,19 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
+## v3.5.8 (TBD)
+
+### Package `netutil`
+- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187)
+
+### Dependency
+- Bump bbolt to [v1.3.7](https://github.com/etcd-io/etcd/pull/15222).
+
+### Other
+- [Remove nsswitch.conf from docker image](https://github.com/etcd-io/etcd/pull/15161)
+
+<hr>
+
 ## v3.5.7 (2023-01-20)
 
 ### etcd server
@@ -24,7 +37,6 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Go
 - Require [Go 1.17+](https://github.com/etcd-io/etcd/pull/15019).
 - Compile with [Go 1.17+](https://go.dev/doc/devel/release#go1.17)
-
 
 <hr>
 
