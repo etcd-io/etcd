@@ -436,6 +436,8 @@ func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []m
 // notify notifies the fact that given event at the given rev just happened to
 // watchers that watch on the key of the event.
 func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
+	VerifyWatchEvents(s.lg, rev, evs)
+
 	victim := make(watcherBatch)
 	for w, eb := range newWatcherBatch(&s.synced, evs) {
 		if eb.revs != 1 {
