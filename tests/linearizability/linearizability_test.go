@@ -170,14 +170,15 @@ func TestLinearizability(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer clus.Close()
-			operations, events := testLinearizability(ctx, t, lg, clus, FailpointConfig{
+			operations, watchResponses := testLinearizability(ctx, t, lg, clus, FailpointConfig{
 				failpoint:           scenario.failpoint,
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
 			}, *scenario.traffic)
 			forcestopCluster(clus)
-			longestHistory, remainingEvents := pickLongestHistory(events)
+			validateWatchResponses(t, watchResponses)
+			longestHistory, remainingEvents := watchEventHistory(watchResponses)
 			validateEventsMatch(t, longestHistory, remainingEvents)
 			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
 			checkOperationsAndPersistResults(t, lg, operations, clus)
@@ -185,7 +186,7 @@ func TestLinearizability(t *testing.T) {
 	}
 }
 
-func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, events [][]watchEvent) {
+func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
 	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
 	g := errgroup.Group{}
 	trafficCtx, trafficCancel := context.WithCancel(ctx)
@@ -203,11 +204,11 @@ func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, clus
 		return nil
 	})
 	g.Go(func() error {
-		events = collectClusterWatchEvents(watchCtx, t, lg, clus)
+		responses = collectClusterWatchEvents(watchCtx, t, lg, clus)
 		return nil
 	})
 	g.Wait()
-	return operations, events
+	return operations, responses
 }
 
 func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEvents []watchEvent) []porcupine.Operation {
@@ -381,7 +382,12 @@ type trafficConfig struct {
 	traffic     Traffic
 }
 
-func pickLongestHistory(ops [][]watchEvent) (longest []watchEvent, rest [][]watchEvent) {
+func watchEventHistory(responses [][]watchResponse) (longest []watchEvent, rest [][]watchEvent) {
+	ops := make([][]watchEvent, len(responses))
+	for i, resps := range responses {
+		ops[i] = toWatchEvents(resps)
+	}
+
 	sort.Slice(ops, func(i, j int) bool {
 		return len(ops[i]) > len(ops[j])
 	})
