@@ -20,7 +20,7 @@ require (
 	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
 	gotest.tools/gotestsum v1.9.0
 	gotest.tools/v3 v3.4.0
-	honnef.co/go/tools v0.3.3
+	honnef.co/go/tools v0.4.0
 	mvdan.cc/unparam v0.0.0-20220316160445-06cc5682983b
 )
 
@@ -73,7 +73,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f // indirect
 	go.mongodb.org/mongo-driver v1.7.3 // indirect
-	golang.org/x/exp/typeparams v0.0.0-20220218215828-6cf2b201936e // indirect
+	golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
