@@ -162,15 +162,6 @@
 		]
 	},
 	{
-		"project": "github.com/golang/groupcache/lru",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 0.9966703662597114
-			}
-		]
-	},
-	{
 		"project": "github.com/golang/protobuf",
 		"licenses": [
 			{

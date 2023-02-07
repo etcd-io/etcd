@@ -67,6 +67,7 @@ var (
 	grpcProxyInsecureDiscovery         bool
 	grpcProxyDataDir                   string
 	grpcProxyEnableCache               bool
+	grpcProxyCacheTTL                  time.Duration
 	grpcMaxCallSendMsgSize             int
 	grpcMaxCallRecvMsgSize             int
 
@@ -146,6 +147,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&grpcProxyEnablePprof, "enable-pprof", false, `Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"`)
 	cmd.Flags().StringVar(&grpcProxyDataDir, "data-dir", "default.proxy", "Data directory for persistent data")
 	cmd.Flags().BoolVar(&grpcProxyEnableCache, "enable-cache", true, "Enable cache for serializable range requests (enabled by default)")
+	cmd.Flags().DurationVar(&grpcProxyCacheTTL, "cache-ttl", grpcproxy.DefaultCacheTTL, "Set ttl for cached items (should be >0 if cache enabled)")
 	cmd.Flags().IntVar(&grpcMaxCallSendMsgSize, "max-send-bytes", defaultGRPCMaxCallSendMsgSize, "message send limits in bytes (default value is 1.5 MiB)")
 	cmd.Flags().IntVar(&grpcMaxCallRecvMsgSize, "max-recv-bytes", math.MaxInt32, "message receive limits in bytes (default value is math.MaxInt32)")
 	cmd.Flags().DurationVar(&grpcKeepAliveMinTime, "grpc-keepalive-min-time", embed.DefaultGRPCKeepAliveMinTime, "Minimum interval duration that a client should wait before pinging proxy.")
@@ -289,6 +291,10 @@ func checkArgs() {
 	}
 	if grpcProxyListenAutoTLS && selfSignedCertValidity == 0 {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("selfSignedCertValidity is invalid,it should be greater than 0"))
+		os.Exit(1)
+	}
+	if grpcProxyEnableCache && grpcProxyCacheTTL == 0 {
+		fmt.Fprintln(os.Stderr, fmt.Errorf("when cache enabled, grpcProxyCacheTTL should be greater than 0"))
 		os.Exit(1)
 	}
 }
@@ -437,7 +443,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 		client.KV, _, _ = leasing.NewKV(client, grpcProxyLeasing)
 	}
 
-	kvp, _ := grpcproxy.NewKvProxy(client, grpcproxy.WithCache(grpcProxyEnableCache))
+	kvp, _ := grpcproxy.NewKvProxy(client, grpcproxy.WithCache(grpcProxyEnableCache, grpcProxyCacheTTL))
 	watchp, _ := grpcproxy.NewWatchProxy(client.Ctx(), lg, client)
 	if grpcProxyResolverPrefix != "" {
 		grpcproxy.Register(lg, client, grpcProxyResolverPrefix, grpcProxyAdvertiseClientURL, grpcProxyResolverTTL)

@@ -36,7 +36,7 @@ func TestKVProxyRangeWithCache(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	kvts := newKVProxyServer(t, []string{clus.Members[0].GRPCURL()}, grpcproxy.WithCache(true))
+	kvts := newKVProxyServer(t, []string{clus.Members[0].GRPCURL()}, grpcproxy.WithCache(true, time.Hour))
 	defer kvts.close()
 
 	// create a client and try to get key from proxy.

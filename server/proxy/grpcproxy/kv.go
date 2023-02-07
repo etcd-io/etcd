@@ -16,11 +16,14 @@ package grpcproxy
 
 import (
 	"context"
+	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy/cache"
 )
+
+const DefaultCacheTTL = 5 * time.Minute
 
 type kvProxy struct {
 	kv    clientv3.KV
@@ -29,10 +32,10 @@ type kvProxy struct {
 
 type KvProxyOpt func(*kvProxy)
 
-func WithCache(enabled bool) KvProxyOpt {
+func WithCache(enabled bool, ttl time.Duration) KvProxyOpt {
 	return func(kv *kvProxy) {
 		if enabled {
-			kv.cache = cache.NewCache(cache.DefaultMaxEntries)
+			kv.cache = cache.NewCache(cache.DefaultMaxEntries, ttl)
 		}
 	}
 }

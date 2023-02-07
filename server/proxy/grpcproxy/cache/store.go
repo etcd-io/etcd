@@ -19,12 +19,12 @@ package cache
 import (
 	"errors"
 	"sync"
-
-	"github.com/golang/groupcache/lru"
+	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/v3/adt"
+	"go.etcd.io/etcd/pkg/v3/ttlcache"
 )
 
 var (
@@ -52,9 +52,9 @@ func keyFunc(req *pb.RangeRequest) string {
 	return string(b)
 }
 
-func NewCache(maxCacheEntries int) Cache {
+func NewCache(maxCacheEntries int, ttl time.Duration) Cache {
 	return &cache{
-		lru:          lru.New(maxCacheEntries),
+		cache:        ttlcache.NewCache[string, *pb.RangeResponse](maxCacheEntries, ttl),
 		cachedRanges: adt.NewIntervalTree(),
 		compactedRev: -1,
 	}
@@ -68,8 +68,8 @@ func (c *cache) Close() {}
 
 // cache implements Cache
 type cache struct {
-	mu  sync.RWMutex
-	lru *lru.Cache
+	mu    sync.RWMutex
+	cache *ttlcache.Cache[string, *pb.RangeResponse]
 
 	// a reverse index for cache invalidation
 	cachedRanges adt.IntervalTree
@@ -85,7 +85,7 @@ func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
 	defer c.mu.Unlock()
 
 	if req.Revision > c.compactedRev {
-		c.lru.Add(key, resp)
+		c.cache.Set(key, resp, time.Now())
 	}
 	// we do not need to invalidate a request with a revision specified.
 	// so we do not need to add it into the reverse index.
@@ -120,16 +120,27 @@ func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
 func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
 	key := keyFunc(req)
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	resp, err := c.get(req, key)
+
+	if errors.Is(err, ErrCompacted) {
+		c.mu.Lock()
+		c.cache.Remove(key)
+		c.mu.Unlock()
+	}
+
+	return resp, err
+}
+
+func (c *cache) get(req *pb.RangeRequest, key string) (*pb.RangeResponse, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if req.Revision > 0 && req.Revision < c.compactedRev {
-		c.lru.Remove(key)
 		return nil, ErrCompacted
 	}
 
-	if resp, ok := c.lru.Get(key); ok {
-		return resp.(*pb.RangeResponse), nil
+	if resp, ok := c.cache.Get(key, time.Now()); ok {
+		return resp, nil
 	}
 	return nil, ErrNotExists
 }
@@ -153,7 +164,7 @@ func (c *cache) Invalidate(key, endkey []byte) {
 	for _, iv := range ivs {
 		keys := iv.Val.(map[string]struct{})
 		for key := range keys {
-			c.lru.Remove(key)
+			c.cache.Remove(key)
 		}
 	}
 	// delete after removing all keys since it is destructive to 'ivs'
@@ -174,7 +185,7 @@ func (c *cache) Compact(revision int64) {
 func (c *cache) Size() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.lru.Len()
+	return c.cache.Size()
 }
 
 type nullCache struct {
