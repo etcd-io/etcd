@@ -93,7 +93,20 @@ func (c *recordingClient) CompareAndSet(ctx context.Context, key, expectedValue,
 		clientv3.OpPut(key, newValue),
 	).Commit()
 	returnTime := time.Now()
-	c.history.AppendTxn(key, expectedValue, newValue, callTime, returnTime, resp, err)
+	c.history.AppendCompareAndSet(key, expectedValue, newValue, callTime, returnTime, resp, err)
+	return err
+}
+
+func (c *recordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {
+	callTime := time.Now()
+	txn := c.client.Txn(ctx)
+	resp, err := txn.If(
+		cmp...,
+	).Then(
+		ops...,
+	).Commit()
+	returnTime := time.Now()
+	c.history.AppendTxn(cmp, ops, callTime, returnTime, resp, err)
 	return err
 }
 

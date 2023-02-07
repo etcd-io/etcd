@@ -15,10 +15,12 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/anishathalye/porcupine"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/linearizability/identity"
 )
@@ -161,8 +163,8 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Time, resp 
 	})
 }
 
-func (h *AppendableHistory) AppendTxn(key, expectValue, newValue string, start, end time.Time, resp *clientv3.TxnResponse, err error) {
-	request := txnRequest(key, expectValue, newValue)
+func (h *AppendableHistory) AppendCompareAndSet(key, expectValue, newValue string, start, end time.Time, resp *clientv3.TxnResponse, err error) {
+	request := compareAndSetRequest(key, expectValue, newValue)
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
@@ -175,9 +177,94 @@ func (h *AppendableHistory) AppendTxn(key, expectValue, newValue string, start, 
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.UnixNano(),
-		Output:   txnResponse(resp.Succeeded, revision),
+		Output:   compareAndSetResponse(resp.Succeeded, revision),
 		Return:   end.UnixNano(),
 	})
+}
+
+func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.Op, start, end time.Time, resp *clientv3.TxnResponse, err error) {
+	conds := []EtcdCondition{}
+	for _, cmp := range cmp {
+		conds = append(conds, toEtcdCondition(cmp))
+	}
+	ops := []EtcdOperation{}
+	for _, op := range onSuccess {
+		ops = append(ops, toEtcdOperation(op))
+	}
+	request := txnRequest(conds, ops)
+	if err != nil {
+		h.appendFailed(request, start, err)
+		return
+	}
+	var revision int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+	}
+	results := []EtcdOperationResult{}
+	for _, resp := range resp.Responses {
+		results = append(results, toEtcdOperationResult(resp))
+	}
+	h.successful = append(h.successful, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.UnixNano(),
+		Output:   txnResponse(results, resp.Succeeded, revision),
+		Return:   end.UnixNano(),
+	})
+}
+
+func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
+	switch {
+	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_VALUE:
+		cond.Key = string(cmp.KeyBytes())
+		cond.ExpectedValue = ToValueOrHash(string(cmp.ValueBytes()))
+	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_CREATE:
+		cond.Key = string(cmp.KeyBytes())
+	default:
+		panic(fmt.Sprintf("Compare not supported, target: %q, result: %q", cmp.Target, cmp.Result))
+	}
+	return cond
+}
+
+func toEtcdOperation(op clientv3.Op) EtcdOperation {
+	var opType OperationType
+	switch {
+	case op.IsGet():
+		opType = Get
+	case op.IsPut():
+		opType = Put
+	case op.IsDelete():
+		opType = Delete
+	default:
+		panic("Unsupported operation")
+	}
+	return EtcdOperation{
+		Type:  opType,
+		Key:   string(op.KeyBytes()),
+		Value: ValueOrHash{Value: string(op.ValueBytes())},
+	}
+}
+
+func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
+	switch {
+	case resp.GetResponseRange() != nil:
+		getResp := resp.GetResponseRange()
+		var val string
+		if len(getResp.Kvs) != 0 {
+			val = string(getResp.Kvs[0].Value)
+		}
+		return EtcdOperationResult{
+			Value: ToValueOrHash(val),
+		}
+	case resp.GetResponsePut() != nil:
+		return EtcdOperationResult{}
+	case resp.GetResponseDeleteRange() != nil:
+		return EtcdOperationResult{
+			Deleted: resp.GetResponseDeleteRange().Deleted,
+		}
+	default:
+		panic("Unsupported operation")
+	}
 }
 
 func (h *AppendableHistory) AppendDefragment(start, end time.Time, resp *clientv3.DefragmentResponse, err error) {
@@ -240,15 +327,23 @@ func deleteResponse(deleted int64, revision int64) EtcdResponse {
 	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}
 }
 
-func txnRequest(key, expectValue, newValue string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Conds: []EtcdCondition{{Key: key, ExpectedValue: ToValueOrHash(expectValue)}}, Ops: []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(newValue)}}}}
+func compareAndSetRequest(key, expectValue, newValue string) EtcdRequest {
+	return txnRequest([]EtcdCondition{{Key: key, ExpectedValue: ToValueOrHash(expectValue)}}, []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(newValue)}})
 }
 
-func txnResponse(succeeded bool, revision int64) EtcdResponse {
+func compareAndSetResponse(succeeded bool, revision int64) EtcdResponse {
 	var result []EtcdOperationResult
 	if succeeded {
 		result = []EtcdOperationResult{{}}
 	}
+	return txnResponse(result, succeeded, revision)
+}
+
+func txnRequest(conds []EtcdCondition, onSuccess []EtcdOperation) EtcdRequest {
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Conds: conds, Ops: onSuccess}}
+}
+
+func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) EtcdResponse {
 	return EtcdResponse{Txn: &TxnResponse{OpsResult: result, TxnResult: !succeeded}, Revision: revision}
 }
 
