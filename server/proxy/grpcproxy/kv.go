@@ -27,11 +27,26 @@ type kvProxy struct {
 	cache cache.Cache
 }
 
-func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
+type KvProxyOpt func(*kvProxy)
+
+func WithCache(enabled bool) KvProxyOpt {
+	return func(kv *kvProxy) {
+		if enabled {
+			kv.cache = cache.NewCache(cache.DefaultMaxEntries)
+		}
+	}
+}
+
+func NewKvProxy(c *clientv3.Client, opts ...KvProxyOpt) (pb.KVServer, <-chan struct{}) {
 	kv := &kvProxy{
 		kv:    c.KV,
-		cache: cache.NewCache(cache.DefaultMaxEntries),
+		cache: cache.NewNullCache(),
 	}
+
+	for _, opt := range opts {
+		opt(kv)
+	}
+
 	donec := make(chan struct{})
 	close(donec)
 	return kv, donec

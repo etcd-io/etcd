@@ -30,6 +30,7 @@ import (
 var (
 	DefaultMaxEntries = 2048
 	ErrCompacted      = rpctypes.ErrGRPCCompacted
+	ErrNotExists      = errors.New("not exist")
 )
 
 type Cache interface {
@@ -57,6 +58,10 @@ func NewCache(maxCacheEntries int) Cache {
 		cachedRanges: adt.NewIntervalTree(),
 		compactedRev: -1,
 	}
+}
+
+func NewNullCache() Cache {
+	return &nullCache{}
 }
 
 func (c *cache) Close() {}
@@ -126,7 +131,7 @@ func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if resp, ok := c.lru.Get(key); ok {
 		return resp.(*pb.RangeResponse), nil
 	}
-	return nil, errors.New("not exist")
+	return nil, ErrNotExists
 }
 
 // Invalidate invalidates the cache entries that intersecting with the given range from key to endkey.
@@ -171,3 +176,13 @@ func (c *cache) Size() int {
 	defer c.mu.RUnlock()
 	return c.lru.Len()
 }
+
+type nullCache struct {
+}
+
+func (n *nullCache) Add(req *pb.RangeRequest, resp *pb.RangeResponse)    {}
+func (n *nullCache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) { return nil, ErrNotExists }
+func (n *nullCache) Compact(revision int64)                              {}
+func (n *nullCache) Invalidate(key []byte, endkey []byte)                {}
+func (n *nullCache) Size() int                                           { return 0 }
+func (n *nullCache) Close()                                              {}

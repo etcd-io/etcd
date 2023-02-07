@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -28,13 +30,13 @@ import (
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-func TestKVProxyRange(t *testing.T) {
+func TestKVProxyRangeWithCache(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	kvts := newKVProxyServer([]string{clus.Members[0].GRPCURL()}, t)
+	kvts := newKVProxyServer(t, []string{clus.Members[0].GRPCURL()}, grpcproxy.WithCache(true))
 	defer kvts.close()
 
 	// create a client and try to get key from proxy.
@@ -43,14 +45,63 @@ func TestKVProxyRange(t *testing.T) {
 		DialTimeout: 5 * time.Second,
 	}
 	client, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
+	require.NoError(t, err)
+	defer client.Close()
+
+	// Put and check value
+	_, err = clus.Client(0).Put(context.Background(), "foo", "bar")
+	require.NoError(t, err)
+
+	resp, err := client.Get(context.Background(), "foo")
+	require.NoError(t, err)
+	require.Len(t, resp.Kvs, 1)
+	assert.Equal(t, "bar", string(resp.Kvs[0].Value))
+
+	// Update value and check outdated value is in cache
+	_, err = clus.Client(0).Put(context.Background(), "foo", "xyz")
+	require.NoError(t, err)
+
+	resp, err = client.Get(context.Background(), "foo", clientv3.WithSerializable())
+	require.NoError(t, err)
+	require.Len(t, resp.Kvs, 1)
+	assert.Equal(t, "bar", string(resp.Kvs[0].Value))
+}
+
+func TestKVProxyRangeWithoutCache(t *testing.T) {
+	integration2.BeforeTest(t)
+
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvts := newKVProxyServer(t, []string{clus.Members[0].GRPCURL()})
+	defer kvts.close()
+
+	// create a client and try to get key from proxy.
+	cfg := clientv3.Config{
+		Endpoints:   []string{kvts.l.Addr().String()},
+		DialTimeout: 5 * time.Second,
 	}
-	_, err = client.Get(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
-	client.Close()
+	client, err := integration2.NewClient(t, cfg)
+	require.NoError(t, err)
+	defer client.Close()
+
+	// Put and check value
+	_, err = clus.Client(0).Put(context.Background(), "foo", "bar")
+	require.NoError(t, err)
+
+	resp, err := client.Get(context.Background(), "foo")
+	require.NoError(t, err)
+	require.Len(t, resp.Kvs, 1)
+	assert.Equal(t, "bar", string(resp.Kvs[0].Value))
+
+	// Update value and get new value via proxy
+	_, err = clus.Client(0).Put(context.Background(), "foo", "xyz")
+	require.NoError(t, err)
+
+	resp, err = client.Get(context.Background(), "foo", clientv3.WithSerializable())
+	require.NoError(t, err)
+	require.Len(t, resp.Kvs, 1)
+	assert.Equal(t, "xyz", string(resp.Kvs[0].Value))
 }
 
 type kvproxyTestServer struct {
@@ -66,7 +117,7 @@ func (kts *kvproxyTestServer) close() {
 	kts.c.Close()
 }
 
-func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
+func newKVProxyServer(t *testing.T, endpoints []string, kvOpts ...grpcproxy.KvProxyOpt) *kvproxyTestServer {
 	cfg := clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
@@ -76,7 +127,7 @@ func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
 		t.Fatal(err)
 	}
 
-	kvp, _ := grpcproxy.NewKvProxy(client)
+	kvp, _ := grpcproxy.NewKvProxy(client, kvOpts...)
 
 	kvts := &kvproxyTestServer{
 		kp: kvp,
@@ -92,7 +143,9 @@ func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
 		t.Fatal(err)
 	}
 
-	go kvts.server.Serve(kvts.l)
+	go func() {
+		require.NoError(t, kvts.server.Serve(kvts.l))
+	}()
 
 	return kvts
 }
