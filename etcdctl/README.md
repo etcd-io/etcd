@@ -711,6 +711,9 @@ MEMBER LIST prints the member details for all members associated with an etcd cl
 
 RPC: MemberList
 
+#### Options
+- consistency -- Linearizable(l) or Serializable(s)
+
 #### Output
 
 Prints a humanized table of the member IDs, statuses, names, peer addresses, and client addresses.

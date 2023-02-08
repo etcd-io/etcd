@@ -350,7 +350,7 @@ func (cx *ctlCtx) memberToRemove() (ep string, memberID string, clusterID string
 		cx.t.Fatalf("%d-node is too small to test 'member remove'", n1)
 	}
 
-	resp, err := getMemberList(*cx)
+	resp, err := getMemberList(*cx, false)
 	if err != nil {
 		cx.t.Fatal(err)
 	}

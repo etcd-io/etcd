@@ -166,3 +166,14 @@ func defrag(c *clientv3.Client, ep string) {
 	}
 	fmt.Printf("Defragmented %q\n", ep)
 }
+
+func IsSerializable(option string) bool {
+	switch option {
+	case "s":
+		return true
+	case "l":
+	default:
+		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("unknown consistency flag %q", getConsistency))
+	}
+	return false
+}

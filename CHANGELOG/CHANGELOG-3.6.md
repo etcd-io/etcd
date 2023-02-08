@@ -32,12 +32,17 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - [Always print the raft_term in decimal](https://github.com/etcd-io/etcd/pull/13711) when displaying member list in json.
 - [Add one more field `storageVersion`](https://github.com/etcd-io/etcd/pull/13773) into the response of command `etcdctl endpoint status`.
 - Add [`--max-txn-ops`](https://github.com/etcd-io/etcd/pull/14340) flag to make-mirror command.
+- Add [`--consistency`](https://github.com/etcd-io/etcd/pull/15261) flag to member list command.
 - Display [field `hash_revision`](https://github.com/etcd-io/etcd/pull/14812) for `etcdctl endpoint hash` command.
 
 ### etcdutl v3
 
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
 - Add `migrate` command for downgrading/upgrading etcd data dir files.
+
+### Package `clientv3`
+
+- [Support serializable `MemberList` operation](https://github.com/etcd-io/etcd/pull/15261).
 
 ### Package `server`
 

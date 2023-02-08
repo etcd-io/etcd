@@ -202,7 +202,7 @@ func authTestMemberUpdate(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	mr, err := getMemberList(cx)
+	mr, err := getMemberList(cx, false)
 	if err != nil {
 		cx.t.Fatal(err)
 	}

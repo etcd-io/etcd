@@ -426,7 +426,7 @@ type mockCluster struct {
 	members []*etcdserverpb.Member
 }
 
-func (mc *mockCluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
+func (mc *mockCluster) MemberList(ctx context.Context, opts ...OpOption) (*MemberListResponse, error) {
 	return &MemberListResponse{Members: mc.members}, nil
 }
 

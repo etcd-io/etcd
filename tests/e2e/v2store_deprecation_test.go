@@ -158,7 +158,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	lastReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 	assert.NoError(t, err)
 
-	lastReleaseMemberListResponse, err := cc.MemberList(ctx)
+	lastReleaseMemberListResponse, err := cc.MemberList(ctx, false)
 	assert.NoError(t, err)
 
 	assert.NoError(t, epc.Close())
@@ -174,7 +174,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	currentReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 	assert.NoError(t, err)
 
-	currentReleaseMemberListResponse, err := cc.MemberList(ctx)
+	currentReleaseMemberListResponse, err := cc.MemberList(ctx, false)
 	assert.NoError(t, err)
 
 	assert.Equal(t, lastReleaseGetResponse.Kvs, currentReleaseGetResponse.Kvs)

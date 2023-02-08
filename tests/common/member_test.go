@@ -40,7 +40,7 @@ func TestMemberList(t *testing.T) {
 			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
-				resp, err := cc.MemberList(ctx)
+				resp, err := cc.MemberList(ctx, false)
 				if err != nil {
 					t.Fatalf("could not get member list, err: %s", err)
 				}
@@ -237,7 +237,7 @@ func TestMemberRemove(t *testing.T) {
 // Otherwise, return a member that client has not connected to.
 // It ensures that `MemberRemove` function does not return an "etcdserver: server stopped" error.
 func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clusterSize int) (memberId uint64, clusterId uint64) {
-	listResp, err := client.MemberList(ctx)
+	listResp, err := client.MemberList(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
