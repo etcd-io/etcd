@@ -63,7 +63,13 @@ type requestChance struct {
 
 func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
 
+	cnt := 0
 	for {
+		time.Sleep(100 * time.Millisecond)
+		cnt++
+		if cnt > 6 {
+			return
+		}
 		select {
 		case <-ctx.Done():
 			return

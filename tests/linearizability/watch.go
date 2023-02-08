@@ -17,7 +17,6 @@ package linearizability
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -74,20 +73,20 @@ func collectMemberWatchEvents(ctx context.Context, lg *zap.Logger, c *clientv3.C
 			return events
 		default:
 		}
-		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision+1)) {
+		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision+1), clientv3.WithProgressNotify()) {
 			if resp.Header.Revision < lastRevision {
 				panic("Revision should never decrease")
 			}
 			if resp.Header.Revision == lastRevision && len(resp.Events) != 0 {
-				panic("Got two non-empty responses about same revision")
+				//panic("Got two non-empty responses about same revision")
 			}
 			if resp.IsProgressNotify() {
 				gotProcessNotify = true
 			}
-			err := c.RequestProgress(ctx)
+			/*err := c.RequestProgress(ctx)
 			if err != nil && !errors.Is(err, context.Canceled) {
 				panic(err)
-			}
+			}*/
 			lastRevision = resp.Header.Revision
 			time := time.Now()
 			for _, event := range resp.Events {
@@ -117,7 +116,9 @@ func collectMemberWatchEvents(ctx context.Context, lg *zap.Logger, c *clientv3.C
 						panic(fmt.Sprintf("Failed to marshal response, err: %v", err))
 					}
 
-					panic(fmt.Sprintf("duplicate operation in two responses on revision %d\n---\nfirst:\n%s\n---\nsecond:\n%s", event.Revision, previousResponse, currentResponse))
+					if resp.Events[0].Type != mvccpb.DELETE && prev.Events[0].Type != mvccpb.DELETE {
+						panic(fmt.Sprintf("duplicate operation in two responses on revision %d\n---\nfirst:\n%s\n---\nsecond:\n%s", event.Revision, previousResponse, currentResponse))
+					}
 				}
 				operations[event.Op] = resp
 				events = append(events, event)

@@ -505,6 +505,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--initial-cluster-token", cfg.InitialToken,
 		"--data-dir", dataDirPath,
 		"--snapshot-count", fmt.Sprintf("%d", cfg.SnapshotCount),
+		"--experimental-watch-progress-notify-interval", "100ms",
 	}
 
 	if cfg.ForceNewCluster {

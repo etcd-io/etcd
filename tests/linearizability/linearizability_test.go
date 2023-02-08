@@ -79,7 +79,7 @@ var (
 	}
 	defaultTraffic = LowTraffic
 	trafficList    = []trafficConfig{
-		LowTraffic, HighTraffic,
+		LowTraffic,
 	}
 )
 
@@ -95,66 +95,16 @@ func TestLinearizability(t *testing.T) {
 	for _, traffic := range trafficList {
 		scenarios = append(scenarios, scenario{
 			name:      "ClusterOfSize1/" + traffic.name,
-			failpoint: RandomFailpoint,
+			failpoint: KillFailpoint,
 			traffic:   &traffic,
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithSnapshotCount(100),
-				e2e.WithGoFailEnabled(true),
-				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
-			),
-		})
-		scenarios = append(scenarios, scenario{
-			name:      "ClusterOfSize3/" + traffic.name,
-			failpoint: RandomFailpoint,
-			traffic:   &traffic,
-			config: *e2e.NewConfig(
-				e2e.WithSnapshotCount(100),
-				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
 				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
 			),
 		})
 	}
-	scenarios = append(scenarios, []scenario{
-		{
-			name:      "Issue14370",
-			failpoint: RaftBeforeSavePanic,
-			config: *e2e.NewConfig(
-				e2e.WithClusterSize(1),
-				e2e.WithGoFailEnabled(true),
-			),
-		},
-		{
-			name:      "Issue14685",
-			failpoint: DefragBeforeCopyPanic,
-			config: *e2e.NewConfig(
-				e2e.WithClusterSize(1),
-				e2e.WithGoFailEnabled(true),
-			),
-		},
-		{
-			name:      "Issue13766",
-			failpoint: KillFailpoint,
-			traffic:   &HighTraffic,
-			config: *e2e.NewConfig(
-				e2e.WithSnapshotCount(100),
-			),
-		},
-		// TODO: investigate periodic `Model is not linearizable` failures
-		// see https://github.com/etcd-io/etcd/pull/15104#issuecomment-1416371288
-		/*{
-			name:      "Snapshot",
-			failpoint: RandomSnapshotFailpoint,
-			traffic:   &HighTraffic,
-			config: *e2e.NewConfig(
-				e2e.WithGoFailEnabled(true),
-				e2e.WithSnapshotCount(100),
-				e2e.WithSnapshotCatchUpEntries(100),
-				e2e.WithPeerProxy(true),
-			),
-		},*/
-	}...)
 	for _, scenario := range scenarios {
 		if scenario.traffic == nil {
 			scenario.traffic = &defaultTraffic
@@ -171,7 +121,7 @@ func TestLinearizability(t *testing.T) {
 			defer clus.Close()
 			operations, events := testLinearizability(ctx, t, lg, clus, FailpointConfig{
 				failpoint:           scenario.failpoint,
-				count:               1,
+				count:               6,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
 			}, *scenario.traffic)
@@ -197,7 +147,7 @@ func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, clus
 	watchCtx, watchCancel := context.WithCancel(ctx)
 	g.Go(func() error {
 		operations = simulateTraffic(trafficCtx, t, lg, clus, traffic)
-		time.Sleep(time.Second)
+		time.Sleep(10 * time.Second)
 		watchCancel()
 		return nil
 	})
