@@ -86,7 +86,19 @@ type Watcher interface {
 	// (see https://github.com/etcd-io/etcd/issues/8980)
 	Watch(ctx context.Context, key string, opts ...OpOption) WatchChan
 
-	// RequestProgress requests a progress notify response be sent in all watch channels.
+	// RequestProgress requests a progress notify response be sent in all
+	// watch channels.
+	//
+	// Deprecated: There is a known issue on this method. It may cause the
+	// client side to receive a watch progress notification with a revision
+	// equal to or higher than the following watch responses. Please see
+	// the discussion in https://github.com/etcd-io/etcd/issues/15220.
+	//
+	// It's planned to be decommissioned in 3.7. Please use the periodic
+	// progress updates. For example,
+	//   ch := cli.Watch(ctx, "foo", clientv3.WithProgressNotify())
+	// Use the flag `--experimental-watch-progress-notify-interval` to
+	// configure the interval of progress notification.
 	RequestProgress(ctx context.Context) error
 
 	// Close closes the watcher and cancels all watch requests.
@@ -407,6 +419,9 @@ func (w *watcher) Close() (err error) {
 }
 
 // RequestProgress requests a progress notify response be sent in all watch channels.
+//
+// Deprecated: Please see the comment for the method `RequestProgress`
+// in interface `Watcher`.
 func (w *watcher) RequestProgress(ctx context.Context) (err error) {
 	ctxKey := streamKeyFromCtx(ctx)
 
