@@ -54,7 +54,7 @@ Setup environment:
 - [Clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
 - Install Go by following [installation](https://go.dev/doc/install). Please check minimal go version in [go.mod file](./go.mod#L3).
 - Install build tools (make):
-  - For ubuntu and debian run `sudo apt-get install build-essentials`
+  - For ubuntu and debian run `sudo apt-get install build-essential`
 - Verify that everything is installed by running `make build`
 
 Note: `make build` runs with `-v`. Other build flags can be added through env `GO_BUILD_FLAGS`, **if required**. Eg.,
