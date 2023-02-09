@@ -949,7 +949,10 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	}
 	if curOff < SegmentSizeBytes {
 		if mustSync {
-			return w.sync()
+			// gofail: var walBeforeSync struct{}
+			err = w.sync()
+			// gofail: var walAfterSync struct{}
+			return err
 		}
 		return nil
 	}
