@@ -513,12 +513,14 @@ func (sws *serverWatchStream) sendLoop() {
 
 		case <-progressTicker.C:
 			sws.mu.Lock()
+			// gofail: var apiBeforeSendTimedProgress struct{}
 			for id, ok := range sws.progress {
 				if ok {
 					sws.watchStream.RequestProgress(id)
 				}
 				sws.progress[id] = true
 			}
+			// gofail: var apiAfterSendTimedProgress struct{}
 			sws.mu.Unlock()
 
 		case <-sws.closec:

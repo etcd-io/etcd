@@ -86,13 +86,13 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 	var lastRevision int64 = 1
 	for _, resp := range responses {
 		if resp.Header.Revision < lastRevision {
-			t.Errorf("Revision should never decrease")
+			t.Errorf("Revision should never decrease, last: %d, latest: %d", lastRevision, resp.Header.Revision)
 		}
 		if resp.IsProgressNotify() && resp.Header.Revision == lastRevision {
 			gotProgressNotify = true
 		}
 		if resp.Header.Revision == lastRevision && len(resp.Events) != 0 {
-			t.Errorf("Got two non-empty responses about same revision")
+			t.Errorf("Got two non-empty responses about same revision: %d", lastRevision)
 		}
 		for _, event := range resp.Events {
 			if event.Kv.ModRevision != lastRevision+1 {
@@ -101,7 +101,7 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 			lastRevision = event.Kv.ModRevision
 		}
 		if resp.Header.Revision != lastRevision {
-			t.Errorf("Expect response revision equal last event mod revision")
+			t.Errorf("Expect response revision equal last event mod revision, last: %d, latest: %d", lastRevision, resp.Header.Revision)
 		}
 		lastRevision = resp.Header.Revision
 	}
