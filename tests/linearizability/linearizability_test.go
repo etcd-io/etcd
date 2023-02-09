@@ -64,9 +64,8 @@ var (
 			largePutSize: 32769,
 			leaseTTL:     DefaultLeaseTTL,
 			writes: []requestChance{
-				{operation: Put, chance: 85},
+				{operation: Put, chance: 90},
 				{operation: MultiOpTxn, chance: 10},
-				{operation: LargePut, chance: 5},
 			},
 		},
 	}
