@@ -28,9 +28,9 @@ install_direct () {
         tar xzvf "/tmp/etcd-${ETCD_VER}-${machine}-amd64.tar.gz" -C "/tmp/etcd-download-test --strip-components=1"
         rm -f "/tmp/etcd-${ETCD_VER}-${machine}-amd64.tar.gz"
     else
-		curl -L "${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-${machine}-amd64.zip" -o "/tmp/etcd-${ETCD_VER}-${machine}-amd64.zip"
-		unzip "/tmp/etcd-${ETCD_VER}-${machine}-amd64.zip" -d /tmp && rm -f "/tmp/etcd-${ETCD_VER}-${machine}-amd64.zip"
-		mv /tmp/etcd-"${ETCD_VER}"-"${machine}"-amd64/* /tmp/etcd-download-test && rm -rf mv "/tmp/etcd-${ETCD_VER}-${machine}-amd64"
+		    curl -L "${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-${machine}-amd64.zip" -o "/tmp/etcd-${ETCD_VER}-${machine}-amd64.zip"
+		    unzip "/tmp/etcd-${ETCD_VER}-${machine}-amd64.zip" -d /tmp && rm -f "/tmp/etcd-${ETCD_VER}-${machine}-amd64.zip"
+		    mv /tmp/etcd-"${ETCD_VER}"-"${machine}"-amd64/* /tmp/etcd-download-test && rm -rf mv "/tmp/etcd-${ETCD_VER}-${machine}-amd64"
     fi
 
 	# test
