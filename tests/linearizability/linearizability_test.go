@@ -96,7 +96,7 @@ func TestLinearizability(t *testing.T) {
 	for _, traffic := range trafficList {
 		scenarios = append(scenarios, scenario{
 			name:      "ClusterOfSize1/" + traffic.name,
-			failpoint: RandomFailpoint,
+			failpoint: RandomOneNodeClusterFailpoint,
 			traffic:   &traffic,
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
@@ -108,7 +108,7 @@ func TestLinearizability(t *testing.T) {
 		})
 		scenarios = append(scenarios, scenario{
 			name:      "ClusterOfSize3/" + traffic.name,
-			failpoint: RandomFailpoint,
+			failpoint: RandomMultiNodeClusterFailpoint,
 			traffic:   &traffic,
 			config: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
