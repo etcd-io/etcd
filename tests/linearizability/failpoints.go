@@ -55,7 +55,7 @@ var (
 	RaftBeforeLeaderSendPanic                Failpoint = goPanicFailpoint{"raftBeforeLeaderSend", nil, Leader}
 	BlackholePeerNetwork                     Failpoint = blackholePeerNetworkFailpoint{duration: time.Second}
 	DelayPeerNetwork                         Failpoint = delayPeerNetworkFailpoint{duration: time.Second, baseLatency: 75 * time.Millisecond, randomizedLatency: 50 * time.Millisecond}
-	RandomFailpoint                          Failpoint = randomFailpoint{[]Failpoint{
+	oneNodeClusterFailpoints                           = []Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic,
 		RaftAfterSavePanic, DefragBeforeCopyPanic, DefragBeforeRenamePanic,
 		BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
@@ -67,17 +67,18 @@ var (
 		RaftBeforeLeaderSendPanic,
 		BlackholePeerNetwork,
 		DelayPeerNetwork,
-	}}
-	RaftBeforeApplySnapPanic Failpoint = goPanicFailpoint{"raftBeforeApplySnap", triggerBlackholeUntilSnapshot, Follower}
-	RaftAfterApplySnapPanic  Failpoint = goPanicFailpoint{"raftAfterApplySnap", triggerBlackholeUntilSnapshot, Follower}
-	RaftAfterWALReleasePanic Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackholeUntilSnapshot, Follower}
-	RaftBeforeSaveSnapPanic  Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackholeUntilSnapshot, Follower}
-	RaftAfterSaveSnapPanic   Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackholeUntilSnapshot, Follower}
-	RandomSnapshotFailpoint  Failpoint = randomFailpoint{[]Failpoint{
+	}
+	RandomOneNodeClusterFailpoint   Failpoint = randomFailpoint{oneNodeClusterFailpoints}
+	RaftBeforeFollowerSendPanic     Failpoint = goPanicFailpoint{"raftBeforeFollowerSend", nil, Follower}
+	RandomMultiNodeClusterFailpoint Failpoint = randomFailpoint{append(oneNodeClusterFailpoints, RaftBeforeFollowerSendPanic)}
+	RaftBeforeApplySnapPanic        Failpoint = goPanicFailpoint{"raftBeforeApplySnap", triggerBlackholeUntilSnapshot, Follower}
+	RaftAfterApplySnapPanic         Failpoint = goPanicFailpoint{"raftAfterApplySnap", triggerBlackholeUntilSnapshot, Follower}
+	RaftAfterWALReleasePanic        Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackholeUntilSnapshot, Follower}
+	RaftBeforeSaveSnapPanic         Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackholeUntilSnapshot, Follower}
+	RaftAfterSaveSnapPanic          Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackholeUntilSnapshot, Follower}
+	RandomSnapshotFailpoint         Failpoint = randomFailpoint{[]Failpoint{
 		RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic, RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic,
 	}}
-	// TODO: Figure out how to reliably trigger below failpoints and add them to RandomFailpoint
-	raftBeforeFollowerSendPanic Failpoint = goPanicFailpoint{"raftBeforeFollowerSend", nil, AnyMember}
 )
 
 type Failpoint interface {
