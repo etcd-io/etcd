@@ -37,3 +37,4 @@ hack/tls-setup/certs
 /etcd-dump-logs
 /cluster
 .vscode
+results/
