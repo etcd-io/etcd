@@ -9,6 +9,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Package `netutil`
 - Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187)
 
+### Package `clientv3`
+- Fix [etcd might send duplicated events to watch clients](https://github.com/etcd-io/etcd/pull/15274).
+
 ### Dependency
 - Bump bbolt to [v1.3.7](https://github.com/etcd-io/etcd/pull/15222).
 
