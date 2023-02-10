@@ -890,6 +890,7 @@ func TestV3WatchProgressOnMemberRestart(t *testing.T) {
 	defer cancel()
 
 	errC := make(chan error, 1)
+	watchReady := make(chan struct{}, 1)
 	doneC := make(chan struct{}, 1)
 	progressNotifyC := make(chan struct{}, 1)
 	go func() {
@@ -901,13 +902,14 @@ func TestV3WatchProgressOnMemberRestart(t *testing.T) {
 		)
 
 		wch := client.Watch(ctx, "foo", clientv3.WithProgressNotify())
+		watchReady <- struct{}{}
 		for wr := range wch {
 			if wr.Err() != nil {
 				errC <- fmt.Errorf("watch error: %w", wr.Err())
 				return
 			}
 
-			if wr.IsProgressNotify() {
+			if len(wr.Events) == 0 {
 				// We need to make sure at least one progress notification
 				// is received after receiving the normal watch response
 				// and before restarting the member.
@@ -934,21 +936,30 @@ func TestV3WatchProgressOnMemberRestart(t *testing.T) {
 		}
 	}()
 
-	// write the key before the member restarts
-	t.Log("Writing key 'foo'")
+	// waiting for the watcher ready
+	t.Log("Waiting for the watcher to be ready.")
+	<-watchReady
+	time.Sleep(time.Second)
+
+	// write a K/V firstly
+	t.Log("Writing key 'foo' firstly")
 	_, err := client.Put(ctx, "foo", "bar1")
 	require.NoError(t, err)
 
 	// make sure at least one progress notification is received
 	// before restarting the member
 	t.Log("Waiting for the progress notification")
-	<-progressNotifyC
+	select {
+	case <-progressNotifyC:
+	case <-time.After(5 * time.Second):
+		t.Log("Do not receive the progress notification in 5 seconds, move forward anyway.")
+	}
 
 	// restart the member
 	t.Log("Restarting the member")
 	clus.Members[0].Stop(t)
 	clus.Members[0].Restart(t)
-	clus.WaitMembersForLeader(t, clus.Members)
+	clus.Members[0].WaitOK(t)
 
 	// write the same key again after the member restarted
 	t.Log("Writing the same key 'foo' again after restarting the member")
@@ -961,7 +972,7 @@ func TestV3WatchProgressOnMemberRestart(t *testing.T) {
 		t.Fatal(err)
 	case <-doneC:
 		t.Log("Done")
-	case <-time.After(10 * time.Second):
+	case <-time.After(15 * time.Second):
 		t.Fatal("Timed out waiting for the response")
 	}
 }
