@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -873,6 +875,101 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 	rok, nr := waitResponse(wStream, 1*time.Second)
 	if !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
+	}
+}
+
+// TestV3WatchProgressOnMemberRestart verifies the client side doesn't
+// receive duplicated events.
+// Refer to https://github.com/etcd-io/etcd/pull/15248#issuecomment-1423225742.
+func TestV3WatchProgressOnMemberRestart(t *testing.T) {
+	BeforeTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{
+		Size:                        1,
+		WatchProgressNotifyInterval: time.Second,
+	})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	errC := make(chan error, 1)
+	doneC := make(chan struct{}, 1)
+	progressNotifyC := make(chan struct{}, 1)
+	go func() {
+		defer close(doneC)
+
+		var (
+			lastWatchedModRevision  int64
+			gotProgressNotification bool
+		)
+
+		wch := client.Watch(ctx, "foo", clientv3.WithProgressNotify())
+		for wr := range wch {
+			if wr.Err() != nil {
+				errC <- fmt.Errorf("watch error: %w", wr.Err())
+				return
+			}
+
+			if wr.IsProgressNotify() {
+				// We need to make sure at least one progress notification
+				// is received after receiving the normal watch response
+				// and before restarting the member.
+				if lastWatchedModRevision > 0 {
+					gotProgressNotification = true
+					progressNotifyC <- struct{}{}
+				}
+				continue
+			}
+
+			for _, event := range wr.Events {
+				if event.Kv.ModRevision <= lastWatchedModRevision {
+					errC <- fmt.Errorf("got an unexpected revision: %d, lastWatchedModRevision: %d",
+						event.Kv.ModRevision,
+						lastWatchedModRevision)
+					return
+				}
+				lastWatchedModRevision = event.Kv.ModRevision
+			}
+
+			if gotProgressNotification {
+				return
+			}
+		}
+	}()
+
+	// write the key before the member restarts
+	t.Log("Writing key 'foo'")
+	_, err := client.Put(ctx, "foo", "bar1")
+	require.NoError(t, err)
+
+	// make sure at least one progress notification is received
+	// before restarting the member
+	t.Log("Waiting for the progress notification")
+	<-progressNotifyC
+
+	// restart the member
+	t.Log("Restarting the member")
+	clus.Members[0].Stop(t)
+	t.Log("The member stopped")
+	clus.Members[0].Restart(t)
+	clus.WaitLeader(t)
+	t.Log("The member restarted")
+
+	// write the same key again after the member restarted
+	t.Log("Writing the same key 'foo' again after restarting the member")
+	_, err = client.Put(ctx, "foo", "bar2")
+	require.NoError(t, err)
+
+	t.Log("Waiting for result")
+	select {
+	case err := <-errC:
+		t.Fatal(err)
+	case <-doneC:
+		t.Log("Done")
+	case <-time.After(20 * time.Second):
+		t.Fatal("Timed out waiting for the response")
 	}
 }
 
