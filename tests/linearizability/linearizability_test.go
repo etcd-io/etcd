@@ -175,21 +175,51 @@ func TestLinearizability(t *testing.T) {
 }
 
 func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, config e2e.EtcdProcessClusterConfig, traffic *trafficConfig, failpoint FailpointConfig) {
+	var responses [][]watchResponse
+	var events [][]watchEvent
+	var operations []porcupine.Operation
+	var patchedOperations []porcupine.Operation
+	var visualizeHistory func(path string)
+
 	clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer clus.Close()
 
-	operations, watchResponses := runScenario(ctx, t, lg, clus, *traffic, failpoint)
+	defer func() {
+		path := testResultsDirectory(t)
+		if t.Failed() {
+			for i, member := range clus.Procs {
+				memberDataDir := filepath.Join(path, member.Config().Name)
+				persistMemberDataDir(t, lg, member, memberDataDir)
+				if responses != nil {
+					persistWatchResponses(t, lg, filepath.Join(memberDataDir, "responses.json"), responses[i])
+				}
+				if events != nil {
+					persistWatchEvents(t, lg, filepath.Join(memberDataDir, "events.json"), events[i])
+				}
+			}
+			if operations != nil {
+				persistOperationHistory(t, lg, filepath.Join(path, "full-history.json"), operations)
+			}
+			if patchedOperations != nil {
+				persistOperationHistory(t, lg, filepath.Join(path, "patched-history.json"), patchedOperations)
+			}
+		}
+		visualizeHistory(filepath.Join(path, "history.html"))
+	}()
+	operations, responses = runScenario(ctx, t, lg, clus, *traffic, failpoint)
 	forcestopCluster(clus)
 
 	watchProgressNotifyEnabled := clus.Cfg.WatchProcessNotifyInterval != 0
-	validateWatchResponses(t, watchResponses, watchProgressNotifyEnabled)
-	watchEvents := watchEvents(watchResponses)
-	validateEventsMatch(t, watchEvents)
-	patchedOperations := patchOperationBasedOnWatchEvents(operations, longestHistory(watchEvents))
-	checkOperationsAndPersistResults(t, lg, patchedOperations, clus)
+	validateWatchResponses(t, responses, watchProgressNotifyEnabled)
+
+	events = watchEvents(responses)
+	validateEventsMatch(t, events)
+
+	patchedOperations = patchOperationBasedOnWatchEvents(operations, longestHistory(events))
+	visualizeHistory = validateOperationHistoryAndReturnVisualize(t, lg, patchedOperations)
 }
 
 func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, traffic trafficConfig, failpoint FailpointConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
@@ -402,7 +432,7 @@ func validateEventsMatch(t *testing.T, histories [][]watchEvent) {
 		length := len(histories[i])
 		// We compare prefix of watch events, as we are not guaranteed to collect all events from each node.
 		if diff := cmp.Diff(longestHistory[:length], histories[i][:length], cmpopts.IgnoreFields(watchEvent{}, "Time")); diff != "" {
-			t.Errorf("Events in watches do not match, %s", diff)
+			t.Error("Events in watches do not match")
 		}
 	}
 }
@@ -417,9 +447,8 @@ func longestHistory(histories [][]watchEvent) []watchEvent {
 	return histories[longestIndex]
 }
 
-func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
-	path := testResultsDirectory(t)
-
+// return visualize as porcupine.linearizationInfo used to generate visualization is private
+func validateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation) (visualize func(basepath string)) {
 	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, 5*time.Minute)
 	if linearizable == porcupine.Illegal {
 		t.Error("Model is not linearizable")
@@ -427,25 +456,18 @@ func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations [
 	if linearizable == porcupine.Unknown {
 		t.Error("Linearization timed out")
 	}
-	if linearizable != porcupine.Ok {
-		persistOperationHistory(t, lg, path, operations)
-		for _, member := range clus.Procs {
-			persistMemberDataDir(t, lg, member, filepath.Join(path, member.Config().Name))
+	return func(path string) {
+		lg.Info("Saving visualization", zap.String("path", path))
+		err := porcupine.VisualizePath(model.Etcd, info, path)
+		if err != nil {
+			t.Errorf("Failed to visualize, err: %v", err)
 		}
-	}
-
-	visualizationPath := filepath.Join(path, "history.html")
-	lg.Info("Saving visualization", zap.String("path", visualizationPath))
-	err := porcupine.VisualizePath(model.Etcd, info, visualizationPath)
-	if err != nil {
-		t.Errorf("Failed to visualize, err: %v", err)
 	}
 }
 
 func persistOperationHistory(t *testing.T, lg *zap.Logger, path string, operations []porcupine.Operation) {
-	historyFilePath := filepath.Join(path, "history.json")
-	lg.Info("Saving operation history", zap.String("path", historyFilePath))
-	file, err := os.OpenFile(historyFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	lg.Info("Saving operation history", zap.String("path", path))
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		t.Errorf("Failed to save operation history: %v", err)
 		return
