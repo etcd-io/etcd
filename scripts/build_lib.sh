@@ -78,15 +78,6 @@ tools_build() {
       "-ldflags=${GO_LDFLAGS[*]}" \
       -o="${out}/${tool}" "./${tool}" || return 2
   done
-  tests_build "${@}"
-}
-
-tests_build() {
-  out=${BINDIR:-./bin}
-  out=$(readlink -f "$out")
-  out="${out}/functional/cmd"
-  mkdir -p "${out}"
-  BINDIR="${out}" run ./tests/functional/build.sh || return 2
 }
 
 run_build() {
