@@ -791,6 +791,9 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	if r.Perm == nil {
 		return nil, ErrPermissionNotGiven
 	}
+	if !isValidPermissionRange(r.Perm.Key, r.Perm.RangeEnd) {
+		return nil, ErrInvalidAuthMgmt
+	}
 
 	tx := as.be.BatchTx()
 	tx.LockInsideApply()

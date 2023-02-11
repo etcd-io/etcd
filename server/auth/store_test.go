@@ -17,6 +17,7 @@ package auth
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -538,6 +539,144 @@ func TestRoleGrantPermission(t *testing.T) {
 
 	if !reflect.DeepEqual(perm, r.Perm[0]) {
 		t.Errorf("expected %v, got %v", perm, r.Perm[0])
+	}
+}
+
+func TestRoleGrantInvalidPermission(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		perm *authpb.Permission
+		want error
+	}{
+		{
+			name: "valid range",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: []byte("RangeEnd"),
+			},
+			want: nil,
+		},
+		{
+			name: "invalid range: nil key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      nil,
+				RangeEnd: []byte("RangeEnd"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "valid range: single key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: nil,
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: single key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: []byte{},
+			},
+			want: nil,
+		},
+		{
+			name: "invalid range: empty (Key == RangeEnd)",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("a"),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: empty (Key > RangeEnd)",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("b"),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte(""),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte{0x00},
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "valid range: single key permission for []byte{0x00}",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte{0x00},
+				RangeEnd: []byte(""),
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: \"a\" or larger keys",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("a"),
+				RangeEnd: []byte{0x00},
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: the entire keys",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte{0x00},
+				RangeEnd: []byte{0x00},
+			},
+			want: nil,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+				Name: "role-test-1",
+				Perm: tt.perm,
+			})
+
+			if !errors.Is(err, tt.want) {
+				t.Errorf("#%d: result=%t, want=%t", i, err, tt.want)
+			}
+		})
 	}
 }
 
