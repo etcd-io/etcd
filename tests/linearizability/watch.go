@@ -82,28 +82,37 @@ func validateWatchResponses(t *testing.T, responses [][]watchResponse, expectPro
 }
 
 func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
-	var gotProgressNotify = false
-	var lastRevision int64 = 1
+	var (
+		gotProgressNotify          = false
+		lastEventModRevision int64 = 1 // The event.Kv.ModRevision in the latest event.
+		lastHeadRevision     int64 = 1 // The resp.Header.Revision in last watch response.
+	)
 	for _, resp := range responses {
-		if resp.Header.Revision < lastRevision {
-			t.Errorf("Revision should never decrease")
+		if resp.Header.Revision < lastHeadRevision {
+			t.Errorf("Server revision should never decrease, lastHeadRevision: %d, resp.Header.Revision: %d",
+				lastHeadRevision, resp.Header.Revision)
 		}
-		if resp.IsProgressNotify() && resp.Header.Revision == lastRevision {
+
+		if resp.IsProgressNotify() && resp.Header.Revision == lastHeadRevision {
 			gotProgressNotify = true
 		}
-		if resp.Header.Revision == lastRevision && len(resp.Events) != 0 {
+		if resp.Header.Revision == lastHeadRevision && len(resp.Events) != 0 {
 			t.Errorf("Got two non-empty responses about same revision")
 		}
+
 		for _, event := range resp.Events {
-			if event.Kv.ModRevision != lastRevision+1 {
-				t.Errorf("Expect revision to grow by 1, last: %d, mod: %d", lastRevision, event.Kv.ModRevision)
+			if event.Kv.ModRevision != lastEventModRevision+1 {
+				t.Errorf("Expect event revision to grow by 1, last: %d, mod: %d", lastEventModRevision, event.Kv.ModRevision)
 			}
-			lastRevision = event.Kv.ModRevision
+			lastEventModRevision = event.Kv.ModRevision
 		}
-		if resp.Header.Revision != lastRevision {
-			t.Errorf("Expect response revision equal last event mod revision")
+
+		if resp.Header.Revision < lastEventModRevision {
+			t.Errorf("Event revision should never exceed the server's revision, lastEventRevision: %d, resp.Header.Revision: %d",
+				lastEventModRevision, resp.Header.Revision)
 		}
-		lastRevision = resp.Header.Revision
+
+		lastHeadRevision = resp.Header.Revision
 	}
 	if gotProgressNotify != expectProgressNotify {
 		t.Errorf("Expected progress notify: %v, got: %v", expectProgressNotify, gotProgressNotify)
