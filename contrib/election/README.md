@@ -48,9 +48,10 @@ goreman -basedir contrib/election start
 |   parameter   |   detail  |
 |  ----  | ----  |
 |  cluster | comma separated cluster peers |
-| id  | node index in the cluster peers |
+| id  | member index in the cluster peers |
 | duration | alive duration of the raft instance in seconds |
 | latency | average latency of the real network condition |
+| resdir | the directory to output experiment logs |
 | mocknet | whether to use mock network module to simulate message latency and loss |
 | msgloss | ratio to trigger message loss in percentage (only works when mocknet is true) |
 | msgdelay | additional latency for message transmission (only works when mocknet is true) |
