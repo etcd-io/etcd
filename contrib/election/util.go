@@ -16,16 +16,23 @@ package main
 
 import (
 	"math/rand"
-	"strconv"
+	"os"
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-func uint64ToString(i uint64) string {
-	return strconv.FormatUint(i, 16)
+func getNewCore(path string) zapcore.Core {
+	cfg := zap.NewProductionEncoderConfig()
+	fileEncoder := zapcore.NewJSONEncoder(cfg)
+	file, _ := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModeAppend|os.ModePerm)
+	fileWriterSyncer := zapcore.AddSync(file)
+	fileCore := zapcore.NewCore(fileEncoder, fileWriterSyncer, zapcore.DebugLevel)
+	core := zapcore.NewTee(fileCore)
+	return core
 }
 
 type Packet struct {
@@ -34,11 +41,14 @@ type Packet struct {
 }
 
 type mockNet struct {
-	packetloss int
-	latency    int
-	maxsize    uint64
-	timetick   uint64
-	stopc      chan struct{}
+	msgloss     int
+	latency     int
+	maxsize     uint64
+	timetick    uint64
+	pkglost     uint64
+	pkgtotal    uint64
+	reallatency uint64
+	stopc       chan struct{}
 
 	packets   []Packet
 	inQueueC  chan raftpb.Message
@@ -47,19 +57,23 @@ type mockNet struct {
 	logger *zap.Logger
 }
 
-func newMockNet(packetloss, latency int, stopc <-chan struct{}, logger *zap.Logger) (chan<- raftpb.Message, <-chan []raftpb.Message) {
+func newMockNet(msgloss, latency int, stopc chan struct{}, logger *zap.Logger) (chan<- raftpb.Message, <-chan []raftpb.Message) {
 	var maxsize uint64 = 10000
 	inQueueC := make(chan raftpb.Message, maxsize)
 	outQueueC := make(chan []raftpb.Message, maxsize)
 	mc := &mockNet{
-		packetloss: packetloss,
-		latency:    latency,
-		maxsize:    maxsize,
-		timetick:   uint64(0),
-		packets:    make([]Packet, 0),
-		inQueueC:   inQueueC,
-		outQueueC:  outQueueC,
-		logger:     logger,
+		msgloss:     msgloss,
+		latency:     latency,
+		maxsize:     maxsize,
+		timetick:    uint64(0),
+		pkglost:     uint64(0),
+		pkgtotal:    uint64(0),
+		reallatency: uint64(0),
+		packets:     make([]Packet, 0),
+		inQueueC:    inQueueC,
+		outQueueC:   outQueueC,
+		stopc:       stopc,
+		logger:      logger,
 	}
 	go mc.serveChannels()
 	return inQueueC, outQueueC
@@ -80,12 +94,11 @@ func (mn *mockNet) sendPackets(pkts []Packet) {
 
 func (mn *mockNet) packetsToSend() (npkts []Packet) {
 	if len(mn.packets) > 0 {
-		var idx int = 0
+		var idx int = -1
 		for i := range mn.packets {
-			if mn.packets[i].time+uint64(mn.latency) < mn.timetick {
+			if mn.packets[i].time+uint64(mn.latency) <= mn.timetick {
 				idx = i
-			} else {
-				break
+				mn.reallatency += mn.timetick - mn.packets[i].time
 			}
 		}
 		npkts = mn.packets[0 : idx+1]
@@ -106,11 +119,17 @@ func (mn *mockNet) serveChannels() {
 			if !ok {
 				return
 			}
-			if rand.Int() > mn.packetloss {
+			if rand.Intn(100) > mn.msgloss {
 				mn.packets = append(mn.packets, Packet{msg: msg, time: mn.timetick})
+			} else {
+				mn.pkglost++
 			}
+			mn.pkgtotal++
 		case <-mn.stopc:
+			mn.logger.Sugar().Infof("total packet %d, loss %d", mn.pkgtotal, mn.pkglost)
+			mn.logger.Sugar().Infof("average latency per packet %d", mn.reallatency/mn.pkgtotal)
 			close(mn.outQueueC)
+			return
 		}
 	}
 }

@@ -16,33 +16,61 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"go.uber.org/zap"
+
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func main() {
+	// user input parameters to configure the election experiment
 	cluster := flag.String("cluster", "http://127.0.0.1:9021", "comma separated cluster peers")
-	id := flag.Int("id", 1, "node ID")
-	duration := flag.Duration("duration", 60, "duration of election experiment in seconds")
-	packetloss := flag.Int("packetloss", 0, "ratio to trigger packet loss in percentage")
-	latency := flag.Int("latency", 0, "additional latency for message transmission")
+	id := flag.Int("id", 1, "member index in the cluster peers")
+	duration := flag.Duration("duration", 60, "alive duration of the raft instance in seconds")
+	latency := flag.Int("latency", 0, "average latency of the real network condition")
+	resdir := flag.String("resdir", "results/", "the directory to output experiment logs")
+	mocknet := flag.Bool("mocknet", false, "whether to use mock network module to simulate message latency and loss")
+	msgloss := flag.Int("msgloss", 0, "ratio to trigger message loss in percentage (only works when mocknet is true)")
+	msgdelay := flag.Int("msgdelay", 0, "additional latency for message transmission (only works when mocknet is true)")
 	flag.Parse()
 
+	// configure the zap logger
+	root, err := os.Getwd()
+	if err != nil {
+		fmt.Println("fail to get working directory")
+	}
+	path := filepath.Join(root, *resdir, time.Now().Format("2006-01-02 15:04:05"), fmt.Sprintf("%d", *id))
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		panic(fmt.Sprintf("fail to create result path (%s), error (%v)", path, err))
+	}
+	logger := zap.New(getNewCore(filepath.Join(path, "election.log")))
+
+	// start the mock network and raft node
+	var inQueueC chan<- raftpb.Message
+	var outQueueC <-chan []raftpb.Message
 	stopc := make(chan struct{})
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-	inQueueC, outQueueC := newMockNet(*packetloss, *latency, stopc, logger)
-	stopdonec := newRaftNode(*id, strings.Split(*cluster, ","), stopc, inQueueC, outQueueC, logger)
-	for {
-		select {
-		case <-time.After(*duration * time.Second):
-			close(stopc)
-		case <-stopdonec:
-			log.Print("election experiment finished")
-			return
-		}
+	if *mocknet {
+		inQueueC, outQueueC = newMockNet(*msgloss, *msgdelay, stopc, logger)
+	}
+	args := &Args{
+		id:        *id,
+		peers:     strings.Split(*cluster, ","),
+		latency:   *latency,
+		inQueueC:  inQueueC,
+		outQueueC: outQueueC,
+	}
+	stopDoneC := newRaftNode(args, logger)
+
+	// wait util experiment timeout and the raftNode stopped
+	if _, ok := <-time.After(*duration * time.Second); ok {
+		close(stopc)
+	}
+	if _, ok := <-stopDoneC; !ok {
+		logger.Info("election instance stopped", zap.Int("member", *id))
 	}
 }
