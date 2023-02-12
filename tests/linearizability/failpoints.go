@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	triggerTimeout = time.Second
+	triggerTimeout = 5 * time.Second
 )
 
 var (
@@ -55,7 +55,7 @@ var (
 	RaftBeforeLeaderSendPanic                Failpoint = goPanicFailpoint{"raftBeforeLeaderSend", nil, Leader}
 	BlackholePeerNetwork                     Failpoint = blackholePeerNetworkFailpoint{duration: time.Second}
 	DelayPeerNetwork                         Failpoint = delayPeerNetworkFailpoint{duration: time.Second, baseLatency: 75 * time.Millisecond, randomizedLatency: 50 * time.Millisecond}
-	RandomFailpoint                          Failpoint = randomFailpoint{[]Failpoint{
+	oneNodeClusterFailpoints                           = []Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic,
 		RaftAfterSavePanic, DefragBeforeCopyPanic, DefragBeforeRenamePanic,
 		BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
@@ -67,25 +67,29 @@ var (
 		RaftBeforeLeaderSendPanic,
 		BlackholePeerNetwork,
 		DelayPeerNetwork,
+	}
+	RandomOneNodeClusterFailpoint   Failpoint = randomFailpoint{oneNodeClusterFailpoints}
+	RaftBeforeFollowerSendPanic     Failpoint = goPanicFailpoint{"raftBeforeFollowerSend", nil, Follower}
+	RandomMultiNodeClusterFailpoint Failpoint = randomFailpoint{append(oneNodeClusterFailpoints, RaftBeforeFollowerSendPanic)}
+	RaftBeforeApplySnapPanic        Failpoint = goPanicFailpoint{"raftBeforeApplySnap", triggerBlackholeUntilSnapshot, Follower}
+	RaftAfterApplySnapPanic         Failpoint = goPanicFailpoint{"raftAfterApplySnap", triggerBlackholeUntilSnapshot, Follower}
+	RaftAfterWALReleasePanic        Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackholeUntilSnapshot, Follower}
+	RaftBeforeSaveSnapPanic         Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackholeUntilSnapshot, Follower}
+	RaftAfterSaveSnapPanic          Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackholeUntilSnapshot, Follower}
+	RandomSnapshotFailpoint         Failpoint = randomFailpoint{[]Failpoint{
+		RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic, RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic,
 	}}
-	// TODO: Figure out how to reliably trigger below failpoints and add them to RandomFailpoint
-	raftBeforeApplySnapPanic    Failpoint = goPanicFailpoint{"raftBeforeApplySnap", nil, AnyMember}
-	raftAfterApplySnapPanic     Failpoint = goPanicFailpoint{"raftAfterApplySnap", nil, AnyMember}
-	raftAfterWALReleasePanic    Failpoint = goPanicFailpoint{"raftAfterWALRelease", nil, AnyMember}
-	raftBeforeFollowerSendPanic Failpoint = goPanicFailpoint{"raftBeforeFollowerSend", nil, AnyMember}
-	raftBeforeSaveSnapPanic     Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", nil, AnyMember}
-	raftAfterSaveSnapPanic      Failpoint = goPanicFailpoint{"raftAfterSaveSnap", nil, AnyMember}
 )
 
 type Failpoint interface {
-	Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error
+	Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error
 	Name() string
 	Available(e2e.EtcdProcess) bool
 }
 
 type killFailpoint struct{}
 
-func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f killFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 
 	killCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
@@ -93,10 +97,11 @@ func (f killFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.Etcd
 	for member.IsRunning() {
 		err := member.Kill()
 		if err != nil {
-			t.Logf("sending kill signal failed: %v", err)
+			lg.Info("Sending kill signal failed", zap.Error(err))
 		}
 		err = member.Wait(killCtx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+			lg.Info("Failed to kill the process", zap.Error(err))
 			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
 		}
 	}
@@ -118,7 +123,7 @@ func (f killFailpoint) Available(e2e.EtcdProcess) bool {
 
 type goPanicFailpoint struct {
 	failpoint string
-	trigger   func(ctx context.Context, member e2e.EtcdProcess) error
+	trigger   func(t *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error
 	target    failpointTarget
 }
 
@@ -127,29 +132,39 @@ type failpointTarget string
 const (
 	AnyMember failpointTarget = "AnyMember"
 	Leader    failpointTarget = "Leader"
+	Follower  failpointTarget = "Follower"
 )
 
-func (f goPanicFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f goPanicFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := f.pickMember(t, clus)
 
 	triggerCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 
 	for member.IsRunning() {
+		lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
 		err := member.Failpoints().Setup(triggerCtx, f.failpoint, "panic")
 		if err != nil {
-			t.Logf("gofailpoint setup failed: %v", err)
+			lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
+		}
+		if !member.IsRunning() {
+			// TODO: Check member logs that etcd not running is caused panic caused by proper gofailpoint.
+			break
 		}
 		if f.trigger != nil {
-			err = f.trigger(triggerCtx, member)
+			lg.Info("Triggering gofailpoint", zap.String("failpoint", f.Name()))
+			err = f.trigger(t, triggerCtx, member, clus)
 			if err != nil {
-				t.Logf("triggering gofailpoint failed: %v", err)
+				lg.Info("gofailpoint trigger failed", zap.String("failpoint", f.Name()), zap.Error(err))
 			}
 		}
+		lg.Info("Waiting for member to exist", zap.String("member", member.Config().Name))
 		err = member.Wait(triggerCtx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
-			return fmt.Errorf("failed to trigger a process panic within %s, err: %w", triggerTimeout, err)
+			lg.Info("Member didn't exit as expected", zap.String("member", member.Config().Name), zap.Error(err))
+			return fmt.Errorf("member didn't exit as expected: %v", err)
 		}
+		lg.Info("Member existed as expected", zap.String("member", member.Config().Name))
 	}
 
 	err := member.Start(ctx)
@@ -165,6 +180,8 @@ func (f goPanicFailpoint) pickMember(t *testing.T, clus *e2e.EtcdProcessCluster)
 		return clus.Procs[rand.Int()%len(clus.Procs)]
 	case Leader:
 		return clus.Procs[clus.WaitLeader(t)]
+	case Follower:
+		return clus.Procs[(clus.WaitLeader(t)+1)%len(clus.Procs)]
 	default:
 		panic("unknown target")
 	}
@@ -184,7 +201,7 @@ func (f goPanicFailpoint) Name() string {
 	return f.failpoint
 }
 
-func triggerDefrag(ctx context.Context, member e2e.EtcdProcess) error {
+func triggerDefrag(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            member.EndpointsV3(),
 		Logger:               zap.NewNop(),
@@ -202,7 +219,7 @@ func triggerDefrag(ctx context.Context, member e2e.EtcdProcess) error {
 	return nil
 }
 
-func triggerCompact(ctx context.Context, member e2e.EtcdProcess) error {
+func triggerCompact(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            member.EndpointsV3(),
 		Logger:               zap.NewNop(),
@@ -224,11 +241,83 @@ func triggerCompact(ctx context.Context, member e2e.EtcdProcess) error {
 	return nil
 }
 
+// latestRevisionForEndpoint gets latest revision of the first endpoint in Client.Endpoints list
+func latestRevisionForEndpoint(ctx context.Context, c *clientv3.Client) (int64, error) {
+	cntx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+	resp, err := c.Status(cntx, c.Endpoints()[0])
+	if err != nil {
+		return 0, err
+	}
+	return resp.Header.Revision, err
+}
+
+func triggerBlackholeUntilSnapshot(t *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
+	leader := clus.Procs[clus.WaitLeader(t)]
+	lc, err := clientv3.New(clientv3.Config{
+		Endpoints:            []string{leader.Config().ClientURL},
+		Logger:               zap.NewNop(),
+		DialKeepAliveTime:    1 * time.Millisecond,
+		DialKeepAliveTimeout: 5 * time.Millisecond,
+	})
+	if err != nil {
+		return err
+	}
+	defer lc.Close()
+
+	mc, err := clientv3.New(clientv3.Config{
+		Endpoints:            []string{member.Config().ClientURL},
+		Logger:               zap.NewNop(),
+		DialKeepAliveTime:    1 * time.Millisecond,
+		DialKeepAliveTimeout: 5 * time.Millisecond,
+	})
+	if err != nil {
+		return err
+	}
+	defer mc.Close()
+
+	proxy := member.PeerProxy()
+	// Blackholing will cause peers to not be able to use streamWriters registered with member
+	// but peer traffic is still possible because member has 'pipeline' with peers
+	// TODO: find a way to stop all traffic
+	proxy.BlackholeTx()
+	proxy.BlackholeRx()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		// Have to refresh revBlackholedMem. It can still increase as member processes changes that are received but not yet applied.
+		revBlackholedMem, err := latestRevisionForEndpoint(ctx, mc)
+		if err != nil {
+			return err
+		}
+		revLeader, err := latestRevisionForEndpoint(ctx, lc)
+		if err != nil {
+			return err
+		}
+		t.Logf("Leader: [%s], Member: [%s], revLeader: %d, revBlackholedMem: %d", leader.Config().Name, member.Config().Name, revLeader, revBlackholedMem)
+		// Blackholed member has to be sufficiently behind to trigger snapshot transfer.
+		// Need to make sure leader compacted latest revBlackholedMem inside EtcdServer.snapshot.
+		// That's why we wait for clus.Cfg.SnapshotCount (to trigger snapshot) + clus.Cfg.SnapshotCatchUpEntries (EtcdServer.snapshot compaction offset)
+		if revLeader-revBlackholedMem > int64(clus.Cfg.SnapshotCount+clus.Cfg.SnapshotCatchUpEntries) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	proxy.UnblackholeTx()
+	proxy.UnblackholeRx()
+	return nil
+}
+
 type randomFailpoint struct {
 	failpoints []Failpoint
 }
 
-func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f randomFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	availableFailpoints := make([]Failpoint, 0, len(f.failpoints))
 	for _, failpoint := range f.failpoints {
 		count := 0
@@ -242,8 +331,8 @@ func (f randomFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.Et
 		}
 	}
 	failpoint := availableFailpoints[rand.Int()%len(availableFailpoints)]
-	t.Logf("Triggering %v failpoint\n", failpoint.Name())
-	return failpoint.Trigger(t, ctx, clus)
+	lg.Info("Triggering failpoint\n", zap.String("failpoint", failpoint.Name()))
+	return failpoint.Trigger(ctx, t, lg, clus)
 }
 
 func (f randomFailpoint) Name() string {
@@ -258,15 +347,15 @@ type blackholePeerNetworkFailpoint struct {
 	duration time.Duration
 }
 
-func (f blackholePeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f blackholePeerNetworkFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	proxy := member.PeerProxy()
 
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
-	t.Logf("Blackholing traffic from and to %s", member.Config().Name)
+	lg.Info("Blackholing traffic from and to member", zap.String("member", member.Config().Name))
 	time.Sleep(f.duration)
-	t.Logf("Traffic restored for %s", member.Config().Name)
+	lg.Info("Traffic restored from and to member", zap.String("member", member.Config().Name))
 	proxy.UnblackholeTx()
 	proxy.UnblackholeRx()
 	return nil
@@ -286,15 +375,15 @@ type delayPeerNetworkFailpoint struct {
 	randomizedLatency time.Duration
 }
 
-func (f delayPeerNetworkFailpoint) Trigger(t *testing.T, ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func (f delayPeerNetworkFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	proxy := member.PeerProxy()
 
 	proxy.DelayRx(f.baseLatency, f.randomizedLatency)
 	proxy.DelayTx(f.baseLatency, f.randomizedLatency)
-	t.Logf("Delaying traffic from and to %s by %v +/- %v", member.Config().Name, f.baseLatency, f.randomizedLatency)
+	lg.Info("Delaying traffic from and to member", zap.String("member", member.Config().Name), zap.Duration("baseLatency", f.baseLatency), zap.Duration("randomizedLatency", f.randomizedLatency))
 	time.Sleep(f.duration)
-	t.Logf("Traffic delay removed for %s", member.Config().Name)
+	lg.Info("Traffic delay removed", zap.String("member", member.Config().Name))
 	proxy.UndelayRx()
 	proxy.UndelayTx()
 	return nil

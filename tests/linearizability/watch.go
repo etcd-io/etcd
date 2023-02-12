@@ -28,10 +28,10 @@ import (
 	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) [][]watchEvent {
+func collectClusterWatchEvents(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) [][]watchResponse {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
-	memberEvents := make([][]watchEvent, len(clus.Procs))
+	memberResponses := make([][]watchResponse, len(clus.Procs))
 	for i, member := range clus.Procs {
 		c, err := clientv3.New(clientv3.Config{
 			Endpoints:            member.EndpointsV3(),
@@ -47,51 +47,96 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 		go func(i int, c *clientv3.Client) {
 			defer wg.Done()
 			defer c.Close()
-			events := collectMemberWatchEvents(ctx, t, c)
+			responses := watchMember(ctx, lg, c)
 			mux.Lock()
-			memberEvents[i] = events
+			memberResponses[i] = responses
 			mux.Unlock()
 		}(i, c)
 	}
 	wg.Wait()
-	return memberEvents
+	return memberResponses
 }
 
-func collectMemberWatchEvents(ctx context.Context, t *testing.T, c *clientv3.Client) []watchEvent {
-	events := []watchEvent{}
-	var lastRevision int64 = 1
+func watchMember(ctx context.Context, lg *zap.Logger, c *clientv3.Client) (resps []watchResponse) {
+	var lastRevision int64 = 0
 	for {
 		select {
 		case <-ctx.Done():
-			return events
+			return resps
 		default:
 		}
-		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision)) {
+		for resp := range c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(lastRevision+1), clientv3.WithProgressNotify()) {
+			resps = append(resps, watchResponse{resp, time.Now()})
 			lastRevision = resp.Header.Revision
-			time := time.Now()
-			for _, event := range resp.Events {
-				var op model.OperationType
-				switch event.Type {
-				case mvccpb.PUT:
-					op = model.Put
-				case mvccpb.DELETE:
-					op = model.Delete
-				}
-				events = append(events, watchEvent{
-					Time:     time,
-					Revision: event.Kv.ModRevision,
-					Op: model.EtcdOperation{
-						Type:  op,
-						Key:   string(event.Kv.Key),
-						Value: model.ToValueOrHash(string(event.Kv.Value)),
-					},
-				})
-			}
 			if resp.Err() != nil {
-				t.Logf("Watch error: %v", resp.Err())
+				lg.Info("Watch error", zap.Error(resp.Err()))
 			}
 		}
 	}
+}
+
+func validateWatchResponses(t *testing.T, responses [][]watchResponse, expectProgressNotify bool) {
+	for _, memberResponses := range responses {
+		validateMemberWatchResponses(t, memberResponses, expectProgressNotify)
+	}
+}
+
+func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
+	var gotProgressNotify = false
+	var lastRevision int64 = 1
+	for _, resp := range responses {
+		if resp.Header.Revision < lastRevision {
+			t.Errorf("Revision should never decrease")
+		}
+		if resp.IsProgressNotify() && resp.Header.Revision == lastRevision {
+			gotProgressNotify = true
+		}
+		if resp.Header.Revision == lastRevision && len(resp.Events) != 0 {
+			t.Errorf("Got two non-empty responses about same revision")
+		}
+		for _, event := range resp.Events {
+			if event.Kv.ModRevision != lastRevision+1 {
+				t.Errorf("Expect revision to grow by 1, last: %d, mod: %d", lastRevision, event.Kv.ModRevision)
+			}
+			lastRevision = event.Kv.ModRevision
+		}
+		if resp.Header.Revision != lastRevision {
+			t.Errorf("Expect response revision equal last event mod revision")
+		}
+		lastRevision = resp.Header.Revision
+	}
+	if gotProgressNotify != expectProgressNotify {
+		t.Errorf("Expected progress notify: %v, got: %v", expectProgressNotify, gotProgressNotify)
+	}
+}
+
+func toWatchEvents(responses []watchResponse) (events []watchEvent) {
+	for _, resp := range responses {
+		for _, event := range resp.Events {
+			var op model.OperationType
+			switch event.Type {
+			case mvccpb.PUT:
+				op = model.Put
+			case mvccpb.DELETE:
+				op = model.Delete
+			}
+			events = append(events, watchEvent{
+				Time:     resp.time,
+				Revision: event.Kv.ModRevision,
+				Op: model.EtcdOperation{
+					Type:  op,
+					Key:   string(event.Kv.Key),
+					Value: model.ToValueOrHash(string(event.Kv.Value)),
+				},
+			})
+		}
+	}
+	return events
+}
+
+type watchResponse struct {
+	clientv3.WatchResponse
+	time time.Time
 }
 
 type watchEvent struct {

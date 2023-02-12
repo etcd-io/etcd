@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"math"
@@ -225,6 +226,11 @@ type Config struct {
 	// client/server and peers. If empty, Go auto-populates the list.
 	// Note that cipher suites are prioritized in the given order.
 	CipherSuites []string `json:"cipher-suites"`
+
+	// TlsMinVersion is the minimum accepted TLS version between client/server and peers.
+	TlsMinVersion string `json:"tls-min-version"`
+	// TlsMaxVersion is the maximum accepted TLS version between client/server and peers.
+	TlsMaxVersion string `json:"tls-max-version"`
 
 	ClusterState          string `json:"initial-cluster-state"`
 	DNSCluster            string `json:"discovery-srv"`
@@ -660,6 +666,17 @@ func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 	return nil
 }
 
+func updateMinMaxVersions(info *transport.TLSInfo, min, max string) {
+	// Validate() has been called to check the user input, so it should never fail.
+	var err error
+	if info.MinVersion, err = tlsutil.GetTLSVersion(min); err != nil {
+		panic(err)
+	}
+	if info.MaxVersion, err = tlsutil.GetTLSVersion(max); err != nil {
+		panic(err)
+	}
+}
+
 // Validate ensures that '*embed.Config' fields are properly configured.
 func (cfg *Config) Validate() error {
 	if err := cfg.setupLogging(); err != nil {
@@ -774,6 +791,25 @@ func (cfg *Config) Validate() error {
 			"it isn't recommended to use default name, please set a value for --name. "+
 				"Note that etcd might run into issue when multiple members have the same default name",
 			zap.String("name", cfg.Name))
+	}
+
+	minVersion, err := tlsutil.GetTLSVersion(cfg.TlsMinVersion)
+	if err != nil {
+		return err
+	}
+	maxVersion, err := tlsutil.GetTLSVersion(cfg.TlsMaxVersion)
+	if err != nil {
+		return err
+	}
+
+	// maxVersion == 0 means that Go selects the highest available version.
+	if maxVersion != 0 && minVersion > maxVersion {
+		return fmt.Errorf("min version (%s) is greater than max version (%s)", cfg.TlsMinVersion, cfg.TlsMaxVersion)
+	}
+
+	// Check if user attempted to configure ciphers for TLS1.3 only: Go does not support that currently.
+	if minVersion == tls.VersionTLS13 && len(cfg.CipherSuites) > 0 {
+		return fmt.Errorf("cipher suites cannot be configured when only TLS1.3 is enabled")
 	}
 
 	return nil
