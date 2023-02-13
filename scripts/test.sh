@@ -151,57 +151,6 @@ function generic_checker {
   fi
 }
 
-function killall_functional_test {
-  log_callout "Killing all etcd-agent and etcd processes..."
-  killall -9 etcd-agent
-  # When functional test is successful, the etcd processes have already been
-  # stopped by the agent, so we should ignore the error in this case.
-  killall -9 etcd || true
-}
-
-function functional_pass {
-  run ./tests/functional/build.sh || exit 1
-
-  # Clean up any data and logs from previous runs
-  rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
-
-  # TODO: These ports should be dynamically allocated instead of hard-coded.
-  for a in 1 2 3; do
-    ./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 < /dev/null &
-  done
-
-  for a in 1 2 3; do
-    log_callout "Waiting for 'etcd-agent' on ${a}9027..."
-    while ! nc -z localhost ${a}9027; do
-      sleep 1
-    done
-  done
-
-  trap killall_functional_test 0
-
-  log_callout "functional test START!"
-  run ./bin/etcd-tester --config ./tests/functional/functional.yaml -test.v && log_success "'etcd-tester' succeeded"
-  local etcd_tester_exit_code=$?
-
-  if [[ "${etcd_tester_exit_code}" -ne "0" ]]; then
-    log_error "ETCD_TESTER_EXIT_CODE:" ${etcd_tester_exit_code}
-
-    log_error -e "\\nFAILED! 'tail -100 /tmp/etcd-functional-1/etcd.log'"
-    tail -100 /tmp/etcd-functional-1/etcd.log
-
-    log_error -e "\\nFAILED! 'tail -100 /tmp/etcd-functional-2/etcd.log'"
-    tail -100 /tmp/etcd-functional-2/etcd.log
-
-    log_error -e "\\nFAILED! 'tail -100 /tmp/etcd-functional-3/etcd.log'"
-    tail -100 /tmp/etcd-functional-3/etcd.log
-
-    log_error "--- FAIL: exit code" ${etcd_tester_exit_code}
-    exit ${etcd_tester_exit_code}
-  fi
-
-  log_success "functional test PASS!"
-}
-
 function grpcproxy_pass {
   run_pass "grpcproxy_integration" "${@}"
   run_pass "grpcproxy_e2e" "${@}"
