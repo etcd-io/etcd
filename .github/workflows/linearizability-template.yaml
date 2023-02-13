@@ -15,11 +15,15 @@ on:
       artifactName:
         required: true
         type: string
+      runs-on:
+        required: false
+        type: string
+        default: "['ubuntu-latest']"
 permissions: read-all
 jobs:
   test:
     timeout-minutes: 210
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.runs-on) }}
     steps:
     - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
     - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
