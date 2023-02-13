@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.8 (TBD)
 
+### Package `client/pkg/v3`
+- Fix [aligning zap log timestamp resolution to microseconds](https://github.com/etcd-io/etcd/pull/15240). Etcd now uses zap timestamp format: `2006-01-02T15:04:05.999999Z0700` (microsecond instead of milliseconds precision).
+
 ### Package `netutil`
 - Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187)
 
