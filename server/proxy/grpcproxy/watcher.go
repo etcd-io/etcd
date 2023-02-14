@@ -45,6 +45,8 @@ type watcher struct {
 	nextrev int64
 	// lastHeader has the last header sent over the stream.
 	lastHeader pb.ResponseHeader
+	// Progress notification was requested (cleared once it gets received)
+	requestedProgress bool
 
 	// wps is the parent.
 	wps *watchProxyStream
@@ -53,7 +55,7 @@ type watcher struct {
 // send filters out repeated events by discarding revisions older
 // than the last one sent over the watch channel.
 func (w *watcher) send(wr clientv3.WatchResponse) {
-	if wr.IsProgressNotify() && !w.progress {
+	if wr.IsProgressNotify() && !w.progress && !w.requestedProgress {
 		return
 	}
 	if w.nextrev > wr.Header.Revision && len(wr.Events) > 0 {
@@ -104,6 +106,9 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 	// all events are filtered out?
 	if !wr.IsProgressNotify() && !wr.Created && len(events) == 0 && wr.CompactRevision == 0 {
 		return
+	}
+	if wr.IsProgressNotify() && w.requestedProgress {
+		w.requestedProgress = false
 	}
 
 	w.lastHeader = wr.Header
