@@ -88,6 +88,7 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 		lastHeadRevision     int64 = 1 // The resp.Header.Revision in last watch response.
 	)
 	for _, resp := range responses {
+		// Validation 1: server revision should never decrease.
 		if resp.Header.Revision < lastHeadRevision {
 			t.Errorf("Server revision should never decrease, lastHeadRevision: %d, resp.Header.Revision: %d",
 				lastHeadRevision, resp.Header.Revision)
@@ -96,10 +97,14 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 		if resp.IsProgressNotify() && resp.Header.Revision == lastHeadRevision {
 			gotProgressNotify = true
 		}
+
+		// Validation 2: a progress notification should never be received
+		// before a normal watch response with the same revision.
 		if resp.Header.Revision == lastHeadRevision && len(resp.Events) != 0 {
 			t.Errorf("Got two non-empty responses about same revision")
 		}
 
+		// Validation 3: The event ModRevision should be strictly incremental.
 		for _, event := range resp.Events {
 			if event.Kv.ModRevision != lastEventModRevision+1 {
 				t.Errorf("Expect event revision to grow by 1, last: %d, mod: %d", lastEventModRevision, event.Kv.ModRevision)
@@ -107,6 +112,7 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 			lastEventModRevision = event.Kv.ModRevision
 		}
 
+		// Validation 4: The event ModRevision should never be larger than the server revision.
 		if resp.Header.Revision < lastEventModRevision {
 			t.Errorf("Event revision should never exceed the server's revision, lastEventRevision: %d, resp.Header.Revision: %d",
 				lastEventModRevision, resp.Header.Revision)
