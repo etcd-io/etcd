@@ -99,10 +99,13 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 		if resp.Header.Revision == lastHeadRevision && len(resp.Events) != 0 {
 			t.Errorf("Got two non-empty responses about same revision")
 		}
+		if len(resp.Events) > 0 && resp.Events[0].Kv.ModRevision <= lastEventModRevision {
+			t.Errorf("Events with same revision should not be split between multiple responses, lastResponseModRevision: %d, firstEventModRevision: %d", lastEventModRevision, resp.Events[0].Kv.ModRevision)
+		}
 
 		for _, event := range resp.Events {
-			if event.Kv.ModRevision != lastEventModRevision+1 {
-				t.Errorf("Expect event revision to grow by 1, last: %d, mod: %d", lastEventModRevision, event.Kv.ModRevision)
+			if event.Kv.ModRevision != lastEventModRevision && event.Kv.ModRevision != lastEventModRevision+1 {
+				t.Errorf("Event mod revision should stay the same or increment by one, last: %d, current: %d", lastEventModRevision, event.Kv.ModRevision)
 			}
 			lastEventModRevision = event.Kv.ModRevision
 		}
