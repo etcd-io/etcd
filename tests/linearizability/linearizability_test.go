@@ -423,7 +423,9 @@ func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations [
 	}
 	if linearizable != porcupine.Ok {
 		persistOperationHistory(t, lg, path, operations)
-		persistMemberDataDir(t, lg, clus, path)
+		for _, member := range clus.Procs {
+			persistMemberDataDir(t, lg, member, filepath.Join(path, member.Config().Name))
+		}
 	}
 
 	visualizationPath := filepath.Join(path, "history.html")
@@ -452,18 +454,11 @@ func persistOperationHistory(t *testing.T, lg *zap.Logger, path string, operatio
 	}
 }
 
-func persistMemberDataDir(t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, path string) {
-	for _, member := range clus.Procs {
-		memberDataDir := filepath.Join(path, member.Config().Name)
-		err := os.RemoveAll(memberDataDir)
-		if err != nil {
-			t.Error(err)
-		}
-		lg.Info("Saving member data dir", zap.String("member", member.Config().Name), zap.String("path", memberDataDir))
-		err = os.Rename(member.Config().DataDirPath, memberDataDir)
-		if err != nil {
-			t.Error(err)
-		}
+func persistMemberDataDir(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, path string) {
+	lg.Info("Saving member data dir", zap.String("member", member.Config().Name), zap.String("path", path))
+	err := os.Rename(member.Config().DataDirPath, path)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
