@@ -44,7 +44,7 @@ func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	}
 }
 
-func (h *AppendableHistory) AppendGet(key string, start, end time.Time, resp *clientv3.GetResponse) {
+func (h *AppendableHistory) AppendGet(key string, start, end time.Duration, resp *clientv3.GetResponse) {
 	var readData string
 	if len(resp.Kvs) == 1 {
 		readData = string(resp.Kvs[0].Value)
@@ -56,13 +56,13 @@ func (h *AppendableHistory) AppendGet(key string, start, end time.Time, resp *cl
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    getRequest(key),
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   getResponse(readData, revision),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
-func (h *AppendableHistory) AppendPut(key, value string, start, end time.Time, resp *clientv3.PutResponse, err error) {
+func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duration, resp *clientv3.PutResponse, err error) {
 	request := putRequest(key, value)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -75,13 +75,13 @@ func (h *AppendableHistory) AppendPut(key, value string, start, end time.Time, r
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   putResponse(revision),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
-func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Time, resp *clientv3.PutResponse, err error) {
+func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Duration, resp *clientv3.PutResponse, err error) {
 	request := putWithLeaseRequest(key, value, leaseID)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -94,13 +94,13 @@ func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64,
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   putResponse(revision),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
-func (h *AppendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv3.LeaseGrantResponse, err error) {
+func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *clientv3.LeaseGrantResponse, err error) {
 	var leaseID int64
 	if resp != nil {
 		leaseID = int64(resp.ID)
@@ -117,13 +117,13 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Time, resp *clientv
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   leaseGrantResponse(revision),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
-func (h *AppendableHistory) AppendLeaseRevoke(id int64, start time.Time, end time.Time, resp *clientv3.LeaseRevokeResponse, err error) {
+func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration, resp *clientv3.LeaseRevokeResponse, err error) {
 	request := leaseRevokeRequest(id)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -136,13 +136,13 @@ func (h *AppendableHistory) AppendLeaseRevoke(id int64, start time.Time, end tim
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   leaseRevokeResponse(revision),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
-func (h *AppendableHistory) AppendDelete(key string, start, end time.Time, resp *clientv3.DeleteResponse, err error) {
+func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, resp *clientv3.DeleteResponse, err error) {
 	request := deleteRequest(key)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -157,13 +157,13 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Time, resp 
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   deleteResponse(deleted, revision),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
-func (h *AppendableHistory) AppendCompareAndSet(key, expectValue, newValue string, start, end time.Time, resp *clientv3.TxnResponse, err error) {
+func (h *AppendableHistory) AppendCompareAndSet(key, expectValue, newValue string, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
 	request := compareAndSetRequest(key, expectValue, newValue)
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -176,13 +176,13 @@ func (h *AppendableHistory) AppendCompareAndSet(key, expectValue, newValue strin
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   compareAndSetResponse(resp.Succeeded, revision),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
-func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.Op, start, end time.Time, resp *clientv3.TxnResponse, err error) {
+func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.Op, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
 	conds := []EtcdCondition{}
 	for _, cmp := range cmp {
 		conds = append(conds, toEtcdCondition(cmp))
@@ -207,9 +207,9 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.O
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   txnResponse(results, resp.Succeeded, revision),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
@@ -267,7 +267,7 @@ func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
 	}
 }
 
-func (h *AppendableHistory) AppendDefragment(start, end time.Time, resp *clientv3.DefragmentResponse, err error) {
+func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *clientv3.DefragmentResponse, err error) {
 	request := defragmentRequest()
 	if err != nil {
 		h.appendFailed(request, start, err)
@@ -276,17 +276,17 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Time, resp *clientv
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   defragmentResponse(),
-		Return:   end.UnixNano(),
+		Return:   end.Nanoseconds(),
 	})
 }
 
-func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Time, err error) {
+func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Duration, err error) {
 	h.failed = append(h.failed, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.UnixNano(),
+		Call:     start.Nanoseconds(),
 		Output:   failedResponse(err),
 		Return:   0, // For failed writes we don't know when request has really finished.
 	})
