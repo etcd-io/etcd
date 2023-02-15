@@ -47,7 +47,7 @@ func TestModelStep(t *testing.T) {
 		{
 			name: "First Txn can start from non-zero revision",
 			operations: []testOperation{
-				{req: txnRequest("key", "", "42"), resp: txnResponse(false, 42)},
+				{req: compareAndSetRequest("key", "", "42"), resp: compareAndSetResponse(false, 42)},
 			},
 		},
 		{
@@ -118,11 +118,11 @@ func TestModelStep(t *testing.T) {
 				// Txn failure
 				{req: getRequest("key"), resp: getResponse("", 1)},
 				{req: putRequest("key", "1"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "2", "3"), resp: txnResponse(false, 1)},
+				{req: compareAndSetRequest("key", "2", "3"), resp: compareAndSetResponse(false, 1)},
 				// Txn success
 				{req: putRequest("key", "2"), resp: putResponse(2)},
 				{req: putRequest("key", "4"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "2", "5"), resp: txnResponse(true, 3)},
+				{req: compareAndSetRequest("key", "2", "5"), resp: compareAndSetResponse(true, 3)},
 			},
 		},
 		{
@@ -171,11 +171,11 @@ func TestModelStep(t *testing.T) {
 				// Txn success
 				{req: getRequest("key"), resp: getResponse("", 1)},
 				{req: putRequest("key", "2"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "2", ""), resp: txnResponse(true, 2), failure: true},
-				{req: txnRequest("key", "2", ""), resp: txnResponse(true, 3)},
+				{req: compareAndSetRequest("key", "2", ""), resp: compareAndSetResponse(true, 2), failure: true},
+				{req: compareAndSetRequest("key", "2", ""), resp: compareAndSetResponse(true, 3)},
 				// Txn failure
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: txnRequest("key", "5", ""), resp: txnResponse(false, 4)},
+				{req: compareAndSetRequest("key", "5", ""), resp: compareAndSetResponse(false, 4)},
 				{req: putRequest("key", "5"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("5", 5)},
 			},
@@ -282,21 +282,21 @@ func TestModelStep(t *testing.T) {
 				// Txn success
 				{req: getRequest("key"), resp: getResponse("1", 1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "", "3"), resp: txnResponse(true, 3)},
+				{req: compareAndSetRequest("key", "", "3"), resp: compareAndSetResponse(true, 3)},
 				// Txn failure
 				{req: putRequest("key", "4"), resp: putResponse(4)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "4", "5"), resp: txnResponse(false, 5)},
+				{req: compareAndSetRequest("key", "4", "5"), resp: compareAndSetResponse(false, 5)},
 			},
 		},
 		{
 			name: "Txn sets new value if value matches expected",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "1", "2"), resp: txnResponse(true, 1), failure: true},
-				{req: txnRequest("key", "1", "2"), resp: txnResponse(false, 2), failure: true},
-				{req: txnRequest("key", "1", "2"), resp: txnResponse(false, 1), failure: true},
-				{req: txnRequest("key", "1", "2"), resp: txnResponse(true, 2)},
+				{req: compareAndSetRequest("key", "1", "2"), resp: compareAndSetResponse(true, 1), failure: true},
+				{req: compareAndSetRequest("key", "1", "2"), resp: compareAndSetResponse(false, 2), failure: true},
+				{req: compareAndSetRequest("key", "1", "2"), resp: compareAndSetResponse(false, 1), failure: true},
+				{req: compareAndSetRequest("key", "1", "2"), resp: compareAndSetResponse(true, 2)},
 				{req: getRequest("key"), resp: getResponse("1", 1), failure: true},
 				{req: getRequest("key"), resp: getResponse("1", 2), failure: true},
 				{req: getRequest("key"), resp: getResponse("2", 1), failure: true},
@@ -307,19 +307,19 @@ func TestModelStep(t *testing.T) {
 			name: "Txn can expect on empty key",
 			operations: []testOperation{
 				{req: getRequest("key1"), resp: getResponse("", 1)},
-				{req: txnRequest("key1", "", "2"), resp: txnResponse(true, 2)},
-				{req: txnRequest("key2", "", "3"), resp: txnResponse(true, 3)},
-				{req: txnRequest("key3", "4", "4"), resp: txnResponse(false, 4), failure: true},
+				{req: compareAndSetRequest("key1", "", "2"), resp: compareAndSetResponse(true, 2)},
+				{req: compareAndSetRequest("key2", "", "3"), resp: compareAndSetResponse(true, 3)},
+				{req: compareAndSetRequest("key3", "4", "4"), resp: compareAndSetResponse(false, 4), failure: true},
 			},
 		},
 		{
 			name: "Txn doesn't do anything if value doesn't match expected",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "2", "3"), resp: txnResponse(true, 2), failure: true},
-				{req: txnRequest("key", "2", "3"), resp: txnResponse(true, 1), failure: true},
-				{req: txnRequest("key", "2", "3"), resp: txnResponse(false, 2), failure: true},
-				{req: txnRequest("key", "2", "3"), resp: txnResponse(false, 1)},
+				{req: compareAndSetRequest("key", "2", "3"), resp: compareAndSetResponse(true, 2), failure: true},
+				{req: compareAndSetRequest("key", "2", "3"), resp: compareAndSetResponse(true, 1), failure: true},
+				{req: compareAndSetRequest("key", "2", "3"), resp: compareAndSetResponse(false, 2), failure: true},
+				{req: compareAndSetRequest("key", "2", "3"), resp: compareAndSetResponse(false, 1)},
 				{req: getRequest("key"), resp: getResponse("2", 1), failure: true},
 				{req: getRequest("key"), resp: getResponse("2", 2), failure: true},
 				{req: getRequest("key"), resp: getResponse("3", 1), failure: true},
@@ -331,7 +331,7 @@ func TestModelStep(t *testing.T) {
 			name: "Txn can fail and be lost before get",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("1", 1)},
 				{req: getRequest("key"), resp: getResponse("2", 2), failure: true},
 			},
@@ -340,7 +340,7 @@ func TestModelStep(t *testing.T) {
 			name: "Txn can fail and be lost before delete",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 2)},
 			},
 		},
@@ -348,7 +348,7 @@ func TestModelStep(t *testing.T) {
 			name: "Txn can fail and be lost before put",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "3"), resp: putResponse(2)},
 			},
 		},
@@ -357,13 +357,13 @@ func TestModelStep(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("2", 1), failure: true},
 				{req: getRequest("key"), resp: getResponse("2", 2)},
 				// Two failed request, two persisted.
 				{req: putRequest("key", "3"), resp: putResponse(3)},
-				{req: txnRequest("key", "3", "4"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "4", "5"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "3", "4"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "4", "5"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("5", 5)},
 			},
 		},
@@ -372,12 +372,12 @@ func TestModelStep(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "3"), resp: putResponse(3)},
 				// Two failed request, two persisted.
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: txnRequest("key", "4", "5"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "5", "6"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "4", "5"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "5", "6"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "7"), resp: putResponse(7)},
 			},
 		},
@@ -386,12 +386,12 @@ func TestModelStep(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 3)},
 				// Two failed request, two persisted.
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: txnRequest("key", "4", "5"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "5", "6"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "4", "5"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "5", "6"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 7)},
 			},
 		},
@@ -400,17 +400,17 @@ func TestModelStep(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted with success.
 				{req: getRequest("key"), resp: getResponse("1", 1)},
-				{req: txnRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "2", "3"), resp: txnResponse(true, 3)},
+				{req: compareAndSetRequest("key", "1", "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "2", "3"), resp: compareAndSetResponse(true, 3)},
 				// Two failed request, two persisted with success.
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: txnRequest("key", "4", "5"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "5", "6"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "6", "7"), resp: txnResponse(true, 7)},
+				{req: compareAndSetRequest("key", "4", "5"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "5", "6"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "6", "7"), resp: compareAndSetResponse(true, 7)},
 				// One failed request, one persisted with failure.
 				{req: putRequest("key", "8"), resp: putResponse(8)},
-				{req: txnRequest("key", "8", "9"), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "8", "10"), resp: txnResponse(false, 9)},
+				{req: compareAndSetRequest("key", "8", "9"), resp: failedResponse(errors.New("failed"))},
+				{req: compareAndSetRequest("key", "8", "10"), resp: compareAndSetResponse(false, 9)},
 			},
 		},
 		{
@@ -537,7 +537,7 @@ func TestModelStep(t *testing.T) {
 				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
 				{req: putRequest("key", "4"), resp: putResponse(4)},
 				{req: getRequest("key"), resp: getResponse("4", 4)},
-				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: compareAndSetRequest("key", "4", "5"), resp: compareAndSetResponse(true, 5)},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
 				{req: defragmentRequest(), resp: defragmentResponse()},
 			},
@@ -556,7 +556,7 @@ func TestModelStep(t *testing.T) {
 				{req: defragmentRequest(), resp: defragmentResponse()},
 				{req: getRequest("key"), resp: getResponse("4", 4)},
 				{req: defragmentRequest(), resp: defragmentResponse()},
-				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: compareAndSetRequest("key", "4", "5"), resp: compareAndSetResponse(true, 5)},
 				{req: defragmentRequest(), resp: defragmentResponse()},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
 				{req: defragmentRequest(), resp: defragmentResponse()},
@@ -576,7 +576,7 @@ func TestModelStep(t *testing.T) {
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("4", 4)},
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
-				{req: txnRequest("key", "4", "5"), resp: txnResponse(true, 5)},
+				{req: compareAndSetRequest("key", "4", "5"), resp: compareAndSetResponse(true, 5)},
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
@@ -664,19 +664,24 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `delete("key6") -> err: "failed"`,
 		},
 		{
-			req:            txnRequest("key7", "7", "77"),
-			resp:           txnResponse(false, 7),
+			req:            compareAndSetRequest("key7", "7", "77"),
+			resp:           compareAndSetResponse(false, 7),
 			expectDescribe: `if(key7=="7").then(put("key7", "77", nil)) -> txn failed, rev: 7`,
 		},
 		{
-			req:            txnRequest("key8", "8", "88"),
-			resp:           txnResponse(true, 8),
+			req:            compareAndSetRequest("key8", "8", "88"),
+			resp:           compareAndSetResponse(true, 8),
 			expectDescribe: `if(key8=="8").then(put("key8", "88", nil)) -> ok, rev: 8`,
 		},
 		{
-			req:            txnRequest("key9", "9", "99"),
+			req:            compareAndSetRequest("key9", "9", "99"),
 			resp:           failedResponse(errors.New("failed")),
 			expectDescribe: `if(key9=="9").then(put("key9", "99", nil)) -> err: "failed"`,
+		},
+		{
+			req:            txnRequest(nil, []EtcdOperation{{Type: Get, Key: "10"}, {Type: Put, Key: "11", Value: ValueOrHash{Value: "111"}}, {Type: Delete, Key: "12"}}),
+			resp:           txnResponse([]EtcdOperationResult{{Value: ValueOrHash{Value: "110"}}, {}, {Deleted: 1}}, true, 10),
+			expectDescribe: `get("10"), put("11", "111", nil), delete("12") -> "110", ok, deleted: 1, rev: 10`,
 		},
 		{
 			req:            defragmentRequest(),
@@ -791,42 +796,42 @@ func TestModelResponseMatch(t *testing.T) {
 			expectMatch: false,
 		},
 		{
-			resp1:       txnResponse(false, 7),
-			resp2:       txnResponse(false, 7),
+			resp1:       compareAndSetResponse(false, 7),
+			resp2:       compareAndSetResponse(false, 7),
 			expectMatch: true,
 		},
 		{
-			resp1:       txnResponse(true, 7),
-			resp2:       txnResponse(false, 7),
+			resp1:       compareAndSetResponse(true, 7),
+			resp2:       compareAndSetResponse(false, 7),
 			expectMatch: false,
 		},
 		{
-			resp1:       txnResponse(false, 7),
-			resp2:       txnResponse(false, 8),
+			resp1:       compareAndSetResponse(false, 7),
+			resp2:       compareAndSetResponse(false, 8),
 			expectMatch: false,
 		},
 		{
-			resp1:       txnResponse(false, 7),
+			resp1:       compareAndSetResponse(false, 7),
 			resp2:       failedResponse(errors.New("failed request")),
 			expectMatch: false,
 		},
 		{
-			resp1:       txnResponse(true, 7),
+			resp1:       compareAndSetResponse(true, 7),
 			resp2:       unknownResponse(7),
 			expectMatch: true,
 		},
 		{
-			resp1:       txnResponse(false, 7),
+			resp1:       compareAndSetResponse(false, 7),
 			resp2:       unknownResponse(7),
 			expectMatch: true,
 		},
 		{
-			resp1:       txnResponse(true, 7),
+			resp1:       compareAndSetResponse(true, 7),
 			resp2:       unknownResponse(0),
 			expectMatch: false,
 		},
 		{
-			resp1:       txnResponse(false, 7),
+			resp1:       compareAndSetResponse(false, 7),
 			resp2:       unknownResponse(0),
 			expectMatch: false,
 		},

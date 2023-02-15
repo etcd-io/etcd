@@ -50,13 +50,14 @@ var (
 		maximalQPS:  200,
 		clientCount: 8,
 		traffic: traffic{
-			keyCount:     4,
+			keyCount:     10,
 			leaseTTL:     DefaultLeaseTTL,
 			largePutSize: 32769,
 			writes: []requestChance{
-				{operation: Put, chance: 50},
+				{operation: Put, chance: 45},
 				{operation: LargePut, chance: 5},
 				{operation: Delete, chance: 10},
+				{operation: MultiOpTxn, chance: 10},
 				{operation: PutWithLease, chance: 10},
 				{operation: LeaseRevoke, chance: 10},
 				{operation: CompareAndSet, chance: 10},
@@ -69,11 +70,12 @@ var (
 		maximalQPS:  1000,
 		clientCount: 12,
 		traffic: traffic{
-			keyCount:     4,
+			keyCount:     10,
 			largePutSize: 32769,
 			leaseTTL:     DefaultLeaseTTL,
 			writes: []requestChance{
-				{operation: Put, chance: 90},
+				{operation: Put, chance: 85},
+				{operation: MultiOpTxn, chance: 10},
 				{operation: LargePut, chance: 5},
 			},
 		},
