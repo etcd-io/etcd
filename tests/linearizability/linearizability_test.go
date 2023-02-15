@@ -164,29 +164,35 @@ func TestLinearizability(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			scenario.config.Logger = lg
 			ctx := context.Background()
-			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&scenario.config))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer clus.Close()
-			operations, watchResponses := testLinearizability(ctx, t, lg, clus, FailpointConfig{
+			testLinearizability(ctx, t, lg, scenario.config, scenario.traffic, FailpointConfig{
 				failpoint:           scenario.failpoint,
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}, *scenario.traffic)
-			forcestopCluster(clus)
-			watchProgressNotifyEnabled := clus.Cfg.WatchProcessNotifyInterval != 0
-			validateWatchResponses(t, watchResponses, watchProgressNotifyEnabled)
-			watchEvents := watchEvents(watchResponses)
-			validateEventsMatch(t, watchEvents)
-			patchedOperations := patchOperationBasedOnWatchEvents(operations, longestHistory(watchEvents))
-			checkOperationsAndPersistResults(t, lg, patchedOperations, clus)
+			})
 		})
 	}
 }
 
-func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
+func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, config e2e.EtcdProcessClusterConfig, traffic *trafficConfig, failpoint FailpointConfig) {
+	clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clus.Close()
+
+	operations, watchResponses := runScenario(ctx, t, lg, clus, *traffic, failpoint)
+	forcestopCluster(clus)
+
+	watchProgressNotifyEnabled := clus.Cfg.WatchProcessNotifyInterval != 0
+	validateWatchResponses(t, watchResponses, watchProgressNotifyEnabled)
+	watchEvents := watchEvents(watchResponses)
+	validateEventsMatch(t, watchEvents)
+	patchedOperations := patchOperationBasedOnWatchEvents(operations, longestHistory(watchEvents))
+	checkOperationsAndPersistResults(t, lg, patchedOperations, clus)
+}
+
+func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, traffic trafficConfig, failpoint FailpointConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
 	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
 	g := errgroup.Group{}
 	trafficCtx, trafficCancel := context.WithCancel(ctx)
