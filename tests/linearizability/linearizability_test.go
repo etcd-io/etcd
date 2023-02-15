@@ -350,7 +350,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	for i := 0; i < config.clientCount; i++ {
 		wg.Add(1)
 		endpoints := []string{endpoints[i%len(endpoints)]}
-		c, err := NewClient(endpoints, ids)
+		c, err := NewClient(endpoints, ids, startTime)
 		if err != nil {
 			t.Fatal(err)
 		}
