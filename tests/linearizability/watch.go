@@ -88,6 +88,12 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 		lastHeadRevision           int64 = 1 // The resp.Header.Revision in last watch response.
 		lastProgressNotifyRevision int64 = 0 // The resp.Header.Revision in the last progress notify watch response.
 	)
+	type revisionKey struct {
+		revision int64
+		key      string
+	}
+	uniqueOperations := map[revisionKey]struct{}{}
+
 	for _, resp := range responses {
 		if resp.Header.Revision < lastHeadRevision {
 			t.Errorf("Server revision should never decrease, lastHeadRevision: %d, resp.Header.Revision: %d",
@@ -105,6 +111,11 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 		}
 
 		for _, event := range resp.Events {
+			rk := revisionKey{key: string(event.Kv.Key), revision: event.Kv.ModRevision}
+			if _, found := uniqueOperations[rk]; found {
+				t.Errorf("BROKE: Within the:wq same revision key can only be modified once. Suspecting duplicate watch event. key: %q, revision: %d", rk.key, rk.revision)
+			}
+			uniqueOperations[rk] = struct{}{}
 			if event.Kv.ModRevision <= lastProgressNotifyRevision {
 				t.Errorf("BROKE: etcd will not send progress notification to a watcher until it has synced all events. So a watcher will never receive an event with a lower `ModRevision` than the last progressNotification's revision, eventRevision: %d, progressNotifyRevision: %d", event.Kv.ModRevision, lastProgressNotifyRevision)
 			}
