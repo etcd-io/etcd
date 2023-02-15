@@ -33,7 +33,7 @@ func TestAuthEnable(t *testing.T) {
 	defer clus.Close()
 	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
-		require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
+		require.NoErrorf(t, setupAuth(cc, []AuthRole{}, []AuthUser{RootUser}), "failed to enable auth")
 	})
 }
 
@@ -46,10 +46,10 @@ func TestAuthDisable(t *testing.T) {
 	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		require.NoError(t, cc.Put(ctx, "hoo", "a", config.PutOptions{}))
-		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		require.NoErrorf(t, setupAuth(cc, []AuthRole{TestRole}, []AuthUser{RootUser, TestUser}), "failed to enable auth")
 
-		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
-		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(RootUserName, RootPassword)))
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(TestUserName, TestPassword)))
 
 		// test-user doesn't have the permission, it must fail
 		require.Error(t, testUserAuthClient.Put(ctx, "hoo", "bar", config.PutOptions{}))
@@ -75,9 +75,9 @@ func TestAuthGracefulDisable(t *testing.T) {
 	defer clus.Close()
 	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
-		require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
+		require.NoErrorf(t, setupAuth(cc, []AuthRole{}, []AuthUser{RootUser}), "failed to enable auth")
 		donec := make(chan struct{})
-		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(RootUserName, RootPassword)))
 
 		go func() {
 			defer close(donec)
@@ -124,8 +124,8 @@ func TestAuthStatus(t *testing.T) {
 		require.NoError(t, err)
 		require.Falsef(t, resp.Enabled, "want auth not enabled but enabled")
 
-		require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
-		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		require.NoErrorf(t, setupAuth(cc, []AuthRole{}, []AuthUser{RootUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(RootUserName, RootPassword)))
 		resp, err = rootAuthClient.AuthStatus(ctx)
 		require.NoError(t, err)
 		require.Truef(t, resp.Enabled, "want enabled but got not enabled")

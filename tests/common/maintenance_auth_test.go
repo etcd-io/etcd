@@ -177,24 +177,24 @@ func testStatusWithAuth(t *testing.T, expectConnectionError, expectOperationErro
 }
 
 func setupAuthForMaintenanceTest(c intf.Client) error {
-	roles := []authRole{
+	roles := []AuthRole{
 		{
-			role:       "role0",
-			permission: clientv3.PermissionType(clientv3.PermReadWrite),
-			key:        "foo",
+			Role:       "role0",
+			Permission: clientv3.PermissionType(clientv3.PermReadWrite),
+			Key:        "foo",
 		},
 	}
 
-	users := []authUser{
+	users := []AuthUser{
 		{
-			user: "root",
-			pass: "rootPass",
-			role: "root",
+			User: "root",
+			Pass: "rootPass",
+			Role: "root",
 		},
 		{
-			user: "user0",
-			pass: "user0Pass",
-			role: "role0",
+			User: "user0",
+			Pass: "user0Pass",
+			Role: "role0",
 		},
 	}
 

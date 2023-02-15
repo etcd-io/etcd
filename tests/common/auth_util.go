@@ -24,48 +24,48 @@ import (
 )
 
 const (
-	rootUserName = "root"
-	rootRoleName = "root"
-	rootPassword = "rootPassword"
-	testUserName = "test-user"
-	testRoleName = "test-role"
-	testPassword = "pass"
+	RootUserName = "root"
+	RootRoleName = "root"
+	RootPassword = "rootPassword"
+	TestUserName = "test-user"
+	TestRoleName = "test-role"
+	TestPassword = "pass"
 )
 
 var (
-	rootUser = authUser{user: rootUserName, pass: rootPassword, role: rootRoleName}
-	testUser = authUser{user: testUserName, pass: testPassword, role: testRoleName}
+	RootUser = AuthUser{User: RootUserName, Pass: RootPassword, Role: RootRoleName}
+	TestUser = AuthUser{User: TestUserName, Pass: TestPassword, Role: TestRoleName}
 
-	testRole = authRole{
-		role:       testRoleName,
-		permission: clientv3.PermissionType(clientv3.PermReadWrite),
-		key:        "foo",
-		keyEnd:     "",
+	TestRole = AuthRole{
+		Role:       TestRoleName,
+		Permission: clientv3.PermissionType(clientv3.PermReadWrite),
+		Key:        "foo",
+		KeyEnd:     "",
 	}
 )
 
-type authRole struct {
-	role       string
-	permission clientv3.PermissionType
-	key        string
-	keyEnd     string
+type AuthRole struct {
+	Role       string
+	Permission clientv3.PermissionType
+	Key        string
+	KeyEnd     string
 }
 
-type authUser struct {
-	user string
-	pass string
-	role string
+type AuthUser struct {
+	User string
+	Pass string
+	Role string
 }
 
-func createRoles(c interfaces.Client, roles []authRole) error {
+func createRoles(c interfaces.Client, roles []AuthRole) error {
 	for _, r := range roles {
 		// add role
-		if _, err := c.RoleAdd(context.TODO(), r.role); err != nil {
+		if _, err := c.RoleAdd(context.TODO(), r.Role); err != nil {
 			return fmt.Errorf("RoleAdd failed: %w", err)
 		}
 
 		// grant permission to role
-		if _, err := c.RoleGrantPermission(context.TODO(), r.role, r.key, r.keyEnd, r.permission); err != nil {
+		if _, err := c.RoleGrantPermission(context.TODO(), r.Role, r.Key, r.KeyEnd, r.Permission); err != nil {
 			return fmt.Errorf("RoleGrantPermission failed: %w", err)
 		}
 	}
@@ -73,15 +73,15 @@ func createRoles(c interfaces.Client, roles []authRole) error {
 	return nil
 }
 
-func createUsers(c interfaces.Client, users []authUser) error {
+func createUsers(c interfaces.Client, users []AuthUser) error {
 	for _, u := range users {
 		// add user
-		if _, err := c.UserAdd(context.TODO(), u.user, u.pass, config.UserAddOptions{}); err != nil {
+		if _, err := c.UserAdd(context.TODO(), u.User, u.Pass, config.UserAddOptions{}); err != nil {
 			return fmt.Errorf("UserAdd failed: %w", err)
 		}
 
 		// grant role to user
-		if _, err := c.UserGrantRole(context.TODO(), u.user, u.role); err != nil {
+		if _, err := c.UserGrantRole(context.TODO(), u.User, u.Role); err != nil {
 			return fmt.Errorf("UserGrantRole failed: %w", err)
 		}
 	}
@@ -89,7 +89,7 @@ func createUsers(c interfaces.Client, users []authUser) error {
 	return nil
 }
 
-func setupAuth(c interfaces.Client, roles []authRole, users []authUser) error {
+func setupAuth(c interfaces.Client, roles []AuthRole, users []AuthUser) error {
 	// create roles
 	if err := createRoles(c, roles); err != nil {
 		return err

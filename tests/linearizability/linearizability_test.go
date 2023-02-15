@@ -407,7 +407,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 			config.traffic.Run(ctx, clientId, c, limiter, ids, lm)
 			mux.Lock()
-			h = h.Merge(c.history.History)
+			h.Merge(c.history.History)
 			mux.Unlock()
 		}(c, i)
 	}
