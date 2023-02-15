@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -179,10 +178,10 @@ func TestLinearizability(t *testing.T) {
 			forcestopCluster(clus)
 			watchProgressNotifyEnabled := clus.Cfg.WatchProcessNotifyInterval != 0
 			validateWatchResponses(t, watchResponses, watchProgressNotifyEnabled)
-			longestHistory, remainingEvents := watchEventHistory(watchResponses)
-			validateEventsMatch(t, longestHistory, remainingEvents)
-			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
-			checkOperationsAndPersistResults(t, lg, operations, clus)
+			watchEvents := watchEvents(watchResponses)
+			validateEventsMatch(t, watchEvents)
+			patchedOperations := patchOperationBasedOnWatchEvents(operations, longestHistory(watchEvents))
+			checkOperationsAndPersistResults(t, lg, patchedOperations, clus)
 		})
 	}
 }
@@ -383,26 +382,33 @@ type trafficConfig struct {
 	traffic     Traffic
 }
 
-func watchEventHistory(responses [][]watchResponse) (longest []watchEvent, rest [][]watchEvent) {
+func watchEvents(responses [][]watchResponse) [][]watchEvent {
 	ops := make([][]watchEvent, len(responses))
 	for i, resps := range responses {
 		ops[i] = toWatchEvents(resps)
 	}
-
-	sort.Slice(ops, func(i, j int) bool {
-		return len(ops[i]) > len(ops[j])
-	})
-	return ops[0], ops[1:]
+	return ops
 }
 
-func validateEventsMatch(t *testing.T, longestHistory []watchEvent, other [][]watchEvent) {
-	for i := 0; i < len(other); i++ {
-		length := len(other[i])
+func validateEventsMatch(t *testing.T, histories [][]watchEvent) {
+	longestHistory := longestHistory(histories)
+	for i := 0; i < len(histories); i++ {
+		length := len(histories[i])
 		// We compare prefix of watch events, as we are not guaranteed to collect all events from each node.
-		if diff := cmp.Diff(longestHistory[:length], other[i][:length], cmpopts.IgnoreFields(watchEvent{}, "Time")); diff != "" {
+		if diff := cmp.Diff(longestHistory[:length], histories[i][:length], cmpopts.IgnoreFields(watchEvent{}, "Time")); diff != "" {
 			t.Errorf("Events in watches do not match, %s", diff)
 		}
 	}
+}
+
+func longestHistory(histories [][]watchEvent) []watchEvent {
+	longestIndex := 0
+	for i, history := range histories {
+		if len(history) > len(histories[longestIndex]) {
+			longestIndex = i
+		}
+	}
+	return histories[longestIndex]
 }
 
 func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
