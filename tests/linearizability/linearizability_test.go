@@ -412,10 +412,7 @@ func longestHistory(histories [][]watchEvent) []watchEvent {
 }
 
 func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
-	path, err := testResultsDirectory(t)
-	if err != nil {
-		t.Error(err)
-	}
+	path := testResultsDirectory(t)
 
 	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, 5*time.Minute)
 	if linearizable == porcupine.Illegal {
@@ -431,7 +428,7 @@ func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations [
 
 	visualizationPath := filepath.Join(path, "history.html")
 	lg.Info("Saving visualization", zap.String("path", visualizationPath))
-	err = porcupine.VisualizePath(model.Etcd, info, visualizationPath)
+	err := porcupine.VisualizePath(model.Etcd, info, visualizationPath)
 	if err != nil {
 		t.Errorf("Failed to visualize, err: %v", err)
 	}
@@ -470,16 +467,20 @@ func persistMemberDataDir(t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessClu
 	}
 }
 
-func testResultsDirectory(t *testing.T) (string, error) {
+func testResultsDirectory(t *testing.T) string {
 	path, err := filepath.Abs(filepath.Join(resultsDirectory, strings.ReplaceAll(t.Name(), "/", "_")))
 	if err != nil {
-		return path, err
+		t.Fatal(err)
+	}
+	err = os.RemoveAll(path)
+	if err != nil {
+		t.Fatal(err)
 	}
 	err = os.MkdirAll(path, 0700)
 	if err != nil {
-		return path, err
+		t.Fatal(err)
 	}
-	return path, nil
+	return path
 }
 
 // forcestopCluster stops the etcd member with signal kill.
