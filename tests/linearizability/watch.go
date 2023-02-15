@@ -16,12 +16,13 @@ package linearizability
 
 import (
 	"context"
-	"encoding/json"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/anishathalye/porcupine"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -177,36 +178,120 @@ type watchEvent struct {
 	Time     time.Time
 }
 
-func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses []watchResponse) {
-	lg.Info("Saving watch responses", zap.String("path", path))
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		t.Errorf("Failed to save watch history: %v", err)
-		return
+func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEvents []watchEvent) []porcupine.Operation {
+	newOperations := make([]porcupine.Operation, 0, len(operations))
+	persisted := map[model.EtcdOperation]watchEvent{}
+	for _, op := range watchEvents {
+		persisted[op.Op] = op
 	}
-	defer file.Close()
-	encoder := json.NewEncoder(file)
-	for _, resp := range responses {
-		err := encoder.Encode(resp)
-		if err != nil {
-			t.Errorf("Failed to encode response: %v", err)
+	lastObservedOperation := lastOperationObservedInWatch(operations, persisted)
+
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		resp := op.Output.(model.EtcdResponse)
+		if resp.Err == nil || op.Call > lastObservedOperation.Call || request.Type != model.Txn {
+			// Cannot patch those requests.
+			newOperations = append(newOperations, op)
+			continue
+		}
+		event := matchWatchEvent(request.Txn, persisted)
+		if event != nil {
+			// Set revision and time based on watchEvent.
+			op.Return = event.Time.UnixNano()
+			op.Output = model.EtcdResponse{
+				Revision:      event.Revision,
+				ResultUnknown: true,
+			}
+			newOperations = append(newOperations, op)
+			continue
+		}
+		if hasNonUniqueWriteOperation(request.Txn) && !hasUniqueWriteOperation(request.Txn) {
+			// Leave operation as it is as we cannot match non-unique operations to watch events.
+			newOperations = append(newOperations, op)
+			continue
+		}
+		// Remove non persisted operations
+	}
+	return newOperations
+}
+
+func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.EtcdOperation]watchEvent) porcupine.Operation {
+	var maxCallTime int64
+	var lastOperation porcupine.Operation
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		if request.Type != model.Txn {
+			continue
+		}
+		event := matchWatchEvent(request.Txn, watchEvents)
+		if event != nil && op.Call > maxCallTime {
+			maxCallTime = op.Call
+			lastOperation = op
+		}
+	}
+	return lastOperation
+}
+
+func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperation]watchEvent) *watchEvent {
+	for _, etcdOp := range request.Ops {
+		if etcdOp.Type == model.Put {
+			// Remove LeaseID which is not exposed in watch.
+			event, ok := watchEvents[model.EtcdOperation{
+				Type:  etcdOp.Type,
+				Key:   etcdOp.Key,
+				Value: etcdOp.Value,
+			}]
+			if ok {
+				return &event
+			}
+		}
+	}
+	return nil
+}
+
+func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
+	for _, etcdOp := range request.Ops {
+		if etcdOp.Type == model.Put || etcdOp.Type == model.Delete {
+			return true
+		}
+	}
+	return false
+}
+
+func hasUniqueWriteOperation(request *model.TxnRequest) bool {
+	for _, etcdOp := range request.Ops {
+		if etcdOp.Type == model.Put {
+			return true
+		}
+	}
+	return false
+}
+
+func watchEvents(responses [][]watchResponse) [][]watchEvent {
+	ops := make([][]watchEvent, len(responses))
+	for i, resps := range responses {
+		ops[i] = toWatchEvents(resps)
+	}
+	return ops
+}
+
+func validateEventsMatch(t *testing.T, histories [][]watchEvent) {
+	longestHistory := longestHistory(histories)
+	for i := 0; i < len(histories); i++ {
+		length := len(histories[i])
+		// We compare prefix of watch events, as we are not guaranteed to collect all events from each node.
+		if diff := cmp.Diff(longestHistory[:length], histories[i][:length], cmpopts.IgnoreFields(watchEvent{}, "Time")); diff != "" {
+			t.Error("Events in watches do not match")
 		}
 	}
 }
 
-func persistWatchEvents(t *testing.T, lg *zap.Logger, path string, events []watchEvent) {
-	lg.Info("Saving watch events", zap.String("path", path))
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		t.Errorf("Failed to save watch history: %v", err)
-		return
-	}
-	defer file.Close()
-	encoder := json.NewEncoder(file)
-	for _, event := range events {
-		err := encoder.Encode(event)
-		if err != nil {
-			t.Errorf("Failed to encode response: %v", err)
+func longestHistory(histories [][]watchEvent) []watchEvent {
+	longestIndex := 0
+	for i, history := range histories {
+		if len(history) > len(histories[longestIndex]) {
+			longestIndex = i
 		}
 	}
+	return histories[longestIndex]
 }

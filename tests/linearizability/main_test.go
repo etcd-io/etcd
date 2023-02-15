@@ -15,27 +15,13 @@
 package linearizability
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/framework"
 )
 
 var testRunner = framework.E2eTestRunner
-var resultsDirectory string
 
 func TestMain(m *testing.M) {
-	var ok bool
-	var err error
-	resultsDirectory, ok = os.LookupEnv("RESULTS_DIR")
-	if !ok {
-		resultsDirectory = "/tmp/"
-	}
-	resultsDirectory, err = filepath.Abs(resultsDirectory)
-	if err != nil {
-		panic(err)
-	}
-
 	testRunner.TestMain(m)
 }
