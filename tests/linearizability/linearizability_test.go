@@ -175,51 +175,63 @@ func TestLinearizability(t *testing.T) {
 }
 
 func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, config e2e.EtcdProcessClusterConfig, traffic *trafficConfig, failpoint FailpointConfig) {
-	var responses [][]watchResponse
-	var events [][]watchEvent
-	var operations []porcupine.Operation
-	var patchedOperations []porcupine.Operation
-	var visualizeHistory func(path string)
-
-	clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
+	r := report{lg: lg}
+	var err error
+	r.clus, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer clus.Close()
+	defer r.clus.Close()
 
 	defer func() {
-		path := testResultsDirectory(t)
-		if t.Failed() {
-			for i, member := range clus.Procs {
-				memberDataDir := filepath.Join(path, member.Config().Name)
-				persistMemberDataDir(t, lg, member, memberDataDir)
-				if responses != nil {
-					persistWatchResponses(t, lg, filepath.Join(memberDataDir, "responses.json"), responses[i])
-				}
-				if events != nil {
-					persistWatchEvents(t, lg, filepath.Join(memberDataDir, "events.json"), events[i])
-				}
+		r.Report(t)
+	}()
+	r.operations, r.responses = runScenario(ctx, t, lg, r.clus, *traffic, failpoint)
+	forcestopCluster(r.clus)
+
+	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
+	validateWatchResponses(t, r.responses, watchProgressNotifyEnabled)
+
+	r.events = watchEvents(r.responses)
+	validateEventsMatch(t, r.events)
+
+	r.patchedOperations = patchOperationBasedOnWatchEvents(r.operations, longestHistory(r.events))
+	r.visualizeHistory = validateOperationHistoryAndReturnVisualize(t, lg, r.patchedOperations)
+}
+
+type report struct {
+	lg                *zap.Logger
+	clus              *e2e.EtcdProcessCluster
+	responses         [][]watchResponse
+	events            [][]watchEvent
+	operations        []porcupine.Operation
+	patchedOperations []porcupine.Operation
+	visualizeHistory  func(path string)
+}
+
+func (r *report) Report(t *testing.T) {
+	path := testResultsDirectory(t)
+	if t.Failed() {
+		for i, member := range r.clus.Procs {
+			memberDataDir := filepath.Join(path, member.Config().Name)
+			persistMemberDataDir(t, r.lg, member, memberDataDir)
+			if r.responses != nil {
+				persistWatchResponses(t, r.lg, filepath.Join(memberDataDir, "responses.json"), r.responses[i])
 			}
-			if operations != nil {
-				persistOperationHistory(t, lg, filepath.Join(path, "full-history.json"), operations)
-			}
-			if patchedOperations != nil {
-				persistOperationHistory(t, lg, filepath.Join(path, "patched-history.json"), patchedOperations)
+			if r.events != nil {
+				persistWatchEvents(t, r.lg, filepath.Join(memberDataDir, "events.json"), r.events[i])
 			}
 		}
-		visualizeHistory(filepath.Join(path, "history.html"))
-	}()
-	operations, responses = runScenario(ctx, t, lg, clus, *traffic, failpoint)
-	forcestopCluster(clus)
-
-	watchProgressNotifyEnabled := clus.Cfg.WatchProcessNotifyInterval != 0
-	validateWatchResponses(t, responses, watchProgressNotifyEnabled)
-
-	events = watchEvents(responses)
-	validateEventsMatch(t, events)
-
-	patchedOperations = patchOperationBasedOnWatchEvents(operations, longestHistory(events))
-	visualizeHistory = validateOperationHistoryAndReturnVisualize(t, lg, patchedOperations)
+		if r.operations != nil {
+			persistOperationHistory(t, r.lg, filepath.Join(path, "full-history.json"), r.operations)
+		}
+		if r.patchedOperations != nil {
+			persistOperationHistory(t, r.lg, filepath.Join(path, "patched-history.json"), r.patchedOperations)
+		}
+	}
+	if r.visualizeHistory != nil {
+		r.visualizeHistory(filepath.Join(path, "history.html"))
+	}
 }
 
 func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, traffic trafficConfig, failpoint FailpointConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
