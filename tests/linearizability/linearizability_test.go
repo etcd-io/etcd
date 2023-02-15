@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -167,29 +166,77 @@ func TestLinearizability(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			scenario.config.Logger = lg
 			ctx := context.Background()
-			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&scenario.config))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer clus.Close()
-			operations, watchResponses := testLinearizability(ctx, t, lg, clus, FailpointConfig{
+			testLinearizability(ctx, t, lg, scenario.config, scenario.traffic, FailpointConfig{
 				failpoint:           scenario.failpoint,
 				count:               1,
 				retries:             3,
 				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			}, *scenario.traffic)
-			forcestopCluster(clus)
-			watchProgressNotifyEnabled := clus.Cfg.WatchProcessNotifyInterval != 0
-			validateWatchResponses(t, watchResponses, watchProgressNotifyEnabled)
-			longestHistory, remainingEvents := watchEventHistory(watchResponses)
-			validateEventsMatch(t, longestHistory, remainingEvents)
-			operations = patchOperationBasedOnWatchEvents(operations, longestHistory)
-			checkOperationsAndPersistResults(t, lg, operations, clus)
+			})
 		})
 	}
 }
 
-func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint FailpointConfig, traffic trafficConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
+func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, config e2e.EtcdProcessClusterConfig, traffic *trafficConfig, failpoint FailpointConfig) {
+	r := report{lg: lg}
+	var err error
+	r.clus, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.clus.Close()
+
+	defer func() {
+		r.Report(t)
+	}()
+	r.operations, r.responses = runScenario(ctx, t, lg, r.clus, *traffic, failpoint)
+	forcestopCluster(r.clus)
+
+	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
+	validateWatchResponses(t, r.responses, watchProgressNotifyEnabled)
+
+	r.events = watchEvents(r.responses)
+	validateEventsMatch(t, r.events)
+
+	r.patchedOperations = patchOperationBasedOnWatchEvents(r.operations, longestHistory(r.events))
+	r.visualizeHistory = validateOperationHistoryAndReturnVisualize(t, lg, r.patchedOperations)
+}
+
+type report struct {
+	lg                *zap.Logger
+	clus              *e2e.EtcdProcessCluster
+	responses         [][]watchResponse
+	events            [][]watchEvent
+	operations        []porcupine.Operation
+	patchedOperations []porcupine.Operation
+	visualizeHistory  func(path string)
+}
+
+func (r *report) Report(t *testing.T) {
+	path := testResultsDirectory(t)
+	if t.Failed() {
+		for i, member := range r.clus.Procs {
+			memberDataDir := filepath.Join(path, member.Config().Name)
+			persistMemberDataDir(t, r.lg, member, memberDataDir)
+			if r.responses != nil {
+				persistWatchResponses(t, r.lg, filepath.Join(memberDataDir, "responses.json"), r.responses[i])
+			}
+			if r.events != nil {
+				persistWatchEvents(t, r.lg, filepath.Join(memberDataDir, "events.json"), r.events[i])
+			}
+		}
+		if r.operations != nil {
+			persistOperationHistory(t, r.lg, filepath.Join(path, "full-history.json"), r.operations)
+		}
+		if r.patchedOperations != nil {
+			persistOperationHistory(t, r.lg, filepath.Join(path, "patched-history.json"), r.patchedOperations)
+		}
+	}
+	if r.visualizeHistory != nil {
+		r.visualizeHistory(filepath.Join(path, "history.html"))
+	}
+}
+
+func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, traffic trafficConfig, failpoint FailpointConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
 	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
 	g := errgroup.Group{}
 	trafficCtx, trafficCancel := context.WithCancel(ctx)
@@ -385,34 +432,37 @@ type trafficConfig struct {
 	traffic     Traffic
 }
 
-func watchEventHistory(responses [][]watchResponse) (longest []watchEvent, rest [][]watchEvent) {
+func watchEvents(responses [][]watchResponse) [][]watchEvent {
 	ops := make([][]watchEvent, len(responses))
 	for i, resps := range responses {
 		ops[i] = toWatchEvents(resps)
 	}
-
-	sort.Slice(ops, func(i, j int) bool {
-		return len(ops[i]) > len(ops[j])
-	})
-	return ops[0], ops[1:]
+	return ops
 }
 
-func validateEventsMatch(t *testing.T, longestHistory []watchEvent, other [][]watchEvent) {
-	for i := 0; i < len(other); i++ {
-		length := len(other[i])
+func validateEventsMatch(t *testing.T, histories [][]watchEvent) {
+	longestHistory := longestHistory(histories)
+	for i := 0; i < len(histories); i++ {
+		length := len(histories[i])
 		// We compare prefix of watch events, as we are not guaranteed to collect all events from each node.
-		if diff := cmp.Diff(longestHistory[:length], other[i][:length], cmpopts.IgnoreFields(watchEvent{}, "Time")); diff != "" {
-			t.Errorf("Events in watches do not match, %s", diff)
+		if diff := cmp.Diff(longestHistory[:length], histories[i][:length], cmpopts.IgnoreFields(watchEvent{}, "Time")); diff != "" {
+			t.Error("Events in watches do not match")
 		}
 	}
 }
 
-func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, clus *e2e.EtcdProcessCluster) {
-	path, err := testResultsDirectory(t)
-	if err != nil {
-		t.Error(err)
+func longestHistory(histories [][]watchEvent) []watchEvent {
+	longestIndex := 0
+	for i, history := range histories {
+		if len(history) > len(histories[longestIndex]) {
+			longestIndex = i
+		}
 	}
+	return histories[longestIndex]
+}
 
+// return visualize as porcupine.linearizationInfo used to generate visualization is private
+func validateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation) (visualize func(basepath string)) {
 	linearizable, info := porcupine.CheckOperationsVerbose(model.Etcd, operations, 5*time.Minute)
 	if linearizable == porcupine.Illegal {
 		t.Error("Model is not linearizable")
@@ -420,23 +470,18 @@ func checkOperationsAndPersistResults(t *testing.T, lg *zap.Logger, operations [
 	if linearizable == porcupine.Unknown {
 		t.Error("Linearization timed out")
 	}
-	if linearizable != porcupine.Ok {
-		persistOperationHistory(t, lg, path, operations)
-		persistMemberDataDir(t, lg, clus, path)
-	}
-
-	visualizationPath := filepath.Join(path, "history.html")
-	lg.Info("Saving visualization", zap.String("path", visualizationPath))
-	err = porcupine.VisualizePath(model.Etcd, info, visualizationPath)
-	if err != nil {
-		t.Errorf("Failed to visualize, err: %v", err)
+	return func(path string) {
+		lg.Info("Saving visualization", zap.String("path", path))
+		err := porcupine.VisualizePath(model.Etcd, info, path)
+		if err != nil {
+			t.Errorf("Failed to visualize, err: %v", err)
+		}
 	}
 }
 
 func persistOperationHistory(t *testing.T, lg *zap.Logger, path string, operations []porcupine.Operation) {
-	historyFilePath := filepath.Join(path, "history.json")
-	lg.Info("Saving operation history", zap.String("path", historyFilePath))
-	file, err := os.OpenFile(historyFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	lg.Info("Saving operation history", zap.String("path", path))
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		t.Errorf("Failed to save operation history: %v", err)
 		return
@@ -451,31 +496,28 @@ func persistOperationHistory(t *testing.T, lg *zap.Logger, path string, operatio
 	}
 }
 
-func persistMemberDataDir(t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, path string) {
-	for _, member := range clus.Procs {
-		memberDataDir := filepath.Join(path, member.Config().Name)
-		err := os.RemoveAll(memberDataDir)
-		if err != nil {
-			t.Error(err)
-		}
-		lg.Info("Saving member data dir", zap.String("member", member.Config().Name), zap.String("path", memberDataDir))
-		err = os.Rename(member.Config().DataDirPath, memberDataDir)
-		if err != nil {
-			t.Error(err)
-		}
+func persistMemberDataDir(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, path string) {
+	lg.Info("Saving member data dir", zap.String("member", member.Config().Name), zap.String("path", path))
+	err := os.Rename(member.Config().DataDirPath, path)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
-func testResultsDirectory(t *testing.T) (string, error) {
+func testResultsDirectory(t *testing.T) string {
 	path, err := filepath.Abs(filepath.Join(resultsDirectory, strings.ReplaceAll(t.Name(), "/", "_")))
 	if err != nil {
-		return path, err
+		t.Fatal(err)
+	}
+	err = os.RemoveAll(path)
+	if err != nil {
+		t.Fatal(err)
 	}
 	err = os.MkdirAll(path, 0700)
 	if err != nil {
-		return path, err
+		t.Fatal(err)
 	}
-	return path, nil
+	return path
 }
 
 // forcestopCluster stops the etcd member with signal kill.

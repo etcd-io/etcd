@@ -16,6 +16,8 @@ package linearizability
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -173,4 +175,38 @@ type watchEvent struct {
 	Op       model.EtcdOperation
 	Revision int64
 	Time     time.Time
+}
+
+func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses []watchResponse) {
+	lg.Info("Saving watch responses", zap.String("path", path))
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		t.Errorf("Failed to save watch history: %v", err)
+		return
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	for _, resp := range responses {
+		err := encoder.Encode(resp)
+		if err != nil {
+			t.Errorf("Failed to encode response: %v", err)
+		}
+	}
+}
+
+func persistWatchEvents(t *testing.T, lg *zap.Logger, path string, events []watchEvent) {
+	lg.Info("Saving watch events", zap.String("path", path))
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		t.Errorf("Failed to save watch history: %v", err)
+		return
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	for _, event := range events {
+		err := encoder.Encode(event)
+		if err != nil {
+			t.Errorf("Failed to encode response: %v", err)
+		}
+	}
 }
