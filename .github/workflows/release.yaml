@@ -8,7 +8,7 @@ jobs:
     - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
     - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
       with:
-        go-version: "1.19.5"
+        go-version: "1.19.6"
     - run: |
         git config --global user.email "github-action@etcd.io"
         git config --global user.name "Github Action"
