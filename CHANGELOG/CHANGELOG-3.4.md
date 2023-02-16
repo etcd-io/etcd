@@ -4,7 +4,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.24 (TBD)
+## v3.4.24 (2023-02-16)
 
 ### etcd server
 - Fix [etcdserver might promote a non-started learner](https://github.com/etcd-io/etcd/pull/15097).
