@@ -81,6 +81,39 @@ var (
 	}}
 )
 
+func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
+	var err error
+	successes := 0
+	failures := 0
+	for _, proc := range clus.Procs {
+		if !config.failpoint.Available(proc) {
+			t.Errorf("Failpoint %q not available on %s", config.failpoint.Name(), proc.Config().Name)
+			return
+		}
+	}
+	for successes < config.count && failures < config.retries {
+		time.Sleep(config.waitBetweenTriggers)
+		lg.Info("Triggering failpoint\n", zap.String("failpoint", config.failpoint.Name()))
+		err = config.failpoint.Trigger(ctx, t, lg, clus)
+		if err != nil {
+			lg.Info("Failed to trigger failpoint", zap.String("failpoint", config.failpoint.Name()), zap.Error(err))
+			failures++
+			continue
+		}
+		successes++
+	}
+	if successes < config.count || failures >= config.retries {
+		t.Errorf("failed to trigger failpoints enough times, err: %v", err)
+	}
+}
+
+type FailpointConfig struct {
+	failpoint           Failpoint
+	count               int
+	retries             int
+	waitBetweenTriggers time.Duration
+}
+
 type Failpoint interface {
 	Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error
 	Name() string

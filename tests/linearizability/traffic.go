@@ -19,12 +19,17 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"sync"
+	"testing"
 	"time"
 
+	"github.com/anishathalye/porcupine"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/linearizability/identity"
 	"go.etcd.io/etcd/tests/v3/linearizability/model"
 )
@@ -48,6 +53,55 @@ const (
 	CompareAndSet TrafficRequestType = "compareAndSet"
 	Defragment    TrafficRequestType = "defragment"
 )
+
+func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config trafficConfig) []porcupine.Operation {
+	mux := sync.Mutex{}
+	endpoints := clus.EndpointsV3()
+
+	ids := identity.NewIdProvider()
+	lm := identity.NewLeaseIdStorage()
+	h := model.History{}
+	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
+
+	startTime := time.Now()
+	wg := sync.WaitGroup{}
+	for i := 0; i < config.clientCount; i++ {
+		wg.Add(1)
+		endpoints := []string{endpoints[i%len(endpoints)]}
+		c, err := NewClient(endpoints, ids, startTime)
+		if err != nil {
+			t.Fatal(err)
+		}
+		go func(c *recordingClient, clientId int) {
+			defer wg.Done()
+			defer c.Close()
+
+			config.traffic.Run(ctx, clientId, c, limiter, ids, lm)
+			mux.Lock()
+			h = h.Merge(c.history.History)
+			mux.Unlock()
+		}(c, i)
+	}
+	wg.Wait()
+	endTime := time.Now()
+	operations := h.Operations()
+	lg.Info("Recorded operations", zap.Int("count", len(operations)))
+
+	qps := float64(len(operations)) / float64(endTime.Sub(startTime)) * float64(time.Second)
+	lg.Info("Average traffic", zap.Float64("qps", qps))
+	if qps < config.minimalQPS {
+		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", config.minimalQPS, qps)
+	}
+	return operations
+}
+
+type trafficConfig struct {
+	name        string
+	minimalQPS  float64
+	maximalQPS  float64
+	clientCount int
+	traffic     Traffic
+}
 
 type Traffic interface {
 	Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage)
