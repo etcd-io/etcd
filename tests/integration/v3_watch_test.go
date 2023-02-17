@@ -1397,3 +1397,33 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 		t.Fatalf("expected %s watch, got %s", expected, minWatches)
 	}
 }
+
+// TestV3WatchProgressRequest ensures that progress notifications can be requested
+func TestV3WatchProgressRequest(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Create watcher, request progress
+	wch := client.Watch(ctx, "foo")
+	err := client.RequestProgress(ctx)
+	require.NoError(t, err)
+
+	// Verify that get the requested progress notification
+	wr := <-wch
+	if wr.Err() != nil {
+		t.Fatal(fmt.Errorf("watch error: %w", wr.Err()))
+	}
+	if !wr.IsProgressNotify() {
+		t.Fatal("Did not receive progress notification!")
+	}
+	if wr.Header.Revision != int64(1) {
+		t.Fatal("Wrong revision in progress notification!")
+	}
+
+}
