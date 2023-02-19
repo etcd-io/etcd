@@ -88,7 +88,7 @@ type authRoleAPIList struct{}
 
 func (list *authRoleAPIList) HTTPRequest(ep url.URL) *http.Request {
 	u := v2AuthURL(ep, "roles", "")
-	req, _ := http.NewRequest("GET", u.String(), nil)
+	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }

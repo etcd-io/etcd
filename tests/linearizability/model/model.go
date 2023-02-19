@@ -404,7 +404,7 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 	case LeaseRevoke:
 		//Delete the keys attached to the lease
 		keyDeleted := false
-		for key, _ := range s.Leases[request.LeaseRevoke.LeaseID].Keys {
+		for key := range s.Leases[request.LeaseRevoke.LeaseID].Keys {
 			//same as delete.
 			if _, ok := s.KeyValues[key]; ok {
 				if !keyDeleted {

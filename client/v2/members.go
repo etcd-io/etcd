@@ -225,7 +225,7 @@ type membersAPIActionList struct{}
 
 func (l *membersAPIActionList) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
-	req, _ := http.NewRequest("GET", u.String(), nil)
+	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	return req
 }
 
@@ -236,7 +236,7 @@ type membersAPIActionRemove struct {
 func (d *membersAPIActionRemove) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
 	u.Path = path.Join(u.Path, d.memberID)
-	req, _ := http.NewRequest("DELETE", u.String(), nil)
+	req, _ := http.NewRequest(http.MethodDelete, u.String(), nil)
 	return req
 }
 
@@ -248,7 +248,7 @@ func (a *membersAPIActionAdd) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
 	m := memberCreateOrUpdateRequest{PeerURLs: a.peerURLs}
 	b, _ := json.Marshal(&m)
-	req, _ := http.NewRequest("POST", u.String(), bytes.NewReader(b))
+	req, _ := http.NewRequest(http.MethodPost, u.String(), bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }
@@ -263,7 +263,7 @@ func (a *membersAPIActionUpdate) HTTPRequest(ep url.URL) *http.Request {
 	m := memberCreateOrUpdateRequest{PeerURLs: a.peerURLs}
 	u.Path = path.Join(u.Path, a.memberID)
 	b, _ := json.Marshal(&m)
-	req, _ := http.NewRequest("PUT", u.String(), bytes.NewReader(b))
+	req, _ := http.NewRequest(http.MethodPut, u.String(), bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }
@@ -282,7 +282,7 @@ type membersAPIActionLeader struct{}
 func (l *membersAPIActionLeader) HTTPRequest(ep url.URL) *http.Request {
 	u := v2MembersURL(ep)
 	u.Path = path.Join(u.Path, defaultLeaderSuffix)
-	req, _ := http.NewRequest("GET", u.String(), nil)
+	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	return req
 }
 

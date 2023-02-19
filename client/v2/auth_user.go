@@ -163,7 +163,7 @@ type authUserAPIList struct{}
 
 func (list *authUserAPIList) HTTPRequest(ep url.URL) *http.Request {
 	u := v2AuthURL(ep, "users", "")
-	req, _ := http.NewRequest("GET", u.String(), nil)
+	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }
