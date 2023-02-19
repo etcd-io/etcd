@@ -64,7 +64,7 @@ func newStreamRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration)
 func createPostRequest(lg *zap.Logger, u url.URL, path string, body io.Reader, ct string, urls types.URLs, from, cid types.ID) *http.Request {
 	uu := u
 	uu.Path = path
-	req, err := http.NewRequest("POST", uu.String(), body)
+	req, err := http.NewRequest(http.MethodPost, uu.String(), body)
 	if err != nil {
 		if lg != nil {
 			lg.Panic("unexpected new request error", zap.Error(err))

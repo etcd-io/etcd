@@ -506,7 +506,7 @@ func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 	params.Set("quorum", strconv.FormatBool(g.Quorum))
 	u.RawQuery = params.Encode()
 
-	req, _ := http.NewRequest("GET", u.String(), nil)
+	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	return req
 }
 
@@ -526,7 +526,7 @@ func (w *waitAction) HTTPRequest(ep url.URL) *http.Request {
 	params.Set("recursive", strconv.FormatBool(w.Recursive))
 	u.RawQuery = params.Encode()
 
-	req, _ := http.NewRequest("GET", u.String(), nil)
+	req, _ := http.NewRequest(http.MethodGet, u.String(), nil)
 	return req
 }
 
@@ -581,7 +581,7 @@ func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 	u.RawQuery = params.Encode()
 	body := strings.NewReader(form.Encode())
 
-	req, _ := http.NewRequest("PUT", u.String(), body)
+	req, _ := http.NewRequest(http.MethodPut, u.String(), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return req
@@ -614,7 +614,7 @@ func (a *deleteAction) HTTPRequest(ep url.URL) *http.Request {
 	}
 	u.RawQuery = params.Encode()
 
-	req, _ := http.NewRequest("DELETE", u.String(), nil)
+	req, _ := http.NewRequest(http.MethodDelete, u.String(), nil)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	return req
@@ -637,7 +637,7 @@ func (a *createInOrderAction) HTTPRequest(ep url.URL) *http.Request {
 	}
 	body := strings.NewReader(form.Encode())
 
-	req, _ := http.NewRequest("POST", u.String(), body)
+	req, _ := http.NewRequest(http.MethodPost, u.String(), body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return req
 }

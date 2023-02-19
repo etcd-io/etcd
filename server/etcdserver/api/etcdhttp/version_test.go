@@ -24,7 +24,7 @@ import (
 )
 
 func TestServeVersion(t *testing.T) {
-	req, err := http.NewRequest("GET", "", nil)
+	req, err := http.NewRequest(http.MethodGet, "", nil)
 	if err != nil {
 		t.Fatalf("error creating request: %v", err)
 	}
