@@ -2,13 +2,15 @@
 // source: snap.proto
 
 /*
-	Package snappb is a generated protocol buffer package.
+Package snappb is a generated protocol buffer package.
 
-	It is generated from these files:
-		snap.proto
+It is generated from these files:
 
-	It has these top-level messages:
-		Snapshot
+	snap.proto
+
+It has these top-level messages:
+
+	Snapshot
 */
 package snappb
 

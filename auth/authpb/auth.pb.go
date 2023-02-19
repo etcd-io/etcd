@@ -2,16 +2,18 @@
 // source: auth.proto
 
 /*
-	Package authpb is a generated protocol buffer package.
+Package authpb is a generated protocol buffer package.
 
-	It is generated from these files:
-		auth.proto
+It is generated from these files:
 
-	It has these top-level messages:
-		UserAddOptions
-		User
-		Permission
-		Role
+	auth.proto
+
+It has these top-level messages:
+
+	UserAddOptions
+	User
+	Permission
+	Role
 */
 package authpb
 

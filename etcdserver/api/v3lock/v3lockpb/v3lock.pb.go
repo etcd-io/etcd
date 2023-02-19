@@ -2,16 +2,18 @@
 // source: v3lock.proto
 
 /*
-	Package v3lockpb is a generated protocol buffer package.
+Package v3lockpb is a generated protocol buffer package.
 
-	It is generated from these files:
-		v3lock.proto
+It is generated from these files:
 
-	It has these top-level messages:
-		LockRequest
-		LockResponse
-		UnlockRequest
-		UnlockResponse
+	v3lock.proto
+
+It has these top-level messages:
+
+	LockRequest
+	LockResponse
+	UnlockRequest
+	UnlockResponse
 */
 package v3lockpb
 

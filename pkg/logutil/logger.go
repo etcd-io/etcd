@@ -33,10 +33,9 @@ var _ Logger = &defaultLogger{}
 //
 // For example:
 //
-//  var defaultLogger Logger
-//  g := grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4)
-//  defaultLogger = NewLogger(g)
-//
+//	var defaultLogger Logger
+//	g := grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4)
+//	defaultLogger = NewLogger(g)
 func NewLogger(g grpclog.LoggerV2) Logger { return &defaultLogger{g: g} }
 
 type defaultLogger struct {

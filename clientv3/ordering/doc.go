@@ -38,5 +38,4 @@
 //	cli.KV = ordering.NewKV(cli.KV, vf)
 //
 // Now calls using 'cli' will reject order violations with an error.
-//
 package ordering

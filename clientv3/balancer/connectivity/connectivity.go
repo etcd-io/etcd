@@ -57,9 +57,9 @@ func (rc *recorder) GetCurrentState() (state connectivity.State) {
 // RecordTransition records state change happening in subConn and based on that
 // it evaluates what aggregated state should be.
 //
-//  - If at least one SubConn in Ready, the aggregated state is Ready;
-//  - Else if at least one SubConn in Connecting, the aggregated state is Connecting;
-//  - Else the aggregated state is TransientFailure.
+//   - If at least one SubConn in Ready, the aggregated state is Ready;
+//   - Else if at least one SubConn in Connecting, the aggregated state is Connecting;
+//   - Else the aggregated state is TransientFailure.
 //
 // Idle and Shutdown are not considered.
 //
