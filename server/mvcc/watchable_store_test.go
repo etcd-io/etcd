@@ -341,11 +341,11 @@ func TestWatchRestore(t *testing.T) {
 }
 
 // TestWatchRestoreSyncedWatcher tests such a case that:
-//   1. watcher is created with a future revision "math.MaxInt64 - 2"
-//   2. watcher with a future revision is added to "synced" watcher group
-//   3. restore/overwrite storage with snapshot of a higher lasat revision
-//   4. restore operation moves "synced" to "unsynced" watcher group
-//   5. choose the watcher from step 1, without panic
+//  1. watcher is created with a future revision "math.MaxInt64 - 2"
+//  2. watcher with a future revision is added to "synced" watcher group
+//  3. restore/overwrite storage with snapshot of a higher lasat revision
+//  4. restore operation moves "synced" to "unsynced" watcher group
+//  5. choose the watcher from step 1, without panic
 func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	b1, b1Path := betesting.NewDefaultTmpBackend(t)
 	s1 := newWatchableStore(zap.NewExample(), b1, &lease.FakeLessor{}, StoreConfig{})

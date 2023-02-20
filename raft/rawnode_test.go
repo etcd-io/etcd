@@ -868,17 +868,17 @@ func TestRawNodeStatus(t *testing.T) {
 // TestNodeCommitPaginationAfterRestart. The anomaly here was even worse as the
 // Raft group would forget to apply entries:
 //
-// - node learns that index 11 is committed
-// - nextEnts returns index 1..10 in CommittedEntries (but index 10 already
-//   exceeds maxBytes), which isn't noticed internally by Raft
-// - Commit index gets bumped to 10
-// - the node persists the HardState, but crashes before applying the entries
-// - upon restart, the storage returns the same entries, but `slice` takes a
-//   different code path and removes the last entry.
-// - Raft does not emit a HardState, but when the app calls Advance(), it bumps
-//   its internal applied index cursor to 10 (when it should be 9)
-// - the next Ready asks the app to apply index 11 (omitting index 10), losing a
-//    write.
+//   - node learns that index 11 is committed
+//   - nextEnts returns index 1..10 in CommittedEntries (but index 10 already
+//     exceeds maxBytes), which isn't noticed internally by Raft
+//   - Commit index gets bumped to 10
+//   - the node persists the HardState, but crashes before applying the entries
+//   - upon restart, the storage returns the same entries, but `slice` takes a
+//     different code path and removes the last entry.
+//   - Raft does not emit a HardState, but when the app calls Advance(), it bumps
+//     its internal applied index cursor to 10 (when it should be 9)
+//   - the next Ready asks the app to apply index 11 (omitting index 10), losing a
+//     write.
 func TestRawNodeCommitPaginationAfterRestart(t *testing.T) {
 	s := &ignoreSizeHintMemStorage{
 		MemoryStorage: newTestMemoryStorage(withPeers(1)),

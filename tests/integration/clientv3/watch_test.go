@@ -1046,12 +1046,12 @@ func TestWatchCancelOnServer(t *testing.T) {
 // TestWatchOverlapContextCancel stresses the watcher stream teardown path by
 // creating/canceling watchers to ensure that new watchers are not taken down
 // by a torn down watch stream. The sort of race that's being detected:
-//     1. create w1 using a cancelable ctx with %v as "ctx"
-//     2. cancel ctx
-//     3. watcher client begins tearing down watcher grpc stream since no more watchers
-//     3. start creating watcher w2 using a new "ctx" (not canceled), attaches to old grpc stream
-//     4. watcher client finishes tearing down stream on "ctx"
-//     5. w2 comes back canceled
+//  1. create w1 using a cancelable ctx with %v as "ctx"
+//  2. cancel ctx
+//  3. watcher client begins tearing down watcher grpc stream since no more watchers
+//  3. start creating watcher w2 using a new "ctx" (not canceled), attaches to old grpc stream
+//  4. watcher client finishes tearing down stream on "ctx"
+//  5. w2 comes back canceled
 func TestWatchOverlapContextCancel(t *testing.T) {
 	f := func(clus *integration.ClusterV3) {}
 	testWatchOverlapContextCancel(t, f)

@@ -959,14 +959,14 @@ func (s *ignoreSizeHintMemStorage) Entries(lo, hi uint64, maxSize uint64) ([]raf
 // Storage's Entries size limitation is slightly more permissive than Raft's
 // internal one. The original bug was the following:
 //
-// - node learns that index 11 (or 100, doesn't matter) is committed
-// - nextEnts returns index 1..10 in CommittedEntries due to size limiting. However,
-//   index 10 already exceeds maxBytes, due to a user-provided impl of Entries.
-// - Commit index gets bumped to 10
-// - the node persists the HardState, but crashes before applying the entries
-// - upon restart, the storage returns the same entries, but `slice` takes a different code path
-//   (since it is now called with an upper bound of 10) and removes the last entry.
-// - Raft emits a HardState with a regressing commit index.
+//   - node learns that index 11 (or 100, doesn't matter) is committed
+//   - nextEnts returns index 1..10 in CommittedEntries due to size limiting. However,
+//     index 10 already exceeds maxBytes, due to a user-provided impl of Entries.
+//   - Commit index gets bumped to 10
+//   - the node persists the HardState, but crashes before applying the entries
+//   - upon restart, the storage returns the same entries, but `slice` takes a different code path
+//     (since it is now called with an upper bound of 10) and removes the last entry.
+//   - Raft emits a HardState with a regressing commit index.
 //
 // A simpler version of this test would have the storage return a lot less entries than dictated
 // by maxSize (for example, exactly one entry) after the restart, resulting in a larger regression.
