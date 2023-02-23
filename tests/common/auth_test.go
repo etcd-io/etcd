@@ -410,6 +410,71 @@ func TestAuthTxn(t *testing.T) {
 	}
 }
 
+func TestAuthPrefixPerm(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+		prefix := "/prefix/" // directory like prefix
+		// grant keys to test-user
+		_, err := rootAuthClient.RoleGrantPermission(ctx, "test-role", prefix, clientv3.GetPrefixRangeEnd(prefix), clientv3.PermissionType(clientv3.PermReadWrite))
+		require.NoError(t, err)
+		// try a prefix granted permission
+		for i := 0; i < 10; i++ {
+			key := fmt.Sprintf("%s%d", prefix, i)
+			require.NoError(t, testUserAuthClient.Put(ctx, key, "val", config.PutOptions{}))
+		}
+		// expect put 'key with prefix end "/prefix0"' value failed
+		require.ErrorContains(t, testUserAuthClient.Put(ctx, clientv3.GetPrefixRangeEnd(prefix), "baz", config.PutOptions{}), PermissionDenied)
+
+		// grant the prefix2 keys to test-user
+		prefix2 := "/prefix2/"
+		_, err = rootAuthClient.RoleGrantPermission(ctx, "test-role", prefix2, clientv3.GetPrefixRangeEnd(prefix2), clientv3.PermissionType(clientv3.PermReadWrite))
+		require.NoError(t, err)
+		for i := 0; i < 10; i++ {
+			key := fmt.Sprintf("%s%d", prefix2, i)
+			require.NoError(t, testUserAuthClient.Put(ctx, key, "val", config.PutOptions{}))
+		}
+	})
+}
+
+func TestAuthRevokeWithDelete(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		// create a new role
+		newTestRoleName := "test-role2"
+		_, err := rootAuthClient.RoleAdd(ctx, newTestRoleName)
+		require.NoError(t, err)
+		// grant the new role to the user
+		_, err = rootAuthClient.UserGrantRole(ctx, testUserName, newTestRoleName)
+		require.NoError(t, err)
+		// check the result
+		resp, err := rootAuthClient.UserGet(ctx, testUserName)
+		require.NoError(t, err)
+		require.ElementsMatch(t, resp.Roles, []string{testRoleName, newTestRoleName})
+		// delete the role, test-role2 must be revoked from test-user
+		_, err = rootAuthClient.RoleDelete(ctx, newTestRoleName)
+		require.NoError(t, err)
+		// check the result
+		resp, err = rootAuthClient.UserGet(ctx, testUserName)
+		require.NoError(t, err)
+		require.ElementsMatch(t, resp.Roles, []string{testRoleName})
+	})
+}
+
 func mustAbsPath(path string) string {
 	abs, err := filepath.Abs(path)
 	if err != nil {
