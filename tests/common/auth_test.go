@@ -32,8 +32,11 @@ var defaultAuthToken = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256
 	mustAbsPath("../fixtures/server.crt"), mustAbsPath("../fixtures/server.key.insecure"))
 
 const (
-	PermissionDenied     = "etcdserver: permission denied"
-	AuthenticationFailed = "etcdserver: authentication failed, invalid user ID or password"
+	PermissionDenied      = "etcdserver: permission denied"
+	AuthenticationFailed  = "etcdserver: authentication failed, invalid user ID or password"
+	InvalidAuthManagement = "etcdserver: invalid auth management"
+
+	testPeerURL = "http://localhost:20011"
 )
 
 func TestAuthEnable(t *testing.T) {
@@ -563,6 +566,67 @@ func TestAuthLeaseGrantLeases(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestAuthMemberAdd(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+		_, err := testUserAuthClient.MemberAdd(ctx, "newmember", []string{testPeerURL})
+		require.ErrorContains(t, err, PermissionDenied)
+		_, err = rootAuthClient.MemberAdd(ctx, "newmember", []string{testPeerURL})
+		require.NoError(t, err)
+	})
+}
+
+func TestAuthMemberRemove(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clusterSize := 2
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: clusterSize}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+
+		memberId, clusterId := memberToRemove(ctx, t, rootAuthClient, clusterSize)
+
+		// ordinary user cannot remove a member
+		_, err := testUserAuthClient.MemberRemove(ctx, memberId)
+		require.ErrorContains(t, err, PermissionDenied)
+
+		// root can remove a member
+		removeResp, err := rootAuthClient.MemberRemove(ctx, memberId)
+		require.NoError(t, err, "MemberRemove failed")
+		require.Equal(t, removeResp.Header.ClusterId, clusterId)
+	})
+}
+
+func TestAuthTestInvalidMgmt(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		_, err := rootAuthClient.UserDelete(ctx, rootUserName)
+		require.ErrorContains(t, err, InvalidAuthManagement)
+		_, err = rootAuthClient.UserRevokeRole(ctx, rootUserName, rootRoleName)
+		require.ErrorContains(t, err, InvalidAuthManagement)
+	})
 }
 
 func mustAbsPath(path string) string {
