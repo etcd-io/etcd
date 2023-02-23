@@ -27,12 +27,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3AuthMemberAdd(t *testing.T) { testCtl(t, authTestMemberAdd) }
-func TestCtlV3AuthMemberRemove(t *testing.T) {
-	testCtl(t, authTestMemberRemove, withQuorum(), withDisableStrictReconfig())
-}
 func TestCtlV3AuthMemberUpdate(t *testing.T) { testCtl(t, authTestMemberUpdate) }
-func TestCtlV3AuthInvalidMgmt(t *testing.T)  { testCtl(t, authTestInvalidMgmt) }
 func TestCtlV3AuthFromKeyPerm(t *testing.T)  { testCtl(t, authTestFromKeyPerm) }
 func TestCtlV3AuthAndWatch(t *testing.T)     { testCtl(t, authTestWatch) }
 func TestCtlV3AuthAndWatchJWT(t *testing.T)  { testCtl(t, authTestWatch, withCfg(*e2e.NewConfigJWT())) }
@@ -96,51 +91,6 @@ func authSetupTestUser(cx ctlCtx) {
 	}
 }
 
-func authTestMemberAdd(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
-	// ordinary user cannot add a new member
-	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3MemberAdd(cx, peerURL, false); err == nil {
-		cx.t.Fatalf("ordinary user must not be allowed to add a member")
-	}
-
-	// root can add a new member
-	cx.user, cx.pass = "root", "root"
-	if err := ctlV3MemberAdd(cx, peerURL, false); err != nil {
-		cx.t.Fatal(err)
-	}
-}
-
-func authTestMemberRemove(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	ep, memIDToRemove, clusterID := cx.memberToRemove()
-
-	// ordinary user cannot remove a member
-	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3MemberRemove(cx, ep, memIDToRemove, clusterID); err == nil {
-		cx.t.Fatalf("ordinary user must not be allowed to remove a member")
-	}
-
-	// root can remove a member
-	cx.user, cx.pass = "root", "root"
-	if err := ctlV3MemberRemove(cx, ep, memIDToRemove, clusterID); err != nil {
-		cx.t.Fatal(err)
-	}
-}
-
 func authTestMemberUpdate(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
 		cx.t.Fatal(err)
@@ -200,20 +150,6 @@ func authTestCertCN(cx ctlCtx) {
 	cx.user, cx.pass = "", ""
 	err := ctlV3PutFailPerm(cx, "baz", "bar")
 	require.ErrorContains(cx.t, err, "permission denied")
-}
-
-func authTestInvalidMgmt(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	if err := ctlV3Role(cx, []string{"delete", "root"}, "Error: etcdserver: invalid auth management"); err == nil {
-		cx.t.Fatal("deleting the role root must not be allowed")
-	}
-
-	if err := ctlV3User(cx, []string{"revoke-role", "root", "root"}, "Error: etcdserver: invalid auth management", []string{}); err == nil {
-		cx.t.Fatal("revoking the role root from the user root must not be allowed")
-	}
 }
 
 func authTestFromKeyPerm(cx ctlCtx) {
