@@ -37,6 +37,10 @@ test-e2e-release: build
 test-robustness:
 	PASSES="robustness" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+.PHONY: test-images
+test-images:
+	./scripts/test_images.sh
+
 .PHONY: fuzz
 fuzz: 
 	./scripts/fuzzing.sh
