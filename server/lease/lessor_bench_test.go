@@ -32,7 +32,7 @@ func BenchmarkLessorRevoke100000(b *testing.B) { benchmarkLessorRevoke(100000, b
 func BenchmarkLessorRenew1000(b *testing.B)   { benchmarkLessorRenew(1000, b) }
 func BenchmarkLessorRenew100000(b *testing.B) { benchmarkLessorRenew(100000, b) }
 
-// Use findExpired10000 replace findExpired1000, which takes too long.
+// BenchmarkLessorFindExpired10000 use findExpired10000 replace findExpired1000, which takes too long.
 func BenchmarkLessorFindExpired10000(b *testing.B)  { benchmarkLessorFindExpired(10000, b) }
 func BenchmarkLessorFindExpired100000(b *testing.B) { benchmarkLessorFindExpired(100000, b) }
 

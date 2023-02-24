@@ -27,7 +27,7 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-// Test HashByRevValue values to ensure we don't change the output which would
+// TestHashByRevValue values to ensure we don't change the output which would
 // have catastrophic consequences. Expected output is just hardcoded, so please
 // regenerate it every time you change input parameters.
 func TestHashByRevValue(t *testing.T) {
@@ -127,6 +127,7 @@ func testHashByRev(t *testing.T, s *store, rev int64) KeyValueHash {
 	return hash
 }
 
+// TestCompactionHash
 // TODO: Change this to fuzz test
 func TestCompactionHash(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)

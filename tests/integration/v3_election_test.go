@@ -173,7 +173,7 @@ func TestElectionFailover(t *testing.T) {
 	}
 }
 
-// TestElectionSessionRelock ensures that campaigning twice on the same election
+// TestElectionSessionRecampaign ensures that campaigning twice on the same election
 // with the same lock will Proclaim instead of deadlocking.
 func TestElectionSessionRecampaign(t *testing.T) {
 	BeforeTest(t)

@@ -36,22 +36,22 @@ type rawNodeAdapter struct {
 
 var _ Node = (*rawNodeAdapter)(nil)
 
-// Node specifies lead, which is pointless, can just be filled in.
+// TransferLeadership is to test when node specifies lead, which is pointless, can just be filled in.
 func (a *rawNodeAdapter) TransferLeadership(ctx context.Context, lead, transferee uint64) {
 	a.RawNode.TransferLeader(transferee)
 }
 
-// Node has a goroutine, RawNode doesn't need this.
+// Stop when node has a goroutine, RawNode doesn't need this.
 func (a *rawNodeAdapter) Stop() {}
 
-// RawNode returns a *Status.
+// Status returns RawNode's status as *Status.
 func (a *rawNodeAdapter) Status() Status { return a.RawNode.Status() }
 
-// RawNode takes a Ready. It doesn't really have to do that I think? It can hold on
+// Advance is when RawNode takes a Ready. It doesn't really have to do that I think? It can hold on
 // to it internally. But maybe that approach is frail.
 func (a *rawNodeAdapter) Advance() { a.RawNode.Advance(Ready{}) }
 
-// RawNode returns a Ready, not a chan of one.
+// Ready when RawNode returns a Ready, not a chan of one.
 func (a *rawNodeAdapter) Ready() <-chan Ready { return nil }
 
 // Node takes more contexts. Easy enough to fix.

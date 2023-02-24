@@ -286,6 +286,7 @@ func TestVerify(t *testing.T) {
 	}
 }
 
+// TestCut
 // TODO: split it into smaller tests for better readability
 func TestCut(t *testing.T) {
 	p, err := ioutil.TempDir(t.TempDir(), "waltest")

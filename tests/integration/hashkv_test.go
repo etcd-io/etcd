@@ -31,6 +31,7 @@ const (
 	compactionCycle = 71
 )
 
+// TestCompactionHash
 // TODO: Change this to fuzz test
 func TestCompactionHash(t *testing.T) {
 	BeforeTest(t)

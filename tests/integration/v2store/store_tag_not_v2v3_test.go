@@ -38,7 +38,7 @@ func newTestStore(t *testing.T, ns ...string) StoreCloser {
 	return &v2TestStore{v2store.New(ns...)}
 }
 
-// Ensure that the store can recover from a previously saved state.
+// TestStoreRecover to ensure that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
 	integration.BeforeTest(t)
 	s := newTestStore(t)

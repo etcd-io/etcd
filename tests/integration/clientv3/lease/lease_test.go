@@ -183,6 +183,7 @@ func TestLeaseKeepAliveOneSecond(t *testing.T) {
 	}
 }
 
+// TestLeaseKeepAliveHandleFailure
 // TODO: add a client that can connect to all the members of cluster via unix sock.
 // TODO: test handle more complicated failures.
 func TestLeaseKeepAliveHandleFailure(t *testing.T) {
@@ -490,7 +491,7 @@ func TestLeaseKeepAliveInitTimeout(t *testing.T) {
 	clus.Members[0].Restart(t)
 }
 
-// TestLeaseKeepAliveInitTimeout ensures the keep alive channel closes if
+// TestLeaseKeepAliveTTLTimeout ensures the keep alive channel closes if
 // a keep alive request after the first never gets a response.
 func TestLeaseKeepAliveTTLTimeout(t *testing.T) {
 	integration.BeforeTest(t)

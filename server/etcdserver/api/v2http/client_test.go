@@ -712,7 +712,7 @@ func TestServeMembers(t *testing.T) {
 	}
 }
 
-// TODO: consolidate **ALL** fake server implementations and add no leader test case.
+// TestServeLeader TODO: consolidate **ALL** fake server implementations and add no leader test case.
 func TestServeLeader(t *testing.T) {
 	memb1 := membership.Member{ID: 1, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
 	memb2 := membership.Member{ID: 2, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8081"}}}

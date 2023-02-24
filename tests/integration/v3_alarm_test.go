@@ -356,7 +356,7 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	}
 }
 
-// Refer to https://github.com/etcd-io/etcd/issues/14382
+// TestAlarmlistOnMemberRestart refer to https://github.com/etcd-io/etcd/issues/14382
 func TestAlarmlistOnMemberRestart(t *testing.T) {
 	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{

@@ -76,7 +76,7 @@ func TestNodeStep(t *testing.T) {
 	}
 }
 
-// Cancel and Stop should unblock Step()
+// TestNodeStepUnblock should Cancel and Stop should unblock Step()
 func TestNodeStepUnblock(t *testing.T) {
 	// a node without buffer to block step
 	n := &node{
