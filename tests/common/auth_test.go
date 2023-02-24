@@ -444,6 +444,32 @@ func TestAuthPrefixPerm(t *testing.T) {
 	})
 }
 
+func TestAuthLeaseKeepAlive(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+
+		resp, err := rootAuthClient.Grant(ctx, 10)
+		require.NoError(t, err)
+		leaseID := resp.ID
+		require.NoError(t, rootAuthClient.Put(ctx, "key", "value", config.PutOptions{LeaseID: leaseID}))
+		_, err = rootAuthClient.KeepAliveOnce(ctx, leaseID)
+		require.NoError(t, err)
+
+		gresp, err := rootAuthClient.Get(ctx, "key", config.GetOptions{})
+		require.NoError(t, err)
+		if len(gresp.Kvs) != 1 || string(gresp.Kvs[0].Key) != "key" || string(gresp.Kvs[0].Value) != "value" {
+			t.Fatalf("want kv pair ('key', 'value') but got %v", gresp.Kvs)
+		}
+	})
+}
+
 func TestAuthRevokeWithDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -473,6 +499,70 @@ func TestAuthRevokeWithDelete(t *testing.T) {
 		require.NoError(t, err)
 		require.ElementsMatch(t, resp.Roles, []string{testRoleName})
 	})
+}
+
+func TestAuthLeaseTimeToLiveExpired(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		resp, err := rootAuthClient.Grant(ctx, 2)
+		require.NoError(t, err)
+		leaseID := resp.ID
+		require.NoError(t, rootAuthClient.Put(ctx, "key", "val", config.PutOptions{LeaseID: leaseID}))
+		// eliminate false positive
+		time.Sleep(3 * time.Second)
+		tresp, err := rootAuthClient.TimeToLive(ctx, leaseID, config.LeaseOption{})
+		require.NoError(t, err)
+		require.Equal(t, int64(-1), tresp.TTL)
+
+		gresp, err := rootAuthClient.Get(ctx, "key", config.GetOptions{})
+		require.NoError(t, err)
+		require.Empty(t, gresp.Kvs)
+	})
+}
+
+func TestAuthLeaseGrantLeases(t *testing.T) {
+	testRunner.BeforeTest(t)
+	tcs := []testCase{
+		{
+			name:   "NoJWT",
+			config: config.ClusterConfig{ClusterSize: 1},
+		},
+		{
+			name:   "JWT",
+			config: config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
+			defer clus.Close()
+			cc := testutils.MustClient(clus.Client())
+
+			testutils.ExecuteUntil(ctx, t, func() {
+				require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
+				rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+
+				resp, err := rootAuthClient.Grant(ctx, 10)
+				require.NoError(t, err)
+
+				leaseID := resp.ID
+				lresp, err := rootAuthClient.Leases(ctx)
+				require.NoError(t, err)
+				if len(lresp.Leases) != 1 || lresp.Leases[0].ID != leaseID {
+					t.Fatalf("want %v leaseID but got %v leases", leaseID, lresp.Leases)
+				}
+			})
+		})
+	}
 }
 
 func mustAbsPath(path string) string {
