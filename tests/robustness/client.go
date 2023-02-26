@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearizability
+package robustness
 
 import (
 	"context"
@@ -22,8 +22,8 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/tests/v3/linearizability/identity"
-	"go.etcd.io/etcd/tests/v3/linearizability/model"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
 type recordingClient struct {

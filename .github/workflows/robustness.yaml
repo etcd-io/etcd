@@ -1,9 +1,9 @@
-name: Linearizability
+name: Robustness
 on: [push, pull_request]
 permissions: read-all
 jobs:
   test:
-    uses: ./.github/workflows/linearizability-template.yaml
+    uses: ./.github/workflows/robustness-template.yaml
     with:
       ref: ${{ github.ref }}
       count: 15

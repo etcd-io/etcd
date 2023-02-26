@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearizability
+package robustness
 
 import (
 	"context"
@@ -25,7 +25,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/linearizability/model"
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
 const (
@@ -76,7 +76,7 @@ var (
 	}
 )
 
-func TestLinearizability(t *testing.T) {
+func TestRobustness(t *testing.T) {
 	testRunner.BeforeTest(t)
 	type scenario struct {
 		name      string
@@ -157,7 +157,7 @@ func TestLinearizability(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			scenario.config.Logger = lg
 			ctx := context.Background()
-			testLinearizability(ctx, t, lg, scenario.config, scenario.traffic, FailpointConfig{
+			testRobustness(ctx, t, lg, scenario.config, scenario.traffic, FailpointConfig{
 				failpoint:           scenario.failpoint,
 				count:               1,
 				retries:             3,
@@ -167,7 +167,7 @@ func TestLinearizability(t *testing.T) {
 	}
 }
 
-func testLinearizability(ctx context.Context, t *testing.T, lg *zap.Logger, config e2e.EtcdProcessClusterConfig, traffic *trafficConfig, failpoint FailpointConfig) {
+func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2e.EtcdProcessClusterConfig, traffic *trafficConfig, failpoint FailpointConfig) {
 	r := report{lg: lg}
 	var err error
 	r.clus, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
