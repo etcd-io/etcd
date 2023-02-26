@@ -1,4 +1,4 @@
-name: Linearizability Nightly
+name: Robustness Nightly
 permissions: read-all
 on:
   # schedules always run against the main branch, hence we have to create separate jobs
@@ -8,21 +8,21 @@ on:
 jobs:
   test-main:
     # GHA has a maximum amount of 6h execution time, we try to get done within 3h
-    uses: ./.github/workflows/linearizability-template.yaml
+    uses: ./.github/workflows/robustness-template.yaml
     with:
       ref: main
       count: 100
       testTimeout: 200m
       artifactName: test-main
   test-35:
-    uses: ./.github/workflows/linearizability-template.yaml
+    uses: ./.github/workflows/robustness-template.yaml
     with:
       ref: release-3.5
       count: 100
       testTimeout: 200m
       artifactName: test-35
   test-34:
-    uses: ./.github/workflows/linearizability-template.yaml
+    uses: ./.github/workflows/robustness-template.yaml
     with:
       ref: release-3.4
       count: 100
