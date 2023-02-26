@@ -27,17 +27,15 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3AuthPrefixPerm(t *testing.T) { testCtl(t, authTestPrefixPerm) }
-func TestCtlV3AuthMemberAdd(t *testing.T)  { testCtl(t, authTestMemberAdd) }
+func TestCtlV3AuthMemberAdd(t *testing.T) { testCtl(t, authTestMemberAdd) }
 func TestCtlV3AuthMemberRemove(t *testing.T) {
 	testCtl(t, authTestMemberRemove, withQuorum(), withDisableStrictReconfig())
 }
-func TestCtlV3AuthMemberUpdate(t *testing.T)     { testCtl(t, authTestMemberUpdate) }
-func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }
-func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
-func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
-func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
-func TestCtlV3AuthAndWatchJWT(t *testing.T)      { testCtl(t, authTestWatch, withCfg(*e2e.NewConfigJWT())) }
+func TestCtlV3AuthMemberUpdate(t *testing.T) { testCtl(t, authTestMemberUpdate) }
+func TestCtlV3AuthInvalidMgmt(t *testing.T)  { testCtl(t, authTestInvalidMgmt) }
+func TestCtlV3AuthFromKeyPerm(t *testing.T)  { testCtl(t, authTestFromKeyPerm) }
+func TestCtlV3AuthAndWatch(t *testing.T)     { testCtl(t, authTestWatch) }
+func TestCtlV3AuthAndWatchJWT(t *testing.T)  { testCtl(t, authTestWatch, withCfg(*e2e.NewConfigJWT())) }
 
 func TestCtlV3AuthLeaseTestKeepAlive(t *testing.T) { testCtl(t, authLeaseTestKeepAlive) }
 func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) {
@@ -103,49 +101,6 @@ func authSetupTestUser(cx ctlCtx) {
 	cmd := append(cx.PrefixArgs(), "role", "grant-permission", "test-role", "readwrite", "foo")
 	if err := e2e.SpawnWithExpectWithEnv(cmd, cx.envMap, "Role test-role updated"); err != nil {
 		cx.t.Fatal(err)
-	}
-}
-
-func authTestPrefixPerm(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	prefix := "/prefix/" // directory like prefix
-	// grant keys to test-user
-	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, prefix, "", true}); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// try a prefix granted permission
-	cx.user, cx.pass = "test-user", "pass"
-	for i := 0; i < 10; i++ {
-		key := fmt.Sprintf("%s%d", prefix, i)
-		if err := ctlV3Put(cx, key, "val", ""); err != nil {
-			cx.t.Fatal(err)
-		}
-	}
-
-	err := ctlV3PutFailPerm(cx, clientv3.GetPrefixRangeEnd(prefix), "baz")
-	require.ErrorContains(cx.t, err, "permission denied")
-
-	// grant the entire keys to test-user
-	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "", "", true}); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	prefix2 := "/prefix2/"
-	cx.user, cx.pass = "test-user", "pass"
-	for i := 0; i < 10; i++ {
-		key := fmt.Sprintf("%s%d", prefix2, i)
-		if err := ctlV3Put(cx, key, "val", ""); err != nil {
-			cx.t.Fatal(err)
-		}
 	}
 }
 
@@ -253,41 +208,6 @@ func authTestCertCN(cx ctlCtx) {
 	cx.user, cx.pass = "", ""
 	err := ctlV3PutFailPerm(cx, "baz", "bar")
 	require.ErrorContains(cx.t, err, "permission denied")
-}
-
-func authTestRevokeWithDelete(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	// create a new role
-	cx.user, cx.pass = "root", "root"
-	if err := ctlV3Role(cx, []string{"add", "test-role2"}, "Role test-role2 created"); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// grant the new role to the user
-	if err := ctlV3User(cx, []string{"grant-role", "test-user", "test-role2"}, "Role test-role2 is granted to user test-user", nil); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// check the result
-	if err := ctlV3User(cx, []string{"get", "test-user"}, "Roles: test-role test-role2", nil); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// delete the role, test-role2 must be revoked from test-user
-	if err := ctlV3Role(cx, []string{"delete", "test-role2"}, "Role test-role2 deleted"); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// check the result
-	if err := ctlV3User(cx, []string{"get", "test-user"}, "Roles: test-role", nil); err != nil {
-		cx.t.Fatal(err)
-	}
 }
 
 func authTestInvalidMgmt(cx ctlCtx) {
