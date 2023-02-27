@@ -119,15 +119,22 @@ RPC: Range
 
 - print-value-only -- print only value when used with write-out=simple
 
-- consistency -- Linearizable(l) or Serializable(s)
+- consistency -- Linearizable(l) or Serializable(s), defaults to Linearizable(l).
 
 - from-key -- Get keys that are greater than or equal to the given key using byte compare
 
 - keys-only -- Get only the keys
 
 #### Output
-
+Prints the data in format below,
+```
 \<key\>\n\<value\>\n\<next_key\>\n\<next_value\>...
+```
+
+Note serializable requests are better for lower latency requirement, but
+stale data might be returned if serializable option (`--consistency=s`)
+is specified.
+
 
 #### Examples
 
@@ -711,9 +718,18 @@ MEMBER LIST prints the member details for all members associated with an etcd cl
 
 RPC: MemberList
 
+#### Options
+- consistency -- Linearizable(l) or Serializable(s), defaults to Linearizable(l).
+
 #### Output
 
 Prints a humanized table of the member IDs, statuses, names, peer addresses, and client addresses.
+
+Note serializable requests are better for lower latency requirement, but
+stale member list might be returned if serializable option (`--consistency=s`)
+is specified. In some situations users may want to use serializable requests.
+For example, when adding a new member to a one-node cluster, it's reasonable
+and safe to use serializable request before the new added member gets started.
 
 #### Examples
 

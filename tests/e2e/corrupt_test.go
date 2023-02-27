@@ -124,7 +124,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		assert.NoError(t, err, "error on put")
 	}
 
-	members, err := cc.MemberList(ctx)
+	members, err := cc.MemberList(ctx, false)
 	assert.NoError(t, err, "error on member list")
 	var memberID uint64
 	for _, m := range members.Members {
@@ -171,7 +171,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		assert.NoError(t, err, "error on put")
 	}
-	members, err := cc.MemberList(ctx)
+	members, err := cc.MemberList(ctx, false)
 	assert.NoError(t, err, "error on member list")
 	var memberID uint64
 	for _, m := range members.Members {

@@ -418,9 +418,15 @@ func WithFromKey() OpOption {
 	}
 }
 
-// WithSerializable makes 'Get' request serializable. By default,
-// it's linearizable. Serializable requests are better for lower latency
-// requirement.
+// WithSerializable makes `Get` and `MemberList` requests serializable.
+// By default, they are linearizable. Serializable requests are better
+// for lower latency requirement, but users should be aware that they
+// could get stale data with serializable requests.
+//
+// In some situations users may want to use serializable requests. For
+// example, when adding a new member to a one-node cluster, it's reasonable
+// and safe to use serializable request before the new added member gets
+// started.
 func WithSerializable() OpOption {
 	return func(op *Op) { op.serializable = true }
 }

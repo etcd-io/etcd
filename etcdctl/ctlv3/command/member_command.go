@@ -27,8 +27,9 @@ import (
 )
 
 var (
-	memberPeerURLs string
-	isLearner      bool
+	memberPeerURLs    string
+	isLearner         bool
+	memberConsistency string
 )
 
 // NewMemberCommand returns the cobra command for "member".
@@ -99,6 +100,8 @@ The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs, Is Learne
 
 		Run: memberListCommandFunc,
 	}
+
+	cc.Flags().StringVar(&memberConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 
 	return cc
 }
@@ -226,8 +229,12 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 
 // memberListCommandFunc executes the "member list" command.
 func memberListCommandFunc(cmd *cobra.Command, args []string) {
+	var opts []clientv3.OpOption
+	if IsSerializable(memberConsistency) {
+		opts = append(opts, clientv3.WithSerializable())
+	}
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).MemberList(ctx)
+	resp, err := mustClientFromCmd(cmd).MemberList(ctx, opts...)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)

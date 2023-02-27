@@ -721,7 +721,7 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 	// First remove member from the cluster
 
 	memberCtl := epc.Client(opts...)
-	memberList, err := memberCtl.MemberList(ctx)
+	memberList, err := memberCtl.MemberList(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get member list: %w", err)
 	}
