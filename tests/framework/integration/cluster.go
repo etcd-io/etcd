@@ -1439,14 +1439,13 @@ func (c *Cluster) Endpoints() []string {
 }
 
 func (c *Cluster) ClusterClient(t testing.TB, opts ...framecfg.ClientOption) (client *clientv3.Client, err error) {
-	cfg, err := c.newClientCfg()
-	if err != nil {
-		return nil, err
+	if c.Cfg.ClientMaxCallSendMsgSize != 0 {
+		opts = append(opts, WithClientMaxCallSendMsgSize(c.Cfg.ClientMaxCallSendMsgSize))
 	}
-	for _, opt := range opts {
-		opt(cfg)
+	if c.Cfg.ClientMaxCallRecvMsgSize != 0 {
+		opts = append(opts, WithClientMaxCallRecvMsgSize(c.Cfg.ClientMaxCallRecvMsgSize))
 	}
-	client, err = newClientV3(*cfg)
+	client, err = Client(c.Endpoints(), c.Cfg.ClientTLS, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1454,6 +1453,25 @@ func (c *Cluster) ClusterClient(t testing.TB, opts ...framecfg.ClientOption) (cl
 		client.Close()
 	})
 	return client, nil
+}
+
+func Client(endpoints []string, tlscfg *transport.TLSInfo, opts ...framecfg.ClientOption) (client *clientv3.Client, err error) {
+	cfg := &clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
+	if tlscfg != nil {
+		tls, err := tlscfg.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		cfg.TLS = tls
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	return newClientV3(*cfg)
 }
 
 func WithAuth(userName, password string) framecfg.ClientOption {
@@ -1464,22 +1482,18 @@ func WithAuth(userName, password string) framecfg.ClientOption {
 	}
 }
 
-func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
-	cfg := &clientv3.Config{
-		Endpoints:          c.Endpoints(),
-		DialTimeout:        5 * time.Second,
-		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
-		MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
-		MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
+func WithClientMaxCallSendMsgSize(value int) framecfg.ClientOption {
+	return func(c any) {
+		cfg := c.(*clientv3.Config)
+		cfg.MaxCallSendMsgSize = value
 	}
-	if c.Cfg.ClientTLS != nil {
-		tls, err := c.Cfg.ClientTLS.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
-		cfg.TLS = tls
+}
+
+func WithClientMaxCallRecvMsgSize(value int) framecfg.ClientOption {
+	return func(c any) {
+		cfg := c.(*clientv3.Config)
+		cfg.MaxCallRecvMsgSize = value
 	}
-	return cfg, nil
 }
 
 // NewClientV3 creates a new grpc client connection to the member

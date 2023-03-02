@@ -51,17 +51,18 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ..
 	var err error
 	cfg := config.NewClusterConfig(opts...)
 	integrationCfg := ClusterConfig{
-		Size:                       cfg.ClusterSize,
-		QuotaBackendBytes:          cfg.QuotaBackendBytes,
-		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
-		AuthToken:                  cfg.AuthToken,
-		SnapshotCount:              uint64(cfg.SnapshotCount),
+		Size:                        cfg.ClusterSize,
+		QuotaBackendBytes:           cfg.QuotaBackendBytes,
+		DisableStrictReconfigCheck:  !cfg.StrictReconfigCheck,
+		AuthToken:                   cfg.AuthToken,
+		SnapshotCount:               uint64(cfg.SnapshotCount),
+		WatchProgressNotifyInterval: cfg.WatchProgressNotifyInterval,
 	}
-	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
+	integrationCfg.ClientTLS, err = TlsInfo(t, cfg.ClientTLS)
 	if err != nil {
 		t.Fatalf("ClientTLS: %s", err)
 	}
-	integrationCfg.PeerTLS, err = tlsInfo(t, cfg.PeerTLS)
+	integrationCfg.PeerTLS, err = TlsInfo(t, cfg.PeerTLS)
 	if err != nil {
 		t.Fatalf("PeerTLS: %s", err)
 	}
@@ -72,7 +73,7 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ..
 	}
 }
 
-func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
+func TlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
 	switch cfg {
 	case config.NoTLS:
 		return nil, nil

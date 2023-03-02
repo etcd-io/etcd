@@ -51,6 +51,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 		WithStrictReconfigCheck(cfg.StrictReconfigCheck),
 		WithAuthTokenOpts(cfg.AuthToken),
 		WithSnapshotCount(cfg.SnapshotCount),
+		WithWatchProcessNotifyInterval(cfg.WatchProgressNotifyInterval),
 	)
 
 	if cfg.ClusterContext != nil {

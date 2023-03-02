@@ -29,13 +29,14 @@ const (
 )
 
 type ClusterConfig struct {
-	ClusterSize         int
-	PeerTLS             TLSConfig
-	ClientTLS           TLSConfig
-	QuotaBackendBytes   int64
-	StrictReconfigCheck bool
-	AuthToken           string
-	SnapshotCount       int
+	ClusterSize                 int
+	PeerTLS                     TLSConfig
+	ClientTLS                   TLSConfig
+	QuotaBackendBytes           int64
+	StrictReconfigCheck         bool
+	AuthToken                   string
+	SnapshotCount               int
+	WatchProgressNotifyInterval time.Duration
 
 	// ClusterContext is used by "e2e" or "integration" to extend the
 	// ClusterConfig. The common test cases shouldn't care about what
