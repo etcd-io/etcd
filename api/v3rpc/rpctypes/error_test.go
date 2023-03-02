@@ -22,7 +22,7 @@ import (
 )
 
 func TestConvert(t *testing.T) {
-	e1 := status.New(codes.InvalidArgument, "etcdserver: key is not provided").Err()
+	e1 := status.Error(codes.InvalidArgument, "etcdserver: key is not provided")
 	e2 := ErrGRPCEmptyKey
 	e3 := ErrEmptyKey
 
