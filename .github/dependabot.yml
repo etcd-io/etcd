@@ -6,57 +6,15 @@ updates:
       interval: weekly
 
   - package-ecosystem: gomod
-    directory: /api
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /client/pkg
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /client/v2
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /client/v3
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /etcdctl
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /etcdutl
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    allow:
+    - dependency-type: all
 
   - package-ecosystem: gomod
-    directory: /pkg
+    directory: /tools/mod # Not linked from /go.mod
     schedule:
       interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /server
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /tests
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /tools/mod
-    schedule:
-      interval: weekly
-
+    allow:
+    - dependency-type: all
