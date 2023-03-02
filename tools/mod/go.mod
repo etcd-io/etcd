@@ -49,7 +49,7 @@ require (
 	github.com/go-openapi/spec v0.20.4 // indirect
 	github.com/go-openapi/strfmt v0.21.0 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
-	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/goccy/go-json v0.10.0 // indirect
 	github.com/goccy/go-yaml v1.9.8 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
