@@ -131,7 +131,7 @@ func (sctx *serveCtx) serve(
 			return err
 		}
 	}
-	gs := v3rpc.Server(s, tlscfg, nil, gopts...)
+	gs := v3rpc.Server(s, nil, nil, gopts...)
 	defer func() {
 		sctx.lg.Warn("stopping grpc server due to error", zap.Error(err))
 		gs.Stop()
@@ -166,7 +166,6 @@ func (sctx *serveCtx) serve(
 	}
 	listener := sctx.l
 	if sctx.secure {
-		handler = grpcHandlerFunc(gs, handler)
 		listener, err = transport.NewTLSListener(listener, tlsinfo)
 		if err != nil {
 			return err
@@ -193,7 +192,11 @@ func (sctx *serveCtx) serve(
 	}
 
 	if sctx.secure {
-		go func() { errHandler(srv.Serve(listener)) }()
+		grpcl := m.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+		go func() { errHandler(gs.Serve(grpcl)) }()
+
+		httpl := m.Match(cmux.Any())
+		go func() { errHandler(srv.Serve(httpl)) }()
 	}
 
 	sctx.serversC <- &servers{secure: sctx.secure, grpc: gs, http: srv, cmux: m}
@@ -213,23 +216,6 @@ func configureHttpServer(srv *http.Server, cfg config.ServerConfig) error {
 	// todo (ahrtr): should we support configuring other parameters in the future as well?
 	return http2.ConfigureServer(srv, &http2.Server{
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
-	})
-}
-
-// grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
-// connections or otherHandler otherwise. Given in gRPC docs.
-func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Handler {
-	if otherHandler == nil {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			grpcServer.ServeHTTP(w, r)
-		})
-	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			grpcServer.ServeHTTP(w, r)
-		} else {
-			otherHandler.ServeHTTP(w, r)
-		}
 	})
 }
 
