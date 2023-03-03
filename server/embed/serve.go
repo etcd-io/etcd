@@ -16,6 +16,7 @@ package embed
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	defaultLog "log"
@@ -114,25 +115,30 @@ func (sctx *serveCtx) serve(
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
-	var gs *grpc.Server
-	defer func() {
-		if err != nil && gs != nil {
-			sctx.lg.Warn("stopping grpc server due to error", zap.Error(err))
-			gs.Stop()
-			sctx.lg.Warn("stopped grpc server due to error", zap.Error(err))
-		}
-	}()
+	var tlscfg *tls.Config
 
 	// Make sure serversC is closed even if we prematurely exit the function.
 	defer close(sctx.serversC)
+	if sctx.secure {
+		tlscfg, err = tlsinfo.ServerConfig()
+		if err != nil {
+			return err
+		}
+	}
+	gs := v3rpc.Server(s, tlscfg, nil, gopts...)
+	defer func() {
+		sctx.lg.Warn("stopping grpc server due to error", zap.Error(err))
+		gs.Stop()
+		sctx.lg.Warn("stopped grpc server due to error", zap.Error(err))
+	}()
+	v3electionpb.RegisterElectionServer(gs, servElection)
+	v3lockpb.RegisterLockServer(gs, servLock)
+	if sctx.serviceRegister != nil {
+		sctx.serviceRegister(gs)
+	}
+	var srv *http.Server
 
 	if sctx.insecure {
-		gs = v3rpc.Server(s, nil, nil, gopts...)
-		v3electionpb.RegisterElectionServer(gs, servElection)
-		v3lockpb.RegisterLockServer(gs, servLock)
-		if sctx.serviceRegister != nil {
-			sctx.serviceRegister(gs)
-		}
 		grpcl := m.Match(cmux.HTTP2())
 		go func() { errHandler(gs.Serve(grpcl)) }()
 
@@ -147,35 +153,19 @@ func (sctx *serveCtx) serve(
 
 		httpmux := sctx.createMux(gwmux, handler)
 
-		srvhttp := &http.Server{
+		srv = &http.Server{
 			Handler:  createAccessController(sctx.lg, s, httpmux),
 			ErrorLog: logger, // do not log user error
 		}
-		if err := configureHttpServer(srvhttp, s.Cfg); err != nil {
+		if err := configureHttpServer(srv, s.Cfg); err != nil {
 			sctx.lg.Error("Configure http server failed", zap.Error(err))
 			return err
 		}
 		httpl := m.Match(cmux.HTTP1())
-		go func() { errHandler(srvhttp.Serve(httpl)) }()
-
-		sctx.serversC <- &servers{grpc: gs, http: srvhttp}
-		sctx.lg.Info(
-			"serving client traffic insecurely; this is strongly discouraged!",
-			zap.String("address", sctx.l.Addr().String()),
-		)
+		go func() { errHandler(srv.Serve(httpl)) }()
 	}
 
 	if sctx.secure {
-		tlscfg, tlsErr := tlsinfo.ServerConfig()
-		if tlsErr != nil {
-			return tlsErr
-		}
-		gs = v3rpc.Server(s, tlscfg, nil, gopts...)
-		v3electionpb.RegisterElectionServer(gs, servElection)
-		v3lockpb.RegisterLockServer(gs, servLock)
-		if sctx.serviceRegister != nil {
-			sctx.serviceRegister(gs)
-		}
 		handler = grpcHandlerFunc(gs, handler)
 
 		var gwmux *gw.ServeMux
@@ -199,7 +189,7 @@ func (sctx *serveCtx) serve(
 		// TODO: add debug flag; enable logging when debug flag is set
 		httpmux := sctx.createMux(gwmux, handler)
 
-		srv := &http.Server{
+		srv = &http.Server{
 			Handler:   createAccessController(sctx.lg, s, httpmux),
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
@@ -210,12 +200,15 @@ func (sctx *serveCtx) serve(
 		}
 		go func() { errHandler(srv.Serve(tlsl)) }()
 
-		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
-		sctx.lg.Info(
-			"serving client traffic securely",
-			zap.String("address", sctx.l.Addr().String()),
-		)
 	}
+
+	sctx.serversC <- &servers{secure: sctx.secure, grpc: gs, http: srv}
+
+	msg := "serving client traffic securely"
+	if sctx.insecure {
+		msg = "serving client traffic insecurely; this is strongly discouraged!"
+	}
+	sctx.lg.Info(msg, zap.String("address", sctx.l.Addr().String()))
 
 	return m.Serve()
 }
