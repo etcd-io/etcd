@@ -111,7 +111,6 @@ func (sctx *serveCtx) serve(
 
 	sctx.lg.Info("ready to serve client requests")
 
-	m := cmux.New(sctx.l)
 	v3c := v3client.New(s)
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
@@ -159,47 +158,36 @@ func (sctx *serveCtx) serve(
 			return err
 		}
 	}
-
+	listener := sctx.l
+	if sctx.secure {
+		handler = grpcHandlerFunc(gs, handler)
+		listener, err = transport.NewTLSListener(listener, tlsinfo)
+		if err != nil {
+			return err
+		}
+	}
+	m := cmux.New(listener)
+	// TODO: add debug flag; enable logging when debug flag is set
+	httpmux := sctx.createMux(gwmux, handler)
+	srv = &http.Server{
+		Handler:   createAccessController(sctx.lg, s, httpmux),
+		TLSConfig: tlscfg,
+		ErrorLog:  logger, // do not log user error
+	}
+	if err := configureHttpServer(srv, s.Cfg); err != nil {
+		sctx.lg.Error("Configure https server failed", zap.Error(err))
+		return err
+	}
 	if sctx.insecure {
 		grpcl := m.Match(cmux.HTTP2())
 		go func() { errHandler(gs.Serve(grpcl)) }()
 
-		httpmux := sctx.createMux(gwmux, handler)
-
-		srv = &http.Server{
-			Handler:  createAccessController(sctx.lg, s, httpmux),
-			ErrorLog: logger, // do not log user error
-		}
-		if err := configureHttpServer(srv, s.Cfg); err != nil {
-			sctx.lg.Error("Configure http server failed", zap.Error(err))
-			return err
-		}
 		httpl := m.Match(cmux.HTTP1())
 		go func() { errHandler(srv.Serve(httpl)) }()
 	}
 
 	if sctx.secure {
-		handler = grpcHandlerFunc(gs, handler)
-
-		var tlsl net.Listener
-		tlsl, err = transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-		if err != nil {
-			return err
-		}
-		// TODO: add debug flag; enable logging when debug flag is set
-		httpmux := sctx.createMux(gwmux, handler)
-
-		srv = &http.Server{
-			Handler:   createAccessController(sctx.lg, s, httpmux),
-			TLSConfig: tlscfg,
-			ErrorLog:  logger, // do not log user error
-		}
-		if err := configureHttpServer(srv, s.Cfg); err != nil {
-			sctx.lg.Error("Configure https server failed", zap.Error(err))
-			return err
-		}
-		go func() { errHandler(srv.Serve(tlsl)) }()
-
+		go func() { errHandler(srv.Serve(listener)) }()
 	}
 
 	sctx.serversC <- &servers{secure: sctx.secure, grpc: gs, http: srv}
