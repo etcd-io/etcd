@@ -28,7 +28,7 @@ import (
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3/credentials"
+	clientcreds "go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
 	"go.etcd.io/etcd/server/v3/config"
@@ -49,6 +49,7 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -137,19 +138,31 @@ func (sctx *serveCtx) serve(
 		sctx.serviceRegister(gs)
 	}
 	var srv *http.Server
+	var gwmux *gw.ServeMux
+	if s.Cfg.EnableGRPCGateway {
+		var creds credentials.TransportCredentials
+		if sctx.insecure {
+			creds = insecure.NewCredentials()
+		}
+		if sctx.secure {
+			if s.Cfg.EnableGRPCGateway {
+				dtls := tlscfg.Clone()
+				// trust local server
+				dtls.InsecureSkipVerify = true
+				bundle := clientcreds.NewBundle(clientcreds.Config{TLSConfig: dtls})
+				creds = bundle.TransportCredentials()
+			}
+		}
+		gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithTransportCredentials(creds)})
+		if err != nil {
+			sctx.lg.Error("registerGateway failed", zap.Error(err))
+			return err
+		}
+	}
 
 	if sctx.insecure {
 		grpcl := m.Match(cmux.HTTP2())
 		go func() { errHandler(gs.Serve(grpcl)) }()
-
-		var gwmux *gw.ServeMux
-		if s.Cfg.EnableGRPCGateway {
-			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())})
-			if err != nil {
-				sctx.lg.Error("registerGateway failed", zap.Error(err))
-				return err
-			}
-		}
 
 		httpmux := sctx.createMux(gwmux, handler)
 
@@ -167,19 +180,6 @@ func (sctx *serveCtx) serve(
 
 	if sctx.secure {
 		handler = grpcHandlerFunc(gs, handler)
-
-		var gwmux *gw.ServeMux
-		if s.Cfg.EnableGRPCGateway {
-			dtls := tlscfg.Clone()
-			// trust local server
-			dtls.InsecureSkipVerify = true
-			bundle := credentials.NewBundle(credentials.Config{TLSConfig: dtls})
-			opts := []grpc.DialOption{grpc.WithTransportCredentials(bundle.TransportCredentials())}
-			gwmux, err = sctx.registerGateway(opts)
-			if err != nil {
-				return err
-			}
-		}
 
 		var tlsl net.Listener
 		tlsl, err = transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
