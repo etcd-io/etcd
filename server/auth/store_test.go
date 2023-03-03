@@ -74,7 +74,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	}
 }
 
-// TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
+// TestNewAuthStoreBcryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
 func TestNewAuthStoreBcryptCost(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, b)
@@ -766,7 +766,7 @@ func TestIsAuthEnabled(t *testing.T) {
 	}
 }
 
-// TestAuthRevisionRace ensures that access to authStore.revision is thread-safe.
+// TestAuthInfoFromCtxRace ensures that access to authStore.revision is thread-safe.
 func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, b)

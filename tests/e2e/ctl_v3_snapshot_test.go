@@ -96,7 +96,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 	}
 }
 
-// This test ensures that the snapshot status does not modify the snapshot file
+// TestCtlV3SnapshotStatusBeforeRestore to ensures that the snapshot status does not modify the snapshot file
 func TestCtlV3SnapshotStatusBeforeRestore(t *testing.T) { testCtl(t, snapshotStatusBeforeRestoreTest) }
 func TestCtlV3SnapshotStatusBeforeRestoreEtcdutl(t *testing.T) {
 	testCtl(t, snapshotStatusBeforeRestoreTest, withEtcdutl())

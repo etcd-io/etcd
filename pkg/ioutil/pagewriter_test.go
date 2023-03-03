@@ -44,7 +44,7 @@ func TestPageWriterRandom(t *testing.T) {
 	t.Logf("total write bytes: %d (of %d)", cw.writeBytes, n)
 }
 
-// TestPageWriterPariallack tests the case where a write overflows the buffer
+// TestPageWriterPartialSlack tests the case where a write overflows the buffer
 // but there is not enough data to complete the slack write.
 func TestPageWriterPartialSlack(t *testing.T) {
 	defaultBufferBytes = 1024

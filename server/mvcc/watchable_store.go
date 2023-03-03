@@ -324,10 +324,10 @@ func (s *watchableStore) moveVictims() (moved int) {
 }
 
 // syncWatchers syncs unsynced watchers by:
-//	1. choose a set of watchers from the unsynced watcher group
-//	2. iterate over the set to get the minimum revision and remove compacted watchers
-//	3. use minimum revision to get all key-value pairs and send those events to watchers
-//	4. remove synced watchers in set from unsynced group and move to synced group
+//  1. choose a set of watchers from the unsynced watcher group
+//  2. iterate over the set to get the minimum revision and remove compacted watchers
+//  3. use minimum revision to get all key-value pairs and send those events to watchers
+//  4. remove synced watchers in set from unsynced group and move to synced group
 func (s *watchableStore) syncWatchers() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()

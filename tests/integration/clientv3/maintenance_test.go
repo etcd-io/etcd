@@ -70,7 +70,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 	}
 }
 
-// TODO: Change this to fuzz test
+// TestCompactionHash TODO: Change this to fuzz test
 func TestCompactionHash(t *testing.T) {
 	integration.BeforeTest(t)
 

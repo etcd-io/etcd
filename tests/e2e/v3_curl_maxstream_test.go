@@ -27,7 +27,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
-// NO TLS
+// TestV3Curl_MaxStreams_BelowLimit_NoTLS_Small tests no TLS
 func TestV3Curl_MaxStreams_BelowLimit_NoTLS_Small(t *testing.T) {
 	testV3CurlMaxStream(t, false, withCfg(*newConfigNoTLS()), withMaxConcurrentStreams(3))
 }
@@ -58,7 +58,7 @@ func TestV3Curl_MaxStreams_ReachLimit_NoTLS_Medium(t *testing.T) {
 	testV3CurlMaxStream(t, true, withCfg(*newConfigNoTLS()), withMaxConcurrentStreams(100), withTestTimeout(20*time.Second))
 }
 
-// TLS
+// TestV3Curl_MaxStreams_BelowLimit_TLS_Small tests with TLS
 func TestV3Curl_MaxStreams_BelowLimit_TLS_Small(t *testing.T) {
 	testV3CurlMaxStream(t, false, withCfg(*newConfigTLS()), withMaxConcurrentStreams(3))
 }

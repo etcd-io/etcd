@@ -1207,8 +1207,8 @@ func TestPastElectionTimeout(t *testing.T) {
 	}
 }
 
-// ensure that the Step function ignores the message from old term and does not pass it to the
-// actual stepX function.
+// TestStepIgnoreOldTermMsg to ensure that the Step function ignores the message
+// from old term and does not pass it to the actual stepX function.
 func TestStepIgnoreOldTermMsg(t *testing.T) {
 	called := false
 	fakeStep := func(r *raft, m pb.Message) error {
@@ -1225,10 +1225,10 @@ func TestStepIgnoreOldTermMsg(t *testing.T) {
 }
 
 // TestHandleMsgApp ensures:
-// 1. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm.
-// 2. If an existing entry conflicts with a new one (same index but different terms),
-//    delete the existing entry and all that follow it; append any new entries not already in the log.
-// 3. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry).
+//  1. Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm.
+//  2. If an existing entry conflicts with a new one (same index but different terms),
+//     delete the existing entry and all that follow it; append any new entries not already in the log.
+//  3. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry).
 func TestHandleMsgApp(t *testing.T) {
 	tests := []struct {
 		m       pb.Message
@@ -2479,7 +2479,7 @@ func TestLeaderAppResp(t *testing.T) {
 	}
 }
 
-// When the leader receives a heartbeat tick, it should
+// TestBcastBeat is when the leader receives a heartbeat tick, it should
 // send a MsgHeartbeat with m.Index = 0, m.LogTerm=0 and empty entries.
 func TestBcastBeat(t *testing.T) {
 	offset := uint64(1000)
@@ -2539,7 +2539,7 @@ func TestBcastBeat(t *testing.T) {
 	}
 }
 
-// tests the output of the state machine when receiving MsgBeat
+// TestRecvMsgBeat tests the output of the state machine when receiving MsgBeat
 func TestRecvMsgBeat(t *testing.T) {
 	tests := []struct {
 		state StateType
@@ -2818,7 +2818,7 @@ func TestRestoreWithLearner(t *testing.T) {
 	}
 }
 
-/// Tests if outgoing voter can receive and apply snapshot correctly.
+// TestRestoreWithVotersOutgoing tests if outgoing voter can receive and apply snapshot correctly.
 func TestRestoreWithVotersOutgoing(t *testing.T) {
 	s := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{
@@ -4306,12 +4306,12 @@ func testConfChangeCheckBeforeCampaign(t *testing.T, v2 bool) {
 	}
 }
 
-// Tests if unapplied ConfChange is checked before campaign.
+// TestConfChangeCheckBeforeCampaign tests if unapplied ConfChange is checked before campaign.
 func TestConfChangeCheckBeforeCampaign(t *testing.T) {
 	testConfChangeCheckBeforeCampaign(t, false)
 }
 
-// Tests if unapplied ConfChangeV2 is checked before campaign.
+// TestConfChangeV2CheckBeforeCampaign tests if unapplied ConfChangeV2 is checked before campaign.
 func TestConfChangeV2CheckBeforeCampaign(t *testing.T) {
 	testConfChangeCheckBeforeCampaign(t, true)
 }
