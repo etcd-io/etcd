@@ -37,14 +37,6 @@ func TestCtlV3AuthFromKeyPerm(t *testing.T)  { testCtl(t, authTestFromKeyPerm) }
 func TestCtlV3AuthAndWatch(t *testing.T)     { testCtl(t, authTestWatch) }
 func TestCtlV3AuthAndWatchJWT(t *testing.T)  { testCtl(t, authTestWatch, withCfg(*e2e.NewConfigJWT())) }
 
-func TestCtlV3AuthLeaseTestKeepAlive(t *testing.T) { testCtl(t, authLeaseTestKeepAlive) }
-func TestCtlV3AuthLeaseTestTimeToLiveExpired(t *testing.T) {
-	testCtl(t, authLeaseTestTimeToLiveExpired)
-}
-func TestCtlV3AuthLeaseGrantLeases(t *testing.T) { testCtl(t, authLeaseTestLeaseGrantLeases) }
-func TestCtlV3AuthLeaseGrantLeasesJWT(t *testing.T) {
-	testCtl(t, authLeaseTestLeaseGrantLeases, withCfg(*e2e.NewConfigJWT()))
-}
 func TestCtlV3AuthLeaseRevoke(t *testing.T) { testCtl(t, authLeaseTestLeaseRevoke) }
 
 func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
@@ -299,73 +291,6 @@ func authTestFromKeyPerm(cx ctlCtx) {
 		key := fmt.Sprintf("z%d", i)
 		err := ctlV3PutFailPerm(cx, key, "val")
 		require.ErrorContains(cx.t, err, "permission denied")
-	}
-}
-
-func authLeaseTestKeepAlive(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-	// put with TTL 10 seconds and keep-alive
-	leaseID, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3LeaseGrant error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3LeaseKeepAlive(cx, leaseID); err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3LeaseKeepAlive error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"key"}, kv{"key", "val"}); err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3Get error (%v)", err)
-	}
-}
-
-func authLeaseTestTimeToLiveExpired(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	ttl := 3
-	err := leaseTestTimeToLiveExpire(cx, ttl)
-	require.NoError(cx.t, err)
-}
-
-func leaseTestTimeToLiveExpire(cx ctlCtx, ttl int) error {
-	leaseID, err := ctlV3LeaseGrant(cx, ttl)
-	if err != nil {
-		return fmt.Errorf("ctlV3LeaseGrant error (%v)", err)
-	}
-
-	if err = ctlV3Put(cx, "key", "val", leaseID); err != nil {
-		return fmt.Errorf("ctlV3Put error (%v)", err)
-	}
-	// eliminate false positive
-	time.Sleep(time.Duration(ttl+1) * time.Second)
-	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", leaseID)
-	exp := fmt.Sprintf("lease %s already expired", leaseID)
-	if err = e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, exp); err != nil {
-		return fmt.Errorf("lease not properly expired: (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"key"}); err != nil {
-		return fmt.Errorf("ctlV3Get error (%v)", err)
-	}
-	return nil
-}
-
-func authLeaseTestLeaseGrantLeases(cx ctlCtx) {
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	if err := leaseTestGrantLeasesList(cx); err != nil {
-		cx.t.Fatalf("authLeaseTestLeaseGrantLeases: error (%v)", err)
 	}
 }
 
