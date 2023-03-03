@@ -2,14 +2,16 @@
 // source: record.proto
 
 /*
-	Package walpb is a generated protocol buffer package.
+Package walpb is a generated protocol buffer package.
 
-	It is generated from these files:
-		record.proto
+It is generated from these files:
 
-	It has these top-level messages:
-		Record
-		Snapshot
+	record.proto
+
+It has these top-level messages:
+
+	Record
+	Snapshot
 */
 package walpb
 

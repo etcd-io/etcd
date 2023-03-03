@@ -2,14 +2,16 @@
 // source: kv.proto
 
 /*
-	Package mvccpb is a generated protocol buffer package.
+Package mvccpb is a generated protocol buffer package.
 
-	It is generated from these files:
-		kv.proto
+It is generated from these files:
 
-	It has these top-level messages:
-		KeyValue
-		Event
+	kv.proto
+
+It has these top-level messages:
+
+	KeyValue
+	Event
 */
 package mvccpb
 

@@ -35,7 +35,6 @@ running(leaking) after all tests.
 		defer testutil.AfterTest(t)
 		...
 	}
-
 */
 func CheckLeakedGoroutine() bool {
 	if testing.Short() {

@@ -102,5 +102,4 @@
 // The grpc load balancer is registered statically and is shared across etcd clients.
 // To enable detailed load balancer logging, set the ETCD_CLIENT_DEBUG environment
 // variable.  E.g. "ETCD_CLIENT_DEBUG=1".
-//
 package clientv3

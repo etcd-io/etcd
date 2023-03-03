@@ -2,21 +2,23 @@
 // source: v3election.proto
 
 /*
-	Package v3electionpb is a generated protocol buffer package.
+Package v3electionpb is a generated protocol buffer package.
 
-	It is generated from these files:
-		v3election.proto
+It is generated from these files:
 
-	It has these top-level messages:
-		CampaignRequest
-		CampaignResponse
-		LeaderKey
-		LeaderRequest
-		LeaderResponse
-		ResignRequest
-		ResignResponse
-		ProclaimRequest
-		ProclaimResponse
+	v3election.proto
+
+It has these top-level messages:
+
+	CampaignRequest
+	CampaignResponse
+	LeaderKey
+	LeaderRequest
+	LeaderResponse
+	ResignRequest
+	ResignResponse
+	ProclaimRequest
+	ProclaimResponse
 */
 package v3electionpb
 

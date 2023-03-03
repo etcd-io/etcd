@@ -52,5 +52,4 @@
 //		r := &etcdnaming.GRPCResolver{Client: c}
 //		return r.Update(c.Ctx(), service, naming.Update{Op: naming.Add, Addr: addr}, clientv3.WithLease(lid))
 //	}
-//
 package naming

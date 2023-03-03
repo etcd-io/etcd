@@ -2,15 +2,17 @@
 // source: lease.proto
 
 /*
-	Package leasepb is a generated protocol buffer package.
+Package leasepb is a generated protocol buffer package.
 
-	It is generated from these files:
-		lease.proto
+It is generated from these files:
 
-	It has these top-level messages:
-		Lease
-		LeaseInternalRequest
-		LeaseInternalResponse
+	lease.proto
+
+It has these top-level messages:
+
+	Lease
+	LeaseInternalRequest
+	LeaseInternalResponse
 */
 package leasepb
 
