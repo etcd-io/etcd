@@ -16,6 +16,7 @@ package lease_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -1270,7 +1271,8 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 	testutil.AssertNil(t, err)
 	defer closePutKV()
 
-	for i := 0; i < 8; i++ {
+	const maxKey = 8
+	for i := 0; i < maxKey; i++ {
 		key := fmt.Sprintf("key/%d", i)
 		if _, err = clus.Client(0).Put(context.TODO(), key, "123"); err != nil {
 			t.Fatal(err)
@@ -1282,14 +1284,17 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	donec := make(chan struct{})
-	go func() {
+	go func(t *testing.T) {
 		defer close(donec)
-		for i := 0; ctx.Err() == nil; i++ {
+		for i := 0; (i < maxKey) && (ctx.Err() == nil); i++ {
 			key := fmt.Sprintf("key/%d", i%8)
-			putkv.Put(ctx, key, "123")
-			putkv.Get(ctx, key)
+			if _, err = putkv.Put(ctx, key, "123"); err != nil {
+				if !errors.Is(err, context.Canceled) {
+					t.Errorf("fail putting key %s, err was: %v", key, err)
+				}
+			}
 		}
-	}()
+	}(t)
 
 	_, delErr := delkv.Do(context.TODO(), op)
 	cancel()
@@ -1299,7 +1304,7 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 	}
 
 	// confirm keys on non-deleter match etcd
-	for i := 0; i < 8; i++ {
+	for i := 0; i < maxKey; i++ {
 		key := fmt.Sprintf("key/%d", i)
 		resp, err := putkv.Get(context.TODO(), key)
 		if err != nil {
