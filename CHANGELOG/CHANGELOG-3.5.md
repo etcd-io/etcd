@@ -21,6 +21,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Other
 - [Remove nsswitch.conf from docker image](https://github.com/etcd-io/etcd/pull/15161)
 
+### Go
+- Require [Go 1.19+](https://github.com/etcd-io/etcd/pull/15337).
+- Compile with [Go 1.19+](https://go.dev/doc/devel/release#go1.19)
+
 <hr>
 
 ## v3.5.7 (2023-01-20)

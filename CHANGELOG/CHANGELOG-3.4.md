@@ -4,6 +4,14 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
+## v3.4.25 (TBD)
+
+### Go
+- Require [Go 1.19+](https://github.com/etcd-io/etcd/pull/15333).
+- Compile with [Go 1.19+](https://go.dev/doc/devel/release#go1.19)
+
+<hr>
+
 ## v3.4.24 (2023-02-16)
 
 ### etcd server
