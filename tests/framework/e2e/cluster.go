@@ -148,7 +148,7 @@ type EtcdProcessClusterConfig struct {
 
 	MetricsURLScheme string
 
-	SnapshotCount          int // default is 100000
+	SnapshotCount          int // default is 10000
 	SnapshotCatchUpEntries int // default is 5000
 
 	Client        ClientConfig

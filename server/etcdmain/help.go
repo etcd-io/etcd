@@ -54,7 +54,7 @@ Member:
     Path to the data directory.
   --wal-dir ''
     Path to the dedicated wal directory.
-  --snapshot-count '100000'
+  --snapshot-count '10000'
     Number of committed transactions to trigger a snapshot to disk.
   --heartbeat-interval '100'
     Time (in milliseconds) of a heartbeat interval.
