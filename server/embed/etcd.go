@@ -455,6 +455,7 @@ func (e *Etcd) Close() {
 }
 
 func stopServers(ctx context.Context, ss *servers) {
+	ss.cmux.Close()
 	// first, close the http.Server
 	ss.http.Shutdown(ctx)
 	// do not grpc.Server.GracefulStop with TLS enabled etcd server

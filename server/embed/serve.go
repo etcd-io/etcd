@@ -73,6 +73,7 @@ type servers struct {
 	secure bool
 	grpc   *grpc.Server
 	http   *http.Server
+	cmux   cmux.CMux
 }
 
 func newServeCtx(lg *zap.Logger) *serveCtx {
@@ -118,7 +119,12 @@ func (sctx *serveCtx) serve(
 	var tlscfg *tls.Config
 
 	// Make sure serversC is closed even if we prematurely exit the function.
-	defer close(sctx.serversC)
+	var closed bool
+	defer func() {
+		if !closed {
+			close(sctx.serversC)
+		}
+	}()
 	if sctx.secure {
 		tlscfg, err = tlsinfo.ServerConfig()
 		if err != nil {
@@ -190,7 +196,9 @@ func (sctx *serveCtx) serve(
 		go func() { errHandler(srv.Serve(listener)) }()
 	}
 
-	sctx.serversC <- &servers{secure: sctx.secure, grpc: gs, http: srv}
+	sctx.serversC <- &servers{secure: sctx.secure, grpc: gs, http: srv, cmux: m}
+	close(sctx.serversC)
+	closed = true
 
 	msg := "serving client traffic securely"
 	if sctx.insecure {
