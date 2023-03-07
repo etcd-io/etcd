@@ -119,8 +119,13 @@ type Lessor interface {
 	// Demote demotes the lessor from being the primary lessor.
 	Demote()
 
-	// Renew renews a lease with given ID. It returns the renewed TTL. If the ID does not exist,
-	// an error will be returned.
+	// RenewV2 renews a lease with given ID. It returns the renewed TTL.
+	// If the ID does not exist, an error will be returned.
+	// TODO(ahrtr): remove this legacy method in 3.7.
+	RenewV2(id LeaseID) (int64, error)
+
+	// Renew renews a lease with given ID. It returns the renewed TTL.
+	// If the given lease does not exist, an error will be returned.
 	Renew(id LeaseID) (int64, error)
 
 	// Lookup gives the lease at a given lease id, if any
@@ -364,7 +369,10 @@ func (le *lessor) Revoke(id LeaseID) error {
 func (le *lessor) Checkpoint(id LeaseID, remainingTTL int64) error {
 	le.mu.Lock()
 	defer le.mu.Unlock()
+	return le.checkpoint(id, remainingTTL)
+}
 
+func (le *lessor) checkpoint(id LeaseID, remainingTTL int64) error {
 	if l, ok := le.leaseMap[id]; ok {
 		// when checkpointing, we only update the remainingTTL, Promote is responsible for applying this to lease expiry
 		l.remainingTTL = remainingTTL
@@ -388,9 +396,10 @@ func greaterOrEqual(first, second semver.Version) bool {
 	return !version.LessThan(first, second)
 }
 
-// Renew renews an existing lease. If the given lease does not exist or
+// RenewV2 renews an existing lease. If the given lease does not exist or
 // has expired, an error will be returned.
-func (le *lessor) Renew(id LeaseID) (int64, error) {
+// TODO(ahrtr): remove the legacy method in 3.7
+func (le *lessor) RenewV2(id LeaseID) (int64, error) {
 	le.mu.RLock()
 	if !le.isPrimary() {
 		// forward renew request to primary instead of returning error.
@@ -437,6 +446,31 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	item := &LeaseWithTime{id: l.ID, time: l.expiry}
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
 	le.mu.Unlock()
+
+	leaseRenewed.Inc()
+	return l.ttl, nil
+}
+
+func (le *lessor) Renew(id LeaseID) (int64, error) {
+	le.mu.Lock()
+	defer le.mu.Unlock()
+
+	l := le.leaseMap[id]
+	if l == nil {
+		return -1, ErrLeaseNotFound
+	}
+
+	if !le.isPrimary() {
+		if l.remainingTTL > 0 {
+			le.checkpoint(id, 0)
+		}
+		return l.ttl, nil
+	}
+
+	le.checkpoint(id, 0)
+	l.refresh(0)
+	item := &LeaseWithTime{id: l.ID, time: l.expiry}
+	le.leaseExpiredNotifier.RegisterOrUpdate(item)
 
 	leaseRenewed.Inc()
 	return l.ttl, nil
@@ -841,6 +875,8 @@ func (fl *FakeLessor) Detach(id LeaseID, items []LeaseItem) error { return nil }
 func (fl *FakeLessor) Promote(extend time.Duration) {}
 
 func (fl *FakeLessor) Demote() {}
+
+func (fl *FakeLessor) RenewV2(id LeaseID) (int64, error) { return 10, nil }
 
 func (fl *FakeLessor) Renew(id LeaseID) (int64, error) { return 10, nil }
 

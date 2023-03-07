@@ -426,7 +426,9 @@ func TestLessorRecover(t *testing.T) {
 	}
 }
 
-func TestLessorExpire(t *testing.T) {
+// TestLessorExpireV2 tests the legacy `RenewV2`.
+// TODO(ahrtr): remove this test case when the legacy `RenewV2` is removed.
+func TestLessorExpireV2(t *testing.T) {
 	lg := zap.NewNop()
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
@@ -455,7 +457,7 @@ func TestLessorExpire(t *testing.T) {
 	donec := make(chan struct{}, 1)
 	go func() {
 		// expired lease cannot be renewed
-		if _, err := le.Renew(l.ID); err != ErrLeaseNotFound {
+		if _, err := le.RenewV2(l.ID); err != ErrLeaseNotFound {
 			t.Errorf("unexpected renew")
 		}
 		donec <- struct{}{}
@@ -476,6 +478,100 @@ func TestLessorExpire(t *testing.T) {
 	case <-donec:
 	case <-time.After(10 * time.Second):
 		t.Fatalf("renew has not returned after lease revocation")
+	}
+}
+
+func TestLessorExpire(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	testMinTTL := int64(1)
+
+	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: testMinTTL})
+	defer le.Stop()
+
+	le.Promote(1 * time.Second)
+	l, err := le.Grant(1, testMinTTL)
+	if err != nil {
+		t.Fatalf("failed to create lease: %v", err)
+	}
+
+	select {
+	case el := <-le.ExpiredLeasesC():
+		if el[0].ID != l.ID {
+			t.Fatalf("expired id = %x, want %x", el[0].ID, l.ID)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("failed to receive expired lease")
+	}
+
+	if _, err := le.Renew(l.ID); err != nil {
+		t.Errorf("unexpected renew")
+	}
+
+	// expired lease can be revoked
+	if err := le.Revoke(l.ID); err != nil {
+		t.Fatalf("failed to revoke expired lease: %v", err)
+	}
+
+	// revoked lease can't be renewed
+	if _, err := le.Renew(l.ID); err != ErrLeaseNotFound {
+		t.Errorf("unexpected renew")
+	}
+}
+
+// TestLessorExpireAndDemoteV2 tests the legacy `RenewV2`.
+// TODO(ahrtr): remove this test case when the legacy `RenewV2` is removed.
+func TestLessorExpireAndDemoteV2(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	testMinTTL := int64(1)
+
+	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: testMinTTL})
+	defer le.Stop()
+
+	le.Promote(1 * time.Second)
+	l, err := le.Grant(1, testMinTTL)
+	if err != nil {
+		t.Fatalf("failed to create lease: %v", err)
+	}
+
+	select {
+	case el := <-le.ExpiredLeasesC():
+		if el[0].ID != l.ID {
+			t.Fatalf("expired id = %x, want %x", el[0].ID, l.ID)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("failed to receive expired lease")
+	}
+
+	donec := make(chan struct{}, 1)
+	go func() {
+		// expired lease cannot be renewed
+		if _, err := le.RenewV2(l.ID); err != ErrNotPrimary {
+			t.Errorf("unexpected renew: %v", err)
+		}
+		donec <- struct{}{}
+	}()
+
+	select {
+	case <-donec:
+		t.Fatalf("renew finished before demotion")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	// demote will cause the renewV2 request to fail with ErrNotPrimary
+	le.Demote()
+
+	select {
+	case <-donec:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("renew has not returned after lessor demotion")
 	}
 }
 
@@ -505,28 +601,15 @@ func TestLessorExpireAndDemote(t *testing.T) {
 		t.Fatalf("failed to receive expired lease")
 	}
 
-	donec := make(chan struct{}, 1)
-	go func() {
-		// expired lease cannot be renewed
-		if _, err := le.Renew(l.ID); err != ErrNotPrimary {
-			t.Errorf("unexpected renew: %v", err)
-		}
-		donec <- struct{}{}
-	}()
-
-	select {
-	case <-donec:
-		t.Fatalf("renew finished before demotion")
-	case <-time.After(50 * time.Millisecond):
+	if _, err := le.Renew(l.ID); err != nil {
+		t.Errorf("unexpected renew: %v", err)
 	}
 
-	// demote will cause the renew request to fail with ErrNotPrimary
 	le.Demote()
 
-	select {
-	case <-donec:
-	case <-time.After(10 * time.Second):
-		t.Fatalf("renew has not returned after lessor demotion")
+	// renew should work after demote.
+	if _, err := le.Renew(l.ID); err != nil {
+		t.Errorf("unexpected renew: %v", err)
 	}
 }
 

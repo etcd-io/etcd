@@ -172,6 +172,9 @@ func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 	case r.LeaseRevoke != nil:
 		op = "LeaseRevoke"
 		ar.Resp, ar.Err = a.applyV3.LeaseRevoke(r.LeaseRevoke)
+	case r.LeaseRenew != nil:
+		op = "LeaseRenew"
+		ar.Resp, ar.Err = a.applyV3.LeaseRenew(r.LeaseRenew)
 	case r.LeaseCheckpoint != nil:
 		op = "LeaseCheckpoint"
 		ar.Resp, ar.Err = a.applyV3.LeaseCheckpoint(r.LeaseCheckpoint)
