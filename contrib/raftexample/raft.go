@@ -100,6 +100,11 @@ type FSM interface {
 	// bytes that can be saved or loaded by a `SnapshotStorage`.
 	TakeSnapshot() ([]byte, error)
 
+	// RestoreSnapshot restores the finite state machine to the state
+	// represented by `snapshot` (which, in turn, was returned by
+	// `TakeSnapshot`).
+	RestoreSnapshot(snapshot []byte) error
+
 	// ProcessCommits reads committed updates (and requests to restore
 	// snapshots) from `commitC` and applies them to the finite state
 	// machine.

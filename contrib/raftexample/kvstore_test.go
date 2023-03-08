@@ -22,19 +22,22 @@ import (
 func Test_kvstore_snapshot(t *testing.T) {
 	tm := map[string]string{"foo": "bar"}
 	s := &kvstore{kvStore: tm}
+	fsm := kvfsm{
+		kvs: s,
+	}
 
 	v, _ := s.Lookup("foo")
 	if v != "bar" {
 		t.Fatalf("foo has unexpected value, got %s", v)
 	}
 
-	data, err := s.getSnapshot()
+	data, err := fsm.TakeSnapshot()
 	if err != nil {
 		t.Fatal(err)
 	}
 	s.kvStore = nil
 
-	if err := s.recoverFromSnapshot(data); err != nil {
+	if err := fsm.RestoreSnapshot(data); err != nil {
 		t.Fatal(err)
 	}
 	v, _ = s.Lookup("foo")

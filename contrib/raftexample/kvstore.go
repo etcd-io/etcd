@@ -50,8 +50,11 @@ func newKVStore(snapshotStorage SnapshotStorage, proposeC chan<- string) (*kvsto
 		kvStore:         make(map[string]string),
 		snapshotStorage: snapshotStorage,
 	}
-	s.loadAndApplySnapshot()
-	return s, kvfsm{kvs: s}
+	fsm := kvfsm{
+		kvs: s,
+	}
+	fsm.LoadAndApplySnapshot()
+	return s, fsm
 }
 
 func (s *kvstore) Lookup(key string) (string, bool) {
@@ -69,10 +72,39 @@ func (s *kvstore) Propose(k string, v string) {
 	s.proposeC <- buf.String()
 }
 
-// loadAndApplySnapshot load the most recent snapshot from the
+// Set sets a single value. It should only be called by `kvfsm`.
+func (s *kvstore) set(k, v string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.kvStore[k] = v
+}
+
+func (s *kvstore) restoreFromSnapshot(store map[string]string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.kvStore = store
+}
+
+// kvfsm implements the `FSM` interface for the underlying `*kvstore`.
+type kvfsm struct {
+	kvs *kvstore
+}
+
+// RestoreSnapshot restores the current state of the KV store to the
+// value encoded in `snapshot`.
+func (fsm kvfsm) RestoreSnapshot(snapshot []byte) error {
+	var store map[string]string
+	if err := json.Unmarshal(snapshot, &store); err != nil {
+		return err
+	}
+	fsm.kvs.restoreFromSnapshot(store)
+	return nil
+}
+
+// LoadAndApplySnapshot loads the most recent snapshot from the
 // snapshot storage (if any) and applies it to the current state.
-func (s *kvstore) loadAndApplySnapshot() {
-	snapshot, err := s.snapshotStorage.Load()
+func (fsm kvfsm) LoadAndApplySnapshot() {
+	snapshot, err := fsm.kvs.snapshotStorage.Load()
 	if err != nil {
 		if err == snap.ErrNoSnapshot {
 			// No snapshots available; do nothing.
@@ -82,51 +114,30 @@ func (s *kvstore) loadAndApplySnapshot() {
 	}
 
 	log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-	if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+	if err := fsm.RestoreSnapshot(snapshot.Data); err != nil {
 		log.Panic(err)
 	}
+}
+
+func (fsm kvfsm) TakeSnapshot() ([]byte, error) {
+	fsm.kvs.mu.RLock()
+	defer fsm.kvs.mu.RUnlock()
+	return json.Marshal(fsm.kvs.kvStore)
 }
 
 // applyCommits decodes and applies each of the commits in `commit` to
 // the current state, then signals that it is done by closing
 // `commit.applyDoneC`.
-func (s *kvstore) applyCommits(commit *commit) {
+func (fsm kvfsm) applyCommits(commit *commit) {
 	for _, data := range commit.data {
 		var dataKv kv
 		dec := gob.NewDecoder(bytes.NewBufferString(data))
 		if err := dec.Decode(&dataKv); err != nil {
 			log.Fatalf("raftexample: could not decode message (%v)", err)
 		}
-		s.mu.Lock()
-		s.kvStore[dataKv.Key] = dataKv.Val
-		s.mu.Unlock()
+		fsm.kvs.set(dataKv.Key, dataKv.Val)
 	}
 	close(commit.applyDoneC)
-}
-
-func (s *kvstore) getSnapshot() ([]byte, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return json.Marshal(s.kvStore)
-}
-
-func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
-	var store map[string]string
-	if err := json.Unmarshal(snapshot, &store); err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.kvStore = store
-	return nil
-}
-
-type kvfsm struct {
-	kvs *kvstore
-}
-
-func (fsm kvfsm) TakeSnapshot() ([]byte, error) {
-	return fsm.kvs.getSnapshot()
 }
 
 // ProcessCommits() reads commits from `commitC` and applies them into
@@ -135,11 +146,11 @@ func (fsm kvfsm) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
 	for commit := range commitC {
 		if commit == nil {
 			// This is a request that we load a snapshot.
-			fsm.kvs.loadAndApplySnapshot()
+			fsm.LoadAndApplySnapshot()
 			continue
 		}
 
-		fsm.kvs.applyCommits(commit)
+		fsm.applyCommits(commit)
 	}
 	if err, ok := <-errorC; ok {
 		log.Fatal(err)

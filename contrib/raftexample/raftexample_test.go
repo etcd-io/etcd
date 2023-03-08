@@ -44,6 +44,10 @@ func (sw snapshotWatcher) TakeSnapshot() ([]byte, error) {
 	return nil, nil
 }
 
+func (sw snapshotWatcher) RestoreSnapshot(snapshot []byte) error {
+	panic("not implemented")
+}
+
 type cluster struct {
 	peers            []string
 	commitC          []<-chan *commit
