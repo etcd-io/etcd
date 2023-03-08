@@ -65,8 +65,8 @@ type raftNode struct {
 	raftStorage *raft.MemoryStorage
 	wal         *wal.WAL
 
-	snapshotter      *snap.Snapshotter
-	snapshotterReady chan *snap.Snapshotter // signals when snapshotter is ready
+	snapshotStorage      SnapshotStorage
+	snapshotStorageReady chan SnapshotStorage // signals when snapshotStorage is ready
 
 	snapCount uint64
 	transport *rafthttp.Transport
@@ -77,6 +77,21 @@ type raftNode struct {
 	logger *zap.Logger
 }
 
+// SnapshotStorage is the interface that must be fulfilled by the
+// persistent storage for snapshots.
+type SnapshotStorage interface {
+	// SaveSnap saves `snapshot` to persistent storage.
+	SaveSnap(snapshot raftpb.Snapshot) error
+
+	// Load reads and returns the newest snapshot that is
+	// available.
+	Load() (*raftpb.Snapshot, error)
+
+	// LoadNewestAvailable loads the newest available snapshot
+	// whose term and index matches one of those in walSnaps.
+	LoadNewestAvailable(walSnaps []walpb.Snapshot) (*raftpb.Snapshot, error)
+}
+
 var defaultSnapshotCount uint64 = 10000
 
 // newRaftNode initiates a raft instance and returns a committed log entry
@@ -84,9 +99,10 @@ var defaultSnapshotCount uint64 = 10000
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
-	confChangeC <-chan raftpb.ConfChange) (<-chan *commit, <-chan error, <-chan *snap.Snapshotter) {
-
+func newRaftNode(
+	id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
+	confChangeC <-chan raftpb.ConfChange,
+) (<-chan *commit, <-chan error, <-chan SnapshotStorage) {
 	commitC := make(chan *commit)
 	errorC := make(chan error)
 
@@ -108,11 +124,11 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 
 		logger: zap.NewExample(),
 
-		snapshotterReady: make(chan *snap.Snapshotter, 1),
+		snapshotStorageReady: make(chan SnapshotStorage, 1),
 		// rest of structure populated after WAL replay
 	}
 	go rc.startRaft()
-	return commitC, errorC, rc.snapshotterReady
+	return commitC, errorC, rc.snapshotStorageReady
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
@@ -124,7 +140,7 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 	// save the snapshot file before writing the snapshot to the wal.
 	// This makes it possible for the snapshot file to become orphaned, but prevents
 	// a WAL snapshot entry from having no corresponding snapshot file.
-	if err := rc.snapshotter.SaveSnap(snap); err != nil {
+	if err := rc.snapshotStorage.SaveSnap(snap); err != nil {
 		return err
 	}
 	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
@@ -206,7 +222,7 @@ func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
 		if err != nil {
 			log.Fatalf("raftexample: error listing snapshots (%v)", err)
 		}
-		snapshot, err := rc.snapshotter.LoadNewestAvailable(walSnaps)
+		snapshot, err := rc.snapshotStorage.LoadNewestAvailable(walSnaps)
 		if err != nil && err != snap.ErrNoSnapshot {
 			log.Fatalf("raftexample: error loading snapshot (%v)", err)
 		}
@@ -272,18 +288,18 @@ func (rc *raftNode) writeError(err error) {
 }
 
 func (rc *raftNode) startRaft() {
-	if !fileutil.Exist(rc.snapdir) {
-		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
-			log.Fatalf("raftexample: cannot create dir for snapshot (%v)", err)
-		}
+	snapshotLogger := zap.NewExample()
+	var err error
+	rc.snapshotStorage, err = newSnapshotStorage(snapshotLogger, rc.snapdir)
+	if err != nil {
+		log.Fatalf("raftexample: %v", err)
 	}
-	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 
 	oldwal := wal.Exist(rc.waldir)
 	rc.wal = rc.replayWAL()
 
 	// signal replay has finished
-	rc.snapshotterReady <- rc.snapshotter
+	rc.snapshotStorageReady <- rc.snapshotStorage
 
 	rpeers := make([]raft.Peer, len(rc.peers))
 	for i := range rpeers {
@@ -519,4 +535,13 @@ func (rc *raftNode) IsIDRemoved(id uint64) bool  { return false }
 func (rc *raftNode) ReportUnreachable(id uint64) { rc.node.ReportUnreachable(id) }
 func (rc *raftNode) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	rc.node.ReportSnapshot(id, status)
+}
+
+func newSnapshotStorage(lg *zap.Logger, dir string) (SnapshotStorage, error) {
+	if !fileutil.Exist(dir) {
+		if err := os.Mkdir(dir, 0750); err != nil {
+			return nil, fmt.Errorf("cannot create dir for snapshot: %w", err)
+		}
+	}
+	return snap.New(lg, dir), nil
 }

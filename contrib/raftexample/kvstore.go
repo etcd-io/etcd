@@ -27,10 +27,10 @@ import (
 
 // a key-value store backed by raft
 type kvstore struct {
-	proposeC    chan<- string // channel for proposing updates
-	mu          sync.RWMutex
-	kvStore     map[string]string // current committed key-value pairs
-	snapshotter *snap.Snapshotter
+	proposeC        chan<- string // channel for proposing updates
+	mu              sync.RWMutex
+	kvStore         map[string]string // current committed key-value pairs
+	snapshotStorage SnapshotStorage
 }
 
 type kv struct {
@@ -38,8 +38,15 @@ type kv struct {
 	Val string
 }
 
-func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *commit, errorC <-chan error) *kvstore {
-	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
+func newKVStore(
+	snapshotStorage SnapshotStorage,
+	proposeC chan<- string, commitC <-chan *commit, errorC <-chan error,
+) *kvstore {
+	s := &kvstore{
+		proposeC:        proposeC,
+		kvStore:         make(map[string]string),
+		snapshotStorage: snapshotStorage,
+	}
 	snapshot, err := s.loadSnapshot()
 	if err != nil {
 		log.Panic(err)
@@ -111,7 +118,7 @@ func (s *kvstore) getSnapshot() ([]byte, error) {
 }
 
 func (s *kvstore) loadSnapshot() (*raftpb.Snapshot, error) {
-	snapshot, err := s.snapshotter.Load()
+	snapshot, err := s.snapshotStorage.Load()
 	if err == snap.ErrNoSnapshot {
 		return nil, nil
 	}
