@@ -62,14 +62,15 @@ func newCluster(n int) *cluster {
 	}
 
 	for i := range clus.peers {
-		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
-		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", i+1))
+		id := uint64(i + 1)
+		os.RemoveAll(fmt.Sprintf("raftexample-%d", id))
+		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", id))
 		clus.proposeC[i] = make(chan string, 1)
 		clus.confChangeC[i] = make(chan raftpb.ConfChange, 1)
 		fn, snapshotTriggeredC := getSnapshotFn()
 		clus.snapshotTriggeredC[i] = snapshotTriggeredC
 		clus.commitC[i], clus.errorC[i], _ = startRaftNode(
-			i+1, clus.peers, false, fn, clus.proposeC[i], clus.confChangeC[i],
+			id, clus.peers, false, fn, clus.proposeC[i], clus.confChangeC[i],
 		)
 	}
 

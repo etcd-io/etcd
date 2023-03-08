@@ -49,7 +49,7 @@ type raftNode struct {
 	commitC     chan<- *commit           // entries committed to log (k,v)
 	errorC      chan<- error             // errors from raft session
 
-	id          int      // client ID for raft session
+	id          uint64   // client ID for raft session
 	peers       []string // raft peer URLs
 	join        bool     // node is joining an existing cluster
 	waldir      string   // path to WAL directory
@@ -98,7 +98,7 @@ var defaultSnapshotCount uint64 = 10000
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
 func startRaftNode(
-	id int, peers []string, join bool,
+	id uint64, peers []string, join bool,
 	getSnapshot func() ([]byte, error),
 	proposeC <-chan string, confChangeC <-chan raftpb.ConfChange,
 ) (<-chan *commit, <-chan error, SnapshotStorage) {
@@ -200,7 +200,7 @@ func (rc *raftNode) publishEntries(ents []raftpb.Entry) (<-chan struct{}, bool) 
 					rc.transport.AddPeer(types.ID(cc.NodeID), []string{string(cc.Context)})
 				}
 			case raftpb.ConfChangeRemoveNode:
-				if cc.NodeID == uint64(rc.id) {
+				if cc.NodeID == rc.id {
 					log.Println("I've been removed from the cluster! Shutting down.")
 					return nil, false
 				}
@@ -303,7 +303,7 @@ func (rc *raftNode) startRaft(oldwal bool) {
 		rpeers[i] = raft.Peer{ID: uint64(i + 1)}
 	}
 	c := &raft.Config{
-		ID:                        uint64(rc.id),
+		ID:                        rc.id,
 		ElectionTick:              10,
 		HeartbeatTick:             1,
 		Storage:                   rc.raftStorage,
@@ -324,13 +324,15 @@ func (rc *raftNode) startRaft(oldwal bool) {
 		ClusterID:   0x1000,
 		Raft:        rc,
 		ServerStats: stats.NewServerStats("", ""),
-		LeaderStats: stats.NewLeaderStats(zap.NewExample(), strconv.Itoa(rc.id)),
-		ErrorC:      make(chan error),
+		LeaderStats: stats.NewLeaderStats(
+			zap.NewExample(), strconv.FormatUint(rc.id, 10),
+		),
+		ErrorC: make(chan error),
 	}
 
 	rc.transport.Start()
 	for i := range rc.peers {
-		if i+1 != rc.id {
+		if uint64(i+1) != rc.id {
 			rc.transport.AddPeer(types.ID(i+1), []string{rc.peers[i]})
 		}
 	}
