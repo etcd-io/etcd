@@ -54,7 +54,7 @@ func TestFIFOSchedule(t *testing.T) {
 	}
 
 	s.WaitFinish(100)
-	if s.Scheduled() != 100 {
-		t.Errorf("scheduled = %d, want %d", s.Scheduled(), 100)
+	if s.Finished() != 100 {
+		t.Errorf("finished = %d, want %d", s.Finished(), 100)
 	}
 }
