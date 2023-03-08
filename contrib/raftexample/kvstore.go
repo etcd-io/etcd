@@ -47,16 +47,7 @@ func newKVStore(
 		kvStore:         make(map[string]string),
 		snapshotStorage: snapshotStorage,
 	}
-	snapshot, err := s.loadSnapshot()
-	if err != nil {
-		log.Panic(err)
-	}
-	if snapshot != nil {
-		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-		if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
-			log.Panic(err)
-		}
-	}
+	s.loadAndApplySnapshot()
 	// read commits from raft into kvStore map until error
 	go s.readCommits(commitC, errorC)
 	return s
@@ -80,35 +71,48 @@ func (s *kvstore) Propose(k string, v string) {
 func (s *kvstore) readCommits(commitC <-chan *commit, errorC <-chan error) {
 	for commit := range commitC {
 		if commit == nil {
-			// signaled to load snapshot
-			snapshot, err := s.loadSnapshot()
-			if err != nil {
-				log.Panic(err)
-			}
-			if snapshot != nil {
-				log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-				if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
-					log.Panic(err)
-				}
-			}
+			s.loadAndApplySnapshot()
 			continue
 		}
 
-		for _, data := range commit.data {
-			var dataKv kv
-			dec := gob.NewDecoder(bytes.NewBufferString(data))
-			if err := dec.Decode(&dataKv); err != nil {
-				log.Fatalf("raftexample: could not decode message (%v)", err)
-			}
-			s.mu.Lock()
-			s.kvStore[dataKv.Key] = dataKv.Val
-			s.mu.Unlock()
-		}
-		close(commit.applyDoneC)
+		s.applyCommits(commit)
 	}
 	if err, ok := <-errorC; ok {
 		log.Fatal(err)
 	}
+}
+
+// loadAndApplySnapshot load the most recent snapshot from the
+// snapshot storage and applies it to the current state.
+func (s *kvstore) loadAndApplySnapshot() {
+	// signaled to load snapshot
+	snapshot, err := s.loadSnapshot()
+	if err != nil {
+		log.Panic(err)
+	}
+	if snapshot != nil {
+		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+		if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+			log.Panic(err)
+		}
+	}
+}
+
+// applyCommits decodes and applies each of the commits in `commit` to
+// the current state, then signals that it is done by closing
+// `commit.applyDoneC`.
+func (s *kvstore) applyCommits(commit *commit) {
+	for _, data := range commit.data {
+		var dataKv kv
+		dec := gob.NewDecoder(bytes.NewBufferString(data))
+		if err := dec.Decode(&dataKv); err != nil {
+			log.Fatalf("raftexample: could not decode message (%v)", err)
+		}
+		s.mu.Lock()
+		s.kvStore[dataKv.Key] = dataKv.Val
+		s.mu.Unlock()
+	}
+	close(commit.applyDoneC)
 }
 
 func (s *kvstore) getSnapshot() ([]byte, error) {
