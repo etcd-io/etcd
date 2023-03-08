@@ -23,9 +23,22 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
+// KVStore is the interface to the key-value store that is required by
+// `httpKVAPI`.
+type KVStore interface {
+	// Propose proposes to set key `k` to value `v` in the key-value
+	// store. It returns immediately, before the change has
+	// necessarily taken effect.
+	Propose(k, v string)
+
+	// Lookup looks up the value for key `k` in the current state of
+	// the store.
+	Lookup(k string) (string, bool)
+}
+
 // Handler for a http based key-value store backed by raft
 type httpKVAPI struct {
-	store       *kvstore
+	store       KVStore
 	confChangeC chan<- raftpb.ConfChange
 }
 
@@ -101,7 +114,7 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveHTTPKVAPI starts a key-value server with a GET/PUT API and listens.
-func serveHTTPKVAPI(kv *kvstore, port int, confChangeC chan<- raftpb.ConfChange, errorC <-chan error) {
+func serveHTTPKVAPI(kv KVStore, port int, confChangeC chan<- raftpb.ConfChange, errorC <-chan error) {
 	srv := http.Server{
 		Addr: ":" + strconv.Itoa(port),
 		Handler: &httpKVAPI{
