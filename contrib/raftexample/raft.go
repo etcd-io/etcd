@@ -65,8 +65,7 @@ type raftNode struct {
 	raftStorage *raft.MemoryStorage
 	wal         *wal.WAL
 
-	snapshotStorage      SnapshotStorage
-	snapshotStorageReady chan SnapshotStorage // signals when snapshotStorage is ready
+	snapshotStorage SnapshotStorage
 
 	snapCount uint64
 	transport *rafthttp.Transport
@@ -94,15 +93,16 @@ type SnapshotStorage interface {
 
 var defaultSnapshotCount uint64 = 10000
 
-// newRaftNode initiates a raft instance and returns a committed log entry
+// startRaftNode initiates a raft instance and returns a committed log entry
 // channel and error channel. Proposals for log updates are sent over the
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func newRaftNode(
-	id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
-	confChangeC <-chan raftpb.ConfChange,
-) (<-chan *commit, <-chan error, <-chan SnapshotStorage) {
+func startRaftNode(
+	id int, peers []string, join bool,
+	getSnapshot func() ([]byte, error),
+	proposeC <-chan string, confChangeC <-chan raftpb.ConfChange,
+) (<-chan *commit, <-chan error, SnapshotStorage) {
 	commitC := make(chan *commit)
 	errorC := make(chan error)
 
@@ -124,7 +124,6 @@ func newRaftNode(
 
 		logger: zap.NewExample(),
 
-		snapshotStorageReady: make(chan SnapshotStorage, 1),
 		// rest of structure populated after WAL replay
 	}
 
@@ -136,15 +135,11 @@ func newRaftNode(
 	}
 
 	oldwal := wal.Exist(rc.waldir)
-	go func() {
-		rc.wal = rc.replayWAL()
+	rc.wal = rc.replayWAL()
 
-		// signal replay has finished
-		rc.snapshotStorageReady <- rc.snapshotStorage
+	go rc.startRaft(oldwal)
 
-		rc.startRaft(oldwal)
-	}()
-	return commitC, errorC, rc.snapshotStorageReady
+	return commitC, errorC, rc.snapshotStorage
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
