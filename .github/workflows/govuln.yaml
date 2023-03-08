@@ -8,6 +8,6 @@ jobs:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
         with:
-          go-version: "1.19.6"
+          go-version: "1.19.7"
       - run: date
       - run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
