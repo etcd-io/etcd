@@ -135,7 +135,15 @@ func newRaftNode(
 		log.Fatalf("raftexample: %v", err)
 	}
 
-	go rc.startRaft()
+	oldwal := wal.Exist(rc.waldir)
+	go func() {
+		rc.wal = rc.replayWAL()
+
+		// signal replay has finished
+		rc.snapshotStorageReady <- rc.snapshotStorage
+
+		rc.startRaft(oldwal)
+	}()
 	return commitC, errorC, rc.snapshotStorageReady
 }
 
@@ -295,13 +303,7 @@ func (rc *raftNode) writeError(err error) {
 	rc.node.Stop()
 }
 
-func (rc *raftNode) startRaft() {
-	oldwal := wal.Exist(rc.waldir)
-	rc.wal = rc.replayWAL()
-
-	// signal replay has finished
-	rc.snapshotStorageReady <- rc.snapshotStorage
-
+func (rc *raftNode) startRaft(oldwal bool) {
 	rpeers := make([]raft.Peer, len(rc.peers))
 	for i := range rpeers {
 		rpeers[i] = raft.Peer{ID: uint64(i + 1)}
