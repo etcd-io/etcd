@@ -18,12 +18,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -63,14 +66,24 @@ func newCluster(n int) *cluster {
 
 	for i := range clus.peers {
 		id := uint64(i + 1)
+		snapdir := fmt.Sprintf("raftexample-%d-snap", id)
 		os.RemoveAll(fmt.Sprintf("raftexample-%d", id))
-		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", id))
+		os.RemoveAll(snapdir)
 		clus.proposeC[i] = make(chan string, 1)
 		clus.confChangeC[i] = make(chan raftpb.ConfChange, 1)
 		fn, snapshotTriggeredC := getSnapshotFn()
 		clus.snapshotTriggeredC[i] = snapshotTriggeredC
-		clus.commitC[i], clus.errorC[i], _ = startRaftNode(
-			id, clus.peers, false, fn, clus.proposeC[i], clus.confChangeC[i],
+
+		snapshotLogger := zap.NewExample()
+		snapshotStorage, err := newSnapshotStorage(snapshotLogger, snapdir)
+		if err != nil {
+			log.Fatalf("raftexample: %v", err)
+		}
+
+		clus.commitC[i], clus.errorC[i] = startRaftNode(
+			id, clus.peers, false,
+			fn, snapshotStorage,
+			clus.proposeC[i], clus.confChangeC[i],
 		)
 	}
 
@@ -185,7 +198,20 @@ func TestPutAndGetKeyValue(t *testing.T) {
 
 	var kvs *kvstore
 	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
-	commitC, errorC, snapshotStorage := startRaftNode(1, clusters, false, getSnapshot, proposeC, confChangeC)
+
+	id := uint64(1)
+	snapshotLogger := zap.NewExample()
+	snapdir := fmt.Sprintf("raftexample-%d-snap", id)
+	snapshotStorage, err := newSnapshotStorage(snapshotLogger, snapdir)
+	if err != nil {
+		log.Fatalf("raftexample: %v", err)
+	}
+
+	commitC, errorC := startRaftNode(
+		id, clusters, false,
+		getSnapshot, snapshotStorage,
+		proposeC, confChangeC,
+	)
 
 	kvs = newKVStore(snapshotStorage, proposeC, commitC, errorC)
 
@@ -237,17 +263,19 @@ func TestAddNewNode(t *testing.T) {
 	clus := newCluster(3)
 	defer clus.closeNoErrors(t)
 
+	id := uint64(4)
+	snapdir := fmt.Sprintf("raftexample-%d-snap", id)
 	os.RemoveAll("raftexample-4")
-	os.RemoveAll("raftexample-4-snap")
+	os.RemoveAll(snapdir)
 	defer func() {
 		os.RemoveAll("raftexample-4")
-		os.RemoveAll("raftexample-4-snap")
+		os.RemoveAll(snapdir)
 	}()
 
 	newNodeURL := "http://127.0.0.1:10004"
 	clus.confChangeC[0] <- raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode,
-		NodeID:  4,
+		NodeID:  id,
 		Context: []byte(newNodeURL),
 	}
 
@@ -257,7 +285,17 @@ func TestAddNewNode(t *testing.T) {
 	confChangeC := make(chan raftpb.ConfChange)
 	defer close(confChangeC)
 
-	startRaftNode(4, append(clus.peers, newNodeURL), true, nil, proposeC, confChangeC)
+	snapshotLogger := zap.NewExample()
+	snapshotStorage, err := newSnapshotStorage(snapshotLogger, snapdir)
+	if err != nil {
+		log.Fatalf("raftexample: %v", err)
+	}
+
+	startRaftNode(
+		id, append(clus.peers, newNodeURL), true,
+		nil, snapshotStorage,
+		proposeC, confChangeC,
+	)
 
 	go func() {
 		proposeC <- "foo"

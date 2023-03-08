@@ -55,6 +55,8 @@ type raftNode struct {
 	waldir      string   // path to WAL directory
 	getSnapshot func() ([]byte, error)
 
+	snapshotStorage SnapshotStorage
+
 	confState     raftpb.ConfState
 	snapshotIndex uint64
 	appliedIndex  uint64
@@ -63,8 +65,6 @@ type raftNode struct {
 	node        raft.Node
 	raftStorage *raft.MemoryStorage
 	wal         *wal.WAL
-
-	snapshotStorage SnapshotStorage
 
 	snapCount uint64
 	transport *rafthttp.Transport
@@ -99,38 +99,31 @@ var defaultSnapshotCount uint64 = 10000
 // current), then new log entries. To shutdown, close proposeC and read errorC.
 func startRaftNode(
 	id uint64, peers []string, join bool,
-	getSnapshot func() ([]byte, error),
+	getSnapshot func() ([]byte, error), snapshotStorage SnapshotStorage,
 	proposeC <-chan string, confChangeC <-chan raftpb.ConfChange,
-) (<-chan *commit, <-chan error, SnapshotStorage) {
+) (<-chan *commit, <-chan error) {
 	commitC := make(chan *commit)
 	errorC := make(chan error)
 
 	rc := &raftNode{
-		proposeC:    proposeC,
-		confChangeC: confChangeC,
-		commitC:     commitC,
-		errorC:      errorC,
-		id:          id,
-		peers:       peers,
-		join:        join,
-		waldir:      fmt.Sprintf("raftexample-%d", id),
-		getSnapshot: getSnapshot,
-		snapCount:   defaultSnapshotCount,
-		stopc:       make(chan struct{}),
-		httpstopc:   make(chan struct{}),
-		httpdonec:   make(chan struct{}),
+		proposeC:        proposeC,
+		confChangeC:     confChangeC,
+		commitC:         commitC,
+		errorC:          errorC,
+		id:              id,
+		peers:           peers,
+		join:            join,
+		waldir:          fmt.Sprintf("raftexample-%d", id),
+		getSnapshot:     getSnapshot,
+		snapshotStorage: snapshotStorage,
+		snapCount:       defaultSnapshotCount,
+		stopc:           make(chan struct{}),
+		httpstopc:       make(chan struct{}),
+		httpdonec:       make(chan struct{}),
 
 		logger: zap.NewExample(),
 
 		// rest of structure populated after WAL replay
-	}
-
-	snapshotLogger := zap.NewExample()
-	var err error
-	snapdir := fmt.Sprintf("raftexample-%d-snap", id)
-	rc.snapshotStorage, err = newSnapshotStorage(snapshotLogger, snapdir)
-	if err != nil {
-		log.Fatalf("raftexample: %v", err)
 	}
 
 	oldwal := wal.Exist(rc.waldir)
@@ -138,7 +131,7 @@ func startRaftNode(
 
 	go rc.startRaft(oldwal)
 
-	return commitC, errorC, rc.snapshotStorage
+	return commitC, errorC
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {

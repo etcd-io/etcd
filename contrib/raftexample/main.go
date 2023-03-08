@@ -16,7 +16,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"log"
 	"strings"
+
+	"go.uber.org/zap"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -36,8 +40,18 @@ func main() {
 	// raft provides a commit stream for the proposals from the http api
 	var kvs *kvstore
 	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
-	commitC, errorC, snapshotStorage := startRaftNode(
-		*id, strings.Split(*cluster, ","), *join, getSnapshot, proposeC, confChangeC,
+
+	snapshotLogger := zap.NewExample()
+	snapdir := fmt.Sprintf("raftexample-%d-snap", *id)
+	snapshotStorage, err := newSnapshotStorage(snapshotLogger, snapdir)
+	if err != nil {
+		log.Fatalf("raftexample: %v", err)
+	}
+
+	commitC, errorC := startRaftNode(
+		*id, strings.Split(*cluster, ","), *join,
+		getSnapshot, snapshotStorage,
+		proposeC, confChangeC,
 	)
 
 	kvs = newKVStore(snapshotStorage, proposeC, commitC, errorC)
