@@ -196,9 +196,6 @@ func TestPutAndGetKeyValue(t *testing.T) {
 	confChangeC := make(chan raftpb.ConfChange)
 	defer close(confChangeC)
 
-	var kvs *kvstore
-	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
-
 	id := uint64(1)
 	snapshotLogger := zap.NewExample()
 	snapdir := fmt.Sprintf("raftexample-%d-snap", id)
@@ -207,13 +204,15 @@ func TestPutAndGetKeyValue(t *testing.T) {
 		log.Fatalf("raftexample: %v", err)
 	}
 
+	kvs := newKVStore(snapshotStorage, proposeC)
+
 	commitC, errorC := startRaftNode(
 		id, clusters, false,
-		getSnapshot, snapshotStorage,
+		kvs.getSnapshot, snapshotStorage,
 		proposeC, confChangeC,
 	)
 
-	kvs = newKVStore(snapshotStorage, proposeC, commitC, errorC)
+	go kvs.processCommits(commitC, errorC)
 
 	srv := httptest.NewServer(&httpKVAPI{
 		store:       kvs,

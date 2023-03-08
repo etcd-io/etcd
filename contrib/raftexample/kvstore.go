@@ -38,18 +38,17 @@ type kv struct {
 	Val string
 }
 
-func newKVStore(
-	snapshotStorage SnapshotStorage,
-	proposeC chan<- string, commitC <-chan *commit, errorC <-chan error,
-) *kvstore {
+// newKVStore creates and returns a new `kvstore` and loads and
+// applies the most recent snapshot (if any are available). The caller
+// must call `processCommits()` on the return value (normally, in a
+// goroutine) to make it start apply commits from raft to the state.
+func newKVStore(snapshotStorage SnapshotStorage, proposeC chan<- string) *kvstore {
 	s := &kvstore{
 		proposeC:        proposeC,
 		kvStore:         make(map[string]string),
 		snapshotStorage: snapshotStorage,
 	}
 	s.loadAndApplySnapshot()
-	// read commits from raft into kvStore map until error
-	go s.readCommits(commitC, errorC)
 	return s
 }
 
@@ -68,7 +67,9 @@ func (s *kvstore) Propose(k string, v string) {
 	s.proposeC <- buf.String()
 }
 
-func (s *kvstore) readCommits(commitC <-chan *commit, errorC <-chan error) {
+// processCommits() reads commits from `commitC` and applies them into
+// the kvStore map until that channel is closed.
+func (s *kvstore) processCommits(commitC <-chan *commit, errorC <-chan error) {
 	for commit := range commitC {
 		if commit == nil {
 			s.loadAndApplySnapshot()
