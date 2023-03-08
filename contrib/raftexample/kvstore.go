@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 // a key-value store backed by raft
@@ -72,6 +71,7 @@ func (s *kvstore) Propose(k string, v string) {
 func (s *kvstore) processCommits(commitC <-chan *commit, errorC <-chan error) {
 	for commit := range commitC {
 		if commit == nil {
+			// This is a request that we load a snapshot.
 			s.loadAndApplySnapshot()
 			continue
 		}
@@ -84,18 +84,20 @@ func (s *kvstore) processCommits(commitC <-chan *commit, errorC <-chan error) {
 }
 
 // loadAndApplySnapshot load the most recent snapshot from the
-// snapshot storage and applies it to the current state.
+// snapshot storage (if any) and applies it to the current state.
 func (s *kvstore) loadAndApplySnapshot() {
-	// signaled to load snapshot
-	snapshot, err := s.loadSnapshot()
+	snapshot, err := s.snapshotStorage.Load()
 	if err != nil {
+		if err == snap.ErrNoSnapshot {
+			// No snapshots available; do nothing.
+			return
+		}
 		log.Panic(err)
 	}
-	if snapshot != nil {
-		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-		if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
-			log.Panic(err)
-		}
+
+	log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+	if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+		log.Panic(err)
 	}
 }
 
@@ -120,17 +122,6 @@ func (s *kvstore) getSnapshot() ([]byte, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return json.Marshal(s.kvStore)
-}
-
-func (s *kvstore) loadSnapshot() (*raftpb.Snapshot, error) {
-	snapshot, err := s.snapshotStorage.Load()
-	if err == snap.ErrNoSnapshot {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return snapshot, nil
 }
 
 func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
