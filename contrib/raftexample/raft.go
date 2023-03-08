@@ -127,6 +127,14 @@ func newRaftNode(
 		snapshotStorageReady: make(chan SnapshotStorage, 1),
 		// rest of structure populated after WAL replay
 	}
+
+	snapshotLogger := zap.NewExample()
+	var err error
+	rc.snapshotStorage, err = newSnapshotStorage(snapshotLogger, rc.snapdir)
+	if err != nil {
+		log.Fatalf("raftexample: %v", err)
+	}
+
 	go rc.startRaft()
 	return commitC, errorC, rc.snapshotStorageReady
 }
@@ -288,13 +296,6 @@ func (rc *raftNode) writeError(err error) {
 }
 
 func (rc *raftNode) startRaft() {
-	snapshotLogger := zap.NewExample()
-	var err error
-	rc.snapshotStorage, err = newSnapshotStorage(snapshotLogger, rc.snapdir)
-	if err != nil {
-		log.Fatalf("raftexample: %v", err)
-	}
-
 	oldwal := wal.Exist(rc.waldir)
 	rc.wal = rc.replayWAL()
 
