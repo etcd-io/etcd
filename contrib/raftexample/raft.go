@@ -53,7 +53,6 @@ type raftNode struct {
 	peers       []string // raft peer URLs
 	join        bool     // node is joining an existing cluster
 	waldir      string   // path to WAL directory
-	snapdir     string   // path to snapshot directory
 	getSnapshot func() ([]byte, error)
 
 	confState     raftpb.ConfState
@@ -115,7 +114,6 @@ func startRaftNode(
 		peers:       peers,
 		join:        join,
 		waldir:      fmt.Sprintf("raftexample-%d", id),
-		snapdir:     fmt.Sprintf("raftexample-%d-snap", id),
 		getSnapshot: getSnapshot,
 		snapCount:   defaultSnapshotCount,
 		stopc:       make(chan struct{}),
@@ -129,7 +127,8 @@ func startRaftNode(
 
 	snapshotLogger := zap.NewExample()
 	var err error
-	rc.snapshotStorage, err = newSnapshotStorage(snapshotLogger, rc.snapdir)
+	snapdir := fmt.Sprintf("raftexample-%d-snap", id)
+	rc.snapshotStorage, err = newSnapshotStorage(snapshotLogger, snapdir)
 	if err != nil {
 		log.Fatalf("raftexample: %v", err)
 	}
