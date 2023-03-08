@@ -46,15 +46,15 @@ func main() {
 		log.Fatalf("raftexample: %v", err)
 	}
 
-	kvs := newKVStore(snapshotStorage, proposeC)
+	kvs, fsm := newKVStore(snapshotStorage, proposeC)
 
 	commitC, errorC := startRaftNode(
 		*id, strings.Split(*cluster, ","), *join,
-		kvs.getSnapshot, snapshotStorage,
+		fsm, snapshotStorage,
 		proposeC, confChangeC,
 	)
 
-	go kvs.processCommits(commitC, errorC)
+	go fsm.ProcessCommits(commitC, errorC)
 
 	// the key-value http handler will propose updates to raft
 	serveHTTPKVAPI(kvs, *kvport, confChangeC, errorC)

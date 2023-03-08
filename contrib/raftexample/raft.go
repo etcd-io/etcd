@@ -49,11 +49,11 @@ type raftNode struct {
 	commitC     chan<- *commit           // entries committed to log (k,v)
 	errorC      chan<- error             // errors from raft session
 
-	id          uint64   // client ID for raft session
-	peers       []string // raft peer URLs
-	join        bool     // node is joining an existing cluster
-	waldir      string   // path to WAL directory
-	getSnapshot func() ([]byte, error)
+	id     uint64   // client ID for raft session
+	peers  []string // raft peer URLs
+	join   bool     // node is joining an existing cluster
+	waldir string   // path to WAL directory
+	fsm    FSM
 
 	snapshotStorage SnapshotStorage
 
@@ -92,6 +92,20 @@ type SnapshotStorage interface {
 
 var defaultSnapshotCount uint64 = 10000
 
+// FSM is the interface that must be implemented by a finite state
+// machine for it to be driven by raft.
+type FSM interface {
+	// TakeSnapshot takes a snapshot of the current state of the
+	// finite state machine, returning the snapshot as a slice of
+	// bytes that can be saved or loaded by a `SnapshotStorage`.
+	TakeSnapshot() ([]byte, error)
+
+	// ProcessCommits reads committed updates (and requests to restore
+	// snapshots) from `commitC` and applies them to the finite state
+	// machine.
+	ProcessCommits(commitC <-chan *commit, errorC <-chan error)
+}
+
 // startRaftNode initiates a raft instance and returns a committed log entry
 // channel and error channel. Proposals for log updates are sent over the
 // provided the proposal channel. All log entries are replayed over the
@@ -99,7 +113,7 @@ var defaultSnapshotCount uint64 = 10000
 // current), then new log entries. To shutdown, close proposeC and read errorC.
 func startRaftNode(
 	id uint64, peers []string, join bool,
-	getSnapshot func() ([]byte, error), snapshotStorage SnapshotStorage,
+	fsm FSM, snapshotStorage SnapshotStorage,
 	proposeC <-chan string, confChangeC <-chan raftpb.ConfChange,
 ) (<-chan *commit, <-chan error) {
 	commitC := make(chan *commit)
@@ -114,7 +128,7 @@ func startRaftNode(
 		peers:           peers,
 		join:            join,
 		waldir:          fmt.Sprintf("raftexample-%d", id),
-		getSnapshot:     getSnapshot,
+		fsm:             fsm,
 		snapshotStorage: snapshotStorage,
 		snapCount:       defaultSnapshotCount,
 		stopc:           make(chan struct{}),
@@ -383,7 +397,7 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 	}
 
 	log.Printf("start snapshot [applied index: %d | last snapshot index: %d]", rc.appliedIndex, rc.snapshotIndex)
-	data, err := rc.getSnapshot()
+	data, err := rc.fsm.TakeSnapshot()
 	if err != nil {
 		log.Panic(err)
 	}

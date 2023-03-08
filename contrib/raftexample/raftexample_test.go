@@ -31,21 +31,26 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-func getSnapshotFn() (func() ([]byte, error), <-chan struct{}) {
-	snapshotTriggeredC := make(chan struct{})
-	return func() ([]byte, error) {
-		snapshotTriggeredC <- struct{}{}
-		return nil, nil
-	}, snapshotTriggeredC
+type snapshotWatcher struct {
+	C chan struct{}
+}
+
+func (sw snapshotWatcher) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
+	panic("not implemented")
+}
+
+func (sw snapshotWatcher) TakeSnapshot() ([]byte, error) {
+	sw.C <- struct{}{}
+	return nil, nil
 }
 
 type cluster struct {
-	peers              []string
-	commitC            []<-chan *commit
-	errorC             []<-chan error
-	proposeC           []chan string
-	confChangeC        []chan raftpb.ConfChange
-	snapshotTriggeredC []<-chan struct{}
+	peers            []string
+	commitC          []<-chan *commit
+	errorC           []<-chan error
+	proposeC         []chan string
+	confChangeC      []chan raftpb.ConfChange
+	snapshotWatchers []snapshotWatcher
 }
 
 // newCluster creates a cluster of n nodes
@@ -56,12 +61,12 @@ func newCluster(n int) *cluster {
 	}
 
 	clus := &cluster{
-		peers:              peers,
-		commitC:            make([]<-chan *commit, len(peers)),
-		errorC:             make([]<-chan error, len(peers)),
-		proposeC:           make([]chan string, len(peers)),
-		confChangeC:        make([]chan raftpb.ConfChange, len(peers)),
-		snapshotTriggeredC: make([]<-chan struct{}, len(peers)),
+		peers:            peers,
+		commitC:          make([]<-chan *commit, len(peers)),
+		errorC:           make([]<-chan error, len(peers)),
+		proposeC:         make([]chan string, len(peers)),
+		confChangeC:      make([]chan raftpb.ConfChange, len(peers)),
+		snapshotWatchers: make([]snapshotWatcher, len(peers)),
 	}
 
 	for i := range clus.peers {
@@ -71,8 +76,10 @@ func newCluster(n int) *cluster {
 		os.RemoveAll(snapdir)
 		clus.proposeC[i] = make(chan string, 1)
 		clus.confChangeC[i] = make(chan raftpb.ConfChange, 1)
-		fn, snapshotTriggeredC := getSnapshotFn()
-		clus.snapshotTriggeredC[i] = snapshotTriggeredC
+		snapshotWatcher := snapshotWatcher{
+			C: make(chan struct{}),
+		}
+		clus.snapshotWatchers[i] = snapshotWatcher
 
 		snapshotLogger := zap.NewExample()
 		snapshotStorage, err := newSnapshotStorage(snapshotLogger, snapdir)
@@ -82,7 +89,7 @@ func newCluster(n int) *cluster {
 
 		clus.commitC[i], clus.errorC[i] = startRaftNode(
 			id, clus.peers, false,
-			fn, snapshotStorage,
+			snapshotWatcher, snapshotStorage,
 			clus.proposeC[i], clus.confChangeC[i],
 		)
 	}
@@ -204,15 +211,15 @@ func TestPutAndGetKeyValue(t *testing.T) {
 		log.Fatalf("raftexample: %v", err)
 	}
 
-	kvs := newKVStore(snapshotStorage, proposeC)
+	kvs, fsm := newKVStore(snapshotStorage, proposeC)
 
 	commitC, errorC := startRaftNode(
 		id, clusters, false,
-		kvs.getSnapshot, snapshotStorage,
+		fsm, snapshotStorage,
 		proposeC, confChangeC,
 	)
 
-	go kvs.processCommits(commitC, errorC)
+	go fsm.ProcessCommits(commitC, errorC)
 
 	srv := httptest.NewServer(&httpKVAPI{
 		store:       kvs,
@@ -325,10 +332,10 @@ func TestSnapshot(t *testing.T) {
 	c := <-clus.commitC[0]
 
 	select {
-	case <-clus.snapshotTriggeredC[0]:
+	case <-clus.snapshotWatchers[0].C:
 		t.Fatalf("snapshot triggered before applying done")
 	default:
 	}
 	close(c.applyDoneC)
-	<-clus.snapshotTriggeredC[0]
+	<-clus.snapshotWatchers[0].C
 }

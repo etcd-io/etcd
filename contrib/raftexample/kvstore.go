@@ -41,14 +41,17 @@ type kv struct {
 // applies the most recent snapshot (if any are available). The caller
 // must call `processCommits()` on the return value (normally, in a
 // goroutine) to make it start apply commits from raft to the state.
-func newKVStore(snapshotStorage SnapshotStorage, proposeC chan<- string) *kvstore {
+//
+// The second return value can be used as the finite state machine
+// that is driven by raft.
+func newKVStore(snapshotStorage SnapshotStorage, proposeC chan<- string) (*kvstore, kvfsm) {
 	s := &kvstore{
 		proposeC:        proposeC,
 		kvStore:         make(map[string]string),
 		snapshotStorage: snapshotStorage,
 	}
 	s.loadAndApplySnapshot()
-	return s
+	return s, kvfsm{kvs: s}
 }
 
 func (s *kvstore) Lookup(key string) (string, bool) {
@@ -64,23 +67,6 @@ func (s *kvstore) Propose(k string, v string) {
 		log.Fatal(err)
 	}
 	s.proposeC <- buf.String()
-}
-
-// processCommits() reads commits from `commitC` and applies them into
-// the kvStore map until that channel is closed.
-func (s *kvstore) processCommits(commitC <-chan *commit, errorC <-chan error) {
-	for commit := range commitC {
-		if commit == nil {
-			// This is a request that we load a snapshot.
-			s.loadAndApplySnapshot()
-			continue
-		}
-
-		s.applyCommits(commit)
-	}
-	if err, ok := <-errorC; ok {
-		log.Fatal(err)
-	}
 }
 
 // loadAndApplySnapshot load the most recent snapshot from the
@@ -133,4 +119,29 @@ func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
 	defer s.mu.Unlock()
 	s.kvStore = store
 	return nil
+}
+
+type kvfsm struct {
+	kvs *kvstore
+}
+
+func (fsm kvfsm) TakeSnapshot() ([]byte, error) {
+	return fsm.kvs.getSnapshot()
+}
+
+// ProcessCommits() reads commits from `commitC` and applies them into
+// the kvstore until that channel is closed.
+func (fsm kvfsm) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
+	for commit := range commitC {
+		if commit == nil {
+			// This is a request that we load a snapshot.
+			fsm.kvs.loadAndApplySnapshot()
+			continue
+		}
+
+		fsm.kvs.applyCommits(commit)
+	}
+	if err, ok := <-errorC; ok {
+		log.Fatal(err)
+	}
 }
