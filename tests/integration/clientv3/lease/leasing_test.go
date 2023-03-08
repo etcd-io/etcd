@@ -16,7 +16,6 @@ package lease_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -1286,12 +1285,13 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 	donec := make(chan struct{})
 	go func(t *testing.T) {
 		defer close(donec)
-		for i := 0; (i < maxKey) && (ctx.Err() == nil); i++ {
-			key := fmt.Sprintf("key/%d", i%8)
-			if _, err = putkv.Put(ctx, key, "123"); err != nil {
-				if !errors.Is(err, context.Canceled) {
-					t.Errorf("fail putting key %s, err was: %v", key, err)
-				}
+		for i := 0; ctx.Err() == nil; i++ {
+			key := fmt.Sprintf("key/%d", i%maxKey)
+			if _, err := putkv.Put(context.TODO(), key, "123"); err != nil {
+				t.Errorf("fail putting key %s: %v", key, err)
+			}
+			if _, err = putkv.Get(context.TODO(), key); err != nil {
+				t.Errorf("fail getting key %s: %v", key, err)
 			}
 		}
 	}(t)
