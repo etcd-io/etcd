@@ -148,8 +148,10 @@ func TestProposeOnCommit(t *testing.T) {
 				select {
 				case proposeC <- c.data[0]:
 					continue
-				case err := <-peer.errorC:
-					t.Errorf("eC message (%v)", err)
+				case <-peer.node.Done():
+					if err := peer.node.Err(); err != nil {
+						t.Errorf("peer error (%v)", err)
+					}
 				}
 			}
 			donec <- struct{}{}
