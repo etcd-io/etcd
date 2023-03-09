@@ -47,7 +47,6 @@ func main() {
 	}
 
 	kvs, fsm := newKVStore(snapshotStorage, proposeC)
-	fsm.LoadAndApplySnapshot()
 
 	rc, commitC, errorC := startRaftNode(
 		*id, strings.Split(*cluster, ","), *join,

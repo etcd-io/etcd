@@ -150,6 +150,8 @@ func startRaftNode(
 		// rest of structure populated after WAL replay
 	}
 
+	rc.fsm.LoadAndApplySnapshot()
+
 	oldwal := wal.Exist(rc.waldir)
 	rc.wal = rc.replayWAL()
 

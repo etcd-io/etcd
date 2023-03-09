@@ -222,7 +222,6 @@ func TestPutAndGetKeyValue(t *testing.T) {
 	}
 
 	kvs, fsm := newKVStore(snapshotStorage, proposeC)
-	fsm.LoadAndApplySnapshot()
 
 	node, commitC, errorC := startRaftNode(
 		id, clusters, false,
@@ -314,7 +313,7 @@ func TestAddNewNode(t *testing.T) {
 
 	startRaftNode(
 		id, append(clus.peerNames, newNodeURL), true,
-		nil, snapshotStorage,
+		nullFSM{}, snapshotStorage,
 		proposeC, confChangeC,
 	)
 
