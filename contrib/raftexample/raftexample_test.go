@@ -109,7 +109,8 @@ func (clus *cluster) Close() (err error) {
 		}()
 		close(peer.proposeC)
 		// wait for channel to close
-		if erri := <-peer.errorC; erri != nil {
+		<-peer.node.Done()
+		if erri := peer.node.Err(); erri != nil {
 			err = erri
 		}
 		// clean intermediates
