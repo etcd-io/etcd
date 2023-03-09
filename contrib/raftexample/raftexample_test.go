@@ -32,28 +32,24 @@ import (
 )
 
 type peer struct {
-	commitC         <-chan *commit
-	errorC          <-chan error
-	proposeC        chan string
-	confChangeC     chan raftpb.ConfChange
-	snapshotWatcher snapshotWatcher
+	commitC     <-chan *commit
+	errorC      <-chan error
+	proposeC    chan string
+	confChangeC chan raftpb.ConfChange
+	fsm         FSM
 }
 
-type snapshotWatcher struct {
-	C chan struct{}
+type nullFSM struct{}
+
+func (nullFSM) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
 }
 
-func (sw snapshotWatcher) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
-	panic("not implemented")
-}
-
-func (sw snapshotWatcher) TakeSnapshot() ([]byte, error) {
-	sw.C <- struct{}{}
+func (nullFSM) TakeSnapshot() ([]byte, error) {
 	return nil, nil
 }
 
-func (sw snapshotWatcher) RestoreSnapshot(snapshot []byte) error {
-	panic("not implemented")
+func (nullFSM) RestoreSnapshot(snapshot []byte) error {
+	return nil
 }
 
 type cluster struct {
@@ -62,28 +58,26 @@ type cluster struct {
 }
 
 // newCluster creates a cluster of n nodes
-func newCluster(n int) *cluster {
+func newCluster(fsms ...FSM) *cluster {
 	clus := cluster{
-		peerNames: make([]string, 0, n),
-		peers:     make([]*peer, 0, n),
+		peerNames: make([]string, 0, len(fsms)),
+		peers:     make([]*peer, 0, len(fsms)),
 	}
-	for i := 0; i < n; i++ {
+	for i := range fsms {
 		clus.peerNames = append(clus.peerNames, fmt.Sprintf("http://127.0.0.1:%d", 10000+i))
 	}
 
-	for i := 0; i < n; i++ {
+	for i, fsm := range fsms {
 		id := uint64(i + 1)
 		peer := peer{
 			proposeC:    make(chan string, 1),
 			confChangeC: make(chan raftpb.ConfChange, 1),
+			fsm:         fsm,
 		}
+
 		snapdir := fmt.Sprintf("raftexample-%d-snap", id)
 		os.RemoveAll(fmt.Sprintf("raftexample-%d", id))
 		os.RemoveAll(snapdir)
-		snapshotWatcher := snapshotWatcher{
-			C: make(chan struct{}),
-		}
-		peer.snapshotWatcher = snapshotWatcher
 
 		snapshotLogger := zap.NewExample()
 		snapshotStorage, err := newSnapshotStorage(snapshotLogger, snapdir)
@@ -93,7 +87,7 @@ func newCluster(n int) *cluster {
 
 		peer.commitC, peer.errorC = startRaftNode(
 			id, clus.peerNames, false,
-			snapshotWatcher, snapshotStorage,
+			peer.fsm, snapshotStorage,
 			peer.proposeC, peer.confChangeC,
 		)
 		clus.peers = append(clus.peers, &peer)
@@ -134,7 +128,7 @@ func (clus *cluster) closeNoErrors(t *testing.T) {
 // TestProposeOnCommit starts three nodes and feeds commits back into the proposal
 // channel. The intent is to ensure blocking on a proposal won't block raft progress.
 func TestProposeOnCommit(t *testing.T) {
-	clus := newCluster(3)
+	clus := newCluster(nullFSM{}, nullFSM{}, nullFSM{})
 	defer clus.closeNoErrors(t)
 
 	donec := make(chan struct{})
@@ -176,7 +170,7 @@ func TestProposeOnCommit(t *testing.T) {
 
 // TestCloseProposerBeforeReplay tests closing the producer before raft starts.
 func TestCloseProposerBeforeReplay(t *testing.T) {
-	clus := newCluster(1)
+	clus := newCluster(nullFSM{})
 	// close before replay so raft never starts
 	defer clus.closeNoErrors(t)
 }
@@ -184,7 +178,7 @@ func TestCloseProposerBeforeReplay(t *testing.T) {
 // TestCloseProposerInflight tests closing the producer while
 // committed messages are being published to the client.
 func TestCloseProposerInflight(t *testing.T) {
-	clus := newCluster(1)
+	clus := newCluster(nullFSM{})
 	defer clus.closeNoErrors(t)
 
 	var wg sync.WaitGroup
@@ -277,7 +271,7 @@ func TestPutAndGetKeyValue(t *testing.T) {
 
 // TestAddNewNode tests adding new node to the existing cluster.
 func TestAddNewNode(t *testing.T) {
-	clus := newCluster(3)
+	clus := newCluster(nullFSM{}, nullFSM{}, nullFSM{})
 	defer clus.closeNoErrors(t)
 
 	id := uint64(4)
@@ -323,6 +317,16 @@ func TestAddNewNode(t *testing.T) {
 	}
 }
 
+type snapshotWatcher struct {
+	nullFSM
+	C chan struct{}
+}
+
+func (sw snapshotWatcher) TakeSnapshot() ([]byte, error) {
+	sw.C <- struct{}{}
+	return nil, nil
+}
+
 func TestSnapshot(t *testing.T) {
 	prevDefaultSnapshotCount := defaultSnapshotCount
 	prevSnapshotCatchUpEntriesN := snapshotCatchUpEntriesN
@@ -333,7 +337,9 @@ func TestSnapshot(t *testing.T) {
 		snapshotCatchUpEntriesN = prevSnapshotCatchUpEntriesN
 	}()
 
-	clus := newCluster(3)
+	sw := snapshotWatcher{C: make(chan struct{})}
+
+	clus := newCluster(sw, nullFSM{}, nullFSM{})
 	defer clus.closeNoErrors(t)
 
 	go func() {
@@ -343,10 +349,10 @@ func TestSnapshot(t *testing.T) {
 	c := <-clus.peers[0].commitC
 
 	select {
-	case <-clus.peers[0].snapshotWatcher.C:
+	case <-sw.C:
 		t.Fatalf("snapshot triggered before applying done")
 	default:
 	}
 	close(c.applyDoneC)
-	<-clus.peers[0].snapshotWatcher.C
+	<-sw.C
 }
