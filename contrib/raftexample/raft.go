@@ -105,6 +105,10 @@ type FSM interface {
 	// `TakeSnapshot`).
 	RestoreSnapshot(snapshot []byte) error
 
+	// LoadAndApplySnapshot loads the most recent snapshot from the
+	// snapshot storage (if any) and applies it to the current state.
+	LoadAndApplySnapshot()
+
 	// ApplyCommits applies the changes from `commit` to the finite
 	// state machine. `commit` is never `nil`. (By contrast, the
 	// commits that are handled by `ProcessCommits()` can be `nil` to
