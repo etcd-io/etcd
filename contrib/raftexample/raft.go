@@ -105,6 +105,12 @@ type FSM interface {
 	// `TakeSnapshot`).
 	RestoreSnapshot(snapshot []byte) error
 
+	// ApplyCommits applies the changes from `commit` to the finite
+	// state machine. `commit` is never `nil`. (By contrast, the
+	// commits that are handled by `ProcessCommits()` can be `nil` to
+	// signal that a snapshot should be loaded.)
+	ApplyCommits(commit *commit) error
+
 	// ProcessCommits reads committed updates (and requests to restore
 	// snapshots) from `commitC` and applies them to the finite state
 	// machine.

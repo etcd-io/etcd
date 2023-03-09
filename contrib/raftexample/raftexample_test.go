@@ -53,6 +53,10 @@ func (nullFSM) RestoreSnapshot(snapshot []byte) error {
 	return nil
 }
 
+func (nullFSM) ApplyCommits(commit *commit) error {
+	return nil
+}
+
 type cluster struct {
 	peerNames []string
 	peers     []*peer

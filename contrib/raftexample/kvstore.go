@@ -126,10 +126,10 @@ func (fsm kvfsm) TakeSnapshot() ([]byte, error) {
 	return json.Marshal(fsm.kvs.kvStore)
 }
 
-// applyCommits decodes and applies each of the commits in `commit` to
+// ApplyCommits decodes and applies each of the commits in `commit` to
 // the current state, then signals that it is done by closing
 // `commit.applyDoneC`.
-func (fsm kvfsm) applyCommits(commit *commit) error {
+func (fsm kvfsm) ApplyCommits(commit *commit) error {
 	for _, data := range commit.data {
 		var dataKv kv
 		dec := gob.NewDecoder(bytes.NewBufferString(data))
@@ -152,7 +152,7 @@ func (fsm kvfsm) ProcessCommits(commitC <-chan *commit, errorC <-chan error) err
 			continue
 		}
 
-		if err := fsm.applyCommits(commit); err != nil {
+		if err := fsm.ApplyCommits(commit); err != nil {
 			return err
 		}
 	}
