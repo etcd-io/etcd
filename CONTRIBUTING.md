@@ -45,22 +45,43 @@ If any of aforementioned labels don't have unassigned issues, please [contact] o
 
 ## Setup development environment
 
-etcd supported development environments include only linux-amd64.
-Bug reports for any non-supported environments will be ignored.
-Supporting new environments requires introduction of proper tests and maintainer support that is currently lacking in etcd project.
-If you want help etcd support your preferred environment, please [file an issue].
+The etcd project supports two options for development:
 
-Setup environment:
+ 1. Manually setup local environment.
+ 2. Automatically setup [devcontainer](https://containers.dev).
+
+For both options the only supported architecture is `linux-amd64`. Bug reports for other environments will generally be ignored. Supporting new environments requires introduction of proper tests and mainter support that is currently lacking in the etcd project.
+
+If you would like etcd to support your preferred environment you can [file an issue].
+
+### Option 1 - Manually setup local environment
+
+This is the original etcd development environment, is most supported and is backwards compatible for development of older etcd versions.
+
+Follow the steps below to setup the environment:
+
 - [Clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
 - Install Go by following [installation](https://go.dev/doc/install). Please check minimal go version in [go.mod file](./go.mod#L3).
-- Install build tools (make):
-  - For ubuntu and debian run `sudo apt-get install build-essential`
+- Install build tools (`make`):
+  - For debian based distributions you can run `sudo apt-get install build-essential`
 - Verify that everything is installed by running `make build`
 
 Note: `make build` runs with `-v`. Other build flags can be added through env `GO_BUILD_FLAGS`, **if required**. Eg.,
 ```console
 GO_BUILD_FLAGS="-buildmode=pie" make build
 ```
+
+### Option 2 - Automatically setup devcontainer
+
+This is a more recently added environmnent that aims to make it faster for new contributors to get started with etcd. This option is supported for etcd versions 3.6 onwards.
+
+This option can be [used locally](https://code.visualstudio.com/docs/devcontainers/tutorial) on a system running Visual Studio Code and Docker, or in a remote cloud based [Codespaces](https://github.com/features/codespaces) environment. The instructions below are based on the Codespaces option as this can be setup and running in just a few clicks.
+
+Follow the steps below to setup the environment:
+
+- [Fork the repository](https://docs.github.com/en/get-started/quickstart/fork-a-repo)
+- Click the green `<> Code` button and click the `Codespaces` tab.
+- Click the `+` button to create a codespace, this will automatically install the required build tools for developing etcd.
 
 [file an issue]: https://github.com/etcd-io/etcd/issues/new/choose
 

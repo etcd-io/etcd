@@ -157,7 +157,7 @@ Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
 
 ## Contributing
 
-See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
+See [CONTRIBUTING](CONTRIBUTING.md) for details on setting up your development environment, submitting patches and the contribution workflow.
 
 ## Reporting bugs
 
