@@ -16,6 +16,7 @@ package robustness
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -180,7 +181,10 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 		r.Report(t)
 	}()
 	r.operations, r.responses = runScenario(ctx, t, lg, r.clus, *traffic, failpoint)
-	forcestopCluster(r.clus)
+	err = forcestopCluster(r.clus)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
 	validateWatchResponses(t, r.responses, watchProgressNotifyEnabled)
@@ -219,8 +223,23 @@ func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.Et
 
 // forcestopCluster stops the etcd member with signal kill.
 func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
+	var memberKillError error
 	for _, member := range clus.Procs {
-		member.Kill()
+		err := member.Kill()
+		if err != nil {
+			if memberKillError == nil {
+				memberKillError = fmt.Errorf("%w", err)
+			} else {
+				memberKillError = fmt.Errorf("%s:%w", memberKillError, err)
+			}
+		}
 	}
-	return clus.Stop()
+	stopError := clus.Stop()
+	if memberKillError != nil {
+		if stopError != nil {
+			return fmt.Errorf("%s:%w", stopError, memberKillError)
+		}
+		return memberKillError
+	}
+	return stopError
 }
