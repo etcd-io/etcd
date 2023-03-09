@@ -114,7 +114,9 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveHTTPKVAPI starts a key-value server with a GET/PUT API and listens.
-func serveHTTPKVAPI(kv KVStore, port int, confChangeC chan<- raftpb.ConfChange, errorC <-chan error) {
+func serveHTTPKVAPI(
+	kv KVStore, port int, confChangeC chan<- raftpb.ConfChange, done <-chan struct{},
+) {
 	srv := http.Server{
 		Addr: ":" + strconv.Itoa(port),
 		Handler: &httpKVAPI{
@@ -129,7 +131,6 @@ func serveHTTPKVAPI(kv KVStore, port int, confChangeC chan<- raftpb.ConfChange, 
 	}()
 
 	// exit when raft goes down
-	if err, ok := <-errorC; ok {
-		log.Fatal(err)
-	}
+	<-done
+	_ = srv.Close()
 }

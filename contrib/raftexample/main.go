@@ -61,5 +61,5 @@ func main() {
 	}()
 
 	// the key-value http handler will propose updates to raft
-	serveHTTPKVAPI(kvs, *kvport, confChangeC, errorC)
+	serveHTTPKVAPI(kvs, *kvport, confChangeC, rc.Done())
 }
