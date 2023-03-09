@@ -50,9 +50,6 @@ func (nullFSM) RestoreSnapshot(snapshot []byte) error {
 	return nil
 }
 
-func (nullFSM) LoadAndApplySnapshot() {
-}
-
 func (nullFSM) ApplyCommits(commit *commit) error {
 	return nil
 }
@@ -221,7 +218,7 @@ func TestPutAndGetKeyValue(t *testing.T) {
 		log.Fatalf("raftexample: %v", err)
 	}
 
-	kvs, fsm := newKVStore(snapshotStorage, proposeC)
+	kvs, fsm := newKVStore(proposeC)
 
 	node, commitC, errorC := startRaftNode(
 		id, clusters, false,

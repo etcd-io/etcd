@@ -21,16 +21,13 @@ import (
 	"fmt"
 	"log"
 	"sync"
-
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 )
 
 // a key-value store backed by raft
 type kvstore struct {
-	proposeC        chan<- string // channel for proposing updates
-	mu              sync.RWMutex
-	kvStore         map[string]string // current committed key-value pairs
-	snapshotStorage SnapshotStorage
+	proposeC chan<- string // channel for proposing updates
+	mu       sync.RWMutex
+	kvStore  map[string]string // current committed key-value pairs
 }
 
 type kv struct {
@@ -38,18 +35,13 @@ type kv struct {
 	Val string
 }
 
-// newKVStore creates and returns a new `kvstore` and loads and
-// applies the most recent snapshot (if any are available). The caller
-// must call `processCommits()` on the return value (normally, in a
-// goroutine) to make it start apply commits from raft to the state.
-//
-// The second return value can be used as the finite state machine
-// that is driven by raft.
-func newKVStore(snapshotStorage SnapshotStorage, proposeC chan<- string) (*kvstore, kvfsm) {
+// newKVStore creates and returns a new `kvstore`. The second return
+// value can be used as the finite state machine that is driven by a
+// `raftNode`.
+func newKVStore(proposeC chan<- string) (*kvstore, kvfsm) {
 	s := &kvstore{
-		proposeC:        proposeC,
-		kvStore:         make(map[string]string),
-		snapshotStorage: snapshotStorage,
+		proposeC: proposeC,
+		kvStore:  make(map[string]string),
 	}
 	fsm := kvfsm{
 		kvs: s,
@@ -99,24 +91,6 @@ func (fsm kvfsm) RestoreSnapshot(snapshot []byte) error {
 	}
 	fsm.kvs.restoreFromSnapshot(store)
 	return nil
-}
-
-// LoadAndApplySnapshot loads the most recent snapshot from the
-// snapshot storage (if any) and applies it to the current state.
-func (fsm kvfsm) LoadAndApplySnapshot() {
-	snapshot, err := fsm.kvs.snapshotStorage.Load()
-	if err != nil {
-		if err == snap.ErrNoSnapshot {
-			// No snapshots available; do nothing.
-			return
-		}
-		log.Panic(err)
-	}
-
-	log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-	if err := fsm.RestoreSnapshot(snapshot.Data); err != nil {
-		log.Panic(err)
-	}
 }
 
 func (fsm kvfsm) TakeSnapshot() ([]byte, error) {

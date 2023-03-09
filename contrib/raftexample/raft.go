@@ -105,10 +105,6 @@ type FSM interface {
 	// `TakeSnapshot`).
 	RestoreSnapshot(snapshot []byte) error
 
-	// LoadAndApplySnapshot loads the most recent snapshot from the
-	// snapshot storage (if any) and applies it to the current state.
-	LoadAndApplySnapshot()
-
 	// ApplyCommits applies the changes from `commit` to the finite
 	// state machine. `commit` is never `nil`. (By contrast, the
 	// commits that are handled by `ProcessCommits()` can be `nil` to
@@ -150,7 +146,7 @@ func startRaftNode(
 		// rest of structure populated after WAL replay
 	}
 
-	rc.fsm.LoadAndApplySnapshot()
+	rc.loadAndApplySnapshot()
 
 	oldwal := wal.Exist(rc.waldir)
 	rc.wal = rc.replayWAL()
@@ -160,13 +156,31 @@ func startRaftNode(
 	return rc, commitC, errorC
 }
 
+// loadAndApplySnapshot loads the most recent snapshot from the
+// snapshot storage (if any) and applies it to the current state.
+func (rc *raftNode) loadAndApplySnapshot() {
+	snapshot, err := rc.snapshotStorage.Load()
+	if err != nil {
+		if err == snap.ErrNoSnapshot {
+			// No snapshots available; do nothing.
+			return
+		}
+		log.Panic(err)
+	}
+
+	log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+	if err := rc.fsm.RestoreSnapshot(snapshot.Data); err != nil {
+		log.Panic(err)
+	}
+}
+
 // ProcessCommits reads commits from `commitC` and applies them into
 // the kvstore until that channel is closed.
 func (rc *raftNode) ProcessCommits(commitC <-chan *commit, errorC <-chan error) error {
 	for commit := range commitC {
 		if commit == nil {
 			// This is a request that we load a snapshot.
-			rc.fsm.LoadAndApplySnapshot()
+			rc.loadAndApplySnapshot()
 			continue
 		}
 

@@ -46,7 +46,7 @@ func main() {
 		log.Fatalf("raftexample: %v", err)
 	}
 
-	kvs, fsm := newKVStore(snapshotStorage, proposeC)
+	kvs, fsm := newKVStore(proposeC)
 
 	rc, commitC, errorC := startRaftNode(
 		*id, strings.Split(*cluster, ","), *join,
