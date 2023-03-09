@@ -140,23 +140,3 @@ func (fsm kvfsm) ApplyCommits(commit *commit) error {
 	close(commit.applyDoneC)
 	return nil
 }
-
-// ProcessCommits() reads commits from `commitC` and applies them into
-// the kvstore until that channel is closed.
-func (fsm kvfsm) ProcessCommits(commitC <-chan *commit, errorC <-chan error) error {
-	for commit := range commitC {
-		if commit == nil {
-			// This is a request that we load a snapshot.
-			fsm.LoadAndApplySnapshot()
-			continue
-		}
-
-		if err := fsm.ApplyCommits(commit); err != nil {
-			return err
-		}
-	}
-	if err, ok := <-errorC; ok {
-		return err
-	}
-	return nil
-}

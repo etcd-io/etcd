@@ -114,11 +114,6 @@ type FSM interface {
 	// commits that are handled by `ProcessCommits()` can be `nil` to
 	// signal that a snapshot should be loaded.)
 	ApplyCommits(commit *commit) error
-
-	// ProcessCommits reads committed updates (and requests to restore
-	// snapshots) from `commitC` and applies them to the finite state
-	// machine.
-	ProcessCommits(commitC <-chan *commit, errorC <-chan error) error
 }
 
 // startRaftNode initiates a raft instance and returns a committed log entry
@@ -130,7 +125,7 @@ func startRaftNode(
 	id uint64, peers []string, join bool,
 	fsm FSM, snapshotStorage SnapshotStorage,
 	proposeC <-chan string, confChangeC <-chan raftpb.ConfChange,
-) (<-chan *commit, <-chan error) {
+) (*raftNode, <-chan *commit, <-chan error) {
 	commitC := make(chan *commit)
 	errorC := make(chan error)
 
@@ -160,7 +155,27 @@ func startRaftNode(
 
 	go rc.startRaft(oldwal)
 
-	return commitC, errorC
+	return rc, commitC, errorC
+}
+
+// ProcessCommits reads commits from `commitC` and applies them into
+// the kvstore until that channel is closed.
+func (rc *raftNode) ProcessCommits(commitC <-chan *commit, errorC <-chan error) error {
+	for commit := range commitC {
+		if commit == nil {
+			// This is a request that we load a snapshot.
+			rc.fsm.LoadAndApplySnapshot()
+			continue
+		}
+
+		if err := rc.fsm.ApplyCommits(commit); err != nil {
+			return err
+		}
+	}
+	if err, ok := <-errorC; ok {
+		return err
+	}
+	return nil
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {

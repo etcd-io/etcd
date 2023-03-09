@@ -49,14 +49,14 @@ func main() {
 	kvs, fsm := newKVStore(snapshotStorage, proposeC)
 	fsm.LoadAndApplySnapshot()
 
-	commitC, errorC := startRaftNode(
+	rc, commitC, errorC := startRaftNode(
 		*id, strings.Split(*cluster, ","), *join,
 		fsm, snapshotStorage,
 		proposeC, confChangeC,
 	)
 
 	go func() {
-		if err := fsm.ProcessCommits(commitC, errorC); err != nil {
+		if err := rc.ProcessCommits(commitC, errorC); err != nil {
 			log.Fatalf("raftexample: %v", err)
 		}
 	}()

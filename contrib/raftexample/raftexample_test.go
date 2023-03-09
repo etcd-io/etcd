@@ -32,6 +32,7 @@ import (
 )
 
 type peer struct {
+	node        *raftNode
 	commitC     <-chan *commit
 	errorC      <-chan error
 	proposeC    chan string
@@ -40,10 +41,6 @@ type peer struct {
 }
 
 type nullFSM struct{}
-
-func (nullFSM) ProcessCommits(commitC <-chan *commit, errorC <-chan error) error {
-	return nil
-}
 
 func (nullFSM) TakeSnapshot() ([]byte, error) {
 	return nil, nil
@@ -93,7 +90,7 @@ func newCluster(fsms ...FSM) *cluster {
 			log.Fatalf("raftexample: %v", err)
 		}
 
-		peer.commitC, peer.errorC = startRaftNode(
+		peer.node, peer.commitC, peer.errorC = startRaftNode(
 			id, clus.peerNames, false,
 			peer.fsm, snapshotStorage,
 			peer.proposeC, peer.confChangeC,
@@ -227,14 +224,14 @@ func TestPutAndGetKeyValue(t *testing.T) {
 	kvs, fsm := newKVStore(snapshotStorage, proposeC)
 	fsm.LoadAndApplySnapshot()
 
-	commitC, errorC := startRaftNode(
+	node, commitC, errorC := startRaftNode(
 		id, clusters, false,
 		fsm, snapshotStorage,
 		proposeC, confChangeC,
 	)
 
 	go func() {
-		if err := fsm.ProcessCommits(commitC, errorC); err != nil {
+		if err := node.ProcessCommits(commitC, errorC); err != nil {
 			log.Fatalf("raftexample: %v", err)
 		}
 	}()
