@@ -108,7 +108,7 @@ type FSM interface {
 	// ProcessCommits reads committed updates (and requests to restore
 	// snapshots) from `commitC` and applies them to the finite state
 	// machine.
-	ProcessCommits(commitC <-chan *commit, errorC <-chan error)
+	ProcessCommits(commitC <-chan *commit, errorC <-chan error) error
 }
 
 // startRaftNode initiates a raft instance and returns a committed log entry

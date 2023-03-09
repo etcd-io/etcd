@@ -144,7 +144,7 @@ func (fsm kvfsm) applyCommits(commit *commit) error {
 
 // ProcessCommits() reads commits from `commitC` and applies them into
 // the kvstore until that channel is closed.
-func (fsm kvfsm) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
+func (fsm kvfsm) ProcessCommits(commitC <-chan *commit, errorC <-chan error) error {
 	for commit := range commitC {
 		if commit == nil {
 			// This is a request that we load a snapshot.
@@ -153,10 +153,11 @@ func (fsm kvfsm) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
 		}
 
 		if err := fsm.applyCommits(commit); err != nil {
-			log.Fatalf("raftexample: %v", err)
+			return err
 		}
 	}
 	if err, ok := <-errorC; ok {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }

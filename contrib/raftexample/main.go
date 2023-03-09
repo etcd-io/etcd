@@ -54,7 +54,11 @@ func main() {
 		proposeC, confChangeC,
 	)
 
-	go fsm.ProcessCommits(commitC, errorC)
+	go func() {
+		if err := fsm.ProcessCommits(commitC, errorC); err != nil {
+			log.Fatalf("raftexample: %v", err)
+		}
+	}()
 
 	// the key-value http handler will propose updates to raft
 	serveHTTPKVAPI(kvs, *kvport, confChangeC, errorC)

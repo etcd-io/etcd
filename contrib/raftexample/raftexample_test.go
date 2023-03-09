@@ -41,7 +41,8 @@ type peer struct {
 
 type nullFSM struct{}
 
-func (nullFSM) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
+func (nullFSM) ProcessCommits(commitC <-chan *commit, errorC <-chan error) error {
+	return nil
 }
 
 func (nullFSM) TakeSnapshot() ([]byte, error) {
@@ -224,7 +225,11 @@ func TestPutAndGetKeyValue(t *testing.T) {
 		proposeC, confChangeC,
 	)
 
-	go fsm.ProcessCommits(commitC, errorC)
+	go func() {
+		if err := fsm.ProcessCommits(commitC, errorC); err != nil {
+			log.Fatalf("raftexample: %v", err)
+		}
+	}()
 
 	srv := httptest.NewServer(&httpKVAPI{
 		store:       kvs,
