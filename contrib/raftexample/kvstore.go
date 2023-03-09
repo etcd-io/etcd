@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 
@@ -128,16 +129,17 @@ func (fsm kvfsm) TakeSnapshot() ([]byte, error) {
 // applyCommits decodes and applies each of the commits in `commit` to
 // the current state, then signals that it is done by closing
 // `commit.applyDoneC`.
-func (fsm kvfsm) applyCommits(commit *commit) {
+func (fsm kvfsm) applyCommits(commit *commit) error {
 	for _, data := range commit.data {
 		var dataKv kv
 		dec := gob.NewDecoder(bytes.NewBufferString(data))
 		if err := dec.Decode(&dataKv); err != nil {
-			log.Fatalf("raftexample: could not decode message (%v)", err)
+			return fmt.Errorf("could not decode message: %w", err)
 		}
 		fsm.kvs.set(dataKv.Key, dataKv.Val)
 	}
 	close(commit.applyDoneC)
+	return nil
 }
 
 // ProcessCommits() reads commits from `commitC` and applies them into
@@ -150,7 +152,9 @@ func (fsm kvfsm) ProcessCommits(commitC <-chan *commit, errorC <-chan error) {
 			continue
 		}
 
-		fsm.applyCommits(commit)
+		if err := fsm.applyCommits(commit); err != nil {
+			log.Fatalf("raftexample: %v", err)
+		}
 	}
 	if err, ok := <-errorC; ok {
 		log.Fatal(err)
