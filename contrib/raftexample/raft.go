@@ -49,6 +49,11 @@ type raftNode struct {
 	commitC     chan<- *commit           // entries committed to log (k,v)
 	errorC      chan<- error             // errors from raft session
 
+	// When serveChannels is done, `err` is set to any error and then
+	// `done` is closed.
+	err  error
+	done chan struct{}
+
 	id     uint64   // client ID for raft session
 	peers  []string // raft peer URLs
 	join   bool     // node is joining an existing cluster
@@ -130,6 +135,7 @@ func startRaftNode(
 		confChangeC:     confChangeC,
 		commitC:         commitC,
 		errorC:          errorC,
+		done:            make(chan struct{}),
 		id:              id,
 		peers:           peers,
 		join:            join,
@@ -188,10 +194,25 @@ func (rc *raftNode) ProcessCommits(commitC <-chan *commit, errorC <-chan error) 
 			return err
 		}
 	}
-	if err, ok := <-errorC; ok {
-		return err
+	<-rc.done
+	return rc.err
+}
+
+// Done returns a channel that is closed when `rc` is done processing
+// requests.
+func (rc *raftNode) Done() <-chan struct{} {
+	return rc.done
+}
+
+// Err returns any error encountered while processing requests, or nil
+// if request processing is not yet done.
+func (rc *raftNode) Err() error {
+	select {
+	case <-rc.done:
+		return rc.err
+	default:
+		return nil
 	}
-	return nil
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
@@ -345,8 +366,10 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 func (rc *raftNode) writeError(err error) {
 	rc.stopHTTP()
 	close(rc.commitC)
+	rc.err = err
 	rc.errorC <- err
 	close(rc.errorC)
+	close(rc.done)
 	rc.node.Stop()
 }
 
@@ -399,6 +422,7 @@ func (rc *raftNode) stop() {
 	rc.stopHTTP()
 	close(rc.commitC)
 	close(rc.errorC)
+	close(rc.done)
 	rc.node.Stop()
 }
 
