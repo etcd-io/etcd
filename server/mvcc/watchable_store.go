@@ -447,7 +447,6 @@ func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 			pendingEventsGauge.Add(float64(len(eb.evs)))
 		} else {
 			// move slow watcher to victims
-			w.minRev = rev + 1
 			if victim == nil {
 				victim = make(watcherBatch)
 			}
@@ -456,6 +455,10 @@ func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 			s.synced.delete(w)
 			slowWatcherGauge.Inc()
 		}
+		// always update minRev
+		// in case 'send' returns true and watcher stays synced, this is needed for Restore when all watchers become unsynced
+		// in case 'send' returns false, this is needed for syncWatchers
+		w.minRev = rev + 1
 	}
 	s.addVictim(victim)
 }
