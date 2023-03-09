@@ -124,11 +124,27 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 		t.Fatal(err)
 	}
 
+	// The UserAdd function cannot generate old etcd version user data (user's option is nil)
+	// add special users through the underlying interface
+	addUserWithNoOption(as)
+
 	tearDown := func(_ *testing.T) {
 		b.Close()
 		as.Close()
 	}
 	return as, tearDown
+}
+
+func addUserWithNoOption(as *authStore) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafePutUser(&authpb.User{
+		Name:     []byte("foo-no-user-options"),
+		Password: []byte("bar"),
+	})
+	as.commitRevision(tx)
+	as.refreshRangePermCache(tx)
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
@@ -202,8 +218,8 @@ func TestRecoverWithEmptyRangePermCache(t *testing.T) {
 		t.Fatalf("expected auth enabled got disabled")
 	}
 
-	if len(as.rangePermCache) != 2 {
-		t.Fatalf("rangePermCache should have permission information for 2 users (\"root\" and \"foo\"), but has %d information", len(as.rangePermCache))
+	if len(as.rangePermCache) != 3 {
+		t.Fatalf("rangePermCache should have permission information for 3 users (\"root\" and \"foo\",\"foo-no-user-options\"), but has %d information", len(as.rangePermCache))
 	}
 	if _, ok := as.rangePermCache["root"]; !ok {
 		t.Fatal("user \"root\" should be created by setupAuthStore() but doesn't exist in rangePermCache")
@@ -333,6 +349,12 @@ func TestUserChangePassword(t *testing.T) {
 	}
 	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
+	}
+
+	// change a user（user option is nil) password
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-no-user-options", HashedPassword: encodePassword("bar")})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
