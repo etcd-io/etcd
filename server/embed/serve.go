@@ -50,8 +50,10 @@ import (
 )
 
 type serveCtx struct {
-	lg       *zap.Logger
-	l        net.Listener
+	lg *zap.Logger
+	l  net.Listener
+
+	scheme   string
 	addr     string
 	network  string
 	secure   bool
