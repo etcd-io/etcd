@@ -55,7 +55,7 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 		t.Fatalf("failed to wait for cluster version to become ready: %v", err)
 	}
 
-	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
+	ccfg := clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}}
 	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		srv.Close()
