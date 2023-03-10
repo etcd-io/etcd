@@ -116,7 +116,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if e.cfg.logger != nil {
 		e.cfg.logger.Info(
 			"configuring peer listeners",
-			zap.Strings("listen-peer-urls", e.cfg.getLPURLs()),
+			zap.Strings("listen-peer-urls", e.cfg.getListenPeerUrls()),
 		)
 	}
 	if e.Peers, err = configurePeerListeners(cfg); err != nil {
@@ -126,7 +126,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if e.cfg.logger != nil {
 		e.cfg.logger.Info(
 			"configuring client listeners",
-			zap.Strings("listen-client-urls", e.cfg.getLCURLs()),
+			zap.Strings("listen-client-urls", e.cfg.getListenClientUrls()),
 		)
 	}
 	if e.sctxs, err = configureClientListeners(cfg); err != nil {
@@ -163,8 +163,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	srvcfg := etcdserver.ServerConfig{
 		Name:                        cfg.Name,
-		ClientURLs:                  cfg.ACUrls,
-		PeerURLs:                    cfg.APUrls,
+		ClientURLs:                  cfg.AdvertiseClientUrls,
+		PeerURLs:                    cfg.AdvertisePeerUrls,
 		DataDir:                     cfg.Dir,
 		DedicatedWALDir:             cfg.WalDir,
 		SnapshotCount:               cfg.SnapshotCount,
@@ -247,10 +247,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		e.cfg.logger.Info(
 			"now serving peer/client/metrics",
 			zap.String("local-member-id", e.Server.ID().String()),
-			zap.Strings("initial-advertise-peer-urls", e.cfg.getAPURLs()),
-			zap.Strings("listen-peer-urls", e.cfg.getLPURLs()),
-			zap.Strings("advertise-client-urls", e.cfg.getACURLs()),
-			zap.Strings("listen-client-urls", e.cfg.getLCURLs()),
+			zap.Strings("initial-advertise-peer-urls", e.cfg.getAdvertisePeerUrls()),
+			zap.Strings("listen-peer-urls", e.cfg.getListenPeerUrls()),
+			zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientUrls()),
+			zap.Strings("listen-client-urls", e.cfg.getListenClientUrls()),
 			zap.Strings("listen-metrics-urls", e.cfg.getMetricsURLs()),
 		)
 	}
@@ -325,10 +325,10 @@ func print(lg *zap.Logger, ec Config, sc etcdserver.ServerConfig, memberInitiali
 			zap.Uint("max-wals", sc.MaxWALFiles),
 			zap.Uint("max-snapshots", sc.MaxSnapFiles),
 			zap.Uint64("snapshot-catchup-entries", sc.SnapshotCatchUpEntries),
-			zap.Strings("initial-advertise-peer-urls", ec.getAPURLs()),
-			zap.Strings("listen-peer-urls", ec.getLPURLs()),
-			zap.Strings("advertise-client-urls", ec.getACURLs()),
-			zap.Strings("listen-client-urls", ec.getLCURLs()),
+			zap.Strings("initial-advertise-peer-urls", ec.getAdvertisePeerUrls()),
+			zap.Strings("listen-peer-urls", ec.getListenPeerUrls()),
+			zap.Strings("advertise-client-urls", ec.getAdvertiseClientUrls()),
+			zap.Strings("listen-client-urls", ec.getListenClientUrls()),
 			zap.Strings("listen-metrics-urls", ec.getMetricsURLs()),
 			zap.Strings("cors", cors),
 			zap.Strings("host-whitelist", hss),
@@ -363,8 +363,8 @@ func (e *Etcd) Close() {
 	fields := []zap.Field{
 		zap.String("name", e.cfg.Name),
 		zap.String("data-dir", e.cfg.Dir),
-		zap.Strings("advertise-peer-urls", e.cfg.getAPURLs()),
-		zap.Strings("advertise-client-urls", e.cfg.getACURLs()),
+		zap.Strings("advertise-peer-urls", e.cfg.getAdvertisePeerUrls()),
+		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientUrls()),
 	}
 	lg := e.GetLogger()
 	if lg != nil {
@@ -486,7 +486,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		}
 	}
 
-	peers = make([]*peerListener, len(cfg.LPUrls))
+	peers = make([]*peerListener, len(cfg.ListenPeerUrls))
 	defer func() {
 		if err == nil {
 			return
@@ -496,11 +496,11 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 				if cfg.logger != nil {
 					cfg.logger.Warn(
 						"closing peer listener",
-						zap.String("address", cfg.LPUrls[i].String()),
+						zap.String("address", cfg.ListenPeerUrls[i].String()),
 						zap.Error(err),
 					)
 				} else {
-					plog.Info("stopping listening for peers on ", cfg.LPUrls[i].String())
+					plog.Info("stopping listening for peers on ", cfg.ListenPeerUrls[i].String())
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				peers[i].close(ctx)
@@ -509,7 +509,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		}
 	}()
 
-	for i, u := range cfg.LPUrls {
+	for i, u := range cfg.ListenPeerUrls {
 		if u.Scheme == "http" {
 			if !cfg.PeerTLSInfo.Empty() {
 				if cfg.logger != nil {
@@ -623,7 +623,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	}
 
 	sctxs = make(map[string]*serveCtx)
-	for _, u := range cfg.LCUrls {
+	for _, u := range cfg.ListenClientUrls {
 		sctx := newServeCtx(cfg.logger)
 		if u.Scheme == "http" || u.Scheme == "unix" {
 			if !cfg.ClientTLSInfo.Empty() {

@@ -69,8 +69,8 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	cfg.Name = "3"
 	cfg.InitialClusterToken = testClusterTkn
 	cfg.ClusterState = "existing"
-	cfg.LCUrls, cfg.ACUrls = newCURLs, newCURLs
-	cfg.LPUrls, cfg.APUrls = newPURLs, newPURLs
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = newCURLs, newCURLs
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = newPURLs, newPURLs
 	cfg.InitialCluster = ""
 	for i := 0; i < clusterN; i++ {
 		cfg.InitialCluster += fmt.Sprintf(",%d=%s", i, pURLs[i].String())
