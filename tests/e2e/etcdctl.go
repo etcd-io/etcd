@@ -121,6 +121,7 @@ func (ctl *Etcdctl) cmdArgs(args ...string) []string {
 func (ctl *Etcdctl) flags() map[string]string {
 	fmap := make(map[string]string)
 	if ctl.v2 {
+		fmap["no-sync"] = "true"
 		if ctl.connType == clientTLS {
 			fmap["ca-file"] = integration.TestTLSInfo.TrustedCAFile
 			fmap["cert-file"] = integration.TestTLSInfo.CertFile
