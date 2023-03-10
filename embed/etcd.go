@@ -624,7 +624,6 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 
 	sctxs = make(map[string]*serveCtx)
 	for _, u := range cfg.ListenClientUrls {
-		sctx := newServeCtx(cfg.logger)
 		if u.Scheme == "http" || u.Scheme == "unix" {
 			if !cfg.ClientTLSInfo.Empty() {
 				if cfg.logger != nil {
@@ -644,29 +643,35 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		if (u.Scheme == "https" || u.Scheme == "unixs") && cfg.ClientTLSInfo.Empty() {
 			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPS scheme", u.String())
 		}
+	}
 
-		network := "tcp"
+	for _, u := range cfg.ListenClientUrls {
 		addr := u.Host
+		network := "tcp"
 		if u.Scheme == "unix" || u.Scheme == "unixs" {
-			network = "unix"
 			addr = u.Host + u.Path
+			network = "unix"
 		}
+		secure := u.Scheme == "https" || u.Scheme == "unixs"
+		insecure := !secure
+
+		sctx := sctxs[addr]
+		if sctx == nil {
+			sctx = newServeCtx(cfg.logger)
+			sctxs[addr] = sctx
+		}
+		sctx.secure = sctx.secure || secure
+		sctx.insecure = sctx.insecure || insecure
+		sctx.scheme = u.Scheme
+		sctx.addr = addr
 		sctx.network = network
-
-		sctx.secure = u.Scheme == "https" || u.Scheme == "unixs"
-		sctx.insecure = !sctx.secure
-		if oldctx := sctxs[addr]; oldctx != nil {
-			oldctx.secure = oldctx.secure || sctx.secure
-			oldctx.insecure = oldctx.insecure || sctx.insecure
-			continue
-		}
-
-		if sctx.l, err = net.Listen(network, addr); err != nil {
+	}
+	for _, sctx := range sctxs {
+		if sctx.l, err = net.Listen(sctx.network, sctx.addr); err != nil {
 			return nil, err
 		}
 		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
 		// hosts that disable ipv6. So, use the address given by the user.
-		sctx.addr = addr
 
 		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil {
 			if fdLimit <= reservedInternalFDNum {
@@ -683,13 +688,13 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			sctx.l = transport.LimitListener(sctx.l, int(fdLimit-reservedInternalFDNum))
 		}
 
-		if network == "tcp" {
-			if sctx.l, err = transport.NewKeepAliveListener(sctx.l, network, nil); err != nil {
+		if sctx.network == "tcp" {
+			if sctx.l, err = transport.NewKeepAliveListener(sctx.l, sctx.network, nil); err != nil {
 				return nil, err
 			}
 		}
 
-		defer func() {
+		defer func(addr string) {
 			if err == nil {
 				return
 			}
@@ -697,13 +702,13 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			if cfg.logger != nil {
 				cfg.logger.Warn(
 					"closing peer listener",
-					zap.String("address", u.Host),
+					zap.String("address", addr),
 					zap.Error(err),
 				)
 			} else {
-				plog.Info("stopping listening for client requests on ", u.Host)
+				plog.Info("stopping listening for client requests on ", addr)
 			}
-		}()
+		}(sctx.addr)
 		for k := range cfg.UserHandlers {
 			sctx.userHandlers[k] = cfg.UserHandlers[k]
 		}
@@ -714,7 +719,6 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		if cfg.Debug {
 			sctx.registerTrace()
 		}
-		sctxs[addr] = sctx
 	}
 	return sctxs, nil
 }
