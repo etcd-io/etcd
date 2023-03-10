@@ -297,6 +297,18 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 	return gwmux, nil
 }
 
+type wsProxyZapLogger struct {
+	*zap.Logger
+}
+
+func (w wsProxyZapLogger) Warnln(i ...interface{}) {
+	w.Warnln(i...)
+}
+
+func (w wsProxyZapLogger) Debugln(i ...interface{}) {
+	w.Debugln(i...)
+}
+
 func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.ServeMux {
 	httpmux := http.NewServeMux()
 	for path, h := range sctx.userHandlers {
@@ -316,6 +328,7 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 					},
 				),
 				wsproxy.WithMaxRespBodyBufferSize(0x7fffffff),
+				wsproxy.WithLogger(wsProxyZapLogger{sctx.lg}),
 			),
 		)
 	}
