@@ -151,10 +151,11 @@ type EtcdProcessClusterConfig struct {
 	SnapshotCount          int // default is 10000
 	SnapshotCatchUpEntries int // default is 5000
 
-	Client        ClientConfig
-	IsPeerTLS     bool
-	IsPeerAutoTLS bool
-	CN            bool
+	Client             ClientConfig
+	ClientHttpSeparate bool
+	IsPeerTLS          bool
+	IsPeerAutoTLS      bool
+	CN                 bool
 
 	CipherSuites []string
 
@@ -463,6 +464,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerPort := port + 1
 	metricsPort := port + 2
 	peer2Port := port + 3
+	clientHttpPort := port + 4
 
 	curlHost := fmt.Sprintf("localhost:%d", clientPort)
 	switch cfg.Client.ConnectionType {
@@ -510,6 +512,10 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--initial-cluster-token", cfg.InitialToken,
 		"--data-dir", dataDirPath,
 		"--snapshot-count", fmt.Sprintf("%d", cfg.SnapshotCount),
+	}
+	if cfg.ClientHttpSeparate {
+		clientHttpUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", clientHttpPort)}
+		args = append(args, "--listen-client-http-urls", clientHttpUrl.String())
 	}
 
 	if cfg.ForceNewCluster {
