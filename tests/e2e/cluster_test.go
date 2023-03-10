@@ -112,6 +112,7 @@ type etcdProcessClusterConfig struct {
 
 	clientTLS             clientConnType
 	clientCertAuthEnabled bool
+	clientHttpSeparate    bool
 	isPeerTLS             bool
 	isPeerAutoTLS         bool
 	isClientAutoTLS       bool
@@ -192,6 +193,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		var curls []string
 		var curl, curltls string
 		port := cfg.basePort + 5*i
+		clientHttpPort := port + 4
 		curlHost := fmt.Sprintf("localhost:%d", port)
 
 		switch cfg.clientTLS {
@@ -225,6 +227,10 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 			"--initial-cluster-token", cfg.initialToken,
 			"--data-dir", dataDirPath,
 			"--snapshot-count", fmt.Sprintf("%d", cfg.snapshotCount),
+		}
+		if cfg.clientHttpSeparate {
+			clientHttpUrl := url.URL{Scheme: cfg.clientScheme(), Host: fmt.Sprintf("localhost:%d", clientHttpPort)}
+			args = append(args, "--listen-client-http-urls", clientHttpUrl.String())
 		}
 		args = addV2Args(args)
 		if cfg.forceNewCluster {

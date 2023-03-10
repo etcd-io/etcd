@@ -434,7 +434,7 @@ func stopServers(ctx context.Context, ss *servers) {
 	// do not grpc.Server.GracefulStop with TLS enabled etcd server
 	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
 	// and https://github.com/etcd-io/etcd/issues/8916
-	if ss.secure {
+	if ss.secure && ss.http != nil {
 		shutdownNow()
 		return
 	}
@@ -625,7 +625,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	}
 
 	sctxs = make(map[string]*serveCtx)
-	for _, u := range cfg.ListenClientUrls {
+	for _, u := range append(cfg.ListenClientUrls, cfg.ListenClientHttpUrls...) {
 		if u.Scheme == "http" || u.Scheme == "unix" {
 			if !cfg.ClientTLSInfo.Empty() {
 				if cfg.logger != nil {
@@ -660,6 +660,24 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.addr = addr
 		sctx.network = network
 	}
+	for _, u := range cfg.ListenClientHttpUrls {
+		addr, secure, network := resolveUrl(u)
+
+		sctx := sctxs[addr]
+		if sctx == nil {
+			sctx = newServeCtx(cfg.logger)
+			sctxs[addr] = sctx
+		} else if !sctx.httpOnly {
+			return nil, fmt.Errorf("cannot bind both --client-listen-urls and --client-listen-http-urls on the same url %s", u.String())
+		}
+		sctx.secure = sctx.secure || secure
+		sctx.insecure = sctx.insecure || !secure
+		sctx.scheme = u.Scheme
+		sctx.addr = addr
+		sctx.network = network
+		sctx.httpOnly = true
+	}
+
 	for _, sctx := range sctxs {
 		if sctx.l, err = net.Listen(sctx.network, sctx.addr); err != nil {
 			return nil, err
@@ -689,7 +707,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		}
 
 		defer func(addr string) {
-			if err == nil {
+			if err == nil || sctx.l == nil {
 				return
 			}
 			sctx.l.Close()
@@ -771,20 +789,27 @@ func (e *Etcd) serveClients() (err error) {
 		}))
 	}
 
+	splitHttp := false
+	for _, sctx := range e.sctxs {
+		if sctx.httpOnly {
+			splitHttp = true
+		}
+	}
+
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, h, e.errHandler, e.grpcGatewayDial(), gopts...))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, h, e.errHandler, e.grpcGatewayDial(splitHttp), splitHttp, gopts...))
 		}(sctx)
 	}
 	return nil
 }
 
-func (e *Etcd) grpcGatewayDial() (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
+func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
 	if !e.cfg.EnableGRPCGateway {
 		return nil
 	}
-	sctx := e.pickGrpcGatewayServeContext()
+	sctx := e.pickGrpcGatewayServeContext(splitHttp)
 	addr := sctx.addr
 	if network := sctx.network; network == "unix" {
 		// explicitly define unix network for gRPC socket support
@@ -818,9 +843,11 @@ func (e *Etcd) grpcGatewayDial() (grpcDial func(ctx context.Context) (*grpc.Clie
 	}
 }
 
-func (e *Etcd) pickGrpcGatewayServeContext() *serveCtx {
+func (e *Etcd) pickGrpcGatewayServeContext(splitHttp bool) *serveCtx {
 	for _, sctx := range e.sctxs {
-		return sctx
+		if !splitHttp || !sctx.httpOnly {
+			return sctx
+		}
 	}
 	panic("Expect at least one context able to serve grpc")
 }

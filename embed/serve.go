@@ -55,6 +55,7 @@ type serveCtx struct {
 	network  string
 	secure   bool
 	insecure bool
+	httpOnly bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -90,6 +91,7 @@ func (sctx *serveCtx) serve(
 	handler http.Handler,
 	errHandler func(error),
 	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
+	splitHttp bool,
 	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
@@ -99,6 +101,12 @@ func (sctx *serveCtx) serve(
 	}
 
 	m := cmux.New(sctx.l)
+	var server func() error
+	onlyGRPC := splitHttp && !sctx.httpOnly
+	onlyHttp := splitHttp && sctx.httpOnly
+	grpcEnabled := !onlyHttp
+	httpEnabled := !onlyGRPC
+
 	v3c := v3client.New(s)
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
@@ -114,60 +122,82 @@ func (sctx *serveCtx) serve(
 			return err
 		}
 	}
+	var traffic string
+	switch {
+	case onlyGRPC:
+		traffic = "grpc"
+	case onlyHttp:
+		traffic = "http"
+	default:
+		traffic = "grpc+http"
+	}
 
 	if sctx.insecure {
-		gs := v3rpc.Server(s, nil, gopts...)
-		v3electionpb.RegisterElectionServer(gs, servElection)
-		v3lockpb.RegisterLockServer(gs, servLock)
-		if sctx.serviceRegister != nil {
-			sctx.serviceRegister(gs)
+		var gs *grpc.Server
+		var srv *http.Server
+		if httpEnabled {
+			httpmux := sctx.createMux(gwmux, handler)
+			srv = &http.Server{
+				Handler:  createAccessController(sctx.lg, s, httpmux),
+				ErrorLog: logger, // do not log user error
+			}
+			if err := configureHttpServer(srv, s.Cfg); err != nil {
+				sctx.lg.Error("Configure http server failed", zap.Error(err))
+				return err
+			}
+		}
+		if grpcEnabled {
+			gs = v3rpc.Server(s, nil, gopts...)
+			v3electionpb.RegisterElectionServer(gs, servElection)
+			v3lockpb.RegisterLockServer(gs, servLock)
+			if sctx.serviceRegister != nil {
+				sctx.serviceRegister(gs)
+			}
+			defer func(gs *grpc.Server) {
+				if err == nil {
+					return
+				}
+
+				if sctx.lg != nil {
+					sctx.lg.Warn("stopping insecure grpc server due to error", zap.Error(err))
+				} else {
+					plog.Warningf("stopping insecure grpc server due to error: %s", err)
+				}
+
+				gs.Stop()
+
+				if sctx.lg != nil {
+					sctx.lg.Warn("stopped insecure grpc server due to error", zap.Error(err))
+				} else {
+					plog.Warningf("stopped insecure grpc server due to error: %s", err)
+				}
+			}(gs)
+		}
+		if onlyGRPC {
+			server = func() error {
+				return gs.Serve(sctx.l)
+			}
+		} else {
+			server = m.Serve
+
+			httpl := m.Match(cmux.HTTP1())
+			go func(srvhttp *http.Server, tlsLis net.Listener) {
+				errHandler(srvhttp.Serve(tlsLis))
+			}(srv, httpl)
+
+			if grpcEnabled {
+				grpcl := m.Match(cmux.HTTP2())
+				go func(gs *grpc.Server, l net.Listener) {
+					errHandler(gs.Serve(l))
+				}(gs, grpcl)
+			}
 		}
 
-		defer func(gs *grpc.Server) {
-			if err == nil {
-				return
-			}
-
-			if sctx.lg != nil {
-				sctx.lg.Warn("stopping insecure grpc server due to error", zap.Error(err))
-			} else {
-				plog.Warningf("stopping insecure grpc server due to error: %s", err)
-			}
-
-			gs.Stop()
-
-			if sctx.lg != nil {
-				sctx.lg.Warn("stopped insecure grpc server due to error", zap.Error(err))
-			} else {
-				plog.Warningf("stopped insecure grpc server due to error: %s", err)
-			}
-		}(gs)
-
-		grpcl := m.Match(cmux.HTTP2())
-		go func(gs *grpc.Server, grpcLis net.Listener) {
-			errHandler(gs.Serve(grpcLis))
-		}(gs, grpcl)
-
-		httpmux := sctx.createMux(gwmux, handler)
-
-		srvhttp := &http.Server{
-			Handler:  createAccessController(sctx.lg, s, httpmux),
-			ErrorLog: logger, // do not log user error
-		}
-		if err = configureHttpServer(srvhttp, s.Cfg); err != nil {
-			sctx.lg.Error("Configure http server failed", zap.Error(err))
-			return err
-		}
-		httpl := m.Match(cmux.HTTP1())
-
-		go func(srvhttp *http.Server, httpLis net.Listener) {
-			errHandler(srvhttp.Serve(httpLis))
-		}(srvhttp, httpl)
-
-		sctx.serversC <- &servers{grpc: gs, http: srvhttp}
+		sctx.serversC <- &servers{grpc: gs, http: srv}
 		if sctx.lg != nil {
 			sctx.lg.Info(
 				"serving client traffic insecurely; this is strongly discouraged!",
+				zap.String("traffic", traffic),
 				zap.String("address", sctx.l.Addr().String()),
 			)
 		} else {
@@ -176,64 +206,77 @@ func (sctx *serveCtx) serve(
 	}
 
 	if sctx.secure {
+		var gs *grpc.Server
+		var srv *http.Server
+
 		tlscfg, tlsErr := tlsinfo.ServerConfig()
 		if tlsErr != nil {
 			return tlsErr
 		}
-		gs := v3rpc.Server(s, tlscfg, gopts...)
-		v3electionpb.RegisterElectionServer(gs, servElection)
-		v3lockpb.RegisterLockServer(gs, servLock)
-		if sctx.serviceRegister != nil {
-			sctx.serviceRegister(gs)
-		}
 
-		defer func(gs *grpc.Server) {
-			if err == nil {
-				return
+		if grpcEnabled {
+			gs = v3rpc.Server(s, tlscfg, gopts...)
+			v3electionpb.RegisterElectionServer(gs, servElection)
+			v3lockpb.RegisterLockServer(gs, servLock)
+			if sctx.serviceRegister != nil {
+				sctx.serviceRegister(gs)
 			}
+			defer func(gs *grpc.Server) {
+				if err == nil {
+					return
+				}
 
-			if sctx.lg != nil {
-				sctx.lg.Warn("stopping secure grpc server due to error", zap.Error(err))
-			} else {
-				plog.Warningf("stopping secure grpc server due to error: %s", err)
+				if sctx.lg != nil {
+					sctx.lg.Warn("stopping secure grpc server due to error", zap.Error(err))
+				} else {
+					plog.Warningf("stopping secure grpc server due to error: %s", err)
+				}
+
+				gs.Stop()
+
+				if sctx.lg != nil {
+					sctx.lg.Warn("stopped secure grpc server due to error", zap.Error(err))
+				} else {
+					plog.Warningf("stopped secure grpc server due to error: %s", err)
+				}
+			}(gs)
+		}
+		if httpEnabled {
+			if grpcEnabled {
+				handler = grpcHandlerFunc(gs, handler)
 			}
+			httpmux := sctx.createMux(gwmux, handler)
 
-			gs.Stop()
-
-			if sctx.lg != nil {
-				sctx.lg.Warn("stopped secure grpc server due to error", zap.Error(err))
-			} else {
-				plog.Warningf("stopped secure grpc server due to error: %s", err)
+			srv = &http.Server{
+				Handler:   createAccessController(sctx.lg, s, httpmux),
+				TLSConfig: tlscfg,
+				ErrorLog:  logger, // do not log user error
 			}
-		}(gs)
-
-		handler = grpcHandlerFunc(gs, handler)
-		var tlsl net.Listener
-		tlsl, err = transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-		if err != nil {
-			return err
-		}
-		// TODO: add debug flag; enable logging when debug flag is set
-		httpmux := sctx.createMux(gwmux, handler)
-
-		srv := &http.Server{
-			Handler:   createAccessController(sctx.lg, s, httpmux),
-			TLSConfig: tlscfg,
-			ErrorLog:  logger, // do not log user error
-		}
-		if err = configureHttpServer(srv, s.Cfg); err != nil {
-			sctx.lg.Error("Configure https server failed", zap.Error(err))
-			return err
+			if err := configureHttpServer(srv, s.Cfg); err != nil {
+				sctx.lg.Error("Configure https server failed", zap.Error(err))
+				return err
+			}
 		}
 
-		go func(srvhttp *http.Server, tlsLis net.Listener) {
-			errHandler(srvhttp.Serve(tlsLis))
-		}(srv, tlsl)
+		if onlyGRPC {
+			server = func() error { return gs.Serve(sctx.l) }
+		} else {
+			server = m.Serve
+
+			tlsl, err := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
+			if err != nil {
+				return err
+			}
+			go func(srvhttp *http.Server, tlsl net.Listener) {
+				errHandler(srvhttp.Serve(tlsl))
+			}(srv, tlsl)
+		}
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
 		if sctx.lg != nil {
 			sctx.lg.Info(
 				"serving client traffic securely",
+				zap.String("traffic", traffic),
 				zap.String("address", sctx.l.Addr().String()),
 			)
 		} else {
@@ -241,8 +284,7 @@ func (sctx *serveCtx) serve(
 		}
 	}
 
-	close(sctx.serversC)
-	return m.Serve()
+	return server()
 }
 
 func configureHttpServer(srv *http.Server, cfg etcdserver.ServerConfig) error {

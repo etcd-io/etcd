@@ -183,12 +183,12 @@ type Config struct {
 	// streams that each client can open at a time.
 	MaxConcurrentStreams uint32 `json:"max-concurrent-streams"`
 
-	ListenPeerUrls, ListenClientUrls       []url.URL
-	AdvertisePeerUrls, AdvertiseClientUrls []url.URL
-	ClientTLSInfo                          transport.TLSInfo
-	ClientAutoTLS                          bool
-	PeerTLSInfo                            transport.TLSInfo
-	PeerAutoTLS                            bool
+	ListenPeerUrls, ListenClientUrls, ListenClientHttpUrls []url.URL
+	AdvertisePeerUrls, AdvertiseClientUrls                 []url.URL
+	ClientTLSInfo                                          transport.TLSInfo
+	ClientAutoTLS                                          bool
+	PeerTLSInfo                                            transport.TLSInfo
+	PeerAutoTLS                                            bool
 
 	// CipherSuites is a list of supported TLS cipher suites between
 	// client/server and peers. If empty, Go auto-populates the list.
@@ -373,10 +373,11 @@ type configYAML struct {
 
 // configJSON has file options that are translated into Config options
 type configJSON struct {
-	ListenPeerUrls      string `json:"listen-peer-urls"`
-	ListenClientUrls    string `json:"listen-client-urls"`
-	AdvertisePeerUrls   string `json:"initial-advertise-peer-urls"`
-	AdvertiseClientUrls string `json:"advertise-client-urls"`
+	ListenPeerUrls       string `json:"listen-peer-urls"`
+	ListenClientUrls     string `json:"listen-client-urls"`
+	ListenClientHttpUrls string `json:"listen-client-http-urls"`
+	AdvertisePeerUrls    string `json:"initial-advertise-peer-urls"`
+	AdvertiseClientUrls  string `json:"advertise-client-urls"`
 
 	CORSJSON          string `json:"cors"`
 	HostWhitelistJSON string `json:"host-whitelist"`
@@ -507,6 +508,15 @@ func (cfg *configYAML) configFromFile(path string) error {
 		cfg.Config.ListenClientUrls = u
 	}
 
+	if cfg.configJSON.ListenClientHttpUrls != "" {
+		u, err := types.NewURLs(strings.Split(cfg.configJSON.ListenClientHttpUrls, ","))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-client-http-urls: %v\n", err)
+			os.Exit(1)
+		}
+		cfg.Config.ListenClientHttpUrls = u
+	}
+
 	if cfg.configJSON.AdvertisePeerUrls != "" {
 		u, err := types.NewURLs(strings.Split(cfg.configJSON.AdvertisePeerUrls, ","))
 		if err != nil {
@@ -601,6 +611,16 @@ func (cfg *Config) Validate() error {
 	}
 	if err := checkBindURLs(cfg.ListenClientUrls); err != nil {
 		return err
+	}
+	if err := checkBindURLs(cfg.ListenClientHttpUrls); err != nil {
+		return err
+	}
+	if len(cfg.ListenClientHttpUrls) == 0 {
+		if cfg.logger != nil {
+			cfg.logger.Warn("Running http and grpc server on single port. This is not recommended for production.")
+		} else {
+			plog.Warning("Running http and grpc server on single port. This is not recommended for production.")
+		}
 	}
 	if err := checkBindURLs(cfg.ListenMetricsUrls); err != nil {
 		return err
@@ -822,9 +842,12 @@ func (cfg *Config) ClientSelfCert() (err error) {
 		}
 		return nil
 	}
-	chosts := make([]string, len(cfg.ListenClientUrls))
-	for i, u := range cfg.ListenClientUrls {
-		chosts[i] = u.Host
+	chosts := make([]string, 0, len(cfg.ListenClientUrls)+len(cfg.ListenClientHttpUrls))
+	for _, u := range cfg.ListenClientUrls {
+		chosts = append(chosts, u.Host)
+	}
+	for _, u := range cfg.ListenClientHttpUrls {
+		chosts = append(chosts, u.Host)
 	}
 	cfg.ClientTLSInfo, err = transport.SelfCert(cfg.logger, filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
 	if err != nil {
@@ -959,6 +982,14 @@ func (cfg *Config) getListenClientUrls() (ss []string) {
 	ss = make([]string, len(cfg.ListenClientUrls))
 	for i := range cfg.ListenClientUrls {
 		ss[i] = cfg.ListenClientUrls[i].String()
+	}
+	return ss
+}
+
+func (cfg *Config) getListenClientHttpUrls() (ss []string) {
+	ss = make([]string, len(cfg.ListenClientHttpUrls))
+	for i := range cfg.ListenClientHttpUrls {
+		ss[i] = cfg.ListenClientHttpUrls[i].String()
 	}
 	return ss
 }
