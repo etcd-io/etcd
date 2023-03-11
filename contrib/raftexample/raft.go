@@ -46,8 +46,8 @@ type commit struct {
 type raftNode struct {
 	proposeC    <-chan string            // proposed messages (k,v)
 	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
-	commitC     chan<- *commit           // entries committed to log (k,v)
-	errorC      chan<- error             // errors from raft session
+	commitC     chan *commit             // entries committed to log (k,v)
+	errorC      chan error               // errors from raft session
 
 	// When serveChannels is done, `err` is set to any error and then
 	// `done` is closed.
@@ -126,7 +126,7 @@ func startRaftNode(
 	id uint64, peers []string, join bool,
 	fsm FSM, snapshotStorage SnapshotStorage,
 	proposeC <-chan string, confChangeC <-chan raftpb.ConfChange,
-) (*raftNode, <-chan *commit, <-chan error) {
+) *raftNode {
 	commitC := make(chan *commit)
 	errorC := make(chan error)
 
@@ -159,7 +159,7 @@ func startRaftNode(
 
 	go rc.startRaft(oldwal)
 
-	return rc, commitC, errorC
+	return rc
 }
 
 // loadAndApplySnapshot loads the most recent snapshot from the
@@ -182,8 +182,8 @@ func (rc *raftNode) loadAndApplySnapshot() {
 
 // ProcessCommits reads commits from `commitC` and applies them into
 // the kvstore until that channel is closed.
-func (rc *raftNode) ProcessCommits(commitC <-chan *commit, errorC <-chan error) error {
-	for commit := range commitC {
+func (rc *raftNode) ProcessCommits() error {
+	for commit := range rc.commitC {
 		if commit == nil {
 			// This is a request that we load a snapshot.
 			rc.loadAndApplySnapshot()
