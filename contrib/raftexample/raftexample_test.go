@@ -98,9 +98,17 @@ func newCluster(fsms ...FSM) *cluster {
 	return &clus
 }
 
+// Cleanup cleans up temporary files used by the test cluster.
+func (clus *cluster) Cleanup() {
+	for i := range clus.peers {
+		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
+		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", i+1))
+	}
+}
+
 // Close closes all cluster nodes and returns an error if any failed.
 func (clus *cluster) Close() (err error) {
-	for i, peer := range clus.peers {
+	for _, peer := range clus.peers {
 		peer := peer
 		go func() {
 			for range peer.commitC {
@@ -113,10 +121,8 @@ func (clus *cluster) Close() (err error) {
 		if erri := peer.node.Err(); erri != nil {
 			err = erri
 		}
-		// clean intermediates
-		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
-		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", i+1))
 	}
+	clus.Cleanup()
 	return err
 }
 
