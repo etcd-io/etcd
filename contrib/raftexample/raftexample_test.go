@@ -134,48 +134,88 @@ func (clus *cluster) closeNoErrors(t *testing.T) {
 	t.Log("closing cluster [done]")
 }
 
+type feedbackFSM struct {
+	nullFSM
+	peer     *peer
+	id       int
+	reEcho   int
+	expected int
+	received int
+}
+
+func newFeedbackFSM(id int, reEcho int, expected int) *feedbackFSM {
+	return &feedbackFSM{
+		id:       id,
+		reEcho:   reEcho,
+		expected: expected,
+	}
+}
+
+func (fsm *feedbackFSM) ApplyCommits(commit *commit) error {
+	for _, msg := range commit.data {
+		var originator, source, index int
+		if n, err := fmt.Sscanf(msg, "foo%d-%d-%d", &originator, &source, &index); err != nil || n != 3 {
+			panic(err)
+		}
+		if fsm.reEcho > 0 {
+			fsm.peer.proposeC <- fmt.Sprintf("foo%d-%d-%d", originator, fsm.id, index+1)
+			fsm.reEcho--
+		}
+
+		fsm.received++
+		if fsm.received == fsm.expected {
+			close(fsm.peer.proposeC)
+		}
+	}
+
+	close(commit.applyDoneC)
+
+	return nil
+}
+
 // TestProposeOnCommit starts three nodes and feeds commits back into the proposal
 // channel. The intent is to ensure blocking on a proposal won't block raft progress.
 func TestProposeOnCommit(t *testing.T) {
-	clus := newCluster(nullFSM{}, nullFSM{}, nullFSM{})
-	defer clus.closeNoErrors(t)
+	// We generate one proposal for each node to kick things off, then
+	// each node "echos" back the first 99 commits that it receives.
+	// So the total number of commits that each node expects to see is
+	// 300.
+	fsms := []*feedbackFSM{
+		newFeedbackFSM(1, 99, 300),
+		newFeedbackFSM(2, 99, 300),
+		newFeedbackFSM(3, 99, 300),
+	}
+	clus := newCluster(fsms[0], fsms[1], fsms[2])
+	for i := range fsms {
+		fsms[i].peer = clus.peers[i]
+	}
+	defer clus.Cleanup()
 
-	donec := make(chan struct{})
-	for _, peer := range clus.peers {
-		peer := peer
-		// feedback for "n" committed entries, then update donec
+	var wg sync.WaitGroup
+	for _, fsm := range fsms {
+		fsm := fsm
+		wg.Add(1)
 		go func() {
-			proposeC := peer.proposeC
-			for n := 0; n < 100; n++ {
-				c, ok := <-peer.commitC
-				if !ok {
-					proposeC = nil
-				}
-				select {
-				case proposeC <- c.data[0]:
-					continue
-				case <-peer.node.Done():
-					if err := peer.node.Err(); err != nil {
-						t.Errorf("peer error (%v)", err)
-					}
-				}
-			}
-			donec <- struct{}{}
-			for range peer.commitC {
-				// Acknowledge the rest of the commits (including
-				// those from other nodes) without feeding them back
-				// in so that raft can finish.
+			defer wg.Done()
+			if err := fsm.peer.node.ProcessCommits(fsm.peer.commitC, fsm.peer.errorC); err != nil {
+				t.Error("ProcessCommits returned error", err)
 			}
 		}()
 
 		// Trigger the whole cascade by sending one message per node:
+		wg.Add(1)
 		go func() {
-			peer.proposeC <- "foo"
+			defer wg.Done()
+			fsm.peer.proposeC <- fmt.Sprintf("foo%d-%d-%d", fsm.id, fsm.id, 0)
 		}()
 	}
 
-	for range clus.peers {
-		<-donec
+	wg.Wait()
+
+	for _, fsm := range fsms {
+		if fsm.received != fsm.expected {
+			t.Errorf("node %d received %d commits (expected %d)", fsm.id, fsm.received, fsm.expected)
+		}
 	}
 }
 
