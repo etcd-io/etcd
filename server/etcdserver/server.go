@@ -2168,12 +2168,14 @@ func (s *EtcdServer) StorageVersion() *semver.Version {
 
 // monitorClusterVersions every monitorVersionInterval checks if it's the leader and updates cluster version if needed.
 func (s *EtcdServer) monitorClusterVersions() {
-	monitor := serverversion.NewMonitor(s.Logger(), NewServerVersionAdapter(s))
+	lg := s.Logger()
+	monitor := serverversion.NewMonitor(lg, NewServerVersionAdapter(s))
 	for {
 		select {
 		case <-s.firstCommitInTerm.Receive():
 		case <-time.After(monitorVersionInterval):
 		case <-s.stopping:
+			lg.Info("server has stopped; stopping cluster version's monitor")
 			return
 		}
 
@@ -2189,12 +2191,14 @@ func (s *EtcdServer) monitorClusterVersions() {
 
 // monitorStorageVersion every monitorVersionInterval updates storage version if needed.
 func (s *EtcdServer) monitorStorageVersion() {
-	monitor := serverversion.NewMonitor(s.Logger(), NewServerVersionAdapter(s))
+	lg := s.Logger()
+	monitor := serverversion.NewMonitor(lg, NewServerVersionAdapter(s))
 	for {
 		select {
 		case <-time.After(monitorVersionInterval):
 		case <-s.clusterVersionChanged.Receive():
 		case <-s.stopping:
+			lg.Info("server has stopped; stopping storage version's monitor")
 			return
 		}
 		monitor.UpdateStorageVersionIfNeeded()
@@ -2218,6 +2222,7 @@ func (s *EtcdServer) monitorKVHash() {
 	for {
 		select {
 		case <-s.stopping:
+			lg.Info("server has stopped; stopping kv hash's monitor")
 			return
 		case <-checkTicker.C:
 		}
@@ -2239,6 +2244,8 @@ func (s *EtcdServer) monitorCompactHash() {
 		select {
 		case <-time.After(t):
 		case <-s.stopping:
+			lg := s.Logger()
+			lg.Info("server has stopped; stopping compact hash's monitor")
 			return
 		}
 		if !s.isLeader() {
