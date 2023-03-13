@@ -1,4 +1,4 @@
-# etcd
+# etcd1
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/etcd-io/etcd?style=flat-square)](https://goreportcard.com/report/github.com/etcd-io/etcd)
 [![Coverage](https://codecov.io/gh/etcd-io/etcd/branch/main/graph/badge.svg)](https://codecov.io/gh/etcd-io/etcd)
