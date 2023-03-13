@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	defaultLog "log"
-	"math"
 	"net"
 	"net/http"
 	"strings"
@@ -27,7 +26,6 @@ import (
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
 	"go.etcd.io/etcd/server/v3/config"
@@ -48,7 +46,6 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type serveCtx struct {
@@ -97,6 +94,7 @@ func (sctx *serveCtx) serve(
 	tlsinfo *transport.TLSInfo,
 	handler http.Handler,
 	errHandler func(error),
+	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
 	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
 
@@ -118,6 +116,15 @@ func (sctx *serveCtx) serve(
 
 	// Make sure serversC is closed even if we prematurely exit the function.
 	defer close(sctx.serversC)
+	var gwmux *gw.ServeMux
+	if s.Cfg.EnableGRPCGateway {
+		// GRPC gateway connects to grpc server via connection provided by grpc dial.
+		gwmux, err = sctx.registerGateway(grpcDialForRestGatewayBackends)
+		if err != nil {
+			sctx.lg.Error("registerGateway failed", zap.Error(err))
+			return err
+		}
+	}
 
 	if sctx.insecure {
 		gs := v3rpc.Server(s, nil, nil, gopts...)
@@ -139,15 +146,6 @@ func (sctx *serveCtx) serve(
 		go func(gs *grpc.Server, grpcLis net.Listener) {
 			errHandler(gs.Serve(grpcLis))
 		}(gs, grpcl)
-
-		var gwmux *gw.ServeMux
-		if s.Cfg.EnableGRPCGateway {
-			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())})
-			if err != nil {
-				sctx.lg.Error("registerGateway failed", zap.Error(err))
-				return err
-			}
-		}
 
 		httpmux := sctx.createMux(gwmux, handler)
 
@@ -194,20 +192,6 @@ func (sctx *serveCtx) serve(
 		}(gs)
 
 		handler = grpcHandlerFunc(gs, handler)
-
-		var gwmux *gw.ServeMux
-		if s.Cfg.EnableGRPCGateway {
-			dtls := tlscfg.Clone()
-			// trust local server
-			dtls.InsecureSkipVerify = true
-			bundle := credentials.NewBundle(credentials.Config{TLSConfig: dtls})
-			opts := []grpc.DialOption{grpc.WithTransportCredentials(bundle.TransportCredentials())}
-			gwmux, err = sctx.registerGateway(opts)
-			if err != nil {
-				return err
-			}
-		}
-
 		var tlsl net.Listener
 		tlsl, err = transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
 		if err != nil {
@@ -268,22 +252,11 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 
 type registerHandlerFunc func(context.Context, *gw.ServeMux, *grpc.ClientConn) error
 
-func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, error) {
+func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.ClientConn, error)) (*gw.ServeMux, error) {
 	ctx := sctx.ctx
 
-	addr := sctx.addr
-	if network := sctx.network; network == "unix" {
-		// explicitly define unix network for gRPC socket support
-		addr = fmt.Sprintf("%s:%s", network, addr)
-	}
-
-	opts = append(opts, grpc.WithDefaultCallOptions([]grpc.CallOption{
-		grpc.MaxCallRecvMsgSize(math.MaxInt32),
-	}...))
-
-	conn, err := grpc.DialContext(ctx, addr, opts...)
+	conn, err := dial(ctx)
 	if err != nil {
-		sctx.lg.Error("registerGateway failed to dial", zap.String("addr", addr), zap.Error(err))
 		return nil, err
 	}
 	gwmux := gw.NewServeMux()

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	defaultLog "log"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -32,6 +33,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	runtimeutil "go.etcd.io/etcd/pkg/v3/runtime"
 	"go.etcd.io/etcd/server/v3/config"
@@ -45,6 +47,7 @@ import (
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -736,10 +739,54 @@ func (e *Etcd) serveClients() (err error) {
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, gopts...))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(), gopts...))
 		}(sctx)
 	}
 	return nil
+}
+
+func (e *Etcd) grpcGatewayDial() (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
+	if !e.cfg.EnableGRPCGateway {
+		return nil
+	}
+	sctx := e.pickGrpcGatewayServeContext()
+	addr := sctx.addr
+	if network := sctx.network; network == "unix" {
+		// explicitly define unix network for gRPC socket support
+		addr = fmt.Sprintf("%s:%s", network, addr)
+	}
+	opts := []grpc.DialOption{grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32))}
+	if sctx.secure {
+		tlscfg, tlsErr := e.cfg.ClientTLSInfo.ServerConfig()
+		if tlsErr != nil {
+			return func(ctx context.Context) (*grpc.ClientConn, error) {
+				return nil, tlsErr
+			}
+		}
+		dtls := tlscfg.Clone()
+		// trust local server
+		dtls.InsecureSkipVerify = true
+		bundle := credentials.NewBundle(credentials.Config{TLSConfig: dtls})
+		opts = append(opts, grpc.WithTransportCredentials(bundle.TransportCredentials()))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	return func(ctx context.Context) (*grpc.ClientConn, error) {
+		conn, err := grpc.DialContext(ctx, addr, opts...)
+		if err != nil {
+			sctx.lg.Error("grpc gateway failed to dial", zap.String("addr", addr), zap.Error(err))
+			return nil, err
+		}
+		return conn, err
+	}
+}
+
+func (e *Etcd) pickGrpcGatewayServeContext() *serveCtx {
+	for _, sctx := range e.sctxs {
+		return sctx
+	}
+	panic("Expect at least one context able to serve grpc")
 }
 
 func (e *Etcd) serveMetrics() (err error) {
