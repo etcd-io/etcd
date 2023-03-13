@@ -176,7 +176,8 @@ func (sctx *serveCtx) serve(
 		if sctx.serviceRegister != nil {
 			sctx.serviceRegister(gs)
 		}
-		handler = grpcHandlerFunc(gs, handler)
+		grpcl := m.Match(cmux.HTTP2())
+		go func() { errHandler(gs.Serve(grpcl)) }()
 
 		var gwmux *gw.ServeMux
 		if s.Cfg.EnableGRPCGateway {
