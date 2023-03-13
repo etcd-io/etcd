@@ -75,13 +75,15 @@ GO_BUILD_FLAGS="-buildmode=pie" make build
 
 This is a more recently added environmnent that aims to make it faster for new contributors to get started with etcd. This option is supported for etcd versions 3.6 onwards.
 
-This option can be [used locally](https://code.visualstudio.com/docs/devcontainers/tutorial) on a system running Visual Studio Code and Docker, or in a remote cloud based [Codespaces](https://github.com/features/codespaces) environment. The instructions below are based on the Codespaces option as this can be setup and running in just a few clicks.
+This option can be [used locally](https://code.visualstudio.com/docs/devcontainers/tutorial) on a system running Visual Studio Code and Docker, or in a remote cloud based [Codespaces](https://github.com/features/codespaces) environment.
 
-Follow the steps below to setup the environment:
+To get started, create a codespace for this repository by clicking this 👇
 
-- [Fork the repository](https://docs.github.com/en/get-started/quickstart/fork-a-repo)
-- Click the green `<> Code` button and click the `Codespaces` tab.
-- Click the `+` button to create a codespace, this will automatically install the required build tools for developing etcd.
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=11225014)
+
+A codespace will open in a web-based version of Visual Studio Code. The [dev container](.devcontainer/devcontainer.json) is fully configured with software needed for this project.
+
+**Note**: Dev containers is an open spec which is supported by [GitHub Codespaces](https://github.com/codespaces) and [other tools](https://containers.dev/supporting).
 
 [file an issue]: https://github.com/etcd-io/etcd/issues/new/choose
 
