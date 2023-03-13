@@ -460,12 +460,12 @@ func (rc *raftNode) serveChannels() {
 				rc.publishSnapshot(rd.Snapshot)
 			}
 			rc.raftStorage.Append(rd.Entries)
-			rc.transport.Send(rc.processMessages(rd.Messages))
 			applyDoneC, ok := rc.publishEntries(rc.entriesToApply(rd.CommittedEntries))
 			if !ok {
 				rc.stop()
 				return
 			}
+			rc.transport.Send(rc.processMessages(rd.Messages))
 			rc.maybeTriggerSnapshot(applyDoneC)
 			rc.node.Advance()
 
