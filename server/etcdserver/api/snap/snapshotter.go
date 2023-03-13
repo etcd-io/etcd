@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap/snappb"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/etcd/server/v3/watchdog"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 
@@ -88,7 +89,9 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	spath := filepath.Join(s.dir, fname)
 
 	fsyncStart := time.Now()
-	err = pioutil.WriteAndSyncFile(spath, d, 0666)
+	watchdog.StorageWatchdog().Execute("save v2 snapshot", func() {
+		err = pioutil.WriteAndSyncFile(spath, d, 0666)
+	})
 	snapFsyncSec.Observe(time.Since(fsyncStart).Seconds())
 
 	if err != nil {

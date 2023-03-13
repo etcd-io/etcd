@@ -24,6 +24,7 @@ import (
 	"go.uber.org/zap"
 
 	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/server/v3/watchdog"
 )
 
 type BucketID int
@@ -114,7 +115,10 @@ func (t *batchTx) RUnlock() {
 }
 
 func (t *batchTx) UnsafeCreateBucket(bucket Bucket) {
-	_, err := t.tx.CreateBucket(bucket.Name())
+	var err error
+	watchdog.StorageWatchdog().Execute("batchTx createBucket", func() {
+		_, err = t.tx.CreateBucket(bucket.Name())
+	})
 	if err != nil && err != bolt.ErrBucketExists {
 		t.backend.lg.Fatal(
 			"failed to create a bucket",
@@ -126,7 +130,10 @@ func (t *batchTx) UnsafeCreateBucket(bucket Bucket) {
 }
 
 func (t *batchTx) UnsafeDeleteBucket(bucket Bucket) {
-	err := t.tx.DeleteBucket(bucket.Name())
+	var err error
+	watchdog.StorageWatchdog().Execute("batchTx deleteBucket", func() {
+		err = t.tx.DeleteBucket(bucket.Name())
+	})
 	if err != nil && err != bolt.ErrBucketNotFound {
 		t.backend.lg.Fatal(
 			"failed to delete a bucket",
@@ -161,7 +168,12 @@ func (t *batchTx) unsafePut(bucketType Bucket, key []byte, value []byte, seq boo
 		// this can delay the page split and reduce space usage.
 		bucket.FillPercent = 0.9
 	}
-	if err := bucket.Put(key, value); err != nil {
+
+	var err error
+	watchdog.StorageWatchdog().Execute("batchTx put", func() {
+		err = bucket.Put(key, value)
+	})
+	if err != nil {
 		t.backend.lg.Fatal(
 			"failed to write to a bucket",
 			zap.Stringer("bucket-name", bucketType),
@@ -216,7 +228,10 @@ func (t *batchTx) UnsafeDelete(bucketType Bucket, key []byte) {
 			zap.Stack("stack"),
 		)
 	}
-	err := bucket.Delete(key)
+	var err error
+	watchdog.StorageWatchdog().Execute("batchTx delete", func() {
+		err = bucket.Delete(key)
+	})
 	if err != nil {
 		t.backend.lg.Fatal(
 			"failed to delete a key",
@@ -268,9 +283,12 @@ func (t *batchTx) commit(stop bool) {
 
 		start := time.Now()
 
-		// gofail: var beforeCommit struct{}
-		err := t.tx.Commit()
-		// gofail: var afterCommit struct{}
+		var err error
+		watchdog.StorageWatchdog().Execute("batchTx commit", func() {
+			// gofail: var beforeCommit struct{}
+			err = t.tx.Commit()
+			// gofail: var afterCommit struct{}
+		})
 
 		rebalanceSec.Observe(t.tx.Stats().RebalanceTime.Seconds())
 		spillSec.Observe(t.tx.Stats().SpillTime.Seconds())

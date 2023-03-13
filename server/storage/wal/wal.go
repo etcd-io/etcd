@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/etcd/server/v3/watchdog"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 
@@ -798,28 +799,31 @@ func (w *WAL) cut() error {
 }
 
 func (w *WAL) sync() error {
-	if w.encoder != nil {
-		if err := w.encoder.flush(); err != nil {
-			return err
+	var err error
+	watchdog.StorageWatchdog().Execute("WAL sync", func() {
+		if w.encoder != nil {
+			if err = w.encoder.flush(); err != nil {
+				return
+			}
 		}
-	}
 
-	if w.unsafeNoSync {
-		return nil
-	}
+		if w.unsafeNoSync {
+			return
+		}
 
-	start := time.Now()
-	err := fileutil.Fdatasync(w.tail().File)
+		start := time.Now()
+		err = fileutil.Fdatasync(w.tail().File)
 
-	took := time.Since(start)
-	if took > warnSyncDuration {
-		w.lg.Warn(
-			"slow fdatasync",
-			zap.Duration("took", took),
-			zap.Duration("expected-duration", warnSyncDuration),
-		)
-	}
-	walFsyncSec.Observe(took.Seconds())
+		took := time.Since(start)
+		if took > warnSyncDuration {
+			w.lg.Warn(
+				"slow fdatasync",
+				zap.Duration("took", took),
+				zap.Duration("expected-duration", warnSyncDuration),
+			)
+		}
+		walFsyncSec.Observe(took.Seconds())
+	})
 
 	return err
 }
@@ -934,13 +938,22 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 
 	mustSync := raft.MustSync(st, w.state, len(ents))
 
-	// TODO(xiangli): no more reference operator
-	for i := range ents {
-		if err := w.saveEntry(&ents[i]); err != nil {
-			return err
+	var err error
+	watchdog.StorageWatchdog().Execute("WAL saveEntry", func() {
+		for i := range ents {
+			if err = w.saveEntry(&ents[i]); err != nil {
+				break
+			}
 		}
+	})
+	if err != nil {
+		return err
 	}
-	if err := w.saveState(&st); err != nil {
+
+	watchdog.StorageWatchdog().Execute("WAL saveState", func() {
+		err = w.saveState(&st)
+	})
+	if err != nil {
 		return err
 	}
 
@@ -972,9 +985,14 @@ func (w *WAL) SaveSnapshot(e walpb.Snapshot) error {
 	defer w.mu.Unlock()
 
 	rec := &walpb.Record{Type: SnapshotType, Data: b}
-	if err := w.encoder.encode(rec); err != nil {
+	var err error
+	watchdog.StorageWatchdog().Execute("WAL saveSnapshot", func() {
+		err = w.encoder.encode(rec)
+	})
+	if err != nil {
 		return err
 	}
+
 	// update enti only when snapshot is ahead of last index
 	if w.enti < e.Index {
 		w.enti = e.Index

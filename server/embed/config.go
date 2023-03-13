@@ -74,6 +74,8 @@ const (
 	DefaultDiscoveryKeepAliveTime    = 2 * time.Second
 	DefaultDiscoveryKeepAliveTimeOut = 6 * time.Second
 
+	DefaultStorageWatchdogTimeout = 10 * time.Second
+
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
 
@@ -380,6 +382,9 @@ type Config struct {
 	// Defaults to 0.
 	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
 
+	EnableStorageWatchDog  bool          `json:"experimental-enable-storage-watchdog"`
+	StorageWatchDogTimeout time.Duration `json:"experimental-storage-watchdog-timeout"`
+
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
@@ -531,6 +536,8 @@ func NewConfig() *Config {
 
 		ExperimentalCompactHashCheckEnabled: false,
 		ExperimentalCompactHashCheckTime:    time.Minute,
+
+		StorageWatchDogTimeout: DefaultStorageWatchdogTimeout,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 
@@ -748,6 +755,17 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.ElectionMs > maxElectionMs {
 		return fmt.Errorf("--election-timeout[%vms] is too long, and should be set less than %vms", cfg.ElectionMs, maxElectionMs)
+	}
+
+	if cfg.EnableStorageWatchDog {
+		if cfg.StorageWatchDogTimeout == 0 {
+			return fmt.Errorf("--experimental-storage-watchdog-timeout must be >0 (set to %s)", cfg.StorageWatchDogTimeout)
+		}
+
+		if int64(2*cfg.ElectionMs) > cfg.StorageWatchDogTimeout.Milliseconds() {
+			return fmt.Errorf("--experimental-storage-watchdog-timeout[%s] should be at least as 2 times as --election-timeout[%dms]",
+				cfg.StorageWatchDogTimeout, cfg.ElectionMs)
+		}
 	}
 
 	// check this last since proxying in etcdmain may make this OK

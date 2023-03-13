@@ -284,6 +284,9 @@ func newConfig() *config {
 	fs.DurationVar(&cfg.ec.ExperimentalWaitClusterReadyTimeout, "experimental-wait-cluster-ready-timeout", cfg.ec.ExperimentalWaitClusterReadyTimeout, "Maximum duration to wait for the cluster to be ready.")
 	fs.Uint64Var(&cfg.ec.SnapshotCatchUpEntries, "experimental-snapshot-catchup-entries", cfg.ec.SnapshotCatchUpEntries, "Number of entries for a slow follower to catch up after compacting the the raft storage entries.")
 
+	fs.BoolVar(&cfg.ec.EnableStorageWatchDog, "experimental-enable-storage-watchdog", cfg.ec.EnableStorageWatchDog, "Enable watchdog to detect inactive storage activities.")
+	fs.DurationVar(&cfg.ec.StorageWatchDogTimeout, "experimental-storage-watchdog-timeout", cfg.ec.StorageWatchDogTimeout, "Maximum inactive duration of each storage activity that the watchdog tolerates.")
+
 	// unsafe
 	fs.BoolVar(&cfg.ec.UnsafeNoFsync, "unsafe-no-fsync", false, "Disables fsync, unsafe, will cause data loss.")
 	fs.BoolVar(&cfg.ec.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")

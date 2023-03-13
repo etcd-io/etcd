@@ -34,12 +34,14 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	runtimeutil "go.etcd.io/etcd/pkg/v3/runtime"
+	pkg_watchdog "go.etcd.io/etcd/pkg/v3/watchdog"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
+	server_watchdog "go.etcd.io/etcd/server/v3/watchdog"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
@@ -263,6 +265,13 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			return e, err
 		}
 	}
+
+	if cfg.EnableStorageWatchDog {
+		inactiveTimeoutMs := cfg.StorageWatchDogTimeout.Milliseconds()
+		wd := pkg_watchdog.New(e.cfg.logger, e.Server.StoppingNotify(), e.Stop, inactiveTimeoutMs)
+		server_watchdog.SetStorageWatchdog(wd)
+	}
+
 	e.Server.Start()
 
 	if err = e.servePeers(); err != nil {
@@ -400,6 +409,28 @@ func (e *Etcd) Close() {
 		lg.Sync()
 	}()
 
+	e.Stop()
+
+	if e.Server != nil {
+		e.Server.Stop()
+	}
+
+	if e.errc != nil {
+		close(e.errc)
+	}
+}
+
+func (e *Etcd) Stop() {
+	fields := []zap.Field{
+		zap.String("name", e.cfg.Name),
+		zap.String("data-dir", e.cfg.Dir),
+		zap.Strings("advertise-peer-urls", e.cfg.getAdvertisePeerUrls()),
+		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientUrls()),
+	}
+
+	lg := e.GetLogger()
+	lg.Info("stopping etcd server", fields...)
+
 	e.closeOnce.Do(func() {
 		close(e.stopc)
 	})
@@ -436,11 +467,6 @@ func (e *Etcd) Close() {
 		e.tracingExporterShutdown()
 	}
 
-	// close rafthttp transports
-	if e.Server != nil {
-		e.Server.Stop()
-	}
-
 	// close all idle connections in peer handler (wait up to 1-second)
 	for i := range e.Peers {
 		if e.Peers[i] != nil && e.Peers[i].close != nil {
@@ -448,9 +474,6 @@ func (e *Etcd) Close() {
 			e.Peers[i].close(ctx)
 			cancel()
 		}
-	}
-	if e.errc != nil {
-		close(e.errc)
 	}
 }
 

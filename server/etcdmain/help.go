@@ -275,6 +275,10 @@ Experimental feature:
     Set the maximum time duration to wait for the cluster to be ready.
   --experimental-snapshot-catch-up-entries '5000'
     Number of entries for a slow follower to catch up after compacting the the raft storage entries.
+  --experimental-enable-storage-watchdog 'false'
+    Enable watchdog to detect inactive activities.
+  --experimental-storage-watchdog-timeout '10s'
+    Maximum inactive duration of each activity that the watchdog tolerates.
 
 Unsafe feature:
   --force-new-cluster 'false'
