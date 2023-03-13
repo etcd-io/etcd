@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -45,28 +46,62 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 		t.Fatalf("failed to start embed.Etcd for test")
 	}
 
+	// When the member becomes leader, it will update the cluster version
+	// with the cluster's minimum version. As it's updated asynchronously,
+	// it could not be updated in time before close. Wait for it to become
+	// ready.
+	if err := waitForClusterVersionReady(srv); err != nil {
+		srv.Close()
+		t.Fatalf("failed to wait for cluster version to become ready: %v", err)
+	}
+
 	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
 	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		srv.Close()
 		t.Fatal(err)
 	}
-	// Get auth status to increase etcd version of proto stored in wal
+
+	// Once the cluster version has been updated, any entity's storage
+	// version should be align with cluster version.
 	ctx, cancel := context.WithTimeout(context.Background(), testutil.RequestTimeout)
-	cli.AuthStatus(ctx)
+	_, err = cli.AuthStatus(ctx)
 	cancel()
+	if err != nil {
+		srv.Close()
+		t.Fatalf("failed to get auth status: %v", err)
+	}
 
 	cli.Close()
 	srv.Close()
 
 	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", walpb.Snapshot{})
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	defer w.Close()
+
 	walVersion, err := wal.ReadWALVersion(w)
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, &semver.Version{Major: 3, Minor: 6}, walVersion.MinimalEtcdVersion())
+}
+
+func waitForClusterVersionReady(srv *embed.Etcd) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		if srv.Server.ClusterVersion() != nil {
+			return nil
+		}
+		time.Sleep(framecfg.TickDuration)
+	}
 }
