@@ -129,7 +129,8 @@ type cURLReq struct {
 
 	metricsURLScheme string
 
-	ciphers string
+	ciphers     string
+	httpVersion string
 }
 
 // cURLPrefixArgsCluster builds the beginning of a curl command for a given key
@@ -147,6 +148,9 @@ func cURLPrefixArgs(clientURL string, connType clientConnType, CN bool, method s
 	var (
 		cmdArgs = []string{"curl"}
 	)
+	if req.httpVersion != "" {
+		cmdArgs = append(cmdArgs, "--http"+req.httpVersion)
+	}
 	if req.metricsURLScheme != "https" {
 		if req.isTLS {
 			if connType != clientTLSAndNonTLS {
