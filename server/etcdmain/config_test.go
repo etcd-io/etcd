@@ -113,8 +113,8 @@ func TestConfigFileClusteringFields(t *testing.T) {
 		InitialCluster      string `json:"initial-cluster"`
 		ClusterState        string `json:"initial-cluster-state"`
 		InitialClusterToken string `json:"initial-cluster-token"`
-		Apurls              string `json:"initial-advertise-peer-urls"`
-		Acurls              string `json:"advertise-client-urls"`
+		AdvertisePeerUrls   string `json:"initial-advertise-peer-urls"`
+		AdvertiseClientUrls string `json:"advertise-client-urls"`
 	}{
 		"0=http://localhost:8000",
 		"existing",
