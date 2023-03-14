@@ -157,7 +157,7 @@ func submitConcurrentWatch(cx ctlCtx, number int, wgDone *sync.WaitGroup, closeC
 		member := cluster.Procs[rand.Intn(cluster.Cfg.ClusterSize)]
 		curlReq := e2e.CURLReq{Endpoint: "/v3/watch", Value: string(watchData)}
 
-		args := e2e.CURLPrefixArgs(cluster.Cfg, member, "POST", curlReq)
+		args := e2e.CURLPrefixArgsCluster(cluster.Cfg, member, "POST", curlReq)
 		proc, err := e2e.SpawnCmd(args, nil)
 		if err != nil {
 			return fmt.Errorf("failed to spawn: %w", err)

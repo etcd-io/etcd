@@ -47,27 +47,30 @@ func (r CURLReq) timeoutDuration() time.Duration {
 	return 5 * time.Second
 }
 
-// CURLPrefixArgs builds the beginning of a curl command for a given key
+// CURLPrefixArgsCluster builds the beginning of a curl command for a given key
 // addressed to a random URL in the given cluster.
-func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method string, req CURLReq) []string {
+func CURLPrefixArgsCluster(cfg *EtcdProcessClusterConfig, member EtcdProcess, method string, req CURLReq) []string {
+	return CURLPrefixArgs(member.Config().ClientURL, cfg.Client, cfg.CN, method, req)
+}
+
+func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, req CURLReq) []string {
 	var (
 		cmdArgs = []string{"curl"}
-		acurl   = member.Config().ClientURL
 	)
 	if req.IsTLS {
-		if cfg.Client.ConnectionType != ClientTLSAndNonTLS {
+		if cfg.ConnectionType != ClientTLSAndNonTLS {
 			panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
 		}
 		cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
-		acurl = ToTLS(member.Config().ClientURL)
-	} else if cfg.Client.ConnectionType == ClientTLS {
-		if cfg.CN {
+		clientURL = ToTLS(clientURL)
+	} else if cfg.ConnectionType == ClientTLS {
+		if CN {
 			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
 		} else {
 			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath3, "--key", PrivateKeyPath3)
 		}
 	}
-	ep := acurl + req.Endpoint
+	ep := clientURL + req.Endpoint
 
 	if req.Username != "" || req.Password != "" {
 		cmdArgs = append(cmdArgs, "-L", "-u", fmt.Sprintf("%s:%s", req.Username, req.Password), ep)
@@ -100,18 +103,18 @@ func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method st
 func CURLPost(clus *EtcdProcessCluster, req CURLReq) error {
 	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
 	defer cancel()
-	return SpawnWithExpectsContext(ctx, CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", req), nil, req.Expected)
+	return SpawnWithExpectsContext(ctx, CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", req), nil, req.Expected)
 }
 
 func CURLPut(clus *EtcdProcessCluster, req CURLReq) error {
 	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
 	defer cancel()
-	return SpawnWithExpectsContext(ctx, CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "PUT", req), nil, req.Expected)
+	return SpawnWithExpectsContext(ctx, CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "PUT", req), nil, req.Expected)
 }
 
 func CURLGet(clus *EtcdProcessCluster, req CURLReq) error {
 	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
 	defer cancel()
 
-	return SpawnWithExpectsContext(ctx, CURLPrefixArgs(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "GET", req), nil, req.Expected)
+	return SpawnWithExpectsContext(ctx, CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "GET", req), nil, req.Expected)
 }
