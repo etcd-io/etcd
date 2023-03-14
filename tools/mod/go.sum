@@ -7,8 +7,8 @@ github.com/PuerkitoBio/purell v1.1.1 h1:WEQqlqaGbrPkxLJWfBwQmfEAE1Z7ONdDLqrN38tN
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 h1:d+Bc7a5rLufV/sSk/8dngufqelfh6jnri85riMAaF/M=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
-github.com/a8m/envsubst v1.4.1 h1:RShc2OKbQpIIp5qR2glVsBOJCImTVHFrDkJvmGh0Qi0=
-github.com/a8m/envsubst v1.4.1/go.mod h1:MVUTQNGQ3tsjOOtKCNd+fl8RzhsXcDvvAEzkhGtlsbY=
+github.com/a8m/envsubst v1.4.2 h1:4yWIHXOLEJHQEFd4UjrWDrYeYlV7ncFWJOCBRLOZHQg=
+github.com/a8m/envsubst v1.4.2/go.mod h1:MVUTQNGQ3tsjOOtKCNd+fl8RzhsXcDvvAEzkhGtlsbY=
 github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 h1:bYOD6QJnBJY79MJQR1i9cyQePG5oNDZXDKL2bhN/uvE=
 github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19/go.mod h1:HcqyLXmWoESd/vPSbCPqvgw5l5cMM5PtoqFOnXLjSeM=
 github.com/alecthomas/assert/v2 v2.0.3 h1:WKqJODfOiQG0nEJKFKzDIG3E29CN2/4zR9XGJzKIkbg=
@@ -195,8 +195,8 @@ github.com/mgechev/dots v0.0.0-20210922191527-e955255bf517 h1:zpIH83+oKzcpryru8c
 github.com/mgechev/dots v0.0.0-20210922191527-e955255bf517/go.mod h1:KQ7+USdGKfpPjXk4Ga+5XxQM4Lm4e3gAogrreFAYpOg=
 github.com/mgechev/revive v1.2.5 h1:UF9AR8pOAuwNmhXj2odp4mxv9Nx2qUIwVz8ZsU+Mbec=
 github.com/mgechev/revive v1.2.5/go.mod h1:nFOXent79jMTISAfOAasKfy0Z2Ejq0WX7Qn/KAdYopI=
-github.com/mikefarah/yq/v4 v4.31.1 h1:P64d3pilynnYhCA0t0UW8qakBiiUskg3XD0IzBVra1A=
-github.com/mikefarah/yq/v4 v4.31.1/go.mod h1:5bGXMOJZFtZm3AJfY81rRGH6AkWCmmAfrNtX8F4tvDE=
+github.com/mikefarah/yq/v4 v4.31.2 h1:uOAj+ymBvvta+nOI56Z+v4Z3AUI4a6LXUf+8klVkLV4=
+github.com/mikefarah/yq/v4 v4.31.2/go.mod h1:0grgy4sm131n6gj9LSY2Qo3vHdmOlBeEJXiy3wwdcIs=
 github.com/mitchellh/go-homedir v1.1.0 h1:lukF9ziXFxDFPkA1vsr5zpc1XuPDn/wFntq5mG+4E0Y=
 github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrkLzIz1N1q0pr0=
 github.com/mitchellh/mapstructure v1.3.3/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
