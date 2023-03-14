@@ -35,8 +35,6 @@ type CURLReq struct {
 	Expected string
 	Header   string
 
-	MetricsURLScheme string
-
 	Ciphers string
 }
 
@@ -56,23 +54,18 @@ func CURLPrefixArgs(cfg *EtcdProcessClusterConfig, member EtcdProcess, method st
 		cmdArgs = []string{"curl"}
 		acurl   = member.Config().ClientURL
 	)
-	if req.MetricsURLScheme != "https" {
-		if req.IsTLS {
-			if cfg.Client.ConnectionType != ClientTLSAndNonTLS {
-				panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
-			}
-			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
-			acurl = ToTLS(member.Config().ClientURL)
-		} else if cfg.Client.ConnectionType == ClientTLS {
-			if cfg.CN {
-				cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
-			} else {
-				cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath3, "--key", PrivateKeyPath3)
-			}
+	if req.IsTLS {
+		if cfg.Client.ConnectionType != ClientTLSAndNonTLS {
+			panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
 		}
-	}
-	if req.MetricsURLScheme != "" {
-		acurl = member.EndpointsMetrics()[0]
+		cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
+		acurl = ToTLS(member.Config().ClientURL)
+	} else if cfg.Client.ConnectionType == ClientTLS {
+		if cfg.CN {
+			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
+		} else {
+			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath3, "--key", PrivateKeyPath3)
+		}
 	}
 	ep := acurl + req.Endpoint
 
