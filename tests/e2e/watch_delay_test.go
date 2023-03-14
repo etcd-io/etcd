@@ -72,7 +72,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 			clus, err := newEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus, tc.config)
+			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -92,7 +92,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 			clus, err := newEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus, tc.config)
+			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -124,7 +124,7 @@ func TestWatchDelayForEvent(t *testing.T) {
 			clus, err := newEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus, tc.config)
+			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -230,13 +230,13 @@ func continuouslyExecuteGetAll(ctx context.Context, t *testing.T, g *errgroup.Gr
 	})
 }
 
-func newClient(t *testing.T, clus *etcdProcessCluster, cfg etcdProcessClusterConfig) *clientv3.Client {
-	tlscfg, err := tlsInfo(t, cfg)
+func newClient(t *testing.T, entpoints []string, connType clientConnType, isAutoTLS bool) *clientv3.Client {
+	tlscfg, err := tlsInfo(t, connType, isAutoTLS)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ccfg := clientv3.Config{
-		Endpoints:   clus.EndpointsV3(),
+		Endpoints:   entpoints,
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
@@ -257,12 +257,12 @@ func newClient(t *testing.T, clus *etcdProcessCluster, cfg etcdProcessClusterCon
 	return c
 }
 
-func tlsInfo(t testing.TB, cfg etcdProcessClusterConfig) (*transport.TLSInfo, error) {
-	switch cfg.clientTLS {
+func tlsInfo(t testing.TB, connType clientConnType, isAutoTLS bool) (*transport.TLSInfo, error) {
+	switch connType {
 	case clientNonTLS, clientTLSAndNonTLS:
 		return nil, nil
 	case clientTLS:
-		if cfg.isClientAutoTLS {
+		if isAutoTLS {
 			tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
 			if err != nil {
 				return nil, fmt.Errorf("failed to generate cert: %s", err)
@@ -271,6 +271,6 @@ func tlsInfo(t testing.TB, cfg etcdProcessClusterConfig) (*transport.TLSInfo, er
 		}
 		panic("Unsupported non-auto tls")
 	default:
-		return nil, fmt.Errorf("config %v not supported", cfg)
+		return nil, fmt.Errorf("config %v not supported", connType)
 	}
 }
