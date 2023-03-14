@@ -132,32 +132,37 @@ type cURLReq struct {
 	ciphers string
 }
 
-// cURLPrefixArgs builds the beginning of a curl command for a given key
+// cURLPrefixArgsCluster builds the beginning of a curl command for a given key
 // addressed to a random URL in the given cluster.
-func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []string {
+func cURLPrefixArgsCluster(clus *etcdProcessCluster, method string, req cURLReq) []string {
+	member := clus.procs[rand.Intn(clus.cfg.clusterSize)]
+	clientURL := member.Config().acurl
+	if req.metricsURLScheme != "" {
+		clientURL = member.EndpointsMetrics()[0]
+	}
+	return cURLPrefixArgs(clientURL, clus.cfg.clientTLS, !clus.cfg.noCN, method, req)
+}
+
+func cURLPrefixArgs(clientURL string, connType clientConnType, CN bool, method string, req cURLReq) []string {
 	var (
 		cmdArgs = []string{"curl"}
-		acurl   = clus.procs[rand.Intn(clus.cfg.clusterSize)].Config().acurl
 	)
 	if req.metricsURLScheme != "https" {
 		if req.isTLS {
-			if clus.cfg.clientTLS != clientTLSAndNonTLS {
+			if connType != clientTLSAndNonTLS {
 				panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
 			}
 			cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
-			acurl = toTLS(clus.procs[rand.Intn(clus.cfg.clusterSize)].Config().acurl)
-		} else if clus.cfg.clientTLS == clientTLS {
-			if !clus.cfg.noCN {
+			clientURL = toTLS(clientURL)
+		} else if connType == clientTLS {
+			if CN {
 				cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 			} else {
 				cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath3, "--key", privateKeyPath3)
 			}
 		}
 	}
-	if req.metricsURLScheme != "" {
-		acurl = clus.procs[rand.Intn(clus.cfg.clusterSize)].EndpointsMetrics()[0]
-	}
-	ep := acurl + req.endpoint
+	ep := clientURL + req.endpoint
 
 	if req.username != "" || req.password != "" {
 		cmdArgs = append(cmdArgs, "-L", "-u", fmt.Sprintf("%s:%s", req.username, req.password), ep)
@@ -188,13 +193,13 @@ func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []stri
 }
 
 func cURLPost(clus *etcdProcessCluster, req cURLReq) error {
-	return spawnWithExpect(cURLPrefixArgs(clus, "POST", req), req.expected)
+	return spawnWithExpect(cURLPrefixArgsCluster(clus, "POST", req), req.expected)
 }
 
 func cURLPut(clus *etcdProcessCluster, req cURLReq) error {
-	return spawnWithExpect(cURLPrefixArgs(clus, "PUT", req), req.expected)
+	return spawnWithExpect(cURLPrefixArgsCluster(clus, "PUT", req), req.expected)
 }
 
 func cURLGet(clus *etcdProcessCluster, req cURLReq) error {
-	return spawnWithExpect(cURLPrefixArgs(clus, "GET", req), req.expected)
+	return spawnWithExpect(cURLPrefixArgsCluster(clus, "GET", req), req.expected)
 }
