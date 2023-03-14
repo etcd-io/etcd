@@ -35,7 +35,8 @@ type CURLReq struct {
 	Expected string
 	Header   string
 
-	Ciphers string
+	Ciphers     string
+	HttpVersion string
 }
 
 func (r CURLReq) timeoutDuration() time.Duration {
@@ -57,6 +58,9 @@ func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, 
 	var (
 		cmdArgs = []string{"curl"}
 	)
+	if req.HttpVersion != "" {
+		cmdArgs = append(cmdArgs, "--http"+req.HttpVersion)
+	}
 	if req.IsTLS {
 		if cfg.ConnectionType != ClientTLSAndNonTLS {
 			panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
