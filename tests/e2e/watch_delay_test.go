@@ -75,7 +75,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus, tc.config)
+			c := newClient(t, clus.EndpointsV3(), tc.config.Client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -95,7 +95,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus, tc.config)
+			c := newClient(t, clus.EndpointsV3(), tc.config.Client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -128,7 +128,7 @@ func TestWatchDelayForEvent(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus, tc.config)
+			c := newClient(t, clus.EndpointsV3(), tc.config.Client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -236,13 +236,13 @@ func continuouslyExecuteGetAll(ctx context.Context, t *testing.T, g *errgroup.Gr
 	})
 }
 
-func newClient(t *testing.T, clus *e2e.EtcdProcessCluster, cfg e2e.EtcdProcessClusterConfig) *clientv3.Client {
-	tlscfg, err := tlsInfo(t, cfg.Client)
+func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3.Client {
+	tlscfg, err := tlsInfo(t, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ccfg := clientv3.Config{
-		Endpoints:   clus.EndpointsV3(),
+		Endpoints:   entpoints,
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
