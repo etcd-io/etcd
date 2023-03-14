@@ -27,14 +27,6 @@ import (
 
 const etcdProcessBasePort = 20000
 
-type clientConnType int
-
-const (
-	clientNonTLS clientConnType = iota
-	clientTLS
-	clientTLSAndNonTLS
-)
-
 var (
 	configNoTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
