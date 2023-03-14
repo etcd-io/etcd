@@ -91,7 +91,7 @@ func TestTracing(t *testing.T) {
 	dialOptions := []grpc.DialOption{
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor(tracingOpts...)),
 		grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor(tracingOpts...))}
-	ccfg := clientv3.Config{DialOptions: dialOptions, Endpoints: []string{cfg.ACUrls[0].String()}}
+	ccfg := clientv3.Config{DialOptions: dialOptions, Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}}
 	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		etcdSrv.Close()
