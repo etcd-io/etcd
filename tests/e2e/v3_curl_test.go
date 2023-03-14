@@ -243,7 +243,7 @@ func testV3CurlAuth(cx ctlCtx) {
 			lineFunc   = func(txt string) bool { return true }
 		)
 
-		cmdArgs = cURLPrefixArgs(cx.epc, "POST", cURLReq{endpoint: path.Join(p, "/auth/authenticate"), value: string(authreq)})
+		cmdArgs = cURLPrefixArgsCluster(cx.epc, "POST", cURLReq{endpoint: path.Join(p, "/auth/authenticate"), value: string(authreq)})
 		proc, err := spawnCmd(cmdArgs)
 		testutil.AssertNil(cx.t, err)
 
@@ -281,7 +281,7 @@ func testV3CurlCampaign(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatal(err)
 	}
-	cargs := cURLPrefixArgs(cx.epc, "POST", cURLReq{
+	cargs := cURLPrefixArgsCluster(cx.epc, "POST", cURLReq{
 		endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
 		value:    string(cdata),
 	})
