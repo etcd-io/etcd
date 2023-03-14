@@ -26,12 +26,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/stringutil"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -175,25 +171,6 @@ func validateWatchDelay(t *testing.T, watch clientv3.WatchChan) {
 	}
 }
 
-func fillEtcdWithData(ctx context.Context, c *clientv3.Client, keyCount int, valueSize uint) error {
-	g := errgroup.Group{}
-	concurrency := 10
-	keysPerRoutine := keyCount / concurrency
-	for i := 0; i < concurrency; i++ {
-		i := i
-		g.Go(func() error {
-			for j := 0; j < keysPerRoutine; j++ {
-				_, err := c.Put(ctx, fmt.Sprintf("%d", i*keysPerRoutine+j), stringutil.RandString(valueSize))
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-	}
-	return g.Wait()
-}
-
 func continuouslyExecuteGetAll(ctx context.Context, t *testing.T, g *errgroup.Group, c *clientv3.Client) {
 	mux := sync.RWMutex{}
 	size := 0
@@ -228,49 +205,4 @@ func continuouslyExecuteGetAll(ctx context.Context, t *testing.T, g *errgroup.Gr
 		}
 		return nil
 	})
-}
-
-func newClient(t *testing.T, entpoints []string, connType clientConnType, isAutoTLS bool) *clientv3.Client {
-	tlscfg, err := tlsInfo(t, connType, isAutoTLS)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ccfg := clientv3.Config{
-		Endpoints:   entpoints,
-		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
-	}
-	if tlscfg != nil {
-		tls, err := tlscfg.ClientConfig()
-		if err != nil {
-			t.Fatal(err)
-		}
-		ccfg.TLS = tls
-	}
-	c, err := clientv3.New(ccfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		c.Close()
-	})
-	return c
-}
-
-func tlsInfo(t testing.TB, connType clientConnType, isAutoTLS bool) (*transport.TLSInfo, error) {
-	switch connType {
-	case clientNonTLS, clientTLSAndNonTLS:
-		return nil, nil
-	case clientTLS:
-		if isAutoTLS {
-			tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
-			if err != nil {
-				return nil, fmt.Errorf("failed to generate cert: %s", err)
-			}
-			return &tls, nil
-		}
-		panic("Unsupported non-auto tls")
-	default:
-		return nil, fmt.Errorf("config %v not supported", connType)
-	}
 }

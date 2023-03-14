@@ -31,16 +31,8 @@ import (
 
 const etcdProcessBasePort = 20000
 
-type clientConnType int
-
 var (
 	fixturesDir = integration.MustAbsPath("../fixtures")
-)
-
-const (
-	clientNonTLS clientConnType = iota
-	clientTLS
-	clientTLSAndNonTLS
 )
 
 func newConfigNoTLS() *etcdProcessClusterConfig {
