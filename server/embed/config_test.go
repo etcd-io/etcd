@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -24,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -419,6 +421,83 @@ func TestLogRotation(t *testing.T) {
 			if err == nil {
 				cfg.GetLogger().Info("test log")
 			}
+		})
+	}
+}
+
+func TestTLSVersionMinMax(t *testing.T) {
+	tests := []struct {
+		name                  string
+		givenTLSMinVersion    string
+		givenTLSMaxVersion    string
+		givenCipherSuites     []string
+		expectError           bool
+		expectedMinTLSVersion uint16
+		expectedMaxTLSVersion uint16
+	}{
+		{
+			name:                  "Minimum TLS version is set",
+			givenTLSMinVersion:    "TLS1.3",
+			expectedMinTLSVersion: tls.VersionTLS13,
+			expectedMaxTLSVersion: 0,
+		},
+		{
+			name:                  "Maximum TLS version is set",
+			givenTLSMaxVersion:    "TLS1.2",
+			expectedMinTLSVersion: 0,
+			expectedMaxTLSVersion: tls.VersionTLS12,
+		},
+		{
+			name:                  "Minimum and Maximum TLS versions are set",
+			givenTLSMinVersion:    "TLS1.3",
+			givenTLSMaxVersion:    "TLS1.3",
+			expectedMinTLSVersion: tls.VersionTLS13,
+			expectedMaxTLSVersion: tls.VersionTLS13,
+		},
+		{
+			name:               "Minimum and Maximum TLS versions are set in reverse order",
+			givenTLSMinVersion: "TLS1.3",
+			givenTLSMaxVersion: "TLS1.2",
+			expectError:        true,
+		},
+		{
+			name:               "Invalid minimum TLS version",
+			givenTLSMinVersion: "invalid version",
+			expectError:        true,
+		},
+		{
+			name:               "Invalid maximum TLS version",
+			givenTLSMaxVersion: "invalid version",
+			expectError:        true,
+		},
+		{
+			name:               "Cipher suites configured for TLS 1.3",
+			givenTLSMinVersion: "TLS1.3",
+			givenCipherSuites:  []string{"TLS_AES_128_GCM_SHA256"},
+			expectError:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := NewConfig()
+			cfg.TlsMinVersion = tt.givenTLSMinVersion
+			cfg.TlsMaxVersion = tt.givenTLSMaxVersion
+			cfg.CipherSuites = tt.givenCipherSuites
+
+			err := cfg.Validate()
+			if err != nil {
+				assert.True(t, tt.expectError, "Validate() returned error while expecting success: %v", err)
+				return
+			}
+
+			updateMinMaxVersions(&cfg.PeerTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+			updateMinMaxVersions(&cfg.ClientTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+
+			assert.Equal(t, tt.expectedMinTLSVersion, cfg.PeerTLSInfo.MinVersion)
+			assert.Equal(t, tt.expectedMaxTLSVersion, cfg.PeerTLSInfo.MaxVersion)
+			assert.Equal(t, tt.expectedMinTLSVersion, cfg.ClientTLSInfo.MinVersion)
+			assert.Equal(t, tt.expectedMaxTLSVersion, cfg.ClientTLSInfo.MaxVersion)
 		})
 	}
 }
