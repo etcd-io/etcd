@@ -110,7 +110,10 @@ func TestScheduleCompaction(t *testing.T) {
 func TestCompactAllAndRestore(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer os.Remove(tmpPath)
+	defer func() {
+		b.Close()
+		os.Remove(tmpPath)
+	}()
 
 	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
@@ -142,5 +145,9 @@ func TestCompactAllAndRestore(t *testing.T) {
 	_, err = s1.Range(context.TODO(), []byte("foo"), nil, RangeOptions{})
 	if err != nil {
 		t.Errorf("unexpect range error %v", err)
+	}
+	err = s1.Close()
+	if err != nil {
+		t.Fatal(err)
 	}
 }

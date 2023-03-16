@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"math"
 	mrand "math/rand"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -324,6 +323,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		if s.currentRev != tt.wrev.main {
 			t.Errorf("#%d: rev = %+v, want %+v", i, s.currentRev, tt.wrev)
 		}
+		s.Close()
 	}
 }
 
@@ -370,6 +370,7 @@ func TestStoreRestore(t *testing.T) {
 	s := newFakeStore(lg)
 	b := s.b.(*fakeBackend)
 	fi := s.kvindex.(*fakeIndex)
+	defer s.Close()
 
 	putkey := newTestKeyBytes(lg, revision{3, 0}, false)
 	putkv := mvccpb.KeyValue{
@@ -435,6 +436,7 @@ func TestRestoreDelete(t *testing.T) {
 
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer b.Close()
 
 	keys := make(map[string]struct{})
 	for i := 0; i < 20; i++ {
@@ -480,7 +482,7 @@ func TestRestoreDelete(t *testing.T) {
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	tests := []string{"recreate", "restore"}
 	for _, test := range tests {
-		b, _ := betesting.NewDefaultTmpBackend(t)
+		b, tmpPath := betesting.NewDefaultTmpBackend(t)
 		s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
 		s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -527,9 +529,10 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
+			// FIXME(fuweid): it doesn't test restore one?
 			return
 		}
-
+		cleanup(s, b, tmpPath)
 		t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
 	}
 }
@@ -705,7 +708,7 @@ func TestTxnPut(t *testing.T) {
 func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer os.Remove(tmpPath)
+	defer cleanup(s, b, tmpPath)
 
 	// write something to read later
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -774,9 +777,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 	)
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer b.Close()
-	defer s.Close()
-	defer os.Remove(tmpPath)
+	defer cleanup(s, b, tmpPath)
 
 	var wg sync.WaitGroup
 	wg.Add(numOfWrites)
