@@ -63,7 +63,7 @@ func metricsTest(cx ctlCtx) {
 		if err := ctlV3Watch(cx, []string{"k", "--rev", "1"}, []kvExec{{key: "k", val: "v"}}...); err != nil {
 			cx.t.Fatal(err)
 		}
-		if err := e2e.CURLGet(cx.epc, e2e.CURLReq{Endpoint: test.endpoint, Expected: test.expected, MetricsURLScheme: cx.cfg.MetricsURLScheme}); err != nil {
+		if err := e2e.CURLGet(cx.epc, e2e.CURLReq{Endpoint: test.endpoint, Expected: test.expected}); err != nil {
 			cx.t.Fatalf("failed get with curl (%v)", err)
 		}
 	}

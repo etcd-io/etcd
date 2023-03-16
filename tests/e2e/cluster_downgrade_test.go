@@ -232,7 +232,7 @@ func compareMemberVersion(expect version.Versions, target version.Versions) erro
 }
 
 func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) (version.Versions, error) {
-	args := e2e.CURLPrefixArgs(cfg, member, "GET", e2e.CURLReq{Endpoint: "/version"})
+	args := e2e.CURLPrefixArgsCluster(cfg, member, "GET", e2e.CURLReq{Endpoint: "/version"})
 	lines, err := e2e.RunUtilCompletion(args, nil)
 	if err != nil {
 		return version.Versions{}, err
