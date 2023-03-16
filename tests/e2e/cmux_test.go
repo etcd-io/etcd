@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	clientv2 "go.etcd.io/etcd/client"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/pkg/testutil"
 )
@@ -51,7 +52,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			cfg := etcdProcessClusterConfig{clusterSize: 1, clientTLS: tc.serverTLS}
+			cfg := etcdProcessClusterConfig{clusterSize: 1, clientTLS: tc.serverTLS, enableV2: true}
 			clus, err := newEtcdProcessCluster(&cfg)
 			require.NoError(t, err)
 			defer clus.Close()
@@ -89,8 +90,22 @@ func testConnectionMultiplexing(ctx context.Context, t *testing.T, endpoint stri
 		panic(fmt.Sprintf("Unsupported conn type %v", connType))
 	}
 	t.Run("etcdctl", func(t *testing.T) {
-		etcdctl := NewEtcdctl([]string{endpoint}, connType, false)
-		_, err := etcdctl.Get("a")
+		t.Run("v2", func(t *testing.T) {
+			etcdctl := NewEtcdctl([]string{endpoint}, connType, false, true)
+			err := etcdctl.Set("a", "1")
+			assert.NoError(t, err)
+		})
+		t.Run("v3", func(t *testing.T) {
+			etcdctl := NewEtcdctl([]string{endpoint}, connType, false, false)
+			err := etcdctl.Put("a", "1")
+			assert.NoError(t, err)
+		})
+	})
+	t.Run("clientv2", func(t *testing.T) {
+		c, err := newClientV2(t, []string{endpoint}, connType, false)
+		require.NoError(t, err)
+		kv := clientv2.NewKeysAPI(c)
+		_, err = kv.Set(ctx, "a", "1", nil)
 		assert.NoError(t, err)
 	})
 	t.Run("clientv3", func(t *testing.T) {
