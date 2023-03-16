@@ -137,6 +137,11 @@ func (ep *ExpectProcess) Signal(sig os.Signal) error {
 	return ep.cmd.Process.Signal(sig)
 }
 
+// Wait waits for the process to finish.
+func (ep *ExpectProcess) Wait() {
+	ep.wg.Wait()
+}
+
 // Close waits for the expect process to exit.
 func (ep *ExpectProcess) Close() error { return ep.close(false) }
 
