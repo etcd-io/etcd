@@ -37,6 +37,15 @@ const (
 	clientTLSAndNonTLS
 )
 
+var (
+	testTLSInfo = transport.TLSInfo{
+		KeyFile:        "../../integration/fixtures/server.key.insecure",
+		CertFile:       "../../integration/fixtures/server.crt",
+		TrustedCAFile:  "../../integration/fixtures/ca.crt",
+		ClientCertAuth: true,
+	}
+)
+
 func newClient(t *testing.T, entpoints []string, connType clientConnType, isAutoTLS bool) *clientv3.Client {
 	tlscfg, err := tlsInfo(t, connType, isAutoTLS)
 	if err != nil {
@@ -76,7 +85,7 @@ func tlsInfo(t testing.TB, connType clientConnType, isAutoTLS bool) (*transport.
 			}
 			return &tls, nil
 		}
-		panic("Unsupported non-auto tls")
+		return &testTLSInfo, nil
 	default:
 		return nil, fmt.Errorf("config %v not supported", connType)
 	}

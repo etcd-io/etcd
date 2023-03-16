@@ -88,6 +88,16 @@ func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
 
 func (ctl *EtcdctlV3) flags() map[string]string {
 	fmap := make(map[string]string)
+	if ctl.connType == clientTLS {
+		if ctl.isAutoTLS {
+			fmap["insecure-transport"] = "false"
+			fmap["insecure-skip-tls-verify"] = "true"
+		} else {
+			fmap["cacert"] = testTLSInfo.TrustedCAFile
+			fmap["cert"] = testTLSInfo.CertFile
+			fmap["key"] = testTLSInfo.KeyFile
+		}
+	}
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
 	return fmap
 }
