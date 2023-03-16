@@ -10,9 +10,12 @@ set -o pipefail
 source ./scripts/test_lib.sh
 source ./scripts/build_lib.sh
 
+# Test version
+cmdArray=("etcd --version" "etcdctl version" "etcdutl version")
+
 function startContainer {
     # run docker in the background
-    docker run -d --rm --name "${RUN_NAME}" "${TAG}" &
+    docker run -d --rm --name "${RUN_NAME}" "${IMAGE}" &
 
     # wait for etcd daemon to bootstrap
     sleep 5
@@ -20,7 +23,6 @@ function startContainer {
 
 function stopContainer {
     docker stop "${RUN_NAME}"
-    docker image rm "${TAG}"
 }
 
 # Can't proceed without docker
@@ -40,25 +42,32 @@ ARCH=$(go env GOARCH)
 DOCKERFILE="Dockerfile-release.${ARCH}"
 BINARYDIR=${BINARYDIR:-"bin"}
 # Pick defaults based on release workflow
-IMAGE=${IMAGE:-"gcr.io/etcd-development/etcd"}
-VERSION=${VERSION:-"3.6.99"}
-TAG="${IMAGE}:${VERSION}"
+REPOSITARY=${REPOSITARY:-"gcr.io/etcd-development/etcd"}
+if [ -n "$VERSION" ]; then
+    # Expected Format: v3.6.99-amd64
+    TAG=v"${VERSION}"-"${ARCH}"
+else
+    echo "Terminating test, VERSION not supplied"
+    exit 1
+fi
+IMAGE=${IMAGE:-"${REPOSITARY}:${TAG}"}
 
 # ETCD related values
 RUN_NAME="test_etcd"
 KEY="foo"
 VALUE="bar"
 
-# Build if binaries are not present
-if [ -z "$BINARYDIR" ]; then
-    run ./scripts/build.sh
-fi
-
 # Build only if image is not present
-if [[ "$(docker images -q "${TAG}" 2> /dev/null)" == "" ]]; then
+if [[ "$(docker images -q "${IMAGE}" 2> /dev/null)" == "" ]]; then
     echo "${TAG} not present locally, building it..."
+
+    # Build if binaries are not present
+    if [ -z "$BINARYDIR" ]; then
+        run ./scripts/build.sh
+    fi
+
     # Build a local image from bin directory
-    if ! docker build -t "${TAG}" -f "${DOCKERFILE}" "${BINARYDIR}"; then
+    if ! docker build -t "${IMAGE}" -f "${DOCKERFILE}" "${BINARYDIR}"; then
         echo "Docker build unsuccessful. Exit code $?"
         exit 1
     fi
@@ -66,7 +75,19 @@ fi
 
 startContainer
 
-# Do the checks
+#verion check
+for i in "${!cmdArray[@]}"; do
+    Run=("./"${cmdArray[$i]})
+    Out=$("${Run[@]}")
+    foundVersion=$(echo "$Out" | head -1 | cut -f3 -d" ")
+    if [[ "${foundVersion}" != "${VERSION}" ]]; then
+        echo "error: Invalid Version. Got $foundVersion, expected $VERSION"
+        stopContainer
+        exit 1
+    fi
+done
+
+# Put/Get check
 PUT=$(docker exec "${RUN_NAME}" /usr/local/bin/etcdctl put "${KEY}" "${VALUE}")
 if [ "${PUT}" != "OK" ]; then
     echo "Problem with Putting in etcd"

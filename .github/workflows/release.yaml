@@ -26,4 +26,4 @@ jobs:
         DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.6.99
     - name: test-image
       run: |
-        make test-images
+        VERSION=3.6.99 ./scripts/test_images.sh
