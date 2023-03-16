@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	triggerTimeout = 5 * time.Second
+	triggerTimeout = 10 * time.Second
 )
 
 var (
@@ -53,7 +53,8 @@ var (
 	CompactBeforeCommitBatchPanic            Failpoint = goPanicFailpoint{"compactBeforeCommitBatch", triggerCompact, AnyMember}
 	CompactAfterCommitBatchPanic             Failpoint = goPanicFailpoint{"compactAfterCommitBatch", triggerCompact, AnyMember}
 	RaftBeforeLeaderSendPanic                Failpoint = goPanicFailpoint{"raftBeforeLeaderSend", nil, Leader}
-	BlackholePeerNetwork                     Failpoint = blackholePeerNetworkFailpoint{}
+	BlackholePeerNetwork                     Failpoint = blackholePeerNetworkFailpoint{waitTillSnapshot: false}
+	BlackholeUntilSnapshot                   Failpoint = blackholePeerNetworkFailpoint{waitTillSnapshot: true}
 	DelayPeerNetwork                         Failpoint = delayPeerNetworkFailpoint{duration: time.Second, baseLatency: 75 * time.Millisecond, randomizedLatency: 50 * time.Millisecond}
 	oneNodeClusterFailpoints                           = []Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic,
@@ -78,6 +79,7 @@ var (
 	RaftAfterSaveSnapPanic          Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackholeUntilSnapshot, Follower}
 	RandomSnapshotFailpoint         Failpoint = randomFailpoint{[]Failpoint{
 		RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic, RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic,
+		BlackholeUntilSnapshot,
 	}}
 )
 
@@ -308,11 +310,13 @@ func (f randomFailpoint) Available(e2e.EtcdProcess) bool {
 	return true
 }
 
-type blackholePeerNetworkFailpoint struct{}
+type blackholePeerNetworkFailpoint struct {
+	waitTillSnapshot bool
+}
 
 func (f blackholePeerNetworkFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
-	return triggerBlackhole(t, ctx, member, clus, false)
+	return triggerBlackhole(t, ctx, member, clus, f.waitTillSnapshot)
 }
 
 func triggerBlackhole(t *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
