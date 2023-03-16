@@ -29,8 +29,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/version"
+	clientv2 "go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 )
 
@@ -55,7 +55,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			cfg := etcdProcessClusterConfig{clusterSize: 1, clientTLS: tc.serverTLS}
+			cfg := etcdProcessClusterConfig{clusterSize: 1, clientTLS: tc.serverTLS, enableV2: true}
 			clus, err := newEtcdProcessCluster(t, &cfg)
 			require.NoError(t, err)
 			defer clus.Close()
@@ -93,8 +93,22 @@ func testConnectionMultiplexing(ctx context.Context, t *testing.T, endpoint stri
 		panic(fmt.Sprintf("Unsupported conn type %v", connType))
 	}
 	t.Run("etcdctl", func(t *testing.T) {
-		etcdctl := NewEtcdctl([]string{endpoint}, connType, false)
-		_, err := etcdctl.Get("a")
+		t.Run("v2", func(t *testing.T) {
+			etcdctl := NewEtcdctl([]string{endpoint}, connType, false, true)
+			err := etcdctl.Set("a", "1")
+			assert.NoError(t, err)
+		})
+		t.Run("v3", func(t *testing.T) {
+			etcdctl := NewEtcdctl([]string{endpoint}, connType, false, false)
+			err := etcdctl.Put("a", "1")
+			assert.NoError(t, err)
+		})
+	})
+	t.Run("clientv2", func(t *testing.T) {
+		c, err := newClientV2(t, []string{endpoint}, connType, false)
+		require.NoError(t, err)
+		kv := clientv2.NewKeysAPI(c)
+		_, err = kv.Set(ctx, "a", "1", nil)
 		assert.NoError(t, err)
 	})
 	t.Run("clientv3", func(t *testing.T) {
@@ -139,11 +153,19 @@ func validateGrpcgatewayRangeReponse(respData []byte) error {
 		Revision  int64  `json:"revision,string,omitempty"`
 		RaftTerm  uint64 `json:"raft_term,string,omitempty"`
 	}
+	type keyValue struct {
+		Key            []byte `json:"key,omitempty"`
+		CreateRevision int64  `json:"create_revision,string,omitempty"`
+		ModRevision    int64  `json:"mod_revision,string,omitempty"`
+		Version        int64  `json:"version,string,omitempty"`
+		Value          []byte `json:"value,omitempty"`
+		Lease          int64  `json:"lease,omitempty"`
+	}
 	type rangeResponse struct {
-		Header *responseHeader    `json:"header,omitempty"`
-		Kvs    []*mvccpb.KeyValue `json:"kvs,omitempty"`
-		More   bool               `json:"more,omitempty"`
-		Count  int64              `json:"count,omitempty"`
+		Header *responseHeader `json:"header,omitempty"`
+		Kvs    []*keyValue     `json:"kvs,omitempty"`
+		More   bool            `json:"more,omitempty"`
+		Count  int64           `json:"count,string,omitempty"`
 	}
 	var resp rangeResponse
 	return json.Unmarshal(respData, &resp)

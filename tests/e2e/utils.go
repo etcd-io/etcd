@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	clientv2 "go.etcd.io/etcd/client/v2"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -63,6 +64,23 @@ func newClient(t *testing.T, entpoints []string, connType clientConnType, isAuto
 		c.Close()
 	})
 	return c
+}
+
+func newClientV2(t *testing.T, endpoints []string, connType clientConnType, isAutoTLS bool) (clientv2.Client, error) {
+	tls, err := tlsInfo(t, connType, isAutoTLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := clientv2.Config{
+		Endpoints: endpoints,
+	}
+	if tls != nil {
+		cfg.Transport, err = transport.NewTransport(*tls, 5*time.Second)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	return clientv2.New(cfg)
 }
 
 func tlsInfo(t testing.TB, connType clientConnType, isAutoTLS bool) (*transport.TLSInfo, error) {
