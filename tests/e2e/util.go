@@ -78,6 +78,21 @@ func spawnWithExpectLines(args []string, envVars map[string]string, xs ...string
 	return lines, perr
 }
 
+func runUtilCompletion(args []string, envVars map[string]string) ([]string, error) {
+	proc, err := spawnCmd(args, envVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to spawn command %v with error: %w", args, err)
+	}
+
+	proc.Wait()
+	err = proc.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close command %v with error: %w", args, err)
+	}
+
+	return proc.Lines(), nil
+}
+
 func randomLeaseID() int64 {
 	return rand.New(rand.NewSource(time.Now().UnixNano())).Int63()
 }
