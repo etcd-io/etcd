@@ -10,6 +10,19 @@ set -o pipefail
 source ./scripts/test_lib.sh
 source ./scripts/build_lib.sh
 
+function startContainer {
+    # run docker in the background
+    docker run -d --rm --name "${RUN_NAME}" "${TAG}" &
+
+    # wait for etcd daemon to bootstrap
+    sleep 5
+}
+
+function stopContainer {
+    docker stop "${RUN_NAME}"
+    docker image rm "${TAG}"
+}
+
 # Can't proceed without docker
 if ! command -v docker >/dev/null; then
     log_error "cannot find docker"
@@ -26,8 +39,9 @@ fi
 ARCH=$(go env GOARCH)
 DOCKERFILE="Dockerfile-release.${ARCH}"
 BINARYDIR=${BINARYDIR:-"bin"}
-IMAGE=${IMAGE:-"test-etcd-image-deadbeaf1"}
-VERSION=${VERSION:-"default"}
+# Pick defaults based on release workflow
+IMAGE=${IMAGE:-"gcr.io/etcd-development/etcd"}
+VERSION=${VERSION:-"3.6.99"}
 TAG="${IMAGE}:${VERSION}"
 
 # ETCD related values
@@ -40,36 +54,34 @@ if [ -z "$BINARYDIR" ]; then
     run ./scripts/build.sh
 fi
 
-# Build a local image from bin directory
-if ! docker build -t "${TAG}" -f "${DOCKERFILE}" "${BINARYDIR}"; then
-    echo "Docker build unsuccessful. Exit code $?"
-    exit 1
+# Build only if image is not present
+if [[ "$(docker images -q "${TAG}" 2> /dev/null)" == "" ]]; then
+    echo "${TAG} not present locally, building it..."
+    # Build a local image from bin directory
+    if ! docker build -t "${TAG}" -f "${DOCKERFILE}" "${BINARYDIR}"; then
+        echo "Docker build unsuccessful. Exit code $?"
+        exit 1
+    fi
 fi
 
-# run docker in the background
-docker run -d --rm --name "${RUN_NAME}" "${TAG}" &
-
-# wait for etcd daemon to bootstrap
-sleep 5
+startContainer
 
 # Do the checks
 PUT=$(docker exec "${RUN_NAME}" /usr/local/bin/etcdctl put "${KEY}" "${VALUE}")
 if [ "${PUT}" != "OK" ]; then
     echo "Problem with Putting in etcd"
-    docker stop "${RUN_NAME}"
+    stopContainer
     exit 1
 fi
 
 GET=$(docker exec "${RUN_NAME}" /usr/local/bin/etcdctl get "$KEY" --print-value-only)
 if [ "${GET}" != "${VALUE}" ]; then
     echo "Problem with getting foo bar in etcd. Got ${GET}"
-    docker stop "${RUN_NAME}"
+    stopContainer
     exit 1
 fi
 
-#cleanup
-docker stop "${RUN_NAME}"
-docker image rm "${TAG}"
+stopContainer
 
 echo "Succesfully tested etcd local image ${TAG}"
 
