@@ -41,7 +41,7 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 	}
-	srvTLS, cliTLS := testTLSInfo, testTLSInfo
+	srvTLS, cliTLS := TestTLSInfo, TestTLSInfo
 	if valid {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites, cipherSuites
 	} else {
@@ -112,7 +112,7 @@ func TestTLSMinMaxVersion(t *testing.T) {
 	}
 
 	// Configure server to support TLS 1.3 only.
-	srvTLS := testTLSInfo
+	srvTLS := TestTLSInfo
 	srvTLS.MinVersion = tls.VersionTLS13
 	srvTLS.MaxVersion = tls.VersionTLS13
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1, ClientTLS: &srvTLS})
@@ -120,7 +120,7 @@ func TestTLSMinMaxVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cc, err := testTLSInfo.ClientConfig()
+			cc, err := TestTLSInfo.ClientConfig()
 			assert.NoError(t, err)
 
 			cc.MinVersion = tt.minVersion

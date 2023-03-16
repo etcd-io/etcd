@@ -20,16 +20,27 @@ import (
 	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 type EtcdctlV3 struct {
+	connType  clientConnType
+	isAutoTLS bool
 	endpoints []string
 }
 
-func NewEtcdctl(endpoints []string) *EtcdctlV3 {
+func NewEtcdctl(endpoints []string, connType clientConnType, isAutoTLS bool) *EtcdctlV3 {
 	return &EtcdctlV3{
 		endpoints: endpoints,
+		connType:  connType,
+		isAutoTLS: isAutoTLS,
 	}
+}
+
+func (ctl *EtcdctlV3) Get(key string) (*clientv3.GetResponse, error) {
+	var resp clientv3.GetResponse
+	err := ctl.spawnJsonCmd(&resp, "get", key)
+	return &resp, err
 }
 
 func (ctl *EtcdctlV3) Put(key, value string) error {
@@ -78,6 +89,16 @@ func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
 
 func (ctl *EtcdctlV3) flags() map[string]string {
 	fmap := make(map[string]string)
+	if ctl.connType == clientTLS {
+		if ctl.isAutoTLS {
+			fmap["insecure-transport"] = "false"
+			fmap["insecure-skip-tls-verify"] = "true"
+		} else {
+			fmap["cacert"] = integration.TestTLSInfo.TrustedCAFile
+			fmap["cert"] = integration.TestTLSInfo.CertFile
+			fmap["key"] = integration.TestTLSInfo.KeyFile
+		}
+	}
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
 	return fmap
 }

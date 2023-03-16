@@ -112,7 +112,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		}
 	})
 
-	cc := NewEtcdctl(epc.EndpointsV3())
+	cc := NewEtcdctl(epc.EndpointsV3(), clientNonTLS, false)
 
 	for i := 0; i < 10; i++ {
 		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))
@@ -158,7 +158,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		}
 	})
 
-	cc := NewEtcdctl(epc.EndpointsV3())
+	cc := NewEtcdctl(epc.EndpointsV3(), clientNonTLS, false)
 
 	for i := 0; i < 10; i++ {
 		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))

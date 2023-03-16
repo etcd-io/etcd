@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/tests/v3/integration"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -76,7 +77,7 @@ func tlsInfo(t testing.TB, connType clientConnType, isAutoTLS bool) (*transport.
 			}
 			return &tls, nil
 		}
-		panic("Unsupported non-auto tls")
+		return &integration.TestTLSInfo, nil
 	default:
 		return nil, fmt.Errorf("config %v not supported", connType)
 	}
