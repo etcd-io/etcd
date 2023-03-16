@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/integration"
 	"go.etcd.io/etcd/pkg/stringutil"
 	"go.etcd.io/etcd/pkg/transport"
 	"go.uber.org/zap"
@@ -75,7 +76,7 @@ func tlsInfo(t testing.TB, connType clientConnType, isAutoTLS bool) (*transport.
 			}
 			return &tls, nil
 		}
-		panic("Unsupported non-auto tls")
+		return &integration.TestTLSInfo, nil
 	default:
 		return nil, fmt.Errorf("config %v not supported", connType)
 	}

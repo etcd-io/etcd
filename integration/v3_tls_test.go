@@ -43,7 +43,7 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 	}
-	srvTLS, cliTLS := testTLSInfo, testTLSInfo
+	srvTLS, cliTLS := TestTLSInfo, TestTLSInfo
 	if valid {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites, cipherSuites
 	} else {

@@ -53,7 +53,7 @@ func testCluster(t *testing.T, size int) {
 
 func TestTLSClusterOf3(t *testing.T) {
 	defer testutil.AfterTest(t)
-	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfo})
+	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &TestTLSInfo})
 	c.Launch(t)
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
@@ -102,7 +102,7 @@ func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
 	c := NewClusterByConfig(t,
 		&ClusterConfig{
 			Size:         3,
-			PeerTLS:      &testTLSInfo,
+			PeerTLS:      &TestTLSInfo,
 			DiscoveryURL: dc.URL(0) + "/v2/keys"},
 	)
 	c.Launch(t)
@@ -127,7 +127,7 @@ func testDoubleClusterSize(t *testing.T, size int) {
 
 func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	defer testutil.AfterTest(t)
-	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfo})
+	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &TestTLSInfo})
 	c.Launch(t)
 	defer c.Terminate(t)
 

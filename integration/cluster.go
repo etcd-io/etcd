@@ -80,10 +80,10 @@ var (
 	// member, ensuring restarted members can listen on the same port again.
 	localListenCount = int64(0)
 
-	testTLSInfo = transport.TLSInfo{
-		KeyFile:        "./fixtures/server.key.insecure",
-		CertFile:       "./fixtures/server.crt",
-		TrustedCAFile:  "./fixtures/ca.crt",
+	TestTLSInfo = transport.TLSInfo{
+		KeyFile:        "../fixtures/server.key.insecure",
+		CertFile:       "../fixtures/server.crt",
+		TrustedCAFile:  "../fixtures/ca.crt",
 		ClientCertAuth: true,
 	}
 

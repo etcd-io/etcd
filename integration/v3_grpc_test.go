@@ -1549,7 +1549,7 @@ func newClusterV3NoClients(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	cfg := ClusterConfig{Size: 3, ClientTLS: &testTLSInfo}
+	cfg := ClusterConfig{Size: 3, ClientTLS: &TestTLSInfo}
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 
@@ -1588,7 +1588,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 
-	clus.Members[0].ClientTLSInfo = &testTLSInfo
+	clus.Members[0].ClientTLSInfo = &TestTLSInfo
 	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()}
 	client, err := NewClientV3(clus.Members[0])
 	if client != nil || err == nil {
@@ -1602,7 +1602,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	cfg := ClusterConfig{Size: 3, ClientTLS: &testTLSInfo}
+	cfg := ClusterConfig{Size: 3, ClientTLS: &TestTLSInfo}
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 
@@ -1642,7 +1642,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 	defer os.RemoveAll(certsDirExp)
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(testTLSInfo, certsDir)
+		tlsInfo, terr := copyTLSFiles(TestTLSInfo, certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
@@ -1688,7 +1688,7 @@ func TestTLSReloadCopy(t *testing.T) {
 	defer os.RemoveAll(certsDir)
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(testTLSInfo, certsDir)
+		tlsInfo, terr := copyTLSFiles(TestTLSInfo, certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
@@ -1700,7 +1700,7 @@ func TestTLSReloadCopy(t *testing.T) {
 		}
 	}
 	revertFunc := func() {
-		if _, err = copyTLSFiles(testTLSInfo, certsDir); err != nil {
+		if _, err = copyTLSFiles(TestTLSInfo, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
