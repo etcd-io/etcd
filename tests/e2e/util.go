@@ -43,13 +43,18 @@ func spawnWithExpect(args []string, expected string) error {
 	return spawnWithExpects(args, []string{expected}...)
 }
 
-func spawnWithExpects(args []string, xs ...string) error {
-	_, err := spawnWithExpectLines(args, xs...)
+func spawnWithExpectWithEnv(args []string, env []string, expected string) error {
+	_, err := spawnWithExpectLines(args, env, expected)
 	return err
 }
 
-func spawnWithExpectLines(args []string, xs ...string) ([]string, error) {
-	proc, err := spawnCmd(args, nil)
+func spawnWithExpects(args []string, xs ...string) error {
+	_, err := spawnWithExpectLines(args, nil, xs...)
+	return err
+}
+
+func spawnWithExpectLines(args []string, env []string, xs ...string) ([]string, error) {
+	proc, err := spawnCmd(args, env)
 	if err != nil {
 		return nil, err
 	}
