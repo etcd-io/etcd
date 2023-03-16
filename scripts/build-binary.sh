@@ -74,6 +74,7 @@ function main {
       TARGET_ARCHS+=("arm64")
       TARGET_ARCHS+=("ppc64le")
       TARGET_ARCHS+=("s390x")
+      TARGET_ARCHS+=("riscv64")
     fi
 
     if [ ${GOOS} == "darwin" ]; then

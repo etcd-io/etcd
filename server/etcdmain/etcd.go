@@ -264,7 +264,7 @@ func checkSupportArch() {
 	// To add a new platform, check https://github.com/etcd-io/website/blob/main/content/en/docs/${VERSION}/op-guide/supported-platform.md.
 	// The ${VERSION} is the etcd version, e.g. v3.5, v3.6 etc.
 	switch runtime.GOARCH {
-	case "amd64", "arm64", "ppc64le", "s390x":
+	case "amd64", "arm64", "ppc64le", "s390x", "riscv64":
 		return
 	}
 	// unsupported arch only configured via environment variable

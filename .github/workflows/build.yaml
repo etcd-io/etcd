@@ -18,6 +18,7 @@ jobs:
           - linux-arm64
           - linux-ppc64le
           - linux-s390x
+          - linux-riscv64
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
@@ -48,6 +49,9 @@ jobs:
               ;;
             linux-arm64)
               GOARCH=arm64 GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              ;;
+            linux-riscv64)
+              GOARCH=riscv64 GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
               ;;
             linux-ppc64le)
               GOARCH=ppc64le GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
