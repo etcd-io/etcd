@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -49,11 +50,17 @@ func TestMemberList(t *testing.T) {
 				if expectNum != gotNum {
 					t.Fatalf("number of members not equal, expect: %d, got: %d", expectNum, gotNum)
 				}
-				for _, m := range resp.Members {
-					if len(m.ClientURLs) == 0 {
-						t.Fatalf("member is not started, memberId:%d, memberName:%s", m.ID, m.Name)
+				assert.Eventually(t, func() (done bool) {
+					for _, m := range resp.Members {
+						if len(m.ClientURLs) == 0 {
+							t.Logf("member is not started, memberId:%d, memberName:%s", m.ID, m.Name)
+							done = false
+							return done
+						}
 					}
-				}
+					done = true
+					return true
+				}, time.Second*5, time.Millisecond*100)
 			})
 		})
 	}
