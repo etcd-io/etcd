@@ -14,6 +14,8 @@ require (
 	google.golang.org/grpc v1.51.0
 )
 
+require golang.org/x/net v0.8.0
+
 require (
 	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
