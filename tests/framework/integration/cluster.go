@@ -37,6 +37,8 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/raft/v3"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
@@ -59,7 +61,6 @@ import (
 	"go.etcd.io/etcd/server/v3/verify"
 	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
-	"go.etcd.io/raft/v3"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -662,6 +663,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.ElectionTicks = ElectionTicks
 	m.InitialElectionTickAdvance = true
 	m.TickMs = uint(framecfg.TickDuration / time.Millisecond)
+	m.PreVote = true
 	m.QuotaBackendBytes = mcfg.QuotaBackendBytes
 	m.MaxTxnOps = mcfg.MaxTxnOps
 	if m.MaxTxnOps == 0 {
