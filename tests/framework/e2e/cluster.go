@@ -856,7 +856,7 @@ func (epc *EtcdProcessCluster) Stop() (err error) {
 }
 
 func (epc *EtcdProcessCluster) Client(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3(), opts...)
+	etcdctl, err := NewEtcdctl(epc.Cfg.Logger, epc.Cfg.Client, epc.EndpointsV3(), opts...)
 	if err != nil {
 		panic(err)
 	}

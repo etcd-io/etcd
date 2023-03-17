@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -98,7 +99,7 @@ func TestAuthority(t *testing.T) {
 				defer epc.Close()
 				endpoints := templateEndpoints(t, tc.clientURLPattern, epc)
 
-				client, err := e2e.NewEtcdctl(cfg.Client, endpoints)
+				client, err := e2e.NewEtcdctl(zaptest.NewLogger(t), cfg.Client, endpoints)
 				assert.NoError(t, err)
 				err = client.Put(ctx, "foo", "bar", config.PutOptions{})
 				if err != nil {

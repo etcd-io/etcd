@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -135,7 +136,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 	for i, tc := range tests {
 		prefix := cx.prefixArgs(tc.eps)
 		cmdArgs := append(prefix, "move-leader", types.ID(transferee).String())
-		err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, tc.expect)
+		_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, tc.expect)
 		if tc.expectErr {
 			require.ErrorContains(t, err, tc.expect)
 		} else {

@@ -23,7 +23,10 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
+
+	"go.etcd.io/etcd/pkg/v3/expect"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -32,13 +35,15 @@ import (
 )
 
 type EtcdctlV3 struct {
+	lg         *zap.Logger
 	cfg        ClientConfig
 	endpoints  []string
 	authConfig clientv3.AuthConfig
 }
 
-func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOption) (*EtcdctlV3, error) {
+func NewEtcdctl(lg *zap.Logger, cfg ClientConfig, endpoints []string, opts ...config.ClientOption) (*EtcdctlV3, error) {
 	ctl := &EtcdctlV3{
+		lg:        lg,
 		cfg:       cfg,
 		endpoints: endpoints,
 	}
@@ -80,7 +85,7 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 }
 
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {
-	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, "Downgrade enable success")
+	_, err := SpawnWithExpectLines(ctx, ctl.lg, "etcdctl", append(ctl.cmdArgs(), "downgrade", "enable", version), nil, "Downgrade enable success")
 	return err
 }
 
@@ -139,7 +144,7 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 		return nil, fmt.Errorf("bad sort order %v", o.Order)
 	}
 	if o.CountOnly {
-		cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+		cmd, err := ctl.spawnCmd(args...)
 		if err != nil {
 			return nil, err
 		}
@@ -152,12 +157,11 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 }
 
 func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
-	args := ctl.cmdArgs()
-	args = append(args, "put", key, value)
+	args := append(ctl.cmdArgs(), "put", key, value)
 	if opts.LeaseID != 0 {
 		args = append(args, "--lease", strconv.FormatInt(int64(opts.LeaseID), 16))
 	}
-	_, err := SpawnWithExpectLines(ctx, args, nil, "OK")
+	_, err := SpawnWithExpectLines(ctx, ctl.lg, "etcdctl", args, nil, "OK")
 	return err
 }
 
@@ -178,13 +182,12 @@ func (ctl *EtcdctlV3) Delete(ctx context.Context, key string, o config.DeleteOpt
 }
 
 func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "txn")
+	args := []string{"txn"}
 	if o.Interactive {
 		args = append(args, "--interactive")
 	}
 	args = append(args, "-w", "json", "--hex=true")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := ctl.spawnCmd(args...)
 	if err != nil {
 		return nil, err
 	}
@@ -302,39 +305,9 @@ func (ctl *EtcdctlV3) MemberRemove(ctx context.Context, id uint64) (*clientv3.Me
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
-	cmdArgs := []string{BinPath.Etcdctl}
-	for k, v := range ctl.flags() {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%s", k, v))
-	}
-	return append(cmdArgs, args...)
-}
-
-func (ctl *EtcdctlV3) flags() map[string]string {
-	fmap := make(map[string]string)
-	if ctl.cfg.ConnectionType == ClientTLS {
-		if ctl.cfg.AutoTLS {
-			fmap["insecure-transport"] = "false"
-			fmap["insecure-skip-tls-verify"] = "true"
-		} else if ctl.cfg.RevokeCerts {
-			fmap["cacert"] = CaPath
-			fmap["cert"] = RevokedCertPath
-			fmap["key"] = RevokedPrivateKeyPath
-		} else {
-			fmap["cacert"] = CaPath
-			fmap["cert"] = CertPath
-			fmap["key"] = PrivateKeyPath
-		}
-	}
-	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
-	if !ctl.authConfig.Empty() {
-		fmap["user"] = ctl.authConfig.Username + ":" + ctl.authConfig.Password
-	}
-	return fmap
-}
-
 func (ctl *EtcdctlV3) Compact(ctx context.Context, rev int64, o config.CompactOption) (*clientv3.CompactResponse, error) {
-	args := ctl.cmdArgs("compact", fmt.Sprint(rev))
+	args := ctl.cmdArgs()
+	args = append(args, "compact", fmt.Sprint(rev))
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
 	}
@@ -342,7 +315,7 @@ func (ctl *EtcdctlV3) Compact(ctx context.Context, rev int64, o config.CompactOp
 		args = append(args, "--physical")
 	}
 
-	_, err := SpawnWithExpectLines(ctx, args, nil, fmt.Sprintf("compacted revision %v", rev))
+	_, err := SpawnWithExpectLines(ctx, ctl.lg, "etcdctl", args, nil, fmt.Sprintf("compacted revision %v", rev))
 	return nil, err
 }
 
@@ -379,20 +352,18 @@ func (ctl *EtcdctlV3) HashKV(ctx context.Context, rev int64) ([]*clientv3.HashKV
 }
 
 func (ctl *EtcdctlV3) Health(ctx context.Context) error {
-	args := ctl.cmdArgs()
-	args = append(args, "endpoint", "health")
+	args := append(ctl.cmdArgs(), "endpoint", "health")
 	lines := make([]string, len(ctl.endpoints))
 	for i := range lines {
 		lines[i] = "is healthy"
 	}
-	_, err := SpawnWithExpectLines(ctx, args, nil, lines...)
+	_, err := SpawnWithExpectLines(ctx, ctl.lg, "etcdctl", args, nil, lines...)
 	return err
 }
 
 func (ctl *EtcdctlV3) Grant(ctx context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "lease", "grant", strconv.FormatInt(ttl, 10), "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
+	args := []string{"lease", "grant", strconv.FormatInt(ttl, 10), "-w", "json"}
+	cmd, err := ctl.spawnCmd(args...)
 	if err != nil {
 		return nil, err
 	}
@@ -407,12 +378,11 @@ func (ctl *EtcdctlV3) Grant(ctx context.Context, ttl int64) (*clientv3.LeaseGran
 }
 
 func (ctl *EtcdctlV3) TimeToLive(ctx context.Context, id clientv3.LeaseID, o config.LeaseOption) (*clientv3.LeaseTimeToLiveResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "lease", "timetolive", strconv.FormatInt(int64(id), 16), "-w", "json")
+	args := []string{"lease", "timetolive", strconv.FormatInt(int64(id), 16), "-w", "json"}
 	if o.WithAttachedKeys {
 		args = append(args, "--keys")
 	}
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := ctl.spawnCmd(args...)
 	if err != nil {
 		return nil, err
 	}
@@ -435,13 +405,12 @@ func (ctl *EtcdctlV3) Defragment(ctx context.Context, o config.DefragOption) err
 	for i := range lines {
 		lines[i] = "Finished defragmenting etcd member"
 	}
-	_, err := SpawnWithExpectLines(ctx, args, map[string]string{}, lines...)
+	_, err := SpawnWithExpectLines(ctx, ctl.lg, "etcdctl", args, map[string]string{}, lines...)
 	return err
 }
 
 func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse, error) {
-	args := ctl.cmdArgs("lease", "list", "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := ctl.spawnCmd("lease", "list", "-w", "json")
 	if err != nil {
 		return nil, err
 	}
@@ -456,8 +425,7 @@ func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse
 }
 
 func (ctl *EtcdctlV3) KeepAliveOnce(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
-	args := ctl.cmdArgs("lease", "keep-alive", strconv.FormatInt(int64(id), 16), "--once", "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := ctl.spawnCmd("lease", "keep-alive", strconv.FormatInt(int64(id), 16), "--once", "-w", "json")
 	if err != nil {
 		return nil, err
 	}
@@ -484,9 +452,7 @@ func (ctl *EtcdctlV3) AlarmList(ctx context.Context) (*clientv3.AlarmResponse, e
 }
 
 func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) (*clientv3.AlarmResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "alarm", "disarm", "-w", "json")
-	ep, err := SpawnCmd(args, nil)
+	ep, err := ctl.spawnCmd("alarm", "disarm", "-w", "json")
 	if err != nil {
 		return nil, err
 	}
@@ -501,8 +467,7 @@ func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) 
 }
 
 func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) error {
-	args := []string{"auth", "enable"}
-	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+	cmd, err := ctl.spawnCmd("auth", "enable")
 	if err != nil {
 		return err
 	}
@@ -513,8 +478,7 @@ func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) error {
 }
 
 func (ctl *EtcdctlV3) AuthDisable(ctx context.Context) error {
-	args := []string{"auth", "disable"}
-	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+	cmd, err := ctl.spawnCmd("auth", "disable")
 	if err != nil {
 		return err
 	}
@@ -531,8 +495,7 @@ func (ctl *EtcdctlV3) AuthStatus(ctx context.Context) (*clientv3.AuthStatusRespo
 }
 
 func (ctl *EtcdctlV3) UserAdd(ctx context.Context, name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error) {
-	args := ctl.cmdArgs()
-	args = append(args, "user", "add")
+	args := []string{"user", "add"}
 	if password == "" {
 		args = append(args, name)
 	} else {
@@ -545,7 +508,7 @@ func (ctl *EtcdctlV3) UserAdd(ctx context.Context, name, password string, opts c
 
 	args = append(args, "--interactive=false", "-w", "json")
 
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := ctl.spawnCmd(args...)
 	if err != nil {
 		return nil, err
 	}
@@ -588,9 +551,7 @@ func (ctl *EtcdctlV3) UserDelete(ctx context.Context, name string) (*clientv3.Au
 }
 
 func (ctl *EtcdctlV3) UserChangePass(ctx context.Context, user, newPass string) error {
-	args := ctl.cmdArgs()
-	args = append(args, "user", "passwd", user, "--interactive=false")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := ctl.spawnCmd("user", "passwd", user, "--interactive=false")
 	if err != nil {
 		return err
 	}
@@ -653,23 +614,8 @@ func (ctl *EtcdctlV3) RoleDelete(ctx context.Context, role string) (*clientv3.Au
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) spawnJsonCmd(ctx context.Context, output interface{}, args ...string) error {
-	args = append(args, "-w", "json")
-	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), nil)
-	if err != nil {
-		return err
-	}
-	defer cmd.Close()
-	line, err := cmd.ExpectWithContext(ctx, "header")
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal([]byte(line), output)
-}
-
 func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {
-	args := ctl.cmdArgs()
-	args = append(args, "watch", key)
+	args := []string{"watch", key}
 	if opts.RangeEnd != "" {
 		args = append(args, opts.RangeEnd)
 	}
@@ -680,7 +626,7 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 	if opts.Revision != 0 {
 		args = append(args, "--rev", fmt.Sprint(opts.Revision))
 	}
-	proc, err := SpawnCmd(args, nil)
+	proc, err := ctl.spawnCmd(args...)
 	if err != nil {
 		return nil
 	}
@@ -710,4 +656,53 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 	}()
 
 	return ch
+}
+
+func (ctl *EtcdctlV3) spawnJsonCmd(ctx context.Context, output interface{}, args ...string) error {
+	args = append(args, "-w", "json")
+	cmd, err := ctl.spawnCmd(args...)
+	if err != nil {
+		return err
+	}
+	defer cmd.Close()
+	line, err := cmd.ExpectWithContext(ctx, "header")
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal([]byte(line), output)
+}
+
+func (ctl *EtcdctlV3) spawnCmd(args ...string) (*expect.ExpectProcess, error) {
+	return SpawnCmd(ctl.lg, "etcdctl", append(ctl.cmdArgs(), args...), nil)
+}
+
+func (ctl *EtcdctlV3) cmdArgs() []string {
+	cmdArgs := []string{BinPath.Etcdctl}
+	for k, v := range ctl.flags() {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%s", k, v))
+	}
+	return cmdArgs
+}
+
+func (ctl *EtcdctlV3) flags() map[string]string {
+	fmap := make(map[string]string)
+	if ctl.cfg.ConnectionType == ClientTLS {
+		if ctl.cfg.AutoTLS {
+			fmap["insecure-transport"] = "false"
+			fmap["insecure-skip-tls-verify"] = "true"
+		} else if ctl.cfg.RevokeCerts {
+			fmap["cacert"] = CaPath
+			fmap["cert"] = RevokedCertPath
+			fmap["key"] = RevokedPrivateKeyPath
+		} else {
+			fmap["cacert"] = CaPath
+			fmap["cert"] = CertPath
+			fmap["key"] = PrivateKeyPath
+		}
+	}
+	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
+	if !ctl.authConfig.Empty() {
+		fmap["user"] = ctl.authConfig.Username + ":" + ctl.authConfig.Password
+	}
+	return fmap
 }

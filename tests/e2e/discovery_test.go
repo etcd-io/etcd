@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -72,11 +74,11 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	}
 	defer c.Close()
 
-	kubectl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(c.EndpointsV3(), ",")}
-	if err := e2e.SpawnWithExpect(append(kubectl, "put", "key", "value"), "OK"); err != nil {
+	etcdctl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(c.EndpointsV3(), ",")}
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(t), "etcdctl", append(etcdctl, "put", "key", "value"), nil, "OK"); err != nil {
 		t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpect(append(kubectl, "get", "key"), "value"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(t), "etcdctl", append(etcdctl, "get", "key"), nil, "value"); err != nil {
 		t.Fatal(err)
 	}
 }

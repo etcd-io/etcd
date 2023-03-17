@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -79,7 +81,8 @@ func ctlV3MemberList(cx ctlCtx) error {
 	for i := range lines {
 		lines[i] = "started"
 	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, lines...)
+	return err
 }
 
 func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListResponse, error) {
@@ -88,7 +91,7 @@ func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListRespons
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap)
 	if err != nil {
 		return etcdserverpb.MemberListResponse{}, err
 	}
@@ -117,7 +120,7 @@ func memberListWithHexTest(cx ctlCtx) {
 
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "--hex", "member", "list")
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap)
 	if err != nil {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}
@@ -162,7 +165,8 @@ func memberListWithHexTest(cx ctlCtx) {
 
 func ctlV3MemberRemove(cx ctlCtx, ep, memberID, clusterID string) error {
 	cmdArgs := append(cx.prefixArgs([]string{ep}), "member", "remove", memberID)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
+	return err
 }
 
 func memberAddTest(cx ctlCtx) {
@@ -186,7 +190,8 @@ func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 		cmdArgs = append(cmdArgs, "--learner")
 		asLearner = " as learner "
 	}
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf(" added%sto cluster ", asLearner))
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, fmt.Sprintf(" added%sto cluster ", asLearner))
+	return err
 }
 
 func memberUpdateTest(cx ctlCtx) {
@@ -204,5 +209,6 @@ func memberUpdateTest(cx ctlCtx) {
 
 func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "update", memberID, fmt.Sprintf("--peer-urls=%s", peerURL))
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, " updated in cluster ")
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, " updated in cluster ")
+	return err
 }

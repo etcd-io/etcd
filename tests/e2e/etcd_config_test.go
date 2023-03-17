@@ -24,6 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 
 	"golang.org/x/sync/errgroup"
 
@@ -37,7 +38,7 @@ const exampleConfigFile = "../../etcd.conf.yml.sample"
 func TestEtcdExampleConfig(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--config-file", exampleConfigFile}, nil)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(t), "etcd", []string{e2e.BinPath.Etcd, "--config-file", exampleConfigFile}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,9 +70,10 @@ func TestEtcdMultiPeer(t *testing.T) {
 		}
 	}()
 	for i := range procs {
+		name := fmt.Sprintf("e%d", i)
 		args := []string{
 			e2e.BinPath.Etcd,
-			"--name", fmt.Sprintf("e%d", i),
+			"--name", name,
 			"--listen-client-urls", "http://0.0.0.0:0",
 			"--data-dir", tmpdirs[i],
 			"--advertise-client-urls", "http://0.0.0.0:0",
@@ -79,7 +81,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 			"--initial-advertise-peer-urls", fmt.Sprintf("http://127.0.0.1:%d", e2e.EtcdProcessBasePort+i),
 			"--initial-cluster", ic,
 		}
-		p, err := e2e.SpawnCmd(args, nil)
+		p, err := e2e.SpawnCmd(zaptest.NewLogger(t), name, args, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,7 +100,7 @@ func TestEtcdUnixPeers(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
 	d := t.TempDir()
-	proc, err := e2e.SpawnCmd(
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(t), "etcd",
 		[]string{
 			e2e.BinPath.Etcd,
 			"--data-dir", d,
@@ -143,9 +145,10 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 
 	// node 0 and 1 have a cert with the correct CN, node 2 doesn't
 	for i := range procs {
+		name := fmt.Sprintf("e%d", i)
 		commonArgs := []string{
 			e2e.BinPath.Etcd,
-			"--name", fmt.Sprintf("e%d", i),
+			"--name", name,
 			"--listen-client-urls", "http://0.0.0.0:0",
 			"--data-dir", tmpdirs[i],
 			"--advertise-client-urls", "http://0.0.0.0:0",
@@ -179,7 +182,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 
 		commonArgs = append(commonArgs, args...)
 
-		p, err := e2e.SpawnCmd(commonArgs, nil)
+		p, err := e2e.SpawnCmd(zaptest.NewLogger(t), name, commonArgs, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,9 +226,10 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 
 	// node 0 and 1 have a cert with the correct certificate name, node 2 doesn't
 	for i := range procs {
+		name := fmt.Sprintf("e%d", i)
 		commonArgs := []string{
 			e2e.BinPath.Etcd,
-			"--name", fmt.Sprintf("e%d", i),
+			"--name", name,
 			"--listen-client-urls", "http://0.0.0.0:0",
 			"--data-dir", tmpdirs[i],
 			"--advertise-client-urls", "http://0.0.0.0:0",
@@ -255,7 +259,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 
 		commonArgs = append(commonArgs, args...)
 
-		p, err := e2e.SpawnCmd(commonArgs, nil)
+		p, err := e2e.SpawnCmd(zaptest.NewLogger(t), name, commonArgs, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -295,11 +299,11 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 		"--key", e2e.PrivateKeyPath3,
 		"--cacert", e2e.CaPath,
 	}
-
-	err := e2e.SpawnWithExpect(argsWithNonEmptyCN, "cert has non empty Common Name")
+	lg := zaptest.NewLogger(t)
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), lg, "grpc-proxy-CN", argsWithNonEmptyCN, nil, "cert has non empty Common Name")
 	require.ErrorContains(t, err, "cert has non empty Common Name")
 
-	p, err := e2e.SpawnCmd(argsWithEmptyCN, nil)
+	p, err := e2e.SpawnCmd(lg, "grpc-proxy-no-CN", argsWithEmptyCN, nil)
 	defer func() {
 		if p != nil {
 			p.Stop()
@@ -340,7 +344,7 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			pw, err := e2e.SpawnCmd(test.args, nil)
+			pw, err := e2e.SpawnCmd(zaptest.NewLogger(t), "grpc-proxy", test.args, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -354,7 +358,7 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 func TestBootstrapDefragFlag(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-bootstrap-defrag-threshold-megabytes", "1000"}, nil)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(t), "etcd", []string{e2e.BinPath.Etcd, "--experimental-bootstrap-defrag-threshold-megabytes", "1000"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +381,7 @@ func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-snapshot-catchup-entries", "1000"}, nil)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(t), "etcd", []string{e2e.BinPath.Etcd, "--experimental-snapshot-catchup-entries", "1000"}, nil)
 	require.NoError(t, err)
 	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"\"snapshot-catchup-entries\":1000"}))
 	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"serving client traffic"}))
@@ -411,7 +415,7 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		clientId := i
 		g.Go(func() error {
-			cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+			cc, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 			if err != nil {
 				return err
 			}
@@ -430,7 +434,7 @@ func TestEtcdTLSVersion(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
 	d := t.TempDir()
-	proc, err := e2e.SpawnCmd(
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(t), "etcd",
 		[]string{
 			e2e.BinPath.Etcd,
 			"--data-dir", d,

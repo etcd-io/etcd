@@ -118,7 +118,7 @@ func (ep *EtcdServerProcess) EndpointsV3() []string      { return ep.EndpointsV2
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.MetricsURL} }
 
 func (epc *EtcdServerProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsV3(), opts...)
+	etcdctl, err := NewEtcdctl(epc.cfg.lg, epc.Config().Client, epc.EndpointsV3(), opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -140,7 +140,7 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 		}
 	}
 	ep.cfg.lg.Info("starting server...", zap.String("name", ep.cfg.Name))
-	proc, err := SpawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.ExecPath}, ep.cfg.Args...), ep.cfg.EnvVars, ep.cfg.Name)
+	proc, err := SpawnServerProcess(*ep.cfg)
 	if err != nil {
 		return err
 	}
@@ -150,6 +150,10 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 		ep.cfg.lg.Info("started server.", zap.String("name", ep.cfg.Name), zap.Int("pid", ep.proc.Pid()))
 	}
 	return err
+}
+
+func SpawnServerProcess(cfg EtcdServerProcessConfig) (*expect.ExpectProcess, error) {
+	return SpawnCmd(cfg.lg, cfg.Name, append([]string{cfg.ExecPath}, cfg.Args...), cfg.EnvVars)
 }
 
 func (ep *EtcdServerProcess) Restart(ctx context.Context) error {

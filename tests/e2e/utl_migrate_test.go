@@ -139,7 +139,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 
 			t.Log("Write keys to ensure wal snapshot is created and all v3.5 fields are set...")
 			for i := 0; i < 10; i++ {
-				if err = e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), "OK"); err != nil {
+				if _, err = e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(t), "etcdctl", append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), nil, "OK"); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -155,7 +155,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			if tc.force {
 				args = append(args, "--force")
 			}
-			err = e2e.SpawnWithExpect(args, tc.expectLogsSubString)
+			_, err = e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(t), "etcdutl", args, nil, tc.expectLogsSubString)
 			if err != nil {
 				if tc.expectLogsSubString != "" {
 					require.ErrorContains(t, err, tc.expectLogsSubString)

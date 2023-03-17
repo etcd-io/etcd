@@ -19,6 +19,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -42,7 +44,7 @@ func TestGateway(t *testing.T) {
 		p.Close()
 	}()
 
-	err = e2e.SpawnWithExpect([]string{e2e.BinPath.Etcdctl, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
+	_, err = e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(t), "etcdctl", []string{e2e.BinPath.Etcdctl, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, nil, "OK\r\n")
 	if err != nil {
 		t.Errorf("failed to finish put request through gateway: %v", err)
 	}

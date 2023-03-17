@@ -27,6 +27,8 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -87,6 +89,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 }
 
 func testConnectionMultiplexing(t *testing.T, ctx context.Context, endpoint string, connType e2e.ClientConnType) {
+	lg := zaptest.NewLogger(t)
 	switch connType {
 	case e2e.ClientTLS:
 		endpoint = e2e.ToTLS(endpoint)
@@ -95,7 +98,7 @@ func testConnectionMultiplexing(t *testing.T, ctx context.Context, endpoint stri
 		panic(fmt.Sprintf("Unsupported conn type %v", connType))
 	}
 	t.Run("etcdctl", func(t *testing.T) {
-		etcdctl, err := e2e.NewEtcdctl(e2e.ClientConfig{ConnectionType: connType}, []string{endpoint})
+		etcdctl, err := e2e.NewEtcdctl(lg, e2e.ClientConfig{ConnectionType: connType}, []string{endpoint})
 		require.NoError(t, err)
 		_, err = etcdctl.Get(ctx, "a", config.GetOptions{})
 		assert.NoError(t, err)
@@ -112,17 +115,17 @@ func testConnectionMultiplexing(t *testing.T, ctx context.Context, endpoint stri
 				tname = "default"
 			}
 			t.Run(tname, func(t *testing.T) {
-				assert.NoError(t, fetchGrpcGateway(endpoint, httpVersion, connType))
-				assert.NoError(t, fetchMetrics(endpoint, httpVersion, connType))
-				assert.NoError(t, fetchVersion(endpoint, httpVersion, connType))
-				assert.NoError(t, fetchHealth(endpoint, httpVersion, connType))
-				assert.NoError(t, fetchDebugVars(endpoint, httpVersion, connType))
+				assert.NoError(t, fetchGrpcGateway(lg, endpoint, httpVersion, connType))
+				assert.NoError(t, fetchMetrics(lg, endpoint, httpVersion, connType))
+				assert.NoError(t, fetchVersion(lg, endpoint, httpVersion, connType))
+				assert.NoError(t, fetchHealth(lg, endpoint, httpVersion, connType))
+				assert.NoError(t, fetchDebugVars(lg, endpoint, httpVersion, connType))
 			})
 		}
 	})
 }
 
-func fetchGrpcGateway(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchGrpcGateway(lg *zap.Logger, endpoint string, httpVersion string, connType e2e.ClientConnType) error {
 	rangeData, err := json.Marshal(&pb.RangeRequest{
 		Key: []byte("a"),
 	})
@@ -130,7 +133,7 @@ func fetchGrpcGateway(endpoint string, httpVersion string, connType e2e.ClientCo
 		return err
 	}
 	req := e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Timeout: 5, HttpVersion: httpVersion}
-	respData, err := curl(endpoint, "POST", req, connType)
+	respData, err := curl(lg, endpoint, "POST", req, connType)
 	return validateGrpcgatewayRangeReponse([]byte(respData))
 }
 
@@ -152,9 +155,9 @@ func validateGrpcgatewayRangeReponse(respData []byte) error {
 	return json.Unmarshal(respData, &resp)
 }
 
-func fetchMetrics(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchMetrics(lg *zap.Logger, endpoint string, httpVersion string, connType e2e.ClientConnType) error {
 	req := e2e.CURLReq{Endpoint: "/metrics", Timeout: 5, HttpVersion: httpVersion}
-	respData, err := curl(endpoint, "GET", req, connType)
+	respData, err := curl(lg, endpoint, "GET", req, connType)
 	if err != nil {
 		return err
 	}
@@ -163,9 +166,9 @@ func fetchMetrics(endpoint string, httpVersion string, connType e2e.ClientConnTy
 	return err
 }
 
-func fetchVersion(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchVersion(lg *zap.Logger, endpoint string, httpVersion string, connType e2e.ClientConnType) error {
 	req := e2e.CURLReq{Endpoint: "/version", Timeout: 5, HttpVersion: httpVersion}
-	respData, err := curl(endpoint, "GET", req, connType)
+	respData, err := curl(lg, endpoint, "GET", req, connType)
 	if err != nil {
 		return err
 	}
@@ -173,9 +176,9 @@ func fetchVersion(endpoint string, httpVersion string, connType e2e.ClientConnTy
 	return json.Unmarshal([]byte(respData), &resp)
 }
 
-func fetchHealth(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchHealth(lg *zap.Logger, endpoint string, httpVersion string, connType e2e.ClientConnType) error {
 	req := e2e.CURLReq{Endpoint: "/health", Timeout: 5, HttpVersion: httpVersion}
-	respData, err := curl(endpoint, "GET", req, connType)
+	respData, err := curl(lg, endpoint, "GET", req, connType)
 	if err != nil {
 		return err
 	}
@@ -183,9 +186,9 @@ func fetchHealth(endpoint string, httpVersion string, connType e2e.ClientConnTyp
 	return json.Unmarshal([]byte(respData), &resp)
 }
 
-func fetchDebugVars(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchDebugVars(lg *zap.Logger, endpoint string, httpVersion string, connType e2e.ClientConnType) error {
 	req := e2e.CURLReq{Endpoint: "/debug/vars", Timeout: 5, HttpVersion: httpVersion}
-	respData, err := curl(endpoint, "GET", req, connType)
+	respData, err := curl(lg, endpoint, "GET", req, connType)
 	if err != nil {
 		return err
 	}
@@ -193,9 +196,9 @@ func fetchDebugVars(endpoint string, httpVersion string, connType e2e.ClientConn
 	return json.Unmarshal([]byte(respData), &resp)
 }
 
-func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.ClientConnType) (string, error) {
+func curl(lg *zap.Logger, endpoint string, method string, curlReq e2e.CURLReq, connType e2e.ClientConnType) (string, error) {
 	args := e2e.CURLPrefixArgs(endpoint, e2e.ClientConfig{ConnectionType: connType}, false, method, curlReq)
-	lines, err := e2e.RunUtilCompletion(args, nil)
+	lines, err := e2e.RunUntilComplete(lg, "curl", args, nil)
 	if err != nil {
 		return "", err
 	}

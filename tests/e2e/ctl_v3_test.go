@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -102,7 +103,8 @@ func clusterVersionTest(cx ctlCtx, expected string) {
 
 func ctlV3Version(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "version")
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, version.Version)
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, version.Version)
+	return err
 }
 
 // TestCtlV3DialWithHTTPScheme ensures that client handles Endpoints with HTTPS scheme.
@@ -112,7 +114,7 @@ func TestCtlV3DialWithHTTPScheme(t *testing.T) {
 
 func dialWithSchemeTest(cx ctlCtx) {
 	cmdArgs := append(cx.prefixArgs(cx.epc.EndpointsV3()), "put", "foo", "bar")
-	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "OK"); err != nil {
 		cx.t.Fatal(err)
 	}
 }

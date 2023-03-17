@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -87,7 +88,7 @@ func corruptTest(cx ctlCtx) {
 
 	cx.t.Log("restarting etcd[0]")
 	ep := cx.epc.Procs[0]
-	proc, err := e2e.SpawnCmd(append([]string{ep.Config().ExecPath}, ep.Config().Args...), cx.envMap)
+	proc, err := e2e.SpawnServerProcess(*ep.Config())
 	if err != nil {
 		cx.t.Fatal(err)
 	}
@@ -116,7 +117,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
@@ -164,7 +165,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 
 	for i := 0; i < 10; i++ {

@@ -15,8 +15,11 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"testing"
+
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -55,7 +58,8 @@ func ctlV3Role(cx ctlCtx, args []string, expStr string) error {
 	cmdArgs := append(cx.PrefixArgs(), "role")
 	cmdArgs = append(cmdArgs, args...)
 
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expStr)
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, expStr)
+	return err
 }
 
 func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) error {
@@ -69,7 +73,7 @@ func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) err
 	cmdArgs = append(cmdArgs, rolename)
 	cmdArgs = append(cmdArgs, grantingPermToArgs(perm)...)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}
@@ -95,7 +99,7 @@ func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string,
 		expStr = fmt.Sprintf("Permission of key %s is revoked from role %s", key, rolename)
 	}
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}

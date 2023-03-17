@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -63,7 +65,7 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	discoveryToken := "8A591FAB-1D72-41FA-BDF2-A27162FDA1E0"
 	configSizeKey := fmt.Sprintf("/_etcd/registry/%s/_config/size", discoveryToken)
 	configSizeValStr := strconv.Itoa(targetClusterSize)
-	if err := ctlV3Put(ctlCtx{epc: ds}, configSizeKey, configSizeValStr, ""); err != nil {
+	if err := ctlV3Put(ctlCtx{epc: ds, t: t}, configSizeKey, configSizeValStr, ""); err != nil {
 		t.Errorf("failed to configure cluster size to discovery serivce, error: %v", err)
 	}
 
@@ -76,10 +78,10 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 
 	// step 4: sanity test on the etcd cluster
 	etcdctl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(epc.EndpointsV3(), ",")}
-	if err := e2e.SpawnWithExpect(append(etcdctl, "put", "key", "value"), "OK"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(t), "etcdctl", append(etcdctl, "put", "key", "value"), nil, "OK"); err != nil {
 		t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpect(append(etcdctl, "get", "key"), "value"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(t), "etcdctl", append(etcdctl, "get", "key"), nil, "value"); err != nil {
 		t.Fatal(err)
 	}
 }

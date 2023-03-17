@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -178,7 +179,7 @@ func getFormatTest(cx ctlCtx) {
 			cmdArgs = append(cmdArgs, "--print-value-only")
 		}
 		cmdArgs = append(cmdArgs, "abc")
-		if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, tt.wstr); err != nil {
+		if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, tt.wstr); err != nil {
 			cx.t.Errorf("#%d: error (%v), wanted %v", i, err, tt.wstr)
 		}
 	}
@@ -216,28 +217,28 @@ func getKeysOnlyTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--keys-only", "key"}...)
-	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "key"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "key"); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	lines, err := e2e.SpawnWithExpectLines(ctx, cmdArgs, cx.envMap, "key")
+	lines, err := e2e.SpawnWithExpectLines(ctx, zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "key")
 	require.NoError(cx.t, err)
 	require.NotContains(cx.t, lines, "val", "got value but passed --keys-only")
 }
 
 func getCountOnlyTest(cx ctlCtx) {
 	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 0"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "\"Count\" : 0"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key", "val", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 1"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "\"Count\" : 1"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key1", "val", ""); err != nil {
@@ -247,14 +248,14 @@ func getCountOnlyTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 2"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "\"Count\" : 2"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Put(cx, "key2", "val", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key", "--prefix", "--write-out=fields"}...)
-	if err := e2e.SpawnWithExpects(cmdArgs, cx.envMap, "\"Count\" : 3"); err != nil {
+	if _, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "\"Count\" : 3"); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -262,7 +263,7 @@ func getCountOnlyTest(cx ctlCtx) {
 	defer cancel()
 
 	cmdArgs = append(cx.PrefixArgs(), []string{"get", "--count-only", "key3", "--prefix", "--write-out=fields"}...)
-	lines, err := e2e.SpawnWithExpectLines(ctx, cmdArgs, cx.envMap, "\"Count\"")
+	lines, err := e2e.SpawnWithExpectLines(ctx, zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "\"Count\"")
 	require.NoError(cx.t, err)
 	require.NotContains(cx.t, lines, "\"Count\" : 3")
 }
@@ -341,7 +342,8 @@ func ctlV3Put(cx ctlCtx, key, value, leaseID string, flags ...string) error {
 	if len(flags) != 0 {
 		cmdArgs = append(cmdArgs, flags...)
 	}
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK")
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, "OK")
+	return err
 }
 
 type kv struct {
@@ -358,7 +360,8 @@ func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
 	for _, elem := range kvs {
 		lines = append(lines, elem.key, elem.val)
 	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, lines...)
+	return err
 }
 
 // ctlV3GetWithErr runs "get" command expecting no output but error
@@ -368,11 +371,13 @@ func ctlV3GetWithErr(cx ctlCtx, args []string, errs []string) error {
 	if !cx.quorum {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, errs...)
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, errs...)
+	return err
 }
 
 func ctlV3Del(cx ctlCtx, args []string, num int) error {
 	cmdArgs := append(cx.PrefixArgs(), "del")
 	cmdArgs = append(cmdArgs, args...)
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, fmt.Sprintf("%d", num))
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, fmt.Sprintf("%d", num))
+	return err
 }

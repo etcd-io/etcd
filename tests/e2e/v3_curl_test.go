@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -247,7 +248,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		)
 
 		cmdArgs = e2e.CURLPrefixArgsCluster(cx.epc.Cfg, cx.epc.Procs[rand.Intn(cx.epc.Cfg.ClusterSize)], "POST", e2e.CURLReq{Endpoint: path.Join(p, "/auth/authenticate"), Value: string(authreq)})
-		proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+		proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "curl", cmdArgs, cx.envMap)
 		testutil.AssertNil(cx.t, err)
 		defer proc.Close()
 
@@ -289,7 +290,7 @@ func testV3CurlCampaign(cx ctlCtx) {
 		Endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
 		Value:    string(cdata),
 	})
-	lines, err := e2e.SpawnWithExpectLines(context.TODO(), cargs, cx.envMap, `"leader":{"name":"`)
+	lines, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "curl", cargs, cx.envMap, `"leader":{"name":"`)
 	if err != nil {
 		cx.t.Fatalf("failed post campaign request (%s) (%v)", cx.apiPrefix, err)
 	}

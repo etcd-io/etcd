@@ -107,18 +107,21 @@ func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, 
 func CURLPost(clus *EtcdProcessCluster, req CURLReq) error {
 	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
 	defer cancel()
-	return SpawnWithExpectsContext(ctx, CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", req), nil, req.Expected)
+	_, err := SpawnWithExpectLines(ctx, clus.Cfg.Logger, "curl", CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", req), nil, req.Expected)
+	return err
 }
 
 func CURLPut(clus *EtcdProcessCluster, req CURLReq) error {
 	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
 	defer cancel()
-	return SpawnWithExpectsContext(ctx, CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "PUT", req), nil, req.Expected)
+	_, err := SpawnWithExpectLines(ctx, clus.Cfg.Logger, "curl", CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "PUT", req), nil, req.Expected)
+	return err
 }
 
 func CURLGet(clus *EtcdProcessCluster, req CURLReq) error {
 	ctx, cancel := context.WithTimeout(context.Background(), req.timeoutDuration())
 	defer cancel()
 
-	return SpawnWithExpectsContext(ctx, CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "GET", req), nil, req.Expected)
+	_, err := SpawnWithExpectLines(ctx, clus.Cfg.Logger, "curl", CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "GET", req), nil, req.Expected)
+	return err
 }

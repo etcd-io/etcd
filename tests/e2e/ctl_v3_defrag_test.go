@@ -15,7 +15,10 @@
 package e2e
 
 import (
+	"context"
 	"testing"
+
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -39,13 +42,15 @@ func ctlV3OnlineDefrag(cx ctlCtx) error {
 	for i := range lines {
 		lines[i] = "Finished defragmenting etcd member"
 	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, lines...)
+	return err
 }
 
 func ctlV3OfflineDefrag(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgsUtl(), "defrag", "--data-dir", cx.dataDir)
 	lines := []string{"finished defragmenting directory"}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, lines...)
+	return err
 }
 
 func defragOfflineTest(cx ctlCtx) {

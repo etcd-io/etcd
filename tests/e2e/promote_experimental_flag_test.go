@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -42,7 +43,7 @@ func TestWarningApplyDuration(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	require.NoError(t, err)
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
 	assert.NoError(t, err, "error on put")
@@ -70,7 +71,7 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	require.NoError(t, err)
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
 	assert.NoError(t, err, "error on put")

@@ -63,7 +63,7 @@ func createV2store(t testing.TB, dataDirPath string) string {
 
 func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(t), "etcd", []string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
@@ -72,7 +72,7 @@ func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath str
 
 func assertVerifyCannotStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=not-yet mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(t), "etcd", []string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect(`invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
@@ -115,13 +115,13 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	snapshotCount := 10
 	epc := runEtcdAndCreateSnapshot(t, e2e.LastVersion, lastReleaseData, snapshotCount)
 	oldMemberDataDir := epc.Procs[0].Config().DataDirPath
-	cc1, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc1, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 	members1 := addAndRemoveKeysAndMembers(ctx, t, cc1, snapshotCount)
 	assert.NoError(t, epc.Close())
 	epc = runEtcdAndCreateSnapshot(t, e2e.CurrentVersion, currentReleaseData, snapshotCount)
 	newMemberDataDir := epc.Procs[0].Config().DataDirPath
-	cc2, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc2, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 	members2 := addAndRemoveKeysAndMembers(ctx, t, cc2, snapshotCount)
 	assert.NoError(t, epc.Close())
@@ -152,7 +152,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	}
 	epc := runEtcdAndCreateSnapshot(t, e2e.LastVersion, dataDir, 10)
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 
 	lastReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
@@ -169,7 +169,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
 	assert.NoError(t, err)
 
-	cc, err = e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err = e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 	currentReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 	assert.NoError(t, err)

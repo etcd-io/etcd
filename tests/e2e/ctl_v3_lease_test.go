@@ -15,10 +15,13 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"testing"
+
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -56,7 +59,7 @@ func leaseTestKeepAlive(cx ctlCtx) {
 
 func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "grant", strconv.Itoa(ttl))
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap)
 	if err != nil {
 		return "", err
 	}
@@ -80,7 +83,7 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", leaseID)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, nil)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -93,5 +96,6 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 
 func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
+	_, err := e2e.SpawnWithExpectLines(context.TODO(), zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
+	return err
 }

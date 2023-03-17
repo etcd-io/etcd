@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -48,7 +49,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 	)
 
 	// Run independent grpc-proxy instance
-	proxyProc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "grpc-proxy", "start",
+	proxyProc, err := e2e.SpawnCmd(zaptest.NewLogger(t), "grpc-proxy", []string{e2e.BinPath.Etcd, "grpc-proxy", "start",
 		"--advertise-client-url", proxyClientURL, "--listen-addr", proxyClientURL,
 		"--endpoints", node1ClientURL,
 		"--endpoints-auto-sync-interval", "1s",
@@ -58,7 +59,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 		assert.NoError(t, proxyProc.Stop())
 	}()
 
-	proxyCtl, err := e2e.NewEtcdctl(e2e.ClientConfig{}, []string{proxyClientURL})
+	proxyCtl, err := e2e.NewEtcdctl(zaptest.NewLogger(t), e2e.ClientConfig{}, []string{proxyClientURL})
 	require.NoError(t, err)
 	err = proxyCtl.Put(ctx, "k1", "v1", config.PutOptions{})
 	require.NoError(t, err)

@@ -101,7 +101,7 @@ func (p *proxyEtcdProcess) Close() error {
 }
 
 func (p *proxyEtcdProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(p.etcdProc.Config().Client, p.etcdProc.EndpointsV3(), opts...)
+	etcdctl, err := NewEtcdctl(p.etcdProc.Config().Logger, p.etcdProc.Config().Client, p.etcdProc.EndpointsV3(), opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -150,7 +150,7 @@ func (pp *proxyProc) start() error {
 	if pp.proc != nil {
 		panic("already started")
 	}
-	proc, err := SpawnCmdWithLogger(pp.lg, append([]string{pp.execPath}, pp.args...), nil, pp.name)
+	proc, err := SpawnCmd(pp.lg, pp.name, append([]string{pp.execPath}, pp.args...), nil)
 	if err != nil {
 		return err
 	}

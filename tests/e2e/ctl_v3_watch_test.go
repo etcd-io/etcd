@@ -17,6 +17,8 @@ package e2e
 import (
 	"strings"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -39,7 +41,7 @@ func setupWatchArgs(cx ctlCtx, args []string) []string {
 func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 	cmdArgs := setupWatchArgs(cx, args)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, nil)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -70,7 +72,7 @@ func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 func ctlV3WatchFailPerm(cx ctlCtx, args []string) error {
 	cmdArgs := setupWatchArgs(cx, args)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, nil)
+	proc, err := e2e.SpawnCmd(zaptest.NewLogger(cx.t), "etcdctl", cmdArgs, nil)
 	if err != nil {
 		return err
 	}

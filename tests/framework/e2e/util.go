@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
@@ -41,25 +43,8 @@ func WaitReadyExpectProc(ctx context.Context, exproc *expect.ExpectProcess, read
 	return err
 }
 
-func SpawnWithExpect(args []string, expected string) error {
-	return SpawnWithExpects(args, nil, []string{expected}...)
-}
-
-func SpawnWithExpectWithEnv(args []string, envVars map[string]string, expected string) error {
-	return SpawnWithExpects(args, envVars, []string{expected}...)
-}
-
-func SpawnWithExpects(args []string, envVars map[string]string, xs ...string) error {
-	return SpawnWithExpectsContext(context.TODO(), args, envVars, xs...)
-}
-
-func SpawnWithExpectsContext(ctx context.Context, args []string, envVars map[string]string, xs ...string) error {
-	_, err := SpawnWithExpectLines(ctx, args, envVars, xs...)
-	return err
-}
-
-func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string]string, xs ...string) ([]string, error) {
-	proc, err := SpawnCmd(args, envVars)
+func SpawnWithExpectLines(ctx context.Context, lg *zap.Logger, name string, args []string, envVars map[string]string, xs ...string) ([]string, error) {
+	proc, err := SpawnCmd(lg, name, args, envVars)
 	if err != nil {
 		return nil, err
 	}
@@ -89,8 +74,8 @@ func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string
 	return lines, nil
 }
 
-func RunUtilCompletion(args []string, envVars map[string]string) ([]string, error) {
-	proc, err := SpawnCmd(args, envVars)
+func RunUntilComplete(lg *zap.Logger, name string, args []string, envVars map[string]string) ([]string, error) {
+	proc, err := SpawnCmd(lg, name, args, envVars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to spawn command %v with error: %w", args, err)
 	}

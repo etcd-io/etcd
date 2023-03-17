@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -48,13 +49,14 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 	if !fileutil.Exist(lastReleaseBinary) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
+	lg := zaptest.NewLogger(t)
 
-	currentVersion, err := getVersionFromBinary(currentEtcdBinary)
+	currentVersion, err := getVersionFromBinary(lg, currentEtcdBinary)
 	require.NoError(t, err)
 	// wipe any pre-release suffix like -alpha.0 we see commonly in builds
 	currentVersion.PreRelease = ""
 
-	lastVersion, err := getVersionFromBinary(lastReleaseBinary)
+	lastVersion, err := getVersionFromBinary(lg, lastReleaseBinary)
 	require.NoError(t, err)
 
 	require.Equalf(t, lastVersion.Minor, currentVersion.Minor-1, "unexpected minor version difference")
@@ -155,7 +157,7 @@ func startEtcd(t *testing.T, ep e2e.EtcdProcess, execPath string) {
 }
 
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver *semver.Version) {
-	c, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	c, err := e2e.NewEtcdctl(zaptest.NewLogger(t), epc.Cfg.Client, epc.EndpointsV3())
 	assert.NoError(t, err)
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		err := c.DowngradeEnable(context.TODO(), ver.String())
@@ -233,7 +235,7 @@ func compareMemberVersion(expect version.Versions, target version.Versions) erro
 
 func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) (version.Versions, error) {
 	args := e2e.CURLPrefixArgsCluster(cfg, member, "GET", e2e.CURLReq{Endpoint: "/version"})
-	lines, err := e2e.RunUtilCompletion(args, nil)
+	lines, err := e2e.RunUntilComplete(cfg.Logger, "curl", args, nil)
 	if err != nil {
 		return version.Versions{}, err
 	}
@@ -246,8 +248,8 @@ func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdPr
 	return result, nil
 }
 
-func getVersionFromBinary(binaryPath string) (*semver.Version, error) {
-	lines, err := e2e.RunUtilCompletion([]string{binaryPath, "--version"}, nil)
+func getVersionFromBinary(lg *zap.Logger, binaryPath string) (*semver.Version, error) {
+	lines, err := e2e.RunUntilComplete(lg, "etcd", []string{binaryPath, "--version"}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not find binary version from %s, err: %w", binaryPath, err)
 	}
