@@ -64,7 +64,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
@@ -1002,16 +1001,14 @@ func (m *Member) Launch() error {
 	}
 
 	for _, ln := range m.PeerListeners {
-		cm := cmux.New(ln)
-		// don't hang on matcher after closing listener
-		cm.SetReadTimeout(time.Second)
-
-		// serve http1/http2 rafthttp/grpc
-		ll := cm.Match(cmux.Any())
+		var ll net.Listener
 		if peerTLScfg != nil {
-			if ll, err = transport.NewTLSListener(ll, m.PeerTLSInfo); err != nil {
+			ll, err = transport.NewTLSListener(ln, m.PeerTLSInfo)
+			if err != nil {
 				return err
 			}
+		} else {
+			ll = ln
 		}
 		hs := &httptest.Server{
 			Listener: ll,
@@ -1025,10 +1022,7 @@ func (m *Member) Launch() error {
 		hs.Start()
 
 		donec := make(chan struct{})
-		go func() {
-			defer close(donec)
-			cm.Serve()
-		}()
+		defer close(donec)
 		closer := func() {
 			ll.Close()
 			hs.CloseClientConnections()
