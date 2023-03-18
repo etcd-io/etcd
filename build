@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # set some environment variables
 ORG_PATH="go.etcd.io"
 REPO_PATH="${ORG_PATH}/etcd"
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
-if [[ -n "$FAILPOINTS" ]]; then
+if [[ -n "${FAILPOINTS:-}" ]]; then
 	GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
 
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
-GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/version.GitSHA=${GIT_SHA}"
+GO_LDFLAGS="${GO_LDFLAGS:-} -X ${REPO_PATH}/version.GitSHA=${GIT_SHA}"
 
 # enable/disable failpoints
 toggle_failpoints() {
@@ -30,7 +32,7 @@ etcd_setup_gopath() {
 	cd "$CDIR" || return
 	etcdGOPATH="${CDIR}/gopath"
 	# preserve old gopath to support building with unvendored tooling deps (e.g., gofail)
-	if [[ -n "$GOPATH" ]]; then
+	if [[ -n "${GOPATH:-}" ]]; then
 		GOPATH=":$GOPATH"
 	fi
 	rm -rf "${etcdGOPATH:?}/"
@@ -42,23 +44,23 @@ etcd_setup_gopath() {
 
 toggle_failpoints_default() {
 	mode="disable"
-	if [[ -n "$FAILPOINTS" ]]; then mode="enable"; fi
+	if [[ -n "${FAILPOINTS:-}" ]]; then mode="enable"; fi
 	toggle_failpoints "$mode"
 }
 
 etcd_build() {
 	out="bin"
-	if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
+	if [[ -n "${BINDIR:-}" ]]; then out="${BINDIR}"; fi
 	toggle_failpoints_default
 
 	# Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
+	CGO_ENABLED=0 go build ${GO_BUILD_FLAGS:-} \
 		-installsuffix cgo \
 		-ldflags "$GO_LDFLAGS" \
 		-o "${out}/etcd" ${REPO_PATH} || return
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS \
+	CGO_ENABLED=0 go build ${GO_BUILD_FLAGS:-} \
 		-installsuffix cgo \
 		-ldflags "$GO_LDFLAGS" \
 		-o "${out}/etcdctl" ${REPO_PATH}/etcdctl || return
@@ -66,7 +68,7 @@ etcd_build() {
 
 tools_build() {
 	out="bin"
-	if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
+	if [[ -n "${BINDIR:-}" ]]; then out="${BINDIR}"; fi
 	tools_path="tools/benchmark
 	tools/etcd-dump-db
 	tools/etcd-dump-logs
@@ -88,7 +90,7 @@ tools_build() {
 
 toggle_failpoints_default
 
-if [[ "${ETCD_SETUP_GOPATH}" == "1" ]]; then
+if [[ "${ETCD_SETUP_GOPATH:-}" == "1" ]]; then
 	etcd_setup_gopath
 fi
 
