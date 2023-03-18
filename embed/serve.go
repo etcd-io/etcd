@@ -17,7 +17,6 @@ package embed
 import (
 	"context"
 	"fmt"
-	"golang.org/x/net/http2"
 	"io/ioutil"
 	defaultLog "log"
 	"math"
@@ -44,6 +43,7 @@ import (
 	"github.com/soheilhy/cmux"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 )
@@ -102,22 +102,38 @@ func (sctx *serveCtx) serve(
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
-	var gs *grpc.Server
-	defer func() {
-		if err != nil && gs != nil {
-			gs.Stop()
-		}
-	}()
-
 	if sctx.insecure {
-		gs = v3rpc.Server(s, nil, gopts...)
+		gs := v3rpc.Server(s, nil, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
 			sctx.serviceRegister(gs)
 		}
+
+		defer func(gs *grpc.Server) {
+			if err == nil {
+				return
+			}
+
+			if sctx.lg != nil {
+				sctx.lg.Warn("stopping insecure grpc server due to error", zap.Error(err))
+			} else {
+				plog.Warningf("stopping insecure grpc server due to error: %s", err)
+			}
+
+			gs.Stop()
+
+			if sctx.lg != nil {
+				sctx.lg.Warn("stopped insecure grpc server due to error", zap.Error(err))
+			} else {
+				plog.Warningf("stopped insecure grpc server due to error: %s", err)
+			}
+		}(gs)
+
 		grpcl := m.Match(cmux.HTTP2())
-		go func() { errHandler(gs.Serve(grpcl)) }()
+		go func(gs *grpc.Server, grpcLis net.Listener) {
+			errHandler(gs.Serve(grpcLis))
+		}(gs, grpcl)
 
 		var gwmux *gw.ServeMux
 		if s.Cfg.EnableGRPCGateway {
@@ -138,7 +154,10 @@ func (sctx *serveCtx) serve(
 			return err
 		}
 		httpl := m.Match(cmux.HTTP1())
-		go func() { errHandler(srvhttp.Serve(httpl)) }()
+
+		go func(srvhttp *http.Server, httpLis net.Listener) {
+			errHandler(srvhttp.Serve(httpLis))
+		}(srvhttp, httpl)
 
 		sctx.serversC <- &servers{grpc: gs, http: srvhttp}
 		if sctx.lg != nil {
@@ -156,12 +175,33 @@ func (sctx *serveCtx) serve(
 		if tlsErr != nil {
 			return tlsErr
 		}
-		gs = v3rpc.Server(s, tlscfg, gopts...)
+		gs := v3rpc.Server(s, tlscfg, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
 			sctx.serviceRegister(gs)
 		}
+
+		defer func(gs *grpc.Server) {
+			if err == nil {
+				return
+			}
+
+			if sctx.lg != nil {
+				sctx.lg.Warn("stopping secure grpc server due to error", zap.Error(err))
+			} else {
+				plog.Warningf("stopping secure grpc server due to error: %s", err)
+			}
+
+			gs.Stop()
+
+			if sctx.lg != nil {
+				sctx.lg.Warn("stopped secure grpc server due to error", zap.Error(err))
+			} else {
+				plog.Warningf("stopped secure grpc server due to error: %s", err)
+			}
+		}(gs)
+
 		handler = grpcHandlerFunc(gs, handler)
 
 		var gwmux *gw.ServeMux
@@ -194,7 +234,10 @@ func (sctx *serveCtx) serve(
 			sctx.lg.Error("Configure https server failed", zap.Error(err))
 			return err
 		}
-		go func() { errHandler(srv.Serve(tlsl)) }()
+
+		go func(srvhttp *http.Server, tlsLis net.Listener) {
+			errHandler(srvhttp.Serve(tlsLis))
+		}(srv, tlsl)
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
 		if sctx.lg != nil {
