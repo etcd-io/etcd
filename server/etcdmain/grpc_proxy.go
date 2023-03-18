@@ -37,6 +37,7 @@ import (
 	"go.etcd.io/etcd/client/v3/leasing"
 	"go.etcd.io/etcd/client/v3/namespace"
 	"go.etcd.io/etcd/client/v3/ordering"
+	connmux "go.etcd.io/etcd/pkg/v3/connmux"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
@@ -47,11 +48,11 @@ import (
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapgrpc"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
@@ -217,7 +218,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		lg.Info("gRPC proxy server TLS", zap.String("tls-info", fmt.Sprintf("%+v", tlsInfo)))
 	}
 	m := mustListenCMux(lg, tlsInfo)
-	grpcl := m.Match(cmux.HTTP2())
+	grpcl := m.GRPCListener()
 	defer func() {
 		grpcl.Close()
 		lg.Info("stop listening gRPC proxy client requests", zap.String("address", grpcProxyListenAddr))
@@ -233,11 +234,12 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}
 	httpClient := mustNewHTTPClient(lg)
 
-	srvhttp, httpl := mustHTTPListener(lg, m, tlsInfo, client, proxyClient)
-
-	if err := http2.ConfigureServer(srvhttp, &http2.Server{
+	srvhttp, httpl := mustHTTPListener(lg, m, client, proxyClient)
+	h2s := &http2.Server{
 		MaxConcurrentStreams: maxConcurrentStreams,
-	}); err != nil {
+	}
+	srvhttp.Handler = h2c.NewHandler(srvhttp.Handler, h2s)
+	if err := http2.ConfigureServer(srvhttp, h2s); err != nil {
 		lg.Fatal("Failed to configure the http server", zap.Error(err))
 	}
 
@@ -388,7 +390,7 @@ func newTLS(ca, cert, key string, requireEmptyCN bool) *transport.TLSInfo {
 	return &transport.TLSInfo{TrustedCAFile: ca, CertFile: cert, KeyFile: key, EmptyCN: requireEmptyCN}
 }
 
-func mustListenCMux(lg *zap.Logger, tlsinfo *transport.TLSInfo) cmux.CMux {
+func mustListenCMux(lg *zap.Logger, tlsinfo *transport.TLSInfo) *connmux.ConnMux {
 	l, err := net.Listen("tcp", grpcProxyListenAddr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -399,15 +401,28 @@ func mustListenCMux(lg *zap.Logger, tlsinfo *transport.TLSInfo) cmux.CMux {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if tlsinfo != nil {
-		tlsinfo.CRLFile = grpcProxyListenCRL
-		if l, err = transport.NewTLSListener(l, tlsinfo); err != nil {
-			lg.Fatal("failed to create TLS listener", zap.Error(err))
-		}
+	cfg := connmux.Config{
+		Logger:   lg,
+		Listener: l,
 	}
 
+	if tlsinfo != nil {
+		tlsinfo.CRLFile = grpcProxyListenCRL
+		tlscfg, err := tlsinfo.ServerConfig()
+		if err != nil {
+			err := fmt.Errorf("cannot listen on TLS for %s: KeyFile and CertFile are not valid", l.Addr().String())
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		cfg.Secure = true
+		cfg.TLSConfig = tlscfg
+	} else {
+		cfg.Insecure = true
+	}
+
+	cmux := connmux.New(cfg)
 	lg.Info("listening for gRPC proxy client requests", zap.String("address", grpcProxyListenAddr))
-	return cmux.New(l)
+	return cmux
 }
 
 func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
@@ -504,7 +519,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	return server
 }
 
-func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client, proxy *clientv3.Client) (*http.Server, net.Listener) {
+func mustHTTPListener(lg *zap.Logger, m *connmux.ConnMux, c *clientv3.Client, proxy *clientv3.Client) (*http.Server, net.Listener) {
 	httpClient := mustNewHTTPClient(lg)
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
@@ -522,17 +537,7 @@ func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c
 		Handler:  httpmux,
 		ErrorLog: log.New(io.Discard, "net/http", 0),
 	}
-
-	if tlsinfo == nil {
-		return srvhttp, m.Match(cmux.HTTP1())
-	}
-
-	srvTLS, err := tlsinfo.ServerConfig()
-	if err != nil {
-		lg.Fatal("failed to set up TLS", zap.Error(err))
-	}
-	srvhttp.TLSConfig = srvTLS
-	return srvhttp, m.Match(cmux.Any())
+	return srvhttp, m.HTTPListener()
 }
 
 func mustNewHTTPClient(lg *zap.Logger) *http.Client {
