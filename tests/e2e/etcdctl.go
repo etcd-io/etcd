@@ -20,44 +20,86 @@ import (
 	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
-type EtcdctlV3 struct {
+type Etcdctl struct {
+	connType  clientConnType
+	isAutoTLS bool
 	endpoints []string
+	v2        bool
 }
 
-func NewEtcdctl(endpoints []string) *EtcdctlV3 {
-	return &EtcdctlV3{
+func NewEtcdctl(endpoints []string, connType clientConnType, isAutoTLS bool, v2 bool) *Etcdctl {
+	return &Etcdctl{
 		endpoints: endpoints,
+		connType:  connType,
+		isAutoTLS: isAutoTLS,
+		v2:        v2,
 	}
 }
 
-func (ctl *EtcdctlV3) Put(key, value string) error {
-	args := ctl.cmdArgs()
-	args = append(args, "put", key, value)
-	return spawnWithExpect(args, "OK")
+func (ctl *Etcdctl) Get(key string) (*clientv3.GetResponse, error) {
+	var resp clientv3.GetResponse
+	err := ctl.spawnJsonCmd(&resp, "get", key)
+	return &resp, err
 }
 
-func (ctl *EtcdctlV3) AlarmList() (*clientv3.AlarmResponse, error) {
+func (ctl *Etcdctl) Put(key, value string) error {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
+	args := ctl.cmdArgs()
+	args = append(args, "put", key, value)
+	return spawnWithExpectWithEnv(args, ctl.env(), "OK")
+}
+
+func (ctl *Etcdctl) Set(key, value string) error {
+	if !ctl.v2 {
+		panic("Unsupported method for v3")
+	}
+	args := ctl.cmdArgs()
+	args = append(args, "set", key, value)
+	lines, err := runUtilCompletion(args, ctl.env())
+	if err != nil {
+		return err
+	}
+	response := strings.ReplaceAll(strings.Join(lines, "\n"), "\r\n", "")
+	if response != value {
+		return fmt.Errorf("Got unexpected response %q, expected %q", response, value)
+	}
+	return nil
+}
+
+func (ctl *Etcdctl) AlarmList() (*clientv3.AlarmResponse, error) {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
 	var resp clientv3.AlarmResponse
 	err := ctl.spawnJsonCmd(&resp, "alarm", "list")
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) MemberList() (*clientv3.MemberListResponse, error) {
+func (ctl *Etcdctl) MemberList() (*clientv3.MemberListResponse, error) {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
 	var resp clientv3.MemberListResponse
 	err := ctl.spawnJsonCmd(&resp, "member", "list")
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) Compact(rev int64) (*clientv3.CompactResponse, error) {
+func (ctl *Etcdctl) Compact(rev int64) (*clientv3.CompactResponse, error) {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
 	args := ctl.cmdArgs("compact", fmt.Sprint(rev))
-	return nil, spawnWithExpect(args, fmt.Sprintf("compacted revision %v", rev))
+	return nil, spawnWithExpectWithEnv(args, ctl.env(), fmt.Sprintf("compacted revision %v", rev))
 }
 
-func (ctl *EtcdctlV3) spawnJsonCmd(output interface{}, args ...string) error {
+func (ctl *Etcdctl) spawnJsonCmd(output interface{}, args ...string) error {
 	args = append(args, "-w", "json")
-	cmd, err := spawnCmd(append(ctl.cmdArgs(), args...), nil)
+	cmd, err := spawnCmd(append(ctl.cmdArgs(), args...), ctl.env())
 	if err != nil {
 		return err
 	}
@@ -68,16 +110,44 @@ func (ctl *EtcdctlV3) spawnJsonCmd(output interface{}, args ...string) error {
 	return json.Unmarshal([]byte(line), output)
 }
 
-func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
-	cmdArgs := []string{ctlBinPath + "3"}
+func (ctl *Etcdctl) cmdArgs(args ...string) []string {
+	cmdArgs := []string{ctlBinPath}
 	for k, v := range ctl.flags() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%s", k, v))
 	}
 	return append(cmdArgs, args...)
 }
 
-func (ctl *EtcdctlV3) flags() map[string]string {
+func (ctl *Etcdctl) flags() map[string]string {
 	fmap := make(map[string]string)
+	if ctl.v2 {
+		if ctl.connType == clientTLS {
+			fmap["ca-file"] = integration.TestTLSInfo.TrustedCAFile
+			fmap["cert-file"] = integration.TestTLSInfo.CertFile
+			fmap["key-file"] = integration.TestTLSInfo.KeyFile
+		}
+	} else {
+		if ctl.connType == clientTLS {
+			if ctl.isAutoTLS {
+				fmap["insecure-transport"] = "false"
+				fmap["insecure-skip-tls-verify"] = "true"
+			} else {
+				fmap["cacert"] = integration.TestTLSInfo.TrustedCAFile
+				fmap["cert"] = integration.TestTLSInfo.CertFile
+				fmap["key"] = integration.TestTLSInfo.KeyFile
+			}
+		}
+	}
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
 	return fmap
+}
+
+func (ctl *Etcdctl) env() map[string]string {
+	env := make(map[string]string)
+	if ctl.v2 {
+		env["ETCDCTL_API"] = "2"
+	} else {
+		env["ETCDCTL_API"] = "3"
+	}
+	return env
 }

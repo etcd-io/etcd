@@ -149,6 +149,11 @@ func (ep *ExpectProcess) Signal(sig os.Signal) error {
 	return ep.cmd.Process.Signal(sig)
 }
 
+// Wait waits for the process to finish.
+func (ep *ExpectProcess) Wait() {
+	ep.wg.Wait()
+}
+
 // Close waits for the expect process to exit.
 // Close currently does not return error if process exited with !=0 status.
 // TODO: Close should expose underlying proces failure by default.

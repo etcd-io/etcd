@@ -84,7 +84,7 @@ var (
 	// member, ensuring restarted members can listen on the same port again.
 	localListenCount = int64(0)
 
-	testTLSInfo = transport.TLSInfo{
+	TestTLSInfo = transport.TLSInfo{
 		KeyFile:        MustAbsPath("../fixtures/server.key.insecure"),
 		CertFile:       MustAbsPath("../fixtures/server.crt"),
 		TrustedCAFile:  MustAbsPath("../fixtures/ca.crt"),

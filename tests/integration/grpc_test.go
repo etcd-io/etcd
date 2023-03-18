@@ -121,8 +121,8 @@ func TestAuthority(t *testing.T) {
 func setupTLS(t *testing.T, useTLS bool, cfg ClusterConfig) (ClusterConfig, *tls.Config) {
 	t.Helper()
 	if useTLS {
-		cfg.ClientTLS = &testTLSInfo
-		tlsConfig, err := testTLSInfo.ClientConfig()
+		cfg.ClientTLS = &TestTLSInfo
+		tlsConfig, err := TestTLSInfo.ClientConfig()
 		if err != nil {
 			t.Fatal(err)
 		}
