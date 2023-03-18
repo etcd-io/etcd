@@ -71,7 +71,13 @@ func TestConnectionMultiplexing(t *testing.T) {
 			cfg := e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: tc.serverTLS}, ClientHttpSeparate: tc.separateHttpPort}
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&cfg))
 			require.NoError(t, err)
-			defer clus.Close()
+
+			defer func(clus *e2e.EtcdProcessCluster) error {
+				for _, member := range clus.Procs {
+					member.Kill()
+				}
+				return clus.Stop()
+			}(clus)
 
 			var clientScenarios []e2e.ClientConnType
 			switch tc.serverTLS {
