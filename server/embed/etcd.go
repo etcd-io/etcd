@@ -44,7 +44,6 @@ import (
 	"go.etcd.io/etcd/server/v3/verify"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -567,19 +566,17 @@ func (e *Etcd) servePeers() (err error) {
 
 	for _, p := range e.Peers {
 		u := p.Listener.Addr().String()
-		m := cmux.New(p.Listener)
 		srv := &http.Server{
 			Handler:     ph,
 			ReadTimeout: 5 * time.Minute,
 			ErrorLog:    defaultLog.New(io.Discard, "", 0), // do not log user error
 		}
-		go srv.Serve(m.Match(cmux.Any()))
 		p.serve = func() error {
 			e.cfg.logger.Info(
-				"cmux::serve",
+				"start::serve",
 				zap.String("address", u),
 			)
-			return m.Serve()
+			return srv.Serve(p.Listener)
 		}
 		p.close = func(ctx context.Context) error {
 			// gracefully shutdown http.Server
@@ -594,7 +591,7 @@ func (e *Etcd) servePeers() (err error) {
 				"stopped serving peer traffic",
 				zap.String("address", u),
 			)
-			m.Close()
+			srv.Close()
 			return nil
 		}
 	}
