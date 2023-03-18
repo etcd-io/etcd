@@ -131,6 +131,9 @@ func fetchGrpcGateway(endpoint string, httpVersion string, connType e2e.ClientCo
 	}
 	req := e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Timeout: 5, HttpVersion: httpVersion}
 	respData, err := curl(endpoint, "POST", req, connType)
+	if err != nil {
+		return err
+	}
 	return validateGrpcgatewayRangeReponse([]byte(respData))
 }
 
