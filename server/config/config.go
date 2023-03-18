@@ -65,8 +65,8 @@ type ServerConfig struct {
 	BackendBatchInterval time.Duration
 	// BackendBatchLimit is the maximum operations before commit the backend transaction.
 	BackendBatchLimit int
-	// DefragLimit is the number of keys iterated before committing a transaction during defragmentation.
-	DefragLimit int
+	// DefragBatchLimit is the number of keys iterated before committing a transaction during defragmentation.
+	DefragBatchLimit int
 
 	// BackendFreelistType is the type of the backend boltdb freelist.
 	BackendFreelistType bolt.FreelistType

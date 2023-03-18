@@ -34,7 +34,7 @@ var (
 	defaultBatchLimit    = 10000
 	defaultBatchInterval = 100 * time.Millisecond
 
-	defaultDefragLimit = 10000
+	defaultDefragBatchLimit = 10000
 
 	// initialMmapSize is the initial size of the mmapped region. Setting this larger than
 	// the potential max db size can prevent writer from blocking reader.
@@ -138,8 +138,8 @@ type BackendConfig struct {
 	BatchInterval time.Duration
 	// BatchLimit is the maximum puts before flushing the BatchTx.
 	BatchLimit int
-	// DefragLimit is the number of keys iterated before committing a transaction during defragmentation.
-	DefragLimit int
+	// DefragBatchLimit is the number of keys iterated before committing a transaction during defragmentation.
+	DefragBatchLimit int
 	// BackendFreelistType is the backend boltdb's freelist type.
 	BackendFreelistType bolt.FreelistType
 	// MmapSize is the number of bytes to mmap for the backend.
@@ -159,7 +159,7 @@ func DefaultBackendConfig(lg *zap.Logger) BackendConfig {
 	return BackendConfig{
 		BatchInterval: defaultBatchInterval,
 		BatchLimit:    defaultBatchLimit,
-		DefragLimit:   defaultDefragLimit,
+		DefragBatchLimit:   defaultDefragBatchLimit,
 		MmapSize:      initialMmapSize,
 		Logger:        lg,
 	}
@@ -199,7 +199,7 @@ func newBackend(bcfg BackendConfig) *backend {
 
 		batchInterval: bcfg.BatchInterval,
 		batchLimit:    bcfg.BatchLimit,
-		defragLimit:   bcfg.DefragLimit,
+		defragLimit:   bcfg.DefragBatchLimit,
 		mlock:         bcfg.Mlock,
 
 		readTx: &readTx{

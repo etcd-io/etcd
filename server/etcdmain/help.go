@@ -258,7 +258,7 @@ Experimental feature:
   --experimental-compaction-batch-limit 1000
     ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
   --experimental-defrag-limit 10000
-    ExperimentalDefragLimit sets the number of keys iterated before committing a transaction during defragmentation.
+    ExperimentalDefragBatchLimit sets the number of keys iterated before committing a transaction during defragmentation.
   --experimental-peer-skip-client-san-verification 'false'
     Skip verification of SAN field in client certificate for peer connections.
   --experimental-watch-progress-notify-interval '10m'

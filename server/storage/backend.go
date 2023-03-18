@@ -44,10 +44,10 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 			cfg.Logger.Info("setting backend batch interval", zap.Duration("batch interval", cfg.BackendBatchInterval))
 		}
 	}
-	if cfg.DefragLimit != 0 {
-		bcfg.DefragLimit = cfg.DefragLimit
+	if cfg.DefragBatchLimit != 0 {
+		bcfg.DefragBatchLimit = cfg.DefragBatchLimit
 		if cfg.Logger != nil {
-			cfg.Logger.Info("setting backend defrag limit", zap.Int("defrag limit", cfg.DefragLimit))
+			cfg.Logger.Info("setting backend defrag limit", zap.Int("defrag limit", cfg.DefragBatchLimit))
 		}
 	}
 	bcfg.BackendFreelistType = cfg.BackendFreelistType
