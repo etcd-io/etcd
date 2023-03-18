@@ -300,6 +300,9 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 }
 
 func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
+
+	RandomThing
+
 	cases := []struct {
 		name string
 		args []string
