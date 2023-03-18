@@ -142,6 +142,9 @@ func fetchGrpcGateway(endpoint string, httpVersion string, connType clientConnTy
 	}
 	req := cURLReq{endpoint: "/v3/kv/range", value: string(rangeData), timeout: 5, httpVersion: httpVersion}
 	respData, err := curl(endpoint, "POST", req, connType)
+	if err != nil {
+		return err
+	}
 	return validateGrpcgatewayRangeReponse([]byte(respData))
 }
 
