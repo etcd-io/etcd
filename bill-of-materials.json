@@ -369,15 +369,6 @@
 		]
 	},
 	{
-		"project": "github.com/soheilhy/cmux",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/spf13/cobra",
 		"licenses": [
 			{
