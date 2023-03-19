@@ -31,9 +31,9 @@ import (
 )
 
 func TestWatch(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
@@ -50,9 +50,9 @@ func TestWatch(t *testing.T) {
 }
 
 func TestNewWatcherCancel(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
@@ -74,7 +74,7 @@ func TestNewWatcherCancel(t *testing.T) {
 
 // TestCancelUnsynced tests if running CancelFunc removes watchers from unsynced.
 func TestCancelUnsynced(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore automatically calls syncWatchers
@@ -90,7 +90,7 @@ func TestCancelUnsynced(t *testing.T) {
 		stopc:  make(chan struct{}),
 	}
 
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	// Put a key so that we can spawn watchers on that key.
 	// (testKey in this test). This increases the rev to 1,
@@ -132,7 +132,7 @@ func TestCancelUnsynced(t *testing.T) {
 // method to see if it correctly sends events to channel of unsynced watchers
 // and moves these watchers to synced.
 func TestSyncWatchers(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 
 	s := &watchableStore{
 		store:    NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}),
@@ -141,7 +141,7 @@ func TestSyncWatchers(t *testing.T) {
 		stopc:    make(chan struct{}),
 	}
 
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
@@ -216,9 +216,9 @@ func TestSyncWatchers(t *testing.T) {
 
 // TestWatchCompacted tests a watcher that watches on a compacted revision.
 func TestWatchCompacted(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
@@ -251,9 +251,9 @@ func TestWatchCompacted(t *testing.T) {
 }
 
 func TestWatchFutureRev(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
@@ -290,17 +290,17 @@ func TestWatchFutureRev(t *testing.T) {
 func TestWatchRestore(t *testing.T) {
 	test := func(delay time.Duration) func(t *testing.T) {
 		return func(t *testing.T) {
-			b, tmpPath := betesting.NewDefaultTmpBackend(t)
+			b, _ := betesting.NewDefaultTmpBackend(t)
 			s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-			defer cleanup(s, b, tmpPath)
+			defer cleanup(s, b)
 
 			testKey := []byte("foo")
 			testValue := []byte("bar")
 			rev := s.Put(testKey, testValue, lease.NoLease)
 
-			newBackend, newPath := betesting.NewDefaultTmpBackend(t)
+			newBackend, _ := betesting.NewDefaultTmpBackend(t)
 			newStore := newWatchableStore(zaptest.NewLogger(t), newBackend, &lease.FakeLessor{}, StoreConfig{})
-			defer cleanup(newStore, newBackend, newPath)
+			defer cleanup(newStore, newBackend)
 
 			w := newStore.NewWatchStream()
 			defer w.Close()
@@ -338,13 +338,13 @@ func TestWatchRestore(t *testing.T) {
 //  4. restore operation moves "synced" to "unsynced" watcher group
 //  5. choose the watcher from step 1, without panic
 func TestWatchRestoreSyncedWatcher(t *testing.T) {
-	b1, b1Path := betesting.NewDefaultTmpBackend(t)
+	b1, _ := betesting.NewDefaultTmpBackend(t)
 	s1 := newWatchableStore(zaptest.NewLogger(t), b1, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s1, b1, b1Path)
+	defer cleanup(s1, b1)
 
-	b2, b2Path := betesting.NewDefaultTmpBackend(t)
+	b2, _ := betesting.NewDefaultTmpBackend(t)
 	s2 := newWatchableStore(zaptest.NewLogger(t), b2, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s2, b2, b2Path)
+	defer cleanup(s2, b2)
 
 	testKey, testValue := []byte("foo"), []byte("bar")
 	rev := s1.Put(testKey, testValue, lease.NoLease)
@@ -391,13 +391,13 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 
 // TestWatchBatchUnsynced tests batching on unsynced watchers
 func TestWatchBatchUnsynced(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
 	oldMaxRevs := watchBatchMaxRevs
 	defer func() {
 		watchBatchMaxRevs = oldMaxRevs
-		cleanup(s, b, tmpPath)
+		cleanup(s, b)
 	}()
 	batches := 3
 	watchBatchMaxRevs = 4
@@ -526,11 +526,11 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 func TestWatchVictims(t *testing.T) {
 	oldChanBufLen, oldMaxWatchersPerSync := chanBufLen, maxWatchersPerSync
 
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer func() {
-		cleanup(s, b, tmpPath)
+		cleanup(s, b)
 		chanBufLen, maxWatchersPerSync = oldChanBufLen, oldMaxWatchersPerSync
 	}()
 
@@ -603,9 +603,9 @@ func TestWatchVictims(t *testing.T) {
 // TestStressWatchCancelClose tests closing a watch stream while
 // canceling its watches.
 func TestStressWatchCancelClose(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	testKey, testValue := []byte("foo"), []byte("bar")
 	var wg sync.WaitGroup

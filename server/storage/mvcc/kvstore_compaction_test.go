@@ -16,7 +16,6 @@ package mvcc
 
 import (
 	"context"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -68,7 +67,7 @@ func TestScheduleCompaction(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		b, tmpPath := betesting.NewDefaultTmpBackend(t)
+		b, _ := betesting.NewDefaultTmpBackend(t)
 		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 		fi := newFakeIndex()
 		fi.indexCompactRespc <- tt.keep
@@ -103,17 +102,14 @@ func TestScheduleCompaction(t *testing.T) {
 		}
 		tx.Unlock()
 
-		cleanup(s, b, tmpPath)
+		cleanup(s, b)
 	}
 }
 
 func TestCompactAllAndRestore(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer func() {
-		b.Close()
-		os.Remove(tmpPath)
-	}()
+	defer b.Close()
 
 	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)

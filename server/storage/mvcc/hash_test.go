@@ -32,9 +32,9 @@ import (
 // output which would have catastrophic consequences. Expected output is just
 // hardcoded, so please regenerate it every time you change input parameters.
 func TestHashByRevValue(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	var totalRevisions int64 = 1210
 	assert.Less(t, int64(s.cfg.CompactionBatchLimit), totalRevisions)
@@ -73,9 +73,9 @@ func TestHashByRevValue(t *testing.T) {
 }
 
 func TestHashByRevValueLastRevision(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	var totalRevisions int64 = 1210
 	assert.Less(t, int64(s.cfg.CompactionBatchLimit), totalRevisions)
@@ -133,9 +133,9 @@ func testHashByRev(t *testing.T, s *store, rev int64) KeyValueHash {
 // TestCompactionHash tests compaction hash
 // TODO: Change this to fuzz test
 func TestCompactionHash(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	testutil.TestCompactionHash(context.Background(), t, hashTestCase{s}, s.cfg.CompactionBatchLimit)
 }

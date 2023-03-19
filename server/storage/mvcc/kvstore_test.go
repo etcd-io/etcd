@@ -485,7 +485,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		test := test
 
 		t.Run(test, func(t *testing.T) {
-			b, tmpPath := betesting.NewDefaultTmpBackend(t)
+			b, _ := betesting.NewDefaultTmpBackend(t)
 			s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
 			s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -512,7 +512,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 				s0.Restore(b)
 				s = s0
 			}
-			defer cleanup(s, b, tmpPath)
+			defer cleanup(s, b)
 
 			// wait for scheduled compaction to be finished
 			time.Sleep(100 * time.Millisecond)
@@ -549,9 +549,9 @@ type hashKVResult struct {
 
 // TestHashKVWhenCompacting ensures that HashKV returns correct hash when compacting.
 func TestHashKVWhenCompacting(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	rev := 10000
 	for i := 2; i <= rev; i++ {
@@ -629,9 +629,9 @@ func TestHashKVWhenCompacting(t *testing.T) {
 // TestHashKVWithCompactedAndFutureRevisions ensures that HashKV returns a correct hash when called
 // with a past revision (lower than compacted), a future revision, and the exact compacted revision
 func TestHashKVWithCompactedAndFutureRevisions(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	rev := 10000
 	compactRev := rev / 2
@@ -662,9 +662,9 @@ func TestHashKVWithCompactedAndFutureRevisions(t *testing.T) {
 // TestHashKVZeroRevision ensures that "HashByRev(0)" computes
 // correct hash value with latest revision.
 func TestHashKVZeroRevision(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	rev := 10000
 	for i := 2; i <= rev; i++ {
@@ -695,9 +695,9 @@ func TestTxnPut(t *testing.T) {
 	keys := createBytesSlice(bytesN, sliceN)
 	vals := createBytesSlice(bytesN, sliceN)
 
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	for i := 0; i < sliceN; i++ {
 		txn := s.Write(traceutil.TODO())
@@ -711,9 +711,9 @@ func TestTxnPut(t *testing.T) {
 
 // TestConcurrentReadNotBlockingWrite ensures Read does not blocking Write after its creation
 func TestConcurrentReadNotBlockingWrite(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	// write something to read later
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -780,9 +780,9 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		committedKVs         kvs        // committedKVs records the key-value pairs written by the finished Write Txns
 		mu                   sync.Mutex // mu protects committedKVs
 	)
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	var wg sync.WaitGroup
 	wg.Add(numOfWrites)
