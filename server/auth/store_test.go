@@ -126,7 +126,10 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 
 	// The UserAdd function cannot generate old etcd version user data (user's option is nil)
 	// add special users through the underlying interface
-	addUserWithNoOption(as)
+	err = addUserWithNoOption(as)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tearDown := func(_ *testing.T) {
 		b.Close()
@@ -135,16 +138,12 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 	return as, tearDown
 }
 
-func addUserWithNoOption(as *authStore) {
-	tx := as.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	tx.UnsafePutUser(&authpb.User{
-		Name:     []byte("foo-no-user-options"),
-		Password: []byte("bar"),
-	})
-	as.commitRevision(tx)
-	as.refreshRangePermCache(tx)
+func addUserWithNoOption(as *authStore) error {
+	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo-no-user-options", Password: "bar"})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
