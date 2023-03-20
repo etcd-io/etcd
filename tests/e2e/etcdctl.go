@@ -67,7 +67,7 @@ func (ctl *EtcdctlV3) Compact(rev int64) (*clientv3.CompactResponse, error) {
 
 func (ctl *EtcdctlV3) spawnJsonCmd(output interface{}, args ...string) error {
 	args = append(args, "-w", "json")
-	cmd, err := spawnCmd(append(ctl.cmdArgs(), args...))
+	cmd, err := spawnCmd(append(ctl.cmdArgs(), args...), nil)
 	if err != nil {
 		return err
 	}

@@ -28,7 +28,7 @@ import (
 const exampleConfigFile = "../../etcd.conf.yml.sample"
 
 func TestEtcdExampleConfig(t *testing.T) {
-	proc, err := spawnCmd([]string{binDir + "/etcd", "--config-file", exampleConfigFile})
+	proc, err := spawnCmd([]string{binDir + "/etcd", "--config-file", exampleConfigFile}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 			"--initial-advertise-peer-urls", fmt.Sprintf("http://127.0.0.1:%d", etcdProcessBasePort+i),
 			"--initial-cluster", ic,
 		}
-		p, err := spawnCmd(args)
+		p, err := spawnCmd(args, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -101,8 +101,7 @@ func TestEtcdUnixPeers(t *testing.T) {
 			"--listen-peer-urls", "unix://etcd.unix:1",
 			"--initial-advertise-peer-urls", "unix://etcd.unix:1",
 			"--initial-cluster", "e1=unix://etcd.unix:1",
-		},
-	)
+		}, nil)
 	defer os.Remove("etcd.unix:1")
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +171,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 
 		commonArgs = append(commonArgs, args...)
 
-		p, err := spawnCmd(commonArgs)
+		p, err := spawnCmd(commonArgs, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -249,7 +248,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 
 		commonArgs = append(commonArgs, args...)
 
-		p, err := spawnCmd(commonArgs)
+		p, err := spawnCmd(commonArgs, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -293,7 +292,7 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 		t.Errorf("Unexpected error: %s", err)
 	}
 
-	p, err := spawnCmd(argsWithEmptyCN)
+	p, err := spawnCmd(argsWithEmptyCN, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 	}
@@ -327,7 +326,7 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			pw, err := spawnCmd(test.args)
+			pw, err := spawnCmd(test.args, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

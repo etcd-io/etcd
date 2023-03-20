@@ -244,7 +244,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		)
 
 		cmdArgs = cURLPrefixArgsCluster(cx.epc, "POST", cURLReq{endpoint: path.Join(p, "/auth/authenticate"), value: string(authreq)})
-		proc, err := spawnCmd(cmdArgs)
+		proc, err := spawnCmd(cmdArgs, nil)
 		testutil.AssertNil(cx.t, err)
 
 		cURLRes, err := proc.ExpectFunc(lineFunc)

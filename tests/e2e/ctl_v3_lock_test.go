@@ -102,7 +102,7 @@ func testLock(cx ctlCtx) {
 // ctlV3Lock creates a lock process with a channel listening for when it acquires the lock.
 func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lock", name)
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	outc := make(chan string, 1)
 	if err != nil {
 		close(outc)

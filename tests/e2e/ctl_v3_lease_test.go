@@ -107,7 +107,7 @@ func leaseTestGrantTimeToLive(cx ctlCtx) {
 	}
 
 	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", id, "--keys")
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		cx.t.Fatalf("leaseTestGrantTimeToLive: error (%v)", err)
 	}
@@ -140,7 +140,7 @@ func leaseTestGrantLeasesList(cx ctlCtx) error {
 	}
 
 	cmdArgs := append(cx.PrefixArgs(), "lease", "list")
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return fmt.Errorf("lease list failed (%v)", err)
 	}
@@ -241,7 +241,7 @@ func leaseTestRevoke(cx ctlCtx) error {
 
 func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "grant", strconv.Itoa(ttl))
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return "", err
 	}
@@ -265,7 +265,7 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", leaseID)
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 func ctlV3LeaseKeepAliveOnce(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", "--once", leaseID)
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}

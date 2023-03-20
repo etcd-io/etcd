@@ -32,16 +32,14 @@ import (
 
 const noOutputLineCount = 2 // cov-enabled binaries emit PASS and coverage count lines
 
-func spawnCmd(args []string) (*expect.ExpectProcess, error) {
+func spawnCmd(args []string, env []string) (*expect.ExpectProcess, error) {
 	if args[0] == binPath {
 		return spawnEtcd(args)
 	}
 	if args[0] == ctlBinPath || args[0] == ctlBinPath+"3" {
 		// avoid test flag conflicts in coverage enabled etcdctl by putting flags in ETCDCTL_ARGS
-		env := []string{
-			// was \xff, but that's used for testing boundary conditions; 0xe7cd should be safe
-			"ETCDCTL_ARGS=" + strings.Join(args, "\xe7\xcd"),
-		}
+		// was \xff, but that's used for testing boundary conditions; 0xe7cd should be safe
+		env = append(env, "ETCDCTL_ARGS="+strings.Join(args, "\xe7\xcd"))
 		if args[0] == ctlBinPath+"3" {
 			env = append(env, "ETCDCTL_API=3")
 		}
@@ -52,7 +50,7 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 		}
 		// when withFlagByEnv() is used in testCtl(), env variables for ctl is set to os.env.
 		// they must be included in ctl_cov_env.
-		env = append(env, os.Environ()...)
+		env = append(os.Environ(), env...)
 		ep, err := expect.NewExpectWithEnv(binDir+"/etcdctl_test", covArgs, env)
 		if err != nil {
 			return nil, err
@@ -61,21 +59,21 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 		return ep, nil
 	}
 
-	return expect.NewExpect(args[0], args[1:]...)
+	return expect.NewExpectWithEnv(args[0], args[1:], env)
 }
 
-func spawnEtcd(args []string) (*expect.ExpectProcess, error) {
+func spawnEtcd(args []string, env []string) (*expect.ExpectProcess, error) {
 	covArgs, err := getCovArgs()
 	if err != nil {
 		return nil, err
 	}
 
-	var env []string
 	if args[1] == "grpc-proxy" {
 		// avoid test flag conflicts in coverage enabled etcd by putting flags in ETCDCOV_ARGS
-		env = append(os.Environ(), "ETCDCOV_ARGS="+strings.Join(args, "\xe7\xcd"))
+		env = append(os.Environ(), env...)
+		env = append(env, "ETCDCOV_ARGS="+strings.Join(args, "\xe7\xcd"))
 	} else {
-		env = args2env(args[1:])
+		env = append(args2env(args[1:]), env...)
 	}
 
 	ep, err := expect.NewExpectWithEnv(binDir+"/etcd_test", covArgs, env)

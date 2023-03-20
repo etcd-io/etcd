@@ -81,7 +81,7 @@ func corruptTest(cx ctlCtx) {
 	}
 
 	ep := cx.epc.procs[0]
-	proc, err := spawnCmd(append([]string{ep.Config().execPath}, ep.Config().args...))
+	proc, err := spawnCmd(append([]string{ep.Config().execPath}, ep.Config().args...), nil)
 	if err != nil {
 		cx.t.Fatal(err)
 	}

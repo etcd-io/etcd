@@ -49,7 +49,7 @@ func spawnWithExpects(args []string, xs ...string) error {
 }
 
 func spawnWithExpectLines(args []string, xs ...string) ([]string, error) {
-	proc, err := spawnCmd(args)
+	proc, err := spawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}

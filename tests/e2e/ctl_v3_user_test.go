@@ -171,7 +171,7 @@ func ctlV3User(cx ctlCtx, args []string, expStr string, stdIn []string) error {
 	cmdArgs := append(cx.PrefixArgs(), "user")
 	cmdArgs = append(cmdArgs, args...)
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}

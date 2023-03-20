@@ -25,10 +25,11 @@ import (
 
 const noOutputLineCount = 0 // regular binaries emit no extra lines
 
-func spawnCmd(args []string) (*expect.ExpectProcess, error) {
+func spawnCmd(args []string, env []string) (*expect.ExpectProcess, error) {
 	if args[0] == ctlBinPath+"3" {
-		env := append(os.Environ(), "ETCDCTL_API=3")
+		env = append(os.Environ(), env...)
+		env = append(env, "ETCDCTL_API=3")
 		return expect.NewExpectWithEnv(ctlBinPath, args[1:], env)
 	}
-	return expect.NewExpect(args[0], args[1:]...)
+	return expect.NewExpectWithEnv(args[0], args[1:], env)
 }

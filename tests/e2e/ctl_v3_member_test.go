@@ -89,7 +89,7 @@ func ctlV3MemberList(cx ctlCtx) error {
 func getMemberList(cx ctlCtx) (etcdserverpb.MemberListResponse, error) {
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "member", "list")
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return etcdserverpb.MemberListResponse{}, err
 	}

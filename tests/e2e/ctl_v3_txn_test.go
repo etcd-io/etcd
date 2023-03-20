@@ -102,7 +102,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 	if cx.interactive {
 		cmdArgs = append(cmdArgs, "--interactive")
 	}
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}

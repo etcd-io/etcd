@@ -529,7 +529,7 @@ func etcdctlBackup(clus *etcdProcessCluster, dataDir, backupDir string, v3 bool)
 	if v3 {
 		cmdArgs = append(cmdArgs, "--with-v3")
 	}
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}

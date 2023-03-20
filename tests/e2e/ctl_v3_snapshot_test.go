@@ -130,7 +130,7 @@ func ctlV3SnapshotSave(cx ctlCtx, fpath string) error {
 func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "snapshot", "status", fpath)
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return snapshot.Status{}, err
 	}
@@ -246,7 +246,7 @@ func TestIssue6361(t *testing.T) {
 	nepc, err = spawnCmd([]string{epc.procs[0].Config().execPath, "--name", name2,
 		"--listen-client-urls", clientURL, "--advertise-client-urls", clientURL,
 		"--listen-peer-urls", peerURL, "--initial-advertise-peer-urls", peerURL,
-		"--initial-cluster", initialCluster2, "--initial-cluster-state", "existing", "--data-dir", newDataDir2})
+		"--initial-cluster", initialCluster2, "--initial-cluster-state", "existing", "--data-dir", newDataDir2}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

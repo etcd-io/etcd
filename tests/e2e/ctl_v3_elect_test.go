@@ -102,7 +102,7 @@ func testElect(cx ctlCtx) {
 // ctlV3Elect creates a elect process with a channel listening for when it wins the election.
 func ctlV3Elect(cx ctlCtx, name, proposal string) (*expect.ExpectProcess, <-chan string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "elect", name, proposal)
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(cmdArgs, nil)
 	outc := make(chan string, 1)
 	if err != nil {
 		close(outc)

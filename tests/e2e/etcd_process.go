@@ -88,7 +88,7 @@ func (ep *etcdServerProcess) Start() error {
 	if ep.proc != nil {
 		panic("already started")
 	}
-	proc, err := spawnCmd(append([]string{ep.cfg.execPath}, ep.cfg.args...))
+	proc, err := spawnCmd(append([]string{ep.cfg.execPath}, ep.cfg.args...), nil)
 	if err != nil {
 		return err
 	}
