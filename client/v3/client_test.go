@@ -24,6 +24,9 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/stretchr/testify/assert"
 
 	"go.uber.org/zap"
@@ -170,6 +173,11 @@ func TestIsHaltErr(t *testing.T) {
 		isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader),
 		false,
 		fmt.Sprintf(`error "%v" should not be halt error`, rpctypes.ErrGRPCNoLeader),
+	)
+	assert.Equal(t,
+		isHaltErr(context.TODO(), rpctypes.ErrNoLeader),
+		false,
+		fmt.Sprintf(`error "%v" should not be halt error`, rpctypes.ErrNoLeader),
 	)
 	ctx, cancel := context.WithCancel(context.TODO())
 	assert.Equal(t,
@@ -372,6 +380,15 @@ func TestClientRejectOldCluster(t *testing.T) {
 
 	}
 
+}
+
+func TestToErrStatusCode(t *testing.T) {
+	err := toErr(context.TODO(), rpctypes.ErrGRPCNoLeader)
+
+	assert.Equal(t, rpctypes.ErrNoLeader, err)
+	se, ok := status.FromError(err)
+	assert.True(t, ok, "err isn't compatible")
+	assert.Equal(t, codes.Unavailable, se.Code())
 }
 
 type mockMaintenance struct {

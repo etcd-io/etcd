@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -94,4 +96,43 @@ func TestWatch(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestWatchRetryNoLeader(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 3}))
+
+	defer clus.Close()
+	cc := clus.Members()[0].Client()
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+
+		// stop 2 members to generate ErrNoLeader
+		clus.Members()[1].Stop()
+		clus.Members()[2].Stop()
+
+		wCtx, wCancel := context.WithCancel(ctx)
+		defer wCancel()
+
+		donec := make(chan struct{})
+		go func() {
+			// Watch should block indefinitely in watchGrpcStream.openWatchClient() retry loop
+			wch := rootAuthClient.Watch(wCtx, "foo", config.WatchOptions{Revision: 1})
+			// Note: "--tags integration" will behave differently compared to "--tags e2e"
+			// e2e won't block on .Watch, but on receiving value from channel
+			<-wch
+			close(donec)
+		}()
+
+		// We have to wait to check if retry logic is triggered in openWatchClient
+		// 7s was determined empirically
+		select {
+		case <-time.After(7 * time.Second):
+		case <-donec:
+			t.Fatal("Failed to retry watch")
+		}
+	})
 }

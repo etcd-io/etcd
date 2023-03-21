@@ -238,6 +238,10 @@ func (e EtcdError) Code() codes.Code {
 	return e.code
 }
 
+func (e EtcdError) GRPCStatus() *status.Status {
+	return status.New(e.code, e.desc)
+}
+
 func (e EtcdError) Error() string {
 	return e.desc
 }
