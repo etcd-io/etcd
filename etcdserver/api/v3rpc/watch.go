@@ -234,16 +234,16 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 	return err
 }
 
-func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) error {
+func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) bool {
 	authInfo, err := sws.ag.AuthInfoFromCtx(sws.gRPCStream.Context())
 	if err != nil {
-		return err
+		return false
 	}
 	if authInfo == nil {
 		// if auth is enabled, IsRangePermitted() can cause an error
 		authInfo = &auth.AuthInfo{}
 	}
-	return sws.ag.AuthStore().IsRangePermitted(authInfo, wcr.Key, wcr.RangeEnd)
+	return sws.ag.AuthStore().IsRangePermitted(authInfo, wcr.Key, wcr.RangeEnd) == nil
 }
 
 func (sws *serverWatchStream) recvLoop() error {
@@ -277,29 +277,13 @@ func (sws *serverWatchStream) recvLoop() error {
 				creq.RangeEnd = []byte{}
 			}
 
-			err := sws.isWatchPermitted(creq)
-			if err != nil {
-				var cancelReason string
-				switch err {
-				case auth.ErrInvalidAuthToken:
-					cancelReason = rpctypes.ErrGRPCInvalidAuthToken.Error()
-				case auth.ErrAuthOldRevision:
-					cancelReason = rpctypes.ErrGRPCAuthOldRevision.Error()
-				case auth.ErrUserEmpty:
-					cancelReason = rpctypes.ErrGRPCUserEmpty.Error()
-				default:
-					if err != auth.ErrPermissionDenied {
-						sws.lg.Error("unexpected error code", zap.Error(err))
-					}
-					cancelReason = rpctypes.ErrGRPCPermissionDenied.Error()
-				}
-
+			if !sws.isWatchPermitted(creq) {
 				wr := &pb.WatchResponse{
 					Header:       sws.newResponseHeader(sws.watchStream.Rev()),
 					WatchId:      clientv3.InvalidWatchID,
 					Canceled:     true,
 					Created:      true,
-					CancelReason: cancelReason,
+					CancelReason: rpctypes.ErrGRPCPermissionDenied.Error(),
 				}
 
 				select {
