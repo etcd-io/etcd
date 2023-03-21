@@ -22,6 +22,8 @@ jobs:
     - env:
         TARGET: ${{ matrix.target }}
       run: |
+        set -euo pipefail
+
         mkdir "${TARGET}"
         export JUNIT_REPORT_DIR=$(realpath ${TARGET})
         case "${TARGET}" in

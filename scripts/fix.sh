@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 # Top level problems with modules can lead to test_lib being not functional
 go mod tidy

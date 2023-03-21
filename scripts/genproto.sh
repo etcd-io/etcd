@@ -3,7 +3,8 @@
 # Generate all etcd protobuf bindings.
 # Run from repository root directory named etcd.
 #
-set -e
+set -euo pipefail
+
 shopt -s globstar
 
 if ! [[ "$0" =~ scripts/genproto.sh ]]; then
@@ -98,7 +99,7 @@ log_callout -e "\\nRunning swagger ..."
 run_go_tool github.com/hexfusion/schwag -input=Documentation/dev-guide/apispec/swagger/rpc.swagger.json
 
 
-if [ "$1" != "--skip-protodoc" ]; then
+if [ "${1:-}" != "--skip-protodoc" ]; then
   log_callout "protodoc is auto-generating grpc API reference documentation..."
 
   # API reference

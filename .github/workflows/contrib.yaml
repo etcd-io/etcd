@@ -9,4 +9,7 @@ jobs:
     - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
       with:
         go-version: "1.19.7"
-    - run: make -C contrib/mixin tools test
+    - run: |
+        set -euo pipefail
+
+        make -C contrib/mixin tools test

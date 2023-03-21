@@ -1,9 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
-set -o pipefail
+set -euo pipefail
 
-if [[ -z ${GITHUB_TOKEN} ]]
+if [[ -z ${GITHUB_TOKEN:-} ]]
 then
     echo "Please set the \$GITHUB_TOKEN environment variable for the script to work"
     exit 1

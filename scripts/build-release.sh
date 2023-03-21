@@ -3,11 +3,11 @@
 # Build all release binaries and images to directory ./release.
 # Run from repository root.
 #
-set -e
+set -euo pipefail
 
 source ./scripts/test_lib.sh
 
-VERSION=$1
+VERSION=${1:-}
 if [ -z "${VERSION}" ]; then
   echo "Usage: ${0} VERSION" >> /dev/stderr
   exit 255

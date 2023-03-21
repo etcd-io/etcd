@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-ARCH=$1
+ARCH=${1:-}
 
-if [ -z "$1" ]; then
+if [ -z "$ARCH" ]; then
     echo "Usage: ${0} [amd64 or darwin], defaulting to 'amd64'" >> /dev/stderr
     ARCH=amd64
 fi

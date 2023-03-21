@@ -36,6 +36,7 @@ set -e
 # Consider command as failed when any component of the pipe fails:
 # https://stackoverflow.com/questions/1221833/pipe-output-and-capture-exit-status-in-bash
 set -o pipefail
+set -o nounset
 
 # The test script is not supposed to make any changes to the files
 # e.g. add/update missing dependencies. Such divergences should be 
@@ -46,6 +47,8 @@ export ETCD_VERIFY=all
 source ./scripts/test_lib.sh
 source ./scripts/build_lib.sh
 
+OUTPUT_FILE=${OUTPUT_FILE:-""}
+
 if [ -n "${OUTPUT_FILE}" ]; then
   log_callout "Dumping output to: ${OUTPUT_FILE}"
   exec > >(tee -a "${OUTPUT_FILE}") 2>&1
@@ -55,12 +58,12 @@ PASSES=${PASSES:-"gofmt bom dep build unit"}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.8.0"}
 
-if [ -z "$GOARCH" ]; then
+if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
 fi
 
 # determine whether target supports race detection
-if [ -z "${RACE}" ] ; then
+if [ -z "${RACE:-}" ] ; then
   if [ "$GOARCH" == "amd64" ]; then
     RACE="--race"
   else
@@ -72,14 +75,14 @@ fi
 
 # This options make sense for cases where SUT (System Under Test) is compiled by test.
 COMMON_TEST_FLAGS=("${RACE}")
-if [[ -n "${CPU}" ]]; then
+if [[ -n "${CPU:-}" ]]; then
   COMMON_TEST_FLAGS+=("--cpu=${CPU}")
 fi 
 
 log_callout "Running with ${COMMON_TEST_FLAGS[*]}"
 
 RUN_ARG=()
-if [ -n "${TESTCASE}" ]; then
+if [ -n "${TESTCASE:-}" ]; then
   RUN_ARG=("-run=${TESTCASE}")
 fi
 
@@ -120,7 +123,7 @@ function integration_pass {
 
 function e2e_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
+  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@" || return $?
   run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
 }
 
@@ -170,8 +173,8 @@ function grpcproxy_e2e_pass {
 
 # Builds artifacts used by tests/e2e in coverage mode.
 function build_cov_pass {
-  run_for_module "server" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcd_test"
-  run_for_module "etcdctl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdctl_test"
+  run_for_module "server" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcd_test" || return $?
+  run_for_module "etcdctl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdctl_test" || return $?
   run_for_module "etcdutl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdutl_test"
 }
 
@@ -256,7 +259,7 @@ function merge_cov {
 
 function cov_pass {
   # shellcheck disable=SC2153
-  if [ -z "$COVERDIR" ]; then
+  if [ -z "${COVERDIR:-}" ]; then
     log_error "COVERDIR undeclared"
     return 255
   fi
@@ -376,6 +379,7 @@ function markdown_you_find_eschew_you {
 }
 
 function markdown_you_pass {
+  # TODO: ./CONTRIBUTING.md:## Get your pull request reviewed
   generic_checker markdown_you_find_eschew_you
 }
 
@@ -391,31 +395,42 @@ function govet_pass {
 }
 
 function govet_shadow_pass {
+  # TODO: we should ignore the generated packages?
+  #
+  # stderr: etcdserverpb/gw/rpc.pb.gw.go:2100:3: declaration of "ctx" shadows declaration at line 2005
   local shadow
   shadow=$(tool_get_bin "golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow")
   run_for_modules generic_checker run go vet -all -vettool="${shadow}"
 }
 
 function unparam_pass {
+  # TODO: transport/listener.go:129:60: newListenConfig - result 1 (error) is always nil
   run_for_modules generic_checker run_go_tool "mvdan.cc/unparam"
 }
 
 function staticcheck_pass {
+  # TODO: we should upgrade pb or ignore the pb package
+  #
+  # versionpb/version.pb.go:69:15: proto.RegisterFile is deprecated: Use protoregistry.GlobalFiles.RegisterFile instead.  (SA1019)
   run_for_modules generic_checker run_go_tool "honnef.co/go/tools/cmd/staticcheck"
 }
 
 function revive_pass {
+  # TODO: etcdserverpb/raft_internal_stringer.go:15:1: should have a package comment
   run_for_modules generic_checker run_go_tool "github.com/mgechev/revive" -config "${ETCD_ROOT_DIR}/tests/revive.toml" -exclude "vendor/..." -exclude "out/..."
 }
 
 function unconvert_pass {
+  # TODO: pb package should be filtered out.
   run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
 }
 
 function ineffassign_per_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
+  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
+
+  # TODO: ineffassign should work with package instead of files
   run_go_tool github.com/gordonklaus/ineffassign "${gofiles[@]}"
 }
 
@@ -424,13 +439,14 @@ function ineffassign_pass {
 }
 
 function nakedret_pass {
+  # TODO: nakedret should work with -set_exit_status
   run_for_modules generic_checker run_go_tool "github.com/alexkohler/nakedret"
 }
 
 function license_header_per_module {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
+  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
   run_go_tool "github.com/google/addlicense" --check "${gofiles[@]}"
 }
 
@@ -439,9 +455,9 @@ function license_header_pass {
 }
 
 function receiver_name_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
+  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
 
   recvs=$(grep 'func ([^*]' "${gofiles[@]}"  | tr  ':' ' ' |  \
     awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\\.]*go//g" |  sort  | uniq  | \
@@ -465,9 +481,9 @@ function receiver_name_pass {
 # checks spelling and comments in the 'package' in the current module
 #
 function goword_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
+  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
   
   local gowordRes
 
@@ -566,7 +582,7 @@ function release_pass {
   rm -f ./bin/etcd-last-release
   # to grab latest patch release; bump this up for every minor release
   UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.5.*" | head -1 | cut -d- -f1)
-  if [ -n "$MANUAL_VER" ]; then
+  if [ -n "${MANUAL_VER:-}" ]; then
     # in case, we need to test against different version
     UPGRADE_VER=$MANUAL_VER
   fi
@@ -618,6 +634,7 @@ function mod_tidy_for_module {
     log_error "${PWD}/go.mod is not in sync with 'go mod tidy'"
     return 255
   fi
+  set -e
 }
 
 function mod_tidy_pass {
@@ -633,8 +650,8 @@ function genproto_pass {
 }
 
 function goimport_for_module {
-  GOFILES=$(run go list  --f "{{with \$d:=.}}{{range .GoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...)
-  TESTGOFILES=$(run go list  --f "{{with \$d:=.}}{{range .TestGoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...)
+  GOFILES=$(run go list  --f "{{with \$d:=.}}{{range .GoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...) || return 2
+  TESTGOFILES=$(run go list  --f "{{with \$d:=.}}{{range .TestGoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...) || return 2
   cd "${ETCD_ROOT_DIR}/tools/mod"
   FILESNEEDSFIX=$(echo "${GOFILES}" "${TESTGOFILES}" | grep -v '.gw.go' | grep -v '.pb.go' | xargs -n 100 go run golang.org/x/tools/cmd/goimports -l -local go.etcd.io)
   if [ -n "$FILESNEEDSFIX" ]; then
