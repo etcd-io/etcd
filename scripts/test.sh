@@ -295,18 +295,6 @@ function cov_pass {
   run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
       -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
 
-  log_callout "[$(date)] Collecting coverage from e2e tests ..."
-  # We don't pass 'gocov_build_flags' nor 'pkg_to_coverprofileflag' here,
-  # as the coverage is collected from the ./bin/etcd_test & ./bin/etcdctl_test internally spawned.
-  mkdir -p "${coverdir}/e2e"
-  COVERDIR="${coverdir}/e2e" run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags=cov -timeout 30m "$@" || failed="$failed tests_e2e"
-  split_dir "${coverdir}/e2e" 10
-
-  log_callout "[$(date)] Collecting coverage from e2e tests with proxy ..."
-  mkdir -p "${coverdir}/e2e_proxy"
-  COVERDIR="${coverdir}/e2e_proxy" run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags="cov cluster_proxy" -timeout 30m "$@" || failed="$failed tests_e2e_proxy"
-  split_dir "${coverdir}/e2e_proxy" 10
-
   local cover_out_file="${coverdir}/all.coverprofile"
   merge_cov "${coverdir}"
 
