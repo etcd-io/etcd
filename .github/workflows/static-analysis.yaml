@@ -18,5 +18,11 @@ jobs:
         with:
           version: '3.14.0'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: make verify
-      - run: make fix
+      - run: |
+          set -euo pipefail
+
+          make verify
+      - run: |
+          set -euo pipefail
+
+          make fix

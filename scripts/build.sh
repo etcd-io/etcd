@@ -3,6 +3,8 @@
 # This scripts build the etcd binaries
 # To build the tools, run `build_tools.sh`
 
+set -euo pipefail
+
 source ./scripts/test_lib.sh
 source ./scripts/build_lib.sh
 

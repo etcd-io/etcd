@@ -13,7 +13,10 @@ jobs:
     - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
       with:
         go-version: "1.19.7"
-    - run: GOARCH=amd64 CPU=4 make fuzz
+    - run: |
+        set -euo pipefail
+
+        GOARCH=amd64 CPU=4 make fuzz
     - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       if: failure()
       with:

@@ -23,11 +23,12 @@ jobs:
     - env:
         TARGET: ${{ matrix.target }}
       run: |
+        set -euo pipefail
+
         echo "${TARGET}"
         case "${TARGET}" in
           linux-arm64-e2e)
-            PASSES='build release e2e' CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./scripts/test.sh 2>&1 | tee test.log
-            ! grep -E "(--- FAIL:|FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
+            PASSES='build release e2e' CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./scripts/test.sh
             ;;
           *)
             echo "Failed to find target"

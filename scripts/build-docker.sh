@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 VERSION" >&2
   exit 1
 fi
 
+VERSION=${1}
+if [ -z "$VERSION" ]; then
+  echo "Usage: ${0} VERSION" >&2
+  exit 1
+fi
+
 ARCH=$(go env GOARCH)
-VERSION="${1}-${ARCH}"
+VERSION="${VERSION}-${ARCH}"
 DOCKERFILE="Dockerfile-release.${ARCH}"
 
-if [ -z "${BINARYDIR}" ]; then
+if [ -z "${BINARYDIR:-}" ]; then
   RELEASE="etcd-${1}"-$(go env GOOS)-$(go env GOARCH)
   BINARYDIR="${RELEASE}"
   TARFILE="${RELEASE}.tar.gz"
@@ -34,7 +40,7 @@ cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR
 
 cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 
-if [ -z "$TAG" ]; then
+if [ -z "${TAG:-}" ]; then
     docker build -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
     docker build -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
 else
