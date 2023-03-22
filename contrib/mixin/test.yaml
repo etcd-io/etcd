@@ -143,13 +143,13 @@ tests:
   - interval: 1m
     input_series:
       - series: 'etcd_mvcc_db_total_size_in_use_in_bytes{job="etcd",instance="10.10.10.0"}'
-        values: '30000+0x10'
+        values: '300000000+0x10'
       - series: 'etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.0"}'
-        values: '100000+0x10'
+        values: '1000000000+0x10'
       - series: 'etcd_mvcc_db_total_size_in_use_in_bytes{job="etcd",instance="10.10.10.1"}'
-        values: '70000+0x10'
+        values: '700000000+0x10'
       - series: 'etcd_mvcc_db_total_size_in_bytes{job="etcd",instance="10.10.10.1"}'
-        values: '100000+0x10'
+        values: '1000000000+0x10'
     alert_rule_test:
       - eval_time: 11m
         alertname: etcdDatabaseHighFragmentationRatio
