@@ -25,6 +25,8 @@ jobs:
     - env:
         TARGET: ${{ matrix.target }}
       run: |
+        set -euo pipefail
+
         go version
         echo ${GOROOT}
         echo "${TARGET}"
@@ -58,8 +60,7 @@ jobs:
             GO_BUILD_FLAGS='-v' GOARCH=s390x ./build
             ;;
           linux-amd64-grpcproxy)
-            PASSES='build grpcproxy' CPU='4' RACE='true' ./test 2>&1 | tee test.log
-            ! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test.log
+            PASSES='build grpcproxy' CPU='4' RACE='true' ./test
             ;;
           linux-386-unit)
             GOARCH=386 PASSES='unit' ./test

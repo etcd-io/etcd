@@ -31,9 +31,11 @@
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
 # $ COVERDIR=coverage PASSES="build_cov cov" ./test
-set -e
+set -euo pipefail
 
 source ./build
+
+PASSES=${PASSES:-}
 
 # build before setting up test GOPATH
 if [[ "${PASSES}" == *"functional"* ]]; then
@@ -82,6 +84,7 @@ fi
 
 # shellcheck disable=SC2206
 FMT=($FMT)
+VERBOSE=${VERBOSE:-}
 if [ "${VERBOSE}" == "1" ]; then
 	# shellcheck disable=SC2128
 	echo "Running with FMT:" "${FMT[@]}"
@@ -108,19 +111,20 @@ if [ "${VERBOSE}" == "1" ]; then
 	echo "Running with STATIC_ANALYSIS_PATHS:" "${STATIC_ANALYSIS_PATHS[@]}"
 fi
 
+GOARCH=${GOARCH:-}
 if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
 fi
 
 # determine the number of CPUs to use for Go tests
 TEST_CPUS="1,2,4"
-if [ -n "${CPU}" ]; then
+if [ -n "${CPU:-}" ]; then
 	TEST_CPUS="${CPU}"
 fi
 echo "Running with TEST_CPUS:" "${TEST_CPUS}"
 
 # determine whether target supports race detection
-if [ -z "${RACE}" ] ; then
+if [ -z "${RACE:-}" ] ; then
   if [ "$GOARCH" == "amd64" ]; then
     RACE="--race"
   else
@@ -130,10 +134,13 @@ else
   RACE="--race=${RACE:-true}"
 fi
 
+TESTCASE=${TESTCASE:-}
 RUN_ARG=""
 if [ -n "${TESTCASE}" ]; then
 	RUN_ARG="-run=${TESTCASE}"
 fi
+
+TIMEOUT=${TIMEOUT:-}
 
 function unit_pass {
 	echo "Running unit tests..."
@@ -203,9 +210,10 @@ function integration_extra {
 }
 
 function functional_pass {
-  	# Clean up any data and logs from previous runs
-  	rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
+	# Clean up any data and logs from previous runs
+	rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
 
+	local agent_pids=""
 	for a in 1 2 3; do
 		./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 &
 		pid="$!"
@@ -256,7 +264,7 @@ function cov_pass {
 		exit 255
 	fi
 
-	if [ -z "$COVERDIR" ]; then
+	if [ -z "${COVERDIR:-}" ]; then
 		echo "COVERDIR undeclared"
 		exit 255
 	fi
@@ -357,7 +365,7 @@ function release_pass {
 	rm -f ./bin/etcd-last-release
 	# to grab latest patch release; bump this up for every minor release
 	UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.3.*" | head -1)
-	if [ -n "$MANUAL_VER" ]; then
+	if [ -n "${MANUAL_VER:-}" ]; then
 		# in case, we need to test against different version
 		UPGRADE_VER=$MANUAL_VER
 	fi
@@ -429,13 +437,13 @@ function goword_pass {
 		# shellcheck disable=SC2206
 		gofiles=($gofiles)
 		# only check for broken exported godocs
-		gowordRes=$(goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort)
+		gowordRes=$(goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort) || true
 		if [ -n "$gowordRes" ]; then
 			echo -e "goword checking failed:\\n${gowordRes}"
 			exit 255
 		fi
 		# check some spelling
-		gowordRes=$(goword -ignore-file=.words clientv3/{*,*/*}.go 2>&1 | grep spell | sort)
+		gowordRes=$(goword -ignore-file=.words clientv3/{*,*/*}.go 2>&1 | grep spell | sort) || true
 		if [ -n "$gowordRes" ]; then
 			echo -e "goword checking failed:\\n${gowordRes}"
 			exit 255
@@ -575,7 +583,7 @@ function receiver_name_pass {
 	# shellcheck disable=SC1117
 	recvs=$(grep 'func ([^*]' {*,*/*,*/*/*}.go  | grep -Ev "(generated|pb/)" | tr  ':' ' ' |  \
 		awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\.]*go//g" |  sort  | uniq  | \
-		grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ')
+		grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ') || true
 	if [ -n "${recvs}" ]; then
 		# shellcheck disable=SC2206
 		recvs=($recvs)
@@ -588,6 +596,8 @@ function receiver_name_pass {
 }
 
 function commit_title_pass {
+	# TODO: git rev-parse --abbrev-ref doesn't work in pull-request and it
+	# might return "fatal: HEAD does not point to a branch" which can pass.
 	git log --oneline "$(git merge-base HEAD "$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}")")"...HEAD | while read -r l; do
 		commitMsg=$(echo "$l" | cut -f2- -d' ')
 		if [[ "$commitMsg" == Merge* ]]; then
@@ -637,9 +647,10 @@ function fmt_pass {
 
 function bom_pass {
 	if ! command -v license-bill-of-materials >/dev/null; then
+		echo "Skipping bom..."
 		return
 	fi
-	if [ "${GO111MODULE}" == "on" ]; then
+	if [ "${GO111MODULE:-on}" == "on" ]; then
 		# license-bill-off-materials calls "go list std cmd" which cannot handle modules
 		# Please see https://github.com/golang/go/issues/26924
 		echo "Skipping license-bill-of-materials with go modules..."
@@ -671,7 +682,7 @@ function dep_pass {
 
 function build_cov_pass {
 	out="bin"
-	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
+	if [ -n "${BINDIR:-}" ]; then out="${BINDIR}"; fi
 	go test -tags cov -c -covermode=set -coverpkg="$PKGS_COMMA" -o "${out}/etcd_test"
 	go test -tags cov -c -covermode=set -coverpkg="$PKGS_COMMA" -o "${out}/etcdctl_test" "${REPO_PATH}/etcdctl"
 }
