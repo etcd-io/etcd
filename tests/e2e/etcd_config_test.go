@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/pkg/expect"
 )
 
@@ -335,4 +336,32 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEtcdTLSVersion(t *testing.T) {
+
+	d := t.TempDir()
+	proc, err := spawnCmd(
+		[]string{
+			binDir + "/etcd",
+			"--data-dir", d,
+			"--name", "e1",
+			"--listen-client-urls", "https://0.0.0.0:0",
+			"--advertise-client-urls", "https://0.0.0.0:0",
+			"--listen-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", etcdProcessBasePort),
+			"--initial-advertise-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", etcdProcessBasePort),
+			"--initial-cluster", fmt.Sprintf("e1=https://127.0.0.1:%d", etcdProcessBasePort),
+			"--peer-cert-file", certPath,
+			"--peer-key-file", privateKeyPath,
+			"--cert-file", certPath2,
+			"--key-file", privateKeyPath2,
+
+			"--tls-min-version", "TLS1.2",
+			"--tls-max-version", "TLS1.3",
+		},
+	)
+	assert.NoError(t, err)
+	assert.NoError(t, waitReadyExpectProc(proc, etcdServerReadyLines), "did not receive expected output from etcd process")
+	assert.NoError(t, proc.Stop())
+
 }

@@ -471,6 +471,9 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			plog.Fatalf("could not get certs (%v)", err)
 		}
 	}
+
+	updateMinMaxVersions(&cfg.PeerTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+
 	if !cfg.PeerTLSInfo.Empty() {
 		if cfg.logger != nil {
 			cfg.logger.Info(
@@ -608,6 +611,9 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			plog.Fatalf("could not get certs (%v)", err)
 		}
 	}
+
+	updateMinMaxVersions(&cfg.ClientTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+
 	if cfg.EnablePprof {
 		if cfg.logger != nil {
 			cfg.logger.Info("pprof is enabled", zap.String("path", debugutil.HTTPPrefixPProf))
