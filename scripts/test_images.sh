@@ -15,13 +15,8 @@ function startContainer {
     sleep 5
 }
 
-# stop container
-trap 'docker stop "${RUN_NAME}"' EXIT
-
 function runVersionCheck {
-    binary="/usr/local/bin/""$1"
-    versionString="$2"
-    Out=$(docker exec "${RUN_NAME}" "${binary}" "${versionString}")
+    Out=$(docker exec "${RUN_NAME}" "${@}")
     foundVersion=$(echo "$Out" | head -1 | rev  | cut -d" "  -f 1 | rev )
     if [[ "${foundVersion}" != "${VERSION}" ]]; then
         echo "error: Invalid Version. Got $foundVersion, expected $VERSION. Error: $Out"
@@ -65,10 +60,13 @@ fi
 
 startContainer
 
+# stop container
+trap 'docker stop "${RUN_NAME}"' EXIT
+
 # Version check
-runVersionCheck "etcd" "--version"
-runVersionCheck "etcdctl" "version"
-runVersionCheck "etcdutl" "version"
+runVersionCheck "/usr/local/bin/etcd" "--version"
+runVersionCheck "/usr/local/bin/etcdctl" "version"
+runVersionCheck "/usr/local/bin/etcdutl" "version"
 
 # Put/Get check
 PUT=$(docker exec "${RUN_NAME}" /usr/local/bin/etcdctl put "${KEY}" "${VALUE}")
