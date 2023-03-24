@@ -16,7 +16,7 @@ function startContainer {
 }
 
 function runVersionCheck {
-    Out=$(docker exec "${RUN_NAME}" "${@}")
+    Out=$(docker run --rm "${IMAGE}" "${@}")
     foundVersion=$(echo "$Out" | head -1 | rev  | cut -d" "  -f 1 | rev )
     if [[ "${foundVersion}" != "${VERSION}" ]]; then
         echo "error: Invalid Version. Got $foundVersion, expected $VERSION. Error: $Out"
