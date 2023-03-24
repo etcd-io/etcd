@@ -58,15 +58,15 @@ if [[ "$(docker images -q "${IMAGE}" 2> /dev/null)" == "" ]]; then
     exit 1
 fi
 
-startContainer
-
-# stop container
-trap 'docker stop "${RUN_NAME}"' EXIT
-
 # Version check
 runVersionCheck "/usr/local/bin/etcd" "--version"
 runVersionCheck "/usr/local/bin/etcdctl" "version"
 runVersionCheck "/usr/local/bin/etcdutl" "version"
+
+startContainer
+# stop container
+trap 'docker stop "${RUN_NAME}"' EXIT
+
 
 # Put/Get check
 PUT=$(docker exec "${RUN_NAME}" /usr/local/bin/etcdctl put "${KEY}" "${VALUE}")
