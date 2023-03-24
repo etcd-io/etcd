@@ -28,6 +28,7 @@ import (
 const exampleConfigFile = "../../etcd.conf.yml.sample"
 
 func TestEtcdExampleConfig(t *testing.T) {
+	defer os.RemoveAll("default.etcd")
 	proc, err := spawnCmd([]string{binDir + "/etcd", "--config-file", exampleConfigFile})
 	if err != nil {
 		t.Fatal(err)
