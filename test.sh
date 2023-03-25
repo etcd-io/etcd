@@ -32,12 +32,12 @@
 # $ COVERDIR=coverage PASSES="build build_cov cov" ./test
 # $ go tool cover -html ./coverage/cover.out
 set -e
-set -o pipefail
 
 
 # Consider command as failed when any component of the pipe fails:
 # https://stackoverflow.com/questions/1221833/pipe-output-and-capture-exit-status-in-bash
 set -o pipefail
+set -o nounset
 
 # The test script is not supposed to make any changes to the files
 # e.g. add/update missing dependencies. Such divergences should be 
@@ -51,12 +51,12 @@ source ./build.sh
 PASSES=${PASSES:-"fmt bom dep build unit"}
 PKG=${PKG:-}
 
-if [ -z "$GOARCH" ]; then
+if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
 fi
 
 # determine whether target supports race detection
-if [ -z "${RACE}" ] ; then
+if [ -z "${RACE:-}" ] ; then
   if [ "$GOARCH" == "amd64" ]; then
     RACE="--race"
   else
@@ -68,21 +68,23 @@ fi
 
 # This options make sense for cases where SUT (System Under Test) is compiled by test.
 COMMON_TEST_FLAGS=("${RACE}")
-if [[ -n "${CPU}" ]]; then
+if [[ -n "${CPU:-}" ]]; then
   COMMON_TEST_FLAGS+=("--cpu=${CPU}")
 fi 
 
 log_callout "Running with ${COMMON_TEST_FLAGS[*]}"
 
 RUN_ARG=()
-if [ -n "${TESTCASE}" ]; then
+if [ -n "${TESTCASE:-}" ]; then
   RUN_ARG=("-run=${TESTCASE}")
 fi
 
 function build_pass {
   log_callout "Building etcd"
   run_for_modules run go build "${@}" || return 2
-  GO_BUILD_FLAGS="-v" etcd_build "${@}"
+  # Previous command will cover etcd_build so that any error will fast-fail by
+  # return 2. Just in case that add return 2 for etcd_build as well.
+  GO_BUILD_FLAGS="-v" etcd_build "${@}" || return 2
   GO_BUILD_FLAGS="-v" tools_build "${@}"
 }
 
@@ -143,12 +145,13 @@ function generic_checker {
 }
 
 function functional_pass {
-  run ./tests/functional/build
+  run ./tests/functional/build || return $?
 
   # Clean up any data and logs from previous runs
   rm -rf /tmp/etcd-functional-* /tmp/etcd-functional-*.backup
 
   # TODO: These ports should be dynamically allocated instead of hard-coded.
+  local agent_pids=""
   for a in 1 2 3; do
     ./bin/etcd-agent --network tcp --address 127.0.0.1:${a}9027 < /dev/null &
     pid="$!"
@@ -199,8 +202,8 @@ function grpcproxy_pass {
 
 # Builds artifacts used by tests/e2e in coverage mode.
 function build_cov_pass {
-  run_for_module "server" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcd_test"
-  run_for_module "etcdctl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdctl_test"
+  run_for_module "server" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcd_test" || return $?
+  run_for_module "etcdctl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdctl_test" || return $?
   run_for_module "etcdutl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdutl_test"
 }
 
@@ -285,7 +288,7 @@ function merge_cov {
 
 function cov_pass {
   # shellcheck disable=SC2153
-  if [ -z "$COVERDIR" ]; then
+  if [ -z "${COVERDIR:-}" ]; then
     log_error "COVERDIR undeclared"
     return 255
   fi
@@ -436,9 +439,10 @@ function govet_pass {
   run_for_modules generic_checker run go vet
 }
 
+# TODO: should skip *.pb.go
 function govet_shadow_pass {
   local shadow
-  shadow=$(tool_get_bin "golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow")
+  shadow=$(tool_get_bin "golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow") || return $?
   run_for_modules generic_checker run go vet -all -vettool="${shadow}"
 }
 
@@ -458,10 +462,11 @@ function unconvert_pass {
   run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
 }
 
+# TODO: should run with package
 function ineffassign_per_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
+  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
   run_go_tool github.com/gordonklaus/ineffassign "${gofiles[@]}"
 }
 
@@ -474,10 +479,11 @@ function nakedret_pass {
 }
 
 function license_header_pass {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
+  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
   
+  local licRes=""
   for file in "${gofiles[@]}"; do
     if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
       licRes="${licRes}"$(echo -e "  ${file}")
@@ -490,9 +496,9 @@ function license_header_pass {
 }
 
 function receiver_name_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
+  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
 
   recvs=$(grep 'func ([^*]' "${gofiles[@]}"  | tr  ':' ' ' |  \
     awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\\.]*go//g" |  sort  | uniq  | \
@@ -516,9 +522,9 @@ function receiver_name_pass {
 # checks spelling and comments in the 'package' in the current module
 #
 function goword_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module "$1")
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module "$1")
+  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
   
   local gowordRes
 
@@ -631,7 +637,7 @@ function release_pass {
   rm -f ./bin/etcd-last-release
   # to grab latest patch release; bump this up for every minor release
   UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.4.*" | head -1)
-  if [ -n "$MANUAL_VER" ]; then
+  if [ -n "${MANUAL_VER:-}" ]; then
     # in case, we need to test against different version
     UPGRADE_VER=$MANUAL_VER
   fi
@@ -675,6 +681,7 @@ function mod_tidy_for_module {
   local tmpFileGoModInSync
   diff -C 5 "${tmpModDir}/go.mod" "./go.mod"
   tmpFileGoModInSync="$?"
+  set -e
 
   # Bring back initial state
   mv "${tmpModDir}/go.mod" "./go.mod"

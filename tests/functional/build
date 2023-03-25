@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 if ! [[ "$0" =~ "tests/functional/build" ]]; then
   echo "must be run from repository root"
   exit 255

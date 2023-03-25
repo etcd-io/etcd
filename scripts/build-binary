@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 source ./scripts/test_lib.sh
 
-VER=$1
+VER=${1:-}
 REPOSITORY="${REPOSITORY:-git@github.com:etcd-io/etcd.git}"
 
-if [ -z "$1" ]; then
+if [ -z "${VER}" ]; then
   echo "Usage: ${0} VERSION" >> /dev/stderr
   exit 255
 fi
 
-set -u
 
 function setup_env {
   local ver=${1}
@@ -38,7 +37,7 @@ function package {
     srcdir="${ccdir}"
   fi
   local ext=""
-  if [ "${GOOS}" == "windows" ]; then
+  if [ "${GOOS:-}" == "windows" ]; then
     ext=".exe"
   fi
   for bin in etcd etcdctl etcdutl; do
@@ -60,7 +59,7 @@ function main {
   cd release
   setup_env "${VER}" "${proj}"
 
-  tarcmd=tar
+  local tarcmd=tar
   if [[ $(go env GOOS) == "darwin" ]]; then
       echo "Please use linux machine for release builds."
     exit 1

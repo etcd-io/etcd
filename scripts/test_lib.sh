@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ROOT_MODULE="go.etcd.io/etcd"
 
 if [[ "$(go list)" != "${ROOT_MODULE}/v3" ]]; then
@@ -107,7 +109,7 @@ function relativePath {
 
 ####   Discovery of files/packages within a go module #####
 
-# go_srcs_in_module [package]
+# go_srcs_in_module
 # returns list of all not-generated go sources in the current (dir) module.
 function go_srcs_in_module {
   go list -f "{{with \$c:=.}}{{range \$f:=\$c.GoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.TestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.XTestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{end}}" ./... | grep -vE "(\\.pb\\.go|\\.pb\\.gw.go)"
@@ -171,7 +173,7 @@ function module_dirs() {
 
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
 function maybe_run() {
-  if ${DRY_RUN}; then
+  if ${DRY_RUN:-}; then
     log_warning -e "# DRY_RUN:\\n  % ${*}"
   else
     run "${@}"
@@ -243,7 +245,7 @@ function go_test {
 
   local goTestFlags=""
   local goTestEnv=""
-  if [ "${VERBOSE}" == "1" ]; then
+  if [ "${VERBOSE:-}" == "1" ]; then
     goTestFlags="-v"
   fi
 

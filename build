@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 echo -e "\\e[91mDEPRECATED!!! Use build.sh script instead.\\e[0m\\n"
 sleep 1
 

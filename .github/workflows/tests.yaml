@@ -23,6 +23,8 @@ jobs:
     - env:
         TARGET: ${{ matrix.target }}
       run: |
+        set -euo pipefail
+
         echo "${TARGET}"
         case "${TARGET}" in
           linux-amd64-fmt)
