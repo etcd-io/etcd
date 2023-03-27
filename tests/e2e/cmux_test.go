@@ -39,8 +39,9 @@ import (
 func TestConnectionMultiplexing(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range []struct {
-		name      string
-		serverTLS e2e.ClientConnType
+		name             string
+		serverTLS        e2e.ClientConnType
+		separateHttpPort bool
 	}{
 		{
 			name:      "ServerTLS",
@@ -54,10 +55,20 @@ func TestConnectionMultiplexing(t *testing.T) {
 			name:      "ServerTLSAndNonTLS",
 			serverTLS: e2e.ClientTLSAndNonTLS,
 		},
+		{
+			name:             "SeparateHTTP/ServerTLS",
+			serverTLS:        e2e.ClientTLS,
+			separateHttpPort: true,
+		},
+		{
+			name:             "SeparateHTTP/ServerNonTLS",
+			serverTLS:        e2e.ClientNonTLS,
+			separateHttpPort: true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			cfg := e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: tc.serverTLS}}
+			cfg := e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: tc.serverTLS}, ClientHttpSeparate: tc.separateHttpPort}
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&cfg))
 			require.NoError(t, err)
 			defer clus.Close()
@@ -78,30 +89,32 @@ func TestConnectionMultiplexing(t *testing.T) {
 					name = "ClientTLS"
 				}
 				t.Run(name, func(t *testing.T) {
-					testConnectionMultiplexing(t, ctx, clus.EndpointsV3()[0], clientTLS)
+					testConnectionMultiplexing(t, ctx, clus.Procs[0], clientTLS)
 				})
 			}
 		})
 	}
-
 }
 
-func testConnectionMultiplexing(t *testing.T, ctx context.Context, endpoint string, connType e2e.ClientConnType) {
+func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.EtcdProcess, connType e2e.ClientConnType) {
+	httpEndpoint := member.EndpointsHTTP()[0]
+	grpcEndpoint := member.EndpointsGRPC()[0]
 	switch connType {
 	case e2e.ClientTLS:
-		endpoint = e2e.ToTLS(endpoint)
+		httpEndpoint = e2e.ToTLS(httpEndpoint)
+		grpcEndpoint = e2e.ToTLS(grpcEndpoint)
 	case e2e.ClientNonTLS:
 	default:
 		panic(fmt.Sprintf("Unsupported conn type %v", connType))
 	}
 	t.Run("etcdctl", func(t *testing.T) {
-		etcdctl, err := e2e.NewEtcdctl(e2e.ClientConfig{ConnectionType: connType}, []string{endpoint})
+		etcdctl, err := e2e.NewEtcdctl(e2e.ClientConfig{ConnectionType: connType}, []string{grpcEndpoint})
 		require.NoError(t, err)
 		_, err = etcdctl.Get(ctx, "a", config.GetOptions{})
 		assert.NoError(t, err)
 	})
 	t.Run("clientv3", func(t *testing.T) {
-		c := newClient(t, []string{endpoint}, e2e.ClientConfig{ConnectionType: connType})
+		c := newClient(t, []string{grpcEndpoint}, e2e.ClientConfig{ConnectionType: connType})
 		_, err := c.Get(ctx, "a")
 		assert.NoError(t, err)
 	})
@@ -112,11 +125,11 @@ func testConnectionMultiplexing(t *testing.T, ctx context.Context, endpoint stri
 				tname = "default"
 			}
 			t.Run(tname, func(t *testing.T) {
-				assert.NoError(t, fetchGrpcGateway(endpoint, httpVersion, connType))
-				assert.NoError(t, fetchMetrics(endpoint, httpVersion, connType))
-				assert.NoError(t, fetchVersion(endpoint, httpVersion, connType))
-				assert.NoError(t, fetchHealth(endpoint, httpVersion, connType))
-				assert.NoError(t, fetchDebugVars(endpoint, httpVersion, connType))
+				assert.NoError(t, fetchGrpcGateway(httpEndpoint, httpVersion, connType))
+				assert.NoError(t, fetchMetrics(httpEndpoint, httpVersion, connType))
+				assert.NoError(t, fetchVersion(httpEndpoint, httpVersion, connType))
+				assert.NoError(t, fetchHealth(httpEndpoint, httpVersion, connType))
+				assert.NoError(t, fetchDebugVars(httpEndpoint, httpVersion, connType))
 			})
 		}
 	})

@@ -458,7 +458,7 @@ func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServer
 
 func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i int) *EtcdServerProcessConfig {
 	var curls []string
-	var curl, curltls string
+	var curl string
 	port := cfg.BasePort + 5*i
 	clientPort := port
 	peerPort := port + 1
@@ -466,15 +466,12 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peer2Port := port + 3
 	clientHttpPort := port + 4
 
-	curlHost := fmt.Sprintf("localhost:%d", clientPort)
-	switch cfg.Client.ConnectionType {
-	case ClientNonTLS, ClientTLS:
-		curl = (&url.URL{Scheme: cfg.ClientScheme(), Host: curlHost}).String()
+	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
+		curl = clientURL(clientPort, ClientNonTLS)
+		curls = []string{curl, clientURL(clientPort, ClientTLS)}
+	} else {
+		curl = clientURL(clientPort, cfg.Client.ConnectionType)
 		curls = []string{curl}
-	case ClientTLSAndNonTLS:
-		curl = (&url.URL{Scheme: "http", Host: curlHost}).String()
-		curltls = (&url.URL{Scheme: "https", Host: curlHost}).String()
-		curls = []string{curl, curltls}
 	}
 
 	peerListenUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
@@ -513,9 +510,10 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--data-dir", dataDirPath,
 		"--snapshot-count", fmt.Sprintf("%d", cfg.SnapshotCount),
 	}
+	var clientHttpUrl string
 	if cfg.ClientHttpSeparate {
-		clientHttpUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", clientHttpPort)}
-		args = append(args, "--listen-client-http-urls", clientHttpUrl.String())
+		clientHttpUrl = clientURL(clientHttpPort, cfg.Client.ConnectionType)
+		args = append(args, "--listen-client-http-urls", clientHttpUrl)
 	}
 
 	if cfg.ForceNewCluster {
@@ -625,21 +623,34 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 
 	return &EtcdServerProcessConfig{
-		lg:           cfg.Logger,
-		ExecPath:     execPath,
-		Args:         args,
-		EnvVars:      envVars,
-		TlsArgs:      cfg.TlsArgs(),
-		Client:       cfg.Client,
-		DataDirPath:  dataDirPath,
-		KeepDataDir:  cfg.KeepDataDir,
-		Name:         name,
-		PeerURL:      peerAdvertiseUrl,
-		ClientURL:    curl,
-		MetricsURL:   murl,
-		InitialToken: cfg.InitialToken,
-		GoFailPort:   gofailPort,
-		Proxy:        proxyCfg,
+		lg:            cfg.Logger,
+		ExecPath:      execPath,
+		Args:          args,
+		EnvVars:       envVars,
+		TlsArgs:       cfg.TlsArgs(),
+		Client:        cfg.Client,
+		DataDirPath:   dataDirPath,
+		KeepDataDir:   cfg.KeepDataDir,
+		Name:          name,
+		PeerURL:       peerAdvertiseUrl,
+		ClientURL:     curl,
+		ClientHTTPURL: clientHttpUrl,
+		MetricsURL:    murl,
+		InitialToken:  cfg.InitialToken,
+		GoFailPort:    gofailPort,
+		Proxy:         proxyCfg,
+	}
+}
+
+func clientURL(port int, connType ClientConnType) string {
+	curlHost := fmt.Sprintf("localhost:%d", port)
+	switch connType {
+	case ClientNonTLS:
+		return (&url.URL{Scheme: "http", Host: curlHost}).String()
+	case ClientTLS:
+		return (&url.URL{Scheme: "https", Host: curlHost}).String()
+	default:
+		panic(fmt.Sprintf("Unsupported connection type %v", connType))
 	}
 }
 
@@ -691,6 +702,14 @@ func (epc *EtcdProcessCluster) EndpointsV2() []string {
 
 func (epc *EtcdProcessCluster) EndpointsV3() []string {
 	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsV3() })
+}
+
+func (epc *EtcdProcessCluster) EndpointsGRPC() []string {
+	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsGRPC() })
+}
+
+func (epc *EtcdProcessCluster) EndpointsHTTP() []string {
+	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsHTTP() })
 }
 
 func (epc *EtcdProcessCluster) Endpoints(f func(ep EtcdProcess) []string) (ret []string) {
