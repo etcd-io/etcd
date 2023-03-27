@@ -31,31 +31,31 @@ jobs:
           echo "${TARGET}"
           case "${TARGET}" in
             linux-amd64)
-              GOARCH=amd64 PASSES='build' ./scripts/test.sh
+              GOOS=linux GOARCH=amd64 make build
               ;;
             linux-386)
-              GOARCH=386 PASSES='build' ./scripts/test.sh
+              GOOS=linux GOARCH=386 make build
               ;;
             darwin-amd64)
-              GOARCH=amd64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              GOOS=darwin GOARCH=amd64 make build
               ;;
             darwin-arm64)
-              GOARCH=arm64 GOOS=darwin GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              GOOS=darwin GOARCH=arm64 make build
               ;;
             windows-amd64)
-              GOARCH=amd64 GOOS=windows GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              GOOS=windows GOARCH=amd64 make build
               ;;
             linux-arm)
-              GOARCH=arm GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              GOOS=linux GOARCH=arm make build
               ;;
             linux-arm64)
-              GOARCH=arm64 GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              GOOS=linux GOARCH=arm64 make build
               ;;
             linux-ppc64le)
-              GOARCH=ppc64le GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              GOOS=linux GOARCH=ppc64le make build
               ;;
             linux-s390x)
-              GOARCH=s390x GO_BUILD_FLAGS='-v -mod=readonly' ./scripts/build.sh
+              GOOS=linux GOARCH=s390x make build
               ;;
             *)
               echo "Failed to find target"

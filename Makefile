@@ -1,13 +1,10 @@
 .PHONY: build
 build:
-	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v" ./scripts/build.sh
-	./bin/etcd --version
-	./bin/etcdctl version
-	./bin/etcdutl version
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
 
 .PHONY: tools
 tools:
-	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v" ./scripts/build_tools.sh
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build_tools.sh
 
 # Tests
 
@@ -28,6 +25,14 @@ test-integration:
 .PHONY: test-e2e
 test-e2e: build
 	PASSES="e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
+
+.PHONY: test-grpcproxy-integration
+test-grpcproxy-integration:
+	PASSES="grpcproxy_integration" ./scripts/test.sh $(GO_TEST_FLAGS)
+
+.PHONY: test-grpcproxy-e2e
+test-grpcproxy-e2e: build
+	PASSES="grpcproxy_e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-e2e-release
 test-e2e-release: build
