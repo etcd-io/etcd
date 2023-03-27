@@ -13,6 +13,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Require [Go 1.19+](https://github.com/etcd-io/etcd/pull/15333).
 - Compile with [Go 1.19+](https://go.dev/doc/devel/release#go1.19)
 
+### Package `clientv3`
+- Reverted the fix to [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/15542).
+
 <hr>
 
 ## v3.4.24 (2023-02-16)
