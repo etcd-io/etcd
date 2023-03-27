@@ -246,19 +246,17 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 	initialCluster := make([]string, cfg.clusterSize)
 	for i := 0; i < cfg.clusterSize; i++ {
 		var curls []string
-		var curl, curltls string
+		var curl string
 		port := cfg.basePort + 5*i
+		clientPort := port
 		clientHttpPort := port + 4
-		curlHost := fmt.Sprintf("localhost:%d", port)
 
-		switch cfg.clientTLS {
-		case clientNonTLS, clientTLS:
-			curl = (&url.URL{Scheme: cfg.clientScheme(), Host: curlHost}).String()
+		if cfg.clientTLS == clientTLSAndNonTLS {
+			curl = clientURL(clientPort, clientNonTLS)
+			curls = []string{curl, clientURL(clientPort, clientTLS)}
+		} else {
+			curl = clientURL(clientPort, cfg.clientTLS)
 			curls = []string{curl}
-		case clientTLSAndNonTLS:
-			curl = (&url.URL{Scheme: "http", Host: curlHost}).String()
-			curltls = (&url.URL{Scheme: "https", Host: curlHost}).String()
-			curls = []string{curl, curltls}
 		}
 
 		purl := url.URL{Scheme: cfg.peerScheme(), Host: fmt.Sprintf("localhost:%d", port+1)}
@@ -279,9 +277,10 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 			"--data-dir", dataDirPath,
 			"--snapshot-count", fmt.Sprintf("%d", cfg.snapshotCount),
 		}
+		var clientHttpUrl string
 		if cfg.clientHttpSeparate {
-			clientHttpUrl := url.URL{Scheme: cfg.clientScheme(), Host: fmt.Sprintf("localhost:%d", clientHttpPort)}
-			args = append(args, "--listen-client-http-urls", clientHttpUrl.String())
+			clientHttpUrl = clientURL(clientHttpPort, cfg.clientTLS)
+			args = append(args, "--listen-client-http-urls", clientHttpUrl)
 		}
 		args = addV2Args(args)
 		if cfg.forceNewCluster {
@@ -342,18 +341,19 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
-			lg:           lg,
-			execPath:     cfg.execPath,
-			args:         args,
-			envVars:      cfg.envVars,
-			tlsArgs:      cfg.tlsArgs(),
-			dataDirPath:  dataDirPath,
-			keepDataDir:  cfg.keepDataDir,
-			name:         name,
-			purl:         purl,
-			acurl:        curl,
-			murl:         murl,
-			initialToken: cfg.initialToken,
+			lg:            lg,
+			execPath:      cfg.execPath,
+			args:          args,
+			envVars:       cfg.envVars,
+			tlsArgs:       cfg.tlsArgs(),
+			dataDirPath:   dataDirPath,
+			keepDataDir:   cfg.keepDataDir,
+			name:          name,
+			purl:          purl,
+			acurl:         curl,
+			murl:          murl,
+			initialToken:  cfg.initialToken,
+			clientHttpUrl: clientHttpUrl,
 		}
 	}
 
@@ -364,6 +364,18 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 	}
 
 	return etcdCfgs
+}
+
+func clientURL(port int, connType clientConnType) string {
+	curlHost := fmt.Sprintf("localhost:%d", port)
+	switch connType {
+	case clientNonTLS:
+		return (&url.URL{Scheme: "http", Host: curlHost}).String()
+	case clientTLS:
+		return (&url.URL{Scheme: "https", Host: curlHost}).String()
+	default:
+		panic(fmt.Sprintf("Unsupported connection type %v", connType))
+	}
 }
 
 func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {

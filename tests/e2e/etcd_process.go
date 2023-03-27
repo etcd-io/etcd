@@ -35,6 +35,8 @@ var (
 type etcdProcess interface {
 	EndpointsV2() []string
 	EndpointsV3() []string
+	EndpointsGRPC() []string
+	EndpointsHTTP() []string
 	EndpointsMetrics() []string
 
 	Start() error
@@ -72,8 +74,9 @@ type etcdServerProcessConfig struct {
 
 	purl url.URL
 
-	acurl string
-	murl  string
+	acurl         string
+	murl          string
+	clientHttpUrl string
 
 	initialToken   string
 	initialCluster string
@@ -91,8 +94,15 @@ func newEtcdServerProcess(cfg *etcdServerProcessConfig) (*etcdServerProcess, err
 	return &etcdServerProcess{cfg: cfg, donec: make(chan struct{})}, nil
 }
 
-func (ep *etcdServerProcess) EndpointsV2() []string      { return []string{ep.cfg.acurl} }
-func (ep *etcdServerProcess) EndpointsV3() []string      { return ep.EndpointsV2() }
+func (ep *etcdServerProcess) EndpointsV2() []string   { return ep.EndpointsHTTP() }
+func (ep *etcdServerProcess) EndpointsV3() []string   { return ep.EndpointsGRPC() }
+func (ep *etcdServerProcess) EndpointsGRPC() []string { return []string{ep.cfg.acurl} }
+func (ep *etcdServerProcess) EndpointsHTTP() []string {
+	if ep.cfg.clientHttpUrl == "" {
+		return []string{ep.cfg.acurl}
+	}
+	return []string{ep.cfg.clientHttpUrl}
+}
 func (ep *etcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.murl} }
 
 func (ep *etcdServerProcess) Start() error {
