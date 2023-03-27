@@ -202,19 +202,30 @@ func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.Et
 		trafficCancel()
 		return nil
 	})
-	watchCtx, watchCancel := context.WithCancel(ctx)
+	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		operations = simulateTraffic(trafficCtx, t, lg, clus, traffic)
 		time.Sleep(time.Second)
-		watchCancel()
+		maxRevisionChan <- operationsMaxRevision(operations)
 		return nil
 	})
 	g.Go(func() error {
-		responses = collectClusterWatchEvents(watchCtx, t, lg, clus)
+		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan)
 		return nil
 	})
 	g.Wait()
 	return operations, responses
+}
+
+func operationsMaxRevision(operations []porcupine.Operation) int64 {
+	var maxRevision int64
+	for _, op := range operations {
+		revision := op.Output.(model.EtcdResponse).Revision
+		if revision > maxRevision {
+			maxRevision = revision
+		}
+	}
+	return maxRevision
 }
 
 // forcestopCluster stops the etcd member with signal kill.
