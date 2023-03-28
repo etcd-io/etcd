@@ -15,7 +15,6 @@
 package connmux
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/tls"
 	"io"
@@ -92,37 +91,24 @@ func (c *ConnMux) Serve() error {
 	}
 }
 
-// peekHTTP2PrefaceBytes define the bytes we need to peek to be able to differentiate between HTTP and GRPC.
-// Since GRPC uses HTTP2 we need to match the connection preface
-// https://httpwg.org/specs/rfc9113.html#preface (24 octects)
-// 3.5. HTTP/2 Connection Preface
-// The client connection preface starts with a sequence of 24 octets, which in hex notation is:
-// 0x505249202a20485454502f322e300d0a0d0a534d0d0a0d0a
-// That is, the connection preface starts with the string PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n).
-// This sequence MUST be followed by a SETTINGS frame (Section 6.5), which MAY be empty.
-// 4.1. Frame Format
-// All frames begin with a fixed 9-octet header followed by a variable-length payload.
-// min peek size is 24 + 9 = 33
-const peekHTTP2PrefaceBytes = 33
-
 func (c *ConnMux) serve(conn net.Conn) {
 	// avoid to get blocked in any read operation
 	conn.SetDeadline(time.Now().Add(readDeadlineTimeout))
 	defer conn.SetReadDeadline(time.Time{})
 
-	var proxiedConn bufferedConn
-
+	buf := make([]byte, 1024)
 	buffConn := newBufferedConn(conn)
 	// Check if is TLS or plain TCP
-	b, err := buffConn.Peek(peekHTTP2PrefaceBytes)
-	if err != nil {
+	_, err := buffConn.sniffReader().Read(buf)
+	if err != nil && err != io.EOF {
 		// exit since it will panic trying to detect if is TLS
 		c.lg.Error("error reading from the connection", zap.Error(err))
 		conn.Close()
 		return
 	}
-	// is TLS
-	isTLS := b[0] == 0x16
+	c.lg.Debug("connection received", zap.String("remote address", conn.RemoteAddr().String()), zap.Int("buffer size", len(buf)), zap.String("buffer content", string(buf[0:])))
+	// Check if is TLS or plain TCP
+	isTLS := buf[0] == 0x16
 	if isTLS {
 		if !c.secure {
 			c.lg.Error("secure connections not enabled")
@@ -137,40 +123,20 @@ func (c *ConnMux) serve(conn net.Conn) {
 			conn.Close()
 			return
 		}
-
-		proxiedConn = newBufferedConn(tlsConn)
 		// It is a "new" connection obtained after the handshake so we have to do another read
-		// to get the new data, but be careful to not get blocked in the read if there are no enough data.
-		_, err = proxiedConn.Peek(peekHTTP2PrefaceBytes)
-		if err != nil {
-			// try to see how far we go, it will be discarded by the server if we route it to the wrong one
-			c.lg.Error("error reading from the TLS connection", zap.Error(err))
-		}
+		proxiedConn := newBufferedConn(tlsConn)
+		isGRPC := isGRPCConnection(c.lg, proxiedConn, proxiedConn.sniffReader())
+		c.forward(isGRPC, proxiedConn)
 	} else {
 		if !c.insecure {
 			c.lg.Error("insecure connections not enabled")
 			conn.Close()
 			return
 		}
-		proxiedConn = buffConn
+		isGRPC := isGRPCConnection(c.lg, buffConn, io.MultiReader(bytes.NewReader(buf), buffConn.sniffReader()))
+		c.forward(isGRPC, buffConn)
 	}
 
-	// read the whole buffer
-	b, err = proxiedConn.Peek(proxiedConn.r.Buffered())
-	if err != nil && err != io.EOF {
-		c.lg.Error("error reading", zap.Error(err))
-		conn.Close()
-		return
-	}
-	c.lg.Debug("connection received", zap.String("remote address", conn.RemoteAddr().String()), zap.Int("buffer size", len(b)), zap.String("buffer content", string(b)))
-	reader := bytes.NewReader(b)
-	isHTTP2 := isHTTP2Connection(reader)
-	// if is not http2 it is not grpc
-	if !isHTTP2 {
-		c.forward(false, proxiedConn)
-	} else {
-		c.forward(isGRPCConnection(c.lg, reader), proxiedConn)
-	}
 }
 
 func (c *ConnMux) forward(isGRPC bool, conn net.Conn) {
@@ -261,74 +227,109 @@ func (c *ConnMux) GRPCListener() net.Listener {
 // bufferedConn allows to peek in the buffer of the connection
 // without advancing the reader.
 type bufferedConn struct {
-	r *bufio.Reader
 	net.Conn
+	buf *bytes.Buffer
+}
+
+var _ net.Conn = &bufferedConn{}
+
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
 }
 
 func newBufferedConn(c net.Conn) bufferedConn {
-	return bufferedConn{bufio.NewReader(c), c}
-}
-
-func (b bufferedConn) Peek(n int) ([]byte, error) {
-	return b.r.Peek(n)
+	return bufferedConn{
+		Conn: c,
+		buf:  bufferPool.Get().(*bytes.Buffer),
+	}
 }
 
 func (b bufferedConn) Read(p []byte) (int, error) {
-	return b.r.Read(p)
+	if b.buf.Len() > 0 {
+		n, err := b.buf.Read(p)
+		if err == io.EOF {
+			// Don't return EOF yet. More readers remain.
+			return n, nil
+		}
+		return n, err
+	}
+	// return the buffer to the pool
+	b.buf.Reset()
+	bufferPool.Put(b.buf)
+	return b.Conn.Read(p)
 }
 
-func isHTTP2Connection(r io.Reader) bool {
+func (b bufferedConn) Close() error {
+	// In case we didn't have time to return the buffer to the pool
+	if b.buf != nil {
+		// return the buffer to the pool
+		b.buf.Reset()
+		bufferPool.Put(b.buf)
+	}
+	return b.Conn.Close()
+}
+
+func (b bufferedConn) sniffReader() io.Reader {
+	return io.TeeReader(b.Conn, b.buf)
+}
+
+func isGRPCConnection(lg *zap.Logger, w io.Writer, r io.Reader) bool {
 	// check the http2 client preface
 	buf := make([]byte, len(http2.ClientPreface))
 	n, err := r.Read(buf)
 	if err != nil || n != len(http2.ClientPreface) {
 		return false
 	}
-	return bytes.Equal(buf, []byte(http2.ClientPreface))
-}
 
-func isGRPCConnection(lg *zap.Logger, r io.Reader) bool {
+	if !bytes.Equal(buf, []byte(http2.ClientPreface)) {
+		lg.Debug("not found http2 client preface", zap.String("preface", string(buf)))
+		return false
+	}
+	lg.Debug("found http2 client preface")
+
+	// identify GRPC connections matching match headers names or values defined
+	// on https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
 	done := false
 	isGRPC := false
-	// check if len of the settings frame is 0 or the headers with the "content-type"
-	// indicates is an grpc connection.
-	framer := http2.NewFramer(io.Discard, r)
+	framer := http2.NewFramer(w, r)
 	// use the default value for the maxDynamixTable size
 	// https://pkg.go.dev/golang.org/x/net/http2
 	// "If zero, the default value of 4096 is used."
 	hdec := hpack.NewDecoder(4096, func(hf hpack.HeaderField) {
-		// match headers names or values based on https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
-		if strings.Contains(hf.Name, "grpc") {
-			isGRPC = true
-			done = true
-			lg.Debug("found grpc header", zap.String("header", hf.Name))
-			return
-		}
+		// If Content-Type does not begin with "application/grpc", gRPC servers SHOULD respond with HTTP status of 415 (Unsupported Media Type).
+		// This will prevent other HTTP/2 clients from interpreting a gRPC error response, which uses status 200 (OK), as successful.
+		lg.Debug("found header", zap.String("name", hf.Name), zap.String("value", hf.Value))
 		if hf.Name == "content-type" {
-			isGRPC = strings.Contains(hf.Value, "application/grpc")
-			lg.Debug("found content-type header", zap.String("content-type", hf.Value))
+			isGRPC = strings.HasPrefix(hf.Value, "application/grpc")
 		}
 		done = true
 	})
-	for {
+	err = framer.WriteSettingsAck()
+	if err != nil {
+		lg.Debug("error acking setting frame", zap.Error(err))
+		return false
+	}
+	lg.Debug("ack settings")
+	for !done {
 		f, err := framer.ReadFrame()
 		if err != nil {
-			break
+			lg.Debug("error reading frame", zap.Error(err))
+			return false
 		}
 		switch f := f.(type) {
+		//  The SETTINGS frames received from a peer as part of the connection
+		// preface MUST be acknowledged (see Section 6.5.3) after sending the
+		// connection preface.
 		case *http2.SettingsFrame:
-			// Observed behavior is that etcd GRPC clients sends an empty setting frame
-			// and block waiting for an answer.
-			if f.Length == 0 {
-				isGRPC = true
-				done = true
-				lg.Debug("found setting frame with zero length")
+			lg.Debug("found setting frame")
+			if f.IsAck() {
+				continue
 			}
+
 		case *http2.HeadersFrame:
 			hdec.Write(f.HeaderBlockFragment())
-		}
-		if done {
-			break
 		}
 	}
 	return isGRPC
