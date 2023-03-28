@@ -590,25 +590,39 @@ func TestAuthMemberRemove(t *testing.T) {
 	testRunner.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	clusterSize := 2
+	clusterSize := 3
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: clusterSize}))
 	defer clus.Close()
 	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
+		memberIDToEndpoints := getMemberIDToEndpoints(ctx, t, clus)
 		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
 		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
-		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
 
 		memberId, clusterId := memberToRemove(ctx, t, rootAuthClient, clusterSize)
-
+		delete(memberIDToEndpoints, memberId)
+		endpoints := make([]string, 0, len(memberIDToEndpoints))
+		for _, ep := range memberIDToEndpoints {
+			endpoints = append(endpoints, ep)
+		}
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
 		// ordinary user cannot remove a member
 		_, err := testUserAuthClient.MemberRemove(ctx, memberId)
 		require.ErrorContains(t, err, PermissionDenied)
 
-		// root can remove a member
-		removeResp, err := rootAuthClient.MemberRemove(ctx, memberId)
-		require.NoError(t, err, "MemberRemove failed")
-		require.Equal(t, removeResp.Header.ClusterId, clusterId)
+		// root can remove a member, building a client excluding removed member endpoint
+		rootAuthClient2 := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword), WithEndpoints(endpoints)))
+		resp, err := rootAuthClient2.MemberRemove(ctx, memberId)
+		require.NoError(t, err)
+		require.Equal(t, resp.Header.ClusterId, clusterId)
+		found := false
+		for _, member := range resp.Members {
+			if member.ID == memberId {
+				found = true
+				break
+			}
+		}
+		require.False(t, found, "expect removed member not found in member remove response")
 	})
 }
 

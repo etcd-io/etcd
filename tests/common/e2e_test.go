@@ -77,3 +77,7 @@ func e2eClusterTestCases() []testCase {
 func WithAuth(userName, password string) config.ClientOption {
 	return e2e.WithAuth(userName, password)
 }
+
+func WithEndpoints(endpoints []string) config.ClientOption {
+	return e2e.WithEndpoints(endpoints)
+}

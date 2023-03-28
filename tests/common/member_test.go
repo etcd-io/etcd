@@ -272,3 +272,14 @@ func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clust
 	}
 	return memberId, clusterId
 }
+
+func getMemberIDToEndpoints(ctx context.Context, t *testing.T, clus intf.Cluster) (memberIDToEndpoints map[uint64]string) {
+	memberIDToEndpoints = make(map[uint64]string, len(clus.Endpoints()))
+	for _, ep := range clus.Endpoints() {
+		cc := testutils.MustClient(clus.Client(WithEndpoints([]string{ep})))
+		gresp, err := cc.Get(ctx, "health", config.GetOptions{})
+		require.NoError(t, err)
+		memberIDToEndpoints[gresp.Header.MemberId] = ep
+	}
+	return memberIDToEndpoints
+}

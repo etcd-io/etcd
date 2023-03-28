@@ -55,3 +55,7 @@ func integrationClusterTestCases() []testCase {
 func WithAuth(userName, password string) config.ClientOption {
 	return integration.WithAuth(userName, password)
 }
+
+func WithEndpoints(endpoints []string) config.ClientOption {
+	return integration.WithEndpoints(endpoints)
+}
