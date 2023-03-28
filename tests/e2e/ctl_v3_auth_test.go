@@ -29,14 +29,10 @@ import (
 
 func TestCtlV3AuthMemberUpdate(t *testing.T) { testCtl(t, authTestMemberUpdate) }
 func TestCtlV3AuthFromKeyPerm(t *testing.T)  { testCtl(t, authTestFromKeyPerm) }
-func TestCtlV3AuthAndWatch(t *testing.T)     { testCtl(t, authTestWatch) }
-func TestCtlV3AuthAndWatchJWT(t *testing.T)  { testCtl(t, authTestWatch, withCfg(*e2e.NewConfigJWT())) }
 
-func TestCtlV3AuthLeaseRevoke(t *testing.T) { testCtl(t, authLeaseTestLeaseRevoke) }
-
-func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
-func TestCtlV3AuthUserGet(t *testing.T)  { testCtl(t, authTestUserGet) }
-func TestCtlV3AuthRoleList(t *testing.T) { testCtl(t, authTestRoleList) }
+// TestCtlV3AuthAndWatch TODO https://github.com/etcd-io/etcd/issues/7988 is the blocker of migration to common/auth_test.go
+func TestCtlV3AuthAndWatch(t *testing.T)    { testCtl(t, authTestWatch) }
+func TestCtlV3AuthAndWatchJWT(t *testing.T) { testCtl(t, authTestWatch, withCfg(*e2e.NewConfigJWT())) }
 
 func TestCtlV3AuthDefrag(t *testing.T) { testCtl(t, authTestDefrag) }
 func TestCtlV3AuthEndpointHealth(t *testing.T) {
@@ -230,44 +226,6 @@ func authTestFromKeyPerm(cx ctlCtx) {
 	}
 }
 
-func leaseTestGrantLeasesList(cx ctlCtx) error {
-	id, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		return fmt.Errorf("ctlV3LeaseGrant error (%v)", err)
-	}
-
-	cmdArgs := append(cx.PrefixArgs(), "lease", "list")
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-	if err != nil {
-		return fmt.Errorf("lease list failed (%v)", err)
-	}
-	_, err = proc.Expect(id)
-	if err != nil {
-		return fmt.Errorf("lease id not in returned list (%v)", err)
-	}
-	return proc.Close()
-}
-
-func authLeaseTestLeaseRevoke(cx ctlCtx) {
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	// put with TTL 10 seconds and revoke
-	leaseID, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		cx.t.Fatalf("ctlV3LeaseGrant error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
-		cx.t.Fatalf("ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3LeaseRevoke(cx, leaseID); err != nil {
-		cx.t.Fatalf("ctlV3LeaseRevoke error (%v)", err)
-	}
-	if err := ctlV3GetWithErr(cx, []string{"key"}, []string{"retrying of unary invoker failed"}); err != nil { // expect errors
-		cx.t.Fatalf("ctlV3GetWithErr error (%v)", err)
-	}
-}
-
 func authTestWatch(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
 		cx.t.Fatal(err)
@@ -342,77 +300,6 @@ func authTestWatch(cx ctlCtx) {
 		<-donec
 	}
 
-}
-
-func authTestRoleGet(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	expected := []string{
-		"Role test-role",
-		"KV Read:", "foo",
-		"KV Write:", "foo",
-	}
-	if err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), cx.envMap, expected...); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// test-user can get the information of test-role because it belongs to the role
-	cx.user, cx.pass = "test-user", "pass"
-	if err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), cx.envMap, expected...); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// test-user cannot get the information of root because it doesn't belong to the role
-	expected = []string{
-		"Error: etcdserver: permission denied",
-	}
-	err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "role", "get", "root"), cx.envMap, expected...)
-	require.ErrorContains(cx.t, err, "permission denied")
-}
-
-func authTestUserGet(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	expected := []string{
-		"User: test-user",
-		"Roles: test-role",
-	}
-
-	if err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "user", "get", "test-user"), cx.envMap, expected...); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// test-user can get the information of test-user itself
-	cx.user, cx.pass = "test-user", "pass"
-	if err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "user", "get", "test-user"), cx.envMap, expected...); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// test-user cannot get the information of root
-	expected = []string{
-		"Error: etcdserver: permission denied",
-	}
-	err := e2e.SpawnWithExpects(append(cx.PrefixArgs(), "user", "get", "root"), cx.envMap, expected...)
-	require.ErrorContains(cx.t, err, "permission denied")
-}
-
-func authTestRoleList(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-	if err := e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "list"), cx.envMap, "test-role"); err != nil {
-		cx.t.Fatal(err)
-	}
 }
 
 func authTestDefrag(cx ctlCtx) {
