@@ -626,22 +626,14 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	}
 
 	for _, u := range cfg.ListenClientUrls {
-		addr := u.Host
-		network := "tcp"
-		if u.Scheme == "unix" || u.Scheme == "unixs" {
-			addr = u.Host + u.Path
-			network = "unix"
-		}
-		secure := u.Scheme == "https" || u.Scheme == "unixs"
-		insecure := !secure
-
+		addr, secure, network := resolveUrl(u)
 		sctx := sctxs[addr]
 		if sctx == nil {
 			sctx = newServeCtx(cfg.logger)
 			sctxs[addr] = sctx
 		}
 		sctx.secure = sctx.secure || secure
-		sctx.insecure = sctx.insecure || insecure
+		sctx.insecure = sctx.insecure || !secure
 		sctx.scheme = u.Scheme
 		sctx.addr = addr
 		sctx.network = network
@@ -690,6 +682,17 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		}
 	}
 	return sctxs, nil
+}
+
+func resolveUrl(u url.URL) (addr string, secure bool, network string) {
+	addr = u.Host
+	network = "tcp"
+	if u.Scheme == "unix" || u.Scheme == "unixs" {
+		addr = u.Host + u.Path
+		network = "unix"
+	}
+	secure = u.Scheme == "https" || u.Scheme == "unixs"
+	return addr, secure, network
 }
 
 func (e *Etcd) serveClients() (err error) {
