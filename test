@@ -340,7 +340,7 @@ function e2e_pass {
 		USERTIMEOUT="${TIMEOUT}"
 	fi
 
-	go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "${RUN_ARG}"  "$@" "${REPO_PATH}/tests/e2e"
+	go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" ${RUN_ARG}  "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function integration_e2e_pass {
