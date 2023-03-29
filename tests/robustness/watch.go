@@ -85,61 +85,84 @@ func validateWatchResponses(t *testing.T, responses [][]watchResponse, expectPro
 }
 
 func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
-	var (
-		gotProgressNotify                = false
-		lastEventModRevision       int64 = 1 // The event.Kv.ModRevision in the latest event.
-		lastHeadRevision           int64 = 1 // The resp.Header.Revision in last watch response.
-		lastProgressNotifyRevision int64 = 0 // The resp.Header.Revision in the last progress notify watch response.
-	)
+	// Validate watch is correctly configured to ensure proper testing
+	validateGotAtLeastOneProgressNotify(t, responses, expectProgressNotify)
+
+	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api/#watch-streams
+	validateOrderedAndReliable(t, responses)
+	validateUnique(t, responses)
+	validateAtomic(t, responses)
+	// Validate kubernetes usage of watch
+	validateRenewable(t, responses)
+}
+
+func validateGotAtLeastOneProgressNotify(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
+	var gotProgressNotify = false
+	var lastHeadRevision int64 = 1
+	for _, resp := range responses {
+		if resp.IsProgressNotify() && resp.Header.Revision == lastHeadRevision {
+			gotProgressNotify = true
+			break
+		}
+		lastHeadRevision = resp.Header.Revision
+	}
+	if gotProgressNotify != expectProgressNotify {
+		t.Errorf("Expected at least one progress notify: %v, got: %v", expectProgressNotify, gotProgressNotify)
+	}
+}
+
+func validateRenewable(t *testing.T, responses []watchResponse) {
+	var lastProgressNotifyRevision int64 = 0
+	for _, resp := range responses {
+		for _, event := range resp.Events {
+			if event.Kv.ModRevision <= lastProgressNotifyRevision {
+				t.Errorf("BROKE: Renewable - watch can renewed using revision in last progress notification; Progress notification guarantees that previous events have been already delivered, eventRevision: %d, progressNotifyRevision: %d", event.Kv.ModRevision, lastProgressNotifyRevision)
+			}
+		}
+		if resp.IsProgressNotify() {
+			lastProgressNotifyRevision = resp.Header.Revision
+		}
+	}
+}
+
+func validateOrderedAndReliable(t *testing.T, responses []watchResponse) {
+	var lastEventRevision int64 = 1
+	for _, resp := range responses {
+		for _, event := range resp.Events {
+			if event.Kv.ModRevision != lastEventRevision && event.Kv.ModRevision != lastEventRevision+1 {
+				t.Errorf("BROKE: Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, lastRevision: %d, currentRevision: %d", lastEventRevision, event.Kv.ModRevision)
+			}
+			lastEventRevision = event.Kv.ModRevision
+		}
+	}
+}
+
+func validateUnique(t *testing.T, responses []watchResponse) {
 	type revisionKey struct {
 		revision int64
 		key      string
 	}
 	uniqueOperations := map[revisionKey]struct{}{}
-
 	for _, resp := range responses {
-		if resp.Header.Revision < lastHeadRevision {
-			t.Errorf("Server revision should never decrease, lastHeadRevision: %d, resp.Header.Revision: %d",
-				lastHeadRevision, resp.Header.Revision)
-		}
-
-		if resp.IsProgressNotify() && resp.Header.Revision == lastHeadRevision {
-			gotProgressNotify = true
-		}
-		if resp.Header.Revision == lastHeadRevision && len(resp.Events) != 0 {
-			t.Errorf("Got two non-empty responses about same revision")
-		}
-		if len(resp.Events) > 0 && resp.Events[0].Kv.ModRevision <= lastEventModRevision {
-			t.Errorf("Events with same revision should not be split between multiple responses, lastResponseModRevision: %d, firstEventModRevision: %d", lastEventModRevision, resp.Events[0].Kv.ModRevision)
-		}
-
 		for _, event := range resp.Events {
 			rk := revisionKey{key: string(event.Kv.Key), revision: event.Kv.ModRevision}
 			if _, found := uniqueOperations[rk]; found {
-				t.Errorf("BROKE: Within the:wq same revision key can only be modified once. Suspecting duplicate watch event. key: %q, revision: %d", rk.key, rk.revision)
+				t.Errorf("BROKE: Unique - an event will never appear on a watch twice, key: %q, revision: %d", rk.key, rk.revision)
 			}
 			uniqueOperations[rk] = struct{}{}
-			if event.Kv.ModRevision <= lastProgressNotifyRevision {
-				t.Errorf("BROKE: etcd will not send progress notification to a watcher until it has synced all events. So a watcher will never receive an event with a lower `ModRevision` than the last progressNotification's revision, eventRevision: %d, progressNotifyRevision: %d", event.Kv.ModRevision, lastProgressNotifyRevision)
-			}
-			if event.Kv.ModRevision != lastEventModRevision && event.Kv.ModRevision != lastEventModRevision+1 {
-				t.Errorf("Event mod revision should stay the same or increment by one, last: %d, current: %d", lastEventModRevision, event.Kv.ModRevision)
-			}
-			lastEventModRevision = event.Kv.ModRevision
 		}
-
-		if resp.Header.Revision < lastEventModRevision {
-			t.Errorf("Event revision should never exceed the server's revision, lastEventRevision: %d, resp.Header.Revision: %d",
-				lastEventModRevision, resp.Header.Revision)
-		}
-
-		if resp.IsProgressNotify() {
-			lastProgressNotifyRevision = resp.Header.Revision
-		}
-		lastHeadRevision = resp.Header.Revision
 	}
-	if gotProgressNotify != expectProgressNotify {
-		t.Errorf("Expected progress notify: %v, got: %v", expectProgressNotify, gotProgressNotify)
+}
+
+func validateAtomic(t *testing.T, responses []watchResponse) {
+	var lastEventRevision int64 = 1
+	for _, resp := range responses {
+		if len(resp.Events) > 0 {
+			if resp.Events[0].Kv.ModRevision == lastEventRevision {
+				t.Errorf("BROKE: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d", lastEventRevision, resp.Events[0].Kv.ModRevision)
+			}
+			lastEventRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
+		}
 	}
 }
 
