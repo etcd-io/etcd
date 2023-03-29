@@ -89,11 +89,10 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 	validateGotAtLeastOneProgressNotify(t, responses, expectProgressNotify)
 
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api/#watch-streams
-	validateOrderedAndReliable(t, responses)
-	validateUnique(t, responses)
-	validateAtomic(t, responses)
-	// Validate kubernetes usage of watch
-	validateRenewable(t, responses)
+	validateEventsAreReliable(t, responses)
+	validateEventsAreUnique(t, responses)
+	validateWatchIsAtomic(t, responses)
+	validateWatchIsResumable(t, responses)
 }
 
 func validateGotAtLeastOneProgressNotify(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
@@ -111,12 +110,12 @@ func validateGotAtLeastOneProgressNotify(t *testing.T, responses []watchResponse
 	}
 }
 
-func validateRenewable(t *testing.T, responses []watchResponse) {
+func validateWatchIsResumable(t *testing.T, responses []watchResponse) {
 	var lastProgressNotifyRevision int64 = 0
 	for _, resp := range responses {
 		for _, event := range resp.Events {
 			if event.Kv.ModRevision <= lastProgressNotifyRevision {
-				t.Errorf("BROKE: Renewable - watch can renewed using revision in last progress notification; Progress notification guarantees that previous events have been already delivered, eventRevision: %d, progressNotifyRevision: %d", event.Kv.ModRevision, lastProgressNotifyRevision)
+				t.Errorf("BROKE: Watch is resumable - watch can resumed using revision in last progress notification; Progress notification guarantees that previous events have been already delivered, eventRevision: %d, progressNotifyRevision: %d", event.Kv.ModRevision, lastProgressNotifyRevision)
 			}
 		}
 		if resp.IsProgressNotify() {
@@ -125,19 +124,19 @@ func validateRenewable(t *testing.T, responses []watchResponse) {
 	}
 }
 
-func validateOrderedAndReliable(t *testing.T, responses []watchResponse) {
+func validateEventsAreReliable(t *testing.T, responses []watchResponse) {
 	var lastEventRevision int64 = 1
 	for _, resp := range responses {
 		for _, event := range resp.Events {
 			if event.Kv.ModRevision != lastEventRevision && event.Kv.ModRevision != lastEventRevision+1 {
-				t.Errorf("BROKE: Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, lastRevision: %d, currentRevision: %d", lastEventRevision, event.Kv.ModRevision)
+				t.Errorf("BROKE: Events are reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, lastRevision: %d, currentRevision: %d", lastEventRevision, event.Kv.ModRevision)
 			}
 			lastEventRevision = event.Kv.ModRevision
 		}
 	}
 }
 
-func validateUnique(t *testing.T, responses []watchResponse) {
+func validateEventsAreUnique(t *testing.T, responses []watchResponse) {
 	type revisionKey struct {
 		revision int64
 		key      string
@@ -147,19 +146,19 @@ func validateUnique(t *testing.T, responses []watchResponse) {
 		for _, event := range resp.Events {
 			rk := revisionKey{key: string(event.Kv.Key), revision: event.Kv.ModRevision}
 			if _, found := uniqueOperations[rk]; found {
-				t.Errorf("BROKE: Unique - an event will never appear on a watch twice, key: %q, revision: %d", rk.key, rk.revision)
+				t.Errorf("BROKE: Events are unique - an event will never appear on a watch twice, key: %q, revision: %d", rk.key, rk.revision)
 			}
 			uniqueOperations[rk] = struct{}{}
 		}
 	}
 }
 
-func validateAtomic(t *testing.T, responses []watchResponse) {
+func validateWatchIsAtomic(t *testing.T, responses []watchResponse) {
 	var lastEventRevision int64 = 1
 	for _, resp := range responses {
 		if len(resp.Events) > 0 {
 			if resp.Events[0].Kv.ModRevision == lastEventRevision {
-				t.Errorf("BROKE: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d", lastEventRevision, resp.Events[0].Kv.ModRevision)
+				t.Errorf("BROKE: Watch is atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d", lastEventRevision, resp.Events[0].Kv.ModRevision)
 			}
 			lastEventRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
 		}
