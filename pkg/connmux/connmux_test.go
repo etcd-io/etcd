@@ -78,6 +78,7 @@ func TestConnMux(t *testing.T) {
 	}
 	http2.ConfigureServer(httpServer, h2s)
 	go httpServer.Serve(httpL)
+	defer httpServer.Close()
 
 	// GRPC Server
 	grpcServer := grpc.NewServer()
@@ -94,45 +95,54 @@ func TestConnMux(t *testing.T) {
 	destHTTPS := url.URL{Scheme: "https", Host: destHost}
 
 	// HTTP plain
-	t.Logf("Test HTTP1 without TLS works")
-	client := &http.Client{}
-	verifyHTTPRequest(t, client, destHTTP.String())
+	t.Run("Test HTTP1 without TLS works", func(t *testing.T) {
+		//t.Skip()
+		client := &http.Client{}
+		verifyHTTPRequest(t, client, destHTTP.String())
+	})
 
 	// HTTPS
-	t.Logf("Test HTTP1 with TLS works")
-	client.Transport = &http.Transport{TLSClientConfig: &tls.Config{
-		InsecureSkipVerify: true,
-	}}
-	verifyHTTPRequest(t, client, destHTTPS.String())
+	t.Run("Test HTTP1 with TLS works", func(t *testing.T) {
+		client := &http.Client{}
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		}}
+		verifyHTTPRequest(t, client, destHTTPS.String())
+	})
 
 	// HTTP2 plain
-	t.Logf("Test HTTP2 without TLS works")
-	client.Transport = &http2.Transport{
-		AllowHTTP: true,
-		DialTLS: func(netw, addr string, cfg *tls.Config) (net.Conn, error) {
-			return net.Dial(netw, addr)
-		}}
-	verifyHTTPRequest(t, client, destHTTP.String())
+	t.Run("Test HTTP2 without TLS works", func(t *testing.T) {
+		client := &http.Client{}
+		client.Transport = &http2.Transport{
+			AllowHTTP: true,
+			DialTLS: func(netw, addr string, cfg *tls.Config) (net.Conn, error) {
+				return net.Dial(netw, addr)
+			}}
+		verifyHTTPRequest(t, client, destHTTP.String())
+	})
 
 	// HTTP2 TLS
-	t.Logf("Test HTTP2 with TLS works")
-	client.Transport = &http2.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-			NextProtos:         []string{http2.NextProtoTLS},
-		},
-	}
-	verifyHTTPRequest(t, client, destHTTPS.String())
+	t.Run("Test HTTP2 with TLS works", func(t *testing.T) {
+		client := &http.Client{}
+		client.Transport = &http2.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+				NextProtos:         []string{http2.NextProtoTLS},
+			},
+		}
+		verifyHTTPRequest(t, client, destHTTPS.String())
+	})
 
 	// Set up a connection to the server.
-	t.Logf("Test GRPC works")
-	conn, err := grpc.Dial(destHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Errorf("did not connect: %v", err)
-	}
-	defer conn.Close()
-	verifyGRPCRequest(t, conn)
 
+	t.Run("Test GRPC with TLS works", func(t *testing.T) {
+		conn, err := grpc.Dial(destHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			t.Errorf("did not connect: %v", err)
+		}
+		defer conn.Close()
+		verifyGRPCRequest(t, conn)
+	})
 }
 
 // TestConnMuxConcurrency tests that HTTP and GRPC connections work repet

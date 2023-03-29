@@ -84,7 +84,7 @@ func (c *ConnMux) Serve() error {
 	for {
 		conn, err := c.root.Accept()
 		if err != nil {
-			c.lg.Error("connection error", zap.Error(err))
+			c.lg.Error("connection accept error", zap.Error(err))
 			return c.Close()
 		}
 		go c.serve(conn)
@@ -96,17 +96,18 @@ func (c *ConnMux) serve(conn net.Conn) {
 	conn.SetDeadline(time.Now().Add(readDeadlineTimeout))
 	defer conn.SetReadDeadline(time.Time{})
 
-	buf := make([]byte, 1024)
+	buf := make([]byte, 512)
 	buffConn := newBufferedConn(conn)
 	// Check if is TLS or plain TCP
-	_, err := buffConn.sniffReader().Read(buf)
+	n, err := buffConn.sniffReader().Read(buf)
 	if err != nil && err != io.EOF {
 		// exit since it will panic trying to detect if is TLS
 		c.lg.Error("error reading from the connection", zap.Error(err))
 		conn.Close()
 		return
 	}
-	c.lg.Debug("connection received", zap.String("remote address", conn.RemoteAddr().String()), zap.Int("buffer size", len(buf)), zap.String("buffer content", string(buf[0:])))
+	r := bytes.NewReader(buf[:n])
+	c.lg.Debug("connection received", zap.String("remote address", conn.RemoteAddr().String()), zap.Int("read size", n), zap.String("buffer content", string(buf[:n])))
 	// Check if is TLS or plain TCP
 	isTLS := buf[0] == 0x16
 	if isTLS {
@@ -133,7 +134,7 @@ func (c *ConnMux) serve(conn net.Conn) {
 			conn.Close()
 			return
 		}
-		isGRPC := isGRPCConnection(c.lg, buffConn, io.MultiReader(bytes.NewReader(buf), buffConn.sniffReader()))
+		isGRPC := isGRPCConnection(c.lg, buffConn, io.MultiReader(r, buffConn.sniffReader()))
 		c.forward(isGRPC, buffConn)
 	}
 
@@ -152,7 +153,7 @@ func (c *ConnMux) forward(isGRPC bool, conn net.Conn) {
 		return
 	}
 
-	if c.grpc != nil {
+	if isGRPC && c.grpc != nil {
 		c.lg.Debug("forwarding connection to the GRPC backend", zap.String("remote address", conn.RemoteAddr().String()))
 		select {
 		case c.grpc.connc <- conn:
@@ -227,6 +228,7 @@ func (c *ConnMux) GRPCListener() net.Listener {
 // bufferedConn allows to peek in the buffer of the connection
 // without advancing the reader.
 type bufferedConn struct {
+	mu sync.Mutex
 	net.Conn
 	buf *bytes.Buffer
 }
@@ -239,61 +241,83 @@ var bufferPool = sync.Pool{
 	},
 }
 
-func newBufferedConn(c net.Conn) bufferedConn {
-	return bufferedConn{
+func newBufferedConn(c net.Conn) *bufferedConn {
+	return &bufferedConn{
 		Conn: c,
 		buf:  bufferPool.Get().(*bytes.Buffer),
 	}
 }
 
-func (b bufferedConn) Read(p []byte) (int, error) {
-	if b.buf.Len() > 0 {
-		n, err := b.buf.Read(p)
-		if err == io.EOF {
-			// Don't return EOF yet. More readers remain.
-			return n, nil
-		}
-		return n, err
-	}
-	// return the buffer to the pool
-	b.buf.Reset()
-	bufferPool.Put(b.buf)
-	return b.Conn.Read(p)
+func (b *bufferedConn) Read(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return io.MultiReader(b.buf, b.Conn).Read(p)
 }
 
-func (b bufferedConn) Close() error {
-	// In case we didn't have time to return the buffer to the pool
-	if b.buf != nil {
-		// return the buffer to the pool
+func (b *bufferedConn) Close() error {
+	// return the buffer to the pool
+	defer func() {
+		b.mu.Lock()
+		defer b.mu.Unlock()
 		b.buf.Reset()
 		bufferPool.Put(b.buf)
-	}
+	}()
 	return b.Conn.Close()
 }
 
-func (b bufferedConn) sniffReader() io.Reader {
+func (b *bufferedConn) sniffReader() io.Reader {
 	return io.TeeReader(b.Conn, b.buf)
 }
 
 func isGRPCConnection(lg *zap.Logger, w io.Writer, r io.Reader) bool {
 	// check the http2 client preface
-	buf := make([]byte, len(http2.ClientPreface))
+	buf := make([]byte, 512)
 	n, err := r.Read(buf)
-	if err != nil || n != len(http2.ClientPreface) {
+	if err != nil || n < len(http2.ClientPreface) {
 		return false
 	}
 
-	if !bytes.Equal(buf, []byte(http2.ClientPreface)) {
+	if !bytes.Equal(buf[:len(http2.ClientPreface)], []byte(http2.ClientPreface)) {
 		lg.Debug("not found http2 client preface", zap.String("preface", string(buf)))
 		return false
 	}
-	lg.Debug("found http2 client preface")
+	lg.Debug("found http2 client preface", zap.Int("bytes read", n))
+
+	reader := r
+	if n > 33 {
+		reader = io.MultiReader(bytes.NewReader(buf[len(http2.ClientPreface):]), r)
+	}
+	framer := http2.NewFramer(w, reader)
+	// GRPC blocks until receive the Settings frame
+	// This means we should have the preface 24 + setting frame 9
+	// HTTP2 fails if we write it before forwarding
+	if n <= 33 {
+		lg.Debug("write http2 settings")
+		err = framer.WriteSettings()
+		if err != nil {
+			lg.Debug("error sending setting frame", zap.Error(err))
+			return false
+		}
+	}
+	// The server connection preface consists of a potentially empty
+	// SETTINGS frame (Section 6.5) that MUST be the first frame the server
+	// sends in the HTTP/2 connection.
+	f, err := framer.ReadFrame()
+	if err != nil {
+		lg.Debug("error reading frame", zap.Error(err))
+		return false
+	}
+	// The SETTINGS frames received from a peer as part of the connection
+	// preface MUST be acknowledged (see Section 6.5.3) after sending the
+	// connection preface.
+	if _, ok := f.(*http2.SettingsFrame); !ok {
+		lg.Debug("expected setting frame")
+	}
 
 	// identify GRPC connections matching match headers names or values defined
 	// on https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
 	done := false
 	isGRPC := false
-	framer := http2.NewFramer(w, r)
 	// use the default value for the maxDynamixTable size
 	// https://pkg.go.dev/golang.org/x/net/http2
 	// "If zero, the default value of 4096 is used."
@@ -306,12 +330,8 @@ func isGRPCConnection(lg *zap.Logger, w io.Writer, r io.Reader) bool {
 		}
 		done = true
 	})
-	err = framer.WriteSettingsAck()
-	if err != nil {
-		lg.Debug("error acking setting frame", zap.Error(err))
-		return false
-	}
-	lg.Debug("ack settings")
+
+	lg.Debug("reading frames")
 	for !done {
 		f, err := framer.ReadFrame()
 		if err != nil {
@@ -323,9 +343,15 @@ func isGRPCConnection(lg *zap.Logger, w io.Writer, r io.Reader) bool {
 		// preface MUST be acknowledged (see Section 6.5.3) after sending the
 		// connection preface.
 		case *http2.SettingsFrame:
-			lg.Debug("found setting frame")
 			if f.IsAck() {
+				lg.Debug("found setting ACK frame")
 				continue
+			}
+			lg.Debug("found setting frame")
+			err := framer.WriteSettingsAck()
+			if err != nil {
+				lg.Debug("error writing settings frame", zap.Error(err))
+				return false
 			}
 
 		case *http2.HeadersFrame:
