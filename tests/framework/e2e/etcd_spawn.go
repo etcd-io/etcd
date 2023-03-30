@@ -28,6 +28,26 @@ var (
 	additionalArgs func() ([]string, error)
 )
 
+const noOutputLineCount = 0 // regular binaries emit no extra lines
+
+func init() {
+	initBinPath = initBinPathNoCov
+	additionalArgs = additionalArgsNoCov
+}
+
+func initBinPathNoCov(binDir string) binPath {
+	return binPath{
+		Etcd:            binDir + "/etcd",
+		EtcdLastRelease: binDir + "/etcd-last-release",
+		Etcdctl:         binDir + "/etcdctl",
+		Etcdutl:         binDir + "/etcdutl",
+	}
+}
+
+func additionalArgsNoCov() ([]string, error) {
+	return []string{}, nil
+}
+
 func SpawnCmd(args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
 	return SpawnNamedCmd(strings.Join(args, "_"), args, envVars)
 }
