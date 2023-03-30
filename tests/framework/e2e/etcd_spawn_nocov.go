@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !cov
-
 package e2e
 
 const noOutputLineCount = 0 // regular binaries emit no extra lines
