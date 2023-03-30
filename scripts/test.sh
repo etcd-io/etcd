@@ -29,7 +29,7 @@
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
-# $ COVERDIR=coverage PASSES="build build_cov cov" ./scripts/test.sh
+# $ COVERDIR=coverage PASSES="build cov" ./scripts/test.sh
 # $ go tool cover -html ./coverage/cover.out
 set -e
 
@@ -171,13 +171,6 @@ function grpcproxy_e2e_pass {
 
 ################# COVERAGE #####################################################
 
-# Builds artifacts used by tests/e2e in coverage mode.
-function build_cov_pass {
-  run_for_module "server" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcd_test" || return $?
-  run_for_module "etcdctl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdctl_test" || return $?
-  run_for_module "etcdutl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdutl_test"
-}
-
 # pkg_to_coverflag [prefix] [pkgs]
 # produces name of .coverprofile file to be used for tests of this package
 function pkg_to_coverprofileflag {
@@ -264,11 +257,6 @@ function cov_pass {
     return 255
   fi
 
-  if [ ! -f "bin/etcd_test" ]; then
-    log_error "etcd_test binary not found. Call: PASSES='build_cov' ./scripts/test.sh"
-    return 255
-  fi
-
   local coverdir
   coverdir=$(readlink -f "${COVERDIR}")
   mkdir -p "${coverdir}"
@@ -297,18 +285,6 @@ function cov_pass {
   # integration_cluster_proxy
   run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
       -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
-
-  log_callout "[$(date)] Collecting coverage from e2e tests ..."
-  # We don't pass 'gocov_build_flags' nor 'pkg_to_coverprofileflag' here,
-  # as the coverage is collected from the ./bin/etcd_test & ./bin/etcdctl_test internally spawned.
-  mkdir -p "${coverdir}/e2e"
-  COVERDIR="${coverdir}/e2e" run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags=cov -timeout 30m "$@" || failed="$failed tests_e2e"
-  split_dir "${coverdir}/e2e" 10
-
-  log_callout "[$(date)] Collecting coverage from e2e tests with proxy ..."
-  mkdir -p "${coverdir}/e2e_proxy"
-  COVERDIR="${coverdir}/e2e_proxy" run_for_module "tests" go_test "./e2e/..." "keep_going" : -tags="cov cluster_proxy" -timeout 30m "$@" || failed="$failed tests_e2e_proxy"
-  split_dir "${coverdir}/e2e_proxy" 10
 
   local cover_out_file="${coverdir}/all.coverprofile"
   merge_cov "${coverdir}"
