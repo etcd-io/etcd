@@ -702,14 +702,6 @@ func (cfg *EtcdProcessClusterConfig) TlsArgs() (args []string) {
 	return args
 }
 
-func (epc *EtcdProcessCluster) EndpointsV2() []string {
-	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsV2() })
-}
-
-func (epc *EtcdProcessCluster) EndpointsV3() []string {
-	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsV3() })
-}
-
 func (epc *EtcdProcessCluster) EndpointsGRPC() []string {
 	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsGRPC() })
 }
@@ -887,7 +879,7 @@ func (epc *EtcdProcessCluster) Stop() (err error) {
 }
 
 func (epc *EtcdProcessCluster) Client(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3(), opts...)
+	etcdctl, err := NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)
 	}

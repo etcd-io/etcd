@@ -493,7 +493,7 @@ func authTestRevisionConsistency(cx ctlCtx) {
 
 	// get node0 auth revision
 	node0 := cx.epc.Procs[0]
-	endpoint := node0.EndpointsV3()[0]
+	endpoint := node0.EndpointsGRPC()[0]
 	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{endpoint}, Username: cx.user, Password: cx.pass, DialTimeout: 3 * time.Second})
 	if err != nil {
 		cx.t.Fatal(err)
@@ -575,7 +575,7 @@ func authTestCacheReload(cx ctlCtx) {
 	}
 
 	node0 := cx.epc.Procs[0]
-	endpoint := node0.EndpointsV3()[0]
+	endpoint := node0.EndpointsGRPC()[0]
 
 	// create a client
 	c, err := clientv3.New(clientv3.Config{Endpoints: []string{endpoint}, DialTimeout: 3 * time.Second})

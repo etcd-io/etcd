@@ -411,7 +411,7 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		clientId := i
 		g.Go(func() error {
-			cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+			cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
 			if err != nil {
 				return err
 			}

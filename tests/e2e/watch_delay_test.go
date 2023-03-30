@@ -89,7 +89,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsV3(), tc.config.Client)
+			c := newClient(t, clus.EndpointsGRPC(), tc.config.Client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -109,7 +109,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsV3(), tc.config.Client)
+			c := newClient(t, clus.EndpointsGRPC(), tc.config.Client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -142,7 +142,7 @@ func TestWatchDelayForEvent(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsV3(), tc.config.Client)
+			c := newClient(t, clus.EndpointsGRPC(), tc.config.Client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
