@@ -43,6 +43,8 @@ var (
 type EtcdProcess interface {
 	EndpointsV2() []string
 	EndpointsV3() []string
+	EndpointsGRPC() []string
+	EndpointsHTTP() []string
 	EndpointsMetrics() []string
 	Client(opts ...config.ClientOption) *EtcdctlV3
 
@@ -86,9 +88,10 @@ type EtcdServerProcessConfig struct {
 
 	Name string
 
-	PeerURL    url.URL
-	ClientURL  string
-	MetricsURL string
+	PeerURL       url.URL
+	ClientURL     string
+	ClientHTTPURL string
+	MetricsURL    string
 
 	InitialToken   string
 	InitialCluster string
@@ -113,8 +116,15 @@ func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, err
 	return ep, nil
 }
 
-func (ep *EtcdServerProcess) EndpointsV2() []string      { return []string{ep.cfg.ClientURL} }
-func (ep *EtcdServerProcess) EndpointsV3() []string      { return ep.EndpointsV2() }
+func (ep *EtcdServerProcess) EndpointsV2() []string   { return ep.EndpointsHTTP() }
+func (ep *EtcdServerProcess) EndpointsV3() []string   { return ep.EndpointsGRPC() }
+func (ep *EtcdServerProcess) EndpointsGRPC() []string { return []string{ep.cfg.ClientURL} }
+func (ep *EtcdServerProcess) EndpointsHTTP() []string {
+	if ep.cfg.ClientHTTPURL == "" {
+		return []string{ep.cfg.ClientURL}
+	}
+	return []string{ep.cfg.ClientHTTPURL}
+}
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.MetricsURL} }
 
 func (epc *EtcdServerProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
