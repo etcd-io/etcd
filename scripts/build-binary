@@ -7,7 +7,6 @@ source ./scripts/test_lib.sh
 VER=$1
 REPOSITORY="${REPOSITORY:-git@github.com:etcd-io/etcd.git}"
 
-
 if [ -z "$1" ]; then
   echo "Usage: ${0} VERSION" >> /dev/stderr
   exit 255
@@ -25,9 +24,7 @@ function setup_env {
 
   pushd "${proj}" >/dev/null
     run git fetch --all
-    git_assert_branch_in_sync || exit 2
     run git checkout "${ver}"
-    git_assert_branch_in_sync || exit 2
   popd >/dev/null
 }
 
