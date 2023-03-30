@@ -685,17 +685,17 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			sctx.l = transport.LimitListener(sctx.l, int(fdLimit-reservedInternalFDNum))
 		}
 
-		defer func(addr string) {
+		defer func(sctx *serveCtx) {
 			if err == nil || sctx.l == nil {
 				return
 			}
 			sctx.l.Close()
 			cfg.logger.Warn(
 				"closing peer listener",
-				zap.String("address", addr),
+				zap.String("address", sctx.addr),
 				zap.Error(err),
 			)
-		}(sctx.addr)
+		}(sctx)
 		for k := range cfg.UserHandlers {
 			sctx.userHandlers[k] = cfg.UserHandlers[k]
 		}
