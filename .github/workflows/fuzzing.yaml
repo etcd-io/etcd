@@ -9,11 +9,14 @@ jobs:
     env:
       TARGET_PATH: ./server/etcdserver/api/v3rpc
     steps:
-    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.4.0
+    - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
     - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
       with:
         go-version: "1.19.7"
-    - run: GOARCH=amd64 CPU=4 make fuzz
+    - run: |
+        set -euo pipefail
+
+        GOARCH=amd64 CPU=4 make fuzz
     - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       if: failure()
       with:

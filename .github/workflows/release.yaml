@@ -5,11 +5,14 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.4.0
+    - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v3.5.0
     - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
       with:
         go-version: "1.19.7"
-    - run: |
+    - name: release
+      run: |
+        set -euo pipefail
+
         git config --global user.email "github-action@etcd.io"
         git config --global user.name "Github Action"
         gpg --batch --gen-key <<EOF
@@ -23,3 +26,6 @@ jobs:
         Expire-Date: 0
         EOF
         DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.6.99
+    - name: test-image
+      run: |
+        VERSION=3.6.99 ./scripts/test_images.sh

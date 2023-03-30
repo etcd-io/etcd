@@ -105,7 +105,7 @@ function relativePath {
 
 ####   Discovery of files/packages within a go module #####
 
-# go_srcs_in_module [package]
+# go_srcs_in_module
 # returns list of all not-generated go sources in the current (dir) module.
 function go_srcs_in_module {
   go list -f "{{with \$c:=.}}{{range \$f:=\$c.GoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.TestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.XTestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{end}}" ./... | grep -vE "(\\.pb\\.go|\\.pb\\.gw.go)"
@@ -212,7 +212,7 @@ function run_for_modules {
 }
 
 junitFilenamePrefix() {
-  if [[ -z "${JUNIT_REPORT_DIR}" ]]; then
+  if [[ -z "${JUNIT_REPORT_DIR:-}" ]]; then
     echo ""
     return
   fi
@@ -222,7 +222,7 @@ junitFilenamePrefix() {
 }
 
 function produce_junit_xmlreport {
-  local -r junit_filename_prefix=$1
+  local -r junit_filename_prefix=${1:-}
   if [[ -z "${junit_filename_prefix}" ]]; then
     return
   fi
@@ -232,7 +232,7 @@ function produce_junit_xmlreport {
 
   # Ensure that gotestsum is run without cross-compiling
   run_go_tool gotest.tools/gotestsum --junitfile "${junit_xml_filename}" --raw-command cat "${junit_filename_prefix}"*.stdout || exit 1
-  if [ "${VERBOSE}" != "1" ]; then
+  if [ "${VERBOSE:-}" != "1" ]; then
     rm "${junit_filename_prefix}"*.stdout
   fi
 
@@ -290,7 +290,7 @@ function go_test {
 
   junit_filename_prefix=$(junitFilenamePrefix)
 
-  if [ "${VERBOSE}" == "1" ]; then
+  if [ "${VERBOSE:-}" == "1" ]; then
     goTestFlags="-v"
   fi
 
@@ -315,7 +315,7 @@ function go_test {
     additional_flags=$(${flags_for_package_func} ${pkg})
 
     # shellcheck disable=SC2206
-    local cmd=( go test ${goTestFlags} ${additional_flags} "$@" ${pkg} )
+    local cmd=( go test ${goTestFlags} ${additional_flags} ${pkg} "$@" )
 
     # shellcheck disable=SC2086
     if ! run env ${goTestEnv} ETCD_VERIFY="${ETCD_VERIFY}" "${cmd[@]}" | tee ${junit_filename_prefix:+"${junit_filename_prefix}.stdout"} | grep --binary-files=text "${go_test_grep_pattern}" ; then

@@ -10,7 +10,7 @@
 #
 # % DRY_RUN=false REMOTE_REPO="origin" ./scripts/release_mod.sh push_mod_tags
 
-set -e
+set -euo pipefail
 
 source ./scripts/test_lib.sh
 
@@ -55,7 +55,7 @@ function mod_tidy_fix {
 function update_versions_cmd() {
   assert_no_git_modifications || return 2
 
-  if [ -z "${TARGET_VERSION}" ]; then
+  if [ -z "${TARGET_VERSION:-}" ]; then
     log_error "TARGET_VERSION environment variable not set. Set it to e.g. v3.5.10-alpha.0"
     return 2
   fi
@@ -89,7 +89,7 @@ function get_gpg_key {
 function push_mod_tags_cmd {
   assert_no_git_modifications || return 2
 
-  if [ -z "${REMOTE_REPO}" ]; then
+  if [ -z "${REMOTE_REPO:-}" ]; then
     log_error "REMOTE_REPO environment variable not set"
     return 2
   fi

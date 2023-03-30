@@ -629,6 +629,99 @@ func TestAuthTestInvalidMgmt(t *testing.T) {
 	})
 }
 
+func TestAuthLeaseRevoke(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+
+		lresp, err := rootAuthClient.Grant(ctx, 10)
+		require.NoError(t, err)
+		err = rootAuthClient.Put(ctx, "key", "value", config.PutOptions{LeaseID: lresp.ID})
+		require.NoError(t, err)
+
+		_, err = rootAuthClient.Revoke(ctx, lresp.ID)
+		require.NoError(t, err)
+
+		_, err = rootAuthClient.Get(ctx, "key", config.GetOptions{})
+		require.NoError(t, err)
+	})
+}
+
+func TestAuthRoleGet(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+
+		resp, err := rootAuthClient.RoleGet(ctx, testRoleName)
+		require.NoError(t, err)
+		requireRolePermissionEqual(t, testRole, resp.Perm)
+
+		// test-user can get the information of test-role because it belongs to the role
+		resp, err = testUserAuthClient.RoleGet(ctx, testRoleName)
+		require.NoError(t, err)
+		requireRolePermissionEqual(t, testRole, resp.Perm)
+		// test-user cannot get the information of root because it doesn't belong to the role
+		_, err = testUserAuthClient.RoleGet(ctx, rootRoleName)
+		require.ErrorContains(t, err, PermissionDenied)
+	})
+}
+
+func TestAuthUserGet(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+
+		resp, err := rootAuthClient.UserGet(ctx, testUserName)
+		require.NoError(t, err)
+		requireUserRolesEqual(t, testUser, resp.Roles)
+
+		// test-user can get the information of test-user itself
+		resp, err = testUserAuthClient.UserGet(ctx, testUserName)
+		require.NoError(t, err)
+		requireUserRolesEqual(t, testUser, resp.Roles)
+		// test-user cannot get the information of root
+		_, err = testUserAuthClient.UserGet(ctx, rootUserName)
+		require.ErrorContains(t, err, PermissionDenied)
+	})
+}
+
+func TestAuthRoleList(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+
+		resp, err := rootAuthClient.RoleList(ctx)
+		require.NoError(t, err)
+		requireUserRolesEqual(t, testUser, resp.Roles)
+	})
+}
+
 func mustAbsPath(path string) string {
 	abs, err := filepath.Abs(path)
 	if err != nil {
