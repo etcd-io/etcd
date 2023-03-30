@@ -19,6 +19,7 @@ package e2e
 
 import (
 	"os"
+	"strings"
 
 	"go.etcd.io/etcd/pkg/expect"
 )
@@ -26,9 +27,14 @@ import (
 const noOutputLineCount = 0 // regular binaries emit no extra lines
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	if args[0] == ctlBinPath+"3" {
-		env := append(os.Environ(), "ETCDCTL_API=3")
-		return expect.NewExpectWithEnv(ctlBinPath, args[1:], env)
+	env := os.Environ()
+	switch {
+	case strings.HasSuffix(args[0], ctlBinPath+"2"):
+		env = append(env, "ETCDCTL_API=2")
+		args[0] = ctlBinPath
+	case strings.HasSuffix(args[0], ctlBinPath+"3"):
+		env = append(env, "ETCDCTL_API=3")
+		args[0] = ctlBinPath
 	}
-	return expect.NewExpect(args[0], args[1:]...)
+	return expect.NewExpectWithEnv(args[0], args[1:], env)
 }
