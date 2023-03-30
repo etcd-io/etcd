@@ -10,13 +10,15 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [server/embed: fix data race when starting both secure & insecure gRPC servers on the same address](https://github.com/etcd-io/etcd/pull/15518)
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15486) to enable support for TLS 1.3.
 - Fix [server/auth: disallow creating empty permission ranges](https://github.com/etcd-io/etcd/pull/15621)
-
-### Go
-- Require [Go 1.19+](https://github.com/etcd-io/etcd/pull/15333).
-- Compile with [Go 1.19+](https://go.dev/doc/devel/release#go1.19)
+- Add [`etcd --listen-client-http-urls`](https://github.com/etcd-io/etcd/pull/15620) flag to support separating http server from grpc one, thus giving full immunity to [watch stream starvation under high read load](https://github.com/etcd-io/etcd/issues/15402).
 
 ### Package `clientv3`
 - Reverted the fix to [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/15542).
+
+### Dependencies
+- Recommend [Go 1.19+](https://github.com/etcd-io/etcd/pull/15337).
+- Compile binaries using [Go 1.19.7](https://github.com/etcd-io/etcd/pull/15429).
+- Upgrade [golang.org/x/net to v0.7.0](https://github.com/etcd-io/etcd/pull/15333).
 
 <hr>
 
@@ -27,41 +29,37 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Improve [mvcc: reduce count-only range overhead](https://github.com/etcd-io/etcd/pull/15099)
 - Improve [mvcc: push down RangeOptions.limit argv into index tree to reduce memory overhead](https://github.com/etcd-io/etcd/pull/15137)
 - Improve [server: set multiple concurrentReadTx instances share one txReadBuffer](https://github.com/etcd-io/etcd/pull/15195)
+- Fix [aligning zap log timestamp resolution to microseconds](https://github.com/etcd-io/etcd/pull/15241). Etcd now uses zap timestamp format: `2006-01-02T15:04:05.999999Z0700` (microsecond instead of milliseconds precision).
+- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15188)
 
 ### Package `clientv3`
 - Fix [etcd might send duplicated events to watch clients](https://github.com/etcd-io/etcd/pull/15275).
 
-### Dependency
+### Dependencies
+- Upgrade [bbolt to v1.3.7](https://github.com/etcd-io/etcd/pull/15223).
 - Upgrade [github.com/grpc-ecosystem/grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway/releases) from [v1.9.5](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.9.5) to [v1.11.0](https://github.com/grpc-ecosystem/grpc-gateway/releases/tag/v1.11.0).
-- Bump bbolt to [v1.3.7](https://github.com/etcd-io/etcd/pull/15223).
 
-### Other
+### Docker image
 - Updated [base image from base-debian11 to static-debian11 and removed dependency on busybox](https://github.com/etcd-io/etcd/pull/15038).
-
-### Package `pkg/logutil`
-- Fix [aligning zap log timestamp resolution to microseconds](https://github.com/etcd-io/etcd/pull/15241). Etcd now uses zap timestamp format: `2006-01-02T15:04:05.999999Z0700` (microsecond instead of milliseconds precision).
-
-### Package `netutil`
-- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15188)
 
 <hr>
 
 ## v3.4.23 (2022-12-21)
 
-### Package `clientv3`
-- Fix [Refreshing token on CommonName based authentication causes segmentation violation in client](https://github.com/etcd-io/etcd/pull/14792).
-
 ### etcd server
 - Fix [Remove memberID from data corrupt alarm](https://github.com/etcd-io/etcd/pull/14853).
 - Fix [nil pointer panic for readonly txn due to nil response](https://github.com/etcd-io/etcd/pull/14900).
-
-### Security
-- Use [distroless base image](https://github.com/etcd-io/etcd/pull/15017) to address critical Vulnerabilities.
 - Bumped [some dependencies](https://github.com/etcd-io/etcd/pull/15019) to address some HIGH Vulnerabilities.
 
-### Go
-- Require [Go 1.17+](https://github.com/etcd-io/etcd/pull/15019).
-- Compile with [Go 1.17+](https://go.dev/doc/devel/release#go1.17)
+### Package `clientv3`
+- Fix [Refreshing token on CommonName based authentication causes segmentation violation in client](https://github.com/etcd-io/etcd/pull/14792).
+
+### Dependencies
+- Recommend [Go 1.17+](https://github.com/etcd-io/etcd/pull/15019).
+- Compile binaries using [Go 1.17.13](https://github.com/etcd-io/etcd/pull/15019).
+
+### Docker image
+- Use [distroless base image](https://github.com/etcd-io/etcd/pull/15017) to address critical Vulnerabilities.
 
 <hr>
 
