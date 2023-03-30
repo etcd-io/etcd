@@ -29,7 +29,7 @@
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
-# $ COVERDIR=coverage PASSES="build build_cov cov" ./scripts/test.sh
+# $ COVERDIR=coverage PASSES="build cov" ./scripts/test.sh
 # $ go tool cover -html ./coverage/cover.out
 set -e
 
@@ -168,13 +168,6 @@ function grpcproxy_e2e_pass {
 
 ################# COVERAGE #####################################################
 
-# Builds artifacts used by tests/e2e in coverage mode.
-function build_cov_pass {
-  run_for_module "server" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcd_test"
-  run_for_module "etcdctl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdctl_test"
-  run_for_module "etcdutl" run go test -tags cov -c -covermode=set -coverpkg="./..." -o "../bin/etcdutl_test"
-}
-
 # pkg_to_coverflag [prefix] [pkgs]
 # produces name of .coverprofile file to be used for tests of this package
 function pkg_to_coverprofileflag {
@@ -258,11 +251,6 @@ function cov_pass {
   # shellcheck disable=SC2153
   if [ -z "$COVERDIR" ]; then
     log_error "COVERDIR undeclared"
-    return 255
-  fi
-
-  if [ ! -f "bin/etcd_test" ]; then
-    log_error "etcd_test binary not found. Call: PASSES='build_cov' ./scripts/test.sh"
     return 255
   fi
 
