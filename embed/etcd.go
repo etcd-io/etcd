@@ -706,7 +706,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			}
 		}
 
-		defer func(addr string) {
+		defer func(sctx *serveCtx) {
 			if err == nil || sctx.l == nil {
 				return
 			}
@@ -714,13 +714,13 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			if cfg.logger != nil {
 				cfg.logger.Warn(
 					"closing peer listener",
-					zap.String("address", addr),
+					zap.String("address", sctx.addr),
 					zap.Error(err),
 				)
 			} else {
-				plog.Info("stopping listening for client requests on ", addr)
+				plog.Info("stopping listening for client requests on ", sctx.addr)
 			}
-		}(sctx.addr)
+		}(sctx)
 		for k := range cfg.UserHandlers {
 			sctx.userHandlers[k] = cfg.UserHandlers[k]
 		}
