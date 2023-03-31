@@ -47,6 +47,7 @@ func TestCtlV3AuthJWTExpire(t *testing.T) {
 }
 func TestCtlV3AuthRevisionConsistency(t *testing.T) { testCtl(t, authTestRevisionConsistency) }
 func TestCtlV3AuthTestCacheReload(t *testing.T)     { testCtl(t, authTestCacheReload) }
+func TestCtlV3AuthLeaseTimeToLive(t *testing.T)     { testCtl(t, authTestLeaseTimeToLive) }
 
 func authEnable(cx ctlCtx) error {
 	// create root user with root role
@@ -631,6 +632,54 @@ func authTestCacheReload(cx ctlCtx) {
 
 	// nothing has changed, but it fails without refreshing cache after restart
 	if _, err = c2.Put(context.TODO(), "foo", "bar2"); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestLeaseTimeToLive(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+	cx.user, cx.pass = "root", "root"
+
+	authSetupTestUser(cx)
+
+	cx.user = "test-user"
+	cx.pass = "pass"
+
+	leaseID, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
+	err = ctlV3Put(cx, "foo", "val", leaseID)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
+	err = ctlV3LeaseTimeToLive(cx, leaseID, true)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user = "root"
+	cx.pass = "root"
+	err = ctlV3Put(cx, "bar", "val", leaseID)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user = "test-user"
+	cx.pass = "pass"
+	// the lease is attached to bar, which test-user cannot access
+	err = ctlV3LeaseTimeToLive(cx, leaseID, true)
+	if err == nil {
+		cx.t.Fatal("test-user must not be able to access to the lease, because it's attached to the key bar")
+	}
+
+	// without --keys, access should be allowed
+	err = ctlV3LeaseTimeToLive(cx, leaseID, false)
+	if err != nil {
 		cx.t.Fatal(err)
 	}
 }
