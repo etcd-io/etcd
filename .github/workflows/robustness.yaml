@@ -2,10 +2,24 @@ name: Robustness
 on: [push, pull_request]
 permissions: read-all
 jobs:
-  test:
+  test-1:
     uses: ./.github/workflows/robustness-template.yaml
     with:
       ref: ${{ github.ref }}
-      count: 15
-      testTimeout: 30m
-      artifactName: test
+      count: 100
+      testTimeout: 180m
+      artifactName: test-1
+  test-2:
+    uses: ./.github/workflows/robustness-template.yaml
+    with:
+      ref: ${{ github.ref }}
+      count: 100
+      testTimeout: 180m
+      artifactName: test-2
+  test-3:
+    uses: ./.github/workflows/robustness-template.yaml
+    with:
+      ref: ${{ github.ref }}
+      count: 100
+      testTimeout: 180m
+      artifactName: test-3

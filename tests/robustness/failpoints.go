@@ -411,6 +411,9 @@ func latestRevisionForEndpoint(ctx context.Context, c *clientv3.Client) (int64, 
 }
 
 func (f blackholePeerNetworkFailpoint) Name() string {
+	if f.waitTillSnapshot {
+		return "blackholeTillSnapshot"
+	}
 	return "blackhole"
 }
 

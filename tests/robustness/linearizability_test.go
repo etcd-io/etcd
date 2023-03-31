@@ -100,7 +100,7 @@ func TestRobustness(t *testing.T) {
 		})
 		scenarios = append(scenarios, scenario{
 			name:      "ClusterOfSize3/" + traffic.name,
-			failpoint: RandomMultiNodeClusterFailpoint,
+			failpoint: BlackholePeerNetwork,
 			traffic:   &traffic,
 			config: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
