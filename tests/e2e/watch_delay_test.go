@@ -33,29 +33,48 @@ import (
 const (
 	watchResponsePeriod = 100 * time.Millisecond
 	watchTestDuration   = 5 * time.Second
-	// TODO: Reduce maxWatchDelay when https://github.com/etcd-io/etcd/issues/15402 is addressed.
-	maxWatchDelay = 2 * time.Second
-	// Configure enough read load to cause starvation from https://github.com/etcd-io/etcd/issues/15402.
-	// Tweaked to pass on GitHub runner. For local runs please increase parameters.
-	// TODO: Increase when https://github.com/etcd-io/etcd/issues/15402 is fully addressed.
-	numberOfPreexistingKeys = 100
-	sizeOfPreexistingValues = 5000
-	readLoadConcurrency     = 10
+	readLoadConcurrency = 10
 )
 
 type testCase struct {
-	name   string
-	config etcdProcessClusterConfig
+	name          string
+	config        etcdProcessClusterConfig
+	maxWatchDelay time.Duration
+	dbSizeBytes   int
 }
 
+const (
+	Kilo = 1000
+	Mega = 1000 * Kilo
+)
+
+// 10 MB is not a bottleneck of grpc server, but filling up etcd with data.
+// Keeping it lower so tests don't take too long.
+// If we implement reuse of db we could increase the dbSize.
 var tcs = []testCase{
 	{
-		name:   "NoTLS",
-		config: etcdProcessClusterConfig{clusterSize: 1},
+		name:          "NoTLS",
+		config:        etcdProcessClusterConfig{clusterSize: 1},
+		maxWatchDelay: 100 * time.Millisecond,
+		dbSizeBytes:   5 * Mega,
 	},
 	{
-		name:   "ClientTLS",
-		config: etcdProcessClusterConfig{clusterSize: 1, isClientAutoTLS: true, clientTLS: clientTLS},
+		name:          "TLS",
+		config:        etcdProcessClusterConfig{clusterSize: 1, isClientAutoTLS: true, clientTLS: clientTLS},
+		maxWatchDelay: 2 * time.Second,
+		dbSizeBytes:   500 * Kilo,
+	},
+	{
+		name:          "SeparateHttpNoTLS",
+		config:        etcdProcessClusterConfig{clusterSize: 1, clientHttpSeparate: true},
+		maxWatchDelay: 100 * time.Millisecond,
+		dbSizeBytes:   5 * Mega,
+	},
+	{
+		name:          "SeparateHttpTLS",
+		config:        etcdProcessClusterConfig{clusterSize: 1, isClientAutoTLS: true, clientTLS: clientTLS, clientHttpSeparate: true},
+		maxWatchDelay: 100 * time.Millisecond,
+		dbSizeBytes:   5 * Mega,
 	},
 }
 
@@ -69,13 +88,13 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
-			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
+			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
 			defer cancel()
 			g := errgroup.Group{}
 			continuouslyExecuteGetAll(ctx, t, &g, c)
-			validateWatchDelay(t, c.Watch(ctx, "fake-key", clientv3.WithProgressNotify()))
+			validateWatchDelay(t, c.Watch(ctx, "fake-key", clientv3.WithProgressNotify()), tc.maxWatchDelay)
 			require.NoError(t, g.Wait())
 		})
 	}
@@ -89,7 +108,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
-			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
+			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
 			defer cancel()
@@ -107,7 +126,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 					time.Sleep(watchResponsePeriod)
 				}
 			})
-			validateWatchDelay(t, c.Watch(ctx, "fake-key"))
+			validateWatchDelay(t, c.Watch(ctx, "fake-key"), tc.maxWatchDelay)
 			require.NoError(t, g.Wait())
 		})
 	}
@@ -121,7 +140,7 @@ func TestWatchDelayForEvent(t *testing.T) {
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
-			require.NoError(t, fillEtcdWithData(context.Background(), c, numberOfPreexistingKeys, sizeOfPreexistingValues))
+			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
 			defer cancel()
@@ -140,13 +159,13 @@ func TestWatchDelayForEvent(t *testing.T) {
 				}
 			})
 			continuouslyExecuteGetAll(ctx, t, &g, c)
-			validateWatchDelay(t, c.Watch(ctx, "key"))
+			validateWatchDelay(t, c.Watch(ctx, "key"), tc.maxWatchDelay)
 			require.NoError(t, g.Wait())
 		})
 	}
 }
 
-func validateWatchDelay(t *testing.T, watch clientv3.WatchChan) {
+func validateWatchDelay(t *testing.T, watch clientv3.WatchChan, maxWatchDelay time.Duration) {
 	start := time.Now()
 	var maxDelay time.Duration
 	for range watch {
@@ -177,15 +196,19 @@ func continuouslyExecuteGetAll(ctx context.Context, t *testing.T, g *errgroup.Gr
 	for i := 0; i < readLoadConcurrency; i++ {
 		g.Go(func() error {
 			for {
-				_, err := c.Get(ctx, "", clientv3.WithPrefix())
+				resp, err := c.Get(ctx, "", clientv3.WithPrefix())
 				if err != nil {
 					if strings.Contains(err.Error(), "context deadline exceeded") {
 						return nil
 					}
 					return err
 				}
+				respSize := 0
+				for _, kv := range resp.Kvs {
+					respSize += kv.Size()
+				}
 				mux.Lock()
-				size += numberOfPreexistingKeys * sizeOfPreexistingValues
+				size += respSize
 				mux.Unlock()
 			}
 		})

@@ -101,15 +101,17 @@ func tlsInfo(t testing.TB, connType clientConnType, isAutoTLS bool) (*transport.
 	}
 }
 
-func fillEtcdWithData(ctx context.Context, c *clientv3.Client, keyCount int, valueSize uint) error {
+func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error {
 	g := errgroup.Group{}
 	concurrency := 10
+	keyCount := 100
 	keysPerRoutine := keyCount / concurrency
+	valueSize := dbSize / keyCount
 	for i := 0; i < concurrency; i++ {
 		i := i
 		g.Go(func() error {
 			for j := 0; j < keysPerRoutine; j++ {
-				_, err := c.Put(ctx, fmt.Sprintf("%d", i*keysPerRoutine+j), stringutil.RandString(valueSize))
+				_, err := c.Put(ctx, fmt.Sprintf("%d", i*keysPerRoutine+j), stringutil.RandString(uint(valueSize)))
 				if err != nil {
 					return err
 				}

@@ -55,8 +55,10 @@ func newProxyEtcdProcess(cfg *etcdServerProcessConfig) (*proxyEtcdProcess, error
 
 func (p *proxyEtcdProcess) Config() *etcdServerProcessConfig { return p.etcdProc.Config() }
 
-func (p *proxyEtcdProcess) EndpointsV2() []string { return p.proxyV2.endpoints() }
-func (p *proxyEtcdProcess) EndpointsV3() []string { return p.proxyV3.endpoints() }
+func (p *proxyEtcdProcess) EndpointsV2() []string   { return p.EndpointsHTTP() }
+func (p *proxyEtcdProcess) EndpointsV3() []string   { return p.EndpointsGRPC() }
+func (p *proxyEtcdProcess) EndpointsHTTP() []string { return p.proxyV2.endpoints() }
+func (p *proxyEtcdProcess) EndpointsGRPC() []string { return p.proxyV3.endpoints() }
 func (p *proxyEtcdProcess) EndpointsMetrics() []string {
 	panic("not implemented; proxy doesn't provide health information")
 }

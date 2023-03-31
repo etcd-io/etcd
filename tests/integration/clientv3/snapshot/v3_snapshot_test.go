@@ -66,8 +66,8 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 
 	cfg := integration.NewEmbedConfig(t, "default")
 	cfg.ClusterState = "new"
-	cfg.LCUrls, cfg.ACUrls = cURLs, cURLs
-	cfg.LPUrls, cfg.APUrls = pURLs, pURLs
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = cURLs, cURLs
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
 	srv, err := embed.StartEtcd(cfg)
 	if err != nil {
@@ -82,7 +82,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		t.Fatalf("failed to start embed.Etcd for creating snapshots")
 	}
 
-	ccfg := clientv3.Config{Endpoints: []string{cfg.ACUrls[0].String()}}
+	ccfg := clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}}
 	cli, err := integration.NewClient(t, ccfg)
 	if err != nil {
 		t.Fatal(err)
