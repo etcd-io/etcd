@@ -28,13 +28,19 @@ import (
 )
 
 type report struct {
-	lg                *zap.Logger
-	clus              *e2e.EtcdProcessCluster
-	responses         [][]watchResponse
-	events            [][]watchEvent
-	operations        []porcupine.Operation
-	patchedOperations []porcupine.Operation
-	visualizeHistory  func(path string)
+	Logger            *zap.Logger
+	Cluster           *e2e.EtcdProcessCluster
+	Responses         [][]WatchResponse
+	Events            [][]WatchEvent
+	Operations        []porcupine.Operation
+	PatchedOperations []porcupine.Operation
+	VisualizeHistory  func(path string)
+}
+
+func NewReport(lg *zap.Logger) *report {
+	return &report{
+		Logger: lg,
+	}
 }
 
 func testResultsDirectory(t *testing.T) string {
@@ -64,25 +70,25 @@ func testResultsDirectory(t *testing.T) string {
 func (r *report) Report(t *testing.T) {
 	path := testResultsDirectory(t)
 	if t.Failed() {
-		for i, member := range r.clus.Procs {
+		for i, member := range r.Cluster.Procs {
 			memberDataDir := filepath.Join(path, member.Config().Name)
-			persistMemberDataDir(t, r.lg, member, memberDataDir)
-			if r.responses != nil {
-				persistWatchResponses(t, r.lg, filepath.Join(memberDataDir, "responses.json"), r.responses[i])
+			persistMemberDataDir(t, r.Logger, member, memberDataDir)
+			if r.Responses != nil {
+				persistWatchResponses(t, r.Logger, filepath.Join(memberDataDir, "responses.json"), r.Responses[i])
 			}
-			if r.events != nil {
-				persistWatchEvents(t, r.lg, filepath.Join(memberDataDir, "events.json"), r.events[i])
+			if r.Events != nil {
+				persistWatchEvents(t, r.Logger, filepath.Join(memberDataDir, "events.json"), r.Events[i])
 			}
 		}
-		if r.operations != nil {
-			persistOperationHistory(t, r.lg, filepath.Join(path, "full-history.json"), r.operations)
+		if r.Operations != nil {
+			persistOperationHistory(t, r.Logger, filepath.Join(path, "full-history.json"), r.Operations)
 		}
-		if r.patchedOperations != nil {
-			persistOperationHistory(t, r.lg, filepath.Join(path, "patched-history.json"), r.patchedOperations)
+		if r.PatchedOperations != nil {
+			persistOperationHistory(t, r.Logger, filepath.Join(path, "patched-history.json"), r.PatchedOperations)
 		}
 	}
-	if r.visualizeHistory != nil {
-		r.visualizeHistory(filepath.Join(path, "history.html"))
+	if r.VisualizeHistory != nil {
+		r.VisualizeHistory(filepath.Join(path, "history.html"))
 	}
 }
 
@@ -94,7 +100,7 @@ func persistMemberDataDir(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, 
 	}
 }
 
-func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses []watchResponse) {
+func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses []WatchResponse) {
 	lg.Info("Saving watch responses", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
@@ -111,7 +117,7 @@ func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses 
 	}
 }
 
-func persistWatchEvents(t *testing.T, lg *zap.Logger, path string, events []watchEvent) {
+func persistWatchEvents(t *testing.T, lg *zap.Logger, path string, events []WatchEvent) {
 	lg.Info("Saving watch events", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {

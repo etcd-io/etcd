@@ -31,10 +31,10 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64) [][]watchResponse {
+func CollectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64) [][]WatchResponse {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
-	memberResponses := make([][]watchResponse, len(clus.Procs))
+	memberResponses := make([][]WatchResponse, len(clus.Procs))
 	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
 	for i, member := range clus.Procs {
 		c, err := clientv3.New(clientv3.Config{
@@ -71,7 +71,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 }
 
 // watchMember collects all responses until context is cancelled or has observed revision provided via maxRevisionChan.
-func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64) (resps []watchResponse) {
+func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64) (resps []WatchResponse) {
 	var maxRevision int64 = 0
 	var lastRevision int64 = 0
 	ctx, cancel := context.WithCancel(ctx)
@@ -94,7 +94,7 @@ func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevis
 			}
 		case resp := <-watch:
 			if resp.Err() == nil {
-				resps = append(resps, watchResponse{resp, time.Now()})
+				resps = append(resps, WatchResponse{resp, time.Now()})
 			} else if !resp.Canceled {
 				t.Errorf("Watch stream received error, err %v", resp.Err())
 			}
@@ -109,7 +109,7 @@ func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevis
 	}
 }
 
-func watchResponsesMaxRevision(responses []watchResponse) int64 {
+func watchResponsesMaxRevision(responses []WatchResponse) int64 {
 	var maxRevision int64
 	for _, response := range responses {
 		for _, event := range response.Events {
@@ -121,13 +121,13 @@ func watchResponsesMaxRevision(responses []watchResponse) int64 {
 	return maxRevision
 }
 
-func validateWatchResponses(t *testing.T, responses [][]watchResponse, expectProgressNotify bool) {
+func ValidateWatchResponses(t *testing.T, responses [][]WatchResponse, expectProgressNotify bool) {
 	for _, memberResponses := range responses {
 		validateMemberWatchResponses(t, memberResponses, expectProgressNotify)
 	}
 }
 
-func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
+func validateMemberWatchResponses(t *testing.T, responses []WatchResponse, expectProgressNotify bool) {
 	// Validate watch is correctly configured to ensure proper testing
 	validateGotAtLeastOneProgressNotify(t, responses, expectProgressNotify)
 
@@ -139,7 +139,7 @@ func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expec
 	validateRenewable(t, responses)
 }
 
-func validateGotAtLeastOneProgressNotify(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
+func validateGotAtLeastOneProgressNotify(t *testing.T, responses []WatchResponse, expectProgressNotify bool) {
 	var gotProgressNotify = false
 	var lastHeadRevision int64 = 1
 	for _, resp := range responses {
@@ -154,7 +154,7 @@ func validateGotAtLeastOneProgressNotify(t *testing.T, responses []watchResponse
 	}
 }
 
-func validateRenewable(t *testing.T, responses []watchResponse) {
+func validateRenewable(t *testing.T, responses []WatchResponse) {
 	var lastProgressNotifyRevision int64 = 0
 	for _, resp := range responses {
 		for _, event := range resp.Events {
@@ -168,7 +168,7 @@ func validateRenewable(t *testing.T, responses []watchResponse) {
 	}
 }
 
-func validateOrderedAndReliable(t *testing.T, responses []watchResponse) {
+func validateOrderedAndReliable(t *testing.T, responses []WatchResponse) {
 	var lastEventRevision int64 = 1
 	for _, resp := range responses {
 		for _, event := range resp.Events {
@@ -180,7 +180,7 @@ func validateOrderedAndReliable(t *testing.T, responses []watchResponse) {
 	}
 }
 
-func validateUnique(t *testing.T, responses []watchResponse) {
+func validateUnique(t *testing.T, responses []WatchResponse) {
 	type revisionKey struct {
 		revision int64
 		key      string
@@ -197,7 +197,7 @@ func validateUnique(t *testing.T, responses []watchResponse) {
 	}
 }
 
-func validateAtomic(t *testing.T, responses []watchResponse) {
+func validateAtomic(t *testing.T, responses []WatchResponse) {
 	var lastEventRevision int64 = 1
 	for _, resp := range responses {
 		if len(resp.Events) > 0 {
@@ -209,7 +209,7 @@ func validateAtomic(t *testing.T, responses []watchResponse) {
 	}
 }
 
-func toWatchEvents(responses []watchResponse) (events []watchEvent) {
+func toWatchEvents(responses []WatchResponse) (events []WatchEvent) {
 	for _, resp := range responses {
 		for _, event := range resp.Events {
 			var op model.OperationType
@@ -219,7 +219,7 @@ func toWatchEvents(responses []watchResponse) (events []watchEvent) {
 			case mvccpb.DELETE:
 				op = model.Delete
 			}
-			events = append(events, watchEvent{
+			events = append(events, WatchEvent{
 				Time:     resp.time,
 				Revision: event.Kv.ModRevision,
 				Op: model.EtcdOperation{
@@ -233,20 +233,20 @@ func toWatchEvents(responses []watchResponse) (events []watchEvent) {
 	return events
 }
 
-type watchResponse struct {
+type WatchResponse struct {
 	clientv3.WatchResponse
 	time time.Time
 }
 
-type watchEvent struct {
+type WatchEvent struct {
 	Op       model.EtcdOperation
 	Revision int64
 	Time     time.Time
 }
 
-func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEvents []watchEvent) []porcupine.Operation {
+func PatchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEvents []WatchEvent) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
-	persisted := map[model.EtcdOperation]watchEvent{}
+	persisted := map[model.EtcdOperation]WatchEvent{}
 	for _, op := range watchEvents {
 		persisted[op.Op] = op
 	}
@@ -281,7 +281,7 @@ func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEve
 	return newOperations
 }
 
-func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.EtcdOperation]watchEvent) porcupine.Operation {
+func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.EtcdOperation]WatchEvent) porcupine.Operation {
 	var maxCallTime int64
 	var lastOperation porcupine.Operation
 	for _, op := range operations {
@@ -298,7 +298,7 @@ func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents 
 	return lastOperation
 }
 
-func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperation]watchEvent) *watchEvent {
+func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperation]WatchEvent) *WatchEvent {
 	for _, etcdOp := range request.Ops {
 		if etcdOp.Type == model.Put {
 			// Remove LeaseID which is not exposed in watch.
@@ -333,26 +333,26 @@ func hasUniqueWriteOperation(request *model.TxnRequest) bool {
 	return false
 }
 
-func watchEvents(responses [][]watchResponse) [][]watchEvent {
-	ops := make([][]watchEvent, len(responses))
+func WatchEvents(responses [][]WatchResponse) [][]WatchEvent {
+	ops := make([][]WatchEvent, len(responses))
 	for i, resps := range responses {
 		ops[i] = toWatchEvents(resps)
 	}
 	return ops
 }
 
-func validateEventsMatch(t *testing.T, histories [][]watchEvent) {
-	longestHistory := longestHistory(histories)
+func ValidateEventsMatch(t *testing.T, histories [][]WatchEvent) {
+	longestHistory := LongestHistory(histories)
 	for i := 0; i < len(histories); i++ {
 		length := len(histories[i])
 		// We compare prefix of watch events, as we are not guaranteed to collect all events from each node.
-		if diff := cmp.Diff(longestHistory[:length], histories[i][:length], cmpopts.IgnoreFields(watchEvent{}, "Time")); diff != "" {
+		if diff := cmp.Diff(longestHistory[:length], histories[i][:length], cmpopts.IgnoreFields(WatchEvent{}, "Time")); diff != "" {
 			t.Error("Events in watches do not match")
 		}
 	}
 }
 
-func longestHistory(histories [][]watchEvent) []watchEvent {
+func LongestHistory(histories [][]WatchEvent) []WatchEvent {
 	longestIndex := 0
 	for i, history := range histories {
 		if len(history) > len(histories[longestIndex]) {

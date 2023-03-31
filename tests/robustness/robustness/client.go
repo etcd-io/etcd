@@ -26,13 +26,13 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
-type recordingClient struct {
+type RecordingClient struct {
 	client   clientv3.Client
-	history  *model.AppendableHistory
+	History  *model.AppendableHistory
 	baseTime time.Time
 }
 
-func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*recordingClient, error) {
+func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*RecordingClient, error) {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
 		Logger:               zap.NewNop(),
@@ -42,45 +42,45 @@ func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*
 	if err != nil {
 		return nil, err
 	}
-	return &recordingClient{
+	return &RecordingClient{
 		client:   *cc,
-		history:  model.NewAppendableHistory(ids),
+		History:  model.NewAppendableHistory(ids),
 		baseTime: baseTime,
 	}, nil
 }
 
-func (c *recordingClient) Close() error {
+func (c *RecordingClient) Close() error {
 	return c.client.Close()
 }
 
-func (c *recordingClient) Get(ctx context.Context, key string) ([]*mvccpb.KeyValue, error) {
+func (c *RecordingClient) Get(ctx context.Context, key string) ([]*mvccpb.KeyValue, error) {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Get(ctx, key)
 	returnTime := time.Since(c.baseTime)
 	if err != nil {
 		return nil, err
 	}
-	c.history.AppendGet(key, callTime, returnTime, resp)
+	c.History.AppendGet(key, callTime, returnTime, resp)
 	return resp.Kvs, nil
 }
 
-func (c *recordingClient) Put(ctx context.Context, key, value string) error {
+func (c *RecordingClient) Put(ctx context.Context, key, value string) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Put(ctx, key, value)
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendPut(key, value, callTime, returnTime, resp, err)
+	c.History.AppendPut(key, value, callTime, returnTime, resp, err)
 	return err
 }
 
-func (c *recordingClient) Delete(ctx context.Context, key string) error {
+func (c *RecordingClient) Delete(ctx context.Context, key string) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Delete(ctx, key)
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendDelete(key, callTime, returnTime, resp, err)
+	c.History.AppendDelete(key, callTime, returnTime, resp, err)
 	return nil
 }
 
-func (c *recordingClient) CompareAndSet(ctx context.Context, key, expectedValue, newValue string) error {
+func (c *RecordingClient) CompareAndSet(ctx context.Context, key, expectedValue, newValue string) error {
 	callTime := time.Since(c.baseTime)
 	txn := c.client.Txn(ctx)
 	var cmp clientv3.Cmp
@@ -95,11 +95,11 @@ func (c *recordingClient) CompareAndSet(ctx context.Context, key, expectedValue,
 		clientv3.OpPut(key, newValue),
 	).Commit()
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendCompareAndSet(key, expectedValue, newValue, callTime, returnTime, resp, err)
+	c.History.AppendCompareAndSet(key, expectedValue, newValue, callTime, returnTime, resp, err)
 	return err
 }
 
-func (c *recordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {
+func (c *RecordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {
 	callTime := time.Since(c.baseTime)
 	txn := c.client.Txn(ctx)
 	resp, err := txn.If(
@@ -108,15 +108,15 @@ func (c *recordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []cli
 		ops...,
 	).Commit()
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendTxn(cmp, ops, callTime, returnTime, resp, err)
+	c.History.AppendTxn(cmp, ops, callTime, returnTime, resp, err)
 	return err
 }
 
-func (c *recordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, error) {
+func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, error) {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Lease.Grant(ctx, ttl)
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendLeaseGrant(callTime, returnTime, resp, err)
+	c.History.AppendLeaseGrant(callTime, returnTime, resp, err)
 	var leaseId int64
 	if resp != nil {
 		leaseId = int64(resp.ID)
@@ -124,27 +124,27 @@ func (c *recordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, err
 	return leaseId, err
 }
 
-func (c *recordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error {
+func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Lease.Revoke(ctx, clientv3.LeaseID(leaseId))
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendLeaseRevoke(leaseId, callTime, returnTime, resp, err)
+	c.History.AppendLeaseRevoke(leaseId, callTime, returnTime, resp, err)
 	return err
 }
 
-func (c *recordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) error {
+func (c *RecordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) error {
 	callTime := time.Since(c.baseTime)
 	opts := clientv3.WithLease(clientv3.LeaseID(leaseId))
 	resp, err := c.client.Put(ctx, key, value, opts)
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendPutWithLease(key, value, int64(leaseId), callTime, returnTime, resp, err)
+	c.History.AppendPutWithLease(key, value, int64(leaseId), callTime, returnTime, resp, err)
 	return err
 }
 
-func (c *recordingClient) Defragment(ctx context.Context) error {
+func (c *RecordingClient) Defragment(ctx context.Context) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Defragment(ctx, c.client.Endpoints()[0])
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendDefragment(callTime, returnTime, resp, err)
+	c.History.AppendDefragment(callTime, returnTime, resp, err)
 	return err
 }

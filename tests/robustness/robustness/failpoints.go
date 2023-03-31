@@ -83,37 +83,37 @@ var (
 	}}
 )
 
-func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
+func TriggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
 	var err error
 	successes := 0
 	failures := 0
 	for _, proc := range clus.Procs {
-		if !config.failpoint.Available(proc) {
-			t.Errorf("Failpoint %q not available on %s", config.failpoint.Name(), proc.Config().Name)
+		if !config.Failpoint.Available(proc) {
+			t.Errorf("Failpoint %q not available on %s", config.Failpoint.Name(), proc.Config().Name)
 			return
 		}
 	}
-	for successes < config.count && failures < config.retries {
-		time.Sleep(config.waitBetweenTriggers)
-		lg.Info("Triggering failpoint\n", zap.String("failpoint", config.failpoint.Name()))
-		err = config.failpoint.Trigger(ctx, t, lg, clus)
+	for successes < config.Count && failures < config.Retries {
+		time.Sleep(config.WaitBetweenTriggers)
+		lg.Info("Triggering Failpoint\n", zap.String("Failpoint", config.Failpoint.Name()))
+		err = config.Failpoint.Trigger(ctx, t, lg, clus)
 		if err != nil {
-			lg.Info("Failed to trigger failpoint", zap.String("failpoint", config.failpoint.Name()), zap.Error(err))
+			lg.Info("Failed to trigger Failpoint", zap.String("Failpoint", config.Failpoint.Name()), zap.Error(err))
 			failures++
 			continue
 		}
 		successes++
 	}
-	if successes < config.count || failures >= config.retries {
+	if successes < config.Count || failures >= config.Retries {
 		t.Errorf("failed to trigger failpoints enough times, err: %v", err)
 	}
 }
 
 type FailpointConfig struct {
-	failpoint           Failpoint
-	count               int
-	retries             int
-	waitBetweenTriggers time.Duration
+	Failpoint           Failpoint
+	Count               int
+	Retries             int
+	WaitBetweenTriggers time.Duration
 }
 
 type Failpoint interface {
@@ -177,20 +177,20 @@ func (f goPanicFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Log
 	defer cancel()
 
 	for member.IsRunning() {
-		lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
+		lg.Info("Setting up gofailpoint", zap.String("Failpoint", f.Name()))
 		err := member.Failpoints().Setup(triggerCtx, f.failpoint, "panic")
 		if err != nil {
-			lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
+			lg.Info("goFailpoint setup failed", zap.String("Failpoint", f.Name()), zap.Error(err))
 		}
 		if !member.IsRunning() {
 			// TODO: Check member logs that etcd not running is caused panic caused by proper gofailpoint.
 			break
 		}
 		if f.trigger != nil {
-			lg.Info("Triggering gofailpoint", zap.String("failpoint", f.Name()))
+			lg.Info("Triggering gofailpoint", zap.String("Failpoint", f.Name()))
 			err = f.trigger(t, triggerCtx, member, clus)
 			if err != nil {
-				lg.Info("gofailpoint trigger failed", zap.String("failpoint", f.Name()), zap.Error(err))
+				lg.Info("gofailpoint trigger failed", zap.String("Failpoint", f.Name()), zap.Error(err))
 			}
 		}
 		lg.Info("Waiting for member to exist", zap.String("member", member.Config().Name))
@@ -298,7 +298,7 @@ func (f randomFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logg
 		}
 	}
 	failpoint := availableFailpoints[rand.Int()%len(availableFailpoints)]
-	lg.Info("Triggering failpoint\n", zap.String("failpoint", failpoint.Name()))
+	lg.Info("Triggering Failpoint\n", zap.String("Failpoint", failpoint.Name()))
 	return failpoint.Trigger(ctx, t, lg, clus)
 }
 
@@ -323,9 +323,9 @@ func triggerBlackhole(t *testing.T, ctx context.Context, member e2e.EtcdProcess,
 	proxy := member.PeerProxy()
 
 	// Blackholing will cause peers to not be able to use streamWriters registered with member
-	// but peer traffic is still possible because member has 'pipeline' with peers
-	// TODO: find a way to stop all traffic
-	t.Logf("Blackholing traffic from and to member %q", member.Config().Name)
+	// but peer Traffic is still possible because member has 'pipeline' with peers
+	// TODO: find a way to stop all Traffic
+	t.Logf("Blackholing Traffic from and to member %q", member.Config().Name)
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
 	defer func() {
@@ -428,7 +428,7 @@ func (f delayPeerNetworkFailpoint) Trigger(ctx context.Context, t *testing.T, lg
 
 	proxy.DelayRx(f.baseLatency, f.randomizedLatency)
 	proxy.DelayTx(f.baseLatency, f.randomizedLatency)
-	lg.Info("Delaying traffic from and to member", zap.String("member", member.Config().Name), zap.Duration("baseLatency", f.baseLatency), zap.Duration("randomizedLatency", f.randomizedLatency))
+	lg.Info("Delaying Traffic from and to member", zap.String("member", member.Config().Name), zap.Duration("baseLatency", f.baseLatency), zap.Duration("randomizedLatency", f.randomizedLatency))
 	time.Sleep(f.duration)
 	lg.Info("Traffic delay removed", zap.String("member", member.Config().Name))
 	proxy.UndelayRx()

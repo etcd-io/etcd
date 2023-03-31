@@ -54,72 +54,68 @@ const (
 	Defragment    TrafficRequestType = "defragment"
 )
 
-func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config trafficConfig) []porcupine.Operation {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config TrafficConfig) []porcupine.Operation {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsV3()
 
 	ids := identity.NewIdProvider()
 	lm := identity.NewLeaseIdStorage()
 	h := model.History{}
-	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
+	limiter := rate.NewLimiter(rate.Limit(config.MaximalQPS), 200)
 
 	startTime := time.Now()
 	wg := sync.WaitGroup{}
-	for i := 0; i < config.clientCount; i++ {
+	for i := 0; i < config.ClientCount; i++ {
 		wg.Add(1)
 		endpoints := []string{endpoints[i%len(endpoints)]}
 		c, err := NewClient(endpoints, ids, startTime)
 		if err != nil {
 			t.Fatal(err)
 		}
-		go func(c *recordingClient, clientId int) {
+		go func(c *RecordingClient, clientId int) {
 			defer wg.Done()
 			defer c.Close()
 
-			config.traffic.Run(ctx, clientId, c, limiter, ids, lm)
+			config.Traffic.Run(ctx, clientId, c, limiter, ids, lm)
 			mux.Lock()
-			h = h.Merge(c.history.History)
+			h = h.Merge(c.History.History)
 			mux.Unlock()
 		}(c, i)
 	}
 	wg.Wait()
 	endTime := time.Now()
 	operations := h.Operations()
-	lg.Info("Recorded operations", zap.Int("count", len(operations)))
+	lg.Info("Recorded operations", zap.Int("Count", len(operations)))
 
 	qps := float64(len(operations)) / float64(endTime.Sub(startTime)) * float64(time.Second)
-	lg.Info("Average traffic", zap.Float64("qps", qps))
-	if qps < config.minimalQPS {
-		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", config.minimalQPS, qps)
+	lg.Info("Average Traffic", zap.Float64("qps", qps))
+	if qps < config.MinimalQPS {
+		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", config.MinimalQPS, qps)
 	}
 	return operations
 }
 
-type trafficConfig struct {
-	name        string
-	minimalQPS  float64
-	maximalQPS  float64
-	clientCount int
-	traffic     Traffic
+type TrafficConfig struct {
+	Name        string
+	MinimalQPS  float64
+	MaximalQPS  float64
+	ClientCount int
+	Traffic     Traffic
 }
 
-type Traffic interface {
-	Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage)
+type Traffic struct {
+	KeyCount     int
+	Writes       []RequestChance
+	LeaseTTL     int64
+	LargePutSize int
 }
 
-type traffic struct {
-	keyCount     int
-	writes       []requestChance
-	leaseTTL     int64
-	largePutSize int
+type RequestChance struct {
+	Operation TrafficRequestType
+	Chance    int
 }
 
-type requestChance struct {
-	operation TrafficRequestType
-	chance    int
-}
-
-func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
+func (t Traffic) Run(ctx context.Context, clientId int, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
 
 	for {
 		select {
@@ -127,8 +123,8 @@ func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limi
 			return
 		default:
 		}
-		key := fmt.Sprintf("%d", rand.Int()%t.keyCount)
-		// Execute one read per one write to avoid operation history include too many failed writes when etcd is down.
+		key := fmt.Sprintf("%d", rand.Int()%t.KeyCount)
+		// Execute one read per one write to avoid operation history include too many failed Writes when etcd is down.
 		resp, err := t.Read(ctx, c, limiter, key)
 		if err != nil {
 			continue
@@ -137,7 +133,7 @@ func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limi
 	}
 }
 
-func (t traffic) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string) ([]*mvccpb.KeyValue, error) {
+func (t Traffic) Read(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, key string) ([]*mvccpb.KeyValue, error) {
 	getCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	resp, err := c.Get(getCtx, key)
 	cancel()
@@ -147,7 +143,7 @@ func (t traffic) Read(ctx context.Context, c *recordingClient, limiter *rate.Lim
 	return resp, err
 }
 
-func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage, cid int, lastValues []*mvccpb.KeyValue) error {
+func (t Traffic) Write(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage, cid int, lastValues []*mvccpb.KeyValue) error {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
@@ -155,7 +151,7 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 	case Put:
 		err = c.Put(writeCtx, key, fmt.Sprintf("%d", id.RequestId()))
 	case LargePut:
-		err = c.Put(writeCtx, key, randString(t.largePutSize))
+		err = c.Put(writeCtx, key, randString(t.LargePutSize))
 	case Delete:
 		err = c.Delete(writeCtx, key)
 	case MultiOpTxn:
@@ -169,7 +165,7 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 	case PutWithLease:
 		leaseId := lm.LeaseId(cid)
 		if leaseId == 0 {
-			leaseId, err = c.LeaseGrant(writeCtx, t.leaseTTL)
+			leaseId, err = c.LeaseGrant(writeCtx, t.LeaseTTL)
 			if err == nil {
 				lm.AddLeaseId(cid, leaseId)
 				limiter.Wait(ctx)
@@ -201,23 +197,23 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 	return err
 }
 
-func (t traffic) pickWriteRequest() TrafficRequestType {
+func (t Traffic) pickWriteRequest() TrafficRequestType {
 	sum := 0
-	for _, op := range t.writes {
-		sum += op.chance
+	for _, op := range t.Writes {
+		sum += op.Chance
 	}
 	roll := rand.Int() % sum
-	for _, op := range t.writes {
-		if roll < op.chance {
-			return op.operation
+	for _, op := range t.Writes {
+		if roll < op.Chance {
+			return op.Operation
 		}
-		roll -= op.chance
+		roll -= op.Chance
 	}
 	panic("unexpected")
 }
 
-func (t traffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) {
-	keys := rand.Perm(t.keyCount)
+func (t Traffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) {
+	keys := rand.Perm(t.KeyCount)
 	opTypes := make([]model.OperationType, 4)
 
 	atLeastOnePut := false
@@ -249,7 +245,7 @@ func (t traffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) {
 	return ops
 }
 
-func (t traffic) pickOperationType() model.OperationType {
+func (t Traffic) pickOperationType() model.OperationType {
 	roll := rand.Int() % 100
 	if roll < 10 {
 		return model.Delete
