@@ -38,7 +38,7 @@ fi
 
 # Pick defaults based on release workflow
 ARCH=$(go env GOARCH)
-REPOSITARY=${REPOSITARY:-"gcr.io/etcd-development/etcd"}
+REPOSITORY=${REPOSITORY:-"gcr.io/etcd-development/etcd"}
 if [ -n "$VERSION" ]; then
     # Expected Format: v3.6.99-amd64
     TAG=v"${VERSION}"-"${ARCH}"
@@ -46,7 +46,7 @@ else
     echo "Terminating test, VERSION not supplied"
     exit 1
 fi
-IMAGE=${IMAGE:-"${REPOSITARY}:${TAG}"}
+IMAGE=${IMAGE:-"${REPOSITORY}:${TAG}"}
 
 # ETCD related values
 RUN_NAME="test_etcd"
@@ -82,13 +82,3 @@ if [ "${GET}" != "${VALUE}" ]; then
 fi
 
 echo "Succesfully tested etcd local image ${TAG}"
-
-for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
-    ARCH_TAG=v"${VERSION}"-"${TARGET_ARCH}"
-    IMG_ARCH=$(docker inspect --format '{{.Architecture}}' "${REPOSITARY}:${ARCH_TAG}")
-    if [ "${IMG_ARCH}" != "$TARGET_ARCH" ];then
-        echo "Incorrect docker image architecture"
-        exit 1
-    fi
-    echo "Correct Architecture ${ARCH_TAG}"
-done

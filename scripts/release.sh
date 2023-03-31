@@ -258,13 +258,6 @@ main() {
       log_warning "login failed, retrying"
     done
 
-    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
-      log_callout "Pushing container images to quay.io ${RELEASE_VERSION}-${TARGET_ARCH}"
-      maybe_run docker push "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      log_callout "Pushing container images to gcr.io ${RELEASE_VERSION}-${TARGET_ARCH}"
-      maybe_run docker push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-    done
-
     log_callout "Creating manifest-list (multi-image)..."
 
     for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
