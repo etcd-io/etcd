@@ -35,8 +35,10 @@ cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR
 cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 
 if [ -z "$TAG" ]; then
-    docker build -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
-    docker build -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+    # Fix incorrect image "Architecture" using buildkit
+    # From https://stackoverflow.com/q/72144329/
+    DOCKER_BUILDKIT=1 docker build -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
+    DOCKER_BUILDKIT=1 docker build -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
 else
     docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
 fi
