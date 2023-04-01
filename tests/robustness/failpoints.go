@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
 	"go.uber.org/zap"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -85,18 +87,47 @@ var (
 	}}
 )
 
-func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
+func verifyClusterHealth(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, failpointName string) error {
+	for i := 0; i < len(clus.Procs); i++ {
+		clusterClient, err := clientv3.New(clientv3.Config{
+			Endpoints:            clus.Procs[i].EndpointsGRPC(),
+			Logger:               zap.NewNop(),
+			DialKeepAliveTime:    1 * time.Millisecond,
+			DialKeepAliveTimeout: 5 * time.Millisecond,
+		})
+		defer clusterClient.Close()
+
+		cli := healthpb.NewHealthClient(clusterClient.ActiveConnection())
+		resp, err := cli.Check(ctx, &healthpb.HealthCheckRequest{})
+		if err != nil {
+			return fmt.Errorf("Error checking member health: %v", err)
+		}
+		if resp.Status != healthpb.HealthCheckResponse_SERVING {
+			return fmt.Errorf("Member health status expected %s, got %s", healthpb.HealthCheckResponse_SERVING, resp.Status)
+		}
+	}
+	return nil
+}
+
+func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config FailpointConfig) error {
 	var err error
 	successes := 0
 	failures := 0
 	for _, proc := range clus.Procs {
 		if !config.failpoint.Available(proc) {
 			t.Errorf("Failpoint %q not available on %s", config.failpoint.Name(), proc.Config().Name)
-			return
+			return nil
 		}
 	}
 	for successes < config.count && failures < config.retries {
 		time.Sleep(config.waitBetweenTriggers)
+
+		lg.Info("Verifying cluster health before failpoint\n", zap.String("failpoint", config.failpoint.Name()))
+		if err = verifyClusterHealth(ctx, t, clus, config.failpoint.Name()); err != nil {
+			t.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
+			return err
+		}
+
 		lg.Info("Triggering failpoint\n", zap.String("failpoint", config.failpoint.Name()))
 		err = config.failpoint.Trigger(ctx, t, lg, clus)
 		if err != nil {
@@ -104,11 +135,20 @@ func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *
 			failures++
 			continue
 		}
+
+		lg.Info("Verifying cluster health after failpoint\n", zap.String("failpoint", config.failpoint.Name()))
+		if err = verifyClusterHealth(ctx, t, clus, config.failpoint.Name()); err != nil {
+			t.Errorf("failed to verify cluster health after failpoint injection, err: %v", err)
+			return err
+		}
+
 		successes++
 	}
 	if successes < config.count || failures >= config.retries {
 		t.Errorf("failed to trigger failpoints enough times, err: %v", err)
 	}
+
+	return nil
 }
 
 type FailpointConfig struct {

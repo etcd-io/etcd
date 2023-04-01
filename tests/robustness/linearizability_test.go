@@ -197,8 +197,12 @@ func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.Et
 	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
 	g := errgroup.Group{}
 	trafficCtx, trafficCancel := context.WithCancel(ctx)
+	watchCtx, watchCancel := context.WithCancel(ctx)
 	g.Go(func() error {
-		triggerFailpoints(ctx, t, lg, clus, failpoint)
+		err := triggerFailpoints(ctx, t, lg, clus, failpoint)
+		if err != nil {
+			watchCancel()
+		}
 		time.Sleep(time.Second)
 		trafficCancel()
 		return nil
@@ -211,7 +215,7 @@ func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.Et
 		return nil
 	})
 	g.Go(func() error {
-		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan)
+		responses = collectClusterWatchEvents(watchCtx, t, clus, maxRevisionChan)
 		return nil
 	})
 	g.Wait()
