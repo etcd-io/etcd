@@ -24,6 +24,30 @@ function runVersionCheck {
     fi
 }
 
+function checkImageHasArch() {
+    IMAGE="${1}"
+    EXPECTED_ARCH="${2}"
+
+    MANIFEST=$(docker manifest inspect "${IMAGE}")
+
+    # Check that manifest exists
+    if [ -z "${MANIFEST}" ]; then
+        echo "ERROR: Manifest not found for image ${IMAGE}"
+        exit 1
+    fi
+
+    PLATFORMS=$(echo "${MANIFEST}" | sed -n 's/.*"platform":{\(.*\)},/\1/p' | tr -d ' ')
+
+    # Check that expected architecture is included
+    if [[ "${PLATFORMS}" != *"${EXPECTED_ARCH}"* ]]; then
+        echo "ERROR: Image ${IMAGE} does not contain the expected architecture ${EXPECTED_ARCH}"
+        exit 1
+    fi
+
+    echo "SUCCESS: Image ${IMAGE} contains the expected architecture ${EXPECTED_ARCH}"
+    return 0
+}
+
 # Can't proceed without docker
 if ! command -v docker >/dev/null; then
     log_error "cannot find docker"
@@ -82,3 +106,8 @@ if [ "${GET}" != "${VALUE}" ]; then
 fi
 
 echo "Succesfully tested etcd local image ${TAG}"
+
+# Test image manifest contains all expected architectures
+for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
+    checkImageHasArch "${REPOSITORY}:${VERSION}" "${TARGET_ARCH}"
+done
