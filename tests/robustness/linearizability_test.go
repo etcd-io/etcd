@@ -103,6 +103,7 @@ func TestRobustness(t *testing.T) {
 			failpoint: BlackholePeerNetwork,
 			traffic:   &traffic,
 			config: *e2e.NewConfig(
+				e2e.WithIsPeerTLS(true),
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
