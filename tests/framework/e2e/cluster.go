@@ -148,8 +148,8 @@ type EtcdProcessClusterConfig struct {
 
 	MetricsURLScheme string
 
-	SnapshotCount          int // default is 10000
-	SnapshotCatchUpEntries int // default is 5000
+	SnapshotCount          uint64
+	SnapshotCatchUpEntries uint64
 
 	Client             ClientConfig
 	ClientHttpSeparate bool
@@ -195,6 +195,9 @@ func DefaultConfig() *EtcdProcessClusterConfig {
 		InitialToken:        "new",
 		StrictReconfigCheck: true,
 		CN:                  true,
+
+		SnapshotCount:          etcdserver.DefaultSnapshotCount,
+		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
 	}
 }
 
@@ -224,11 +227,11 @@ func WithKeepDataDir(keep bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.KeepDataDir = keep }
 }
 
-func WithSnapshotCount(count int) EPClusterOption {
+func WithSnapshotCount(count uint64) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.SnapshotCount = count }
 }
 
-func WithSnapshotCatchUpEntries(count int) EPClusterOption {
+func WithSnapshotCatchUpEntries(count uint64) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.SnapshotCatchUpEntries = count }
 }
 
@@ -588,7 +591,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if cfg.WatchProcessNotifyInterval != 0 {
 		args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
 	}
-	if cfg.SnapshotCatchUpEntries > 0 {
+	if cfg.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2) {
 			args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.SnapshotCatchUpEntries))
 		}
