@@ -5,6 +5,7 @@ set -o nounset
 set -o pipefail
 
 source ./scripts/test_lib.sh
+source ./scripts/docker_lib.sh
 source ./scripts/release_mod.sh
 
 DRY_RUN=${DRY_RUN:-true}
@@ -72,13 +73,8 @@ main() {
   log_callout "REPOSITORY=${REPOSITORY}"
   log_callout ""
   
-  # Required to enable 'docker manifest ...'
-  export DOCKER_CLI_EXPERIMENTAL=enabled
-
-  if ! command -v docker >/dev/null; then
-    log_error "cannot find docker"
-    exit 1
-  fi
+  # Releases can't proceed without docker
+  checkContainerEngine "docker"
 
   # Expected umask for etcd release artifacts
   umask 022
@@ -258,15 +254,17 @@ main() {
       log_warning "login failed, retrying"
     done
 
-    log_callout "Creating manifest-list (multi-image)..."
-
-    for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
-      maybe_run docker manifest create --amend "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      maybe_run docker manifest annotate "quay.io/coreos/etcd:${RELEASE_VERSION}" "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
-
-      maybe_run docker manifest create --amend "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
-      maybe_run docker manifest annotate "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
+    IFS=' ' read -ra image_arch_array <<< "${IMAGE_ARCH_LIST}"
+    IFS=' ' read -ra registries_array <<< "${CONTAINER_REGISTRY_LIST}"
+    for TARGET_ARCH in "${image_arch_array[@]}"; do
+        for REGISTRY in "${registries_array[@]}"; do
+        log_callout "Pushing container images to ${REGISTRY} ${RELEASE_VERSION}-${TARGET_ARCH}"
+        maybe_run docker push "${REGISTRY}/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      done
     done
+
+    log_callout "Creating manifest-list (multi-image)..."
+    maybe_run buildMultiArchImage "${RELEASE_VERSION}"
 
     log_callout "Pushing container manifest list to quay.io ${RELEASE_VERSION}"
     maybe_run docker manifest push "quay.io/coreos/etcd:${RELEASE_VERSION}"

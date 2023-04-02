@@ -6,108 +6,69 @@ IFS=$'\n\t'
 
 source ./scripts/test_lib.sh
 source ./scripts/build_lib.sh
+source ./scripts/docker_lib.sh
 
-function startContainer {
-    # run docker in the background
-    docker run -d --rm --name "${RUN_NAME}" "${IMAGE}"
-
-    # wait for etcd daemon to bootstrap
-    sleep 5
-}
-
-function runVersionCheck {
-    Out=$(docker run --rm "${IMAGE}" "${@}")
-    foundVersion=$(echo "$Out" | head -1 | rev  | cut -d" "  -f 1 | rev )
+function runVersionCheck() {
+    out=$(docker exec "${1}" "${@:2}")
+    foundVersion=$(echo "${out}" | head -1 | rev  | cut -d" "  -f 1 | rev )
     if [[ "${foundVersion}" != "${VERSION}" ]]; then
-        echo "error: Invalid Version. Got $foundVersion, expected $VERSION. Error: $Out"
+        log_error "ERROR: Invalid version. Got ${foundVersion}, expected ${VERSION}. Error: ${out}"
         exit 1
     fi
 }
 
-function checkImageHasArch() {
-    IMAGE="${1}"
-    EXPECTED_ARCH="${2}"
-
-    MANIFEST=$(docker manifest inspect "${IMAGE}")
-
-    # Check that manifest exists
-    if [ -z "${MANIFEST}" ]; then
-        echo "ERROR: Manifest not found for image ${IMAGE}"
-        exit 1
-    fi
-
-    PLATFORMS=$(echo "${MANIFEST}" | sed -n 's/.*"platform":{\(.*\)},/\1/p' | tr -d ' ')
-
-    # Check that expected architecture is included
-    if [[ "${PLATFORMS}" != *"${EXPECTED_ARCH}"* ]]; then
-        echo "ERROR: Image ${IMAGE} does not contain the expected architecture ${EXPECTED_ARCH}"
-        exit 1
-    fi
-
-    echo "SUCCESS: Image ${IMAGE} contains the expected architecture ${EXPECTED_ARCH}"
-    return 0
-}
-
-# Can't proceed without docker
-if ! command -v docker >/dev/null; then
-    log_error "cannot find docker"
-    exit 1
-fi
-
-# You can't run darwin binaries in linux containers
-if [[ $(go env GOOS) == "darwin" ]]; then
-    echo "Please use linux machine for release builds."
-    exit 1
-fi
+# Tests can't proceed without docker
+checkContainerEngine "docker"
 
 # Pick defaults based on release workflow
 ARCH=$(go env GOARCH)
 REPOSITORY=${REPOSITORY:-"gcr.io/etcd-development/etcd"}
-if [ -n "$VERSION" ]; then
+if [ -n "${VERSION}" ]; then
     # Expected Format: v3.6.99-amd64
     TAG=v"${VERSION}"-"${ARCH}"
 else
-    echo "Terminating test, VERSION not supplied"
+    log_error "ERROR: Terminating test, VERSION not supplied"
     exit 1
 fi
 IMAGE=${IMAGE:-"${REPOSITORY}:${TAG}"}
 
-# ETCD related values
-RUN_NAME="test_etcd"
+# Etcd related values
+CONTAINER_NAME="test_etcd"
 KEY="foo"
 VALUE="bar"
 
-if [[ "$(docker images -q "${IMAGE}" 2> /dev/null)" == "" ]]; then
-    echo "${IMAGE} not present locally"
-    exit 1
-fi
+# Start an etcd container
+startContainer "${CONTAINER_NAME}" "${IMAGE}"
 
-# Version check
-runVersionCheck "/usr/local/bin/etcd" "--version"
-runVersionCheck "/usr/local/bin/etcdctl" "version"
-runVersionCheck "/usr/local/bin/etcdutl" "version"
+# Test versions in container
+runVersionCheck "${CONTAINER_NAME}" "etcd" "--version"
+runVersionCheck "${CONTAINER_NAME}" "etcdctl" "version"
+runVersionCheck "${CONTAINER_NAME}" "etcdutl" "version"
 
-startContainer
-# stop container
-trap 'docker stop "${RUN_NAME}"' EXIT
-
-
-# Put/Get check
-PUT=$(docker exec "${RUN_NAME}" /usr/local/bin/etcdctl put "${KEY}" "${VALUE}")
+# Test etcd kv working
+PUT=$(docker exec "${CONTAINER_NAME}" etcdctl put "${KEY}" "${VALUE}")
 if [ "${PUT}" != "OK" ]; then
-    echo "Problem with Putting in etcd"
+    log_error "ERROR: Etcd PUT test failed in container ${CONTAINER_NAME}. Got ${PUT}"
     exit 1
 fi
 
-GET=$(docker exec "${RUN_NAME}" /usr/local/bin/etcdctl get "$KEY" --print-value-only)
+GET=$(docker exec "${CONTAINER_NAME}" etcdctl get "${KEY}" --print-value-only)
 if [ "${GET}" != "${VALUE}" ]; then
-    echo "Problem with getting foo bar in etcd. Got ${GET}"
+    log_error "ERROR: Etcd GET test failed in container ${CONTAINER_NAME}. Got ${GET}"
     exit 1
 fi
 
-echo "Succesfully tested etcd local image ${TAG}"
+# Test we can assemble the multi arch etcd image
+buildMultiArchImage "v${VERSION}"
 
-# Test image manifest contains all expected architectures
-for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
-    checkImageHasArch "${REPOSITORY}:${VERSION}" "${TARGET_ARCH}"
-done
+# Test local image manifest contains all expected architectures
+if [ -n "${IMAGE_ARCH_LIST}" ]; then
+    for TARGET_ARCH in ${IMAGE_ARCH_LIST}; do
+        checkImageHasArch "${REPOSITORY}:${VERSION}" "${TARGET_ARCH}"
+    done
+else
+    log_error "ERROR: IMAGE_ARCH_LIST not populated."
+    exit 1
+fi
+
+log_success "SUCCESS: Etcd local image tests for ${IMAGE} passed."
