@@ -24,6 +24,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### Other
 - [Remove nsswitch.conf from docker image](https://github.com/etcd-io/etcd/pull/15161)
+- Fix [etcd docker images all tagged with amd64 architecture](https://github.com/etcd-io/etcd/pull/15612)
 
 ### Go
 - Require [Go 1.19+](https://github.com/etcd-io/etcd/pull/15337).
