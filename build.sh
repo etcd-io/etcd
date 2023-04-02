@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 source ./scripts/test_lib.sh
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
-if [[ -n "$FAILPOINTS" ]]; then
+if [[ -n "${FAILPOINTS:-}" ]]; then
   GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
 
 VERSION_SYMBOL="${ROOT_MODULE}/api/v3/version.GitSHA"
 
+# use go env if noset
+GOOS=${GOOS:-$(go env GOOS)}
+GOARCH=${GOARCH:-$(go env GOARCH)}
+
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
 # shellcheck disable=SC2206
-GO_LDFLAGS=(${GO_LDFLAGS} "-X=${VERSION_SYMBOL}=${GIT_SHA}")
-GO_BUILD_ENV=("CGO_ENABLED=0" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS}" "GOOS=${GOOS}" "GOARCH=${GOARCH}")
+GO_LDFLAGS=(${GO_LDFLAGS:-} "-X=${VERSION_SYMBOL}=${GIT_SHA}")
+GO_BUILD_ENV=("CGO_ENABLED=0" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS:-}" "GOOS=${GOOS}" "GOARCH=${GOARCH}")
 
 # enable/disable failpoints
 toggle_failpoints() {
@@ -27,13 +33,13 @@ toggle_failpoints() {
 
 toggle_failpoints_default() {
   mode="disable"
-  if [[ -n "$FAILPOINTS" ]]; then mode="enable"; fi
+  if [[ -n "${FAILPOINTS:-}" ]]; then mode="enable"; fi
   toggle_failpoints "$mode"
 }
 
 etcd_build() {
   out="bin"
-  if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
+  if [[ -n "${BINDIR:-}" ]]; then out="${BINDIR}"; fi
   toggle_failpoints_default
 
   run rm -f "${out}/etcd"
@@ -41,7 +47,7 @@ etcd_build() {
     cd ./server
     # Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
     # shellcheck disable=SC2086
-    run env "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
+    run env "${GO_BUILD_ENV[@]}" go build ${GO_BUILD_FLAGS:-} \
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
@@ -52,7 +58,7 @@ etcd_build() {
   # shellcheck disable=SC2086
   (
     cd ./etcdutl
-    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
+    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS:-}" "${GO_BUILD_ENV[@]}" go build ${GO_BUILD_FLAGS:-} \
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
@@ -63,7 +69,7 @@ etcd_build() {
   # shellcheck disable=SC2086
   (
     cd ./etcdctl
-    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
+    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS:-}" "${GO_BUILD_ENV[@]}" go build ${GO_BUILD_FLAGS:-} \
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
@@ -84,7 +90,7 @@ etcd_build() {
 
 tools_build() {
   out="bin"
-  if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
+  if [[ -n "${BINDIR:-}" ]]; then out="${BINDIR}"; fi
   tools_path="tools/benchmark
     tools/etcd-dump-db
     tools/etcd-dump-logs
@@ -94,7 +100,7 @@ tools_build() {
     echo "Building" "'${tool}'"...
     run rm -f "${out}/${tool}"
     # shellcheck disable=SC2086
-    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
+    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS:-}" CGO_ENABLED=0 go build ${GO_BUILD_FLAGS:-} \
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
@@ -105,7 +111,7 @@ tools_build() {
 
 tests_build() {
   out="bin"
-  if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
+  if [[ -n "${BINDIR:-}" ]]; then out="${BINDIR}"; fi
   tools_path="
     functional/cmd/etcd-agent
     functional/cmd/etcd-proxy
@@ -118,7 +124,7 @@ tests_build() {
       run rm -f "../${out}/${tool}"
 
       # shellcheck disable=SC2086
-      run env CGO_ENABLED=0 GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" go build ${GO_BUILD_FLAGS} \
+      run env CGO_ENABLED=0 GO_BUILD_FLAGS="${GO_BUILD_FLAGS:-}" go build ${GO_BUILD_FLAGS:-} \
         -installsuffix=cgo \
         "-ldflags=${GO_LDFLAGS[*]}" \
         -o="../${out}/${tool}" "./${tool}" || return 2
