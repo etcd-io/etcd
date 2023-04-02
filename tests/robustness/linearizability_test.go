@@ -103,6 +103,7 @@ func TestRobustness(t *testing.T) {
 			failpoint: RandomMultiNodeClusterFailpoint,
 			traffic:   &traffic,
 			config: *e2e.NewConfig(
+				e2e.WithIsPeerTLS(true),
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithGoFailEnabled(true),
@@ -136,18 +137,18 @@ func TestRobustness(t *testing.T) {
 				e2e.WithSnapshotCount(100),
 			),
 		},
-		// TODO(https://github.com/etcd-io/etcd/issues/15595): Re-enable after issue is fixed
-		//{
-		//	name:      "Snapshot",
-		//	failpoint: RandomSnapshotFailpoint,
-		//	traffic:   &HighTraffic,
-		//	config: *e2e.NewConfig(
-		//		e2e.WithGoFailEnabled(true),
-		//		e2e.WithSnapshotCount(100),
-		//		e2e.WithSnapshotCatchUpEntries(100),
-		//		e2e.WithPeerProxy(true),
-		//	),
-		//},
+		{
+			name:      "Snapshot",
+			failpoint: RandomSnapshotFailpoint,
+			traffic:   &HighTraffic,
+			config: *e2e.NewConfig(
+				e2e.WithGoFailEnabled(true),
+				e2e.WithSnapshotCount(100),
+				e2e.WithSnapshotCatchUpEntries(100),
+				e2e.WithPeerProxy(true),
+				e2e.WithIsPeerTLS(true),
+			),
+		},
 	}...)
 	for _, scenario := range scenarios {
 		if scenario.traffic == nil {

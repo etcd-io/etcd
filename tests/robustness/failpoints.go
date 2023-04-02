@@ -66,9 +66,8 @@ var (
 		CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic,
 		CompactBeforeCommitBatchPanic, CompactAfterCommitBatchPanic,
 		RaftBeforeLeaderSendPanic,
+		BlackholePeerNetwork,
 		DelayPeerNetwork,
-		// TODO(https://github.com/etcd-io/etcd/issues/15595): Re-enable after issue is fixed
-		//BlackholePeerNetwork,
 	}
 	RandomOneNodeClusterFailpoint   Failpoint = randomFailpoint{oneNodeClusterFailpoints}
 	RaftBeforeFollowerSendPanic     Failpoint = goPanicFailpoint{"raftBeforeFollowerSend", nil, Follower}
@@ -79,9 +78,8 @@ var (
 	RaftBeforeSaveSnapPanic         Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackholeUntilSnapshot, Follower}
 	RaftAfterSaveSnapPanic          Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackholeUntilSnapshot, Follower}
 	RandomSnapshotFailpoint         Failpoint = randomFailpoint{[]Failpoint{
-		// TODO(https://github.com/etcd-io/etcd/issues/15595): Re-enable after issue is fixed
-		//RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic, RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic,
-		//BlackholeUntilSnapshot,
+		RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic, RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic,
+		BlackholeUntilSnapshot,
 	}}
 )
 

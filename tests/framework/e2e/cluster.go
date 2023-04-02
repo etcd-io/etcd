@@ -478,6 +478,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerAdvertiseUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var proxyCfg *proxy.ServerConfig
 	if cfg.PeerProxy {
+		if !cfg.IsPeerTLS {
+			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
+		}
 		peerAdvertiseUrl.Host = fmt.Sprintf("localhost:%d", peer2Port)
 		proxyCfg = &proxy.ServerConfig{
 			Logger: zap.NewNop(),
