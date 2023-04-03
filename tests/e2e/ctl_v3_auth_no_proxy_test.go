@@ -67,7 +67,7 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 		}
 	}()
 
-	epcClient := epc.Client()
+	epcClient := epc.Etcdctl()
 	t.Log("Create users")
 	createUsers(ctx, t, epcClient)
 

@@ -45,7 +45,7 @@ type EtcdProcess interface {
 	EndpointsGRPC() []string
 	EndpointsHTTP() []string
 	EndpointsMetrics() []string
-	Client(opts ...config.ClientOption) *EtcdctlV3
+	Etcdctl(opts ...config.ClientOption) *EtcdctlV3
 
 	IsRunning() bool
 	Wait(ctx context.Context) error
@@ -124,7 +124,7 @@ func (ep *EtcdServerProcess) EndpointsHTTP() []string {
 }
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.MetricsURL} }
 
-func (epc *EtcdServerProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
+func (epc *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
 	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)

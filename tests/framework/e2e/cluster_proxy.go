@@ -100,7 +100,7 @@ func (p *proxyEtcdProcess) Close() error {
 	return err
 }
 
-func (p *proxyEtcdProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
+func (p *proxyEtcdProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
 	etcdctl, err := NewEtcdctl(p.etcdProc.Config().Client, p.etcdProc.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)
