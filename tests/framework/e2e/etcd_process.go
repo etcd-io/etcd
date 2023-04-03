@@ -364,7 +364,15 @@ func GetVersionFromBinary(binaryPath string) (*semver.Version, error) {
 	for _, line := range lines {
 		if strings.HasPrefix(line, "etcd Version:") {
 			versionString := strings.TrimSpace(strings.SplitAfter(line, ":")[1])
-			return semver.NewVersion(versionString)
+			version, err := semver.NewVersion(versionString)
+			if err != nil {
+				return nil, err
+			}
+			return &semver.Version{
+				Major: version.Major,
+				Minor: version.Minor,
+				Patch: version.Patch,
+			}, nil
 		}
 	}
 

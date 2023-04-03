@@ -147,7 +147,7 @@ func TestRobustness(t *testing.T) {
 		e2e.WithPeerProxy(true),
 		e2e.WithIsPeerTLS(true),
 	}
-	if !v.LessThan(version.V3_6) {
+	if v.Compare(version.V3_6) >= 0 {
 		snapshotOptions = append(snapshotOptions, e2e.WithSnapshotCatchUpEntries(100))
 	}
 	scenarios = append(scenarios, scenario{
