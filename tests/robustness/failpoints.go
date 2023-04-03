@@ -193,13 +193,13 @@ func (f goPanicFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Log
 				lg.Info("gofailpoint trigger failed", zap.String("failpoint", f.Name()), zap.Error(err))
 			}
 		}
-		lg.Info("Waiting for member to exist", zap.String("member", member.Config().Name))
+		lg.Info("Waiting for member to exit", zap.String("member", member.Config().Name))
 		err = member.Wait(triggerCtx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 			lg.Info("Member didn't exit as expected", zap.String("member", member.Config().Name), zap.Error(err))
 			return fmt.Errorf("member didn't exit as expected: %v", err)
 		}
-		lg.Info("Member existed as expected", zap.String("member", member.Config().Name))
+		lg.Info("Member exited as expected", zap.String("member", member.Config().Name))
 	}
 
 	err := member.Start(ctx)
