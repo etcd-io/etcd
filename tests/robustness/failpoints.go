@@ -84,6 +84,9 @@ var (
 )
 
 func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
+	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
+	defer cancel()
+
 	var err error
 	successes := 0
 	failures := 0
@@ -127,14 +130,12 @@ type killFailpoint struct{}
 func (f killFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 
-	killCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
-	defer cancel()
 	for member.IsRunning() {
 		err := member.Kill()
 		if err != nil {
 			lg.Info("Sending kill signal failed", zap.Error(err))
 		}
-		err = member.Wait(killCtx)
+		err = member.Wait(ctx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 			lg.Info("Failed to kill the process", zap.Error(err))
 			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
@@ -173,12 +174,9 @@ const (
 func (f goPanicFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := f.pickMember(t, clus)
 
-	triggerCtx, cancel := context.WithTimeout(ctx, triggerTimeout)
-	defer cancel()
-
 	for member.IsRunning() {
 		lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
-		err := member.Failpoints().Setup(triggerCtx, f.failpoint, "panic")
+		err := member.Failpoints().Setup(ctx, f.failpoint, "panic")
 		if err != nil {
 			lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
 		}
@@ -188,13 +186,13 @@ func (f goPanicFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Log
 		}
 		if f.trigger != nil {
 			lg.Info("Triggering gofailpoint", zap.String("failpoint", f.Name()))
-			err = f.trigger(t, triggerCtx, member, clus)
+			err = f.trigger(t, ctx, member, clus)
 			if err != nil {
 				lg.Info("gofailpoint trigger failed", zap.String("failpoint", f.Name()), zap.Error(err))
 			}
 		}
 		lg.Info("Waiting for member to exit", zap.String("member", member.Config().Name))
-		err = member.Wait(triggerCtx)
+		err = member.Wait(ctx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 			lg.Info("Member didn't exit as expected", zap.String("member", member.Config().Name), zap.Error(err))
 			return fmt.Errorf("member didn't exit as expected: %v", err)

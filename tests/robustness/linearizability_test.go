@@ -203,14 +203,16 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, traffic trafficConfig, failpoint FailpointConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
 	g := errgroup.Group{}
 	finishTraffic := make(chan struct{})
+
 	g.Go(func() error {
+		defer close(finishTraffic)
 		triggerFailpoints(ctx, t, lg, clus, failpoint)
 		time.Sleep(time.Second)
-		close(finishTraffic)
 		return nil
 	})
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
+		defer close(maxRevisionChan)
 		operations = simulateTraffic(ctx, t, lg, clus, traffic, finishTraffic)
 		maxRevisionChan <- operationsMaxRevision(operations)
 		return nil
