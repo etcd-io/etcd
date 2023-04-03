@@ -2,10 +2,10 @@ name: Robustness
 on: [push, pull_request]
 permissions: read-all
 jobs:
-  test:
+  main:
     uses: ./.github/workflows/robustness-template.yaml
     with:
-      ref: ${{ github.ref }}
+      etcdBranch: main
       count: 15
       testTimeout: 30m
-      artifactName: test
+      artifactName: main
