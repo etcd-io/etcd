@@ -35,7 +35,7 @@ type ClusterConfig struct {
 	QuotaBackendBytes   int64
 	StrictReconfigCheck bool
 	AuthToken           string
-	SnapshotCount       int
+	SnapshotCount       uint64
 
 	// ClusterContext is used by "e2e" or "integration" to extend the
 	// ClusterConfig. The common test cases shouldn't care about what
@@ -81,7 +81,7 @@ func WithQuotaBackendBytes(bytes int64) ClusterOption {
 	return func(c *ClusterConfig) { c.QuotaBackendBytes = bytes }
 }
 
-func WithSnapshotCount(count int) ClusterOption {
+func WithSnapshotCount(count uint64) ClusterOption {
 	return func(c *ClusterConfig) { c.SnapshotCount = count }
 }
 

@@ -24,6 +24,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
@@ -78,6 +79,10 @@ var (
 
 func TestRobustness(t *testing.T) {
 	testRunner.BeforeTest(t)
+	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
+	if err != nil {
+		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
+	}
 	type scenario struct {
 		name      string
 		failpoint Failpoint
@@ -112,44 +117,45 @@ func TestRobustness(t *testing.T) {
 			),
 		})
 	}
-	scenarios = append(scenarios, []scenario{
-		{
-			name:      "Issue14370",
-			failpoint: RaftBeforeSavePanic,
-			config: *e2e.NewConfig(
-				e2e.WithClusterSize(1),
-				e2e.WithGoFailEnabled(true),
-			),
-		},
-		{
-			name:      "Issue14685",
-			failpoint: DefragBeforeCopyPanic,
-			config: *e2e.NewConfig(
-				e2e.WithClusterSize(1),
-				e2e.WithGoFailEnabled(true),
-			),
-		},
-		{
-			name:      "Issue13766",
-			failpoint: KillFailpoint,
-			traffic:   &HighTraffic,
-			config: *e2e.NewConfig(
-				e2e.WithSnapshotCount(100),
-			),
-		},
-		{
-			name:      "Snapshot",
-			failpoint: RandomSnapshotFailpoint,
-			traffic:   &HighTraffic,
-			config: *e2e.NewConfig(
-				e2e.WithGoFailEnabled(true),
-				e2e.WithSnapshotCount(100),
-				e2e.WithSnapshotCatchUpEntries(100),
-				e2e.WithPeerProxy(true),
-				e2e.WithIsPeerTLS(true),
-			),
-		},
-	}...)
+	scenarios = append(scenarios, scenario{
+		name:      "Issue14370",
+		failpoint: RaftBeforeSavePanic,
+		config: *e2e.NewConfig(
+			e2e.WithClusterSize(1),
+			e2e.WithGoFailEnabled(true),
+		),
+	})
+	scenarios = append(scenarios, scenario{
+		name:      "Issue14685",
+		failpoint: DefragBeforeCopyPanic,
+		config: *e2e.NewConfig(
+			e2e.WithClusterSize(1),
+			e2e.WithGoFailEnabled(true),
+		),
+	})
+	scenarios = append(scenarios, scenario{
+		name:      "Issue13766",
+		failpoint: KillFailpoint,
+		traffic:   &HighTraffic,
+		config: *e2e.NewConfig(
+			e2e.WithSnapshotCount(100),
+		),
+	})
+	snapshotOptions := []e2e.EPClusterOption{
+		e2e.WithGoFailEnabled(true),
+		e2e.WithSnapshotCount(100),
+		e2e.WithPeerProxy(true),
+		e2e.WithIsPeerTLS(true),
+	}
+	if !v.LessThan(version.V3_6) {
+		snapshotOptions = append(snapshotOptions, e2e.WithSnapshotCatchUpEntries(100))
+	}
+	scenarios = append(scenarios, scenario{
+		name:      "Snapshot",
+		failpoint: RandomSnapshotFailpoint,
+		traffic:   &HighTraffic,
+		config:    *e2e.NewConfig(snapshotOptions...),
+	})
 	for _, scenario := range scenarios {
 		if scenario.traffic == nil {
 			scenario.traffic = &defaultTraffic

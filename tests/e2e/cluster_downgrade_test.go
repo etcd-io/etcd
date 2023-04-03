@@ -49,12 +49,12 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	currentVersion, err := getVersionFromBinary(currentEtcdBinary)
+	currentVersion, err := e2e.GetVersionFromBinary(currentEtcdBinary)
 	require.NoError(t, err)
 	// wipe any pre-release suffix like -alpha.0 we see commonly in builds
 	currentVersion.PreRelease = ""
 
-	lastVersion, err := getVersionFromBinary(lastReleaseBinary)
+	lastVersion, err := e2e.GetVersionFromBinary(lastReleaseBinary)
 	require.NoError(t, err)
 
 	require.Equalf(t, lastVersion.Minor, currentVersion.Minor-1, "unexpected minor version difference")
@@ -244,20 +244,4 @@ func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdPr
 		return version.Versions{}, fmt.Errorf("failed to unmarshal (%v): %w", data, err)
 	}
 	return result, nil
-}
-
-func getVersionFromBinary(binaryPath string) (*semver.Version, error) {
-	lines, err := e2e.RunUtilCompletion([]string{binaryPath, "--version"}, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not find binary version from %s, err: %w", binaryPath, err)
-	}
-
-	for _, line := range lines {
-		if strings.HasPrefix(line, "etcd Version:") {
-			versionString := strings.TrimSpace(strings.SplitAfter(line, ":")[1])
-			return semver.NewVersion(versionString)
-		}
-	}
-
-	return nil, fmt.Errorf("could not find version in binary output of %s, lines outputted were %v", binaryPath, lines)
 }

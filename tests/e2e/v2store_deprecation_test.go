@@ -112,7 +112,7 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
-	snapshotCount := 10
+	var snapshotCount uint64 = 10
 	epc := runEtcdAndCreateSnapshot(t, e2e.LastVersion, lastReleaseData, snapshotCount)
 	oldMemberDataDir := epc.Procs[0].Config().DataDirPath
 	cc1, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
@@ -182,7 +182,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	assert.NoError(t, epc.Close())
 }
 
-func runEtcdAndCreateSnapshot(t testing.TB, serverVersion e2e.ClusterVersion, dataDir string, snapshotCount int) *e2e.EtcdProcessCluster {
+func runEtcdAndCreateSnapshot(t testing.TB, serverVersion e2e.ClusterVersion, dataDir string, snapshotCount uint64) *e2e.EtcdProcessCluster {
 	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
 		e2e.WithVersion(serverVersion),
 		e2e.WithDataDirPath(dataDir),
@@ -194,9 +194,10 @@ func runEtcdAndCreateSnapshot(t testing.TB, serverVersion e2e.ClusterVersion, da
 	return epc
 }
 
-func addAndRemoveKeysAndMembers(ctx context.Context, t testing.TB, cc *e2e.EtcdctlV3, snapshotCount int) (members []uint64) {
+func addAndRemoveKeysAndMembers(ctx context.Context, t testing.TB, cc *e2e.EtcdctlV3, snapshotCount uint64) (members []uint64) {
 	// Execute some non-trivial key&member operation
-	for i := 0; i < snapshotCount*3; i++ {
+	var i uint64
+	for i = 0; i < snapshotCount*3; i++ {
 		err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
 		assert.NoError(t, err)
 	}
@@ -204,14 +205,14 @@ func addAndRemoveKeysAndMembers(ctx context.Context, t testing.TB, cc *e2e.Etcdc
 	assert.NoError(t, err)
 	members = append(members, member1.Member.ID)
 
-	for i := 0; i < snapshotCount*2; i++ {
+	for i = 0; i < snapshotCount*2; i++ {
 		_, err = cc.Delete(ctx, fmt.Sprintf("%d", i), config.DeleteOptions{})
 		assert.NoError(t, err)
 	}
 	_, err = cc.MemberRemove(ctx, member1.Member.ID)
 	assert.NoError(t, err)
 
-	for i := 0; i < snapshotCount; i++ {
+	for i = 0; i < snapshotCount; i++ {
 		err = cc.Put(ctx, fmt.Sprintf("%d", i), "2", config.PutOptions{})
 		assert.NoError(t, err)
 	}
@@ -219,7 +220,7 @@ func addAndRemoveKeysAndMembers(ctx context.Context, t testing.TB, cc *e2e.Etcdc
 	assert.NoError(t, err)
 	members = append(members, member2.Member.ID)
 
-	for i := 0; i < snapshotCount/2; i++ {
+	for i = 0; i < snapshotCount/2; i++ {
 		err = cc.Put(ctx, fmt.Sprintf("%d", i), "3", config.PutOptions{})
 		assert.NoError(t, err)
 	}

@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	triggerTimeout = 10 * time.Second
+	triggerTimeout = 30 * time.Second
 )
 
 var (
