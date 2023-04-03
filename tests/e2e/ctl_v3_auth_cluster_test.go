@@ -69,9 +69,9 @@ func TestAuthCluster(t *testing.T) {
 	}
 
 	// make sure writes to both endpoints are successful
-	endpoints := epc.EndpointsV3()
+	endpoints := epc.EndpointsGRPC()
 	assert.Equal(t, len(endpoints), 2)
-	for _, endpoint := range epc.EndpointsV3() {
+	for _, endpoint := range epc.EndpointsGRPC() {
 		if err := epc.Client(testUserClientOpts, e2e.WithEndpoints([]string{endpoint})).Put(ctx, "/test/key", endpoint, config.PutOptions{}); err != nil {
 			t.Fatalf("failed to write to Put to %q (%v)", endpoint, err)
 		}

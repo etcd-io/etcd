@@ -42,8 +42,6 @@ var (
 
 // EtcdProcess is a process that serves etcd requests.
 type EtcdProcess interface {
-	EndpointsV2() []string
-	EndpointsV3() []string
 	EndpointsGRPC() []string
 	EndpointsHTTP() []string
 	EndpointsMetrics() []string
@@ -117,8 +115,6 @@ func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, err
 	return ep, nil
 }
 
-func (ep *EtcdServerProcess) EndpointsV2() []string   { return ep.EndpointsHTTP() }
-func (ep *EtcdServerProcess) EndpointsV3() []string   { return ep.EndpointsGRPC() }
 func (ep *EtcdServerProcess) EndpointsGRPC() []string { return []string{ep.cfg.ClientURL} }
 func (ep *EtcdServerProcess) EndpointsHTTP() []string {
 	if ep.cfg.ClientHTTPURL == "" {
@@ -129,7 +125,7 @@ func (ep *EtcdServerProcess) EndpointsHTTP() []string {
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.MetricsURL} }
 
 func (epc *EtcdServerProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsV3(), opts...)
+	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)
 	}

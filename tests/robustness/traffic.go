@@ -56,7 +56,7 @@ const (
 
 func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config trafficConfig) []porcupine.Operation {
 	mux := sync.Mutex{}
-	endpoints := clus.EndpointsV3()
+	endpoints := clus.EndpointsGRPC()
 
 	ids := identity.NewIdProvider()
 	lm := identity.NewLeaseIdStorage()

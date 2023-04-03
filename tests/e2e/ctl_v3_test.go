@@ -111,7 +111,7 @@ func TestCtlV3DialWithHTTPScheme(t *testing.T) {
 }
 
 func dialWithSchemeTest(cx ctlCtx) {
-	cmdArgs := append(cx.prefixArgs(cx.epc.EndpointsV3()), "put", "foo", "bar")
+	cmdArgs := append(cx.prefixArgs(cx.epc.EndpointsGRPC()), "put", "foo", "bar")
 	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK"); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -331,7 +331,7 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 // PrefixArgs prefixes etcdctl command.
 // Make sure to unset environment variables after tests.
 func (cx *ctlCtx) PrefixArgs() []string {
-	return cx.prefixArgs(cx.epc.EndpointsV3())
+	return cx.prefixArgs(cx.epc.EndpointsGRPC())
 }
 
 // PrefixArgsUtl returns prefix of the command that is etcdutl

@@ -53,7 +53,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	}
 	defer dc.Close()
 
-	dcc := MustNewHTTPClient(t, dc.EndpointsV2(), nil)
+	dcc := MustNewHTTPClient(t, dc.EndpointsHTTP(), nil)
 	dkapi := client.NewKeysAPI(dcc)
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size)); err != nil {
@@ -65,14 +65,14 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 		e2e.WithBasePort(3000),
 		e2e.WithClusterSize(size),
 		e2e.WithIsPeerTLS(peerTLS),
-		e2e.WithDiscovery(dc.EndpointsV2()[0]+"/v2/keys"),
+		e2e.WithDiscovery(dc.EndpointsHTTP()[0]+"/v2/keys"),
 	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
 	defer c.Close()
 
-	kubectl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(c.EndpointsV3(), ",")}
+	kubectl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(c.EndpointsGRPC(), ",")}
 	if err := e2e.SpawnWithExpect(append(kubectl, "put", "key", "value"), "OK"); err != nil {
 		t.Fatal(err)
 	}

@@ -238,7 +238,7 @@ func (f goPanicFailpoint) Name() string {
 
 func triggerDefrag(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
 	cc, err := clientv3.New(clientv3.Config{
-		Endpoints:            member.EndpointsV3(),
+		Endpoints:            member.EndpointsGRPC(),
 		Logger:               zap.NewNop(),
 		DialKeepAliveTime:    1 * time.Millisecond,
 		DialKeepAliveTimeout: 5 * time.Millisecond,
@@ -247,7 +247,7 @@ func triggerDefrag(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ 
 		return fmt.Errorf("failed creating client: %w", err)
 	}
 	defer cc.Close()
-	_, err = cc.Defragment(ctx, member.EndpointsV3()[0])
+	_, err = cc.Defragment(ctx, member.EndpointsGRPC()[0])
 	if err != nil && !strings.Contains(err.Error(), "error reading from server: EOF") {
 		return err
 	}
@@ -256,7 +256,7 @@ func triggerDefrag(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ 
 
 func triggerCompact(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
 	cc, err := clientv3.New(clientv3.Config{
-		Endpoints:            member.EndpointsV3(),
+		Endpoints:            member.EndpointsGRPC(),
 		Logger:               zap.NewNop(),
 		DialKeepAliveTime:    1 * time.Millisecond,
 		DialKeepAliveTimeout: 5 * time.Millisecond,
@@ -343,7 +343,7 @@ func triggerBlackhole(t *testing.T, ctx context.Context, member e2e.EtcdProcess,
 
 func waitTillSnapshot(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, blackholedMember e2e.EtcdProcess) error {
 	var endpoints []string
-	for _, ep := range clus.EndpointsV3() {
+	for _, ep := range clus.EndpointsGRPC() {
 		if ep == blackholedMember.Config().ClientURL {
 			continue
 		}

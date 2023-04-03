@@ -96,12 +96,12 @@ type e2eCluster struct {
 }
 
 func (c *e2eCluster) Client(opts ...config.ClientOption) (intf.Client, error) {
-	etcdctl, err := NewEtcdctl(c.Cfg.Client, c.EndpointsV3(), opts...)
+	etcdctl, err := NewEtcdctl(c.Cfg.Client, c.EndpointsGRPC(), opts...)
 	return e2eClient{etcdctl}, err
 }
 
 func (c *e2eCluster) Endpoints() []string {
-	return c.EndpointsV3()
+	return c.EndpointsGRPC()
 }
 
 func (c *e2eCluster) Members() (ms []intf.Member) {
@@ -121,7 +121,7 @@ type e2eMember struct {
 }
 
 func (m e2eMember) Client() intf.Client {
-	etcdctl, err := NewEtcdctl(m.Cfg.Client, m.EndpointsV3())
+	etcdctl, err := NewEtcdctl(m.Cfg.Client, m.EndpointsGRPC())
 	if err != nil {
 		panic(err)
 	}

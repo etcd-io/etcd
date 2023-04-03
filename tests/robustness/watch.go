@@ -38,7 +38,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
 	for i, member := range clus.Procs {
 		c, err := clientv3.New(clientv3.Config{
-			Endpoints:            member.EndpointsV3(),
+			Endpoints:            member.EndpointsGRPC(),
 			Logger:               zap.NewNop(),
 			DialKeepAliveTime:    1 * time.Millisecond,
 			DialKeepAliveTimeout: 5 * time.Millisecond,

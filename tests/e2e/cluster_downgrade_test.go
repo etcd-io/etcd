@@ -155,7 +155,7 @@ func startEtcd(t *testing.T, ep e2e.EtcdProcess, execPath string) {
 }
 
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver *semver.Version) {
-	c, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	c, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
 	assert.NoError(t, err)
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		err := c.DowngradeEnable(context.TODO(), ver.String())
@@ -195,7 +195,7 @@ func leader(t *testing.T, epc *e2e.EtcdProcessCluster) e2e.EtcdProcess {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	for i := 0; i < len(epc.Procs); i++ {
-		endpoints := epc.Procs[i].EndpointsV3()
+		endpoints := epc.Procs[i].EndpointsGRPC()
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   endpoints,
 			DialTimeout: 3 * time.Second,

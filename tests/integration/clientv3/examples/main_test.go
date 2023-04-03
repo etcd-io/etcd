@@ -36,7 +36,7 @@ var lazyCluster = integration.NewLazyClusterWithConfig(
 		WatchProgressNotifyInterval: 200 * time.Millisecond,
 		DisableStrictReconfigCheck:  true})
 
-func exampleEndpoints() []string { return lazyCluster.EndpointsV3() }
+func exampleEndpoints() []string { return lazyCluster.EndpointsGRPC() }
 
 func forUnitTestsRunInMockedContext(_ func(), example func()) {
 	// For integration tests runs in the provided environment

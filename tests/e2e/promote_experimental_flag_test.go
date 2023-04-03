@@ -42,7 +42,7 @@ func TestWarningApplyDuration(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
 	require.NoError(t, err)
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
 	assert.NoError(t, err, "error on put")
@@ -70,7 +70,7 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
 	require.NoError(t, err)
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
 	assert.NoError(t, err, "error on put")
