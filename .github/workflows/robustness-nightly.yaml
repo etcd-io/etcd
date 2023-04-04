@@ -6,25 +6,25 @@ on:
   schedule:
     - cron: '25 9 * * *' # runs every day at 09:25 UTC
 jobs:
-  test-main:
+  main:
     # GHA has a maximum amount of 6h execution time, we try to get done within 3h
     uses: ./.github/workflows/robustness-template.yaml
     with:
-      ref: main
+      etcdBranch: main
       count: 100
       testTimeout: 200m
-      artifactName: test-main
-  test-35:
+      artifactName: main
+  release-35:
     uses: ./.github/workflows/robustness-template.yaml
     with:
-      ref: release-3.5
+      etcdBranch: release-3.5
       count: 100
       testTimeout: 200m
-      artifactName: test-35
-  test-34:
+      artifactName: release-35
+  release-34:
     uses: ./.github/workflows/robustness-template.yaml
     with:
-      ref: release-3.4
+      etcdBranch: release-3.4
       count: 100
       testTimeout: 200m
-      artifactName: test-34
+      artifactName: release-34

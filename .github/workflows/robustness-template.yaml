@@ -2,7 +2,7 @@ name: Reusable Robustness Workflow
 on:
   workflow_call:
     inputs:
-      ref:
+      etcdBranch:
         required: true
         type: string
       count:
@@ -27,11 +27,12 @@ jobs:
         go-version: '1.19.7'
     - name: build
       env:
-        GITHUB_REF: ${{ inputs.ref }}
+        ETCD_BRANCH: "${{ inputs.etcdBranch }}"
       run: |
         set -euo pipefail
 
-        case "${GITHUB_REF}" in
+        mkdir -p bin
+        case "${ETCD_BRANCH}" in
           release-3.5)
             make /tmp/etcd-release-3.5-failpoints/bin/etcd
             cp /tmp/etcd-release-3.5-failpoints/bin/etcd bin/etcd
@@ -40,11 +41,15 @@ jobs:
             make /tmp/etcd-release-3.4-failpoints/bin/etcd
             cp /tmp/etcd-release-3.4-failpoints/bin/etcd bin/etcd
             ;;
-          *)
+          main)
             make gofail-enable
             make build
             ;;
-          esac
+          *)
+            echo "Failed to find target ${ETCD_BRANCH}"
+            exit 1
+            ;;
+        esac
         ./bin/etcd --version
     - name: test-robustness
       run: |

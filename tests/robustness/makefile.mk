@@ -41,7 +41,7 @@ install-gofail:
 
 # Build previous releases for robustness tests
 
-/tmp/etcd-v3.6.0-failpoints/bin:
+/tmp/etcd-v3.6.0-failpoints/bin: install-gofail
 	rm -rf /tmp/etcd-v3.6.0-failpoints/
 	mkdir -p /tmp/etcd-v3.6.0-failpoints/
 	cd /tmp/etcd-v3.6.0-failpoints/; \
@@ -52,7 +52,7 @@ install-gofail:
 /tmp/etcd-v3.5.2-failpoints/bin:
 /tmp/etcd-v3.5.4-failpoints/bin:
 /tmp/etcd-v3.5.5-failpoints/bin:
-/tmp/etcd-v3.5.%-failpoints/bin:
+/tmp/etcd-v3.5.%-failpoints/bin: install-gofail
 	rm -rf /tmp/etcd-v3.5.$*-failpoints/
 	mkdir -p /tmp/etcd-v3.5.$*-failpoints/
 	cd /tmp/etcd-v3.5.$*-failpoints/; \
@@ -63,7 +63,7 @@ install-gofail:
 	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
-/tmp/etcd-release-3.5-failpoints/bin/etcd:
+/tmp/etcd-release-3.5-failpoints/bin/etcd: install-gofail
 	rm -rf /tmp/etcd-release-3.5-failpoints/
 	mkdir -p /tmp/etcd-release-3.5-failpoints/
 	cd /tmp/etcd-release-3.5-failpoints/; \
@@ -75,7 +75,7 @@ install-gofail:
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-v3.4.23-failpoints/bin:
-/tmp/etcd-v3.4.%-failpoints/bin:
+/tmp/etcd-v3.4.%-failpoints/bin: install-gofail
 	rm -rf /tmp/etcd-v3.4.$*-failpoints/
 	mkdir -p /tmp/etcd-v3.4.$*-failpoints/
 	cd /tmp/etcd-v3.4.$*-failpoints/; \
@@ -83,7 +83,7 @@ install-gofail:
 	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
 	  FAILPOINTS=true ./build;
 
-/tmp/etcd-release-3.4-failpoints/bin/etcd:
+/tmp/etcd-release-3.4-failpoints/bin/etcd: install-gofail
 	rm -rf /tmp/etcd-release-3.4-failpoints/
 	mkdir -p /tmp/etcd-release-3.4-failpoints/
 	cd /tmp/etcd-release-3.4-failpoints/; \
