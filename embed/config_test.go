@@ -77,12 +77,12 @@ func TestConfigFileOtherFields(t *testing.T) {
 func TestUpdateDefaultClusterFromName(t *testing.T) {
 	cfg := NewConfig()
 	defaultInitialCluster := cfg.InitialCluster
-	oldscheme := cfg.APUrls[0].Scheme
-	origpeer := cfg.APUrls[0].String()
-	origadvc := cfg.ACUrls[0].String()
+	oldscheme := cfg.AdvertisePeerUrls[0].Scheme
+	origpeer := cfg.AdvertisePeerUrls[0].String()
+	origadvc := cfg.AdvertiseClientUrls[0].String()
 
 	cfg.Name = "abc"
-	lpport := cfg.LPUrls[0].Port()
+	lpport := cfg.ListenPeerUrls[0].Port()
 
 	// in case of 'etcd --name=abc'
 	exp := fmt.Sprintf("%s=%s://localhost:%s", cfg.Name, oldscheme, lpport)
@@ -91,12 +91,12 @@ func TestUpdateDefaultClusterFromName(t *testing.T) {
 		t.Fatalf("initial-cluster expected %q, got %q", exp, cfg.InitialCluster)
 	}
 	// advertise peer URL should not be affected
-	if origpeer != cfg.APUrls[0].String() {
-		t.Fatalf("advertise peer url expected %q, got %q", origadvc, cfg.APUrls[0].String())
+	if origpeer != cfg.AdvertisePeerUrls[0].String() {
+		t.Fatalf("advertise peer url expected %q, got %q", origadvc, cfg.AdvertisePeerUrls[0].String())
 	}
 	// advertise client URL should not be affected
-	if origadvc != cfg.ACUrls[0].String() {
-		t.Fatalf("advertise client url expected %q, got %q", origadvc, cfg.ACUrls[0].String())
+	if origadvc != cfg.AdvertiseClientUrls[0].String() {
+		t.Fatalf("advertise client url expected %q, got %q", origadvc, cfg.AdvertiseClientUrls[0].String())
 	}
 }
 
@@ -109,17 +109,17 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 
 	cfg := NewConfig()
 	defaultInitialCluster := cfg.InitialCluster
-	oldscheme := cfg.APUrls[0].Scheme
-	origadvc := cfg.ACUrls[0].String()
+	oldscheme := cfg.AdvertisePeerUrls[0].Scheme
+	origadvc := cfg.AdvertiseClientUrls[0].String()
 
 	cfg.Name = "abc"
-	lpport := cfg.LPUrls[0].Port()
-	cfg.LPUrls[0] = url.URL{Scheme: cfg.LPUrls[0].Scheme, Host: fmt.Sprintf("0.0.0.0:%s", lpport)}
+	lpport := cfg.ListenPeerUrls[0].Port()
+	cfg.ListenPeerUrls[0] = url.URL{Scheme: cfg.ListenPeerUrls[0].Scheme, Host: fmt.Sprintf("0.0.0.0:%s", lpport)}
 	dhost, _ := cfg.UpdateDefaultClusterFromName(defaultInitialCluster)
 	if dhost != defaultHostname {
 		t.Fatalf("expected default host %q, got %q", defaultHostname, dhost)
 	}
-	aphost, apport := cfg.APUrls[0].Hostname(), cfg.APUrls[0].Port()
+	aphost, apport := cfg.AdvertisePeerUrls[0].Hostname(), cfg.AdvertisePeerUrls[0].Port()
 	if apport != lpport {
 		t.Fatalf("advertise peer url got different port %s, expected %s", apport, lpport)
 	}
@@ -132,8 +132,8 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 	}
 
 	// advertise client URL should not be affected
-	if origadvc != cfg.ACUrls[0].String() {
-		t.Fatalf("advertise-client-url expected %q, got %q", origadvc, cfg.ACUrls[0].String())
+	if origadvc != cfg.AdvertiseClientUrls[0].String() {
+		t.Fatalf("advertise-client-url expected %q, got %q", origadvc, cfg.AdvertiseClientUrls[0].String())
 	}
 }
 

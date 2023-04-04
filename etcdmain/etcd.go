@@ -251,7 +251,7 @@ func startEtcdOrProxyV2() {
 					plog.Infof("forgot to set --initial-cluster flag?")
 				}
 			}
-			if types.URLs(cfg.ec.APUrls).String() == embed.DefaultInitialAdvertisePeerURLs {
+			if types.URLs(cfg.ec.AdvertisePeerUrls).String() == embed.DefaultInitialAdvertisePeerURLs {
 				if lg != nil {
 					lg.Warn("forgot to set --initial-advertise-peer-urls?")
 				} else {
@@ -507,11 +507,11 @@ func startProxy(cfg *config) error {
 
 	// setup self signed certs when serving https
 	cHosts, cTLS := []string{}, false
-	for _, u := range cfg.ec.LCUrls {
+	for _, u := range cfg.ec.ListenClientUrls {
 		cHosts = append(cHosts, u.Host)
 		cTLS = cTLS || u.Scheme == "https"
 	}
-	for _, u := range cfg.ec.ACUrls {
+	for _, u := range cfg.ec.AdvertiseClientUrls {
 		cHosts = append(cHosts, u.Host)
 		cTLS = cTLS || u.Scheme == "https"
 	}
@@ -528,7 +528,7 @@ func startProxy(cfg *config) error {
 	}
 
 	// Start a proxy server goroutine for each listen address
-	for _, u := range cfg.ec.LCUrls {
+	for _, u := range cfg.ec.ListenClientUrls {
 		l, err := transport.NewListener(u.Host, u.Scheme, &listenerTLS)
 		if err != nil {
 			return err

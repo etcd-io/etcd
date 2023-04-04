@@ -141,7 +141,11 @@ func newConfig() *config {
 	)
 	fs.Var(
 		flags.NewUniqueURLsWithExceptions(embed.DefaultListenClientURLs, ""), "listen-client-urls",
-		"List of URLs to listen on for client traffic.",
+		"List of URLs to listen on for client grpc traffic and http as long as --listen-client-http-urls is not specified.",
+	)
+	fs.Var(
+		flags.NewUniqueURLsWithExceptions("", ""), "listen-client-http-urls",
+		"List of URLs to listen on for http only client traffic. Enabling this flag removes http services from --listen-client-urls.",
 	)
 	fs.Var(
 		flags.NewUniqueURLsWithExceptions("", ""),
@@ -332,10 +336,11 @@ func (cfg *config) configFromCmdLine() error {
 		return err
 	}
 
-	cfg.ec.LPUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-peer-urls")
-	cfg.ec.APUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "initial-advertise-peer-urls")
-	cfg.ec.LCUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-client-urls")
-	cfg.ec.ACUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "advertise-client-urls")
+	cfg.ec.ListenPeerUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-peer-urls")
+	cfg.ec.AdvertisePeerUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "initial-advertise-peer-urls")
+	cfg.ec.ListenClientUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-client-urls")
+	cfg.ec.ListenClientHttpUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-client-http-urls")
+	cfg.ec.AdvertiseClientUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "advertise-client-urls")
 	cfg.ec.ListenMetricsUrls = flags.UniqueURLsFromFlag(cfg.cf.flagSet, "listen-metrics-urls")
 
 	cfg.ec.CORS = flags.UniqueURLsMapFromFlag(cfg.cf.flagSet, "cors")
@@ -356,7 +361,7 @@ func (cfg *config) configFromCmdLine() error {
 	// disable default advertise-client-urls if lcurls is set
 	missingAC := flags.IsSet(cfg.cf.flagSet, "listen-client-urls") && !flags.IsSet(cfg.cf.flagSet, "advertise-client-urls")
 	if !cfg.mayBeProxy() && missingAC {
-		cfg.ec.ACUrls = nil
+		cfg.ec.AdvertiseClientUrls = nil
 	}
 
 	// disable default initial-cluster if discovery is set
