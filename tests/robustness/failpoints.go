@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -399,6 +400,14 @@ func (tb triggerBlackhole) Trigger(t *testing.T, ctx context.Context, member e2e
 }
 
 func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess) bool {
+	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
+	if err != nil {
+		panic(err)
+	}
+	// TODO: Deflake waiting for snapshot for v3.4.X
+	if tb.waitTillSnapshot && v.LessThan(version.V3_5) {
+		return false
+	}
 	return config.ClusterSize > 1 && process.PeerProxy() != nil
 }
 
