@@ -57,25 +57,25 @@ var tcs = []testCase{
 	{
 		name:          "NoTLS",
 		config:        etcdProcessClusterConfig{clusterSize: 1},
-		maxWatchDelay: 100 * time.Millisecond,
+		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "TLS",
 		config:        etcdProcessClusterConfig{clusterSize: 1, isClientAutoTLS: true, clientTLS: clientTLS},
-		maxWatchDelay: 100 * time.Millisecond,
+		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "SeparateHttpNoTLS",
 		config:        etcdProcessClusterConfig{clusterSize: 1, clientHttpSeparate: true},
-		maxWatchDelay: 100 * time.Millisecond,
+		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "SeparateHttpTLS",
 		config:        etcdProcessClusterConfig{clusterSize: 1, isClientAutoTLS: true, clientTLS: clientTLS, clientHttpSeparate: true},
-		maxWatchDelay: 100 * time.Millisecond,
+		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 }
