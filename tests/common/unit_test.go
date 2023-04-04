@@ -36,3 +36,7 @@ func unitClusterTestCases() []testCase {
 func WithAuth(userName, password string) config.ClientOption {
 	return func(any) {}
 }
+
+func WithEndpoints(endpoints []string) config.ClientOption {
+	return func(any) {}
+}

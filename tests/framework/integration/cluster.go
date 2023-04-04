@@ -1466,6 +1466,13 @@ func WithAuth(userName, password string) framecfg.ClientOption {
 	}
 }
 
+func WithEndpoints(endpoints []string) framecfg.ClientOption {
+	return func(c any) {
+		cfg := c.(*clientv3.Config)
+		cfg.Endpoints = endpoints
+	}
+}
+
 func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
 	cfg := &clientv3.Config{
 		Endpoints:          c.Endpoints(),
