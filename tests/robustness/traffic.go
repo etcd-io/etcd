@@ -54,7 +54,7 @@ const (
 	Defragment    TrafficRequestType = "defragment"
 )
 
-func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config trafficConfig) []porcupine.Operation {
+func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config trafficConfig, finish <-chan struct{}) []porcupine.Operation {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
@@ -64,11 +64,15 @@ func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
+	cc, err := NewClient(endpoints, ids, startTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cc.Close()
 	wg := sync.WaitGroup{}
 	for i := 0; i < config.clientCount; i++ {
 		wg.Add(1)
-		endpoints := []string{endpoints[i%len(endpoints)]}
-		c, err := NewClient(endpoints, ids, startTime)
+		c, err := NewClient([]string{endpoints[i%len(endpoints)]}, ids, startTime)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +80,7 @@ func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			config.traffic.Run(ctx, clientId, c, limiter, ids, lm)
+			config.traffic.Run(ctx, clientId, c, limiter, ids, lm, finish)
 			mux.Lock()
 			h = h.Merge(c.history.History)
 			mux.Unlock()
@@ -84,6 +88,15 @@ func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	}
 	wg.Wait()
 	endTime := time.Now()
+
+	// Ensure that last operation is succeeds
+	time.Sleep(time.Second)
+	err = cc.Put(ctx, "tombstone", "true")
+	if err != nil {
+		t.Error(err)
+	}
+	h = h.Merge(cc.history.History)
+
 	operations := h.Operations()
 	lg.Info("Recorded operations", zap.Int("count", len(operations)))
 
@@ -104,7 +117,7 @@ type trafficConfig struct {
 }
 
 type Traffic interface {
-	Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage)
+	Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
 }
 
 type traffic struct {
@@ -119,11 +132,13 @@ type requestChance struct {
 	chance    int
 }
 
-func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage) {
+func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
 
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-finish:
 			return
 		default:
 		}

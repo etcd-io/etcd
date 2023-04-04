@@ -201,19 +201,17 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 }
 
 func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, traffic trafficConfig, failpoint FailpointConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
-	// Run multiple test components (traffic, failpoints, etc) in parallel and use canceling context to propagate stop signal.
 	g := errgroup.Group{}
-	trafficCtx, trafficCancel := context.WithCancel(ctx)
+	finishTraffic := make(chan struct{})
 	g.Go(func() error {
 		triggerFailpoints(ctx, t, lg, clus, failpoint)
 		time.Sleep(time.Second)
-		trafficCancel()
+		close(finishTraffic)
 		return nil
 	})
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
-		operations = simulateTraffic(trafficCtx, t, lg, clus, traffic)
-		time.Sleep(time.Second)
+		operations = simulateTraffic(ctx, t, lg, clus, traffic, finishTraffic)
 		maxRevisionChan <- operationsMaxRevision(operations)
 		return nil
 	})
