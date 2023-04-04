@@ -70,7 +70,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 	return memberResponses
 }
 
-// watchMember collects all responses until context is cancelled or has observed revision provided via maxRevisionChan.
+// watchMember collects all responses until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
 func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64) (resps []watchResponse) {
 	var maxRevision int64 = 0
 	var lastRevision int64 = 0
@@ -88,9 +88,17 @@ func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevis
 				t.Errorf("Client didn't collect all events, revision got %d, expected: %d", revision, maxRevision)
 			}
 			return resps
-		case maxRevision = <-maxRevisionChan:
-			if lastRevision >= maxRevision {
-				cancel()
+		case revision, ok := <-maxRevisionChan:
+			if ok {
+				maxRevision = revision
+				if lastRevision >= maxRevision {
+					cancel()
+				}
+			} else {
+				// Only cancel if maxRevision was never set.
+				if maxRevision == 0 {
+					cancel()
+				}
 			}
 		case resp := <-watch:
 			if resp.Err() == nil {
