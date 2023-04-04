@@ -109,6 +109,12 @@ func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *
 		lg.Info("Triggering failpoint", zap.String("failpoint", config.failpoint.Name()))
 		err = config.failpoint.Trigger(ctx, t, lg, clus)
 		if err != nil {
+			select {
+			case <-ctx.Done():
+				t.Errorf("Triggering failpoints timed out, err: %v", ctx.Err())
+				return
+			default:
+			}
 			lg.Info("Failed to trigger failpoint", zap.String("failpoint", config.failpoint.Name()), zap.Error(err))
 			failures++
 			continue
