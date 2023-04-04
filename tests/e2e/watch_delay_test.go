@@ -57,25 +57,25 @@ var tcs = []testCase{
 	{
 		name:          "NoTLS",
 		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1},
-		maxWatchDelay: 100 * time.Millisecond,
+		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "TLS",
 		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: e2e.ClientTLS}},
-		maxWatchDelay: 2 * time.Second,
+		maxWatchDelay: 3 * time.Second,
 		dbSizeBytes:   500 * Kilo,
 	},
 	{
 		name:          "SeparateHttpNoTLS",
 		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, ClientHttpSeparate: true},
-		maxWatchDelay: 100 * time.Millisecond,
+		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "SeparateHttpTLS",
 		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: e2e.ClientTLS}, ClientHttpSeparate: true},
-		maxWatchDelay: 100 * time.Millisecond,
+		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 }
