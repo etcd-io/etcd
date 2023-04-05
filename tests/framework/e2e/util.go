@@ -83,8 +83,8 @@ func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string
 	}
 
 	l := proc.LineCount()
-	if len(xs) == 0 && l != noOutputLineCount { // expect no output
-		return nil, fmt.Errorf("unexpected output from %v (got lines %q, line count %d) %v. Try EXPECT_DEBUG=TRUE", args, lines, l, l != noOutputLineCount)
+	if len(xs) == 0 && l != 0 { // expect no output
+		return nil, fmt.Errorf("unexpected output from %v (got lines %q, line count %d). Try EXPECT_DEBUG=TRUE", args, lines, l)
 	}
 	return lines, nil
 }
