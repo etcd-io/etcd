@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
@@ -332,6 +333,55 @@ func TestWatcherRequestProgress(t *testing.T) {
 
 	w.RequestProgress(id)
 	wrs := WatchResponse{WatchID: id, Revision: 2}
+	select {
+	case resp := <-w.Chan():
+		if !reflect.DeepEqual(resp, wrs) {
+			t.Fatalf("got %+v, expect %+v", resp, wrs)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("failed to receive progress")
+	}
+}
+
+func TestWatcherRequestProgressAll(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+
+	// manually create watchableStore instead of newWatchableStore
+	// because newWatchableStore automatically calls syncWatchers
+	// method to sync watchers in unsynced map. We want to keep watchers
+	// in unsynced to test if syncWatchers works as expected.
+	s := &watchableStore{
+		store:    NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{}),
+		unsynced: newWatcherGroup(),
+		synced:   newWatcherGroup(),
+		stopc:    make(chan struct{}),
+	}
+
+	defer cleanup(s, b)
+
+	testKey := []byte("foo")
+	notTestKey := []byte("bad")
+	testValue := []byte("bar")
+	s.Put(testKey, testValue, lease.NoLease)
+
+	// Create watch stream with watcher. We will not actually get
+	// any notifications on it specifically, but there needs to be
+	// at least one Watch for progress notifications to get
+	// generated.
+	w := s.NewWatchStream()
+	w.Watch(0, notTestKey, nil, 1)
+
+	w.RequestProgressAll()
+	select {
+	case resp := <-w.Chan():
+		t.Fatalf("unexpected %+v", resp)
+	default:
+	}
+
+	s.syncWatchers()
+
+	w.RequestProgressAll()
+	wrs := WatchResponse{WatchID: clientv3.InvalidWatchID, Revision: 2}
 	select {
 	case resp := <-w.Chan():
 		if !reflect.DeepEqual(resp, wrs) {

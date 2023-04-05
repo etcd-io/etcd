@@ -31,7 +31,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64) [][]watchResponse {
+func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, requestProgress bool) [][]watchResponse {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
 	memberResponses := make([][]watchResponse, len(clus.Procs))
@@ -52,7 +52,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 		go func(i int, c *clientv3.Client) {
 			defer wg.Done()
 			defer c.Close()
-			responses := watchMember(ctx, t, c, memberChan)
+			responses := watchMember(ctx, t, c, memberChan, requestProgress)
 			mux.Lock()
 			memberResponses[i] = responses
 			mux.Unlock()
@@ -71,7 +71,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 }
 
 // watchMember collects all responses until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64) (resps []watchResponse) {
+func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64, requestProgress bool) (resps []watchResponse) {
 	var maxRevision int64 = 0
 	var lastRevision int64 = 0
 	ctx, cancel := context.WithCancel(ctx)
@@ -101,6 +101,9 @@ func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevis
 				}
 			}
 		case resp := <-watch:
+			if requestProgress {
+				c.RequestProgress(ctx)
+			}
 			if resp.Err() == nil {
 				resps = append(resps, watchResponse{resp, time.Now()})
 			} else if !resp.Canceled {

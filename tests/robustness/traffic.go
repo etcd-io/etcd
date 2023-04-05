@@ -109,11 +109,12 @@ func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 }
 
 type trafficConfig struct {
-	name        string
-	minimalQPS  float64
-	maximalQPS  float64
-	clientCount int
-	traffic     Traffic
+	name            string
+	minimalQPS      float64
+	maximalQPS      float64
+	clientCount     int
+	traffic         Traffic
+	requestProgress bool // Request progress notifications while watching this traffic
 }
 
 type Traffic interface {

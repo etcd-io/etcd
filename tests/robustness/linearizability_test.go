@@ -36,10 +36,11 @@ const (
 
 var (
 	LowTraffic = trafficConfig{
-		name:        "LowTraffic",
-		minimalQPS:  100,
-		maximalQPS:  200,
-		clientCount: 8,
+		name:            "LowTraffic",
+		minimalQPS:      100,
+		maximalQPS:      200,
+		clientCount:     8,
+		requestProgress: false,
 		traffic: traffic{
 			keyCount:     10,
 			leaseTTL:     DefaultLeaseTTL,
@@ -56,10 +57,11 @@ var (
 		},
 	}
 	HighTraffic = trafficConfig{
-		name:        "HighTraffic",
-		minimalQPS:  200,
-		maximalQPS:  1000,
-		clientCount: 12,
+		name:            "HighTraffic",
+		minimalQPS:      200,
+		maximalQPS:      1000,
+		clientCount:     12,
+		requestProgress: false,
 		traffic: traffic{
 			keyCount:     10,
 			largePutSize: 32769,
@@ -67,6 +69,22 @@ var (
 			writes: []requestChance{
 				{operation: Put, chance: 85},
 				{operation: MultiOpTxn, chance: 10},
+				{operation: LargePut, chance: 5},
+			},
+		},
+	}
+	ReqProgTraffic = trafficConfig{
+		name:            "RequestProgressTraffic",
+		minimalQPS:      200,
+		maximalQPS:      1000,
+		clientCount:     12,
+		requestProgress: true,
+		traffic: traffic{
+			keyCount:     10,
+			largePutSize: 8196,
+			leaseTTL:     DefaultLeaseTTL,
+			writes: []requestChance{
+				{operation: Put, chance: 95},
 				{operation: LargePut, chance: 5},
 			},
 		},
@@ -141,6 +159,14 @@ func TestRobustness(t *testing.T) {
 			e2e.WithSnapshotCount(100),
 		),
 	})
+	scenarios = append(scenarios, scenario{
+		name:      "Issue15220",
+		failpoint: RandomOneNodeClusterFailpoint,
+		traffic:   &ReqProgTraffic,
+		config: *e2e.NewConfig(
+			e2e.WithClusterSize(1),
+		),
+	})
 	snapshotOptions := []e2e.EPClusterOption{
 		e2e.WithGoFailEnabled(true),
 		e2e.WithSnapshotCount(100),
@@ -191,7 +217,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 	forcestopCluster(r.clus)
 
 	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
-	validateWatchResponses(t, r.responses, watchProgressNotifyEnabled)
+	validateWatchResponses(t, r.responses, traffic.requestProgress || watchProgressNotifyEnabled)
 
 	r.events = watchEvents(r.responses)
 	validateEventsMatch(t, r.events)
@@ -218,7 +244,7 @@ func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.Et
 		return nil
 	})
 	g.Go(func() error {
-		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan)
+		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, traffic.requestProgress)
 		return nil
 	})
 	g.Wait()
