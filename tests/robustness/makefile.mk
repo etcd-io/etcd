@@ -15,6 +15,11 @@ test-robustness-issue14685: /tmp/etcd-v3.5.5-failpoints/bin
 	GO_TEST_FLAGS='-v --run=TestRobustness/Issue14685 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.5-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
+.PHONY: test-robustness-issue15271
+test-robustness-issue15271: /tmp/etcd-v3.5.7-failpoints/bin
+	GO_TEST_FLAGS='-v --run=TestRobustness/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' make test-robustness && \
+	 echo "Failed to reproduce" || echo "Successful reproduction"
+
 # Failpoints
 
 GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)

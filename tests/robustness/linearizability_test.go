@@ -167,6 +167,18 @@ func TestRobustness(t *testing.T) {
 			e2e.WithClusterSize(1),
 		),
 	})
+	if v.Compare(version.V3_5) >= 0 {
+		scenarios = append(scenarios, scenario{
+			name:      "Issue15271",
+			failpoint: BlackholeUntilSnapshot,
+			traffic:   &HighTraffic,
+			config: *e2e.NewConfig(
+				e2e.WithSnapshotCount(100),
+				e2e.WithPeerProxy(true),
+				e2e.WithIsPeerTLS(true),
+			),
+		})
+	}
 	snapshotOptions := []e2e.EPClusterOption{
 		e2e.WithGoFailEnabled(true),
 		e2e.WithSnapshotCount(100),
@@ -217,7 +229,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 	forcestopCluster(r.clus)
 
 	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
-	validateWatchResponses(t, r.responses, traffic.requestProgress || watchProgressNotifyEnabled)
+	validateWatchResponses(t, r.clus, r.responses, traffic.requestProgress || watchProgressNotifyEnabled)
 
 	r.events = watchEvents(r.responses)
 	validateEventsMatch(t, r.events)

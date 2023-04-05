@@ -53,9 +53,10 @@ Report includes multiple types of files:
 
 ### Example analysis of linearization issue
 
-Let's analyse issue [#14370].
+Let's reproduce and analyse robustness test report for issue [#14370].
 To reproduce the issue by yourself run `make test-robustness-issue14370`.
-After a couple of tries robustness tests should report `Model is not linearizable` and save report locally.
+After a couple of tries robustness tests should fail with a log `Model is not linearizable` and save report locally.
+
 Lineralization issues are easiest to analyse via history visualization. 
 Open `/tmp/TestRobustness_Issue14370/history.html` file in your browser.
 Jump to the error in linearization by clicking `[ jump to first error ]` on the top of the page.
@@ -69,3 +70,30 @@ Etcd guarantee that revision is non-decreasing, so this shows a bug in etcd as t
 This is consistent with the root cause of [#14370] as it was issue with process crash causing last write to be lost.
 
 [#14370]: https://github.com/etcd-io/etcd/issues/14370
+
+### Example analysis of watch issue
+
+Let's reproduce and analyse robustness test report for issue [#15271].
+To reproduce the issue by yourself run `make test-robustness-issue15271`.
+After a couple of tries robustness tests should fail with a logs `Broke watch guarantee` and save report locally.
+
+Watch issues are easiest to analyse by reading the recorded watch history.
+Watch history is recorded for each member separated in different subdirectory under `/tmp/TestRobustness_Issue15271/`
+Open `responses.json` for member mentioned in log `Broke watch guarantee`. 
+For example for member `TestRobustnessIssue15271-test-1` open `/tmp/TestRobustness_Issue15271/TestRobustnessIssue15271-test-1/responses.json`. 
+
+Each line consists of json blob corresponding to single watch response observed by client.
+Look for lines with `mod_revision` equal to revision mentioned in the first log with `Broke watch guarantee`
+You should see two lines where the `mod_revision` decreases like ones below:
+```
+{"Header":{"cluster_id":12951239930360520062,"member_id":16914881897345358027,"revision":2574,"raft_term":2},"Events":[{"kv":{"key":"Ng==","create_revision":2303,"mod_revision":2574,"version":46,"value":"Mjg5OA=="}}],"CompactRevision":0,"Canceled":false,"Created":false}
+{"Header":{"cluster_id":12951239930360520062,"member_id":16914881897345358027,"revision":7708,"raft_term":2},"Events":[{"kv":{"key":"NQ==","create_revision":5,"mod_revision":91,"version":10,"value":"MTAy"}}, ... }
+```
+
+Up to the first line the `mod_revision` of events within responses only increased up to a value of `2574`.
+However, the following line includes an event with `mod_revision` equal `91`.
+If you follow the `mod_revision` throughout the file you should notice that watch replayed revisions second time.
+This is incorrect and breaks `Ordered` and `Unique` [watch guarantees].
+This is consistent with the root cause of [#14370] where member reconnecting to cluster will incorrectly resend revisions.
+
+[#15271]: https://github.com/etcd-io/etcd/issues/15271
