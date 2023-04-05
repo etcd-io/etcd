@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### etcd server
 - Fix [server/embed: fix data race when starting both secure & insecure gRPC servers on the same address](https://github.com/etcd-io/etcd/pull/15518)
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15486) to enable support for TLS 1.3.
+- Fix [server/auth: disallow creating empty permission ranges](https://github.com/etcd-io/etcd/pull/15621)
 
 ### Go
 - Require [Go 1.19+](https://github.com/etcd-io/etcd/pull/15333).
