@@ -21,7 +21,7 @@ Before making a change please look through resources below to learn more about e
 
 * Please learn about [Git](https://github.com/git-guides) version control system used in etcd.
 * Read the [etcd learning resources](https://etcd.io/docs/v3.5/learning/)
-* Read the [etcd contributing guides](https://github.com/etcd-io/etcd/tree/main/Documentation/contributor-guide)
+* Read the [etcd community membership](/Documentation/contributor-guide/community-membership.md)
 * Watch [etcd deep dive](https://www.youtube.com/watch?v=D2pm6ufIt98&t=927s)
 * Watch [etcd code walk through](https://www.youtube.com/watch?v=H3XaSF6wF7w)
 
