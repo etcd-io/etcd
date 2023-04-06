@@ -92,7 +92,7 @@ func triggerFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *
 	successes := 0
 	failures := 0
 	for _, proc := range clus.Procs {
-		if !config.failpoint.Available(proc) {
+		if !config.failpoint.Available(*clus.Cfg, proc) {
 			t.Errorf("Failpoint %q not available on %s", config.failpoint.Name(), proc.Config().Name)
 			return
 		}
@@ -173,7 +173,7 @@ type FailpointConfig struct {
 type Failpoint interface {
 	Trigger(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error
 	Name() string
-	Available(e2e.EtcdProcess) bool
+	Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool
 }
 
 type killFailpoint struct{}
@@ -204,7 +204,7 @@ func (f killFailpoint) Name() string {
 	return "Kill"
 }
 
-func (f killFailpoint) Available(e2e.EtcdProcess) bool {
+func (f killFailpoint) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
 	return true
 }
 
@@ -271,7 +271,10 @@ func (f goPanicFailpoint) pickMember(t *testing.T, clus *e2e.EtcdProcessCluster)
 	}
 }
 
-func (f goPanicFailpoint) Available(member e2e.EtcdProcess) bool {
+func (f goPanicFailpoint) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) bool {
+	if f.target == Follower && config.ClusterSize == 1 {
+		return false
+	}
 	memberFailpoints := member.Failpoints()
 	if memberFailpoints == nil {
 		return false
@@ -338,7 +341,7 @@ func (f randomFailpoint) Trigger(ctx context.Context, t *testing.T, lg *zap.Logg
 	for _, failpoint := range f.failpoints {
 		count := 0
 		for _, proc := range clus.Procs {
-			if failpoint.Available(proc) {
+			if failpoint.Available(*clus.Cfg, proc) {
 				count++
 			}
 		}
@@ -355,7 +358,7 @@ func (f randomFailpoint) Name() string {
 	return "Random"
 }
 
-func (f randomFailpoint) Available(e2e.EtcdProcess) bool {
+func (f randomFailpoint) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
 	return true
 }
 
@@ -461,8 +464,8 @@ func (f blackholePeerNetworkFailpoint) Name() string {
 	return "blackhole"
 }
 
-func (f blackholePeerNetworkFailpoint) Available(clus e2e.EtcdProcess) bool {
-	return clus.PeerProxy() != nil
+func (f blackholePeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, proc e2e.EtcdProcess) bool {
+	return config.ClusterSize > 1 && proc.PeerProxy() != nil
 }
 
 type delayPeerNetworkFailpoint struct {
@@ -489,6 +492,6 @@ func (f delayPeerNetworkFailpoint) Name() string {
 	return "delay"
 }
 
-func (f delayPeerNetworkFailpoint) Available(clus e2e.EtcdProcess) bool {
-	return clus.PeerProxy() != nil
+func (f delayPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, proc e2e.EtcdProcess) bool {
+	return config.ClusterSize > 1 && proc.PeerProxy() != nil
 }
