@@ -1,3 +1,13 @@
+# Test previous release branches
+
+.PHONY: test-robustness-release-3.5
+test-robustness-release-3.5: /tmp/etcd-release-3.5-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.5-failpoints/bin" make test-robustness
+
+.PHONY: test-robustness-release-3.4
+test-robustness-release-3.4: /tmp/etcd-release-3.4-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.4-failpoints/bin" make test-robustness
+
 # Reproduce historical issues
 
 .PHONY: test-robustness-issue14370
@@ -63,7 +73,7 @@ install-gofail:
 	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
-/tmp/etcd-release-3.5-failpoints/bin/etcd: install-gofail
+/tmp/etcd-release-3.5-failpoints/bin: install-gofail
 	rm -rf /tmp/etcd-release-3.5-failpoints/
 	mkdir -p /tmp/etcd-release-3.5-failpoints/
 	cd /tmp/etcd-release-3.5-failpoints/; \
@@ -83,7 +93,7 @@ install-gofail:
 	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
 	  FAILPOINTS=true ./build;
 
-/tmp/etcd-release-3.4-failpoints/bin/etcd: install-gofail
+/tmp/etcd-release-3.4-failpoints/bin: install-gofail
 	rm -rf /tmp/etcd-release-3.4-failpoints/
 	mkdir -p /tmp/etcd-release-3.4-failpoints/
 	cd /tmp/etcd-release-3.4-failpoints/; \

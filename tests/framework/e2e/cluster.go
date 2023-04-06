@@ -937,6 +937,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
 		}
+		t.Logf("WaitMembersForLeader Get err: %v", err)
 	}
 
 	leaders := make(map[uint64]struct{})
