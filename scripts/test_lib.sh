@@ -202,10 +202,19 @@ function modules_exp() {
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
 function run_for_modules {
   local pkg="${PKG:-./...}"
+  local fail_mod=false
   if [ -z "${USERMOD:-}" ]; then
     for m in $(module_dirs); do
-      run_for_module "${m}" "$@" "${pkg}" || return "$?"
+      if run_for_module "${m}" "$@" "${pkg}"; then
+        continue
+      else
+        log_error "There was a Failure in module ${m}"
+        fail_mod=true
+      fi
     done
+    if  [ "$fail_mod" = true ]; then
+      return "$?"
+    fi
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
@@ -306,6 +315,10 @@ function go_test {
     fi
   fi
 
+  if [ "${mode}" != "fail_fast" ]; then
+    goTestFlags+="-failfast=false "
+  fi
+
   local failures=""
 
   # execution of tests against packages:
@@ -319,7 +332,7 @@ function go_test {
 
     # shellcheck disable=SC2086
     if ! run env ${goTestEnv} ETCD_VERIFY="${ETCD_VERIFY}" "${cmd[@]}" | tee ${junit_filename_prefix:+"${junit_filename_prefix}.stdout"} | grep --binary-files=text "${go_test_grep_pattern}" ; then
-      if [ "${mode}" != "keep_going" ]; then
+      if [ "${mode}" == "fail_fast" ]; then
         produce_junit_xmlreport "${junit_filename_prefix}"
         return 2
       else
