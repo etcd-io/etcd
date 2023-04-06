@@ -143,6 +143,12 @@ func withMaxConcurrentStreams(streams uint32) ctlOption {
 	}
 }
 
+func withDebug(debug bool) ctlOption {
+	return func(cx *ctlCtx) {
+		cx.cfg.debug = debug
+	}
+}
+
 func getDefaultCtlCtx(t *testing.T) ctlCtx {
 	return ctlCtx{
 		t:           t,
