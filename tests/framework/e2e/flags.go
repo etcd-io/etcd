@@ -60,7 +60,12 @@ func InitFlags() {
 	flag.StringVar(&CertDir, "cert-dir", certDirDef, "The directory for store certificate files.")
 	flag.Parse()
 
-	BinPath = initBinPath(*binDir)
+	BinPath = binPath{
+		Etcd:            *binDir + "/etcd",
+		EtcdLastRelease: *binDir + "/etcd-last-release",
+		Etcdctl:         *binDir + "/etcdctl",
+		Etcdutl:         *binDir + "/etcdutl",
+	}
 	CertPath = CertDir + "/server.crt"
 	PrivateKeyPath = CertDir + "/server.key.insecure"
 	CaPath = CertDir + "/ca.crt"

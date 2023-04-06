@@ -23,31 +23,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
-var (
-	initBinPath    func(string) binPath
-	additionalArgs func() ([]string, error)
-)
-
-const noOutputLineCount = 0 // regular binaries emit no extra lines
-
-func init() {
-	initBinPath = initBinPathNoCov
-	additionalArgs = additionalArgsNoCov
-}
-
-func initBinPathNoCov(binDir string) binPath {
-	return binPath{
-		Etcd:            binDir + "/etcd",
-		EtcdLastRelease: binDir + "/etcd-last-release",
-		Etcdctl:         binDir + "/etcdctl",
-		Etcdutl:         binDir + "/etcdutl",
-	}
-}
-
-func additionalArgsNoCov() ([]string, error) {
-	return []string{}, nil
-}
-
 func SpawnCmd(args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
 	return SpawnNamedCmd(strings.Join(args, "_"), args, envVars)
 }
@@ -62,15 +37,11 @@ func SpawnCmdWithLogger(lg *zap.Logger, args []string, envVars map[string]string
 		return nil, err
 	}
 
-	newArgs, err := additionalArgs()
-	if err != nil {
-		return nil, err
-	}
 	env := mergeEnvVariables(envVars)
 	lg.Info("spawning process",
 		zap.Strings("args", args),
 		zap.String("working-dir", wd),
 		zap.String("name", name),
 		zap.Strings("environment-variables", env))
-	return expect.NewExpectWithEnv(args[0], append(args[1:], newArgs...), env, name)
+	return expect.NewExpectWithEnv(args[0], args[1:], env, name)
 }
