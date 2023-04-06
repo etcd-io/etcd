@@ -202,6 +202,12 @@ func withMaxConcurrentStreams(streams uint32) ctlOption {
 	}
 }
 
+func withLogLevel(logLevel string) ctlOption {
+	return func(cx *ctlCtx) {
+		cx.cfg.LogLevel = logLevel
+	}
+}
+
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	testCtlWithOffline(t, testFunc, nil, opts...)
 }
