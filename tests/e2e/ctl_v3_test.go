@@ -229,6 +229,12 @@ func withSnapshotCount(snapshotCount int) ctlOption {
 	}
 }
 
+func withLogLevel(logLevel string) ctlOption {
+	return func(cx *ctlCtx) {
+		cx.cfg.logLevel = logLevel
+	}
+}
+
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	testCtlWithOffline(t, testFunc, nil, opts...)
 }
