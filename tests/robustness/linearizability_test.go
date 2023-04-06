@@ -244,7 +244,7 @@ func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.Et
 
 	g.Go(func() error {
 		defer close(finishTraffic)
-		triggerFailpoints(ctx, t, lg, clus, failpoint)
+		injectFailpoints(ctx, t, lg, clus, failpoint)
 		time.Sleep(time.Second)
 		return nil
 	})
