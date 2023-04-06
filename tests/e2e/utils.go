@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -96,4 +97,13 @@ func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error
 		})
 	}
 	return g.Wait()
+}
+
+func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.ClientConnType) (string, error) {
+	args := e2e.CURLPrefixArgs(endpoint, e2e.ClientConfig{ConnectionType: connType}, false, method, curlReq)
+	lines, err := e2e.RunUtilCompletion(args, nil)
+	if err != nil {
+		return "", err
+	}
+	return strings.Join(lines, "\n"), nil
 }

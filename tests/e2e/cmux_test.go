@@ -208,12 +208,3 @@ func fetchDebugVars(endpoint string, httpVersion string, connType e2e.ClientConn
 	var resp map[string]interface{}
 	return json.Unmarshal([]byte(respData), &resp)
 }
-
-func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.ClientConnType) (string, error) {
-	args := e2e.CURLPrefixArgs(endpoint, e2e.ClientConfig{ConnectionType: connType}, false, method, curlReq)
-	lines, err := e2e.RunUtilCompletion(args, nil)
-	if err != nil {
-		return "", err
-	}
-	return strings.Join(lines, "\n"), nil
-}
