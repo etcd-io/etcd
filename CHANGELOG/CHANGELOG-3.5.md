@@ -7,13 +7,15 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ## v3.5.8 (TBD)
 
 ### etcd server
-- Fix [Watch response traveling back in time when reconnecting member downloads snapshot from the leader](https://github.com/etcd-io/etcd/pull/15515)
-- Change [http2 frame scheduler to random algorithm](https://github.com/etcd-io/etcd/pull/15452)
-- Fix [race when starting both secure & insecure gRPC servers on the same address](https://github.com/etcd-io/etcd/pull/15517)
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15483) to enable support for TLS 1.3.
+- Add [`etcd --listen-client-http-urls`](https://github.com/etcd-io/etcd/pull/15589) flag to support separating http server from grpc one, thus giving full immunity to [watch stream starvation under high read load](https://github.com/etcd-io/etcd/issues/15402).
+- Change [http2 frame scheduler to random algorithm](https://github.com/etcd-io/etcd/pull/15452)
+- Fix [Watch response traveling back in time when reconnecting member downloads snapshot from the leader](https://github.com/etcd-io/etcd/pull/15515)
+- Fix [race when starting both secure & insecure gRPC servers on the same address](https://github.com/etcd-io/etcd/pull/15517)
 - Fix [server/auth: disallow creating empty permission ranges](https://github.com/etcd-io/etcd/pull/15619)
 - Fix [aligning zap log timestamp resolution to microseconds](https://github.com/etcd-io/etcd/pull/15240). Etcd now uses zap timestamp format: `2006-01-02T15:04:05.999999Z0700` (microsecond instead of milliseconds precision).
-- Add [`etcd --listen-client-http-urls`](https://github.com/etcd-io/etcd/pull/15589) flag to support separating http server from grpc one, thus giving full immunity to [watch stream starvation under high read load](https://github.com/etcd-io/etcd/issues/15402).
+- Fix [wsproxy did not print log in JSON format](https://github.com/etcd-io/etcd/pull/15661).
+- Fix [CVE-2021-28235](https://nvd.nist.gov/vuln/detail/CVE-2021-28235) by [clearing password after authenticating the user](https://github.com/etcd-io/etcd/pull/15653).
 
 ### Package `netutil`
 - Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187)
@@ -23,7 +25,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### Dependencies
 - Recommend [Go 1.19+](https://github.com/etcd-io/etcd/pull/15337).
-- Compile binaries using [go to 1.19.7](https://github.com/etcd-io/etcd/pull/15428)
+- Compile binaries using [go to 1.19.8](https://github.com/etcd-io/etcd/pull/15651)
 - Upgrade [golang.org/x/net to v0.7.0](https://github.com/etcd-io/etcd/pull/15337)
 - Upgrade [bbolt to v1.3.7](https://github.com/etcd-io/etcd/pull/15222).
 
