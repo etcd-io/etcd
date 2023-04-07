@@ -432,6 +432,13 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 
 	lg := s.getLogger()
 
+	// fix https://nvd.nist.gov/vuln/detail/CVE-2021-28235
+	defer func() {
+		if r != nil {
+			r.Password = ""
+		}
+	}()
+
 	var resp proto.Message
 	for {
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
@@ -482,6 +489,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 
 func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserAdd: r})
+	r.Password = "" // fix https://nvd.nist.gov/vuln/detail/CVE-2021-28235
 	if err != nil {
 		return nil, err
 	}
@@ -498,6 +506,7 @@ func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest
 
 func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserChangePassword: r})
+	r.Password = "" // fix https://nvd.nist.gov/vuln/detail/CVE-2021-28235
 	if err != nil {
 		return nil, err
 	}

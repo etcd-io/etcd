@@ -131,6 +131,8 @@ type etcdProcessClusterConfig struct {
 
 	MaxConcurrentStreams       uint32 // default is math.MaxUint32
 	WatchProcessNotifyInterval time.Duration
+
+	debug bool
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -270,6 +272,10 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 
 		if cfg.WatchProcessNotifyInterval != 0 {
 			args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
+		}
+
+		if cfg.debug {
+			args = append(args, "--debug")
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
