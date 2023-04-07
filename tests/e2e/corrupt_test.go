@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"testing"
 	"time"
 
@@ -87,7 +88,7 @@ func corruptTest(cx ctlCtx) {
 
 	cx.t.Log("restarting etcd[0]")
 	ep := cx.epc.Procs[0]
-	proc, err := e2e.SpawnCmd(append([]string{ep.Config().ExecPath}, ep.Config().Args...), cx.envMap)
+	proc, err := testutils.SpawnCmd(append([]string{ep.Config().ExecPath}, ep.Config().Args...), cx.envMap)
 	if err != nil {
 		cx.t.Fatal(err)
 	}
@@ -95,7 +96,7 @@ func corruptTest(cx ctlCtx) {
 
 	cx.t.Log("waiting for etcd[0] failure...")
 	// restarting corrupted member should fail
-	e2e.WaitReadyExpectProc(context.TODO(), proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
+	testutils.WaitReadyExpectProc(context.TODO(), proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
 }
 
 func TestPeriodicCheckDetectsCorruption(t *testing.T) {

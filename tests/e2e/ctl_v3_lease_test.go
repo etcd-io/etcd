@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"strconv"
 	"strings"
 	"testing"
@@ -56,7 +57,7 @@ func leaseTestKeepAlive(cx ctlCtx) {
 
 func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "grant", strconv.Itoa(ttl))
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return "", err
 	}
@@ -80,7 +81,7 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", leaseID)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, nil)
+	proc, err := testutils.SpawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -93,5 +94,5 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 
 func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
+	return testutils.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
 }

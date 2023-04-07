@@ -15,9 +15,8 @@
 package e2e
 
 import (
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"testing"
-
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3DefragOffline(t *testing.T) {
@@ -39,13 +38,13 @@ func ctlV3OnlineDefrag(cx ctlCtx) error {
 	for i := range lines {
 		lines[i] = "Finished defragmenting etcd member"
 	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return testutils.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func ctlV3OfflineDefrag(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgsUtl(), "defrag", "--data-dir", cx.dataDir)
 	lines := []string{"finished defragmenting directory"}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return testutils.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func defragOfflineTest(cx ctlCtx) {

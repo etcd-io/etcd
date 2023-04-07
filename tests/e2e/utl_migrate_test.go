@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -139,7 +140,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 
 			t.Log("Write keys to ensure wal snapshot is created and all v3.5 fields are set...")
 			for i := 0; i < 10; i++ {
-				if err = e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), "OK"); err != nil {
+				if err = testutils.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), "OK"); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -155,7 +156,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			if tc.force {
 				args = append(args, "--force")
 			}
-			err = e2e.SpawnWithExpect(args, tc.expectLogsSubString)
+			err = testutils.SpawnWithExpect(args, tc.expectLogsSubString)
 			if err != nil {
 				if tc.expectLogsSubString != "" {
 					require.ErrorContains(t, err, tc.expectLogsSubString)

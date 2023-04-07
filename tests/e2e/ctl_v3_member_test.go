@@ -17,6 +17,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"io"
 	"reflect"
 	"strings"
@@ -79,7 +80,7 @@ func ctlV3MemberList(cx ctlCtx) error {
 	for i := range lines {
 		lines[i] = "started"
 	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return testutils.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListResponse, error) {
@@ -88,7 +89,7 @@ func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListRespons
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return etcdserverpb.MemberListResponse{}, err
 	}
@@ -117,7 +118,7 @@ func memberListWithHexTest(cx ctlCtx) {
 
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "--hex", "member", "list")
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}
@@ -162,7 +163,7 @@ func memberListWithHexTest(cx ctlCtx) {
 
 func ctlV3MemberRemove(cx ctlCtx, ep, memberID, clusterID string) error {
 	cmdArgs := append(cx.prefixArgs([]string{ep}), "member", "remove", memberID)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
+	return testutils.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
 }
 
 func memberAddTest(cx ctlCtx) {
@@ -186,7 +187,7 @@ func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 		cmdArgs = append(cmdArgs, "--learner")
 		asLearner = " as learner "
 	}
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf(" added%sto cluster ", asLearner))
+	return testutils.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf(" added%sto cluster ", asLearner))
 }
 
 func memberUpdateTest(cx ctlCtx) {
@@ -204,5 +205,5 @@ func memberUpdateTest(cx ctlCtx) {
 
 func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "update", memberID, fmt.Sprintf("--peer-urls=%s", peerURL))
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, " updated in cluster ")
+	return testutils.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, " updated in cluster ")
 }

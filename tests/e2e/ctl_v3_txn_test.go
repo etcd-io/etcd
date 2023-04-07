@@ -15,7 +15,7 @@
 package e2e
 
 import (
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 type txnRequests struct {
@@ -31,7 +31,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests, expectedExitErr bool) error {
 	if cx.interactive {
 		cmdArgs = append(cmdArgs, "--interactive")
 	}
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}

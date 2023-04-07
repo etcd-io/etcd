@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"os"
 	"strings"
 	"testing"
@@ -109,7 +110,7 @@ func testElect(cx ctlCtx) {
 // ctlV3Elect creates a elect process with a channel listening for when it wins the election.
 func ctlV3Elect(cx ctlCtx, name, proposal string, expectFailure bool) (*expect.ExpectProcess, <-chan string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "elect", name, proposal)
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 	outc := make(chan string, 1)
 	if err != nil {
 		close(outc)

@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"os"
 	"testing"
 	"time"
@@ -64,25 +65,25 @@ func authEnable(cx ctlCtx) error {
 
 func ctlV3AuthEnable(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "enable")
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "Authentication Enabled")
+	return testutils.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "Authentication Enabled")
 }
 
 func ctlV3PutFailPerm(cx ctlCtx, key, val string) error {
-	return e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "put", key, val), cx.envMap, "permission denied")
+	return testutils.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "put", key, val), cx.envMap, "permission denied")
 }
 
 func authSetupTestUser(cx ctlCtx) {
 	if err := ctlV3User(cx, []string{"add", "test-user", "--interactive=false"}, "User test-user created", []string{"pass"}); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, "Role test-role created"); err != nil {
+	if err := testutils.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, "Role test-role created"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3User(cx, []string{"grant-role", "test-user", "test-role"}, "Role test-role is granted to user test-user", nil); err != nil {
 		cx.t.Fatal(err)
 	}
 	cmd := append(cx.PrefixArgs(), "role", "grant-permission", "test-role", "readwrite", "foo")
-	if err := e2e.SpawnWithExpectWithEnv(cmd, cx.envMap, "Role test-role updated"); err != nil {
+	if err := testutils.SpawnWithExpectWithEnv(cmd, cx.envMap, "Role test-role updated"); err != nil {
 		cx.t.Fatal(err)
 	}
 }
@@ -124,7 +125,7 @@ func authTestCertCN(cx ctlCtx) {
 	if err := ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, "Role test-role created"); err != nil {
+	if err := testutils.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, "Role test-role created"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3User(cx, []string{"grant-role", "example.com", "test-role"}, "Role test-role is granted to user example.com", nil); err != nil {
@@ -408,7 +409,7 @@ func certCNAndUsername(cx ctlCtx, noPassword bool) {
 			cx.t.Fatal(err)
 		}
 	}
-	if err := e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role-cn"), cx.envMap, "Role test-role-cn created"); err != nil {
+	if err := testutils.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role-cn"), cx.envMap, "Role test-role-cn created"); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3User(cx, []string{"grant-role", "example.com", "test-role-cn"}, "Role test-role-cn is granted to user example.com", nil); err != nil {
@@ -530,14 +531,14 @@ func ctlV3EndpointHealth(cx ctlCtx) error {
 	for i := range lines {
 		lines[i] = "is healthy"
 	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return testutils.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func ctlV3User(cx ctlCtx, args []string, expStr string, stdIn []string) error {
 	cmdArgs := append(cx.PrefixArgs(), "user")
 	cmdArgs = append(cmdArgs, args...)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"sort"
 	"strings"
 	"testing"
@@ -63,7 +64,7 @@ func createV2store(t testing.TB, dataDirPath string) string {
 
 func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
+	proc, err := testutils.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
@@ -72,7 +73,7 @@ func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath str
 
 func assertVerifyCannotStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=not-yet mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
+	proc, err := testutils.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect(`invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)

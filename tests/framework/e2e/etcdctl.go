@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 type EtcdctlV3 struct {
@@ -80,7 +81,7 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 }
 
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {
-	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, "Downgrade enable success")
+	_, err := testutils.SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, "Downgrade enable success")
 	return err
 }
 
@@ -139,7 +140,7 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 		return nil, fmt.Errorf("bad sort order %v", o.Order)
 	}
 	if o.CountOnly {
-		cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+		cmd, err := testutils.SpawnCmd(ctl.cmdArgs(args...), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +158,7 @@ func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.Pu
 	if opts.LeaseID != 0 {
 		args = append(args, "--lease", strconv.FormatInt(int64(opts.LeaseID), 16))
 	}
-	_, err := SpawnWithExpectLines(ctx, args, nil, "OK")
+	_, err := testutils.SpawnWithExpectLines(ctx, args, nil, "OK")
 	return err
 }
 
@@ -184,7 +185,7 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 		args = append(args, "--interactive")
 	}
 	args = append(args, "-w", "json", "--hex=true")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +343,7 @@ func (ctl *EtcdctlV3) Compact(ctx context.Context, rev int64, o config.CompactOp
 		args = append(args, "--physical")
 	}
 
-	_, err := SpawnWithExpectLines(ctx, args, nil, fmt.Sprintf("compacted revision %v", rev))
+	_, err := testutils.SpawnWithExpectLines(ctx, args, nil, fmt.Sprintf("compacted revision %v", rev))
 	return nil, err
 }
 
@@ -385,14 +386,14 @@ func (ctl *EtcdctlV3) Health(ctx context.Context) error {
 	for i := range lines {
 		lines[i] = "is healthy"
 	}
-	_, err := SpawnWithExpectLines(ctx, args, nil, lines...)
+	_, err := testutils.SpawnWithExpectLines(ctx, args, nil, lines...)
 	return err
 }
 
 func (ctl *EtcdctlV3) Grant(ctx context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error) {
 	args := ctl.cmdArgs()
 	args = append(args, "lease", "grant", strconv.FormatInt(ttl, 10), "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +413,7 @@ func (ctl *EtcdctlV3) TimeToLive(ctx context.Context, id clientv3.LeaseID, o con
 	if o.WithAttachedKeys {
 		args = append(args, "--keys")
 	}
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -435,13 +436,13 @@ func (ctl *EtcdctlV3) Defragment(ctx context.Context, o config.DefragOption) err
 	for i := range lines {
 		lines[i] = "Finished defragmenting etcd member"
 	}
-	_, err := SpawnWithExpectLines(ctx, args, map[string]string{}, lines...)
+	_, err := testutils.SpawnWithExpectLines(ctx, args, map[string]string{}, lines...)
 	return err
 }
 
 func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse, error) {
 	args := ctl.cmdArgs("lease", "list", "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +458,7 @@ func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse
 
 func (ctl *EtcdctlV3) KeepAliveOnce(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseKeepAliveResponse, error) {
 	args := ctl.cmdArgs("lease", "keep-alive", strconv.FormatInt(int64(id), 16), "--once", "-w", "json")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +487,7 @@ func (ctl *EtcdctlV3) AlarmList(ctx context.Context) (*clientv3.AlarmResponse, e
 func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) (*clientv3.AlarmResponse, error) {
 	args := ctl.cmdArgs()
 	args = append(args, "alarm", "disarm", "-w", "json")
-	ep, err := SpawnCmd(args, nil)
+	ep, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -502,7 +503,7 @@ func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) 
 
 func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) error {
 	args := []string{"auth", "enable"}
-	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+	cmd, err := testutils.SpawnCmd(ctl.cmdArgs(args...), nil)
 	if err != nil {
 		return err
 	}
@@ -514,7 +515,7 @@ func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) error {
 
 func (ctl *EtcdctlV3) AuthDisable(ctx context.Context) error {
 	args := []string{"auth", "disable"}
-	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+	cmd, err := testutils.SpawnCmd(ctl.cmdArgs(args...), nil)
 	if err != nil {
 		return err
 	}
@@ -545,7 +546,7 @@ func (ctl *EtcdctlV3) UserAdd(ctx context.Context, name, password string, opts c
 
 	args = append(args, "--interactive=false", "-w", "json")
 
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -590,7 +591,7 @@ func (ctl *EtcdctlV3) UserDelete(ctx context.Context, name string) (*clientv3.Au
 func (ctl *EtcdctlV3) UserChangePass(ctx context.Context, user, newPass string) error {
 	args := ctl.cmdArgs()
 	args = append(args, "user", "passwd", user, "--interactive=false")
-	cmd, err := SpawnCmd(args, nil)
+	cmd, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return err
 	}
@@ -655,7 +656,7 @@ func (ctl *EtcdctlV3) RoleDelete(ctx context.Context, role string) (*clientv3.Au
 
 func (ctl *EtcdctlV3) spawnJsonCmd(ctx context.Context, output interface{}, args ...string) error {
 	args = append(args, "-w", "json")
-	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), nil)
+	cmd, err := testutils.SpawnCmd(append(ctl.cmdArgs(), args...), nil)
 	if err != nil {
 		return err
 	}
@@ -680,7 +681,7 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 	if opts.Revision != 0 {
 		args = append(args, "--rev", fmt.Sprint(opts.Revision))
 	}
-	proc, err := SpawnCmd(args, nil)
+	proc, err := testutils.SpawnCmd(args, nil)
 	if err != nil {
 		return nil
 	}

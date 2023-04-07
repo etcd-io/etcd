@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"os"
 	"strings"
 	"testing"
@@ -37,11 +38,11 @@ const exampleConfigFile = "../../etcd.conf.yml.sample"
 func TestEtcdExampleConfig(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--config-file", exampleConfigFile}, nil)
+	proc, err := testutils.SpawnCmd([]string{e2e.BinPath.Etcd, "--config-file", exampleConfigFile}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines); err != nil {
+	if err = testutils.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines); err != nil {
 		t.Fatal(err)
 	}
 	if err = proc.Stop(); err != nil {
@@ -79,7 +80,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 			"--initial-advertise-peer-urls", fmt.Sprintf("http://127.0.0.1:%d", e2e.EtcdProcessBasePort+i),
 			"--initial-cluster", ic,
 		}
-		p, err := e2e.SpawnCmd(args, nil)
+		p, err := testutils.SpawnCmd(args, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,7 +88,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 	}
 
 	for _, p := range procs {
-		if err := e2e.WaitReadyExpectProc(context.TODO(), p, e2e.EtcdServerReadyLines); err != nil {
+		if err := testutils.WaitReadyExpectProc(context.TODO(), p, e2e.EtcdServerReadyLines); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -98,7 +99,7 @@ func TestEtcdUnixPeers(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
 	d := t.TempDir()
-	proc, err := e2e.SpawnCmd(
+	proc, err := testutils.SpawnCmd(
 		[]string{
 			e2e.BinPath.Etcd,
 			"--data-dir", d,
@@ -112,7 +113,7 @@ func TestEtcdUnixPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines); err != nil {
+	if err = testutils.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines); err != nil {
 		t.Fatal(err)
 	}
 	if err = proc.Stop(); err != nil {
@@ -179,7 +180,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 
 		commonArgs = append(commonArgs, args...)
 
-		p, err := e2e.SpawnCmd(commonArgs, nil)
+		p, err := testutils.SpawnCmd(commonArgs, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -193,7 +194,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 		} else {
 			expect = []string{"remote error: tls: bad certificate"}
 		}
-		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
+		if err := testutils.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -255,7 +256,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 
 		commonArgs = append(commonArgs, args...)
 
-		p, err := e2e.SpawnCmd(commonArgs, nil)
+		p, err := testutils.SpawnCmd(commonArgs, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -269,7 +270,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 		} else {
 			expect = []string{"client certificate authentication failed"}
 		}
-		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
+		if err := testutils.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -296,10 +297,10 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 		"--cacert", e2e.CaPath,
 	}
 
-	err := e2e.SpawnWithExpect(argsWithNonEmptyCN, "cert has non empty Common Name")
+	err := testutils.SpawnWithExpect(argsWithNonEmptyCN, "cert has non empty Common Name")
 	require.ErrorContains(t, err, "cert has non empty Common Name")
 
-	p, err := e2e.SpawnCmd(argsWithEmptyCN, nil)
+	p, err := testutils.SpawnCmd(argsWithEmptyCN, nil)
 	defer func() {
 		if p != nil {
 			p.Stop()
@@ -340,7 +341,7 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			pw, err := e2e.SpawnCmd(test.args, nil)
+			pw, err := testutils.SpawnCmd(test.args, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -354,11 +355,11 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 func TestBootstrapDefragFlag(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-bootstrap-defrag-threshold-megabytes", "1000"}, nil)
+	proc, err := testutils.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-bootstrap-defrag-threshold-megabytes", "1000"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, []string{"Skipping defragmentation"}); err != nil {
+	if err = testutils.WaitReadyExpectProc(context.TODO(), proc, []string{"Skipping defragmentation"}); err != nil {
 		t.Fatal(err)
 	}
 	if err = proc.Stop(); err != nil {
@@ -377,10 +378,10 @@ func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-snapshot-catchup-entries", "1000"}, nil)
+	proc, err := testutils.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-snapshot-catchup-entries", "1000"}, nil)
 	require.NoError(t, err)
-	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"\"snapshot-catchup-entries\":1000"}))
-	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"serving client traffic"}))
+	require.NoError(t, testutils.WaitReadyExpectProc(ctx, proc, []string{"\"snapshot-catchup-entries\":1000"}))
+	require.NoError(t, testutils.WaitReadyExpectProc(ctx, proc, []string{"serving client traffic"}))
 	require.NoError(t, proc.Stop())
 
 	// wait for the process to exit, otherwise test will have leaked goroutine
@@ -430,7 +431,7 @@ func TestEtcdTLSVersion(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
 	d := t.TempDir()
-	proc, err := e2e.SpawnCmd(
+	proc, err := testutils.SpawnCmd(
 		[]string{
 			e2e.BinPath.Etcd,
 			"--data-dir", d,
@@ -450,7 +451,7 @@ func TestEtcdTLSVersion(t *testing.T) {
 		}, nil,
 	)
 	assert.NoError(t, err)
-	assert.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
+	assert.NoError(t, testutils.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
 	assert.NoError(t, proc.Stop())
 
 }

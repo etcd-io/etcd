@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 var (
@@ -147,7 +148,7 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 		}
 	}
 	ep.cfg.lg.Info("starting server...", zap.String("name", ep.cfg.Name))
-	proc, err := SpawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.ExecPath}, ep.cfg.Args...), ep.cfg.EnvVars, ep.cfg.Name)
+	proc, err := testutils.SpawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.ExecPath}, ep.cfg.Args...), ep.cfg.EnvVars, ep.cfg.Name)
 	if err != nil {
 		return err
 	}
@@ -223,7 +224,7 @@ func (ep *EtcdServerProcess) Close() error {
 
 func (ep *EtcdServerProcess) waitReady(ctx context.Context) error {
 	defer close(ep.donec)
-	return WaitReadyExpectProc(ctx, ep.proc, EtcdServerReadyLines)
+	return testutils.WaitReadyExpectProc(ctx, ep.proc, EtcdServerReadyLines)
 }
 
 func (ep *EtcdServerProcess) Config() *EtcdServerProcessConfig { return ep.cfg }
@@ -356,7 +357,7 @@ func fetchFailpoints(member EtcdProcess) (map[string]struct{}, error) {
 }
 
 func GetVersionFromBinary(binaryPath string) (*semver.Version, error) {
-	lines, err := RunUtilCompletion([]string{binaryPath, "--version"}, nil)
+	lines, err := testutils.RunUtilCompletion([]string{binaryPath, "--version"}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not find binary version from %s, err: %w", binaryPath, err)
 	}

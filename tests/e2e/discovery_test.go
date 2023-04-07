@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"net/http"
 	"strings"
 	"testing"
@@ -73,10 +74,10 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	defer c.Close()
 
 	kubectl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(c.EndpointsGRPC(), ",")}
-	if err := e2e.SpawnWithExpect(append(kubectl, "put", "key", "value"), "OK"); err != nil {
+	if err := testutils.SpawnWithExpect(append(kubectl, "put", "key", "value"), "OK"); err != nil {
 		t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpect(append(kubectl, "get", "key"), "value"); err != nil {
+	if err := testutils.SpawnWithExpect(append(kubectl, "get", "key"), "value"); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"testing"
 	"time"
 
@@ -135,7 +136,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 	for i, tc := range tests {
 		prefix := cx.prefixArgs(tc.eps)
 		cmdArgs := append(prefix, "move-leader", types.ID(transferee).String())
-		err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, tc.expect)
+		err := testutils.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, tc.expect)
 		if tc.expectErr {
 			require.ErrorContains(t, err, tc.expect)
 		} else {

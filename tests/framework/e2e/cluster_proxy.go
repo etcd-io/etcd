@@ -19,6 +19,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"net"
 	"net/url"
 	"path"
@@ -160,7 +161,7 @@ func (pp *proxyProc) start() error {
 
 func (pp *proxyProc) waitReady(ctx context.Context, readyStr string) error {
 	defer close(pp.donec)
-	return WaitReadyExpectProc(ctx, pp.proc, []string{readyStr})
+	return testutils.WaitReadyExpectProc(ctx, pp.proc, []string{readyStr})
 }
 
 func (pp *proxyProc) Stop() error {

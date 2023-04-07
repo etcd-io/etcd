@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
@@ -102,7 +103,7 @@ func clusterVersionTest(cx ctlCtx, expected string) {
 
 func ctlV3Version(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "version")
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, version.Version)
+	return testutils.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, version.Version)
 }
 
 // TestCtlV3DialWithHTTPScheme ensures that client handles Endpoints with HTTPS scheme.
@@ -112,7 +113,7 @@ func TestCtlV3DialWithHTTPScheme(t *testing.T) {
 
 func dialWithSchemeTest(cx ctlCtx) {
 	cmdArgs := append(cx.prefixArgs(cx.epc.EndpointsGRPC()), "put", "foo", "bar")
-	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK"); err != nil {
+	if err := testutils.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK"); err != nil {
 		cx.t.Fatal(err)
 	}
 }

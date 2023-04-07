@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 func TestClusterOf1UsingV3Discovery_1endpoint(t *testing.T) {
@@ -76,10 +77,10 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 
 	// step 4: sanity test on the etcd cluster
 	etcdctl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(epc.EndpointsGRPC(), ",")}
-	if err := e2e.SpawnWithExpect(append(etcdctl, "put", "key", "value"), "OK"); err != nil {
+	if err := testutils.SpawnWithExpect(append(etcdctl, "put", "key", "value"), "OK"); err != nil {
 		t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpect(append(etcdctl, "get", "key"), "value"); err != nil {
+	if err := testutils.SpawnWithExpect(append(etcdctl, "get", "key"), "value"); err != nil {
 		t.Fatal(err)
 	}
 }

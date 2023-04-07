@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
@@ -247,7 +248,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		)
 
 		cmdArgs = e2e.CURLPrefixArgsCluster(cx.epc.Cfg, cx.epc.Procs[rand.Intn(cx.epc.Cfg.ClusterSize)], "POST", e2e.CURLReq{Endpoint: path.Join(p, "/auth/authenticate"), Value: string(authreq)})
-		proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+		proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 		testutil.AssertNil(cx.t, err)
 		defer proc.Close()
 
@@ -289,7 +290,7 @@ func testV3CurlCampaign(cx ctlCtx) {
 		Endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
 		Value:    string(cdata),
 	})
-	lines, err := e2e.SpawnWithExpectLines(context.TODO(), cargs, cx.envMap, `"leader":{"name":"`)
+	lines, err := testutils.SpawnWithExpectLines(context.TODO(), cargs, cx.envMap, `"leader":{"name":"`)
 	if err != nil {
 		cx.t.Fatalf("failed post campaign request (%s) (%v)", cx.apiPrefix, err)
 	}

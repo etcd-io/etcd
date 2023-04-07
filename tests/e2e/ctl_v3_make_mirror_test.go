@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"testing"
 	"time"
 
@@ -99,7 +100,7 @@ func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvEx
 	cmdArgs := append(cx.PrefixArgs(), "make-mirror")
 	cmdArgs = append(cmdArgs, flags...)
 	cmdArgs = append(cmdArgs, fmt.Sprintf("localhost:%d", mirrorcfg.BasePort))
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		cx.t.Fatal(err)
 	}

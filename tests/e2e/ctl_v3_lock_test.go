@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 	"os"
 	"strings"
 	"testing"
@@ -129,7 +130,7 @@ func testLockWithCmd(cx ctlCtx) {
 // ctlV3Lock creates a lock process with a channel listening for when it acquires the lock.
 func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lock", name)
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := testutils.SpawnCmd(cmdArgs, cx.envMap)
 	outc := make(chan string, 1)
 	if err != nil {
 		close(outc)
@@ -155,5 +156,5 @@ func ctlV3LockWithCmd(cx ctlCtx, execCmd []string, as ...string) error {
 	cmdArgs = append(cmdArgs, execCmd...)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	return e2e.SpawnWithExpectsContext(ctx, cmdArgs, cx.envMap, as...)
+	return testutils.SpawnWithExpectsContext(ctx, cmdArgs, cx.envMap, as...)
 }
