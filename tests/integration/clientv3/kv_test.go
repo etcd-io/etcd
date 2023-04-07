@@ -27,6 +27,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -894,5 +895,57 @@ func TestBalancerSupportLearner(t *testing.T) {
 	cli.SetEndpoints(eps...)
 	if _, err := cli.Get(context.Background(), "foo"); err != nil {
 		t.Errorf("expect no error (balancer should retry when request to learner fails), got error: %v", err)
+	}
+}
+
+func TestCtxClientVersionOverwrite(t *testing.T) {
+
+	// Initialize integration test framework
+	integration2.BeforeTest(t)
+
+	// Create a new single node cluster
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	// Create a client request with an invalid client api version
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{rpctypes.MetadataClientAPIVersionKey: "hello\xff\xfe\xfdworld"}))
+	_, err := clus.Members[0].Client.Put(ctx, "/foo", "bar")
+
+	// We should see no error because downstream call stack for clientv3
+	// should overwrite the invalid version created in the ctx here as part of
+	// `client/v3/ctx.go:func withVersion`
+	if err != nil {
+		t.Fatalf("Expected no error (clientv3 should be overwriting clientapiversion): %v", err)
+	}
+}
+
+func TestInvalidUTF8ClientVersionRejection(t *testing.T) {
+
+	// Initialize integration test framework
+	integration2.BeforeTest(t)
+
+	// Create a new single node cluster
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	// Set an invalid API version for the client to rely on
+	invalidVersion := []byte{0x01, 0x02, 0x03}
+	version.APIVersion = string(invalidVersion)
+
+	// Create a client request with an invalid client api version
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_, err := clus.Members[0].Client.Put(ctx, "/foo", "bar")
+	defer cancel()
+
+	// We should see a grpc internal error because downstream call stack for clientv3
+	// should reject any headers that contain non printable characters.
+	// Refer grpc stream.go call to imetadata.Validate(md)
+	if err == nil {
+		t.Fatalf("A client with non printable characters %v in api version should create an error", invalidVersion)
+	}
+	if err != nil {
+		t.Logf("Error returned is: %v", err)
 	}
 }
