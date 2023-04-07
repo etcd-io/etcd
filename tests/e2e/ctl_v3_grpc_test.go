@@ -27,6 +27,7 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -85,7 +86,7 @@ func TestAuthority(t *testing.T) {
 				cfg := e2e.NewConfigNoTLS()
 				cfg.ClusterSize = clusterSize
 				if tc.useTLS {
-					cfg.Client.ConnectionType = e2e.ClientTLS
+					cfg.Client.ConnectionType = testclient.ConnectionTLS
 				}
 				cfg.Client.AutoTLS = tc.useInsecureTLS
 				// Enable debug mode to get logs with http2 headers (including authority)

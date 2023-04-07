@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
@@ -114,7 +115,7 @@ func testV3CurlPutGet(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/range"), Value: string(rangeData), Expected: expectGet}); err != nil {
 		cx.t.Fatalf("failed testV3CurlPutGet get with curl using prefix (%s) (%v)", p, err)
 	}
-	if cx.cfg.Client.ConnectionType == e2e.ClientTLSAndNonTLS {
+	if cx.cfg.Client.ConnectionType == testclient.ConnectionTLSAndNonTLS {
 		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/range"), Value: string(rangeData), Expected: expectGet, IsTLS: true}); err != nil {
 			cx.t.Fatalf("failed testV3CurlPutGet get with curl using prefix (%s) (%v)", p, err)
 		}

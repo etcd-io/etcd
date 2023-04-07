@@ -20,6 +20,8 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 type CURLReq struct {
@@ -54,7 +56,7 @@ func CURLPrefixArgsCluster(cfg *EtcdProcessClusterConfig, member EtcdProcess, me
 	return CURLPrefixArgs(member.Config().ClientURL, cfg.Client, cfg.CN, method, req)
 }
 
-func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, req CURLReq) []string {
+func CURLPrefixArgs(clientURL string, cfg testclient.Config, CN bool, method string, req CURLReq) []string {
 	var (
 		cmdArgs = []string{"curl"}
 	)
@@ -62,12 +64,12 @@ func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, 
 		cmdArgs = append(cmdArgs, "--http"+req.HttpVersion)
 	}
 	if req.IsTLS {
-		if cfg.ConnectionType != ClientTLSAndNonTLS {
+		if cfg.ConnectionType != testclient.ConnectionTLSAndNonTLS {
 			panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
 		}
 		cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
 		clientURL = ToTLS(clientURL)
-	} else if cfg.ConnectionType == ClientTLS {
+	} else if cfg.ConnectionType == testclient.ConnectionTLS {
 		if CN {
 			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
 		} else {

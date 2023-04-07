@@ -27,9 +27,11 @@ import (
 
 	"go.uber.org/zap"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 type proxyEtcdProcess struct {
@@ -106,6 +108,10 @@ func (p *proxyEtcdProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
 		panic(err)
 	}
 	return etcdctl
+}
+
+func (epc *proxyEtcdProcess) Client() (*clientv3.Client, error) {
+	return testclient.New(epc.EndpointsGRPC(), epc.Config().Client)
 }
 
 func (p *proxyEtcdProcess) Logs() LogsExpect {

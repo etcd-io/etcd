@@ -31,9 +31,11 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 var (
@@ -46,6 +48,7 @@ type EtcdProcess interface {
 	EndpointsHTTP() []string
 	EndpointsMetrics() []string
 	Etcdctl(opts ...config.ClientOption) *EtcdctlV3
+	Client() (*clientv3.Client, error)
 
 	IsRunning() bool
 	Wait(ctx context.Context) error
@@ -81,7 +84,7 @@ type EtcdServerProcessConfig struct {
 	TlsArgs  []string
 	EnvVars  map[string]string
 
-	Client      ClientConfig
+	Client      testclient.Config
 	DataDirPath string
 	KeepDataDir bool
 
@@ -130,6 +133,10 @@ func (epc *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
 		panic(err)
 	}
 	return etcdctl
+}
+
+func (epc *EtcdServerProcess) Client() (*clientv3.Client, error) {
+	return testclient.New(epc.EndpointsGRPC(), epc.Config().Client)
 }
 
 func (ep *EtcdServerProcess) Start(ctx context.Context) error {

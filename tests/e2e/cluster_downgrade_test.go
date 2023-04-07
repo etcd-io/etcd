@@ -29,7 +29,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -195,16 +194,12 @@ func leader(t *testing.T, epc *e2e.EtcdProcessCluster) e2e.EtcdProcess {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	for i := 0; i < len(epc.Procs); i++ {
-		endpoints := epc.Procs[i].EndpointsGRPC()
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   endpoints,
-			DialTimeout: 3 * time.Second,
-		})
+		cli, err := epc.Procs[i].Client()
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer cli.Close()
-		resp, err := cli.Status(ctx, endpoints[0])
+		resp, err := cli.Status(ctx, cli.Endpoints()[0])
 		if err != nil {
 			t.Fatal(err)
 		}

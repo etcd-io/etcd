@@ -31,6 +31,7 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 type integrationRunner struct{}
@@ -83,7 +84,7 @@ func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
 		}
 		return &tls, nil
 	case config.ManualTLS:
-		return &TestTLSInfo, nil
+		return &testclient.TestTLSInfo, nil
 	default:
 		return nil, fmt.Errorf("config %q not supported", cfg)
 	}

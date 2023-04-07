@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 const (
@@ -132,12 +133,7 @@ func injectFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e
 
 func verifyClusterHealth(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) error {
 	for i := 0; i < len(clus.Procs); i++ {
-		clusterClient, err := clientv3.New(clientv3.Config{
-			Endpoints:            clus.Procs[i].EndpointsGRPC(),
-			Logger:               zap.NewNop(),
-			DialKeepAliveTime:    10 * time.Second,
-			DialKeepAliveTimeout: 100 * time.Millisecond,
-		})
+		clusterClient, err := clus.Procs[i].Client()
 		if err != nil {
 			return fmt.Errorf("Error creating client for cluster %s: %v", clus.Procs[i].Config().Name, err)
 		}
@@ -298,12 +294,7 @@ func (f goPanicFailpoint) Name() string {
 type triggerDefrag struct{}
 
 func (t triggerDefrag) Trigger(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
-	cc, err := clientv3.New(clientv3.Config{
-		Endpoints:            member.EndpointsGRPC(),
-		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    10 * time.Second,
-		DialKeepAliveTimeout: 100 * time.Millisecond,
-	})
+	cc, err := member.Client()
 	if err != nil {
 		return fmt.Errorf("failed creating client: %w", err)
 	}
@@ -322,12 +313,7 @@ func (t triggerDefrag) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) 
 type triggerCompact struct{}
 
 func (t triggerCompact) Trigger(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
-	cc, err := clientv3.New(clientv3.Config{
-		Endpoints:            member.EndpointsGRPC(),
-		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    10 * time.Second,
-		DialKeepAliveTimeout: 100 * time.Millisecond,
-	})
+	cc, err := member.Client()
 	if err != nil {
 		return fmt.Errorf("failed creating client: %w", err)
 	}
@@ -444,23 +430,13 @@ func waitTillSnapshot(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCl
 		}
 		endpoints = append(endpoints, ep)
 	}
-	clusterClient, err := clientv3.New(clientv3.Config{
-		Endpoints:            endpoints,
-		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    10 * time.Second,
-		DialKeepAliveTimeout: 100 * time.Millisecond,
-	})
+	clusterClient, err := testclient.New(endpoints, testclient.Config{})
 	if err != nil {
 		return err
 	}
 	defer clusterClient.Close()
 
-	blackholedMemberClient, err := clientv3.New(clientv3.Config{
-		Endpoints:            []string{blackholedMember.Config().ClientURL},
-		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    10 * time.Second,
-		DialKeepAliveTimeout: 100 * time.Millisecond,
-	})
+	blackholedMemberClient, err := blackholedMember.Client()
 	if err != nil {
 		return err
 	}

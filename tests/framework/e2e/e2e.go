@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 type e2eRunner struct{}
@@ -60,13 +61,13 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 
 	switch cfg.ClientTLS {
 	case config.NoTLS:
-		e2eConfig.Client.ConnectionType = ClientNonTLS
+		e2eConfig.Client.ConnectionType = testclient.ConnectionNonTLS
 	case config.AutoTLS:
 		e2eConfig.Client.AutoTLS = true
-		e2eConfig.Client.ConnectionType = ClientTLS
+		e2eConfig.Client.ConnectionType = testclient.ConnectionTLS
 	case config.ManualTLS:
 		e2eConfig.Client.AutoTLS = false
-		e2eConfig.Client.ConnectionType = ClientTLS
+		e2eConfig.Client.ConnectionType = testclient.ConnectionTLS
 	default:
 		t.Fatalf("ClientTLS config %q not supported", cfg.ClientTLS)
 	}

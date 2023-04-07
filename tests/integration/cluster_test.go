@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 func init() {
@@ -53,7 +54,7 @@ func testCluster(t *testing.T, size int) {
 
 func TestTLSClusterOf3(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, PeerTLS: &integration.TestTLSInfo})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, PeerTLS: &testclient.TestTLSInfo})
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
 }
@@ -63,7 +64,7 @@ func TestTLSClusterOf3(t *testing.T) {
 // certificate authorities that don't issue dual-usage certificates.
 func TestTLSClusterOf3WithSpecificUsage(t *testing.T) {
 	integration.BeforeTest(t)
-	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, PeerTLS: &integration.TestTLSInfoWithSpecificUsage})
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, PeerTLS: &testclient.TestTLSInfoWithSpecificUsage})
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
 }
@@ -86,7 +87,7 @@ func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	integration.BeforeTest(t)
 	cfg := &integration.ClusterConfig{
 		Size:                       1,
-		PeerTLS:                    &integration.TestTLSInfo,
+		PeerTLS:                    &testclient.TestTLSInfo,
 		DisableStrictReconfigCheck: true,
 	}
 	c := integration.NewCluster(t, cfg)

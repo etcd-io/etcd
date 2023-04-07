@@ -29,15 +29,16 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 type EtcdctlV3 struct {
-	cfg        ClientConfig
+	cfg        testclient.Config
 	endpoints  []string
 	authConfig clientv3.AuthConfig
 }
 
-func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOption) (*EtcdctlV3, error) {
+func NewEtcdctl(cfg testclient.Config, endpoints []string, opts ...config.ClientOption) (*EtcdctlV3, error) {
 	ctl := &EtcdctlV3{
 		cfg:       cfg,
 		endpoints: endpoints,
@@ -312,7 +313,7 @@ func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
 
 func (ctl *EtcdctlV3) flags() map[string]string {
 	fmap := make(map[string]string)
-	if ctl.cfg.ConnectionType == ClientTLS {
+	if ctl.cfg.ConnectionType == testclient.ConnectionTLS {
 		if ctl.cfg.AutoTLS {
 			fmap["insecure-transport"] = "false"
 			fmap["insecure-skip-tls-verify"] = "true"

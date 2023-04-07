@@ -16,16 +16,13 @@ package e2e
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -61,36 +58,18 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 		}
 	}()
 
-	var tcfg *tls.Config
-	if cfg.Client.ConnectionType == e2e.ClientTLS {
-		tinfo := transport.TLSInfo{
-			CertFile:      e2e.CertPath,
-			KeyFile:       e2e.PrivateKeyPath,
-			TrustedCAFile: e2e.CaPath,
-		}
-		var err error
-		tcfg, err = tinfo.ClientConfig()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	var leadIdx int
 	var leaderID uint64
 	var transferee uint64
-	for i, ep := range epc.EndpointsGRPC() {
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   []string{ep},
-			DialTimeout: 3 * time.Second,
-			TLS:         tcfg,
-		})
+	for i, member := range epc.Procs {
+		cli, err := member.Client()
 		if err != nil {
 			t.Fatal(err)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		resp, err := cli.Status(ctx, ep)
+		resp, err := cli.Status(ctx, cli.Endpoints()[0])
 		if err != nil {
-			t.Fatalf("failed to get status from endpoint %s: %v", ep, err)
+			t.Fatalf("failed to get status from endpoint %s: %v", cli.Endpoints()[0], err)
 		}
 		cancel()
 		cli.Close()

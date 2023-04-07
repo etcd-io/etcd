@@ -30,6 +30,7 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 const (
@@ -62,7 +63,7 @@ var tcs = []testCase{
 	},
 	{
 		name:          "TLS",
-		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: e2e.ClientTLS}},
+		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: testclient.Config{ConnectionType: testclient.ConnectionTLS}},
 		maxWatchDelay: 3 * time.Second,
 		dbSizeBytes:   500 * Kilo,
 	},
@@ -74,7 +75,7 @@ var tcs = []testCase{
 	},
 	{
 		name:          "SeparateHttpTLS",
-		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: e2e.ClientTLS}, ClientHttpSeparate: true},
+		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: testclient.Config{ConnectionType: testclient.ConnectionTLS}, ClientHttpSeparate: true},
 		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},

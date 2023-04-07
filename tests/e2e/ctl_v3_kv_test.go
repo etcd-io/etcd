@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDialTimeout(0)) }
@@ -44,7 +45,7 @@ func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDialTimeout(0))
 func TestCtlV3GetRevokedCRL(t *testing.T) {
 	cfg := e2e.NewConfig(
 		e2e.WithClusterSize(1),
-		e2e.WithClientConnType(e2e.ClientTLS),
+		e2e.WithClientConnType(testclient.ConnectionTLS),
 		e2e.WithClientRevokeCerts(true),
 		e2e.WithClientCertAuthority(true),
 	)

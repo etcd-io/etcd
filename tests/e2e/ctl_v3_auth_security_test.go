@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 // TestAuth_CVE_2021_28235 verifies https://nvd.nist.gov/vuln/detail/CVE-2021-28235
@@ -48,7 +49,7 @@ func authTest_CVE_2021_28235(cx ctlCtx) {
 	// GET /debug/requests
 	httpEndpoint := cx.epc.Procs[0].EndpointsHTTP()[0]
 	req := e2e.CURLReq{Endpoint: "/debug/requests?fam=grpc.Recv.etcdserverpb.Auth&b=0&exp=1", Timeout: 5}
-	respData, err := curl(httpEndpoint, "GET", req, e2e.ClientNonTLS)
+	respData, err := curl(httpEndpoint, "GET", req, testclient.ConnectionNonTLS)
 	require.NoError(cx.t, err)
 
 	if strings.Contains(respData, rootPass) {

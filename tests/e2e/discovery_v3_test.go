@@ -22,29 +22,30 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 func TestClusterOf1UsingV3Discovery_1endpoint(t *testing.T) {
-	testClusterUsingV3Discovery(t, 1, 1, e2e.ClientNonTLS, false)
+	testClusterUsingV3Discovery(t, 1, 1, testclient.ConnectionNonTLS, false)
 }
 func TestClusterOf3UsingV3Discovery_1endpoint(t *testing.T) {
-	testClusterUsingV3Discovery(t, 1, 3, e2e.ClientTLS, true)
+	testClusterUsingV3Discovery(t, 1, 3, testclient.ConnectionTLS, true)
 }
 func TestTLSClusterOf5UsingV3Discovery_1endpoint(t *testing.T) {
-	testClusterUsingV3Discovery(t, 1, 5, e2e.ClientTLS, false)
+	testClusterUsingV3Discovery(t, 1, 5, testclient.ConnectionTLS, false)
 }
 
 func TestClusterOf1UsingV3Discovery_3endpoints(t *testing.T) {
-	testClusterUsingV3Discovery(t, 3, 1, e2e.ClientNonTLS, false)
+	testClusterUsingV3Discovery(t, 3, 1, testclient.ConnectionNonTLS, false)
 }
 func TestClusterOf3UsingV3Discovery_3endpoints(t *testing.T) {
-	testClusterUsingV3Discovery(t, 3, 3, e2e.ClientTLS, true)
+	testClusterUsingV3Discovery(t, 3, 3, testclient.ConnectionTLS, true)
 }
 func TestTLSClusterOf5UsingV3Discovery_3endpoints(t *testing.T) {
-	testClusterUsingV3Discovery(t, 3, 5, e2e.ClientTLS, false)
+	testClusterUsingV3Discovery(t, 3, 5, testclient.ConnectionTLS, false)
 }
 
-func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClusterSize int, clientTlsType e2e.ClientConnType, isClientAutoTls bool) {
+func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClusterSize int, clientTlsType testclient.ConnectionType, isClientAutoTls bool) {
 	e2e.BeforeTest(t)
 
 	// step 1: start the discovery service
@@ -84,7 +85,7 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	}
 }
 
-func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []string, discoveryToken string, clusterSize int, clientTlsType e2e.ClientConnType, isClientAutoTls bool) (*e2e.EtcdProcessCluster, error) {
+func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []string, discoveryToken string, clusterSize int, clientTlsType testclient.ConnectionType, isClientAutoTls bool) (*e2e.EtcdProcessCluster, error) {
 	// cluster configuration
 	cfg := e2e.NewConfig(
 		e2e.WithBasePort(3000),
@@ -106,7 +107,7 @@ func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []str
 	for _, ep := range epc.Procs {
 		epCfg := ep.Config()
 
-		if clientTlsType == e2e.ClientTLS {
+		if clientTlsType == testclient.ConnectionTLS {
 			if isClientAutoTls {
 				epCfg.Args = append(epCfg.Args, "--discovery-insecure-transport=false")
 				epCfg.Args = append(epCfg.Args, "--discovery-insecure-skip-tls-verify=true")

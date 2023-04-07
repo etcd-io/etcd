@@ -27,6 +27,7 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 func TestCtlV3AuthCertCN(t *testing.T) {
@@ -55,7 +56,7 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 	t.Log("Create etcd cluster")
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithClusterSize(1),
-		e2e.WithClientConnType(e2e.ClientTLS),
+		e2e.WithClientConnType(testclient.ConnectionTLS),
 		e2e.WithClientCertAuthority(true),
 	)
 	if err != nil {

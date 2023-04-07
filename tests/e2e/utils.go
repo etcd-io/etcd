@@ -29,10 +29,10 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
-func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3.Client {
+func newClient(t *testing.T, entpoints []string, cfg testclient.Config) *clientv3.Client {
 	tlscfg, err := tlsInfo(t, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -59,11 +59,11 @@ func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3
 	return c
 }
 
-func tlsInfo(t testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
+func tlsInfo(t testing.TB, cfg testclient.Config) (*transport.TLSInfo, error) {
 	switch cfg.ConnectionType {
-	case e2e.ClientNonTLS, e2e.ClientTLSAndNonTLS:
+	case testclient.ConnectionNonTLS, testclient.ConnectionTLSAndNonTLS:
 		return nil, nil
-	case e2e.ClientTLS:
+	case testclient.ConnectionTLS:
 		if cfg.AutoTLS {
 			tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
 			if err != nil {
@@ -71,7 +71,7 @@ func tlsInfo(t testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
 			}
 			return &tls, nil
 		} else {
-			return &integration.TestTLSInfo, nil
+			return &testclient.TestTLSInfo, nil
 		}
 	default:
 		return nil, fmt.Errorf("config %v not supported", cfg)
@@ -99,8 +99,8 @@ func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error
 	return g.Wait()
 }
 
-func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.ClientConnType) (string, error) {
-	args := e2e.CURLPrefixArgs(endpoint, e2e.ClientConfig{ConnectionType: connType}, false, method, curlReq)
+func curl(endpoint string, method string, curlReq e2e.CURLReq, connType testclient.ConnectionType) (string, error) {
+	args := e2e.CURLPrefixArgs(endpoint, testclient.Config{ConnectionType: connType}, false, method, curlReq)
 	lines, err := e2e.RunUtilCompletion(args, nil)
 	if err != nil {
 		return "", err

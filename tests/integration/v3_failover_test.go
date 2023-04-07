@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
@@ -51,10 +52,10 @@ func TestFailover(t *testing.T) {
 
 			// Launch an etcd cluster with 3 members
 			t.Logf("Launching an etcd cluster with 3 members [%s]", tc.name)
-			clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, ClientTLS: &integration2.TestTLSInfo})
+			clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, ClientTLS: &testclient.TestTLSInfo})
 			defer clus.Terminate(t)
 
-			cc, err := integration2.TestTLSInfo.ClientConfig()
+			cc, err := testclient.TestTLSInfo.ClientConfig()
 			if err != nil {
 				t.Fatal(err)
 			}

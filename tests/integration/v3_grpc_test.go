@@ -31,6 +31,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -1555,7 +1556,7 @@ func TestV3RangeRequest(t *testing.T) {
 func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &testclient.TestTLSInfo})
 	defer clus.Terminate(t)
 
 	// nil out TLS field so client will use an insecure connection
@@ -1592,7 +1593,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	clus.Members[0].ClientTLSInfo = &integration.TestTLSInfo
+	clus.Members[0].ClientTLSInfo = &testclient.TestTLSInfo
 	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()}
 	clus.Members[0].GrpcURL = strings.Replace(clus.Members[0].GrpcURL, "http://", "https://", 1)
 	client, err := integration.NewClientV3(clus.Members[0])
@@ -1608,7 +1609,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 	integration.BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &testclient.TestTLSInfo})
 	defer clus.Terminate(t)
 
 	client, err := integration.NewClientV3(clus.Members[0])
@@ -1635,11 +1636,11 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 	certsDirExp := t.TempDir()
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
+		tlsInfo, terr := copyTLSFiles(testclient.TestTLSInfo, certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp); err != nil {
+		if _, err := copyTLSFiles(testclient.TestTLSInfoExpired, certsDirExp); err != nil {
 			t.Fatal(err)
 		}
 		return tlsInfo
@@ -1677,19 +1678,19 @@ func TestTLSReloadCopy(t *testing.T) {
 	certsDir := t.TempDir()
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
+		tlsInfo, terr := copyTLSFiles(testclient.TestTLSInfo, certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDir); err != nil {
+		if _, err := copyTLSFiles(testclient.TestTLSInfoExpired, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
 	revertFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfo, certsDir); err != nil {
+		if _, err := copyTLSFiles(testclient.TestTLSInfo, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1703,19 +1704,19 @@ func TestTLSReloadCopyIPOnly(t *testing.T) {
 	certsDir := t.TempDir()
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfoIP, certsDir)
+		tlsInfo, terr := copyTLSFiles(testclient.TestTLSInfoIP, certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpiredIP, certsDir); err != nil {
+		if _, err := copyTLSFiles(testclient.TestTLSInfoExpiredIP, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}
 	revertFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoIP, certsDir); err != nil {
+		if _, err := copyTLSFiles(testclient.TestTLSInfoIP, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}

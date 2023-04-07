@@ -89,43 +89,6 @@ var (
 	// UniqueCount integration test is used to set unique member ids
 	UniqueCount = int32(0)
 
-	TestTLSInfo = transport.TLSInfo{
-		KeyFile:        testutils.MustAbsPath("../fixtures/server.key.insecure"),
-		CertFile:       testutils.MustAbsPath("../fixtures/server.crt"),
-		TrustedCAFile:  testutils.MustAbsPath("../fixtures/ca.crt"),
-		ClientCertAuth: true,
-	}
-
-	TestTLSInfoWithSpecificUsage = transport.TLSInfo{
-		KeyFile:        testutils.MustAbsPath("../fixtures/server-serverusage.key.insecure"),
-		CertFile:       testutils.MustAbsPath("../fixtures/server-serverusage.crt"),
-		ClientKeyFile:  testutils.MustAbsPath("../fixtures/client-clientusage.key.insecure"),
-		ClientCertFile: testutils.MustAbsPath("../fixtures/client-clientusage.crt"),
-		TrustedCAFile:  testutils.MustAbsPath("../fixtures/ca.crt"),
-		ClientCertAuth: true,
-	}
-
-	TestTLSInfoIP = transport.TLSInfo{
-		KeyFile:        testutils.MustAbsPath("../fixtures/server-ip.key.insecure"),
-		CertFile:       testutils.MustAbsPath("../fixtures/server-ip.crt"),
-		TrustedCAFile:  testutils.MustAbsPath("../fixtures/ca.crt"),
-		ClientCertAuth: true,
-	}
-
-	TestTLSInfoExpired = transport.TLSInfo{
-		KeyFile:        testutils.MustAbsPath("./fixtures-expired/server.key.insecure"),
-		CertFile:       testutils.MustAbsPath("./fixtures-expired/server.crt"),
-		TrustedCAFile:  testutils.MustAbsPath("./fixtures-expired/ca.crt"),
-		ClientCertAuth: true,
-	}
-
-	TestTLSInfoExpiredIP = transport.TLSInfo{
-		KeyFile:        testutils.MustAbsPath("./fixtures-expired/server-ip.key.insecure"),
-		CertFile:       testutils.MustAbsPath("./fixtures-expired/server-ip.crt"),
-		TrustedCAFile:  testutils.MustAbsPath("./fixtures-expired/ca.crt"),
-		ClientCertAuth: true,
-	}
-
 	DefaultTokenJWT = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=1s",
 		testutils.MustAbsPath("../fixtures/server.crt"), testutils.MustAbsPath("../fixtures/server.key.insecure"))
 

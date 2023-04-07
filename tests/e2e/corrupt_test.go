@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -62,14 +61,13 @@ func corruptTest(cx ctlCtx) {
 	time.Sleep(3 * time.Second)
 
 	cx.t.Log("connecting clientv3...")
-	eps := cx.epc.EndpointsGRPC()
-	cli1, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[1]}, DialTimeout: 3 * time.Second})
+	cli1, err := cx.epc.Procs[1].Client()
 	if err != nil {
 		cx.t.Fatal(err)
 	}
 	defer cli1.Close()
 
-	sresp, err := cli1.Status(context.TODO(), eps[0])
+	sresp, err := cli1.Status(context.TODO(), cli1.Endpoints()[0])
 	cx.t.Logf("checked status sresp:%v err:%v", sresp, err)
 	if err != nil {
 		cx.t.Fatal(err)

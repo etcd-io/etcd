@@ -20,10 +20,9 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
@@ -63,12 +62,7 @@ type WatchEvent struct {
 }
 
 func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*RecordingClient, error) {
-	cc, err := clientv3.New(clientv3.Config{
-		Endpoints:            endpoints,
-		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    10 * time.Second,
-		DialKeepAliveTimeout: 100 * time.Millisecond,
-	})
+	cc, err := testclient.New(endpoints, testclient.Config{})
 	if err != nil {
 		return nil, err
 	}

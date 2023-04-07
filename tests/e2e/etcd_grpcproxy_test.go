@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -58,7 +59,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 		assert.NoError(t, proxyProc.Stop())
 	}()
 
-	proxyCtl, err := e2e.NewEtcdctl(e2e.ClientConfig{}, []string{proxyClientURL})
+	proxyCtl, err := e2e.NewEtcdctl(testclient.Config{}, []string{proxyClientURL})
 	require.NoError(t, err)
 	err = proxyCtl.Put(ctx, "k1", "v1", config.PutOptions{})
 	require.NoError(t, err)

@@ -26,6 +26,7 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 func TestAuthority(t *testing.T) {
@@ -117,8 +118,8 @@ func TestAuthority(t *testing.T) {
 func setupTLS(t *testing.T, useTLS bool, cfg integration.ClusterConfig) (integration.ClusterConfig, *tls.Config) {
 	t.Helper()
 	if useTLS {
-		cfg.ClientTLS = &integration.TestTLSInfo
-		tlsConfig, err := integration.TestTLSInfo.ClientConfig()
+		cfg.ClientTLS = &testclient.TestTLSInfo
+		tlsConfig, err := testclient.TestTLSInfo.ClientConfig()
 		if err != nil {
 			t.Fatal(err)
 		}

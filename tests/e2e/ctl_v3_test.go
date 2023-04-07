@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
@@ -302,7 +303,7 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 	fmap := make(map[string]string)
 	fmap["endpoints"] = strings.Join(eps, ",")
 	fmap["dial-timeout"] = cx.dialTimeout.String()
-	if cx.epc.Cfg.Client.ConnectionType == e2e.ClientTLS {
+	if cx.epc.Cfg.Client.ConnectionType == testclient.ConnectionTLS {
 		if cx.epc.Cfg.Client.AutoTLS {
 			fmap["insecure-transport"] = "false"
 			fmap["insecure-skip-tls-verify"] = "true"

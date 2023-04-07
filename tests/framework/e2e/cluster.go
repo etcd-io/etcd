@@ -30,27 +30,14 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 const EtcdProcessBasePort = 20000
-
-type ClientConnType int
-
-const (
-	ClientNonTLS ClientConnType = iota
-	ClientTLS
-	ClientTLSAndNonTLS
-)
-
-type ClientConfig struct {
-	ConnectionType ClientConnType
-	CertAuthority  bool
-	AutoTLS        bool
-	RevokeCerts    bool
-}
 
 // allow alphanumerics, underscores and dashes
 var testNameCleanRegex = regexp.MustCompile(`[^a-zA-Z0-9 \-_]+`)
@@ -68,20 +55,20 @@ func NewConfigAutoTLS() *EtcdProcessClusterConfig {
 
 func NewConfigTLS() *EtcdProcessClusterConfig {
 	return NewConfig(
-		WithClientConnType(ClientTLS),
+		WithClientConnType(testclient.ConnectionTLS),
 		WithIsPeerTLS(true),
 	)
 }
 
 func NewConfigClientTLS() *EtcdProcessClusterConfig {
-	return NewConfig(WithClientConnType(ClientTLS))
+	return NewConfig(WithClientConnType(testclient.ConnectionTLS))
 }
 
 func NewConfigClientAutoTLS() *EtcdProcessClusterConfig {
 	return NewConfig(
 		WithClusterSize(1),
 		WithClientAutoTLS(true),
-		WithClientConnType(ClientTLS),
+		WithClientConnType(testclient.ConnectionTLS),
 	)
 }
 
@@ -94,7 +81,7 @@ func NewConfigPeerTLS() *EtcdProcessClusterConfig {
 func NewConfigClientTLSCertAuth() *EtcdProcessClusterConfig {
 	return NewConfig(
 		WithClusterSize(1),
-		WithClientConnType(ClientTLS),
+		WithClientConnType(testclient.ConnectionTLS),
 		WithClientCertAuthority(true),
 	)
 }
@@ -102,7 +89,7 @@ func NewConfigClientTLSCertAuth() *EtcdProcessClusterConfig {
 func NewConfigClientTLSCertAuthWithNoCN() *EtcdProcessClusterConfig {
 	return NewConfig(
 		WithClusterSize(1),
-		WithClientConnType(ClientTLS),
+		WithClientConnType(testclient.ConnectionTLS),
 		WithClientCertAuthority(true),
 		WithCN(false),
 	)
@@ -151,7 +138,7 @@ type EtcdProcessClusterConfig struct {
 	SnapshotCount          uint64
 	SnapshotCatchUpEntries uint64
 
-	Client             ClientConfig
+	Client             testclient.Config
 	ClientHttpSeparate bool
 	IsPeerTLS          bool
 	IsPeerAutoTLS      bool
@@ -248,7 +235,7 @@ func WithBasePort(port int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.BasePort = port }
 }
 
-func WithClientConnType(clientConnType ClientConnType) EPClusterOption {
+func WithClientConnType(clientConnType testclient.ConnectionType) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.Client.ConnectionType = clientConnType }
 }
 
@@ -418,7 +405,7 @@ func StartEtcdProcessCluster(ctx context.Context, epc *EtcdProcessCluster, cfg *
 }
 
 func (cfg *EtcdProcessClusterConfig) ClientScheme() string {
-	if cfg.Client.ConnectionType == ClientTLS {
+	if cfg.Client.ConnectionType == testclient.ConnectionTLS {
 		return "https"
 	}
 	return "http"
@@ -474,9 +461,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peer2Port := port + 3
 	clientHttpPort := port + 4
 
-	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
-		curl = clientURL(clientPort, ClientNonTLS)
-		curls = []string{curl, clientURL(clientPort, ClientTLS)}
+	if cfg.Client.ConnectionType == testclient.ConnectionTLSAndNonTLS {
+		curl = clientURL(clientPort, testclient.ConnectionNonTLS)
+		curls = []string{curl, clientURL(clientPort, testclient.ConnectionTLS)}
 	} else {
 		curl = clientURL(clientPort, cfg.Client.ConnectionType)
 		curls = []string{curl}
@@ -656,12 +643,12 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 }
 
-func clientURL(port int, connType ClientConnType) string {
+func clientURL(port int, connType testclient.ConnectionType) string {
 	curlHost := fmt.Sprintf("localhost:%d", port)
 	switch connType {
-	case ClientNonTLS:
+	case testclient.ConnectionNonTLS:
 		return (&url.URL{Scheme: "http", Host: curlHost}).String()
-	case ClientTLS:
+	case testclient.ConnectionTLS:
 		return (&url.URL{Scheme: "https", Host: curlHost}).String()
 	default:
 		panic(fmt.Sprintf("Unsupported connection type %v", connType))
@@ -669,7 +656,7 @@ func clientURL(port int, connType ClientConnType) string {
 }
 
 func (cfg *EtcdProcessClusterConfig) TlsArgs() (args []string) {
-	if cfg.Client.ConnectionType != ClientNonTLS {
+	if cfg.Client.ConnectionType != testclient.ConnectionNonTLS {
 		if cfg.Client.AutoTLS {
 			args = append(args, "--auto-tls")
 		} else {
@@ -936,6 +923,10 @@ func (epc *EtcdProcessCluster) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
 	return etcdctl
 }
 
+func (epc *EtcdProcessCluster) Client() (*clientv3.Client, error) {
+	return testclient.New(epc.EndpointsGRPC(), epc.Cfg.Client)
+}
+
 func (epc *EtcdProcessCluster) Close() error {
 	epc.lg.Info("closing test cluster...")
 	err := epc.Stop()
@@ -974,7 +965,11 @@ func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
 func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess) int {
-	cc := epc.Etcdctl()
+	cc, err := epc.Client()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cc.Close()
 
 	// ensure leader is up via linearizable get
 	for {
@@ -983,7 +978,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 			t.Fatal("WaitMembersForLeader timeout")
 		default:
 		}
-		_, err := cc.Get(ctx, "0", config.GetOptions{Timeout: 10*config.TickDuration + time.Second})
+		_, err := cc.Get(ctx, "0")
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
 		}
@@ -999,7 +994,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 		default:
 		}
 		for i := range membs {
-			resp, err := membs[i].Etcdctl().Status(ctx)
+			resp, err := cc.Status(ctx, membs[i].EndpointsGRPC()[0])
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {
 					// if member[i] has stopped
@@ -1008,8 +1003,8 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 					t.Fatal(err)
 				}
 			}
-			members[resp[0].Header.MemberId] = i
-			leaders[resp[0].Leader] = struct{}{}
+			members[resp.Header.MemberId] = i
+			leaders[resp.Leader] = struct{}{}
 		}
 		// members agree on the same leader
 		if len(leaders) == 1 {

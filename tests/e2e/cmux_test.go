@@ -34,58 +34,59 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testclient"
 )
 
 func TestConnectionMultiplexing(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range []struct {
 		name             string
-		serverTLS        e2e.ClientConnType
+		serverTLS        testclient.ConnectionType
 		separateHttpPort bool
 	}{
 		{
 			name:      "ServerTLS",
-			serverTLS: e2e.ClientTLS,
+			serverTLS: testclient.ConnectionTLS,
 		},
 		{
 			name:      "ServerNonTLS",
-			serverTLS: e2e.ClientNonTLS,
+			serverTLS: testclient.ConnectionNonTLS,
 		},
 		{
 			name:      "ServerTLSAndNonTLS",
-			serverTLS: e2e.ClientTLSAndNonTLS,
+			serverTLS: testclient.ConnectionTLSAndNonTLS,
 		},
 		{
 			name:             "SeparateHTTP/ServerTLS",
-			serverTLS:        e2e.ClientTLS,
+			serverTLS:        testclient.ConnectionTLS,
 			separateHttpPort: true,
 		},
 		{
 			name:             "SeparateHTTP/ServerNonTLS",
-			serverTLS:        e2e.ClientNonTLS,
+			serverTLS:        testclient.ConnectionNonTLS,
 			separateHttpPort: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			cfg := e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: tc.serverTLS}, ClientHttpSeparate: tc.separateHttpPort}
+			cfg := e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: testclient.Config{ConnectionType: tc.serverTLS}, ClientHttpSeparate: tc.separateHttpPort}
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&cfg))
 			require.NoError(t, err)
 			defer clus.Close()
 
-			var clientScenarios []e2e.ClientConnType
+			var clientScenarios []testclient.ConnectionType
 			switch tc.serverTLS {
-			case e2e.ClientTLS:
-				clientScenarios = []e2e.ClientConnType{e2e.ClientTLS}
-			case e2e.ClientNonTLS:
-				clientScenarios = []e2e.ClientConnType{e2e.ClientNonTLS}
-			case e2e.ClientTLSAndNonTLS:
-				clientScenarios = []e2e.ClientConnType{e2e.ClientTLS, e2e.ClientNonTLS}
+			case testclient.ConnectionTLS:
+				clientScenarios = []testclient.ConnectionType{testclient.ConnectionTLS}
+			case testclient.ConnectionNonTLS:
+				clientScenarios = []testclient.ConnectionType{testclient.ConnectionNonTLS}
+			case testclient.ConnectionTLSAndNonTLS:
+				clientScenarios = []testclient.ConnectionType{testclient.ConnectionTLS, testclient.ConnectionNonTLS}
 			}
 
 			for _, clientTLS := range clientScenarios {
 				name := "ClientNonTLS"
-				if clientTLS == e2e.ClientTLS {
+				if clientTLS == testclient.ConnectionTLS {
 					name = "ClientTLS"
 				}
 				t.Run(name, func(t *testing.T) {
@@ -96,25 +97,25 @@ func TestConnectionMultiplexing(t *testing.T) {
 	}
 }
 
-func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.EtcdProcess, connType e2e.ClientConnType) {
+func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.EtcdProcess, connType testclient.ConnectionType) {
 	httpEndpoint := member.EndpointsHTTP()[0]
 	grpcEndpoint := member.EndpointsGRPC()[0]
 	switch connType {
-	case e2e.ClientTLS:
+	case testclient.ConnectionTLS:
 		httpEndpoint = e2e.ToTLS(httpEndpoint)
 		grpcEndpoint = e2e.ToTLS(grpcEndpoint)
-	case e2e.ClientNonTLS:
+	case testclient.ConnectionNonTLS:
 	default:
 		panic(fmt.Sprintf("Unsupported conn type %v", connType))
 	}
 	t.Run("etcdctl", func(t *testing.T) {
-		etcdctl, err := e2e.NewEtcdctl(e2e.ClientConfig{ConnectionType: connType}, []string{grpcEndpoint})
+		etcdctl, err := e2e.NewEtcdctl(testclient.Config{ConnectionType: connType}, []string{grpcEndpoint})
 		require.NoError(t, err)
 		_, err = etcdctl.Get(ctx, "a", config.GetOptions{})
 		assert.NoError(t, err)
 	})
 	t.Run("clientv3", func(t *testing.T) {
-		c := newClient(t, []string{grpcEndpoint}, e2e.ClientConfig{ConnectionType: connType})
+		c := newClient(t, []string{grpcEndpoint}, testclient.Config{ConnectionType: connType})
 		_, err := c.Get(ctx, "a")
 		assert.NoError(t, err)
 	})
@@ -135,7 +136,7 @@ func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.Et
 	})
 }
 
-func fetchGrpcGateway(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchGrpcGateway(endpoint string, httpVersion string, connType testclient.ConnectionType) error {
 	rangeData, err := json.Marshal(&pb.RangeRequest{
 		Key: []byte("a"),
 	})
@@ -168,7 +169,7 @@ func validateGrpcgatewayRangeReponse(respData []byte) error {
 	return json.Unmarshal(respData, &resp)
 }
 
-func fetchMetrics(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchMetrics(endpoint string, httpVersion string, connType testclient.ConnectionType) error {
 	req := e2e.CURLReq{Endpoint: "/metrics", Timeout: 5, HttpVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
@@ -179,7 +180,7 @@ func fetchMetrics(endpoint string, httpVersion string, connType e2e.ClientConnTy
 	return err
 }
 
-func fetchVersion(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchVersion(endpoint string, httpVersion string, connType testclient.ConnectionType) error {
 	req := e2e.CURLReq{Endpoint: "/version", Timeout: 5, HttpVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
@@ -189,7 +190,7 @@ func fetchVersion(endpoint string, httpVersion string, connType e2e.ClientConnTy
 	return json.Unmarshal([]byte(respData), &resp)
 }
 
-func fetchHealth(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchHealth(endpoint string, httpVersion string, connType testclient.ConnectionType) error {
 	req := e2e.CURLReq{Endpoint: "/health", Timeout: 5, HttpVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
@@ -199,7 +200,7 @@ func fetchHealth(endpoint string, httpVersion string, connType e2e.ClientConnTyp
 	return json.Unmarshal([]byte(respData), &resp)
 }
 
-func fetchDebugVars(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchDebugVars(endpoint string, httpVersion string, connType testclient.ConnectionType) error {
 	req := e2e.CURLReq{Endpoint: "/debug/vars", Timeout: 5, HttpVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
