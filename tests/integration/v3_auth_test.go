@@ -406,7 +406,7 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 		role, user := fmt.Sprintf("test-role-%d", i), fmt.Sprintf("test-user-%d", i)
 		_, err := c.RoleAdd(context.TODO(), role)
 		testutil.AssertNil(t, err)
-		_, err = c.RoleGrantPermission(context.TODO(), role, "", clientv3.GetPrefixRangeEnd(""), clientv3.PermissionType(clientv3.PermReadWrite))
+		_, err = c.RoleGrantPermission(context.TODO(), role, "\x00", clientv3.GetPrefixRangeEnd(""), clientv3.PermissionType(clientv3.PermReadWrite))
 		testutil.AssertNil(t, err)
 		_, err = c.UserAdd(context.TODO(), user, "123")
 		testutil.AssertNil(t, err)
