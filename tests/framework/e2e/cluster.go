@@ -743,7 +743,7 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 
 	// First remove member from the cluster
 
-	memberCtl := epc.Client(opts...)
+	memberCtl := epc.Etcdctl(opts...)
 	memberList, err := memberCtl.MemberList(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get member list: %w", err)
@@ -795,7 +795,7 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProces
 	epc.Cfg.SetInitialOrDiscovery(serverCfg, initialCluster, "existing")
 
 	// First add new member to cluster
-	memberCtl := epc.Client(opts...)
+	memberCtl := epc.Etcdctl(opts...)
 	_, err := memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.PeerURL.String()})
 	if err != nil {
 		return fmt.Errorf("failed to add new member: %w", err)
@@ -878,7 +878,7 @@ func (epc *EtcdProcessCluster) Stop() (err error) {
 	return err
 }
 
-func (epc *EtcdProcessCluster) Client(opts ...config.ClientOption) *EtcdctlV3 {
+func (epc *EtcdProcessCluster) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
 	etcdctl, err := NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)
@@ -924,7 +924,7 @@ func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
 func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess) int {
-	cc := epc.Client()
+	cc := epc.Etcdctl()
 
 	// ensure leader is up via linearizable get
 	for {
@@ -949,7 +949,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 		default:
 		}
 		for i := range membs {
-			resp, err := membs[i].Client().Status(ctx)
+			resp, err := membs[i].Etcdctl().Status(ctx)
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {
 					// if member[i] has stopped

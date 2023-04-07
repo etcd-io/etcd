@@ -83,7 +83,7 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, clusterVersion, newInst
 	for i := 0; i < 20; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		err := epc.Client().Put(context.TODO(), key, value, config.PutOptions{})
+		err := epc.Etcdctl().Put(context.TODO(), key, value, config.PutOptions{})
 		require.NoError(t, err, "failed to put %q, error: %v", key, err)
 	}
 
@@ -99,7 +99,7 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, clusterVersion, newInst
 	// verify all nodes have exact same revision and hash
 	t.Log("Verify all nodes have exact same revision and hash")
 	assert.Eventually(t, func() bool {
-		hashKvs, err := epc.Client().HashKV(context.TODO(), 0)
+		hashKvs, err := epc.Etcdctl().HashKV(context.TODO(), 0)
 		if err != nil {
 			t.Logf("failed to get HashKV: %v", err)
 			return false
@@ -170,7 +170,7 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, clusterVersion e2e.Clu
 	for i := 0; i < 20; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		err := epc.Client().Put(context.TODO(), key, value, config.PutOptions{})
+		err := epc.Etcdctl().Put(context.TODO(), key, value, config.PutOptions{})
 		require.NoError(t, err, "failed to put %q, error: %v", key, err)
 	}
 
@@ -185,7 +185,7 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, clusterVersion e2e.Clu
 	// verify all nodes have exact same revision and hash
 	t.Log("Verify all nodes have exact same revision and hash")
 	assert.Eventually(t, func() bool {
-		hashKvs, err := epc.Client().HashKV(context.TODO(), 0)
+		hashKvs, err := epc.Etcdctl().HashKV(context.TODO(), 0)
 		if err != nil {
 			t.Logf("failed to get HashKV: %v", err)
 			return false
