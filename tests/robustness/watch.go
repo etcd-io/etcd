@@ -132,25 +132,25 @@ func watchResponsesMaxRevision(responses []watchResponse) int64 {
 	return maxRevision
 }
 
-func validateWatchResponses(t *testing.T, responses [][]watchResponse, expectProgressNotify bool) {
-	for _, memberResponses := range responses {
-		validateMemberWatchResponses(t, memberResponses, expectProgressNotify)
+func validateWatchResponses(t *testing.T, clus *e2e.EtcdProcessCluster, responses [][]watchResponse, expectProgressNotify bool) {
+	for i, member := range clus.Procs {
+		validateMemberWatchResponses(t, member.Config().Name, responses[i], expectProgressNotify)
 	}
 }
 
-func validateMemberWatchResponses(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
+func validateMemberWatchResponses(t *testing.T, memberId string, responses []watchResponse, expectProgressNotify bool) {
 	// Validate watch is correctly configured to ensure proper testing
-	validateGotAtLeastOneProgressNotify(t, responses, expectProgressNotify)
+	validateGotAtLeastOneProgressNotify(t, memberId, responses, expectProgressNotify)
 
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api/#watch-streams
-	validateOrderedAndReliable(t, responses)
-	validateUnique(t, responses)
-	validateAtomic(t, responses)
+	validateOrderedAndReliable(t, memberId, responses)
+	validateUnique(t, memberId, responses)
+	validateAtomic(t, memberId, responses)
 	// Validate kubernetes usage of watch
-	validateRenewable(t, responses)
+	validateRenewable(t, memberId, responses)
 }
 
-func validateGotAtLeastOneProgressNotify(t *testing.T, responses []watchResponse, expectProgressNotify bool) {
+func validateGotAtLeastOneProgressNotify(t *testing.T, memberId string, responses []watchResponse, expectProgressNotify bool) {
 	var gotProgressNotify = false
 	var lastHeadRevision int64 = 1
 	for _, resp := range responses {
@@ -161,16 +161,16 @@ func validateGotAtLeastOneProgressNotify(t *testing.T, responses []watchResponse
 		lastHeadRevision = resp.Header.Revision
 	}
 	if gotProgressNotify != expectProgressNotify {
-		t.Errorf("Expected at least one progress notify: %v, got: %v", expectProgressNotify, gotProgressNotify)
+		t.Errorf("Progress notify does not match, expect: %v, got: %v, member: %q", expectProgressNotify, gotProgressNotify, memberId)
 	}
 }
 
-func validateRenewable(t *testing.T, responses []watchResponse) {
+func validateRenewable(t *testing.T, memberId string, responses []watchResponse) {
 	var lastProgressNotifyRevision int64 = 0
 	for _, resp := range responses {
 		for _, event := range resp.Events {
 			if event.Kv.ModRevision <= lastProgressNotifyRevision {
-				t.Errorf("BROKE: Renewable - watch can renewed using revision in last progress notification; Progress notification guarantees that previous events have been already delivered, eventRevision: %d, progressNotifyRevision: %d", event.Kv.ModRevision, lastProgressNotifyRevision)
+				t.Errorf("Broke watch guarantee: Renewable - watch can renewed using revision in last progress notification; Progress notification guarantees that previous events have been already delivered, eventRevision: %d, progressNotifyRevision: %d, member: %q", event.Kv.ModRevision, lastProgressNotifyRevision, memberId)
 			}
 		}
 		if resp.IsProgressNotify() {
@@ -179,19 +179,23 @@ func validateRenewable(t *testing.T, responses []watchResponse) {
 	}
 }
 
-func validateOrderedAndReliable(t *testing.T, responses []watchResponse) {
+func validateOrderedAndReliable(t *testing.T, memberId string, responses []watchResponse) {
 	var lastEventRevision int64 = 1
 	for _, resp := range responses {
 		for _, event := range resp.Events {
 			if event.Kv.ModRevision != lastEventRevision && event.Kv.ModRevision != lastEventRevision+1 {
-				t.Errorf("BROKE: Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, lastRevision: %d, currentRevision: %d", lastEventRevision, event.Kv.ModRevision)
+				if event.Kv.ModRevision < lastEventRevision {
+					t.Errorf("Broke watch guarantee: Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted, lastRevision: %d, currentRevision: %d, member: %q", lastEventRevision, event.Kv.ModRevision, memberId)
+				} else {
+					t.Errorf("Broke watch guarantee: Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, lastRevision: %d, currentRevision: %d, member: %q", lastEventRevision, event.Kv.ModRevision, memberId)
+				}
 			}
 			lastEventRevision = event.Kv.ModRevision
 		}
 	}
 }
 
-func validateUnique(t *testing.T, responses []watchResponse) {
+func validateUnique(t *testing.T, memberId string, responses []watchResponse) {
 	type revisionKey struct {
 		revision int64
 		key      string
@@ -201,19 +205,19 @@ func validateUnique(t *testing.T, responses []watchResponse) {
 		for _, event := range resp.Events {
 			rk := revisionKey{key: string(event.Kv.Key), revision: event.Kv.ModRevision}
 			if _, found := uniqueOperations[rk]; found {
-				t.Errorf("BROKE: Unique - an event will never appear on a watch twice, key: %q, revision: %d", rk.key, rk.revision)
+				t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, member: %q", rk.key, rk.revision, memberId)
 			}
 			uniqueOperations[rk] = struct{}{}
 		}
 	}
 }
 
-func validateAtomic(t *testing.T, responses []watchResponse) {
+func validateAtomic(t *testing.T, memberId string, responses []watchResponse) {
 	var lastEventRevision int64 = 1
 	for _, resp := range responses {
 		if len(resp.Events) > 0 {
 			if resp.Events[0].Kv.ModRevision == lastEventRevision {
-				t.Errorf("BROKE: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d", lastEventRevision, resp.Events[0].Kv.ModRevision)
+				t.Errorf("Broke watch guarantee: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d, member: %q", lastEventRevision, resp.Events[0].Kv.ModRevision, memberId)
 			}
 			lastEventRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
 		}
