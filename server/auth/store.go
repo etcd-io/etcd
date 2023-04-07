@@ -479,7 +479,8 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	var password []byte
 	var err error
 
-	if !user.Options.NoPassword {
+	// Backward compatible with old versions of etcd, user options is nil
+	if user.Options == nil || !user.Options.NoPassword {
 		password, err = as.selectPassword(r.Password, r.HashedPassword)
 		if err != nil {
 			return nil, ErrNoPasswordUser
