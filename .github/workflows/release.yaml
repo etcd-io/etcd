@@ -8,7 +8,8 @@ jobs:
     - uses: actions/setup-go@v2
       with:
         go-version: "1.19.8"
-    - run: |
+    - name: release
+      run: |
         set -euo pipefail
 
         git config --global user.email "github-action@etcd.io"
@@ -24,3 +25,6 @@ jobs:
         Expire-Date: 0
         EOF
         DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.4.99
+    - name: test-image
+      run: |
+        VERSION=3.4.99 ./scripts/test_images.sh
