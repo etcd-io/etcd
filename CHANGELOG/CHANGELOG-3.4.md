@@ -9,10 +9,14 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### etcd server
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15486) to enable support for TLS 1.3.
 - Add [`etcd --listen-client-http-urls`](https://github.com/etcd-io/etcd/pull/15620) flag to support separating http server from grpc one, thus giving full immunity to [watch stream starvation under high read load](https://github.com/etcd-io/etcd/issues/15402).
+- Change [http2 frame scheduler to random algorithm](https://github.com/etcd-io/etcd/pull/15478)
 - Fix [server/embed: fix data race when starting both secure & insecure gRPC servers on the same address](https://github.com/etcd-io/etcd/pull/15518)
 - Fix [server/auth: disallow creating empty permission ranges](https://github.com/etcd-io/etcd/pull/15621)
 - Fix [wsproxy did not print log in JSON format](https://github.com/etcd-io/etcd/pull/15662).
 - Fix [CVE-2021-28235](https://nvd.nist.gov/vuln/detail/CVE-2021-28235) by [clearing password after authenticating the user](https://github.com/etcd-io/etcd/pull/15655).
+- Fix [etcdserver may panic when parsing a JWT token without username or revision](https://github.com/etcd-io/etcd/pull/15677).
+- Fix [Watch response traveling back in time when reconnecting member downloads snapshot from the leader](https://github.com/etcd-io/etcd/pull/15520).
+- Fix [Requested watcher progress notifications are not synchronised with stream](https://github.com/etcd-io/etcd/pull/15697).
 
 ### Package `clientv3`
 - Reverted the fix to [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/15542).
@@ -21,6 +25,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Recommend [Go 1.19+](https://github.com/etcd-io/etcd/pull/15337).
 - Compile binaries using [Go 1.19.8](https://github.com/etcd-io/etcd/pull/15652).
 - Upgrade [golang.org/x/net to v0.7.0](https://github.com/etcd-io/etcd/pull/15333).
+
+### Docker image
+- Fix [etcd docker images all tagged with amd64 architecture](https://github.com/etcd-io/etcd/pull/15681)
 
 <hr>
 
