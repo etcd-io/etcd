@@ -85,3 +85,18 @@ if [ "${GET}" != "${VALUE}" ]; then
 fi
 
 echo "Succesfully tested etcd local image ${TAG}"
+
+for TARGET_ARCH in "amd64" "arm64" "ppc64le"; do
+    if [ "${TARGET_ARCH}" != "amd64" ]; then
+        ARCH_TAG=v"${VERSION}"-"${TARGET_ARCH}"
+    else
+        ARCH_TAG=v"${VERSION}"
+    fi
+
+    IMG_ARCH=$(docker inspect --format '{{.Architecture}}' "${REPOSITARY}:${ARCH_TAG}")
+    if [ "${IMG_ARCH}" != "$TARGET_ARCH" ];then
+        echo "Incorrect docker image architecture"
+        exit 1
+    fi
+    echo "Correct Architecture ${ARCH_TAG}"
+done
