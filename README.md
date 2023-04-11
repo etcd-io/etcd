@@ -36,7 +36,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 ## Maintainers
 
-[MAINTAINERS](MAINTAINERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. MAINTAINERS maintain productive relationships across different companies and disciplines. Read more about [MAINTAINERS role and responsibilities](GOVERNANCE.md#maintainers).
+[MAINTAINERS](MAINTAINERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. MAINTAINERS maintain productive relationships across different companies and disciplines. Read more about [MAINTAINERS role and responsibilities](Documentation/contributor-guide/community-membership.md#maintainers).
 
 ## Getting started
 
@@ -158,6 +158,8 @@ Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md) for details on setting up your development environment, submitting patches and the contribution workflow.
+
+Please refer to [community-membership.md](Documentation/contributor-guide/community-membership.md#member) for information on becoming an etcd project member.  We welcome and look forward to your contributions to the project!
 
 ## Reporting bugs
 
