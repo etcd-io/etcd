@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
@@ -41,6 +42,7 @@ var (
 type watchable interface {
 	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
 	progress(w *watcher)
+	progressAll(watchers map[WatchID]*watcher) bool
 	rev() int64
 }
 
@@ -477,14 +479,34 @@ func (s *watchableStore) addVictim(victim watcherBatch) {
 func (s *watchableStore) rev() int64 { return s.store.Rev() }
 
 func (s *watchableStore) progress(w *watcher) {
+	s.progressIfSync(map[WatchID]*watcher{w.id: w}, w.id)
+}
+
+func (s *watchableStore) progressAll(watchers map[WatchID]*watcher) bool {
+	return s.progressIfSync(watchers, clientv3.InvalidWatchID)
+}
+
+func (s *watchableStore) progressIfSync(watchers map[WatchID]*watcher, responseWatchID WatchID) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if _, ok := s.synced.watchers[w]; ok {
-		w.send(WatchResponse{WatchID: w.id, Revision: s.rev()})
-		// If the ch is full, this watcher is receiving events.
-		// We do not need to send progress at all.
+	// Any watcher unsynced?
+	for _, w := range watchers {
+		if _, ok := s.synced.watchers[w]; !ok {
+			return false
+		}
 	}
+
+	// If all watchers are synchronised, send out progress
+	// notification on first watcher. Note that all watchers
+	// should have the same underlying stream, and the progress
+	// notification will be broadcasted client-side if required
+	// (see dispatchEvent in client/v3/watch.go)
+	for _, w := range watchers {
+		w.send(WatchResponse{WatchID: responseWatchID, Revision: s.rev()})
+		return true
+	}
+	return true
 }
 
 type watcher struct {
