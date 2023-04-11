@@ -16,14 +16,20 @@ package clientv3test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -118,4 +124,68 @@ func populateDataIntoCluster(t *testing.T, cluster *integration2.Cluster, numKey
 			t.Errorf("populating data expected no error, but got %v", err)
 		}
 	}
+}
+
+// guaranteeRaftAppliedIndexAdvance ensures raftLog.applied is the same as appliedIndex of etcdserver.EtcdServer
+// it should only be used between each raft proposal.
+func guaranteeRaftAppliedIndexAdvance(t *testing.T, gRPCURL string, clientURL url.URL) {
+	t.Logf("ensuring applied index advance, (gRPCURL %s), (clientURL %v)", gRPCURL, clientURL)
+	cc, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{gRPCURL},
+		DialTimeout: 5 * time.Second,
+	})
+	require.NoError(t, err)
+	defer cc.Close()
+	cresp, err := cc.Status(context.TODO(), gRPCURL)
+	require.NoError(t, err)
+	appliedIndex := cresp.RaftAppliedIndex
+
+	require.Eventually(t, func() bool {
+		raftStatus := getRaftStatus(t, clientURL)
+		return raftStatus.Applied == appliedIndex
+	}, 5*time.Second, 20*time.Millisecond)
+}
+
+func getRaftStatus(t *testing.T, clientURL url.URL) raftStatus {
+	tr, err := transport.NewTransport(transport.TLSInfo{}, 5*time.Second)
+	require.NoError(t, err)
+	clientURL.Path = "/debug/vars"
+	response, err := tr.RoundTrip(&http.Request{
+		Header: make(http.Header),
+		Method: http.MethodGet,
+		URL:    &clientURL,
+	})
+
+	body, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	var resp map[string]interface{}
+	require.NoError(t, json.Unmarshal(body, &resp))
+	var raftStatus raftStatus
+
+	for key, value := range resp {
+		if key == "raft.status" {
+			rs, err := json.Marshal(value)
+			require.NoError(t, err)
+			t.Logf("marshalled raft status is %s", string(rs))
+			require.NoError(t, json.Unmarshal(rs, &raftStatus))
+			break
+		}
+	}
+	return raftStatus
+}
+
+// raftStatus should be in sync with raft.Status
+type raftStatus struct {
+	ID string
+
+	Term   uint64
+	Vote   string
+	Commit uint64
+
+	Lead      string
+	RaftState string
+
+	Applied        uint64
+	LeadTransferee string
+	Progress       map[string]interface{}
 }

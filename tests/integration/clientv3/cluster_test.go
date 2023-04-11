@@ -325,6 +325,9 @@ func TestMemberPromoteMemberNotLearner(t *testing.T) {
 		if !strings.Contains(err.Error(), expectedErrKeywords) {
 			t.Fatalf("expect error to contain %s, got %s", expectedErrKeywords, err.Error())
 		}
+		// avoid raft rejects the next configuration change due to slowness of raftLog.applied advance
+		// caused by slow fdatasync
+		guaranteeRaftAppliedIndexAdvance(t, clus.Members[leaderIdx].GRPCURL(), clus.Members[leaderIdx].ClientURLs[0])
 	}
 }
 
