@@ -16,9 +16,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [aligning zap log timestamp resolution to microseconds](https://github.com/etcd-io/etcd/pull/15240). Etcd now uses zap timestamp format: `2006-01-02T15:04:05.999999Z0700` (microsecond instead of milliseconds precision).
 - Fix [wsproxy did not print log in JSON format](https://github.com/etcd-io/etcd/pull/15661).
 - Fix [CVE-2021-28235](https://nvd.nist.gov/vuln/detail/CVE-2021-28235) by [clearing password after authenticating the user](https://github.com/etcd-io/etcd/pull/15653).
+- Fix [etcdserver may panic when parsing a JWT token without username or revision](https://github.com/etcd-io/etcd/pull/15676).
+- Fix [Requested watcher progress notifications are not synchronised with stream](https://github.com/etcd-io/etcd/pull/15695).
 
 ### Package `netutil`
-- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187)
+- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187).
 
 ### Package `clientv3`
 - Fix [etcd might send duplicated events to watch clients](https://github.com/etcd-io/etcd/pull/15274).
