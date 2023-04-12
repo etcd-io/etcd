@@ -111,7 +111,7 @@ func TestRobustness(t *testing.T) {
 	for _, traffic := range trafficList {
 		scenarios = append(scenarios, scenario{
 			name:      "ClusterOfSize1/" + traffic.name,
-			failpoint: RandomOneNodeClusterFailpoint,
+			failpoint: RandomFailpoint,
 			traffic:   &traffic,
 			config: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
@@ -121,18 +121,22 @@ func TestRobustness(t *testing.T) {
 				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
 			),
 		})
+		clusterOfSize3Options := []e2e.EPClusterOption{
+			e2e.WithIsPeerTLS(true),
+			e2e.WithSnapshotCount(100),
+			e2e.WithPeerProxy(true),
+			e2e.WithGoFailEnabled(true),
+			e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
+			e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
+		}
+		if !v.LessThan(version.V3_6) {
+			clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithSnapshotCatchUpEntries(100))
+		}
 		scenarios = append(scenarios, scenario{
 			name:      "ClusterOfSize3/" + traffic.name,
-			failpoint: RandomMultiNodeClusterFailpoint,
+			failpoint: RandomFailpoint,
 			traffic:   &traffic,
-			config: *e2e.NewConfig(
-				e2e.WithIsPeerTLS(true),
-				e2e.WithSnapshotCount(100),
-				e2e.WithPeerProxy(true),
-				e2e.WithGoFailEnabled(true),
-				e2e.WithCompactionBatchLimit(100), // required for compactBeforeCommitBatch and compactAfterCommitBatch failpoints
-				e2e.WithWatchProcessNotifyInterval(100*time.Millisecond),
-			),
+			config:    *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
 	scenarios = append(scenarios, scenario{
@@ -161,7 +165,7 @@ func TestRobustness(t *testing.T) {
 	})
 	scenarios = append(scenarios, scenario{
 		name:      "Issue15220",
-		failpoint: RandomOneNodeClusterFailpoint,
+		failpoint: RandomFailpoint,
 		traffic:   &ReqProgTraffic,
 		config: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
@@ -179,21 +183,6 @@ func TestRobustness(t *testing.T) {
 			),
 		})
 	}
-	snapshotOptions := []e2e.EPClusterOption{
-		e2e.WithGoFailEnabled(true),
-		e2e.WithSnapshotCount(100),
-		e2e.WithPeerProxy(true),
-		e2e.WithIsPeerTLS(true),
-	}
-	if v.Compare(version.V3_6) >= 0 {
-		snapshotOptions = append(snapshotOptions, e2e.WithSnapshotCatchUpEntries(100))
-	}
-	scenarios = append(scenarios, scenario{
-		name:      "Snapshot",
-		failpoint: RandomSnapshotFailpoint,
-		traffic:   &HighTraffic,
-		config:    *e2e.NewConfig(snapshotOptions...),
-	})
 	for _, scenario := range scenarios {
 		if scenario.traffic == nil {
 			scenario.traffic = &defaultTraffic
@@ -244,7 +233,7 @@ func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.Et
 
 	g.Go(func() error {
 		defer close(finishTraffic)
-		triggerFailpoints(ctx, t, lg, clus, failpoint)
+		injectFailpoints(ctx, t, lg, clus, failpoint)
 		time.Sleep(time.Second)
 		return nil
 	})
