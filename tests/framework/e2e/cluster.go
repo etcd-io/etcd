@@ -856,6 +856,22 @@ func (epc *EtcdProcessCluster) rollingStart(f func(ep EtcdProcess) error) error 
 }
 
 func (epc *EtcdProcessCluster) Stop() (err error) {
+	for _, p := range epc.Procs {
+		if p == nil {
+			continue
+		}
+		if curErr := p.Stop(); curErr != nil {
+			if err != nil {
+				err = fmt.Errorf("%v; %v", err, curErr)
+			} else {
+				err = curErr
+			}
+		}
+	}
+	return err
+}
+
+func (epc *EtcdProcessCluster) ConcurrentStop() (err error) {
 	errCh := make(chan error, len(epc.Procs))
 	for i := range epc.Procs {
 		if epc.Procs[i] == nil {
