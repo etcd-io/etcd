@@ -72,6 +72,8 @@ type toApply struct {
 	snapshot raftpb.Snapshot
 	// notifyc synchronizes etcd server applies with the raft node
 	notifyc chan struct{}
+	// confChangeCh synchronizes etcd server applies confChange with raft node
+	confChangeCh chan struct{}
 }
 
 type raftNode struct {
@@ -203,10 +205,12 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 
 				notifyc := make(chan struct{}, 1)
+				confChangeCh := make(chan struct{}, 1)
 				ap := toApply{
-					entries:  rd.CommittedEntries,
-					snapshot: rd.Snapshot,
-					notifyc:  notifyc,
+					entries:      rd.CommittedEntries,
+					snapshot:     rd.Snapshot,
+					notifyc:      notifyc,
+					confChangeCh: confChangeCh,
 				}
 
 				updateCommittedIndex(&ap, rh)
@@ -269,6 +273,14 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 				r.raftStorage.Append(rd.Entries)
 
+				waitApply := false
+				for _, ent := range rd.CommittedEntries {
+					if ent.Type == raftpb.EntryConfChange {
+						waitApply = true
+						break
+					}
+				}
+
 				if !islead {
 					// finish processing incoming messages before we signal notifyc chan
 					msgs := r.processMessages(rd.Messages)
@@ -283,13 +295,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// on its own single-node cluster, before toApply-layer applies the config change.
 					// We simply wait for ALL pending entries to be applied for now.
 					// We might improve this later on if it causes unnecessary long blocking issues.
-					waitApply := false
-					for _, ent := range rd.CommittedEntries {
-						if ent.Type == raftpb.EntryConfChange {
-							waitApply = true
-							break
-						}
-					}
+
 					if waitApply {
 						// blocks until 'applyAll' calls 'applyWait.Trigger'
 						// to be in sync with scheduled config-change job
@@ -310,6 +316,11 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 				// gofail: var raftBeforeAdvance struct{}
 				r.Advance()
+
+				if waitApply {
+					// notify etcdserver that raft has already been notified or advanced.
+					confChangeCh <- struct{}{}
+				}
 			case <-r.stopped:
 				return
 			}

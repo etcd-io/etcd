@@ -689,7 +689,8 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		Data:  pbutil.MustMarshal(cc),
 	}}
 
-	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{})
+	confChangeCh := make(chan struct{}, 1)
+	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{}, confChangeCh)
 	consistIndex := srv.consistIndex.ConsistentIndex()
 	assert.Equal(t, uint64(2), appliedi)
 
@@ -763,7 +764,8 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 		ents = append(ents, ent)
 	}
 
-	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{})
+	confChangeCh := make(chan struct{}, 1)
+	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{}, confChangeCh)
 	if !shouldStop {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
 	}

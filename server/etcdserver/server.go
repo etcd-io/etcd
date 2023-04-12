@@ -1133,7 +1133,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 		return
 	}
 	var shouldstop bool
-	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState); shouldstop {
+	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState, apply.confChangeCh); shouldstop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 	}
 }
@@ -1810,6 +1810,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 func (s *EtcdServer) apply(
 	es []raftpb.Entry,
 	confState *raftpb.ConfState,
+	confChangeCh chan struct{},
 ) (appliedt uint64, appliedi uint64, shouldStop bool) {
 	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
 	for i := range es {
@@ -1841,6 +1842,18 @@ func (s *EtcdServer) apply(
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 			shouldStop = shouldStop || removedSelf
+
+			// etcdserver need to ensure the raft has already been notified
+			// or advanced before it responds to the client. Otherwise, the
+			// following config change request may be rejected.
+			// See https://github.com/etcd-io/etcd/issues/15528.
+			select {
+			case <-time.After(500 * time.Millisecond):
+				lg := s.Logger()
+				lg.Warn("timed out waiting for configChange notification")
+			case <-confChangeCh:
+			}
+
 			s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), err})
 
 		default:
