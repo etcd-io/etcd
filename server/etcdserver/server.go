@@ -1551,9 +1551,14 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	}
 
 	// protect quorum if some members are down
-	m := s.cluster.VotingMembers()
-	active := numConnectedSince(s.r.transport, time.Now().Add(-HealthInterval), s.MemberId(), m)
-	if (active - 1) < 1+((len(m)-1)/2) {
+	members := s.cluster.VotingMembers()
+	active := 0
+	for _, m := range members {
+		if m.ID == s.MemberId() || isConnectedSince(s.r.transport, time.Now().Add(-HealthInterval), m.ID) && m.ID != id {
+			active++
+		}
+	}
+	if active < 1+((len(members)-1)/2) {
 		lg.Warn(
 			"rejecting member remove request; local member has not been connected to all peers, reconfigure breaks active quorum",
 			zap.String("local-member-id", s.MemberId().String()),
