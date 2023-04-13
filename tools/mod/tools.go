@@ -23,6 +23,8 @@ package tools
 import (
 	_ "github.com/alexkohler/nakedret"
 	_ "github.com/chzchzchz/goword"
+	_ "github.com/cloudflare/cfssl/cmd/cfssl"
+	_ "github.com/cloudflare/cfssl/cmd/cfssljson"
 	_ "github.com/coreos/license-bill-of-materials"
 	_ "github.com/google/addlicense"
 	_ "github.com/gordonklaus/ineffassign"
