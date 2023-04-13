@@ -9,13 +9,13 @@ fi
 
 if ! command -v cfssl; then
   echo "cfssl is not installed"
-  echo "use: go install -mod mod github.com/cloudflare/cfssl/cmd/cfssl"
+  echo 'use: bash -c "cd ../../tools/mod; go install github.com/cloudflare/cfssl/cmd/cfssl"'
   exit 255
 fi
 
 if ! command -v cfssljson; then
   echo "cfssljson is not installed"
-  echo "use: go install -mod mod github.com/cloudflare/cfssl/cmd/cfssljson"
+  echo 'use: bash -c "cd ../../tools/mod; go install github.com/cloudflare/cfssl/cmd/cfssljson"'
   exit 255
 fi
 
