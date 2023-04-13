@@ -65,15 +65,17 @@ func init() {
 
 // toApply contains entries, snapshot to be applied. Once
 // an toApply is consumed, the entries will be persisted to
-// to raft storage concurrently; the application must read
+// raft storage concurrently; the application must read
 // notifyc before assuming the raft messages are stable.
 type toApply struct {
 	entries  []raftpb.Entry
 	snapshot raftpb.Snapshot
 	// notifyc synchronizes etcd server applies with the raft node
 	notifyc chan struct{}
-	// confChangeCh synchronizes etcd server applies confChange with raft node
-	confChangeCh chan struct{}
+	// raftAdvancedC notifies EtcdServer.apply that
+	// 'raftLog.applied' has advanced by r.Advance
+	// it should be used only when entries contain raftpb.EntryConfChange
+	raftAdvancedC <-chan struct{}
 }
 
 type raftNode struct {
@@ -205,12 +207,12 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 
 				notifyc := make(chan struct{}, 1)
-				confChangeCh := make(chan struct{}, 1)
+				raftAdvancedC := make(chan struct{}, 1)
 				ap := toApply{
-					entries:      rd.CommittedEntries,
-					snapshot:     rd.Snapshot,
-					notifyc:      notifyc,
-					confChangeCh: confChangeCh,
+					entries:       rd.CommittedEntries,
+					snapshot:      rd.Snapshot,
+					notifyc:       notifyc,
+					raftAdvancedC: raftAdvancedC,
 				}
 
 				updateCommittedIndex(&ap, rh)
@@ -273,10 +275,10 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 				r.raftStorage.Append(rd.Entries)
 
-				waitApply := false
+				confChanged := false
 				for _, ent := range rd.CommittedEntries {
 					if ent.Type == raftpb.EntryConfChange {
-						waitApply = true
+						confChanged = true
 						break
 					}
 				}
@@ -296,7 +298,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// We simply wait for ALL pending entries to be applied for now.
 					// We might improve this later on if it causes unnecessary long blocking issues.
 
-					if waitApply {
+					if confChanged {
 						// blocks until 'applyAll' calls 'applyWait.Trigger'
 						// to be in sync with scheduled config-change job
 						// (assume notifyc has cap of 1)
@@ -317,9 +319,9 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				// gofail: var raftBeforeAdvance struct{}
 				r.Advance()
 
-				if waitApply {
+				if confChanged {
 					// notify etcdserver that raft has already been notified or advanced.
-					confChangeCh <- struct{}{}
+					raftAdvancedC <- struct{}{}
 				}
 			case <-r.stopped:
 				return

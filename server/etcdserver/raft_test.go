@@ -24,13 +24,14 @@ import (
 
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 func TestGetIDs(t *testing.T) {
@@ -230,6 +231,11 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 
 	// finish toApply, unblock raft routine
 	<-ap.notifyc
+
+	select {
+	case <-ap.raftAdvancedC:
+		t.Log("recevied raft advance notification")
+	}
 
 	select {
 	case <-continueC:

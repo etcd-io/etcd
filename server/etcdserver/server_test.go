@@ -32,6 +32,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -58,8 +61,6 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
@@ -689,8 +690,9 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		Data:  pbutil.MustMarshal(cc),
 	}}
 
-	confChangeCh := make(chan struct{}, 1)
-	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{}, confChangeCh)
+	raftAdvancedC := make(chan struct{}, 1)
+	raftAdvancedC <- struct{}{}
+	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{}, raftAdvancedC)
 	consistIndex := srv.consistIndex.ConsistentIndex()
 	assert.Equal(t, uint64(2), appliedi)
 
@@ -764,8 +766,9 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 		ents = append(ents, ent)
 	}
 
-	confChangeCh := make(chan struct{}, 1)
-	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{}, confChangeCh)
+	raftAdvancedC := make(chan struct{}, 1)
+	raftAdvancedC <- struct{}{}
+	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{}, raftAdvancedC)
 	if !shouldStop {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
 	}
