@@ -21,7 +21,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.2
-	go.etcd.io/bbolt v1.3.7
+	go.etcd.io/bbolt v1.3.7-0.20230413120332-bc572b8783ea
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/v2 v2.306.0-alpha.0
@@ -30,7 +30,7 @@ require (
 	go.etcd.io/etcd/etcdutl/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/pkg/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/server/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/tests/v3 v3.6.0-alpha.0
+	go.etcd.io/etcd/tests/v3 v3.0.0-00010101000000-000000000000
 	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
 	go.uber.org/zap v1.24.0
 	golang.org/x/time v0.3.0
