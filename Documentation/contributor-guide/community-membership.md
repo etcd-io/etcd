@@ -28,7 +28,7 @@ Members are continuously active contributors in the community.  They can have
 issues and PRs assigned to them. Members are expected to remain active 
 contributors to the community.
 
-**Defined by:** Member of the etcd GitHub organization
+**Defined by:** Member of the etcd GitHub organization.
 
 ### Requirements
 
@@ -43,6 +43,9 @@ contributors to the community.
 - Sponsored by one active maintainer or two reviewers.
     - Sponsors must be from multiple member companies to demonstrate integration across community.
     - With no objections from other maintainers
+- Open a [membership nomination] issue against the etcd-io/etcd repo
+    - Ensure your sponsors are @mentioned on the issue
+    - Make sure that the list of contributions included is representative of your work on the project.
 - Members can be removed by a supermajority of the maintainers or can resign by notifying
   the maintainers.
 
@@ -147,6 +150,7 @@ Contributor roles and responsibilities were written based on [Kubernetes communi
 
 [MAINTAINERS]: /MAINTAINERS
 [contributor guide]: /CONTRIBUTING.md
+[membership nomination]:https://github.com/etcd-io/etcd/issues/new?assignees=&labels=area%2Fcommunity&template=membership-request.yml 
 [Kubernetes community membership]: https://github.com/kubernetes/community/blob/master/community-membership.md
 [emeritus maintainers]: /README.md#etcd-emeritus-maintainers
 [security disclosure and release process]: /security/README.md
