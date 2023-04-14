@@ -581,6 +581,8 @@ type Member struct {
 	Closed    bool
 
 	GrpcServerRecorder *grpc_testing.GrpcRecorder
+
+	LogObserver *testutils.LogObserver
 }
 
 func (m *Member) GRPCURL() string { return m.GrpcURL }
@@ -730,7 +732,9 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	}
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
 	m.GrpcServerRecorder = &grpc_testing.GrpcRecorder{}
-	m.Logger = memberLogger(t, mcfg.Name)
+
+	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
+
 	m.StrictReconfigCheck = !mcfg.DisableStrictReconfigCheck
 	if err := m.listenGRPC(); err != nil {
 		t.Fatalf("listenGRPC FAILED: %v", err)
@@ -743,14 +747,23 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	return m
 }
 
-func memberLogger(t testutil.TB, name string) *zap.Logger {
+func memberLogger(t testutil.TB, name string) (*zap.Logger, *testutils.LogObserver) {
 	level := zapcore.InfoLevel
 	if os.Getenv("CLUSTER_DEBUG") != "" {
 		level = zapcore.DebugLevel
 	}
 
-	options := zaptest.WrapOptions(zap.Fields(zap.String("member", name)))
-	return zaptest.NewLogger(t, zaptest.Level(level), options).Named(name)
+	obCore, logOb := testutils.NewLogObserver(level)
+
+	options := zaptest.WrapOptions(
+		zap.Fields(zap.String("member", name)),
+
+		// copy logged entities to log observer
+		zap.WrapCore(func(oldCore zapcore.Core) zapcore.Core {
+			return zapcore.NewTee(oldCore, obCore)
+		}),
+	)
+	return zaptest.NewLogger(t, zaptest.Level(level), options).Named(name), logOb
 }
 
 // listenGRPC starts a grpc server over a unix domain socket on the member
@@ -934,7 +947,7 @@ func (m *Member) Clone(t testutil.TB) *Member {
 	mm.ElectionTicks = m.ElectionTicks
 	mm.PeerTLSInfo = m.PeerTLSInfo
 	mm.ClientTLSInfo = m.ClientTLSInfo
-	mm.Logger = memberLogger(t, mm.Name+"c")
+	mm.Logger, mm.LogObserver = memberLogger(t, mm.Name+"c")
 	return mm
 }
 
