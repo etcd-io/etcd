@@ -4,7 +4,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.25 (TBD)
+## v3.4.25 (2023-04-14)
 
 ### etcd server
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15486) to enable support for TLS 1.3.
