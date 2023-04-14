@@ -69,8 +69,6 @@ main() {
     cd "${reldir}/etcd" || exit 2
     git checkout "${BRANCH}" || exit 2
     git pull origin
-
-    git_assert_branch_in_sync || exit 2
   fi
   
   # If a release version tag already exists, use it.
