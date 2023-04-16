@@ -159,7 +159,7 @@ func TestCheckTxnAuth(t *testing.T) {
 		err        error
 	}{
 		{
-			name: "Unauthorize out of range compare",
+			name: "Out of range compare is unathorized",
 			txnRequest: &pb.TxnRequest{
 				Compare: []*pb.Compare{
 					{
@@ -171,7 +171,7 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: auth.ErrPermissionDenied,
 		},
 		{
-			name: "No error for nil request range",
+			name: "Nil request range is always authorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
@@ -184,7 +184,7 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Authorize request range in range",
+			name: "Range request in range is authorised",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
@@ -200,7 +200,7 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Unauthorize request range out of range",
+			name: "Range request out of range is unauthorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
@@ -216,7 +216,7 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: auth.ErrPermissionDenied,
 		},
 		{
-			name: "No error for nil request put",
+			name: "Nil Put request is authorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
@@ -229,7 +229,7 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Authorize request pur in range",
+			name: "Put request in range in authorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
@@ -244,7 +244,7 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Unauthorized request pur in range",
+			name: "Put request out of range is unauthorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
@@ -259,7 +259,7 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: auth.ErrPermissionDenied,
 		},
 		{
-			name: "No error for nil delete range",
+			name: "Nil delete request is authorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
