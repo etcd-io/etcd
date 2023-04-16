@@ -18,13 +18,17 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -93,4 +97,254 @@ func TestWriteTxnPanic(t *testing.T) {
 	}
 
 	assert.Panics(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}) }, "Expected panic in Txn with writes")
+}
+
+func TestCheckTxnAuth(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
+	simpleTokenTTLDefault := 300 * time.Second
+	tokenTypeSimple := "simple"
+	dummyIndexWaiter := func(index uint64) <-chan struct{} {
+		ch := make(chan struct{}, 1)
+		go func() {
+			ch <- struct{}{}
+		}()
+		return ch
+	}
+
+	tp, _ := auth.NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
+
+	as := auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), tp, 4)
+
+	// create "root" user and "foo" user with limited range
+	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "rw"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "rw",
+		Perm: &authpb.Permission{
+			PermType: authpb.READWRITE,
+			Key:      []byte("foo"),
+			RangeEnd: []byte("zoo"),
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "foo"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo", Password: "foo"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "rw"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := as.AuthEnable(); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name       string
+		txnRequest *pb.TxnRequest
+		err        error
+	}{
+		{
+			name: "Unauthorize out of range compare",
+			txnRequest: &pb.TxnRequest{
+				Compare: []*pb.Compare{
+					{
+						Key: []byte("boo"),
+					},
+				},
+				Success: []*pb.RequestOp{},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "No error for nil request range",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: nil,
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Authorize request range in range",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Unauthorize request range out of range",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Key:      []byte("boo"),
+								RangeEnd: []byte("zoo"),
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "No error for nil request put",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: nil,
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Authorize request pur in range",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								Key: []byte("foo"),
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Unauthorized request pur in range",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								Key: []byte("boo"),
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "No error for nil delete range",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: nil,
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Authorize delete range in range compare and rerquest",
+			txnRequest: &pb.TxnRequest{
+				Compare: []*pb.Compare{
+					{
+						Key: []byte("foo"),
+					},
+				},
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   true,
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Unauthorize delete range out of range keys",
+			txnRequest: &pb.TxnRequest{
+				Compare: []*pb.Compare{
+					{
+						Key: []byte("foo"),
+					},
+				},
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("boo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   true,
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Unauthorize delete range out of range keys and PrevKv false",
+			txnRequest: &pb.TxnRequest{
+				Compare: []*pb.Compare{
+					{
+						Key: []byte("foo"),
+					},
+				},
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("boo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   false,
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := CheckTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, tt.txnRequest)
+			if err != tt.err {
+				t.Errorf("expected error to be: %v; got: %v", tt.err, err)
+			}
+		})
+	}
 }
