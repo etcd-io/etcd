@@ -153,6 +153,98 @@ func TestCheckTxnAuth(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	inRangeCompare := &pb.Compare{
+		Key:      []byte("foo"),
+		RangeEnd: []byte("zoo"),
+	}
+
+	outOfRangeCompare := &pb.Compare{
+		Key:      []byte("boo"),
+		RangeEnd: []byte("zoo"),
+	}
+
+	nilRequestPut := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: nil,
+		},
+	}
+
+	inRangeRequestPut := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key: []byte("foo"),
+			},
+		},
+	}
+
+	outOfRangeRequestPut := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key: []byte("boo"),
+			},
+		},
+	}
+
+	nilRequestRange := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: nil,
+		},
+	}
+
+	inRangeRequestRange := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{
+				Key:      []byte("foo"),
+				RangeEnd: []byte("zoo"),
+			},
+		},
+	}
+
+	outOfRangeRequestRange := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+			},
+		},
+	}
+
+	nilRequestDeleteRange := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: nil,
+		},
+	}
+
+	inRangeRequestDeleteRange := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("foo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   true,
+			},
+		},
+	}
+
+	outOfRangeRequestDeleteRange := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   true,
+			},
+		},
+	}
+
+	outOfRangeRequestDeleteRangeKvFalse := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   false,
+			},
+		},
+	}
+
 	tests := []struct {
 		name       string
 		txnRequest *pb.TxnRequest
@@ -161,355 +253,123 @@ func TestCheckTxnAuth(t *testing.T) {
 		{
 			name: "Out of range compare is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Compare: []*pb.Compare{
-					{
-						Key:      []byte("boo"),
-						RangeEnd: []byte("zoo"),
-					},
-				},
-				Success: []*pb.RequestOp{},
+				Compare: []*pb.Compare{outOfRangeCompare},
 			},
 			err: auth.ErrPermissionDenied,
 		},
 		{
 			name: "In range compare is authorized",
 			txnRequest: &pb.TxnRequest{
-				Compare: []*pb.Compare{
-					{
-						Key:      []byte("foo"),
-						RangeEnd: []byte("zoo"),
-					},
-				},
-				Success: []*pb.RequestOp{},
+				Compare: []*pb.Compare{inRangeCompare},
 			},
 			err: nil,
 		},
 		{
 			name: "Nil request range is always authorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestRange{
-							RequestRange: nil,
-						},
-					},
-				},
+				Success: []*pb.RequestOp{nilRequestRange},
 			},
 			err: nil,
 		},
 		{
 			name: "Range request in range is authorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestRange{
-							RequestRange: &pb.RangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestRange{
-							RequestRange: &pb.RangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{inRangeRequestRange},
+				Failure: []*pb.RequestOp{inRangeRequestRange},
 			},
 			err: nil,
 		},
 		{
 			name: "Range request out of range success case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestRange{
-							RequestRange: &pb.RangeRequest{
-								Key:      []byte("boo"),
-								RangeEnd: []byte("zoo"),
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestRange{
-							RequestRange: &pb.RangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{outOfRangeRequestRange},
+				Failure: []*pb.RequestOp{inRangeRequestRange},
 			},
 			err: auth.ErrPermissionDenied,
 		},
 		{
 			name: "Range request out of range failure case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestRange{
-							RequestRange: &pb.RangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestRange{
-							RequestRange: &pb.RangeRequest{
-								Key:      []byte("boo"),
-								RangeEnd: []byte("zoo"),
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{inRangeRequestRange},
+				Failure: []*pb.RequestOp{outOfRangeRequestRange},
 			},
 			err: auth.ErrPermissionDenied,
 		},
 		{
 			name: "Nil Put request is always authorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestPut{
-							RequestPut: nil,
-						},
-					},
-				},
+				Success: []*pb.RequestOp{nilRequestPut},
 			},
 			err: nil,
 		},
 		{
 			name: "Put request in range in authorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestPut{
-							RequestPut: &pb.PutRequest{
-								Key: []byte("foo"),
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestPut{
-							RequestPut: &pb.PutRequest{
-								Key: []byte("foo"),
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{inRangeRequestPut},
+				Failure: []*pb.RequestOp{inRangeRequestPut},
 			},
 			err: nil,
 		},
 		{
 			name: "Put request out of range success case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestPut{
-							RequestPut: &pb.PutRequest{
-								Key: []byte("boo"),
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestPut{
-							RequestPut: &pb.PutRequest{
-								Key: []byte("foo"),
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{outOfRangeRequestPut},
+				Failure: []*pb.RequestOp{inRangeRequestPut},
 			},
 			err: auth.ErrPermissionDenied,
 		},
 		{
 			name: "Put request out of range failure case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestPut{
-							RequestPut: &pb.PutRequest{
-								Key: []byte("foo"),
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestPut{
-							RequestPut: &pb.PutRequest{
-								Key: []byte("boo"),
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{inRangeRequestPut},
+				Failure: []*pb.RequestOp{outOfRangeRequestPut},
 			},
 			err: auth.ErrPermissionDenied,
 		},
 		{
 			name: "Nil delete request is authorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: nil,
-						},
-					},
-				},
+				Success: []*pb.RequestOp{nilRequestDeleteRange},
 			},
 			err: nil,
 		},
 		{
 			name: "Delete range request in range is authorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   true,
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   true,
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
+				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
 			},
 			err: nil,
 		},
 		{
 			name: "Delete range request out of range success case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("boo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   true,
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   true,
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{outOfRangeRequestDeleteRange},
+				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
 			},
 			err: auth.ErrPermissionDenied,
 		},
 		{
 			name: "Delete range request out of range failure case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   true,
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("boo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   true,
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
+				Failure: []*pb.RequestOp{outOfRangeRequestDeleteRange},
 			},
 			err: auth.ErrPermissionDenied,
 		},
 		{
 			name: "Delete range request out of range and PrevKv false success case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("boo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   false,
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   true,
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{outOfRangeRequestDeleteRangeKvFalse},
+				Failure: []*pb.RequestOp{inRangeRequestDeleteRange},
 			},
 			err: auth.ErrPermissionDenied,
 		},
 		{
 			name: "Delete range request out of range and PrevKv false failure case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Success: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("foo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   true,
-							},
-						},
-					},
-				},
-				Failure: []*pb.RequestOp{
-					{
-						Request: &pb.RequestOp_RequestDeleteRange{
-							RequestDeleteRange: &pb.DeleteRangeRequest{
-								Key:      []byte("boo"),
-								RangeEnd: []byte("zoo"),
-								PrevKv:   false,
-							},
-						},
-					},
-				},
+				Success: []*pb.RequestOp{inRangeRequestDeleteRange},
+				Failure: []*pb.RequestOp{outOfRangeRequestDeleteRangeKvFalse},
 			},
 			err: auth.ErrPermissionDenied,
 		},
