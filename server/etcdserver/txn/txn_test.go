@@ -159,7 +159,7 @@ func TestCheckTxnAuth(t *testing.T) {
 		err        error
 	}{
 		{
-			name: "Out of range compare is unathorized",
+			name: "Out of range compare is unauthorized",
 			txnRequest: &pb.TxnRequest{
 				Compare: []*pb.Compare{
 					{
@@ -169,6 +169,18 @@ func TestCheckTxnAuth(t *testing.T) {
 				Success: []*pb.RequestOp{},
 			},
 			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "In range compare is authorized",
+			txnRequest: &pb.TxnRequest{
+				Compare: []*pb.Compare{
+					{
+						Key: []byte("foo"),
+					},
+				},
+				Success: []*pb.RequestOp{},
+			},
+			err: nil,
 		},
 		{
 			name: "Nil request range is always authorized",
@@ -184,9 +196,19 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Range request in range is authorised",
+			name: "Range request in range is authorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+							},
+						},
+					},
+				},
+				Failure: []*pb.RequestOp{
 					{
 						Request: &pb.RequestOp_RequestRange{
 							RequestRange: &pb.RangeRequest{
@@ -200,9 +222,45 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Range request out of range is unauthorized",
+			name: "Range request out of range success case is unauthorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Key:      []byte("boo"),
+								RangeEnd: []byte("zoo"),
+							},
+						},
+					},
+				},
+				Failure: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Range request out of range failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+							},
+						},
+					},
+				},
+				Failure: []*pb.RequestOp{
 					{
 						Request: &pb.RequestOp_RequestRange{
 							RequestRange: &pb.RangeRequest{
@@ -216,7 +274,7 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: auth.ErrPermissionDenied,
 		},
 		{
-			name: "Nil Put request is authorized",
+			name: "Nil Put request is always authorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
 					{
@@ -240,13 +298,55 @@ func TestCheckTxnAuth(t *testing.T) {
 						},
 					},
 				},
+				Failure: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								Key: []byte("foo"),
+							},
+						},
+					},
+				},
 			},
 			err: nil,
 		},
 		{
-			name: "Put request out of range is unauthorized",
+			name: "Put request out of range success case is unauthorized",
 			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								Key: []byte("boo"),
+							},
+						},
+					},
+				},
+				Failure: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								Key: []byte("foo"),
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Put request out of range failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								Key: []byte("foo"),
+							},
+						},
+					},
+				},
+				Failure: []*pb.RequestOp{
 					{
 						Request: &pb.RequestOp_RequestPut{
 							RequestPut: &pb.PutRequest{
@@ -272,14 +372,20 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Authorize delete range in range compare and rerquest",
+			name: "Delete range request in range is authorized",
 			txnRequest: &pb.TxnRequest{
-				Compare: []*pb.Compare{
+				Success: []*pb.RequestOp{
 					{
-						Key: []byte("foo"),
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   true,
+							},
+						},
 					},
 				},
-				Success: []*pb.RequestOp{
+				Failure: []*pb.RequestOp{
 					{
 						Request: &pb.RequestOp_RequestDeleteRange{
 							RequestDeleteRange: &pb.DeleteRangeRequest{
@@ -294,14 +400,48 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Unauthorize delete range out of range keys",
+			name: "Delete range request out of range success case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Compare: []*pb.Compare{
+				Success: []*pb.RequestOp{
 					{
-						Key: []byte("foo"),
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("boo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   true,
+							},
+						},
 					},
 				},
+				Failure: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   true,
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Delete range request out of range failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   true,
+							},
+						},
+					},
+				},
+				Failure: []*pb.RequestOp{
 					{
 						Request: &pb.RequestOp_RequestDeleteRange{
 							RequestDeleteRange: &pb.DeleteRangeRequest{
@@ -316,14 +456,48 @@ func TestCheckTxnAuth(t *testing.T) {
 			err: auth.ErrPermissionDenied,
 		},
 		{
-			name: "Unauthorize delete range out of range keys and PrevKv false",
+			name: "Delete range request out of range and PrevKv false success case is unauthorized",
 			txnRequest: &pb.TxnRequest{
-				Compare: []*pb.Compare{
+				Success: []*pb.RequestOp{
 					{
-						Key: []byte("foo"),
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("boo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   false,
+							},
+						},
 					},
 				},
+				Failure: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   true,
+							},
+						},
+					},
+				},
+			},
+			err: auth.ErrPermissionDenied,
+		},
+		{
+			name: "Delete range request out of range and PrevKv false failure case is unauthorized",
+			txnRequest: &pb.TxnRequest{
 				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestDeleteRange{
+							RequestDeleteRange: &pb.DeleteRangeRequest{
+								Key:      []byte("foo"),
+								RangeEnd: []byte("zoo"),
+								PrevKv:   true,
+							},
+						},
+					},
+				},
+				Failure: []*pb.RequestOp{
 					{
 						Request: &pb.RequestOp_RequestDeleteRange{
 							RequestDeleteRange: &pb.DeleteRangeRequest{
