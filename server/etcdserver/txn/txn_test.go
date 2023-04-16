@@ -163,7 +163,8 @@ func TestCheckTxnAuth(t *testing.T) {
 			txnRequest: &pb.TxnRequest{
 				Compare: []*pb.Compare{
 					{
-						Key: []byte("boo"),
+						Key:      []byte("boo"),
+						RangeEnd: []byte("zoo"),
 					},
 				},
 				Success: []*pb.RequestOp{},
@@ -175,7 +176,8 @@ func TestCheckTxnAuth(t *testing.T) {
 			txnRequest: &pb.TxnRequest{
 				Compare: []*pb.Compare{
 					{
-						Key: []byte("foo"),
+						Key:      []byte("foo"),
+						RangeEnd: []byte("zoo"),
 					},
 				},
 				Success: []*pb.RequestOp{},
