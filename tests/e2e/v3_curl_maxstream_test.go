@@ -30,7 +30,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	testutils "go.etcd.io/etcd/tests/v3/framework/utils"
 )
 
 // TestV3Curl_MaxStreams_BelowLimit_NoTLS_Small tests no TLS

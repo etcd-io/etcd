@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	testutils "go.etcd.io/etcd/tests/v3/framework/utils"
 )
 
 func TestWatch(t *testing.T) {

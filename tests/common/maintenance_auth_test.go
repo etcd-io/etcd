@@ -24,7 +24,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	testutils "go.etcd.io/etcd/tests/v3/framework/utils"
 )
 
 /*

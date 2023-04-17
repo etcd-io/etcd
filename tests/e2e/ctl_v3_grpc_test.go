@@ -27,7 +27,7 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	testutils "go.etcd.io/etcd/tests/v3/framework/utils"
 )
 
 func TestAuthority(t *testing.T) {

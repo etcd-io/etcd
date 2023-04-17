@@ -60,7 +60,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/server/v3/verify"
 	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	testutils "go.etcd.io/etcd/tests/v3/framework/utils"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"

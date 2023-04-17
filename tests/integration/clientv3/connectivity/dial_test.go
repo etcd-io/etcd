@@ -25,7 +25,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	testutils "go.etcd.io/etcd/tests/v3/framework/utils"
 	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 	"google.golang.org/grpc"
 )

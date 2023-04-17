@@ -31,7 +31,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	testutils "go.etcd.io/etcd/tests/v3/framework/utils"
 )
 
 func TestDowngradeUpgradeClusterOf1(t *testing.T) {

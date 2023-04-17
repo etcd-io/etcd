@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	testutils "go.etcd.io/etcd/tests/v3/framework/utils"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 )
