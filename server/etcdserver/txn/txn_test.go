@@ -26,6 +26,7 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/lease"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -100,150 +101,9 @@ func TestWriteTxnPanic(t *testing.T) {
 }
 
 func TestCheckTxnAuth(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
-
-	simpleTokenTTLDefault := 300 * time.Second
-	tokenTypeSimple := "simple"
-	dummyIndexWaiter := func(index uint64) <-chan struct{} {
-		ch := make(chan struct{}, 1)
-		go func() {
-			ch <- struct{}{}
-		}()
-		return ch
-	}
-
-	tp, _ := auth.NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
-
-	as := auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), tp, 4)
-
-	// create "root" user and "foo" user with limited range
-	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "rw"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
-		Name: "rw",
-		Perm: &authpb.Permission{
-			PermType: authpb.READWRITE,
-			Key:      []byte("foo"),
-			RangeEnd: []byte("zoo"),
-		},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "foo"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo", Password: "foo"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "rw"}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := as.AuthEnable(); err != nil {
-		t.Fatal(err)
-	}
-
-	inRangeCompare := &pb.Compare{
-		Key:      []byte("foo"),
-		RangeEnd: []byte("zoo"),
-	}
-
-	outOfRangeCompare := &pb.Compare{
-		Key:      []byte("boo"),
-		RangeEnd: []byte("zoo"),
-	}
-
-	nilRequestPut := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestPut{
-			RequestPut: nil,
-		},
-	}
-
-	inRangeRequestPut := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestPut{
-			RequestPut: &pb.PutRequest{
-				Key: []byte("foo"),
-			},
-		},
-	}
-
-	outOfRangeRequestPut := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestPut{
-			RequestPut: &pb.PutRequest{
-				Key: []byte("boo"),
-			},
-		},
-	}
-
-	nilRequestRange := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestRange{
-			RequestRange: nil,
-		},
-	}
-
-	inRangeRequestRange := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestRange{
-			RequestRange: &pb.RangeRequest{
-				Key:      []byte("foo"),
-				RangeEnd: []byte("zoo"),
-			},
-		},
-	}
-
-	outOfRangeRequestRange := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestRange{
-			RequestRange: &pb.RangeRequest{
-				Key:      []byte("boo"),
-				RangeEnd: []byte("zoo"),
-			},
-		},
-	}
-
-	nilRequestDeleteRange := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestDeleteRange{
-			RequestDeleteRange: nil,
-		},
-	}
-
-	inRangeRequestDeleteRange := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestDeleteRange{
-			RequestDeleteRange: &pb.DeleteRangeRequest{
-				Key:      []byte("foo"),
-				RangeEnd: []byte("zoo"),
-				PrevKv:   true,
-			},
-		},
-	}
-
-	outOfRangeRequestDeleteRange := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestDeleteRange{
-			RequestDeleteRange: &pb.DeleteRangeRequest{
-				Key:      []byte("boo"),
-				RangeEnd: []byte("zoo"),
-				PrevKv:   true,
-			},
-		},
-	}
-
-	outOfRangeRequestDeleteRangeKvFalse := &pb.RequestOp{
-		Request: &pb.RequestOp_RequestDeleteRange{
-			RequestDeleteRange: &pb.DeleteRangeRequest{
-				Key:      []byte("boo"),
-				RangeEnd: []byte("zoo"),
-				PrevKv:   false,
-			},
-		},
-	}
+	as := setupAuth(t, be)
 
 	tests := []struct {
 		name       string
@@ -384,3 +244,142 @@ func TestCheckTxnAuth(t *testing.T) {
 		})
 	}
 }
+
+// CheckTxnAuth test setup.
+func setupAuth(t *testing.T, be backend.Backend) auth.AuthStore {
+	lg := zaptest.NewLogger(t)
+
+	simpleTokenTTLDefault := 300 * time.Second
+	tokenTypeSimple := "simple"
+	dummyIndexWaiter := func(index uint64) <-chan struct{} {
+		ch := make(chan struct{}, 1)
+		go func() {
+			ch <- struct{}{}
+		}()
+		return ch
+	}
+
+	tp, _ := auth.NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
+
+	as := auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), tp, 4)
+
+	// create "root" user and "foo" user with limited range
+	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "rw"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "rw",
+		Perm: &authpb.Permission{
+			PermType: authpb.READWRITE,
+			Key:      []byte("foo"),
+			RangeEnd: []byte("zoo"),
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "foo"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo", Password: "foo"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "rw"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := as.AuthEnable(); err != nil {
+		t.Fatal(err)
+	}
+
+	return as
+}
+
+// CheckTxnAuth variables setup.
+var (
+	inRangeCompare = &pb.Compare{
+		Key:      []byte("foo"),
+		RangeEnd: []byte("zoo"),
+	}
+	outOfRangeCompare = &pb.Compare{
+		Key:      []byte("boo"),
+		RangeEnd: []byte("zoo"),
+	}
+	nilRequestPut = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: nil,
+		},
+	}
+	inRangeRequestPut = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key: []byte("foo"),
+			},
+		},
+	}
+	outOfRangeRequestPut = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key: []byte("boo"),
+			},
+		},
+	}
+	nilRequestRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: nil,
+		},
+	}
+	inRangeRequestRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{
+				Key:      []byte("foo"),
+				RangeEnd: []byte("zoo"),
+			},
+		},
+	}
+	outOfRangeRequestRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+			},
+		},
+	}
+	nilRequestDeleteRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: nil,
+		},
+	}
+	inRangeRequestDeleteRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("foo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   true,
+			},
+		},
+	}
+	outOfRangeRequestDeleteRange = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   true,
+			},
+		},
+	}
+	outOfRangeRequestDeleteRangeKvFalse = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key:      []byte("boo"),
+				RangeEnd: []byte("zoo"),
+				PrevKv:   false,
+			},
+		},
+	}
+)
