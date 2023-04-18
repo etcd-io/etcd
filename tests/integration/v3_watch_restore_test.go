@@ -17,14 +17,10 @@ package integration
 import (
 	"context"
 	"fmt"
-	"strings"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -58,9 +54,7 @@ func MustFetchNotEmptyMetric(tb testing.TB, member *integration.Member, metric s
 func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	integration.BeforeTest(t)
 
-	logMonitor := newTestingLogfMonitor(t)
-
-	clus := integration.NewCluster(logMonitor, &integration.ClusterConfig{
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
 		Size:                   3,
 		SnapshotCount:          10,
 		SnapshotCatchUpEntries: 5,
@@ -95,6 +89,14 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 
 	kvc := integration.ToGRPC(clus.Client(1)).KV
 
+	// to trigger snapshot from the leader to the stopped follower
+	for i := 0; i < 15; i++ {
+		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+		if err != nil {
+			t.Errorf("#%d: couldn't put key (%v)", i, err)
+		}
+	}
+
 	// NOTE: When starting a new cluster with 3 members, each member will
 	// apply 3 ConfChange directly at the beginning before a leader is
 	// elected. Leader will apply 3 MemberAttrSet and 1 ClusterVersionSet
@@ -108,24 +110,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	//
 	// Since there is no way to confirm server has compacted the log, we
 	// use log monitor to watch and expect "compacted Raft logs" content.
-	logSubID := "compacted"
-	logSub := newLineCountExpecter("compacted Raft logs", 4) // two members
-	logMonitor.addSubscriber(logSubID, logSub)
-
-	// to trigger snapshot from the leader to the stopped follower
-	for i := 0; i < 15; i++ {
-		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
-		if err != nil {
-			t.Errorf("#%d: couldn't put key (%v)", i, err)
-		}
-	}
-
-	// ensure two members has compacted the log twice.
-	if err := logSub.wait(5 * time.Second); err != nil {
-		t.Fatal("Failed to ensure that members compacted Raft log in 5 seconds")
-	}
-	logMonitor.delSubscriber(logSubID)
-	t.Logf("two members have compacted raft logs")
+	expectMemberLog(t, clus.Members[initialLead], 5*time.Second, "compacted Raft logs", 2)
 
 	// After RecoverPartition, leader L will send snapshot to slow F_m0
 	// follower, because F_m0(index:8) is 'out of date' compared to
@@ -153,6 +138,8 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 		// 0 if already received, 1 if receiving
 		t.Fatalf("inflight snapshot receives expected 0 or 1, got %q", receives)
 	}
+
+	expectMemberLog(t, clus.Members[0], 5*time.Second, "received and saved database snapshot", 1)
 
 	t.Logf("sleeping for 2 seconds")
 	time.Sleep(2 * time.Second)
@@ -186,88 +173,15 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	}
 }
 
-type lineCountExpecter struct {
-	doneOnce sync.Once
-	doneCh   chan struct{}
-
-	content string
-	count   int64
-	seen    int64
-}
-
-func newLineCountExpecter(expectedContent string, expectedCount int64) *lineCountExpecter {
-	return &lineCountExpecter{
-		doneCh:  make(chan struct{}),
-		content: expectedContent,
-		count:   expectedCount,
-	}
-}
-
-func (le *lineCountExpecter) Notify(log string) {
-	if !strings.Contains(log, le.content) {
-		return
-	}
-
-	if atomic.AddInt64(&le.seen, 1) >= le.count {
-		le.doneOnce.Do(func() {
-			close(le.doneCh)
-		})
-	}
-}
-
-func (le *lineCountExpecter) wait(timeout time.Duration) error {
+func expectMemberLog(t *testing.T, m *integration.Member, timeout time.Duration, s string, count int) {
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 
-	select {
-	case <-le.doneCh:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+	lines, err := m.LogObserver.Expect(ctx, s, count)
+	if err != nil {
+		t.Fatalf("failed to expect (log:%s, count:%v): %v", s, count, err)
 	}
-}
-
-type testingLogfSubscriber interface {
-	Notify(log string)
-}
-
-// testingLogfMonitor is to monitor t.Logf output.
-type testingLogfMonitor struct {
-	testutil.TB
-
-	mu          sync.RWMutex
-	subscribers map[string]testingLogfSubscriber
-}
-
-func newTestingLogfMonitor(tb testutil.TB) *testingLogfMonitor {
-	return &testingLogfMonitor{
-		TB:          tb,
-		subscribers: make(map[string]testingLogfSubscriber),
+	for _, line := range lines {
+		t.Logf("[expected line]: %v", line)
 	}
-}
-
-func (m *testingLogfMonitor) addSubscriber(id string, sub testingLogfSubscriber) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.subscribers[id] = sub
-}
-
-func (m *testingLogfMonitor) delSubscriber(id string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.subscribers, id)
-}
-
-func (m *testingLogfMonitor) Logf(format string, args ...interface{}) {
-	m.mu.RLock()
-	if len(m.subscribers) > 0 {
-		log := fmt.Sprintf(format, args...)
-
-		for _, sub := range m.subscribers {
-			sub.Notify(log)
-		}
-	}
-	m.mu.RUnlock()
-
-	m.TB.Logf(format, args...)
 }
