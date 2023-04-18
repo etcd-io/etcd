@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadonlyTxnError(t *testing.T) {
@@ -238,9 +239,7 @@ func TestCheckTxnAuth(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := CheckTxnAuth(as, &auth.AuthInfo{Username: "foo", Revision: 8}, tt.txnRequest)
-			if err != tt.err {
-				t.Errorf("expected error to be: %v; got: %v", tt.err, err)
-			}
+			assert.Equal(t, tt.err, err)
 		})
 	}
 }
@@ -265,10 +264,10 @@ func setupAuth(t *testing.T, be backend.Backend) auth.AuthStore {
 
 	// create "root" user and "foo" user with limited range
 	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "rw"}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	if _, err := as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
 		Name: "rw",
@@ -278,23 +277,23 @@ func setupAuth(t *testing.T, be backend.Backend) auth.AuthStore {
 			RangeEnd: []byte("zoo"),
 		},
 	}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "foo"}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo", Password: "foo"}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "rw"}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 
 	if err := as.AuthEnable(); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 
 	return as
