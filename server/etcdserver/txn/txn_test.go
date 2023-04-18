@@ -263,38 +263,36 @@ func setupAuth(t *testing.T, be backend.Backend) auth.AuthStore {
 	as := auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), tp, 4)
 
 	// create "root" user and "foo" user with limited range
-	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"}); err != nil {
-		require.NoError(t, err)
-	}
-	if _, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "rw"}); err != nil {
-		require.NoError(t, err)
-	}
-	if _, err := as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"})
+	require.NoError(t, err)
+
+	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "rw"})
+	require.NoError(t, err)
+
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
 		Name: "rw",
 		Perm: &authpb.Permission{
 			PermType: authpb.READWRITE,
 			Key:      []byte("foo"),
 			RangeEnd: []byte("zoo"),
 		},
-	}); err != nil {
-		require.NoError(t, err)
-	}
-	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "foo"}); err != nil {
-		require.NoError(t, err)
-	}
-	if _, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo", Password: "foo"}); err != nil {
-		require.NoError(t, err)
-	}
-	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"}); err != nil {
-		require.NoError(t, err)
-	}
-	if _, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "rw"}); err != nil {
-		require.NoError(t, err)
-	}
+	})
+	require.NoError(t, err)
 
-	if err := as.AuthEnable(); err != nil {
-		require.NoError(t, err)
-	}
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "foo"})
+	require.NoError(t, err)
+
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "foo", Password: "foo"})
+	require.NoError(t, err)
+
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"})
+	require.NoError(t, err)
+
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "rw"})
+	require.NoError(t, err)
+
+	err = as.AuthEnable()
+	require.NoError(t, err)
 
 	return as
 }
