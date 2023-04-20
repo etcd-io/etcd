@@ -17,14 +17,17 @@ on:
         type: string
 permissions: read-all
 jobs:
+  goversion:
+    uses: ./.github/workflows/go-version.yaml
   test:
     timeout-minutes: 210
     runs-on: ubuntu-latest
+    needs: goversion
     steps:
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
     - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
       with:
-        go-version: '1.19.8'
+        go-version: ${{ needs.goversion.outputs.goversion }}
     - name: test-robustness
       env:
         ETCD_BRANCH: "${{ inputs.etcdBranch }}"
