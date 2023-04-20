@@ -133,7 +133,7 @@ func Test_Authority(t *testing.T) {
 
 				testutils.ExecuteUntil(ctx, t, func() {
 					putRequestMethod := "/etcdserverpb.KV/Put"
-					_, err := kv.Put(context.TODO(), "foo", "bar")
+					_, err := cc.Put(context.TODO(), "foo", "bar")
 					if err != nil {
 						t.Fatal(err)
 					}
