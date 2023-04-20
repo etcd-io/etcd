@@ -450,6 +450,16 @@ func TestIsOpPermitted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// Drop the user's permission from cache and expect a permission denied
+	// error.
+	as.rangePermCacheMu.Lock()
+	delete(as.rangePermCache, "foo")
+	as.rangePermCacheMu.Unlock()
+	if err := as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType); err != ErrPermissionDenied {
+		t.Fatal(err)
+	}
+
 }
 
 func TestGetUser(t *testing.T) {
