@@ -2,8 +2,11 @@ name: Tests
 on: [push, pull_request]
 permissions: read-all
 jobs:
+  goversion:
+    uses: ./.github/workflows/go-version.yaml
   test:
     runs-on: ubuntu-latest
+    needs: goversion
     strategy:
       fail-fast: false
       matrix:
@@ -17,7 +20,7 @@ jobs:
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
     - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
       with:
-        go-version: "1.19.8"
+        go-version: ${{ needs.goversion.outputs.goversion }}
     - run: date
     - env:
         TARGET: ${{ matrix.target }}
