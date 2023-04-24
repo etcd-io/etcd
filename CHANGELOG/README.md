@@ -2,7 +2,7 @@
 
 ## Production recommendation
 
-The minimum recommended etcd versions to run in **production** are v3.4.8+ and v3.5.4+. Refer to the [versioning policy](https://etcd.io/docs/v3.5/op-guide/versioning/) for more details.
+The minimum recommended etcd versions to run in **production** are v3.4.22+ and v3.5.6+. Refer to the [versioning policy](https://etcd.io/docs/v3.5/op-guide/versioning/) for more details.
 
 ### v3.5 data corruption issue 
 
