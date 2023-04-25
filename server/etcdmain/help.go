@@ -101,7 +101,8 @@ Clustering:
   --initial-cluster 'default=http://localhost:2380'
     Initial cluster configuration for bootstrapping.
   --initial-cluster-state 'new'
-    Initial cluster state ('new' or 'existing').
+    Initial cluster state ('new' when bootstrapping a new cluster or 'existing' when adding new members to an existing cluster).
+    After successful initialization (bootstrapping or adding), flag is ignored on restarts.
   --initial-cluster-token 'etcd-cluster'
     Initial cluster token for the etcd cluster during bootstrap.
     Specifying this can protect you from unintended cross-cluster interaction when running multiple clusters.
