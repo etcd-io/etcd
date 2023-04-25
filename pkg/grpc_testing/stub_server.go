@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
+	"sync/atomic"
 
 	"google.golang.org/grpc"
 	testpb "google.golang.org/grpc/test/grpc_testing"
@@ -93,14 +95,16 @@ func (ss *StubServer) Addr() string {
 
 type dummyStubServer struct {
 	testpb.UnimplementedTestServiceServer
-	body []byte
+	counter uint64
 }
 
-func (d dummyStubServer) UnaryCall(context.Context, *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
+func (d *dummyStubServer) UnaryCall(context.Context, *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
+	newCount := atomic.AddUint64(&d.counter, 1)
+
 	return &testpb.SimpleResponse{
 		Payload: &testpb.Payload{
 			Type: testpb.PayloadType_COMPRESSABLE,
-			Body: d.body,
+			Body: []byte(strconv.FormatUint(newCount, 10)),
 		},
 	}, nil
 }
@@ -108,5 +112,5 @@ func (d dummyStubServer) UnaryCall(context.Context, *testpb.SimpleRequest) (*tes
 // NewDummyStubServer creates a simple test server that serves Unary calls with
 // responses with the given payload.
 func NewDummyStubServer(body []byte) *StubServer {
-	return New(dummyStubServer{body: body})
+	return New(&dummyStubServer{})
 }
