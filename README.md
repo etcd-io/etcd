@@ -27,6 +27,10 @@ etcd is used [in production by many companies](./ADOPTERS.md), and the developme
 
 See [etcdctl][etcdctl] for a simple command line client.
 
+![etcd reliability is important](logos/etcd-xkcd-2347.png)
+
+Credits to Josh Berkus and xkcd.com/2347
+
 [raft]: https://raft.github.io/
 [k8s]: http://kubernetes.io/
 [doorman]: https://github.com/youtube/doorman
