@@ -44,6 +44,7 @@ log_callout -e "\\nRunning gofast (gogo) proto generation..."
 for dir in ${DIRS}; do
   run pushd "${dir}"
     run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
+      -I"${GRPC_GATEWAY_ROOT}" \
       --plugin="${GOFAST_BIN}" ./**/*.proto
 
     run sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./**/*.pb.go
@@ -64,6 +65,7 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
   log_callout "grpc & swagger for: ${pb}.proto"
   run protoc -I. \
       -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
+      -I"${GRPC_GATEWAY_ROOT}" \
       -I"${GOGOPROTO_PATH}" \
       -I"${ETCD_ROOT_DIR}/.." \
       -I"${RAFT_ROOT}" \
@@ -94,10 +96,6 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
   run mv  Documentation/dev-guide/apispec/swagger/${pb}.swagger.json \
     Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
-
-log_callout -e "\\nRunning swagger ..."
-run_go_tool github.com/hexfusion/schwag -input=Documentation/dev-guide/apispec/swagger/rpc.swagger.json
-
 
 if [ "${1:-}" != "--skip-protodoc" ]; then
   log_callout "protodoc is auto-generating grpc API reference documentation..."
