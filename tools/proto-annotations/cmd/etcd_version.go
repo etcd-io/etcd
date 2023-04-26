@@ -29,7 +29,9 @@ import (
 
 var (
 	// externalPackages that are not expected to have etcd version annotation.
-	externalPackages = []string{"io.prometheus.client", "grpc.binarylog.v1", "google.protobuf", "google.rpc", "google.api", "raftpb"}
+	externalPackages = []string{"io.prometheus.client", "grpc.binarylog.v1", "google.protobuf", "google.rpc", "google.api", "raftpb",
+		"grpc.gateway.protoc_gen_swagger.options",
+	}
 )
 
 // printEtcdVersion writes etcd_version proto annotation to stdout and returns any errors encountered when reading annotation.
