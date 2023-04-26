@@ -69,10 +69,12 @@ func registerSession(lg *zap.Logger, c *clientv3.Client, prefix string, addr str
 
 	em, err := endpoints.NewManager(c, prefix)
 	if err != nil {
+		ss.Close()
 		return nil, err
 	}
 	endpoint := endpoints.Endpoint{Addr: addr, Metadata: getMeta()}
 	if err = em.AddEndpoint(c.Ctx(), prefix+"/"+addr, endpoint, clientv3.WithLease(ss.Lease())); err != nil {
+		ss.Close()
 		return nil, err
 	}
 
