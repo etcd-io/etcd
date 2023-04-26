@@ -1,4 +1,5 @@
-FROM --platform=linux/ppc64le gcr.io/distroless/static-debian11
+ARG ARCH=amd64
+FROM --platform=linux/${ARCH} gcr.io/distroless/static-debian11
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
