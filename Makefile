@@ -137,7 +137,7 @@ verify-goimport:
 clean:
 	rm -f ./codecov
 	rm -rf ./covdir
-	rm -f ./bin/Dockerfile-release*
+	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/etcd*
 	rm -rf ./default.etcd
 	rm -rf ./tests/e2e/default.etcd

@@ -15,10 +15,10 @@ fi
 
 ARCH=$(go env GOARCH)
 VERSION="${VERSION}-${ARCH}"
-DOCKERFILE="Dockerfile-release.${ARCH}"
+DOCKERFILE="Dockerfile"
 
 if [ -z "${BINARYDIR:-}" ]; then
-  RELEASE="etcd-${1}"-$(go env GOOS)-$(go env GOARCH)
+  RELEASE="etcd-${1}"-$(go env GOOS)-${ARCH}
   BINARYDIR="${RELEASE}"
   TARFILE="${RELEASE}.tar.gz"
   TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
@@ -43,8 +43,8 @@ cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 if [ -z "${TAG:-}" ]; then
     # Fix incorrect image "Architecture" using buildkit
     # From https://stackoverflow.com/q/72144329/
-    DOCKER_BUILDKIT=1 docker build -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
-    DOCKER_BUILDKIT=1 docker build -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
+    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
 else
     docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
 fi
