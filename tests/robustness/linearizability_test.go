@@ -211,8 +211,12 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 	}
 	defer r.clus.Close()
 
+	// t.Failed() returns false during panicking. We need to forcibly
+	// save data on panicking.
+	// Refer to: https://github.com/golang/go/issues/49929
+	panicked := true
 	defer func() {
-		r.Report(t)
+		r.Report(t, panicked)
 	}()
 	r.operations, r.responses = runScenario(ctx, t, lg, r.clus, *traffic, failpoint)
 	forcestopCluster(r.clus)
@@ -225,6 +229,8 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 
 	r.patchedOperations = patchOperationBasedOnWatchEvents(r.operations, longestHistory(r.events))
 	r.visualizeHistory = model.ValidateOperationHistoryAndReturnVisualize(t, lg, r.patchedOperations)
+
+	panicked = false
 }
 
 func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, traffic trafficConfig, failpoint FailpointConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
