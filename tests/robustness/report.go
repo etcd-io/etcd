@@ -61,9 +61,9 @@ func testResultsDirectory(t *testing.T) string {
 	return path
 }
 
-func (r *report) Report(t *testing.T) {
+func (r *report) Report(t *testing.T, force bool) {
 	path := testResultsDirectory(t)
-	if t.Failed() {
+	if t.Failed() || force {
 		for i, member := range r.clus.Procs {
 			memberDataDir := filepath.Join(path, member.Config().Name)
 			persistMemberDataDir(t, r.lg, member, memberDataDir)
