@@ -293,7 +293,7 @@ function go_test {
   junit_filename_prefix=$(junitFilenamePrefix)
 
   if [ "${VERBOSE:-}" == "1" ]; then
-    goTestFlags="-v"
+    goTestFlags="-v "
   fi
 
   # Expanding patterns (like ./...) into list of packages
@@ -306,6 +306,10 @@ function go_test {
       log_error "Cannot resolve packages: ${packages}"
       return 255
     fi
+  fi
+
+  if [ "${mode}" == "fail_fast" ]; then
+    goTestFlags+="-failfast "
   fi
 
   local failures=""
