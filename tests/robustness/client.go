@@ -36,8 +36,8 @@ func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
 		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    1 * time.Millisecond,
-		DialKeepAliveTimeout: 5 * time.Millisecond,
+		DialKeepAliveTime:    10 * time.Second,
+		DialKeepAliveTimeout: 100 * time.Millisecond,
 	})
 	if err != nil {
 		return nil, err

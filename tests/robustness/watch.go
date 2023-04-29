@@ -40,8 +40,8 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 		c, err := clientv3.New(clientv3.Config{
 			Endpoints:            member.EndpointsGRPC(),
 			Logger:               zap.NewNop(),
-			DialKeepAliveTime:    1 * time.Millisecond,
-			DialKeepAliveTimeout: 5 * time.Millisecond,
+			DialKeepAliveTime:    10 * time.Second,
+			DialKeepAliveTimeout: 100 * time.Millisecond,
 		})
 		if err != nil {
 			t.Fatal(err)
