@@ -93,7 +93,7 @@ func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
 
 	// Send more requests
 	lastResponse := []byte{'1'}
-	totalRequests := 100
+	totalRequests := 1000
 	for i := 1; i < totalRequests; i++ {
 		resp, err := c.UnaryCall(context.TODO(), &testpb.SimpleRequest{}, grpc.WaitForReady(true))
 		if err != nil {
@@ -111,7 +111,7 @@ func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
 	// If the load balancing policy is pick first then return payload should equal number of requests
 	t.Logf("Last response: %v", string(lastResponse))
 	if lbPolicy == "pick_first" {
-		if string(lastResponse) != "100" {
+		if string(lastResponse) != "1000" {
 			t.Fatalf("unexpected total responses from foo: %s", string(lastResponse))
 		}
 	}
@@ -123,9 +123,9 @@ func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
 			t.Fatalf("couldn't convert to int: %s", string(lastResponse))
 		}
 
-		// Allow 10% tolerance as round robin is not perfect and we don't want the test to flake
+		// Allow 15% tolerance as round robin is not perfect and we don't want the test to flake
 		expected := float64(totalRequests) * 0.5
-		assert.InEpsilon(t, float64(expected), float64(responses), 0.1, "unexpected total responses from foo: %s", string(lastResponse))
+		assert.InEpsilon(t, float64(expected), float64(responses), 0.15, "unexpected total responses from foo: %s", string(lastResponse))
 	}
 }
 
