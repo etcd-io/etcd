@@ -34,6 +34,8 @@ const (
 	gracefullShutdownDuration = 200 * time.Millisecond
 	// readDeadlineTimeout is the maximum time to wait for a read operation
 	readDeadlineTimeout = 1 * time.Second
+	// maxConnRead read ahead up to 512 bytes to identify if the connection is GRPC
+	maxConnRead = 512
 )
 
 // ConnMux can multiple multiple HTTP and GRPC connections in the same address and port.
@@ -96,7 +98,7 @@ func (c *ConnMux) serve(conn net.Conn) {
 	conn.SetDeadline(time.Now().Add(readDeadlineTimeout))
 	defer conn.SetReadDeadline(time.Time{})
 
-	buf := make([]byte, 512)
+	buf := make([]byte, maxConnRead)
 	buffConn := newBufferedConn(conn)
 	// Check if is TLS or plain TCP
 	n, err := buffConn.sniffReader().Read(buf)
@@ -228,40 +230,38 @@ func (c *ConnMux) GRPCListener() net.Listener {
 // bufferedConn allows to peek in the buffer of the connection
 // without advancing the reader.
 type bufferedConn struct {
-	mu sync.Mutex
 	net.Conn
 	buf *bytes.Buffer
 }
 
 var _ net.Conn = &bufferedConn{}
 
-var bufferPool = sync.Pool{
-	New: func() interface{} {
-		return new(bytes.Buffer)
-	},
-}
-
 func newBufferedConn(c net.Conn) *bufferedConn {
 	return &bufferedConn{
 		Conn: c,
-		buf:  bufferPool.Get().(*bytes.Buffer),
+		buf:  new(bytes.Buffer),
 	}
 }
 
 func (b *bufferedConn) Read(p []byte) (int, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return io.MultiReader(b.buf, b.Conn).Read(p)
+	if b.buf == nil {
+		return b.Conn.Read(p)
+	}
+	n := b.buf.Len()
+	if n == 0 {
+		b.buf = nil
+		return b.Conn.Read(p)
+	}
+	if n < len(p) {
+		p = p[:n]
+	}
+	return b.buf.Read(p)
 }
 
 func (b *bufferedConn) Close() error {
-	// return the buffer to the pool
-	defer func() {
-		b.mu.Lock()
-		defer b.mu.Unlock()
-		b.buf.Reset()
-		bufferPool.Put(b.buf)
-	}()
+	if b.buf != nil {
+		b.buf = nil
+	}
 	return b.Conn.Close()
 }
 
@@ -271,49 +271,19 @@ func (b *bufferedConn) sniffReader() io.Reader {
 
 func isGRPCConnection(lg *zap.Logger, w io.Writer, r io.Reader) bool {
 	// check the http2 client preface
-	buf := make([]byte, 512)
+	buf := make([]byte, len(http2.ClientPreface))
 	n, err := r.Read(buf)
 	if err != nil || n < len(http2.ClientPreface) {
 		return false
 	}
 
-	if !bytes.Equal(buf[:len(http2.ClientPreface)], []byte(http2.ClientPreface)) {
+	if !bytes.Equal(buf, []byte(http2.ClientPreface)) {
 		lg.Debug("not found http2 client preface", zap.String("preface", string(buf)))
 		return false
 	}
 	lg.Debug("found http2 client preface", zap.Int("bytes read", n))
 
-	reader := r
-	if n > 33 {
-		reader = io.MultiReader(bytes.NewReader(buf[len(http2.ClientPreface):]), r)
-	}
-	framer := http2.NewFramer(w, reader)
-	// GRPC blocks until receive the Settings frame
-	// This means we should have the preface 24 + setting frame 9
-	// HTTP2 fails if we write it before forwarding
-	if n <= 33 {
-		lg.Debug("write http2 settings")
-		err = framer.WriteSettings()
-		if err != nil {
-			lg.Debug("error sending setting frame", zap.Error(err))
-			return false
-		}
-	}
-	// The server connection preface consists of a potentially empty
-	// SETTINGS frame (Section 6.5) that MUST be the first frame the server
-	// sends in the HTTP/2 connection.
-	f, err := framer.ReadFrame()
-	if err != nil {
-		lg.Debug("error reading frame", zap.Error(err))
-		return false
-	}
-	// The SETTINGS frames received from a peer as part of the connection
-	// preface MUST be acknowledged (see Section 6.5.3) after sending the
-	// connection preface.
-	if _, ok := f.(*http2.SettingsFrame); !ok {
-		lg.Debug("expected setting frame")
-	}
-
+	framer := http2.NewFramer(w, r)
 	// identify GRPC connections matching match headers names or values defined
 	// on https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
 	done := false
@@ -327,8 +297,12 @@ func isGRPCConnection(lg *zap.Logger, w io.Writer, r io.Reader) bool {
 		lg.Debug("found header", zap.String("name", hf.Name), zap.String("value", hf.Value))
 		if hf.Name == "content-type" {
 			isGRPC = strings.HasPrefix(hf.Value, "application/grpc")
+			done = true
 		}
-		done = true
+		if hf.Name == ":method" && hf.Value != "POST" {
+			isGRPC = false
+			done = true
+		}
 	})
 
 	lg.Debug("reading frames")
@@ -347,15 +321,25 @@ func isGRPCConnection(lg *zap.Logger, w io.Writer, r io.Reader) bool {
 				lg.Debug("found setting ACK frame")
 				continue
 			}
-			lg.Debug("found setting frame")
-			err := framer.WriteSettingsAck()
-			if err != nil {
-				lg.Debug("error writing settings frame", zap.Error(err))
+			// only write the settings frame if length is zero
+			// otherwise when passed to an http2 server with prior knowledge
+			// it will send a PROTOCOL_ERROR
+			if f.Length == 0 {
+				lg.Debug("write http2 settings")
+				err = framer.WriteSettings()
+				if err != nil {
+					lg.Debug("error sending setting frame", zap.Error(err))
+					return false
+				}
+			}
+		case *http2.ContinuationFrame:
+			if _, err := hdec.Write(f.HeaderBlockFragment()); err != nil {
 				return false
 			}
-
 		case *http2.HeadersFrame:
-			hdec.Write(f.HeaderBlockFragment())
+			if _, err := hdec.Write(f.HeaderBlockFragment()); err != nil {
+				return false
+			}
 		}
 	}
 	return isGRPC

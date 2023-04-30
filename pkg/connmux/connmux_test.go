@@ -76,7 +76,6 @@ func TestConnMux(t *testing.T) {
 	httpServer := &http.Server{
 		Handler: h2c.NewHandler(mux, h2s),
 	}
-	http2.ConfigureServer(httpServer, h2s)
 	go httpServer.Serve(httpL)
 	defer httpServer.Close()
 
@@ -158,7 +157,6 @@ func TestConnMuxConcurrency(t *testing.T) {
 	httpServer := &http.Server{
 		Handler: h2c.NewHandler(mux, h2s),
 	}
-	http2.ConfigureServer(httpServer, h2s)
 	go httpServer.Serve(httpL)
 
 	// GRPC Server
@@ -247,7 +245,7 @@ func verifyHTTPRequest(t *testing.T, client *http.Client, destination string) {
 	}
 	response, err := client.Do(request)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
