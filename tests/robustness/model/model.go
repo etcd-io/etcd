@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/anishathalye/porcupine"
@@ -27,7 +28,7 @@ import (
 type OperationType string
 
 const (
-	Get    OperationType = "get"
+	Range  OperationType = "range"
 	Put    OperationType = "put"
 	Delete OperationType = "delete"
 )
@@ -77,15 +78,16 @@ type TxnRequest struct {
 }
 
 type EtcdCondition struct {
-	Key           string
-	ExpectedValue ValueOrHash
+	Key              string
+	ExpectedRevision int64
 }
 
 type EtcdOperation struct {
-	Type    OperationType
-	Key     string
-	Value   ValueOrHash
-	LeaseID int64
+	Type       OperationType
+	Key        string
+	WithPrefix bool
+	Value      ValueOrHash
+	LeaseID    int64
 }
 
 type LeaseGrantRequest struct {
@@ -122,8 +124,13 @@ func Match(r1, r2 EtcdResponse) bool {
 }
 
 type EtcdOperationResult struct {
-	Value   ValueOrHash
+	KVs     []KeyValue
 	Deleted int64
+}
+
+type KeyValue struct {
+	Key string
+	ValueRevision
 }
 
 var leased = struct{}{}
@@ -136,9 +143,14 @@ type PossibleStates []EtcdState
 
 type EtcdState struct {
 	Revision  int64
-	KeyValues map[string]ValueOrHash
+	KeyValues map[string]ValueRevision
 	KeyLeases map[string]int64
 	Leases    map[int64]EtcdLease
+}
+
+type ValueRevision struct {
+	Value       ValueOrHash
+	ModRevision int64
 }
 
 type ValueOrHash struct {
@@ -200,7 +212,7 @@ func describeEtcdRequest(request EtcdRequest) string {
 func describeEtcdConditions(conds []EtcdCondition) string {
 	opsDescription := make([]string, len(conds))
 	for i := range conds {
-		opsDescription[i] = fmt.Sprintf("%s==%s", conds[i].Key, describeValueOrHash(conds[i].ExpectedValue))
+		opsDescription[i] = fmt.Sprintf("mod_rev(%s)==%d", conds[i].Key, conds[i].ExpectedRevision)
 	}
 	return strings.Join(opsDescription, " && ")
 }
@@ -219,20 +231,23 @@ func describeTxnResponse(request *TxnRequest, response *TxnResponse) string {
 	}
 	respDescription := make([]string, len(response.OpsResult))
 	for i := range response.OpsResult {
-		respDescription[i] = describeEtcdOperationResponse(request.Ops[i].Type, response.OpsResult[i])
+		respDescription[i] = describeEtcdOperationResponse(request.Ops[i], response.OpsResult[i])
 	}
 	return strings.Join(respDescription, ", ")
 }
 
 func describeEtcdOperation(op EtcdOperation) string {
 	switch op.Type {
-	case Get:
+	case Range:
+		if op.WithPrefix {
+			return fmt.Sprintf("range(%q)", op.Key)
+		}
 		return fmt.Sprintf("get(%q)", op.Key)
 	case Put:
 		if op.LeaseID != 0 {
 			return fmt.Sprintf("put(%q, %s, %d)", op.Key, describeValueOrHash(op.Value), op.LeaseID)
 		}
-		return fmt.Sprintf("put(%q, %s, nil)", op.Key, describeValueOrHash(op.Value))
+		return fmt.Sprintf("put(%q, %s)", op.Key, describeValueOrHash(op.Value))
 	case Delete:
 		return fmt.Sprintf("delete(%q)", op.Key)
 	default:
@@ -240,16 +255,28 @@ func describeEtcdOperation(op EtcdOperation) string {
 	}
 }
 
-func describeEtcdOperationResponse(op OperationType, resp EtcdOperationResult) string {
-	switch op {
-	case Get:
-		return describeValueOrHash(resp.Value)
+func describeEtcdOperationResponse(req EtcdOperation, resp EtcdOperationResult) string {
+	switch req.Type {
+	case Range:
+		if req.WithPrefix {
+			kvs := make([]string, len(resp.KVs))
+			for i, kv := range resp.KVs {
+				kvs[i] = describeValueOrHash(kv.Value)
+			}
+			return fmt.Sprintf("[%s]", strings.Join(kvs, ","))
+		} else {
+			if len(resp.KVs) == 0 {
+				return "nil"
+			} else {
+				return describeValueOrHash(resp.KVs[0].Value)
+			}
+		}
 	case Put:
 		return fmt.Sprintf("ok")
 	case Delete:
 		return fmt.Sprintf("deleted: %d", resp.Deleted)
 	default:
-		return fmt.Sprintf("<! unknown op: %q !>", op)
+		return fmt.Sprintf("<! unknown op: %q !>", req.Type)
 	}
 }
 
@@ -283,7 +310,7 @@ func step(states PossibleStates, request EtcdRequest, response EtcdResponse) (bo
 func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 	state := EtcdState{
 		Revision:  response.Revision,
-		KeyValues: map[string]ValueOrHash{},
+		KeyValues: map[string]ValueRevision{},
 		KeyLeases: map[string]int64{},
 		Leases:    map[int64]EtcdLease{},
 	}
@@ -292,15 +319,24 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 		if response.Txn.TxnResult {
 			return state
 		}
+		if len(request.Txn.Ops) != len(response.Txn.OpsResult) {
+			panic(fmt.Sprintf("Incorrect request %s, response %+v", describeEtcdRequest(request), describeEtcdResponse(request, response)))
+		}
 		for i, op := range request.Txn.Ops {
 			opResp := response.Txn.OpsResult[i]
 			switch op.Type {
-			case Get:
-				if opResp.Value.Value != "" && opResp.Value.Hash == 0 {
-					state.KeyValues[op.Key] = opResp.Value
+			case Range:
+				for _, kv := range opResp.KVs {
+					state.KeyValues[kv.Key] = ValueRevision{
+						Value:       kv.Value,
+						ModRevision: kv.ModRevision,
+					}
 				}
 			case Put:
-				state.KeyValues[op.Key] = op.Value
+				state.KeyValues[op.Key] = ValueRevision{
+					Value:       op.Value,
+					ModRevision: response.Revision,
+				}
 			case Delete:
 			default:
 				panic("Unknown operation")
@@ -345,7 +381,7 @@ func applyRequest(states PossibleStates, request EtcdRequest, response EtcdRespo
 
 // applyRequestToSingleState handles a successful request, returning updated state and response it would generate.
 func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
-	newKVs := map[string]ValueOrHash{}
+	newKVs := map[string]ValueRevision{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
 	}
@@ -354,7 +390,7 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 	case Txn:
 		success := true
 		for _, cond := range request.Txn.Conds {
-			if val := s.KeyValues[cond.Key]; val != cond.ExpectedValue {
+			if val := s.KeyValues[cond.Key]; val.ModRevision != cond.ExpectedRevision {
 				success = false
 				break
 			}
@@ -366,14 +402,37 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 		increaseRevision := false
 		for i, op := range request.Txn.Ops {
 			switch op.Type {
-			case Get:
-				opResp[i].Value = s.KeyValues[op.Key]
+			case Range:
+				opResp[i] = EtcdOperationResult{
+					KVs: []KeyValue{},
+				}
+				if op.WithPrefix {
+					for k, v := range s.KeyValues {
+						if strings.HasPrefix(k, op.Key) {
+							opResp[i].KVs = append(opResp[i].KVs, KeyValue{Key: k, ValueRevision: v})
+						}
+					}
+					sort.Slice(opResp[i].KVs, func(j, k int) bool {
+						return opResp[i].KVs[j].Key < opResp[i].KVs[k].Key
+					})
+				} else {
+					value, ok := s.KeyValues[op.Key]
+					if ok {
+						opResp[i].KVs = append(opResp[i].KVs, KeyValue{
+							Key:           op.Key,
+							ValueRevision: value,
+						})
+					}
+				}
 			case Put:
 				_, leaseExists := s.Leases[op.LeaseID]
 				if op.LeaseID != 0 && !leaseExists {
 					break
 				}
-				s.KeyValues[op.Key] = op.Value
+				s.KeyValues[op.Key] = ValueRevision{
+					Value:       op.Value,
+					ModRevision: s.Revision + 1,
+				}
 				increaseRevision = true
 				s = detachFromOldLease(s, op.Key)
 				if leaseExists {
