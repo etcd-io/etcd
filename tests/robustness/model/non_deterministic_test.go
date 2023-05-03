@@ -15,17 +15,20 @@
 package model
 
 import (
-	"encoding/json"
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
-func TestModelStep(t *testing.T) {
+func TestModelNonDeterministic(t *testing.T) {
+	type testOperation struct {
+		req     EtcdRequest
+		resp    EtcdNonDeterministicResponse
+		failure bool
+	}
 	tcs := []struct {
 		name       string
 		operations []testOperation
@@ -583,27 +586,27 @@ func TestModelStep(t *testing.T) {
 				{req: getRequest("key"), resp: getResponse("key", "4", 4, 4)},
 				{req: compareAndSetRequest("key", 4, "5"), resp: compareAndSetResponse(true, 5)},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(6)},
 			},
 		},
 		{
 			name: "Defragment success between all other request types",
 			operations: []testOperation{
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(1)},
 				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(1)},
 				{req: putWithLeaseRequest("key", "1", 1), resp: putResponse(2)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(2)},
 				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(3)},
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(4)},
 				{req: getRequest("key"), resp: getResponse("key", "4", 4, 4)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(4)},
 				{req: compareAndSetRequest("key", 4, "5"), resp: compareAndSetResponse(true, 5)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(5)},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(6)},
 			},
 		},
 		{
@@ -629,20 +632,12 @@ func TestModelStep(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			state := Etcd.Init()
+			state := NonDeterministicModel.Init()
 			for _, op := range tc.operations {
-				ok, newState := Etcd.Step(state, op.req, op.resp)
+				ok, newState := NonDeterministicModel.Step(state, op.req, op.resp)
 				if ok != !op.failure {
-					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, Etcd.DescribeOperation(op.req, op.resp))
-					var states PossibleStates
-					err := json.Unmarshal([]byte(state.(string)), &states)
-					if err != nil {
-						panic(err)
-					}
-					for _, s := range states {
-						_, gotResp := applyRequestToSingleState(s, op.req)
-						t.Logf("For state: %v, diff: %s", state, cmp.Diff(op.resp, gotResp))
-					}
+					t.Logf("state: %v", state)
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, NonDeterministicModel.DescribeOperation(op.req, op.resp))
 				}
 				if ok {
 					state = newState
@@ -653,16 +648,10 @@ func TestModelStep(t *testing.T) {
 	}
 }
 
-type testOperation struct {
-	req     EtcdRequest
-	resp    EtcdResponse
-	failure bool
-}
-
 func TestModelResponseMatch(t *testing.T) {
 	tcs := []struct {
-		resp1       EtcdResponse
-		resp2       EtcdResponse
+		resp1       EtcdNonDeterministicResponse
+		resp2       EtcdNonDeterministicResponse
 		expectMatch bool
 	}{
 		{

@@ -1,4 +1,4 @@
-// Copyright 2022 The etcd Authors
+// Copyright 2023 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,170 +25,52 @@ import (
 	"github.com/anishathalye/porcupine"
 )
 
-type OperationType string
-
-const (
-	Range  OperationType = "range"
-	Put    OperationType = "put"
-	Delete OperationType = "delete"
-)
-
-var Etcd = porcupine.Model{
+// DeterministicModel assumes that all requests succeed and have a correct response.
+var DeterministicModel = porcupine.Model{
 	Init: func() interface{} {
-		return "[]" // empty PossibleStates
-	},
-	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
-		var states PossibleStates
-		err := json.Unmarshal([]byte(st.(string)), &states)
+		var s etcdState
+		data, err := json.Marshal(s)
 		if err != nil {
 			panic(err)
 		}
-		ok, states := step(states, in.(EtcdRequest), out.(EtcdResponse))
-		data, err := json.Marshal(states)
+		return string(data)
+	},
+	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
+		var s etcdState
+		err := json.Unmarshal([]byte(st.(string)), &s)
+		if err != nil {
+			panic(err)
+		}
+		ok, s := s.Step(in.(EtcdRequest), out.(EtcdResponse))
+		data, err := json.Marshal(s)
 		if err != nil {
 			panic(err)
 		}
 		return ok, string(data)
 	},
 	DescribeOperation: func(in, out interface{}) string {
-		return describeEtcdRequestResponse(in.(EtcdRequest), out.(EtcdResponse))
+		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(EtcdResponse)))
 	},
 }
 
-type RequestType string
-
-const (
-	Txn         RequestType = "txn"
-	LeaseGrant  RequestType = "leaseGrant"
-	LeaseRevoke RequestType = "leaseRevoke"
-	Defragment  RequestType = "defragment"
-)
-
-type EtcdRequest struct {
-	Type        RequestType
-	LeaseGrant  *LeaseGrantRequest
-	LeaseRevoke *LeaseRevokeRequest
-	Txn         *TxnRequest
-	Defragment  *DefragmentRequest
-}
-
-type TxnRequest struct {
-	Conds []EtcdCondition
-	Ops   []EtcdOperation
-}
-
-type EtcdCondition struct {
-	Key              string
-	ExpectedRevision int64
-}
-
-type EtcdOperation struct {
-	Type       OperationType
-	Key        string
-	WithPrefix bool
-	Value      ValueOrHash
-	LeaseID    int64
-}
-
-type LeaseGrantRequest struct {
-	LeaseID int64
-}
-type LeaseRevokeRequest struct {
-	LeaseID int64
-}
-type DefragmentRequest struct{}
-
-type EtcdResponse struct {
-	Err           error
-	Revision      int64
-	ResultUnknown bool
-	Txn           *TxnResponse
-	LeaseGrant    *LeaseGrantReponse
-	LeaseRevoke   *LeaseRevokeResponse
-	Defragment    *DefragmentResponse
-}
-
-type TxnResponse struct {
-	TxnResult bool
-	OpsResult []EtcdOperationResult
-}
-
-type LeaseGrantReponse struct {
-	LeaseID int64
-}
-type LeaseRevokeResponse struct{}
-type DefragmentResponse struct{}
-
-func Match(r1, r2 EtcdResponse) bool {
-	return ((r1.ResultUnknown || r2.ResultUnknown) && (r1.Revision == r2.Revision)) || reflect.DeepEqual(r1, r2)
-}
-
-type EtcdOperationResult struct {
-	KVs     []KeyValue
-	Deleted int64
-}
-
-type KeyValue struct {
-	Key string
-	ValueRevision
-}
-
-var leased = struct{}{}
-
-type EtcdLease struct {
-	LeaseID int64
-	Keys    map[string]struct{}
-}
-type PossibleStates []EtcdState
-
-type EtcdState struct {
+type etcdState struct {
 	Revision  int64
 	KeyValues map[string]ValueRevision
 	KeyLeases map[string]int64
 	Leases    map[int64]EtcdLease
 }
 
-type ValueRevision struct {
-	Value       ValueOrHash
-	ModRevision int64
-}
-
-type ValueOrHash struct {
-	Value string
-	Hash  uint32
-}
-
-func ToValueOrHash(value string) ValueOrHash {
-	v := ValueOrHash{}
-	if len(value) < 20 {
-		v.Value = value
-	} else {
-		h := fnv.New32a()
-		h.Write([]byte(value))
-		v.Hash = h.Sum32()
+func (s etcdState) Step(request EtcdRequest, response EtcdResponse) (bool, etcdState) {
+	if s.Revision == 0 {
+		return true, initState(request, response)
 	}
-	return v
-}
-
-func step(states PossibleStates, request EtcdRequest, response EtcdResponse) (bool, PossibleStates) {
-	if len(states) == 0 {
-		// states were not initialized
-		if response.Err != nil || response.ResultUnknown || response.Revision == 0 {
-			return true, nil
-		}
-		return true, PossibleStates{initState(request, response)}
-	}
-	if response.Err != nil {
-		states = applyFailedRequest(states, request)
-	} else {
-		states = applyRequest(states, request, response)
-	}
-	return len(states) > 0, states
+	newState, gotResponse := s.step(request)
+	return reflect.DeepEqual(response, gotResponse), newState
 }
 
 // initState tries to create etcd state based on the first request.
-func initState(request EtcdRequest, response EtcdResponse) EtcdState {
-	state := EtcdState{
+func initState(request EtcdRequest, response EtcdResponse) etcdState {
+	state := etcdState{
 		Revision:  response.Revision,
 		KeyValues: map[string]ValueRevision{},
 		KeyLeases: map[string]int64{},
@@ -236,31 +118,8 @@ func initState(request EtcdRequest, response EtcdResponse) EtcdState {
 	return state
 }
 
-// applyFailedRequest handles a failed requests, one that it's not known if it was persisted or not.
-func applyFailedRequest(states PossibleStates, request EtcdRequest) PossibleStates {
-	for _, s := range states {
-		newState, _ := applyRequestToSingleState(s, request)
-		if !reflect.DeepEqual(newState, s) {
-			states = append(states, newState)
-		}
-	}
-	return states
-}
-
-// applyRequest handles a successful request by applying it to possible states and checking if they match the response.
-func applyRequest(states PossibleStates, request EtcdRequest, response EtcdResponse) PossibleStates {
-	newStates := make(PossibleStates, 0, len(states))
-	for _, s := range states {
-		newState, expectResponse := applyRequestToSingleState(s, request)
-		if Match(expectResponse, response) {
-			newStates = append(newStates, newState)
-		}
-	}
-	return newStates
-}
-
-// applyRequestToSingleState handles a successful request, returning updated state and response it would generate.
-func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, EtcdResponse) {
+// step handles a successful request, returning updated state and response it would generate.
+func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 	newKVs := map[string]ValueRevision{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
@@ -360,13 +219,13 @@ func applyRequestToSingleState(s EtcdState, request EtcdRequest) (EtcdState, Etc
 		}
 		return s, EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}
 	case Defragment:
-		return s, defragmentResponse()
+		return s, EtcdResponse{Defragment: &DefragmentResponse{}, Revision: s.Revision}
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
 }
 
-func detachFromOldLease(s EtcdState, key string) EtcdState {
+func detachFromOldLease(s etcdState, key string) etcdState {
 	if oldLeaseId, ok := s.KeyLeases[key]; ok {
 		delete(s.Leases[oldLeaseId].Keys, key)
 		delete(s.KeyLeases, key)
@@ -374,8 +233,109 @@ func detachFromOldLease(s EtcdState, key string) EtcdState {
 	return s
 }
 
-func attachToNewLease(s EtcdState, leaseID int64, key string) EtcdState {
+func attachToNewLease(s etcdState, leaseID int64, key string) etcdState {
 	s.KeyLeases[key] = leaseID
 	s.Leases[leaseID].Keys[key] = leased
 	return s
+}
+
+type RequestType string
+
+const (
+	Txn         RequestType = "txn"
+	LeaseGrant  RequestType = "leaseGrant"
+	LeaseRevoke RequestType = "leaseRevoke"
+	Defragment  RequestType = "defragment"
+)
+
+type EtcdRequest struct {
+	Type        RequestType
+	LeaseGrant  *LeaseGrantRequest
+	LeaseRevoke *LeaseRevokeRequest
+	Txn         *TxnRequest
+	Defragment  *DefragmentRequest
+}
+
+type TxnRequest struct {
+	Conds []EtcdCondition
+	Ops   []EtcdOperation
+}
+
+type EtcdCondition struct {
+	Key              string
+	ExpectedRevision int64
+}
+
+type EtcdOperation struct {
+	Type       OperationType
+	Key        string
+	WithPrefix bool
+	Value      ValueOrHash
+	LeaseID    int64
+}
+
+type LeaseGrantRequest struct {
+	LeaseID int64
+}
+type LeaseRevokeRequest struct {
+	LeaseID int64
+}
+type DefragmentRequest struct{}
+
+type EtcdResponse struct {
+	Revision    int64
+	Txn         *TxnResponse
+	LeaseGrant  *LeaseGrantReponse
+	LeaseRevoke *LeaseRevokeResponse
+	Defragment  *DefragmentResponse
+}
+
+type TxnResponse struct {
+	TxnResult bool
+	OpsResult []EtcdOperationResult
+}
+
+type LeaseGrantReponse struct {
+	LeaseID int64
+}
+type LeaseRevokeResponse struct{}
+type DefragmentResponse struct{}
+
+type EtcdOperationResult struct {
+	KVs     []KeyValue
+	Deleted int64
+}
+
+type KeyValue struct {
+	Key string
+	ValueRevision
+}
+
+var leased = struct{}{}
+
+type EtcdLease struct {
+	LeaseID int64
+	Keys    map[string]struct{}
+}
+
+type ValueRevision struct {
+	Value       ValueOrHash
+	ModRevision int64
+}
+
+type ValueOrHash struct {
+	Value string
+	Hash  uint32
+}
+
+func ToValueOrHash(value string) ValueOrHash {
+	v := ValueOrHash{}
+	if len(value) < 20 {
+		v.Value = value
+	} else {
+		h := fnv.New32a()
+		h.Write([]byte(value))
+		v.Hash = h.Sum32()
+	}
+	return v
 }

@@ -19,17 +19,17 @@ import (
 	"strings"
 )
 
-func describeEtcdRequestResponse(request EtcdRequest, response EtcdResponse) string {
-	return fmt.Sprintf("%s -> %s", describeEtcdRequest(request), describeEtcdResponse(request, response))
-}
-
-func describeEtcdResponse(request EtcdRequest, response EtcdResponse) string {
+func describeEtcdNonDeterministicResponse(request EtcdRequest, response EtcdNonDeterministicResponse) string {
 	if response.Err != nil {
 		return fmt.Sprintf("err: %q", response.Err)
 	}
 	if response.ResultUnknown {
 		return fmt.Sprintf("unknown, rev: %d", response.Revision)
 	}
+	return describeEtcdResponse(request, response.EtcdResponse)
+}
+
+func describeEtcdResponse(request EtcdRequest, response EtcdResponse) string {
 	if request.Type == Txn {
 		return fmt.Sprintf("%s, rev: %d", describeTxnResponse(request.Txn, response.Txn), response.Revision)
 	}

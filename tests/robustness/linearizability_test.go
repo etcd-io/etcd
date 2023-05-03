@@ -270,7 +270,7 @@ func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.Et
 func operationsMaxRevision(operations []porcupine.Operation) int64 {
 	var maxRevision int64
 	for _, op := range operations {
-		revision := op.Output.(model.EtcdResponse).Revision
+		revision := op.Output.(model.EtcdNonDeterministicResponse).Revision
 		if revision > maxRevision {
 			maxRevision = revision
 		}

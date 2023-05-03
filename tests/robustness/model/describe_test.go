@@ -26,7 +26,7 @@ import (
 func TestModelDescribe(t *testing.T) {
 	tcs := []struct {
 		req            EtcdRequest
-		resp           EtcdResponse
+		resp           EtcdNonDeterministicResponse
 		expectDescribe string
 	}{
 		{
@@ -101,8 +101,8 @@ func TestModelDescribe(t *testing.T) {
 		},
 		{
 			req:            defragmentRequest(),
-			resp:           defragmentResponse(),
-			expectDescribe: `defragment() -> ok`,
+			resp:           defragmentResponse(10),
+			expectDescribe: `defragment() -> ok, rev: 10`,
 		},
 		{
 			req:            rangeRequest("key11", true),
@@ -121,6 +121,6 @@ func TestModelDescribe(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		assert.Equal(t, tc.expectDescribe, Etcd.DescribeOperation(tc.req, tc.resp))
+		assert.Equal(t, tc.expectDescribe, NonDeterministicModel.DescribeOperation(tc.req, tc.resp))
 	}
 }
