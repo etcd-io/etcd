@@ -55,6 +55,7 @@ if [ -n "${OUTPUT_FILE}" ]; then
 fi
 
 PASSES=${PASSES:-"gofmt bom dep build unit"}
+PASSES_CONTINUE=${PASSES_CONTINUE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.8.0"}
 
@@ -646,16 +647,30 @@ function run_pass {
   shift 1
   log_callout -e "\\n'${pass}' started at $(date)"
   if "${pass}_pass" "$@" ; then
-    log_success "'${pass}' completed at $(date)"
+    log_success "'${pass}' PASSED and completed at $(date)"
+    return 0
   else
-    log_error "FAIL: '${pass}' failed at $(date)"
-    exit 255
+    log_error "FAIL: '${pass}' FAILED at $(date)"
+    if [ "$PASSES_CONTINUE" = true ]; then
+      return 2
+    else
+      exit 255
+    fi
   fi
 }
 
 log_callout "Starting at: $(date)"
+fail_flag=false
 for pass in $PASSES; do
-  run_pass "${pass}" "${@}"
+  if run_pass "${pass}" "${@}"; then
+    continue
+  else
+    fail_flag=true
+  fi
 done
+if [ "$fail_flag" = true ]; then
+  log_error "There was FAILURE in the test suites ran. Look above log detail"
+  exit 255
+fi
 
 log_success "SUCCESS"
