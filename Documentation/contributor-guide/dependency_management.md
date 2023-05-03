@@ -81,6 +81,8 @@ There is a compatible issue between etcd and gRPC 1.52.0, and there is a pending
 The plan is to remove the dependency on some grpc-go's experimental API firstly, afterwards try to bump it again. Please get more details in
 [issues/15145](https://github.com/etcd-io/etcd/issues/15145).
 
+`go.opentelemetry.io/otel` version update is indirectly blocked due to this gRPC issue. Please get more details in [pull/15810](https://github.com/etcd-io/etcd/pull/15810).
+
 # Stable branches
 Usually we don't proactively bump dependencies for stable releases unless there are any CVEs or bugs that affect etcd.
 
