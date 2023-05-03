@@ -427,6 +427,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 		remotes = existingCluster.Members()
 		cl.SetID(types.ID(0), existingCluster.ID())
+		//TODO V2Deprecation v2store used for membership
 		cl.SetStore(st)
 		cl.SetBackend(be)
 		id, n, s, w = startNode(cfg, cl, nil)
@@ -462,6 +463,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 				return nil, err
 			}
 		}
+		//TODO V2Deprecation v2store used for membership
 		cl.SetStore(st)
 		cl.SetBackend(be)
 		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
@@ -496,6 +498,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 
 		if snapshot != nil {
+			//TODO V2Deprecation v2store used for snapshot (.snap files). This is code to do recover. TODO - Find code that saves it in v2.
 			if err = st.Recovery(snapshot.Data); err != nil {
 				cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
 			}
@@ -531,7 +534,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		} else {
 			id, cl, n, s, w = restartAsStandaloneNode(cfg, snapshot)
 		}
-
+		//TODO SetStore is taking a v2 store to save membership
 		cl.SetStore(st)
 		cl.SetBackend(be)
 		cl.Recover(api.UpdateCapability)
@@ -553,11 +556,12 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
-		readych:     make(chan struct{}),
-		Cfg:         cfg,
-		lgMu:        new(sync.RWMutex),
-		lg:          cfg.Logger,
-		errorc:      make(chan error, 1),
+		readych: make(chan struct{}),
+		Cfg:     cfg,
+		lgMu:    new(sync.RWMutex),
+		lg:      cfg.Logger,
+		errorc:  make(chan error, 1),
+		//TODO V2Deprecation EtcdServer struct has v2 store in it. Find usage from there in next iteration.
 		v2store:     st,
 		snapshotter: ss,
 		r: *newRaftNode(

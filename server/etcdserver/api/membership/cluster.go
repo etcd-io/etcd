@@ -245,6 +245,8 @@ func (c *RaftCluster) SetID(localID, cid types.ID) {
 	c.cid = cid
 }
 
+// SetStore V2Deprecation TODO raft cluster has a v2store - most of the code checks for this to be nil except for ValidateConfigurationChange
+// We want to set this to nil
 func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
 
 func (c *RaftCluster) SetBackend(be backend.Backend) {
@@ -294,7 +296,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
-	// TODO: this must be switched to backend as well.
+	// TODO: (V2Deprecation) this must be switched to backend as well.
 	members, removed := membersFromStore(c.lg, c.v2store)
 	id := types.ID(cc.NodeID)
 	if removed[id] {
