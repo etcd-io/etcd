@@ -73,6 +73,15 @@ var (
 			},
 		},
 	}
+	KubernetesTraffic = trafficConfig{
+		name:        "Kubernetes",
+		minimalQPS:  200,
+		maximalQPS:  1000,
+		clientCount: 12,
+		traffic: kubernetesTraffic{
+			keyCount: 5,
+		},
+	}
 	ReqProgTraffic = trafficConfig{
 		name:            "RequestProgressTraffic",
 		minimalQPS:      200,
@@ -91,7 +100,7 @@ var (
 	}
 	defaultTraffic = LowTraffic
 	trafficList    = []trafficConfig{
-		LowTraffic, HighTraffic,
+		LowTraffic, HighTraffic, KubernetesTraffic,
 	}
 )
 

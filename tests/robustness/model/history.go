@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
@@ -64,20 +65,16 @@ func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	}
 }
 
-func (h *AppendableHistory) AppendGet(key string, start, end time.Duration, resp *clientv3.GetResponse) {
-	var readData string
-	if len(resp.Kvs) == 1 {
-		readData = string(resp.Kvs[0].Value)
-	}
+func (h *AppendableHistory) AppendRange(key string, withPrefix bool, start, end time.Duration, resp *clientv3.GetResponse) {
 	var revision int64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
 	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
-		Input:    getRequest(key),
+		Input:    rangeRequest(key, withPrefix),
 		Call:     start.Nanoseconds(),
-		Output:   getResponse(readData, revision),
+		Output:   rangeResponse(resp.Kvs, revision),
 		Return:   end.Nanoseconds(),
 	})
 }
@@ -183,8 +180,8 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 	})
 }
 
-func (h *AppendableHistory) AppendCompareAndSet(key, expectValue, newValue string, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
-	request := compareAndSetRequest(key, expectValue, newValue)
+func (h *AppendableHistory) AppendCompareAndSet(key string, expectedRevision int64, value string, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
+	request := compareAndSetRequest(key, expectedRevision, value)
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
@@ -235,9 +232,8 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.O
 
 func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
 	switch {
-	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_VALUE:
+	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_MOD:
 		cond.Key = string(cmp.KeyBytes())
-		cond.ExpectedValue = ToValueOrHash(string(cmp.ValueBytes()))
 	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_CREATE:
 		cond.Key = string(cmp.KeyBytes())
 	default:
@@ -250,7 +246,7 @@ func toEtcdOperation(op clientv3.Op) EtcdOperation {
 	var opType OperationType
 	switch {
 	case op.IsGet():
-		opType = Get
+		opType = Range
 	case op.IsPut():
 		opType = Put
 	case op.IsDelete():
@@ -269,12 +265,18 @@ func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
 	switch {
 	case resp.GetResponseRange() != nil:
 		getResp := resp.GetResponseRange()
-		var val string
-		if len(getResp.Kvs) != 0 {
-			val = string(getResp.Kvs[0].Value)
+		kvs := make([]KeyValue, len(getResp.Kvs))
+		for i, kv := range getResp.Kvs {
+			kvs[i] = KeyValue{
+				Key: string(kv.Key),
+				ValueRevision: ValueRevision{
+					Value:       ToValueOrHash(string(kv.Value)),
+					ModRevision: kv.ModRevision,
+				},
+			}
 		}
 		return EtcdOperationResult{
-			Value: ToValueOrHash(val),
+			KVs: kvs,
 		}
 	case resp.GetResponsePut() != nil:
 		return EtcdOperationResult{}
@@ -316,11 +318,34 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Duratio
 }
 
 func getRequest(key string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Get, Key: key}}}}
+	return rangeRequest(key, false)
 }
 
-func getResponse(value string, revision int64) EtcdResponse {
-	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{Value: ToValueOrHash(value)}}}, Revision: revision}
+func rangeRequest(key string, withPrefix bool) EtcdRequest {
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Range, Key: key, WithPrefix: withPrefix}}}}
+}
+
+func emptyGetResponse(revision int64) EtcdResponse {
+	return rangeResponse([]*mvccpb.KeyValue{}, revision)
+}
+
+func getResponse(key, value string, modRevision, revision int64) EtcdResponse {
+	return rangeResponse([]*mvccpb.KeyValue{{Key: []byte(key), Value: []byte(value), ModRevision: modRevision}}, revision)
+}
+
+func rangeResponse(kvs []*mvccpb.KeyValue, revision int64) EtcdResponse {
+	result := EtcdOperationResult{KVs: make([]KeyValue, len(kvs))}
+
+	for i, kv := range kvs {
+		result.KVs[i] = KeyValue{
+			Key: string(kv.Key),
+			ValueRevision: ValueRevision{
+				Value:       ToValueOrHash(string(kv.Value)),
+				ModRevision: kv.ModRevision,
+			},
+		}
+	}
+	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{result}}, Revision: revision}
 }
 
 func failedResponse(err error) EtcdResponse {
@@ -347,8 +372,8 @@ func deleteResponse(deleted int64, revision int64) EtcdResponse {
 	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}
 }
 
-func compareAndSetRequest(key, expectValue, newValue string) EtcdRequest {
-	return txnRequest([]EtcdCondition{{Key: key, ExpectedValue: ToValueOrHash(expectValue)}}, []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(newValue)}})
+func compareAndSetRequest(key string, expectedRevision int64, value string) EtcdRequest {
+	return txnRequest([]EtcdCondition{{Key: key, ExpectedRevision: expectedRevision}}, []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value)}})
 }
 
 func compareAndSetResponse(succeeded bool, revision int64) EtcdResponse {
