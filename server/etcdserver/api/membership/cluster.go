@@ -295,7 +295,16 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	// TODO: this must be switched to backend as well.
-	members, removed := membersFromStore(c.lg, c.v2store)
+	var members map[types.ID]*Member
+	var removed map[types.ID]bool
+	if c.v2store != nil {
+		members, removed = membersFromStore(c.lg, c.v2store)
+	} else {
+		c.lg.Info(
+			"reading members from backend",
+		)
+		members, removed = membersFromBackend(c.lg, c.be)
+	}
 	id := types.ID(cc.NodeID)
 	if removed[id] {
 		return ErrIDRemoved
