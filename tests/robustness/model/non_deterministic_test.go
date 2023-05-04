@@ -69,7 +69,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		{
 			name: "First Txn can start from non-zero revision",
 			operations: []testOperation{
-				{req: compareAndSetRequest("key", 0, "42"), resp: compareAndSetResponse(false, 42)},
+				{req: compareRevisionAndPutRequest("key", 0, "42"), resp: compareRevisionAndPutResponse(false, 42)},
 			},
 		},
 		{
@@ -159,11 +159,11 @@ func TestModelNonDeterministic(t *testing.T) {
 				// Txn failure
 				{req: getRequest("key"), resp: emptyGetResponse(1)},
 				{req: putRequest("key", "1"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 2, "3"), resp: compareAndSetResponse(false, 1)},
+				{req: compareRevisionAndPutRequest("key", 2, "3"), resp: compareRevisionAndPutResponse(false, 1)},
 				// Txn success
 				{req: putRequest("key", "2"), resp: putResponse(2)},
 				{req: putRequest("key", "4"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 2, "5"), resp: compareAndSetResponse(true, 3)},
+				{req: compareRevisionAndPutRequest("key", 2, "5"), resp: compareRevisionAndPutResponse(true, 3)},
 			},
 		},
 		{
@@ -213,11 +213,11 @@ func TestModelNonDeterministic(t *testing.T) {
 				// Txn success
 				{req: getRequest("key"), resp: emptyGetResponse(1)},
 				{req: putRequest("key", "2"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 2, ""), resp: compareAndSetResponse(true, 2), failure: true},
-				{req: compareAndSetRequest("key", 2, ""), resp: compareAndSetResponse(true, 3)},
+				{req: compareRevisionAndPutRequest("key", 2, ""), resp: compareRevisionAndPutResponse(true, 2), failure: true},
+				{req: compareRevisionAndPutRequest("key", 2, ""), resp: compareRevisionAndPutResponse(true, 3)},
 				// Txn failure
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: compareAndSetRequest("key", 5, ""), resp: compareAndSetResponse(false, 4)},
+				{req: compareRevisionAndPutRequest("key", 5, ""), resp: compareRevisionAndPutResponse(false, 4)},
 				{req: putRequest("key", "5"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("key", "5", 5, 5)},
 			},
@@ -327,21 +327,21 @@ func TestModelNonDeterministic(t *testing.T) {
 				// Txn success
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 0, "3"), resp: compareAndSetResponse(true, 3)},
+				{req: compareRevisionAndPutRequest("key", 0, "3"), resp: compareRevisionAndPutResponse(true, 3)},
 				// Txn failure
 				{req: putRequest("key", "4"), resp: putResponse(4)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 4, "5"), resp: compareAndSetResponse(false, 5)},
+				{req: compareRevisionAndPutRequest("key", 4, "5"), resp: compareRevisionAndPutResponse(false, 5)},
 			},
 		},
 		{
 			name: "Txn sets new value if value matches expected",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 1, "2"), resp: compareAndSetResponse(true, 1), failure: true},
-				{req: compareAndSetRequest("key", 1, "2"), resp: compareAndSetResponse(false, 2), failure: true},
-				{req: compareAndSetRequest("key", 1, "2"), resp: compareAndSetResponse(false, 1), failure: true},
-				{req: compareAndSetRequest("key", 1, "2"), resp: compareAndSetResponse(true, 2)},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: compareRevisionAndPutResponse(true, 1), failure: true},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: compareRevisionAndPutResponse(false, 2), failure: true},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: compareRevisionAndPutResponse(false, 1), failure: true},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: compareRevisionAndPutResponse(true, 2)},
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1), failure: true},
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 2), failure: true},
 				{req: getRequest("key"), resp: getResponse("key", "1", 2, 2), failure: true},
@@ -353,19 +353,19 @@ func TestModelNonDeterministic(t *testing.T) {
 			name: "Txn can expect on empty key",
 			operations: []testOperation{
 				{req: getRequest("key1"), resp: emptyGetResponse(1)},
-				{req: compareAndSetRequest("key1", 0, "2"), resp: compareAndSetResponse(true, 2)},
-				{req: compareAndSetRequest("key2", 0, "3"), resp: compareAndSetResponse(true, 3)},
-				{req: compareAndSetRequest("key3", 4, "4"), resp: compareAndSetResponse(false, 4), failure: true},
+				{req: compareRevisionAndPutRequest("key1", 0, "2"), resp: compareRevisionAndPutResponse(true, 2)},
+				{req: compareRevisionAndPutRequest("key2", 0, "3"), resp: compareRevisionAndPutResponse(true, 3)},
+				{req: compareRevisionAndPutRequest("key3", 4, "4"), resp: compareRevisionAndPutResponse(false, 4), failure: true},
 			},
 		},
 		{
 			name: "Txn doesn't do anything if value doesn't match expected",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 2, "3"), resp: compareAndSetResponse(true, 2), failure: true},
-				{req: compareAndSetRequest("key", 2, "3"), resp: compareAndSetResponse(true, 1), failure: true},
-				{req: compareAndSetRequest("key", 2, "3"), resp: compareAndSetResponse(false, 2), failure: true},
-				{req: compareAndSetRequest("key", 2, "3"), resp: compareAndSetResponse(false, 1)},
+				{req: compareRevisionAndPutRequest("key", 2, "3"), resp: compareRevisionAndPutResponse(true, 2), failure: true},
+				{req: compareRevisionAndPutRequest("key", 2, "3"), resp: compareRevisionAndPutResponse(true, 1), failure: true},
+				{req: compareRevisionAndPutRequest("key", 2, "3"), resp: compareRevisionAndPutResponse(false, 2), failure: true},
+				{req: compareRevisionAndPutRequest("key", 2, "3"), resp: compareRevisionAndPutResponse(false, 1)},
 				{req: getRequest("key"), resp: getResponse("key", "2", 1, 1), failure: true},
 				{req: getRequest("key"), resp: getResponse("key", "2", 2, 2), failure: true},
 				{req: getRequest("key"), resp: getResponse("key", "3", 1, 1), failure: true},
@@ -378,7 +378,7 @@ func TestModelNonDeterministic(t *testing.T) {
 			name: "Txn can fail and be lost before get",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: getRequest("key"), resp: getResponse("key", "2", 2, 2), failure: true},
 			},
@@ -387,7 +387,7 @@ func TestModelNonDeterministic(t *testing.T) {
 			name: "Txn can fail and be lost before delete",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 2)},
 			},
 		},
@@ -395,7 +395,7 @@ func TestModelNonDeterministic(t *testing.T) {
 			name: "Txn can fail and be lost before put",
 			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "3"), resp: putResponse(2)},
 			},
 		},
@@ -404,13 +404,13 @@ func TestModelNonDeterministic(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("key", "2", 1, 1), failure: true},
 				{req: getRequest("key"), resp: getResponse("key", "2", 2, 2)},
 				// Two failed request, two persisted.
 				{req: putRequest("key", "3"), resp: putResponse(3)},
-				{req: compareAndSetRequest("key", 3, "4"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 4, "5"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 3, "4"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 4, "5"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("key", "5", 5, 5)},
 			},
 		},
@@ -419,12 +419,12 @@ func TestModelNonDeterministic(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "3"), resp: putResponse(3)},
 				// Two failed request, two persisted.
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: compareAndSetRequest("key", 4, "5"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 5, "6"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 4, "5"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 5, "6"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "7"), resp: putResponse(7)},
 			},
 		},
@@ -433,12 +433,12 @@ func TestModelNonDeterministic(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 3)},
 				// Two failed request, two persisted.
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: compareAndSetRequest("key", 4, "5"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 5, "6"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 4, "5"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 5, "6"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 7)},
 			},
 		},
@@ -447,17 +447,17 @@ func TestModelNonDeterministic(t *testing.T) {
 			operations: []testOperation{
 				// One failed request, one persisted with success.
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-				{req: compareAndSetRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 2, "3"), resp: compareAndSetResponse(true, 3)},
+				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 2, "3"), resp: compareRevisionAndPutResponse(true, 3)},
 				// Two failed request, two persisted with success.
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: compareAndSetRequest("key", 4, "5"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 5, "6"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 6, "7"), resp: compareAndSetResponse(true, 7)},
+				{req: compareRevisionAndPutRequest("key", 4, "5"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 5, "6"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 6, "7"), resp: compareRevisionAndPutResponse(true, 7)},
 				// One failed request, one persisted with failure.
 				{req: putRequest("key", "8"), resp: putResponse(8)},
-				{req: compareAndSetRequest("key", 8, "9"), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 8, "10"), resp: compareAndSetResponse(false, 9)},
+				{req: compareRevisionAndPutRequest("key", 8, "9"), resp: failedResponse(errors.New("failed"))},
+				{req: compareRevisionAndPutRequest("key", 8, "10"), resp: compareRevisionAndPutResponse(false, 9)},
 			},
 		},
 		{
@@ -584,7 +584,7 @@ func TestModelNonDeterministic(t *testing.T) {
 				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
 				{req: putRequest("key", "4"), resp: putResponse(4)},
 				{req: getRequest("key"), resp: getResponse("key", "4", 4, 4)},
-				{req: compareAndSetRequest("key", 4, "5"), resp: compareAndSetResponse(true, 5)},
+				{req: compareRevisionAndPutRequest("key", 4, "5"), resp: compareRevisionAndPutResponse(true, 5)},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
 				{req: defragmentRequest(), resp: defragmentResponse(6)},
 			},
@@ -603,7 +603,7 @@ func TestModelNonDeterministic(t *testing.T) {
 				{req: defragmentRequest(), resp: defragmentResponse(4)},
 				{req: getRequest("key"), resp: getResponse("key", "4", 4, 4)},
 				{req: defragmentRequest(), resp: defragmentResponse(4)},
-				{req: compareAndSetRequest("key", 4, "5"), resp: compareAndSetResponse(true, 5)},
+				{req: compareRevisionAndPutRequest("key", 4, "5"), resp: compareRevisionAndPutResponse(true, 5)},
 				{req: defragmentRequest(), resp: defragmentResponse(5)},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
 				{req: defragmentRequest(), resp: defragmentResponse(6)},
@@ -623,7 +623,7 @@ func TestModelNonDeterministic(t *testing.T) {
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("key", "4", 4, 4)},
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
-				{req: compareAndSetRequest("key", 4, "5"), resp: compareAndSetResponse(true, 5)},
+				{req: compareRevisionAndPutRequest("key", 4, "5"), resp: compareRevisionAndPutResponse(true, 5)},
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
@@ -755,42 +755,42 @@ func TestModelResponseMatch(t *testing.T) {
 			expectMatch: false,
 		},
 		{
-			resp1:       compareAndSetResponse(false, 7),
-			resp2:       compareAndSetResponse(false, 7),
+			resp1:       compareRevisionAndPutResponse(false, 7),
+			resp2:       compareRevisionAndPutResponse(false, 7),
 			expectMatch: true,
 		},
 		{
-			resp1:       compareAndSetResponse(true, 7),
-			resp2:       compareAndSetResponse(false, 7),
+			resp1:       compareRevisionAndPutResponse(true, 7),
+			resp2:       compareRevisionAndPutResponse(false, 7),
 			expectMatch: false,
 		},
 		{
-			resp1:       compareAndSetResponse(false, 7),
-			resp2:       compareAndSetResponse(false, 8),
+			resp1:       compareRevisionAndPutResponse(false, 7),
+			resp2:       compareRevisionAndPutResponse(false, 8),
 			expectMatch: false,
 		},
 		{
-			resp1:       compareAndSetResponse(false, 7),
+			resp1:       compareRevisionAndPutResponse(false, 7),
 			resp2:       failedResponse(errors.New("failed request")),
 			expectMatch: false,
 		},
 		{
-			resp1:       compareAndSetResponse(true, 7),
+			resp1:       compareRevisionAndPutResponse(true, 7),
 			resp2:       unknownResponse(7),
 			expectMatch: true,
 		},
 		{
-			resp1:       compareAndSetResponse(false, 7),
+			resp1:       compareRevisionAndPutResponse(false, 7),
 			resp2:       unknownResponse(7),
 			expectMatch: true,
 		},
 		{
-			resp1:       compareAndSetResponse(true, 7),
+			resp1:       compareRevisionAndPutResponse(true, 7),
 			resp2:       unknownResponse(0),
 			expectMatch: false,
 		},
 		{
-			resp1:       compareAndSetResponse(false, 7),
+			resp1:       compareRevisionAndPutResponse(false, 7),
 			resp2:       unknownResponse(0),
 			expectMatch: false,
 		},

@@ -80,17 +80,17 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `delete("key6") -> err: "failed"`,
 		},
 		{
-			req:            compareAndSetRequest("key7", 7, "77"),
-			resp:           compareAndSetResponse(false, 7),
+			req:            compareRevisionAndPutRequest("key7", 7, "77"),
+			resp:           compareRevisionAndPutResponse(false, 7),
 			expectDescribe: `if(mod_rev(key7)==7).then(put("key7", "77")) -> txn failed, rev: 7`,
 		},
 		{
-			req:            compareAndSetRequest("key8", 8, "88"),
-			resp:           compareAndSetResponse(true, 8),
+			req:            compareRevisionAndPutRequest("key8", 8, "88"),
+			resp:           compareRevisionAndPutResponse(true, 8),
 			expectDescribe: `if(mod_rev(key8)==8).then(put("key8", "88")) -> ok, rev: 8`,
 		},
 		{
-			req:            compareAndSetRequest("key9", 9, "99"),
+			req:            compareRevisionAndPutRequest("key9", 9, "99"),
 			resp:           failedResponse(errors.New("failed")),
 			expectDescribe: `if(mod_rev(key9)==9).then(put("key9", "99")) -> err: "failed"`,
 		},

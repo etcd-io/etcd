@@ -41,18 +41,18 @@ var (
 		maximalQPS:      200,
 		clientCount:     8,
 		requestProgress: false,
-		traffic: traffic{
+		traffic: etcdTraffic{
 			keyCount:     10,
 			leaseTTL:     DefaultLeaseTTL,
 			largePutSize: 32769,
-			writes: []requestChance{
-				{operation: Put, chance: 45},
-				{operation: LargePut, chance: 5},
-				{operation: Delete, chance: 10},
-				{operation: MultiOpTxn, chance: 10},
-				{operation: PutWithLease, chance: 10},
-				{operation: LeaseRevoke, chance: 10},
-				{operation: CompareAndSet, chance: 10},
+			writeChoices: []choiceWeight{
+				{choice: string(Put), weight: 45},
+				{choice: string(LargePut), weight: 5},
+				{choice: string(Delete), weight: 10},
+				{choice: string(MultiOpTxn), weight: 10},
+				{choice: string(PutWithLease), weight: 10},
+				{choice: string(LeaseRevoke), weight: 10},
+				{choice: string(CompareAndSet), weight: 10},
 			},
 		},
 	}
@@ -62,14 +62,14 @@ var (
 		maximalQPS:      1000,
 		clientCount:     12,
 		requestProgress: false,
-		traffic: traffic{
+		traffic: etcdTraffic{
 			keyCount:     10,
 			largePutSize: 32769,
 			leaseTTL:     DefaultLeaseTTL,
-			writes: []requestChance{
-				{operation: Put, chance: 85},
-				{operation: MultiOpTxn, chance: 10},
-				{operation: LargePut, chance: 5},
+			writeChoices: []choiceWeight{
+				{choice: string(Put), weight: 85},
+				{choice: string(MultiOpTxn), weight: 10},
+				{choice: string(LargePut), weight: 5},
 			},
 		},
 	}
@@ -79,7 +79,14 @@ var (
 		maximalQPS:  1000,
 		clientCount: 12,
 		traffic: kubernetesTraffic{
-			keyCount: 5,
+			averageKeyCount: 5,
+			resource:        "pods",
+			namespace:       "default",
+			writeChoices: []choiceWeight{
+				{choice: string(KubernetesUpdate), weight: 75},
+				{choice: string(KubernetesDelete), weight: 15},
+				{choice: string(KubernetesCreate), weight: 10},
+			},
 		},
 	}
 	ReqProgTraffic = trafficConfig{
@@ -88,13 +95,13 @@ var (
 		maximalQPS:      1000,
 		clientCount:     12,
 		requestProgress: true,
-		traffic: traffic{
+		traffic: etcdTraffic{
 			keyCount:     10,
 			largePutSize: 8196,
 			leaseTTL:     DefaultLeaseTTL,
-			writes: []requestChance{
-				{operation: Put, chance: 95},
-				{operation: LargePut, chance: 5},
+			writeChoices: []choiceWeight{
+				{choice: string(Put), weight: 95},
+				{choice: string(LargePut), weight: 5},
 			},
 		},
 	}
