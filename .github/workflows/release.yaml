@@ -1,13 +1,16 @@
 name: Release
 on: [push, pull_request]
 jobs:
+  goversion:
+    uses: ./.github/workflows/go-version.yaml
   main:
     runs-on: ubuntu-latest
+    needs: goversion
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-go@v2
       with:
-        go-version: "1.19.8"
+        go-version: ${{ needs.goversion.outputs.goversion }}
     - name: release
       run: |
         set -euo pipefail
