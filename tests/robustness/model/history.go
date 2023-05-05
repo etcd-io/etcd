@@ -180,8 +180,31 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 	})
 }
 
-func (h *AppendableHistory) AppendCompareAndSet(key string, expectedRevision int64, value string, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
-	request := compareAndSetRequest(key, expectedRevision, value)
+func (h *AppendableHistory) AppendCompareRevisionAndDelete(key string, expectedRevision int64, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
+	request := compareRevisionAndDeleteRequest(key, expectedRevision)
+	if err != nil {
+		h.appendFailed(request, start, err)
+		return
+	}
+	var revision int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+	}
+	var deleted int64
+	if resp != nil && len(resp.Responses) > 0 {
+		deleted = resp.Responses[0].GetResponseDeleteRange().Deleted
+	}
+	h.successful = append(h.successful, porcupine.Operation{
+		ClientId: h.id,
+		Input:    request,
+		Call:     start.Nanoseconds(),
+		Output:   compareRevisionAndDeleteResponse(resp.Succeeded, deleted, revision),
+		Return:   end.Nanoseconds(),
+	})
+
+}
+func (h *AppendableHistory) AppendCompareRevisionAndPut(key string, expectedRevision int64, value string, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
+	request := compareRevisionAndPutRequest(key, expectedRevision, value)
 	if err != nil {
 		h.appendFailed(request, start, err)
 		return
@@ -194,7 +217,7 @@ func (h *AppendableHistory) AppendCompareAndSet(key string, expectedRevision int
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
-		Output:   compareAndSetResponse(resp.Succeeded, revision),
+		Output:   compareRevisionAndPutResponse(resp.Succeeded, revision),
 		Return:   end.Nanoseconds(),
 	})
 }
@@ -376,14 +399,26 @@ func deleteResponse(deleted int64, revision int64) EtcdNonDeterministicResponse 
 	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}}
 }
 
-func compareAndSetRequest(key string, expectedRevision int64, value string) EtcdRequest {
+func compareRevisionAndDeleteRequest(key string, expectedRevision int64) EtcdRequest {
+	return txnRequest([]EtcdCondition{{Key: key, ExpectedRevision: expectedRevision}}, []EtcdOperation{{Type: Delete, Key: key}})
+}
+
+func compareRevisionAndPutRequest(key string, expectedRevision int64, value string) EtcdRequest {
 	return txnRequest([]EtcdCondition{{Key: key, ExpectedRevision: expectedRevision}}, []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value)}})
 }
 
-func compareAndSetResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
+func compareRevisionAndPutResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
 	var result []EtcdOperationResult
 	if succeeded {
 		result = []EtcdOperationResult{{}}
+	}
+	return txnResponse(result, succeeded, revision)
+}
+
+func compareRevisionAndDeleteResponse(succeeded bool, deleted, revision int64) EtcdNonDeterministicResponse {
+	var result []EtcdOperationResult
+	if succeeded {
+		result = []EtcdOperationResult{{Deleted: deleted}}
 	}
 	return txnResponse(result, succeeded, revision)
 }

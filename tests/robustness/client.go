@@ -96,8 +96,23 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *recordingClient) CompareAndSet(ctx context.Context, key, value string, expectedRevision int64) error {
+func (c *recordingClient) CompareRevisionAndDelete(ctx context.Context, key string, expectedRevision int64) error {
 	callTime := time.Since(c.baseTime)
+	resp, err := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpDelete(key)).Commit()
+	returnTime := time.Since(c.baseTime)
+	c.history.AppendCompareRevisionAndDelete(key, expectedRevision, callTime, returnTime, resp, err)
+	return err
+}
+
+func (c *recordingClient) CompareRevisionAndPut(ctx context.Context, key, value string, expectedRevision int64) error {
+	callTime := time.Since(c.baseTime)
+	resp, err := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpPut(key, value)).Commit()
+	returnTime := time.Since(c.baseTime)
+	c.history.AppendCompareRevisionAndPut(key, expectedRevision, value, callTime, returnTime, resp, err)
+	return err
+}
+
+func (c *recordingClient) compareRevisionTxn(ctx context.Context, key string, expectedRevision int64, op clientv3.Op) clientv3.Txn {
 	txn := c.client.Txn(ctx)
 	var cmp clientv3.Cmp
 	if expectedRevision == 0 {
@@ -105,14 +120,11 @@ func (c *recordingClient) CompareAndSet(ctx context.Context, key, value string, 
 	} else {
 		cmp = clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)
 	}
-	resp, err := txn.If(
+	return txn.If(
 		cmp,
 	).Then(
-		clientv3.OpPut(key, value),
-	).Commit()
-	returnTime := time.Since(c.baseTime)
-	c.history.AppendCompareAndSet(key, expectedRevision, value, callTime, returnTime, resp, err)
-	return err
+		op,
+	)
 }
 
 func (c *recordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {
