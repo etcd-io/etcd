@@ -53,7 +53,7 @@ jobs:
             exit 1
             ;;
         esac
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
       if: always()
       with:
         name: ${{ inputs.artifactName }}
