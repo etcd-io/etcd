@@ -15,17 +15,20 @@
 package model
 
 import (
-	"encoding/json"
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
-func TestModelStep(t *testing.T) {
+func TestModelNonDeterministic(t *testing.T) {
+	type testOperation struct {
+		req     EtcdRequest
+		resp    EtcdNonDeterministicResponse
+		failure bool
+	}
 	tcs := []struct {
 		name       string
 		operations []testOperation
@@ -583,27 +586,27 @@ func TestModelStep(t *testing.T) {
 				{req: getRequest("key"), resp: getResponse("key", "4", 4, 4)},
 				{req: compareAndSetRequest("key", 4, "5"), resp: compareAndSetResponse(true, 5)},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(6)},
 			},
 		},
 		{
 			name: "Defragment success between all other request types",
 			operations: []testOperation{
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(1)},
 				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(1)},
 				{req: putWithLeaseRequest("key", "1", 1), resp: putResponse(2)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(2)},
 				{req: leaseRevokeRequest(1), resp: leaseRevokeResponse(3)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(3)},
 				{req: putRequest("key", "4"), resp: putResponse(4)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(4)},
 				{req: getRequest("key"), resp: getResponse("key", "4", 4, 4)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(4)},
 				{req: compareAndSetRequest("key", 4, "5"), resp: compareAndSetResponse(true, 5)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(5)},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 6)},
-				{req: defragmentRequest(), resp: defragmentResponse()},
+				{req: defragmentRequest(), resp: defragmentResponse(6)},
 			},
 		},
 		{
@@ -629,20 +632,12 @@ func TestModelStep(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			state := Etcd.Init()
+			state := NonDeterministicModel.Init()
 			for _, op := range tc.operations {
-				ok, newState := Etcd.Step(state, op.req, op.resp)
+				ok, newState := NonDeterministicModel.Step(state, op.req, op.resp)
 				if ok != !op.failure {
-					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, Etcd.DescribeOperation(op.req, op.resp))
-					var states PossibleStates
-					err := json.Unmarshal([]byte(state.(string)), &states)
-					if err != nil {
-						panic(err)
-					}
-					for _, s := range states {
-						_, gotResp := applyRequestToSingleState(s, op.req)
-						t.Logf("For state: %v, diff: %s", state, cmp.Diff(op.resp, gotResp))
-					}
+					t.Logf("state: %v", state)
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.failure, ok, NonDeterministicModel.DescribeOperation(op.req, op.resp))
 				}
 				if ok {
 					state = newState
@@ -653,118 +648,10 @@ func TestModelStep(t *testing.T) {
 	}
 }
 
-type testOperation struct {
-	req     EtcdRequest
-	resp    EtcdResponse
-	failure bool
-}
-
-func TestModelDescribe(t *testing.T) {
-	tcs := []struct {
-		req            EtcdRequest
-		resp           EtcdResponse
-		expectDescribe string
-	}{
-		{
-			req:            getRequest("key1"),
-			resp:           emptyGetResponse(1),
-			expectDescribe: `get("key1") -> nil, rev: 1`,
-		},
-		{
-			req:            getRequest("key2"),
-			resp:           getResponse("key", "2", 2, 2),
-			expectDescribe: `get("key2") -> "2", rev: 2`,
-		},
-		{
-			req:            getRequest("key2b"),
-			resp:           getResponse("key2b", "01234567890123456789", 2, 2),
-			expectDescribe: `get("key2b") -> hash: 2945867837, rev: 2`,
-		},
-		{
-			req:            putRequest("key3", "3"),
-			resp:           putResponse(3),
-			expectDescribe: `put("key3", "3") -> ok, rev: 3`,
-		},
-		{
-			req:            putWithLeaseRequest("key3b", "3b", 3),
-			resp:           putResponse(3),
-			expectDescribe: `put("key3b", "3b", 3) -> ok, rev: 3`,
-		},
-		{
-			req:            putRequest("key3c", "01234567890123456789"),
-			resp:           putResponse(3),
-			expectDescribe: `put("key3c", hash: 2945867837) -> ok, rev: 3`,
-		},
-		{
-			req:            putRequest("key4", "4"),
-			resp:           failedResponse(errors.New("failed")),
-			expectDescribe: `put("key4", "4") -> err: "failed"`,
-		},
-		{
-			req:            putRequest("key4b", "4b"),
-			resp:           unknownResponse(42),
-			expectDescribe: `put("key4b", "4b") -> unknown, rev: 42`,
-		},
-		{
-			req:            deleteRequest("key5"),
-			resp:           deleteResponse(1, 5),
-			expectDescribe: `delete("key5") -> deleted: 1, rev: 5`,
-		},
-		{
-			req:            deleteRequest("key6"),
-			resp:           failedResponse(errors.New("failed")),
-			expectDescribe: `delete("key6") -> err: "failed"`,
-		},
-		{
-			req:            compareAndSetRequest("key7", 7, "77"),
-			resp:           compareAndSetResponse(false, 7),
-			expectDescribe: `if(mod_rev(key7)==7).then(put("key7", "77")) -> txn failed, rev: 7`,
-		},
-		{
-			req:            compareAndSetRequest("key8", 8, "88"),
-			resp:           compareAndSetResponse(true, 8),
-			expectDescribe: `if(mod_rev(key8)==8).then(put("key8", "88")) -> ok, rev: 8`,
-		},
-		{
-			req:            compareAndSetRequest("key9", 9, "99"),
-			resp:           failedResponse(errors.New("failed")),
-			expectDescribe: `if(mod_rev(key9)==9).then(put("key9", "99")) -> err: "failed"`,
-		},
-		{
-			req:            txnRequest(nil, []EtcdOperation{{Type: Range, Key: "10"}, {Type: Put, Key: "11", Value: ValueOrHash{Value: "111"}}, {Type: Delete, Key: "12"}}),
-			resp:           txnResponse([]EtcdOperationResult{{KVs: []KeyValue{{ValueRevision: ValueRevision{Value: ValueOrHash{Value: "110"}}}}}, {}, {Deleted: 1}}, true, 10),
-			expectDescribe: `get("10"), put("11", "111"), delete("12") -> "110", ok, deleted: 1, rev: 10`,
-		},
-		{
-			req:            defragmentRequest(),
-			resp:           defragmentResponse(),
-			expectDescribe: `defragment() -> ok`,
-		},
-		{
-			req:            rangeRequest("key11", true),
-			resp:           rangeResponse(nil, 11),
-			expectDescribe: `range("key11") -> [], rev: 11`,
-		},
-		{
-			req:            rangeRequest("key12", true),
-			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("12")}}, 12),
-			expectDescribe: `range("key12") -> ["12"], rev: 12`,
-		},
-		{
-			req:            rangeRequest("key13", true),
-			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("01234567890123456789")}}, 13),
-			expectDescribe: `range("key13") -> [hash: 2945867837], rev: 13`,
-		},
-	}
-	for _, tc := range tcs {
-		assert.Equal(t, tc.expectDescribe, Etcd.DescribeOperation(tc.req, tc.resp))
-	}
-}
-
 func TestModelResponseMatch(t *testing.T) {
 	tcs := []struct {
-		resp1       EtcdResponse
-		resp2       EtcdResponse
+		resp1       EtcdNonDeterministicResponse
+		resp2       EtcdNonDeterministicResponse
 		expectMatch bool
 	}{
 		{

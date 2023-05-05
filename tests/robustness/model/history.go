@@ -30,7 +30,7 @@ import (
 
 // ValidateOperationHistoryAndReturnVisualize return visualize as porcupine.linearizationInfo used to generate visualization is private.
 func ValidateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation) (visualize func(basepath string)) {
-	linearizable, info := porcupine.CheckOperationsVerbose(Etcd, operations, 5*time.Minute)
+	linearizable, info := porcupine.CheckOperationsVerbose(NonDeterministicModel, operations, 5*time.Minute)
 	if linearizable == porcupine.Illegal {
 		t.Error("Model is not linearizable")
 	}
@@ -39,7 +39,7 @@ func ValidateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, op
 	}
 	return func(path string) {
 		lg.Info("Saving visualization", zap.String("path", path))
-		err := porcupine.VisualizePath(Etcd, info, path)
+		err := porcupine.VisualizePath(NonDeterministicModel, info, path)
 		if err != nil {
 			t.Errorf("Failed to visualize, err: %v", err)
 		}
@@ -295,11 +295,15 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *cli
 		h.appendFailed(request, start, err)
 		return
 	}
+	var revision int64
+	if resp != nil && resp.Header != nil {
+		revision = resp.Header.Revision
+	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
-		Output:   defragmentResponse(),
+		Output:   defragmentResponse(revision),
 		Return:   end.Nanoseconds(),
 	})
 }
@@ -325,15 +329,15 @@ func rangeRequest(key string, withPrefix bool) EtcdRequest {
 	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Range, Key: key, WithPrefix: withPrefix}}}}
 }
 
-func emptyGetResponse(revision int64) EtcdResponse {
+func emptyGetResponse(revision int64) EtcdNonDeterministicResponse {
 	return rangeResponse([]*mvccpb.KeyValue{}, revision)
 }
 
-func getResponse(key, value string, modRevision, revision int64) EtcdResponse {
+func getResponse(key, value string, modRevision, revision int64) EtcdNonDeterministicResponse {
 	return rangeResponse([]*mvccpb.KeyValue{{Key: []byte(key), Value: []byte(value), ModRevision: modRevision}}, revision)
 }
 
-func rangeResponse(kvs []*mvccpb.KeyValue, revision int64) EtcdResponse {
+func rangeResponse(kvs []*mvccpb.KeyValue, revision int64) EtcdNonDeterministicResponse {
 	result := EtcdOperationResult{KVs: make([]KeyValue, len(kvs))}
 
 	for i, kv := range kvs {
@@ -345,38 +349,38 @@ func rangeResponse(kvs []*mvccpb.KeyValue, revision int64) EtcdResponse {
 			},
 		}
 	}
-	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{result}}, Revision: revision}
+	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{result}}, Revision: revision}}
 }
 
-func failedResponse(err error) EtcdResponse {
-	return EtcdResponse{Err: err}
+func failedResponse(err error) EtcdNonDeterministicResponse {
+	return EtcdNonDeterministicResponse{Err: err}
 }
 
-func unknownResponse(revision int64) EtcdResponse {
-	return EtcdResponse{ResultUnknown: true, Revision: revision}
+func unknownResponse(revision int64) EtcdNonDeterministicResponse {
+	return EtcdNonDeterministicResponse{ResultUnknown: true, EtcdResponse: EtcdResponse{Revision: revision}}
 }
 
 func putRequest(key, value string) EtcdRequest {
 	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value)}}}}
 }
 
-func putResponse(revision int64) EtcdResponse {
-	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{}}}, Revision: revision}
+func putResponse(revision int64) EtcdNonDeterministicResponse {
+	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{}}}, Revision: revision}}
 }
 
 func deleteRequest(key string) EtcdRequest {
 	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Delete, Key: key}}}}
 }
 
-func deleteResponse(deleted int64, revision int64) EtcdResponse {
-	return EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}
+func deleteResponse(deleted int64, revision int64) EtcdNonDeterministicResponse {
+	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}}
 }
 
 func compareAndSetRequest(key string, expectedRevision int64, value string) EtcdRequest {
 	return txnRequest([]EtcdCondition{{Key: key, ExpectedRevision: expectedRevision}}, []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value)}})
 }
 
-func compareAndSetResponse(succeeded bool, revision int64) EtcdResponse {
+func compareAndSetResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
 	var result []EtcdOperationResult
 	if succeeded {
 		result = []EtcdOperationResult{{}}
@@ -388,8 +392,8 @@ func txnRequest(conds []EtcdCondition, onSuccess []EtcdOperation) EtcdRequest {
 	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Conds: conds, Ops: onSuccess}}
 }
 
-func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) EtcdResponse {
-	return EtcdResponse{Txn: &TxnResponse{OpsResult: result, TxnResult: !succeeded}, Revision: revision}
+func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) EtcdNonDeterministicResponse {
+	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{OpsResult: result, TxnResult: !succeeded}, Revision: revision}}
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
@@ -400,24 +404,24 @@ func leaseGrantRequest(leaseID int64) EtcdRequest {
 	return EtcdRequest{Type: LeaseGrant, LeaseGrant: &LeaseGrantRequest{LeaseID: leaseID}}
 }
 
-func leaseGrantResponse(revision int64) EtcdResponse {
-	return EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision}
+func leaseGrantResponse(revision int64) EtcdNonDeterministicResponse {
+	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision}}
 }
 
 func leaseRevokeRequest(leaseID int64) EtcdRequest {
 	return EtcdRequest{Type: LeaseRevoke, LeaseRevoke: &LeaseRevokeRequest{LeaseID: leaseID}}
 }
 
-func leaseRevokeResponse(revision int64) EtcdResponse {
-	return EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision}
+func leaseRevokeResponse(revision int64) EtcdNonDeterministicResponse {
+	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision}}
 }
 
 func defragmentRequest() EtcdRequest {
 	return EtcdRequest{Type: Defragment, Defragment: &DefragmentRequest{}}
 }
 
-func defragmentResponse() EtcdResponse {
-	return EtcdResponse{Defragment: &DefragmentResponse{}}
+func defragmentResponse(revision int64) EtcdNonDeterministicResponse {
+	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: revision}}
 }
 
 type History struct {
