@@ -72,9 +72,9 @@ func (h *AppendableHistory) AppendRange(key string, withPrefix bool, start, end 
 	}
 	h.successful = append(h.successful, porcupine.Operation{
 		ClientId: h.id,
-		Input:    rangeRequest(key, withPrefix),
+		Input:    rangeRequest(key, withPrefix, 0),
 		Call:     start.Nanoseconds(),
-		Output:   rangeResponse(resp.Kvs, revision),
+		Output:   rangeResponse(resp.Kvs, resp.Count, revision),
 		Return:   end.Nanoseconds(),
 	})
 }
@@ -299,7 +299,8 @@ func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
 			}
 		}
 		return EtcdOperationResult{
-			KVs: kvs,
+			KVs:   kvs,
+			Count: getResp.Count,
 		}
 	case resp.GetResponsePut() != nil:
 		return EtcdOperationResult{}
@@ -345,22 +346,22 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Duratio
 }
 
 func getRequest(key string) EtcdRequest {
-	return rangeRequest(key, false)
+	return rangeRequest(key, false, 0)
 }
 
-func rangeRequest(key string, withPrefix bool) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Range, Key: key, WithPrefix: withPrefix}}}}
+func rangeRequest(key string, withPrefix bool, limit int64) EtcdRequest {
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Ops: []EtcdOperation{{Type: Range, Key: key, WithPrefix: withPrefix, Limit: limit}}}}
 }
 
 func emptyGetResponse(revision int64) EtcdNonDeterministicResponse {
-	return rangeResponse([]*mvccpb.KeyValue{}, revision)
+	return rangeResponse([]*mvccpb.KeyValue{}, 0, revision)
 }
 
 func getResponse(key, value string, modRevision, revision int64) EtcdNonDeterministicResponse {
-	return rangeResponse([]*mvccpb.KeyValue{{Key: []byte(key), Value: []byte(value), ModRevision: modRevision}}, revision)
+	return rangeResponse([]*mvccpb.KeyValue{{Key: []byte(key), Value: []byte(value), ModRevision: modRevision}}, 1, revision)
 }
 
-func rangeResponse(kvs []*mvccpb.KeyValue, revision int64) EtcdNonDeterministicResponse {
+func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) EtcdNonDeterministicResponse {
 	result := EtcdOperationResult{KVs: make([]KeyValue, len(kvs))}
 
 	for i, kv := range kvs {
@@ -371,6 +372,7 @@ func rangeResponse(kvs []*mvccpb.KeyValue, revision int64) EtcdNonDeterministicR
 				ModRevision: kv.ModRevision,
 			},
 		}
+		result.Count = count
 	}
 	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{OpsResult: []EtcdOperationResult{result}}, Revision: revision}}
 }

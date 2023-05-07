@@ -40,15 +40,15 @@ func TestModelBase(t *testing.T) {
 		{
 			name: "First Range can start from non-empty value and non-zero revision",
 			operations: []testOperation{
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 42).EtcdResponse},
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 42).EtcdResponse},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 1, 42).EtcdResponse},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 1, 42).EtcdResponse},
 			},
 		},
 		{
 			name: "First Range can start from non-zero revision",
 			operations: []testOperation{
-				{req: rangeRequest("key", true), resp: rangeResponse(nil, 1).EtcdResponse},
-				{req: rangeRequest("key", true), resp: rangeResponse(nil, 1).EtcdResponse},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse(nil, 0, 1).EtcdResponse},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse(nil, 0, 1).EtcdResponse},
 			},
 		},
 		{
@@ -89,18 +89,55 @@ func TestModelBase(t *testing.T) {
 			operations: []testOperation{
 				{req: putRequest("key1", "1"), resp: putResponse(1).EtcdResponse},
 				{req: putRequest("key2", "2"), resp: putResponse(2).EtcdResponse},
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2).EtcdResponse},
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2).EtcdResponse},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2, 2).EtcdResponse},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2, 2).EtcdResponse},
+			},
+		},
+		{
+			name: "Range limit should reduce number of kvs, but maintain count",
+			operations: []testOperation{
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
+					{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
+					{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2},
+					{Key: []byte("key3"), Value: []byte("3"), ModRevision: 3},
+				}, 3, 3).EtcdResponse},
+				{req: rangeRequest("key", true, 4), resp: rangeResponse([]*mvccpb.KeyValue{
+					{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
+					{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2},
+					{Key: []byte("key3"), Value: []byte("3"), ModRevision: 3},
+				}, 3, 3).EtcdResponse},
+				{req: rangeRequest("key", true, 3), resp: rangeResponse([]*mvccpb.KeyValue{
+					{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
+					{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2},
+					{Key: []byte("key3"), Value: []byte("3"), ModRevision: 3},
+				}, 3, 3).EtcdResponse},
+				{req: rangeRequest("key", true, 2), resp: rangeResponse([]*mvccpb.KeyValue{
+					{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
+					{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2},
+				}, 3, 3).EtcdResponse},
+				{req: rangeRequest("key", true, 1), resp: rangeResponse([]*mvccpb.KeyValue{
+					{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
+				}, 3, 3).EtcdResponse},
 			},
 		},
 		{
 			name: "Range response should be ordered by key",
 			operations: []testOperation{
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
 					{Key: []byte("key1"), Value: []byte("2"), ModRevision: 3},
 					{Key: []byte("key2"), Value: []byte("1"), ModRevision: 2},
 					{Key: []byte("key3"), Value: []byte("3"), ModRevision: 1},
-				}, 3).EtcdResponse},
+				}, 3, 3).EtcdResponse},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
+					{Key: []byte("key2"), Value: []byte("1"), ModRevision: 2},
+					{Key: []byte("key1"), Value: []byte("2"), ModRevision: 3},
+					{Key: []byte("key3"), Value: []byte("3"), ModRevision: 1},
+				}, 3, 3).EtcdResponse, failure: true},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
+					{Key: []byte("key3"), Value: []byte("3"), ModRevision: 1},
+					{Key: []byte("key2"), Value: []byte("1"), ModRevision: 2},
+					{Key: []byte("key1"), Value: []byte("2"), ModRevision: 3},
+				}, 3, 3).EtcdResponse, failure: true},
 			},
 		},
 		{

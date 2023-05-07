@@ -43,15 +43,15 @@ func TestModelNonDeterministic(t *testing.T) {
 		{
 			name: "First Range can start from non-empty value and non-zero revision",
 			operations: []testOperation{
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 42)},
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 42)},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 1, 42)},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 1, 42)},
 			},
 		},
 		{
 			name: "First Range can start from non-zero revision",
 			operations: []testOperation{
-				{req: rangeRequest("key", true), resp: rangeResponse(nil, 1)},
-				{req: rangeRequest("key", true), resp: rangeResponse(nil, 1)},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse(nil, 1, 1)},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse(nil, 1, 1)},
 			},
 		},
 		{
@@ -92,18 +92,18 @@ func TestModelNonDeterministic(t *testing.T) {
 			operations: []testOperation{
 				{req: putRequest("key1", "1"), resp: putResponse(1)},
 				{req: putRequest("key2", "2"), resp: putResponse(2)},
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2)},
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2)},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2, 2)},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2, 2)},
 			},
 		},
 		{
 			name: "Range response should be ordered by key",
 			operations: []testOperation{
-				{req: rangeRequest("key", true), resp: rangeResponse([]*mvccpb.KeyValue{
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
 					{Key: []byte("key1"), Value: []byte("2"), ModRevision: 3},
 					{Key: []byte("key2"), Value: []byte("1"), ModRevision: 2},
 					{Key: []byte("key3"), Value: []byte("3"), ModRevision: 1},
-				}, 3)},
+				}, 3, 3)},
 			},
 		},
 		{

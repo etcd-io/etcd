@@ -105,19 +105,24 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `defragment() -> ok, rev: 10`,
 		},
 		{
-			req:            rangeRequest("key11", true),
-			resp:           rangeResponse(nil, 11),
-			expectDescribe: `range("key11") -> [], rev: 11`,
+			req:            rangeRequest("key11", true, 0),
+			resp:           rangeResponse(nil, 0, 11),
+			expectDescribe: `range("key11") -> [], count: 0, rev: 11`,
 		},
 		{
-			req:            rangeRequest("key12", true),
-			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("12")}}, 12),
-			expectDescribe: `range("key12") -> ["12"], rev: 12`,
+			req:            rangeRequest("key12", true, 0),
+			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("12")}}, 2, 12),
+			expectDescribe: `range("key12") -> ["12"], count: 2, rev: 12`,
 		},
 		{
-			req:            rangeRequest("key13", true),
-			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("01234567890123456789")}}, 13),
-			expectDescribe: `range("key13") -> [hash: 2945867837], rev: 13`,
+			req:            rangeRequest("key13", true, 0),
+			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("01234567890123456789")}}, 1, 13),
+			expectDescribe: `range("key13") -> [hash: 2945867837], count: 1, rev: 13`,
+		},
+		{
+			req:            rangeRequest("key14", true, 14),
+			resp:           rangeResponse(nil, 0, 14),
+			expectDescribe: `range("key14", limit=14) -> [], count: 0, rev: 14`,
 		},
 	}
 	for _, tc := range tcs {
