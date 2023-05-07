@@ -95,3 +95,11 @@ func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
 }
+
+func ctlV3LeaseTimeToLive(cx ctlCtx, leaseID string, withKeys bool) error {
+	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", leaseID)
+	if withKeys {
+		cmdArgs = append(cmdArgs, "--keys")
+	}
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s granted with", leaseID))
+}

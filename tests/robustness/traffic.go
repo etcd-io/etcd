@@ -29,6 +29,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -38,20 +39,6 @@ var (
 	DefaultLeaseTTL   int64 = 7200
 	RequestTimeout          = 40 * time.Millisecond
 	MultiOpTxnOpCount       = 4
-)
-
-type TrafficRequestType string
-
-const (
-	Get           TrafficRequestType = "get"
-	Put           TrafficRequestType = "put"
-	LargePut      TrafficRequestType = "largePut"
-	Delete        TrafficRequestType = "delete"
-	MultiOpTxn    TrafficRequestType = "multiOpTxn"
-	PutWithLease  TrafficRequestType = "putWithLease"
-	LeaseRevoke   TrafficRequestType = "leaseRevoke"
-	CompareAndSet TrafficRequestType = "compareAndSet"
-	Defragment    TrafficRequestType = "defragment"
 )
 
 func simulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config trafficConfig, finish <-chan struct{}) []porcupine.Operation {
@@ -121,19 +108,119 @@ type Traffic interface {
 	Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
 }
 
-type traffic struct {
+type etcdTraffic struct {
 	keyCount     int
-	writes       []requestChance
+	writeChoices []choiceWeight
 	leaseTTL     int64
 	largePutSize int
 }
 
-type requestChance struct {
-	operation TrafficRequestType
-	chance    int
+type etcdRequestType string
+
+const (
+	Put           etcdRequestType = "put"
+	LargePut      etcdRequestType = "largePut"
+	Delete        etcdRequestType = "delete"
+	MultiOpTxn    etcdRequestType = "multiOpTxn"
+	PutWithLease  etcdRequestType = "putWithLease"
+	LeaseRevoke   etcdRequestType = "leaseRevoke"
+	CompareAndSet etcdRequestType = "compareAndSet"
+	Defragment    etcdRequestType = "defragment"
+)
+
+type kubernetesTraffic struct {
+	averageKeyCount int
+	resource        string
+	namespace       string
+	writeChoices    []choiceWeight
 }
 
-func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+type KubernetesRequestType string
+
+const (
+	KubernetesUpdate KubernetesRequestType = "update"
+	KubernetesCreate KubernetesRequestType = "create"
+	KubernetesDelete KubernetesRequestType = "delete"
+)
+
+func (t kubernetesTraffic) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-finish:
+			return
+		default:
+		}
+		objects, err := t.Range(ctx, c, "/registry/"+t.resource+"/", true)
+		if err != nil {
+			continue
+		}
+		limiter.Wait(ctx)
+		err = t.Write(ctx, c, ids, objects)
+		if err != nil {
+			continue
+		}
+		limiter.Wait(ctx)
+	}
+}
+
+func (t kubernetesTraffic) Write(ctx context.Context, c *recordingClient, ids identity.Provider, objects []*mvccpb.KeyValue) (err error) {
+	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+	if len(objects) < t.averageKeyCount/2 {
+		err = t.Create(writeCtx, c, t.generateKey(), fmt.Sprintf("%d", ids.RequestId()))
+	} else {
+		randomPod := objects[rand.Intn(len(objects))]
+		if len(objects) > t.averageKeyCount*3/2 {
+			err = t.Delete(writeCtx, c, string(randomPod.Key), randomPod.ModRevision)
+		} else {
+			op := KubernetesRequestType(pickRandom(t.writeChoices))
+			switch op {
+			case KubernetesDelete:
+				err = t.Delete(writeCtx, c, string(randomPod.Key), randomPod.ModRevision)
+			case KubernetesUpdate:
+				err = t.Update(writeCtx, c, string(randomPod.Key), fmt.Sprintf("%d", ids.RequestId()), randomPod.ModRevision)
+			case KubernetesCreate:
+				err = t.Create(writeCtx, c, t.generateKey(), fmt.Sprintf("%d", ids.RequestId()))
+			default:
+				panic(fmt.Sprintf("invalid choice: %q", op))
+			}
+		}
+	}
+	cancel()
+	return err
+}
+
+func (t kubernetesTraffic) generateKey() string {
+	return fmt.Sprintf("/registry/%s/%s/%s", t.resource, t.namespace, stringutil.RandString(5))
+}
+
+func (t kubernetesTraffic) Range(ctx context.Context, c *recordingClient, key string, withPrefix bool) ([]*mvccpb.KeyValue, error) {
+	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
+	resp, err := c.Range(ctx, key, withPrefix)
+	cancel()
+	return resp, err
+}
+
+func (t kubernetesTraffic) Create(ctx context.Context, c *recordingClient, key, value string) error {
+	return t.Update(ctx, c, key, value, 0)
+}
+
+func (t kubernetesTraffic) Update(ctx context.Context, c *recordingClient, key, value string, expectedRevision int64) error {
+	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
+	err := c.CompareRevisionAndPut(ctx, key, value, expectedRevision)
+	cancel()
+	return err
+}
+
+func (t kubernetesTraffic) Delete(ctx context.Context, c *recordingClient, key string, expectedRevision int64) error {
+	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
+	err := c.CompareRevisionAndDelete(ctx, key, expectedRevision)
+	cancel()
+	return err
+}
+
+func (t etcdTraffic) Run(ctx context.Context, clientId int, c *recordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
 
 	for {
 		select {
@@ -145,29 +232,31 @@ func (t traffic) Run(ctx context.Context, clientId int, c *recordingClient, limi
 		}
 		key := fmt.Sprintf("%d", rand.Int()%t.keyCount)
 		// Execute one read per one write to avoid operation history include too many failed writes when etcd is down.
-		resp, err := t.Read(ctx, c, limiter, key)
+		resp, err := t.Read(ctx, c, key)
 		if err != nil {
 			continue
 		}
-		t.Write(ctx, c, limiter, key, ids, lm, clientId, resp)
+		limiter.Wait(ctx)
+		err = t.Write(ctx, c, limiter, key, ids, lm, clientId, resp)
+		if err != nil {
+			continue
+		}
+		limiter.Wait(ctx)
 	}
 }
 
-func (t traffic) Read(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string) ([]*mvccpb.KeyValue, error) {
+func (t etcdTraffic) Read(ctx context.Context, c *recordingClient, key string) (*mvccpb.KeyValue, error) {
 	getCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	resp, err := c.Get(getCtx, key)
 	cancel()
-	if err == nil {
-		limiter.Wait(ctx)
-	}
 	return resp, err
 }
 
-func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage, cid int, lastValues []*mvccpb.KeyValue) error {
+func (t etcdTraffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage, cid int, lastValues *mvccpb.KeyValue) error {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
-	switch t.pickWriteRequest() {
+	switch etcdRequestType(pickRandom(t.writeChoices)) {
 	case Put:
 		err = c.Put(writeCtx, key, fmt.Sprintf("%d", id.RequestId()))
 	case LargePut:
@@ -177,11 +266,11 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 	case MultiOpTxn:
 		err = c.Txn(writeCtx, nil, t.pickMultiTxnOps(id))
 	case CompareAndSet:
-		var expectValue string
-		if len(lastValues) != 0 {
-			expectValue = string(lastValues[0].Value)
+		var expectRevision int64
+		if lastValues != nil {
+			expectRevision = lastValues.ModRevision
 		}
-		err = c.CompareAndSet(writeCtx, key, expectValue, fmt.Sprintf("%d", id.RequestId()))
+		err = c.CompareRevisionAndPut(writeCtx, key, fmt.Sprintf("%d", id.RequestId()), expectRevision)
 	case PutWithLease:
 		leaseId := lm.LeaseId(cid)
 		if leaseId == 0 {
@@ -208,31 +297,13 @@ func (t traffic) Write(ctx context.Context, c *recordingClient, limiter *rate.Li
 	case Defragment:
 		err = c.Defragment(writeCtx)
 	default:
-		panic("invalid operation")
+		panic("invalid choice")
 	}
 	cancel()
-	if err == nil {
-		limiter.Wait(ctx)
-	}
 	return err
 }
 
-func (t traffic) pickWriteRequest() TrafficRequestType {
-	sum := 0
-	for _, op := range t.writes {
-		sum += op.chance
-	}
-	roll := rand.Int() % sum
-	for _, op := range t.writes {
-		if roll < op.chance {
-			return op.operation
-		}
-		roll -= op.chance
-	}
-	panic("unexpected")
-}
-
-func (t traffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) {
+func (t etcdTraffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) {
 	keys := rand.Perm(t.keyCount)
 	opTypes := make([]model.OperationType, 4)
 
@@ -251,7 +322,7 @@ func (t traffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) {
 	for i, opType := range opTypes {
 		key := fmt.Sprintf("%d", keys[i])
 		switch opType {
-		case model.Get:
+		case model.Range:
 			ops = append(ops, clientv3.OpGet(key))
 		case model.Put:
 			value := fmt.Sprintf("%d", ids.RequestId())
@@ -259,19 +330,19 @@ func (t traffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) {
 		case model.Delete:
 			ops = append(ops, clientv3.OpDelete(key))
 		default:
-			panic("unsuported operation type")
+			panic("unsuported choice type")
 		}
 	}
 	return ops
 }
 
-func (t traffic) pickOperationType() model.OperationType {
+func (t etcdTraffic) pickOperationType() model.OperationType {
 	roll := rand.Int() % 100
 	if roll < 10 {
 		return model.Delete
 	}
 	if roll < 50 {
-		return model.Get
+		return model.Range
 	}
 	return model.Put
 }
@@ -283,4 +354,24 @@ func randString(size int) string {
 		data.WriteByte(byte(int('a') + rand.Intn(26)))
 	}
 	return data.String()
+}
+
+type choiceWeight struct {
+	choice string
+	weight int
+}
+
+func pickRandom(choices []choiceWeight) string {
+	sum := 0
+	for _, op := range choices {
+		sum += op.weight
+	}
+	roll := rand.Int() % sum
+	for _, op := range choices {
+		if roll < op.weight {
+			return op.choice
+		}
+		roll -= op.weight
+	}
+	panic("unexpected")
 }

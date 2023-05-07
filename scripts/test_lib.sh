@@ -203,11 +203,24 @@ function modules_exp() {
 #  run given command across all modules and packages
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
 function run_for_modules {
+  KEEP_GOING_MODULE=${KEEP_GOING_MODULE:-false}
   local pkg="${PKG:-./...}"
+  local fail_mod=false
   if [ -z "${USERMOD:-}" ]; then
     for m in $(module_dirs); do
-      run_for_module "${m}" "$@" "${pkg}" || return "$?"
+      if run_for_module "${m}" "$@" "${pkg}"; then
+        continue
+      else
+        log_error "There was a Failure in module ${m}"
+        if [ "$KEEP_GOING_MODULE" = false ]; then
+          return 1
+        fi
+        fail_mod=true
+      fi
     done
+    if  [ "$fail_mod" = true ]; then
+      return 1
+    fi
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi

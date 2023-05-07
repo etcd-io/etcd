@@ -16,6 +16,7 @@ package robustness
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
@@ -53,14 +54,29 @@ func (c *recordingClient) Close() error {
 	return c.client.Close()
 }
 
-func (c *recordingClient) Get(ctx context.Context, key string) ([]*mvccpb.KeyValue, error) {
+func (c *recordingClient) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
+	resp, err := c.Range(ctx, key, false)
+	if err != nil || len(resp) == 0 {
+		return nil, err
+	}
+	if len(resp) == 1 {
+		return resp[0], err
+	}
+	panic(fmt.Sprintf("Unexpected response size: %d", len(resp)))
+}
+
+func (c *recordingClient) Range(ctx context.Context, key string, withPrefix bool) ([]*mvccpb.KeyValue, error) {
 	callTime := time.Since(c.baseTime)
-	resp, err := c.client.Get(ctx, key)
+	ops := []clientv3.OpOption{}
+	if withPrefix {
+		ops = append(ops, clientv3.WithPrefix())
+	}
+	resp, err := c.client.Get(ctx, key, ops...)
 	returnTime := time.Since(c.baseTime)
 	if err != nil {
 		return nil, err
 	}
-	c.history.AppendGet(key, callTime, returnTime, resp)
+	c.history.AppendRange(key, withPrefix, callTime, returnTime, resp)
 	return resp.Kvs, nil
 }
 
@@ -80,23 +96,35 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *recordingClient) CompareAndSet(ctx context.Context, key, expectedValue, newValue string) error {
+func (c *recordingClient) CompareRevisionAndDelete(ctx context.Context, key string, expectedRevision int64) error {
 	callTime := time.Since(c.baseTime)
+	resp, err := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpDelete(key)).Commit()
+	returnTime := time.Since(c.baseTime)
+	c.history.AppendCompareRevisionAndDelete(key, expectedRevision, callTime, returnTime, resp, err)
+	return err
+}
+
+func (c *recordingClient) CompareRevisionAndPut(ctx context.Context, key, value string, expectedRevision int64) error {
+	callTime := time.Since(c.baseTime)
+	resp, err := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpPut(key, value)).Commit()
+	returnTime := time.Since(c.baseTime)
+	c.history.AppendCompareRevisionAndPut(key, expectedRevision, value, callTime, returnTime, resp, err)
+	return err
+}
+
+func (c *recordingClient) compareRevisionTxn(ctx context.Context, key string, expectedRevision int64, op clientv3.Op) clientv3.Txn {
 	txn := c.client.Txn(ctx)
 	var cmp clientv3.Cmp
-	if expectedValue == "" {
+	if expectedRevision == 0 {
 		cmp = clientv3.Compare(clientv3.CreateRevision(key), "=", 0)
 	} else {
-		cmp = clientv3.Compare(clientv3.Value(key), "=", expectedValue)
+		cmp = clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)
 	}
-	resp, err := txn.If(
+	return txn.If(
 		cmp,
 	).Then(
-		clientv3.OpPut(key, newValue),
-	).Commit()
-	returnTime := time.Since(c.baseTime)
-	c.history.AppendCompareAndSet(key, expectedValue, newValue, callTime, returnTime, resp, err)
-	return err
+		op,
+	)
 }
 
 func (c *recordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {

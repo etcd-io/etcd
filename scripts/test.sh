@@ -27,6 +27,10 @@
 # $ PASSES=integration PKG=./client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./scripts/test.sh
 #
 #
+# KEEP_GOING_SUITE must be set to true to keep going with the next suite execution, passed to PASSES variable when there is a failure
+# in a particular suite.
+# KEEP_GOING_MODULE must be set to true to keep going with execution when there is failure in any module.
+
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
 # $ COVERDIR=coverage PASSES="build cov" ./scripts/test.sh
@@ -55,6 +59,7 @@ if [ -n "${OUTPUT_FILE}" ]; then
 fi
 
 PASSES=${PASSES:-"gofmt bom dep build unit"}
+KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.8.0"}
 
@@ -646,16 +651,30 @@ function run_pass {
   shift 1
   log_callout -e "\\n'${pass}' started at $(date)"
   if "${pass}_pass" "$@" ; then
-    log_success "'${pass}' completed at $(date)"
+    log_success "'${pass}' PASSED and completed at $(date)"
+    return 0
   else
-    log_error "FAIL: '${pass}' failed at $(date)"
-    exit 255
+    log_error "FAIL: '${pass}' FAILED at $(date)"
+    if [ "$KEEP_GOING_SUITE" = true ]; then
+      return 2
+    else
+      exit 255
+    fi
   fi
 }
 
 log_callout "Starting at: $(date)"
+fail_flag=false
 for pass in $PASSES; do
-  run_pass "${pass}" "${@}"
+  if run_pass "${pass}" "${@}"; then
+    continue
+  else
+    fail_flag=true
+  fi
 done
+if [ "$fail_flag" = true ]; then
+  log_error "There was FAILURE in the test suites ran. Look above log detail"
+  exit 255
+fi
 
 log_success "SUCCESS"
