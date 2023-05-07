@@ -26,6 +26,9 @@
 # $ PASSES=unit PKG=./wal TESTCASE="\bTestNew\b" TIMEOUT=1m ./scripts/test.sh
 # $ PASSES=integration PKG=./client/integration TESTCASE="\bTestV2NoRetryEOF\b" TIMEOUT=1m ./scripts/test.sh
 #
+# KEEP_GOING_SUITE must be set to true to keep going with the next suite execution, passed to PASSES variable when there is a failure
+# in a particular suite.
+# KEEP_GOING_MODULE must be set to true to keep going with execution when there is failure in any module.
 #
 # Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
@@ -55,7 +58,7 @@ if [ -n "${OUTPUT_FILE}" ]; then
 fi
 
 PASSES=${PASSES:-"gofmt bom dep build unit"}
-PASSES_CONTINUE=${PASSES_CONTINUE:-false}
+KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.8.0"}
 
@@ -651,7 +654,7 @@ function run_pass {
     return 0
   else
     log_error "FAIL: '${pass}' FAILED at $(date)"
-    if [ "$PASSES_CONTINUE" = true ]; then
+    if [ "$KEEP_GOING_SUITE" = true ]; then
       return 2
     else
       exit 255
