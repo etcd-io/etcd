@@ -146,14 +146,20 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 					KVs: []KeyValue{},
 				}
 				if op.WithPrefix {
+					var count int64
 					for k, v := range s.KeyValues {
 						if strings.HasPrefix(k, op.Key) {
 							opResp[i].KVs = append(opResp[i].KVs, KeyValue{Key: k, ValueRevision: v})
+							count += 1
 						}
 					}
 					sort.Slice(opResp[i].KVs, func(j, k int) bool {
 						return opResp[i].KVs[j].Key < opResp[i].KVs[k].Key
 					})
+					if op.Limit != 0 && count > op.Limit {
+						opResp[i].KVs = opResp[i].KVs[:op.Limit]
+					}
+					opResp[i].Count = count
 				} else {
 					value, ok := s.KeyValues[op.Key]
 					if ok {
@@ -161,6 +167,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 							Key:           op.Key,
 							ValueRevision: value,
 						})
+						opResp[i].Count = 1
 					}
 				}
 			case Put:
@@ -270,6 +277,7 @@ type EtcdOperation struct {
 	Type       OperationType
 	Key        string
 	WithPrefix bool
+	Limit      int64
 	Value      ValueOrHash
 	LeaseID    int64
 }
@@ -303,6 +311,7 @@ type DefragmentResponse struct{}
 
 type EtcdOperationResult struct {
 	KVs     []KeyValue
+	Count   int64
 	Deleted int64
 }
 

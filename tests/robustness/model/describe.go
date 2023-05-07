@@ -89,6 +89,9 @@ func describeEtcdOperation(op EtcdOperation) string {
 	switch op.Type {
 	case Range:
 		if op.WithPrefix {
+			if op.Limit != 0 {
+				return fmt.Sprintf("range(%q, limit=%d)", op.Key, op.Limit)
+			}
 			return fmt.Sprintf("range(%q)", op.Key)
 		}
 		return fmt.Sprintf("get(%q)", op.Key)
@@ -112,7 +115,7 @@ func describeEtcdOperationResponse(req EtcdOperation, resp EtcdOperationResult) 
 			for i, kv := range resp.KVs {
 				kvs[i] = describeValueOrHash(kv.Value)
 			}
-			return fmt.Sprintf("[%s]", strings.Join(kvs, ","))
+			return fmt.Sprintf("[%s], count: %d", strings.Join(kvs, ","), resp.Count)
 		} else {
 			if len(resp.KVs) == 0 {
 				return "nil"
