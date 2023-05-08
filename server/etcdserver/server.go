@@ -1202,8 +1202,8 @@ func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) er
 	return nil
 }
 
-// TransferLeadership transfers the leader to the chosen transferee.
-func (s *EtcdServer) TransferLeadership() error {
+// TryTransferLeadershipOnShutdown transfers the leader to the chosen transferee. It is only used in server graceful shutdown.
+func (s *EtcdServer) TryTransferLeadershipOnShutdown() error {
 	lg := s.Logger()
 	if !s.isLeader() {
 		lg.Info(
@@ -1253,7 +1253,7 @@ func (s *EtcdServer) HardStop() {
 // Do and Process cannot be called after Stop has been invoked.
 func (s *EtcdServer) Stop() {
 	lg := s.Logger()
-	if err := s.TransferLeadership(); err != nil {
+	if err := s.TryTransferLeadershipOnShutdown(); err != nil {
 		lg.Warn("leadership transfer failed", zap.String("local-member-id", s.MemberId().String()), zap.Error(err))
 	}
 	s.HardStop()
