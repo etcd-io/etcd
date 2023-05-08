@@ -317,29 +317,29 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 	return -1, errors.ErrCanceled
 }
 
-func (s *EtcdServer) checkLeaseTimeToLive(ctx context.Context, leaseID lease.LeaseID) (error, uint64) {
+func (s *EtcdServer) checkLeaseTimeToLive(ctx context.Context, leaseID lease.LeaseID) (uint64, error) {
 	rev := s.AuthStore().Revision()
 	if !s.AuthStore().IsAuthEnabled() {
-		return nil, rev
+		return rev, nil
 	}
 	authInfo, err := s.AuthInfoFromCtx(ctx)
 	if err != nil {
-		return err, rev
+		return rev, err
 	}
 	if authInfo == nil {
-		return auth.ErrUserEmpty, rev
+		return rev, auth.ErrUserEmpty
 	}
 
 	l := s.lessor.Lookup(leaseID)
 	if l != nil {
 		for _, key := range l.Keys() {
 			if err := s.AuthStore().IsRangePermitted(authInfo, []byte(key), []byte{}); err != nil {
-				return err, 0
+				return 0, err
 			}
 		}
 	}
 
-	return nil, rev
+	return rev, nil
 }
 
 func (s *EtcdServer) leaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
@@ -397,7 +397,7 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 	var err error
 	if r.Keys {
 		// check RBAC permission only if Keys is true
-		err, rev = s.checkLeaseTimeToLive(ctx, lease.LeaseID(r.ID))
+		rev, err = s.checkLeaseTimeToLive(ctx, lease.LeaseID(r.ID))
 		if err != nil {
 			return nil, err
 		}
