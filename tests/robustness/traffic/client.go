@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package robustness
+package traffic
 
 import (
 	"context"
@@ -27,13 +27,13 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
-type recordingClient struct {
+type RecordingClient struct {
 	client   clientv3.Client
 	history  *model.AppendableHistory
 	baseTime time.Time
 }
 
-func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*recordingClient, error) {
+func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*RecordingClient, error) {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
 		Logger:               zap.NewNop(),
@@ -43,18 +43,18 @@ func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*
 	if err != nil {
 		return nil, err
 	}
-	return &recordingClient{
+	return &RecordingClient{
 		client:   *cc,
 		history:  model.NewAppendableHistory(ids),
 		baseTime: baseTime,
 	}, nil
 }
 
-func (c *recordingClient) Close() error {
+func (c *RecordingClient) Close() error {
 	return c.client.Close()
 }
 
-func (c *recordingClient) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
+func (c *RecordingClient) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
 	resp, err := c.Range(ctx, key, false)
 	if err != nil || len(resp) == 0 {
 		return nil, err
@@ -65,7 +65,7 @@ func (c *recordingClient) Get(ctx context.Context, key string) (*mvccpb.KeyValue
 	panic(fmt.Sprintf("Unexpected response size: %d", len(resp)))
 }
 
-func (c *recordingClient) Range(ctx context.Context, key string, withPrefix bool) ([]*mvccpb.KeyValue, error) {
+func (c *RecordingClient) Range(ctx context.Context, key string, withPrefix bool) ([]*mvccpb.KeyValue, error) {
 	callTime := time.Since(c.baseTime)
 	ops := []clientv3.OpOption{}
 	if withPrefix {
@@ -80,7 +80,7 @@ func (c *recordingClient) Range(ctx context.Context, key string, withPrefix bool
 	return resp.Kvs, nil
 }
 
-func (c *recordingClient) Put(ctx context.Context, key, value string) error {
+func (c *RecordingClient) Put(ctx context.Context, key, value string) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Put(ctx, key, value)
 	returnTime := time.Since(c.baseTime)
@@ -88,7 +88,7 @@ func (c *recordingClient) Put(ctx context.Context, key, value string) error {
 	return err
 }
 
-func (c *recordingClient) Delete(ctx context.Context, key string) error {
+func (c *RecordingClient) Delete(ctx context.Context, key string) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Delete(ctx, key)
 	returnTime := time.Since(c.baseTime)
@@ -96,7 +96,7 @@ func (c *recordingClient) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *recordingClient) CompareRevisionAndDelete(ctx context.Context, key string, expectedRevision int64) error {
+func (c *RecordingClient) CompareRevisionAndDelete(ctx context.Context, key string, expectedRevision int64) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpDelete(key)).Commit()
 	returnTime := time.Since(c.baseTime)
@@ -104,7 +104,7 @@ func (c *recordingClient) CompareRevisionAndDelete(ctx context.Context, key stri
 	return err
 }
 
-func (c *recordingClient) CompareRevisionAndPut(ctx context.Context, key, value string, expectedRevision int64) error {
+func (c *RecordingClient) CompareRevisionAndPut(ctx context.Context, key, value string, expectedRevision int64) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpPut(key, value)).Commit()
 	returnTime := time.Since(c.baseTime)
@@ -112,7 +112,7 @@ func (c *recordingClient) CompareRevisionAndPut(ctx context.Context, key, value 
 	return err
 }
 
-func (c *recordingClient) compareRevisionTxn(ctx context.Context, key string, expectedRevision int64, op clientv3.Op) clientv3.Txn {
+func (c *RecordingClient) compareRevisionTxn(ctx context.Context, key string, expectedRevision int64, op clientv3.Op) clientv3.Txn {
 	txn := c.client.Txn(ctx)
 	var cmp clientv3.Cmp
 	if expectedRevision == 0 {
@@ -127,7 +127,7 @@ func (c *recordingClient) compareRevisionTxn(ctx context.Context, key string, ex
 	)
 }
 
-func (c *recordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {
+func (c *RecordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {
 	callTime := time.Since(c.baseTime)
 	txn := c.client.Txn(ctx)
 	resp, err := txn.If(
@@ -140,7 +140,7 @@ func (c *recordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []cli
 	return err
 }
 
-func (c *recordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, error) {
+func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, error) {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Lease.Grant(ctx, ttl)
 	returnTime := time.Since(c.baseTime)
@@ -152,7 +152,7 @@ func (c *recordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, err
 	return leaseId, err
 }
 
-func (c *recordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error {
+func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Lease.Revoke(ctx, clientv3.LeaseID(leaseId))
 	returnTime := time.Since(c.baseTime)
@@ -160,7 +160,7 @@ func (c *recordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error 
 	return err
 }
 
-func (c *recordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) error {
+func (c *RecordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) error {
 	callTime := time.Since(c.baseTime)
 	opts := clientv3.WithLease(clientv3.LeaseID(leaseId))
 	resp, err := c.client.Put(ctx, key, value, opts)
@@ -169,7 +169,7 @@ func (c *recordingClient) PutWithLease(ctx context.Context, key string, value st
 	return err
 }
 
-func (c *recordingClient) Defragment(ctx context.Context) error {
+func (c *RecordingClient) Defragment(ctx context.Context) error {
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Defragment(ctx, c.client.Endpoints()[0])
 	returnTime := time.Since(c.baseTime)
