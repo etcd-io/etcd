@@ -1,8 +1,5 @@
 name: Go version setup
 
-env:
-  GO_VERSION: "1.19.9"
-
 on:
   workflow_call:
     outputs:
@@ -14,9 +11,11 @@ jobs:
     name: Set Go version variable for all the workflows
     runs-on: ubuntu-latest
     outputs:
-      goversion: ${{ steps.step1.outputs.goversion }}
+      goversion: ${{ steps.goversion.outputs.goversion }}
     steps:
-      - id: step1
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - id: goversion
         run: |
+          GO_VERSION=$(cat .go-version)
           echo "Go Version: $GO_VERSION"
           echo "goversion=$GO_VERSION" >> $GITHUB_OUTPUT
