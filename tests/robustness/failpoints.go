@@ -31,7 +31,8 @@ import (
 )
 
 const (
-	triggerTimeout = time.Minute
+	triggerTimeout               = time.Minute
+	waitBetweenFailpointTriggers = time.Second
 )
 
 var (
