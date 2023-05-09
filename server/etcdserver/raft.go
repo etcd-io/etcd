@@ -23,12 +23,13 @@ import (
 
 	"go.uber.org/zap"
 
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
+
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/contention"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 const (
@@ -307,6 +308,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					notifyc <- struct{}{}
 				}
 
+				// gofail: var raftBeforeAdvance struct{}
 				r.Advance()
 			case <-r.stopped:
 				return

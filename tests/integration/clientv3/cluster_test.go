@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/tests/v3/failpoint"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -294,38 +295,7 @@ func TestMemberPromote(t *testing.T) {
 
 // TestMemberPromoteMemberNotLearner ensures that promoting a voting member fails.
 func TestMemberPromoteMemberNotLearner(t *testing.T) {
-	integration2.BeforeTest(t)
-
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
-	defer clus.Terminate(t)
-
-	// member promote request can be sent to any server in cluster,
-	// the request will be auto-forwarded to leader on server-side.
-	// This test explicitly includes the server-side forwarding by
-	// sending the request to follower.
-	leaderIdx := clus.WaitLeader(t)
-	followerIdx := (leaderIdx + 1) % 3
-	cli := clus.Client(followerIdx)
-
-	resp, err := cli.MemberList(context.Background())
-	if err != nil {
-		t.Fatalf("failed to list member %v", err)
-	}
-	if len(resp.Members) != 3 {
-		t.Fatalf("number of members = %d, want %d", len(resp.Members), 3)
-	}
-
-	// promoting any of the voting members in cluster should fail
-	expectedErrKeywords := "can only promote a learner member"
-	for _, m := range resp.Members {
-		_, err = cli.MemberPromote(context.Background(), m.ID)
-		if err == nil {
-			t.Fatalf("expect promoting voting member to fail, got no error")
-		}
-		if !strings.Contains(err.Error(), expectedErrKeywords) {
-			t.Fatalf("expect error to contain %s, got %s", expectedErrKeywords, err.Error())
-		}
-	}
+	failpoint.MemberPromoteMemberNotLearnerTest(t, failpoint.EmptyFailPoint)
 }
 
 // TestMemberPromoteMemberNotExist ensures that promoting a member that does not exist in cluster fails.
