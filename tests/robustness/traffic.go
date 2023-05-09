@@ -110,7 +110,7 @@ type Traffic interface {
 
 type etcdTraffic struct {
 	keyCount     int
-	writeChoices []choiceWeight
+	writeChoices []choiceWeight[etcdRequestType]
 	leaseTTL     int64
 	largePutSize int
 }
@@ -132,7 +132,7 @@ type kubernetesTraffic struct {
 	averageKeyCount int
 	resource        string
 	namespace       string
-	writeChoices    []choiceWeight
+	writeChoices    []choiceWeight[KubernetesRequestType]
 }
 
 type KubernetesRequestType string
@@ -174,7 +174,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, c *recordingClient, ids id
 		if len(objects) > t.averageKeyCount*3/2 {
 			err = t.Delete(writeCtx, c, string(randomPod.Key), randomPod.ModRevision)
 		} else {
-			op := KubernetesRequestType(pickRandom(t.writeChoices))
+			op := pickRandom(t.writeChoices)
 			switch op {
 			case KubernetesDelete:
 				err = t.Delete(writeCtx, c, string(randomPod.Key), randomPod.ModRevision)
@@ -256,7 +256,7 @@ func (t etcdTraffic) Write(ctx context.Context, c *recordingClient, limiter *rat
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
-	switch etcdRequestType(pickRandom(t.writeChoices)) {
+	switch pickRandom(t.writeChoices) {
 	case Put:
 		err = c.Put(writeCtx, key, fmt.Sprintf("%d", id.RequestId()))
 	case LargePut:
@@ -356,12 +356,12 @@ func randString(size int) string {
 	return data.String()
 }
 
-type choiceWeight struct {
-	choice string
+type choiceWeight[T any] struct {
+	choice T
 	weight int
 }
 
-func pickRandom(choices []choiceWeight) string {
+func pickRandom[T any](choices []choiceWeight[T]) T {
 	sum := 0
 	for _, op := range choices {
 		sum += op.weight
