@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -209,4 +210,20 @@ func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
 		cfg.InitialCluster += ",default=" + purls[i].String()
 	}
 	cfg.InitialCluster = cfg.InitialCluster[1:]
+}
+
+func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
+	cfg := embed.NewConfig()
+	urls := newEmbedURLs(false, 2)
+	setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
+	cfg.Dir = filepath.Join(t.TempDir(), "embed-etcd")
+
+	cfg.AutoCompactionRetention = "2"
+
+	e, err := embed.StartEtcd(cfg)
+	assert.NoError(t, err)
+	autoCompactionRetention := e.Server.Cfg.AutoCompactionRetention
+	duration_to_compare, _ := time.ParseDuration("2h0m0s")
+	assert.Equal(t, duration_to_compare, autoCompactionRetention)
+	e.Close()
 }

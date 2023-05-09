@@ -68,6 +68,7 @@ const (
 	DefaultGRPCKeepAliveTimeout        = 20 * time.Second
 	DefaultDowngradeCheckTime          = 5 * time.Second
 	DefaultWaitClusterReadyTimeout     = 5 * time.Second
+	DefaultAutoCompactionMode          = "periodic"
 
 	DefaultDiscoveryDialTimeout      = 2 * time.Second
 	DefaultDiscoveryRequestTimeOut   = 5 * time.Second
@@ -546,6 +547,8 @@ func NewConfig() *Config {
 				Auth:   &clientv3.AuthConfig{},
 			},
 		},
+
+		AutoCompactionMode: DefaultAutoCompactionMode,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -772,8 +775,9 @@ func (cfg *Config) Validate() error {
 	}
 
 	switch cfg.AutoCompactionMode {
-	case "":
 	case CompactorModeRevision, CompactorModePeriodic:
+	case "":
+		return errors.New("undefined auto-compaction-mode")
 	default:
 		return fmt.Errorf("unknown auto-compaction-mode %q", cfg.AutoCompactionMode)
 	}
