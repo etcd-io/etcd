@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -202,6 +203,11 @@ func TestAutoCompactionModeParse(t *testing.T) {
 		// err mode
 		{"errmode", "1", false, 0},
 		{"errmode", "1h", false, time.Hour},
+		// empty mode
+		{"", "1", true, 0},
+		{"", "1h", false, time.Hour},
+		{"", "a", true, 0},
+		{"", "-1", true, 0},
 	}
 
 	hasErr := func(err error) bool {
@@ -506,4 +512,11 @@ func TestTLSVersionMinMax(t *testing.T) {
 			assert.Equal(t, tt.expectedMaxTLSVersion, cfg.ClientTLSInfo.MaxVersion)
 		})
 	}
+}
+
+func TestUndefinedAutoCompactionModeValidate(t *testing.T) {
+	cfg := *NewConfig()
+	cfg.AutoCompactionMode = ""
+	err := cfg.Validate()
+	require.Error(t, err)
 }

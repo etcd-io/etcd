@@ -16,6 +16,7 @@ package embed
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	defaultLog "log"
@@ -887,6 +888,8 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 			ret = time.Duration(int64(h))
 		case CompactorModePeriodic:
 			ret = time.Duration(int64(h)) * time.Hour
+		case "":
+			return 0, errors.New("--auto-compaction-mode is undefined")
 		}
 	} else {
 		// periodic compaction
