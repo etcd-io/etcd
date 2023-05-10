@@ -36,19 +36,13 @@ func TestRobustness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
 	}
-	type scenario struct {
-		name      string
-		failpoint Failpoint
-		config    e2e.EtcdProcessClusterConfig
-		traffic   *traffic.Config
-	}
-	scenarios := []scenario{}
+	scenarios := []testScenario{}
 	for _, traffic := range []traffic.Config{traffic.LowTraffic, traffic.HighTraffic, traffic.KubernetesTraffic} {
-		scenarios = append(scenarios, scenario{
+		scenarios = append(scenarios, testScenario{
 			name:      "ClusterOfSize1/" + traffic.Name,
 			failpoint: RandomFailpoint,
 			traffic:   &traffic,
-			config: *e2e.NewConfig(
+			cluster: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithSnapshotCount(100),
 				e2e.WithGoFailEnabled(true),
@@ -67,51 +61,53 @@ func TestRobustness(t *testing.T) {
 		if !v.LessThan(version.V3_6) {
 			clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithSnapshotCatchUpEntries(100))
 		}
-		scenarios = append(scenarios, scenario{
+		scenarios = append(scenarios, testScenario{
 			name:      "ClusterOfSize3/" + traffic.Name,
 			failpoint: RandomFailpoint,
 			traffic:   &traffic,
-			config:    *e2e.NewConfig(clusterOfSize3Options...),
+			cluster:   *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
-	scenarios = append(scenarios, scenario{
+	scenarios = append(scenarios, testScenario{
 		name:      "Issue14370",
 		failpoint: RaftBeforeSavePanic,
-		config: *e2e.NewConfig(
+		cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 		),
 	})
-	scenarios = append(scenarios, scenario{
+	scenarios = append(scenarios, testScenario{
 		name:      "Issue14685",
 		failpoint: DefragBeforeCopyPanic,
-		config: *e2e.NewConfig(
+		cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 		),
 	})
-	scenarios = append(scenarios, scenario{
+	scenarios = append(scenarios, testScenario{
 		name:      "Issue13766",
 		failpoint: KillFailpoint,
 		traffic:   &traffic.HighTraffic,
-		config: *e2e.NewConfig(
+		cluster: *e2e.NewConfig(
 			e2e.WithSnapshotCount(100),
 		),
 	})
-	scenarios = append(scenarios, scenario{
+	scenarios = append(scenarios, testScenario{
 		name:      "Issue15220",
 		failpoint: RandomFailpoint,
-		traffic:   &traffic.ReqProgTraffic,
-		config: *e2e.NewConfig(
+		watch: watchConfig{
+			requestProgress: true,
+		},
+		cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 		),
 	})
 	if v.Compare(version.V3_5) >= 0 {
-		scenarios = append(scenarios, scenario{
+		scenarios = append(scenarios, testScenario{
 			name:      "Issue15271",
 			failpoint: BlackholeUntilSnapshot,
 			traffic:   &traffic.HighTraffic,
-			config: *e2e.NewConfig(
+			cluster: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithIsPeerTLS(true),
@@ -125,22 +121,25 @@ func TestRobustness(t *testing.T) {
 
 		t.Run(scenario.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
-			scenario.config.Logger = lg
+			scenario.cluster.Logger = lg
 			ctx := context.Background()
-			testRobustness(ctx, t, lg, scenario.config, scenario.traffic, FailpointConfig{
-				failpoint:           scenario.failpoint,
-				count:               1,
-				retries:             3,
-				waitBetweenTriggers: waitBetweenFailpointTriggers,
-			})
+			testRobustness(ctx, t, lg, scenario)
 		})
 	}
 }
 
-func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2e.EtcdProcessClusterConfig, traffic *traffic.Config, failpoint FailpointConfig) {
+type testScenario struct {
+	name      string
+	failpoint Failpoint
+	cluster   e2e.EtcdProcessClusterConfig
+	traffic   *traffic.Config
+	watch     watchConfig
+}
+
+func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario) {
 	r := report{lg: lg}
 	var err error
-	r.clus, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
+	r.clus, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,11 +152,11 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 	defer func() {
 		r.Report(t, panicked)
 	}()
-	r.operations, r.responses = runScenario(ctx, t, lg, r.clus, *traffic, failpoint)
+	r.operations, r.responses = s.run(ctx, t, lg, r.clus)
 	forcestopCluster(r.clus)
 
 	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
-	validateWatchResponses(t, r.clus, r.responses, traffic.RequestProgress || watchProgressNotifyEnabled)
+	validateWatchResponses(t, r.clus, r.responses, s.watch.requestProgress || watchProgressNotifyEnabled)
 
 	r.events = watchEvents(r.responses)
 	validateEventsMatch(t, r.events)
@@ -168,25 +167,25 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, config e2
 	panicked = false
 }
 
-func runScenario(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, tCfg traffic.Config, failpoint FailpointConfig) (operations []porcupine.Operation, responses [][]watchResponse) {
+func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (operations []porcupine.Operation, responses [][]watchResponse) {
 	g := errgroup.Group{}
 	finishTraffic := make(chan struct{})
 
 	g.Go(func() error {
 		defer close(finishTraffic)
-		injectFailpoints(ctx, t, lg, clus, failpoint)
+		injectFailpoints(ctx, t, lg, clus, s.failpoint)
 		time.Sleep(time.Second)
 		return nil
 	})
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operations = traffic.SimulateTraffic(ctx, t, lg, clus, tCfg, finishTraffic)
+		operations = traffic.SimulateTraffic(ctx, t, lg, clus, *s.traffic, finishTraffic)
 		maxRevisionChan <- operationsMaxRevision(operations)
 		return nil
 	})
 	g.Go(func() error {
-		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, tCfg.RequestProgress)
+		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.watch)
 		return nil
 	})
 	g.Wait()
