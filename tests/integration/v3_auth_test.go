@@ -177,12 +177,10 @@ func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg ClusterConfig) {
 	// wait for lease expire
 	time.Sleep(3 * time.Second)
 
-	tresp, terr := api.Lease.LeaseTimeToLive(
+	tresp, terr := rootc.TimeToLive(
 		context.TODO(),
-		&pb.LeaseTimeToLiveRequest{
-			ID:   int64(leaseID),
-			Keys: true,
-		},
+		leaseID,
+		clientv3.WithAttachedKeys(),
 	)
 	if terr != nil {
 		t.Error(terr)
@@ -552,4 +550,87 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 	}
 
 	<-watchEndCh
+}
+
+func TestV3AuthWithLeaseTimeToLive(t *testing.T) {
+	BeforeTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "user1",
+			password: "user1-123",
+			role:     "role1",
+			key:      "k1",
+			end:      "k3",
+		},
+		{
+			name:     "user2",
+			password: "user2-123",
+			role:     "role2",
+			key:      "k2",
+			end:      "k4",
+		},
+	}
+	authSetupUsers(t, toGRPC(clus.Client(0)).Auth, users)
+
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	user1c, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	defer user1c.Close()
+
+	user2c, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user2", Password: "user2-123"})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	defer user2c.Close()
+
+	leaseResp, err := user1c.Grant(context.TODO(), 90)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaseID := leaseResp.ID
+	_, err = user1c.Put(context.TODO(), "k1", "val", clientv3.WithLease(leaseID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// k2 can be accessed from both user1 and user2
+	_, err = user1c.Put(context.TODO(), "k2", "val", clientv3.WithLease(leaseID))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = user1c.TimeToLive(context.TODO(), leaseID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = user2c.TimeToLive(context.TODO(), leaseID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = user2c.TimeToLive(context.TODO(), leaseID, clientv3.WithAttachedKeys())
+	if err == nil {
+		t.Fatal("timetolive from user2 should be failed with permission denied")
+	}
+
+	rootc, cerr := NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	defer rootc.Close()
+
+	if _, err := rootc.RoleRevokePermission(context.TODO(), "role1", "k1", "k3"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = user1c.TimeToLive(context.TODO(), leaseID, clientv3.WithAttachedKeys())
+	if err == nil {
+		t.Fatal("timetolive from user2 should be failed with permission denied")
+	}
 }
