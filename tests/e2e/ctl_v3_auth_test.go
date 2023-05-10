@@ -15,15 +15,12 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -34,20 +31,16 @@ func TestCtlV3AuthFromKeyPerm(t *testing.T)  { testCtl(t, authTestFromKeyPerm) }
 func TestCtlV3AuthAndWatch(t *testing.T)    { testCtl(t, authTestWatch) }
 func TestCtlV3AuthAndWatchJWT(t *testing.T) { testCtl(t, authTestWatch, withCfg(*e2e.NewConfigJWT())) }
 
-func TestCtlV3AuthDefrag(t *testing.T) { testCtl(t, authTestDefrag) }
+// TestCtlV3AuthEndpointHealth https://github.com/etcd-io/etcd/pull/13774#discussion_r1189118815 is the blocker of migration to common/auth_test.go
 func TestCtlV3AuthEndpointHealth(t *testing.T) {
 	testCtl(t, authTestEndpointHealth, withQuorum())
 }
+
+// TestCtlV3AuthSnapshot TODO fill up common/maintenance_auth_test.go when Snapshot API is added in interfaces.Client
 func TestCtlV3AuthSnapshot(t *testing.T) { testCtl(t, authTestSnapshot) }
 func TestCtlV3AuthSnapshotJWT(t *testing.T) {
 	testCtl(t, authTestSnapshot, withCfg(*e2e.NewConfigJWT()))
 }
-func TestCtlV3AuthJWTExpire(t *testing.T) {
-	testCtl(t, authTestJWTExpire, withCfg(*e2e.NewConfigJWT()))
-}
-func TestCtlV3AuthRevisionConsistency(t *testing.T) { testCtl(t, authTestRevisionConsistency) }
-func TestCtlV3AuthTestCacheReload(t *testing.T)     { testCtl(t, authTestCacheReload) }
-func TestCtlV3AuthLeaseTimeToLive(t *testing.T)     { testCtl(t, authTestLeaseTimeToLive) }
 
 func authEnable(cx ctlCtx) error {
 	// create root user with root role
@@ -303,29 +296,6 @@ func authTestWatch(cx ctlCtx) {
 
 }
 
-func authTestDefrag(cx ctlCtx) {
-	maintenanceInitKeys(cx)
-
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	// ordinary user cannot defrag
-	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3OnlineDefrag(cx); err == nil {
-		cx.t.Fatal("ordinary user should not be able to issue a defrag request")
-	}
-
-	// root can defrag
-	cx.user, cx.pass = "root", "root"
-	if err := ctlV3OnlineDefrag(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-}
-
 func authTestSnapshot(cx ctlCtx) {
 	maintenanceInitKeys(cx)
 
@@ -456,75 +426,6 @@ func authTestCertCNAndUsernameNoPassword(cx ctlCtx) {
 	certCNAndUsername(cx, true)
 }
 
-func authTestJWTExpire(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	// try a granted key
-	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
-		cx.t.Error(err)
-	}
-
-	// wait an expiration of my JWT token
-	<-time.After(3 * time.Second)
-
-	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
-		cx.t.Error(err)
-	}
-}
-
-func authTestRevisionConsistency(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-	cx.user, cx.pass = "root", "root"
-
-	// add user
-	if err := ctlV3User(cx, []string{"add", "test-user", "--interactive=false"}, "User test-user created", []string{"pass"}); err != nil {
-		cx.t.Fatal(err)
-	}
-	// delete the same user
-	if err := ctlV3User(cx, []string{"delete", "test-user"}, "User test-user deleted", []string{}); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// get node0 auth revision
-	node0 := cx.epc.Procs[0]
-	endpoint := node0.EndpointsGRPC()[0]
-	cli, err := clientv3.New(clientv3.Config{Endpoints: []string{endpoint}, Username: cx.user, Password: cx.pass, DialTimeout: 3 * time.Second})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	defer cli.Close()
-
-	sresp, err := cli.AuthStatus(context.TODO())
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	oldAuthRevision := sresp.AuthRevision
-
-	// restart the node
-	if err := node0.Restart(context.TODO()); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// get node0 auth revision again
-	sresp, err = cli.AuthStatus(context.TODO())
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	newAuthRevision := sresp.AuthRevision
-
-	// assert AuthRevision equal
-	if newAuthRevision != oldAuthRevision {
-		cx.t.Fatalf("auth revison shouldn't change when restarting etcd, expected: %d, got: %d", oldAuthRevision, newAuthRevision)
-	}
-}
-
 func ctlV3EndpointHealth(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health")
 	lines := make([]string, cx.epc.Cfg.ClusterSize)
@@ -553,133 +454,4 @@ func ctlV3User(cx ctlCtx, args []string, expStr string, stdIn []string) error {
 
 	_, err = proc.Expect(expStr)
 	return err
-}
-
-// authTestCacheReload tests the permissions when a member restarts
-func authTestCacheReload(cx ctlCtx) {
-
-	authData := []struct {
-		user string
-		role string
-		pass string
-	}{
-		{
-			user: "root",
-			role: "root",
-			pass: "123",
-		},
-		{
-			user: "user0",
-			role: "role0",
-			pass: "123",
-		},
-	}
-
-	node0 := cx.epc.Procs[0]
-	endpoint := node0.EndpointsGRPC()[0]
-
-	// create a client
-	c, err := clientv3.New(clientv3.Config{Endpoints: []string{endpoint}, DialTimeout: 3 * time.Second})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	defer c.Close()
-
-	for _, authObj := range authData {
-		// add role
-		if _, err = c.RoleAdd(context.TODO(), authObj.role); err != nil {
-			cx.t.Fatal(err)
-		}
-
-		// add user
-		if _, err = c.UserAdd(context.TODO(), authObj.user, authObj.pass); err != nil {
-			cx.t.Fatal(err)
-		}
-
-		// grant role to user
-		if _, err = c.UserGrantRole(context.TODO(), authObj.user, authObj.role); err != nil {
-			cx.t.Fatal(err)
-		}
-	}
-
-	// role grant permission to role0
-	if _, err = c.RoleGrantPermission(context.TODO(), authData[1].role, "foo", "", clientv3.PermissionType(clientv3.PermReadWrite)); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// enable auth
-	if _, err = c.AuthEnable(context.TODO()); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// create another client with ID:Password
-	c2, err := clientv3.New(clientv3.Config{Endpoints: []string{endpoint}, Username: authData[1].user, Password: authData[1].pass, DialTimeout: 3 * time.Second})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	defer c2.Close()
-
-	// create foo since that is within the permission set
-	// expectation is to succeed
-	if _, err = c2.Put(context.TODO(), "foo", "bar"); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// restart the node
-	if err := node0.Restart(context.TODO()); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	// nothing has changed, but it fails without refreshing cache after restart
-	if _, err = c2.Put(context.TODO(), "foo", "bar2"); err != nil {
-		cx.t.Fatal(err)
-	}
-}
-
-func authTestLeaseTimeToLive(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-	cx.user, cx.pass = "root", "root"
-
-	authSetupTestUser(cx)
-
-	cx.user = "test-user"
-	cx.pass = "pass"
-
-	leaseID, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-
-	err = ctlV3Put(cx, "foo", "val", leaseID)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-
-	err = ctlV3LeaseTimeToLive(cx, leaseID, true)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user = "root"
-	cx.pass = "root"
-	err = ctlV3Put(cx, "bar", "val", leaseID)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user = "test-user"
-	cx.pass = "pass"
-	// the lease is attached to bar, which test-user cannot access
-	err = ctlV3LeaseTimeToLive(cx, leaseID, true)
-	if err == nil {
-		cx.t.Fatal("test-user must not be able to access to the lease, because it's attached to the key bar")
-	}
-
-	// without --keys, access should be allowed
-	err = ctlV3LeaseTimeToLive(cx, leaseID, false)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
 }

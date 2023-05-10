@@ -28,8 +28,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var defaultAuthToken = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=1s",
-	mustAbsPath("../fixtures/server.crt"), mustAbsPath("../fixtures/server.key.insecure"))
+var tokenTTL = time.Second
+var defaultAuthToken = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=%s",
+	mustAbsPath("../fixtures/server.crt"), mustAbsPath("../fixtures/server.key.insecure"), tokenTTL)
 
 const (
 	PermissionDenied      = "etcdserver: permission denied"
@@ -733,6 +734,121 @@ func TestAuthRoleList(t *testing.T) {
 		resp, err := rootAuthClient.RoleList(ctx)
 		require.NoError(t, err)
 		requireUserRolesEqual(t, testUser, resp.Roles)
+	})
+}
+
+func TestAuthJWTExpire(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+
+		require.NoError(t, testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{}))
+		// wait an expiration of my JWT token
+		<-time.After(3 * tokenTTL)
+
+		// e2e test will generate a new token while
+		// integration test that re-uses the same etcd client will refresh the token on server failure.
+		require.NoError(t, testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{}))
+	})
+}
+
+// TestAuthRevisionConsistency ensures auth revision is the same after member restarts
+func TestAuthRevisionConsistency(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{}, []authUser{rootUser}), "failed to enable auth")
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+
+		// add user
+		_, err := rootAuthClient.UserAdd(ctx, testUserName, testPassword, config.UserAddOptions{})
+		require.NoError(t, err)
+		// delete the same user
+		_, err = rootAuthClient.UserDelete(ctx, testUserName)
+		require.NoError(t, err)
+
+		// get node0 auth revision
+		aresp, err := rootAuthClient.AuthStatus(ctx)
+		require.NoError(t, err)
+		oldAuthRevision := aresp.AuthRevision
+
+		// restart the node
+		clus.Members()[0].Stop()
+		require.NoError(t, clus.Members()[0].Start(ctx))
+
+		aresp2, err := rootAuthClient.AuthStatus(ctx)
+		require.NoError(t, err)
+		newAuthRevision := aresp2.AuthRevision
+
+		require.Equal(t, oldAuthRevision, newAuthRevision)
+	})
+}
+
+// TestAuthTestCacheReload ensures permissions are persisted and will be reloaded after member restarts
+func TestAuthTestCacheReload(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+
+		// create foo since that is within the permission set
+		// expectation is to succeed
+		require.NoError(t, testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{}))
+
+		// restart the node
+		clus.Members()[0].Stop()
+		require.NoError(t, clus.Members()[0].Start(ctx))
+
+		// nothing has changed, but it fails without refreshing cache after restart
+		require.NoError(t, testUserAuthClient.Put(ctx, "foo", "bar2", config.PutOptions{}))
+	})
+}
+
+// TestAuthLeaseTimeToLive gated lease time to live with RBAC control
+func TestAuthLeaseTimeToLive(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
+
+		gresp, err := testUserAuthClient.Grant(ctx, 10)
+		require.NoError(t, err)
+		leaseID := gresp.ID
+
+		require.NoError(t, testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseID}))
+		_, err = testUserAuthClient.TimeToLive(ctx, leaseID, config.LeaseOption{WithAttachedKeys: true})
+		require.NoError(t, err)
+
+		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
+		require.NoError(t, rootAuthClient.Put(ctx, "bar", "foo", config.PutOptions{LeaseID: leaseID}))
+
+		// the lease is attached to bar, which test-user cannot access
+		_, err = testUserAuthClient.TimeToLive(ctx, leaseID, config.LeaseOption{WithAttachedKeys: true})
+		require.Errorf(t, err, "test-user must not be able to access to the lease, because it's attached to the key bar")
+
+		// without --keys, access should be allowed
+		_, err = testUserAuthClient.TimeToLive(ctx, leaseID, config.LeaseOption{WithAttachedKeys: false})
+		require.NoError(t, err)
 	})
 }
 
