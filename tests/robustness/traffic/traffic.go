@@ -63,7 +63,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 			config.traffic.Run(ctx, clientId, c, limiter, ids, lm, finish)
 			mux.Lock()
-			h = h.Merge(c.history.History)
+			h = h.Merge(c.Operations())
 			mux.Unlock()
 		}(c, i)
 	}
@@ -76,7 +76,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	if err != nil {
 		t.Error(err)
 	}
-	h = h.Merge(cc.history.History)
+	h = h.Merge(cc.Operations())
 
 	operations := h.Operations()
 	lg.Info("Recorded operations", zap.Int("count", len(operations)))
