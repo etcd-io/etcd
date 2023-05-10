@@ -58,7 +58,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 
 	target := uint64(clus.Members[(oldLeadIdx+1)%3].Server.MemberId())
 	if auto {
-		err := clus.Members[oldLeadIdx].Server.TransferLeadership()
+		err := clus.Members[oldLeadIdx].Server.TryTransferLeadershipOnShutdown()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -149,7 +149,7 @@ func TestMoveLeaderToLearnerError(t *testing.T) {
 	}
 }
 
-// TestTransferLeadershipWithLearner ensures TransferLeadership does not timeout due to learner is
+// TestTransferLeadershipWithLearner ensures TryTransferLeadershipOnShutdown does not timeout due to learner is
 // automatically picked by leader as transferee.
 func TestTransferLeadershipWithLearner(t *testing.T) {
 	integration.BeforeTest(t)
@@ -170,9 +170,9 @@ func TestTransferLeadershipWithLearner(t *testing.T) {
 	leaderIdx := clus.WaitLeader(t)
 	errCh := make(chan error, 1)
 	go func() {
-		// note that this cluster has 1 leader and 1 learner. TransferLeadership should return nil.
+		// note that this cluster has 1 leader and 1 learner. TryTransferLeadershipOnShutdown should return nil.
 		// Leadership transfer is skipped in cluster with 1 voting member.
-		errCh <- clus.Members[leaderIdx].Server.TransferLeadership()
+		errCh <- clus.Members[leaderIdx].Server.TryTransferLeadershipOnShutdown()
 	}()
 	select {
 	case err := <-errCh:
