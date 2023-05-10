@@ -32,6 +32,7 @@ import (
 var (
 	DefaultLeaseTTL   int64 = 7200
 	RequestTimeout          = 40 * time.Millisecond
+	WatchTimeout            = 400 * time.Millisecond
 	MultiOpTxnOpCount       = 4
 )
 
@@ -63,7 +64,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 			config.traffic.Run(ctx, clientId, c, limiter, ids, lm, finish)
 			mux.Lock()
-			h = h.Merge(c.Operations())
+			h = h.Merge(c.operations.History)
 			mux.Unlock()
 		}(c, i)
 	}
@@ -76,7 +77,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	if err != nil {
 		t.Error(err)
 	}
-	h = h.Merge(cc.Operations())
+	h = h.Merge(cc.operations.History)
 
 	operations := h.Operations()
 	lg.Info("Recorded operations", zap.Int("count", len(operations)))
