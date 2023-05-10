@@ -33,6 +33,8 @@ import (
 const (
 	triggerTimeout               = time.Minute
 	waitBetweenFailpointTriggers = time.Second
+	failpointInjectionsCount     = 1
+	failpointInjectionsRetries   = 3
 )
 
 var (
@@ -77,7 +79,7 @@ var (
 	}}
 )
 
-func injectFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config FailpointConfig) {
+func injectFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint) {
 	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 
@@ -85,22 +87,22 @@ func injectFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e
 	successes := 0
 	failures := 0
 	for _, proc := range clus.Procs {
-		if !config.failpoint.Available(*clus.Cfg, proc) {
-			t.Errorf("Failpoint %q not available on %s", config.failpoint.Name(), proc.Config().Name)
+		if !failpoint.Available(*clus.Cfg, proc) {
+			t.Errorf("Failpoint %q not available on %s", failpoint.Name(), proc.Config().Name)
 			return
 		}
 	}
-	for successes < config.count && failures < config.retries {
-		time.Sleep(config.waitBetweenTriggers)
+	for successes < failpointInjectionsCount && failures < failpointInjectionsRetries {
+		time.Sleep(waitBetweenFailpointTriggers)
 
-		lg.Info("Verifying cluster health before failpoint", zap.String("failpoint", config.failpoint.Name()))
+		lg.Info("Verifying cluster health before failpoint", zap.String("failpoint", failpoint.Name()))
 		if err = verifyClusterHealth(ctx, t, clus); err != nil {
 			t.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
 			return
 		}
 
-		lg.Info("Triggering failpoint", zap.String("failpoint", config.failpoint.Name()))
-		err = config.failpoint.Inject(ctx, t, lg, clus)
+		lg.Info("Triggering failpoint", zap.String("failpoint", failpoint.Name()))
+		err = failpoint.Inject(ctx, t, lg, clus)
 		if err != nil {
 			select {
 			case <-ctx.Done():
@@ -108,12 +110,12 @@ func injectFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e
 				return
 			default:
 			}
-			lg.Info("Failed to trigger failpoint", zap.String("failpoint", config.failpoint.Name()), zap.Error(err))
+			lg.Info("Failed to trigger failpoint", zap.String("failpoint", failpoint.Name()), zap.Error(err))
 			failures++
 			continue
 		}
 
-		lg.Info("Verifying cluster health after failpoint", zap.String("failpoint", config.failpoint.Name()))
+		lg.Info("Verifying cluster health after failpoint", zap.String("failpoint", failpoint.Name()))
 		if err = verifyClusterHealth(ctx, t, clus); err != nil {
 			t.Errorf("failed to verify cluster health after failpoint injection, err: %v", err)
 			return
@@ -121,7 +123,7 @@ func injectFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e
 
 		successes++
 	}
-	if successes < config.count || failures >= config.retries {
+	if successes < failpointInjectionsCount || failures >= failpointInjectionsRetries {
 		t.Errorf("failed to trigger failpoints enough times, err: %v", err)
 	}
 

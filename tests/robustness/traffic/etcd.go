@@ -48,27 +48,6 @@ var (
 			},
 		},
 	}
-	ReqProgTraffic = Config{
-		Name:            "RequestProgressTraffic",
-		minimalQPS:      100,
-		maximalQPS:      200,
-		clientCount:     8,
-		RequestProgress: true,
-		traffic: etcdTraffic{
-			keyCount:     10,
-			leaseTTL:     DefaultLeaseTTL,
-			largePutSize: 32769,
-			writeChoices: []choiceWeight[etcdRequestType]{
-				{choice: Put, weight: 45},
-				{choice: LargePut, weight: 5},
-				{choice: Delete, weight: 10},
-				{choice: MultiOpTxn, weight: 10},
-				{choice: PutWithLease, weight: 10},
-				{choice: LeaseRevoke, weight: 10},
-				{choice: CompareAndSet, weight: 10},
-			},
-		},
-	}
 	HighTraffic = Config{
 		Name:        "HighTraffic",
 		minimalQPS:  200,
