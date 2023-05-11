@@ -46,15 +46,18 @@ func ValidateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, op
 	}
 }
 
-// AppendableHistory allows to collect history of operations. Appending needs to
-// be done in order of operation execution time (start, end time). All Operations
-// time is expected to be calculated as time.Since common base time.
+// AppendableHistory allows to collect history of sequential operations.
 //
-// Appending validates that operations don't overlap and properly handles failed
-// requests.
+// Ensures that operation history is compatible with porcupine library, by preventing concurrent requests sharing the
+// same stream id. For failed requests, we don't know their return time, so generate new stream id.
+//
+// Appending needs to be done in order of operation execution time (start, end time).
+// Operations time should be calculated as time.Since common base time to ensure that Go monotonic time is used.
+// More in https://github.com/golang/go/blob/96add980ad27faed627f26ef1ab09e8fe45d6bd1/src/time/time.go#L10.
 type AppendableHistory struct {
-	// id of the next write operation. If needed a new id might be requested from idProvider.
-	id         int
+	// streamId for the next operation. Used for porcupine.Operation.ClientId as porcupine assumes no concurrent requests.
+	streamId int
+	// If needed a new streamId is requested from idProvider.
 	idProvider identity.Provider
 
 	History
@@ -62,7 +65,7 @@ type AppendableHistory struct {
 
 func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	return &AppendableHistory{
-		id:         ids.ClientId(),
+		streamId:   ids.NewStreamId(),
 		idProvider: ids,
 		History: History{
 			successful: []porcupine.Operation{},
@@ -77,7 +80,7 @@ func (h *AppendableHistory) AppendRange(key string, withPrefix bool, start, end 
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    rangeRequest(key, withPrefix, 0),
 		Call:     start.Nanoseconds(),
 		Output:   rangeResponse(resp.Kvs, resp.Count, revision),
@@ -96,7 +99,7 @@ func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duratio
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   putResponse(revision),
@@ -115,7 +118,7 @@ func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64,
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   putResponse(revision),
@@ -138,7 +141,7 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 		revision = resp.ResponseHeader.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   leaseGrantResponse(revision),
@@ -157,7 +160,7 @@ func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   leaseRevokeResponse(revision),
@@ -178,7 +181,7 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 		deleted = resp.Deleted
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   deleteResponse(deleted, revision),
@@ -201,7 +204,7 @@ func (h *AppendableHistory) AppendCompareRevisionAndDelete(key string, expectedR
 		deleted = resp.Responses[0].GetResponseDeleteRange().Deleted
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   compareRevisionAndDeleteResponse(resp.Succeeded, deleted, revision),
@@ -220,7 +223,7 @@ func (h *AppendableHistory) AppendCompareRevisionAndPut(key string, expectedRevi
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   compareRevisionAndPutResponse(resp.Succeeded, revision),
@@ -251,7 +254,7 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.O
 		results = append(results, toEtcdOperationResult(resp))
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   txnResponse(results, resp.Succeeded, revision),
@@ -352,7 +355,7 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *cli
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   defragmentResponse(revision),
@@ -377,15 +380,15 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, call int64, err er
 		}
 	}
 	h.failed = append(h.failed, porcupine.Operation{
-		ClientId: h.id,
+		ClientId: h.streamId,
 		Input:    request,
 		Call:     call,
 		Output:   failedResponse(err),
 		Return:   0, // For failed writes we don't know when request has really finished.
 	})
 	// Operations of single client needs to be sequential.
-	// As we don't know return time of failed operations, all new writes need to be done with new client id.
-	h.id = h.idProvider.ClientId()
+	// As we don't know return time of failed operations, all new writes need to be done with new stream id.
+	h.streamId = h.idProvider.NewStreamId()
 }
 
 func getRequest(key string) EtcdRequest {

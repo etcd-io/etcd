@@ -85,7 +85,7 @@ func (t kubernetesTraffic) Run(ctx context.Context, clientId int, c *RecordingCl
 func (t kubernetesTraffic) Write(ctx context.Context, c *RecordingClient, ids identity.Provider, objects []*mvccpb.KeyValue) (err error) {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	if len(objects) < t.averageKeyCount/2 {
-		err = t.Create(writeCtx, c, t.generateKey(), fmt.Sprintf("%d", ids.RequestId()))
+		err = t.Create(writeCtx, c, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
 	} else {
 		randomPod := objects[rand.Intn(len(objects))]
 		if len(objects) > t.averageKeyCount*3/2 {
@@ -96,9 +96,9 @@ func (t kubernetesTraffic) Write(ctx context.Context, c *RecordingClient, ids id
 			case KubernetesDelete:
 				err = t.Delete(writeCtx, c, string(randomPod.Key), randomPod.ModRevision)
 			case KubernetesUpdate:
-				err = t.Update(writeCtx, c, string(randomPod.Key), fmt.Sprintf("%d", ids.RequestId()), randomPod.ModRevision)
+				err = t.Update(writeCtx, c, string(randomPod.Key), fmt.Sprintf("%d", ids.NewRequestId()), randomPod.ModRevision)
 			case KubernetesCreate:
-				err = t.Create(writeCtx, c, t.generateKey(), fmt.Sprintf("%d", ids.RequestId()))
+				err = t.Create(writeCtx, c, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
 			}

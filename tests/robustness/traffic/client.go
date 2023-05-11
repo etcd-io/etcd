@@ -30,7 +30,7 @@ import (
 
 // RecordingClient provides a semi etcd client (different interface than
 // clientv3.Client) that records all the requests and responses made. Doesn't
-// allow for concurrent requests to ensure correct appending to history.
+// allow for concurrent requests to confirm to model.AppendableHistory requirements.
 type RecordingClient struct {
 	client   clientv3.Client
 	baseTime time.Time

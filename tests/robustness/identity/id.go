@@ -17,8 +17,10 @@ package identity
 import "sync/atomic"
 
 type Provider interface {
-	ClientId() int
-	RequestId() int
+	// NewStreamId returns an integer starting from zero to make it render nicely by porcupine visualization.
+	NewStreamId() int
+	// NewRequestId returns unique identification used to make write requests unique.
+	NewRequestId() int
 }
 
 func NewIdProvider() Provider {
@@ -26,15 +28,14 @@ func NewIdProvider() Provider {
 }
 
 type atomicProvider struct {
-	clientId  atomic.Int64
+	streamId  atomic.Int64
 	requestId atomic.Int64
 }
 
-func (id *atomicProvider) ClientId() int {
-	// Substract one as ClientId should start from zero.
-	return int(id.clientId.Add(1) - 1)
+func (id *atomicProvider) NewStreamId() int {
+	return int(id.streamId.Add(1) - 1)
 }
 
-func (id *atomicProvider) RequestId() int {
+func (id *atomicProvider) NewRequestId() int {
 	return int(id.requestId.Add(1))
 }
