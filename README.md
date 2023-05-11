@@ -11,6 +11,7 @@
 
 **Note**: The `master` branch may be in an *unstable or even broken state* during development. Please use [releases][github-release] instead of the `master` branch in order to get stable binaries.
 
+
 ![etcd Logo](logos/etcd-horizontal-color.svg)
 
 etcd is a distributed reliable key-value store for the most critical data of a distributed system, with a focus on being:
