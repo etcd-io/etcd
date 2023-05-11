@@ -46,6 +46,12 @@ func ValidateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, op
 	}
 }
 
+// AppendableHistory allows to collect history of operations. Appending needs to
+// be done in order of operation execution time (start, end time). All Operations
+// time is expected to be calculated as time.Since common base time.
+//
+// Appending validates that operations don't overlap and properly handles failed
+// requests.
 type AppendableHistory struct {
 	// id of the next write operation. If needed a new id might be requested from idProvider.
 	id         int
@@ -70,7 +76,7 @@ func (h *AppendableHistory) AppendRange(key string, withPrefix bool, start, end 
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    rangeRequest(key, withPrefix, 0),
 		Call:     start.Nanoseconds(),
@@ -82,14 +88,14 @@ func (h *AppendableHistory) AppendRange(key string, withPrefix bool, start, end 
 func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duration, resp *clientv3.PutResponse, err error) {
 	request := putRequest(key, value)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
@@ -101,14 +107,14 @@ func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duratio
 func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Duration, resp *clientv3.PutResponse, err error) {
 	request := putWithLeaseRequest(key, value, leaseID)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
@@ -124,14 +130,14 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 	}
 	request := leaseGrantRequest(leaseID)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
 	if resp != nil && resp.ResponseHeader != nil {
 		revision = resp.ResponseHeader.Revision
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
@@ -143,14 +149,14 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration, resp *clientv3.LeaseRevokeResponse, err error) {
 	request := leaseRevokeRequest(id)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
@@ -162,7 +168,7 @@ func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration
 func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, resp *clientv3.DeleteResponse, err error) {
 	request := deleteRequest(key)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
@@ -171,7 +177,7 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 		revision = resp.Header.Revision
 		deleted = resp.Deleted
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
@@ -183,7 +189,7 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 func (h *AppendableHistory) AppendCompareRevisionAndDelete(key string, expectedRevision int64, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
 	request := compareRevisionAndDeleteRequest(key, expectedRevision)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
@@ -194,7 +200,7 @@ func (h *AppendableHistory) AppendCompareRevisionAndDelete(key string, expectedR
 	if resp != nil && len(resp.Responses) > 0 {
 		deleted = resp.Responses[0].GetResponseDeleteRange().Deleted
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
@@ -206,14 +212,14 @@ func (h *AppendableHistory) AppendCompareRevisionAndDelete(key string, expectedR
 func (h *AppendableHistory) AppendCompareRevisionAndPut(key string, expectedRevision int64, value string, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
 	request := compareRevisionAndPutRequest(key, expectedRevision, value)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
@@ -233,7 +239,7 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.O
 	}
 	request := txnRequest(conds, ops)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
@@ -244,13 +250,35 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.O
 	for _, resp := range resp.Responses {
 		results = append(results, toEtcdOperationResult(resp))
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   txnResponse(results, resp.Succeeded, revision),
 		Return:   end.Nanoseconds(),
 	})
+}
+
+func (h *AppendableHistory) appendSuccessful(op porcupine.Operation) {
+	if op.Call >= op.Return {
+		panic(fmt.Sprintf("Invalid operation, call(%d) >= return(%d)", op.Call, op.Return))
+	}
+	if len(h.successful) > 0 {
+		prevSuccessful := h.successful[len(h.successful)-1]
+		if op.Call <= prevSuccessful.Call {
+			panic(fmt.Sprintf("Out of order append, new.call(%d) <= prev.call(%d)", op.Call, prevSuccessful.Call))
+		}
+		if op.Call <= prevSuccessful.Return {
+			panic(fmt.Sprintf("Overlapping operations, new.call(%d) <= prev.return(%d)", op.Call, prevSuccessful.Return))
+		}
+	}
+	if len(h.failed) > 0 {
+		prevFailed := h.failed[len(h.failed)-1]
+		if op.Call <= prevFailed.Call {
+			panic(fmt.Sprintf("Out of order append, new.call(%d) <= prev.call(%d)", op.Call, prevFailed.Call))
+		}
+	}
+	h.successful = append(h.successful, op)
 }
 
 func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
@@ -316,14 +344,14 @@ func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
 func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *clientv3.DefragmentResponse, err error) {
 	request := defragmentRequest()
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start.Nanoseconds(), err)
 		return
 	}
 	var revision int64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
 	}
-	h.successful = append(h.successful, porcupine.Operation{
+	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
 		Call:     start.Nanoseconds(),
@@ -332,11 +360,26 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *cli
 	})
 }
 
-func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Duration, err error) {
+func (h *AppendableHistory) appendFailed(request EtcdRequest, call int64, err error) {
+	if len(h.successful) > 0 {
+		prevSuccessful := h.successful[len(h.successful)-1]
+		if call <= prevSuccessful.Call {
+			panic(fmt.Sprintf("Out of order append, new.call(%d) <= prev.call(%d)", call, prevSuccessful.Call))
+		}
+		if call <= prevSuccessful.Return {
+			panic(fmt.Sprintf("Overlapping operations, new.call(%d) <= prev.return(%d)", call, prevSuccessful.Return))
+		}
+	}
+	if len(h.failed) > 0 {
+		prevFailed := h.failed[len(h.failed)-1]
+		if call <= prevFailed.Call {
+			panic(fmt.Sprintf("Out of order append, new.call(%d) <= prev.call(%d)", call, prevFailed.Call))
+		}
+	}
 	h.failed = append(h.failed, porcupine.Operation{
 		ClientId: h.id,
 		Input:    request,
-		Call:     start.Nanoseconds(),
+		Call:     call,
 		Output:   failedResponse(err),
 		Return:   0, // For failed writes we don't know when request has really finished.
 	})

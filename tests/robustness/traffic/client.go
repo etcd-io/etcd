@@ -17,6 +17,7 @@ package traffic
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -27,10 +28,15 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
+// RecordingClient provides a semi etcd client (different interface than
+// clientv3.Client) that records all the requests and responses made. Doesn't
+// allow for concurrent requests to ensure correct appending to history.
 type RecordingClient struct {
 	client   clientv3.Client
-	history  *model.AppendableHistory
 	baseTime time.Time
+	// mux ensures order of request appending.
+	mux     sync.Mutex
+	history *model.AppendableHistory
 }
 
 func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*RecordingClient, error) {
@@ -54,6 +60,10 @@ func (c *RecordingClient) Close() error {
 	return c.client.Close()
 }
 
+func (c *RecordingClient) Operations() model.History {
+	return c.history.History
+}
+
 func (c *RecordingClient) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
 	resp, err := c.Range(ctx, key, false)
 	if err != nil || len(resp) == 0 {
@@ -66,21 +76,25 @@ func (c *RecordingClient) Get(ctx context.Context, key string) (*mvccpb.KeyValue
 }
 
 func (c *RecordingClient) Range(ctx context.Context, key string, withPrefix bool) ([]*mvccpb.KeyValue, error) {
-	callTime := time.Since(c.baseTime)
 	ops := []clientv3.OpOption{}
 	if withPrefix {
 		ops = append(ops, clientv3.WithPrefix())
 	}
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Get(ctx, key, ops...)
-	returnTime := time.Since(c.baseTime)
 	if err != nil {
 		return nil, err
 	}
+	returnTime := time.Since(c.baseTime)
 	c.history.AppendRange(key, withPrefix, callTime, returnTime, resp)
 	return resp.Kvs, nil
 }
 
 func (c *RecordingClient) Put(ctx context.Context, key, value string) error {
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Put(ctx, key, value)
 	returnTime := time.Since(c.baseTime)
@@ -89,6 +103,8 @@ func (c *RecordingClient) Put(ctx context.Context, key, value string) error {
 }
 
 func (c *RecordingClient) Delete(ctx context.Context, key string) error {
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Delete(ctx, key)
 	returnTime := time.Since(c.baseTime)
@@ -97,16 +113,22 @@ func (c *RecordingClient) Delete(ctx context.Context, key string) error {
 }
 
 func (c *RecordingClient) CompareRevisionAndDelete(ctx context.Context, key string, expectedRevision int64) error {
+	txn := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpDelete(key))
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	callTime := time.Since(c.baseTime)
-	resp, err := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpDelete(key)).Commit()
+	resp, err := txn.Commit()
 	returnTime := time.Since(c.baseTime)
 	c.history.AppendCompareRevisionAndDelete(key, expectedRevision, callTime, returnTime, resp, err)
 	return err
 }
 
 func (c *RecordingClient) CompareRevisionAndPut(ctx context.Context, key, value string, expectedRevision int64) error {
+	txn := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpPut(key, value))
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	callTime := time.Since(c.baseTime)
-	resp, err := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpPut(key, value)).Commit()
+	resp, err := txn.Commit()
 	returnTime := time.Since(c.baseTime)
 	c.history.AppendCompareRevisionAndPut(key, expectedRevision, value, callTime, returnTime, resp, err)
 	return err
@@ -128,19 +150,23 @@ func (c *RecordingClient) compareRevisionTxn(ctx context.Context, key string, ex
 }
 
 func (c *RecordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {
-	callTime := time.Since(c.baseTime)
-	txn := c.client.Txn(ctx)
-	resp, err := txn.If(
+	txn := c.client.Txn(ctx).If(
 		cmp...,
 	).Then(
 		ops...,
-	).Commit()
+	)
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	callTime := time.Since(c.baseTime)
+	resp, err := txn.Commit()
 	returnTime := time.Since(c.baseTime)
 	c.history.AppendTxn(cmp, ops, callTime, returnTime, resp, err)
 	return err
 }
 
 func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, error) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Lease.Grant(ctx, ttl)
 	returnTime := time.Since(c.baseTime)
@@ -153,6 +179,8 @@ func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, err
 }
 
 func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error {
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Lease.Revoke(ctx, clientv3.LeaseID(leaseId))
 	returnTime := time.Since(c.baseTime)
@@ -161,15 +189,19 @@ func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error 
 }
 
 func (c *RecordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) error {
-	callTime := time.Since(c.baseTime)
 	opts := clientv3.WithLease(clientv3.LeaseID(leaseId))
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Put(ctx, key, value, opts)
 	returnTime := time.Since(c.baseTime)
-	c.history.AppendPutWithLease(key, value, int64(leaseId), callTime, returnTime, resp, err)
+	c.history.AppendPutWithLease(key, value, leaseId, callTime, returnTime, resp, err)
 	return err
 }
 
 func (c *RecordingClient) Defragment(ctx context.Context) error {
+	c.mux.Lock()
+	defer c.mux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Defragment(ctx, c.client.Endpoints()[0])
 	returnTime := time.Since(c.baseTime)
