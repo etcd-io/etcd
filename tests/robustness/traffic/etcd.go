@@ -124,7 +124,7 @@ func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rat
 	var err error
 	switch etcdRequestType(pickRandom(t.writeChoices)) {
 	case Put:
-		err = c.Put(writeCtx, key, fmt.Sprintf("%d", id.RequestId()))
+		err = c.Put(writeCtx, key, fmt.Sprintf("%d", id.NewRequestId()))
 	case LargePut:
 		err = c.Put(writeCtx, key, randString(t.largePutSize))
 	case Delete:
@@ -136,7 +136,7 @@ func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rat
 		if lastValues != nil {
 			expectRevision = lastValues.ModRevision
 		}
-		err = c.CompareRevisionAndPut(writeCtx, key, fmt.Sprintf("%d", id.RequestId()), expectRevision)
+		err = c.CompareRevisionAndPut(writeCtx, key, fmt.Sprintf("%d", id.NewRequestId()), expectRevision)
 	case PutWithLease:
 		leaseId := lm.LeaseId(cid)
 		if leaseId == 0 {
@@ -148,7 +148,7 @@ func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rat
 		}
 		if leaseId != 0 {
 			putCtx, putCancel := context.WithTimeout(ctx, RequestTimeout)
-			err = c.PutWithLease(putCtx, key, fmt.Sprintf("%d", id.RequestId()), leaseId)
+			err = c.PutWithLease(putCtx, key, fmt.Sprintf("%d", id.NewRequestId()), leaseId)
 			putCancel()
 		}
 	case LeaseRevoke:
@@ -191,7 +191,7 @@ func (t etcdTraffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) 
 		case model.Range:
 			ops = append(ops, clientv3.OpGet(key))
 		case model.Put:
-			value := fmt.Sprintf("%d", ids.RequestId())
+			value := fmt.Sprintf("%d", ids.NewRequestId())
 			ops = append(ops, clientv3.OpPut(key, value))
 		case model.Delete:
 			ops = append(ops, clientv3.OpDelete(key))
