@@ -41,7 +41,7 @@ func TestRobustness(t *testing.T) {
 		scenarios = append(scenarios, testScenario{
 			name:      "ClusterOfSize1/" + traffic.Name,
 			failpoint: RandomFailpoint,
-			traffic:   &traffic,
+			traffic:   traffic,
 			cluster: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithSnapshotCount(100),
@@ -64,7 +64,7 @@ func TestRobustness(t *testing.T) {
 		scenarios = append(scenarios, testScenario{
 			name:      "ClusterOfSize3/" + traffic.Name,
 			failpoint: RandomFailpoint,
-			traffic:   &traffic,
+			traffic:   traffic,
 			cluster:   *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
@@ -87,7 +87,7 @@ func TestRobustness(t *testing.T) {
 	scenarios = append(scenarios, testScenario{
 		name:      "Issue13766",
 		failpoint: KillFailpoint,
-		traffic:   &traffic.HighTraffic,
+		traffic:   traffic.HighTraffic,
 		cluster: *e2e.NewConfig(
 			e2e.WithSnapshotCount(100),
 		),
@@ -106,7 +106,7 @@ func TestRobustness(t *testing.T) {
 		scenarios = append(scenarios, testScenario{
 			name:      "Issue15271",
 			failpoint: BlackholeUntilSnapshot,
-			traffic:   &traffic.HighTraffic,
+			traffic:   traffic.HighTraffic,
 			cluster: *e2e.NewConfig(
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
@@ -115,8 +115,8 @@ func TestRobustness(t *testing.T) {
 		})
 	}
 	for _, scenario := range scenarios {
-		if scenario.traffic == nil {
-			scenario.traffic = &traffic.LowTraffic
+		if scenario.traffic == (traffic.Config{}) {
+			scenario.traffic = traffic.LowTraffic
 		}
 
 		t.Run(scenario.name, func(t *testing.T) {
@@ -132,7 +132,7 @@ type testScenario struct {
 	name      string
 	failpoint Failpoint
 	cluster   e2e.EtcdProcessClusterConfig
-	traffic   *traffic.Config
+	traffic   traffic.Config
 	watch     watchConfig
 }
 
@@ -180,7 +180,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operations = traffic.SimulateTraffic(ctx, t, lg, clus, *s.traffic, finishTraffic)
+		operations = traffic.SimulateTraffic(ctx, t, lg, clus, s.traffic, finishTraffic)
 		maxRevisionChan <- operationsMaxRevision(operations)
 		return nil
 	})
