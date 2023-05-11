@@ -78,14 +78,14 @@ func initState(request EtcdRequest, response EtcdResponse) etcdState {
 	}
 	switch request.Type {
 	case Txn:
-		if response.Txn.TxnResult {
+		if response.Txn.Failure {
 			return state
 		}
-		if len(request.Txn.Ops) != len(response.Txn.OpsResult) {
+		if len(request.Txn.OperationsOnSuccess) != len(response.Txn.Results) {
 			panic(fmt.Sprintf("Incorrect request %s, response %+v", describeEtcdRequest(request), describeEtcdResponse(request, response)))
 		}
-		for i, op := range request.Txn.Ops {
-			opResp := response.Txn.OpsResult[i]
+		for i, op := range request.Txn.OperationsOnSuccess {
+			opResp := response.Txn.Results[i]
 			switch op.Type {
 			case Range:
 				for _, kv := range opResp.KVs {
@@ -128,18 +128,18 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 	switch request.Type {
 	case Txn:
 		success := true
-		for _, cond := range request.Txn.Conds {
+		for _, cond := range request.Txn.Conditions {
 			if val := s.KeyValues[cond.Key]; val.ModRevision != cond.ExpectedRevision {
 				success = false
 				break
 			}
 		}
 		if !success {
-			return s, EtcdResponse{Revision: s.Revision, Txn: &TxnResponse{TxnResult: true}}
+			return s, EtcdResponse{Revision: s.Revision, Txn: &TxnResponse{Failure: true}}
 		}
-		opResp := make([]EtcdOperationResult, len(request.Txn.Ops))
+		opResp := make([]EtcdOperationResult, len(request.Txn.OperationsOnSuccess))
 		increaseRevision := false
-		for i, op := range request.Txn.Ops {
+		for i, op := range request.Txn.OperationsOnSuccess {
 			switch op.Type {
 			case Range:
 				opResp[i] = EtcdOperationResult{
@@ -198,7 +198,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		if increaseRevision {
 			s.Revision += 1
 		}
-		return s, EtcdResponse{Txn: &TxnResponse{OpsResult: opResp}, Revision: s.Revision}
+		return s, EtcdResponse{Txn: &TxnResponse{Results: opResp}, Revision: s.Revision}
 	case LeaseGrant:
 		lease := EtcdLease{
 			LeaseID: request.LeaseGrant.LeaseID,
@@ -264,8 +264,8 @@ type EtcdRequest struct {
 }
 
 type TxnRequest struct {
-	Conds []EtcdCondition
-	Ops   []EtcdOperation
+	Conditions          []EtcdCondition
+	OperationsOnSuccess []EtcdOperation
 }
 
 type EtcdCondition struct {
@@ -299,8 +299,8 @@ type EtcdResponse struct {
 }
 
 type TxnResponse struct {
-	TxnResult bool
-	OpsResult []EtcdOperationResult
+	Failure bool
+	Results []EtcdOperationResult
 }
 
 type LeaseGrantReponse struct {
