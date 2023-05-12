@@ -15,13 +15,17 @@ on:
       artifactName:
         required: true
         type: string
+      runs-on:
+        required: false
+        type: string
+        default: "['ubuntu-latest']"
 permissions: read-all
 jobs:
   goversion:
     uses: ./.github/workflows/go-version.yaml
   test:
     timeout-minutes: 210
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.runs-on) }}
     needs: goversion
     steps:
     - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
