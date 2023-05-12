@@ -4,7 +4,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.9 (tbd)
+## v3.5.9 (2023-05-11)
 
 ### etcd server
 - Fix [LeaseTimeToLive API may return keys to clients which have no read permission on the keys](https://github.com/etcd-io/etcd/pull/15815).
@@ -12,6 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 - Compile binaries using [go 1.19.9](https://github.com/etcd-io/etcd/pull/15822).
 
+<hr>
 
 ## v3.5.8 (2023-04-13)
 
