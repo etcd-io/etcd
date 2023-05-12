@@ -42,9 +42,9 @@ func describeEtcdResponse(request EtcdRequest, response EtcdResponse) string {
 func describeEtcdRequest(request EtcdRequest) string {
 	switch request.Type {
 	case Txn:
-		describeOperations := describeEtcdOperations(request.Txn.Ops)
-		if len(request.Txn.Conds) != 0 {
-			return fmt.Sprintf("if(%s).then(%s)", describeEtcdConditions(request.Txn.Conds), describeOperations)
+		describeOperations := describeEtcdOperations(request.Txn.OperationsOnSuccess)
+		if len(request.Txn.Conditions) != 0 {
+			return fmt.Sprintf("if(%s).then(%s)", describeEtcdConditions(request.Txn.Conditions), describeOperations)
 		}
 		return describeOperations
 	case LeaseGrant:
@@ -75,12 +75,12 @@ func describeEtcdOperations(ops []EtcdOperation) string {
 }
 
 func describeTxnResponse(request *TxnRequest, response *TxnResponse) string {
-	if response.TxnResult {
+	if response.Failure {
 		return fmt.Sprintf("txn failed")
 	}
-	respDescription := make([]string, len(response.OpsResult))
-	for i := range response.OpsResult {
-		respDescription[i] = describeEtcdOperationResponse(request.Ops[i], response.OpsResult[i])
+	respDescription := make([]string, len(response.Results))
+	for i := range response.Results {
+		respDescription[i] = describeEtcdOperationResponse(request.OperationsOnSuccess[i], response.Results[i])
 	}
 	return strings.Join(respDescription, ", ")
 }
