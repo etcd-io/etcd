@@ -189,58 +189,20 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 	})
 }
 
-func (h *AppendableHistory) AppendCompareRevisionAndDelete(key string, expectedRevision int64, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
-	request := compareRevisionAndDeleteRequest(key, expectedRevision)
-	if err != nil {
-		h.appendFailed(request, start.Nanoseconds(), err)
-		return
-	}
-	var revision int64
-	if resp != nil && resp.Header != nil {
-		revision = resp.Header.Revision
-	}
-	var deleted int64
-	if resp != nil && len(resp.Responses) > 0 {
-		deleted = resp.Responses[0].GetResponseDeleteRange().Deleted
-	}
-	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
-		Input:    request,
-		Call:     start.Nanoseconds(),
-		Output:   compareRevisionAndDeleteResponse(resp.Succeeded, deleted, revision),
-		Return:   end.Nanoseconds(),
-	})
-
-}
-func (h *AppendableHistory) AppendCompareRevisionAndPut(key string, expectedRevision int64, value string, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
-	request := compareRevisionAndPutRequest(key, expectedRevision, value)
-	if err != nil {
-		h.appendFailed(request, start.Nanoseconds(), err)
-		return
-	}
-	var revision int64
-	if resp != nil && resp.Header != nil {
-		revision = resp.Header.Revision
-	}
-	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
-		Input:    request,
-		Call:     start.Nanoseconds(),
-		Output:   compareRevisionAndPutResponse(resp.Succeeded, revision),
-		Return:   end.Nanoseconds(),
-	})
-}
-
-func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess []clientv3.Op, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
+func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, clientOnSuccessOps, clientOnFailure []clientv3.Op, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
 	conds := []EtcdCondition{}
 	for _, cmp := range cmp {
 		conds = append(conds, toEtcdCondition(cmp))
 	}
-	ops := []EtcdOperation{}
-	for _, op := range onSuccess {
-		ops = append(ops, toEtcdOperation(op))
+	modelOnSuccess := []EtcdOperation{}
+	for _, op := range clientOnSuccessOps {
+		modelOnSuccess = append(modelOnSuccess, toEtcdOperation(op))
 	}
-	request := txnRequest(conds, ops)
+	modelOnFailure := []EtcdOperation{}
+	for _, op := range clientOnFailure {
+		modelOnFailure = append(modelOnFailure, toEtcdOperation(op))
+	}
+	request := txnRequest(conds, modelOnSuccess, modelOnFailure)
 	if err != nil {
 		h.appendFailed(request, start.Nanoseconds(), err)
 		return
@@ -293,6 +255,7 @@ func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
 	default:
 		panic(fmt.Sprintf("Compare not supported, target: %q, result: %q", cmp.Target, cmp.Result))
 	}
+	cond.ExpectedRevision = cmp.TargetUnion.(*etcdserverpb.Compare_ModRevision).ModRevision
 	return cond
 }
 
@@ -447,32 +410,51 @@ func deleteResponse(deleted int64, revision int64) EtcdNonDeterministicResponse 
 	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}}
 }
 
-func compareRevisionAndDeleteRequest(key string, expectedRevision int64) EtcdRequest {
-	return txnRequest([]EtcdCondition{{Key: key, ExpectedRevision: expectedRevision}}, []EtcdOperation{{Type: Delete, Key: key}})
-}
-
 func compareRevisionAndPutRequest(key string, expectedRevision int64, value string) EtcdRequest {
-	return txnRequest([]EtcdCondition{{Key: key, ExpectedRevision: expectedRevision}}, []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value)}})
+	return txnRequestSingleOperation(compareRevision(key, expectedRevision), putOperation(key, value), nil)
 }
 
 func compareRevisionAndPutResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
-	var result []EtcdOperationResult
 	if succeeded {
-		result = []EtcdOperationResult{{}}
+		return txnPutResponse(succeeded, revision)
 	}
-	return txnResponse(result, succeeded, revision)
+	return txnEmptyResponse(succeeded, revision)
 }
 
-func compareRevisionAndDeleteResponse(succeeded bool, deleted, revision int64) EtcdNonDeterministicResponse {
-	var result []EtcdOperationResult
-	if succeeded {
-		result = []EtcdOperationResult{{Deleted: deleted}}
-	}
-	return txnResponse(result, succeeded, revision)
+func compareRevision(key string, expectedRevision int64) *EtcdCondition {
+	return &EtcdCondition{Key: key, ExpectedRevision: expectedRevision}
 }
 
-func txnRequest(conds []EtcdCondition, onSuccess []EtcdOperation) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Conditions: conds, OperationsOnSuccess: onSuccess}}
+func putOperation(key, value string) *EtcdOperation {
+	return &EtcdOperation{Type: Put, Key: key, Value: ToValueOrHash(value)}
+}
+
+func txnRequestSingleOperation(cond *EtcdCondition, onSuccess, onFailure *EtcdOperation) EtcdRequest {
+	var conds []EtcdCondition
+	if cond != nil {
+		conds = []EtcdCondition{*cond}
+	}
+	var onSuccess2 []EtcdOperation
+	if onSuccess != nil {
+		onSuccess2 = []EtcdOperation{*onSuccess}
+	}
+	var onFailure2 []EtcdOperation
+	if onFailure != nil {
+		onFailure2 = []EtcdOperation{*onFailure}
+	}
+	return txnRequest(conds, onSuccess2, onFailure2)
+}
+
+func txnRequest(conds []EtcdCondition, onSuccess, onFailure []EtcdOperation) EtcdRequest {
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Conditions: conds, OperationsOnSuccess: onSuccess, OperationsOnFailure: onFailure}}
+}
+
+func txnPutResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
+	return txnResponse([]EtcdOperationResult{{}}, succeeded, revision)
+}
+
+func txnEmptyResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
+	return txnResponse([]EtcdOperationResult{}, succeeded, revision)
 }
 
 func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) EtcdNonDeterministicResponse {

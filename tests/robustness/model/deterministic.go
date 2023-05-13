@@ -127,19 +127,20 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 	s.KeyValues = newKVs
 	switch request.Type {
 	case Txn:
-		success := true
+		failure := false
 		for _, cond := range request.Txn.Conditions {
 			if val := s.KeyValues[cond.Key]; val.ModRevision != cond.ExpectedRevision {
-				success = false
+				failure = true
 				break
 			}
 		}
-		if !success {
-			return s, EtcdResponse{Revision: s.Revision, Txn: &TxnResponse{Failure: true}}
+		operations := request.Txn.OperationsOnSuccess
+		if failure {
+			operations = request.Txn.OperationsOnFailure
 		}
-		opResp := make([]EtcdOperationResult, len(request.Txn.OperationsOnSuccess))
+		opResp := make([]EtcdOperationResult, len(operations))
 		increaseRevision := false
-		for i, op := range request.Txn.OperationsOnSuccess {
+		for i, op := range operations {
 			switch op.Type {
 			case Range:
 				opResp[i] = EtcdOperationResult{
@@ -198,7 +199,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		if increaseRevision {
 			s.Revision += 1
 		}
-		return s, EtcdResponse{Txn: &TxnResponse{Results: opResp}, Revision: s.Revision}
+		return s, EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: s.Revision}
 	case LeaseGrant:
 		lease := EtcdLease{
 			LeaseID: request.LeaseGrant.LeaseID,
@@ -266,6 +267,7 @@ type EtcdRequest struct {
 type TxnRequest struct {
 	Conditions          []EtcdCondition
 	OperationsOnSuccess []EtcdOperation
+	OperationsOnFailure []EtcdOperation
 }
 
 type EtcdCondition struct {

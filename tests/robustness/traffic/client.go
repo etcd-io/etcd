@@ -131,56 +131,21 @@ func (c *RecordingClient) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *RecordingClient) CompareRevisionAndDelete(ctx context.Context, key string, expectedRevision int64) error {
-	txn := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpDelete(key))
-	c.opMux.Lock()
-	defer c.opMux.Unlock()
-	callTime := time.Since(c.baseTime)
-	resp, err := txn.Commit()
-	returnTime := time.Since(c.baseTime)
-	c.operations.AppendCompareRevisionAndDelete(key, expectedRevision, callTime, returnTime, resp, err)
-	return err
-}
-
-func (c *RecordingClient) CompareRevisionAndPut(ctx context.Context, key, value string, expectedRevision int64) error {
-	txn := c.compareRevisionTxn(ctx, key, expectedRevision, clientv3.OpPut(key, value))
-	c.opMux.Lock()
-	defer c.opMux.Unlock()
-	callTime := time.Since(c.baseTime)
-	resp, err := txn.Commit()
-	returnTime := time.Since(c.baseTime)
-	c.operations.AppendCompareRevisionAndPut(key, expectedRevision, value, callTime, returnTime, resp, err)
-	return err
-}
-
-func (c *RecordingClient) compareRevisionTxn(ctx context.Context, key string, expectedRevision int64, op clientv3.Op) clientv3.Txn {
-	txn := c.client.Txn(ctx)
-	var cmp clientv3.Cmp
-	if expectedRevision == 0 {
-		cmp = clientv3.Compare(clientv3.CreateRevision(key), "=", 0)
-	} else {
-		cmp = clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)
-	}
-	return txn.If(
-		cmp,
-	).Then(
-		op,
-	)
-}
-
-func (c *RecordingClient) Txn(ctx context.Context, cmp []clientv3.Cmp, ops []clientv3.Op) error {
+func (c *RecordingClient) Txn(ctx context.Context, conditions []clientv3.Cmp, onSuccess []clientv3.Op, onFailure []clientv3.Op) (*clientv3.TxnResponse, error) {
 	txn := c.client.Txn(ctx).If(
-		cmp...,
+		conditions...,
 	).Then(
-		ops...,
+		onSuccess...,
+	).Else(
+		onFailure...,
 	)
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := txn.Commit()
 	returnTime := time.Since(c.baseTime)
-	c.operations.AppendTxn(cmp, ops, callTime, returnTime, resp, err)
-	return err
+	c.operations.AppendTxn(conditions, onSuccess, onFailure, callTime, returnTime, resp, err)
+	return resp, err
 }
 
 func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, error) {

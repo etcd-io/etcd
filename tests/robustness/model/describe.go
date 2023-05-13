@@ -42,11 +42,15 @@ func describeEtcdResponse(request EtcdRequest, response EtcdResponse) string {
 func describeEtcdRequest(request EtcdRequest) string {
 	switch request.Type {
 	case Txn:
-		describeOperations := describeEtcdOperations(request.Txn.OperationsOnSuccess)
+		onSuccess := describeEtcdOperations(request.Txn.OperationsOnSuccess)
 		if len(request.Txn.Conditions) != 0 {
-			return fmt.Sprintf("if(%s).then(%s)", describeEtcdConditions(request.Txn.Conditions), describeOperations)
+			if len(request.Txn.OperationsOnFailure) == 0 {
+				return fmt.Sprintf("if(%s).then(%s)", describeEtcdConditions(request.Txn.Conditions), onSuccess)
+			}
+			onFailure := describeEtcdOperations(request.Txn.OperationsOnFailure)
+			return fmt.Sprintf("if(%s).then(%s).else(%s)", describeEtcdConditions(request.Txn.Conditions), onSuccess, onFailure)
 		}
-		return describeOperations
+		return onSuccess
 	case LeaseGrant:
 		return fmt.Sprintf("leaseGrant(%d)", request.LeaseGrant.LeaseID)
 	case LeaseRevoke:
@@ -75,14 +79,23 @@ func describeEtcdOperations(ops []EtcdOperation) string {
 }
 
 func describeTxnResponse(request *TxnRequest, response *TxnResponse) string {
-	if response.Failure {
-		return fmt.Sprintf("txn failed")
-	}
 	respDescription := make([]string, len(response.Results))
-	for i := range response.Results {
-		respDescription[i] = describeEtcdOperationResponse(request.OperationsOnSuccess[i], response.Results[i])
+	for i, result := range response.Results {
+		if response.Failure {
+			respDescription[i] = describeEtcdOperationResponse(request.OperationsOnFailure[i], result)
+		} else {
+			respDescription[i] = describeEtcdOperationResponse(request.OperationsOnSuccess[i], result)
+		}
 	}
-	return strings.Join(respDescription, ", ")
+	description := strings.Join(respDescription, ", ")
+	if len(request.Conditions) == 0 {
+		return description
+	}
+	if response.Failure {
+		return fmt.Sprintf("failure(%s)", description)
+	} else {
+		return fmt.Sprintf("success(%s)", description)
+	}
 }
 
 func describeEtcdOperation(op EtcdOperation) string {
