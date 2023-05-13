@@ -2,6 +2,7 @@ name: Tests-arm64
 on:
   schedule:
     - cron: '30 1 * * *' # runs daily at 1:30 am.
+permissions: read-all
 jobs:
   goversion:
     uses: ./.github/workflows/go-version.yaml
