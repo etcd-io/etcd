@@ -171,6 +171,8 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	g := errgroup.Group{}
 	finishTraffic := make(chan struct{})
 
+	// baseTime is used to get monotonic clock reading when recording operations/watch events
+	baseTime := time.Now()
 	g.Go(func() error {
 		defer close(finishTraffic)
 		injectFailpoints(ctx, t, lg, clus, s.failpoint)
@@ -180,12 +182,12 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operations = traffic.SimulateTraffic(ctx, t, lg, clus, s.traffic, finishTraffic)
+		operations = traffic.SimulateTraffic(ctx, t, lg, clus, s.traffic, finishTraffic, baseTime)
 		maxRevisionChan <- operationsMaxRevision(operations)
 		return nil
 	})
 	g.Go(func() error {
-		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.watch)
+		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.watch, baseTime)
 		return nil
 	})
 	g.Wait()

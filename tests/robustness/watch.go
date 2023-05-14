@@ -31,7 +31,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg watchConfig) [][]watchResponse {
+func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time) [][]watchResponse {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
 	memberResponses := make([][]watchResponse, len(clus.Procs))
@@ -52,7 +52,7 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 		go func(i int, c *clientv3.Client) {
 			defer wg.Done()
 			defer c.Close()
-			responses := watchMember(ctx, t, c, memberChan, cfg)
+			responses := watchMember(ctx, t, c, memberChan, cfg, baseTime)
 			mux.Lock()
 			memberResponses[i] = responses
 			mux.Unlock()
@@ -75,7 +75,7 @@ type watchConfig struct {
 }
 
 // watchMember collects all responses until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64, cfg watchConfig) (resps []watchResponse) {
+func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time) (resps []watchResponse) {
 	var maxRevision int64 = 0
 	var lastRevision int64 = 0
 	ctx, cancel := context.WithCancel(ctx)
@@ -109,7 +109,9 @@ func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevis
 				c.RequestProgress(ctx)
 			}
 			if resp.Err() == nil {
-				resps = append(resps, watchResponse{resp, time.Now()})
+				// using time.Since time-measuring operation to get monotonic clock reading
+				// see https://github.com/golang/go/blob/master/src/time/time.go#L17
+				resps = append(resps, watchResponse{resp, time.Since(baseTime)})
 			} else if !resp.Canceled {
 				t.Errorf("Watch stream received error, err %v", resp.Err())
 			}
@@ -254,13 +256,13 @@ func toWatchEvents(responses []watchResponse) (events []watchEvent) {
 
 type watchResponse struct {
 	clientv3.WatchResponse
-	time time.Time
+	time time.Duration
 }
 
 type watchEvent struct {
 	Op       model.EtcdOperation
 	Revision int64
-	Time     time.Time
+	Time     time.Duration
 }
 
 func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEvents []watchEvent) []porcupine.Operation {
@@ -282,7 +284,7 @@ func patchOperationBasedOnWatchEvents(operations []porcupine.Operation, watchEve
 		event := matchWatchEvent(request.Txn, persisted)
 		if event != nil {
 			// Set revision and time based on watchEvent.
-			op.Return = event.Time.UnixNano()
+			op.Return = event.Time.Nanoseconds()
 			op.Output = model.EtcdNonDeterministicResponse{
 				EtcdResponse:  model.EtcdResponse{Revision: event.Revision},
 				ResultUnknown: true,
