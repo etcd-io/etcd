@@ -22,6 +22,7 @@ jobs:
       testTimeout: 200m
       artifactName: main-arm64
       runs-on: "['self-hosted', 'Linux', 'ARM64']"
+      clean: 'true'
   release-35:
     uses: ./.github/workflows/robustness-template.yaml
     with:
