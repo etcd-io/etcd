@@ -35,7 +35,7 @@ var (
 	MultiOpTxnOpCount       = 4
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}) []porcupine.Operation {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time) []porcupine.Operation {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
@@ -45,7 +45,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
-	cc, err := NewClient(endpoints, ids, startTime)
+	cc, err := NewClient(endpoints, ids, baseTime)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	wg := sync.WaitGroup{}
 	for i := 0; i < config.clientCount; i++ {
 		wg.Add(1)
-		c, err := NewClient([]string{endpoints[i%len(endpoints)]}, ids, startTime)
+		c, err := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
 		if err != nil {
 			t.Fatal(err)
 		}

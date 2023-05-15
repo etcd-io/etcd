@@ -32,7 +32,10 @@ import (
 // clientv3.Client) that records all the requests and responses made. Doesn't
 // allow for concurrent requests to confirm to model.AppendableHistory requirements.
 type RecordingClient struct {
-	client   clientv3.Client
+	client clientv3.Client
+	// baseTime is needed to achieve monotonic clock reading.
+	// Only time-measuring operations should be used to record time.
+	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime time.Time
 	// mux ensures order of request appending.
 	mux     sync.Mutex
