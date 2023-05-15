@@ -56,15 +56,8 @@ type kubernetesTraffic struct {
 	writeChoices    []choiceWeight[KubernetesRequestType]
 }
 
-type KubernetesRequestType string
-
-const (
-	KubernetesUpdate KubernetesRequestType = "update"
-	KubernetesCreate KubernetesRequestType = "create"
-	KubernetesDelete KubernetesRequestType = "delete"
-)
-
 func (t kubernetesTraffic) Run(ctx context.Context, clientId int, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
 	g := errgroup.Group{}
@@ -78,7 +71,9 @@ func (t kubernetesTraffic) Run(ctx context.Context, clientId int, c *RecordingCl
 				return nil
 			default:
 			}
-			resp, err := t.Range(ctx, c, keyPrefix, true)
+			listCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+			resp, err := kc.List(listCtx, keyPrefix)
+			cancel()
 			if err != nil {
 				continue
 			}
@@ -103,14 +98,18 @@ func (t kubernetesTraffic) Run(ctx context.Context, clientId int, c *RecordingCl
 			}
 			// Avoid multiple failed writes in a row
 			if lastWriteFailed {
-				resp, err := t.Range(ctx, c, keyPrefix, true)
+				listCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+				resp, err := kc.List(listCtx, keyPrefix)
+				cancel()
 				if err != nil {
 					continue
 				}
 				s.Reset(resp)
 				limiter.Wait(ctx)
 			}
-			err := t.Write(ctx, c, ids, s)
+			writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+			err := t.Write(writeCtx, kc, ids, s)
+			cancel()
 			lastWriteFailed = err != nil
 			if err != nil {
 				continue
@@ -121,28 +120,26 @@ func (t kubernetesTraffic) Run(ctx context.Context, clientId int, c *RecordingCl
 	g.Wait()
 }
 
-func (t kubernetesTraffic) Write(ctx context.Context, c *RecordingClient, ids identity.Provider, s *storage) (err error) {
-	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-	defer cancel()
+func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids identity.Provider, s *storage) (err error) {
 	count := s.Count()
 	if count < t.averageKeyCount/2 {
-		err = t.Create(writeCtx, c, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
+		err = kc.OptimisticCreate(ctx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
 	} else {
 		key, rev := s.PickRandom()
 		if rev == 0 {
 			return errors.New("storage empty")
 		}
 		if count > t.averageKeyCount*3/2 {
-			err = t.Delete(writeCtx, c, key, rev)
+			_, err = kc.OptimisticDelete(ctx, key, rev)
 		} else {
 			op := pickRandom(t.writeChoices)
 			switch op {
 			case KubernetesDelete:
-				err = t.Delete(writeCtx, c, key, rev)
+				_, err = kc.OptimisticDelete(ctx, key, rev)
 			case KubernetesUpdate:
-				err = t.Update(writeCtx, c, key, fmt.Sprintf("%d", ids.NewRequestId()), rev)
+				_, err = kc.OptimisticUpdate(ctx, key, fmt.Sprintf("%d", ids.NewRequestId()), rev)
 			case KubernetesCreate:
-				err = t.Create(writeCtx, c, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
+				err = kc.OptimisticCreate(ctx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
 			}
@@ -155,29 +152,56 @@ func (t kubernetesTraffic) generateKey() string {
 	return fmt.Sprintf("/registry/%s/%s/%s", t.resource, t.namespace, stringutil.RandString(5))
 }
 
-func (t kubernetesTraffic) Range(ctx context.Context, c *RecordingClient, key string, withPrefix bool) (*clientv3.GetResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
-	resp, err := c.Range(ctx, key, withPrefix)
-	cancel()
+type KubernetesRequestType string
+
+const (
+	KubernetesDelete KubernetesRequestType = "delete"
+	KubernetesUpdate KubernetesRequestType = "update"
+	KubernetesCreate KubernetesRequestType = "create"
+)
+
+type kubernetesClient struct {
+	client *RecordingClient
+}
+
+func (k kubernetesClient) List(ctx context.Context, key string) (*clientv3.GetResponse, error) {
+	resp, err := k.client.Range(ctx, key, true)
+	if err != nil {
+		return nil, err
+	}
 	return resp, err
 }
 
-func (t kubernetesTraffic) Create(ctx context.Context, c *RecordingClient, key, value string) error {
-	return t.Update(ctx, c, key, value, 0)
+func (k kubernetesClient) OptimisticDelete(ctx context.Context, key string, expectedRevision int64) (*mvccpb.KeyValue, error) {
+	return k.optimisticOperationOrGet(ctx, key, clientv3.OpDelete(key), expectedRevision)
 }
 
-func (t kubernetesTraffic) Update(ctx context.Context, c *RecordingClient, key, value string, expectedRevision int64) error {
-	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
-	err := c.CompareRevisionAndPut(ctx, key, value, expectedRevision)
-	cancel()
+func (k kubernetesClient) OptimisticUpdate(ctx context.Context, key, value string, expectedRevision int64) (*mvccpb.KeyValue, error) {
+	return k.optimisticOperationOrGet(ctx, key, clientv3.OpPut(key, value), expectedRevision)
+}
+
+func (k kubernetesClient) OptimisticCreate(ctx context.Context, key, value string) error {
+	_, err := k.client.Txn(ctx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", 0)}, []clientv3.Op{clientv3.OpPut(key, value)}, nil)
 	return err
 }
 
-func (t kubernetesTraffic) Delete(ctx context.Context, c *RecordingClient, key string, expectedRevision int64) error {
-	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
-	err := c.CompareRevisionAndDelete(ctx, key, expectedRevision)
-	cancel()
-	return err
+// Kubernetes optimistically assumes that key didn't change since it was last observed, so it executes operations within a transaction conditioned on key not changing.
+// However, if the keys value changed it wants imminently to read it, thus the Get operation on failure.
+func (k kubernetesClient) optimisticOperationOrGet(ctx context.Context, key string, operation clientv3.Op, expectedRevision int64) (*mvccpb.KeyValue, error) {
+	resp, err := k.client.Txn(ctx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{operation}, []clientv3.Op{clientv3.OpGet(key)})
+	if err != nil {
+		return nil, err
+	}
+	if !resp.Succeeded {
+		getResp := (*clientv3.GetResponse)(resp.Responses[0].GetResponseRange())
+		if err != nil || len(getResp.Kvs) == 0 {
+			return nil, err
+		}
+		if len(getResp.Kvs) == 1 {
+			return getResp.Kvs[0], err
+		}
+	}
+	return nil, err
 }
 
 type storage struct {

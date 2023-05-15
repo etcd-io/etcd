@@ -122,7 +122,7 @@ func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rat
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
-	switch etcdRequestType(pickRandom(t.writeChoices)) {
+	switch pickRandom(t.writeChoices) {
 	case Put:
 		err = c.Put(writeCtx, key, fmt.Sprintf("%d", id.NewRequestId()))
 	case LargePut:
@@ -130,13 +130,14 @@ func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rat
 	case Delete:
 		err = c.Delete(writeCtx, key)
 	case MultiOpTxn:
-		err = c.Txn(writeCtx, nil, t.pickMultiTxnOps(id))
+		_, err = c.Txn(writeCtx, nil, t.pickMultiTxnOps(id), nil)
 	case CompareAndSet:
-		var expectRevision int64
+		var expectedRevision int64
 		if lastValues != nil {
-			expectRevision = lastValues.ModRevision
+			expectedRevision = lastValues.ModRevision
 		}
-		err = c.CompareRevisionAndPut(writeCtx, key, fmt.Sprintf("%d", id.NewRequestId()), expectRevision)
+		value := fmt.Sprintf("%d", id.NewRequestId())
+		_, err = c.Txn(ctx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, value)}, nil)
 	case PutWithLease:
 		leaseId := lm.LeaseId(cid)
 		if leaseId == 0 {
