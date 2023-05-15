@@ -32,9 +32,9 @@ import (
 // clientv3.Client) that records all the requests and responses made. Doesn't
 // allow for concurrent requests to confirm to model.AppendableHistory requirements.
 type RecordingClient struct {
+	id     int
 	client clientv3.Client
-	// baseTime is needed to achieve monotonic clock reading.
-	// Only time-measuring operations should be used to record time.
+	// using baseTime time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime time.Time
 
@@ -46,8 +46,20 @@ type RecordingClient struct {
 }
 
 type WatchResponse struct {
-	clientv3.WatchResponse
+	Events           []WatchEvent
+	IsProgressNotify bool
+	Revision         int64
+	Time             time.Duration
+}
+
+type TimedWatchEvent struct {
+	WatchEvent
 	Time time.Duration
+}
+
+type WatchEvent struct {
+	Op       model.EtcdOperation
+	Revision int64
 }
 
 func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*RecordingClient, error) {
@@ -61,6 +73,7 @@ func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*
 		return nil, err
 	}
 	return &RecordingClient{
+		id:         ids.NewClientId(),
 		client:     *cc,
 		operations: model.NewAppendableHistory(ids),
 		baseTime:   baseTime,
@@ -73,14 +86,24 @@ func (c *RecordingClient) Close() error {
 
 func (c *RecordingClient) Report() ClientReport {
 	return ClientReport{
-		Operations: c.operations.History,
-		Watch:      nil,
+		ClientId:         c.id,
+		OperationHistory: c.operations.History,
+		Watch:            c.watchResponses,
 	}
 }
 
 type ClientReport struct {
-	Operations model.History
-	Watch      []WatchResponse
+	ClientId         int
+	OperationHistory model.History
+	Watch            []WatchResponse
+}
+
+func (r ClientReport) WatchEventCount() int {
+	count := 0
+	for _, resp := range r.Watch {
+		count += len(resp.Events)
+	}
+	return count
 }
 
 func (c *RecordingClient) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
@@ -206,10 +229,42 @@ func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, with
 		defer close(respCh)
 		for r := range c.client.Watch(ctx, key, ops...) {
 			c.watchMux.Lock()
-			c.watchResponses = append(c.watchResponses, WatchResponse{r, time.Since(c.baseTime)})
+			c.watchResponses = append(c.watchResponses, ToWatchResponse(r, c.baseTime))
 			c.watchMux.Unlock()
 			respCh <- r
 		}
 	}()
 	return respCh
+}
+
+func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) WatchResponse {
+	// using time.Since time-measuring operation to get monotonic clock reading
+	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
+	resp := WatchResponse{Time: time.Since(baseTime)}
+	for _, event := range r.Events {
+		resp.Events = append(resp.Events, toWatchEvent(*event))
+	}
+	resp.IsProgressNotify = r.IsProgressNotify()
+	resp.Revision = r.Header.Revision
+	return resp
+}
+
+func toWatchEvent(event clientv3.Event) WatchEvent {
+	var op model.OperationType
+	switch event.Type {
+	case mvccpb.PUT:
+		op = model.Put
+	case mvccpb.DELETE:
+		op = model.Delete
+	default:
+		panic(fmt.Sprintf("Unexpected event type: %s", event.Type))
+	}
+	return WatchEvent{
+		Revision: event.Kv.ModRevision,
+		Op: model.EtcdOperation{
+			Type:  op,
+			Key:   string(event.Kv.Key),
+			Value: model.ToValueOrHash(string(event.Kv.Value)),
+		},
+	}
 }

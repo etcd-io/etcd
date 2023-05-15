@@ -16,8 +16,10 @@ package robustness
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -29,13 +31,10 @@ import (
 )
 
 type report struct {
-	lg                *zap.Logger
-	clus              *e2e.EtcdProcessCluster
-	responses         [][]traffic.WatchResponse
-	events            [][]watchEvent
-	operations        []porcupine.Operation
-	patchedOperations []porcupine.Operation
-	visualizeHistory  func(path string)
+	lg               *zap.Logger
+	clus             *e2e.EtcdProcessCluster
+	clientReports    []traffic.ClientReport
+	visualizeHistory func(path string)
 }
 
 func testResultsDirectory(t *testing.T) string {
@@ -65,21 +64,28 @@ func testResultsDirectory(t *testing.T) string {
 func (r *report) Report(t *testing.T, force bool) {
 	path := testResultsDirectory(t)
 	if t.Failed() || force {
-		for i, member := range r.clus.Procs {
-			memberDataDir := filepath.Join(path, member.Config().Name)
+		for _, member := range r.clus.Procs {
+			memberDataDir := filepath.Join(path, fmt.Sprintf("server-%s", member.Config().Name))
 			persistMemberDataDir(t, r.lg, member, memberDataDir)
-			if r.responses != nil {
-				persistWatchResponses(t, r.lg, filepath.Join(memberDataDir, "responses.json"), r.responses[i])
-			}
-			if r.events != nil {
-				persistWatchEvents(t, r.lg, filepath.Join(memberDataDir, "events.json"), r.events[i])
-			}
 		}
-		if r.operations != nil {
-			persistOperationHistory(t, r.lg, filepath.Join(path, "full-history.json"), r.operations)
-		}
-		if r.patchedOperations != nil {
-			persistOperationHistory(t, r.lg, filepath.Join(path, "patched-history.json"), r.patchedOperations)
+		if r.clientReports != nil {
+			sort.Slice(r.clientReports, func(i, j int) bool {
+				return r.clientReports[i].ClientId < r.clientReports[j].ClientId
+			})
+			for _, report := range r.clientReports {
+				clientDir := filepath.Join(path, fmt.Sprintf("client-%d", report.ClientId))
+				err := os.MkdirAll(clientDir, 0700)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(report.Watch) != 0 {
+					persistWatchResponses(t, r.lg, filepath.Join(clientDir, "watch.json"), report.Watch)
+				}
+				operations := report.OperationHistory.Operations()
+				if len(operations) != 0 {
+					persistOperationHistory(t, r.lg, filepath.Join(clientDir, "operations.json"), operations)
+				}
+			}
 		}
 	}
 	if r.visualizeHistory != nil {
@@ -112,7 +118,7 @@ func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses 
 	}
 }
 
-func persistWatchEvents(t *testing.T, lg *zap.Logger, path string, events []watchEvent) {
+func persistWatchEvents(t *testing.T, lg *zap.Logger, path string, events []traffic.TimedWatchEvent) {
 	lg.Info("Saving watch events", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {

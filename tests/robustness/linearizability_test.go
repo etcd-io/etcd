@@ -19,13 +19,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anishathalye/porcupine"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
@@ -152,27 +152,25 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	defer func() {
 		r.Report(t, panicked)
 	}()
-	r.operations, r.responses = s.run(ctx, t, lg, r.clus)
+	r.clientReports = s.run(ctx, t, lg, r.clus)
 	forcestopCluster(r.clus)
 
 	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
-	validateWatchResponses(t, r.clus, r.responses, s.watch.requestProgress || watchProgressNotifyEnabled)
-
-	r.events = watchEvents(r.responses)
-	validateEventsMatch(t, r.events)
-
-	r.patchedOperations = patchOperationBasedOnWatchEvents(r.operations, longestHistory(r.events))
-	r.visualizeHistory = model.ValidateOperationHistoryAndReturnVisualize(t, lg, r.patchedOperations)
+	validateGotAtLeastOneProgressNotify(t, r.clientReports, s.watch.requestProgress || watchProgressNotifyEnabled)
+	r.visualizeHistory = validateCorrectness(t, lg, r.clientReports)
 
 	panicked = false
 }
 
-func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (operations []porcupine.Operation, responses [][]traffic.WatchResponse) {
+func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []traffic.ClientReport) {
 	g := errgroup.Group{}
+	var operationReport, watchReport []traffic.ClientReport
 	finishTraffic := make(chan struct{})
 
-	// baseTime is used to get monotonic clock reading when recording operations/watch events
+	// using baseTime time-measuring operation to get monotonic clock reading
+	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime := time.Now()
+	ids := identity.NewIdProvider()
 	g.Go(func() error {
 		defer close(finishTraffic)
 		injectFailpoints(ctx, t, lg, clus, s.failpoint)
@@ -182,22 +180,22 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operations = traffic.SimulateTraffic(ctx, t, lg, clus, s.traffic, finishTraffic, baseTime)
-		maxRevisionChan <- operationsMaxRevision(operations)
+		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.traffic, finishTraffic, baseTime, ids)
+		maxRevisionChan <- operationsMaxRevision(operationReport)
 		return nil
 	})
 	g.Go(func() error {
-		responses = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.watch, baseTime)
+		watchReport = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.watch, baseTime, ids)
 		return nil
 	})
 	g.Wait()
-	return operations, responses
+	return append(operationReport, watchReport...)
 }
 
-func operationsMaxRevision(operations []porcupine.Operation) int64 {
+func operationsMaxRevision(reports []traffic.ClientReport) int64 {
 	var maxRevision int64
-	for _, op := range operations {
-		revision := op.Output.(model.EtcdNonDeterministicResponse).Revision
+	for _, r := range reports {
+		revision := r.OperationHistory.MaxRevision()
 		if revision > maxRevision {
 			maxRevision = revision
 		}
@@ -211,4 +209,10 @@ func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
 		member.Kill()
 	}
 	return clus.ConcurrentStop()
+}
+
+func validateCorrectness(t *testing.T, lg *zap.Logger, reports []traffic.ClientReport) (visualize func(basepath string)) {
+	validateWatchCorrectness(t, reports)
+	operations := operationsFromClientReports(reports)
+	return model.ValidateOperationHistoryAndReturnVisualize(t, lg, operations)
 }
