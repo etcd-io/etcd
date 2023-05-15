@@ -25,12 +25,13 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 type report struct {
 	lg                *zap.Logger
 	clus              *e2e.EtcdProcessCluster
-	responses         [][]watchResponse
+	responses         [][]traffic.WatchResponse
 	events            [][]watchEvent
 	operations        []porcupine.Operation
 	patchedOperations []porcupine.Operation
@@ -94,7 +95,7 @@ func persistMemberDataDir(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, 
 	}
 }
 
-func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses []watchResponse) {
+func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses []traffic.WatchResponse) {
 	lg.Info("Saving watch responses", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {

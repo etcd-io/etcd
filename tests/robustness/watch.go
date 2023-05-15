@@ -29,12 +29,13 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
+	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time) [][]watchResponse {
+func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time) [][]traffic.WatchResponse {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
-	memberResponses := make([][]watchResponse, len(clus.Procs))
+	memberResponses := make([][]traffic.WatchResponse, len(clus.Procs))
 	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
 	for i, member := range clus.Procs {
 		c, err := clientv3.New(clientv3.Config{
@@ -75,7 +76,7 @@ type watchConfig struct {
 }
 
 // watchMember collects all responses until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time) (resps []watchResponse) {
+func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time) (resps []traffic.WatchResponse) {
 	var maxRevision int64 = 0
 	var lastRevision int64 = 0
 	ctx, cancel := context.WithCancel(ctx)
@@ -111,7 +112,7 @@ func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevis
 			if resp.Err() == nil {
 				// using time.Since time-measuring operation to get monotonic clock reading
 				// see https://github.com/golang/go/blob/master/src/time/time.go#L17
-				resps = append(resps, watchResponse{resp, time.Since(baseTime)})
+				resps = append(resps, traffic.WatchResponse{WatchResponse: resp, Time: time.Since(baseTime)})
 			} else if !resp.Canceled {
 				t.Errorf("Watch stream received error, err %v", resp.Err())
 			}
@@ -126,7 +127,7 @@ func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevis
 	}
 }
 
-func watchResponsesMaxRevision(responses []watchResponse) int64 {
+func watchResponsesMaxRevision(responses []traffic.WatchResponse) int64 {
 	var maxRevision int64
 	for _, response := range responses {
 		for _, event := range response.Events {
@@ -138,13 +139,13 @@ func watchResponsesMaxRevision(responses []watchResponse) int64 {
 	return maxRevision
 }
 
-func validateWatchResponses(t *testing.T, clus *e2e.EtcdProcessCluster, responses [][]watchResponse, expectProgressNotify bool) {
+func validateWatchResponses(t *testing.T, clus *e2e.EtcdProcessCluster, responses [][]traffic.WatchResponse, expectProgressNotify bool) {
 	for i, member := range clus.Procs {
 		validateMemberWatchResponses(t, member.Config().Name, responses[i], expectProgressNotify)
 	}
 }
 
-func validateMemberWatchResponses(t *testing.T, memberId string, responses []watchResponse, expectProgressNotify bool) {
+func validateMemberWatchResponses(t *testing.T, memberId string, responses []traffic.WatchResponse, expectProgressNotify bool) {
 	// Validate watch is correctly configured to ensure proper testing
 	validateGotAtLeastOneProgressNotify(t, memberId, responses, expectProgressNotify)
 
@@ -156,7 +157,7 @@ func validateMemberWatchResponses(t *testing.T, memberId string, responses []wat
 	validateRenewable(t, memberId, responses)
 }
 
-func validateGotAtLeastOneProgressNotify(t *testing.T, memberId string, responses []watchResponse, expectProgressNotify bool) {
+func validateGotAtLeastOneProgressNotify(t *testing.T, memberId string, responses []traffic.WatchResponse, expectProgressNotify bool) {
 	var gotProgressNotify = false
 	var lastHeadRevision int64 = 1
 	for _, resp := range responses {
@@ -171,7 +172,7 @@ func validateGotAtLeastOneProgressNotify(t *testing.T, memberId string, response
 	}
 }
 
-func validateRenewable(t *testing.T, memberId string, responses []watchResponse) {
+func validateRenewable(t *testing.T, memberId string, responses []traffic.WatchResponse) {
 	var lastProgressNotifyRevision int64 = 0
 	for _, resp := range responses {
 		for _, event := range resp.Events {
@@ -185,7 +186,7 @@ func validateRenewable(t *testing.T, memberId string, responses []watchResponse)
 	}
 }
 
-func validateOrderedAndReliable(t *testing.T, memberId string, responses []watchResponse) {
+func validateOrderedAndReliable(t *testing.T, memberId string, responses []traffic.WatchResponse) {
 	var lastEventRevision int64 = 1
 	for _, resp := range responses {
 		for _, event := range resp.Events {
@@ -201,7 +202,7 @@ func validateOrderedAndReliable(t *testing.T, memberId string, responses []watch
 	}
 }
 
-func validateUnique(t *testing.T, memberId string, responses []watchResponse) {
+func validateUnique(t *testing.T, memberId string, responses []traffic.WatchResponse) {
 	type revisionKey struct {
 		revision int64
 		key      string
@@ -218,7 +219,7 @@ func validateUnique(t *testing.T, memberId string, responses []watchResponse) {
 	}
 }
 
-func validateAtomic(t *testing.T, memberId string, responses []watchResponse) {
+func validateAtomic(t *testing.T, memberId string, responses []traffic.WatchResponse) {
 	var lastEventRevision int64 = 1
 	for _, resp := range responses {
 		if len(resp.Events) > 0 {
@@ -230,7 +231,7 @@ func validateAtomic(t *testing.T, memberId string, responses []watchResponse) {
 	}
 }
 
-func toWatchEvents(responses []watchResponse) (events []watchEvent) {
+func toWatchEvents(responses []traffic.WatchResponse) (events []watchEvent) {
 	for _, resp := range responses {
 		for _, event := range resp.Events {
 			var op model.OperationType
@@ -241,7 +242,7 @@ func toWatchEvents(responses []watchResponse) (events []watchEvent) {
 				op = model.Delete
 			}
 			events = append(events, watchEvent{
-				Time:     resp.time,
+				Time:     resp.Time,
 				Revision: event.Kv.ModRevision,
 				Op: model.EtcdOperation{
 					Type:  op,
@@ -252,11 +253,6 @@ func toWatchEvents(responses []watchResponse) (events []watchEvent) {
 		}
 	}
 	return events
-}
-
-type watchResponse struct {
-	clientv3.WatchResponse
-	time time.Duration
 }
 
 type watchEvent struct {
@@ -354,7 +350,7 @@ func hasUniqueWriteOperation(request *model.TxnRequest) bool {
 	return false
 }
 
-func watchEvents(responses [][]watchResponse) [][]watchEvent {
+func watchEvents(responses [][]traffic.WatchResponse) [][]watchEvent {
 	ops := make([][]watchEvent, len(responses))
 	for i, resps := range responses {
 		ops[i] = toWatchEvents(resps)

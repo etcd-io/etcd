@@ -167,7 +167,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	panicked = false
 }
 
-func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (operations []porcupine.Operation, responses [][]watchResponse) {
+func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (operations []porcupine.Operation, responses [][]traffic.WatchResponse) {
 	g := errgroup.Group{}
 	finishTraffic := make(chan struct{})
 
