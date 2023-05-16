@@ -112,8 +112,19 @@ depend on to make decisions in the best interest of the project in a consistent 
     - Initiating, contributing and resolving discussions (emails, GitHub issues, meetings)
     - Identifying subtle or complex issues in designs and implementation PRs
 - Directly contributed to the project through implementation and / or review
-- Subscribed to [etcd-maintainers@googlegroups.com]
-- Elected by supermajority of active maintainers.
+- Sponsored by two active maintainers and elected by supermajority
+    - Sponsors must be from multiple member companies to demonstrate integration across community.
+- To become a maintainer send an email with your candidacy to [etcd-maintainers-private@googlegroups.com]
+    - Ensure your sponsors are @mentioned on the email
+    - Include a list of contributions representative of your work on the project.
+    - Existing maintainers vote will privately and respond to the email with either acceptance or with feedback for suggested improvement.
+- With your membership approved you are expected to:
+  - Open a PR and add an entry to the [MAINTAINERS] file
+  - Subscribe to [etcd-maintainers@googlegroups.com] and [etcd-maintainers-private@googlegroups.com]
+  - Request to join to [etcd-maintainer teams of etcd organization of GitHub](https://github.com/orgs/etcd-io/teams/maintainers-etcd)
+  - Request to join to the private slack channel for etcd maintainers on [kubernetes slack](http://slack.kubernetes.io/)
+  - Request access to etcd-development GCP project where we publish releases
+  - Request access to passwords shared between maintainers
 
 ### Responsibilities and privileges
 
