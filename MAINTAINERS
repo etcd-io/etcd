@@ -11,8 +11,8 @@
 # MAINTAINERS
 Benjamin Wang <wachao@vmware.com> (ahrtr@) pkg:*
 Hitoshi Mitake <h.mitake@gmail.com> (@mitake) pkg:*
-Marek Siarkowicz <marek.siarkowicz@gmail.com> (@serathius) pkg:*
-Piotr Tabor <ptab@google.com> (@ptabor) pkg:*
+Marek Siarkowicz <siarkowicz@google.com> <marek.siarkowicz@gmail.com> (@serathius) pkg:*
+Piotr Tabor <piotr.tabor@gmail.com> (@ptabor) pkg:*
 Sahdev Zala <spzala@us.ibm.com> (@spzala) pkg:*
 
 # REVIEWERS
