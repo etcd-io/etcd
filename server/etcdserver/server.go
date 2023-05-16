@@ -2060,7 +2060,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
-	clone := s.v2store.Clone()
 	// commit kv to write metadata (for example: consistent index) to disk.
 	//
 	// This guarantees that Backend's consistent_index is >= index of last snapshot.
@@ -2074,8 +2073,9 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 
 	s.GoAttach(func() {
 		lg := s.Logger()
-
-		d, err := clone.SaveNoCopy()
+		st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
+		s.cluster.Store(st)
+		d, err := st.SaveNoCopy()
 		// TODO: current store will never fail to do a snapshot
 		// what should we do if the store might fail?
 		if err != nil {

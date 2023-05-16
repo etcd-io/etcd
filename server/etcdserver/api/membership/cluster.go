@@ -859,3 +859,17 @@ func ValidateMaxLearnerConfig(maxLearners int, members []*Member, scaleUpLearner
 
 	return nil
 }
+
+func (c *RaftCluster) Store(store v2store.Store) {
+	c.Lock()
+	defer c.Unlock()
+	for _, m := range c.members {
+		mustSaveMemberToStore(c.lg, store, m)
+	}
+	for id, _ := range c.removed {
+		mustDeleteMemberFromStore(c.lg, store, id)
+	}
+	if c.version != nil {
+		mustSaveClusterVersionToStore(c.lg, store, c.version)
+	}
+}
