@@ -56,7 +56,7 @@ type kubernetesTraffic struct {
 	writeChoices    []choiceWeight[KubernetesRequestType]
 }
 
-func (t kubernetesTraffic) Run(ctx context.Context, clientId int, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
 	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -80,7 +80,7 @@ func (t kubernetesTraffic) Run(ctx context.Context, clientId int, c *RecordingCl
 			s.Reset(resp)
 			limiter.Wait(ctx)
 			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-			for e := range c.Watch(watchCtx, keyPrefix, resp.Header.Revision, true) {
+			for e := range c.Watch(watchCtx, keyPrefix, resp.Header.Revision+1, true) {
 				s.Update(e)
 			}
 			cancel()

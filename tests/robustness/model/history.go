@@ -508,6 +508,10 @@ func (h History) Merge(h2 History) History {
 	return result
 }
 
+func (h History) Len() int {
+	return len(h.successful) + len(h.failed)
+}
+
 func (h History) Operations() []porcupine.Operation {
 	operations := make([]porcupine.Operation, 0, len(h.successful)+len(h.failed))
 	var maxTime int64
@@ -529,4 +533,15 @@ func (h History) Operations() []porcupine.Operation {
 		operations = append(operations, op)
 	}
 	return operations
+}
+
+func (h History) MaxRevision() int64 {
+	var maxRevision int64
+	for _, op := range h.successful {
+		revision := op.Output.(EtcdNonDeterministicResponse).Revision
+		if revision > maxRevision {
+			maxRevision = revision
+		}
+	}
+	return maxRevision
 }

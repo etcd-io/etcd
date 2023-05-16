@@ -86,7 +86,7 @@ const (
 	Defragment    etcdRequestType = "defragment"
 )
 
-func (t etcdTraffic) Run(ctx context.Context, clientId int, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
 
 	for {
 		select {
@@ -103,7 +103,7 @@ func (t etcdTraffic) Run(ctx context.Context, clientId int, c *RecordingClient, 
 			continue
 		}
 		limiter.Wait(ctx)
-		err = t.Write(ctx, c, limiter, key, ids, lm, clientId, resp)
+		err = t.Write(ctx, c, limiter, key, ids, lm, resp)
 		if err != nil {
 			continue
 		}
@@ -118,7 +118,7 @@ func (t etcdTraffic) Read(ctx context.Context, c *RecordingClient, key string) (
 	return resp, err
 }
 
-func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage, cid int, lastValues *mvccpb.KeyValue) error {
+func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage, lastValues *mvccpb.KeyValue) error {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
@@ -139,11 +139,11 @@ func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rat
 		value := fmt.Sprintf("%d", id.NewRequestId())
 		_, err = c.Txn(ctx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, value)}, nil)
 	case PutWithLease:
-		leaseId := lm.LeaseId(cid)
+		leaseId := lm.LeaseId(c.id)
 		if leaseId == 0 {
 			leaseId, err = c.LeaseGrant(writeCtx, t.leaseTTL)
 			if err == nil {
-				lm.AddLeaseId(cid, leaseId)
+				lm.AddLeaseId(c.id, leaseId)
 				limiter.Wait(ctx)
 			}
 		}
@@ -153,12 +153,12 @@ func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rat
 			putCancel()
 		}
 	case LeaseRevoke:
-		leaseId := lm.LeaseId(cid)
+		leaseId := lm.LeaseId(c.id)
 		if leaseId != 0 {
 			err = c.LeaseRevoke(writeCtx, leaseId)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
-				lm.RemoveLeaseId(cid)
+				lm.RemoveLeaseId(c.id)
 			}
 		}
 	case Defragment:

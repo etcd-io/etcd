@@ -21,6 +21,8 @@ type Provider interface {
 	NewStreamId() int
 	// NewRequestId returns unique identification used to make write requests unique.
 	NewRequestId() int
+	// NewClientId returns unique identification for client and their reports.
+	NewClientId() int
 }
 
 func NewIdProvider() Provider {
@@ -30,6 +32,7 @@ func NewIdProvider() Provider {
 type atomicProvider struct {
 	streamId  atomic.Int64
 	requestId atomic.Int64
+	clientId  atomic.Int64
 }
 
 func (id *atomicProvider) NewStreamId() int {
@@ -38,4 +41,8 @@ func (id *atomicProvider) NewStreamId() int {
 
 func (id *atomicProvider) NewRequestId() int {
 	return int(id.requestId.Add(1))
+}
+
+func (id *atomicProvider) NewClientId() int {
+	return int(id.clientId.Add(1))
 }
