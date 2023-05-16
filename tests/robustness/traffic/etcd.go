@@ -33,7 +33,7 @@ var (
 		minimalQPS:  100,
 		maximalQPS:  200,
 		clientCount: 8,
-		traffic: etcdTraffic{
+		Traffic: etcdTraffic{
 			keyCount:     10,
 			leaseTTL:     DefaultLeaseTTL,
 			largePutSize: 32769,
@@ -53,7 +53,7 @@ var (
 		minimalQPS:  200,
 		maximalQPS:  1000,
 		clientCount: 12,
-		traffic: etcdTraffic{
+		Traffic: etcdTraffic{
 			keyCount:     10,
 			largePutSize: 32769,
 			leaseTTL:     DefaultLeaseTTL,
@@ -71,6 +71,10 @@ type etcdTraffic struct {
 	writeChoices []choiceWeight[etcdRequestType]
 	leaseTTL     int64
 	largePutSize int
+}
+
+func (t etcdTraffic) ExpectUniqueRevision() bool {
+	return false
 }
 
 type etcdRequestType string

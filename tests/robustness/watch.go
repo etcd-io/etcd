@@ -74,7 +74,8 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 }
 
 type watchConfig struct {
-	requestProgress bool
+	requestProgress      bool
+	expectUniqueRevision bool
 }
 
 // watchMember collects all responses until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
@@ -140,14 +141,14 @@ func watchResponsesMaxRevision(responses []traffic.WatchResponse) int64 {
 	return maxRevision
 }
 
-func validateWatchCorrectness(t *testing.T, reports []traffic.ClientReport) {
+func validateWatchCorrectness(t *testing.T, cfg watchConfig, reports []traffic.ClientReport) {
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
 		validateOrdered(t, r)
-		validateUnique(t, r)
+		validateUnique(t, cfg.expectUniqueRevision, r)
 		validateAtomic(t, r)
+		// TODO: Validate Resumable
 		validateBookmarkable(t, r)
-		// TODO: Validate presumable
 	}
 	validateEventsMatch(t, reports)
 	// Expects that longest history encompasses all events.
@@ -202,19 +203,25 @@ func validateOrdered(t *testing.T, report traffic.ClientReport) {
 	}
 }
 
-func validateUnique(t *testing.T, report traffic.ClientReport) {
-	type revisionKey struct {
-		revision int64
-		key      string
-	}
-	uniqueOperations := map[revisionKey]struct{}{}
+func validateUnique(t *testing.T, expectUniqueRevision bool, report traffic.ClientReport) {
+	uniqueOperations := map[interface{}]struct{}{}
+
 	for _, resp := range report.Watch {
 		for _, event := range resp.Events {
-			rk := revisionKey{key: event.Op.Key, revision: event.Revision}
-			if _, found := uniqueOperations[rk]; found {
-				t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", rk.key, rk.revision, report.ClientId)
+			var key interface{}
+			if expectUniqueRevision {
+				key = event.Revision
+			} else {
+				key = struct {
+					revision int64
+					key      string
+				}{event.Revision, event.Op.Key}
 			}
-			uniqueOperations[rk] = struct{}{}
+
+			if _, found := uniqueOperations[key]; found {
+				t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", event.Op.Key, event.Revision, report.ClientId)
+			}
+			uniqueOperations[key] = struct{}{}
 		}
 	}
 }
