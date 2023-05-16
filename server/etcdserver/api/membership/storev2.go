@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strings"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 
@@ -95,11 +96,13 @@ func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {
 
 func mustDeleteMemberFromStore(lg *zap.Logger, s v2store.Store, id types.ID) {
 	if _, err := s.Delete(MemberStoreKey(id), true, true); err != nil {
-		lg.Panic(
-			"failed to delete member from store",
-			zap.String("path", MemberStoreKey(id)),
-			zap.Error(err),
-		)
+		if !strings.Contains(err.Error(), "Key not found") {
+			lg.Panic(
+				"failed to delete member from store",
+				zap.String("path", MemberStoreKey(id)),
+				zap.Error(err),
+			)
+		}
 	}
 	if _, err := s.Create(RemovedMemberStoreKey(id), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}); err != nil {
 		lg.Panic(
