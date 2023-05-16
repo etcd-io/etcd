@@ -20,13 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anishathalye/porcupine"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
-	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
 var (
@@ -36,13 +34,12 @@ var (
 	MultiOpTxnOpCount       = 4
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time) []porcupine.Operation {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []ClientReport {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
-	ids := identity.NewIdProvider()
 	lm := identity.NewLeaseIdStorage()
-	h := model.History{}
+	reports := []ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
@@ -58,15 +55,15 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 		if err != nil {
 			t.Fatal(err)
 		}
-		go func(c *RecordingClient, clientId int) {
+		go func(c *RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 
-			config.traffic.Run(ctx, clientId, c, limiter, ids, lm, finish)
+			config.traffic.Run(ctx, c, limiter, ids, lm, finish)
 			mux.Lock()
-			h = h.Merge(c.operations.History)
+			reports = append(reports, c.Report())
 			mux.Unlock()
-		}(c, i)
+		}(c)
 	}
 	wg.Wait()
 	endTime := time.Now()
@@ -77,17 +74,20 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	if err != nil {
 		t.Error(err)
 	}
-	h = h.Merge(cc.operations.History)
+	reports = append(reports, cc.Report())
 
-	operations := h.Operations()
-	lg.Info("Recorded operations", zap.Int("count", len(operations)))
+	var operationCount int
+	for _, r := range reports {
+		operationCount += r.OperationHistory.Len()
+	}
+	lg.Info("Recorded operations", zap.Int("operationCount", operationCount))
 
-	qps := float64(len(operations)) / float64(endTime.Sub(startTime)) * float64(time.Second)
+	qps := float64(operationCount) / float64(endTime.Sub(startTime)) * float64(time.Second)
 	lg.Info("Average traffic", zap.Float64("qps", qps))
 	if qps < config.minimalQPS {
 		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", config.minimalQPS, qps)
 	}
-	return operations
+	return reports
 }
 
 type Config struct {
@@ -99,5 +99,5 @@ type Config struct {
 }
 
 type Traffic interface {
-	Run(ctx context.Context, clientId int, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
+	Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
 }
