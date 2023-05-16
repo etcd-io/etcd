@@ -17,7 +17,6 @@
 package cobrautl
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -103,7 +102,7 @@ GLOBAL OPTIONS:
 }
 
 func etcdFlagUsages(flagSet *pflag.FlagSet) string {
-	x := new(bytes.Buffer)
+	x := new(strings.Builder)
 
 	flagSet.VisitAll(func(flag *pflag.Flag) {
 		if len(flag.Deprecated) > 0 {

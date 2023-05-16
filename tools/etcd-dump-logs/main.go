@@ -16,7 +16,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -345,7 +344,7 @@ func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry
 		"Request":       printRequest,
 		"ConfigChange":  printConfChange,
 		"UnknownNormal": printUnknownNormal}
-	var stderr bytes.Buffer
+	var stderr strings.Builder
 	args := strings.Split(streamdecoder, " ")
 	cmd := exec.Command(args[0], args[1:]...)
 	stdin, err := cmd.StdinPipe()
