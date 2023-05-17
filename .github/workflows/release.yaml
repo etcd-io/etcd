@@ -31,3 +31,56 @@ jobs:
     - name: test-image
       run: |
         VERSION=3.5.99 ./scripts/test_images.sh
+    - name: set-docker
+      uses: docker/setup-buildx-action@v2
+    - name: push-docker-local
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        tags: gcr.io/etcd-development/etcd:v3.5.99-*
+        outputs: type=docker,dest=/tmp/etcd-images.tar
+    - name: upload-artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: etcd-images
+        path: /tmp/etcd-images.tar
+  trivy-image-scan: 
+    needs: main
+    name: Trivy Build Scan
+    strategy:
+      fail-fast: false
+      matrix:
+        # maintain the versions of etcd that need to be actively
+        # security scanned
+        target:
+          - amd64
+          - arm64
+          - ppc64le
+          - s390x
+    permissions:
+      security-events: write  # for github/codeql-action/upload-sarif to upload SARIF results
+    runs-on: ubuntu-latest
+    steps:
+      - name: set-docker
+        uses: docker/setup-buildx-action@v2
+      - name: download-artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: etcd-images
+          path: /tmp
+      - name: load-image
+        run: |
+          docker load --input /tmp/etcd-images.tar
+          docker image ls -a
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@e5f43133f6e8736992c9f3c1b3296e24b37e17f2 # 0.10.0
+        with:
+          image-ref: 'gcr.io/etcd-development/etcd:v3.5.99-${{ matrix.target }}'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results-3-5-${{ github.sha }}-${{ matrix.target }}.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@f31a31c052207cc13b328d6295c5b728bb49568c # v2.13.1
+        with:
+          sarif_file: 'trivy-results-3-5-${{ github.sha }}-${{ matrix.target }}.sarif'
+
