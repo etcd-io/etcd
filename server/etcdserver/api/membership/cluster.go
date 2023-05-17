@@ -866,6 +866,9 @@ func (c *RaftCluster) Store(store v2store.Store) {
 	defer c.Unlock()
 	for _, m := range c.members {
 		mustSaveMemberToStore(c.lg, store, m)
+		if m.ClientURLs != nil {
+			mustUpdateMemberAttrInStore(c.lg, store, m)
+		}
 	}
 	for id, _ := range c.removed {
 		mustDeleteMemberFromStore(c.lg, store, id)
