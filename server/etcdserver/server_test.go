@@ -1065,24 +1065,68 @@ func TestSnapshot(t *testing.T) {
 		gaction, _ := st.Wait(2)
 		defer func() { ch <- struct{}{} }()
 
-		//snapshot will be stored in brand new v2store constructed during snapshot
-		//eventually EtcdServer struct will not have v2store field
-		if len(gaction) != 0 {
-			t.Errorf("len(action) = %d, want 0", len(gaction))
+		if len(gaction) != 2 {
+			t.Errorf("len(action) = %d, want 2", len(gaction))
 		}
-		//if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
-		//	t.Errorf("action = %s, want Clone", gaction[0])
-		//}
-		//if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
-		//	t.Errorf("action = %s, want SaveNoCopy", gaction[1])
-		//}
+		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
+			t.Errorf("action = %s, want Clone", gaction[0])
+		}
+		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
+			t.Errorf("action = %s, want SaveNoCopy", gaction[1])
+		}
 	}()
 
-	lg := zaptest.NewLogger(t)
-	cl := membership.NewCluster(lg)
-	srv.cluster = cl
 	srv.snapshot(1, raftpb.ConfState{Voters: []uint64{1}})
 	<-ch
+	<-ch
+}
+
+// TestSnapshotNoV2store should create snapshot using new v2store
+func TestSnapshotNoV2store(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+
+	s := raft.NewMemoryStorage()
+	s.Append([]raftpb.Entry{{Index: 1}})
+	p := mockstorage.NewStorageRecorderStream("")
+	r := newRaftNode(raftNodeConfig{
+		lg:          zaptest.NewLogger(t),
+		Node:        newNodeNop(),
+		raftStorage: s,
+		storage:     p,
+	})
+	srv := &EtcdServer{
+		lgMu:         new(sync.RWMutex),
+		lg:           zaptest.NewLogger(t),
+		r:            *r,
+		consistIndex: cindex.NewConsistentIndex(be),
+	}
+	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	srv.be = be
+	lg := zaptest.NewLogger(t)
+	// TODO use a mock raft cluster implementation to validate the v2store
+	cl := membership.NewCluster(lg)
+	srv.cluster = cl
+
+	ch := make(chan struct{}, 1)
+
+	go func() {
+		gaction, _ := p.Wait(2)
+		defer func() { ch <- struct{}{} }()
+
+		if len(gaction) != 2 {
+			t.Errorf("len(action) = %d, want 2", len(gaction))
+			return
+		}
+		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "SaveSnap"}) {
+			t.Errorf("action = %s, want SaveSnap", gaction[0])
+		}
+
+		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "Release"}) {
+			t.Errorf("action = %s, want Release", gaction[1])
+		}
+	}()
+
+	srv.snapshot(1, raftpb.ConfState{Voters: []uint64{1}})
 	<-ch
 }
 
@@ -1210,9 +1254,6 @@ func TestTriggerSnap(t *testing.T) {
 
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
-	lg := zaptest.NewLogger(t)
-	cl := membership.NewCluster(lg)
-	srv.cluster = cl
 
 	srv.start()
 
