@@ -1041,8 +1041,11 @@ func TestSnapshot(t *testing.T) {
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
+	lg := zaptest.NewLogger(t)
+	cl := membership.NewCluster(lg)
+	srv.cluster = cl
 
-	ch := make(chan struct{}, 2)
+	ch := make(chan struct{}, 1)
 
 	go func() {
 		gaction, _ := p.Wait(2)
@@ -1061,24 +1064,28 @@ func TestSnapshot(t *testing.T) {
 		}
 	}()
 
-	go func() {
-		gaction, _ := st.Wait(2)
-		defer func() { ch <- struct{}{} }()
+	/*
+		//snapshot will be stored in brand new v2store constructed during snapshot
+		//eventually EtcdServer struct will not have v2store field
+		go func() {
+			gaction, _ := st.Wait(2)
+			defer func() { ch <- struct{}{} }()
 
-		if len(gaction) != 2 {
-			t.Errorf("len(action) = %d, want 2", len(gaction))
-		}
-		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
-			t.Errorf("action = %s, want Clone", gaction[0])
-		}
-		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
-			t.Errorf("action = %s, want SaveNoCopy", gaction[1])
-		}
-	}()
+			if len(gaction) != 2 {
+				t.Errorf("len(action) = %d, want 0", len(gaction))
+			}
+			//if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
+			//	t.Errorf("action = %s, want Clone", gaction[0])
+			//}
+			//if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
+			//	t.Errorf("action = %s, want SaveNoCopy", gaction[1])
+			//}
+		}()
+	*/
 
 	srv.snapshot(1, raftpb.ConfState{Voters: []uint64{1}})
 	<-ch
-	<-ch
+	//<-ch
 }
 
 // TestSnapshotNoV2store should create snapshot using new v2store
@@ -1254,6 +1261,9 @@ func TestTriggerSnap(t *testing.T) {
 
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
+	lg := zaptest.NewLogger(t)
+	cl := membership.NewCluster(lg)
+	srv.cluster = cl
 
 	srv.start()
 
