@@ -2066,12 +2066,8 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	s.GoAttach(func() {
 		lg := s.Logger()
 		var st v2store.Store
-		if s.v2store == nil {
-			st = v2store.New(StoreClusterPrefix, StoreKeysPrefix)
-			s.cluster.Store(st)
-		} else {
-			st = s.v2store.Clone()
-		}
+		st = v2store.New(StoreClusterPrefix, StoreKeysPrefix)
+		s.cluster.Store(st)
 		d, err := st.SaveNoCopy()
 		// TODO: current store will never fail to do a snapshot
 		// what should we do if the store might fail?

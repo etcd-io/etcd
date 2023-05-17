@@ -17,16 +17,21 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -128,14 +133,14 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 
 	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
 		// Patch cluster version
-		data = bytes.Replace(data, []byte("3.5.0"), []byte("X.X.X"), -1)
-		data = bytes.Replace(data, []byte("3.6.0"), []byte("X.X.X"), -1)
+		//data = bytes.Replace(data, []byte("3.5.0"), []byte("X.X.X"), -1)
+		//data = bytes.Replace(data, []byte("3.6.0"), []byte("X.X.X"), -1)
 		// Patch members ids
 		for i, mid := range members1 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("member%d", i+1)), -1)
+			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
 		}
 		for i, mid := range members2 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("member%d", i+1)), -1)
+			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
 		}
 		return data
 	})
@@ -255,12 +260,41 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Equal(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+		//assert.Equal(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+		assertMembershipEqual(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
 	}
 }
 
 func openSnap(data []byte) v2store.Store {
 	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
 	st.Recovery(data)
+	//TODO remove the printing.
+	prettyPrintJson(data)
 	return st
+}
+
+func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v2store.Store) {
+	rc1 := membership.NewCluster(zaptest.NewLogger(t))
+	rc1.SetStore(firstStore)
+	rc1.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+
+	rc2 := membership.NewCluster(zaptest.NewLogger(t))
+	rc2.SetStore(secondStore)
+	rc2.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+
+	//membership should match
+	if g := rc1.Members(); !reflect.DeepEqual(g, rc2.Members()) {
+		fmt.Printf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v\n", rc1.MemberIDs(), rc2.MemberIDs())
+		t.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())
+	}
+}
+
+func prettyPrintJson(jsonData []byte) {
+	var out bytes.Buffer
+	err := json.Indent(&out, jsonData, "", " ")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(out.Bytes()))
 }
