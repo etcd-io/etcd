@@ -466,7 +466,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 		var lastErr error
 		for _, ep := range p.eps {
 			ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-			resp, lastErr := HashByRev(ctx, cc, ep, rev)
+			resp, lastErr := HashByRev(ctx, s, cc, ep, rev)
 			cancel()
 			if lastErr == nil {
 				resps = append(resps, &peerHashKVResp{peerInfo: p, resp: resp, err: nil})
@@ -508,6 +508,10 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.Path != PeerHashKVPath {
 		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+	if gcid := r.Header.Get("X-Etcd-Cluster-ID"); gcid != h.server.cluster.ID().String() {
+		http.Error(w, "cluster ID mismatch", http.StatusPreconditionFailed)
 		return
 	}
 
@@ -553,7 +557,7 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // HashByRev fetch hash of kv store at the given rev via http call to the given url
-func HashByRev(ctx context.Context, cc *http.Client, url string, rev int64) (*pb.HashKVResponse, error) {
+func HashByRev(ctx context.Context, s *EtcdServer, cc *http.Client, url string, rev int64) (*pb.HashKVResponse, error) {
 	hashReq := &pb.HashKVRequest{Revision: rev}
 	hashReqBytes, err := json.Marshal(hashReq)
 	if err != nil {
@@ -566,6 +570,7 @@ func HashByRev(ctx context.Context, cc *http.Client, url string, rev int64) (*pb
 	}
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Etcd-Cluster-ID", s.cluster.ID().String())
 	req.Cancel = ctx.Done()
 
 	resp, err := cc.Do(req)
@@ -584,6 +589,10 @@ func HashByRev(ctx context.Context, cc *http.Client, url string, rev int64) (*pb
 		}
 		if strings.Contains(string(b), mvcc.ErrFutureRev.Error()) {
 			return nil, rpctypes.ErrFutureRev
+		}
+	} else if resp.StatusCode == http.StatusPreconditionFailed {
+		if strings.Contains(string(b), "cluster ID mismatch") {
+			return nil, rpctypes.ErrClusterIdMismatch
 		}
 	}
 	if resp.StatusCode != http.StatusOK {

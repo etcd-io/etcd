@@ -47,6 +47,7 @@ var (
 	ErrGRPCMemberNotLearner       = status.Error(codes.FailedPrecondition, "etcdserver: can only promote a learner member")
 	ErrGRPCLearnerNotReady        = status.Error(codes.FailedPrecondition, "etcdserver: can only promote a learner member which is in sync with leader")
 	ErrGRPCTooManyLearners        = status.Error(codes.FailedPrecondition, "etcdserver: too many learner members in cluster")
+	ErrGPRCIdMismatch             = status.Error(codes.FailedPrecondition, "etcdserver: cluster ID mismatch")
 
 	ErrGRPCRequestTooLarge        = status.Error(codes.InvalidArgument, "etcdserver: request is too large")
 	ErrGRPCRequestTooManyRequests = status.Error(codes.ResourceExhausted, "etcdserver: too many requests")
@@ -204,6 +205,7 @@ var (
 	ErrInvalidAuthToken     = Error(ErrGRPCInvalidAuthToken)
 	ErrAuthOldRevision      = Error(ErrGRPCAuthOldRevision)
 	ErrInvalidAuthMgmt      = Error(ErrGRPCInvalidAuthMgmt)
+	ErrClusterIdMismatch    = Error(ErrGPRCIdMismatch)
 
 	ErrNoLeader                   = Error(ErrGRPCNoLeader)
 	ErrNotLeader                  = Error(ErrGRPCNotLeader)
