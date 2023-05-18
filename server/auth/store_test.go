@@ -17,6 +17,7 @@ package auth
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -114,10 +115,26 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 		t.Fatal(err)
 	}
 
+	// The UserAdd function cannot generate old etcd version user data (user's option is nil)
+	// add special users through the underlying interface
+	addUserWithNoOption(as)
+
 	tearDown := func(_ *testing.T) {
 		as.Close()
 	}
 	return as, tearDown
+}
+
+func addUserWithNoOption(as *authStore) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafePutUser(&authpb.User{
+		Name:     []byte("foo-no-user-options"),
+		Password: []byte("bar"),
+	})
+	as.commitRevision(tx)
+	as.refreshRangePermCache(tx)
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
@@ -191,8 +208,8 @@ func TestRecoverWithEmptyRangePermCache(t *testing.T) {
 		t.Fatalf("expected auth enabled got disabled")
 	}
 
-	if len(as.rangePermCache) != 2 {
-		t.Fatalf("rangePermCache should have permission information for 2 users (\"root\" and \"foo\"), but has %d information", len(as.rangePermCache))
+	if len(as.rangePermCache) != 3 {
+		t.Fatalf("rangePermCache should have permission information for 3 users (\"root\" and \"foo\",\"foo-no-user-options\"), but has %d information", len(as.rangePermCache))
 	}
 	if _, ok := as.rangePermCache["root"]; !ok {
 		t.Fatal("user \"root\" should be created by setupAuthStore() but doesn't exist in rangePermCache")
@@ -323,6 +340,12 @@ func TestUserChangePassword(t *testing.T) {
 	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
+
+	// change a user（user option is nil) password
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-no-user-options", HashedPassword: encodePassword("bar")})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestRoleAdd(t *testing.T) {
@@ -427,6 +450,16 @@ func TestIsOpPermitted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// Drop the user's permission from cache and expect a permission denied
+	// error.
+	as.rangePermCacheMu.Lock()
+	delete(as.rangePermCache, "foo")
+	as.rangePermCacheMu.Unlock()
+	if err := as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType); err != ErrPermissionDenied {
+		t.Fatal(err)
+	}
+
 }
 
 func TestGetUser(t *testing.T) {
@@ -523,6 +556,144 @@ func TestRoleGrantPermission(t *testing.T) {
 	}
 
 	assert.Equal(t, perm, r.Perm[0])
+}
+
+func TestRoleGrantInvalidPermission(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		perm *authpb.Permission
+		want error
+	}{
+		{
+			name: "valid range",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: []byte("RangeEnd"),
+			},
+			want: nil,
+		},
+		{
+			name: "invalid range: nil key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      nil,
+				RangeEnd: []byte("RangeEnd"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "valid range: single key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: nil,
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: single key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: []byte{},
+			},
+			want: nil,
+		},
+		{
+			name: "invalid range: empty (Key == RangeEnd)",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("a"),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: empty (Key > RangeEnd)",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("b"),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte(""),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte{0x00},
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "valid range: single key permission for []byte{0x00}",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte{0x00},
+				RangeEnd: []byte(""),
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: \"a\" or larger keys",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("a"),
+				RangeEnd: []byte{0x00},
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: the entire keys",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte{0x00},
+				RangeEnd: []byte{0x00},
+			},
+			want: nil,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+				Name: "role-test-1",
+				Perm: tt.perm,
+			})
+
+			if !errors.Is(err, tt.want) {
+				t.Errorf("#%d: result=%t, want=%t", i, err, tt.want)
+			}
+		})
+	}
 }
 
 func TestRootRoleGrantPermission(t *testing.T) {

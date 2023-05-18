@@ -18,7 +18,10 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -128,6 +131,78 @@ func testJWTInfo(t *testing.T, opts map[string]string) {
 				t.Fatalf("unexpected error when attempting to sign with public key: %v", aerr)
 			}
 
+		})
+	}
+}
+
+func TestJWTTokenWithMissingFields(t *testing.T) {
+	testCases := []struct {
+		name        string
+		username    string // An empty string means not present
+		revision    uint64 // 0 means not present
+		expectValid bool
+	}{
+		{
+			name:        "valid token",
+			username:    "hello",
+			revision:    100,
+			expectValid: true,
+		},
+		{
+			name:        "no username",
+			username:    "",
+			revision:    100,
+			expectValid: false,
+		},
+		{
+			name:        "no revision",
+			username:    "hello",
+			revision:    0,
+			expectValid: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		optsMap := map[string]string{
+			"priv-key":    jwtRSAPrivKey,
+			"sign-method": "RS256",
+			"ttl":         "1h",
+		}
+
+		t.Run(tc.name, func(t *testing.T) {
+			// prepare claims
+			claims := jwt.MapClaims{
+				"exp": time.Now().Add(time.Hour).Unix(),
+			}
+			if tc.username != "" {
+				claims["username"] = tc.username
+			}
+			if tc.revision != 0 {
+				claims["revision"] = tc.revision
+			}
+
+			// generate a JWT token with the given claims
+			var opts jwtOptions
+			err := opts.ParseWithDefaults(optsMap)
+			require.NoError(t, err)
+			key, err := opts.Key()
+			require.NoError(t, err)
+
+			tk := jwt.NewWithClaims(opts.SignMethod, claims)
+			token, err := tk.SignedString(key)
+			require.NoError(t, err)
+
+			// verify the token
+			jwtProvider, err := newTokenProviderJWT(zap.NewNop(), optsMap)
+			require.NoError(t, err)
+			ai, ok := jwtProvider.info(context.TODO(), token, 123)
+
+			require.Equal(t, tc.expectValid, ok)
+			if ok {
+				require.Equal(t, tc.username, ai.Username)
+				require.Equal(t, tc.revision, ai.Revision)
+			}
 		})
 	}
 }

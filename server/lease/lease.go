@@ -56,7 +56,7 @@ func (l *Lease) TTL() int64 {
 	return l.ttl
 }
 
-// RemainingTTL returns the last checkpointed remaining TTL of the lease.
+// getRemainingTTL returns the last checkpointed remaining TTL of the lease.
 func (l *Lease) getRemainingTTL() int64 {
 	if l.remainingTTL > 0 {
 		return l.remainingTTL

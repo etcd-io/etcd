@@ -21,7 +21,7 @@ Before making a change please look through resources below to learn more about e
 
 * Please learn about [Git](https://github.com/git-guides) version control system used in etcd.
 * Read the [etcd learning resources](https://etcd.io/docs/v3.5/learning/)
-* Read the [etcd contributing guides](https://github.com/etcd-io/etcd/tree/main/Documentation/contributor-guide)
+* Read the [etcd community membership](/Documentation/contributor-guide/community-membership.md)
 * Watch [etcd deep dive](https://www.youtube.com/watch?v=D2pm6ufIt98&t=927s)
 * Watch [etcd code walk through](https://www.youtube.com/watch?v=H3XaSF6wF7w)
 
@@ -45,22 +45,45 @@ If any of aforementioned labels don't have unassigned issues, please [contact] o
 
 ## Setup development environment
 
-etcd supported development environments include only linux-amd64.
-Bug reports for any non-supported environments will be ignored.
-Supporting new environments requires introduction of proper tests and maintainer support that is currently lacking in etcd project.
-If you want help etcd support your preferred environment, please [file an issue].
+The etcd project supports two options for development:
 
-Setup environment:
+ 1. Manually setup local environment.
+ 2. Automatically setup [devcontainer](https://containers.dev).
+
+For both options the only supported architecture is `linux-amd64`. Bug reports for other environments will generally be ignored. Supporting new environments requires introduction of proper tests and mainter support that is currently lacking in the etcd project.
+
+If you would like etcd to support your preferred environment you can [file an issue].
+
+### Option 1 - Manually setup local environment
+
+This is the original etcd development environment, is most supported and is backwards compatible for development of older etcd versions.
+
+Follow the steps below to setup the environment:
+
 - [Clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
 - Install Go by following [installation](https://go.dev/doc/install). Please check minimal go version in [go.mod file](./go.mod#L3).
-- Install build tools (make):
-  - For ubuntu and debian run `sudo apt-get install build-essentials`
+- Install build tools (`make`):
+  - For debian based distributions you can run `sudo apt-get install build-essential`
 - Verify that everything is installed by running `make build`
 
 Note: `make build` runs with `-v`. Other build flags can be added through env `GO_BUILD_FLAGS`, **if required**. Eg.,
 ```console
 GO_BUILD_FLAGS="-buildmode=pie" make build
 ```
+
+### Option 2 - Automatically setup devcontainer
+
+This is a more recently added environmnent that aims to make it faster for new contributors to get started with etcd. This option is supported for etcd versions 3.6 onwards.
+
+This option can be [used locally](https://code.visualstudio.com/docs/devcontainers/tutorial) on a system running Visual Studio Code and Docker, or in a remote cloud based [Codespaces](https://github.com/features/codespaces) environment.
+
+To get started, create a codespace for this repository by clicking this 👇
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=11225014)
+
+A codespace will open in a web-based version of Visual Studio Code. The [dev container](.devcontainer/devcontainer.json) is fully configured with software needed for this project.
+
+**Note**: Dev containers is an open spec which is supported by [GitHub Codespaces](https://github.com/codespaces) and [other tools](https://containers.dev/supporting).
 
 [file an issue]: https://github.com/etcd-io/etcd/issues/new/choose
 

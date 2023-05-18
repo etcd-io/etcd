@@ -4,6 +4,49 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
+## v3.5.9 (2023-05-11)
+
+### etcd server
+- Fix [LeaseTimeToLive API may return keys to clients which have no read permission on the keys](https://github.com/etcd-io/etcd/pull/15815).
+
+### Dependencies
+- Compile binaries using [go 1.19.9](https://github.com/etcd-io/etcd/pull/15822).
+
+<hr>
+
+## v3.5.8 (2023-04-13)
+
+### etcd server
+- Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15483) to enable support for TLS 1.3.
+- Add [`etcd --listen-client-http-urls`](https://github.com/etcd-io/etcd/pull/15589) flag to support separating http server from grpc one, thus giving full immunity to [watch stream starvation under high read load](https://github.com/etcd-io/etcd/issues/15402).
+- Change [http2 frame scheduler to random algorithm](https://github.com/etcd-io/etcd/pull/15452)
+- Fix [Watch response traveling back in time when reconnecting member downloads snapshot from the leader](https://github.com/etcd-io/etcd/pull/15515)
+- Fix [race when starting both secure & insecure gRPC servers on the same address](https://github.com/etcd-io/etcd/pull/15517)
+- Fix [server/auth: disallow creating empty permission ranges](https://github.com/etcd-io/etcd/pull/15619)
+- Fix [aligning zap log timestamp resolution to microseconds](https://github.com/etcd-io/etcd/pull/15240). Etcd now uses zap timestamp format: `2006-01-02T15:04:05.999999Z0700` (microsecond instead of milliseconds precision).
+- Fix [wsproxy did not print log in JSON format](https://github.com/etcd-io/etcd/pull/15661).
+- Fix [CVE-2021-28235](https://nvd.nist.gov/vuln/detail/CVE-2021-28235) by [clearing password after authenticating the user](https://github.com/etcd-io/etcd/pull/15653).
+- Fix [etcdserver may panic when parsing a JWT token without username or revision](https://github.com/etcd-io/etcd/pull/15676).
+- Fix [Requested watcher progress notifications are not synchronised with stream](https://github.com/etcd-io/etcd/pull/15695).
+
+### Package `netutil`
+- Fix [consistently format IPv6 addresses for comparison](https://github.com/etcd-io/etcd/pull/15187).
+
+### Package `clientv3`
+- Fix [etcd might send duplicated events to watch clients](https://github.com/etcd-io/etcd/pull/15274).
+
+### Dependencies
+- Recommend [Go 1.19+](https://github.com/etcd-io/etcd/pull/15337).
+- Compile binaries using [go to 1.19.8](https://github.com/etcd-io/etcd/pull/15651)
+- Upgrade [golang.org/x/net to v0.7.0](https://github.com/etcd-io/etcd/pull/15337)
+- Upgrade [bbolt to v1.3.7](https://github.com/etcd-io/etcd/pull/15222).
+
+### Docker image
+- [Remove nsswitch.conf from docker image](https://github.com/etcd-io/etcd/pull/15161)
+- Fix [etcd docker images all tagged with amd64 architecture](https://github.com/etcd-io/etcd/pull/15612)
+
+<hr>
+
 ## v3.5.7 (2023-01-20)
 
 ### etcd server
@@ -16,15 +59,14 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Package `clientv3`
 - Reverted the fix to [auth invalid token and old revision errors in watch](https://github.com/etcd-io/etcd/pull/14995).
 
-### Security
-- Use [distroless base image](https://github.com/etcd-io/etcd/pull/15016) to address critical Vulnerabilities.
-- Updated [base image from base-debian11 to static-debian11 and removed dependency on busybox](https://github.com/etcd-io/etcd/pull/15037).
+### Dependencies
+- Recommend [Go 1.17+](https://github.com/etcd-io/etcd/pull/15019).
+- Compile binaries using [Go 1.17.13](https://github.com/etcd-io/etcd/pull/15019)
 - Bumped [some dependencies](https://github.com/etcd-io/etcd/pull/15018) to address some HIGH Vulnerabilities.
 
-### Go
-- Require [Go 1.17+](https://github.com/etcd-io/etcd/pull/15019).
-- Compile with [Go 1.17+](https://go.dev/doc/devel/release#go1.17)
-
+### Docker image
+- Use [distroless base image](https://github.com/etcd-io/etcd/pull/15016) to address critical Vulnerabilities.
+- Updated [base image from base-debian11 to static-debian11 and removed dependency on busybox](https://github.com/etcd-io/etcd/pull/15037).
 
 <hr>
 

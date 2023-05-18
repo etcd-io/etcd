@@ -880,12 +880,13 @@ func (w *watchGrpcStream) serveSubstream(ws *watcherStream, resumec chan struct{
 				}
 			} else {
 				// current progress of watch; <= store revision
-				nextRev = wr.Header.Revision
+				nextRev = wr.Header.Revision + 1
 			}
 
 			if len(wr.Events) > 0 {
 				nextRev = wr.Events[len(wr.Events)-1].Kv.ModRevision + 1
 			}
+
 			ws.initReq.rev = nextRev
 
 			// created event is already sent above,

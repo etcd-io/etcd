@@ -396,7 +396,7 @@
 		]
 	},
 	{
-		"project": "github.com/stretchr/testify/assert",
+		"project": "github.com/stretchr/testify",
 		"licenses": [
 			{
 				"type": "MIT License",
@@ -649,6 +649,15 @@
 	},
 	{
 		"project": "golang.org/x/net",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
+		"project": "golang.org/x/sync/errgroup",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",

@@ -241,7 +241,7 @@
           {
             alert: 'etcdDatabaseHighFragmentationRatio',
             expr: |||
-              (last_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[5m]) / last_over_time(etcd_mvcc_db_total_size_in_bytes[5m])) < 0.5
+              (last_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[5m]) / last_over_time(etcd_mvcc_db_total_size_in_bytes[5m])) < 0.5 and etcd_mvcc_db_total_size_in_use_in_bytes > 104857600
             ||| % $._config,
             'for': '10m',
             labels: {

@@ -3,7 +3,8 @@
 # Generate all etcd protobuf bindings.
 # Run from repository root directory named etcd.
 #
-set -e
+set -euo pipefail
+
 shopt -s globstar
 
 if ! [[ "$0" =~ scripts/genproto.sh ]]; then
@@ -36,13 +37,14 @@ echo "  - raft-root:               ${RAFT_ROOT}"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 
 # directories containing protos to be built
-DIRS="./server/storage/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./tests/functional ./api/versionpb"
+DIRS="./server/storage/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./api/versionpb"
 
 log_callout -e "\\nRunning gofast (gogo) proto generation..."
 
 for dir in ${DIRS}; do
   run pushd "${dir}"
     run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
+      -I"${GRPC_GATEWAY_ROOT}" \
       --plugin="${GOFAST_BIN}" ./**/*.proto
 
     run sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./**/*.pb.go
@@ -63,6 +65,7 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
   log_callout "grpc & swagger for: ${pb}.proto"
   run protoc -I. \
       -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
+      -I"${GRPC_GATEWAY_ROOT}" \
       -I"${GOGOPROTO_PATH}" \
       -I"${ETCD_ROOT_DIR}/.." \
       -I"${RAFT_ROOT}" \
@@ -94,11 +97,7 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
     Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
 
-log_callout -e "\\nRunning swagger ..."
-run_go_tool github.com/hexfusion/schwag -input=Documentation/dev-guide/apispec/swagger/rpc.swagger.json
-
-
-if [ "$1" != "--skip-protodoc" ]; then
+if [ "${1:-}" != "--skip-protodoc" ]; then
   log_callout "protodoc is auto-generating grpc API reference documentation..."
 
   # API reference

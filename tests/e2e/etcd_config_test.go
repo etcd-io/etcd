@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"golang.org/x/sync/errgroup"
@@ -410,7 +411,7 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		clientId := i
 		g.Go(func() error {
-			cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+			cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
 			if err != nil {
 				return err
 			}
@@ -423,4 +424,33 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 		})
 	}
 	require.NoError(t, g.Wait())
+}
+
+func TestEtcdTLSVersion(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	d := t.TempDir()
+	proc, err := e2e.SpawnCmd(
+		[]string{
+			e2e.BinPath.Etcd,
+			"--data-dir", d,
+			"--name", "e1",
+			"--listen-client-urls", "https://0.0.0.0:0",
+			"--advertise-client-urls", "https://0.0.0.0:0",
+			"--listen-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+			"--initial-advertise-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+			"--initial-cluster", fmt.Sprintf("e1=https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+			"--peer-cert-file", e2e.CertPath,
+			"--peer-key-file", e2e.PrivateKeyPath,
+			"--cert-file", e2e.CertPath2,
+			"--key-file", e2e.PrivateKeyPath2,
+
+			"--tls-min-version", "TLS1.2",
+			"--tls-max-version", "TLS1.3",
+		}, nil,
+	)
+	assert.NoError(t, err)
+	assert.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
+	assert.NoError(t, proc.Stop())
+
 }

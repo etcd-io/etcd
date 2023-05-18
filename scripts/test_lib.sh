@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ROOT_MODULE="go.etcd.io/etcd"
 
 if [[ "$(go list)" != "${ROOT_MODULE}/v3" ]]; then
@@ -105,7 +107,7 @@ function relativePath {
 
 ####   Discovery of files/packages within a go module #####
 
-# go_srcs_in_module [package]
+# go_srcs_in_module
 # returns list of all not-generated go sources in the current (dir) module.
 function go_srcs_in_module {
   go list -f "{{with \$c:=.}}{{range \$f:=\$c.GoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.TestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.XTestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{end}}" ./... | grep -vE "(\\.pb\\.go|\\.pb\\.gw.go)"
@@ -164,7 +166,7 @@ function run_for_module {
 }
 
 function module_dirs() {
-  echo "api pkg client/pkg client/v2 client/v3 server etcdutl etcdctl tests ."
+  echo "api pkg client/pkg client/internal/v2 client/v3 server etcdutl etcdctl tests ."
 }
 
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
@@ -201,18 +203,32 @@ function modules_exp() {
 #  run given command across all modules and packages
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
 function run_for_modules {
+  KEEP_GOING_MODULE=${KEEP_GOING_MODULE:-false}
   local pkg="${PKG:-./...}"
+  local fail_mod=false
   if [ -z "${USERMOD:-}" ]; then
     for m in $(module_dirs); do
-      run_for_module "${m}" "$@" "${pkg}" || return "$?"
+      if run_for_module "${m}" "$@" "${pkg}"; then
+        continue
+      else
+        if [ "$KEEP_GOING_MODULE" = false ]; then
+          log_error "There was a Failure in module ${m}, aborting..."
+          return 1
+        fi
+        log_error "There was a Failure in module ${m}, keep going..."
+        fail_mod=true
+      fi
     done
+    if [ "$fail_mod" = true ]; then
+      return 1
+    fi
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
 }
 
 junitFilenamePrefix() {
-  if [[ -z "${JUNIT_REPORT_DIR}" ]]; then
+  if [[ -z "${JUNIT_REPORT_DIR:-}" ]]; then
     echo ""
     return
   fi
@@ -222,7 +238,7 @@ junitFilenamePrefix() {
 }
 
 function produce_junit_xmlreport {
-  local -r junit_filename_prefix=$1
+  local -r junit_filename_prefix=${1:-}
   if [[ -z "${junit_filename_prefix}" ]]; then
     return
   fi
@@ -232,7 +248,7 @@ function produce_junit_xmlreport {
 
   # Ensure that gotestsum is run without cross-compiling
   run_go_tool gotest.tools/gotestsum --junitfile "${junit_xml_filename}" --raw-command cat "${junit_filename_prefix}"*.stdout || exit 1
-  if [ "${VERBOSE}" != "1" ]; then
+  if [ "${VERBOSE:-}" != "1" ]; then
     rm "${junit_filename_prefix}"*.stdout
   fi
 
@@ -290,8 +306,8 @@ function go_test {
 
   junit_filename_prefix=$(junitFilenamePrefix)
 
-  if [ "${VERBOSE}" == "1" ]; then
-    goTestFlags="-v"
+  if [ "${VERBOSE:-}" == "1" ]; then
+    goTestFlags="-v "
   fi
 
   # Expanding patterns (like ./...) into list of packages
@@ -306,6 +322,10 @@ function go_test {
     fi
   fi
 
+  if [ "${mode}" == "fail_fast" ]; then
+    goTestFlags+="-failfast "
+  fi
+
   local failures=""
 
   # execution of tests against packages:
@@ -315,7 +335,7 @@ function go_test {
     additional_flags=$(${flags_for_package_func} ${pkg})
 
     # shellcheck disable=SC2206
-    local cmd=( go test ${goTestFlags} ${additional_flags} "$@" ${pkg} )
+    local cmd=( go test ${goTestFlags} ${additional_flags} ${pkg} "$@" )
 
     # shellcheck disable=SC2086
     if ! run env ${goTestEnv} ETCD_VERIFY="${ETCD_VERIFY}" "${cmd[@]}" | tee ${junit_filename_prefix:+"${junit_filename_prefix}.stdout"} | grep --binary-files=text "${go_test_grep_pattern}" ; then

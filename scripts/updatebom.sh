@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
+
 source ./scripts/test_lib.sh
 
 function bom_fixlet {

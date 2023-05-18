@@ -8,9 +8,29 @@ import "etcd/api/versionpb/version.proto";
 
 // for grpc-gateway
 import "google/api/annotations.proto";
+import "protoc-gen-swagger/options/annotations.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+  security_definitions: {
+    security: {
+      key: "ApiKey";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "Authorization";
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "ApiKey";
+      value: {};
+    }
+  }
+};
 
 service KV {
   // Range gets the keys in the range from the key-value store.

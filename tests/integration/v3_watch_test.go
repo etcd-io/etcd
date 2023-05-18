@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -871,6 +873,110 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 	}
 }
 
+// TestV3WatchProgressOnMemberRestart verifies the client side doesn't
+// receive duplicated events.
+// Refer to https://github.com/etcd-io/etcd/pull/15248#issuecomment-1423225742.
+func TestV3WatchProgressOnMemberRestart(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:                        1,
+		WatchProgressNotifyInterval: time.Second,
+	})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	errC := make(chan error, 1)
+	watchReady := make(chan struct{}, 1)
+	doneC := make(chan struct{}, 1)
+	progressNotifyC := make(chan struct{}, 1)
+	go func() {
+		defer close(doneC)
+
+		var (
+			lastWatchedModRevision  int64
+			gotProgressNotification bool
+		)
+
+		wch := client.Watch(ctx, "foo", clientv3.WithProgressNotify())
+		watchReady <- struct{}{}
+		for wr := range wch {
+			if wr.Err() != nil {
+				errC <- fmt.Errorf("watch error: %w", wr.Err())
+				return
+			}
+
+			if len(wr.Events) == 0 {
+				// We need to make sure at least one progress notification
+				// is received after receiving the normal watch response
+				// and before restarting the member.
+				if lastWatchedModRevision > 0 {
+					gotProgressNotification = true
+					progressNotifyC <- struct{}{}
+				}
+				continue
+			}
+
+			for _, event := range wr.Events {
+				if event.Kv.ModRevision <= lastWatchedModRevision {
+					errC <- fmt.Errorf("got an unexpected revision: %d, lastWatchedModRevision: %d",
+						event.Kv.ModRevision,
+						lastWatchedModRevision)
+					return
+				}
+				lastWatchedModRevision = event.Kv.ModRevision
+			}
+
+			if gotProgressNotification {
+				return
+			}
+		}
+	}()
+
+	// waiting for the watcher ready
+	t.Log("Waiting for the watcher to be ready.")
+	<-watchReady
+	time.Sleep(time.Second)
+
+	// write a K/V firstly
+	t.Log("Writing key 'foo' firstly")
+	_, err := client.Put(ctx, "foo", "bar1")
+	require.NoError(t, err)
+
+	// make sure at least one progress notification is received
+	// before restarting the member
+	t.Log("Waiting for the progress notification")
+	select {
+	case <-progressNotifyC:
+	case <-time.After(5 * time.Second):
+		t.Log("Do not receive the progress notification in 5 seconds, move forward anyway.")
+	}
+
+	// restart the member
+	t.Log("Restarting the member")
+	clus.Members[0].Stop(t)
+	clus.Members[0].Restart(t)
+	clus.Members[0].WaitOK(t)
+
+	// write the same key again after the member restarted
+	t.Log("Writing the same key 'foo' again after restarting the member")
+	_, err = client.Put(ctx, "foo", "bar2")
+	require.NoError(t, err)
+
+	t.Log("Waiting for result")
+	select {
+	case err := <-errC:
+		t.Fatal(err)
+	case <-doneC:
+		t.Log("Done")
+	case <-time.After(15 * time.Second):
+		t.Fatal("Timed out waiting for the response")
+	}
+}
+
 func TestV3WatchMultipleStreamsSynced(t *testing.T) {
 	integration.BeforeTest(t)
 	testV3WatchMultipleStreams(t, 0)
@@ -1289,5 +1395,73 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 
 	if minWatches != expected {
 		t.Fatalf("expected %s watch, got %s", expected, minWatches)
+	}
+}
+
+// TestV3WatchProgressWaitsForSync checks that progress notifications
+// don't get sent until the watcher is synchronised
+func TestV3WatchProgressWaitsForSync(t *testing.T) {
+
+	// Disable for gRPC proxy, as it does not support requesting
+	// progress notifications
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
+
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Write a couple values into key to make sure there's a
+	// non-trivial amount of history.
+	count := 1001
+	t.Logf("Writing key 'foo' %d times", count)
+	for i := 0; i < count; i++ {
+		_, err := client.Put(ctx, "foo", fmt.Sprintf("bar%d", i))
+		require.NoError(t, err)
+	}
+
+	// Create watch channel starting at revision 1 (i.e. it starts
+	// unsynced because of the update above)
+	wch := client.Watch(ctx, "foo", clientv3.WithRev(1))
+
+	// Immediately request a progress notification. As the client
+	// is unsynchronised, the server will have to defer the
+	// notification internally.
+	err := client.RequestProgress(ctx)
+	require.NoError(t, err)
+
+	// Verify that we get the watch responses first. Note that
+	// events might be spread across multiple packets.
+	var event_count = 0
+	for event_count < count {
+		wr := <-wch
+		if wr.Err() != nil {
+			t.Fatal(fmt.Errorf("watch error: %w", wr.Err()))
+		}
+		if wr.IsProgressNotify() {
+			t.Fatal("Progress notification from unsynced client!")
+		}
+		if wr.Header.Revision != int64(count+1) {
+			t.Fatal("Incomplete watch response!")
+		}
+		event_count += len(wr.Events)
+	}
+
+	// ... followed by the requested progress notification
+	wr2 := <-wch
+	if wr2.Err() != nil {
+		t.Fatal(fmt.Errorf("watch error: %w", wr2.Err()))
+	}
+	if !wr2.IsProgressNotify() {
+		t.Fatal("Did not receive progress notification!")
+	}
+	if wr2.Header.Revision != int64(count+1) {
+		t.Fatal("Wrong revision in progress notification!")
 	}
 }

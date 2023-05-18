@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !cov
-
 package e2e
 
 import (
@@ -57,7 +55,7 @@ func TestServerJsonLogging(t *testing.T) {
 		if entry.Timestamp == "" {
 			t.Errorf(`Missing "ts" key, line: %s`, line)
 		}
-		if _, err := time.Parse("2006-01-02T15:04:05.000Z0700", entry.Timestamp); entry.Timestamp != "" && err != nil {
+		if _, err := time.Parse("2006-01-02T15:04:05.999999Z0700", entry.Timestamp); entry.Timestamp != "" && err != nil {
 			t.Errorf(`Unexpected "ts" key format, err: %s`, err)
 		}
 		if entry.Caller == "" {

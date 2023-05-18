@@ -61,7 +61,7 @@ func corruptTest(cx ctlCtx) {
 	time.Sleep(3 * time.Second)
 
 	cx.t.Log("connecting clientv3...")
-	eps := cx.epc.EndpointsV3()
+	eps := cx.epc.EndpointsGRPC()
 	cli1, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[1]}, DialTimeout: 3 * time.Second})
 	if err != nil {
 		cx.t.Fatal(err)
@@ -116,7 +116,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
 	assert.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
@@ -124,7 +124,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		assert.NoError(t, err, "error on put")
 	}
 
-	members, err := cc.MemberList(ctx)
+	members, err := cc.MemberList(ctx, false)
 	assert.NoError(t, err, "error on member list")
 	var memberID uint64
 	for _, m := range members.Members {
@@ -164,14 +164,14 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
 	assert.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
 		err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		assert.NoError(t, err, "error on put")
 	}
-	members, err := cc.MemberList(ctx)
+	members, err := cc.MemberList(ctx, false)
 	assert.NoError(t, err, "error on member list")
 	var memberID uint64
 	for _, m := range members.Members {

@@ -34,7 +34,7 @@ func TestGateway(t *testing.T) {
 	}
 	defer ec.Stop()
 
-	eps := strings.Join(ec.EndpointsV3(), ",")
+	eps := strings.Join(ec.EndpointsGRPC(), ",")
 
 	p := startGateway(t, eps)
 	defer func() {

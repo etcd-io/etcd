@@ -112,10 +112,10 @@ main() {
   # Check go version.
   log_callout "Check go version"
   local go_version current_go_version
-  go_version="go$(grep go-version .github/workflows/build.yaml | awk '{print $2}' | tr -d '"')"
+  go_version="go$(cat .go-version)"
   current_go_version=$(go version | awk '{ print $3 }')
   if [[ "${current_go_version}" != "${go_version}" ]]; then
-    log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .github/workflows/build.yaml)."
+    log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .go-version)."
     exit 1
   fi
 

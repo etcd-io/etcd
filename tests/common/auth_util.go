@@ -17,7 +17,11 @@ package common
 import (
 	"context"
 	"fmt"
+	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"go.etcd.io/etcd/api/v3/authpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/interfaces"
@@ -105,4 +109,16 @@ func setupAuth(c interfaces.Client, roles []authRole, users []authUser) error {
 	}
 
 	return nil
+}
+
+func requireRolePermissionEqual(t *testing.T, expectRole authRole, actual []*authpb.Permission) {
+	require.Equal(t, 1, len(actual))
+	require.Equal(t, expectRole.permission, clientv3.PermissionType(actual[0].PermType))
+	require.Equal(t, expectRole.key, string(actual[0].Key))
+	require.Equal(t, expectRole.keyEnd, string(actual[0].RangeEnd))
+}
+
+func requireUserRolesEqual(t *testing.T, expectUser authUser, actual []string) {
+	require.Equal(t, 1, len(actual))
+	require.Equal(t, expectUser.role, actual[0])
 }

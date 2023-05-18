@@ -109,12 +109,8 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 	}
 
 	var opts []clientv3.OpOption
-	switch getConsistency {
-	case "s":
+	if IsSerializable(getConsistency) {
 		opts = append(opts, clientv3.WithSerializable())
-	case "l":
-	default:
-		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("unknown consistency flag %q", getConsistency))
 	}
 
 	key := args[0]

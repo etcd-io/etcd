@@ -22,12 +22,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3MemberList(t *testing.T)        { testCtl(t, memberListTest) }
 func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest) }
+func TestCtlV3MemberListSerializable(t *testing.T) {
+	cfg := e2e.NewConfig(
+		e2e.WithClusterSize(1),
+	)
+	testCtl(t, memberListSerializableTest, withCfg(*cfg))
+}
 
 func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
 func TestCtlV3MemberAddAsLearner(t *testing.T) { testCtl(t, memberAddAsLearnerTest) }
@@ -52,6 +60,19 @@ func memberListTest(cx ctlCtx) {
 	}
 }
 
+func memberListSerializableTest(cx ctlCtx) {
+	resp, err := getMemberList(cx, false)
+	require.NoError(cx.t, err)
+	require.Equal(cx.t, 1, len(resp.Members))
+
+	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
+	err = ctlV3MemberAdd(cx, peerURL, false)
+	require.NoError(cx.t, err)
+
+	resp, err = getMemberList(cx, true)
+	require.Equal(cx.t, 2, len(resp.Members))
+}
+
 func ctlV3MemberList(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "list")
 	lines := make([]string, cx.cfg.ClusterSize)
@@ -61,8 +82,11 @@ func ctlV3MemberList(cx ctlCtx) error {
 	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
-func getMemberList(cx ctlCtx) (etcdserverpb.MemberListResponse, error) {
+func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListResponse, error) {
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "member", "list")
+	if serializable {
+		cmdArgs = append(cmdArgs, "--consistency", "s")
+	}
 
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
@@ -86,7 +110,7 @@ func getMemberList(cx ctlCtx) (etcdserverpb.MemberListResponse, error) {
 }
 
 func memberListWithHexTest(cx ctlCtx) {
-	resp, err := getMemberList(cx)
+	resp, err := getMemberList(cx, false)
 	if err != nil {
 		cx.t.Fatalf("getMemberList error (%v)", err)
 	}
@@ -166,7 +190,7 @@ func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 }
 
 func memberUpdateTest(cx ctlCtx) {
-	mr, err := getMemberList(cx)
+	mr, err := getMemberList(cx, false)
 	if err != nil {
 		cx.t.Fatal(err)
 	}

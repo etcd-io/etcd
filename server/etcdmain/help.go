@@ -54,7 +54,7 @@ Member:
     Path to the data directory.
   --wal-dir ''
     Path to the dedicated wal directory.
-  --snapshot-count '100000'
+  --snapshot-count '10000'
     Number of committed transactions to trigger a snapshot to disk.
   --heartbeat-interval '100'
     Time (in milliseconds) of a heartbeat interval.
@@ -65,7 +65,9 @@ Member:
   --listen-peer-urls 'http://localhost:2380'
     List of URLs to listen on for peer traffic.
   --listen-client-urls 'http://localhost:2379'
-    List of URLs to listen on for client traffic.
+    List of URLs to listen on for client grpc traffic and http as long as --listen-client-http-urls is not specified.
+  --listen-client-http-urls ''
+    List of URLs to listen on for http only client traffic. Enabling this flag removes http services from --listen-client-urls.
   --max-snapshots '` + strconv.Itoa(embed.DefaultMaxSnapshots) + `'
     Maximum number of snapshot files to retain (0 is unlimited).
   --max-wals '` + strconv.Itoa(embed.DefaultMaxWALs) + `'
@@ -101,7 +103,8 @@ Clustering:
   --initial-cluster 'default=http://localhost:2380'
     Initial cluster configuration for bootstrapping.
   --initial-cluster-state 'new'
-    Initial cluster state ('new' or 'existing').
+    Initial cluster state ('new' when bootstrapping a new cluster or 'existing' when adding new members to an existing cluster). 
+    After successful initialization (bootstrapping or adding), flag is ignored on restarts
   --initial-cluster-token 'etcd-cluster'
     Initial cluster token for the etcd cluster during bootstrap.
     Specifying this can protect you from unintended cross-cluster interaction when running multiple clusters.
@@ -199,6 +202,10 @@ Security:
     Comma-separated whitelist of origins for CORS, or cross-origin resource sharing, (empty or * means allow all).
   --host-whitelist '*'
     Acceptable hostnames from HTTP client requests, if server is not secure (empty or * means allow all).
+  --tls-min-version 'TLS1.2'
+    Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.
+  --tls-max-version ''
+    Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty will be auto-populated by Go).
 
 Auth:
   --auth-token 'simple'

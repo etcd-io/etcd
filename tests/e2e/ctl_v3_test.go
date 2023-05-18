@@ -111,7 +111,7 @@ func TestCtlV3DialWithHTTPScheme(t *testing.T) {
 }
 
 func dialWithSchemeTest(cx ctlCtx) {
-	cmdArgs := append(cx.prefixArgs(cx.epc.EndpointsV3()), "put", "foo", "bar")
+	cmdArgs := append(cx.prefixArgs(cx.epc.EndpointsGRPC()), "put", "foo", "bar")
 	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK"); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -199,6 +199,12 @@ func withFlagByEnv() ctlOption {
 func withMaxConcurrentStreams(streams uint32) ctlOption {
 	return func(cx *ctlCtx) {
 		cx.cfg.MaxConcurrentStreams = streams
+	}
+}
+
+func withLogLevel(logLevel string) ctlOption {
+	return func(cx *ctlCtx) {
+		cx.cfg.LogLevel = logLevel
 	}
 }
 
@@ -331,7 +337,7 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 // PrefixArgs prefixes etcdctl command.
 // Make sure to unset environment variables after tests.
 func (cx *ctlCtx) PrefixArgs() []string {
-	return cx.prefixArgs(cx.epc.EndpointsV3())
+	return cx.prefixArgs(cx.epc.EndpointsGRPC())
 }
 
 // PrefixArgsUtl returns prefix of the command that is etcdutl
@@ -350,7 +356,7 @@ func (cx *ctlCtx) memberToRemove() (ep string, memberID string, clusterID string
 		cx.t.Fatalf("%d-node is too small to test 'member remove'", n1)
 	}
 
-	resp, err := getMemberList(*cx)
+	resp, err := getMemberList(*cx, false)
 	if err != nil {
 		cx.t.Fatal(err)
 	}

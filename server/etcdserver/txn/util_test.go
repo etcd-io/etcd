@@ -28,8 +28,8 @@ import (
 // never panic no matter what data the txnResponse contains.
 func TestWarnOfExpensiveReadOnlyTxnRequest(t *testing.T) {
 	kvs := []*mvccpb.KeyValue{
-		&mvccpb.KeyValue{Key: []byte("k1"), Value: []byte("v1")},
-		&mvccpb.KeyValue{Key: []byte("k2"), Value: []byte("v2")},
+		{Key: []byte("k1"), Value: []byte("v1")},
+		{Key: []byte("k2"), Value: []byte("v2")},
 	}
 
 	testCases := []struct {

@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -78,7 +79,7 @@ func TestEmbedEtcd(t *testing.T) {
 
 	tests[0].cfg.Durl = "abc"
 	setupEmbedCfg(&tests[1].cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
-	tests[1].cfg.ACUrls = nil
+	tests[1].cfg.AdvertiseClientUrls = nil
 	tests[2].cfg.TickMs = tests[2].cfg.ElectionMs - 1
 	tests[3].cfg.ElectionMs = 999999
 	setupEmbedCfg(&tests[4].cfg, []url.URL{urls[2]}, []url.URL{urls[3]})
@@ -86,8 +87,8 @@ func TestEmbedEtcd(t *testing.T) {
 	setupEmbedCfg(&tests[6].cfg, []url.URL{urls[7], urls[8]}, []url.URL{urls[9]})
 
 	dnsURL, _ := url.Parse("http://whatever.test:12345")
-	tests[7].cfg.LCUrls = []url.URL{*dnsURL}
-	tests[8].cfg.LPUrls = []url.URL{*dnsURL}
+	tests[7].cfg.ListenClientUrls = []url.URL{*dnsURL}
+	tests[8].cfg.ListenPeerUrls = []url.URL{*dnsURL}
 
 	dir := filepath.Join(t.TempDir(), "embed-etcd")
 
@@ -202,11 +203,27 @@ func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
 	cfg.LogOutputs = []string{"/dev/null"}
 
 	cfg.ClusterState = "new"
-	cfg.LCUrls, cfg.ACUrls = curls, curls
-	cfg.LPUrls, cfg.APUrls = purls, purls
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = curls, curls
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = purls, purls
 	cfg.InitialCluster = ""
 	for i := range purls {
 		cfg.InitialCluster += ",default=" + purls[i].String()
 	}
 	cfg.InitialCluster = cfg.InitialCluster[1:]
+}
+
+func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
+	cfg := embed.NewConfig()
+	urls := newEmbedURLs(false, 2)
+	setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
+	cfg.Dir = filepath.Join(t.TempDir(), "embed-etcd")
+
+	cfg.AutoCompactionRetention = "2"
+
+	e, err := embed.StartEtcd(cfg)
+	assert.NoError(t, err)
+	autoCompactionRetention := e.Server.Cfg.AutoCompactionRetention
+	duration_to_compare, _ := time.ParseDuration("2h0m0s")
+	assert.Equal(t, duration_to_compare, autoCompactionRetention)
+	e.Close()
 }

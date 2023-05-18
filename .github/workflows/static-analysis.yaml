@@ -2,13 +2,16 @@ name: Static Analysis
 on: [push, pull_request]
 permissions: read-all
 jobs:
+  goversion:
+    uses: ./.github/workflows/go-version.yaml
   run:
     runs-on: ubuntu-latest
+    needs: goversion
     steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
-      - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
-          go-version: "1.19.5"
+          go-version: ${{ needs.goversion.outputs.goversion }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@08e2f20817b15149a52b5b3ebe7de50aff2ba8c5 # v3.4.0
         with:
@@ -18,5 +21,11 @@ jobs:
         with:
           version: '3.14.0'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: make verify
-      - run: make fix
+      - run: |
+          set -euo pipefail
+
+          make verify
+      - run: |
+          set -euo pipefail
+
+          make fix

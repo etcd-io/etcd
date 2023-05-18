@@ -78,7 +78,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 	var leadIdx int
 	var leaderID uint64
 	var transferee uint64
-	for i, ep := range epc.EndpointsV3() {
+	for i, ep := range epc.EndpointsGRPC() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   []string{ep},
 			DialTimeout: 3 * time.Second,
@@ -117,17 +117,17 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 		expectErr bool
 	}{
 		{ // request to non-leader
-			[]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]},
+			[]string{cx.epc.EndpointsGRPC()[(leadIdx+1)%3]},
 			"no leader endpoint given at ",
 			true,
 		},
 		{ // request to leader
-			[]string{cx.epc.EndpointsV3()[leadIdx]},
+			[]string{cx.epc.EndpointsGRPC()[leadIdx]},
 			fmt.Sprintf("Leadership transferred from %s to %s", types.ID(leaderID), types.ID(transferee)),
 			false,
 		},
 		{ // request to all endpoints
-			cx.epc.EndpointsV3(),
+			cx.epc.EndpointsGRPC(),
 			"Leadership transferred",
 			false,
 		},

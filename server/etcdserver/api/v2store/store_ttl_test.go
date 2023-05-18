@@ -29,7 +29,7 @@ import (
 // TestMinExpireTime ensures that any TTL <= minExpireTime becomes Permanent
 func TestMinExpireTime(t *testing.T) {
 	s := newStore()
-	fc := clockwork.NewFakeClock()
+	fc := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
 	s.clock = fc
 	// FakeClock starts at 0, so minExpireTime should be far in the future.. but just in case
 	testutil.AssertTrue(t, minExpireTime.After(fc.Now()), "minExpireTime should be ahead of FakeClock!")

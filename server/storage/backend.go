@@ -76,9 +76,12 @@ func OpenBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 		beOpened <- newBackend(cfg, hooks)
 	}()
 
+	defer func() {
+		cfg.Logger.Info("opened backend db", zap.String("path", fn), zap.Duration("took", time.Since(now)))
+	}()
+
 	select {
 	case be := <-beOpened:
-		cfg.Logger.Info("opened backend db", zap.String("path", fn), zap.Duration("took", time.Since(now)))
 		return be
 
 	case <-time.After(10 * time.Second):

@@ -2,7 +2,7 @@ name: Measure Test Flakiness
 
 on:
   schedule:
-    - cron: "0 0 * * 0"
+    - cron: "0 0 * * 0" # run every Sunday at midnight
 
 permissions: read-all
 
@@ -11,7 +11,12 @@ jobs:
     name: Measure Test Flakiness
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
-    - run: "./scripts/measure-test-flakiness.sh"
-      env:
+    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+    - env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -euo pipefail
+
+        ./scripts/measure-test-flakiness.sh
+        make bin/etcd-test-analyzer
+        bin/etcd-test-analyzer run -token $GITHUB_TOKEN -max-age=168h -workflow Tests -branch main

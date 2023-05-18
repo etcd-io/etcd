@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 VERSION" >&2
   exit 1
 fi
 
-ARCH=$(go env GOARCH)
-VERSION="${1}-${ARCH}"
-DOCKERFILE="Dockerfile-release.${ARCH}"
+VERSION=${1}
+if [ -z "$VERSION" ]; then
+  echo "Usage: ${0} VERSION" >&2
+  exit 1
+fi
 
-if [ -z "${BINARYDIR}" ]; then
-  RELEASE="etcd-${1}"-$(go env GOOS)-$(go env GOARCH)
+ARCH=$(go env GOARCH)
+VERSION="${VERSION}-${ARCH}"
+DOCKERFILE="Dockerfile"
+
+if [ -z "${BINARYDIR:-}" ]; then
+  RELEASE="etcd-${1}"-$(go env GOOS)-${ARCH}
   BINARYDIR="${RELEASE}"
   TARFILE="${RELEASE}.tar.gz"
   TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
@@ -32,13 +38,13 @@ mkdir -p "${IMAGEDIR}"/var/etcd
 mkdir -p "${IMAGEDIR}"/var/lib/etcd
 cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR}"
 
-cp ./nsswitch.conf "${IMAGEDIR}"
-
 cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
 
-if [ -z "$TAG" ]; then
-    docker build -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
-    docker build -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+if [ -z "${TAG:-}" ]; then
+    # Fix incorrect image "Architecture" using buildkit
+    # From https://stackoverflow.com/q/72144329/
+    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
+    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
 else
     docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
 fi

@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -41,10 +42,10 @@ var (
 
 // EtcdProcess is a process that serves etcd requests.
 type EtcdProcess interface {
-	EndpointsV2() []string
-	EndpointsV3() []string
+	EndpointsGRPC() []string
+	EndpointsHTTP() []string
 	EndpointsMetrics() []string
-	Client(opts ...config.ClientOption) *EtcdctlV3
+	Etcdctl(opts ...config.ClientOption) *EtcdctlV3
 
 	IsRunning() bool
 	Wait(ctx context.Context) error
@@ -86,9 +87,10 @@ type EtcdServerProcessConfig struct {
 
 	Name string
 
-	PeerURL    url.URL
-	ClientURL  string
-	MetricsURL string
+	PeerURL       url.URL
+	ClientURL     string
+	ClientHTTPURL string
+	MetricsURL    string
 
 	InitialToken   string
 	InitialCluster string
@@ -113,12 +115,17 @@ func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, err
 	return ep, nil
 }
 
-func (ep *EtcdServerProcess) EndpointsV2() []string      { return []string{ep.cfg.ClientURL} }
-func (ep *EtcdServerProcess) EndpointsV3() []string      { return ep.EndpointsV2() }
+func (ep *EtcdServerProcess) EndpointsGRPC() []string { return []string{ep.cfg.ClientURL} }
+func (ep *EtcdServerProcess) EndpointsHTTP() []string {
+	if ep.cfg.ClientHTTPURL == "" {
+		return []string{ep.cfg.ClientURL}
+	}
+	return []string{ep.cfg.ClientHTTPURL}
+}
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.MetricsURL} }
 
-func (epc *EtcdServerProcess) Client(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsV3(), opts...)
+func (epc *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
+	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -346,4 +353,28 @@ func fetchFailpoints(member EtcdProcess) (map[string]struct{}, error) {
 		failpoints[f] = struct{}{}
 	}
 	return failpoints, nil
+}
+
+func GetVersionFromBinary(binaryPath string) (*semver.Version, error) {
+	lines, err := RunUtilCompletion([]string{binaryPath, "--version"}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not find binary version from %s, err: %w", binaryPath, err)
+	}
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "etcd Version:") {
+			versionString := strings.TrimSpace(strings.SplitAfter(line, ":")[1])
+			version, err := semver.NewVersion(versionString)
+			if err != nil {
+				return nil, err
+			}
+			return &semver.Version{
+				Major: version.Major,
+				Minor: version.Minor,
+				Patch: version.Patch,
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find version in binary output of %s, lines outputted were %v", binaryPath, lines)
 }

@@ -418,3 +418,10 @@ func (c integrationClient) MemberAddAsLearner(ctx context.Context, _ string, pee
 func (c integrationClient) MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error) {
 	return c.Client.MemberRemove(ctx, id)
 }
+
+func (c integrationClient) MemberList(ctx context.Context, serializable bool) (*clientv3.MemberListResponse, error) {
+	if serializable {
+		return c.Client.MemberList(ctx, clientv3.WithSerializable())
+	}
+	return c.Client.MemberList(ctx)
+}

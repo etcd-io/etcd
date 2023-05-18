@@ -1,9 +1,24 @@
+all: build
+include tests/robustness/makefile.mk
+
 .PHONY: build
 build:
-	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v" ./scripts/build.sh
-	./bin/etcd --version
-	./bin/etcdctl version
-	./bin/etcdutl version
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
+
+.PHONY: tools
+tools:
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build_tools.sh
+
+TEMP_TEST_ANALYZER_DIR=/tmp/etcd-test-analyzer
+TEST_ANALYZER_BIN=${PWD}/bin
+bin/etcd-test-analyzer: $(TEMP_TEST_ANALYZER_DIR)/*
+	make -C ${TEMP_TEST_ANALYZER_DIR} build
+	mkdir -p ${TEST_ANALYZER_BIN}
+	install ${TEMP_TEST_ANALYZER_DIR}/bin/etcd-test-analyzer ${TEST_ANALYZER_BIN}
+	${TEST_ANALYZER_BIN}/etcd-test-analyzer -h
+
+$(TEMP_TEST_ANALYZER_DIR)/*:
+	git clone "https://github.com/endocrimes/etcd-test-analyzer.git" ${TEMP_TEST_ANALYZER_DIR}
 
 # Tests
 
@@ -25,13 +40,21 @@ test-integration:
 test-e2e: build
 	PASSES="e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+.PHONY: test-grpcproxy-integration
+test-grpcproxy-integration:
+	PASSES="grpcproxy_integration" ./scripts/test.sh $(GO_TEST_FLAGS)
+
+.PHONY: test-grpcproxy-e2e
+test-grpcproxy-e2e: build
+	PASSES="grpcproxy_e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
+
 .PHONY: test-e2e-release
 test-e2e-release: build
 	PASSES="release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
-.PHONY: test-linearizability
-test-linearizability:
-	PASSES="linearizability" ./scripts/test.sh $(GO_TEST_FLAGS)
+.PHONY: test-robustness
+test-robustness:
+	PASSES="robustness" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: fuzz
 fuzz: 
@@ -41,7 +64,7 @@ fuzz:
 
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
-	verify-shellws verify-proto-annotations verify-genproto
+	verify-shellws verify-proto-annotations verify-genproto verify-goimport
 fix: fix-bom fix-lint
 	./scripts/fix.sh
 
@@ -105,59 +128,16 @@ verify-proto-annotations:
 verify-genproto:
 	PASSES="genproto" ./scripts/test.sh
 
-# Failpoints
-
-GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
-
-.PHONY: gofail-enable
-gofail-enable: install-gofail
-	gofail enable server/etcdserver/ server/storage/backend/ server/storage/mvcc/
-	cd ./server && go get go.etcd.io/gofail@${GOFAIL_VERSION}
-	cd ./etcdutl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
-	cd ./etcdctl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
-	cd ./tests && go get go.etcd.io/gofail@${GOFAIL_VERSION}
-
-.PHONY: gofail-disable
-gofail-disable: install-gofail
-	gofail disable server/etcdserver/ server/storage/backend/ server/storage/mvcc/
-	cd ./server && go mod tidy
-	cd ./etcdutl && go mod tidy
-	cd ./etcdctl && go mod tidy
-	cd ./tests && go mod tidy
-
-.PHONY: install-gofail
-install-gofail:
-	cd tools/mod; go install go.etcd.io/gofail@${GOFAIL_VERSION}
-
-build-failpoints-release-3.5:
-	rm -rf /tmp/etcd-release-3.5/
-	mkdir -p /tmp/etcd-release-3.5/
-	cd /tmp/etcd-release-3.5/; \
-	  git clone --depth 1 --branch release-3.5 https://github.com/etcd-io/etcd.git .; \
-	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
-	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  FAILPOINTS=true ./build;
-	mkdir -p ./bin
-	cp /tmp/etcd-release-3.5/bin/etcd ./bin/etcd
-
-build-failpoints-release-3.4:
-	rm -rf /tmp/etcd-release-3.4/
-	mkdir -p /tmp/etcd-release-3.4/
-	cd /tmp/etcd-release-3.4/; \
-	  git clone --depth 1 --branch release-3.4 https://github.com/etcd-io/etcd.git .; \
-	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
-	  FAILPOINTS=true ./build;
-	mkdir -p ./bin
-	cp /tmp/etcd-release-3.4/bin/etcd ./bin/etcd
+.PHONY: verify-goimport
+verify-goimport:
+	PASSES="goimport" ./scripts/test.sh
 
 # Cleanup
 
 clean:
 	rm -f ./codecov
 	rm -rf ./covdir
-	rm -f ./bin/Dockerfile-release*
+	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/etcd*
 	rm -rf ./default.etcd
 	rm -rf ./tests/e2e/default.etcd

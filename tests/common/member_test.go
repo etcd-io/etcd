@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -40,7 +41,7 @@ func TestMemberList(t *testing.T) {
 			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
-				resp, err := cc.MemberList(ctx)
+				resp, err := cc.MemberList(ctx, false)
 				if err != nil {
 					t.Fatalf("could not get member list, err: %s", err)
 				}
@@ -49,11 +50,17 @@ func TestMemberList(t *testing.T) {
 				if expectNum != gotNum {
 					t.Fatalf("number of members not equal, expect: %d, got: %d", expectNum, gotNum)
 				}
-				for _, m := range resp.Members {
-					if len(m.ClientURLs) == 0 {
-						t.Fatalf("member is not started, memberId:%d, memberName:%s", m.ID, m.Name)
+				assert.Eventually(t, func() (done bool) {
+					for _, m := range resp.Members {
+						if len(m.ClientURLs) == 0 {
+							t.Logf("member is not started, memberId:%d, memberName:%s", m.ID, m.Name)
+							done = false
+							return done
+						}
 					}
-				}
+					done = true
+					return true
+				}, time.Second*5, time.Millisecond*100)
 			})
 		})
 	}
@@ -237,7 +244,7 @@ func TestMemberRemove(t *testing.T) {
 // Otherwise, return a member that client has not connected to.
 // It ensures that `MemberRemove` function does not return an "etcdserver: server stopped" error.
 func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clusterSize int) (memberId uint64, clusterId uint64) {
-	listResp, err := client.MemberList(ctx)
+	listResp, err := client.MemberList(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,4 +271,15 @@ func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clust
 		}
 	}
 	return memberId, clusterId
+}
+
+func getMemberIDToEndpoints(ctx context.Context, t *testing.T, clus intf.Cluster) (memberIDToEndpoints map[uint64]string) {
+	memberIDToEndpoints = make(map[uint64]string, len(clus.Endpoints()))
+	for _, ep := range clus.Endpoints() {
+		cc := testutils.MustClient(clus.Client(WithEndpoints([]string{ep})))
+		gresp, err := cc.Get(ctx, "health", config.GetOptions{})
+		require.NoError(t, err)
+		memberIDToEndpoints[gresp.Header.MemberId] = ep
+	}
+	return memberIDToEndpoints
 }

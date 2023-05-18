@@ -187,7 +187,7 @@ func TestServeRaftStreamPrefix(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		req, err := http.NewRequest("GET", "http://localhost:2380"+tt.path, nil)
+		req, err := http.NewRequest(http.MethodGet, "http://localhost:2380"+tt.path, nil)
 		if err != nil {
 			t.Fatalf("#%d: could not create request: %#v", i, err)
 		}

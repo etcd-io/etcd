@@ -90,7 +90,7 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 	err := ms.bg.Backend().Defrag()
 	if err != nil {
 		ms.lg.Warn("failed to defragment", zap.Error(err))
-		return nil, err
+		return nil, togRPCError(err)
 	}
 	ms.lg.Info("finished defragment")
 	return &pb.DefragmentResponse{}, nil
@@ -279,7 +279,7 @@ type authMaintenanceServer struct {
 
 func (ams *authMaintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
 	if err := ams.isPermitted(ctx); err != nil {
-		return nil, err
+		return nil, togRPCError(err)
 	}
 
 	return ams.maintenanceServer.Defragment(ctx, sr)
@@ -287,7 +287,7 @@ func (ams *authMaintenanceServer) Defragment(ctx context.Context, sr *pb.Defragm
 
 func (ams *authMaintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance_SnapshotServer) error {
 	if err := ams.isPermitted(srv.Context()); err != nil {
-		return err
+		return togRPCError(err)
 	}
 
 	return ams.maintenanceServer.Snapshot(sr, srv)
@@ -295,7 +295,7 @@ func (ams *authMaintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Mainte
 
 func (ams *authMaintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
 	if err := ams.isPermitted(ctx); err != nil {
-		return nil, err
+		return nil, togRPCError(err)
 	}
 
 	return ams.maintenanceServer.Hash(ctx, r)
@@ -303,14 +303,14 @@ func (ams *authMaintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (
 
 func (ams *authMaintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*pb.HashKVResponse, error) {
 	if err := ams.isPermitted(ctx); err != nil {
-		return nil, err
+		return nil, togRPCError(err)
 	}
 	return ams.maintenanceServer.HashKV(ctx, r)
 }
 
 func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
 	if err := ams.isPermitted(ctx); err != nil {
-		return nil, err
+		return nil, togRPCError(err)
 	}
 
 	return ams.maintenanceServer.Status(ctx, ar)
@@ -318,7 +318,7 @@ func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusReque
 
 func (ams *authMaintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
 	if err := ams.isPermitted(ctx); err != nil {
-		return nil, err
+		return nil, togRPCError(err)
 	}
 
 	return ams.maintenanceServer.MoveLeader(ctx, tr)
@@ -326,7 +326,7 @@ func (ams *authMaintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLea
 
 func (ams *authMaintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
 	if err := ams.isPermitted(ctx); err != nil {
-		return nil, err
+		return nil, togRPCError(err)
 	}
 
 	return ams.maintenanceServer.Downgrade(ctx, r)

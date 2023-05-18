@@ -151,7 +151,7 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 	}
 
 	cc := &http.Client{Transport: rt}
-	req, err := http.NewRequest("POST", url, bytes.NewReader(lreq))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(lreq))
 	if err != nil {
 		return -1, err
 	}
@@ -202,7 +202,7 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewReader(lreq))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(lreq))
 	if err != nil {
 		return nil, err
 	}

@@ -68,14 +68,14 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	}
 
 	// step 3: start the etcd cluster
-	epc, err := bootstrapEtcdClusterUsingV3Discovery(t, ds.EndpointsV3(), discoveryToken, targetClusterSize, clientTlsType, isClientAutoTls)
+	epc, err := bootstrapEtcdClusterUsingV3Discovery(t, ds.EndpointsGRPC(), discoveryToken, targetClusterSize, clientTlsType, isClientAutoTls)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
 	defer epc.Close()
 
 	// step 4: sanity test on the etcd cluster
-	etcdctl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(epc.EndpointsV3(), ",")}
+	etcdctl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(epc.EndpointsGRPC(), ",")}
 	if err := e2e.SpawnWithExpect(append(etcdctl, "put", "key", "value"), "OK"); err != nil {
 		t.Fatal(err)
 	}

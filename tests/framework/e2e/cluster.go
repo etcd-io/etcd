@@ -148,13 +148,14 @@ type EtcdProcessClusterConfig struct {
 
 	MetricsURLScheme string
 
-	SnapshotCount          int // default is 100000
-	SnapshotCatchUpEntries int // default is 5000
+	SnapshotCount          uint64
+	SnapshotCatchUpEntries uint64
 
-	Client        ClientConfig
-	IsPeerTLS     bool
-	IsPeerAutoTLS bool
-	CN            bool
+	Client             ClientConfig
+	ClientHttpSeparate bool
+	IsPeerTLS          bool
+	IsPeerAutoTLS      bool
+	CN                 bool
 
 	CipherSuites []string
 
@@ -185,6 +186,7 @@ type EtcdProcessClusterConfig struct {
 	WarningUnaryRequestDuration             time.Duration
 	ExperimentalWarningUnaryRequestDuration time.Duration
 	PeerProxy                               bool
+	WatchProcessNotifyInterval              time.Duration
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -193,6 +195,9 @@ func DefaultConfig() *EtcdProcessClusterConfig {
 		InitialToken:        "new",
 		StrictReconfigCheck: true,
 		CN:                  true,
+
+		SnapshotCount:          etcdserver.DefaultSnapshotCount,
+		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
 	}
 }
 
@@ -222,11 +227,11 @@ func WithKeepDataDir(keep bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.KeepDataDir = keep }
 }
 
-func WithSnapshotCount(count int) EPClusterOption {
+func WithSnapshotCount(count uint64) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.SnapshotCount = count }
 }
 
-func WithSnapshotCatchUpEntries(count int) EPClusterOption {
+func WithSnapshotCatchUpEntries(count uint64) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.SnapshotCatchUpEntries = count }
 }
 
@@ -334,6 +339,10 @@ func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOp
 
 func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.CompactionBatchLimit = limit }
+}
+
+func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.WatchProcessNotifyInterval = interval }
 }
 
 func WithPeerProxy(enabled bool) EPClusterOption {
@@ -452,28 +461,29 @@ func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServer
 
 func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i int) *EtcdServerProcessConfig {
 	var curls []string
-	var curl, curltls string
+	var curl string
 	port := cfg.BasePort + 5*i
 	clientPort := port
 	peerPort := port + 1
 	metricsPort := port + 2
 	peer2Port := port + 3
+	clientHttpPort := port + 4
 
-	curlHost := fmt.Sprintf("localhost:%d", clientPort)
-	switch cfg.Client.ConnectionType {
-	case ClientNonTLS, ClientTLS:
-		curl = (&url.URL{Scheme: cfg.ClientScheme(), Host: curlHost}).String()
+	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
+		curl = clientURL(clientPort, ClientNonTLS)
+		curls = []string{curl, clientURL(clientPort, ClientTLS)}
+	} else {
+		curl = clientURL(clientPort, cfg.Client.ConnectionType)
 		curls = []string{curl}
-	case ClientTLSAndNonTLS:
-		curl = (&url.URL{Scheme: "http", Host: curlHost}).String()
-		curltls = (&url.URL{Scheme: "https", Host: curlHost}).String()
-		curls = []string{curl, curltls}
 	}
 
 	peerListenUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	peerAdvertiseUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var proxyCfg *proxy.ServerConfig
 	if cfg.PeerProxy {
+		if !cfg.IsPeerTLS {
+			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
+		}
 		peerAdvertiseUrl.Host = fmt.Sprintf("localhost:%d", peer2Port)
 		proxyCfg = &proxy.ServerConfig{
 			Logger: zap.NewNop(),
@@ -505,6 +515,11 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--initial-cluster-token", cfg.InitialToken,
 		"--data-dir", dataDirPath,
 		"--snapshot-count", fmt.Sprintf("%d", cfg.SnapshotCount),
+	}
+	var clientHttpUrl string
+	if cfg.ClientHttpSeparate {
+		clientHttpUrl = clientURL(clientHttpPort, cfg.Client.ConnectionType)
+		args = append(args, "--listen-client-http-urls", clientHttpUrl)
 	}
 
 	if cfg.ForceNewCluster {
@@ -573,8 +588,13 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if cfg.ExperimentalWarningUnaryRequestDuration != 0 {
 		args = append(args, "--experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration.String())
 	}
-	if cfg.SnapshotCatchUpEntries > 0 {
-		args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.SnapshotCatchUpEntries))
+	if cfg.WatchProcessNotifyInterval != 0 {
+		args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
+	}
+	if cfg.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
+		if cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2) {
+			args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.SnapshotCatchUpEntries))
+		}
 	}
 	envVars := map[string]string{}
 	for key, value := range cfg.EnvVars {
@@ -609,21 +629,34 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 
 	return &EtcdServerProcessConfig{
-		lg:           cfg.Logger,
-		ExecPath:     execPath,
-		Args:         args,
-		EnvVars:      envVars,
-		TlsArgs:      cfg.TlsArgs(),
-		Client:       cfg.Client,
-		DataDirPath:  dataDirPath,
-		KeepDataDir:  cfg.KeepDataDir,
-		Name:         name,
-		PeerURL:      peerAdvertiseUrl,
-		ClientURL:    curl,
-		MetricsURL:   murl,
-		InitialToken: cfg.InitialToken,
-		GoFailPort:   gofailPort,
-		Proxy:        proxyCfg,
+		lg:            cfg.Logger,
+		ExecPath:      execPath,
+		Args:          args,
+		EnvVars:       envVars,
+		TlsArgs:       cfg.TlsArgs(),
+		Client:        cfg.Client,
+		DataDirPath:   dataDirPath,
+		KeepDataDir:   cfg.KeepDataDir,
+		Name:          name,
+		PeerURL:       peerAdvertiseUrl,
+		ClientURL:     curl,
+		ClientHTTPURL: clientHttpUrl,
+		MetricsURL:    murl,
+		InitialToken:  cfg.InitialToken,
+		GoFailPort:    gofailPort,
+		Proxy:         proxyCfg,
+	}
+}
+
+func clientURL(port int, connType ClientConnType) string {
+	curlHost := fmt.Sprintf("localhost:%d", port)
+	switch connType {
+	case ClientNonTLS:
+		return (&url.URL{Scheme: "http", Host: curlHost}).String()
+	case ClientTLS:
+		return (&url.URL{Scheme: "https", Host: curlHost}).String()
+	default:
+		panic(fmt.Sprintf("Unsupported connection type %v", connType))
 	}
 }
 
@@ -669,12 +702,12 @@ func (cfg *EtcdProcessClusterConfig) TlsArgs() (args []string) {
 	return args
 }
 
-func (epc *EtcdProcessCluster) EndpointsV2() []string {
-	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsV2() })
+func (epc *EtcdProcessCluster) EndpointsGRPC() []string {
+	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsGRPC() })
 }
 
-func (epc *EtcdProcessCluster) EndpointsV3() []string {
-	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsV3() })
+func (epc *EtcdProcessCluster) EndpointsHTTP() []string {
+	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsHTTP() })
 }
 
 func (epc *EtcdProcessCluster) Endpoints(f func(ep EtcdProcess) []string) (ret []string) {
@@ -710,8 +743,8 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 
 	// First remove member from the cluster
 
-	memberCtl := epc.Client(opts...)
-	memberList, err := memberCtl.MemberList(ctx)
+	memberCtl := epc.Etcdctl(opts...)
+	memberList, err := memberCtl.MemberList(ctx, false)
 	if err != nil {
 		return fmt.Errorf("failed to get member list: %w", err)
 	}
@@ -762,7 +795,7 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProces
 	epc.Cfg.SetInitialOrDiscovery(serverCfg, initialCluster, "existing")
 
 	// First add new member to cluster
-	memberCtl := epc.Client(opts...)
+	memberCtl := epc.Etcdctl(opts...)
 	_, err := memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.PeerURL.String()})
 	if err != nil {
 		return fmt.Errorf("failed to add new member: %w", err)
@@ -838,8 +871,31 @@ func (epc *EtcdProcessCluster) Stop() (err error) {
 	return err
 }
 
-func (epc *EtcdProcessCluster) Client(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3(), opts...)
+func (epc *EtcdProcessCluster) ConcurrentStop() (err error) {
+	errCh := make(chan error, len(epc.Procs))
+	for i := range epc.Procs {
+		if epc.Procs[i] == nil {
+			errCh <- nil
+			continue
+		}
+		go func(n int) { errCh <- epc.Procs[n].Stop() }(i)
+	}
+
+	for range epc.Procs {
+		if curErr := <-errCh; curErr != nil {
+			if err != nil {
+				err = fmt.Errorf("%v; %v", err, curErr)
+			} else {
+				err = curErr
+			}
+		}
+	}
+	close(errCh)
+	return err
+}
+
+func (epc *EtcdProcessCluster) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
+	etcdctl, err := NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -884,7 +940,7 @@ func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
 func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess) int {
-	cc := epc.Client()
+	cc := epc.Etcdctl()
 
 	// ensure leader is up via linearizable get
 	for {
@@ -897,6 +953,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
 		}
+		t.Logf("WaitMembersForLeader Get err: %v", err)
 	}
 
 	leaders := make(map[uint64]struct{})
@@ -908,7 +965,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 		default:
 		}
 		for i := range membs {
-			resp, err := membs[i].Client().Status(ctx)
+			resp, err := membs[i].Etcdctl().Status(ctx)
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {
 					// if member[i] has stopped

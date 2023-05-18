@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -24,6 +25,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -91,12 +93,12 @@ func TestConfigFileOtherFields(t *testing.T) {
 func TestUpdateDefaultClusterFromName(t *testing.T) {
 	cfg := NewConfig()
 	defaultInitialCluster := cfg.InitialCluster
-	oldscheme := cfg.APUrls[0].Scheme
-	origpeer := cfg.APUrls[0].String()
-	origadvc := cfg.ACUrls[0].String()
+	oldscheme := cfg.AdvertisePeerUrls[0].Scheme
+	origpeer := cfg.AdvertisePeerUrls[0].String()
+	origadvc := cfg.AdvertiseClientUrls[0].String()
 
 	cfg.Name = "abc"
-	lpport := cfg.LPUrls[0].Port()
+	lpport := cfg.ListenPeerUrls[0].Port()
 
 	// in case of 'etcd --name=abc'
 	exp := fmt.Sprintf("%s=%s://localhost:%s", cfg.Name, oldscheme, lpport)
@@ -105,12 +107,12 @@ func TestUpdateDefaultClusterFromName(t *testing.T) {
 		t.Fatalf("initial-cluster expected %q, got %q", exp, cfg.InitialCluster)
 	}
 	// advertise peer URL should not be affected
-	if origpeer != cfg.APUrls[0].String() {
-		t.Fatalf("advertise peer url expected %q, got %q", origadvc, cfg.APUrls[0].String())
+	if origpeer != cfg.AdvertisePeerUrls[0].String() {
+		t.Fatalf("advertise peer url expected %q, got %q", origadvc, cfg.AdvertisePeerUrls[0].String())
 	}
 	// advertise client URL should not be affected
-	if origadvc != cfg.ACUrls[0].String() {
-		t.Fatalf("advertise client url expected %q, got %q", origadvc, cfg.ACUrls[0].String())
+	if origadvc != cfg.AdvertiseClientUrls[0].String() {
+		t.Fatalf("advertise client url expected %q, got %q", origadvc, cfg.AdvertiseClientUrls[0].String())
 	}
 }
 
@@ -123,17 +125,17 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 
 	cfg := NewConfig()
 	defaultInitialCluster := cfg.InitialCluster
-	oldscheme := cfg.APUrls[0].Scheme
-	origadvc := cfg.ACUrls[0].String()
+	oldscheme := cfg.AdvertisePeerUrls[0].Scheme
+	origadvc := cfg.AdvertiseClientUrls[0].String()
 
 	cfg.Name = "abc"
-	lpport := cfg.LPUrls[0].Port()
-	cfg.LPUrls[0] = url.URL{Scheme: cfg.LPUrls[0].Scheme, Host: fmt.Sprintf("0.0.0.0:%s", lpport)}
+	lpport := cfg.ListenPeerUrls[0].Port()
+	cfg.ListenPeerUrls[0] = url.URL{Scheme: cfg.ListenPeerUrls[0].Scheme, Host: fmt.Sprintf("0.0.0.0:%s", lpport)}
 	dhost, _ := cfg.UpdateDefaultClusterFromName(defaultInitialCluster)
 	if dhost != defaultHostname {
 		t.Fatalf("expected default host %q, got %q", defaultHostname, dhost)
 	}
-	aphost, apport := cfg.APUrls[0].Hostname(), cfg.APUrls[0].Port()
+	aphost, apport := cfg.AdvertisePeerUrls[0].Hostname(), cfg.AdvertisePeerUrls[0].Port()
 	if apport != lpport {
 		t.Fatalf("advertise peer url got different port %s, expected %s", apport, lpport)
 	}
@@ -146,8 +148,8 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 	}
 
 	// advertise client URL should not be affected
-	if origadvc != cfg.ACUrls[0].String() {
-		t.Fatalf("advertise-client-url expected %q, got %q", origadvc, cfg.ACUrls[0].String())
+	if origadvc != cfg.AdvertiseClientUrls[0].String() {
+		t.Fatalf("advertise-client-url expected %q, got %q", origadvc, cfg.AdvertiseClientUrls[0].String())
 	}
 }
 
@@ -201,6 +203,11 @@ func TestAutoCompactionModeParse(t *testing.T) {
 		// err mode
 		{"errmode", "1", false, 0},
 		{"errmode", "1h", false, time.Hour},
+		// empty mode
+		{"", "1", true, 0},
+		{"", "1h", false, time.Hour},
+		{"", "a", true, 0},
+		{"", "-1", true, 0},
 	}
 
 	hasErr := func(err error) bool {
@@ -281,7 +288,7 @@ func TestPeerURLsMapAndTokenFromSRV(t *testing.T) {
 		cfg.InitialCluster = ""
 		cfg.InitialClusterToken = ""
 		cfg.DNSCluster = "example.com"
-		cfg.APUrls = types.MustNewURLs(tt.apurls)
+		cfg.AdvertisePeerUrls = types.MustNewURLs(tt.apurls)
 
 		if err := cfg.Validate(); err != nil {
 			t.Errorf("#%d: failed to validate test Config: %v", i, err)
@@ -428,4 +435,88 @@ func TestLogRotation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTLSVersionMinMax(t *testing.T) {
+	tests := []struct {
+		name                  string
+		givenTLSMinVersion    string
+		givenTLSMaxVersion    string
+		givenCipherSuites     []string
+		expectError           bool
+		expectedMinTLSVersion uint16
+		expectedMaxTLSVersion uint16
+	}{
+		{
+			name:                  "Minimum TLS version is set",
+			givenTLSMinVersion:    "TLS1.3",
+			expectedMinTLSVersion: tls.VersionTLS13,
+			expectedMaxTLSVersion: 0,
+		},
+		{
+			name:                  "Maximum TLS version is set",
+			givenTLSMaxVersion:    "TLS1.2",
+			expectedMinTLSVersion: 0,
+			expectedMaxTLSVersion: tls.VersionTLS12,
+		},
+		{
+			name:                  "Minimum and Maximum TLS versions are set",
+			givenTLSMinVersion:    "TLS1.3",
+			givenTLSMaxVersion:    "TLS1.3",
+			expectedMinTLSVersion: tls.VersionTLS13,
+			expectedMaxTLSVersion: tls.VersionTLS13,
+		},
+		{
+			name:               "Minimum and Maximum TLS versions are set in reverse order",
+			givenTLSMinVersion: "TLS1.3",
+			givenTLSMaxVersion: "TLS1.2",
+			expectError:        true,
+		},
+		{
+			name:               "Invalid minimum TLS version",
+			givenTLSMinVersion: "invalid version",
+			expectError:        true,
+		},
+		{
+			name:               "Invalid maximum TLS version",
+			givenTLSMaxVersion: "invalid version",
+			expectError:        true,
+		},
+		{
+			name:               "Cipher suites configured for TLS 1.3",
+			givenTLSMinVersion: "TLS1.3",
+			givenCipherSuites:  []string{"TLS_AES_128_GCM_SHA256"},
+			expectError:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := NewConfig()
+			cfg.TlsMinVersion = tt.givenTLSMinVersion
+			cfg.TlsMaxVersion = tt.givenTLSMaxVersion
+			cfg.CipherSuites = tt.givenCipherSuites
+
+			err := cfg.Validate()
+			if err != nil {
+				assert.True(t, tt.expectError, "Validate() returned error while expecting success: %v", err)
+				return
+			}
+
+			updateMinMaxVersions(&cfg.PeerTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+			updateMinMaxVersions(&cfg.ClientTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+
+			assert.Equal(t, tt.expectedMinTLSVersion, cfg.PeerTLSInfo.MinVersion)
+			assert.Equal(t, tt.expectedMaxTLSVersion, cfg.PeerTLSInfo.MaxVersion)
+			assert.Equal(t, tt.expectedMinTLSVersion, cfg.ClientTLSInfo.MinVersion)
+			assert.Equal(t, tt.expectedMaxTLSVersion, cfg.ClientTLSInfo.MaxVersion)
+		})
+	}
+}
+
+func TestUndefinedAutoCompactionModeValidate(t *testing.T) {
+	cfg := *NewConfig()
+	cfg.AutoCompactionMode = ""
+	err := cfg.Validate()
+	require.Error(t, err)
 }

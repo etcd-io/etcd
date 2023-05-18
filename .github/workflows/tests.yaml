@@ -2,8 +2,11 @@ name: Tests
 on: [push, pull_request]
 permissions: read-all
 jobs:
+  goversion:
+    uses: ./.github/workflows/go-version.yaml
   test:
     runs-on: ubuntu-latest
+    needs: goversion
     strategy:
       fail-fast: false
       matrix:
@@ -14,31 +17,33 @@ jobs:
         - linux-amd64-unit-4-cpu-race
         - linux-386-unit-1-cpu
     steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
-    - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+    - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
       with:
-        go-version: "1.19.5"
+        go-version: ${{ needs.goversion.outputs.goversion }}
     - run: date
     - env:
         TARGET: ${{ matrix.target }}
       run: |
+        set -euo pipefail
+
         mkdir "${TARGET}"
         export JUNIT_REPORT_DIR=$(realpath ${TARGET})
         case "${TARGET}" in
           linux-amd64-integration-1-cpu)
-            GOARCH=amd64 CPU=1 PASSES='integration' RACE='false' ./scripts/test.sh
+            GOOS=linux GOARCH=amd64 CPU=1 make test-integration
             ;;
           linux-amd64-integration-2-cpu)
-            GOARCH=amd64 CPU=2 PASSES='integration' RACE='false' ./scripts/test.sh
+            GOOS=linux GOARCH=amd64 CPU=2 make test-integration
             ;;
           linux-amd64-integration-4-cpu)
-            GOARCH=amd64 CPU=4 PASSES='integration' RACE='false' ./scripts/test.sh
+            GOOS=linux GOARCH=amd64 CPU=4 make test-integration
             ;;
           linux-amd64-unit-4-cpu-race)
-            GOARCH=amd64 PASSES='unit' RACE='true' CPU='4' ./scripts/test.sh -p=2
+            GOOS=linux GOARCH=amd64 CPU=4 RACE=true GO_TEST_FLAGS='-p=2' make test-unit
             ;;
           linux-386-unit-1-cpu)
-            GOARCH=386 PASSES='unit' RACE='false' CPU='1' ./scripts/test.sh -p=4
+            GOOS=linux GOARCH=386 CPU=1 GO_TEST_FLAGS='-p=4' make test-unit
             ;;
           *)
             echo "Failed to find target"

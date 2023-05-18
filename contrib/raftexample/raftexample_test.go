@@ -200,7 +200,7 @@ func TestPutAndGetKeyValue(t *testing.T) {
 	body := bytes.NewBufferString(wantValue)
 	cli := srv.Client()
 
-	req, err := http.NewRequest("PUT", url, body)
+	req, err := http.NewRequest(http.MethodPut, url, body)
 	if err != nil {
 		t.Fatal(err)
 	}

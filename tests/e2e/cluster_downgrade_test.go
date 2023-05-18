@@ -49,12 +49,12 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int) {
 		t.Skipf("%q does not exist", lastReleaseBinary)
 	}
 
-	currentVersion, err := getVersionFromBinary(currentEtcdBinary)
+	currentVersion, err := e2e.GetVersionFromBinary(currentEtcdBinary)
 	require.NoError(t, err)
 	// wipe any pre-release suffix like -alpha.0 we see commonly in builds
 	currentVersion.PreRelease = ""
 
-	lastVersion, err := getVersionFromBinary(lastReleaseBinary)
+	lastVersion, err := e2e.GetVersionFromBinary(lastReleaseBinary)
 	require.NoError(t, err)
 
 	require.Equalf(t, lastVersion.Minor, currentVersion.Minor-1, "unexpected minor version difference")
@@ -155,7 +155,7 @@ func startEtcd(t *testing.T, ep e2e.EtcdProcess, execPath string) {
 }
 
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver *semver.Version) {
-	c, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsV3())
+	c, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
 	assert.NoError(t, err)
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		err := c.DowngradeEnable(context.TODO(), ver.String())
@@ -195,7 +195,7 @@ func leader(t *testing.T, epc *e2e.EtcdProcessCluster) e2e.EtcdProcess {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	for i := 0; i < len(epc.Procs); i++ {
-		endpoints := epc.Procs[i].EndpointsV3()
+		endpoints := epc.Procs[i].EndpointsGRPC()
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   endpoints,
 			DialTimeout: 3 * time.Second,
@@ -232,7 +232,7 @@ func compareMemberVersion(expect version.Versions, target version.Versions) erro
 }
 
 func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) (version.Versions, error) {
-	args := e2e.CURLPrefixArgs(cfg, member, "GET", e2e.CURLReq{Endpoint: "/version"})
+	args := e2e.CURLPrefixArgsCluster(cfg, member, "GET", e2e.CURLReq{Endpoint: "/version"})
 	lines, err := e2e.RunUtilCompletion(args, nil)
 	if err != nil {
 		return version.Versions{}, err
@@ -244,20 +244,4 @@ func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdPr
 		return version.Versions{}, fmt.Errorf("failed to unmarshal (%v): %w", data, err)
 	}
 	return result, nil
-}
-
-func getVersionFromBinary(binaryPath string) (*semver.Version, error) {
-	lines, err := e2e.RunUtilCompletion([]string{binaryPath, "--version"}, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not find binary version from %s, err: %w", binaryPath, err)
-	}
-
-	for _, line := range lines {
-		if strings.HasPrefix(line, "etcd Version:") {
-			versionString := strings.TrimSpace(strings.SplitAfter(line, ":")[1])
-			return semver.NewVersion(versionString)
-		}
-	}
-
-	return nil, fmt.Errorf("could not find version in binary output of %s, lines outputted were %v", binaryPath, lines)
 }

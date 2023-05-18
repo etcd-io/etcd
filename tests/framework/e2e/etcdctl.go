@@ -274,9 +274,13 @@ func AddTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
 	}
 }
 
-func (ctl *EtcdctlV3) MemberList(ctx context.Context) (*clientv3.MemberListResponse, error) {
+func (ctl *EtcdctlV3) MemberList(ctx context.Context, serializable bool) (*clientv3.MemberListResponse, error) {
 	var resp clientv3.MemberListResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "member", "list")
+	args := []string{"member", "list"}
+	if serializable {
+		args = append(args, "--consistency", "s")
+	}
+	err := ctl.spawnJsonCmd(ctx, &resp, args...)
 	return &resp, err
 }
 

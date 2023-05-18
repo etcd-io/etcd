@@ -78,7 +78,7 @@ type Client interface {
 
 	Txn(context context.Context, compares, ifSucess, ifFail []string, o config.TxnOptions) (*clientv3.TxnResponse, error)
 
-	MemberList(context context.Context) (*clientv3.MemberListResponse, error)
+	MemberList(context context.Context, serializable bool) (*clientv3.MemberListResponse, error)
 	MemberAdd(context context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error)
 	MemberAddAsLearner(context context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error)
 	MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error)

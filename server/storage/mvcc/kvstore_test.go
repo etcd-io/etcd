@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"math"
 	mrand "math/rand"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -324,6 +323,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		if s.currentRev != tt.wrev.main {
 			t.Errorf("#%d: rev = %+v, want %+v", i, s.currentRev, tt.wrev)
 		}
+		s.Close()
 	}
 }
 
@@ -370,6 +370,7 @@ func TestStoreRestore(t *testing.T) {
 	s := newFakeStore(lg)
 	b := s.b.(*fakeBackend)
 	fi := s.kvindex.(*fakeIndex)
+	defer s.Close()
 
 	putkey := newTestKeyBytes(lg, revision{3, 0}, false)
 	putkv := mvccpb.KeyValue{
@@ -435,6 +436,7 @@ func TestRestoreDelete(t *testing.T) {
 
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer b.Close()
 
 	keys := make(map[string]struct{})
 	for i := 0; i < 20; i++ {
@@ -480,57 +482,63 @@ func TestRestoreDelete(t *testing.T) {
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	tests := []string{"recreate", "restore"}
 	for _, test := range tests {
-		b, _ := betesting.NewDefaultTmpBackend(t)
-		s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		test := test
 
-		s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-		s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
-		s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
+		t.Run(test, func(t *testing.T) {
+			b, _ := betesting.NewDefaultTmpBackend(t)
+			s0 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
-		// write scheduled compaction, but not do compaction
-		rbytes := newRevBytes()
-		revToBytes(revision{main: 2}, rbytes)
-		tx := s0.b.BatchTx()
-		tx.Lock()
-		UnsafeSetScheduledCompact(tx, 2)
-		tx.Unlock()
+			s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+			s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
+			s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
 
-		s0.Close()
-
-		var s *store
-		switch test {
-		case "recreate":
-			s = NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-		case "restore":
-			s0.Restore(b)
-			s = s0
-		}
-
-		// wait for scheduled compaction to be finished
-		time.Sleep(100 * time.Millisecond)
-
-		if _, err := s.Range(context.TODO(), []byte("foo"), nil, RangeOptions{Rev: 1}); err != ErrCompacted {
-			t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
-		}
-		// check the key in backend is deleted
-		revbytes := newRevBytes()
-		revToBytes(revision{main: 1}, revbytes)
-
-		// The disk compaction is done asynchronously and requires more time on slow disk.
-		// try 5 times for CI with slow IO.
-		for i := 0; i < 5; i++ {
-			tx := s.b.BatchTx()
+			// write scheduled compaction, but not do compaction
+			rbytes := newRevBytes()
+			revToBytes(revision{main: 2}, rbytes)
+			tx := s0.b.BatchTx()
 			tx.Lock()
-			ks, _ := tx.UnsafeRange(schema.Key, revbytes, nil, 0)
+			UnsafeSetScheduledCompact(tx, 2)
 			tx.Unlock()
-			if len(ks) != 0 {
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-			return
-		}
 
-		t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
+			var s *store
+			switch test {
+			case "recreate":
+				s0.Close()
+				s = NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+			case "restore":
+				// TODO(fuweid): store doesn't support to restore
+				// from a closed status because there is no lock
+				// for `Close` or action to mark it is closed.
+				s0.Restore(b)
+				s = s0
+			}
+			defer cleanup(s, b)
+
+			// wait for scheduled compaction to be finished
+			time.Sleep(100 * time.Millisecond)
+
+			if _, err := s.Range(context.TODO(), []byte("foo"), nil, RangeOptions{Rev: 1}); err != ErrCompacted {
+				t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
+			}
+			// check the key in backend is deleted
+			revbytes := newRevBytes()
+			revToBytes(revision{main: 1}, revbytes)
+
+			// The disk compaction is done asynchronously and requires more time on slow disk.
+			// try 5 times for CI with slow IO.
+			for i := 0; i < 5; i++ {
+				tx := s.b.BatchTx()
+				tx.Lock()
+				ks, _ := tx.UnsafeRange(schema.Key, revbytes, nil, 0)
+				tx.Unlock()
+				if len(ks) != 0 {
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				return
+			}
+			t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
+		})
 	}
 }
 
@@ -541,9 +549,9 @@ type hashKVResult struct {
 
 // TestHashKVWhenCompacting ensures that HashKV returns correct hash when compacting.
 func TestHashKVWhenCompacting(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	rev := 10000
 	for i := 2; i <= rev; i++ {
@@ -621,9 +629,9 @@ func TestHashKVWhenCompacting(t *testing.T) {
 // TestHashKVWithCompactedAndFutureRevisions ensures that HashKV returns a correct hash when called
 // with a past revision (lower than compacted), a future revision, and the exact compacted revision
 func TestHashKVWithCompactedAndFutureRevisions(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	rev := 10000
 	compactRev := rev / 2
@@ -654,9 +662,9 @@ func TestHashKVWithCompactedAndFutureRevisions(t *testing.T) {
 // TestHashKVZeroRevision ensures that "HashByRev(0)" computes
 // correct hash value with latest revision.
 func TestHashKVZeroRevision(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	rev := 10000
 	for i := 2; i <= rev; i++ {
@@ -687,9 +695,9 @@ func TestTxnPut(t *testing.T) {
 	keys := createBytesSlice(bytesN, sliceN)
 	vals := createBytesSlice(bytesN, sliceN)
 
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, b, tmpPath)
+	defer cleanup(s, b)
 
 	for i := 0; i < sliceN; i++ {
 		txn := s.Write(traceutil.TODO())
@@ -703,9 +711,9 @@ func TestTxnPut(t *testing.T) {
 
 // TestConcurrentReadNotBlockingWrite ensures Read does not blocking Write after its creation
 func TestConcurrentReadNotBlockingWrite(t *testing.T) {
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer os.Remove(tmpPath)
+	defer cleanup(s, b)
 
 	// write something to read later
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -772,11 +780,9 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 		committedKVs         kvs        // committedKVs records the key-value pairs written by the finished Write Txns
 		mu                   sync.Mutex // mu protects committedKVs
 	)
-	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	defer b.Close()
-	defer s.Close()
-	defer os.Remove(tmpPath)
+	defer cleanup(s, b)
 
 	var wg sync.WaitGroup
 	wg.Add(numOfWrites)

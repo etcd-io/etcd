@@ -29,9 +29,9 @@ import (
 )
 
 func BenchmarkStorePut(b *testing.B) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	be, _ := betesting.NewDefaultTmpBackend(b)
 	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, be, tmpPath)
+	defer cleanup(s, be)
 
 	// arbitrary number of bytes
 	bytesN := 64
@@ -48,9 +48,9 @@ func BenchmarkStoreRangeKey1(b *testing.B)   { benchmarkStoreRange(b, 1) }
 func BenchmarkStoreRangeKey100(b *testing.B) { benchmarkStoreRange(b, 100) }
 
 func benchmarkStoreRange(b *testing.B, n int) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	be, _ := betesting.NewDefaultTmpBackend(b)
 	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, be, tmpPath)
+	defer cleanup(s, be)
 
 	// 64 byte key/val
 	keys, val := createBytesSlice(64, n), createBytesSlice(64, 1)
@@ -97,9 +97,9 @@ func BenchmarkConsistentIndex(b *testing.B) {
 
 // BenchmarkStorePutUpdate is same as above, but instead updates single key
 func BenchmarkStorePutUpdate(b *testing.B) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	be, _ := betesting.NewDefaultTmpBackend(b)
 	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, be, tmpPath)
+	defer cleanup(s, be)
 
 	// arbitrary number of bytes
 	keys := createBytesSlice(64, 1)
@@ -115,9 +115,9 @@ func BenchmarkStorePutUpdate(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkStoreTxnPut(b *testing.B) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	be, _ := betesting.NewDefaultTmpBackend(b)
 	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s, be, tmpPath)
+	defer cleanup(s, be)
 
 	// arbitrary number of bytes
 	bytesN := 64
@@ -135,10 +135,10 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 
 // benchmarkStoreRestore benchmarks the restore operation
 func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(b)
+	be, _ := betesting.NewDefaultTmpBackend(b)
 	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
 	// use closure to capture 's' to pick up the reassignment
-	defer func() { cleanup(s, be, tmpPath) }()
+	defer func() { cleanup(s, be) }()
 
 	// arbitrary number of bytes
 	bytesN := 64
