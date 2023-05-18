@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -972,6 +974,45 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 		c := newTestCluster(t, tt.members)
 		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
 			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
+
+// TestMembershipStore tests code path used by snapshot
+func TestMembershipStore(t *testing.T) {
+	name := "etcd"
+	clientURLs := []string{"http://127.0.0.1:4001"}
+	tests := []struct {
+		mems    []*Member
+		removed map[types.ID]bool
+	}{
+		// update attributes of existing member
+		{
+			[]*Member{
+				newTestMember(2, nil, name, clientURLs),
+			},
+			map[types.ID]bool{types.ID(1): true},
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(t, tt.mems)
+		c.removed = tt.removed
+
+		//snapshot
+		st := v2store.New("/0", "/1")
+		c.Store(st)
+		d, _ := st.SaveNoCopy()
+
+		//recover from snapshot
+		rst := v2store.New("/0", "/1")
+		rst.Recovery(d)
+		rc := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+		rc.SetStore(rst)
+		rc.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+
+		//membership should match
+		if g := rc.Members(); !reflect.DeepEqual(g, tt.mems) {
+			t.Errorf("#%d: members = %+v, want %+v", i, g, tt.mems)
 		}
 	}
 }
