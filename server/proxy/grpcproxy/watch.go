@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
 type watchProxy struct {
@@ -225,6 +226,25 @@ func (wps *watchProxyStream) checkPermissionForWatch(key, rangeEnd []byte) error
 	return err
 }
 
+func (wps *watchProxyStream) genUniqueWatchID(requestedID int64) (int64, error) {
+	wps.mu.Lock()
+	defer wps.mu.Unlock()
+	if requestedID == clientv3.AutoWatchID {
+		for wps.watchers[wps.nextWatcherID] != nil {
+			wps.nextWatcherID++
+		}
+		watchID := wps.nextWatcherID
+		wps.nextWatcherID++
+		return watchID, nil
+	}
+
+	if _, ok := wps.watchers[requestedID]; ok {
+		return clientv3.InvalidWatchID, mvcc.ErrWatcherDuplicateID
+	}
+
+	return requestedID, nil
+}
+
 func (wps *watchProxyStream) recvLoop() error {
 	for {
 		req, err := wps.stream.Recv()
@@ -246,10 +266,22 @@ func (wps *watchProxyStream) recvLoop() error {
 				continue
 			}
 
+			var watchID int64
+			if watchID, err = wps.genUniqueWatchID(cr.WatchId); err != nil {
+				wps.watchCh <- &pb.WatchResponse{
+					Header:       &pb.ResponseHeader{},
+					WatchId:      clientv3.InvalidWatchID,
+					Created:      true,
+					Canceled:     true,
+					CancelReason: err.Error(),
+				}
+				continue
+			}
+
 			wps.mu.Lock()
 			w := &watcher{
 				wr:  watchRange{string(cr.Key), string(cr.RangeEnd)},
-				id:  wps.nextWatcherID,
+				id:  watchID,
 				wps: wps,
 
 				nextrev:  cr.StartRevision,
@@ -262,7 +294,7 @@ func (wps *watchProxyStream) recvLoop() error {
 				wps.mu.Unlock()
 				continue
 			}
-			wps.nextWatcherID++
+
 			w.nextrev = cr.StartRevision
 			wps.watchers[w.id] = w
 			wps.ranges.add(w)
