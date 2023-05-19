@@ -17,6 +17,11 @@ package etcdserver
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -472,4 +477,43 @@ func (f *fakeHasher) LinearizableReadNotify(ctx context.Context) error {
 func (f *fakeHasher) TriggerCorruptAlarm(memberId types.ID) {
 	f.actions = append(f.actions, fmt.Sprintf("TriggerCorruptAlarm(%d)", memberId))
 	f.alarmTriggered = true
+}
+
+func TestClusterIdMismatch(t *testing.T) {
+	ph := &hashKVHandler{
+		lg:     zap.NewNop(),
+		server: &EtcdServer{cluster: newTestCluster(t, nil)},
+	}
+	srv := httptest.NewServer(ph)
+	defer srv.Close()
+	tests := []struct {
+		wcode     int
+		wKeyWords string
+	}{
+		{
+			http.StatusPreconditionFailed,
+			"cluster ID mismatch",
+		},
+	}
+	for i, tt := range tests {
+		req, err := http.NewRequest("GET", srv.URL+PeerHashKVPath, nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("failed to get http response: %v", err)
+		}
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatalf("unexpected io.ReadAll error: %v", err)
+		}
+		if resp.StatusCode != tt.wcode {
+			t.Fatalf("#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
+		}
+		if !strings.Contains(string(body), tt.wKeyWords) {
+			t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, string(body), tt.wKeyWords)
+		}
+	}
 }
