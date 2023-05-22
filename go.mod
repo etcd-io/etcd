@@ -41,7 +41,7 @@ require (
 require (
 	cloud.google.com/go v0.81.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
-	github.com/benbjohnson/clock v1.1.0 // indirect
+	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
