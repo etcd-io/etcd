@@ -15,7 +15,7 @@ jobs:
       testTimeout: 200m
       artifactName: main
   main-arm64:
-    uses: ./.github/workflows/robustness-template.yaml
+    uses: ./.github/workflows/robustness-template-arm64.yaml
     with:
       etcdBranch: main
       count: 100
