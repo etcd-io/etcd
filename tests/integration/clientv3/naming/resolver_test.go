@@ -115,7 +115,7 @@ func TestEtcdGrpcResolver(t *testing.T) {
 }
 
 func TestEtcdEndpointManager(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	s1PayloadBody := []byte{'1'}
 	s1 := grpc_testing.NewDummyStubServer(s1PayloadBody)
@@ -129,7 +129,7 @@ func TestEtcdEndpointManager(t *testing.T) {
 	assert.NoError(t, err)
 	defer s2.Stop()
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// Check if any endpoint with the same prefix "foo" will not break the logic with multiple endpoints
