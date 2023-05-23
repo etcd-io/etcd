@@ -57,7 +57,8 @@ discovery-proxy:
 # DNS domain used to bootstrap initial cluster.
 discovery-srv:
 
-# Initial cluster configuration for bootstrapping.
+# Comma separated string of initial cluster configuration for bootstrapping.
+# Example: initial-cluster: "infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"
 initial-cluster:
 
 # Initial cluster token for the etcd cluster during bootstrap.
