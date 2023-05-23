@@ -221,6 +221,7 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 	// TODO(serathius): Implement schema setup in fresh storage
 	var snapshot *raftpb.Snapshot
 	if haveWAL {
+		//geetasg TODO input st is empty - remove this step for v2deprecation and replace with recoverying from be
 		snapshot, be, err = recoverSnapshot(cfg, st, be, beExist, beHooks, ci, ss)
 		if err != nil {
 			return nil, err
