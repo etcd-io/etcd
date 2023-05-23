@@ -29,6 +29,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -169,6 +170,66 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	assert.NoError(t, epc.Close())
 	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
 		e2e.WithVersion(e2e.CurrentVersion),
+		e2e.WithDataDirPath(dataDir),
+	))
+	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+	assert.NoError(t, err)
+
+	cc, err = e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
+	assert.NoError(t, err)
+	currentReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
+	assert.NoError(t, err)
+
+	currentReleaseMemberListResponse, err := cc.MemberList(ctx, false)
+	assert.NoError(t, err)
+
+	assert.Equal(t, lastReleaseGetResponse.Kvs, currentReleaseGetResponse.Kvs)
+	assert.Equal(t, lastReleaseMemberListResponse.Members, currentReleaseMemberListResponse.Members)
+	assert.NoError(t, epc.Close())
+}
+
+func TestV2DeprecationSnapshotRecoverOldVersion(t *testing.T) {
+	e2e.BeforeTest(t)
+	dataDir := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
+	}
+	epc := runEtcdAndCreateSnapshot(t, e2e.CurrentVersion, dataDir, 10)
+	lastVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.EtcdLastRelease)
+	lastVersionStr := lastVersion.String()
+
+	lastClusterVersion := semver.New(lastVersionStr)
+	lastClusterVersion.Patch = 0
+	lastClusterVersionStr := lastClusterVersion.String()
+
+	t.Logf("etcdctl downgrade enable %s", lastVersionStr)
+	downgradeEnable(t, epc, lastVersion)
+
+	t.Log("Downgrade enabled, validating if cluster is ready for downgrade")
+	for i := 0; i < len(epc.Procs); i++ {
+		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
+			Cluster: lastClusterVersionStr,
+			Server:  version.Version,
+			Storage: lastClusterVersionStr,
+		})
+		e2e.AssertProcessLogs(t, epc.Procs[i], "The server is ready to downgrade")
+	}
+
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
+	assert.NoError(t, err)
+
+	lastReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
+	assert.NoError(t, err)
+
+	lastReleaseMemberListResponse, err := cc.MemberList(ctx, false)
+	assert.NoError(t, err)
+
+	assert.NoError(t, epc.Close())
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
+		e2e.WithVersion(e2e.LastVersion),
 		e2e.WithDataDirPath(dataDir),
 	))
 	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
