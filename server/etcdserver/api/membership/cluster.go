@@ -868,6 +868,12 @@ func (c *RaftCluster) Store(store v2store.Store) {
 		if m.ClientURLs != nil {
 			mustUpdateMemberAttrInStore(c.lg, store, m)
 		}
+		c.lg.Info(
+			"snapshot storing member",
+			zap.String("id", m.ID.String()),
+			zap.Strings("peer-urls", m.PeerURLs),
+			zap.Bool("is-learner", m.IsLearner),
+		)
 	}
 	for id, _ := range c.removed {
 		mustDeleteMemberFromStore(c.lg, store, id)
