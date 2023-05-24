@@ -86,7 +86,12 @@ type KeyValueHash struct {
 }
 
 type HashStorage interface {
-	// Hash computes the hash of the KV's backend.
+	// Hash computes the hash of the whole backend keyspace,
+	// including key, lease, and other buckets in storage.
+	// This is designed for testing ONLY!
+	// Do not rely on this in production with ongoing transactions,
+	// since Hash operation does not hold MVCC locks.
+	// Use "HashByRev" method instead for "key" bucket consistency checks.
 	Hash() (hash uint32, revision int64, err error)
 
 	// HashByRev computes the hash of all MVCC revisions up to a given revision.
