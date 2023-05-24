@@ -36,7 +36,7 @@ var (
 		minimalQPS:  200,
 		maximalQPS:  1000,
 		clientCount: 12,
-		traffic: kubernetesTraffic{
+		Traffic: kubernetesTraffic{
 			averageKeyCount: 5,
 			resource:        "pods",
 			namespace:       "default",
@@ -54,6 +54,10 @@ type kubernetesTraffic struct {
 	resource        string
 	namespace       string
 	writeChoices    []choiceWeight[KubernetesRequestType]
+}
+
+func (t kubernetesTraffic) ExpectUniqueRevision() bool {
+	return true
 }
 
 func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
