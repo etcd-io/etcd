@@ -41,6 +41,7 @@ var (
 	rangeRate        int
 	rangeTotal       int
 	rangeConsistency string
+	rangeLimit       int64
 )
 
 func init() {
@@ -48,6 +49,7 @@ func init() {
 	rangeCmd.Flags().IntVar(&rangeRate, "rate", 0, "Maximum range requests per second (0 is no limit)")
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
+	rangeCmd.Flags().Int64Var(&rangeLimit, "limit", 0, "Maximum number of results to return from range request (0 is no limit)")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
@@ -100,7 +102,7 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 
 	go func() {
 		for i := 0; i < rangeTotal; i++ {
-			opts := []v3.OpOption{v3.WithRange(end)}
+			opts := []v3.OpOption{v3.WithRange(end), v3.WithLimit(rangeLimit)}
 			if rangeConsistency == "s" {
 				opts = append(opts, v3.WithSerializable())
 			}
