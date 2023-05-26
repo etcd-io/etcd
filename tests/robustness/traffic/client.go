@@ -216,13 +216,16 @@ func (c *RecordingClient) Defragment(ctx context.Context) error {
 	return err
 }
 
-func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, withPrefix bool) clientv3.WatchChan {
+func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, withPrefix bool, withProgressNotify bool) clientv3.WatchChan {
 	ops := []clientv3.OpOption{clientv3.WithProgressNotify()}
 	if withPrefix {
 		ops = append(ops, clientv3.WithPrefix())
 	}
 	if rev != 0 {
 		ops = append(ops, clientv3.WithRev(rev))
+	}
+	if withProgressNotify {
+		ops = append(ops, clientv3.WithProgressNotify())
 	}
 	respCh := make(chan clientv3.WatchResponse)
 	go func() {
@@ -231,10 +234,18 @@ func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, with
 			c.watchMux.Lock()
 			c.watchResponses = append(c.watchResponses, ToWatchResponse(r, c.baseTime))
 			c.watchMux.Unlock()
-			respCh <- r
+			select {
+			case respCh <- r:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 	return respCh
+}
+
+func (c *RecordingClient) RequestProgress(ctx context.Context) error {
+	return c.client.RequestProgress(ctx)
 }
 
 func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) WatchResponse {

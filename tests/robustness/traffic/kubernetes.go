@@ -84,7 +84,7 @@ func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter 
 			s.Reset(resp)
 			limiter.Wait(ctx)
 			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-			for e := range c.Watch(watchCtx, keyPrefix, resp.Header.Revision+1, true) {
+			for e := range c.Watch(watchCtx, keyPrefix, resp.Header.Revision+1, true, true) {
 				s.Update(e)
 			}
 			cancel()
