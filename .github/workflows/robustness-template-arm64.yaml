@@ -1,3 +1,4 @@
+---
 name: Reusable Robustness Workflow
 on:
   workflow_call:
@@ -35,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       # https://github.com/actions/checkout/issues/1169
-      - run: git config --system --add safe.directory '*' 
+      - run: git config --system --add safe.directory '*'
       - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
           go-version: ${{ needs.goversion.outputs.goversion }}
@@ -69,4 +70,3 @@ jobs:
         with:
           name: ${{ inputs.artifactName }}
           path: /tmp/results/*
-

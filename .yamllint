@@ -1,0 +1,7 @@
+---
+
+extends: default
+rules:
+  line-length: disable
+  truthy: disable
+  comments: disable

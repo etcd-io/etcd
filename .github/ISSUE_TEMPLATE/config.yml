@@ -1,5 +1,6 @@
+---
 blank_issues_enabled: false
 contact_links:
-- name: Question
-  url: https://github.com/etcd-io/etcd/discussions
-  about: Question relating to Etcd
+  - name: Question
+    url: https://github.com/etcd-io/etcd/discussions
+    about: Question relating to Etcd

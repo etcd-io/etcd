@@ -1,3 +1,4 @@
+---
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -10,11 +11,11 @@ updates:
     schedule:
       interval: weekly
     allow:
-    - dependency-type: all
+      - dependency-type: all
 
   - package-ecosystem: gomod
     directory: /tools/mod # Not linked from /go.mod
     schedule:
       interval: weekly
     allow:
-    - dependency-type: all
+      - dependency-type: all

@@ -1,3 +1,4 @@
+---
 name: Robustness
 on: [push, pull_request]
 permissions: read-all

@@ -1,30 +1,31 @@
+---
 name: Membership nomination
 description: Nominate new etcd members
 labels:
-- area/community
+  - area/community
 body:
-- type: textarea
-  id: feature
-  attributes:
-    label: Who would you like to nominate?
-  validations:
-    required: true
-
-- id: requirements
-  type: checkboxes
-  attributes:
-    label: Requirements
-    options:
-    - label: I have reviewed the [community membership guidelines](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/community-membership.md)
-      required: true
-    - label: The members are actively contributing to 1 or more etcd subprojects
-      required: true
-    - label: The members are being sponsored by two current reviewers or a current maintainer.
+  - type: textarea
+    id: feature
+    attributes:
+      label: Who would you like to nominate?
+    validations:
       required: true
 
-- type: textarea
-  id: rationale
-  attributes:
-    label: How do the new members meet the regular active contribution requirements?
-  validations:
-    required: true
+  - id: requirements
+    type: checkboxes
+    attributes:
+      label: Requirements
+      options:
+        - label: I have reviewed the [community membership guidelines](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/community-membership.md)
+          required: true
+        - label: The members are actively contributing to 1 or more etcd subprojects
+          required: true
+        - label: The members are being sponsored by two current reviewers or a current maintainer.
+          required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: How do the new members meet the regular active contribution requirements?
+    validations:
+      required: true

@@ -1,3 +1,4 @@
+---
 # Configuration for probot-stale - https://github.com/probot/stale
 
 # Number of days of inactivity before an Issue or Pull Request becomes stale

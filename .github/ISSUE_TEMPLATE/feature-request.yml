@@ -1,18 +1,19 @@
+---
 name: Feature request
 description: Provide idea for a new feature
 labels:
-- type/feature
+  - type/feature
 body:
-- type: textarea
-  id: feature
-  attributes:
-    label: What would you like to be added?
-  validations:
-    required: true
+  - type: textarea
+    id: feature
+    attributes:
+      label: What would you like to be added?
+    validations:
+      required: true
 
-- type: textarea
-  id: rationale
-  attributes:
-    label: Why is this needed?
-  validations:
-    required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why is this needed?
+    validations:
+      required: true
