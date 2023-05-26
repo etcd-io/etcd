@@ -15,10 +15,10 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/coreos/go-semver/semver"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -45,7 +45,7 @@ func printEtcdVersion() []error {
 	sort.Slice(annotations, func(i, j int) bool {
 		return annotations[i].fullName < annotations[j].fullName
 	})
-	output := &bytes.Buffer{}
+	output := &strings.Builder{}
 	for _, a := range annotations {
 		newErrs := a.Validate()
 		if len(newErrs) == 0 {

@@ -15,8 +15,8 @@
 package types
 
 import (
-	"bytes"
 	"strconv"
+	"strings"
 )
 
 // ID represents a generic identifier which is canonically
@@ -42,7 +42,7 @@ func (p IDSlice) Less(i, j int) bool { return uint64(p[i]) < uint64(p[j]) }
 func (p IDSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func (p IDSlice) String() string {
-	var b bytes.Buffer
+	var b strings.Builder
 	if p.Len() > 0 {
 		b.WriteString(p[0].String())
 	}
