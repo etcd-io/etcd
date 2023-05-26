@@ -75,12 +75,12 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []b
 }
 
 func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
+	if limit <= 0 {
+		limit = math.MaxInt64
+	}
 	if endKey == nil {
 		// forbid duplicates for single keys
 		limit = 1
-	}
-	if limit <= 0 {
-		limit = math.MaxInt64
 	}
 	if limit > 1 && !bucketType.IsSafeRangeBucket() {
 		panic("do not use unsafeRange on non-keys bucket")
