@@ -17,6 +17,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,6 +39,7 @@ import (
 
 var (
 	EtcdServerReadyLines = []string{"ready to serve client requests"}
+	ErrGoFailEnable      = errors.New("is etcd compiled with gofail enabled?")
 )
 
 // EtcdProcess is a process that serves etcd requests.
@@ -340,7 +342,7 @@ func fetchFailpoints(member EtcdProcess) (map[string]struct{}, error) {
 	}
 	resp, err := http.Get(failpointUrl.String())
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, ErrGoFailEnable)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
