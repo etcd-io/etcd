@@ -379,6 +379,18 @@ func bootstrapClusterWithWAL(cfg config.ServerConfig, meta *snapshotMetadata) (*
 	}, nil
 }
 
+func getRaftSnapshotFromBackend(cfg config.ServerConfig, be backend.Backend) (*raftpb.Snapshot, error) {
+	index, term, confState, err := schema.ReadIndexTermConfState(cfg.Logger, be.ReadTx())
+	if err != nil {
+		cfg.Logger.Panic("failed to recover snapshot info from backend", zap.Error(err))
+	}
+	var rsnap raftpb.Snapshot
+	rsnap.Metadata.Index = index
+	rsnap.Metadata.Term = term
+	rsnap.Metadata.ConfState = *confState
+	return &rsnap, nil
+}
+
 func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backend, beExist bool, beHooks *serverstorage.BackendHooks, ci cindex.ConsistentIndexer, ss *snap.Snapshotter) (*raftpb.Snapshot, backend.Backend, error) {
 	// Find a snapshot to start/restart a raft node
 	walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
@@ -392,21 +404,32 @@ func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 		return nil, be, err
 	}
 
-	if snapshot != nil {
-		if err = st.Recovery(snapshot.Data); err != nil {
-			cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
-		}
-
-		if err = serverstorage.AssertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
-			cfg.Logger.Error("illegal v2store content", zap.Error(err))
+	/*
+		TODO - can snapshot be newer than be with 3.6?
+		snapshot, err := getRaftSnapshotFromBackend(cfg, be)
+		if err != nil {
+			//TODO getRaftSnapshotFromBackend panics for now
 			return nil, be, err
 		}
+	*/
 
-		cfg.Logger.Info(
-			"recovered v2 store from snapshot",
-			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
-		)
+	if snapshot != nil {
+		/*
+			if err = st.Recovery(snapshot.Data); err != nil {
+				cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
+			}
+
+			if err = serverstorage.AssertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
+				cfg.Logger.Error("illegal v2store content", zap.Error(err))
+				return nil, be, err
+			}
+
+			cfg.Logger.Info(
+				"recovered v2 store from snapshot",
+				zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+				zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
+			)
+		*/
 
 		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
