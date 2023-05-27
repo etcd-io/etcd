@@ -48,9 +48,42 @@ Adding a `type` label to an issue helps create visibility on the health of the p
 
 ### Support requests
 
-Some people mistakenly use GitHub issues to file support requests. Usually they are asking for help operating or configuring some aspect of etcd. In general we prefer that support requests are raised as [discussions](https://github.com/etcd-io/etcd/discussions), however if you identify that an issue is a support request please add the `type/support` or `type/question` label.
+As a general rule the focus for etcd support is to address common themes in a broad way that helps all users, i.e. through channels like known issues, frequently asked questions and high quality documentation. To make the best use of project members time we should avoid providing 1:1 support if a broad approach is available.
 
-When responding to these requests please keep in mind the etcd [supported versions policy](https://etcd.io/docs/v3.6/op-guide/versioning/#service-versioning-and-supported-versions). If the request relates to an unsupported version and will require significant effort please instead kindly make the issue creator aware of the etcd support policy, encourage they update to a supported release, then close the issue, refer to [this example](https://github.com/etcd-io/etcd/issues/15796).
+Some people mistakenly use our GitHub bug report or feature request templates to file support requests. Usually they are asking for help operating or configuring some aspect of etcd. Support requests for etcd should instead be raised as [discussions](https://github.com/etcd-io/etcd/discussions).
+
+Common types of support requests are:
+
+ 1. Questions about configuring or operating existing well documented etcd features, for example <https://github.com/etcd-io/etcd/issues/15945>. Note - If an existing feature is not well documented please apply the `area/documentation` label and propose documentation improvements that would prevent future users from stumbling on the problem again.
+
+ 2. Bug reports or questions about unspported versions of etcd, for example <https://github.com/etcd-io/etcd/issues/15796>. When responding to these issues please refer to our [supported versions documentation](https://etcd.io/docs/latest/op-guide/versioning) and encourage the reporter to upgrade to a recent patch release of a supported version as soon as possible. We should limit the effort supporting users that do not make the effort to run a supported version of etcd or ensure their version is patched.
+
+ 3. Bug reports that do not provide a complete list of steps to reproduce issue and/or contributors are not able to reproduce the issue, for example <https://github.com/etcd-io/etcd/issues/15740>. We should limit the effort we put into reproducing issues ourselves and motivate users to provide necessary information to accept the bug report.
+
+ 4. General questions that are filed using feature request or bug report issue templates, for example <https://github.com/etcd-io/etcd/issues/15914>. Note - These types of requests may surface good additions to our [frequently asked questions](https://etcd.io/docs/v3.5/faq).
+
+If you identify that an issue is a support request please:
+
+ 1. Add the `type/support` or `type/question` label.
+
+ 2. Add the following comment to inform the issue creator that discussions should be used instead and that this issue will be converted to a discussion.
+
+    > Thank you for your question, this support issue will be moved to our [Discussion Forums](https://github.com/etcd-io/etcd/discussions).
+    >
+    > We are trying to consolidate the channels to which questions for help/support are posted so that we can improve our efficiency in responding to your requests, and to make it easier for you to find answers to frequently asked questions and how to address common use cases.
+    >
+    > We regularly see messages posted in multiple forums, with the full response thread only in one place or, worse, spread across multiple forums. Also, the large volume of support issues on GitHub is making it difficult for us to use issues to identify real bugs.
+    >
+    > Members of the etcd community use Discussion Forums to field support requests. Before posting a new question, please search these for answers to similar questions, and also familiarize yourself with:
+    >
+    > 1. [user documentation](https://etcd.io/docs/latest)
+    > 2. [frequently asked questions](https://etcd.io/docs/v3.5/faq)
+    >  
+    > Again, thanks for using etcd and raising this question.
+    >
+    > The etcd team
+
+ 3. Finally, click `Convert to discussion` on the right hand panel, selecting the appropriate discussion category.
 
 ### Bug reports
 
