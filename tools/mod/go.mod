@@ -14,7 +14,7 @@ require (
 	github.com/gyuho/gocovmerge v0.0.0-20171205171859-50c7e6afd535
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
 	github.com/mgechev/revive v1.3.2
-	github.com/mikefarah/yq/v4 v4.33.3
+	github.com/mikefarah/yq/v4 v4.34.1
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
