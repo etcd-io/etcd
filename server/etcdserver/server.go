@@ -1982,7 +1982,8 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
-	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
+	//while recovering WAL from scratch - store starts empty and returns ValidateConfigurationChange err nil. backend on the other hand starts stateful and returns "member already exists" etc errors on this Validation and enters the loop below
+	if err := s.cluster.ValidateConfigurationChange(cc, shouldApplyV3); err != nil && membership.ApplyBoth == shouldApplyV3 {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
 
