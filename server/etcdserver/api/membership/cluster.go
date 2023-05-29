@@ -304,7 +304,8 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
+
 	var membersMap map[types.ID]*Member
 	var removedMap map[types.ID]bool
 	if c.v2store != nil {
@@ -312,6 +313,11 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	} else {
 		membersMap, removedMap = c.be.MustReadMembersFromBackend()
 	}
+	if !shouldApplyV3 {
+		//TODO geetasg - RaftCluster purely based on backend cannot validate an entry older than ci
+		return nil
+	}
+
 	id := types.ID(cc.NodeID)
 	if removedMap[id] {
 		return ErrIDRemoved

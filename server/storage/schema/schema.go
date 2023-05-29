@@ -21,7 +21,6 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/raft/v3/raftpb"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
@@ -89,19 +88,6 @@ func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, e
 	tx.RLock()
 	defer tx.RUnlock()
 	return UnsafeDetectSchemaVersion(lg, tx)
-}
-
-// ReadIndexTermConfState returns raft index, term and confState from backend.
-func ReadIndexTermConfState(lg *zap.Logger, tx backend.ReadTx) (index uint64, term uint64, confState *raftpb.ConfState, err error) {
-	tx.RLock()
-	defer tx.RUnlock()
-
-	confstate := UnsafeConfStateFromBackend(lg, tx)
-	if confstate == nil {
-		return 0, 0, nil, fmt.Errorf("missing confstate information")
-	}
-	index, term = UnsafeReadConsistentIndex(tx)
-	return index, term, confstate, nil
 }
 
 // UnsafeDetectSchemaVersion non-threadsafe version of DetectSchemaVersion.

@@ -279,7 +279,10 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
 	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
-	cl.SetStore(v2store.New())
+	//cl.SetStore(v2store.New())
+	be := newMembershipBackend()
+	cl.SetBackend(be)
+
 	for i := 1; i <= 4; i++ {
 		var isLearner bool
 		if i == 1 {
@@ -456,7 +459,7 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		err := cl.ValidateConfigurationChange(tt.cc)
+		err := cl.ValidateConfigurationChange(tt.cc, ApplyBoth)
 		if err != tt.werr {
 			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -649,8 +652,10 @@ func TestNodeToMember(t *testing.T) {
 
 func newTestCluster(t testing.TB, membs []*Member) *RaftCluster {
 	c := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+	be := newMembershipBackend()
+	c.SetBackend(be)
 	for _, m := range membs {
-		c.members[m.ID] = m
+		c.AddMember(m, true)
 	}
 	return c
 }
@@ -996,7 +1001,9 @@ func TestMembershipStore(t *testing.T) {
 	}
 	for i, tt := range tests {
 		c := newTestCluster(t, tt.mems)
-		c.removed = tt.removed
+		for id, _ := range tt.removed {
+			c.RemoveMember(id, true)
+		}
 
 		//snapshot
 		st := v2store.New("/0", "/1")
@@ -1007,6 +1014,7 @@ func TestMembershipStore(t *testing.T) {
 		rst := v2store.New("/0", "/1")
 		rst.Recovery(d)
 		rc := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+		rc.SetBackend(c.be)
 		rc.SetStore(rst)
 		rc.Recover(func(lg *zap.Logger, v *semver.Version) { return })
 
