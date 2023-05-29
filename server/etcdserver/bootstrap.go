@@ -393,6 +393,22 @@ func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 	}
 
 	if snapshot != nil {
+		if cfg.V2Deprecation != config.V2_DEPR_2_GONE {
+			if err = st.Recovery(snapshot.Data); err != nil {
+				cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
+			}
+
+			if err = serverstorage.AssertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
+				cfg.Logger.Error("illegal v2store content", zap.Error(err))
+				return nil, be, err
+			}
+
+			cfg.Logger.Info(
+				"recovered v2 store from snapshot",
+				zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+				zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
+			)
+		}
 
 		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
