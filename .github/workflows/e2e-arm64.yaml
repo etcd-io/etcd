@@ -1,3 +1,4 @@
+---
 name: E2E-arm64
 on:
   schedule:
@@ -19,27 +20,27 @@ jobs:
       fail-fast: true
       matrix:
         target:
-        - linux-arm64-e2e
+          - linux-arm64-e2e
     steps:
-    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
-    # https://github.com/actions/checkout/issues/1169
-    - run: git config --system --add safe.directory '*'
-    - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
-      with:
-        go-version: ${{ needs.goversion.outputs.goversion }}
-    - run: date
-    - env:
-        TARGET: ${{ matrix.target }}
-      run: |
-        set -euo pipefail
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      # https://github.com/actions/checkout/issues/1169
+      - run: git config --system --add safe.directory '*'
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        with:
+          go-version: ${{ needs.goversion.outputs.goversion }}
+      - run: date
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
 
-        echo "${TARGET}"
-        case "${TARGET}" in
-          linux-arm64-e2e)
-            GOOS=linux GOARCH=arm64 CPU=4 EXPECT_DEBUG=true RACE=true make test-e2e-release
-            ;;
-          *)
-            echo "Failed to find target"
-            exit 1
-            ;;
-        esac
+          echo "${TARGET}"
+          case "${TARGET}" in
+            linux-arm64-e2e)
+              GOOS=linux GOARCH=arm64 CPU=4 EXPECT_DEBUG=true RACE=true make test-e2e-release
+              ;;
+            *)
+              echo "Failed to find target"
+              exit 1
+              ;;
+          esac

@@ -1,3 +1,4 @@
+---
 name: Robustness Nightly
 permissions: read-all
 on:

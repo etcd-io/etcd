@@ -1,3 +1,4 @@
+---
 name: Release
 on: [push, pull_request]
 permissions: read-all
@@ -8,27 +9,27 @@ jobs:
     runs-on: ubuntu-latest
     needs: goversion
     steps:
-    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
-    - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
-      with:
-        go-version: ${{ needs.goversion.outputs.goversion }}
-    - name: release
-      run: |
-        set -euo pipefail
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        with:
+          go-version: ${{ needs.goversion.outputs.goversion }}
+      - name: release
+        run: |
+          set -euo pipefail
 
-        git config --global user.email "github-action@etcd.io"
-        git config --global user.name "Github Action"
-        gpg --batch --gen-key <<EOF
-        %no-protection
-        Key-Type: 1
-        Key-Length: 2048
-        Subkey-Type: 1
-        Subkey-Length: 2048
-        Name-Real: Github Action
-        Name-Email: github-action@etcd.io
-        Expire-Date: 0
-        EOF
-        DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.6.99
-    - name: test-image
-      run: |
-        VERSION=3.6.99 ./scripts/test_images.sh
+          git config --global user.email "github-action@etcd.io"
+          git config --global user.name "Github Action"
+          gpg --batch --gen-key <<EOF
+          %no-protection
+          Key-Type: 1
+          Key-Length: 2048
+          Subkey-Type: 1
+          Subkey-Length: 2048
+          Name-Real: Github Action
+          Name-Email: github-action@etcd.io
+          Expire-Date: 0
+          EOF
+          DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.6.99
+      - name: test-image
+        run: |
+          VERSION=3.6.99 ./scripts/test_images.sh

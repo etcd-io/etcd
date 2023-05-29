@@ -1,3 +1,4 @@
+---
 name: Go Vulnerability Checker
 on: [push, pull_request]
 permissions: read-all
