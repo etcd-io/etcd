@@ -2076,16 +2076,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 
 	s.GoAttach(func() {
 		lg := s.Logger()
-		var st v2store.Store
-		st = v2store.New(StoreClusterPrefix, StoreKeysPrefix)
-		s.cluster.Store(st)
-		d, err := st.SaveNoCopy()
-		// TODO: current store will never fail to do a snapshot
-		// what should we do if the store might fail?
-		if err != nil {
-			lg.Panic("failed to save v2 store", zap.Error(err))
-		}
-		snap, err := s.r.raftStorage.CreateSnapshot(snapi, &confState, d)
+		snap, err := s.r.raftStorage.CreateSnapshot(snapi, &confState, GetMembershipInfoInV2Format(lg, s.cluster))
 		if err != nil {
 			// the snapshot was done asynchronously with the progress of raft.
 			// raft might have already got a newer snapshot.
