@@ -1,6 +1,6 @@
 # The official list of maintainers and reviewers for the project maintenance.
 #
-# Refer to the GOVERNANCE.md for description of the roles.
+# Refer to the https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/community-membership.md for description of the roles.
 #
 # Names should be added to this file like so:
 #     Individual's name <submission email address> (@GITHUB_HANDLE) pkg:*
