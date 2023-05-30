@@ -158,8 +158,8 @@ github.com/mgechev/dots v0.0.0-20210922191527-e955255bf517 h1:zpIH83+oKzcpryru8c
 github.com/mgechev/dots v0.0.0-20210922191527-e955255bf517/go.mod h1:KQ7+USdGKfpPjXk4Ga+5XxQM4Lm4e3gAogrreFAYpOg=
 github.com/mgechev/revive v1.3.2 h1:Wb8NQKBaALBJ3xrrj4zpwJwqwNA6nDpyJSEQWcCka6U=
 github.com/mgechev/revive v1.3.2/go.mod h1:UCLtc7o5vg5aXCwdUTU1kEBQ1v+YXPAkYDIDXbrs5I0=
-github.com/mikefarah/yq/v4 v4.33.3 h1:cu6JxWAL82bpLCJTLYP3ILZ/3gXF1YfvYBCMRdnY/xA=
-github.com/mikefarah/yq/v4 v4.33.3/go.mod h1:ajAKq75gdANZHzkWu5shY2QZHpg8HOHVSyscC1+OAIs=
+github.com/mikefarah/yq/v4 v4.34.1 h1:7W+SZXvu1yOxpVXS7Hi5a34nU/gdYPjWMNQqoSlfbxo=
+github.com/mikefarah/yq/v4 v4.34.1/go.mod h1:B2JxXiGKqEaU+GTcNwOZ/RQFelq9e6TFIDLRVVFHAu4=
 github.com/mitchellh/go-homedir v1.1.0 h1:lukF9ziXFxDFPkA1vsr5zpc1XuPDn/wFntq5mG+4E0Y=
 github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrkLzIz1N1q0pr0=
 github.com/mreiferson/go-httpclient v0.0.0-20160630210159-31f0106b4474/go.mod h1:OQA4XLvDbMgS8P0CevmM4m9Q3Jq4phKUzcocxuGJ5m8=
