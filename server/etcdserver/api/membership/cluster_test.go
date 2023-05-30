@@ -279,7 +279,6 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
 	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
-	//cl.SetStore(v2store.New())
 	be := newMembershipBackend()
 	cl.SetBackend(be)
 
