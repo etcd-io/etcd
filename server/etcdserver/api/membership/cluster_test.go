@@ -477,7 +477,6 @@ func TestClusterGenID(t *testing.T) {
 	}
 	previd := cs.ID()
 
-	cs.SetStore(mockstore.NewNop())
 	cs.AddMember(newTestMember(3, nil, "", nil), true)
 	cs.genID()
 	if cs.ID() == previd {
@@ -520,8 +519,8 @@ func TestNodeToMemberBad(t *testing.T) {
 func TestClusterAddMember(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.AddMember(newTestMember(1, nil, "node1", nil), true)
+	c.Store(st)
 
 	wactions := []testutil.Action{
 		{
@@ -543,8 +542,8 @@ func TestClusterAddMember(t *testing.T) {
 func TestClusterAddMemberAsLearner(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.AddMember(newTestMemberAsLearner(1, nil, "node1", nil), true)
+	c.Store(st)
 
 	wactions := []testutil.Action{
 		{
@@ -586,8 +585,8 @@ func TestClusterMembers(t *testing.T) {
 func TestClusterRemoveMember(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.RemoveMember(1, true)
+	c.Store(st)
 
 	wactions := []testutil.Action{
 		{Name: "Delete", Params: []interface{}{MemberStoreKey(1), true, true}},
@@ -1009,7 +1008,7 @@ func TestMembershipStore(t *testing.T) {
 		c.Store(st)
 		d, _ := st.SaveNoCopy()
 
-		//recover from snapshot
+		//3.5 recover from snapshot
 		rst := v2store.New("/0", "/1")
 		rst.Recovery(d)
 		rc := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}

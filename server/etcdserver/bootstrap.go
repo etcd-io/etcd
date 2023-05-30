@@ -450,7 +450,6 @@ func (c *bootstrapedCluster) Finalize(cfg config.ServerConfig, s *bootstrappedSt
 	if !s.wal.haveWAL {
 		c.cl.SetID(c.nodeID, c.cl.ID())
 	}
-	//c.cl.SetStore(s.st)
 	c.cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, s.backend.be))
 	if s.wal.haveWAL {
 		c.cl.Recover(api.UpdateCapability)
