@@ -396,8 +396,6 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	}
 
 	// add members again to persist them to the store we create.
-	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
-	s.cl.SetStore(st)
 	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
 	defer be.Close()
 	s.cl.SetBackend(schema.NewMembershipBackend(s.lg, be))
@@ -457,7 +455,9 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		return nil, err
 	}
 
-	b, berr := st.Save()
+	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
+	s.cl.Store(st)
+	b, berr := st.SaveNoCopy()
 	if berr != nil {
 		return nil, berr
 	}
