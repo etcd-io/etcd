@@ -513,8 +513,13 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 }
 
 func TestApplyConfChangeError(t *testing.T) {
-	cl := membership.NewCluster(zaptest.NewLogger(t))
-	cl.SetStore(v2store.New())
+	lg := zaptest.NewLogger(t)
+
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl := membership.NewCluster(lg)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	for i := 1; i <= 4; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
@@ -579,7 +584,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		n := newNodeRecorder()
 		srv := &EtcdServer{
 			lgMu:    new(sync.RWMutex),
-			lg:      zaptest.NewLogger(t),
+			lg:      lg,
 			r:       *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 			cluster: cl,
 		}
@@ -601,17 +606,22 @@ func TestApplyConfChangeError(t *testing.T) {
 }
 
 func TestApplyConfChangeShouldStop(t *testing.T) {
-	cl := membership.NewCluster(zaptest.NewLogger(t))
-	cl.SetStore(v2store.New())
+	lg := zaptest.NewLogger(t)
+
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl := membership.NewCluster(lg)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
 	r := newRaftNode(raftNodeConfig{
-		lg:        zaptest.NewLogger(t),
+		lg:        lg,
 		Node:      newNodeNop(),
 		transport: newNopTransporter(),
 	})
-	lg := zaptest.NewLogger(t)
+
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       lg,
@@ -651,7 +661,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 
-	cl := membership.NewCluster(zaptest.NewLogger(t))
+	cl := membership.NewCluster(lg)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
 
@@ -728,8 +738,12 @@ func realisticRaftNode(lg *zap.Logger) *raftNode {
 // if the local member is removed along with other conf updates.
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
 	cl := membership.NewCluster(lg)
-	cl.SetStore(v2store.New())
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	for i := 1; i <= 5; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
@@ -1403,8 +1417,8 @@ func TestAddMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t, nil)
-	st := v2store.New()
-	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
 		Node:        n,
@@ -1416,7 +1430,6 @@ func TestAddMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
@@ -1449,8 +1462,8 @@ func TestRemoveMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t, nil)
-	st := v2store.New()
-	cl.SetStore(v2store.New())
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
@@ -1463,7 +1476,6 @@ func TestRemoveMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
@@ -1495,8 +1507,8 @@ func TestUpdateMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t, nil)
-	st := v2store.New()
-	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
@@ -1509,7 +1521,6 @@ func TestUpdateMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
