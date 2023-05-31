@@ -1195,7 +1195,7 @@ func TestSnapshotOrdering(t *testing.T) {
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		Cfg:          config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, V2Deprecation: config.V2_DEPR_2_GONE},
+		Cfg:          config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, V2Deprecation: config.V2_DEPR_DEFAULT},
 		r:            *r,
 		snapshotter:  snap.New(lg, snapdir),
 		cluster:      cl,

@@ -394,6 +394,10 @@ func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 	}
 
 	if snapshot != nil {
+		if err := serverstorage.AssertV2DeprecationStage(cfg.Logger, cfg.V2Deprecation); err != nil {
+			cfg.Logger.Panic("illegal v2store content", zap.Error(err))
+		}
+
 		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 		}
