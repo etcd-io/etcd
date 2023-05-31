@@ -648,13 +648,13 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 // where consistIndex equals to applied index.
 func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-
-	cl := membership.NewCluster(zaptest.NewLogger(t))
-	cl.SetStore(v2store.New())
-	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
-
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
+
+	cl := membership.NewCluster(zaptest.NewLogger(t))
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
+
 	schema.CreateMetaBucket(be.BatchTx())
 
 	ci := cindex.NewConsistentIndex(be)
@@ -1148,9 +1148,9 @@ func TestSnapshotOrdering(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
-	st := v2store.New()
 	cl := membership.NewCluster(lg)
-	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	testdir := t.TempDir()
 
@@ -1170,21 +1170,18 @@ func TestSnapshotOrdering(t *testing.T) {
 		storage:     p,
 		raftStorage: rs,
 	})
-	be, _ := betesting.NewDefaultTmpBackend(t)
 	ci := cindex.NewConsistentIndex(be)
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		Cfg:          config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:          config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, V2Deprecation: config.V2_DEPR_2_GONE},
 		r:            *r,
-		v2store:      st,
 		snapshotter:  snap.New(lg, snapdir),
 		cluster:      cl,
 		SyncTicker:   &time.Ticker{},
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be
