@@ -28,9 +28,9 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -131,10 +131,12 @@ func HandleBackup(withV3 bool, srcDir string, destDir string, srcWAL string, des
 	destDbPath := datadir.ToBackendFileName(destDir)
 	srcDbPath := datadir.ToBackendFileName(srcDir)
 	desired := newDesiredCluster()
+	raftCluster := membership.NewClusterFromMembers(lg, desired.clusterId, desired.members)
+	raftCluster.SetID(desired.nodeId, desired.clusterId)
 
-	walsnap := saveSnap(lg, destSnap, srcSnap, &desired)
+	walsnap := saveSnap(lg, destSnap, srcSnap, &desired, raftCluster)
 	metadata, state, ents := translateWAL(lg, srcWAL, walsnap)
-	saveDB(lg, destDbPath, srcDbPath, state.Commit, state.Term, &desired)
+	saveDB(lg, destDbPath, srcDbPath, state.Commit, state.Term, &desired, raftCluster)
 
 	neww, err := wal.Create(lg, destWAL, pbutil.MustMarshal(&metadata))
 	if err != nil {
@@ -157,7 +159,7 @@ func HandleBackup(withV3 bool, srcDir string, destDir string, srcWAL string, des
 	return nil
 }
 
-func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster) (walsnap walpb.Snapshot) {
+func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster, raftCluster *membership.RaftCluster) (walsnap walpb.Snapshot) {
 	ss := snap.New(lg, srcSnap)
 	snapshot, err := ss.Load()
 	if err != nil && err != snap.ErrNoSnapshot {
@@ -167,32 +169,12 @@ func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster)
 		walsnap.Index, walsnap.Term, walsnap.ConfState = snapshot.Metadata.Index, snapshot.Metadata.Term, &desired.confState
 		newss := snap.New(lg, destSnap)
 		snapshot.Metadata.ConfState = desired.confState
-		snapshot.Data = mustTranslateV2store(lg, snapshot.Data, desired)
+		snapshot.Data = etcdserver.GetMembershipInfoInV2Format(lg, raftCluster)
 		if err = newss.SaveSnap(*snapshot); err != nil {
 			lg.Fatal("saveSnap(Snapshoter.SaveSnap) failed", zap.Error(err))
 		}
 	}
 	return walsnap
-}
-
-// mustTranslateV2store processes storeData such that they match 'desiredCluster'.
-// In particular the method overrides membership information.
-func mustTranslateV2store(lg *zap.Logger, storeData []byte, desired *desiredCluster) []byte {
-	st := v2store.New()
-	if err := st.Recovery(storeData); err != nil {
-		lg.Panic("cannot translate v2store", zap.Error(err))
-	}
-
-	raftCluster := membership.NewClusterFromMembers(lg, desired.clusterId, desired.members)
-	raftCluster.SetID(desired.nodeId, desired.clusterId)
-	raftCluster.SetStore(st)
-	raftCluster.PushMembershipToStorage()
-
-	outputData, err := st.Save()
-	if err != nil {
-		lg.Panic("cannot save v2store", zap.Error(err))
-	}
-	return outputData
 }
 
 func translateWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
@@ -266,7 +248,7 @@ func raftEntryToNoOp(entry *raftpb.Entry) {
 }
 
 // saveDB copies the v3 backend and strips cluster information.
-func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desired *desiredCluster) {
+func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desired *desiredCluster, raftCluster *membership.RaftCluster) {
 	// open src db to safely copy db state
 	var src *bolt.DB
 	ch := make(chan *bolt.DB, 1)
@@ -309,9 +291,6 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 	if err := ms.TrimClusterFromBackend(); err != nil {
 		lg.Fatal("bbolt tx.Membership failed", zap.Error(err))
 	}
-
-	raftCluster := membership.NewClusterFromMembers(lg, desired.clusterId, desired.members)
-	raftCluster.SetID(desired.nodeId, desired.clusterId)
 	raftCluster.SetBackend(ms)
 	raftCluster.PushMembershipToStorage()
 }
