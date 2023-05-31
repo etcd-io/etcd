@@ -187,6 +187,7 @@ func TestBootstrapBackend(t *testing.T) {
 				DataDir:             dataDir,
 				BackendFreelistType: bolt.FreelistArrayType,
 				Logger:              zaptest.NewLogger(t),
+				V2Deprecation:       config.V2_DEPR_DEFAULT,
 			}
 
 			if tt.prepareData != nil {

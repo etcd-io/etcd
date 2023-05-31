@@ -27,7 +27,8 @@ const (
 	// V2store is neither written nor read for 3.6. v2snapshot is published only for backward compatibility
 	V2_DEPR_2_GONE = V2DeprecationEnum("gone")
 
-	V2_DEPR_DEFAULT = V2_DEPR_2_GONE
+	//TODO geetasg does thie default need to change
+	V2_DEPR_DEFAULT = V2_DEPR_1_WRITE_ONLY
 )
 
 func (e V2DeprecationEnum) IsAtLeast(v2d V2DeprecationEnum) bool {

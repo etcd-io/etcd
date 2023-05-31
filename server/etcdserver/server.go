@@ -1046,6 +1046,10 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 		lg.Info("restored auth store")
 	}
 
+	if err := serverstorage.AssertV2DeprecationStage(lg, s.Cfg.V2Deprecation); err != nil {
+		lg.Panic("illegal v2store content", zap.Error(err))
+	}
+
 	s.cluster.SetBackend(schema.NewMembershipBackend(lg, newbe))
 
 	lg.Info("restoring cluster configuration")

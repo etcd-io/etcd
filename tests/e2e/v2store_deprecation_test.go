@@ -101,9 +101,12 @@ func TestV2DeprecationFlags(t *testing.T) {
 		assertVerifyCannotStartV2deprecationNotYet(t, memberDataDir)
 	})
 
-	t.Run("--v2-deprecation=write-only fails", func(t *testing.T) {
-		assertVerifyCannotStartV2deprecationWriteOnly(t, memberDataDir)
-	})
+	//It is ok to start with write-only in 3.6
+	/*
+		t.Run("--v2-deprecation=write-only fails", func(t *testing.T) {
+			assertVerifyCannotStartV2deprecationWriteOnly(t, memberDataDir)
+		})
+	*/
 
 }
 
