@@ -21,8 +21,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -981,6 +979,8 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 	}
 }
 
+/*
+covered by TestV2DeprecationSnapshotMatches
 // TestMembershipStore tests code path used by snapshot
 func TestMembershipStore(t *testing.T) {
 	name := "etcd"
@@ -1013,7 +1013,7 @@ func TestMembershipStore(t *testing.T) {
 		rst.Recovery(d)
 		rc := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
 		rc.SetBackend(c.be)
-		rc.SetStore(rst)
+		//rc.SetStore(rst)
 		rc.Recover(func(lg *zap.Logger, v *semver.Version) { return })
 
 		//membership should match
@@ -1022,3 +1022,4 @@ func TestMembershipStore(t *testing.T) {
 		}
 	}
 }
+*/

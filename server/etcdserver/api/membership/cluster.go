@@ -888,3 +888,8 @@ func (c *RaftCluster) Store(store v2store.Store) {
 		mustSaveClusterVersionToStore(c.lg, store, c.version)
 	}
 }
+
+func (c *RaftCluster) RecoverMembersFromStore(st v2store.Store) {
+	c.members, c.removed = membersFromStore(c.lg, st)
+	c.buildMembershipMetric()
+}

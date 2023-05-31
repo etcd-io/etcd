@@ -26,7 +26,6 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -344,12 +343,10 @@ func openSnap(data []byte) v2store.Store {
 
 func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v2store.Store) {
 	rc1 := membership.NewCluster(zaptest.NewLogger(t))
-	rc1.SetStore(firstStore)
-	rc1.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+	rc1.RecoverMembersFromStore(firstStore)
 
 	rc2 := membership.NewCluster(zaptest.NewLogger(t))
-	rc2.SetStore(secondStore)
-	rc2.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+	rc2.RecoverMembersFromStore(secondStore)
 
 	//membership should match
 	if g := rc1.Members(); !reflect.DeepEqual(g, rc2.Members()) {
