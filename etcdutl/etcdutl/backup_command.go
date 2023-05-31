@@ -15,6 +15,7 @@
 package etcdutl
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"regexp"
@@ -28,9 +29,9 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -178,21 +179,11 @@ func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster)
 // mustTranslateV2store processes storeData such that they match 'desiredCluster'.
 // In particular the method overrides membership information.
 func mustTranslateV2store(lg *zap.Logger, storeData []byte, desired *desiredCluster) []byte {
-	st := v2store.New()
-	if err := st.Recovery(storeData); err != nil {
-		lg.Panic("cannot translate v2store", zap.Error(err))
-	}
-
 	raftCluster := membership.NewClusterFromMembers(lg, desired.clusterId, desired.members)
 	raftCluster.SetID(desired.nodeId, desired.clusterId)
-	raftCluster.SetStore(st)
-	raftCluster.PushMembershipToStorage()
-
-	outputData, err := st.Save()
-	if err != nil {
-		lg.Panic("cannot save v2store", zap.Error(err))
-	}
-	return outputData
+	d := etcdserver.GetMembershipInfoInV2Format(lg, raftCluster)
+	fmt.Printf("storeData = %v d = %v\n", storeData, d)
+	return d
 }
 
 func translateWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {
