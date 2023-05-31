@@ -15,7 +15,6 @@
 package membership
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha1"
 	"encoding/binary"
@@ -215,7 +214,7 @@ func (c *RaftCluster) ClientURLs() []string {
 func (c *RaftCluster) String() string {
 	c.Lock()
 	defer c.Unlock()
-	b := &bytes.Buffer{}
+	b := &strings.Builder{}
 	fmt.Fprintf(b, "{ClusterID:%s ", c.cid)
 	var ms []string
 	for _, m := range c.members {

@@ -59,7 +59,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			config.traffic.Run(ctx, c, limiter, ids, lm, finish)
+			config.Traffic.Run(ctx, c, limiter, ids, lm, finish)
 			mux.Lock()
 			reports = append(reports, c.Report())
 			mux.Unlock()
@@ -95,9 +95,10 @@ type Config struct {
 	minimalQPS  float64
 	maximalQPS  float64
 	clientCount int
-	traffic     Traffic
+	Traffic     Traffic
 }
 
 type Traffic interface {
 	Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
+	ExpectUniqueRevision() bool
 }

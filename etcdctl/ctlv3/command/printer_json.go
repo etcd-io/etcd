@@ -15,11 +15,11 @@
 package command
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -58,7 +58,7 @@ func printJSON(v interface{}) {
 }
 
 func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
-	var buffer bytes.Buffer
+	var buffer strings.Builder
 	var b []byte
 	buffer.WriteString("{\"header\":{\"cluster_id\":\"")
 	b = strconv.AppendUint(nil, r.Header.ClusterId, 16)

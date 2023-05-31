@@ -65,7 +65,10 @@ func TestRobustness(t *testing.T) {
 			name:      "ClusterOfSize3/" + traffic.Name,
 			failpoint: RandomFailpoint,
 			traffic:   traffic,
-			cluster:   *e2e.NewConfig(clusterOfSize3Options...),
+			watch: watchConfig{
+				expectUniqueRevision: traffic.Traffic.ExpectUniqueRevision(),
+			},
+			cluster: *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
 	scenarios = append(scenarios, testScenario{
@@ -157,7 +160,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 
 	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
 	validateGotAtLeastOneProgressNotify(t, r.clientReports, s.watch.requestProgress || watchProgressNotifyEnabled)
-	r.visualizeHistory = validateCorrectness(t, lg, r.clientReports)
+	r.visualizeHistory = validateCorrectness(t, lg, s.watch, r.clientReports)
 
 	panicked = false
 }
@@ -211,8 +214,8 @@ func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
 	return clus.ConcurrentStop()
 }
 
-func validateCorrectness(t *testing.T, lg *zap.Logger, reports []traffic.ClientReport) (visualize func(basepath string)) {
-	validateWatchCorrectness(t, reports)
+func validateCorrectness(t *testing.T, lg *zap.Logger, cfg watchConfig, reports []traffic.ClientReport) (visualize func(basepath string)) {
+	validateWatchCorrectness(t, cfg, reports)
 	operations := operationsFromClientReports(reports)
 	return model.ValidateOperationHistoryAndReturnVisualize(t, lg, operations)
 }

@@ -16,10 +16,10 @@
 package traceutil
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -44,7 +44,7 @@ func writeFields(fields []Field) string {
 	if len(fields) == 0 {
 		return ""
 	}
-	var buf bytes.Buffer
+	var buf strings.Builder
 	buf.WriteString("{")
 	for _, f := range fields {
 		buf.WriteString(f.format())

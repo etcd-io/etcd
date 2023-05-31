@@ -19,6 +19,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -63,7 +64,7 @@ func (s *kvstore) Lookup(key string) (string, bool) {
 }
 
 func (s *kvstore) Propose(k string, v string) {
-	var buf bytes.Buffer
+	var buf strings.Builder
 	if err := gob.NewEncoder(&buf).Encode(kv{k, v}); err != nil {
 		log.Fatal(err)
 	}

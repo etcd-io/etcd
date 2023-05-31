@@ -22,9 +22,7 @@ import (
 
 	"github.com/anishathalye/porcupine"
 	"github.com/google/go-cmp/cmp"
-	"go.uber.org/zap"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -37,27 +35,19 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 	reports := make([]traffic.ClientReport, len(clus.Procs))
 	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
 	for i, member := range clus.Procs {
-		c, err := clientv3.New(clientv3.Config{
-			Endpoints:            member.EndpointsGRPC(),
-			Logger:               zap.NewNop(),
-			DialKeepAliveTime:    10 * time.Second,
-			DialKeepAliveTimeout: 100 * time.Millisecond,
-		})
+		c, err := traffic.NewClient(member.EndpointsGRPC(), ids, baseTime)
 		if err != nil {
 			t.Fatal(err)
 		}
-		memberChan := make(chan int64, 1)
-		memberMaxRevisionChans[i] = memberChan
+		memberMaxRevisionChan := make(chan int64, 1)
+		memberMaxRevisionChans[i] = memberMaxRevisionChan
 		wg.Add(1)
-		go func(i int, c *clientv3.Client) {
+		go func(i int, c *traffic.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
-			responses := watchMember(ctx, t, c, memberChan, cfg, baseTime)
+			watchUntilRevision(ctx, t, c, memberMaxRevisionChan, cfg)
 			mux.Lock()
-			reports[i] = traffic.ClientReport{
-				ClientId: ids.NewClientId(),
-				Watch:    responses,
-			}
+			reports[i] = c.Report()
 			mux.Unlock()
 		}(i, c)
 	}
@@ -74,28 +64,27 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 }
 
 type watchConfig struct {
-	requestProgress bool
+	requestProgress      bool
+	expectUniqueRevision bool
 }
 
-// watchMember collects all responses until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
-// TODO: Use traffic.RecordingClient instead of clientv3.Client
-func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time) (resps []traffic.WatchResponse) {
+// watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
+func watchUntilRevision(ctx context.Context, t *testing.T, c *traffic.RecordingClient, maxRevisionChan <-chan int64, cfg watchConfig) {
 	var maxRevision int64 = 0
 	var lastRevision int64 = 0
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	watch := c.Watch(ctx, "", clientv3.WithPrefix(), clientv3.WithRev(1), clientv3.WithProgressNotify())
+	watch := c.Watch(ctx, "", 1, true, true)
 	for {
 		select {
 		case <-ctx.Done():
-			revision := watchResponsesMaxRevision(resps)
 			if maxRevision == 0 {
 				t.Errorf("Client didn't collect all events, max revision not set")
 			}
-			if revision < maxRevision {
-				t.Errorf("Client didn't collect all events, revision got %d, expected: %d", revision, maxRevision)
+			if lastRevision < maxRevision {
+				t.Errorf("Client didn't collect all events, revision got %d, expected: %d", lastRevision, maxRevision)
 			}
-			return resps
+			return
 		case revision, ok := <-maxRevisionChan:
 			if ok {
 				maxRevision = revision
@@ -112,12 +101,9 @@ func watchMember(ctx context.Context, t *testing.T, c *clientv3.Client, maxRevis
 			if cfg.requestProgress {
 				c.RequestProgress(ctx)
 			}
-			if resp.Err() == nil {
-				resps = append(resps, traffic.ToWatchResponse(resp, baseTime))
-			} else if !resp.Canceled {
+			if resp.Err() != nil && !resp.Canceled {
 				t.Errorf("Watch stream received error, err %v", resp.Err())
 			}
-			// Assumes that we track all events as we watch all keys.
 			if len(resp.Events) > 0 {
 				lastRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
 			}
@@ -140,14 +126,14 @@ func watchResponsesMaxRevision(responses []traffic.WatchResponse) int64 {
 	return maxRevision
 }
 
-func validateWatchCorrectness(t *testing.T, reports []traffic.ClientReport) {
+func validateWatchCorrectness(t *testing.T, cfg watchConfig, reports []traffic.ClientReport) {
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
 		validateOrdered(t, r)
-		validateUnique(t, r)
+		validateUnique(t, cfg.expectUniqueRevision, r)
 		validateAtomic(t, r)
+		// TODO: Validate Resumable
 		validateBookmarkable(t, r)
-		// TODO: Validate presumable
 	}
 	validateEventsMatch(t, reports)
 	// Expects that longest history encompasses all events.
@@ -202,19 +188,25 @@ func validateOrdered(t *testing.T, report traffic.ClientReport) {
 	}
 }
 
-func validateUnique(t *testing.T, report traffic.ClientReport) {
-	type revisionKey struct {
-		revision int64
-		key      string
-	}
-	uniqueOperations := map[revisionKey]struct{}{}
+func validateUnique(t *testing.T, expectUniqueRevision bool, report traffic.ClientReport) {
+	uniqueOperations := map[interface{}]struct{}{}
+
 	for _, resp := range report.Watch {
 		for _, event := range resp.Events {
-			rk := revisionKey{key: event.Op.Key, revision: event.Revision}
-			if _, found := uniqueOperations[rk]; found {
-				t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", rk.key, rk.revision, report.ClientId)
+			var key interface{}
+			if expectUniqueRevision {
+				key = event.Revision
+			} else {
+				key = struct {
+					revision int64
+					key      string
+				}{event.Revision, event.Op.Key}
 			}
-			uniqueOperations[rk] = struct{}{}
+
+			if _, found := uniqueOperations[key]; found {
+				t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", event.Op.Key, event.Revision, report.ClientId)
+			}
+			uniqueOperations[key] = struct{}{}
 		}
 	}
 }
