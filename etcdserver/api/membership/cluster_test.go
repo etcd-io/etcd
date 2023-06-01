@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/go-semver/semver"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/pkg/mock/mockstore"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -276,7 +277,7 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 }
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
-	cl := NewCluster(zap.NewExample(), "")
+	cl := NewCluster(zap.NewExample(), "", false)
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
@@ -943,6 +944,57 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 		c := newTestCluster(tt.members)
 		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
 			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
+
+func TestDetectDowngrade(t *testing.T) {
+	tests := []struct {
+		clusterVersion               string
+		nextClusterVersionCompatible bool
+		expectErr                    bool
+	}{
+		{
+			expectErr: false,
+		},
+		{
+			clusterVersion: "3.5.0",
+			expectErr:      true,
+		},
+		{
+			clusterVersion:               "3.5.0",
+			nextClusterVersionCompatible: true,
+			expectErr:                    false,
+		},
+		{
+			clusterVersion: "3.6.0",
+			expectErr:      true,
+		},
+		{
+			clusterVersion:               "3.6.0",
+			nextClusterVersionCompatible: true,
+			expectErr:                    true,
+		},
+		{
+			clusterVersion: "3.4.0",
+			expectErr:      false,
+		},
+		{
+			clusterVersion: "3.3.0",
+			expectErr:      false,
+		},
+	}
+	for i, tt := range tests {
+		var cv *semver.Version
+		if len(tt.clusterVersion) > 0 {
+			cv = semver.Must(semver.NewVersion(tt.clusterVersion))
+		}
+		err := detectDowngrade(cv, tt.nextClusterVersionCompatible)
+		if tt.expectErr && err == nil {
+			t.Errorf("%d: expect detectDowngrade error, got nil", i)
+		}
+		if !tt.expectErr && err != nil {
+			t.Errorf("%d: expect no detectDowngrade error, got %v", i, err)
 		}
 	}
 }

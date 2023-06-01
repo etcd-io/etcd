@@ -35,7 +35,7 @@ import (
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
 func isMemberBootstrapped(lg *zap.Logger, cl *membership.RaftCluster, member string, rt http.RoundTripper, timeout time.Duration) bool {
-	rcl, err := getClusterFromRemotePeers(lg, getRemotePeerURLs(cl, member), timeout, false, rt)
+	rcl, err := getClusterFromRemotePeers(lg, getRemotePeerURLs(cl, member), timeout, false, rt, cl.NextClusterVersionCompatible)
 	if err != nil {
 		return false
 	}
@@ -57,12 +57,12 @@ func isMemberBootstrapped(lg *zap.Logger, cl *membership.RaftCluster, member str
 // response, an error is returned.
 // Each request has a 10-second timeout. Because the upper limit of TTL is 5s,
 // 10 second is enough for building connection and finishing request.
-func GetClusterFromRemotePeers(lg *zap.Logger, urls []string, rt http.RoundTripper) (*membership.RaftCluster, error) {
-	return getClusterFromRemotePeers(lg, urls, 10*time.Second, true, rt)
+func GetClusterFromRemotePeers(lg *zap.Logger, urls []string, rt http.RoundTripper, nextClusterVersionCompatible bool) (*membership.RaftCluster, error) {
+	return getClusterFromRemotePeers(lg, urls, 10*time.Second, true, rt, nextClusterVersionCompatible)
 }
 
 // If logerr is true, it prints out more error messages.
-func getClusterFromRemotePeers(lg *zap.Logger, urls []string, timeout time.Duration, logerr bool, rt http.RoundTripper) (*membership.RaftCluster, error) {
+func getClusterFromRemotePeers(lg *zap.Logger, urls []string, timeout time.Duration, logerr bool, rt http.RoundTripper, nextClusterVersionCompatible bool) (*membership.RaftCluster, error) {
 	cc := &http.Client{
 		Transport: rt,
 		Timeout:   timeout,
@@ -128,7 +128,7 @@ func getClusterFromRemotePeers(lg *zap.Logger, urls []string, timeout time.Durat
 		// if membership members are not present then the raft cluster formed will be
 		// an invalid empty cluster hence return failed to get raft cluster member(s) from the given urls error
 		if len(membs) > 0 {
-			return membership.NewClusterFromMembers(lg, "", id, membs), nil
+			return membership.NewClusterFromMembers(lg, "", id, membs, nextClusterVersionCompatible), nil
 		}
 		return nil, fmt.Errorf("failed to get raft cluster member(s) from the given URLs")
 	}

@@ -59,6 +59,8 @@ type RaftCluster struct {
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
 	removed map[types.ID]bool
+	// NextClusterVersionCompatible allows downgrade from 3.5 to 3.4.
+	NextClusterVersionCompatible bool
 }
 
 // ConfigChangeContext represents a context for confChange.
@@ -72,8 +74,8 @@ type ConfigChangeContext struct {
 
 // NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
 // cluster with raft learner member.
-func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) (*RaftCluster, error) {
-	c := NewCluster(lg, token)
+func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap, nextClusterVersionCompatible bool) (*RaftCluster, error) {
+	c := NewCluster(lg, token, nextClusterVersionCompatible)
 	for name, urls := range urlsmap {
 		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
@@ -88,8 +90,8 @@ func NewClusterFromURLsMap(lg *zap.Logger, token string, urlsmap types.URLsMap) 
 	return c, nil
 }
 
-func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*Member) *RaftCluster {
-	c := NewCluster(lg, token)
+func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*Member, nextClusterVersionCompatible bool) *RaftCluster {
+	c := NewCluster(lg, token, nextClusterVersionCompatible)
 	c.cid = id
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -97,12 +99,13 @@ func NewClusterFromMembers(lg *zap.Logger, token string, id types.ID, membs []*M
 	return c
 }
 
-func NewCluster(lg *zap.Logger, token string) *RaftCluster {
+func NewCluster(lg *zap.Logger, token string, nextClusterVersionCompatible bool) *RaftCluster {
 	return &RaftCluster{
-		lg:      lg,
-		token:   token,
-		members: make(map[types.ID]*Member),
-		removed: make(map[types.ID]bool),
+		lg:                           lg,
+		token:                        token,
+		NextClusterVersionCompatible: nextClusterVersionCompatible,
+		members:                      make(map[types.ID]*Member),
+		removed:                      make(map[types.ID]bool),
 	}
 }
 
@@ -248,7 +251,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 	c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	c.version = clusterVersionFromStore(c.lg, c.v2store)
-	mustDetectDowngrade(c.lg, c.version)
+	mustDetectDowngrade(c.lg, c.version, c.NextClusterVersionCompatible)
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
@@ -567,7 +570,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	}
 	oldVer := c.version
 	c.version = ver
-	mustDetectDowngrade(c.lg, c.version)
+	mustDetectDowngrade(c.lg, c.version, c.NextClusterVersionCompatible)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.v2store, ver)
 	}
@@ -786,21 +789,40 @@ func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *R
 	return nil
 }
 
-func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version) {
-	lv := semver.Must(semver.NewVersion(version.Version))
-	// only keep major.minor version for comparison against cluster version
-	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
-	if cv != nil && lv.LessThan(*cv) {
+func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, nextClusterVersionCompatible bool) {
+	err := detectDowngrade(cv, nextClusterVersionCompatible)
+	if err != nil {
 		if lg != nil {
 			lg.Fatal(
-				"invalid downgrade; server version is lower than determined cluster version",
+				err.Error(),
 				zap.String("current-server-version", version.Version),
 				zap.String("determined-cluster-version", version.Cluster(cv.String())),
 			)
 		} else {
-			plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+			plog.Fatal(err)
 		}
 	}
+}
+
+func detectDowngrade(cv *semver.Version, nextClusterVersionCompatible bool) error {
+	if cv == nil {
+		return nil
+	}
+	lv := semver.Must(semver.NewVersion(version.Version))
+	// only keep major.minor version for comparison against cluster version
+	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
+	if !lv.LessThan(*cv) {
+		return nil
+	}
+	// allow 3.4 server to join 3.5 cluster. Note the local data schema will
+	// be automatically migrated to 3.4 if `--next-cluster-version-compatible`
+	// is enabled (true). Users can also execute `etcdutl migrate` to migrate
+	// the data before starting the server.
+	oneMinorVersionDown := &semver.Version{Major: cv.Major, Minor: cv.Minor - 1}
+	if !nextClusterVersionCompatible || !lv.Equal(*oneMinorVersionDown) {
+		return fmt.Errorf("invalid downgrade; (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+	}
+	return nil
 }
 
 // IsLocalMemberLearner returns if the local member is raft learner

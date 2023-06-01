@@ -277,7 +277,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		return err
 	}
 
-	s.cl, err = membership.NewClusterFromURLsMap(s.lg, cfg.InitialClusterToken, ics)
+	s.cl, err = membership.NewClusterFromURLsMap(s.lg, cfg.InitialClusterToken, ics, true)
 	if err != nil {
 		return err
 	}

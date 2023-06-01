@@ -360,11 +360,11 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		if err = cfg.VerifyJoinExisting(); err != nil {
 			return nil, err
 		}
-		cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+		cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap, cfg.NextClusterVersionCompatible)
 		if err != nil {
 			return nil, err
 		}
-		existingCluster, gerr := GetClusterFromRemotePeers(cfg.Logger, getRemotePeerURLs(cl, cfg.Name), prt)
+		existingCluster, gerr := GetClusterFromRemotePeers(cfg.Logger, getRemotePeerURLs(cl, cfg.Name), prt, cfg.NextClusterVersionCompatible)
 		if gerr != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", gerr)
 		}
@@ -386,7 +386,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		if err = cfg.VerifyBootstrap(); err != nil {
 			return nil, err
 		}
-		cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+		cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, cfg.InitialPeerURLsMap, cfg.NextClusterVersionCompatible)
 		if err != nil {
 			return nil, err
 		}
@@ -408,7 +408,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 			if checkDuplicateURL(urlsmap) {
 				return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
 			}
-			if cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, urlsmap); err != nil {
+			if cl, err = membership.NewClusterFromURLsMap(cfg.Logger, cfg.InitialClusterToken, urlsmap, cfg.NextClusterVersionCompatible); err != nil {
 				return nil, err
 			}
 		}
