@@ -44,11 +44,12 @@ var (
 )
 
 type binPath struct {
-	Etcd            string
-	EtcdLastRelease string
-	Etcdctl         string
-	Etcdutl         string
-	LazyFS          string
+	Etcd                  string
+	EtcdLastRelease       string
+	EtcdBeforeLastRelease string
+	Etcdctl               string
+	Etcdutl               string
+	LazyFS                string
 }
 
 func (bp *binPath) LazyFSAvailable() bool {
@@ -73,11 +74,12 @@ func InitFlags() {
 	flag.Parse()
 
 	BinPath = binPath{
-		Etcd:            *binDir + "/etcd",
-		EtcdLastRelease: *binDir + "/etcd-last-release",
-		Etcdctl:         *binDir + "/etcdctl",
-		Etcdutl:         *binDir + "/etcdutl",
-		LazyFS:          *binDir + "/lazyfs",
+		Etcd:                  *binDir + "/etcd",
+		EtcdLastRelease:       *binDir + "/etcd-last-release",
+		EtcdBeforeLastRelease: *binDir + "/etcd-before-last-release",
+		Etcdctl:               *binDir + "/etcdctl",
+		Etcdutl:               *binDir + "/etcdutl",
+		LazyFS:                *binDir + "/lazyfs",
 	}
 	CertPath = CertDir + "/server.crt"
 	PrivateKeyPath = CertDir + "/server.key.insecure"

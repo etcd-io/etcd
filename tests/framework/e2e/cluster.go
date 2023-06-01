@@ -643,6 +643,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		}
 	case LastVersion:
 		execPath = BinPath.EtcdLastRelease
+
+	case BeforeLastVersion:
+		execPath = BinPath.EtcdBeforeLastRelease
 	default:
 		panic(fmt.Sprintf("Unknown cluster version %v", cfg.Version))
 	}

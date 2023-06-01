@@ -87,8 +87,8 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse target version: %v", err)
 	}
-	if c.targetVersion.LessThan(version.V3_5) {
-		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5"`, storageVersionToString(c.targetVersion))
+	if c.targetVersion.LessThan(version.V3_4) {
+		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.4"`, storageVersionToString(c.targetVersion))
 	}
 
 	dbPath := datadir.ToBackendFileName(o.dataDir)

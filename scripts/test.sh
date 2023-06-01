@@ -564,44 +564,82 @@ function dep_pass {
 
 function release_pass {
   rm -f ./bin/etcd-last-release
+  rm -f ./bin/etcd-before-last-release
+  mkdir -p ./bin
 
-  # Work out the previous release based on the version reported by etcd binary
+  # Work out two previous releases based on the version reported by etcd binary
   binary_version=$(./bin/etcd --version | grep --only-matching --perl-regexp '(?<=etcd Version: )\d+\.\d+')
   binary_major=$(echo "${binary_version}" | cut -d '.' -f 1)
   binary_minor=$(echo "${binary_version}" | cut -d '.' -f 2)
+  previous_major=$binary_major
   previous_minor=$((binary_minor - 1))
+  before_previous_major=$binary_major
+  before_previous_minor=$((binary_minor - 2))
 
   # Handle the edge case where we go to a new major version
   # When this happens we obtain latest minor release of previous major
   if [ "${binary_minor}" -eq 0 ]; then
-    binary_major=$((binary_major - 1))
+    previous_major=$((binary_major - 1))
+    before_previous_major=$previous_minor
     previous_minor=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
     | grep --only-matching --perl-regexp "(?<=v)${binary_major}.\d.[\d]+?(?=[\^])" \
+    | sort --numeric-sort --key 1.3 | tail -1 | cut -d '.' -f 2)
+    before_previous_minor=$((previous_minor - 1))
+  fi
+
+  # Handle the edge case when only 'before previous' should be latest minor release of previous major
+  if [ "${binary_minor}" -eq 1 ]; then
+    before_previous_major=$((binary_major - 1))
+    before_previous_minor=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
+    | grep --only-matching --perl-regexp "(?<=v)${before_previous_major}.\d.[\d]+?(?=[\^])" \
     | sort --numeric-sort --key 1.3 | tail -1 | cut -d '.' -f 2)
   fi
   
   # This gets a list of all remote tags for the release branch in regex
   # Sort key is used to sort numerically by patch version
   # Latest version is then stored for use below
-  UPGRADE_VER=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
-    | grep --only-matching --perl-regexp "(?<=v)${binary_major}.${previous_minor}.[\d]+?(?=[\^])" \
+  UPGRADE_VER_LAST=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
+    | grep --only-matching --perl-regexp "(?<=v)${previous_major}.${previous_minor}.[\d]+?(?=[\^])" \
     | sort --numeric-sort --key 1.5 | tail -1 | sed 's/^/v/')
-  log_callout "Found latest release: ${UPGRADE_VER}."
+  log_callout "Found latest release: ${UPGRADE_VER_LAST}."
 
-  if [ -n "${MANUAL_VER:-}" ]; then
+  if [ -n "${MANUAL_VER_LAST:-}" ]; then
     # in case, we need to test against different version
-    UPGRADE_VER=$MANUAL_VER
+    UPGRADE_VER_LAST=$MANUAL_VER_LAST
   fi
-  if [[ -z ${UPGRADE_VER} ]]; then
-    UPGRADE_VER="v3.5.0"
-    log_warning "fallback to" ${UPGRADE_VER}
+  if [[ -z ${UPGRADE_VER_LAST} ]]; then
+    UPGRADE_VER_LAST="v3.5.0"
+    log_warning "fallback to" ${UPGRADE_VER_LAST}
   fi
 
-  local file="etcd-$UPGRADE_VER-linux-$GOARCH.tar.gz"
-  log_callout "Downloading $file"
+  UPGRADE_VER_BEFORE_LAST=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
+    | grep --only-matching --perl-regexp "(?<=v)${before_previous_major}.${before_previous_minor}.[\d]+?(?=[\^])" \
+    | sort --numeric-sort --key 1.5 | tail -1 | sed 's/^/v/')
+  log_callout "Found before latest release: ${UPGRADE_VER_BEFORE_LAST}."
+
+  if [ -n "${MANUAL_VER_BEFORE_LAST:-}" ]; then
+    # in case, we need to test against different version
+    UPGRADE_VER_BEFORE_LAST=MANUAL_VER_BEFORE_LAST
+  fi
+  if [[ -z ${UPGRADE_VER_BEFORE_LAST} ]]; then
+    UPGRADE_VER_BEFORE_LAST="v3.4.0"
+    log_warning "fallback to" ${UPGRADE_VER_BEFORE_LAST}
+  fi
+
+  download_etcd_ver_to_tmp ${UPGRADE_VER_LAST}
+  mv /tmp/etcd ./bin/etcd-last-release
+
+  download_etcd_ver_to_tmp ${UPGRADE_VER_BEFORE_LAST}
+  mv /tmp/etcd ./bin/etcd-before-last-release
+}
+
+function download_etcd_ver_to_tmp {
+    local version="$1"
+    local file="etcd-$version-linux-$GOARCH.tar.gz"
+    log_callout "Downloading $file"
 
   set +e
-  curl --fail -L "https://github.com/etcd-io/etcd/releases/download/$UPGRADE_VER/$file" -o "/tmp/$file"
+  curl --fail -L "https://github.com/etcd-io/etcd/releases/download/$version/$file" -o "/tmp/$file"
   local result=$?
   set -e
   case $result in
@@ -612,8 +650,6 @@ function release_pass {
   esac
 
   tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1
-  mkdir -p ./bin
-  mv /tmp/etcd ./bin/etcd-last-release
 }
 
 function mod_tidy_for_module {

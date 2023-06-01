@@ -68,17 +68,19 @@ func (b bucket) String() string          { return string(b.Name()) }
 func (b bucket) IsSafeRangeBucket() bool { return b.safeRangeBucket }
 
 var (
-	// Pre v3.5
-	ScheduledCompactKeyName    = []byte("scheduledCompactRev")
-	FinishedCompactKeyName     = []byte("finishedCompactRev")
-	MetaConsistentIndexKeyName = []byte("consistent_index")
-	AuthEnabledKeyName         = []byte("authEnabled")
-	AuthRevisionKeyName        = []byte("authRevision")
-	// Since v3.5
-	MetaTermKeyName              = []byte("term")
-	MetaConfStateName            = []byte("confState")
+	// Pre v3.4
+	ScheduledCompactKeyName      = []byte("scheduledCompactRev")
+	FinishedCompactKeyName       = []byte("finishedCompactRev")
+	MetaConsistentIndexKeyName   = []byte("consistent_index")
+	AuthEnabledKeyName           = []byte("authEnabled")
+	AuthRevisionKeyName          = []byte("authRevision")
 	ClusterClusterVersionKeyName = []byte("clusterVersion")
-	ClusterDowngradeKeyName      = []byte("downgrade")
+
+	// No new keys were added in v3.4
+	// Since v3.5
+	MetaTermKeyName         = []byte("term")
+	MetaConfStateName       = []byte("confState")
+	ClusterDowngradeKeyName = []byte("downgrade")
 	// Since v3.6
 	MetaStorageVersionName = []byte("storageVersion")
 	// Before adding new meta key please update server/etcdserver/version

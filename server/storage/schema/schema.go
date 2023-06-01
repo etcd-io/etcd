@@ -15,14 +15,17 @@
 package schema
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/coreos/go-semver/semver"
+
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
-
+	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 // Validate checks provided backend to confirm that schema used is supported.
@@ -83,7 +86,7 @@ func UnsafeMigrate(lg *zap.Logger, tx backend.UnsafeReadWriter, w WALVersion, ta
 // DetectSchemaVersion returns version of storage schema. Returned value depends on etcd version that created the backend. For
 // * v3.6 and newer will return storage version.
 // * v3.5 will return it's version if it includes all storage fields added in v3.5 (might require a snapshot).
-// * v3.4 and older is not supported and will return error.
+// * v3.4 will return it's version if it doesn't include all storage fields added in v3.5.
 func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, err error) {
 	tx.RLock()
 	defer tx.RUnlock()
@@ -96,12 +99,18 @@ func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.UnsafeReader) (v semve
 	if vp != nil {
 		return *vp, nil
 	}
+
 	confstate := UnsafeConfStateFromBackend(lg, tx)
-	if confstate == nil {
-		return v, fmt.Errorf("missing confstate information")
-	}
 	_, term := UnsafeReadConsistentIndex(tx)
-	if term == 0 {
+	if confstate == nil && term == 0 {
+		// if both confstate and term are missing, assume it's v3.4
+		return version.V3_4, nil
+	} else if confstate == nil {
+		return v, fmt.Errorf("missing confstate information")
+	} else if len(confstate.Voters) == 0 && term == 0 {
+		// if confstate is empty and term is missing, assume it's v3.5 that was migrated from v3.4 and never started
+		return version.V3_5, nil
+	} else if term == 0 {
 		return v, fmt.Errorf("missing term information")
 	}
 	return version.V3_5, nil
@@ -129,10 +138,21 @@ var (
 	// schema was introduced in v3.6 as so its changes were not tracked before.
 	schemaChanges = map[semver.Version][]schemaChange{
 		version.V3_6: {
-			addNewField(Meta, MetaStorageVersionName, emptyStorageVersion),
+			// emptyValue is used for v3.6 Step for the first time, in all other version StoragetVersion should be set by migrator.
+			addNewField(Meta, MetaStorageVersionName, emptyValue),
+		},
+		version.V3_5: {
+			// UnsafeReadConsistentIndex will fail on []byte(""), use 0 as default
+			addNewField(Meta, MetaTermKeyName, emptyTerm),
+			// UnsafeConfStateFromBackend will fail on []byte(""), use empty struct as default
+			addNewField(Meta, MetaConfStateName, emptyConfState),
+			// DowngradeInfoFromBackend will fail on []byte(""), false is better default
+			addNewField(Cluster, ClusterDowngradeKeyName, falseDowngradeInfo),
 		},
 	}
-	// emptyStorageVersion is used for v3.6 Step for the first time, in all other version StoragetVersion should be set by migrator.
-	// Adding a addNewField for StorageVersion we can reuse logic to remove it when downgrading to v3.5
-	emptyStorageVersion = []byte("")
+
+	emptyValue            = []byte("")
+	emptyTerm             = make([]byte, 8)
+	emptyConfState, _     = json.Marshal(raftpb.ConfState{})
+	falseDowngradeInfo, _ = json.Marshal(serverversion.DowngradeInfo{Enabled: false, TargetVersion: ""})
 )

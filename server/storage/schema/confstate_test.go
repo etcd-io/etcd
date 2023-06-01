@@ -59,6 +59,22 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 		assert.Nil(t, UnsafeConfStateFromBackend(lg, tx))
 	})
 
+	emptyConfState := raftpb.ConfState{}
+	t.Run("save empty", func(t *testing.T) {
+		tx := be.BatchTx()
+		tx.Lock()
+		MustUnsafeSaveConfStateToBackend(lg, tx, &emptyConfState)
+		tx.Unlock()
+		tx.Commit()
+	})
+
+	t.Run("read empty", func(t *testing.T) {
+		tx := be.ReadTx()
+		tx.RLock()
+		defer tx.RUnlock()
+		assert.Equal(t, emptyConfState, *UnsafeConfStateFromBackend(lg, tx))
+	})
+
 	confState := raftpb.ConfState{Learners: []uint64{1, 2}, Voters: []uint64{3}, AutoLeave: false}
 
 	t.Run("save", func(t *testing.T) {
