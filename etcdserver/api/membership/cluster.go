@@ -248,7 +248,8 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 	c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	c.version = clusterVersionFromStore(c.lg, c.v2store)
-	mustDetectDowngrade(c.lg, c.version)
+	// TODO: add flag to control this check
+	//mustDetectDowngrade(c.lg, c.version)
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
@@ -567,7 +568,8 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	}
 	oldVer := c.version
 	c.version = ver
-	mustDetectDowngrade(c.lg, c.version)
+	// TODO: add flag to control this check
+	//mustDetectDowngrade(c.lg, c.version)
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.v2store, ver)
 	}

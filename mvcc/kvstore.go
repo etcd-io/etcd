@@ -43,6 +43,10 @@ var (
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
+	// 3.5 meta keys that have to be deleted for downgrade
+	confStateKeyName = []byte("confState")
+	termKeyName      = []byte("term")
+
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
 	ErrCanceled  = errors.New("mvcc: watcher is canceled")
@@ -148,6 +152,8 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, ig ConsistentI
 	tx.Lock()
 	tx.UnsafeCreateBucket(keyBucketName)
 	tx.UnsafeCreateBucket(metaBucketName)
+	// TODO: add flag to control this
+	downgradeMetaBucket(tx)
 	tx.Unlock()
 	s.b.ForceCommit()
 
@@ -378,6 +384,9 @@ func (s *store) restore() error {
 	// restore index
 	tx := s.b.BatchTx()
 	tx.Lock()
+
+	// TODO: add flag to control this
+	downgradeMetaBucket(tx)
 
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
@@ -636,4 +645,10 @@ func appendMarkTombstone(lg *zap.Logger, b []byte) []byte {
 // isTombstone checks whether the revision bytes is a tombstone.
 func isTombstone(b []byte) bool {
 	return len(b) == markedRevBytesLen && b[markBytePosition] == markTombstone
+}
+
+// downgradeMetaBucket delete 3.5 specific keys to make backend fully compatible with 3.4
+func downgradeMetaBucket(tx backend.BatchTx) {
+	tx.UnsafeDelete(metaBucketName, confStateKeyName)
+	tx.UnsafeDelete(metaBucketName, termKeyName)
 }
