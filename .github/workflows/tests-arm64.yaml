@@ -36,6 +36,7 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
+          go clean -testcache
 
           mkdir "${TARGET}"
           export JUNIT_REPORT_DIR=$(realpath ${TARGET})
