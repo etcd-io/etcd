@@ -245,8 +245,6 @@ func (c *RaftCluster) SetID(localID, cid types.ID) {
 	c.buildMembershipMetric()
 }
 
-func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
-
 func (c *RaftCluster) SetBackend(be MembershipBackend) {
 	c.be = be
 	c.be.MustCreateBackendBuckets()
