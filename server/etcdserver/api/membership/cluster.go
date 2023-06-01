@@ -424,10 +424,7 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
-	if c.v2store != nil {
-		mustDeleteMemberFromStore(c.lg, c.v2store, id)
-	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustDeleteMemberFromBackend(id)
 	}
 
