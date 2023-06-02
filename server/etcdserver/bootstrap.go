@@ -77,7 +77,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 
 	haveWAL := wal.Exist(cfg.WALDir())
 	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
-	backend, err := bootstrapBackend(cfg, haveWAL, st, ss)
+	backend, err := bootstrapBackend(cfg, haveWAL, ss)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
 	return snap.New(cfg.Logger, cfg.SnapDir())
 }
 
-func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, ss *snap.Snapshotter) (backend *bootstrappedBackend, err error) {
+func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, ss *snap.Snapshotter) (backend *bootstrappedBackend, err error) {
 	beExist := fileutil.Exist(cfg.BackendPath())
 	ci := cindex.NewConsistentIndex(nil)
 	beHooks := serverstorage.NewBackendHooks(cfg.Logger, ci)
