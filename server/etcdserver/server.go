@@ -325,7 +325,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lgMu:                  new(sync.RWMutex),
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
-		v2store:               b.storage.st,
+		v2store:               v2store.New(StoreClusterPrefix, StoreKeysPrefix),
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
 		memberId:              b.cluster.nodeID,
