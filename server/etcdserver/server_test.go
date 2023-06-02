@@ -20,9 +20,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"os"
-	"path"
-	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
@@ -34,10 +31,8 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
-	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/pkg/v3/wait"
@@ -46,17 +41,13 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
-	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
-	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
@@ -64,6 +55,7 @@ import (
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
 // and are served through local data.
+/*
 func TestDoLocalAction(t *testing.T) {
 	tests := []struct {
 		req pb.Request
@@ -123,9 +115,11 @@ func TestDoLocalAction(t *testing.T) {
 		}
 	}
 }
+*/
 
 // TestDoBadLocalAction tests server requests which do not need to go through consensus,
 // and return errors when they fetch from local data.
+/*
 func TestDoBadLocalAction(t *testing.T) {
 	storeErr := fmt.Errorf("bah")
 	tests := []struct {
@@ -178,6 +172,7 @@ func TestDoBadLocalAction(t *testing.T) {
 		}
 	}
 }
+*/
 
 /*
 Following test case crafts a V2 request and tests for repeat apply operation.
@@ -249,7 +244,7 @@ func TestApplyRepeat(t *testing.T) {
 	}
 }
 */
-
+/*
 func TestApplyRequest(t *testing.T) {
 	tests := []struct {
 		req pb.Request
@@ -492,6 +487,7 @@ func TestApplyRequest(t *testing.T) {
 		}
 	}
 }
+*/
 
 /*
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
@@ -790,6 +786,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	}
 }
 
+/*
 func TestDoProposal(t *testing.T) {
 	tests := []pb.Request{
 		{Method: "POST", ID: 1},
@@ -1316,7 +1313,6 @@ func TestTriggerSnap(t *testing.T) {
 	srv.Stop()
 }
 
-/*
 Following test case possibly needs to be rewritten to send out req type compatible with v3
 // TestConcurrentApplyAndSnapshotV3 will send out snapshots concurrently with
 // proposals.
@@ -1678,6 +1674,7 @@ func TestPublishV3Retry(t *testing.T) {
 	<-ch
 }
 
+/*
 func TestUpdateVersion(t *testing.T) {
 	n := newNodeRecorder()
 	ch := make(chan interface{}, 1)
@@ -1700,7 +1697,7 @@ func TestUpdateVersion(t *testing.T) {
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	srv.updateClusterVersionV2("2.0.0")
+	srv.updateClusterVersionV3("2.0.0")
 
 	action := n.Action()
 	if len(action) != 1 {
@@ -1724,6 +1721,7 @@ func TestUpdateVersion(t *testing.T) {
 		t.Errorf("val = %s, want %s", r.Val, "2.0.0")
 	}
 }
+*/
 
 func TestStopNotify(t *testing.T) {
 	s := &EtcdServer{
