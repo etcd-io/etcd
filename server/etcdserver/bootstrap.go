@@ -38,7 +38,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2discovery"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	servererrors "go.etcd.io/etcd/server/v3/etcdserver/errors"
@@ -76,7 +75,6 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
-	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 	backend, err := bootstrapBackend(cfg, haveWAL, ss)
 	if err != nil {
 		return nil, err
@@ -96,7 +94,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		return nil, err
 	}
 
-	s, err := bootstrapStorage(cfg, st, backend, bwal, cluster)
+	s, err := bootstrapStorage(cfg, backend, bwal, cluster)
 	if err != nil {
 		backend.Close()
 		return nil, err
@@ -131,7 +129,6 @@ func (s *bootstrappedServer) Close() {
 type bootstrappedStorage struct {
 	backend *bootstrappedBackend
 	wal     *bootstrappedWAL
-	st      v2store.Store
 }
 
 func (s *bootstrappedStorage) Close() {
@@ -165,14 +162,13 @@ type bootstrappedRaft struct {
 	storage *raft.MemoryStorage
 }
 
-func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappedBackend, wal *bootstrappedWAL, cl *bootstrapedCluster) (b *bootstrappedStorage, err error) {
+func bootstrapStorage(cfg config.ServerConfig, be *bootstrappedBackend, wal *bootstrappedWAL, cl *bootstrapedCluster) (b *bootstrappedStorage, err error) {
 	if wal == nil {
 		wal = bootstrapNewWAL(cfg, cl)
 	}
 
 	return &bootstrappedStorage{
 		backend: be,
-		st:      st,
 		wal:     wal,
 	}, nil
 }
