@@ -76,7 +76,7 @@ func newEpHashKVCommand() *cobra.Command {
 		Short: "Prints the KV history hash for each endpoint in --endpoints",
 		Run:   epHashKVCommandFunc,
 	}
-	hc.PersistentFlags().Int64Var(&epHashKVRev, "rev", 0, "maximum revision to hash (default: all revisions)")
+	hc.PersistentFlags().Int64Var(&epHashKVRev, "rev", 0, "maximum revision to hash (default: latest revision)")
 	return hc
 }
 
