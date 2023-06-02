@@ -8,6 +8,7 @@ Dependency management
     - [Steps to bump a dependency](#steps-to-bump-a-dependency)
     - [Indirect dependencies](#indirect-dependencies)
     - [About gRPC](#about-grpc)
+    - [Rotation worksheet](#rotation-worksheet)
 - **[Stable branches](#stable-branches)**
 
 # Main branch
@@ -82,6 +83,11 @@ The plan is to remove the dependency on some grpc-go's experimental API firstly,
 [issues/15145](https://github.com/etcd-io/etcd/issues/15145).
 
 `go.opentelemetry.io/otel` version update is indirectly blocked due to this gRPC issue. Please get more details in [pull/15810](https://github.com/etcd-io/etcd/pull/15810).
+
+## Rotation worksheet
+The dependabot scheduling interval is weekly; it means dependabot will automatically raise a bunch of PRs per week.
+Usually human intervention is required each time. We have a [rotation worksheet](https://docs.google.com/spreadsheets/d/1DDWzbcOx1p32MhyelaPZ_SfYtAD6xRsrtGRZ9QXPOyQ/edit#gid=0),
+and everyone is welcome to participate; you just need to register your name in the worksheet.
 
 # Stable branches
 Usually we don't proactively bump dependencies for stable releases unless there are any CVEs or bugs that affect etcd.
