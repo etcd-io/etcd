@@ -325,7 +325,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lgMu:                  new(sync.RWMutex),
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
-		v2store:               v2store.New(StoreClusterPrefix, StoreKeysPrefix),
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
 		memberId:              b.cluster.nodeID,
@@ -343,7 +342,9 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": b.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
-	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
+	if srv.v2store != nil {
+		srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
+	}
 
 	srv.be = b.storage.backend.be
 	srv.beHooks = b.storage.backend.beHooks
@@ -439,6 +440,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}
 	srv.r.transport = tr
+
+	if srv.v2store != nil {
+		panic(fmt.Sprintf("This constructor should not have set v2store"))
+	}
 
 	return srv, nil
 }
@@ -853,7 +858,7 @@ func (s *EtcdServer) run() {
 			lg.Warn("data-dir used by this member must be removed")
 			return
 		case <-getSyncC():
-			if s.v2store.HasTTLKeys() {
+			if s.v2store != nil && s.v2store.HasTTLKeys() {
 				s.sync(s.Cfg.ReqTimeout())
 			}
 		case <-s.stop:
@@ -1890,14 +1895,20 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
 		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
+		if s.v2store != nil {
+			s.lg.Debug("V2request applyEntryNormal", zap.Stringer("raftReq", &raftReq))
+			s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
+		}
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
-		s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
+		s.lg.Debug("V2 applyEntryNormal", zap.Stringer("raftReq", &raftReq))
+		if s.v2store != nil {
+			s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
+		}
 		return
 	}
 
