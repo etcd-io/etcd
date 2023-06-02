@@ -61,7 +61,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
@@ -134,20 +133,11 @@ func init() {
 }
 
 type Response struct {
-	Term    uint64
-	Index   uint64
-	Event   *v2store.Event
-	Watcher v2store.Watcher
-	Err     error
-}
-
-type ServerV2 interface {
-	Server
-	Leader() types.ID
-
-	// Do takes a V2 request and attempts to fulfill it, returning a Response.
-	Do(ctx context.Context, r pb.Request) (Response, error)
-	ClientCertAuthEnabled() bool
+	Term  uint64
+	Index uint64
+	//Event   *v2store.Event
+	//Watcher v2store.Watcher
+	Err error
 }
 
 type ServerV3 interface {
@@ -249,10 +239,7 @@ type EtcdServer struct {
 
 	cluster *membership.RaftCluster
 
-	v2store     v2store.Store
 	snapshotter *snap.Snapshotter
-
-	applyV2 ApplierV2
 
 	uberApply apply.UberApplier
 
@@ -342,9 +329,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": b.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
-	if srv.v2store != nil {
-		srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
-	}
 
 	srv.be = b.storage.backend.be
 	srv.beHooks = b.storage.backend.beHooks
@@ -440,10 +424,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}
 	srv.r.transport = tr
-
-	if srv.v2store != nil {
-		panic(fmt.Sprintf("This constructor should not have set v2store"))
-	}
 
 	return srv, nil
 }
@@ -636,7 +616,7 @@ func (s *EtcdServer) Cluster() api.Cluster { return s.cluster }
 func (s *EtcdServer) ApplyWait() <-chan struct{} { return s.applyWait.Wait(s.getCommittedIndex()) }
 
 type ServerPeer interface {
-	ServerV2
+	Server
 	RaftHandler() http.Handler
 	LeaseHandler() http.Handler
 }
@@ -858,9 +838,7 @@ func (s *EtcdServer) run() {
 			lg.Warn("data-dir used by this member must be removed")
 			return
 		case <-getSyncC():
-			if s.v2store != nil && s.v2store.HasTTLKeys() {
-				s.sync(s.Cfg.ReqTimeout())
-			}
+			lg.Warn("NOP")
 		case <-s.stop:
 			return
 		}
@@ -1895,20 +1873,13 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
 		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		if s.v2store != nil {
-			s.lg.Debug("V2request applyEntryNormal", zap.Stringer("raftReq", &raftReq))
-			s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
-		}
+		s.lg.Warn("V2request applyEntryNormal will be dropped", zap.Stringer("raftReq", &raftReq))
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
-		req := (*RequestV2)(raftReq.V2)
-		s.lg.Debug("V2 applyEntryNormal", zap.Stringer("raftReq", &raftReq))
-		if s.v2store != nil {
-			s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
-		}
+		s.lg.Warn("V2 applyEntryNormal will be dropped", zap.Stringer("raftReq", &raftReq))
 		return
 	}
 
@@ -2261,46 +2232,6 @@ func (s *EtcdServer) monitorCompactHash() {
 			continue
 		}
 		s.corruptionChecker.CompactHashCheck()
-	}
-}
-
-func (s *EtcdServer) updateClusterVersionV2(ver string) {
-	lg := s.Logger()
-
-	if s.cluster.Version() == nil {
-		lg.Info(
-			"setting up initial cluster version using v2 API",
-			zap.String("cluster-version", version.Cluster(ver)),
-		)
-	} else {
-		lg.Info(
-			"updating cluster version using v2 API",
-			zap.String("from", version.Cluster(s.cluster.Version().String())),
-			zap.String("to", version.Cluster(ver)),
-		)
-	}
-
-	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    ver,
-	}
-
-	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
-	_, err := s.Do(ctx, req)
-	cancel()
-
-	switch err {
-	case nil:
-		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
-		return
-
-	case errors.ErrStopped:
-		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
-		return
-
-	default:
-		lg.Warn("failed to update cluster version", zap.Error(err))
 	}
 }
 
