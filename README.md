@@ -119,8 +119,9 @@ go get go.etcd.io/etcd/client/v3
 
 Now it's time to dig into the full etcd API and other guides.
 
-* Read the full [documentation][].
-* Explore the full gRPC [API][].
+* Read the full [documentation].
+* Review etcd [frequently asked questions].
+* Explore the full gRPC [API].
 * Set up a [multi-machine cluster][clustering].
 * Learn the [config format, env variables and flags][configuration].
 * Find [language bindings and tools][integrations].
@@ -166,7 +167,9 @@ Please refer to [community-membership.md](Documentation/contributor-guide/commun
 
 ## Reporting bugs
 
-See [reporting bugs](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md) for details about reporting any issues.
+See [reporting bugs](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md) for details about reporting any issues. Before opening an issue please check it is not covered in our [frequently asked questions].
+
+[frequently asked questions]: https://etcd.io/docs/latest/faq
 
 ## Reporting a security vulnerability
 
