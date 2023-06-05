@@ -24,6 +24,7 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
+          go clean -testcache
 
           echo "${TARGET}"
           case "${TARGET}" in
