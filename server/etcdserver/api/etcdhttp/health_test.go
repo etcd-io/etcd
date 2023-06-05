@@ -23,6 +23,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/raft/v3"
@@ -69,18 +70,20 @@ func (s *fakeHealthServer) Do(ctx context.Context, r pb.Request) (etcdserver.Res
 }
 func (s *fakeHealthServer) ClientCertAuthEnabled() bool { return false }
 
+type testcase struct {
+	name           string
+	alarms         []*pb.AlarmMember
+	healthCheckURL string
+	apiError       error
+
+	expectStatusCode int
+	expectHealth     string
+}
+
 func TestHealthHandler(t *testing.T) {
 	// define the input and expected output
 	// input: alarms, and healthCheckURL
-	tests := []struct {
-		name           string
-		alarms         []*pb.AlarmMember
-		healthCheckURL string
-		apiError       error
-
-		expectStatusCode int
-		expectHealth     string
-	}{
+	tests := []testcase{
 		{
 			name:             "Healthy if no alarm",
 			alarms:           []*pb.AlarmMember{},
@@ -155,34 +158,38 @@ func TestHealthHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mux := http.NewServeMux()
-			HandleHealth(zaptest.NewLogger(t), mux, &fakeHealthServer{
-				fakeServer: fakeServer{alarms: tt.alarms},
-				health:     tt.expectHealth,
-				apiError:   tt.apiError,
-			})
-			ts := httptest.NewServer(mux)
-			defer ts.Close()
-
-			res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+tt.healthCheckURL)})
-			if err != nil {
-				t.Errorf("fail serve http request %s %v", tt.healthCheckURL, err)
-			}
-			if res == nil {
-				t.Errorf("got nil http response with http request %s", tt.healthCheckURL)
-				return
-			}
-			if res.StatusCode != tt.expectStatusCode {
-				t.Errorf("want statusCode %d but got %d", tt.expectStatusCode, res.StatusCode)
-			}
-			health, err := parseHealthOutput(res.Body)
-			if err != nil {
-				t.Errorf("fail parse health check output %v", err)
-			}
-			if health.Health != tt.expectHealth {
-				t.Errorf("want health %s but got %s", tt.expectHealth, health.Health)
-			}
+			testHealth(t, tt, HandleHealth)
 		})
+	}
+}
+
+func testHealth(t *testing.T, tt testcase, handleFunc func(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth)) {
+	mux := http.NewServeMux()
+	handleFunc(zaptest.NewLogger(t), mux, &fakeHealthServer{
+		fakeServer: fakeServer{alarms: tt.alarms},
+		health:     tt.expectHealth,
+		apiError:   tt.apiError,
+	})
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+tt.healthCheckURL)})
+	if err != nil {
+		t.Errorf("fail serve http request %s %v", tt.healthCheckURL, err)
+	}
+	if res == nil {
+		t.Errorf("got nil http response with http request %s", tt.healthCheckURL)
+		return
+	}
+	if res.StatusCode != tt.expectStatusCode {
+		t.Errorf("want statusCode %d but got %d", tt.expectStatusCode, res.StatusCode)
+	}
+	health, err := parseHealthOutput(res.Body)
+	if err != nil {
+		t.Errorf("fail parse health check output %v", err)
+	}
+	if health.Health != tt.expectHealth {
+		t.Errorf("want health %s but got %s", tt.expectHealth, health.Health)
 	}
 }
 
@@ -272,33 +279,7 @@ func TestReadyzHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mux := http.NewServeMux()
-			HandleReadyz(zaptest.NewLogger(t), mux, &fakeHealthServer{
-				fakeServer: fakeServer{alarms: tt.alarms},
-				health:     tt.expectHealth,
-				apiError:   tt.apiError,
-			})
-			ts := httptest.NewServer(mux)
-			defer ts.Close()
-
-			res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+tt.healthCheckURL)})
-			if err != nil {
-				t.Errorf("fail serve http request %s %v", tt.healthCheckURL, err)
-			}
-			if res == nil {
-				t.Errorf("got nil http response with http request %s", tt.healthCheckURL)
-				return
-			}
-			if res.StatusCode != tt.expectStatusCode {
-				t.Errorf("want statusCode %d but got %d", tt.expectStatusCode, res.StatusCode)
-			}
-			health, err := parseHealthOutput(res.Body)
-			if err != nil {
-				t.Errorf("fail parse health check output %v", err)
-			}
-			if health.Health != tt.expectHealth {
-				t.Errorf("want health %s but got %s", tt.expectHealth, health.Health)
-			}
+			testHealth(t, tt, HandleReadyz)
 		})
 	}
 }
@@ -368,35 +349,7 @@ func TestLivezHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mux := http.NewServeMux()
-			HandleLivez(zaptest.NewLogger(t), mux, &fakeHealthServer{
-				fakeServer: fakeServer{alarms: tt.alarms},
-				health:     tt.expectHealth,
-				apiError:   tt.apiError,
-			})
-			ts := httptest.NewServer(mux)
-			defer ts.Close()
-
-			res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+tt.healthCheckURL)})
-			if err != nil {
-				t.Errorf("fail serve http request %s %v", tt.healthCheckURL, err)
-			}
-			if res == nil {
-				t.Errorf("got nil http response with http request %s", tt.healthCheckURL)
-				return
-			}
-			if res.StatusCode != tt.expectStatusCode {
-				t.Errorf("want statusCode %d but got %d", tt.expectStatusCode, res.StatusCode)
-			}
-
-			health, err := parseHealthOutput(res.Body)
-
-			if err != nil {
-				t.Errorf("fail parse health check output %v", err)
-			}
-			if health.Health != tt.expectHealth {
-				t.Errorf("want health %s but got %s", tt.expectHealth, health.Health)
-			}
+			testHealth(t, tt, HandleLivez)
 		})
 	}
 }
@@ -404,7 +357,6 @@ func TestLivezHandler(t *testing.T) {
 func parseHealthOutput(body io.Reader) (Health, error) {
 	obj := Health{}
 	d, derr := io.ReadAll(body)
-	println(string(d))
 	if derr != nil {
 		return obj, derr
 	}
