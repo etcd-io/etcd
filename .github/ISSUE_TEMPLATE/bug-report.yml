@@ -1,14 +1,23 @@
 ---
 name: Bug Report
-description: Report a bug encountered while operating Etcd
+description: Report a bug encountered while operating etcd
 labels:
   - type/bug
 body:
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Bug report criteria
+      description: Please confirm this bug report meets the following criteria.
+      options:
+        - label: This bug report is not security related, security issues should be disclosed privately via security@etcd.io.
+        - label: This is not a support request, support requests should be raised in the etcd [discussion forums](https://github.com/etcd-io/etcd/discussions).
+        - label: You have read the etcd [bug reporting guidelines](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md).
+        - label: Existing open issues along with etcd [frequently asked questions](https://etcd.io/docs/latest/faq) have been checked and this is not a duplicate.
+
   - type: markdown
     attributes:
       value: |
-        Please read https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md
-        If this matter is security related, please disclose it privately via security@etcd.io.
         Please fill the form below and provide as much information as possible.
         Not doing so may result in your bug not being addressed in a timely manner.
 
@@ -90,4 +99,4 @@ body:
     attributes:
       label: Relevant log output
       description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
-      render: shell
+      render: Shell
