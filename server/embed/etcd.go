@@ -744,6 +744,8 @@ func (e *Etcd) serveClients() (err error) {
 	etcdhttp.HandleVersion(mux, e.Server)
 	etcdhttp.HandleMetrics(mux)
 	etcdhttp.HandleHealth(e.cfg.logger, mux, e.Server)
+	etcdhttp.HandleLivez(e.cfg.logger, mux, e.Server)
+	etcdhttp.HandleReadyz(e.cfg.logger, mux, e.Server)
 
 	var gopts []grpc.ServerOption
 	if e.cfg.GRPCKeepAliveMinTime > time.Duration(0) {
@@ -831,6 +833,8 @@ func (e *Etcd) serveMetrics() (err error) {
 		metricsMux := http.NewServeMux()
 		etcdhttp.HandleMetrics(metricsMux)
 		etcdhttp.HandleHealth(e.cfg.logger, metricsMux, e.Server)
+		etcdhttp.HandleLivez(e.cfg.logger, metricsMux, e.Server)
+		etcdhttp.HandleReadyz(e.cfg.logger, metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
 			tlsInfo := &e.cfg.ClientTLSInfo

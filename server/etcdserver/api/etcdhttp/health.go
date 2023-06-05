@@ -23,16 +23,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	"go.etcd.io/raft/v3"
+
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
-	"go.etcd.io/raft/v3"
 )
 
 const (
 	PathHealth      = "/health"
+	PathLivez       = "/livez"
+	PathReadyz      = "/readyz"
 	PathProxyHealth = "/proxy/health"
 )
 
@@ -46,33 +49,59 @@ type ServerHealth interface {
 // HandleHealth registers metrics and health handlers. it checks health by using v3 range request
 // and its corresponding timeout.
 func HandleHealth(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
-	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool) Health {
-		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
+	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool, endpoint string) Health {
+		if h := checkAlarms(lg, srv, excludedAlarms, endpoint); h.Health != "true" {
 			return h
 		}
 		if h := checkLeader(lg, srv, serializable); h.Health != "true" {
 			return h
 		}
 		return checkAPI(lg, srv, serializable)
-	}))
+	}, PathHealth))
+}
+
+// HandleLivez registers metrics and health handlers. it checks health by using v3 range request
+// and its corresponding timeout.
+func HandleLivez(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
+	mux.Handle(PathLivez, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool, endpoint string) Health {
+		if h := checkAlarms(lg, srv, excludedAlarms, endpoint); h.Health != "true" {
+			return h
+		}
+		// TODO(logicalhan) should we require quorum for livez?
+		return checkAPI(lg, srv, serializable)
+	}, PathLivez, []string{etcdserverpb.AlarmType_NOSPACE.String()}...))
+}
+
+// HandleReadyz registers metrics and health handlers. it checks health by using v3 range request
+// and its corresponding timeout.
+func HandleReadyz(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
+	mux.Handle(PathReadyz, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool, endpoint string) Health {
+		if h := checkAlarms(lg, srv, excludedAlarms, endpoint); h.Health != "true" {
+			return h
+		}
+		return checkAPI(lg, srv, serializable)
+	}, PathReadyz))
 }
 
 // NewHealthHandler handles '/health' requests.
-func NewHealthHandler(lg *zap.Logger, hfunc func(excludedAlarms AlarmSet, Serializable bool) Health) http.HandlerFunc {
+func NewHealthHandler(lg *zap.Logger, hfunc func(excludedAlarms AlarmSet, Serializable bool, endpoint string) Health, endpoint string, alwaysExclude ...string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			lg.Warn("/health error", zap.Int("status-code", http.StatusMethodNotAllowed))
+			lg.Warn(fmt.Sprintf("%s error", endpoint), zap.Int("status-code", http.StatusMethodNotAllowed))
 			return
 		}
 		excludedAlarms := getExcludedAlarms(r)
+		for _, additionalExcludes := range alwaysExclude {
+			excludedAlarms[additionalExcludes] = struct{}{}
+		}
 		// Passing the query parameter "serializable=true" ensures that the
 		// health of the local etcd is checked vs the health of the cluster.
 		// This is useful for probes attempting to validate the liveness of
 		// the etcd process vs readiness of the cluster to serve requests.
 		serializableFlag := getSerializableFlag(r)
-		h := hfunc(excludedAlarms, serializableFlag)
+		h := hfunc(excludedAlarms, serializableFlag, endpoint)
 		defer func() {
 			if h.Health == "true" {
 				healthSuccess.Inc()
@@ -83,12 +112,12 @@ func NewHealthHandler(lg *zap.Logger, hfunc func(excludedAlarms AlarmSet, Serial
 		d, _ := json.Marshal(h)
 		if h.Health != "true" {
 			http.Error(w, string(d), http.StatusServiceUnavailable)
-			lg.Warn("/health error", zap.String("output", string(d)), zap.Int("status-code", http.StatusServiceUnavailable))
+			lg.Warn(fmt.Sprintf("%s error", endpoint), zap.String("output", string(d)), zap.Int("status-code", http.StatusServiceUnavailable))
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(d)
-		lg.Debug("/health OK", zap.Int("status-code", http.StatusOK))
+		lg.Debug(fmt.Sprintf("%s ok", endpoint), zap.Int("status-code", http.StatusOK))
 	}
 }
 
@@ -141,7 +170,7 @@ func getSerializableFlag(r *http.Request) bool {
 
 // TODO: etcdserver.ErrNoLeader in health API
 
-func checkAlarms(lg *zap.Logger, srv ServerHealth, excludedAlarms AlarmSet) Health {
+func checkAlarms(lg *zap.Logger, srv ServerHealth, excludedAlarms AlarmSet, healthType string) Health {
 	h := Health{Health: "true"}
 	as := srv.Alarms()
 	if len(as) > 0 {

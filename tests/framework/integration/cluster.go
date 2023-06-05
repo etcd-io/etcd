@@ -1043,6 +1043,8 @@ func (m *Member) Launch() error {
 		etcdhttp.HandleVersion(handler, m.Server)
 		etcdhttp.HandleMetrics(handler)
 		etcdhttp.HandleHealth(m.Logger, handler, m.Server)
+		etcdhttp.HandleLivez(m.Logger, handler, m.Server)
+		etcdhttp.HandleReadyz(m.Logger, handler, m.Server)
 		hs := &httptest.Server{
 			Listener: ln,
 			Config: &http.Server{
