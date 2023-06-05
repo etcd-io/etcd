@@ -65,7 +65,7 @@ fuzz:
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
 	verify-shellws verify-proto-annotations verify-genproto verify-goimport verify-yamllint
-fix: fix-bom fix-lint
+fix: fix-bom fix-lint fix-yamllint
 	./scripts/fix.sh
 
 .PHONY: verify-gofmt
@@ -134,7 +134,16 @@ verify-goimport:
 
 .PHONY: verify-yamllint
 verify-yamllint:
-	yamllint .
+	yamllint --config-file tools/.yamllint .
+
+YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
+
+.PHONY: fix-yamllint
+fix-yamllint:
+ifeq (, $(shell which yamlfmt))
+	$(shell go install github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_VERSION))
+endif
+	yamlfmt -conf tools/.yamlfmt .
 
 # Cleanup
 
