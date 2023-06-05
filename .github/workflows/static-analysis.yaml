@@ -18,7 +18,7 @@ jobs:
         with:
           version: v1.49.0
       - name: protoc
-        uses: arduino/setup-protoc@149f6c87b92550901b26acd1632e11c3662e381f # v1.3.0
+        uses: arduino/setup-protoc@9b1ee5b22b0a3f1feb8c2ff99b32c89b3c3191e9 # v2.0.0
         with:
           version: '3.14.0'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
