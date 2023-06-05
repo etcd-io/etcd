@@ -67,8 +67,7 @@ func HandleLivez(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
 		if h := checkAlarms(lg, srv, excludedAlarms, endpoint); h.Health != "true" {
 			return h
 		}
-		// TODO(logicalhan) should we require quorum for livez?
-		return checkAPI(lg, srv, serializable)
+		return checkAPI(lg, srv, true)
 	}, PathLivez, []string{etcdserverpb.AlarmType_NOSPACE.String()}...))
 }
 
@@ -79,7 +78,7 @@ func HandleReadyz(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
 		if h := checkAlarms(lg, srv, excludedAlarms, endpoint); h.Health != "true" {
 			return h
 		}
-		return checkAPI(lg, srv, serializable)
+		return checkAPI(lg, srv, false)
 	}, PathReadyz))
 }
 
