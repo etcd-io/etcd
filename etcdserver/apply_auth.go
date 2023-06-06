@@ -178,6 +178,12 @@ func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevoke
 func (aa *authApplierV3) checkLeasePuts(leaseID lease.LeaseID) error {
 	lease := aa.lessor.Lookup(leaseID)
 	if lease != nil {
+		// early return for most-common scenario of either disabled auth or admin user.
+		// IsAdminPermitted also checks whether auth is enabled
+		if err := aa.as.IsAdminPermitted(&aa.authInfo); err == nil {
+			return nil
+		}
+
 		for _, key := range lease.Keys() {
 			if err := aa.as.IsPutPermitted(&aa.authInfo, []byte(key)); err != nil {
 				return err
