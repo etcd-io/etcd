@@ -37,6 +37,7 @@ in the following order,
 - go.etcd.io/etcd/tests/v3
 - go.etcd.io/etcd/v3
 - go.etcd.io/etcd/tools/v3
+For more details about etcd Golang modules, please check https://etcd.io/docs/next/dev-internal/modules/
 
 Note the module `go.etcd.io/etcd/tools/v3` doesn't depend on any other modules, nor by any other modules, so it doesn't matter when to bump dependencies for it.
 
@@ -44,7 +45,7 @@ Note the module `go.etcd.io/etcd/tools/v3` doesn't depend on any other modules, 
 Use the `github.com/spf13/cobra` as an example, follow steps below to bump it from 1.6.1 to 1.7.0 for module `go.etcd.io/etcd/etcdctl/v3`,
 ```
 $ cd ${ETCD_ROOT_DIR}/etcdctl
-$ go get github.com/spf13/cobra@1.7.0
+$ go get github.com/spf13/cobra@v1.7.0
 $ go mod tidy
 $ cd ..
 $ ./scripts/fix.sh
@@ -76,7 +77,12 @@ For mixed cases, in which some modules directly while others indirectly depend o
 We should try to follow the first way, and temporarily fall back to the second one if we run into any issue on the first way. Eventually we
 should fix the issue and ensure all modules depend on the same version of the dependency.
 
-## About gRPC
+## Known incompatible dependency updates
+
+### arduino/setup-protoc
+Please refer to [build(deps): bump arduino/setup-protoc from 1.3.0 to 2.0.0](https://github.com/etcd-io/etcd/pull/16016)
+
+### About gRPC
 There is a compatible issue between etcd and gRPC 1.52.0, and there is a pending PR [pull/15131](https://github.com/etcd-io/etcd/pull/15131).
 
 The plan is to remove the dependency on some grpc-go's experimental API firstly, afterwards try to bump it again. Please get more details in
