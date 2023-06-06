@@ -86,11 +86,11 @@ verify-dep:
 
 .PHONY: verify-lint
 verify-lint:
-	golangci-lint run
+	golangci-lint run --config tools/.golangci.yaml
 
 .PHONY: update-lint
 fix-lint:
-	golangci-lint run --fix
+	golangci-lint run --config tools/.golangci.yaml --fix
 
 .PHONY: verify-shellcheck
 verify-shellcheck:
