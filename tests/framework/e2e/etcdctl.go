@@ -698,6 +698,7 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 					var resp clientv3.WatchResponse
 					json.Unmarshal([]byte(line), &resp)
 					if resp.Canceled {
+						ch <- resp
 						close(ch)
 						return
 					}
