@@ -182,6 +182,7 @@ type EtcdProcessClusterConfig struct {
 	CompactHashCheckTime    time.Duration
 	GoFailEnabled           bool
 	CompactionBatchLimit    int
+	CompactionSleepInterval time.Duration
 
 	WarningUnaryRequestDuration             time.Duration
 	ExperimentalWarningUnaryRequestDuration time.Duration
@@ -339,6 +340,10 @@ func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOp
 
 func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.CompactionBatchLimit = limit }
+}
+
+func WithCompactionSleepInterval(time time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.CompactionSleepInterval = time }
 }
 
 func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
@@ -582,6 +587,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if cfg.CompactionBatchLimit != 0 {
 		args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.CompactionBatchLimit))
 	}
+	if cfg.CompactionSleepInterval != 0 {
+		args = append(args, "--experimental-compaction-sleep-interval", cfg.CompactionSleepInterval.String())
+	}
 	if cfg.WarningUnaryRequestDuration != 0 {
 		args = append(args, "--warning-unary-request-duration", cfg.WarningUnaryRequestDuration.String())
 	}
@@ -811,6 +819,32 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProces
 	epc.Procs = append(epc.Procs, proc)
 
 	return proc.Start(ctx)
+}
+
+// UpdateProcOptions updates the options for a specific process. If no opt is set, then the config is identical
+// to the cluster.
+func (epc *EtcdProcessCluster) UpdateProcOptions(i int, tb testing.TB, opts ...EPClusterOption) error {
+	if epc.Procs[i].IsRunning() {
+		return fmt.Errorf("process %d is still running, please close it before updating its options", i)
+	}
+	cfg := *epc.Cfg
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	serverCfg := cfg.EtcdServerProcessConfig(tb, i)
+
+	var initialCluster []string
+	for _, p := range epc.Procs {
+		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", p.Config().Name, p.Config().PeerURL.String()))
+	}
+	epc.Cfg.SetInitialOrDiscovery(serverCfg, initialCluster, "new")
+
+	proc, err := NewEtcdProcess(serverCfg)
+	if err != nil {
+		return err
+	}
+	epc.Procs[i] = proc
+	return nil
 }
 
 func (epc *EtcdProcessCluster) Start(ctx context.Context) error {
