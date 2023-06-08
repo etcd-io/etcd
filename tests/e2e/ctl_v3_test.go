@@ -58,7 +58,7 @@ func TestClusterVersion(t *testing.T) {
 			cfg := e2e.NewConfigNoTLS()
 			cfg.ExecPath = binary
 			cfg.SnapshotCount = 3
-			cfg.BaseScheme = "unix" // to avoid port conflict
+			cfg.BasePeerScheme = "unix" // to avoid port conflict
 			cfg.RollingStart = tt.rollingStart
 
 			epc, err := e2e.NewEtcdProcessCluster(t, cfg)

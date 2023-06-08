@@ -120,8 +120,24 @@ func CloseWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
 	return fmt.Errorf("took longer than %v to Close process %+v", d, p)
 }
 
+func setupScheme(s string, isTLS bool) string {
+	if s == "" {
+		s = "http"
+	}
+	if isTLS {
+		s = ToTLS(s)
+	}
+	return s
+}
+
 func ToTLS(s string) string {
-	return strings.Replace(s, "http://", "https://", 1)
+	if strings.Contains(s, "http") && !strings.Contains(s, "https") {
+		return strings.Replace(s, "http", "https", 1)
+	}
+	if strings.Contains(s, "unix") && !strings.Contains(s, "unixs") {
+		return strings.Replace(s, "unix", "unixs", 1)
+	}
+	return s
 }
 
 func SkipInShortMode(t testing.TB) {
