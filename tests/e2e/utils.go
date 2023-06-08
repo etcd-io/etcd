@@ -59,6 +59,7 @@ func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3
 	return c
 }
 
+// tlsInfo follows the Client-to-server communication in https://etcd.io/docs/v3.6/op-guide/security/#basic-setup
 func tlsInfo(t testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
 	switch cfg.ConnectionType {
 	case e2e.ClientNonTLS, e2e.ClientTLSAndNonTLS:
