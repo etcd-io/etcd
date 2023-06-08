@@ -1,11 +1,8 @@
 name: functional-tests
 on: [push, pull_request]
 jobs:
-  goversion:
-    uses: ./.github/workflows/go-version.yaml
   test:
     runs-on: ubuntu-latest
-    needs: goversion
     strategy:
       fail-fast: true
       matrix:
@@ -13,9 +10,11 @@ jobs:
         - linux-amd64-functional
     steps:
     - uses: actions/checkout@v2
+    - id: goversion
+      run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
     - uses: actions/setup-go@v2
       with:
-        go-version: ${{ needs.goversion.outputs.goversion }}
+        go-version: ${{ steps.goversion.outputs.goversion }}
     - run: date
     - env:
         TARGET: ${{ matrix.target }}

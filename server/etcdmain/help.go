@@ -239,6 +239,10 @@ Experimental feature:
     Enable to check data corruption before serving any client/peer traffic.
   --experimental-corrupt-check-time '0s'
     Duration of time between cluster corruption check passes.
+  --experimental-compact-hash-check-enabled 'false'
+    Enable leader to periodically check followers compaction hashes.
+  --experimental-compact-hash-check-time '1m'
+    Duration of time between leader checks followers compaction hashes.
   --experimental-enable-v2v3 ''
     Serve v2 requests through the v3 backend under a given prefix. Deprecated and to be decommissioned in v3.6.
   --experimental-enable-lease-checkpoint 'false'

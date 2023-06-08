@@ -1,0 +1,39 @@
+name: E2E-arm64
+on: [push, pull_request]
+permissions: read-all
+jobs:
+  test:
+    if: github.repository == 'etcd-io/etcd'
+    runs-on: [self-hosted, Linux, ARM64]
+    container: golang:1.19-bullseye
+    needs: goversion
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - linux-arm64-e2e
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ needs.goversion.outputs.goversion }}
+      - run: date
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          go clean -testcache
+
+          echo "${TARGET}"
+          case "${TARGET}" in
+            linux-arm64-e2e)
+              GOOS=linux GOARCH=arm64 CPU=4 EXPECT_DEBUG=true RACE='true' ./test.sh
+              ;;
+            *)
+              echo "Failed to find target"
+              exit 1
+              ;;
+          esac
