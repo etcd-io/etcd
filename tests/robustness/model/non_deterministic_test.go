@@ -15,9 +15,11 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -322,6 +324,16 @@ func TestModelNonDeterministic(t *testing.T) {
 				if ok != !op.expectFailure {
 					t.Logf("state: %v", state)
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, NonDeterministicModel.DescribeOperation(op.req, op.resp))
+					var loadedState nonDeterministicState
+					err := json.Unmarshal([]byte(state.(string)), &loadedState)
+					if err != nil {
+						t.Fatalf("Failed to load state: %v", err)
+					}
+					for i, s := range loadedState {
+						_, resp := s.step(op.req)
+						t.Errorf("For state %d, response diff: %s", i, cmp.Diff(op.resp.EtcdResponse, resp))
+					}
+					break
 				}
 				if ok {
 					state = newState
