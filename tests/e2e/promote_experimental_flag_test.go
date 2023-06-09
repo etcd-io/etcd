@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -42,8 +41,7 @@ func TestWarningApplyDuration(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	require.NoError(t, err)
+	cc := epc.Etcdctl()
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
 	assert.NoError(t, err, "error on put")
 
@@ -70,8 +68,7 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	require.NoError(t, err)
+	cc := epc.Etcdctl()
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
 	assert.NoError(t, err, "error on put")
 

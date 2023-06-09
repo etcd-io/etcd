@@ -117,9 +117,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	assert.NoError(t, err)
-
+	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		assert.NoError(t, err, "error on put")
@@ -165,9 +163,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	assert.NoError(t, err)
-
+	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		assert.NoError(t, err, "error on put")
@@ -236,8 +232,7 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 
 	// Put 10 identical keys to the cluster, so that the compaction will drop some stale values.
 	t.Log("putting 10 values to the identical key...")
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	require.NoError(t, err)
+	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err := cc.Put(ctx, "key", fmt.Sprint(i), config.PutOptions{})
 		require.NoError(t, err, "error on put")
