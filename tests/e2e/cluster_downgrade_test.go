@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -155,8 +154,7 @@ func startEtcd(t *testing.T, ep e2e.EtcdProcess, execPath string) {
 }
 
 func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver *semver.Version) {
-	c, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	assert.NoError(t, err)
+	c := epc.Etcdctl()
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		err := c.DowngradeEnable(context.TODO(), ver.String())
 		if err != nil {
