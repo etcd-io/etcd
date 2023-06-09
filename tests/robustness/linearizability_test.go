@@ -39,7 +39,7 @@ func TestRobustness(t *testing.T) {
 	scenarios := []testScenario{}
 	for _, traffic := range []traffic.Config{traffic.LowTraffic, traffic.HighTraffic, traffic.KubernetesTraffic} {
 		scenarios = append(scenarios, testScenario{
-			name:      "ClusterOfSize1/" + traffic.Name,
+			name:      traffic.Name + "ClusterOfSize1",
 			failpoint: RandomFailpoint,
 			traffic:   traffic,
 			cluster: *e2e.NewConfig(
@@ -62,7 +62,7 @@ func TestRobustness(t *testing.T) {
 			clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithSnapshotCatchUpEntries(100))
 		}
 		scenarios = append(scenarios, testScenario{
-			name:      "ClusterOfSize3/" + traffic.Name,
+			name:      traffic.Name + "ClusterOfSize3",
 			failpoint: RandomFailpoint,
 			traffic:   traffic,
 			watch: watchConfig{
