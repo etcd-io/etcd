@@ -3,16 +3,15 @@ name: Static Analysis
 on: [push, pull_request]
 permissions: read-all
 jobs:
-  goversion:
-    uses: ./.github/workflows/go-version.yaml
   run:
     runs-on: ubuntu-latest
-    needs: goversion
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
-          go-version: ${{ needs.goversion.outputs.goversion }}
+          go-version: ${{ steps.goversion.outputs.goversion }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@5f1fec7010f6ae3b84ea4f7b2129beb8639b564f # v3.5.0
         with:

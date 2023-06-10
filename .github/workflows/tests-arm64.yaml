@@ -5,13 +5,10 @@ on:
     - cron: '30 1 * * *' # runs daily at 1:30 am.
 permissions: read-all
 jobs:
-  goversion:
-    uses: ./.github/workflows/go-version.yaml
   test:
     # this is to prevent the job to run at forked projects
     if: github.repository == 'etcd-io/etcd'
     runs-on: [self-hosted, Linux, ARM64]
-    needs: goversion
     container: golang:1.19-bullseye
     defaults:
       run:
@@ -28,10 +25,11 @@ jobs:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       # https://github.com/actions/checkout/issues/1169
       - run: git config --system --add safe.directory '*'
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
-          go-version: ${{ needs.goversion.outputs.goversion }}
-      - run: date
+          go-version: ${{ steps.goversion.outputs.goversion }}
       - env:
           TARGET: ${{ matrix.target }}
         run: |
