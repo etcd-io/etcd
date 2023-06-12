@@ -205,7 +205,7 @@ type RestoreConfig struct {
 	// (required if copied from data directory).
 	SkipHashCheck bool
 
-	// Backend quota size. 0 means use the default quota.
+	// Initial memory map size for the DB
 	InitialMmapSize uint64
 }
 
