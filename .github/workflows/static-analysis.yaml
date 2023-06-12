@@ -13,7 +13,7 @@ jobs:
         with:
           go-version: ${{ steps.goversion.outputs.goversion }}
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@5f1fec7010f6ae3b84ea4f7b2129beb8639b564f # v3.5.0
+        uses: golangci/golangci-lint-action@639cd343e1d3b897ff35927a75193d57cfcba299 # v3.6.0
         with:
           version: v1.49.0
           args: --config tools/.golangci.yaml
