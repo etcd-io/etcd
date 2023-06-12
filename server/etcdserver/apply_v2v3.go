@@ -40,7 +40,6 @@ func (r *RequestV2) String() string {
 	return rpb.String()
 }
 
-// ApplierV2ToV3Backend is the interface for processing V2 raft messages and apply it to v3 backend. This is meant to handle publish requests from 3.5. To be removed in 3.7
 type ApplierV2ToV3 interface {
 	Put(r *RequestV2) Response
 }
