@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/coreos/go-semver/semver"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
