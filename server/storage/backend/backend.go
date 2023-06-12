@@ -152,10 +152,14 @@ type BackendConfig struct {
 }
 
 type NewDefBackend struct {
+	// Logger logs backend-side operations.
 	Logger *zap.Logger
+	// Path is the file path to the backend file.
 	Path string
+	// MmapSize is the number of bytes to mmap for the backend.
 	MmapSize uint64
 }
+
 func DefaultBackendConfig(lg *zap.Logger) BackendConfig {
 	return BackendConfig{
 		BatchInterval: defaultBatchInterval,
