@@ -174,15 +174,16 @@ func New(bcfg BackendConfig) Backend {
 }
 
 func NewDefaultBackend(b NewDefBackend) Backend {
-	var mms uint64
-	if b.MmapSize > 0 {
-		mms = b.MmapSize
-	} else {
-		mms = initialMmapSize
-	}
+	
 	bcfg := DefaultBackendConfig(b.Logger)
 	bcfg.Path = b.Path
-	bcfg.MmapSize = mms
+
+	if b.MmapSize > 0 {
+		bcfg.MmapSize = b.MmapSize
+	} else {
+		bcfg.MmapSize = initialMmapSize
+	}
+
 	return newBackend(bcfg)
 }
 
