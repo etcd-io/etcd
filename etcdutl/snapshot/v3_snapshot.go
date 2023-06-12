@@ -266,7 +266,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
-		zap.Int64("initial-memory-map-size", int64(s.initialMmapSize)),
+		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
 
 	if err = s.saveDB(); err != nil {
@@ -287,7 +287,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
-		zap.Int64("initial-memory-map-size", int64(s.initialMmapSize)),
+		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
 
 	return verify.VerifyIfEnabled(verify.Config{
