@@ -1644,6 +1644,50 @@ func TestUpdateVersion(t *testing.T) {
 	}
 }
 
+func TestUpdateVersionV3(t *testing.T) {
+	n := newNodeRecorder()
+	ch := make(chan interface{}, 1)
+	// simulate that request has gone through consensus
+	ch <- &apply2.Result{}
+	w := wait.NewWithResponse(ch)
+	ctx, cancel := context.WithCancel(context.TODO())
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	srv := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zaptest.NewLogger(t),
+		memberId:   1,
+		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
+		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
+		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
+		cluster:    &membership.RaftCluster{},
+		w:          w,
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
+		be:         be,
+
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	ver := "2.0.0"
+	srv.updateClusterVersionV3(ver)
+
+	action := n.Action()
+	if len(action) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(action))
+	}
+	if action[0].Name != "Propose" {
+		t.Fatalf("action = %s, want Propose", action[0].Name)
+	}
+	data := action[0].Params[0].([]byte)
+	var r pb.InternalRaftRequest
+	if err := r.Unmarshal(data); err != nil {
+		t.Fatalf("unmarshal request error: %v", err)
+	}
+	assert.Equal(t, &membershippb.ClusterVersionSetRequest{Ver: ver}, r.ClusterVersionSet)
+}
+
 func TestStopNotify(t *testing.T) {
 	s := &EtcdServer{
 		lgMu: new(sync.RWMutex),
