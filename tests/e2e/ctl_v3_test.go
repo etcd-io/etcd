@@ -54,7 +54,7 @@ func TestClusterVersion(t *testing.T) {
 			e2e.BeforeTest(t)
 			cfg := e2e.NewConfig(
 				e2e.WithSnapshotCount(3),
-				e2e.WithBaseScheme("unix"), // to avoid port conflict)
+				e2e.WithBasePeerScheme("unix"), // to avoid port conflict)
 				e2e.WithRollingStart(tt.rollingStart),
 			)
 
