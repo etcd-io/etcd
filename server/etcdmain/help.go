@@ -256,6 +256,10 @@ Experimental feature:
     Enable to check data corruption before serving any client/peer traffic.
   --experimental-corrupt-check-time '0s'
     Duration of time between cluster corruption check passes.
+  --experimental-compact-hash-check-enabled 'false'
+    Enable leader to periodically check followers compaction hashes.
+  --experimental-compact-hash-check-time '1m'
+    Duration of time between leader checks followers compaction hashes.
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
   --experimental-compaction-batch-limit 1000
