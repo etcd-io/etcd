@@ -241,6 +241,8 @@ type EtcdServer struct {
 
 	snapshotter *snap.Snapshotter
 
+	applyV2ToV3 ApplierV2ToV3
+
 	uberApply apply.UberApplier
 
 	applyWait wait.WaitTime
@@ -329,6 +331,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": b.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
+	srv.applyV2ToV3 = NewApplierV2ToV3(cfg.Logger, srv.cluster)
 
 	srv.be = b.storage.backend.be
 	srv.beHooks = b.storage.backend.beHooks
@@ -1872,14 +1875,16 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		var r pb.Request
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
-		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.lg.Warn("V2request applyEntryNormal will be dropped", zap.Stringer("raftReq", &raftReq))
+		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request handled", rp))
+		//TODO remove this for 3.7. This handles the publish request from 3.5 members.
+		s.w.Trigger(r.ID, s.applyV2RequestToV3((*RequestV2)(rp)))
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
-		s.lg.Warn("V2 applyEntryNormal will be dropped", zap.Stringer("raftReq", &raftReq))
+		req := (*RequestV2)(raftReq.V2)
+		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request dropped", req))
 		return
 	}
 
