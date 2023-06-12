@@ -135,9 +135,7 @@ func init() {
 type Response struct {
 	Term  uint64
 	Index uint64
-	//Event   *v2store.Event
-	//Watcher v2store.Watcher
-	Err error
+	Err   error
 }
 
 type ServerV3 interface {
