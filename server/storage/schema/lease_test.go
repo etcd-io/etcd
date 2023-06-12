@@ -99,7 +99,7 @@ func TestLeaseBackend(t *testing.T) {
 			be.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(lg, tmpPath)
+			be2 := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: tmpPath})
 			defer be2.Close()
 			leases := MustUnsafeGetAllLeases(be2.ReadTx())
 

@@ -151,6 +151,11 @@ type BackendConfig struct {
 	Hooks Hooks
 }
 
+type NewDefBackend struct {
+	Logger *zap.Logger
+	Path string
+	MmapSize uint64
+}
 func DefaultBackendConfig(lg *zap.Logger) BackendConfig {
 	return BackendConfig{
 		BatchInterval: defaultBatchInterval,
@@ -164,9 +169,16 @@ func New(bcfg BackendConfig) Backend {
 	return newBackend(bcfg)
 }
 
-func NewDefaultBackend(lg *zap.Logger, path string) Backend {
-	bcfg := DefaultBackendConfig(lg)
-	bcfg.Path = path
+func NewDefaultBackend(b NewDefBackend) Backend {
+	var mms uint64
+	if b.MmapSize > 0 {
+		mms = b.MmapSize
+	} else {
+		mms = initialMmapSize
+	}
+	bcfg := DefaultBackendConfig(b.Logger)
+	bcfg.Path = b.Path
+	bcfg.MmapSize = mms
 	return newBackend(bcfg)
 }
 
