@@ -84,6 +84,7 @@ type v3Manager struct {
 	cl        *membership.RaftCluster
 
 	skipHashCheck bool
+	quotaBackendBytes int64
 }
 
 // hasChecksum returns "true" if the file size "n"
@@ -203,6 +204,9 @@ type RestoreConfig struct {
 	// SkipHashCheck is "true" to ignore snapshot integrity hash value
 	// (required if copied from data directory).
 	SkipHashCheck bool
+
+	// Backend quota size. 0 means use the default quota.
+	QuotaBackendBytes int64
 }
 
 // Restore restores a new etcd data directory from given snapshot file.
@@ -223,6 +227,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		PeerURLs:            pURLs,
 		InitialPeerURLsMap:  ics,
 		InitialClusterToken: cfg.InitialClusterToken,
+		QuotaBackendBytes: cfg.QuotaBackendBytes,
 	}
 	if err = srv.VerifyBootstrap(); err != nil {
 		return err
@@ -253,6 +258,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	s.walDir = walDir
 	s.snapDir = filepath.Join(dataDir, "member", "snap")
 	s.skipHashCheck = cfg.SkipHashCheck
+	s.quotaBackendBytes = cfg.QuotaBackendBytes
 
 	s.lg.Info(
 		"restoring snapshot",
@@ -260,6 +266,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
+		zap.Int64("quota-backend-bytes", s.quotaBackendBytes),
 	)
 
 	if err = s.saveDB(); err != nil {
@@ -280,6 +287,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
+		zap.Int64("quota-backend-bytes", s.quotaBackendBytes),
 	)
 
 	return verify.VerifyIfEnabled(verify.Config{
@@ -300,7 +308,7 @@ func (s *v3Manager) saveDB() error {
 		return err
 	}
 
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(backend.NewDefBackend{Logger: s.lg, Path: s.outDbPath(), MmapSize: uint64(s.quotaBackendBytes)})
 	defer be.Close()
 
 	err = schema.NewMembershipBackend(s.lg, be).TrimMembershipFromBackend()
@@ -398,7 +406,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	// add members again to persist them to the store we create.
 	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
 	s.cl.SetStore(st)
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(backend.NewDefBackend{Logger: s.lg, Path: s.outDbPath(), MmapSize: uint64(s.quotaBackendBytes)})
 	defer be.Close()
 	s.cl.SetBackend(schema.NewMembershipBackend(s.lg, be))
 	for _, m := range s.cl.Members() {
@@ -481,7 +489,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 }
 
 func (s *v3Manager) updateCIndex(commit uint64, term uint64) error {
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(backend.NewDefBackend{Logger: s.lg, Path: s.outDbPath(), MmapSize: uint64(s.quotaBackendBytes)})
 	defer be.Close()
 
 	cindex.UpdateConsistentIndexForce(be.BatchTx(), commit, term)

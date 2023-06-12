@@ -83,7 +83,7 @@ func TestValidate(t *testing.T) {
 			lg := zap.NewNop()
 			dataPath := setupBackendData(t, tc.version, tc.overrideKeys)
 
-			b := backend.NewDefaultBackend(lg, dataPath)
+			b := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: dataPath})
 			defer b.Close()
 			err := Validate(lg, b.ReadTx())
 			if (err != nil) != tc.expectError {
@@ -211,7 +211,7 @@ func TestMigrate(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			b := backend.NewDefaultBackend(lg, dataPath)
+			b := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: dataPath})
 			defer b.Close()
 
 			err = Migrate(lg, b.BatchTx(), walVersion, tc.targetVersion)
@@ -255,7 +255,7 @@ func TestMigrateIsReversible(t *testing.T) {
 			lg := zap.NewNop()
 			dataPath := setupBackendData(t, tc.initialVersion, nil)
 
-			be := backend.NewDefaultBackend(lg, dataPath)
+			be := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: dataPath})
 			defer be.Close()
 			tx := be.BatchTx()
 			tx.Lock()

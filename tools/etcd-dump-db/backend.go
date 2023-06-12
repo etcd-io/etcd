@@ -179,7 +179,7 @@ func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error)
 }
 
 func getHash(dbPath string) (hash uint32, err error) {
-	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
+	b := backend.NewDefaultBackend(backend.NewDefBackend{Logger: zap.NewNop(), Path: dbPath})
 	return b.Hash(schema.DefaultIgnores)
 }
 
