@@ -122,7 +122,7 @@ func TestGetAllRoles(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: tmpPath})
+			be2 := backend.NewDefaultBackend(backend.BackendConfig{Logger: lg, Path: tmpPath})
 			defer be2.Close()
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetAllRoles()
@@ -219,7 +219,7 @@ func TestGetRole(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: tmpPath})
+			be2 := backend.NewDefaultBackend(backend.BackendConfig{Logger: lg, Path: tmpPath})
 			defer be2.Close()
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetRole("role1")

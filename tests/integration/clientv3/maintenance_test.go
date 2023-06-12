@@ -270,7 +270,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	// take about 1-second to read snapshot
 	clus.Members[0].Stop(t)
 	dpath := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
-	b := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: dpath})
+	b := backend.NewDefaultBackend(backend.BackendConfig{Logger: lg, Path: dpath})
 	s := mvcc.NewStore(lg, b, &lease.FakeLessor{}, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
 	rev := 100000
 	for i := 2; i <= rev; i++ {

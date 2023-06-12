@@ -110,7 +110,7 @@ func TestGetAllUsers(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: tmpPath})
+			be2 := backend.NewDefaultBackend(backend.BackendConfig{Logger: lg, Path: tmpPath})
 			defer be2.Close()
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.ReadTx().UnsafeGetAllUsers()
@@ -195,7 +195,7 @@ func TestGetUser(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: tmpPath})
+			be2 := backend.NewDefaultBackend(backend.BackendConfig{Logger: lg, Path: tmpPath})
 			defer be2.Close()
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetUser("alice")

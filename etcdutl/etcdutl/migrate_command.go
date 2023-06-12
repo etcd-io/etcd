@@ -92,7 +92,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	}
 
 	dbPath := datadir.ToBackendFileName(o.dataDir)
-	c.be = backend.NewDefaultBackend(backend.NewDefBackend{Logger: GetLogger(), Path: dbPath})
+	c.be = backend.NewDefaultBackend(backend.BackendConfig{Logger: GetLogger(), Path: dbPath})
 
 	walPath := datadir.ToWalDir(o.dataDir)
 	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{})

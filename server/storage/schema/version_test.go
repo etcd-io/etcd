@@ -70,7 +70,7 @@ func TestVersion(t *testing.T) {
 			be.ForceCommit()
 			be.Close()
 
-			b := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: tmpPath})
+			b := backend.NewDefaultBackend(backend.BackendConfig{Logger: lg, Path: tmpPath})
 			defer b.Close()
 			v := UnsafeReadStorageVersion(b.BatchTx())
 

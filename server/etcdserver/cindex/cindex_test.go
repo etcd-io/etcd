@@ -56,7 +56,7 @@ func TestConsistentIndex(t *testing.T) {
 	be.ForceCommit()
 	be.Close()
 
-	b := backend.NewDefaultBackend(backend.NewDefBackend{Logger: zaptest.NewLogger(t), Path: tmpPath})
+	b := backend.NewDefaultBackend(backend.BackendConfig{Logger: zaptest.NewLogger(t), Path: tmpPath})
 	defer b.Close()
 	ci.SetBackend(b)
 	index = ci.ConsistentIndex()
@@ -108,7 +108,7 @@ func TestConsistentIndexDecrease(t *testing.T) {
 			be.ForceCommit()
 			be.Close()
 
-	                be = backend.NewDefaultBackend(backend.NewDefBackend{Logger: zaptest.NewLogger(t), Path: tmpPath})
+	                be = backend.NewDefaultBackend(backend.BackendConfig{Logger: zaptest.NewLogger(t), Path: tmpPath})
 			defer be.Close()
 			ci := NewConsistentIndex(be)
 			ci.SetConsistentIndex(tc.index, tc.term)

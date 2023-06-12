@@ -75,7 +75,7 @@ func Verify(cfg Config) error {
 			lg.Info("verification of persisted state successful", zap.String("data-dir", cfg.DataDir))
 		}
 	}()
-	be := backend.NewDefaultBackend(backend.NewDefBackend{Logger: lg, Path: datadir.ToBackendFileName(cfg.DataDir)})
+	be := backend.NewDefaultBackend(backend.BackendConfig{Logger: lg, Path: datadir.ToBackendFileName(cfg.DataDir)})
 	defer be.Close()
 
 	snapshot, hardstate, err := validateWal(cfg)
