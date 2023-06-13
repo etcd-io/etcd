@@ -38,7 +38,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithVersion(e2e.LastVersion),
 		e2e.WithSnapshotCount(3),
-		e2e.WithBaseScheme("unix"), // to avoid port conflict
+		e2e.WithBasePeerScheme("unix"), // to avoid port conflict
 	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
@@ -120,7 +120,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithVersion(e2e.LastVersion),
 		e2e.WithSnapshotCount(10),
-		e2e.WithBaseScheme("unix"),
+		e2e.WithBasePeerScheme("unix"),
 	)
 
 	if err != nil {

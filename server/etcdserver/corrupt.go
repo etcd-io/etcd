@@ -268,12 +268,13 @@ func (cm *corruptionChecker) CompactHashCheck() {
 	)
 	hashes := cm.uncheckedRevisions()
 	// Assume that revisions are ordered from largest to smallest
-	for _, hash := range hashes {
+	for i, hash := range hashes {
 		peers := cm.hasher.PeerHashByRev(hash.Revision)
 		if len(peers) == 0 {
 			continue
 		}
 		if cm.checkPeerHashes(hash, peers) {
+			cm.lg.Info("finished compaction hash check", zap.Int("number-of-hashes-checked", i+1))
 			return
 		}
 	}

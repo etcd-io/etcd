@@ -51,7 +51,6 @@ The easiest way to get etcd is to use one of the pre-built release binaries whic
 For more installation guides, please check out [play.etcd.io](http://play.etcd.io) and [operating etcd](https://etcd.io/docs/latest/op-guide).
 
 [github-release]: https://github.com/etcd-io/etcd/releases
-[branch-management]: https://etcd.io/docs/latest/branch_management
 
 ### Running etcd
 
@@ -74,15 +73,15 @@ This will bring up etcd listening on port 2379 for client communication and on p
 
 Next, let's set a single key, and then retrieve it:
 
-```
+```bash
 etcdctl put mykey "this is awesome"
 etcdctl get mykey
 ```
 
 etcd is now running and serving client requests. For more, please check out:
 
-- [Interactive etcd playground](http://play.etcd.io)
-- [Animated quick demo](https://etcd.io/docs/latest/demo)
+* [Interactive etcd playground](http://play.etcd.io)
+* [Animated quick demo](https://etcd.io/docs/latest/demo)
 
 ### etcd TCP ports
 
@@ -120,13 +119,14 @@ go get go.etcd.io/etcd/client/v3
 
 Now it's time to dig into the full etcd API and other guides.
 
-- Read the full [documentation][].
-- Explore the full gRPC [API][].
-- Set up a [multi-machine cluster][clustering].
-- Learn the [config format, env variables and flags][configuration].
-- Find [language bindings and tools][integrations].
-- Use TLS to [secure an etcd cluster][security].
-- [Tune etcd][tuning].
+* Read the full [documentation].
+* Review etcd [frequently asked questions].
+* Explore the full gRPC [API].
+* Set up a [multi-machine cluster][clustering].
+* Learn the [config format, env variables and flags][configuration].
+* Find [language bindings and tools][integrations].
+* Use TLS to [secure an etcd cluster][security].
+* [Tune etcd][tuning].
 
 [documentation]: https://etcd.io/docs/latest
 [api]: https://etcd.io/docs/latest/learning/api
@@ -138,9 +138,9 @@ Now it's time to dig into the full etcd API and other guides.
 
 ## Contact
 
-- Email: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
-- Slack: [#etcd](https://kubernetes.slack.com/messages/C3HD8ARJ5/details/) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
-- [Community meetings](#Community-meetings)
+* Email: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
+* Slack: [#etcd](https://kubernetes.slack.com/messages/C3HD8ARJ5/details/) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
+* [Community meetings](#community-meetings)
 
 ### Community meetings
 
@@ -167,7 +167,9 @@ Please refer to [community-membership.md](Documentation/contributor-guide/commun
 
 ## Reporting bugs
 
-See [reporting bugs](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md) for details about reporting any issues.
+See [reporting bugs](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md) for details about reporting any issues. Before opening an issue please check it is not covered in our [frequently asked questions].
+
+[frequently asked questions]: https://etcd.io/docs/latest/faq
 
 ## Reporting a security vulnerability
 

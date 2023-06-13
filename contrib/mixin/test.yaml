@@ -98,10 +98,7 @@ tests:
               job: etcd
               severity: warning
             exp_annotations:
-              description: 'etcd cluster "etcd": 4 leader changes within the last
-                15 minutes. Frequent elections may be a sign of insufficient resources,
-                high network latency, or disruptions by other components and should
-                be investigated.'
+              description: 'etcd cluster "etcd": 4 leader changes within the last 15 minutes. Frequent elections may be a sign of insufficient resources, high network latency, or disruptions by other components and should be investigated.'
               summary: etcd cluster has high number of leader changes.
   - interval: 1m
     input_series:
@@ -134,10 +131,7 @@ tests:
               job: etcd
               severity: warning
             exp_annotations:
-              description: 'etcd cluster "etcd": Predicting running out of disk space
-                in the next four hours, based on write observations within the past
-                four hours on etcd instance 10.10.10.0, please check as it might be
-                disruptive.'
+              description: 'etcd cluster "etcd": Predicting running out of disk space in the next four hours, based on write observations within the past four hours on etcd instance 10.10.10.0, please check as it might be disruptive.'
               summary: etcd cluster database growing very fast.
   - interval: 1m
     input_series:
@@ -158,9 +152,6 @@ tests:
               job: etcd
               severity: warning
             exp_annotations:
-              description: 'etcd cluster "etcd": database size in use on instance
-                10.10.10.0 is 30% of the actual allocated disk space, please run defragmentation
-                (e.g. etcdctl defrag) to retrieve the unused fragmented disk space.'
+              description: 'etcd cluster "etcd": database size in use on instance 10.10.10.0 is 30% of the actual allocated disk space, please run defragmentation (e.g. etcdctl defrag) to retrieve the unused fragmented disk space.'
               runbook_url: https://etcd.io/docs/v3.5/op-guide/maintenance/#defragmentation
-              summary: etcd database size in use is less than 50% of the actual allocated
-                storage.
+              summary: etcd database size in use is less than 50% of the actual allocated storage.

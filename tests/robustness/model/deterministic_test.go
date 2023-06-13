@@ -15,7 +15,10 @@
 package model
 
 import (
+	"encoding/json"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 )
@@ -26,14 +29,22 @@ func TestModelDeterministic(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			state := DeterministicModel.Init()
 			for _, op := range tc.operations {
-				t.Logf("state: %v", state)
 				ok, newState := DeterministicModel.Step(state, op.req, op.resp)
 				if op.expectFailure == ok {
+					t.Logf("state: %v", state)
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, DeterministicModel.DescribeOperation(op.req, op.resp))
+					var loadedState etcdState
+					err := json.Unmarshal([]byte(state.(string)), &loadedState)
+					if err != nil {
+						t.Fatalf("Failed to load state: %v", err)
+					}
+					_, resp := loadedState.step(op.req)
+					t.Errorf("Response diff: %s", cmp.Diff(op.resp, resp))
 					break
 				}
 				if ok {
 					state = newState
+					t.Logf("state: %v", state)
 				}
 			}
 		})

@@ -70,12 +70,8 @@ func (s etcdState) Step(request EtcdRequest, response EtcdResponse) (bool, etcdS
 
 // initState tries to create etcd state based on the first request.
 func initState(request EtcdRequest, response EtcdResponse) etcdState {
-	state := etcdState{
-		Revision:  response.Revision,
-		KeyValues: map[string]ValueRevision{},
-		KeyLeases: map[string]int64{},
-		Leases:    map[int64]EtcdLease{},
-	}
+	state := emptyState()
+	state.Revision = response.Revision
 	switch request.Type {
 	case Txn:
 		if response.Txn.Failure {
@@ -116,6 +112,15 @@ func initState(request EtcdRequest, response EtcdResponse) etcdState {
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
 	return state
+}
+
+func emptyState() etcdState {
+	return etcdState{
+		Revision:  1,
+		KeyValues: map[string]ValueRevision{},
+		KeyLeases: map[string]int64{},
+		Leases:    map[int64]EtcdLease{},
+	}
 }
 
 // step handles a successful request, returning updated state and response it would generate.

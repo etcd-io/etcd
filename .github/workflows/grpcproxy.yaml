@@ -3,11 +3,8 @@ name: grpcProxy-tests
 on: [push, pull_request]
 permissions: read-all
 jobs:
-  goversion:
-    uses: ./.github/workflows/go-version.yaml
   test:
     runs-on: ubuntu-latest
-    needs: goversion
     strategy:
       fail-fast: true
       matrix:
@@ -15,11 +12,12 @@ jobs:
           - linux-amd64-grpcproxy-integration
           - linux-amd64-grpcproxy-e2e
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
-          go-version: ${{ needs.goversion.outputs.goversion }}
-      - run: date
+          go-version: ${{ steps.goversion.outputs.goversion }}
       - env:
           TARGET: ${{ matrix.target }}
         run: |

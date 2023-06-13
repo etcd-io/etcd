@@ -191,6 +191,7 @@ func SchemeFromTLSInfo(tls *transport.TLSInfo) string {
 	return URLSchemeTLS
 }
 
+// fillClusterForMembers fills up Member.InitialPeerURLsMap from each member's [name, scheme and PeerListeners address]
 func (c *Cluster) fillClusterForMembers() error {
 	if c.Cfg.DiscoveryURL != "" {
 		// Cluster will be discovered
@@ -239,7 +240,7 @@ func (c *Cluster) Launch(t testutil.TB) {
 	}
 }
 
-// ProtoMembers returns a list of all active members as client.Members
+// ProtoMembers returns a list of all active members as etcdserverpb.Member
 func (c *Cluster) ProtoMembers() []*pb.Member {
 	var ms []*pb.Member
 	for _, m := range c.Members {

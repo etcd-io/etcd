@@ -15,10 +15,14 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+
+	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
 func TestModelNonDeterministic(t *testing.T) {
@@ -28,6 +32,22 @@ func TestModelNonDeterministic(t *testing.T) {
 	}
 
 	nonDeterministicTestScenarios = append(nonDeterministicTestScenarios, []nonDeterministicModelTest{
+		{
+			name: "First Put request fails, but is persisted",
+			operations: []nonDeterministicOperation{
+				{req: putRequest("key1", "1"), resp: failedResponse(errors.New("failed"))},
+				{req: putRequest("key2", "2"), resp: putResponse(3)},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
+			},
+		},
+		{
+			name: "First Put request fails, and is lost",
+			operations: []nonDeterministicOperation{
+				{req: putRequest("key1", "1"), resp: failedResponse(errors.New("failed"))},
+				{req: putRequest("key2", "2"), resp: putResponse(2)},
+				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 1, 2)},
+			},
+		},
 		{
 			name: "Put can fail and be lost before get",
 			operations: []nonDeterministicOperation{
@@ -322,6 +342,16 @@ func TestModelNonDeterministic(t *testing.T) {
 				if ok != !op.expectFailure {
 					t.Logf("state: %v", state)
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, NonDeterministicModel.DescribeOperation(op.req, op.resp))
+					var loadedState nonDeterministicState
+					err := json.Unmarshal([]byte(state.(string)), &loadedState)
+					if err != nil {
+						t.Fatalf("Failed to load state: %v", err)
+					}
+					for i, s := range loadedState {
+						_, resp := s.step(op.req)
+						t.Errorf("For state %d, response diff: %s", i, cmp.Diff(op.resp.EtcdResponse, resp))
+					}
+					break
 				}
 				if ok {
 					state = newState

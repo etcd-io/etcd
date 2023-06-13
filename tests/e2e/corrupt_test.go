@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -116,9 +117,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	assert.NoError(t, err)
-
+	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		assert.NoError(t, err, "error on put")
@@ -164,9 +163,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		}
 	})
 
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	assert.NoError(t, err)
-
+	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		assert.NoError(t, err, "error on put")
@@ -192,4 +189,81 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	alarmResponse, err := cc.AlarmList(ctx)
 	assert.NoError(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: memberID}}, alarmResponse.Alarms)
+}
+
+func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
+	checkTime := time.Second
+	e2e.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	slowCompactionNodeIndex := 1
+
+	// Start a new cluster, with compact hash check enabled.
+	t.Log("creating a new cluster with 3 nodes...")
+
+	dataDirPath := t.TempDir()
+	cfg := e2e.NewConfig(
+		e2e.WithKeepDataDir(true),
+		e2e.WithCompactHashCheckEnabled(true),
+		e2e.WithCompactHashCheckTime(checkTime),
+		e2e.WithClusterSize(3),
+		e2e.WithDataDirPath(dataDirPath),
+		e2e.WithLogLevel("info"),
+	)
+	epc, err := e2e.InitEtcdProcessCluster(t, cfg)
+	require.NoError(t, err)
+
+	// Assign a node a very slow compaction speed, so that its compaction can be interrupted.
+	err = epc.UpdateProcOptions(slowCompactionNodeIndex, t,
+		e2e.WithCompactionBatchLimit(1),
+		e2e.WithCompactionSleepInterval(1*time.Hour),
+	)
+	require.NoError(t, err)
+
+	epc, err = e2e.StartEtcdProcessCluster(ctx, epc, cfg)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+
+	// Put 10 identical keys to the cluster, so that the compaction will drop some stale values.
+	t.Log("putting 10 values to the identical key...")
+	cc := epc.Etcdctl()
+	for i := 0; i < 10; i++ {
+		err := cc.Put(ctx, "key", fmt.Sprint(i), config.PutOptions{})
+		require.NoError(t, err, "error on put")
+	}
+
+	t.Log("compaction started...")
+	_, err = cc.Compact(ctx, 5, config.CompactOption{})
+
+	err = epc.Procs[slowCompactionNodeIndex].Close()
+	require.NoError(t, err)
+
+	err = epc.UpdateProcOptions(slowCompactionNodeIndex, t)
+	require.NoError(t, err)
+
+	t.Logf("restart proc %d to interrupt its compaction...", slowCompactionNodeIndex)
+	err = epc.Procs[slowCompactionNodeIndex].Restart(ctx)
+
+	// Wait until the node finished compaction and the leader finished compaction hash check
+	_, err = epc.Procs[slowCompactionNodeIndex].Logs().ExpectWithContext(ctx, "finished scheduled compaction")
+	require.NoError(t, err, "can't get log indicating finished scheduled compaction")
+
+	leaderIndex := epc.WaitLeader(t)
+	_, err = epc.Procs[leaderIndex].Logs().ExpectWithContext(ctx, "finished compaction hash check")
+	require.NoError(t, err, "can't get log indicating finished compaction hash check")
+
+	alarmResponse, err := cc.AlarmList(ctx)
+	require.NoError(t, err, "error on alarm list")
+	for _, alarm := range alarmResponse.Alarms {
+		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
+			t.Fatal("there should be no corruption after resuming the compaction, but corruption detected")
+		}
+	}
+	t.Log("no corruption detected.")
 }

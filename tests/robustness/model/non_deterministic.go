@@ -71,11 +71,10 @@ type EtcdNonDeterministicResponse struct {
 
 func (states nonDeterministicState) Step(request EtcdRequest, response EtcdNonDeterministicResponse) (bool, nonDeterministicState) {
 	if len(states) == 0 {
-		// states were not initialized
-		if response.Err != nil || response.ResultUnknown || response.Revision == 0 {
-			return true, nil
+		if response.Err == nil && !response.ResultUnknown {
+			return true, nonDeterministicState{initState(request, response.EtcdResponse)}
 		}
-		return true, initNonDeterministicState(request, response)
+		states = nonDeterministicState{emptyState()}
 	}
 	var newStates nonDeterministicState
 	if response.Err != nil {
@@ -84,10 +83,6 @@ func (states nonDeterministicState) Step(request EtcdRequest, response EtcdNonDe
 		newStates = states.stepSuccessfulRequest(request, response)
 	}
 	return len(newStates) > 0, newStates
-}
-
-func initNonDeterministicState(request EtcdRequest, response EtcdNonDeterministicResponse) nonDeterministicState {
-	return nonDeterministicState{initState(request, response.EtcdResponse)}
 }
 
 // stepFailedRequest duplicates number of states by considering request persisted and lost.
