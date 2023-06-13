@@ -47,6 +47,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/raft/v3"
@@ -183,7 +184,7 @@ func TestApplyRepeat(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t, nil, nil)
 	st := v2store.New()
 	//cl.SetStore(v2store.New())
 	cl.AddMember(&membership.Member{ID: 1234}, true)
@@ -489,17 +490,18 @@ func TestApplyRequest(t *testing.T) {
 }
 */
 
-/*
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
-	//TODO geetasg rewrite for applierV3
-	cl := newTestCluster(t, []*membership.Member{{ID: 1}})
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl := newTestCluster(t, be, []*membership.Member{{ID: 1}})
 	srv := &EtcdServer{
 		lgMu:    new(sync.RWMutex),
-		lg:      zaptest.NewLogger(t),
-		v2store: mockstore.NewRecorder(),
+		lg:      lg,
 		cluster: cl,
+		be:      be,
 	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
+	srv.applyV2ToV3 = NewApplierV2ToV3(lg, srv.cluster)
 
 	req := pb.Request{
 		Method: "PUT",
@@ -507,13 +509,12 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 		Path:   membership.MemberAttributesStorePath(1),
 		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
 	}
-	srv.applyV2Request((*RequestV2)(&req), membership.ApplyBoth)
+	srv.applyV2RequestToV3((*RequestV2)(&req))
 	w := membership.Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
 	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
 		t.Errorf("attributes = %v, want %v", g, w)
 	}
 }
-*/
 
 func TestApplyConfChangeError(t *testing.T) {
 	lg := zaptest.NewLogger(t)
@@ -1422,7 +1423,7 @@ func TestAddMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t, nil, nil)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	r := newRaftNode(raftNodeConfig{
@@ -1467,7 +1468,7 @@ func TestRemoveMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t, nil, nil)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
@@ -1512,7 +1513,7 @@ func TestUpdateMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t, nil, nil)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
@@ -1977,8 +1978,12 @@ func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
 	return nil
 }
 
-func newTestCluster(t testing.TB, membs []*membership.Member) *membership.RaftCluster {
-	c := membership.NewCluster(zaptest.NewLogger(t))
+func newTestCluster(t testing.TB, be backend.Backend, membs []*membership.Member) *membership.RaftCluster {
+	lg := zaptest.NewLogger(t)
+	c := membership.NewCluster(lg)
+	if be != nil {
+		c.SetBackend(schema.NewMembershipBackend(lg, be))
+	}
 	for _, m := range membs {
 		c.AddMember(m, true)
 	}
