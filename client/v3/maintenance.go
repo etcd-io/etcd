@@ -102,6 +102,8 @@ type SnapshotResponse struct {
 	// Informs which etcd server version should be used when restoring the snapshot.
 	// Supported on etcd >= v3.6.
 	Version string
+	// Size is total size of snapshot.
+	Size uint64
 }
 
 type maintenance struct {
@@ -242,6 +244,9 @@ func (m *maintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotRespons
 		m.logAndCloseWithError(err, pw)
 		return nil, err
 	}
+
+	size := resp.RemainingBytes + uint64(len(resp.Blob))
+
 	go func() {
 		// Saving response is blocking
 		err = m.save(resp, pw)
@@ -267,6 +272,7 @@ func (m *maintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotRespons
 		Header:   resp.GetHeader(),
 		Snapshot: &snapshotReadCloser{ctx: ctx, ReadCloser: pr},
 		Version:  resp.GetVersion(),
+		Size:     size,
 	}, err
 }
 
