@@ -37,14 +37,15 @@ var (
 			keyCount:     10,
 			leaseTTL:     DefaultLeaseTTL,
 			largePutSize: 32769,
-			writeChoices: []choiceWeight[etcdRequestType]{
-				{choice: Put, weight: 45},
-				{choice: LargePut, weight: 5},
-				{choice: Delete, weight: 10},
-				{choice: MultiOpTxn, weight: 10},
-				{choice: PutWithLease, weight: 10},
-				{choice: LeaseRevoke, weight: 10},
-				{choice: CompareAndSet, weight: 10},
+			operations: []choiceWeight[etcdRequestType]{
+				{choice: Get, weight: 50},
+				{choice: Put, weight: 23},
+				{choice: LargePut, weight: 2},
+				{choice: Delete, weight: 5},
+				{choice: MultiOpTxn, weight: 5},
+				{choice: PutWithLease, weight: 5},
+				{choice: LeaseRevoke, weight: 5},
+				{choice: CompareAndSet, weight: 5},
 			},
 		},
 	}
@@ -57,9 +58,10 @@ var (
 			keyCount:     10,
 			largePutSize: 32769,
 			leaseTTL:     DefaultLeaseTTL,
-			writeChoices: []choiceWeight[etcdRequestType]{
-				{choice: Put, weight: 85},
-				{choice: MultiOpTxn, weight: 10},
+			operations: []choiceWeight[etcdRequestType]{
+				{choice: Get, weight: 50},
+				{choice: Put, weight: 40},
+				{choice: MultiOpTxn, weight: 5},
 				{choice: LargePut, weight: 5},
 			},
 		},
@@ -68,7 +70,7 @@ var (
 
 type etcdTraffic struct {
 	keyCount     int
-	writeChoices []choiceWeight[etcdRequestType]
+	operations   []choiceWeight[etcdRequestType]
 	leaseTTL     int64
 	largePutSize int
 }
@@ -80,6 +82,7 @@ func (t etcdTraffic) ExpectUniqueRevision() bool {
 type etcdRequestType string
 
 const (
+	Get           etcdRequestType = "get"
 	Put           etcdRequestType = "put"
 	LargePut      etcdRequestType = "largePut"
 	Delete        etcdRequestType = "delete"
@@ -91,7 +94,7 @@ const (
 )
 
 func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
-
+	lastOperationSucceeded := true
 	for {
 		select {
 		case <-ctx.Done():
@@ -101,13 +104,16 @@ func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.
 		default:
 		}
 		key := fmt.Sprintf("%d", rand.Int()%t.keyCount)
-		// Execute one read per one write to avoid operation history include too many failed writes when etcd is down.
-		resp, err := t.Read(ctx, c, key)
-		if err != nil {
-			continue
+		// Avoid multiple failed writes in a row
+		if !lastOperationSucceeded {
+			_, err := t.Read(ctx, c, key)
+			if err != nil {
+				continue
+			}
+			limiter.Wait(ctx)
 		}
-		limiter.Wait(ctx)
-		err = t.Write(ctx, c, limiter, key, ids, lm, resp)
+		err := t.RandomOperation(ctx, c, limiter, key, ids, lm)
+		lastOperationSucceeded = err == nil
 		if err != nil {
 			continue
 		}
@@ -122,30 +128,38 @@ func (t etcdTraffic) Read(ctx context.Context, c *RecordingClient, key string) (
 	return resp, err
 }
 
-func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage, lastValues *mvccpb.KeyValue) error {
-	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+func (t etcdTraffic) RandomOperation(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage) error {
+	opCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
 	var err error
-	switch pickRandom(t.writeChoices) {
+	switch pickRandom(t.operations) {
+	case Get:
+		_, err = c.Get(opCtx, key)
 	case Put:
-		err = c.Put(writeCtx, key, fmt.Sprintf("%d", id.NewRequestId()))
+		err = c.Put(opCtx, key, fmt.Sprintf("%d", id.NewRequestId()))
 	case LargePut:
-		err = c.Put(writeCtx, key, randString(t.largePutSize))
+		err = c.Put(opCtx, key, randString(t.largePutSize))
 	case Delete:
-		err = c.Delete(writeCtx, key)
+		err = c.Delete(opCtx, key)
 	case MultiOpTxn:
-		_, err = c.Txn(writeCtx, nil, t.pickMultiTxnOps(id), nil)
+		_, err = c.Txn(opCtx, nil, t.pickMultiTxnOps(id), nil)
 	case CompareAndSet:
-		var expectedRevision int64
-		if lastValues != nil {
-			expectedRevision = lastValues.ModRevision
+		var kv *mvccpb.KeyValue
+		kv, err = c.Get(opCtx, key)
+		if err == nil {
+			limiter.Wait(ctx)
+			var expectedRevision int64
+			if kv != nil {
+				expectedRevision = kv.ModRevision
+			}
+			txnCtx, txnCancel := context.WithTimeout(ctx, RequestTimeout)
+			_, err = c.Txn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", id.NewRequestId()))}, nil)
+			txnCancel()
 		}
-		value := fmt.Sprintf("%d", id.NewRequestId())
-		_, err = c.Txn(ctx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, value)}, nil)
 	case PutWithLease:
 		leaseId := lm.LeaseId(c.id)
 		if leaseId == 0 {
-			leaseId, err = c.LeaseGrant(writeCtx, t.leaseTTL)
+			leaseId, err = c.LeaseGrant(opCtx, t.leaseTTL)
 			if err == nil {
 				lm.AddLeaseId(c.id, leaseId)
 				limiter.Wait(ctx)
@@ -159,14 +173,14 @@ func (t etcdTraffic) Write(ctx context.Context, c *RecordingClient, limiter *rat
 	case LeaseRevoke:
 		leaseId := lm.LeaseId(c.id)
 		if leaseId != 0 {
-			err = c.LeaseRevoke(writeCtx, leaseId)
+			err = c.LeaseRevoke(opCtx, leaseId)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
 				lm.RemoveLeaseId(c.id)
 			}
 		}
 	case Defragment:
-		err = c.Defragment(writeCtx)
+		err = c.Defragment(opCtx)
 	default:
 		panic("invalid choice")
 	}
