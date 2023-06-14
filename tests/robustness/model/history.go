@@ -252,9 +252,9 @@ func toEtcdOperation(op clientv3.Op) EtcdOperation {
 		panic("Unsupported operation")
 	}
 	return EtcdOperation{
-		Type:  opType,
-		Key:   string(op.KeyBytes()),
-		Value: ValueOrHash{Value: string(op.ValueBytes())},
+		Type:       opType,
+		Key:        string(op.KeyBytes()),
+		PutOptions: PutOptions{Value: ValueOrHash{Value: string(op.ValueBytes())}},
 	}
 }
 
@@ -273,8 +273,10 @@ func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
 			}
 		}
 		return EtcdOperationResult{
-			KVs:   kvs,
-			Count: getResp.Count,
+			RangeResponse: RangeResponse{
+				KVs:   kvs,
+				Count: getResp.Count,
+			},
 		}
 	case resp.GetResponsePut() != nil:
 		return EtcdOperationResult{}
@@ -339,7 +341,7 @@ func getRequest(key string) EtcdRequest {
 }
 
 func rangeRequest(key string, withPrefix bool, limit int64) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: RangeOperation, Key: key, WithPrefix: withPrefix, Limit: limit}}}}
+	return EtcdRequest{Type: Range, Range: &RangeRequest{Key: key, RangeOptions: RangeOptions{WithPrefix: withPrefix, Limit: limit}}}
 }
 
 func emptyGetResponse(revision int64) EtcdNonDeterministicResponse {
@@ -351,7 +353,7 @@ func getResponse(key, value string, modRevision, revision int64) EtcdNonDetermin
 }
 
 func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) EtcdNonDeterministicResponse {
-	result := EtcdOperationResult{KVs: make([]KeyValue, len(kvs))}
+	result := RangeResponse{KVs: make([]KeyValue, len(kvs)), Count: count}
 
 	for i, kv := range kvs {
 		result.KVs[i] = KeyValue{
@@ -361,9 +363,8 @@ func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) EtcdNonD
 				ModRevision: kv.ModRevision,
 			},
 		}
-		result.Count = count
 	}
-	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{result}}, Revision: revision}}
+	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Range: &result, Revision: revision}}
 }
 
 func failedResponse(err error) EtcdNonDeterministicResponse {
@@ -375,7 +376,7 @@ func unknownResponse(revision int64) EtcdNonDeterministicResponse {
 }
 
 func putRequest(key, value string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Key: key, Value: ToValueOrHash(value)}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Key: key, PutOptions: PutOptions{Value: ToValueOrHash(value)}}}}}
 }
 
 func putResponse(revision int64) EtcdNonDeterministicResponse {
@@ -406,7 +407,7 @@ func compareRevision(key string, expectedRevision int64) *EtcdCondition {
 }
 
 func putOperation(key, value string) *EtcdOperation {
-	return &EtcdOperation{Type: PutOperation, Key: key, Value: ToValueOrHash(value)}
+	return &EtcdOperation{Type: PutOperation, Key: key, PutOptions: PutOptions{Value: ToValueOrHash(value)}}
 }
 
 func txnRequestSingleOperation(cond *EtcdCondition, onSuccess, onFailure *EtcdOperation) EtcdRequest {
@@ -442,7 +443,7 @@ func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) E
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Key: key, Value: ToValueOrHash(value), LeaseID: leaseID}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Key: key, PutOptions: PutOptions{Value: ToValueOrHash(value), LeaseID: leaseID}}}}}
 }
 
 func leaseGrantRequest(leaseID int64) EtcdRequest {

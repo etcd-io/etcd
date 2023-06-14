@@ -76,9 +76,11 @@ func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperat
 		if etcdOp.Type == model.PutOperation {
 			// Remove LeaseID which is not exposed in watch.
 			event, ok := watchEvents[model.EtcdOperation{
-				Type:  etcdOp.Type,
-				Key:   etcdOp.Key,
-				Value: etcdOp.Value,
+				Type: etcdOp.Type,
+				Key:  etcdOp.Key,
+				PutOptions: model.PutOptions{
+					Value: etcdOp.Value,
+				},
 			}]
 			if ok {
 				return &event

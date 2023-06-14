@@ -273,9 +273,9 @@ func toWatchEvent(event clientv3.Event) WatchEvent {
 	return WatchEvent{
 		Revision: event.Kv.ModRevision,
 		Op: model.EtcdOperation{
-			Type:  op,
-			Key:   string(event.Kv.Key),
-			Value: model.ToValueOrHash(string(event.Kv.Value)),
+			Type:       op,
+			Key:        string(event.Kv.Key),
+			PutOptions: model.PutOptions{Value: model.ToValueOrHash(string(event.Kv.Value))},
 		},
 	}
 }
