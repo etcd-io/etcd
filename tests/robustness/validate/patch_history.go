@@ -27,7 +27,7 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 
 	for _, op := range operations {
 		request := op.Input.(model.EtcdRequest)
-		resp := op.Output.(model.EtcdNonDeterministicResponse)
+		resp := op.Output.(model.MaybeEtcdResponse)
 		if resp.Err == nil || op.Call > lastObservedOperation.Call || request.Type != model.Txn {
 			// Cannot patch those requests.
 			newOperations = append(newOperations, op)
@@ -37,10 +37,7 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 		if event != nil {
 			// Set revision and time based on watchEvent.
 			op.Return = event.Time.Nanoseconds()
-			op.Output = model.EtcdNonDeterministicResponse{
-				EtcdResponse:  model.EtcdResponse{Revision: event.Revision},
-				ResultUnknown: true,
-			}
+			op.Output = model.MaybeEtcdResponse{PartialResponse: true, EtcdResponse: model.EtcdResponse{Revision: event.Revision}}
 			newOperations = append(newOperations, op)
 			continue
 		}

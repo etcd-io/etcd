@@ -25,7 +25,18 @@ import (
 	"github.com/anishathalye/porcupine"
 )
 
-// DeterministicModel assumes that all requests succeed and have a correct response.
+// DeterministicModel assumes a deterministic execution of etcd requests. All
+// requests that client called were executed and persisted by etcd. This
+// assumption is good for simulating etcd behavior (aka writing a fake), but not
+// for validating correctness as requests might be lost or interrupted. It
+// requires perfect knowledge of what happened to request which is not possible
+// in real systems.
+//
+// Model can still respond with error or partial response.
+//   - Error for etcd known errors, like future revision or compacted revision.
+//   - Incomplete response when requests is correct, but model doesn't have all
+//     to provide a full response. For example stale reads as model doesn't store
+//     whole change history as real etcd does.
 var DeterministicModel = porcupine.Model{
 	Init: func() interface{} {
 		var s etcdState
@@ -49,7 +60,7 @@ var DeterministicModel = porcupine.Model{
 		return ok, string(data)
 	},
 	DescribeOperation: func(in, out interface{}) string {
-		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(EtcdResponse)))
+		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
 	},
 }
 
@@ -64,8 +75,8 @@ func (s etcdState) Step(request EtcdRequest, response EtcdResponse) (bool, etcdS
 	if s.Revision == 0 {
 		return true, initState(request, response)
 	}
-	newState, gotResponse := s.step(request)
-	return reflect.DeepEqual(response, gotResponse), newState
+	newState, modelResponse := s.step(request)
+	return Match(MaybeEtcdResponse{EtcdResponse: response}, modelResponse), newState
 }
 
 // initState tries to create etcd state based on the first request.
@@ -85,7 +96,7 @@ func initState(request EtcdRequest, response EtcdResponse) etcdState {
 			return state
 		}
 		if len(request.Txn.OperationsOnSuccess) != len(response.Txn.Results) {
-			panic(fmt.Sprintf("Incorrect request %s, response %+v", describeEtcdRequest(request), describeEtcdResponse(request, response)))
+			panic(fmt.Sprintf("Incorrect request %s, response %+v", describeEtcdRequest(request), describeEtcdResponse(request, MaybeEtcdResponse{EtcdResponse: response})))
 		}
 		for i, op := range request.Txn.OperationsOnSuccess {
 			opResp := response.Txn.Results[i]
@@ -131,7 +142,7 @@ func emptyState() etcdState {
 }
 
 // step handles a successful request, returning updated state and response it would generate.
-func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
+func (s etcdState) step(request EtcdRequest) (etcdState, MaybeEtcdResponse) {
 	newKVs := map[string]ValueRevision{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
@@ -140,7 +151,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 	switch request.Type {
 	case Range:
 		resp := s.getRange(request.Range.Key, request.Range.RangeOptions)
-		return s, EtcdResponse{Range: &resp, Revision: s.Revision}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
@@ -189,14 +200,14 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		if increaseRevision {
 			s.Revision += 1
 		}
-		return s, EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: s.Revision}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: s.Revision}}
 	case LeaseGrant:
 		lease := EtcdLease{
 			LeaseID: request.LeaseGrant.LeaseID,
 			Keys:    map[string]struct{}{},
 		}
 		s.Leases[request.LeaseGrant.LeaseID] = lease
-		return s, EtcdResponse{Revision: s.Revision, LeaseGrant: &LeaseGrantReponse{}}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: s.Revision, LeaseGrant: &LeaseGrantReponse{}}}
 	case LeaseRevoke:
 		//Delete the keys attached to the lease
 		keyDeleted := false
@@ -215,9 +226,9 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		if keyDeleted {
 			s.Revision += 1
 		}
-		return s, EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
 	case Defragment:
-		return s, EtcdResponse{Defragment: &DefragmentResponse{}, Revision: s.Revision}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: s.Revision}}
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
@@ -339,13 +350,28 @@ type LeaseRevokeRequest struct {
 }
 type DefragmentRequest struct{}
 
+// MaybeEtcdResponse extends EtcdResponse to represent partial or failed responses.
+// Possible states:
+// * Normal response. Only EtcdResponse is set.
+// * Partial response. The EtcdResponse.Revision and PartialResponse are set.
+// * Failed response. Only Err is set.
+type MaybeEtcdResponse struct {
+	EtcdResponse
+	PartialResponse bool
+	Err             error
+}
+
 type EtcdResponse struct {
-	Revision    int64
 	Txn         *TxnResponse
 	Range       *RangeResponse
 	LeaseGrant  *LeaseGrantReponse
 	LeaseRevoke *LeaseRevokeResponse
 	Defragment  *DefragmentResponse
+	Revision    int64
+}
+
+func Match(r1, r2 MaybeEtcdResponse) bool {
+	return ((r1.PartialResponse || r2.PartialResponse) && (r1.Revision == r2.Revision)) || reflect.DeepEqual(r1, r2)
 }
 
 type TxnResponse struct {
