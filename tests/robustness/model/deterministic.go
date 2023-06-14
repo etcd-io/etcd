@@ -83,19 +83,19 @@ func initState(request EtcdRequest, response EtcdResponse) etcdState {
 		for i, op := range request.Txn.OperationsOnSuccess {
 			opResp := response.Txn.Results[i]
 			switch op.Type {
-			case Range:
+			case RangeOperation:
 				for _, kv := range opResp.KVs {
 					state.KeyValues[kv.Key] = ValueRevision{
 						Value:       kv.Value,
 						ModRevision: kv.ModRevision,
 					}
 				}
-			case Put:
+			case PutOperation:
 				state.KeyValues[op.Key] = ValueRevision{
 					Value:       op.Value,
 					ModRevision: response.Revision,
 				}
-			case Delete:
+			case DeleteOperation:
 			default:
 				panic("Unknown operation")
 			}
@@ -147,7 +147,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		increaseRevision := false
 		for i, op := range operations {
 			switch op.Type {
-			case Range:
+			case RangeOperation:
 				opResp[i] = EtcdOperationResult{
 					KVs: []KeyValue{},
 				}
@@ -176,7 +176,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 						opResp[i].Count = 1
 					}
 				}
-			case Put:
+			case PutOperation:
 				_, leaseExists := s.Leases[op.LeaseID]
 				if op.LeaseID != 0 && !leaseExists {
 					break
@@ -190,7 +190,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 				if leaseExists {
 					s = attachToNewLease(s, op.LeaseID, op.Key)
 				}
-			case Delete:
+			case DeleteOperation:
 				if _, ok := s.KeyValues[op.Key]; ok {
 					delete(s.KeyValues, op.Key)
 					increaseRevision = true
@@ -288,6 +288,14 @@ type EtcdOperation struct {
 	Value      ValueOrHash
 	LeaseID    int64
 }
+
+type OperationType string
+
+const (
+	RangeOperation  OperationType = "range-operation"
+	PutOperation    OperationType = "put-operation"
+	DeleteOperation OperationType = "delete-operation"
+)
 
 type LeaseGrantRequest struct {
 	LeaseID int64

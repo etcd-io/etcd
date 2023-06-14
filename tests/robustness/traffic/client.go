@@ -264,9 +264,9 @@ func toWatchEvent(event clientv3.Event) WatchEvent {
 	var op model.OperationType
 	switch event.Type {
 	case mvccpb.PUT:
-		op = model.Put
+		op = model.PutOperation
 	case mvccpb.DELETE:
-		op = model.Delete
+		op = model.DeleteOperation
 	default:
 		panic(fmt.Sprintf("Unexpected event type: %s", event.Type))
 	}

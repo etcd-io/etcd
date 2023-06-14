@@ -100,7 +100,7 @@ func describeTxnResponse(request *TxnRequest, response *TxnResponse) string {
 
 func describeEtcdOperation(op EtcdOperation) string {
 	switch op.Type {
-	case Range:
+	case RangeOperation:
 		if op.WithPrefix {
 			if op.Limit != 0 {
 				return fmt.Sprintf("range(%q, limit=%d)", op.Key, op.Limit)
@@ -108,12 +108,12 @@ func describeEtcdOperation(op EtcdOperation) string {
 			return fmt.Sprintf("range(%q)", op.Key)
 		}
 		return fmt.Sprintf("get(%q)", op.Key)
-	case Put:
+	case PutOperation:
 		if op.LeaseID != 0 {
 			return fmt.Sprintf("put(%q, %s, %d)", op.Key, describeValueOrHash(op.Value), op.LeaseID)
 		}
 		return fmt.Sprintf("put(%q, %s)", op.Key, describeValueOrHash(op.Value))
-	case Delete:
+	case DeleteOperation:
 		return fmt.Sprintf("delete(%q)", op.Key)
 	default:
 		return fmt.Sprintf("<! unknown op: %q !>", op.Type)
@@ -122,7 +122,7 @@ func describeEtcdOperation(op EtcdOperation) string {
 
 func describeEtcdOperationResponse(req EtcdOperation, resp EtcdOperationResult) string {
 	switch req.Type {
-	case Range:
+	case RangeOperation:
 		if req.WithPrefix {
 			kvs := make([]string, len(resp.KVs))
 			for i, kv := range resp.KVs {
@@ -136,9 +136,9 @@ func describeEtcdOperationResponse(req EtcdOperation, resp EtcdOperationResult) 
 				return describeValueOrHash(resp.KVs[0].Value)
 			}
 		}
-	case Put:
+	case PutOperation:
 		return fmt.Sprintf("ok")
-	case Delete:
+	case DeleteOperation:
 		return fmt.Sprintf("deleted: %d", resp.Deleted)
 	default:
 		return fmt.Sprintf("<! unknown op: %q !>", req.Type)

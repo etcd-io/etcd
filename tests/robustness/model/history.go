@@ -243,11 +243,11 @@ func toEtcdOperation(op clientv3.Op) EtcdOperation {
 	var opType OperationType
 	switch {
 	case op.IsGet():
-		opType = Range
+		opType = RangeOperation
 	case op.IsPut():
-		opType = Put
+		opType = PutOperation
 	case op.IsDelete():
-		opType = Delete
+		opType = DeleteOperation
 	default:
 		panic("Unsupported operation")
 	}
@@ -339,7 +339,7 @@ func getRequest(key string) EtcdRequest {
 }
 
 func rangeRequest(key string, withPrefix bool, limit int64) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: Range, Key: key, WithPrefix: withPrefix, Limit: limit}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: RangeOperation, Key: key, WithPrefix: withPrefix, Limit: limit}}}}
 }
 
 func emptyGetResponse(revision int64) EtcdNonDeterministicResponse {
@@ -375,7 +375,7 @@ func unknownResponse(revision int64) EtcdNonDeterministicResponse {
 }
 
 func putRequest(key, value string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value)}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Key: key, Value: ToValueOrHash(value)}}}}
 }
 
 func putResponse(revision int64) EtcdNonDeterministicResponse {
@@ -383,7 +383,7 @@ func putResponse(revision int64) EtcdNonDeterministicResponse {
 }
 
 func deleteRequest(key string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: Delete, Key: key}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: DeleteOperation, Key: key}}}}
 }
 
 func deleteResponse(deleted int64, revision int64) EtcdNonDeterministicResponse {
@@ -406,7 +406,7 @@ func compareRevision(key string, expectedRevision int64) *EtcdCondition {
 }
 
 func putOperation(key, value string) *EtcdOperation {
-	return &EtcdOperation{Type: Put, Key: key, Value: ToValueOrHash(value)}
+	return &EtcdOperation{Type: PutOperation, Key: key, Value: ToValueOrHash(value)}
 }
 
 func txnRequestSingleOperation(cond *EtcdCondition, onSuccess, onFailure *EtcdOperation) EtcdRequest {
@@ -442,7 +442,7 @@ func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) E
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value), LeaseID: leaseID}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Key: key, Value: ToValueOrHash(value), LeaseID: leaseID}}}}
 }
 
 func leaseGrantRequest(leaseID int64) EtcdRequest {
