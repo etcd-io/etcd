@@ -26,8 +26,8 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
-	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
+	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
 
 func TestRobustness(t *testing.T) {
@@ -65,10 +65,7 @@ func TestRobustness(t *testing.T) {
 			name:      traffic.Name + "ClusterOfSize3",
 			failpoint: RandomFailpoint,
 			traffic:   traffic,
-			watch: watchConfig{
-				expectUniqueRevision: traffic.Traffic.ExpectUniqueRevision(),
-			},
-			cluster: *e2e.NewConfig(clusterOfSize3Options...),
+			cluster:   *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
 	scenarios = append(scenarios, testScenario{
@@ -160,7 +157,8 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 
 	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
 	validateGotAtLeastOneProgressNotify(t, r.clientReports, s.watch.requestProgress || watchProgressNotifyEnabled)
-	r.visualizeHistory = validateCorrectness(t, lg, s.watch, r.clientReports)
+	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.Traffic.ExpectUniqueRevision()}
+	r.visualizeHistory = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.clientReports)
 
 	panicked = false
 }
@@ -212,10 +210,4 @@ func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
 		member.Kill()
 	}
 	return clus.ConcurrentStop()
-}
-
-func validateCorrectness(t *testing.T, lg *zap.Logger, cfg watchConfig, reports []traffic.ClientReport) (visualize func(basepath string)) {
-	validateWatchCorrectness(t, cfg, reports)
-	operations := operationsFromClientReports(reports)
-	return model.ValidateOperationHistoryAndReturnVisualize(t, lg, operations)
 }

@@ -16,35 +16,15 @@ package model
 
 import (
 	"fmt"
-	"testing"
 	"time"
 
 	"github.com/anishathalye/porcupine"
-	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
-
-// ValidateOperationHistoryAndReturnVisualize return visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation) (visualize func(basepath string)) {
-	linearizable, info := porcupine.CheckOperationsVerbose(NonDeterministicModel, operations, 5*time.Minute)
-	if linearizable == porcupine.Illegal {
-		t.Error("Model is not linearizable")
-	}
-	if linearizable == porcupine.Unknown {
-		t.Error("Linearization timed out")
-	}
-	return func(path string) {
-		lg.Info("Saving visualization", zap.String("path", path))
-		err := porcupine.VisualizePath(NonDeterministicModel, info, path)
-		if err != nil {
-			t.Errorf("Failed to visualize, err: %v", err)
-		}
-	}
-}
 
 // AppendableHistory allows to collect history of sequential operations.
 //
