@@ -48,6 +48,7 @@ type RaftCluster struct {
 
 	v2store v2store.Store
 	be      MembershipBackend
+	rs      *ReplayStore
 
 	sync.Mutex // guards the fields below
 	version    *semver.Version
@@ -116,6 +117,7 @@ func NewCluster(lg *zap.Logger, opts ...ClusterOption) *RaftCluster {
 		removed:       make(map[types.ID]bool),
 		downgradeInfo: &serverversion.DowngradeInfo{Enabled: false},
 		maxLearners:   clOpts.maxLearners,
+		rs:            NewReplayStore(lg),
 	}
 }
 
@@ -303,9 +305,33 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
 	// TODO: this must be switched to backend as well.
-	membersMap, removedMap := membersFromStore(c.lg, c.v2store)
+	var membersMap map[types.ID]*Member
+	var removedMap map[types.ID]bool
+	if c.v2store != nil {
+		membersMap, removedMap = membersFromStore(c.lg, c.v2store)
+		if err := c.validateConfigurationChange(cc, membersMap, removedMap); err != nil {
+			return err
+		}
+	}
+
+	if c.be != nil && shouldApplyV3 {
+		membersMap, removedMap = c.be.MustReadMembersFromBackend()
+		if err := c.validateConfigurationChange(cc, membersMap, removedMap); err != nil {
+			return err
+		}
+	} else {
+		membersMap, removedMap = c.rs.Members()
+		if err := c.validateConfigurationChange(cc, membersMap, removedMap); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *RaftCluster) validateConfigurationChange(cc raftpb.ConfChange, membersMap map[types.ID]*Member, removedMap map[types.ID]bool) error {
 	id := types.ID(cc.NodeID)
 	if removedMap[id] {
 		return ErrIDRemoved
@@ -395,6 +421,8 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(m)
+	} else {
+		c.rs.AddMember(m)
 	}
 
 	c.members[m.ID] = m
@@ -420,6 +448,8 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustDeleteMemberFromBackend(id)
+	} else {
+		c.rs.RemoveMember(id)
 	}
 
 	m, ok := c.members[id]
@@ -457,6 +487,8 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApply
 		}
 		if c.be != nil && shouldApplyV3 {
 			c.be.MustSaveMemberToBackend(m)
+		} else {
+			c.rs.AddMember(m)
 		}
 		return
 	}
@@ -491,6 +523,8 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(c.members[id])
+	} else {
+		c.rs.AddMember(c.members[id])
 	}
 
 	c.lg.Info(
@@ -510,6 +544,8 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(c.members[id])
+	} else {
+		c.rs.AddMember(c.members[id])
 	}
 
 	c.lg.Info(
@@ -559,6 +595,8 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveClusterVersionToBackend(ver)
+	} else {
+		c.rs.SetVersion(ver)
 	}
 	if oldVer != nil {
 		ClusterVersionMetrics.With(prometheus.Labels{"cluster_version": version.Cluster(oldVer.String())}).Set(0)

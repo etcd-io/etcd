@@ -514,8 +514,14 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 }
 
 func TestApplyConfChangeError(t *testing.T) {
-	cl := membership.NewCluster(zaptest.NewLogger(t))
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
+	cl := membership.NewCluster(lg)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.SetStore(v2store.New())
+
 	for i := 1; i <= 4; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
@@ -602,8 +608,14 @@ func TestApplyConfChangeError(t *testing.T) {
 }
 
 func TestApplyConfChangeShouldStop(t *testing.T) {
-	cl := membership.NewCluster(zaptest.NewLogger(t))
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
+	cl := membership.NewCluster(lg)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.SetStore(v2store.New())
+
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
@@ -612,7 +624,6 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		Node:      newNodeNop(),
 		transport: newNopTransporter(),
 	})
-	lg := zaptest.NewLogger(t)
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       lg,
