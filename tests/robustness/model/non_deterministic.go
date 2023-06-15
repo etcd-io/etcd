@@ -22,14 +22,6 @@ import (
 	"github.com/anishathalye/porcupine"
 )
 
-type OperationType string
-
-const (
-	Range  OperationType = "range"
-	Put    OperationType = "put"
-	Delete OperationType = "delete"
-)
-
 // NonDeterministicModel extends DeterministicModel to handle requests that have unknown or error response.
 // Unknown/error response doesn't inform whether request was persisted or not, so model
 // considers both cases. This is represented as multiple equally possible deterministic states.

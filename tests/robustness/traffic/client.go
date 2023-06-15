@@ -264,18 +264,18 @@ func toWatchEvent(event clientv3.Event) WatchEvent {
 	var op model.OperationType
 	switch event.Type {
 	case mvccpb.PUT:
-		op = model.Put
+		op = model.PutOperation
 	case mvccpb.DELETE:
-		op = model.Delete
+		op = model.DeleteOperation
 	default:
 		panic(fmt.Sprintf("Unexpected event type: %s", event.Type))
 	}
 	return WatchEvent{
 		Revision: event.Kv.ModRevision,
 		Op: model.EtcdOperation{
-			Type:  op,
-			Key:   string(event.Kv.Key),
-			Value: model.ToValueOrHash(string(event.Kv.Value)),
+			Type:       op,
+			Key:        string(event.Kv.Key),
+			PutOptions: model.PutOptions{Value: model.ToValueOrHash(string(event.Kv.Value))},
 		},
 	}
 }

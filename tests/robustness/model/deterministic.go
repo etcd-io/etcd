@@ -73,6 +73,13 @@ func initState(request EtcdRequest, response EtcdResponse) etcdState {
 	state := emptyState()
 	state.Revision = response.Revision
 	switch request.Type {
+	case Range:
+		for _, kv := range response.Range.KVs {
+			state.KeyValues[kv.Key] = ValueRevision{
+				Value:       kv.Value,
+				ModRevision: kv.ModRevision,
+			}
+		}
 	case Txn:
 		if response.Txn.Failure {
 			return state
@@ -83,19 +90,19 @@ func initState(request EtcdRequest, response EtcdResponse) etcdState {
 		for i, op := range request.Txn.OperationsOnSuccess {
 			opResp := response.Txn.Results[i]
 			switch op.Type {
-			case Range:
+			case RangeOperation:
 				for _, kv := range opResp.KVs {
 					state.KeyValues[kv.Key] = ValueRevision{
 						Value:       kv.Value,
 						ModRevision: kv.ModRevision,
 					}
 				}
-			case Put:
+			case PutOperation:
 				state.KeyValues[op.Key] = ValueRevision{
 					Value:       op.Value,
 					ModRevision: response.Revision,
 				}
-			case Delete:
+			case DeleteOperation:
 			default:
 				panic("Unknown operation")
 			}
@@ -131,6 +138,9 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 	}
 	s.KeyValues = newKVs
 	switch request.Type {
+	case Range:
+		resp := s.getRange(request.Range.Key, request.Range.RangeOptions)
+		return s, EtcdResponse{Range: &resp, Revision: s.Revision}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
@@ -147,36 +157,11 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		increaseRevision := false
 		for i, op := range operations {
 			switch op.Type {
-			case Range:
+			case RangeOperation:
 				opResp[i] = EtcdOperationResult{
-					KVs: []KeyValue{},
+					RangeResponse: s.getRange(op.Key, op.RangeOptions),
 				}
-				if op.WithPrefix {
-					var count int64
-					for k, v := range s.KeyValues {
-						if strings.HasPrefix(k, op.Key) {
-							opResp[i].KVs = append(opResp[i].KVs, KeyValue{Key: k, ValueRevision: v})
-							count += 1
-						}
-					}
-					sort.Slice(opResp[i].KVs, func(j, k int) bool {
-						return opResp[i].KVs[j].Key < opResp[i].KVs[k].Key
-					})
-					if op.Limit != 0 && count > op.Limit {
-						opResp[i].KVs = opResp[i].KVs[:op.Limit]
-					}
-					opResp[i].Count = count
-				} else {
-					value, ok := s.KeyValues[op.Key]
-					if ok {
-						opResp[i].KVs = append(opResp[i].KVs, KeyValue{
-							Key:           op.Key,
-							ValueRevision: value,
-						})
-						opResp[i].Count = 1
-					}
-				}
-			case Put:
+			case PutOperation:
 				_, leaseExists := s.Leases[op.LeaseID]
 				if op.LeaseID != 0 && !leaseExists {
 					break
@@ -190,7 +175,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 				if leaseExists {
 					s = attachToNewLease(s, op.LeaseID, op.Key)
 				}
-			case Delete:
+			case DeleteOperation:
 				if _, ok := s.KeyValues[op.Key]; ok {
 					delete(s.KeyValues, op.Key)
 					increaseRevision = true
@@ -238,6 +223,38 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 	}
 }
 
+func (s etcdState) getRange(key string, options RangeOptions) RangeResponse {
+	response := RangeResponse{
+		KVs: []KeyValue{},
+	}
+	if options.WithPrefix {
+		var count int64
+		for k, v := range s.KeyValues {
+			if strings.HasPrefix(k, key) {
+				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: v})
+				count += 1
+			}
+		}
+		sort.Slice(response.KVs, func(j, k int) bool {
+			return response.KVs[j].Key < response.KVs[k].Key
+		})
+		if options.Limit != 0 && count > options.Limit {
+			response.KVs = response.KVs[:options.Limit]
+		}
+		response.Count = count
+	} else {
+		value, ok := s.KeyValues[key]
+		if ok {
+			response.KVs = append(response.KVs, KeyValue{
+				Key:           key,
+				ValueRevision: value,
+			})
+			response.Count = 1
+		}
+	}
+	return response
+}
+
 func detachFromOldLease(s etcdState, key string) etcdState {
 	if oldLeaseId, ok := s.KeyLeases[key]; ok {
 		delete(s.Leases[oldLeaseId].Keys, key)
@@ -255,6 +272,7 @@ func attachToNewLease(s etcdState, leaseID int64, key string) etcdState {
 type RequestType string
 
 const (
+	Range       RequestType = "range"
 	Txn         RequestType = "txn"
 	LeaseGrant  RequestType = "leaseGrant"
 	LeaseRevoke RequestType = "leaseRevoke"
@@ -265,8 +283,26 @@ type EtcdRequest struct {
 	Type        RequestType
 	LeaseGrant  *LeaseGrantRequest
 	LeaseRevoke *LeaseRevokeRequest
+	Range       *RangeRequest
 	Txn         *TxnRequest
 	Defragment  *DefragmentRequest
+}
+
+type RangeRequest struct {
+	Key string
+	RangeOptions
+	// TODO: Implement stale read using revision
+	revision int64
+}
+
+type RangeOptions struct {
+	WithPrefix bool
+	Limit      int64
+}
+
+type PutOptions struct {
+	Value   ValueOrHash
+	LeaseID int64
 }
 
 type TxnRequest struct {
@@ -281,13 +317,19 @@ type EtcdCondition struct {
 }
 
 type EtcdOperation struct {
-	Type       OperationType
-	Key        string
-	WithPrefix bool
-	Limit      int64
-	Value      ValueOrHash
-	LeaseID    int64
+	Type OperationType
+	Key  string
+	RangeOptions
+	PutOptions
 }
+
+type OperationType string
+
+const (
+	RangeOperation  OperationType = "range-operation"
+	PutOperation    OperationType = "put-operation"
+	DeleteOperation OperationType = "delete-operation"
+)
 
 type LeaseGrantRequest struct {
 	LeaseID int64
@@ -300,6 +342,7 @@ type DefragmentRequest struct{}
 type EtcdResponse struct {
 	Revision    int64
 	Txn         *TxnResponse
+	Range       *RangeResponse
 	LeaseGrant  *LeaseGrantReponse
 	LeaseRevoke *LeaseRevokeResponse
 	Defragment  *DefragmentResponse
@@ -310,6 +353,11 @@ type TxnResponse struct {
 	Results []EtcdOperationResult
 }
 
+type RangeResponse struct {
+	KVs   []KeyValue
+	Count int64
+}
+
 type LeaseGrantReponse struct {
 	LeaseID int64
 }
@@ -317,8 +365,7 @@ type LeaseRevokeResponse struct{}
 type DefragmentResponse struct{}
 
 type EtcdOperationResult struct {
-	KVs     []KeyValue
-	Count   int64
+	RangeResponse
 	Deleted int64
 }
 

@@ -73,12 +73,14 @@ func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents 
 
 func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperation]traffic.TimedWatchEvent) *traffic.TimedWatchEvent {
 	for _, etcdOp := range append(request.OperationsOnSuccess, request.OperationsOnFailure...) {
-		if etcdOp.Type == model.Put {
+		if etcdOp.Type == model.PutOperation {
 			// Remove LeaseID which is not exposed in watch.
 			event, ok := watchEvents[model.EtcdOperation{
-				Type:  etcdOp.Type,
-				Key:   etcdOp.Key,
-				Value: etcdOp.Value,
+				Type: etcdOp.Type,
+				Key:  etcdOp.Key,
+				PutOptions: model.PutOptions{
+					Value: etcdOp.Value,
+				},
 			}]
 			if ok {
 				return &event
@@ -90,7 +92,7 @@ func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperat
 
 func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
 	for _, etcdOp := range request.OperationsOnSuccess {
-		if etcdOp.Type == model.Put || etcdOp.Type == model.Delete {
+		if etcdOp.Type == model.PutOperation || etcdOp.Type == model.DeleteOperation {
 			return true
 		}
 	}
@@ -99,7 +101,7 @@ func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
 
 func hasUniqueWriteOperation(request *model.TxnRequest) bool {
 	for _, etcdOp := range request.OperationsOnSuccess {
-		if etcdOp.Type == model.Put {
+		if etcdOp.Type == model.PutOperation {
 			return true
 		}
 	}

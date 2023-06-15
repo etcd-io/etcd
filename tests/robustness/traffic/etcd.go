@@ -195,24 +195,24 @@ func (t etcdTraffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) 
 	atLeastOnePut := false
 	for i := 0; i < MultiOpTxnOpCount; i++ {
 		opTypes[i] = t.pickOperationType()
-		if opTypes[i] == model.Put {
+		if opTypes[i] == model.PutOperation {
 			atLeastOnePut = true
 		}
 	}
 	// Ensure at least one put to make operation unique
 	if !atLeastOnePut {
-		opTypes[0] = model.Put
+		opTypes[0] = model.PutOperation
 	}
 
 	for i, opType := range opTypes {
 		key := fmt.Sprintf("%d", keys[i])
 		switch opType {
-		case model.Range:
+		case model.RangeOperation:
 			ops = append(ops, clientv3.OpGet(key))
-		case model.Put:
+		case model.PutOperation:
 			value := fmt.Sprintf("%d", ids.NewRequestId())
 			ops = append(ops, clientv3.OpPut(key, value))
-		case model.Delete:
+		case model.DeleteOperation:
 			ops = append(ops, clientv3.OpDelete(key))
 		default:
 			panic("unsuported choice type")
@@ -224,10 +224,10 @@ func (t etcdTraffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) 
 func (t etcdTraffic) pickOperationType() model.OperationType {
 	roll := rand.Int() % 100
 	if roll < 10 {
-		return model.Delete
+		return model.DeleteOperation
 	}
 	if roll < 50 {
-		return model.Range
+		return model.RangeOperation
 	}
-	return model.Put
+	return model.PutOperation
 }
