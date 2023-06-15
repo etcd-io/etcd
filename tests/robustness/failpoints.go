@@ -67,7 +67,7 @@ var (
 	RaftAfterWALReleasePanic                 Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftBeforeSaveSnapPanic                  Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftAfterSaveSnapPanic                   Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
-	RandomFailpoint                          Failpoint = randomFailpoint{[]Failpoint{
+	allFailpoints                                      = []Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
 		DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
 		BackendBeforeStartDBTxnPanic, BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
@@ -76,22 +76,40 @@ var (
 		CompactAfterCommitBatchPanic, RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
 		RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
 		RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
-	}}
+	}
 )
+
+func pickRandomFailpoint(t *testing.T, clus *e2e.EtcdProcessCluster) Failpoint {
+	availableFailpoints := make([]Failpoint, 0, len(allFailpoints))
+	for _, failpoint := range allFailpoints {
+		err := validateFailpoint(clus, failpoint)
+		if err != nil {
+			continue
+		}
+		availableFailpoints = append(availableFailpoints, failpoint)
+	}
+	if len(availableFailpoints) == 0 {
+		t.Errorf("No available failpoints")
+		return nil
+	}
+	return availableFailpoints[rand.Int()%len(availableFailpoints)]
+}
+
+func validateFailpoint(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
+	for _, proc := range clus.Procs {
+		if !failpoint.Available(*clus.Cfg, proc) {
+			return fmt.Errorf("failpoint %q not available on %s", failpoint.Name(), proc.Config().Name)
+		}
+	}
+	return nil
+}
 
 func injectFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint) {
 	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
-
 	var err error
 	successes := 0
 	failures := 0
-	for _, proc := range clus.Procs {
-		if !failpoint.Available(*clus.Cfg, proc) {
-			t.Errorf("Failpoint %q not available on %s", failpoint.Name(), proc.Config().Name)
-			return
-		}
-	}
 	for successes < failpointInjectionsCount && failures < failpointInjectionsRetries {
 		time.Sleep(waitBetweenFailpointTriggers)
 
@@ -230,10 +248,16 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 	member := f.pickMember(t, clus)
 
 	for member.IsRunning() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 		lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
 		err := member.Failpoints().Setup(ctx, f.failpoint, "panic")
 		if err != nil {
 			lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
+			continue
 		}
 		if !member.IsRunning() {
 			// TODO: Check member logs that etcd not running is caused panic caused by proper gofailpoint.
@@ -255,11 +279,7 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 		lg.Info("Member exited as expected", zap.String("member", member.Config().Name))
 	}
 
-	err := member.Start(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
+	return member.Start(ctx)
 }
 
 func (f goPanicFailpoint) pickMember(t *testing.T, clus *e2e.EtcdProcessCluster) e2e.EtcdProcess {
@@ -344,40 +364,6 @@ func (t triggerCompact) Trigger(_ *testing.T, ctx context.Context, member e2e.Et
 }
 
 func (t triggerCompact) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
-	return true
-}
-
-type randomFailpoint struct {
-	failpoints []Failpoint
-}
-
-func (f randomFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
-	availableFailpoints := make([]Failpoint, 0, len(f.failpoints))
-	for _, failpoint := range f.failpoints {
-		count := 0
-		for _, proc := range clus.Procs {
-			if failpoint.Available(*clus.Cfg, proc) {
-				count++
-			}
-		}
-		if count == len(clus.Procs) {
-			availableFailpoints = append(availableFailpoints, failpoint)
-		}
-	}
-	if len(availableFailpoints) == 0 {
-		t.Errorf("No available failpoints")
-		return nil
-	}
-	failpoint := availableFailpoints[rand.Int()%len(availableFailpoints)]
-	lg.Info("Triggering failpoint\n", zap.String("failpoint", failpoint.Name()))
-	return failpoint.Inject(ctx, t, lg, clus)
-}
-
-func (f randomFailpoint) Name() string {
-	return "Random"
-}
-
-func (f randomFailpoint) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
 	return true
 }
 
