@@ -67,6 +67,9 @@ func (r *report) Report(t *testing.T, force bool) {
 		for _, member := range r.clus.Procs {
 			memberDataDir := filepath.Join(path, fmt.Sprintf("server-%s", member.Config().Name))
 			persistMemberDataDir(t, r.lg, member, memberDataDir)
+
+			logsFile := filepath.Join(path, fmt.Sprintf("server-%s.log", member.Config().Name))
+			persistMemberLogs(t, r.lg, member, logsFile)
 		}
 		if r.clientReports != nil {
 			sort.Slice(r.clientReports, func(i, j int) bool {
@@ -115,6 +118,14 @@ func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses 
 		if err != nil {
 			t.Errorf("Failed to encode response: %v", err)
 		}
+	}
+}
+
+func persistMemberLogs(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, path string) {
+	lg.Info("Saving member logs dir", zap.String("member", member.Config().Name), zap.String("path", path))
+	err := os.WriteFile(path, []byte(strings.Join(member.Lines(), "")), 0644)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
