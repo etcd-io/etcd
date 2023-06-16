@@ -39,6 +39,15 @@ type Lease struct {
 	revokec chan struct{}
 }
 
+func NewLease(id LeaseID, ttl int64) *Lease {
+	return &Lease{
+		ID:      id,
+		ttl:     ttl,
+		itemSet: make(map[LeaseItem]struct{}),
+		revokec: make(chan struct{}),
+	}
+}
+
 func (l *Lease) expired() bool {
 	return l.Remaining() <= 0
 }
@@ -54,6 +63,13 @@ func (l *Lease) persistTo(b backend.Backend) {
 // TTL returns the TTL of the Lease.
 func (l *Lease) TTL() int64 {
 	return l.ttl
+}
+
+// SetLeaseItem sets the given lease item, this func is thread-safe
+func (l *Lease) SetLeaseItem(item LeaseItem) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.itemSet[item] = struct{}{}
 }
 
 // getRemainingTTL returns the last checkpointed remaining TTL of the lease.
