@@ -27,6 +27,7 @@ import (
 // ValidateAndReturnVisualize return visualize as porcupine.linearizationInfo used to generate visualization is private.
 func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []traffic.ClientReport) (visualize func(basepath string)) {
 	validateWatch(t, cfg, reports)
+	// TODO: Validate stale reads responses.
 	allOperations := operations(reports)
 	watchEvents := uniqueWatchEvents(reports)
 	newOperations := patchOperationsWithWatchEvents(allOperations, watchEvents)

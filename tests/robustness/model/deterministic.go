@@ -16,6 +16,7 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"reflect"
@@ -93,8 +94,15 @@ func (s etcdState) step(request EtcdRequest) (etcdState, MaybeEtcdResponse) {
 	s.KeyValues = newKVs
 	switch request.Type {
 	case Range:
-		resp := s.getRange(request.Range.Key, request.Range.RangeOptions)
-		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
+		if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
+			resp := s.getRange(request.Range.Key, request.Range.RangeOptions)
+			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
+		} else {
+			if request.Range.Revision > s.Revision {
+				return s, MaybeEtcdResponse{Err: EtcdFutureRevErr}
+			}
+			return s, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: s.Revision}}
+		}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
@@ -245,8 +253,7 @@ type EtcdRequest struct {
 type RangeRequest struct {
 	Key string
 	RangeOptions
-	// TODO: Implement stale read using revision
-	revision int64
+	Revision int64
 }
 
 type RangeOptions struct {
@@ -303,6 +310,8 @@ type MaybeEtcdResponse struct {
 	PartialResponse bool
 	Err             error
 }
+
+var EtcdFutureRevErr = errors.New("future rev")
 
 type EtcdResponse struct {
 	Txn         *TxnResponse

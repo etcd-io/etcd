@@ -152,6 +152,34 @@ var commonTestScenarios = []modelTestCase{
 		},
 	},
 	{
+		name: "Stale Get doesn't need to match put if asking about old revision",
+		operations: []testOperation{
+			{req: putRequest("key", "1"), resp: putResponse(2)},
+			{req: staleGetRequest("key", 1), resp: getResponse("key", "2", 2, 2)},
+			{req: staleGetRequest("key", 1), resp: getResponse("key", "1", 2, 2)},
+		},
+	},
+	{
+		name: "Stale Get need to match put if asking about matching revision",
+		operations: []testOperation{
+			{req: putRequest("key", "1"), resp: putResponse(2)},
+			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 3, 2), expectFailure: true},
+			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 2, 3), expectFailure: true},
+			{req: staleGetRequest("key", 2), resp: getResponse("key", "2", 2, 2), expectFailure: true},
+			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 2, 2)},
+		},
+	},
+	{
+		name: "Stale Get need to have a proper response revision",
+		operations: []testOperation{
+			{req: putRequest("key", "1"), resp: putResponse(2)},
+			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 2, 3), expectFailure: true},
+			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 2, 2)},
+			{req: putRequest("key", "2"), resp: putResponse(3)},
+			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 2, 3)},
+		},
+	},
+	{
 		name: "Put must increase revision by 1",
 		operations: []testOperation{
 			{req: getRequest("key"), resp: emptyGetResponse(1)},

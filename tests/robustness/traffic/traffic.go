@@ -70,7 +70,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	// Ensure that last operation is succeeds
 	time.Sleep(time.Second)
-	err = cc.Put(ctx, "tombstone", "true")
+	_, err = cc.Put(ctx, "tombstone", "true")
 	if err != nil {
 		t.Error(err)
 	}

@@ -54,16 +54,16 @@ func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	}
 }
 
-func (h *AppendableHistory) AppendRange(key string, withPrefix bool, start, end time.Duration, resp *clientv3.GetResponse) {
-	var revision int64
+func (h *AppendableHistory) AppendRange(key string, withPrefix bool, revision int64, start, end time.Duration, resp *clientv3.GetResponse) {
+	var respRevision int64
 	if resp != nil && resp.Header != nil {
-		revision = resp.Header.Revision
+		respRevision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.streamId,
-		Input:    rangeRequest(key, withPrefix, 0),
+		Input:    staleRangeRequest(key, withPrefix, 0, revision),
 		Call:     start.Nanoseconds(),
-		Output:   rangeResponse(resp.Kvs, resp.Count, revision),
+		Output:   rangeResponse(resp.Kvs, resp.Count, respRevision),
 		Return:   end.Nanoseconds(),
 	})
 }
@@ -340,8 +340,16 @@ func getRequest(key string) EtcdRequest {
 	return rangeRequest(key, false, 0)
 }
 
+func staleGetRequest(key string, revision int64) EtcdRequest {
+	return staleRangeRequest(key, false, 0, revision)
+}
+
 func rangeRequest(key string, withPrefix bool, limit int64) EtcdRequest {
-	return EtcdRequest{Type: Range, Range: &RangeRequest{Key: key, RangeOptions: RangeOptions{WithPrefix: withPrefix, Limit: limit}}}
+	return staleRangeRequest(key, withPrefix, limit, 0)
+}
+
+func staleRangeRequest(key string, withPrefix bool, limit, revision int64) EtcdRequest {
+	return EtcdRequest{Type: Range, Range: &RangeRequest{Key: key, RangeOptions: RangeOptions{WithPrefix: withPrefix, Limit: limit}, Revision: revision}}
 }
 
 func emptyGetResponse(revision int64) MaybeEtcdResponse {
