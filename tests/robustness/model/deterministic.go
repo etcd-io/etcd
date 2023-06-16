@@ -39,8 +39,7 @@ import (
 //     whole change history as real etcd does.
 var DeterministicModel = porcupine.Model{
 	Init: func() interface{} {
-		var s etcdState
-		data, err := json.Marshal(s)
+		data, err := json.Marshal(freshEtcdState())
 		if err != nil {
 			panic(err)
 		}
@@ -72,67 +71,11 @@ type etcdState struct {
 }
 
 func (s etcdState) Step(request EtcdRequest, response EtcdResponse) (bool, etcdState) {
-	if s.Revision == 0 {
-		return true, initState(request, response)
-	}
 	newState, modelResponse := s.step(request)
 	return Match(MaybeEtcdResponse{EtcdResponse: response}, modelResponse), newState
 }
 
-// initState tries to create etcd state based on the first request.
-func initState(request EtcdRequest, response EtcdResponse) etcdState {
-	state := emptyState()
-	state.Revision = response.Revision
-	switch request.Type {
-	case Range:
-		for _, kv := range response.Range.KVs {
-			state.KeyValues[kv.Key] = ValueRevision{
-				Value:       kv.Value,
-				ModRevision: kv.ModRevision,
-			}
-		}
-	case Txn:
-		if response.Txn.Failure {
-			return state
-		}
-		if len(request.Txn.OperationsOnSuccess) != len(response.Txn.Results) {
-			panic(fmt.Sprintf("Incorrect request %s, response %+v", describeEtcdRequest(request), describeEtcdResponse(request, MaybeEtcdResponse{EtcdResponse: response})))
-		}
-		for i, op := range request.Txn.OperationsOnSuccess {
-			opResp := response.Txn.Results[i]
-			switch op.Type {
-			case RangeOperation:
-				for _, kv := range opResp.KVs {
-					state.KeyValues[kv.Key] = ValueRevision{
-						Value:       kv.Value,
-						ModRevision: kv.ModRevision,
-					}
-				}
-			case PutOperation:
-				state.KeyValues[op.Key] = ValueRevision{
-					Value:       op.Value,
-					ModRevision: response.Revision,
-				}
-			case DeleteOperation:
-			default:
-				panic("Unknown operation")
-			}
-		}
-	case LeaseGrant:
-		lease := EtcdLease{
-			LeaseID: request.LeaseGrant.LeaseID,
-			Keys:    map[string]struct{}{},
-		}
-		state.Leases[request.LeaseGrant.LeaseID] = lease
-	case LeaseRevoke:
-	case Defragment:
-	default:
-		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
-	}
-	return state
-}
-
-func emptyState() etcdState {
+func freshEtcdState() etcdState {
 	return etcdState{
 		Revision:  1,
 		KeyValues: map[string]ValueRevision{},

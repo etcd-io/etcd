@@ -28,8 +28,7 @@ import (
 // Failed requests fork the possible states, while successful requests merge and filter them.
 var NonDeterministicModel = porcupine.Model{
 	Init: func() interface{} {
-		var states nonDeterministicState
-		data, err := json.Marshal(states)
+		data, err := json.Marshal(nonDeterministicState{freshEtcdState()})
 		if err != nil {
 			panic(err)
 		}
@@ -56,12 +55,6 @@ var NonDeterministicModel = porcupine.Model{
 type nonDeterministicState []etcdState
 
 func (states nonDeterministicState) Step(request EtcdRequest, response MaybeEtcdResponse) (bool, nonDeterministicState) {
-	if len(states) == 0 {
-		if response.Err == nil && !response.PartialResponse {
-			return true, nonDeterministicState{initState(request, response.EtcdResponse)}
-		}
-		states = nonDeterministicState{emptyState()}
-	}
 	var newStates nonDeterministicState
 	switch {
 	case response.Err != nil:

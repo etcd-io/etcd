@@ -32,7 +32,7 @@ func TestModelDeterministic(t *testing.T) {
 				ok, newState := DeterministicModel.Step(state, op.req, op.resp.EtcdResponse)
 				if op.expectFailure == ok {
 					t.Logf("state: %v", state)
-					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, DeterministicModel.DescribeOperation(op.req, op.resp))
+					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, DeterministicModel.DescribeOperation(op.req, op.resp.EtcdResponse))
 					var loadedState etcdState
 					err := json.Unmarshal([]byte(state.(string)), &loadedState)
 					if err != nil {
@@ -64,124 +64,91 @@ type testOperation struct {
 
 var commonTestScenarios = []modelTestCase{
 	{
-		name: "First Get can start from non-empty value and non-zero revision",
-		operations: []testOperation{
-			{req: getRequest("key"), resp: getResponse("key", "1", 42, 42)},
-			{req: getRequest("key"), resp: getResponse("key", "1", 42, 42)},
-		},
-	},
-	{
-		name: "First Range can start from non-empty value and non-zero revision",
-		operations: []testOperation{
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 1, 42)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key"), Value: []byte("1")}}, 1, 42)},
-		},
-	},
-	{
-		name: "First Range can start from non-zero revision",
-		operations: []testOperation{
-			{req: rangeRequest("key", true, 0), resp: rangeResponse(nil, 0, 1)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse(nil, 0, 1)},
-		},
-	},
-	{
-		name: "First Put can start from non-zero revision",
-		operations: []testOperation{
-			{req: putRequest("key", "1"), resp: putResponse(42)},
-		},
-	},
-	{
-		name: "First delete can start from non-zero revision",
-		operations: []testOperation{
-			{req: deleteRequest("key"), resp: deleteResponse(0, 42)},
-		},
-	},
-	{
-		name: "First Txn can start from non-zero revision",
-		operations: []testOperation{
-			{req: compareRevisionAndPutRequest("key", 0, "42"), resp: compareRevisionAndPutResponse(false, 42)},
-		},
-	},
-	{
 		name: "Get response data should match put",
 		operations: []testOperation{
-			{req: putRequest("key1", "11"), resp: putResponse(1)},
-			{req: putRequest("key2", "12"), resp: putResponse(2)},
-			{req: getRequest("key1"), resp: getResponse("key1", "11", 1, 1), expectFailure: true},
-			{req: getRequest("key1"), resp: getResponse("key1", "12", 1, 1), expectFailure: true},
+			{req: putRequest("key1", "11"), resp: putResponse(2)},
+			{req: putRequest("key2", "12"), resp: putResponse(3)},
+			{req: getRequest("key1"), resp: getResponse("key1", "11", 2, 2), expectFailure: true},
 			{req: getRequest("key1"), resp: getResponse("key1", "12", 2, 2), expectFailure: true},
-			{req: getRequest("key1"), resp: getResponse("key1", "11", 1, 2)},
+			{req: getRequest("key1"), resp: getResponse("key1", "12", 3, 3), expectFailure: true},
+			{req: getRequest("key1"), resp: getResponse("key1", "11", 2, 3)},
+			{req: getRequest("key2"), resp: getResponse("key2", "11", 3, 3), expectFailure: true},
+			{req: getRequest("key2"), resp: getResponse("key2", "12", 2, 2), expectFailure: true},
 			{req: getRequest("key2"), resp: getResponse("key2", "11", 2, 2), expectFailure: true},
-			{req: getRequest("key2"), resp: getResponse("key2", "12", 1, 1), expectFailure: true},
-			{req: getRequest("key2"), resp: getResponse("key2", "11", 1, 1), expectFailure: true},
-			{req: getRequest("key2"), resp: getResponse("key2", "12", 2, 2)},
+			{req: getRequest("key2"), resp: getResponse("key2", "12", 3, 3)},
 		},
 	},
 	{
 		name: "Range response data should match put",
 		operations: []testOperation{
-			{req: putRequest("key1", "1"), resp: putResponse(1)},
-			{req: putRequest("key2", "2"), resp: putResponse(2)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2, 2)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 2, 2)},
+			{req: putRequest("key1", "1"), resp: putResponse(2)},
+			{req: putRequest("key2", "2"), resp: putResponse(3)},
+			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
+			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
 		},
 	},
 	{
 		name: "Range limit should reduce number of kvs, but maintain count",
 		operations: []testOperation{
+			{req: putRequest("key1", "1"), resp: putResponse(2)},
+			{req: putRequest("key2", "2"), resp: putResponse(3)},
+			{req: putRequest("key3", "3"), resp: putResponse(4)},
 			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
-				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
-				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2},
-				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 3},
-			}, 3, 3)},
+				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
+				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 3},
+				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 4},
+			}, 3, 4)},
 			{req: rangeRequest("key", true, 4), resp: rangeResponse([]*mvccpb.KeyValue{
-				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
-				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2},
-				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 3},
-			}, 3, 3)},
+				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
+				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 3},
+				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 4},
+			}, 3, 4)},
 			{req: rangeRequest("key", true, 3), resp: rangeResponse([]*mvccpb.KeyValue{
-				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
-				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2},
-				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 3},
-			}, 3, 3)},
+				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
+				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 3},
+				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 4},
+			}, 3, 4)},
 			{req: rangeRequest("key", true, 2), resp: rangeResponse([]*mvccpb.KeyValue{
-				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
-				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2},
-			}, 3, 3)},
+				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
+				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 3},
+			}, 3, 4)},
 			{req: rangeRequest("key", true, 1), resp: rangeResponse([]*mvccpb.KeyValue{
-				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 1},
-			}, 3, 3)},
+				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
+			}, 3, 4)},
 		},
 	},
 	{
 		name: "Range response should be ordered by key",
 		operations: []testOperation{
+			{req: putRequest("key3", "3"), resp: putResponse(2)},
+			{req: putRequest("key2", "1"), resp: putResponse(3)},
+			{req: putRequest("key1", "2"), resp: putResponse(4)},
 			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
-				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 3},
-				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 2},
-				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 1},
-			}, 3, 3)},
+				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 4},
+				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 3},
+				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 2},
+			}, 3, 4)},
 			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
-				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 2},
-				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 3},
-				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 1},
-			}, 3, 3), expectFailure: true},
+				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 3},
+				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 4},
+				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 2},
+			}, 3, 4), expectFailure: true},
 			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
-				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 1},
-				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 2},
-				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 3},
-			}, 3, 3), expectFailure: true},
+				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 2},
+				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 3},
+				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 4},
+			}, 3, 4), expectFailure: true},
 		},
 	},
 	{
 		name: "Range response data should match large put",
 		operations: []testOperation{
-			{req: putRequest("key", "012345678901234567890"), resp: putResponse(1)},
-			{req: getRequest("key"), resp: getResponse("key", "123456789012345678901", 1, 1), expectFailure: true},
-			{req: getRequest("key"), resp: getResponse("key", "012345678901234567890", 1, 1)},
-			{req: putRequest("key", "123456789012345678901"), resp: putResponse(2)},
-			{req: getRequest("key"), resp: getResponse("key", "123456789012345678901", 2, 2)},
-			{req: getRequest("key"), resp: getResponse("key", "012345678901234567890", 2, 2), expectFailure: true},
+			{req: putRequest("key", "012345678901234567890"), resp: putResponse(2)},
+			{req: getRequest("key"), resp: getResponse("key", "123456789012345678901", 2, 2), expectFailure: true},
+			{req: getRequest("key"), resp: getResponse("key", "012345678901234567890", 2, 2)},
+			{req: putRequest("key", "123456789012345678901"), resp: putResponse(3)},
+			{req: getRequest("key"), resp: getResponse("key", "123456789012345678901", 3, 3)},
+			{req: getRequest("key"), resp: getResponse("key", "012345678901234567890", 3, 3), expectFailure: true},
 		},
 	},
 	{
@@ -196,12 +163,12 @@ var commonTestScenarios = []modelTestCase{
 	{
 		name: "Delete only increases revision on success",
 		operations: []testOperation{
-			{req: putRequest("key1", "11"), resp: putResponse(1)},
-			{req: putRequest("key2", "12"), resp: putResponse(2)},
-			{req: deleteRequest("key1"), resp: deleteResponse(1, 2), expectFailure: true},
-			{req: deleteRequest("key1"), resp: deleteResponse(1, 3)},
-			{req: deleteRequest("key1"), resp: deleteResponse(0, 4), expectFailure: true},
-			{req: deleteRequest("key1"), resp: deleteResponse(0, 3)},
+			{req: putRequest("key1", "11"), resp: putResponse(2)},
+			{req: putRequest("key2", "12"), resp: putResponse(3)},
+			{req: deleteRequest("key1"), resp: deleteResponse(1, 3), expectFailure: true},
+			{req: deleteRequest("key1"), resp: deleteResponse(1, 4)},
+			{req: deleteRequest("key1"), resp: deleteResponse(0, 5), expectFailure: true},
+			{req: deleteRequest("key1"), resp: deleteResponse(0, 4)},
 		},
 	},
 	{
@@ -215,27 +182,27 @@ var commonTestScenarios = []modelTestCase{
 	{
 		name: "Delete clears value",
 		operations: []testOperation{
-			{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-			{req: deleteRequest("key"), resp: deleteResponse(1, 2)},
-			{req: getRequest("key"), resp: getResponse("key", "1", 1, 1), expectFailure: true},
+			{req: putRequest("key", "1"), resp: putResponse(2)},
+			{req: deleteRequest("key"), resp: deleteResponse(1, 3)},
 			{req: getRequest("key"), resp: getResponse("key", "1", 2, 2), expectFailure: true},
-			{req: getRequest("key"), resp: getResponse("key", "1", 1, 2), expectFailure: true},
-			{req: getRequest("key"), resp: emptyGetResponse(2)},
+			{req: getRequest("key"), resp: getResponse("key", "1", 3, 3), expectFailure: true},
+			{req: getRequest("key"), resp: getResponse("key", "1", 2, 3), expectFailure: true},
+			{req: getRequest("key"), resp: emptyGetResponse(3)},
 		},
 	},
 	{
 		name: "Txn executes onSuccess if revision matches expected",
 		operations: []testOperation{
-			{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-			{req: compareRevisionAndPutRequest("key", 1, "2"), resp: compareRevisionAndPutResponse(true, 1), expectFailure: true},
-			{req: compareRevisionAndPutRequest("key", 1, "2"), resp: compareRevisionAndPutResponse(false, 2), expectFailure: true},
-			{req: compareRevisionAndPutRequest("key", 1, "2"), resp: compareRevisionAndPutResponse(false, 1), expectFailure: true},
-			{req: compareRevisionAndPutRequest("key", 1, "2"), resp: compareRevisionAndPutResponse(true, 2)},
-			{req: getRequest("key"), resp: getResponse("key", "1", 1, 1), expectFailure: true},
-			{req: getRequest("key"), resp: getResponse("key", "1", 1, 2), expectFailure: true},
+			{req: putRequest("key", "1"), resp: putResponse(2)},
+			{req: compareRevisionAndPutRequest("key", 2, "2"), resp: compareRevisionAndPutResponse(true, 2), expectFailure: true},
+			{req: compareRevisionAndPutRequest("key", 2, "2"), resp: compareRevisionAndPutResponse(false, 3), expectFailure: true},
+			{req: compareRevisionAndPutRequest("key", 2, "2"), resp: compareRevisionAndPutResponse(false, 2), expectFailure: true},
+			{req: compareRevisionAndPutRequest("key", 2, "2"), resp: compareRevisionAndPutResponse(true, 3)},
 			{req: getRequest("key"), resp: getResponse("key", "1", 2, 2), expectFailure: true},
-			{req: getRequest("key"), resp: getResponse("key", "2", 1, 1), expectFailure: true},
-			{req: getRequest("key"), resp: getResponse("key", "2", 2, 2)},
+			{req: getRequest("key"), resp: getResponse("key", "1", 2, 3), expectFailure: true},
+			{req: getRequest("key"), resp: getResponse("key", "1", 3, 3), expectFailure: true},
+			{req: getRequest("key"), resp: getResponse("key", "2", 2, 2), expectFailure: true},
+			{req: getRequest("key"), resp: getResponse("key", "2", 3, 3)},
 		},
 	},
 	{
@@ -252,13 +219,13 @@ var commonTestScenarios = []modelTestCase{
 	{
 		name: "Txn executes onFailure if revision doesn't match expected",
 		operations: []testOperation{
-			{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
-			{req: txnRequestSingleOperation(compareRevision("key", 1), nil, putOperation("key", "2")), resp: txnPutResponse(false, 2), expectFailure: true},
-			{req: txnRequestSingleOperation(compareRevision("key", 1), nil, putOperation("key", "2")), resp: txnEmptyResponse(false, 2), expectFailure: true},
-			{req: txnRequestSingleOperation(compareRevision("key", 1), nil, putOperation("key", "2")), resp: txnEmptyResponse(true, 2), expectFailure: true},
-			{req: txnRequestSingleOperation(compareRevision("key", 1), nil, putOperation("key", "2")), resp: txnPutResponse(true, 1), expectFailure: true},
-			{req: txnRequestSingleOperation(compareRevision("key", 1), nil, putOperation("key", "2")), resp: txnEmptyResponse(true, 1)},
-			{req: txnRequestSingleOperation(compareRevision("key", 2), nil, putOperation("key", "2")), resp: txnPutResponse(false, 2)},
+			{req: putRequest("key", "1"), resp: putResponse(2)},
+			{req: txnRequestSingleOperation(compareRevision("key", 2), nil, putOperation("key", "2")), resp: txnPutResponse(false, 3), expectFailure: true},
+			{req: txnRequestSingleOperation(compareRevision("key", 2), nil, putOperation("key", "2")), resp: txnEmptyResponse(false, 3), expectFailure: true},
+			{req: txnRequestSingleOperation(compareRevision("key", 2), nil, putOperation("key", "2")), resp: txnEmptyResponse(true, 3), expectFailure: true},
+			{req: txnRequestSingleOperation(compareRevision("key", 2), nil, putOperation("key", "2")), resp: txnPutResponse(true, 2), expectFailure: true},
+			{req: txnRequestSingleOperation(compareRevision("key", 2), nil, putOperation("key", "2")), resp: txnEmptyResponse(true, 2)},
+			{req: txnRequestSingleOperation(compareRevision("key", 3), nil, putOperation("key", "2")), resp: txnPutResponse(false, 3)},
 		},
 	},
 	{
