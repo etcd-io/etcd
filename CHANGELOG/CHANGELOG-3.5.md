@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.10 (tbd)
 
+### etcd server
+- Fix [corruption check may get a `ErrCompacted` error when server has just been compacted](https://github.com/etcd-io/etcd/pull/16048)
+
 ### etcd grpc-proxy
 - Fix [Memberlist results not updated when proxy node down](https://github.com/etcd-io/etcd/pull/15907).
 
