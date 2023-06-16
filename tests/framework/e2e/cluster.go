@@ -30,6 +30,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -780,7 +781,10 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 	return proc.Close()
 }
 
-func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProcessClusterConfig, tb testing.TB, opts ...config.ClientOption) error {
+// StartNewProc grows cluster size by one with two phases
+// Phase 1 - Inform cluster of new configuration
+// Phase 2 - Start new member
+func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProcessClusterConfig, tb testing.TB, addAsLearner bool, opts ...config.ClientOption) (memberID uint64, err error) {
 	var serverCfg *EtcdServerProcessConfig
 	if cfg != nil {
 		serverCfg = cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
@@ -800,22 +804,29 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProces
 	epc.Cfg.SetInitialOrDiscovery(serverCfg, initialCluster, "existing")
 
 	// First add new member to cluster
+	tb.Logf("add new member to cluster; member-name %s, member-peer-url %s", serverCfg.Name, serverCfg.PeerURL.String())
 	memberCtl := epc.Etcdctl(opts...)
-	_, err := memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.PeerURL.String()})
+	var resp *clientv3.MemberAddResponse
+	if addAsLearner {
+		resp, err = memberCtl.MemberAddAsLearner(ctx, serverCfg.Name, []string{serverCfg.PeerURL.String()})
+	} else {
+		resp, err = memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.PeerURL.String()})
+	}
 	if err != nil {
-		return fmt.Errorf("failed to add new member: %w", err)
+		return 0, fmt.Errorf("failed to add new member: %w", err)
 	}
 
 	// Then start process
+	tb.Log("start new member")
 	proc, err := NewEtcdProcess(serverCfg)
 	if err != nil {
 		epc.Close()
-		return fmt.Errorf("cannot configure: %v", err)
+		return 0, fmt.Errorf("cannot configure: %v", err)
 	}
 
 	epc.Procs = append(epc.Procs, proc)
 
-	return proc.Start(ctx)
+	return resp.Member.ID, proc.Start(ctx)
 }
 
 // UpdateProcOptions updates the options for a specific process. If no opt is set, then the config is identical
