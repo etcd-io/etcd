@@ -76,7 +76,7 @@ verify-gofmt:
 verify-bom:
 	PASSES="bom" ./scripts/test.sh
 
-.PHONY: update-bom
+.PHONY: fix-bom
 fix-bom:
 	./scripts/updatebom.sh
 
@@ -88,7 +88,7 @@ verify-dep:
 verify-lint:
 	golangci-lint run --config tools/.golangci.yaml
 
-.PHONY: update-lint
+.PHONY: fix-lint
 fix-lint:
 	golangci-lint run --config tools/.golangci.yaml --fix
 
