@@ -22,7 +22,7 @@ import (
 	"github.com/anishathalye/porcupine"
 )
 
-// NonDeterministicModel extends DeterministicModel to handle requests that have unknown or error response.
+// NonDeterministicModel extends DeterministicModel to allow for clients with imperfect knowledge of request destiny.
 // Unknown/error response doesn't inform whether request was persisted or not, so model
 // considers both cases. This is represented as multiple equally possible deterministic states.
 // Failed requests fork the possible states, while successful requests merge and filter them.
@@ -41,7 +41,7 @@ var NonDeterministicModel = porcupine.Model{
 		if err != nil {
 			panic(err)
 		}
-		ok, states := states.Step(in.(EtcdRequest), out.(EtcdNonDeterministicResponse))
+		ok, states := states.Step(in.(EtcdRequest), out.(MaybeEtcdResponse))
 		data, err := json.Marshal(states)
 		if err != nil {
 			panic(err)
@@ -49,30 +49,27 @@ var NonDeterministicModel = porcupine.Model{
 		return ok, string(data)
 	},
 	DescribeOperation: func(in, out interface{}) string {
-		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdNonDeterministicResponse(in.(EtcdRequest), out.(EtcdNonDeterministicResponse)))
+		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
 	},
 }
 
 type nonDeterministicState []etcdState
 
-type EtcdNonDeterministicResponse struct {
-	EtcdResponse
-	Err           error
-	ResultUnknown bool
-}
-
-func (states nonDeterministicState) Step(request EtcdRequest, response EtcdNonDeterministicResponse) (bool, nonDeterministicState) {
+func (states nonDeterministicState) Step(request EtcdRequest, response MaybeEtcdResponse) (bool, nonDeterministicState) {
 	if len(states) == 0 {
-		if response.Err == nil && !response.ResultUnknown {
+		if response.Err == nil && !response.PartialResponse {
 			return true, nonDeterministicState{initState(request, response.EtcdResponse)}
 		}
 		states = nonDeterministicState{emptyState()}
 	}
 	var newStates nonDeterministicState
-	if response.Err != nil {
+	switch {
+	case response.Err != nil:
 		newStates = states.stepFailedRequest(request)
-	} else {
-		newStates = states.stepSuccessfulRequest(request, response)
+	case response.PartialResponse:
+		newStates = states.stepPartialRequest(request, response.EtcdResponse.Revision)
+	default:
+		newStates = states.stepSuccessfulRequest(request, response.EtcdResponse)
 	}
 	return len(newStates) > 0, newStates
 }
@@ -90,18 +87,26 @@ func (states nonDeterministicState) stepFailedRequest(request EtcdRequest) nonDe
 	return newStates
 }
 
-// stepSuccessfulRequest filters possible states by leaving ony states that would respond correctly.
-func (states nonDeterministicState) stepSuccessfulRequest(request EtcdRequest, response EtcdNonDeterministicResponse) nonDeterministicState {
+// stepPartialRequest filters possible states by leaving ony states that would return proper revision.
+func (states nonDeterministicState) stepPartialRequest(request EtcdRequest, responseRevision int64) nonDeterministicState {
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
-		newState, gotResponse := s.step(request)
-		if Match(EtcdNonDeterministicResponse{EtcdResponse: gotResponse}, response) {
+		newState, modelResponse := s.step(request)
+		if modelResponse.Revision == responseRevision {
 			newStates = append(newStates, newState)
 		}
 	}
 	return newStates
 }
 
-func Match(r1, r2 EtcdNonDeterministicResponse) bool {
-	return ((r1.ResultUnknown || r2.ResultUnknown) && (r1.Revision == r2.Revision)) || reflect.DeepEqual(r1, r2)
+// stepSuccessfulRequest filters possible states by leaving ony states that would respond correctly.
+func (states nonDeterministicState) stepSuccessfulRequest(request EtcdRequest, response EtcdResponse) nonDeterministicState {
+	newStates := make(nonDeterministicState, 0, len(states))
+	for _, s := range states {
+		newState, modelResponse := s.step(request)
+		if Match(modelResponse, MaybeEtcdResponse{EtcdResponse: response}) {
+			newStates = append(newStates, newState)
+		}
+	}
+	return newStates
 }

@@ -19,17 +19,13 @@ import (
 	"strings"
 )
 
-func describeEtcdNonDeterministicResponse(request EtcdRequest, response EtcdNonDeterministicResponse) string {
+func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) string {
 	if response.Err != nil {
 		return fmt.Sprintf("err: %q", response.Err)
 	}
-	if response.ResultUnknown {
+	if response.PartialResponse {
 		return fmt.Sprintf("unknown, rev: %d", response.Revision)
 	}
-	return describeEtcdResponse(request, response.EtcdResponse)
-}
-
-func describeEtcdResponse(request EtcdRequest, response EtcdResponse) string {
 	switch request.Type {
 	case Range:
 		return fmt.Sprintf("%s, rev: %d", describeRangeResponse(request.Range.RangeOptions, *response.Range), response.Revision)

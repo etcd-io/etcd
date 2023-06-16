@@ -26,7 +26,7 @@ import (
 func TestModelDescribe(t *testing.T) {
 	tcs := []struct {
 		req            EtcdRequest
-		resp           EtcdNonDeterministicResponse
+		resp           MaybeEtcdResponse
 		expectDescribe string
 	}{
 		{
@@ -66,7 +66,7 @@ func TestModelDescribe(t *testing.T) {
 		},
 		{
 			req:            putRequest("key4b", "4b"),
-			resp:           unknownResponse(42),
+			resp:           partialResponse(42),
 			expectDescribe: `put("key4b", "4b") -> unknown, rev: 42`,
 		},
 		{

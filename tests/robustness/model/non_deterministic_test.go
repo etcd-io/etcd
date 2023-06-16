@@ -26,15 +26,10 @@ import (
 )
 
 func TestModelNonDeterministic(t *testing.T) {
-	nonDeterministicTestScenarios := []nonDeterministicModelTest{}
-	for _, tc := range deterministicModelTestScenarios {
-		nonDeterministicTestScenarios = append(nonDeterministicTestScenarios, toNonDeterministicTest(tc))
-	}
-
-	nonDeterministicTestScenarios = append(nonDeterministicTestScenarios, []nonDeterministicModelTest{
+	nonDeterministicTestScenarios := append(commonTestScenarios, []modelTestCase{
 		{
 			name: "First Put request fails, but is persisted",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: putRequest("key1", "1"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key2", "2"), resp: putResponse(3)},
 				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
@@ -42,7 +37,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "First Put request fails, and is lost",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: putRequest("key1", "1"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key2", "2"), resp: putResponse(2)},
 				{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 1, 2)},
@@ -50,7 +45,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Put can fail and be lost before get",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: putRequest("key", "1"), resp: putResponse(1)},
 				{req: putRequest("key", "1"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
@@ -61,7 +56,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Put can fail and be lost before put",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: getRequest("key"), resp: emptyGetResponse(1)},
 				{req: putRequest("key", "1"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "3"), resp: putResponse(2)},
@@ -69,7 +64,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Put can fail and be lost before delete",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: deleteRequest("key"), resp: deleteResponse(0, 1)},
 				{req: putRequest("key", "1"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(0, 1)},
@@ -77,7 +72,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Put can fail and be lost before txn",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// Txn failure
 				{req: getRequest("key"), resp: emptyGetResponse(1)},
 				{req: putRequest("key", "1"), resp: failedResponse(errors.New("failed"))},
@@ -90,11 +85,11 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name:       "Put can fail and be lost before txn success",
-			operations: []nonDeterministicOperation{},
+			operations: []testOperation{},
 		},
 		{
 			name: "Put can fail but be persisted and increase revision before get",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: putRequest("key", "1"), resp: putResponse(1)},
 				{req: putRequest("key", "2"), resp: failedResponse(errors.New("failed"))},
@@ -110,7 +105,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Put can fail but be persisted and increase revision before delete",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: deleteRequest("key"), resp: deleteResponse(0, 1)},
 				{req: putRequest("key", "1"), resp: failedResponse(errors.New("failed"))},
@@ -131,7 +126,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Put can fail but be persisted before txn",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// Txn success
 				{req: getRequest("key"), resp: emptyGetResponse(1)},
 				{req: putRequest("key", "2"), resp: failedResponse(errors.New("failed"))},
@@ -146,7 +141,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Delete can fail and be lost before get",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: putRequest("key", "1"), resp: putResponse(1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
@@ -157,7 +152,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Delete can fail and be lost before delete",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: putRequest("key", "1"), resp: putResponse(1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 1), expectFailure: true},
@@ -166,7 +161,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Delete can fail and be lost before put",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: putRequest("key", "1"), resp: putResponse(1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "1"), resp: putResponse(2)},
@@ -174,7 +169,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Delete can fail but be persisted before get",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: putRequest("key", "1"), resp: putResponse(1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
@@ -188,7 +183,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Delete can fail but be persisted before put",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: putRequest("key", "1"), resp: putResponse(1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
@@ -201,7 +196,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Delete can fail but be persisted before delete",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: putRequest("key", "1"), resp: putResponse(1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
@@ -215,7 +210,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Delete can fail but be persisted before txn",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// Txn success
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: deleteRequest("key"), resp: failedResponse(errors.New("failed"))},
@@ -228,7 +223,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Txn can fail and be lost before get",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
@@ -237,7 +232,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Txn can fail and be lost before delete",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: deleteRequest("key"), resp: deleteResponse(1, 2)},
@@ -245,7 +240,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Txn can fail and be lost before put",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "3"), resp: putResponse(2)},
@@ -253,7 +248,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Txn can fail but be persisted before get",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
@@ -268,7 +263,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Txn can fail but be persisted before put",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
@@ -282,7 +277,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Txn can fail but be persisted before delete",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted.
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
@@ -296,7 +291,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Txn can fail but be persisted before txn",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				// One failed request, one persisted with success.
 				{req: getRequest("key"), resp: getResponse("key", "1", 1, 1)},
 				{req: compareRevisionAndPutRequest("key", 1, "2"), resp: failedResponse(errors.New("failed"))},
@@ -314,7 +309,7 @@ func TestModelNonDeterministic(t *testing.T) {
 		},
 		{
 			name: "Defragment failures between all other request types",
-			operations: []nonDeterministicOperation{
+			operations: []testOperation{
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
 				{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},
 				{req: defragmentRequest(), resp: failedResponse(errors.New("failed"))},
@@ -349,7 +344,7 @@ func TestModelNonDeterministic(t *testing.T) {
 					}
 					for i, s := range loadedState {
 						_, resp := s.step(op.req)
-						t.Errorf("For state %d, response diff: %s", i, cmp.Diff(op.resp.EtcdResponse, resp))
+						t.Errorf("For state %d, response diff: %s", i, cmp.Diff(op.resp, resp))
 					}
 					break
 				}
@@ -362,36 +357,10 @@ func TestModelNonDeterministic(t *testing.T) {
 	}
 }
 
-type nonDeterministicModelTest struct {
-	name       string
-	operations []nonDeterministicOperation
-}
-
-type nonDeterministicOperation struct {
-	req           EtcdRequest
-	resp          EtcdNonDeterministicResponse
-	expectFailure bool
-}
-
-func toNonDeterministicTest(tc deterministicModelTest) nonDeterministicModelTest {
-	operations := []nonDeterministicOperation{}
-	for _, op := range tc.operations {
-		operations = append(operations, nonDeterministicOperation{
-			req:           op.req,
-			resp:          EtcdNonDeterministicResponse{EtcdResponse: op.resp},
-			expectFailure: op.expectFailure,
-		})
-	}
-	return nonDeterministicModelTest{
-		name:       tc.name,
-		operations: operations,
-	}
-}
-
 func TestModelResponseMatch(t *testing.T) {
 	tcs := []struct {
-		resp1       EtcdNonDeterministicResponse
-		resp2       EtcdNonDeterministicResponse
+		resp1       MaybeEtcdResponse
+		resp2       MaybeEtcdResponse
 		expectMatch bool
 	}{
 		{
@@ -421,12 +390,12 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 		{
 			resp1:       getResponse("key", "a", 1, 1),
-			resp2:       unknownResponse(1),
+			resp2:       partialResponse(1),
 			expectMatch: true,
 		},
 		{
 			resp1:       getResponse("key", "a", 1, 1),
-			resp2:       unknownResponse(0),
+			resp2:       partialResponse(0),
 			expectMatch: false,
 		},
 		{
@@ -446,12 +415,12 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 		{
 			resp1:       putResponse(3),
-			resp2:       unknownResponse(3),
+			resp2:       partialResponse(3),
 			expectMatch: true,
 		},
 		{
 			resp1:       putResponse(3),
-			resp2:       unknownResponse(0),
+			resp2:       partialResponse(0),
 			expectMatch: false,
 		},
 		{
@@ -476,22 +445,22 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 		{
 			resp1:       deleteResponse(1, 5),
-			resp2:       unknownResponse(5),
+			resp2:       partialResponse(5),
 			expectMatch: true,
 		},
 		{
 			resp1:       deleteResponse(0, 5),
-			resp2:       unknownResponse(0),
+			resp2:       partialResponse(0),
 			expectMatch: false,
 		},
 		{
 			resp1:       deleteResponse(1, 5),
-			resp2:       unknownResponse(0),
+			resp2:       partialResponse(0),
 			expectMatch: false,
 		},
 		{
 			resp1:       deleteResponse(0, 5),
-			resp2:       unknownResponse(2),
+			resp2:       partialResponse(2),
 			expectMatch: false,
 		},
 		{
@@ -516,22 +485,22 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 		{
 			resp1:       compareRevisionAndPutResponse(true, 7),
-			resp2:       unknownResponse(7),
+			resp2:       partialResponse(7),
 			expectMatch: true,
 		},
 		{
 			resp1:       compareRevisionAndPutResponse(false, 7),
-			resp2:       unknownResponse(7),
+			resp2:       partialResponse(7),
 			expectMatch: true,
 		},
 		{
 			resp1:       compareRevisionAndPutResponse(true, 7),
-			resp2:       unknownResponse(0),
+			resp2:       partialResponse(0),
 			expectMatch: false,
 		},
 		{
 			resp1:       compareRevisionAndPutResponse(false, 7),
-			resp2:       unknownResponse(0),
+			resp2:       partialResponse(0),
 			expectMatch: false,
 		},
 	}
