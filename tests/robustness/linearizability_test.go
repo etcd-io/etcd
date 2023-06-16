@@ -102,12 +102,14 @@ func TestRobustness(t *testing.T) {
 			e2e.WithClusterSize(1),
 		),
 	})
-	if v.Compare(version.V3_5) >= 0 {
+	// TODO: Deflake waiting for waiting until snapshot for etcd versions that don't support setting snapshot catchup entries.
+	if v.Compare(version.V3_6) >= 0 {
 		scenarios = append(scenarios, testScenario{
 			name:      "Issue15271",
 			failpoint: BlackholeUntilSnapshot,
 			traffic:   traffic.HighTraffic,
 			cluster: *e2e.NewConfig(
+				e2e.WithSnapshotCatchUpEntries(100),
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithIsPeerTLS(true),
