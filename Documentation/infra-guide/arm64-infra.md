@@ -4,7 +4,7 @@
 
 All etcd project pipelines run via github actions. The etcd project currently maintains dedicated infrastructure for running `arm64` continuous integration testing. This is required because currently github actions runner virtual machines are only offered as `x64`.
 
-The infrastructure consists of two `c3.large.arm` bare metal servers kindly provided by [Equinix Metal](https://www.equinix.com/) via the [CNCF Community Infrastructure Lab](https://github.com/cncf/cluster/issues/227).
+The infrastructure consists of two `c3.large.arm` bare metal servers kindly provided by [Equinix Metal](https://www.equinix.com/) via the [CNCF Community Infrastructure Lab].
 
 | Hostname                      | IP             | Operating System   | Region        |
 |-------------------------------|----------------|--------------------|---------------|
@@ -13,7 +13,7 @@ The infrastructure consists of two `c3.large.arm` bare metal servers kindly prov
 
 ## Infrastructure support
 
-The etcd project aims to self manage and resolve issues with project infrastructure internally where possible, however if situations emerge where we need to engage support from Equinix Metal we can open an issue under the [CNCF Community Infrastructure Lab](https://github.com/cncf/cluster/issues) project. If the situation is urgent contact @vielmetti directly who can provide further assistance or escalation points.
+The etcd project aims to self manage and resolve issues with project infrastructure internally where possible, however if situations emerge where we need to engage support from Equinix Metal we can open an issue under the [CNCF Community Infrastructure Lab] project or contact the [Equinix Metal support team](https://deploy.equinix.com/support). If the situation is urgent contact @vielmetti directly who can provide further assistance or escalation points.
 
 ## Granting infrastructure access
 
@@ -55,6 +55,14 @@ When a member is removed from the infra admins table existing members must revie
 
 Note: When revoking access do not delete a user or their home directory from servers, as access may need to be reinstated in future.
 
-## Regular access review
+### Regular access review
 
 On a regular at least quarterly basis members of the infra admins team are responsible for verifying that no unneccessary infrastructure access exists by reviewing membership of the table above and existing server access.
+
+## Provisioning new machines
+
+If the etcd project needs new `arm64` infrastructure we can open an issue with the [CNCF Community Infrastructure Lab]. An example etcd request is [here](https://github.com/cncf/cluster/issues/227).
+
+Note: `arm64` compute capacity is not currently available in all regions, this can be checked with [metal-cli](https://github.com/equinix/metal-cli) `metal capacity get | grep arm`.
+
+[CNCF Community Infrastructure Lab]: https://github.com/cncf/cluster/issues
