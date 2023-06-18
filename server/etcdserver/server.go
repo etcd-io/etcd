@@ -1104,6 +1104,14 @@ func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {
 	})
 }
 
+func verifyConsistentIndexIsLatest(lg *zap.Logger, snapshot raftpb.Snapshot, cindex uint64) {
+	verify.Verify(func() {
+		if cindex < snapshot.Metadata.Index {
+			lg.Panic(fmt.Sprintf("consistent_index(%d) is older than snapshot index (%d)", cindex, snapshot.Metadata.Index))
+		}
+	})
+}
+
 func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 	if len(apply.entries) == 0 {
 		return
@@ -2082,6 +2090,9 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			lg.Panic("failed to create snapshot", zap.Error(err))
 		}
+
+		verifyConsistentIndexIsLatest(lg, snap, s.consistIndex.ConsistentIndex())
+
 		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
 			lg.Panic("failed to save snapshot", zap.Error(err))

@@ -1017,6 +1017,9 @@ func TestSyncTrigger(t *testing.T) {
 
 // TestSnapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
+	revertFunc := verify.DisableVerifications()
+	defer revertFunc()
+
 	be, _ := betesting.NewDefaultTmpBackend(t)
 
 	s := raft.NewMemoryStorage()
