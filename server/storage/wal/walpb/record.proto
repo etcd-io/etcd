@@ -1,6 +1,7 @@
 syntax = "proto2";
 package walpb;
 
+option go_package = "go.etcd.io/etcd/server/v3/storage/wal/walpb";
 import "gogoproto/gogo.proto";
 import "raftpb/raft.proto";
 

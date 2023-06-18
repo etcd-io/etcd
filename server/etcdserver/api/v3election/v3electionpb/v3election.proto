@@ -1,15 +1,12 @@
 syntax = "proto3";
 package v3electionpb;
 
-import "gogoproto/gogo.proto";
+option go_package = "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb";
 import "etcd/api/etcdserverpb/rpc.proto";
 import "etcd/api/mvccpb/kv.proto";
 
 // for grpc-gateway
 import "google/api/annotations.proto";
-
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.unmarshaler_all) = true;
 
 // The election service exposes client-side election facilities as a gRPC interface.
 service Election {

@@ -46,6 +46,8 @@ type clusterProxy struct {
 
 	umu  sync.RWMutex
 	umap map[string]endpoints.Endpoint
+
+	pb.UnimplementedClusterServer
 }
 
 // NewClusterProxy takes optional prefix to fetch grpc-proxy member endpoints.

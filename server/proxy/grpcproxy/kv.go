@@ -25,6 +25,8 @@ import (
 type kvProxy struct {
 	kv    clientv3.KV
 	cache cache.Cache
+
+	pb.UnimplementedKVServer
 }
 
 func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {

@@ -46,6 +46,8 @@ type watchProxy struct {
 	// kv is used for permission checking
 	kv clientv3.KV
 	lg *zap.Logger
+
+	pb.UnimplementedWatchServer
 }
 
 func NewWatchProxy(ctx context.Context, lg *zap.Logger, c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {

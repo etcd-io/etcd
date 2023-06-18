@@ -24,6 +24,8 @@ import (
 
 type maintenanceProxy struct {
 	maintenanceClient pb.MaintenanceClient
+
+	pb.UnimplementedMaintenanceServer
 }
 
 func NewMaintenanceProxy(c *clientv3.Client) pb.MaintenanceServer {

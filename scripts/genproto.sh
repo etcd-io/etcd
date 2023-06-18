@@ -19,43 +19,112 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.14.0" ]]; then
   exit 255
 fi
 
+readonly googleapi_commit=77c99e43177c76ae1c1edacee7b6ac4e35a42f3d
+
 GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)
-GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)
-SWAGGER_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger)
+PROTOBUFGO_BIN=$(tool_get_bin google.golang.org/protobuf/cmd/protoc-gen-go)
+GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)
+OPENAPIV2_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2)
+VTPROTOBUFGO_BIN=$(tool_get_bin github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto)
 GOGOPROTO_ROOT="$(tool_pkg_dir github.com/gogo/protobuf/proto)/.."
-GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)/.."
+GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)/.."
 RAFT_ROOT="$(tool_pkg_dir go.etcd.io/raft/v3/raftpb)/.."
+GOOGLEAPI_ROOT=$(mktemp -d -t 'googleapi.XXXXX')
+
+function cleanup_googleapi() {
+  rm -rf "${GOOGLEAPI_ROOT}"
+}
+
+trap cleanup_googleapi EXIT
+
+function download_googleapi() {
+  run pushd "${GOOGLEAPI_ROOT}"
+  run git init
+  run git remote add upstream https://github.com/googleapis/googleapis.git
+  run git fetch upstream "${googleapi_commit}"
+  run git reset --hard FETCH_HEAD
+  run popd
+}
+
+download_googleapi
 
 echo
 echo "Resolved binary and packages versions:"
 echo "  - protoc-gen-gofast:       ${GOFAST_BIN}"
 echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
-echo "  - swagger:                 ${SWAGGER_BIN}"
+echo "  - openapiv2:               ${OPENAPIV2_BIN}"
 echo "  - gogoproto-root:          ${GOGOPROTO_ROOT}"
 echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
 echo "  - raft-root:               ${RAFT_ROOT}"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 
 # directories containing protos to be built
-DIRS="./server/storage/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./api/versionpb"
+DIRS="./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./api/versionpb"
 
-log_callout -e "\\nRunning gofast (gogo) proto generation..."
 
 for dir in ${DIRS}; do
   run pushd "${dir}"
-    run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
+    log_callout -e "\\nRunning go proto generation for ${dir} ..."
+
+    run protoc --experimental_allow_proto3_optional \
+      -I=".:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
       -I"${GRPC_GATEWAY_ROOT}" \
-      --plugin="${GOFAST_BIN}" ./**/*.proto
+      --plugin="${PROTOBUFGO_BIN}" \
+      --plugin="${VTPROTOBUFGO_BIN}" \
+      --go-grpc_out=paths=source_relative:. \
+      --go_out=paths=source_relative:. \
+      --go-vtproto_out=paths=source_relative:. \
+      --go-vtproto_opt=features=marshal+unmarshal+size \
+      ./**/*.proto
 
-    run sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./**/*.pb.go
-    run sed -i.bak -E 's|"raftpb"|"go.etcd.io/raft/v3/raftpb"|g' ./**/*.pb.go
-    run sed -i.bak -E 's|"google/protobuf"|"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"|g' ./**/*.pb.go
+    run sed -i -E "s|SizeVT|Size|g" ./**/*_vtproto.pb.go || echo
+    run sed -i -E "s|MarshalVT|Marshal|g" ./**/*_vtproto.pb.go || echo 
+    run sed -i -E "s|UnmarshalVT|Unmarshal|g" ./**/*_vtproto.pb.go || echo
 
-    rm -f ./**/*.bak
+    # NOTE: The golang/protobuf#140 doesn't add the json tag for oneOf, which is
+    # required by grpc-gateway to align with existing API.
+    if [[ "${dir}" == "./api/etcdserverpb" ]]; then
+      run sed -i -E "s|requestRange,proto3,oneof\"|requestRange,proto3,oneof\" json:\"request_range,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|responseRange,proto3,oneof\"|responseRange,proto3,oneof\" json:\"response_range,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|requestPut,proto3,oneof\"|requestPut,proto3,oneof\" json:\"request_put,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|responsePut,proto3,oneof\"|responsePut,proto3,oneof\" json:\"response_put,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|requestDeleteRange,proto3,oneof\"|requestDeleteRange,proto3,oneof\" json:\"request_delete_range,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|responseDeleteRange,proto3,oneof\"|responseDeleteRange,proto3,oneof\" json:\"response_delete_range,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|requestTxn,proto3,oneof\"|requestTxn,proto3,oneof\" json:\"request_txn,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|responseTxn,proto3,oneof\"|responseTxn,proto3,oneof\" json:\"response_txn,omitempty\"|g" ./rpc.pb.go
+
+      run sed -i -E "s|name=version,proto3,oneof\"|name=version,proto3,oneof\" json:\"version,omitempty\"|" ./rpc.pb.go
+      run sed -i -E "s|json=createRevision,proto3,oneof\"|json=createRevision,proto3,oneof\" json:\"create_revision,omitempty\"|" ./rpc.pb.go
+      run sed -i -E "s|json=modRevision,proto3,oneof\"|json=modRevision,proto3,oneof\" json:\"mod_revision,omitempty\"|" ./rpc.pb.go
+      run sed -i -E "s|name=value,proto3,oneof\"|name=value,proto3,oneof\" json:\"value,omitempty\"|" ./rpc.pb.go
+      run sed -i -E "s|varint,8,opt,name=lease,proto3,oneof\"|varint,8,opt,name=lease,proto3,oneof\" json:\"lease,omitempty\"|" ./rpc.pb.go
+
+      run sed -i -E "s|createRequest,proto3,oneof\"|createRequest,proto3,oneof\" json:\"create_request,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|cancelRequest,proto3,oneof\"|cancelRequest,proto3,oneof\" json:\"cancel_request,omitempty\"|g" ./rpc.pb.go
+      run sed -i -E "s|progressRequest,proto3,oneof\"|progressRequest,proto3,oneof\" json:\"progress_request,omitempty\"|g" ./rpc.pb.go
+    fi
+
     run gofmt -s -w ./**/*.pb.go
     run_go_tool "golang.org/x/tools/cmd/goimports" -w ./**/*.pb.go
   run popd
 done
+
+# NOTE: We still use gogo because of raftpb. The walpb requires the raftpb which
+# doesn't implement the protobuf v2 API - ProtoReflect() method. So, we keep
+# the walpb using gogo here.
+run pushd "./server/storage/wal/walpb"
+  log_callout -e "\\nRunning gofast (gogo) proto generation for walpb ..."
+
+  run protoc \
+    -I=".:$GOGOPROTO_PATH:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
+    -I"${GRPC_GATEWAY_ROOT}" \
+    --plugin="${GOFAST_BIN}" \
+    --gofast_out=paths=source_relative,Mraftpb/raft.proto=go.etcd.io/raft/v3/raftpb,Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor:. \
+    ./**/*.proto
+
+  run gofmt -s -w ./**/*.pb.go
+  run_go_tool "golang.org/x/tools/cmd/goimports" -w ./**/*.pb.go
+run popd
 
 log_callout -e "\\nRunning swagger & grpc_gateway proto generation..."
 
@@ -63,29 +132,26 @@ log_callout -e "\\nRunning swagger & grpc_gateway proto generation..."
 rm -rf Documentation/dev-guide/apispec/swagger/*json
 for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock server/etcdserver/api/v3election/v3electionpb/v3election; do
   log_callout "grpc & swagger for: ${pb}.proto"
-  run protoc -I. \
-      -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
+  run protoc --experimental_allow_proto3_optional \
+      -I. \
+      -I"${GOOGLEAPI_ROOT}" \
       -I"${GRPC_GATEWAY_ROOT}" \
       -I"${GOGOPROTO_PATH}" \
       -I"${ETCD_ROOT_DIR}/.." \
       -I"${RAFT_ROOT}" \
-      --grpc-gateway_out=logtostderr=true,paths=source_relative:. \
-      --swagger_out=logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
-      --plugin="${SWAGGER_BIN}" --plugin="${GRPC_GATEWAY_BIN}" \
+      --grpc-gateway_out=logtostderr=true,Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types,paths=source_relative,standalone=true:./ \
+      --openapiv2_out=json_names_for_fields=false,logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
+      --openapiv2_opt=Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types:. \
+      --plugin="${OPENAPIV2_BIN}" \
+      --plugin="${GRPC_GATEWAY_BIN}" \
       ${pb}.proto
+
   # hack to move gw files around so client won't include them
   pkgpath=$(dirname "${pb}")
   pkg=$(basename "${pkgpath}")
   gwfile="${pb}.pb.gw.go"
 
   run sed -i -E "s#package $pkg#package gw#g" "${gwfile}"
-  run sed -i -E "s#import \\(#import \\(\"go.etcd.io/etcd/${pkgpath}\"#g" "${gwfile}"
-  run sed -i -E "s#([ (])([a-zA-Z0-9_]*(Client|Server|Request)([^(]|$))#\\1${pkg}.\\2#g" "${gwfile}"
-  run sed -i -E "s# (New[a-zA-Z0-9_]*Client\\()# ${pkg}.\\1#g" "${gwfile}"
-  run sed -i -E "s|go.etcd.io/etcd|go.etcd.io/etcd/v3|g" "${gwfile}"
-  run sed -i -E "s|go.etcd.io/etcd/v3/api|go.etcd.io/etcd/api/v3|g" "${gwfile}"
-  run sed -i -E "s|go.etcd.io/etcd/v3/server|go.etcd.io/etcd/server/v3|g" "${gwfile}"
-  
   run go fmt "${gwfile}"
 
   gwdir="${pkgpath}/gw/"

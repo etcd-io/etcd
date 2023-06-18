@@ -29,6 +29,8 @@ import (
 type ClusterServer struct {
 	cluster api.Cluster
 	server  *etcdserver.EtcdServer
+
+	pb.UnimplementedClusterServer
 }
 
 func NewClusterServer(s *etcdserver.EtcdServer) *ClusterServer {

@@ -10,19 +10,18 @@ package gw
 
 import (
 	"context"
-	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"io"
 	"net/http"
 
-	"github.com/golang/protobuf/descriptor"
-	"github.com/golang/protobuf/proto"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
+	extEtcdserverpb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // Suppress "imported and not used" errors
@@ -31,11 +30,10 @@ var _ io.Reader
 var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
-var _ = descriptor.ForMessage
 var _ = metadata.Join
 
-func request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.RangeRequest
+func request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.RangeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -51,8 +49,8 @@ func request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, client
 
 }
 
-func local_request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.RangeRequest
+func local_request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.RangeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -68,8 +66,8 @@ func local_request_KV_Range_0(ctx context.Context, marshaler runtime.Marshaler, 
 
 }
 
-func request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.PutRequest
+func request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.PutRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -85,8 +83,8 @@ func request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, client e
 
 }
 
-func local_request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.PutRequest
+func local_request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.PutRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -102,8 +100,8 @@ func local_request_KV_Put_0(ctx context.Context, marshaler runtime.Marshaler, se
 
 }
 
-func request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.DeleteRangeRequest
+func request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.DeleteRangeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -119,8 +117,8 @@ func request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, 
 
 }
 
-func local_request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.DeleteRangeRequest
+func local_request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.DeleteRangeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -136,8 +134,8 @@ func local_request_KV_DeleteRange_0(ctx context.Context, marshaler runtime.Marsh
 
 }
 
-func request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.TxnRequest
+func request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.TxnRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -153,8 +151,8 @@ func request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, client e
 
 }
 
-func local_request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.TxnRequest
+func local_request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.TxnRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -170,8 +168,8 @@ func local_request_KV_Txn_0(ctx context.Context, marshaler runtime.Marshaler, se
 
 }
 
-func request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.CompactionRequest
+func request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.KVClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.CompactionRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -187,8 +185,8 @@ func request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, clie
 
 }
 
-func local_request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.CompactionRequest
+func local_request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.KVServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.CompactionRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -204,7 +202,7 @@ func local_request_KV_Compact_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.WatchClient, req *http.Request, pathParams map[string]string) (etcdserverpb.Watch_WatchClient, runtime.ServerMetadata, error) {
+func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.WatchClient, req *http.Request, pathParams map[string]string) (extEtcdserverpb.Watch_WatchClient, runtime.ServerMetadata, error) {
 	var metadata runtime.ServerMetadata
 	stream, err := client.Watch(ctx)
 	if err != nil {
@@ -213,7 +211,7 @@ func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 	}
 	dec := marshaler.NewDecoder(req.Body)
 	handleSend := func() error {
-		var protoReq etcdserverpb.WatchRequest
+		var protoReq extEtcdserverpb.WatchRequest
 		err := dec.Decode(&protoReq)
 		if err == io.EOF {
 			return err
@@ -227,15 +225,6 @@ func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 			return err
 		}
 		return nil
-	}
-	if err := handleSend(); err != nil {
-		if cerr := stream.CloseSend(); cerr != nil {
-			grpclog.Infof("Failed to terminate client stream: %v", cerr)
-		}
-		if err == io.EOF {
-			return stream, metadata, nil
-		}
-		return nil, metadata, err
 	}
 	go func() {
 		for {
@@ -256,8 +245,8 @@ func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 	return stream, metadata, nil
 }
 
-func request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseGrantRequest
+func request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseGrantRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -273,8 +262,8 @@ func request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-func local_request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseGrantRequest
+func local_request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseGrantRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -290,8 +279,8 @@ func local_request_Lease_LeaseGrant_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseRevokeRequest
+func request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseRevokeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -307,8 +296,8 @@ func request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func local_request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseRevokeRequest
+func local_request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseRevokeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -324,8 +313,8 @@ func local_request_Lease_LeaseRevoke_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseRevokeRequest
+func request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseRevokeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -341,8 +330,8 @@ func request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func local_request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseRevokeRequest
+func local_request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseRevokeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -358,7 +347,7 @@ func local_request_Lease_LeaseRevoke_1(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (etcdserverpb.Lease_LeaseKeepAliveClient, runtime.ServerMetadata, error) {
+func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (extEtcdserverpb.Lease_LeaseKeepAliveClient, runtime.ServerMetadata, error) {
 	var metadata runtime.ServerMetadata
 	stream, err := client.LeaseKeepAlive(ctx)
 	if err != nil {
@@ -367,7 +356,7 @@ func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marsh
 	}
 	dec := marshaler.NewDecoder(req.Body)
 	handleSend := func() error {
-		var protoReq etcdserverpb.LeaseKeepAliveRequest
+		var protoReq extEtcdserverpb.LeaseKeepAliveRequest
 		err := dec.Decode(&protoReq)
 		if err == io.EOF {
 			return err
@@ -381,15 +370,6 @@ func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marsh
 			return err
 		}
 		return nil
-	}
-	if err := handleSend(); err != nil {
-		if cerr := stream.CloseSend(); cerr != nil {
-			grpclog.Infof("Failed to terminate client stream: %v", cerr)
-		}
-		if err == io.EOF {
-			return stream, metadata, nil
-		}
-		return nil, metadata, err
 	}
 	go func() {
 		for {
@@ -410,8 +390,8 @@ func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marsh
 	return stream, metadata, nil
 }
 
-func request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseTimeToLiveRequest
+func request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseTimeToLiveRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -427,8 +407,8 @@ func request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func local_request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseTimeToLiveRequest
+func local_request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseTimeToLiveRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -444,8 +424,8 @@ func local_request_Lease_LeaseTimeToLive_0(ctx context.Context, marshaler runtim
 
 }
 
-func request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseTimeToLiveRequest
+func request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseTimeToLiveRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -461,8 +441,8 @@ func request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func local_request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseTimeToLiveRequest
+func local_request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseTimeToLiveRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -478,8 +458,8 @@ func local_request_Lease_LeaseTimeToLive_1(ctx context.Context, marshaler runtim
 
 }
 
-func request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseLeasesRequest
+func request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseLeasesRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -495,8 +475,8 @@ func request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func local_request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseLeasesRequest
+func local_request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseLeasesRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -512,8 +492,8 @@ func local_request_Lease_LeaseLeases_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseLeasesRequest
+func request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.LeaseClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseLeasesRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -529,8 +509,8 @@ func request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func local_request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.LeaseLeasesRequest
+func local_request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.LeaseServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.LeaseLeasesRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -546,8 +526,8 @@ func local_request_Lease_LeaseLeases_1(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberAddRequest
+func request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberAddRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -563,8 +543,8 @@ func request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func local_request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberAddRequest
+func local_request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberAddRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -580,8 +560,8 @@ func local_request_Cluster_MemberAdd_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberRemoveRequest
+func request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberRemoveRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -597,8 +577,8 @@ func request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marsh
 
 }
 
-func local_request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberRemoveRequest
+func local_request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberRemoveRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -614,8 +594,8 @@ func local_request_Cluster_MemberRemove_0(ctx context.Context, marshaler runtime
 
 }
 
-func request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberUpdateRequest
+func request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberUpdateRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -631,8 +611,8 @@ func request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marsh
 
 }
 
-func local_request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberUpdateRequest
+func local_request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberUpdateRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -648,8 +628,8 @@ func local_request_Cluster_MemberUpdate_0(ctx context.Context, marshaler runtime
 
 }
 
-func request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberListRequest
+func request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberListRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -665,8 +645,8 @@ func request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func local_request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberListRequest
+func local_request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberListRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -682,8 +662,8 @@ func local_request_Cluster_MemberList_0(ctx context.Context, marshaler runtime.M
 
 }
 
-func request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberPromoteRequest
+func request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberPromoteRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -699,8 +679,8 @@ func request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func local_request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MemberPromoteRequest
+func local_request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.ClusterServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MemberPromoteRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -716,8 +696,8 @@ func local_request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtim
 
 }
 
-func request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AlarmRequest
+func request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AlarmRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -733,8 +713,8 @@ func request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func local_request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AlarmRequest
+func local_request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AlarmRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -750,8 +730,8 @@ func local_request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.StatusRequest
+func request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.StatusRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -767,8 +747,8 @@ func request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func local_request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.StatusRequest
+func local_request_Maintenance_Status_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.StatusRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -784,8 +764,8 @@ func local_request_Maintenance_Status_0(ctx context.Context, marshaler runtime.M
 
 }
 
-func request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.DefragmentRequest
+func request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.DefragmentRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -801,8 +781,8 @@ func request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func local_request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.DefragmentRequest
+func local_request_Maintenance_Defragment_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.DefragmentRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -818,8 +798,8 @@ func local_request_Maintenance_Defragment_0(ctx context.Context, marshaler runti
 
 }
 
-func request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.HashRequest
+func request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.HashRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -835,8 +815,8 @@ func request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-func local_request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.HashRequest
+func local_request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.HashRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -852,8 +832,8 @@ func local_request_Maintenance_Hash_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.HashKVRequest
+func request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.HashKVRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -869,8 +849,8 @@ func request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func local_request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.HashKVRequest
+func local_request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.HashKVRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -886,8 +866,8 @@ func local_request_Maintenance_HashKV_0(ctx context.Context, marshaler runtime.M
 
 }
 
-func request_Maintenance_Snapshot_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (etcdserverpb.Maintenance_SnapshotClient, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.SnapshotRequest
+func request_Maintenance_Snapshot_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (extEtcdserverpb.Maintenance_SnapshotClient, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.SnapshotRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -911,8 +891,8 @@ func request_Maintenance_Snapshot_0(ctx context.Context, marshaler runtime.Marsh
 
 }
 
-func request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MoveLeaderRequest
+func request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MoveLeaderRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -928,8 +908,8 @@ func request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func local_request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.MoveLeaderRequest
+func local_request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.MoveLeaderRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -945,8 +925,8 @@ func local_request_Maintenance_MoveLeader_0(ctx context.Context, marshaler runti
 
 }
 
-func request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.DowngradeRequest
+func request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.DowngradeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -962,8 +942,8 @@ func request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func local_request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.DowngradeRequest
+func local_request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.MaintenanceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.DowngradeRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -979,8 +959,8 @@ func local_request_Maintenance_Downgrade_0(ctx context.Context, marshaler runtim
 
 }
 
-func request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthEnableRequest
+func request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthEnableRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -996,8 +976,8 @@ func request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func local_request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthEnableRequest
+func local_request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthEnableRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1013,8 +993,8 @@ func local_request_Auth_AuthEnable_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthDisableRequest
+func request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthDisableRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1030,8 +1010,8 @@ func request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-func local_request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthDisableRequest
+func local_request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthDisableRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1047,8 +1027,8 @@ func local_request_Auth_AuthDisable_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-func request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthStatusRequest
+func request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthStatusRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1064,8 +1044,8 @@ func request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func local_request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthStatusRequest
+func local_request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthStatusRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1081,8 +1061,8 @@ func local_request_Auth_AuthStatus_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthenticateRequest
+func request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthenticateRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1098,8 +1078,8 @@ func request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func local_request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthenticateRequest
+func local_request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthenticateRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1115,8 +1095,8 @@ func local_request_Auth_Authenticate_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserAddRequest
+func request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserAddRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1132,8 +1112,8 @@ func request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, cl
 
 }
 
-func local_request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserAddRequest
+func local_request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserAddRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1149,8 +1129,8 @@ func local_request_Auth_UserAdd_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserGetRequest
+func request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserGetRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1166,8 +1146,8 @@ func request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, cl
 
 }
 
-func local_request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserGetRequest
+func local_request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserGetRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1183,8 +1163,8 @@ func local_request_Auth_UserGet_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserListRequest
+func request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserListRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1200,8 +1180,8 @@ func request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, c
 
 }
 
-func local_request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserListRequest
+func local_request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserListRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1217,8 +1197,8 @@ func local_request_Auth_UserList_0(ctx context.Context, marshaler runtime.Marsha
 
 }
 
-func request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserDeleteRequest
+func request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserDeleteRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1234,8 +1214,8 @@ func request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func local_request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserDeleteRequest
+func local_request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserDeleteRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1251,8 +1231,8 @@ func local_request_Auth_UserDelete_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserChangePasswordRequest
+func request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserChangePasswordRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1268,8 +1248,8 @@ func request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
-func local_request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserChangePasswordRequest
+func local_request_Auth_UserChangePassword_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserChangePasswordRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1285,8 +1265,8 @@ func local_request_Auth_UserChangePassword_0(ctx context.Context, marshaler runt
 
 }
 
-func request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserGrantRoleRequest
+func request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserGrantRoleRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1302,8 +1282,8 @@ func request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func local_request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserGrantRoleRequest
+func local_request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserGrantRoleRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1319,8 +1299,8 @@ func local_request_Auth_UserGrantRole_0(ctx context.Context, marshaler runtime.M
 
 }
 
-func request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserRevokeRoleRequest
+func request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserRevokeRoleRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1336,8 +1316,8 @@ func request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marsha
 
 }
 
-func local_request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthUserRevokeRoleRequest
+func local_request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthUserRevokeRoleRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1353,8 +1333,8 @@ func local_request_Auth_UserRevokeRole_0(ctx context.Context, marshaler runtime.
 
 }
 
-func request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleAddRequest
+func request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleAddRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1370,8 +1350,8 @@ func request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, cl
 
 }
 
-func local_request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleAddRequest
+func local_request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleAddRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1387,8 +1367,8 @@ func local_request_Auth_RoleAdd_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleGetRequest
+func request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleGetRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1404,8 +1384,8 @@ func request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, cl
 
 }
 
-func local_request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleGetRequest
+func local_request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleGetRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1421,8 +1401,8 @@ func local_request_Auth_RoleGet_0(ctx context.Context, marshaler runtime.Marshal
 
 }
 
-func request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleListRequest
+func request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleListRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1438,8 +1418,8 @@ func request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, c
 
 }
 
-func local_request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleListRequest
+func local_request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleListRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1455,8 +1435,8 @@ func local_request_Auth_RoleList_0(ctx context.Context, marshaler runtime.Marsha
 
 }
 
-func request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleDeleteRequest
+func request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleDeleteRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1472,8 +1452,8 @@ func request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func local_request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleDeleteRequest
+func local_request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleDeleteRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1489,8 +1469,8 @@ func local_request_Auth_RoleDelete_0(ctx context.Context, marshaler runtime.Mars
 
 }
 
-func request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleGrantPermissionRequest
+func request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleGrantPermissionRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1506,8 +1486,8 @@ func request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.M
 
 }
 
-func local_request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleGrantPermissionRequest
+func local_request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleGrantPermissionRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1523,8 +1503,8 @@ func local_request_Auth_RoleGrantPermission_0(ctx context.Context, marshaler run
 
 }
 
-func request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleRevokePermissionRequest
+func request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.Marshaler, client extEtcdserverpb.AuthClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleRevokePermissionRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1540,8 +1520,8 @@ func request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.
 
 }
 
-func local_request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.Marshaler, server etcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq etcdserverpb.AuthRoleRevokePermissionRequest
+func local_request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler runtime.Marshaler, server extEtcdserverpb.AuthServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extEtcdserverpb.AuthRoleRevokePermissionRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -1557,11 +1537,11 @@ func local_request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler ru
 
 }
 
-// etcdserverpb.RegisterKVHandlerServer registers the http handlers for service KV to "mux".
-// UnaryRPC     :call etcdserverpb.KVServer directly.
+// RegisterKVHandlerServer registers the http handlers for service KV to "mux".
+// UnaryRPC     :call KVServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterKVHandlerFromEndpoint instead.
-func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.KVServer) error {
+func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server extEtcdserverpb.KVServer) error {
 
 	mux.Handle("POST", pattern_KV_Range_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1569,7 +1549,7 @@ func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server 
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.KV/Range", runtime.WithHTTPPathPattern("/v3/kv/range"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1592,7 +1572,7 @@ func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server 
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.KV/Put", runtime.WithHTTPPathPattern("/v3/kv/put"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1615,7 +1595,7 @@ func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server 
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.KV/DeleteRange", runtime.WithHTTPPathPattern("/v3/kv/deleterange"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1638,7 +1618,7 @@ func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server 
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.KV/Txn", runtime.WithHTTPPathPattern("/v3/kv/txn"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1661,7 +1641,7 @@ func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server 
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.KV/Compact", runtime.WithHTTPPathPattern("/v3/kv/compaction"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1681,11 +1661,11 @@ func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server 
 	return nil
 }
 
-// etcdserverpb.RegisterWatchHandlerServer registers the http handlers for service Watch to "mux".
-// UnaryRPC     :call etcdserverpb.WatchServer directly.
+// RegisterWatchHandlerServer registers the http handlers for service Watch to "mux".
+// UnaryRPC     :call WatchServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterWatchHandlerFromEndpoint instead.
-func RegisterWatchHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.WatchServer) error {
+func RegisterWatchHandlerServer(ctx context.Context, mux *runtime.ServeMux, server extEtcdserverpb.WatchServer) error {
 
 	mux.Handle("POST", pattern_Watch_Watch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
@@ -1697,11 +1677,11 @@ func RegisterWatchHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 	return nil
 }
 
-// etcdserverpb.RegisterLeaseHandlerServer registers the http handlers for service Lease to "mux".
-// UnaryRPC     :call etcdserverpb.LeaseServer directly.
+// RegisterLeaseHandlerServer registers the http handlers for service Lease to "mux".
+// UnaryRPC     :call LeaseServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterLeaseHandlerFromEndpoint instead.
-func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.LeaseServer) error {
+func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, server extEtcdserverpb.LeaseServer) error {
 
 	mux.Handle("POST", pattern_Lease_LeaseGrant_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1709,7 +1689,7 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseGrant", runtime.WithHTTPPathPattern("/v3/lease/grant"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1732,7 +1712,7 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseRevoke", runtime.WithHTTPPathPattern("/v3/lease/revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1755,7 +1735,7 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseRevoke", runtime.WithHTTPPathPattern("/v3/kv/lease/revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1785,7 +1765,7 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseTimeToLive", runtime.WithHTTPPathPattern("/v3/lease/timetolive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1808,7 +1788,7 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseTimeToLive", runtime.WithHTTPPathPattern("/v3/kv/lease/timetolive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1831,7 +1811,7 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseLeases", runtime.WithHTTPPathPattern("/v3/lease/leases"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1854,7 +1834,7 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseLeases", runtime.WithHTTPPathPattern("/v3/kv/lease/leases"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1874,11 +1854,11 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 	return nil
 }
 
-// etcdserverpb.RegisterClusterHandlerServer registers the http handlers for service Cluster to "mux".
-// UnaryRPC     :call etcdserverpb.ClusterServer directly.
+// RegisterClusterHandlerServer registers the http handlers for service Cluster to "mux".
+// UnaryRPC     :call ClusterServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterClusterHandlerFromEndpoint instead.
-func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.ClusterServer) error {
+func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, server extEtcdserverpb.ClusterServer) error {
 
 	mux.Handle("POST", pattern_Cluster_MemberAdd_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -1886,7 +1866,7 @@ func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberAdd", runtime.WithHTTPPathPattern("/v3/cluster/member/add"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1909,7 +1889,7 @@ func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberRemove", runtime.WithHTTPPathPattern("/v3/cluster/member/remove"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1932,7 +1912,7 @@ func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberUpdate", runtime.WithHTTPPathPattern("/v3/cluster/member/update"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1955,7 +1935,7 @@ func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberList", runtime.WithHTTPPathPattern("/v3/cluster/member/list"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1978,7 +1958,7 @@ func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberPromote", runtime.WithHTTPPathPattern("/v3/cluster/member/promote"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -1998,11 +1978,11 @@ func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 	return nil
 }
 
-// etcdserverpb.RegisterMaintenanceHandlerServer registers the http handlers for service Maintenance to "mux".
-// UnaryRPC     :call etcdserverpb.MaintenanceServer directly.
+// RegisterMaintenanceHandlerServer registers the http handlers for service Maintenance to "mux".
+// UnaryRPC     :call MaintenanceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterMaintenanceHandlerFromEndpoint instead.
-func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.MaintenanceServer) error {
+func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server extEtcdserverpb.MaintenanceServer) error {
 
 	mux.Handle("POST", pattern_Maintenance_Alarm_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -2010,7 +1990,7 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Maintenance/Alarm", runtime.WithHTTPPathPattern("/v3/maintenance/alarm"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2033,7 +2013,7 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Maintenance/Status", runtime.WithHTTPPathPattern("/v3/maintenance/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2056,7 +2036,7 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Maintenance/Defragment", runtime.WithHTTPPathPattern("/v3/maintenance/defragment"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2079,7 +2059,7 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Maintenance/Hash", runtime.WithHTTPPathPattern("/v3/maintenance/hash"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2102,7 +2082,7 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Maintenance/HashKV", runtime.WithHTTPPathPattern("/v3/maintenance/hashkv"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2132,7 +2112,7 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Maintenance/MoveLeader", runtime.WithHTTPPathPattern("/v3/maintenance/transfer-leadership"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2155,7 +2135,7 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Maintenance/Downgrade", runtime.WithHTTPPathPattern("/v3/maintenance/downgrade"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2175,11 +2155,11 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 	return nil
 }
 
-// etcdserverpb.RegisterAuthHandlerServer registers the http handlers for service Auth to "mux".
-// UnaryRPC     :call etcdserverpb.AuthServer directly.
+// RegisterAuthHandlerServer registers the http handlers for service Auth to "mux".
+// UnaryRPC     :call AuthServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterAuthHandlerFromEndpoint instead.
-func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.AuthServer) error {
+func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, server extEtcdserverpb.AuthServer) error {
 
 	mux.Handle("POST", pattern_Auth_AuthEnable_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -2187,7 +2167,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/AuthEnable", runtime.WithHTTPPathPattern("/v3/auth/enable"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2210,7 +2190,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/AuthDisable", runtime.WithHTTPPathPattern("/v3/auth/disable"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2233,7 +2213,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/AuthStatus", runtime.WithHTTPPathPattern("/v3/auth/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2256,7 +2236,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/Authenticate", runtime.WithHTTPPathPattern("/v3/auth/authenticate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2279,7 +2259,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/UserAdd", runtime.WithHTTPPathPattern("/v3/auth/user/add"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2302,7 +2282,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/UserGet", runtime.WithHTTPPathPattern("/v3/auth/user/get"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2325,7 +2305,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/UserList", runtime.WithHTTPPathPattern("/v3/auth/user/list"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2348,7 +2328,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/UserDelete", runtime.WithHTTPPathPattern("/v3/auth/user/delete"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2371,7 +2351,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/UserChangePassword", runtime.WithHTTPPathPattern("/v3/auth/user/changepw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2394,7 +2374,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/UserGrantRole", runtime.WithHTTPPathPattern("/v3/auth/user/grant"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2417,7 +2397,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/UserRevokeRole", runtime.WithHTTPPathPattern("/v3/auth/user/revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2440,7 +2420,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/RoleAdd", runtime.WithHTTPPathPattern("/v3/auth/role/add"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2463,7 +2443,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/RoleGet", runtime.WithHTTPPathPattern("/v3/auth/role/get"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2486,7 +2466,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/RoleList", runtime.WithHTTPPathPattern("/v3/auth/role/list"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2509,7 +2489,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/RoleDelete", runtime.WithHTTPPathPattern("/v3/auth/role/delete"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2532,7 +2512,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/RoleGrantPermission", runtime.WithHTTPPathPattern("/v3/auth/role/grant"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2555,7 +2535,7 @@ func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/etcdserverpb.Auth/RoleRevokePermission", runtime.WithHTTPPathPattern("/v3/auth/role/revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2602,22 +2582,22 @@ func RegisterKVHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, e
 
 // RegisterKVHandler registers the http handlers for service KV to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterKVHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterKVHandlerClient(ctx, mux, etcdserverpb.NewKVClient(conn))
+func RegisterKVHandler(ctx context.Context, mux *runtime.ServeMux, conn grpc.ClientConnInterface) error {
+	return RegisterKVHandlerClient(ctx, mux, extEtcdserverpb.NewKVClient(conn))
 }
 
-// etcdserverpb.RegisterKVHandlerClient registers the http handlers for service KV
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "KVClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KVClient"
+// RegisterKVHandlerClient registers the http handlers for service KV
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "extEtcdserverpb.KVClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "extEtcdserverpb.KVClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "KVClient" to call the correct interceptors.
-func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.KVClient) error {
+// "extEtcdserverpb.KVClient" to call the correct interceptors.
+func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client extEtcdserverpb.KVClient) error {
 
 	mux.Handle("POST", pattern_KV_Range_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.KV/Range", runtime.WithHTTPPathPattern("/v3/kv/range"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2637,7 +2617,7 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.KV/Put", runtime.WithHTTPPathPattern("/v3/kv/put"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2657,7 +2637,7 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.KV/DeleteRange", runtime.WithHTTPPathPattern("/v3/kv/deleterange"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2677,7 +2657,7 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.KV/Txn", runtime.WithHTTPPathPattern("/v3/kv/txn"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2697,7 +2677,7 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.KV/Compact", runtime.WithHTTPPathPattern("/v3/kv/compaction"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2717,15 +2697,15 @@ func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client 
 }
 
 var (
-	pattern_KV_Range_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "range"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_KV_Range_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "range"}, ""))
 
-	pattern_KV_Put_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "put"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_KV_Put_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "put"}, ""))
 
-	pattern_KV_DeleteRange_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "deleterange"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_KV_DeleteRange_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "deleterange"}, ""))
 
-	pattern_KV_Txn_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "txn"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_KV_Txn_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "txn"}, ""))
 
-	pattern_KV_Compact_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "compaction"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_KV_Compact_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "kv", "compaction"}, ""))
 )
 
 var (
@@ -2767,22 +2747,22 @@ func RegisterWatchHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux
 
 // RegisterWatchHandler registers the http handlers for service Watch to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterWatchHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterWatchHandlerClient(ctx, mux, etcdserverpb.NewWatchClient(conn))
+func RegisterWatchHandler(ctx context.Context, mux *runtime.ServeMux, conn grpc.ClientConnInterface) error {
+	return RegisterWatchHandlerClient(ctx, mux, extEtcdserverpb.NewWatchClient(conn))
 }
 
-// etcdserverpb.RegisterWatchHandlerClient registers the http handlers for service Watch
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "WatchClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "WatchClient"
+// RegisterWatchHandlerClient registers the http handlers for service Watch
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "extEtcdserverpb.WatchClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "extEtcdserverpb.WatchClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "WatchClient" to call the correct interceptors.
-func RegisterWatchHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.WatchClient) error {
+// "extEtcdserverpb.WatchClient" to call the correct interceptors.
+func RegisterWatchHandlerClient(ctx context.Context, mux *runtime.ServeMux, client extEtcdserverpb.WatchClient) error {
 
 	mux.Handle("POST", pattern_Watch_Watch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Watch/Watch", runtime.WithHTTPPathPattern("/v3/watch"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2802,7 +2782,7 @@ func RegisterWatchHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 }
 
 var (
-	pattern_Watch_Watch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v3", "watch"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Watch_Watch_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v3", "watch"}, ""))
 )
 
 var (
@@ -2836,22 +2816,22 @@ func RegisterLeaseHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux
 
 // RegisterLeaseHandler registers the http handlers for service Lease to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterLeaseHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterLeaseHandlerClient(ctx, mux, etcdserverpb.NewLeaseClient(conn))
+func RegisterLeaseHandler(ctx context.Context, mux *runtime.ServeMux, conn grpc.ClientConnInterface) error {
+	return RegisterLeaseHandlerClient(ctx, mux, extEtcdserverpb.NewLeaseClient(conn))
 }
 
-// etcdserverpb.RegisterLeaseHandlerClient registers the http handlers for service Lease
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "LeaseClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "LeaseClient"
+// RegisterLeaseHandlerClient registers the http handlers for service Lease
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "extEtcdserverpb.LeaseClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "extEtcdserverpb.LeaseClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "LeaseClient" to call the correct interceptors.
-func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.LeaseClient) error {
+// "extEtcdserverpb.LeaseClient" to call the correct interceptors.
+func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, client extEtcdserverpb.LeaseClient) error {
 
 	mux.Handle("POST", pattern_Lease_LeaseGrant_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseGrant", runtime.WithHTTPPathPattern("/v3/lease/grant"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2871,7 +2851,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseRevoke", runtime.WithHTTPPathPattern("/v3/lease/revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2891,7 +2871,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseRevoke", runtime.WithHTTPPathPattern("/v3/kv/lease/revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2911,7 +2891,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseKeepAlive", runtime.WithHTTPPathPattern("/v3/lease/keepalive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2931,7 +2911,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseTimeToLive", runtime.WithHTTPPathPattern("/v3/lease/timetolive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2951,7 +2931,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseTimeToLive", runtime.WithHTTPPathPattern("/v3/kv/lease/timetolive"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2971,7 +2951,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseLeases", runtime.WithHTTPPathPattern("/v3/lease/leases"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -2991,7 +2971,7 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Lease/LeaseLeases", runtime.WithHTTPPathPattern("/v3/kv/lease/leases"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3011,21 +2991,21 @@ func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 }
 
 var (
-	pattern_Lease_LeaseGrant_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "grant"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lease_LeaseGrant_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "grant"}, ""))
 
-	pattern_Lease_LeaseRevoke_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "revoke"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lease_LeaseRevoke_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "revoke"}, ""))
 
-	pattern_Lease_LeaseRevoke_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "revoke"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lease_LeaseRevoke_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "revoke"}, ""))
 
-	pattern_Lease_LeaseKeepAlive_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "keepalive"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lease_LeaseKeepAlive_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "keepalive"}, ""))
 
-	pattern_Lease_LeaseTimeToLive_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "timetolive"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lease_LeaseTimeToLive_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "timetolive"}, ""))
 
-	pattern_Lease_LeaseTimeToLive_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "timetolive"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lease_LeaseTimeToLive_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "timetolive"}, ""))
 
-	pattern_Lease_LeaseLeases_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "leases"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lease_LeaseLeases_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lease", "leases"}, ""))
 
-	pattern_Lease_LeaseLeases_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "leases"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lease_LeaseLeases_1 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "kv", "lease", "leases"}, ""))
 )
 
 var (
@@ -3073,22 +3053,22 @@ func RegisterClusterHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeM
 
 // RegisterClusterHandler registers the http handlers for service Cluster to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterClusterHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterClusterHandlerClient(ctx, mux, etcdserverpb.NewClusterClient(conn))
+func RegisterClusterHandler(ctx context.Context, mux *runtime.ServeMux, conn grpc.ClientConnInterface) error {
+	return RegisterClusterHandlerClient(ctx, mux, extEtcdserverpb.NewClusterClient(conn))
 }
 
-// etcdserverpb.RegisterClusterHandlerClient registers the http handlers for service Cluster
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ClusterClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ClusterClient"
+// RegisterClusterHandlerClient registers the http handlers for service Cluster
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "extEtcdserverpb.ClusterClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "extEtcdserverpb.ClusterClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ClusterClient" to call the correct interceptors.
-func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.ClusterClient) error {
+// "extEtcdserverpb.ClusterClient" to call the correct interceptors.
+func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, client extEtcdserverpb.ClusterClient) error {
 
 	mux.Handle("POST", pattern_Cluster_MemberAdd_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberAdd", runtime.WithHTTPPathPattern("/v3/cluster/member/add"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3108,7 +3088,7 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberRemove", runtime.WithHTTPPathPattern("/v3/cluster/member/remove"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3128,7 +3108,7 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberUpdate", runtime.WithHTTPPathPattern("/v3/cluster/member/update"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3148,7 +3128,7 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberList", runtime.WithHTTPPathPattern("/v3/cluster/member/list"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3168,7 +3148,7 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberPromote", runtime.WithHTTPPathPattern("/v3/cluster/member/promote"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3188,15 +3168,15 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 }
 
 var (
-	pattern_Cluster_MemberAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "add"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Cluster_MemberAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "add"}, ""))
 
-	pattern_Cluster_MemberRemove_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "remove"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Cluster_MemberRemove_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "remove"}, ""))
 
-	pattern_Cluster_MemberUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "update"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Cluster_MemberUpdate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "update"}, ""))
 
-	pattern_Cluster_MemberList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "list"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Cluster_MemberList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "list"}, ""))
 
-	pattern_Cluster_MemberPromote_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "promote"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Cluster_MemberPromote_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "promote"}, ""))
 )
 
 var (
@@ -3238,22 +3218,22 @@ func RegisterMaintenanceHandlerFromEndpoint(ctx context.Context, mux *runtime.Se
 
 // RegisterMaintenanceHandler registers the http handlers for service Maintenance to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterMaintenanceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterMaintenanceHandlerClient(ctx, mux, etcdserverpb.NewMaintenanceClient(conn))
+func RegisterMaintenanceHandler(ctx context.Context, mux *runtime.ServeMux, conn grpc.ClientConnInterface) error {
+	return RegisterMaintenanceHandlerClient(ctx, mux, extEtcdserverpb.NewMaintenanceClient(conn))
 }
 
-// etcdserverpb.RegisterMaintenanceHandlerClient registers the http handlers for service Maintenance
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "MaintenanceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "MaintenanceClient"
+// RegisterMaintenanceHandlerClient registers the http handlers for service Maintenance
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "extEtcdserverpb.MaintenanceClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "extEtcdserverpb.MaintenanceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "MaintenanceClient" to call the correct interceptors.
-func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.MaintenanceClient) error {
+// "extEtcdserverpb.MaintenanceClient" to call the correct interceptors.
+func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client extEtcdserverpb.MaintenanceClient) error {
 
 	mux.Handle("POST", pattern_Maintenance_Alarm_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Maintenance/Alarm", runtime.WithHTTPPathPattern("/v3/maintenance/alarm"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3273,7 +3253,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Maintenance/Status", runtime.WithHTTPPathPattern("/v3/maintenance/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3293,7 +3273,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Maintenance/Defragment", runtime.WithHTTPPathPattern("/v3/maintenance/defragment"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3313,7 +3293,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Maintenance/Hash", runtime.WithHTTPPathPattern("/v3/maintenance/hash"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3333,7 +3313,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Maintenance/HashKV", runtime.WithHTTPPathPattern("/v3/maintenance/hashkv"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3353,7 +3333,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Maintenance/Snapshot", runtime.WithHTTPPathPattern("/v3/maintenance/snapshot"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3373,7 +3353,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Maintenance/MoveLeader", runtime.WithHTTPPathPattern("/v3/maintenance/transfer-leadership"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3393,7 +3373,7 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Maintenance/Downgrade", runtime.WithHTTPPathPattern("/v3/maintenance/downgrade"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3413,21 +3393,21 @@ func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux
 }
 
 var (
-	pattern_Maintenance_Alarm_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "alarm"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Maintenance_Alarm_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "alarm"}, ""))
 
-	pattern_Maintenance_Status_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "status"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Maintenance_Status_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "status"}, ""))
 
-	pattern_Maintenance_Defragment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "defragment"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Maintenance_Defragment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "defragment"}, ""))
 
-	pattern_Maintenance_Hash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "hash"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Maintenance_Hash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "hash"}, ""))
 
-	pattern_Maintenance_HashKV_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "hash"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Maintenance_HashKV_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "hashkv"}, ""))
 
-	pattern_Maintenance_Snapshot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "snapshot"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Maintenance_Snapshot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "snapshot"}, ""))
 
-	pattern_Maintenance_MoveLeader_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "transfer-leadership"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Maintenance_MoveLeader_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "transfer-leadership"}, ""))
 
-	pattern_Maintenance_Downgrade_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "downgrade"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Maintenance_Downgrade_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "maintenance", "downgrade"}, ""))
 )
 
 var (
@@ -3475,22 +3455,22 @@ func RegisterAuthHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux,
 
 // RegisterAuthHandler registers the http handlers for service Auth to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterAuthHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterAuthHandlerClient(ctx, mux, etcdserverpb.NewAuthClient(conn))
+func RegisterAuthHandler(ctx context.Context, mux *runtime.ServeMux, conn grpc.ClientConnInterface) error {
+	return RegisterAuthHandlerClient(ctx, mux, extEtcdserverpb.NewAuthClient(conn))
 }
 
-// etcdserverpb.RegisterAuthHandlerClient registers the http handlers for service Auth
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "AuthClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "AuthClient"
+// RegisterAuthHandlerClient registers the http handlers for service Auth
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "extEtcdserverpb.AuthClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "extEtcdserverpb.AuthClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "AuthClient" to call the correct interceptors.
-func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.AuthClient) error {
+// "extEtcdserverpb.AuthClient" to call the correct interceptors.
+func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, client extEtcdserverpb.AuthClient) error {
 
 	mux.Handle("POST", pattern_Auth_AuthEnable_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/AuthEnable", runtime.WithHTTPPathPattern("/v3/auth/enable"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3510,7 +3490,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/AuthDisable", runtime.WithHTTPPathPattern("/v3/auth/disable"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3530,7 +3510,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/AuthStatus", runtime.WithHTTPPathPattern("/v3/auth/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3550,7 +3530,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/Authenticate", runtime.WithHTTPPathPattern("/v3/auth/authenticate"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3570,7 +3550,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/UserAdd", runtime.WithHTTPPathPattern("/v3/auth/user/add"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3590,7 +3570,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/UserGet", runtime.WithHTTPPathPattern("/v3/auth/user/get"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3610,7 +3590,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/UserList", runtime.WithHTTPPathPattern("/v3/auth/user/list"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3630,7 +3610,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/UserDelete", runtime.WithHTTPPathPattern("/v3/auth/user/delete"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3650,7 +3630,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/UserChangePassword", runtime.WithHTTPPathPattern("/v3/auth/user/changepw"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3670,7 +3650,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/UserGrantRole", runtime.WithHTTPPathPattern("/v3/auth/user/grant"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3690,7 +3670,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/UserRevokeRole", runtime.WithHTTPPathPattern("/v3/auth/user/revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3710,7 +3690,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/RoleAdd", runtime.WithHTTPPathPattern("/v3/auth/role/add"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3730,7 +3710,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/RoleGet", runtime.WithHTTPPathPattern("/v3/auth/role/get"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3750,7 +3730,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/RoleList", runtime.WithHTTPPathPattern("/v3/auth/role/list"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3770,7 +3750,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/RoleDelete", runtime.WithHTTPPathPattern("/v3/auth/role/delete"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3790,7 +3770,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/RoleGrantPermission", runtime.WithHTTPPathPattern("/v3/auth/role/grant"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3810,7 +3790,7 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Auth/RoleRevokePermission", runtime.WithHTTPPathPattern("/v3/auth/role/revoke"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -3830,39 +3810,39 @@ func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 }
 
 var (
-	pattern_Auth_AuthEnable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "enable"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_AuthEnable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "enable"}, ""))
 
-	pattern_Auth_AuthDisable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "disable"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_AuthDisable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "disable"}, ""))
 
-	pattern_Auth_AuthStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "status"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_AuthStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "status"}, ""))
 
-	pattern_Auth_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "authenticate"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "auth", "authenticate"}, ""))
 
-	pattern_Auth_UserAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "add"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_UserAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "add"}, ""))
 
-	pattern_Auth_UserGet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "get"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_UserGet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "get"}, ""))
 
-	pattern_Auth_UserList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "list"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_UserList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "list"}, ""))
 
-	pattern_Auth_UserDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "delete"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_UserDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "delete"}, ""))
 
-	pattern_Auth_UserChangePassword_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "changepw"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_UserChangePassword_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "changepw"}, ""))
 
-	pattern_Auth_UserGrantRole_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "grant"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_UserGrantRole_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "grant"}, ""))
 
-	pattern_Auth_UserRevokeRole_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "revoke"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_UserRevokeRole_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "user", "revoke"}, ""))
 
-	pattern_Auth_RoleAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "add"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_RoleAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "add"}, ""))
 
-	pattern_Auth_RoleGet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "get"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_RoleGet_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "get"}, ""))
 
-	pattern_Auth_RoleList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "list"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_RoleList_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "list"}, ""))
 
-	pattern_Auth_RoleDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "delete"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_RoleDelete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "delete"}, ""))
 
-	pattern_Auth_RoleGrantPermission_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "grant"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_RoleGrantPermission_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "grant"}, ""))
 
-	pattern_Auth_RoleRevokePermission_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "revoke"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Auth_RoleRevokePermission_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "auth", "role", "revoke"}, ""))
 )
 
 var (

@@ -24,11 +24,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/leasing"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestLeasingPutGet(t *testing.T) {
@@ -153,7 +155,7 @@ func TestLeasingPutInvalidateNew(t *testing.T) {
 	if cerr != nil {
 		t.Fatal(cerr)
 	}
-	if !reflect.DeepEqual(lkvResp, cResp) {
+	if !proto.Equal((*pb.RangeResponse)(lkvResp), (*pb.RangeResponse)(cResp)) {
 		t.Fatalf(`expected %+v, got response %+v`, cResp, lkvResp)
 	}
 }
@@ -187,7 +189,7 @@ func TestLeasingPutInvalidateExisting(t *testing.T) {
 	if cerr != nil {
 		t.Fatal(cerr)
 	}
-	if !reflect.DeepEqual(lkvResp, cResp) {
+	if !proto.Equal((*pb.RangeResponse)(lkvResp), (*pb.RangeResponse)(cResp)) {
 		t.Fatalf(`expected %+v, got response %+v`, cResp, lkvResp)
 	}
 }

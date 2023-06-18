@@ -10,19 +10,18 @@ package gw
 
 import (
 	"context"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"io"
 	"net/http"
 
-	"github.com/golang/protobuf/descriptor"
-	"github.com/golang/protobuf/proto"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
+	extV3lockpb "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // Suppress "imported and not used" errors
@@ -31,11 +30,10 @@ var _ io.Reader
 var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
-var _ = descriptor.ForMessage
 var _ = metadata.Join
 
-func request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, client v3lockpb.LockClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq v3lockpb.LockRequest
+func request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, client extV3lockpb.LockClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extV3lockpb.LockRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -51,8 +49,8 @@ func request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, clien
 
 }
 
-func local_request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, server v3lockpb.LockServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq v3lockpb.LockRequest
+func local_request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, server extV3lockpb.LockServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extV3lockpb.LockRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -68,8 +66,8 @@ func local_request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, client v3lockpb.LockClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq v3lockpb.UnlockRequest
+func request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, client extV3lockpb.LockClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extV3lockpb.UnlockRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -85,8 +83,8 @@ func request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, cli
 
 }
 
-func local_request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, server v3lockpb.LockServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq v3lockpb.UnlockRequest
+func local_request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, server extV3lockpb.LockServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq extV3lockpb.UnlockRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -102,11 +100,11 @@ func local_request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-// v3lockpb.RegisterLockHandlerServer registers the http handlers for service Lock to "mux".
-// UnaryRPC     :call v3lockpb.LockServer directly.
+// RegisterLockHandlerServer registers the http handlers for service Lock to "mux".
+// UnaryRPC     :call LockServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterLockHandlerFromEndpoint instead.
-func RegisterLockHandlerServer(ctx context.Context, mux *runtime.ServeMux, server v3lockpb.LockServer) error {
+func RegisterLockHandlerServer(ctx context.Context, mux *runtime.ServeMux, server extV3lockpb.LockServer) error {
 
 	mux.Handle("POST", pattern_Lock_Lock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -114,7 +112,7 @@ func RegisterLockHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/v3lockpb.Lock/Lock", runtime.WithHTTPPathPattern("/v3/lock/lock"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -137,7 +135,7 @@ func RegisterLockHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/v3lockpb.Lock/Unlock", runtime.WithHTTPPathPattern("/v3/lock/unlock"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -184,22 +182,22 @@ func RegisterLockHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux,
 
 // RegisterLockHandler registers the http handlers for service Lock to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterLockHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterLockHandlerClient(ctx, mux, v3lockpb.NewLockClient(conn))
+func RegisterLockHandler(ctx context.Context, mux *runtime.ServeMux, conn grpc.ClientConnInterface) error {
+	return RegisterLockHandlerClient(ctx, mux, extV3lockpb.NewLockClient(conn))
 }
 
-// v3lockpb.RegisterLockHandlerClient registers the http handlers for service Lock
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "LockClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "LockClient"
+// RegisterLockHandlerClient registers the http handlers for service Lock
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "extV3lockpb.LockClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "extV3lockpb.LockClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "LockClient" to call the correct interceptors.
-func RegisterLockHandlerClient(ctx context.Context, mux *runtime.ServeMux, client v3lockpb.LockClient) error {
+// "extV3lockpb.LockClient" to call the correct interceptors.
+func RegisterLockHandlerClient(ctx context.Context, mux *runtime.ServeMux, client extV3lockpb.LockClient) error {
 
 	mux.Handle("POST", pattern_Lock_Lock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/v3lockpb.Lock/Lock", runtime.WithHTTPPathPattern("/v3/lock/lock"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -219,7 +217,7 @@ func RegisterLockHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/v3lockpb.Lock/Unlock", runtime.WithHTTPPathPattern("/v3/lock/unlock"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -239,9 +237,9 @@ func RegisterLockHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 }
 
 var (
-	pattern_Lock_Lock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 1}, []string{"v3", "lock"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lock_Lock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 1}, []string{"v3", "lock"}, ""))
 
-	pattern_Lock_Unlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lock", "unlock"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_Lock_Unlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3", "lock", "unlock"}, ""))
 )
 
 var (

@@ -75,6 +75,8 @@ type maintenanceServer struct {
 	cs     ClusterStatusGetter
 	d      Downgrader
 	vs     serverversion.Server
+
+	pb.UnimplementedMaintenanceServer
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
@@ -82,7 +84,10 @@ func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
 	if srv.lg == nil {
 		srv.lg = zap.NewNop()
 	}
-	return &authMaintenanceServer{srv, &AuthAdmin{s}}
+	return &authMaintenanceServer{
+		maintenanceServer: srv,
+		AuthAdmin:         &AuthAdmin{s},
+	}
 }
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {

@@ -46,6 +46,8 @@ type leaseProxy struct {
 
 	// wg waits until all outstanding leaseProxyStream quit.
 	wg sync.WaitGroup
+
+	pb.UnimplementedLeaseServer
 }
 
 func NewLeaseProxy(ctx context.Context, c *clientv3.Client) (pb.LeaseServer, <-chan struct{}) {

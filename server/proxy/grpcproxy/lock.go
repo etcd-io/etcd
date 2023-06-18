@@ -23,6 +23,8 @@ import (
 
 type lockProxy struct {
 	lockClient v3lockpb.LockClient
+
+	v3lockpb.UnimplementedLockServer
 }
 
 func NewLockProxy(client *clientv3.Client) v3lockpb.LockServer {

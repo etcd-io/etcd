@@ -24,6 +24,8 @@ import (
 
 type AuthServer struct {
 	authenticator etcdserver.Authenticator
+
+	pb.UnimplementedAuthServer
 }
 
 func NewAuthServer(s *etcdserver.EtcdServer) *AuthServer {

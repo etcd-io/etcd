@@ -39,13 +39,14 @@ import (
 	v3lockgw "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 
-	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
+	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/soheilhy/cmux"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type serveCtx struct {
@@ -292,7 +293,7 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 	})
 }
 
-type registerHandlerFunc func(context.Context, *gw.ServeMux, *grpc.ClientConn) error
+type registerHandlerFunc func(context.Context, *gw.ServeMux, grpc.ClientConnInterface) error
 
 func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.ClientConn, error)) (*gw.ServeMux, error) {
 	ctx := sctx.ctx
@@ -301,7 +302,19 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 	if err != nil {
 		return nil, err
 	}
-	gwmux := gw.NewServeMux()
+	gwmux := gw.NewServeMux(
+		gw.WithMarshalerOption(gw.MIMEWildcard, &gw.HTTPBodyMarshaler{
+			Marshaler: &gw.JSONPb{
+				MarshalOptions: protojson.MarshalOptions{
+					UseProtoNames:   true,
+					EmitUnpopulated: false,
+				},
+				UnmarshalOptions: protojson.UnmarshalOptions{
+					DiscardUnknown: true,
+				},
+			},
+		}),
+	)
 
 	handlers := []registerHandlerFunc{
 		etcdservergw.RegisterKVHandler,

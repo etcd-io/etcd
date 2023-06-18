@@ -23,6 +23,8 @@ import (
 
 type AuthProxy struct {
 	authClient pb.AuthClient
+
+	pb.UnimplementedAuthServer
 }
 
 func NewAuthProxy(c *clientv3.Client) pb.AuthServer {

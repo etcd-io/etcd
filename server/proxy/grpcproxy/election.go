@@ -23,6 +23,8 @@ import (
 
 type electionProxy struct {
 	electionClient v3electionpb.ElectionClient
+
+	v3electionpb.UnimplementedElectionServer
 }
 
 func NewElectionProxy(client *clientv3.Client) v3electionpb.ElectionServer {

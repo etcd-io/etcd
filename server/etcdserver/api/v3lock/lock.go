@@ -24,10 +24,12 @@ import (
 
 type lockServer struct {
 	c *clientv3.Client
+
+	v3lockpb.UnimplementedLockServer
 }
 
 func NewLockServer(c *clientv3.Client) v3lockpb.LockServer {
-	return &lockServer{c}
+	return &lockServer{c: c}
 }
 
 func (ls *lockServer) Lock(ctx context.Context, req *v3lockpb.LockRequest) (*v3lockpb.LockResponse, error) {
