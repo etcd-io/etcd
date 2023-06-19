@@ -19,10 +19,11 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func validateWatch(t *testing.T, cfg Config, reports []traffic.ClientReport) {
+func validateWatch(t *testing.T, cfg Config, reports []traffic.ClientReport) []model.WatchEvent {
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
 		validateOrdered(t, r)
@@ -34,8 +35,10 @@ func validateWatch(t *testing.T, cfg Config, reports []traffic.ClientReport) {
 	validateEventsMatch(t, reports)
 	// Expects that longest history encompasses all events.
 	// TODO: Use combined events from all histories instead of the longest history.
+	eventHistory := longestEventHistory(reports)
 	// TODO: Validate that each watch report is reliable, not only the longest one.
-	validateReliable(t, longestEventHistory(reports))
+	validateReliable(t, eventHistory)
+	return watchEvents(eventHistory)
 }
 
 func validateBookmarkable(t *testing.T, report traffic.ClientReport) {
@@ -127,7 +130,7 @@ func validateEventsMatch(t *testing.T, reports []traffic.ClientReport) {
 		key      string
 	}
 	type eventClientId struct {
-		traffic.WatchEvent
+		model.WatchEvent
 		ClientId int
 	}
 	revisionKeyToEvent := map[revisionKey]eventClientId{}
@@ -157,4 +160,12 @@ func longestEventHistory(report []traffic.ClientReport) []traffic.TimedWatchEven
 		}
 	}
 	return toWatchEvents(report[longestIndex].Watch)
+}
+
+func watchEvents(timed []traffic.TimedWatchEvent) []model.WatchEvent {
+	result := make([]model.WatchEvent, 0, len(timed))
+	for _, event := range timed {
+		result = append(result, event.WatchEvent)
+	}
+	return result
 }

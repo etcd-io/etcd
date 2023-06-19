@@ -339,7 +339,7 @@ func TestModelNonDeterministic(t *testing.T) {
 						t.Fatalf("Failed to load state: %v", err)
 					}
 					for i, s := range loadedState {
-						_, resp := s.step(op.req)
+						_, resp := s.Step(op.req)
 						t.Errorf("For state %d, response diff: %s", i, cmp.Diff(op.resp, resp))
 					}
 					break

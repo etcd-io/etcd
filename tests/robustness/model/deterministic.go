@@ -47,12 +47,12 @@ var DeterministicModel = porcupine.Model{
 		return string(data)
 	},
 	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
-		var s etcdState
+		var s EtcdState
 		err := json.Unmarshal([]byte(st.(string)), &s)
 		if err != nil {
 			panic(err)
 		}
-		ok, s := s.Step(in.(EtcdRequest), out.(EtcdResponse))
+		ok, s := s.apply(in.(EtcdRequest), out.(EtcdResponse))
 		data, err := json.Marshal(s)
 		if err != nil {
 			panic(err)
@@ -64,20 +64,20 @@ var DeterministicModel = porcupine.Model{
 	},
 }
 
-type etcdState struct {
+type EtcdState struct {
 	Revision  int64
 	KeyValues map[string]ValueRevision
 	KeyLeases map[string]int64
 	Leases    map[int64]EtcdLease
 }
 
-func (s etcdState) Step(request EtcdRequest, response EtcdResponse) (bool, etcdState) {
-	newState, modelResponse := s.step(request)
+func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
+	newState, modelResponse := s.Step(request)
 	return Match(MaybeEtcdResponse{EtcdResponse: response}, modelResponse), newState
 }
 
-func freshEtcdState() etcdState {
-	return etcdState{
+func freshEtcdState() EtcdState {
+	return EtcdState{
 		Revision:  1,
 		KeyValues: map[string]ValueRevision{},
 		KeyLeases: map[string]int64{},
@@ -85,8 +85,8 @@ func freshEtcdState() etcdState {
 	}
 }
 
-// step handles a successful request, returning updated state and response it would generate.
-func (s etcdState) step(request EtcdRequest) (etcdState, MaybeEtcdResponse) {
+// Step handles a successful request, returning updated state and response it would generate.
+func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	newKVs := map[string]ValueRevision{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
@@ -185,7 +185,7 @@ func (s etcdState) step(request EtcdRequest) (etcdState, MaybeEtcdResponse) {
 	}
 }
 
-func (s etcdState) getRange(key string, options RangeOptions) RangeResponse {
+func (s EtcdState) getRange(key string, options RangeOptions) RangeResponse {
 	response := RangeResponse{
 		KVs: []KeyValue{},
 	}
@@ -217,7 +217,7 @@ func (s etcdState) getRange(key string, options RangeOptions) RangeResponse {
 	return response
 }
 
-func detachFromOldLease(s etcdState, key string) etcdState {
+func detachFromOldLease(s EtcdState, key string) EtcdState {
 	if oldLeaseId, ok := s.KeyLeases[key]; ok {
 		delete(s.Leases[oldLeaseId].Keys, key)
 		delete(s.KeyLeases, key)
@@ -225,7 +225,7 @@ func detachFromOldLease(s etcdState, key string) etcdState {
 	return s
 }
 
-func attachToNewLease(s etcdState, leaseID int64, key string) etcdState {
+func attachToNewLease(s EtcdState, leaseID int64, key string) EtcdState {
 	s.KeyLeases[key] = leaseID
 	s.Leases[leaseID].Keys[key] = leased
 	return s

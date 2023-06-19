@@ -34,7 +34,7 @@ type report struct {
 	lg               *zap.Logger
 	clus             *e2e.EtcdProcessCluster
 	clientReports    []traffic.ClientReport
-	visualizeHistory func(path string)
+	visualizeHistory func(path string) error
 }
 
 func testResultsDirectory(t *testing.T) string {
@@ -89,7 +89,10 @@ func (r *report) Report(t *testing.T, force bool) {
 		}
 	}
 	if r.visualizeHistory != nil {
-		r.visualizeHistory(filepath.Join(path, "history.html"))
+		err := r.visualizeHistory(filepath.Join(path, "history.html"))
+		if err != nil {
+			t.Error(err)
+		}
 	}
 }
 

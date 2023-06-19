@@ -33,12 +33,12 @@ func TestModelDeterministic(t *testing.T) {
 				if op.expectFailure == ok {
 					t.Logf("state: %v", state)
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, DeterministicModel.DescribeOperation(op.req, op.resp.EtcdResponse))
-					var loadedState etcdState
+					var loadedState EtcdState
 					err := json.Unmarshal([]byte(state.(string)), &loadedState)
 					if err != nil {
 						t.Fatalf("Failed to load state: %v", err)
 					}
-					_, resp := loadedState.step(op.req)
+					_, resp := loadedState.Step(op.req)
 					t.Errorf("Response diff: %s", cmp.Diff(op.resp, resp))
 					break
 				}
