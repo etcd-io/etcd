@@ -46,20 +46,15 @@ type RecordingClient struct {
 }
 
 type WatchResponse struct {
-	Events           []WatchEvent
+	Events           []model.WatchEvent
 	IsProgressNotify bool
 	Revision         int64
 	Time             time.Duration
 }
 
 type TimedWatchEvent struct {
-	WatchEvent
+	model.WatchEvent
 	Time time.Duration
-}
-
-type WatchEvent struct {
-	Op       model.EtcdOperation
-	Revision int64
 }
 
 func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*RecordingClient, error) {
@@ -259,7 +254,7 @@ func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) WatchResponse
 	return resp
 }
 
-func toWatchEvent(event clientv3.Event) WatchEvent {
+func toWatchEvent(event clientv3.Event) model.WatchEvent {
 	var op model.OperationType
 	switch event.Type {
 	case mvccpb.PUT:
@@ -269,7 +264,7 @@ func toWatchEvent(event clientv3.Event) WatchEvent {
 	default:
 		panic(fmt.Sprintf("Unexpected event type: %s", event.Type))
 	}
-	return WatchEvent{
+	return model.WatchEvent{
 		Revision: event.Kv.ModRevision,
 		Op: model.EtcdOperation{
 			Type:       op,

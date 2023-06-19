@@ -15,28 +15,92 @@
 package validate
 
 import (
+	"fmt"
+	"reflect"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/anishathalye/porcupine"
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
-func validateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation) (visualize func(basepath string)) {
-	linearizable, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, 5*time.Minute)
-	if linearizable == porcupine.Illegal {
+func validateOperationsAndVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, eventHistory []model.WatchEvent) (visualize func(basepath string) error) {
+	const timeout = 5 * time.Minute
+	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
+	result, visualize := validateLinearizableOperationAndVisualize(lg, operations, timeout)
+	switch result {
+	case porcupine.Illegal:
+		t.Error("Linearization failed for provided operations")
+		return
+	case porcupine.Unknown:
 		t.Error("Model is not linearizable")
+		return
+	case porcupine.Ok:
+		t.Log("Linearization passed")
+	default:
+		t.Fatalf("Unknown Linearization")
 	}
-	if linearizable == porcupine.Unknown {
-		t.Error("Linearization timed out")
-	}
-	return func(path string) {
+	lg.Info("Validating serializable operations")
+	// TODO: Use linearization result instead of event history to get order of events
+	// This is currently impossible as porcupine doesn't expose operation order created during linearization.
+	validateSerializableOperations(t, operations, eventHistory)
+	return visualize
+}
+
+func validateLinearizableOperationAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) (result porcupine.CheckResult, visualize func(basepath string) error) {
+	linearizable, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
+	return linearizable, func(path string) error {
 		lg.Info("Saving visualization", zap.String("path", path))
 		err := porcupine.VisualizePath(model.NonDeterministicModel, info, path)
 		if err != nil {
-			t.Errorf("Failed to visualize, err: %v", err)
+			return fmt.Errorf("failed to visualize, err: %v", err)
 		}
+		return nil
+	}
+}
+
+func validateSerializableOperations(t *testing.T, operations []porcupine.Operation, totalEventHistory []model.WatchEvent) {
+	staleReads := filterSerializableReads(operations)
+	if len(staleReads) == 0 {
+		return
+	}
+	sort.Slice(staleReads, func(i, j int) bool {
+		return staleReads[i].Input.(model.EtcdRequest).Range.Revision < staleReads[j].Input.(model.EtcdRequest).Range.Revision
+	})
+	replay := model.NewReplay(totalEventHistory)
+	for _, read := range staleReads {
+		request := read.Input.(model.EtcdRequest)
+		response := read.Output.(model.MaybeEtcdResponse)
+		validateSerializableOperation(t, replay, request, response)
+	}
+}
+
+func filterSerializableReads(operations []porcupine.Operation) []porcupine.Operation {
+	resp := []porcupine.Operation{}
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		if request.Type == model.Range && request.Range.Revision != 0 {
+			resp = append(resp, op)
+		}
+	}
+	return resp
+}
+
+func validateSerializableOperation(t *testing.T, replay *model.EtcdReplay, request model.EtcdRequest, response model.MaybeEtcdResponse) {
+	if response.PartialResponse || response.Err != nil {
+		return
+	}
+	state, err := replay.StateForRevision(request.Range.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, expectResp := state.Step(request)
+	if !reflect.DeepEqual(response.EtcdResponse.Range, expectResp.Range) {
+		t.Errorf("Invalid serializable response, diff: %s", cmp.Diff(response.EtcdResponse.Range, expectResp.Range))
 	}
 }

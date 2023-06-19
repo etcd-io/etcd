@@ -24,14 +24,13 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-// ValidateAndReturnVisualize return visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []traffic.ClientReport) (visualize func(basepath string)) {
-	validateWatch(t, cfg, reports)
-	// TODO: Validate stale reads responses.
+// ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
+func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []traffic.ClientReport) (visualize func(basepath string) error) {
+	eventHistory := validateWatch(t, cfg, reports)
 	allOperations := operations(reports)
 	watchEvents := uniqueWatchEvents(reports)
-	newOperations := patchOperationsWithWatchEvents(allOperations, watchEvents)
-	return validateOperationHistoryAndReturnVisualize(t, lg, newOperations)
+	patchedOperations := patchOperationsWithWatchEvents(allOperations, watchEvents)
+	return validateOperationsAndVisualize(t, lg, patchedOperations, eventHistory)
 }
 
 func operations(reports []traffic.ClientReport) []porcupine.Operation {
