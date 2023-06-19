@@ -198,7 +198,7 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 	compactRev, currentRev = s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
 
-	if rev > 0 && rev <= compactRev {
+	if rev > 0 && rev < compactRev {
 		s.mu.RUnlock()
 		return 0, 0, compactRev, ErrCompacted
 	} else if rev > 0 && rev > currentRev {
