@@ -37,8 +37,9 @@ var (
 			keyCount:     10,
 			leaseTTL:     DefaultLeaseTTL,
 			largePutSize: 32769,
-			operations: []choiceWeight[etcdRequestType]{
-				{choice: Get, weight: 50},
+			requests: []choiceWeight[etcdRequestType]{
+				{choice: Get, weight: 25},
+				{choice: StaleGet, weight: 25},
 				{choice: Put, weight: 23},
 				{choice: LargePut, weight: 2},
 				{choice: Delete, weight: 5},
@@ -58,8 +59,9 @@ var (
 			keyCount:     10,
 			largePutSize: 32769,
 			leaseTTL:     DefaultLeaseTTL,
-			operations: []choiceWeight[etcdRequestType]{
-				{choice: Get, weight: 50},
+			requests: []choiceWeight[etcdRequestType]{
+				{choice: Get, weight: 25},
+				{choice: StaleGet, weight: 25},
 				{choice: Put, weight: 40},
 				{choice: MultiOpTxn, weight: 5},
 				{choice: LargePut, weight: 5},
@@ -70,7 +72,7 @@ var (
 
 type etcdTraffic struct {
 	keyCount     int
-	operations   []choiceWeight[etcdRequestType]
+	requests     []choiceWeight[etcdRequestType]
 	leaseTTL     int64
 	largePutSize int
 }
@@ -83,6 +85,7 @@ type etcdRequestType string
 
 const (
 	Get           etcdRequestType = "get"
+	StaleGet      etcdRequestType = "staleGet"
 	Put           etcdRequestType = "put"
 	LargePut      etcdRequestType = "largePut"
 	Delete        etcdRequestType = "delete"
@@ -95,6 +98,8 @@ const (
 
 func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
 	lastOperationSucceeded := true
+	var lastRev int64
+	var requestType etcdRequestType
 	for {
 		select {
 		case <-ctx.Done():
@@ -105,47 +110,59 @@ func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.
 		}
 		key := fmt.Sprintf("%d", rand.Int()%t.keyCount)
 		// Avoid multiple failed writes in a row
-		if !lastOperationSucceeded {
-			_, err := t.Read(ctx, c, key)
-			if err != nil {
-				continue
-			}
-			limiter.Wait(ctx)
+		if lastOperationSucceeded {
+			requestType = pickRandom(t.requests)
+		} else {
+			requestType = Get
 		}
-		err := t.RandomOperation(ctx, c, limiter, key, ids, lm)
+		rev, err := t.Request(ctx, c, requestType, limiter, key, ids, lm, lastRev)
 		lastOperationSucceeded = err == nil
 		if err != nil {
 			continue
+		}
+		if rev != 0 {
+			lastRev = rev
 		}
 		limiter.Wait(ctx)
 	}
 }
 
-func (t etcdTraffic) Read(ctx context.Context, c *RecordingClient, key string) (*mvccpb.KeyValue, error) {
-	getCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-	resp, err := c.Get(getCtx, key)
-	cancel()
-	return resp, err
-}
-
-func (t etcdTraffic) RandomOperation(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage) error {
+func (t etcdTraffic) Request(ctx context.Context, c *RecordingClient, request etcdRequestType, limiter *rate.Limiter, key string, id identity.Provider, lm identity.LeaseIdStorage, lastRev int64) (rev int64, err error) {
 	opCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 
-	var err error
-	switch pickRandom(t.operations) {
+	switch request {
+	case StaleGet:
+		_, rev, err = c.Get(opCtx, key, lastRev)
 	case Get:
-		_, err = c.Get(opCtx, key)
+		_, rev, err = c.Get(opCtx, key, 0)
 	case Put:
-		err = c.Put(opCtx, key, fmt.Sprintf("%d", id.NewRequestId()))
+		var resp *clientv3.PutResponse
+		resp, err = c.Put(opCtx, key, fmt.Sprintf("%d", id.NewRequestId()))
+		if resp != nil {
+			rev = resp.Header.Revision
+		}
 	case LargePut:
-		err = c.Put(opCtx, key, randString(t.largePutSize))
+		var resp *clientv3.PutResponse
+		resp, err = c.Put(opCtx, key, randString(t.largePutSize))
+		if resp != nil {
+			rev = resp.Header.Revision
+		}
 	case Delete:
-		err = c.Delete(opCtx, key)
+		var resp *clientv3.DeleteResponse
+		resp, err = c.Delete(opCtx, key)
+		if resp != nil {
+			rev = resp.Header.Revision
+		}
 	case MultiOpTxn:
-		_, err = c.Txn(opCtx, nil, t.pickMultiTxnOps(id), nil)
+		var resp *clientv3.TxnResponse
+		resp, err = c.Txn(opCtx, nil, t.pickMultiTxnOps(id), nil)
+		if resp != nil {
+			rev = resp.Header.Revision
+		}
+
 	case CompareAndSet:
 		var kv *mvccpb.KeyValue
-		kv, err = c.Get(opCtx, key)
+		kv, rev, err = c.Get(opCtx, key, 0)
 		if err == nil {
 			limiter.Wait(ctx)
 			var expectedRevision int64
@@ -153,13 +170,22 @@ func (t etcdTraffic) RandomOperation(ctx context.Context, c *RecordingClient, li
 				expectedRevision = kv.ModRevision
 			}
 			txnCtx, txnCancel := context.WithTimeout(ctx, RequestTimeout)
-			_, err = c.Txn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", id.NewRequestId()))}, nil)
+			var resp *clientv3.TxnResponse
+			resp, err = c.Txn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", id.NewRequestId()))}, nil)
 			txnCancel()
+			if resp != nil {
+				rev = resp.Header.Revision
+			}
 		}
 	case PutWithLease:
 		leaseId := lm.LeaseId(c.id)
 		if leaseId == 0 {
-			leaseId, err = c.LeaseGrant(opCtx, t.leaseTTL)
+			var resp *clientv3.LeaseGrantResponse
+			resp, err = c.LeaseGrant(opCtx, t.leaseTTL)
+			if resp != nil {
+				leaseId = int64(resp.ID)
+				rev = resp.ResponseHeader.Revision
+			}
 			if err == nil {
 				lm.AddLeaseId(c.id, leaseId)
 				limiter.Wait(ctx)
@@ -167,25 +193,37 @@ func (t etcdTraffic) RandomOperation(ctx context.Context, c *RecordingClient, li
 		}
 		if leaseId != 0 {
 			putCtx, putCancel := context.WithTimeout(ctx, RequestTimeout)
-			err = c.PutWithLease(putCtx, key, fmt.Sprintf("%d", id.NewRequestId()), leaseId)
+			var resp *clientv3.PutResponse
+			resp, err = c.PutWithLease(putCtx, key, fmt.Sprintf("%d", id.NewRequestId()), leaseId)
 			putCancel()
+			if resp != nil {
+				rev = resp.Header.Revision
+			}
 		}
 	case LeaseRevoke:
 		leaseId := lm.LeaseId(c.id)
 		if leaseId != 0 {
-			err = c.LeaseRevoke(opCtx, leaseId)
+			var resp *clientv3.LeaseRevokeResponse
+			resp, err = c.LeaseRevoke(opCtx, leaseId)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
 				lm.RemoveLeaseId(c.id)
 			}
+			if resp != nil {
+				rev = resp.Header.Revision
+			}
 		}
 	case Defragment:
-		err = c.Defragment(opCtx)
+		var resp *clientv3.DefragmentResponse
+		resp, err = c.Defragment(opCtx)
+		if resp != nil {
+			rev = resp.Header.Revision
+		}
 	default:
 		panic("invalid choice")
 	}
 	cancel()
-	return err
+	return rev, err
 }
 
 func (t etcdTraffic) pickMultiTxnOps(ids identity.Provider) (ops []clientv3.Op) {

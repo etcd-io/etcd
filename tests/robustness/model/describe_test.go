@@ -134,6 +134,11 @@ func TestModelDescribe(t *testing.T) {
 			resp:           rangeResponse(nil, 0, 14),
 			expectDescribe: `range("key14", limit=14) -> [], count: 0, rev: 14`,
 		},
+		{
+			req:            staleRangeRequest("key15", true, 0, 15),
+			resp:           rangeResponse(nil, 0, 15),
+			expectDescribe: `range("key15", rev=15) -> [], count: 0, rev: 15`,
+		},
 	}
 	for _, tc := range tcs {
 		assert.Equal(t, tc.expectDescribe, NonDeterministicModel.DescribeOperation(tc.req, tc.resp))

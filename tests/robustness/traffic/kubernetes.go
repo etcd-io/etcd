@@ -169,7 +169,7 @@ type kubernetesClient struct {
 }
 
 func (k kubernetesClient) List(ctx context.Context, key string) (*clientv3.GetResponse, error) {
-	resp, err := k.client.Range(ctx, key, true)
+	resp, err := k.client.Range(ctx, key, true, 0)
 	if err != nil {
 		return nil, err
 	}

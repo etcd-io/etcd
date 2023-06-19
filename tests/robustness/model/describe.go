@@ -44,7 +44,7 @@ func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) strin
 func describeEtcdRequest(request EtcdRequest) string {
 	switch request.Type {
 	case Range:
-		return describeRangeRequest(request.Range.Key, request.Range.RangeOptions)
+		return describeRangeRequest(request.Range.Key, request.Range.Revision, request.Range.RangeOptions)
 	case Txn:
 		onSuccess := describeEtcdOperations(request.Txn.OperationsOnSuccess)
 		if len(request.Txn.Conditions) != 0 {
@@ -105,7 +105,7 @@ func describeTxnResponse(request *TxnRequest, response *TxnResponse) string {
 func describeEtcdOperation(op EtcdOperation) string {
 	switch op.Type {
 	case RangeOperation:
-		return describeRangeRequest(op.Key, op.RangeOptions)
+		return describeRangeRequest(op.Key, 0, op.RangeOptions)
 	case PutOperation:
 		if op.LeaseID != 0 {
 			return fmt.Sprintf("put(%q, %s, %d)", op.Key, describeValueOrHash(op.Value), op.LeaseID)
@@ -118,8 +118,11 @@ func describeEtcdOperation(op EtcdOperation) string {
 	}
 }
 
-func describeRangeRequest(key string, opts RangeOptions) string {
+func describeRangeRequest(key string, revision int64, opts RangeOptions) string {
 	kwargs := []string{}
+	if revision != 0 {
+		kwargs = append(kwargs, fmt.Sprintf("rev=%d", revision))
+	}
 	if opts.Limit != 0 {
 		kwargs = append(kwargs, fmt.Sprintf("limit=%d", opts.Limit))
 	}

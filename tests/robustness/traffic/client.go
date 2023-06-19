@@ -106,21 +106,24 @@ func (r ClientReport) WatchEventCount() int {
 	return count
 }
 
-func (c *RecordingClient) Get(ctx context.Context, key string) (*mvccpb.KeyValue, error) {
-	resp, err := c.Range(ctx, key, false)
-	if err != nil || len(resp.Kvs) == 0 {
-		return nil, err
+func (c *RecordingClient) Get(ctx context.Context, key string, revision int64) (kv *mvccpb.KeyValue, rev int64, err error) {
+	resp, err := c.Range(ctx, key, false, revision)
+	if err != nil {
+		return nil, 0, err
 	}
 	if len(resp.Kvs) == 1 {
-		return resp.Kvs[0], err
+		kv = resp.Kvs[0]
 	}
-	panic(fmt.Sprintf("Unexpected response size: %d", len(resp.Kvs)))
+	return kv, resp.Header.Revision, nil
 }
 
-func (c *RecordingClient) Range(ctx context.Context, key string, withPrefix bool) (*clientv3.GetResponse, error) {
+func (c *RecordingClient) Range(ctx context.Context, key string, withPrefix bool, revision int64) (*clientv3.GetResponse, error) {
 	ops := []clientv3.OpOption{}
 	if withPrefix {
 		ops = append(ops, clientv3.WithPrefix())
+	}
+	if revision != 0 {
+		ops = append(ops, clientv3.WithRev(revision))
 	}
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
@@ -130,28 +133,28 @@ func (c *RecordingClient) Range(ctx context.Context, key string, withPrefix bool
 		return nil, err
 	}
 	returnTime := time.Since(c.baseTime)
-	c.operations.AppendRange(key, withPrefix, callTime, returnTime, resp)
+	c.operations.AppendRange(key, withPrefix, revision, callTime, returnTime, resp)
 	return resp, nil
 }
 
-func (c *RecordingClient) Put(ctx context.Context, key, value string) error {
+func (c *RecordingClient) Put(ctx context.Context, key, value string) (*clientv3.PutResponse, error) {
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Put(ctx, key, value)
 	returnTime := time.Since(c.baseTime)
 	c.operations.AppendPut(key, value, callTime, returnTime, resp, err)
-	return err
+	return resp, err
 }
 
-func (c *RecordingClient) Delete(ctx context.Context, key string) error {
+func (c *RecordingClient) Delete(ctx context.Context, key string) (*clientv3.DeleteResponse, error) {
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Delete(ctx, key)
 	returnTime := time.Since(c.baseTime)
 	c.operations.AppendDelete(key, callTime, returnTime, resp, err)
-	return nil
+	return resp, err
 }
 
 func (c *RecordingClient) Txn(ctx context.Context, conditions []clientv3.Cmp, onSuccess []clientv3.Op, onFailure []clientv3.Op) (*clientv3.TxnResponse, error) {
@@ -171,31 +174,27 @@ func (c *RecordingClient) Txn(ctx context.Context, conditions []clientv3.Cmp, on
 	return resp, err
 }
 
-func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (int64, error) {
+func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error) {
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Lease.Grant(ctx, ttl)
 	returnTime := time.Since(c.baseTime)
 	c.operations.AppendLeaseGrant(callTime, returnTime, resp, err)
-	var leaseId int64
-	if resp != nil {
-		leaseId = int64(resp.ID)
-	}
-	return leaseId, err
+	return resp, err
 }
 
-func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseId int64) error {
+func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseId int64) (*clientv3.LeaseRevokeResponse, error) {
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Lease.Revoke(ctx, clientv3.LeaseID(leaseId))
 	returnTime := time.Since(c.baseTime)
 	c.operations.AppendLeaseRevoke(leaseId, callTime, returnTime, resp, err)
-	return err
+	return resp, err
 }
 
-func (c *RecordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) error {
+func (c *RecordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) (*clientv3.PutResponse, error) {
 	opts := clientv3.WithLease(clientv3.LeaseID(leaseId))
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
@@ -203,17 +202,17 @@ func (c *RecordingClient) PutWithLease(ctx context.Context, key string, value st
 	resp, err := c.client.Put(ctx, key, value, opts)
 	returnTime := time.Since(c.baseTime)
 	c.operations.AppendPutWithLease(key, value, leaseId, callTime, returnTime, resp, err)
-	return err
+	return resp, err
 }
 
-func (c *RecordingClient) Defragment(ctx context.Context) error {
+func (c *RecordingClient) Defragment(ctx context.Context) (*clientv3.DefragmentResponse, error) {
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Defragment(ctx, c.client.Endpoints()[0])
 	returnTime := time.Since(c.baseTime)
 	c.operations.AppendDefragment(callTime, returnTime, resp, err)
-	return err
+	return resp, err
 }
 
 func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, withPrefix bool, withProgressNotify bool) clientv3.WatchChan {
