@@ -40,8 +40,14 @@ var (
 	EtcdServerReadyLines = []string{"ready to serve client requests"}
 )
 
+type LogLines interface {
+	Lines() []string
+	LineCount() int
+}
+
 // EtcdProcess is a process that serves etcd requests.
 type EtcdProcess interface {
+	LogLines
 	EndpointsGRPC() []string
 	EndpointsHTTP() []string
 	EndpointsMetrics() []string
@@ -61,9 +67,8 @@ type EtcdProcess interface {
 }
 
 type LogsExpect interface {
+	LogLines
 	ExpectWithContext(context.Context, string) (string, error)
-	Lines() []string
-	LineCount() int
 }
 
 type EtcdServerProcess struct {
@@ -72,6 +77,7 @@ type EtcdServerProcess struct {
 	proxy      proxy.Server
 	failpoints *BinaryFailpoints
 	donec      chan struct{} // closed when Interact() terminates
+	logs       *procLogs
 }
 
 type EtcdServerProcessConfig struct {
@@ -108,7 +114,7 @@ func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, err
 			return nil, err
 		}
 	}
-	ep := &EtcdServerProcess{cfg: cfg, donec: make(chan struct{})}
+	ep := &EtcdServerProcess{cfg: cfg, donec: make(chan struct{}), logs: &procLogs{}}
 	if cfg.GoFailPort != 0 {
 		ep.failpoints = &BinaryFailpoints{member: ep}
 	}
@@ -124,8 +130,8 @@ func (ep *EtcdServerProcess) EndpointsHTTP() []string {
 }
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.MetricsURL} }
 
-func (epc *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsGRPC(), opts...)
+func (ep *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
+	etcdctl, err := NewEtcdctl(ep.Config().Client, ep.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -177,6 +183,7 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 		return nil
 	}
 	defer func() {
+		ep.logs.append(ep.proc.Lines())
 		ep.proc = nil
 	}()
 
@@ -233,6 +240,14 @@ func (ep *EtcdServerProcess) Logs() LogsExpect {
 		ep.cfg.lg.Panic("Please grab logs before process is stopped")
 	}
 	return ep.proc
+}
+
+func (ep *EtcdServerProcess) Lines() []string {
+	return ep.logs.Lines()
+}
+
+func (ep *EtcdServerProcess) LineCount() int {
+	return ep.logs.LineCount()
 }
 
 func (ep *EtcdServerProcess) Kill() error {
@@ -377,4 +392,21 @@ func GetVersionFromBinary(binaryPath string) (*semver.Version, error) {
 	}
 
 	return nil, fmt.Errorf("could not find version in binary output of %s, lines outputted were %v", binaryPath, lines)
+}
+
+type procLogs struct {
+	procLogs []string
+}
+
+func (m *procLogs) append(lines []string) {
+	m.procLogs = append(m.procLogs, strings.Repeat("=", 50)+"\n")
+	m.procLogs = append(m.procLogs, lines...)
+}
+
+func (m *procLogs) Lines() []string {
+	return m.procLogs
+}
+
+func (m *procLogs) LineCount() int {
+	return len(m.procLogs)
 }

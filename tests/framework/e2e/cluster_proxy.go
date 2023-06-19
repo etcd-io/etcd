@@ -112,6 +112,14 @@ func (p *proxyEtcdProcess) Logs() LogsExpect {
 	return p.etcdProc.Logs()
 }
 
+func (p *proxyEtcdProcess) Lines() []string {
+	return p.etcdProc.Logs().Lines()
+}
+
+func (p *proxyEtcdProcess) LineCount() int {
+	return p.etcdProc.Logs().LineCount()
+}
+
 func (p *proxyEtcdProcess) Kill() error {
 	return p.etcdProc.Kill()
 }

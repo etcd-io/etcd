@@ -25,7 +25,9 @@ import (
 )
 
 func validateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation) (visualize func(basepath string)) {
-	linearizable, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, 5*time.Minute)
+	const timeout = 5 * time.Minute
+	lg.Info("Running porcupine to check operations", zap.String("model", "NonDeterministicModel"), zap.Duration("timeout", timeout))
+	linearizable, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
 	if linearizable == porcupine.Illegal {
 		t.Error("Model is not linearizable")
 	}
