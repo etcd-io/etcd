@@ -27,8 +27,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/creack/pty"
 )
 
 const DEBUG_LINES_TAIL = 40
@@ -69,8 +67,13 @@ func NewExpectWithEnv(name string, args []string, env []string, serverProcessCon
 		},
 	}
 	ep.cmd = commandFromConfig(ep.cfg)
+	ep.cmd.Stdin, ep.fpty, err = os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+	ep.cmd.Stderr = ep.cmd.Stdout
 
-	if ep.fpty, err = pty.Start(ep.cmd); err != nil {
+	if err = ep.cmd.Start(); err != nil {
 		return nil, err
 	}
 
@@ -90,8 +93,6 @@ type expectConfig struct {
 func commandFromConfig(config expectConfig) *exec.Cmd {
 	cmd := exec.Command(config.cmd, config.args...)
 	cmd.Env = config.env
-	cmd.Stderr = cmd.Stdout
-	cmd.Stdin = nil
 	return cmd
 }
 
@@ -139,10 +140,15 @@ func (ep *ExpectProcess) tryReadNextLine(r *bufio.Reader) error {
 
 func (ep *ExpectProcess) waitSaveExitErr() {
 	defer ep.wg.Done()
-	err := ep.waitProcess()
+	state, err := ep.cmd.Process.Wait()
 
 	ep.mu.Lock()
 	defer ep.mu.Unlock()
+
+	ep.exitCode = state.ExitCode()
+	if !state.Success() {
+		err = fmt.Errorf("unexpected exit code [%d] after running [%s]", ep.exitCode, ep.cmd.String())
+	}
 	if err != nil {
 		ep.exitErr = err
 	}
@@ -264,23 +270,6 @@ func (ep *ExpectProcess) Signal(sig os.Signal) error {
 	}
 
 	return ep.cmd.Process.Signal(sig)
-}
-
-func (ep *ExpectProcess) waitProcess() error {
-	state, err := ep.cmd.Process.Wait()
-	if err != nil {
-		return err
-	}
-
-	ep.mu.Lock()
-	defer ep.mu.Unlock()
-	ep.exitCode = state.ExitCode()
-
-	if !state.Success() {
-		return fmt.Errorf("unexpected exit code [%d] after running [%s]", ep.exitCode, ep.cmd.String())
-	}
-
-	return nil
 }
 
 // Wait waits for the process to finish.
