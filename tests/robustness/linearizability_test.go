@@ -39,9 +39,8 @@ func TestRobustness(t *testing.T) {
 	scenarios := []testScenario{}
 	for _, traffic := range []traffic.Config{traffic.LowTraffic, traffic.HighTraffic, traffic.KubernetesTraffic} {
 		scenarios = append(scenarios, testScenario{
-			name:      traffic.Name + "ClusterOfSize1",
-			failpoint: RandomFailpoint,
-			traffic:   traffic,
+			name:    traffic.Name + "ClusterOfSize1",
+			traffic: traffic,
 			cluster: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithSnapshotCount(100),
@@ -62,10 +61,9 @@ func TestRobustness(t *testing.T) {
 			clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithSnapshotCatchUpEntries(100))
 		}
 		scenarios = append(scenarios, testScenario{
-			name:      traffic.Name + "ClusterOfSize3",
-			failpoint: RandomFailpoint,
-			traffic:   traffic,
-			cluster:   *e2e.NewConfig(clusterOfSize3Options...),
+			name:    traffic.Name + "ClusterOfSize3",
+			traffic: traffic,
+			cluster: *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
 	scenarios = append(scenarios, testScenario{
@@ -93,8 +91,7 @@ func TestRobustness(t *testing.T) {
 		),
 	})
 	scenarios = append(scenarios, testScenario{
-		name:      "Issue15220",
-		failpoint: RandomFailpoint,
+		name: "Issue15220",
 		watch: watchConfig{
 			requestProgress: true,
 		},
@@ -146,6 +143,15 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 		t.Fatal(err)
 	}
 	defer r.clus.Close()
+
+	if s.failpoint == nil {
+		s.failpoint = pickRandomFailpoint(t, r.clus)
+	} else {
+		err = validateFailpoint(r.clus, s.failpoint)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
