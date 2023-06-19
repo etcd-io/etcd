@@ -17,6 +17,8 @@ package model
 import (
 	"fmt"
 	"strings"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) string {
@@ -133,7 +135,7 @@ func describeRangeRequest(opts RangeOptions, revision int64) string {
 	switch {
 	case opts.End == "":
 		return fmt.Sprintf("get(%q%s)", opts.Start, kwargsString)
-	case opts.End == prefixEnd(opts.Start):
+	case opts.End == clientv3.GetPrefixRangeEnd(opts.Start):
 		return fmt.Sprintf("list(%q%s)", opts.Start, kwargsString)
 	default:
 		return fmt.Sprintf("range(%q..%q%s)", opts.Start, opts.End, kwargsString)

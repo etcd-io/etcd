@@ -153,6 +153,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	opCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 
+	var limit int64 = 0
 	switch request {
 	case StaleGet:
 		_, rev, err = c.client.Get(opCtx, c.randomKey(), lastRev)
@@ -160,13 +161,13 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		_, rev, err = c.client.Get(opCtx, c.randomKey(), 0)
 	case List:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Range(opCtx, c.keyPrefix, true, 0)
+		resp, err = c.client.Range(ctx, c.keyPrefix, clientv3.GetPrefixRangeEnd(c.keyPrefix), 0, limit)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
 	case StaleList:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Range(opCtx, c.keyPrefix, true, lastRev)
+		resp, err = c.client.Range(ctx, c.keyPrefix, clientv3.GetPrefixRangeEnd(c.keyPrefix), lastRev, limit)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}

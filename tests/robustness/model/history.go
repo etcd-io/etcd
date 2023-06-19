@@ -54,18 +54,14 @@ func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	}
 }
 
-func (h *AppendableHistory) AppendRange(key string, withPrefix bool, revision int64, start, end time.Duration, resp *clientv3.GetResponse) {
+func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit int64, start, end time.Duration, resp *clientv3.GetResponse) {
 	var respRevision int64
 	if resp != nil && resp.Header != nil {
 		respRevision = resp.Header.Revision
 	}
-	var keyEnd string
-	if withPrefix {
-		keyEnd = prefixEnd(key)
-	}
 	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.streamId,
-		Input:    staleRangeRequest(key, keyEnd, 0, revision),
+		Input:    staleRangeRequest(startKey, endKey, limit, revision),
 		Call:     start.Nanoseconds(),
 		Output:   rangeResponse(resp.Kvs, resp.Count, respRevision),
 		Return:   end.Nanoseconds(),
@@ -363,22 +359,7 @@ func listRequest(key string, limit int64) EtcdRequest {
 }
 
 func staleListRequest(key string, limit, revision int64) EtcdRequest {
-	return staleRangeRequest(key, prefixEnd(key), limit, revision)
-}
-
-// prefixEnd gets the range end of the prefix.
-// Notice: Keep in sync with /client/v3/op.go getPrefix function.
-func prefixEnd(key string) string {
-	end := make([]byte, len(key))
-	copy(end, key)
-	for i := len(end) - 1; i >= 0; i-- {
-		if end[i] < 0xff {
-			end[i] = end[i] + 1
-			end = end[:i+1]
-			return string(end)
-		}
-	}
-	return "\x00"
+	return staleRangeRequest(key, clientv3.GetPrefixRangeEnd(key), limit, revision)
 }
 
 func staleRangeRequest(start, end string, limit, revision int64) EtcdRequest {

@@ -102,7 +102,7 @@ func (r ClientReport) WatchEventCount() int {
 }
 
 func (c *RecordingClient) Get(ctx context.Context, key string, revision int64) (kv *mvccpb.KeyValue, rev int64, err error) {
-	resp, err := c.Range(ctx, key, false, revision)
+	resp, err := c.Range(ctx, key, "", revision, 0)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -112,23 +112,26 @@ func (c *RecordingClient) Get(ctx context.Context, key string, revision int64) (
 	return kv, resp.Header.Revision, nil
 }
 
-func (c *RecordingClient) Range(ctx context.Context, key string, withPrefix bool, revision int64) (*clientv3.GetResponse, error) {
+func (c *RecordingClient) Range(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
 	ops := []clientv3.OpOption{}
-	if withPrefix {
-		ops = append(ops, clientv3.WithPrefix())
+	if end != "" {
+		ops = append(ops, clientv3.WithRange(end))
 	}
 	if revision != 0 {
 		ops = append(ops, clientv3.WithRev(revision))
 	}
+	if limit != 0 {
+		ops = append(ops, clientv3.WithLimit(limit))
+	}
 	c.opMux.Lock()
 	defer c.opMux.Unlock()
 	callTime := time.Since(c.baseTime)
-	resp, err := c.client.Get(ctx, key, ops...)
+	resp, err := c.client.Get(ctx, start, ops...)
 	if err != nil {
 		return nil, err
 	}
 	returnTime := time.Since(c.baseTime)
-	c.operations.AppendRange(key, withPrefix, revision, callTime, returnTime, resp)
+	c.operations.AppendRange(start, end, revision, limit, callTime, returnTime, resp)
 	return resp, nil
 }
 

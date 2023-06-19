@@ -75,19 +75,11 @@ func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter 
 				return nil
 			default:
 			}
-			listCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-			resp, err := kc.List(listCtx, keyPrefix)
-			cancel()
+			rev, err := t.Read(ctx, kc, s, limiter, keyPrefix)
 			if err != nil {
 				continue
 			}
-			s.Reset(resp)
-			limiter.Wait(ctx)
-			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-			for e := range c.Watch(watchCtx, keyPrefix, resp.Header.Revision+1, true, true) {
-				s.Update(e)
-			}
-			cancel()
+			t.Watch(ctx, kc, s, limiter, keyPrefix, rev+1)
 		}
 	})
 	g.Go(func() error {
@@ -102,54 +94,93 @@ func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter 
 			}
 			// Avoid multiple failed writes in a row
 			if lastWriteFailed {
-				listCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-				resp, err := kc.List(listCtx, keyPrefix)
-				cancel()
+				_, err := t.Read(ctx, kc, s, limiter, keyPrefix)
 				if err != nil {
 					continue
 				}
-				s.Reset(resp)
-				limiter.Wait(ctx)
 			}
-			writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-			err := t.Write(writeCtx, kc, ids, s)
-			cancel()
+			err := t.Write(ctx, kc, ids, s, limiter)
 			lastWriteFailed = err != nil
 			if err != nil {
 				continue
 			}
-			limiter.Wait(ctx)
 		}
 	})
 	g.Wait()
 }
 
-func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids identity.Provider, s *storage) (err error) {
+func (t kubernetesTraffic) Read(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string) (rev int64, err error) {
+	limit := int64(t.averageKeyCount)
+	rangeEnd := clientv3.GetPrefixRangeEnd(keyPrefix)
+
+	hasMore := true
+	rangeStart := keyPrefix
+	var kvs []*mvccpb.KeyValue
+	var revision int64 = 0
+
+	for hasMore {
+		readCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+		resp, err := kc.Range(readCtx, rangeStart, rangeEnd, revision, limit)
+		cancel()
+		if err != nil {
+			return 0, err
+		}
+		limiter.Wait(ctx)
+
+		hasMore = resp.More
+		if len(resp.Kvs) > 0 && hasMore {
+			rangeStart = string(resp.Kvs[len(resp.Kvs)-1].Key) + "\x00"
+		}
+		kvs = append(kvs, resp.Kvs...)
+		if revision == 0 {
+			revision = resp.Header.Revision
+		}
+	}
+	s.Reset(revision, kvs)
+	return revision, nil
+}
+
+func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids identity.Provider, s *storage, limiter *rate.Limiter) (err error) {
+	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+	defer cancel()
 	count := s.Count()
 	if count < t.averageKeyCount/2 {
-		err = kc.OptimisticCreate(ctx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
+		err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
 	} else {
 		key, rev := s.PickRandom()
 		if rev == 0 {
 			return errors.New("storage empty")
 		}
 		if count > t.averageKeyCount*3/2 {
-			_, err = kc.OptimisticDelete(ctx, key, rev)
+			_, err = kc.OptimisticDelete(writeCtx, key, rev)
 		} else {
 			op := pickRandom(t.writeChoices)
 			switch op {
 			case KubernetesDelete:
-				_, err = kc.OptimisticDelete(ctx, key, rev)
+				_, err = kc.OptimisticDelete(writeCtx, key, rev)
 			case KubernetesUpdate:
-				_, err = kc.OptimisticUpdate(ctx, key, fmt.Sprintf("%d", ids.NewRequestId()), rev)
+				_, err = kc.OptimisticUpdate(writeCtx, key, fmt.Sprintf("%d", ids.NewRequestId()), rev)
 			case KubernetesCreate:
-				err = kc.OptimisticCreate(ctx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
+				err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
 			}
 		}
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	limiter.Wait(ctx)
+	return nil
+}
+
+func (t kubernetesTraffic) Watch(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string, revision int64) {
+	watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
+	defer cancel()
+	for e := range kc.client.Watch(watchCtx, keyPrefix, revision, true, true) {
+		s.Update(e)
+	}
+	limiter.Wait(ctx)
 }
 
 func (t kubernetesTraffic) generateKey() string {
@@ -168,12 +199,16 @@ type kubernetesClient struct {
 	client *RecordingClient
 }
 
-func (k kubernetesClient) List(ctx context.Context, key string) (*clientv3.GetResponse, error) {
-	resp, err := k.client.Range(ctx, key, true, 0)
+func (k kubernetesClient) List(ctx context.Context, prefix string, revision, limit int64) (*clientv3.GetResponse, error) {
+	resp, err := k.client.Range(ctx, prefix, clientv3.GetPrefixRangeEnd(prefix), revision, limit)
 	if err != nil {
 		return nil, err
 	}
 	return resp, err
+}
+
+func (k kubernetesClient) Range(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
+	return k.client.Range(ctx, start, end, revision, limit)
 }
 
 func (k kubernetesClient) OptimisticDelete(ctx context.Context, key string, expectedRevision int64) (*mvccpb.KeyValue, error) {
@@ -237,17 +272,17 @@ func (s *storage) Update(resp clientv3.WatchResponse) {
 	}
 }
 
-func (s *storage) Reset(resp *clientv3.GetResponse) {
+func (s *storage) Reset(revision int64, kvs []*mvccpb.KeyValue) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	if resp.Header.Revision <= s.revision {
+	if revision <= s.revision {
 		return
 	}
-	s.keyRevision = make(map[string]int64, len(resp.Kvs))
-	for _, kv := range resp.Kvs {
+	s.keyRevision = make(map[string]int64, len(kvs))
+	for _, kv := range kvs {
 		s.keyRevision[string(kv.Key)] = kv.ModRevision
 	}
-	s.revision = resp.Header.Revision
+	s.revision = revision
 }
 
 func (s *storage) Count() int {
