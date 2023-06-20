@@ -83,8 +83,8 @@ var commonTestScenarios = []modelTestCase{
 		operations: []testOperation{
 			{req: putRequest("key1", "1"), resp: putResponse(2)},
 			{req: putRequest("key2", "2"), resp: putResponse(3)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
+			{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
+			{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
 		},
 	},
 	{
@@ -93,26 +93,26 @@ var commonTestScenarios = []modelTestCase{
 			{req: putRequest("key1", "1"), resp: putResponse(2)},
 			{req: putRequest("key2", "2"), resp: putResponse(3)},
 			{req: putRequest("key3", "3"), resp: putResponse(4)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
+			{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{
 				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
 				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 3},
 				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 4},
 			}, 3, 4)},
-			{req: rangeRequest("key", true, 4), resp: rangeResponse([]*mvccpb.KeyValue{
+			{req: listRequest("key", 4), resp: rangeResponse([]*mvccpb.KeyValue{
 				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
 				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 3},
 				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 4},
 			}, 3, 4)},
-			{req: rangeRequest("key", true, 3), resp: rangeResponse([]*mvccpb.KeyValue{
+			{req: listRequest("key", 3), resp: rangeResponse([]*mvccpb.KeyValue{
 				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
 				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 3},
 				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 4},
 			}, 3, 4)},
-			{req: rangeRequest("key", true, 2), resp: rangeResponse([]*mvccpb.KeyValue{
+			{req: listRequest("key", 2), resp: rangeResponse([]*mvccpb.KeyValue{
 				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
 				{Key: []byte("key2"), Value: []byte("2"), ModRevision: 3},
 			}, 3, 4)},
-			{req: rangeRequest("key", true, 1), resp: rangeResponse([]*mvccpb.KeyValue{
+			{req: listRequest("key", 1), resp: rangeResponse([]*mvccpb.KeyValue{
 				{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2},
 			}, 3, 4)},
 		},
@@ -123,17 +123,17 @@ var commonTestScenarios = []modelTestCase{
 			{req: putRequest("key3", "3"), resp: putResponse(2)},
 			{req: putRequest("key2", "1"), resp: putResponse(3)},
 			{req: putRequest("key1", "2"), resp: putResponse(4)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
+			{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{
 				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 4},
 				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 3},
 				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 2},
 			}, 3, 4)},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
+			{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{
 				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 3},
 				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 4},
 				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 2},
 			}, 3, 4), expectFailure: true},
-			{req: rangeRequest("key", true, 0), resp: rangeResponse([]*mvccpb.KeyValue{
+			{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{
 				{Key: []byte("key3"), Value: []byte("3"), ModRevision: 2},
 				{Key: []byte("key2"), Value: []byte("1"), ModRevision: 3},
 				{Key: []byte("key1"), Value: []byte("2"), ModRevision: 4},

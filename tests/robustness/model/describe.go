@@ -126,14 +126,18 @@ func describeRangeRequest(opts RangeOptions, revision int64) string {
 	if opts.Limit != 0 {
 		kwargs = append(kwargs, fmt.Sprintf("limit=%d", opts.Limit))
 	}
-	command := "get"
-	if opts.WithPrefix {
-		command = "range"
+	kwargsString := strings.Join(kwargs, ", ")
+	if kwargsString != "" {
+		kwargsString = ", " + kwargsString
 	}
-	if len(kwargs) == 0 {
-		return fmt.Sprintf("%s(%q)", command, opts.Key)
+	switch {
+	case opts.End == "":
+		return fmt.Sprintf("get(%q%s)", opts.Start, kwargsString)
+	case opts.End == prefixEnd(opts.Start):
+		return fmt.Sprintf("list(%q%s)", opts.Start, kwargsString)
+	default:
+		return fmt.Sprintf("range(%q..%q%s)", opts.Start, opts.End, kwargsString)
 	}
-	return fmt.Sprintf("%s(%q, %s)", command, opts.Key, strings.Join(kwargs, ", "))
 }
 
 func describeEtcdOperationResponse(op EtcdOperation, resp EtcdOperationResult) string {
@@ -149,8 +153,8 @@ func describeEtcdOperationResponse(op EtcdOperation, resp EtcdOperationResult) s
 	}
 }
 
-func describeRangeResponse(opts RangeOptions, response RangeResponse) string {
-	if opts.WithPrefix {
+func describeRangeResponse(request RangeOptions, response RangeResponse) string {
+	if request.End != "" {
 		kvs := make([]string, len(response.KVs))
 		for i, kv := range response.KVs {
 			kvs[i] = describeValueOrHash(kv.Value)

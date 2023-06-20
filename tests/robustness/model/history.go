@@ -59,9 +59,13 @@ func (h *AppendableHistory) AppendRange(key string, withPrefix bool, revision in
 	if resp != nil && resp.Header != nil {
 		respRevision = resp.Header.Revision
 	}
+	var keyEnd string
+	if withPrefix {
+		keyEnd = prefixEnd(key)
+	}
 	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.streamId,
-		Input:    staleRangeRequest(key, withPrefix, 0, revision),
+		Input:    staleRangeRequest(key, keyEnd, 0, revision),
 		Call:     start.Nanoseconds(),
 		Output:   rangeResponse(resp.Kvs, resp.Count, respRevision),
 		Return:   end.Nanoseconds(),
@@ -244,7 +248,8 @@ func toEtcdOperation(option clientv3.Op) (op EtcdOperation) {
 	case option.IsGet():
 		op.Type = RangeOperation
 		op.Range = RangeOptions{
-			Key: string(option.KeyBytes()),
+			Start: string(option.KeyBytes()),
+			End:   string(option.RangeBytes()),
 		}
 	case option.IsPut():
 		op.Type = PutOperation
@@ -342,19 +347,42 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, call int64, err er
 }
 
 func getRequest(key string) EtcdRequest {
-	return rangeRequest(key, false, 0)
+	return rangeRequest(key, "", 0)
 }
 
 func staleGetRequest(key string, revision int64) EtcdRequest {
-	return staleRangeRequest(key, false, 0, revision)
+	return staleRangeRequest(key, "", 0, revision)
 }
 
-func rangeRequest(key string, withPrefix bool, limit int64) EtcdRequest {
-	return staleRangeRequest(key, withPrefix, limit, 0)
+func rangeRequest(start, end string, limit int64) EtcdRequest {
+	return staleRangeRequest(start, end, limit, 0)
 }
 
-func staleRangeRequest(key string, withPrefix bool, limit, revision int64) EtcdRequest {
-	return EtcdRequest{Type: Range, Range: &RangeRequest{RangeOptions: RangeOptions{Key: key, WithPrefix: withPrefix, Limit: limit}, Revision: revision}}
+func listRequest(key string, limit int64) EtcdRequest {
+	return staleListRequest(key, limit, 0)
+}
+
+func staleListRequest(key string, limit, revision int64) EtcdRequest {
+	return staleRangeRequest(key, prefixEnd(key), limit, revision)
+}
+
+// prefixEnd gets the range end of the prefix.
+// Notice: Keep in sync with /client/v3/op.go getPrefix function.
+func prefixEnd(key string) string {
+	end := make([]byte, len(key))
+	copy(end, key)
+	for i := len(end) - 1; i >= 0; i-- {
+		if end[i] < 0xff {
+			end[i] = end[i] + 1
+			end = end[:i+1]
+			return string(end)
+		}
+	}
+	return "\x00"
+}
+
+func staleRangeRequest(start, end string, limit, revision int64) EtcdRequest {
+	return EtcdRequest{Type: Range, Range: &RangeRequest{RangeOptions: RangeOptions{Start: start, End: end, Limit: limit}, Revision: revision}}
 }
 
 func emptyGetResponse(revision int64) MaybeEtcdResponse {

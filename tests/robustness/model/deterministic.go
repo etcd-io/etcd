@@ -21,7 +21,6 @@ import (
 	"hash/fnv"
 	"reflect"
 	"sort"
-	"strings"
 
 	"github.com/anishathalye/porcupine"
 )
@@ -189,10 +188,10 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 	response := RangeResponse{
 		KVs: []KeyValue{},
 	}
-	if options.WithPrefix {
+	if options.End != "" {
 		var count int64
 		for k, v := range s.KeyValues {
-			if strings.HasPrefix(k, options.Key) {
+			if k >= options.Start && k < options.End {
 				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: v})
 				count += 1
 			}
@@ -205,10 +204,10 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 		}
 		response.Count = count
 	} else {
-		value, ok := s.KeyValues[options.Key]
+		value, ok := s.KeyValues[options.Start]
 		if ok {
 			response.KVs = append(response.KVs, KeyValue{
-				Key:           options.Key,
+				Key:           options.Start,
 				ValueRevision: value,
 			})
 			response.Count = 1
@@ -256,9 +255,9 @@ type RangeRequest struct {
 }
 
 type RangeOptions struct {
-	Key        string
-	WithPrefix bool
-	Limit      int64
+	Start string
+	End   string
+	Limit int64
 }
 
 type PutOptions struct {
