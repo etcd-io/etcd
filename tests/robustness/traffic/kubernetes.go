@@ -37,13 +37,13 @@ var (
 		maximalQPS:  1000,
 		clientCount: 12,
 		Traffic: kubernetesTraffic{
-			averageKeyCount: 5,
+			averageKeyCount: 10,
 			resource:        "pods",
 			namespace:       "default",
 			writeChoices: []choiceWeight[KubernetesRequestType]{
-				{choice: KubernetesUpdate, weight: 75},
-				{choice: KubernetesDelete, weight: 15},
-				{choice: KubernetesCreate, weight: 10},
+				{choice: KubernetesUpdate, weight: 90},
+				{choice: KubernetesDelete, weight: 5},
+				{choice: KubernetesCreate, weight: 5},
 			},
 		},
 	}
