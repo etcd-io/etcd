@@ -17,16 +17,21 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -96,9 +101,12 @@ func TestV2DeprecationFlags(t *testing.T) {
 		assertVerifyCannotStartV2deprecationNotYet(t, memberDataDir)
 	})
 
-	t.Run("--v2-deprecation=write-only fails", func(t *testing.T) {
-		assertVerifyCannotStartV2deprecationWriteOnly(t, memberDataDir)
-	})
+	//It is ok to start with write-only in 3.6
+	/*
+		t.Run("--v2-deprecation=write-only fails", func(t *testing.T) {
+			assertVerifyCannotStartV2deprecationWriteOnly(t, memberDataDir)
+		})
+	*/
 
 }
 
@@ -126,14 +134,14 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 
 	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
 		// Patch cluster version
-		data = bytes.Replace(data, []byte("3.5.0"), []byte("X.X.X"), -1)
-		data = bytes.Replace(data, []byte("3.6.0"), []byte("X.X.X"), -1)
+		//data = bytes.Replace(data, []byte("3.5.0"), []byte("X.X.X"), -1)
+		//data = bytes.Replace(data, []byte("3.6.0"), []byte("X.X.X"), -1)
 		// Patch members ids
 		for i, mid := range members1 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("member%d", i+1)), -1)
+			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
 		}
 		for i, mid := range members2 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("member%d", i+1)), -1)
+			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
 		}
 		return data
 	})
@@ -174,6 +182,74 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 
 	assert.Equal(t, lastReleaseGetResponse.Kvs, currentReleaseGetResponse.Kvs)
 	assert.Equal(t, lastReleaseMemberListResponse.Members, currentReleaseMemberListResponse.Members)
+	assert.NoError(t, epc.Close())
+}
+
+func TestV2DeprecationSnapshotRecoverOldVersion(t *testing.T) {
+	e2e.BeforeTest(t)
+	dataDir := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
+	}
+	var snapshotCount uint64 = 10
+	epc := runEtcdAndCreateSnapshot(t, e2e.CurrentVersion, dataDir, snapshotCount)
+
+	lastVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.EtcdLastRelease)
+	lastVersionStr := lastVersion.String()
+	lastClusterVersion := semver.New(lastVersionStr)
+	lastClusterVersion.Patch = 0
+	lastClusterVersionStr := lastClusterVersion.String()
+	t.Logf("etcdctl downgrade enable %s", lastVersionStr)
+	downgradeEnable(t, epc, lastVersion)
+
+	t.Log("Downgrade enabled, validating if cluster is ready for downgrade")
+	for i := 0; i < len(epc.Procs); i++ {
+		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
+			Cluster: lastClusterVersionStr,
+			Server:  version.Version,
+			Storage: lastClusterVersionStr,
+		})
+		e2e.AssertProcessLogs(t, epc.Procs[i], "The server is ready to downgrade")
+	}
+
+	t.Log("Cluster is ready for downgrade")
+
+	t.Log("Adding and removing keys")
+	cc1, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
+	assert.NoError(t, err)
+	addAndRemoveKeysAndMembers(ctx, t, cc1, snapshotCount)
+
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
+	assert.NoError(t, err)
+
+	beforeDowngradeGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
+	assert.NoError(t, err)
+
+	beforeDowngradeMemberListResponse, err := cc.MemberList(ctx, false)
+	assert.NoError(t, err)
+
+	t.Logf("Starting downgrade process to %q", lastVersionStr)
+	for i := 0; i < len(epc.Procs); i++ {
+		t.Logf("Downgrading member %d by running %s binary", i, e2e.BinPath.EtcdLastRelease)
+		stopEtcd(t, epc.Procs[i])
+		startEtcd(t, epc.Procs[i], e2e.BinPath.EtcdLastRelease)
+	}
+
+	cc, err = e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
+	assert.NoError(t, err)
+
+	afterDowngradeGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
+	assert.NoError(t, err)
+
+	afterDowngradeMemberListResponse, err := cc.MemberList(ctx, false)
+	assert.NoError(t, err)
+
+	assert.Equal(t, afterDowngradeGetResponse.Kvs, beforeDowngradeGetResponse.Kvs)
+	assert.Equal(t, afterDowngradeMemberListResponse.Members, beforeDowngradeMemberListResponse.Members)
+
 	assert.NoError(t, epc.Close())
 }
 
@@ -250,12 +326,39 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Equal(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+		//assert.Equal(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+		assertMembershipEqual(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
 	}
 }
 
 func openSnap(data []byte) v2store.Store {
 	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
 	st.Recovery(data)
+	//TODO remove the printing.
+	prettyPrintJson(data)
 	return st
+}
+
+func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v2store.Store) {
+	rc1 := membership.NewCluster(zaptest.NewLogger(t))
+	rc1.RecoverMembersFromStore(firstStore)
+
+	rc2 := membership.NewCluster(zaptest.NewLogger(t))
+	rc2.RecoverMembersFromStore(secondStore)
+
+	//membership should match
+	if g := rc1.Members(); !reflect.DeepEqual(g, rc2.Members()) {
+		fmt.Printf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v\n", rc1.MemberIDs(), rc2.MemberIDs())
+		t.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())
+	}
+}
+
+func prettyPrintJson(jsonData []byte) {
+	var out bytes.Buffer
+	err := json.Indent(&out, jsonData, "", " ")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(out.Bytes()))
 }

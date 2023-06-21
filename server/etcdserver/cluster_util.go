@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 
 	"github.com/coreos/go-semver/semver"
@@ -415,4 +416,15 @@ func convertToClusterVersion(v string) (*semver.Version, error) {
 	// cluster version only keeps major.minor, remove patch version
 	ver = &semver.Version{Major: ver.Major, Minor: ver.Minor}
 	return ver, nil
+}
+
+func GetMembershipInfoInV2Format(lg *zap.Logger, cl *membership.RaftCluster) []byte {
+	var st v2store.Store
+	st = v2store.New(StoreClusterPrefix, StoreKeysPrefix)
+	cl.Store(st)
+	d, err := st.SaveNoCopy()
+	if err != nil {
+		lg.Panic("failed to save v2 store", zap.Error(err))
+	}
+	return d
 }

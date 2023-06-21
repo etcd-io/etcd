@@ -46,8 +46,7 @@ type RaftCluster struct {
 	localID types.ID
 	cid     types.ID
 
-	v2store v2store.Store
-	be      MembershipBackend
+	be MembershipBackend
 
 	sync.Mutex // guards the fields below
 	version    *semver.Version
@@ -245,8 +244,6 @@ func (c *RaftCluster) SetID(localID, cid types.ID) {
 	c.buildMembershipMetric()
 }
 
-func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
-
 func (c *RaftCluster) SetBackend(be MembershipBackend) {
 	c.be = be
 	c.be.MustCreateBackendBuckets()
@@ -260,13 +257,8 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 
-	if c.be != nil {
-		c.version = c.be.ClusterVersionFromBackend()
-		c.members, c.removed = c.be.MustReadMembersFromBackend()
-	} else {
-		c.version = clusterVersionFromStore(c.lg, c.v2store)
-		c.members, c.removed = membersFromStore(c.lg, c.v2store)
-	}
+	c.version = c.be.ClusterVersionFromBackend()
+	c.members, c.removed = c.be.MustReadMembersFromBackend()
 	c.buildMembershipMetric()
 
 	if c.be != nil {
@@ -303,9 +295,16 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
-	// TODO: this must be switched to backend as well.
-	membersMap, removedMap := membersFromStore(c.lg, c.v2store)
+func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
+
+	var membersMap map[types.ID]*Member
+	var removedMap map[types.ID]bool
+	membersMap, removedMap = c.be.MustReadMembersFromBackend()
+	if !shouldApplyV3 {
+		//TODO geetasg - RaftCluster purely based on backend cannot validate an entry older than ci
+		return nil
+	}
+
 	id := types.ID(cc.NodeID)
 	if removedMap[id] {
 		return ErrIDRemoved
@@ -390,10 +389,7 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
-	if c.v2store != nil {
-		mustSaveMemberToStore(c.lg, c.v2store, m)
-	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(m)
 	}
 
@@ -415,10 +411,7 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
-	if c.v2store != nil {
-		mustDeleteMemberFromStore(c.lg, c.v2store, id)
-	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustDeleteMemberFromBackend(id)
 	}
 
@@ -452,10 +445,7 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApply
 
 	if m, ok := c.members[id]; ok {
 		m.Attributes = attr
-		if c.v2store != nil {
-			mustUpdateMemberAttrInStore(c.lg, c.v2store, m)
-		}
-		if c.be != nil && shouldApplyV3 {
+		if shouldApplyV3 {
 			c.be.MustSaveMemberToBackend(m)
 		}
 		return
@@ -486,10 +476,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 
 	c.members[id].RaftAttributes.IsLearner = false
 	c.updateMembershipMetric(id, true)
-	if c.v2store != nil {
-		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
-	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(c.members[id])
 	}
 
@@ -505,10 +492,7 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 	defer c.Unlock()
 
 	c.members[id].RaftAttributes = raftAttr
-	if c.v2store != nil {
-		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
-	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(c.members[id])
 	}
 
@@ -554,10 +538,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	c.version = ver
 	sv := semver.Must(semver.NewVersion(version.Version))
 	serverversion.MustDetectDowngrade(c.lg, sv, c.version)
-	if c.v2store != nil {
-		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
-	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustSaveClusterVersionToBackend(ver)
 	}
 	if oldVer != nil {
@@ -791,17 +772,9 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 // PushMembershipToStorage is overriding storage information about cluster's
 // members, such that they fully reflect internal RaftCluster's storage.
 func (c *RaftCluster) PushMembershipToStorage() {
-	if c.be != nil {
-		c.be.TrimMembershipFromBackend()
-		for _, m := range c.members {
-			c.be.MustSaveMemberToBackend(m)
-		}
-	}
-	if c.v2store != nil {
-		TrimMembershipFromV2Store(c.lg, c.v2store)
-		for _, m := range c.members {
-			mustSaveMemberToStore(c.lg, c.v2store, m)
-		}
+	c.be.TrimMembershipFromBackend()
+	for _, m := range c.members {
+		c.be.MustSaveMemberToBackend(m)
 	}
 }
 
@@ -853,4 +826,32 @@ func ValidateMaxLearnerConfig(maxLearners int, members []*Member, scaleUpLearner
 	}
 
 	return nil
+}
+
+func (c *RaftCluster) Store(store v2store.Store) {
+	c.Lock()
+	defer c.Unlock()
+	for _, m := range c.members {
+		mustSaveMemberToStore(c.lg, store, m)
+		if m.ClientURLs != nil {
+			mustUpdateMemberAttrInStore(c.lg, store, m)
+		}
+		c.lg.Info(
+			"snapshot storing member",
+			zap.String("id", m.ID.String()),
+			zap.Strings("peer-urls", m.PeerURLs),
+			zap.Bool("is-learner", m.IsLearner),
+		)
+	}
+	for id, _ := range c.removed {
+		mustDeleteMemberFromStore(c.lg, store, id)
+	}
+	if c.version != nil {
+		mustSaveClusterVersionToStore(c.lg, store, c.version)
+	}
+}
+
+func (c *RaftCluster) RecoverMembersFromStore(st v2store.Store) {
+	c.members, c.removed = membersFromStore(c.lg, st)
+	c.buildMembershipMetric()
 }

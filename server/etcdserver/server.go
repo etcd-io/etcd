@@ -61,7 +61,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
@@ -134,20 +133,9 @@ func init() {
 }
 
 type Response struct {
-	Term    uint64
-	Index   uint64
-	Event   *v2store.Event
-	Watcher v2store.Watcher
-	Err     error
-}
-
-type ServerV2 interface {
-	Server
-	Leader() types.ID
-
-	// Do takes a V2 request and attempts to fulfill it, returning a Response.
-	Do(ctx context.Context, r pb.Request) (Response, error)
-	ClientCertAuthEnabled() bool
+	Term  uint64
+	Index uint64
+	Err   error
 }
 
 type ServerV3 interface {
@@ -249,10 +237,9 @@ type EtcdServer struct {
 
 	cluster *membership.RaftCluster
 
-	v2store     v2store.Store
 	snapshotter *snap.Snapshotter
 
-	applyV2 ApplierV2
+	applyV2ToV3 ApplierV2ToV3
 
 	uberApply apply.UberApplier
 
@@ -325,7 +312,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lgMu:                  new(sync.RWMutex),
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
-		v2store:               b.storage.st,
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
 		memberId:              b.cluster.nodeID,
@@ -343,7 +329,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": b.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
-	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
+	srv.applyV2ToV3 = NewApplierV2ToV3(cfg.Logger, srv.cluster)
 
 	srv.be = b.storage.backend.be
 	srv.beHooks = b.storage.backend.beHooks
@@ -631,7 +617,7 @@ func (s *EtcdServer) Cluster() api.Cluster { return s.cluster }
 func (s *EtcdServer) ApplyWait() <-chan struct{} { return s.applyWait.Wait(s.getCommittedIndex()) }
 
 type ServerPeer interface {
-	ServerV2
+	Server
 	RaftHandler() http.Handler
 	LeaseHandler() http.Handler
 }
@@ -853,9 +839,7 @@ func (s *EtcdServer) run() {
 			lg.Warn("data-dir used by this member must be removed")
 			return
 		case <-getSyncC():
-			if s.v2store.HasTTLKeys() {
-				s.sync(s.Cfg.ReqTimeout())
-			}
+			lg.Warn("NOP")
 		case <-s.stop:
 			return
 		}
@@ -1046,16 +1030,9 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 		lg.Info("restored auth store")
 	}
 
-	lg.Info("restoring v2 store")
-	if err := s.v2store.Recovery(toApply.snapshot.Data); err != nil {
-		lg.Panic("failed to restore v2 store", zap.Error(err))
-	}
-
-	if err := serverstorage.AssertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
+	if err := serverstorage.AssertV2DeprecationStage(lg, s.Cfg.V2Deprecation); err != nil {
 		lg.Panic("illegal v2store content", zap.Error(err))
 	}
-
-	lg.Info("restored v2 store")
 
 	s.cluster.SetBackend(schema.NewMembershipBackend(lg, newbe))
 
@@ -1100,6 +1077,14 @@ func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {
 	verify.Verify(func() {
 		if cindex != snapshot.Metadata.Index {
 			panic(fmt.Sprintf("consistent_index(%d) isn't equal to snapshot index (%d)", cindex, snapshot.Metadata.Index))
+		}
+	})
+}
+
+func verifyConsistentIndexIsLatest(snapshot raftpb.Snapshot, cindex uint64) {
+	verify.Verify(func() {
+		if cindex < snapshot.Metadata.Index {
+			panic(fmt.Sprintf("consistent_index(%d) is older than snapshot index (%d)", cindex, snapshot.Metadata.Index))
 		}
 	})
 }
@@ -1888,15 +1873,16 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		var r pb.Request
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
-		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
+		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request handled", rp))
+		//TODO remove this for 3.7. This handles the publish request from 3.5 members.
+		s.w.Trigger(r.ID, s.applyV2RequestToV3((*RequestV2)(rp)))
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
-		s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
+		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request dropped", req))
 		return
 	}
 
@@ -1974,7 +1960,8 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
-	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
+	//while recovering WAL from scratch - store starts empty and returns ValidateConfigurationChange err nil. backend on the other hand starts stateful and returns "member already exists" etc errors on this Validation and enters the loop below
+	if err := s.cluster.ValidateConfigurationChange(cc, shouldApplyV3); err != nil && membership.ApplyBoth == shouldApplyV3 {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
 
@@ -2052,7 +2039,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
-	clone := s.v2store.Clone()
 	// commit kv to write metadata (for example: consistent index) to disk.
 	//
 	// This guarantees that Backend's consistent_index is >= index of last snapshot.
@@ -2066,14 +2052,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 
 	s.GoAttach(func() {
 		lg := s.Logger()
-
-		d, err := clone.SaveNoCopy()
-		// TODO: current store will never fail to do a snapshot
-		// what should we do if the store might fail?
-		if err != nil {
-			lg.Panic("failed to save v2 store", zap.Error(err))
-		}
-		snap, err := s.r.raftStorage.CreateSnapshot(snapi, &confState, d)
+		snap, err := s.r.raftStorage.CreateSnapshot(snapi, &confState, GetMembershipInfoInV2Format(lg, s.cluster))
 		if err != nil {
 			// the snapshot was done asynchronously with the progress of raft.
 			// raft might have already got a newer snapshot.
@@ -2082,6 +2061,9 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			lg.Panic("failed to create snapshot", zap.Error(err))
 		}
+
+		verifyConsistentIndexIsLatest(snap, s.consistIndex.ConsistentIndex())
+
 		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
 			lg.Panic("failed to save snapshot", zap.Error(err))
@@ -2253,46 +2235,6 @@ func (s *EtcdServer) monitorCompactHash() {
 			continue
 		}
 		s.corruptionChecker.CompactHashCheck()
-	}
-}
-
-func (s *EtcdServer) updateClusterVersionV2(ver string) {
-	lg := s.Logger()
-
-	if s.cluster.Version() == nil {
-		lg.Info(
-			"setting up initial cluster version using v2 API",
-			zap.String("cluster-version", version.Cluster(ver)),
-		)
-	} else {
-		lg.Info(
-			"updating cluster version using v2 API",
-			zap.String("from", version.Cluster(s.cluster.Version().String())),
-			zap.String("to", version.Cluster(ver)),
-		)
-	}
-
-	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    ver,
-	}
-
-	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
-	_, err := s.Do(ctx, req)
-	cancel()
-
-	switch err {
-	case nil:
-		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
-		return
-
-	case errors.ErrStopped:
-		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
-		return
-
-	default:
-		lg.Warn("failed to update cluster version", zap.Error(err))
 	}
 }
 

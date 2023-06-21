@@ -277,7 +277,9 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
 	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
-	cl.SetStore(v2store.New())
+	be := newMembershipBackend()
+	cl.SetBackend(be)
+
 	for i := 1; i <= 4; i++ {
 		var isLearner bool
 		if i == 1 {
@@ -454,7 +456,7 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		err := cl.ValidateConfigurationChange(tt.cc)
+		err := cl.ValidateConfigurationChange(tt.cc, ApplyBoth)
 		if err != tt.werr {
 			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -473,7 +475,6 @@ func TestClusterGenID(t *testing.T) {
 	}
 	previd := cs.ID()
 
-	cs.SetStore(mockstore.NewNop())
 	cs.AddMember(newTestMember(3, nil, "", nil), true)
 	cs.genID()
 	if cs.ID() == previd {
@@ -516,8 +517,8 @@ func TestNodeToMemberBad(t *testing.T) {
 func TestClusterAddMember(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.AddMember(newTestMember(1, nil, "node1", nil), true)
+	c.Store(st)
 
 	wactions := []testutil.Action{
 		{
@@ -539,8 +540,8 @@ func TestClusterAddMember(t *testing.T) {
 func TestClusterAddMemberAsLearner(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.AddMember(newTestMemberAsLearner(1, nil, "node1", nil), true)
+	c.Store(st)
 
 	wactions := []testutil.Action{
 		{
@@ -582,8 +583,8 @@ func TestClusterMembers(t *testing.T) {
 func TestClusterRemoveMember(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.RemoveMember(1, true)
+	c.Store(st)
 
 	wactions := []testutil.Action{
 		{Name: "Delete", Params: []interface{}{MemberStoreKey(1), true, true}},
@@ -647,8 +648,10 @@ func TestNodeToMember(t *testing.T) {
 
 func newTestCluster(t testing.TB, membs []*Member) *RaftCluster {
 	c := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+	be := newMembershipBackend()
+	c.SetBackend(be)
 	for _, m := range membs {
-		c.members[m.ID] = m
+		c.AddMember(m, true)
 	}
 	return c
 }
@@ -975,3 +978,48 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 		}
 	}
 }
+
+/*
+covered by TestV2DeprecationSnapshotMatches
+// TestMembershipStore tests code path used by snapshot
+func TestMembershipStore(t *testing.T) {
+	name := "etcd"
+	clientURLs := []string{"http://127.0.0.1:4001"}
+	tests := []struct {
+		mems    []*Member
+		removed map[types.ID]bool
+	}{
+		// update attributes of existing member
+		{
+			[]*Member{
+				newTestMember(2, nil, name, clientURLs),
+			},
+			map[types.ID]bool{types.ID(1): true},
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(t, tt.mems)
+		for id, _ := range tt.removed {
+			c.RemoveMember(id, true)
+		}
+
+		//snapshot
+		st := v2store.New("/0", "/1")
+		c.Store(st)
+		d, _ := st.SaveNoCopy()
+
+		//3.5 recover from snapshot
+		rst := v2store.New("/0", "/1")
+		rst.Recovery(d)
+		rc := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+		rc.SetBackend(c.be)
+		//rc.SetStore(rst)
+		rc.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+
+		//membership should match
+		if g := rc.Members(); !reflect.DeepEqual(g, tt.mems) {
+			t.Errorf("#%d: members = %+v, want %+v", i, g, tt.mems)
+		}
+	}
+}
+*/

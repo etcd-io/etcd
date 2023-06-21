@@ -24,10 +24,10 @@ const (
 	V2_DEPR_1_WRITE_ONLY = V2DeprecationEnum("write-only")
 	// V2store is WIPED if found !!!
 	V2_DEPR_1_WRITE_ONLY_DROP = V2DeprecationEnum("write-only-drop-data")
-	// V2store is neither written nor read. Usage of this configuration is blocking
-	// ability to rollback to etcd v3.5.
+	// V2store is neither written nor read for 3.6. v2snapshot is published only for backward compatibility
 	V2_DEPR_2_GONE = V2DeprecationEnum("gone")
 
+	//TODO geetasg does thie default need to change
 	V2_DEPR_DEFAULT = V2_DEPR_1_WRITE_ONLY
 )
 

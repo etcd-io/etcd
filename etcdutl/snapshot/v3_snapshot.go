@@ -38,7 +38,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -396,8 +395,6 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	}
 
 	// add members again to persist them to the store we create.
-	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
-	s.cl.SetStore(st)
 	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
 	defer be.Close()
 	s.cl.SetBackend(schema.NewMembershipBackend(s.lg, be))
@@ -457,15 +454,11 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		return nil, err
 	}
 
-	b, berr := st.Save()
-	if berr != nil {
-		return nil, berr
-	}
 	confState := raftpb.ConfState{
 		Voters: nodeIDs,
 	}
 	raftSnap := raftpb.Snapshot{
-		Data: b,
+		Data: etcdserver.GetMembershipInfoInV2Format(s.lg, s.cl),
 		Metadata: raftpb.SnapshotMetadata{
 			Index:     commit,
 			Term:      term,
