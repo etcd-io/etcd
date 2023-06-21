@@ -277,7 +277,7 @@ func (c etcdTrafficClient) pickMultiTxnOps() (ops []clientv3.Op) {
 	}
 
 	for i, opType := range opTypes {
-		key := fmt.Sprintf("%d", keys[i])
+		key := c.key(keys[i])
 		switch opType {
 		case model.RangeOperation:
 			ops = append(ops, clientv3.OpGet(key))
@@ -294,7 +294,11 @@ func (c etcdTrafficClient) pickMultiTxnOps() (ops []clientv3.Op) {
 }
 
 func (c etcdTrafficClient) randomKey() string {
-	return fmt.Sprintf("%s%d", c.keyPrefix, rand.Int()%c.keyCount)
+	return c.key(rand.Int())
+}
+
+func (c etcdTrafficClient) key(i int) string {
+	return fmt.Sprintf("%s%d", c.keyPrefix, i%c.keyCount)
 }
 
 func (t etcdTraffic) pickOperationType() model.OperationType {
