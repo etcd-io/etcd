@@ -21,7 +21,6 @@ import (
 	"hash/fnv"
 	"reflect"
 	"sort"
-	"strings"
 
 	"github.com/anishathalye/porcupine"
 )
@@ -95,7 +94,7 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	switch request.Type {
 	case Range:
 		if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
-			resp := s.getRange(request.Range.Key, request.Range.RangeOptions)
+			resp := s.getRange(request.Range.RangeOptions)
 			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
 		} else {
 			if request.Range.Revision > s.Revision {
@@ -121,27 +120,27 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 			switch op.Type {
 			case RangeOperation:
 				opResp[i] = EtcdOperationResult{
-					RangeResponse: s.getRange(op.Key, op.RangeOptions),
+					RangeResponse: s.getRange(op.Range),
 				}
 			case PutOperation:
-				_, leaseExists := s.Leases[op.LeaseID]
-				if op.LeaseID != 0 && !leaseExists {
+				_, leaseExists := s.Leases[op.Put.LeaseID]
+				if op.Put.LeaseID != 0 && !leaseExists {
 					break
 				}
-				s.KeyValues[op.Key] = ValueRevision{
-					Value:       op.Value,
+				s.KeyValues[op.Put.Key] = ValueRevision{
+					Value:       op.Put.Value,
 					ModRevision: s.Revision + 1,
 				}
 				increaseRevision = true
-				s = detachFromOldLease(s, op.Key)
+				s = detachFromOldLease(s, op.Put.Key)
 				if leaseExists {
-					s = attachToNewLease(s, op.LeaseID, op.Key)
+					s = attachToNewLease(s, op.Put.LeaseID, op.Put.Key)
 				}
 			case DeleteOperation:
-				if _, ok := s.KeyValues[op.Key]; ok {
-					delete(s.KeyValues, op.Key)
+				if _, ok := s.KeyValues[op.Delete.Key]; ok {
+					delete(s.KeyValues, op.Delete.Key)
 					increaseRevision = true
-					s = detachFromOldLease(s, op.Key)
+					s = detachFromOldLease(s, op.Delete.Key)
 					opResp[i].Deleted = 1
 				}
 			default:
@@ -185,14 +184,14 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	}
 }
 
-func (s EtcdState) getRange(key string, options RangeOptions) RangeResponse {
+func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 	response := RangeResponse{
 		KVs: []KeyValue{},
 	}
-	if options.WithPrefix {
+	if options.End != "" {
 		var count int64
 		for k, v := range s.KeyValues {
-			if strings.HasPrefix(k, key) {
+			if k >= options.Start && k < options.End {
 				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: v})
 				count += 1
 			}
@@ -205,10 +204,10 @@ func (s EtcdState) getRange(key string, options RangeOptions) RangeResponse {
 		}
 		response.Count = count
 	} else {
-		value, ok := s.KeyValues[key]
+		value, ok := s.KeyValues[options.Start]
 		if ok {
 			response.KVs = append(response.KVs, KeyValue{
-				Key:           key,
+				Key:           options.Start,
 				ValueRevision: value,
 			})
 			response.Count = 1
@@ -251,19 +250,24 @@ type EtcdRequest struct {
 }
 
 type RangeRequest struct {
-	Key string
 	RangeOptions
 	Revision int64
 }
 
 type RangeOptions struct {
-	WithPrefix bool
-	Limit      int64
+	Start string
+	End   string
+	Limit int64
 }
 
 type PutOptions struct {
+	Key     string
 	Value   ValueOrHash
 	LeaseID int64
+}
+
+type DeleteOptions struct {
+	Key string
 }
 
 type TxnRequest struct {
@@ -278,10 +282,10 @@ type EtcdCondition struct {
 }
 
 type EtcdOperation struct {
-	Type OperationType
-	Key  string
-	RangeOptions
-	PutOptions
+	Type   OperationType
+	Range  RangeOptions
+	Put    PutOptions
+	Delete DeleteOptions
 }
 
 type OperationType string

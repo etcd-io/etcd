@@ -254,22 +254,18 @@ func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) WatchResponse
 	return resp
 }
 
-func toWatchEvent(event clientv3.Event) model.WatchEvent {
-	var op model.OperationType
+func toWatchEvent(event clientv3.Event) (watch model.WatchEvent) {
+	watch.Revision = event.Kv.ModRevision
+	watch.Key = string(event.Kv.Key)
+	watch.Value = model.ToValueOrHash(string(event.Kv.Value))
+
 	switch event.Type {
 	case mvccpb.PUT:
-		op = model.PutOperation
+		watch.Type = model.PutOperation
 	case mvccpb.DELETE:
-		op = model.DeleteOperation
+		watch.Type = model.DeleteOperation
 	default:
 		panic(fmt.Sprintf("Unexpected event type: %s", event.Type))
 	}
-	return model.WatchEvent{
-		Revision: event.Kv.ModRevision,
-		Op: model.EtcdOperation{
-			Type:       op,
-			Key:        string(event.Kv.Key),
-			PutOptions: model.PutOptions{Value: model.ToValueOrHash(string(event.Kv.Value))},
-		},
-	}
+	return watch
 }

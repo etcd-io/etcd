@@ -73,7 +73,19 @@ func (r *EtcdReplay) next() (request EtcdRequest, revision int64, index int) {
 	index = r.eventHistoryIndex
 	operations := []EtcdOperation{}
 	for r.eventHistory[index].Revision == revision {
-		operations = append(operations, r.eventHistory[index].Op)
+		event := r.eventHistory[index]
+		switch event.Type {
+		case PutOperation:
+			operations = append(operations, EtcdOperation{
+				Type: event.Type,
+				Put:  PutOptions{Key: event.Key, Value: event.Value},
+			})
+		case DeleteOperation:
+			operations = append(operations, EtcdOperation{
+				Type:   event.Type,
+				Delete: DeleteOptions{Key: event.Key},
+			})
+		}
 		index++
 	}
 	return EtcdRequest{
@@ -84,16 +96,13 @@ func (r *EtcdReplay) next() (request EtcdRequest, revision int64, index int) {
 	}, revision, index
 }
 
-func operationToRequest(op EtcdOperation) EtcdRequest {
-	return EtcdRequest{
-		Type: Txn,
-		Txn: &TxnRequest{
-			OperationsOnSuccess: []EtcdOperation{op},
-		},
-	}
+type WatchEvent struct {
+	Event
+	Revision int64
 }
 
-type WatchEvent struct {
-	Op       EtcdOperation
-	Revision int64
+type Event struct {
+	Type  OperationType
+	Key   string
+	Value ValueOrHash
 }
