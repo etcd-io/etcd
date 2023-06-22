@@ -17,40 +17,16 @@ package validate
 import (
 	"testing"
 
-	"github.com/anishathalye/porcupine"
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
 func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []traffic.ClientReport) (visualize func(basepath string) error) {
 	eventHistory := validateWatch(t, cfg, reports)
-	allOperations := operations(reports)
-	watchEvents := uniqueWatchEvents(reports)
-	patchedOperations := patchOperationsWithWatchEvents(allOperations, watchEvents)
+	patchedOperations := patchedOperationHistory(reports)
 	return validateOperationsAndVisualize(t, lg, patchedOperations, eventHistory)
-}
-
-func operations(reports []traffic.ClientReport) []porcupine.Operation {
-	var ops []porcupine.Operation
-	for _, r := range reports {
-		ops = append(ops, r.OperationHistory.Operations()...)
-	}
-	return ops
-}
-
-func uniqueWatchEvents(reports []traffic.ClientReport) map[model.Event]traffic.TimedWatchEvent {
-	persisted := map[model.Event]traffic.TimedWatchEvent{}
-	for _, r := range reports {
-		for _, resp := range r.Watch {
-			for _, event := range resp.Events {
-				persisted[event.Event] = traffic.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
-			}
-		}
-	}
-	return persisted
 }
 
 type Config struct {
