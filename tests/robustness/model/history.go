@@ -239,23 +239,28 @@ func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
 	return cond
 }
 
-func toEtcdOperation(op clientv3.Op) EtcdOperation {
-	var opType OperationType
+func toEtcdOperation(option clientv3.Op) (op EtcdOperation) {
 	switch {
-	case op.IsGet():
-		opType = RangeOperation
-	case op.IsPut():
-		opType = PutOperation
-	case op.IsDelete():
-		opType = DeleteOperation
+	case option.IsGet():
+		op.Type = RangeOperation
+		op.Range = RangeOptions{
+			Key: string(option.KeyBytes()),
+		}
+	case option.IsPut():
+		op.Type = PutOperation
+		op.Put = PutOptions{
+			Key:   string(option.KeyBytes()),
+			Value: ValueOrHash{Value: string(option.ValueBytes())},
+		}
+	case option.IsDelete():
+		op.Type = DeleteOperation
+		op.Delete = DeleteOptions{
+			Key: string(option.KeyBytes()),
+		}
 	default:
 		panic("Unsupported operation")
 	}
-	return EtcdOperation{
-		Type:       opType,
-		Key:        string(op.KeyBytes()),
-		PutOptions: PutOptions{Value: ValueOrHash{Value: string(op.ValueBytes())}},
-	}
+	return op
 }
 
 func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
@@ -349,7 +354,7 @@ func rangeRequest(key string, withPrefix bool, limit int64) EtcdRequest {
 }
 
 func staleRangeRequest(key string, withPrefix bool, limit, revision int64) EtcdRequest {
-	return EtcdRequest{Type: Range, Range: &RangeRequest{Key: key, RangeOptions: RangeOptions{WithPrefix: withPrefix, Limit: limit}, Revision: revision}}
+	return EtcdRequest{Type: Range, Range: &RangeRequest{RangeOptions: RangeOptions{Key: key, WithPrefix: withPrefix, Limit: limit}, Revision: revision}}
 }
 
 func emptyGetResponse(revision int64) MaybeEtcdResponse {
@@ -384,7 +389,7 @@ func partialResponse(revision int64) MaybeEtcdResponse {
 }
 
 func putRequest(key, value string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Key: key, PutOptions: PutOptions{Value: ToValueOrHash(value)}}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: key, Value: ToValueOrHash(value)}}}}}
 }
 
 func putResponse(revision int64) MaybeEtcdResponse {
@@ -392,7 +397,7 @@ func putResponse(revision int64) MaybeEtcdResponse {
 }
 
 func deleteRequest(key string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: DeleteOperation, Key: key}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: DeleteOperation, Delete: DeleteOptions{Key: key}}}}}
 }
 
 func deleteResponse(deleted int64, revision int64) MaybeEtcdResponse {
@@ -415,7 +420,7 @@ func compareRevision(key string, expectedRevision int64) *EtcdCondition {
 }
 
 func putOperation(key, value string) *EtcdOperation {
-	return &EtcdOperation{Type: PutOperation, Key: key, PutOptions: PutOptions{Value: ToValueOrHash(value)}}
+	return &EtcdOperation{Type: PutOperation, Put: PutOptions{Key: key, Value: ToValueOrHash(value)}}
 }
 
 func txnRequestSingleOperation(cond *EtcdCondition, onSuccess, onFailure *EtcdOperation) EtcdRequest {
@@ -451,7 +456,7 @@ func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) M
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Key: key, PutOptions: PutOptions{Value: ToValueOrHash(value), LeaseID: leaseID}}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: key, Value: ToValueOrHash(value), LeaseID: leaseID}}}}}
 }
 
 func leaseGrantRequest(leaseID int64) EtcdRequest {

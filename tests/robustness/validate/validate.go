@@ -41,12 +41,12 @@ func operations(reports []traffic.ClientReport) []porcupine.Operation {
 	return ops
 }
 
-func uniqueWatchEvents(reports []traffic.ClientReport) map[model.EtcdOperation]traffic.TimedWatchEvent {
-	persisted := map[model.EtcdOperation]traffic.TimedWatchEvent{}
+func uniqueWatchEvents(reports []traffic.ClientReport) map[model.WatchEvent]traffic.TimedWatchEvent {
+	persisted := map[model.WatchEvent]traffic.TimedWatchEvent{}
 	for _, r := range reports {
 		for _, resp := range r.Watch {
 			for _, event := range resp.Events {
-				persisted[event.Op] = traffic.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
+				persisted[event] = traffic.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
 			}
 		}
 	}

@@ -21,7 +21,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvents map[model.EtcdOperation]traffic.TimedWatchEvent) []porcupine.Operation {
+func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvents map[model.WatchEvent]traffic.TimedWatchEvent) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 	lastObservedOperation := lastOperationObservedInWatch(operations, watchEvents)
 
@@ -51,7 +51,7 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 	return newOperations
 }
 
-func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.EtcdOperation]traffic.TimedWatchEvent) porcupine.Operation {
+func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.WatchEvent]traffic.TimedWatchEvent) porcupine.Operation {
 	var maxCallTime int64
 	var lastOperation porcupine.Operation
 	for _, op := range operations {
@@ -68,15 +68,15 @@ func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents 
 	return lastOperation
 }
 
-func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.EtcdOperation]traffic.TimedWatchEvent) *traffic.TimedWatchEvent {
+func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.WatchEvent]traffic.TimedWatchEvent) *traffic.TimedWatchEvent {
 	for _, etcdOp := range append(request.OperationsOnSuccess, request.OperationsOnFailure...) {
 		if etcdOp.Type == model.PutOperation {
 			// Remove LeaseID which is not exposed in watch.
-			event, ok := watchEvents[model.EtcdOperation{
+			event, ok := watchEvents[model.WatchEvent{
 				Type: etcdOp.Type,
-				Key:  etcdOp.Key,
-				PutOptions: model.PutOptions{
-					Value: etcdOp.Value,
+				Put: model.PutOptions{
+					Key:   etcdOp.Put.Key,
+					Value: etcdOp.Put.Value,
 				},
 			}]
 			if ok {

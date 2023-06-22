@@ -18,9 +18,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestModelDescribe(t *testing.T) {
@@ -95,17 +95,17 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `if(mod_rev(key9)==9).then(put("key9", "99")) -> err: "failed"`,
 		},
 		{
-			req:            txnRequest([]EtcdCondition{{Key: "key9b", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Key: "key9b", PutOptions: PutOptions{Value: ValueOrHash{Value: "991"}}}}, []EtcdOperation{{Type: RangeOperation, Key: "key9b"}}),
+			req:            txnRequest([]EtcdCondition{{Key: "key9b", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: "key9b", Value: ValueOrHash{Value: "991"}}}}, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Key: "key9b"}}}),
 			resp:           txnResponse([]EtcdOperationResult{{}}, true, 10),
 			expectDescribe: `if(mod_rev(key9b)==9).then(put("key9b", "991")).else(get("key9b")) -> success(ok), rev: 10`,
 		},
 		{
-			req:            txnRequest([]EtcdCondition{{Key: "key9c", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Key: "key9c", PutOptions: PutOptions{Value: ValueOrHash{Value: "992"}}}}, []EtcdOperation{{Type: RangeOperation, Key: "key9c"}}),
+			req:            txnRequest([]EtcdCondition{{Key: "key9c", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: "key9c", Value: ValueOrHash{Value: "992"}}}}, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Key: "key9c"}}}),
 			resp:           txnResponse([]EtcdOperationResult{{RangeResponse: RangeResponse{KVs: []KeyValue{{Key: "key9c", ValueRevision: ValueRevision{Value: ValueOrHash{Value: "993"}, ModRevision: 10}}}}}}, false, 10),
 			expectDescribe: `if(mod_rev(key9c)==9).then(put("key9c", "992")).else(get("key9c")) -> failure("993"), rev: 10`,
 		},
 		{
-			req:            txnRequest(nil, []EtcdOperation{{Type: RangeOperation, Key: "10"}, {Type: PutOperation, Key: "11", PutOptions: PutOptions{Value: ValueOrHash{Value: "111"}}}, {Type: DeleteOperation, Key: "12"}}, nil),
+			req:            txnRequest(nil, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Key: "10"}}, {Type: PutOperation, Put: PutOptions{Key: "11", Value: ValueOrHash{Value: "111"}}}, {Type: DeleteOperation, Delete: DeleteOptions{Key: "12"}}}, nil),
 			resp:           txnResponse([]EtcdOperationResult{{RangeResponse: RangeResponse{KVs: []KeyValue{{ValueRevision: ValueRevision{Value: ValueOrHash{Value: "110"}}}}}}, {}, {Deleted: 1}}, true, 10),
 			expectDescribe: `get("10"), put("11", "111"), delete("12") -> "110", ok, deleted: 1, rev: 10`,
 		},
@@ -115,29 +115,44 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `defragment() -> ok, rev: 10`,
 		},
 		{
-			req:            rangeRequest("key11", true, 0),
+			req:            listRequest("key11", 0),
 			resp:           rangeResponse(nil, 0, 11),
-			expectDescribe: `range("key11") -> [], count: 0, rev: 11`,
+			expectDescribe: `list("key11") -> [], count: 0, rev: 11`,
 		},
 		{
-			req:            rangeRequest("key12", true, 0),
+			req:            listRequest("key12", 0),
 			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("12")}}, 2, 12),
-			expectDescribe: `range("key12") -> ["12"], count: 2, rev: 12`,
+			expectDescribe: `list("key12") -> ["12"], count: 2, rev: 12`,
 		},
 		{
-			req:            rangeRequest("key13", true, 0),
+			req:            listRequest("key13", 0),
 			resp:           rangeResponse([]*mvccpb.KeyValue{{Value: []byte("01234567890123456789")}}, 1, 13),
-			expectDescribe: `range("key13") -> [hash: 2945867837], count: 1, rev: 13`,
+			expectDescribe: `list("key13") -> [hash: 2945867837], count: 1, rev: 13`,
 		},
 		{
-			req:            rangeRequest("key14", true, 14),
+			req:            listRequest("key14", 14),
 			resp:           rangeResponse(nil, 0, 14),
-			expectDescribe: `range("key14", limit=14) -> [], count: 0, rev: 14`,
+			expectDescribe: `list("key14", limit=14) -> [], count: 0, rev: 14`,
 		},
 		{
-			req:            staleRangeRequest("key15", true, 0, 15),
+			req:            staleListRequest("key15", 0, 15),
 			resp:           rangeResponse(nil, 0, 15),
-			expectDescribe: `range("key15", rev=15) -> [], count: 0, rev: 15`,
+			expectDescribe: `list("key15", rev=15) -> [], count: 0, rev: 15`,
+		},
+		{
+			req:            staleListRequest("key15", 2, 15),
+			resp:           rangeResponse(nil, 0, 15),
+			expectDescribe: `list("key15", rev=15, limit=2) -> [], count: 0, rev: 15`,
+		},
+		{
+			req:            rangeRequest("key16", "key16b", 0),
+			resp:           rangeResponse(nil, 0, 16),
+			expectDescribe: `range("key16".."key16b") -> [], count: 0, rev: 16`,
+		},
+		{
+			req:            rangeRequest("key16", "key16b", 2),
+			resp:           rangeResponse(nil, 0, 16),
+			expectDescribe: `range("key16".."key16b", limit=2) -> [], count: 0, rev: 16`,
 		},
 	}
 	for _, tc := range tcs {
