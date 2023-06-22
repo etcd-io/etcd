@@ -18,9 +18,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestModelDescribe(t *testing.T) {
@@ -95,17 +95,17 @@ func TestModelDescribe(t *testing.T) {
 			expectDescribe: `if(mod_rev(key9)==9).then(put("key9", "99")) -> err: "failed"`,
 		},
 		{
-			req:            txnRequest([]EtcdCondition{{Key: "key9b", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Key: "key9b", Value: ValueOrHash{Value: "991"}}}, []EtcdOperation{{Type: RangeOperation, Key: "key9b"}}),
+			req:            txnRequest([]EtcdCondition{{Key: "key9b", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: "key9b", Value: ValueOrHash{Value: "991"}}}}, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Key: "key9b"}}}),
 			resp:           txnResponse([]EtcdOperationResult{{}}, true, 10),
 			expectDescribe: `if(mod_rev(key9b)==9).then(put("key9b", "991")).else(get("key9b")) -> success(ok), rev: 10`,
 		},
 		{
-			req:            txnRequest([]EtcdCondition{{Key: "key9c", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Key: "key9c", Value: ValueOrHash{Value: "992"}}}, []EtcdOperation{{Type: RangeOperation, Key: "key9c"}}),
+			req:            txnRequest([]EtcdCondition{{Key: "key9c", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: "key9c", Value: ValueOrHash{Value: "992"}}}}, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Key: "key9c"}}}),
 			resp:           txnResponse([]EtcdOperationResult{{RangeResponse: RangeResponse{KVs: []KeyValue{{Key: "key9c", ValueRevision: ValueRevision{Value: ValueOrHash{Value: "993"}, ModRevision: 10}}}}}}, false, 10),
 			expectDescribe: `if(mod_rev(key9c)==9).then(put("key9c", "992")).else(get("key9c")) -> failure("993"), rev: 10`,
 		},
 		{
-			req:            txnRequest(nil, []EtcdOperation{{Type: RangeOperation, Key: "10"}, {Type: PutOperation, Key: "11", Value: ValueOrHash{Value: "111"}}, {Type: DeleteOperation, Key: "12"}}, nil),
+			req:            txnRequest(nil, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Key: "10"}}, {Type: PutOperation, Put: PutOptions{Key: "11", Value: ValueOrHash{Value: "111"}}}, {Type: DeleteOperation, Delete: DeleteOptions{Key: "12"}}}, nil),
 			resp:           txnResponse([]EtcdOperationResult{{RangeResponse: RangeResponse{KVs: []KeyValue{{ValueRevision: ValueRevision{Value: ValueOrHash{Value: "110"}}}}}}, {}, {Deleted: 1}}, true, 10),
 			expectDescribe: `get("10"), put("11", "111"), delete("12") -> "110", ok, deleted: 1, rev: 10`,
 		},

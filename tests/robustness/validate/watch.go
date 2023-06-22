@@ -81,9 +81,7 @@ func validateUnique(t *testing.T, expectUniqueRevision bool, report traffic.Clie
 					key      string
 				}{event.Revision, event.Key}
 			}
-
 			if _, found := uniqueOperations[key]; found {
-
 				t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", event.Key, event.Revision, report.ClientId)
 			}
 			uniqueOperations[key] = struct{}{}
@@ -138,7 +136,6 @@ func validateEventsMatch(t *testing.T, reports []traffic.ClientReport) {
 	for _, r := range reports {
 		for _, resp := range r.Watch {
 			for _, event := range resp.Events {
-
 				rk := revisionKey{key: event.Key, revision: event.Revision}
 				if prev, found := revisionKeyToEvent[rk]; found {
 					if prev.WatchEvent != event {

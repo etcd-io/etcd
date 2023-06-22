@@ -73,8 +73,8 @@ func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]traf
 		if etcdOp.Type == model.PutOperation {
 			event, ok := watchEvents[model.Event{
 				Type:  etcdOp.Type,
-				Key:   etcdOp.Key,
-				Value: etcdOp.Value,
+				Key:   etcdOp.Put.Key,
+				Value: etcdOp.Put.Value,
 			}]
 			if ok {
 				return &event
