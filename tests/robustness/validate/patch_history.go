@@ -16,6 +16,7 @@ package validate
 
 import (
 	"github.com/anishathalye/porcupine"
+
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
@@ -67,8 +68,8 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 			newOperations = append(newOperations, op)
 			continue
 		}
-		if hasNonUniqueWriteOperation(request.Txn) && !hasUniqueWriteOperation(request.Txn) {
-			// Leave operation as it is as we cannot match non-unique operations to watch events.
+		if !canBeDiscarded(request.Txn) {
+			// Leave operation as it is as we cannot discard it.
 			newOperations = append(newOperations, op)
 			continue
 		}
@@ -110,8 +111,16 @@ func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]traf
 	return nil
 }
 
-func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
-	for _, etcdOp := range request.OperationsOnSuccess {
+func canBeDiscarded(request *model.TxnRequest) bool {
+	return operationsCanBeDiscarded(request.OperationsOnSuccess) && operationsCanBeDiscarded(request.OperationsOnFailure)
+}
+
+func operationsCanBeDiscarded(ops []model.EtcdOperation) bool {
+	return hasUniqueWriteOperation(ops) || !hasWriteOperation(ops)
+}
+
+func hasWriteOperation(ops []model.EtcdOperation) bool {
+	for _, etcdOp := range ops {
 		if etcdOp.Type == model.PutOperation || etcdOp.Type == model.DeleteOperation {
 			return true
 		}
@@ -119,8 +128,8 @@ func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
 	return false
 }
 
-func hasUniqueWriteOperation(request *model.TxnRequest) bool {
-	for _, etcdOp := range request.OperationsOnSuccess {
+func hasUniqueWriteOperation(ops []model.EtcdOperation) bool {
+	for _, etcdOp := range ops {
 		if etcdOp.Type == model.PutOperation {
 			return true
 		}
