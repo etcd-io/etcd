@@ -261,11 +261,6 @@ type RangeOptions struct {
 	Limit      int64
 }
 
-type PutOptions struct {
-	Value   ValueOrHash
-	LeaseID int64
-}
-
 type TxnRequest struct {
 	Conditions          []EtcdCondition
 	OperationsOnSuccess []EtcdOperation
@@ -281,7 +276,8 @@ type EtcdOperation struct {
 	Type OperationType
 	Key  string
 	RangeOptions
-	PutOptions
+	Value   ValueOrHash
+	LeaseID int64
 }
 
 type OperationType string
