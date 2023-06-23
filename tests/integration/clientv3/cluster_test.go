@@ -294,6 +294,7 @@ func TestMemberPromote(t *testing.T) {
 
 // TestMemberPromoteMemberNotLearner ensures that promoting a voting member fails.
 func TestMemberPromoteMemberNotLearner(t *testing.T) {
+	// TODO enable this test with integration2.WithFailpoint("raftBeforeAdvance", `sleep(100)`) after PR 15708 is merged
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
