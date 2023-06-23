@@ -66,3 +66,63 @@ If the etcd project needs new `arm64` infrastructure we can open an issue with t
 Note: `arm64` compute capacity is not currently available in all regions, this can be checked with [metal-cli](https://github.com/equinix/metal-cli) `metal capacity get | grep arm`.
 
 [CNCF Community Infrastructure Lab]: https://github.com/cncf/cluster/issues
+
+### Setting up a new github actions runner
+
+Once the new blank machine has been provisioned it needs to be set up as a github actions runner to be able to accept etcd workflow jobs. Follow the steps below to complete this:
+
+1. **Install pre-requisites**
+
+With etcd jobs running inside containers we need to ensure the `docker` container engine is present on the machine. We use the `docker.io` package maintained by Ubuntu for this however [official instructions from Docker](https://docs.docker.com/engine/install/ubuntu) are available for reference.
+
+```bash
+# Ensure all packages are up to date
+sudo apt update && sudo apt upgrade
+
+# Install pre-requisites
+sudo apt install --yes build-essential git wget curl docker.io
+
+# Check the docker service is now started and enabled
+sudo systemctl status docker.service && sudo docker ps
+```
+
+2. **Create the runner user**
+
+For security reasons we do not run the github actions runner as `root`, instead we create a new user `runner` and assign it `docker` permissions via group.
+
+```bash
+# Create new user
+sudo adduser runner
+
+# Grant permissions
+sudo usermod -aG docker runner
+```
+
+3. **Follow runner create instructions**
+
+Once pre-requisites are done we can setup the new runner. Rather than reinvent the wheel we can follow existing Github maintained [documentation](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/adding-self-hosted-runners#adding-a-self-hosted-runner-to-a-repository).
+
+This will essentially require a maintainer navigating to the following url and following the generated steps <https://github.com/etcd-io/etcd/settings/actions/runners/new?arch=arm64>.
+
+Switch to the `runner` user and ensure you are in that users home directory before running the generated setup steps.
+
+```bash
+sudo su runner && cd /home/runner
+```
+
+4. **Test and start actions runner**
+
+For a final verification, before we start the runner we should check the docker access setup above is working.
+
+If all is well we can start the runner!
+
+```bash
+# Switch to the runner user
+sudo su runner
+
+# Test runner can docker ps
+docker ps
+
+# Start the runner if all is working
+cd /home/runner/actions-runner && nohup ./run.sh &
+```
