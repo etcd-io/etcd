@@ -15,6 +15,7 @@
 package validate
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -32,13 +33,10 @@ func validateWatch(t *testing.T, cfg Config, reports []traffic.ClientReport) []m
 		// TODO: Validate Resumable
 		validateBookmarkable(t, r)
 	}
-	validateEventsMatch(t, reports)
-	// Expects that longest history encompasses all events.
-	// TODO: Use combined events from all histories instead of the longest history.
-	eventHistory := longestEventHistory(reports)
+	eventHistory := mergeWatchEventHistory(t, reports)
 	// TODO: Validate that each watch report is reliable, not only the longest one.
 	validateReliable(t, eventHistory)
-	return watchEvents(eventHistory)
+	return eventHistory
 }
 
 func validateBookmarkable(t *testing.T, report traffic.ClientReport) {
@@ -101,7 +99,7 @@ func validateAtomic(t *testing.T, report traffic.ClientReport) {
 	}
 }
 
-func validateReliable(t *testing.T, events []traffic.TimedWatchEvent) {
+func validateReliable(t *testing.T, events []model.WatchEvent) {
 	var lastEventRevision int64 = 1
 	for _, event := range events {
 		if event.Revision > lastEventRevision && event.Revision != lastEventRevision+1 {
@@ -111,60 +109,54 @@ func validateReliable(t *testing.T, events []traffic.TimedWatchEvent) {
 	}
 }
 
-func toWatchEvents(responses []traffic.WatchResponse) (events []traffic.TimedWatchEvent) {
-	for _, resp := range responses {
-		for _, event := range resp.Events {
-			events = append(events, traffic.TimedWatchEvent{
-				Time:       resp.Time,
-				WatchEvent: event,
-			})
-		}
-	}
-	return events
-}
-
-func validateEventsMatch(t *testing.T, reports []traffic.ClientReport) {
-	type revisionKey struct {
+func mergeWatchEventHistory(t *testing.T, reports []traffic.ClientReport) []model.WatchEvent {
+	type revisionEvents struct {
+		events   []model.WatchEvent
 		revision int64
-		key      string
+		clientId int
 	}
-	type eventClientId struct {
-		model.WatchEvent
-		ClientId int
-	}
-	revisionKeyToEvent := map[revisionKey]eventClientId{}
+	revisionToEvents := map[int64]revisionEvents{}
+	var lastClientId = 0
+	var lastRevision int64 = 0
+	events := []model.WatchEvent{}
 	for _, r := range reports {
 		for _, resp := range r.Watch {
 			for _, event := range resp.Events {
-				rk := revisionKey{key: event.Key, revision: event.Revision}
-				if prev, found := revisionKeyToEvent[rk]; found {
-					if prev.WatchEvent != event {
-						t.Errorf("Events between clients %d and %d don't match, key: %q, revision: %d, diff: %s", prev.ClientId, r.ClientId, rk.key, rk.revision, cmp.Diff(prev, event))
+				if event.Revision == lastRevision && lastClientId == r.ClientId {
+					events = append(events, event)
+				} else {
+					if prev, found := revisionToEvents[lastRevision]; found {
+						if diff := cmp.Diff(prev.events, events); diff != "" {
+							t.Errorf("Events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
+						}
+					} else {
+						revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
 					}
+					lastClientId = r.ClientId
+					lastRevision = event.Revision
+					events = []model.WatchEvent{event}
 				}
-				revisionKeyToEvent[rk] = eventClientId{ClientId: r.ClientId, WatchEvent: event}
 			}
 		}
 	}
-}
-
-func longestEventHistory(report []traffic.ClientReport) []traffic.TimedWatchEvent {
-	longestIndex := 0
-	longestEventCount := 0
-	for i, r := range report {
-		rEventCount := r.WatchEventCount()
-		if rEventCount > longestEventCount {
-			longestIndex = i
-			longestEventCount = rEventCount
+	if prev, found := revisionToEvents[lastRevision]; found {
+		if diff := cmp.Diff(prev.events, events); diff != "" {
+			t.Errorf("Events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
 		}
+	} else {
+		revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
 	}
-	return toWatchEvents(report[longestIndex].Watch)
-}
 
-func watchEvents(timed []traffic.TimedWatchEvent) []model.WatchEvent {
-	result := make([]model.WatchEvent, 0, len(timed))
-	for _, event := range timed {
-		result = append(result, event.WatchEvent)
+	var allRevisionEvents []revisionEvents
+	for _, revEvents := range revisionToEvents {
+		allRevisionEvents = append(allRevisionEvents, revEvents)
 	}
-	return result
+	sort.Slice(allRevisionEvents, func(i, j int) bool {
+		return allRevisionEvents[i].revision < allRevisionEvents[j].revision
+	})
+	var eventHistory []model.WatchEvent
+	for _, revEvents := range allRevisionEvents {
+		eventHistory = append(eventHistory, revEvents.events...)
+	}
+	return eventHistory
 }
