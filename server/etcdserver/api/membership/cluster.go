@@ -854,3 +854,30 @@ func ValidateMaxLearnerConfig(maxLearners int, members []*Member, scaleUpLearner
 
 	return nil
 }
+
+func (c *RaftCluster) Store(store v2store.Store) {
+	c.Lock()
+	defer c.Unlock()
+
+	verifyNoMembersInStore(c.lg, store)
+
+	for _, m := range c.members {
+		mustSaveMemberToStore(c.lg, store, m)
+		if m.ClientURLs != nil {
+			mustUpdateMemberAttrInStore(c.lg, store, m)
+		}
+		c.lg.Info(
+			"snapshot storing member",
+			zap.String("id", m.ID.String()),
+			zap.Strings("peer-urls", m.PeerURLs),
+			zap.Bool("is-learner", m.IsLearner),
+		)
+	}
+	for id, _ := range c.removed {
+		//We do not need to delete the member since the store is empty.
+		mustAddToRemovedMembersInStore(c.lg, store, id)
+	}
+	if c.version != nil {
+		mustSaveClusterVersionToStore(c.lg, store, c.version)
+	}
+}

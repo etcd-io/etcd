@@ -78,6 +78,13 @@ func TrimMembershipFromV2Store(lg *zap.Logger, s v2store.Store) error {
 	return nil
 }
 
+func verifyNoMembersInStore(lg *zap.Logger, s v2store.Store) {
+	members, removed := membersFromStore(lg, s)
+	if len(members) != 0 || len(removed) != 0 {
+		lg.Panic("store has membership info")
+	}
+}
+
 func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
@@ -101,6 +108,12 @@ func mustDeleteMemberFromStore(lg *zap.Logger, s v2store.Store, id types.ID) {
 			zap.Error(err),
 		)
 	}
+
+	mustAddToRemovedMembersInStore(lg, s, id)
+}
+
+func mustAddToRemovedMembersInStore(lg *zap.Logger, s v2store.Store, id types.ID) {
+
 	if _, err := s.Create(RemovedMemberStoreKey(id), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}); err != nil {
 		lg.Panic(
 			"failed to create removedMember",
