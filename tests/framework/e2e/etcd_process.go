@@ -246,7 +246,14 @@ func (ep *EtcdServerProcess) Wait(ctx context.Context) error {
 		defer close(ch)
 		if ep.proc != nil {
 			ep.proc.Wait()
-			ep.cfg.lg.Info("server exited", zap.String("name", ep.cfg.Name))
+
+			exitCode, exitErr := ep.proc.ExitCode()
+
+			ep.cfg.lg.Info("server exited",
+				zap.String("name", ep.cfg.Name),
+				zap.Int("code", exitCode),
+				zap.Error(exitErr),
+			)
 		}
 	}()
 	select {
@@ -262,11 +269,16 @@ func (ep *EtcdServerProcess) IsRunning() bool {
 	if ep.proc == nil {
 		return false
 	}
-	_, err := ep.proc.ExitCode()
+
+	exitCode, err := ep.proc.ExitCode()
 	if err == expect.ErrProcessRunning {
 		return true
 	}
-	ep.cfg.lg.Info("server exited", zap.String("name", ep.cfg.Name))
+
+	ep.cfg.lg.Info("server exited",
+		zap.String("name", ep.cfg.Name),
+		zap.Int("code", exitCode),
+		zap.Error(err))
 	ep.proc = nil
 	return false
 }

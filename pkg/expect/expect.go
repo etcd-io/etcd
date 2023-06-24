@@ -229,6 +229,22 @@ func (ep *ExpectProcess) ExitCode() (int, error) {
 		return ep.exitCode, nil
 	}
 
+	if ep.exitErr != nil {
+		// If the child process panics or is killed, for instance, the
+		// goFailpoint triggers the exit event, the ep.cmd isn't nil and
+		// the exitCode will describe the case.
+		if ep.exitCode != 0 {
+			return ep.exitCode, nil
+		}
+
+		// If the wait4(2) in waitProcess returns error, the child
+		// process might be reaped if the process handles the SIGCHILD
+		// in other goroutine. It's unlikely in this repo. But we
+		// should return the error for log even if the child process
+		// is still running.
+		return 0, ep.exitErr
+	}
+
 	return 0, ErrProcessRunning
 }
 
@@ -274,13 +290,23 @@ func (ep *ExpectProcess) waitProcess() error {
 
 	ep.mu.Lock()
 	defer ep.mu.Unlock()
-	ep.exitCode = state.ExitCode()
+	ep.exitCode = exitCode(state)
 
 	if !state.Success() {
 		return fmt.Errorf("unexpected exit code [%d] after running [%s]", ep.exitCode, ep.cmd.String())
 	}
 
 	return nil
+}
+
+// exitCode returns correct exit code for a process based on signaled or exited.
+func exitCode(state *os.ProcessState) int {
+	status := state.Sys().(syscall.WaitStatus)
+
+	if status.Signaled() {
+		return 128 + int(status.Signal())
+	}
+	return status.ExitStatus()
 }
 
 // Wait waits for the process to finish.
