@@ -21,7 +21,34 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
+func patchedOperationHistory(reports []traffic.ClientReport) []porcupine.Operation {
+	allOperations := operations(reports)
+	uniqueEvents := uniqueWatchEvents(reports)
+	return patchOperationsWithWatchEvents(allOperations, uniqueEvents)
+}
+
+func operations(reports []traffic.ClientReport) []porcupine.Operation {
+	var ops []porcupine.Operation
+	for _, r := range reports {
+		ops = append(ops, r.OperationHistory.Operations()...)
+	}
+	return ops
+}
+
+func uniqueWatchEvents(reports []traffic.ClientReport) map[model.Event]traffic.TimedWatchEvent {
+	persisted := map[model.Event]traffic.TimedWatchEvent{}
+	for _, r := range reports {
+		for _, resp := range r.Watch {
+			for _, event := range resp.Events {
+				persisted[event.Event] = traffic.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
+			}
+		}
+	}
+	return persisted
+}
+
 func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvents map[model.Event]traffic.TimedWatchEvent) []porcupine.Operation {
+
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 	lastObservedOperation := lastOperationObservedInWatch(operations, watchEvents)
 
@@ -41,8 +68,8 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 			newOperations = append(newOperations, op)
 			continue
 		}
-		if hasNonUniqueWriteOperation(request.Txn) && !hasUniqueWriteOperation(request.Txn) {
-			// Leave operation as it is as we cannot match non-unique operations to watch events.
+		if !canBeDiscarded(request.Txn) {
+			// Leave operation as it is as we cannot discard it.
 			newOperations = append(newOperations, op)
 			continue
 		}
@@ -84,8 +111,16 @@ func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]traf
 	return nil
 }
 
-func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
-	for _, etcdOp := range request.OperationsOnSuccess {
+func canBeDiscarded(request *model.TxnRequest) bool {
+	return operationsCanBeDiscarded(request.OperationsOnSuccess) && operationsCanBeDiscarded(request.OperationsOnFailure)
+}
+
+func operationsCanBeDiscarded(ops []model.EtcdOperation) bool {
+	return hasUniqueWriteOperation(ops) || !hasWriteOperation(ops)
+}
+
+func hasWriteOperation(ops []model.EtcdOperation) bool {
+	for _, etcdOp := range ops {
 		if etcdOp.Type == model.PutOperation || etcdOp.Type == model.DeleteOperation {
 			return true
 		}
@@ -93,8 +128,8 @@ func hasNonUniqueWriteOperation(request *model.TxnRequest) bool {
 	return false
 }
 
-func hasUniqueWriteOperation(request *model.TxnRequest) bool {
-	for _, etcdOp := range request.OperationsOnSuccess {
+func hasUniqueWriteOperation(ops []model.EtcdOperation) bool {
+	for _, etcdOp := range ops {
 		if etcdOp.Type == model.PutOperation {
 			return true
 		}
