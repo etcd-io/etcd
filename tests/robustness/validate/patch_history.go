@@ -30,7 +30,7 @@ func patchedOperationHistory(reports []traffic.ClientReport) []porcupine.Operati
 func operations(reports []traffic.ClientReport) []porcupine.Operation {
 	var ops []porcupine.Operation
 	for _, r := range reports {
-		ops = append(ops, r.OperationHistory.Operations()...)
+		ops = append(ops, r.KeyValue.Operations()...)
 	}
 	return ops
 }
@@ -38,9 +38,11 @@ func operations(reports []traffic.ClientReport) []porcupine.Operation {
 func uniqueWatchEvents(reports []traffic.ClientReport) map[model.Event]traffic.TimedWatchEvent {
 	persisted := map[model.Event]traffic.TimedWatchEvent{}
 	for _, r := range reports {
-		for _, resp := range r.Watch {
-			for _, event := range resp.Events {
-				persisted[event.Event] = traffic.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
+		for _, op := range r.Watch {
+			for _, resp := range op.Responses {
+				for _, event := range resp.Events {
+					persisted[event.Event] = traffic.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
+				}
 			}
 		}
 	}

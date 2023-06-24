@@ -41,26 +41,30 @@ func validateWatch(t *testing.T, cfg Config, reports []traffic.ClientReport) []m
 
 func validateBookmarkable(t *testing.T, report traffic.ClientReport) {
 	var lastProgressNotifyRevision int64 = 0
-	for _, resp := range report.Watch {
-		for _, event := range resp.Events {
-			if event.Revision <= lastProgressNotifyRevision {
-				t.Errorf("Broke watch guarantee: Bookmarkable - Progress notification events guarantee that all events up to a revision have been already delivered, eventRevision: %d, progressNotifyRevision: %d", event.Revision, lastProgressNotifyRevision)
+	for _, op := range report.Watch {
+		for _, resp := range op.Responses {
+			for _, event := range resp.Events {
+				if event.Revision <= lastProgressNotifyRevision {
+					t.Errorf("Broke watch guarantee: Bookmarkable - Progress notification events guarantee that all events up to a revision have been already delivered, eventRevision: %d, progressNotifyRevision: %d", event.Revision, lastProgressNotifyRevision)
+				}
 			}
-		}
-		if resp.IsProgressNotify {
-			lastProgressNotifyRevision = resp.Revision
+			if resp.IsProgressNotify {
+				lastProgressNotifyRevision = resp.Revision
+			}
 		}
 	}
 }
 
 func validateOrdered(t *testing.T, report traffic.ClientReport) {
 	var lastEventRevision int64 = 1
-	for _, resp := range report.Watch {
-		for _, event := range resp.Events {
-			if event.Revision < lastEventRevision {
-				t.Errorf("Broke watch guarantee: Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted, lastRevision: %d, currentRevision: %d, client: %d", lastEventRevision, event.Revision, report.ClientId)
+	for _, op := range report.Watch {
+		for _, resp := range op.Responses {
+			for _, event := range resp.Events {
+				if event.Revision < lastEventRevision {
+					t.Errorf("Broke watch guarantee: Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted, lastRevision: %d, currentRevision: %d, client: %d", lastEventRevision, event.Revision, report.ClientId)
+				}
+				lastEventRevision = event.Revision
 			}
-			lastEventRevision = event.Revision
 		}
 	}
 }
@@ -68,33 +72,37 @@ func validateOrdered(t *testing.T, report traffic.ClientReport) {
 func validateUnique(t *testing.T, expectUniqueRevision bool, report traffic.ClientReport) {
 	uniqueOperations := map[interface{}]struct{}{}
 
-	for _, resp := range report.Watch {
-		for _, event := range resp.Events {
-			var key interface{}
-			if expectUniqueRevision {
-				key = event.Revision
-			} else {
-				key = struct {
-					revision int64
-					key      string
-				}{event.Revision, event.Key}
+	for _, op := range report.Watch {
+		for _, resp := range op.Responses {
+			for _, event := range resp.Events {
+				var key interface{}
+				if expectUniqueRevision {
+					key = event.Revision
+				} else {
+					key = struct {
+						revision int64
+						key      string
+					}{event.Revision, event.Key}
+				}
+				if _, found := uniqueOperations[key]; found {
+					t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", event.Key, event.Revision, report.ClientId)
+				}
+				uniqueOperations[key] = struct{}{}
 			}
-			if _, found := uniqueOperations[key]; found {
-				t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", event.Key, event.Revision, report.ClientId)
-			}
-			uniqueOperations[key] = struct{}{}
 		}
 	}
 }
 
 func validateAtomic(t *testing.T, report traffic.ClientReport) {
 	var lastEventRevision int64 = 1
-	for _, resp := range report.Watch {
-		if len(resp.Events) > 0 {
-			if resp.Events[0].Revision == lastEventRevision {
-				t.Errorf("Broke watch guarantee: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d, client: %d", lastEventRevision, resp.Events[0].Revision, report.ClientId)
+	for _, op := range report.Watch {
+		for _, resp := range op.Responses {
+			if len(resp.Events) > 0 {
+				if resp.Events[0].Revision == lastEventRevision {
+					t.Errorf("Broke watch guarantee: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d, client: %d", lastEventRevision, resp.Events[0].Revision, report.ClientId)
+				}
+				lastEventRevision = resp.Events[len(resp.Events)-1].Revision
 			}
-			lastEventRevision = resp.Events[len(resp.Events)-1].Revision
 		}
 	}
 }
@@ -120,21 +128,23 @@ func mergeWatchEventHistory(t *testing.T, reports []traffic.ClientReport) []mode
 	var lastRevision int64 = 0
 	events := []model.WatchEvent{}
 	for _, r := range reports {
-		for _, resp := range r.Watch {
-			for _, event := range resp.Events {
-				if event.Revision == lastRevision && lastClientId == r.ClientId {
-					events = append(events, event)
-				} else {
-					if prev, found := revisionToEvents[lastRevision]; found {
-						if diff := cmp.Diff(prev.events, events); diff != "" {
-							t.Errorf("Events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
-						}
+		for _, op := range r.Watch {
+			for _, resp := range op.Responses {
+				for _, event := range resp.Events {
+					if event.Revision == lastRevision && lastClientId == r.ClientId {
+						events = append(events, event)
 					} else {
-						revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
+						if prev, found := revisionToEvents[lastRevision]; found {
+							if diff := cmp.Diff(prev.events, events); diff != "" {
+								t.Errorf("Events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
+							}
+						} else {
+							revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
+						}
+						lastClientId = r.ClientId
+						lastRevision = event.Revision
+						events = []model.WatchEvent{event}
 					}
-					lastClientId = r.ClientId
-					lastRevision = event.Revision
-					events = []model.WatchEvent{event}
 				}
 			}
 		}

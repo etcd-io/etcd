@@ -78,7 +78,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	var operationCount int
 	for _, r := range reports {
-		operationCount += r.OperationHistory.Len()
+		operationCount += r.KeyValue.Len()
 	}
 	lg.Info("Recorded operations", zap.Int("operationCount", operationCount))
 
