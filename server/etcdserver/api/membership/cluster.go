@@ -55,6 +55,9 @@ type RaftCluster struct {
 	// removed id cannot be reused.
 	removed map[types.ID]bool
 
+	// updated contains the ids of members that were updated
+	updated map[types.ID]bool
+
 	downgradeInfo  *serverversion.DowngradeInfo
 	maxLearners    int
 	versionChanged *notify.Notifier
@@ -113,6 +116,7 @@ func NewCluster(lg *zap.Logger, opts ...ClusterOption) *RaftCluster {
 		lg:            lg,
 		members:       make(map[types.ID]*Member),
 		removed:       make(map[types.ID]bool),
+		updated:       make(map[types.ID]bool),
 		downgradeInfo: &serverversion.DowngradeInfo{Enabled: false},
 		maxLearners:   clOpts.maxLearners,
 	}
@@ -448,6 +452,7 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApply
 		if shouldApplyV3 {
 			c.be.MustSaveMemberToBackend(m)
 		}
+		c.updated[id] = true
 		return
 	}
 
@@ -833,7 +838,7 @@ func (c *RaftCluster) Store(store v2store.Store) {
 	defer c.Unlock()
 	for _, m := range c.members {
 		mustSaveMemberToStore(c.lg, store, m)
-		if m.ClientURLs != nil {
+		if c.updated[m.ID] {
 			mustUpdateMemberAttrInStore(c.lg, store, m)
 		}
 		c.lg.Info(
