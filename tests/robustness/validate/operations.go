@@ -45,8 +45,6 @@ func validateOperationsAndVisualize(t *testing.T, lg *zap.Logger, operations []p
 		t.Fatalf("Unknown Linearization")
 	}
 	lg.Info("Validating serializable operations")
-	// TODO: Use linearization result instead of event history to get order of events
-	// This is currently impossible as porcupine doesn't expose operation order created during linearization.
 	validateSerializableOperations(t, operations, eventHistory)
 	return visualize
 }

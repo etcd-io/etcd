@@ -46,15 +46,8 @@ type RecordingClient struct {
 }
 
 type WatchOperation struct {
-	Request   WatchRequest
+	Request   model.WatchRequest
 	Responses []WatchResponse
-}
-
-type WatchRequest struct {
-	Key                string
-	Revision           int64
-	WithPrefix         bool
-	WithProgressNotify bool
 }
 
 type WatchResponse struct {
@@ -228,7 +221,7 @@ func (c *RecordingClient) Defragment(ctx context.Context) (*clientv3.DefragmentR
 }
 
 func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, withPrefix bool, withProgressNotify bool) clientv3.WatchChan {
-	request := WatchRequest{
+	request := model.WatchRequest{
 		Key:                key,
 		Revision:           rev,
 		WithPrefix:         withPrefix,
@@ -238,7 +231,7 @@ func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, with
 
 }
 
-func (c *RecordingClient) watch(ctx context.Context, request WatchRequest) clientv3.WatchChan {
+func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest) clientv3.WatchChan {
 	ops := []clientv3.OpOption{}
 	if request.WithPrefix {
 		ops = append(ops, clientv3.WithPrefix())
