@@ -1,0 +1,56 @@
+name: Tests-arm64
+on:
+  schedule:
+  - cron: '30 1 * * *' # runs daily at 1am.
+permissions: read-all
+jobs:
+  test:
+    # this is to prevent the job to run at forked projects
+    if: github.repository == 'etcd-io/etcd'
+    runs-on: [self-hosted, Linux, ARM64]
+    container: golang:1.19-bullseye
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+        - linux-arm64-integration-1-cpu
+        - linux-arm64-integration-2-cpu
+        - linux-arm64-integration-4-cpu
+        - linux-arm64-unit-4-cpu-race
+    steps:
+    - uses: actions/checkout@v2
+    - run: git config --system --add safe.directory '*'
+    - id: goversion
+      run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ steps.goversion.outputs.goversion }}
+    - env:
+        TARGET: ${{ matrix.target }}
+      run: |
+        set -euo pipefail
+          go clean -testcache
+
+        mkdir "${TARGET}"
+        export JUNIT_REPORT_DIR=$(realpath ${TARGET})
+        case "${TARGET}" in
+          linux-arm64-integration-1-cpu)
+            GOARCH=arm64 CPU=1 PASSES='integration' RACE='false' ./test.sh
+            ;;
+          linux-arm64-integration-2-cpu)
+            GOARCH=arm64 CPU=2 PASSES='integration' RACE='false' ./test.sh
+            ;;
+          linux-arm64-integration-4-cpu)
+            GOARCH=arm64 CPU=4 PASSES='integration' RACE='false' ./test.sh
+            ;;
+          linux-arm64-unit-4-cpu-race)
+            GOARCH=arm64 PASSES='unit' RACE='true' CPU='4' ./test.sh -p=2
+            ;;
+          *)
+            echo "Failed to find target"
+            exit 1
+            ;;
+        esac
