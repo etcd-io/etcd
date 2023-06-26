@@ -204,7 +204,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 func operationsMaxRevision(reports []traffic.ClientReport) int64 {
 	var maxRevision int64
 	for _, r := range reports {
-		revision := r.OperationHistory.MaxRevision()
+		revision := r.KeyValue.MaxRevision()
 		if revision > maxRevision {
 			maxRevision = revision
 		}

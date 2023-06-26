@@ -333,9 +333,9 @@ func TestPatchHistory(t *testing.T) {
 			}
 			operations := patchedOperationHistory([]traffic.ClientReport{
 				{
-					ClientId:         0,
-					OperationHistory: history.History,
-					Watch:            watch,
+					ClientId: 0,
+					KeyValue: history.History,
+					Watch:    []traffic.WatchOperation{{Responses: watch}},
 				},
 			})
 			remains := len(operations) == history.Len()

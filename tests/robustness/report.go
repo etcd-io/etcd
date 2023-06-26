@@ -79,9 +79,9 @@ func (r *report) Report(t *testing.T, force bool) {
 					t.Fatal(err)
 				}
 				if len(report.Watch) != 0 {
-					persistWatchResponses(t, r.lg, filepath.Join(clientDir, "watch.json"), report.Watch)
+					persistWatchOperations(t, r.lg, filepath.Join(clientDir, "watch.json"), report.Watch)
 				}
-				operations := report.OperationHistory.Operations()
+				operations := report.KeyValue.Operations()
 				if len(operations) != 0 {
 					persistOperationHistory(t, r.lg, filepath.Join(clientDir, "operations.json"), operations)
 				}
@@ -104,11 +104,11 @@ func persistMemberDataDir(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, 
 	}
 }
 
-func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses []traffic.WatchResponse) {
-	lg.Info("Saving watch responses", zap.String("path", path))
+func persistWatchOperations(t *testing.T, lg *zap.Logger, path string, responses []traffic.WatchOperation) {
+	lg.Info("Saving watch operations", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
-		t.Errorf("Failed to save watch history: %v", err)
+		t.Errorf("Failed to save watch operations: %v", err)
 		return
 	}
 	defer file.Close()
@@ -116,7 +116,7 @@ func persistWatchResponses(t *testing.T, lg *zap.Logger, path string, responses 
 	for _, resp := range responses {
 		err := encoder.Encode(resp)
 		if err != nil {
-			t.Errorf("Failed to encode response: %v", err)
+			t.Errorf("Failed to encode operation: %v", err)
 		}
 	}
 }

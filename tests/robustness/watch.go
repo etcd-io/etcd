@@ -111,17 +111,17 @@ func watchUntilRevision(ctx context.Context, t *testing.T, c *traffic.RecordingC
 
 func validateGotAtLeastOneProgressNotify(t *testing.T, reports []traffic.ClientReport, expectProgressNotify bool) {
 	var gotProgressNotify = false
+external:
 	for _, r := range reports {
-		var lastHeadRevision int64 = 1
-		for _, resp := range r.Watch {
-			if resp.IsProgressNotify && resp.Revision == lastHeadRevision {
-				gotProgressNotify = true
-				break
+		for _, op := range r.Watch {
+			var lastHeadRevision int64 = 1
+			for _, resp := range op.Responses {
+				if resp.IsProgressNotify && resp.Revision == lastHeadRevision {
+					gotProgressNotify = true
+					break external
+				}
+				lastHeadRevision = resp.Revision
 			}
-			lastHeadRevision = resp.Revision
-		}
-		if gotProgressNotify {
-			break
 		}
 	}
 	if gotProgressNotify != expectProgressNotify {
