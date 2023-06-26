@@ -17,13 +17,12 @@ package validate
 import (
 	"testing"
 
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []traffic.ClientReport) (visualize func(basepath string) error) {
+func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []model.ClientReport) (visualize func(basepath string) error) {
 	eventHistory := validateWatch(t, cfg, reports)
 	patchedOperations := patchedOperationHistory(reports)
 	return validateOperationsAndVisualize(t, lg, patchedOperations, eventHistory)

@@ -21,13 +21,11 @@ import (
 	"math/rand"
 	"sync"
 
-	"golang.org/x/sync/errgroup"
-	"golang.org/x/time/rate"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -35,7 +33,7 @@ var (
 		Name:        "Kubernetes",
 		minimalQPS:  200,
 		maximalQPS:  1000,
-		clientCount: 12,
+		ClientCount: 12,
 		Traffic: kubernetesTraffic{
 			averageKeyCount: 10,
 			resource:        "pods",
@@ -60,7 +58,7 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+func (t kubernetesTraffic) Run(ctx context.Context, c TrafficClient, limiter Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
 	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -109,7 +107,7 @@ func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter 
 	g.Wait()
 }
 
-func (t kubernetesTraffic) Read(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string) (rev int64, err error) {
+func (t kubernetesTraffic) Read(ctx context.Context, kc *kubernetesClient, s *storage, limiter Limiter, keyPrefix string) (rev int64, err error) {
 	limit := int64(t.averageKeyCount)
 	rangeEnd := clientv3.GetPrefixRangeEnd(keyPrefix)
 
@@ -140,7 +138,7 @@ func (t kubernetesTraffic) Read(ctx context.Context, kc *kubernetesClient, s *st
 	return revision, nil
 }
 
-func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids identity.Provider, s *storage, limiter *rate.Limiter) (err error) {
+func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids identity.Provider, s *storage, limiter Limiter) (err error) {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 	count := s.Count()
@@ -174,7 +172,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 	return nil
 }
 
-func (t kubernetesTraffic) Watch(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string, revision int64) {
+func (t kubernetesTraffic) Watch(ctx context.Context, kc *kubernetesClient, s *storage, limiter Limiter, keyPrefix string, revision int64) {
 	watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
 	defer cancel()
 	for e := range kc.client.Watch(watchCtx, keyPrefix, revision, true, true) {
@@ -196,7 +194,7 @@ const (
 )
 
 type kubernetesClient struct {
-	client *RecordingClient
+	client TrafficClient
 }
 
 func (k kubernetesClient) List(ctx context.Context, prefix string, revision, limit int64) (*clientv3.GetResponse, error) {

@@ -169,20 +169,8 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 	})
 }
 
-func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, clientOnSuccessOps, clientOnFailure []clientv3.Op, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
-	conds := []EtcdCondition{}
-	for _, cmp := range cmp {
-		conds = append(conds, toEtcdCondition(cmp))
-	}
-	modelOnSuccess := []EtcdOperation{}
-	for _, op := range clientOnSuccessOps {
-		modelOnSuccess = append(modelOnSuccess, toEtcdOperation(op))
-	}
-	modelOnFailure := []EtcdOperation{}
-	for _, op := range clientOnFailure {
-		modelOnFailure = append(modelOnFailure, toEtcdOperation(op))
-	}
-	request := txnRequest(conds, modelOnSuccess, modelOnFailure)
+func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, onSuccess, onFailure []clientv3.Op, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
+	request := clientTxnRequest(cmp, onSuccess, onFailure)
 	if err != nil {
 		h.appendFailed(request, start.Nanoseconds(), err)
 		return
@@ -446,6 +434,22 @@ func txnRequestSingleOperation(cond *EtcdCondition, onSuccess, onFailure *EtcdOp
 		onFailure2 = []EtcdOperation{*onFailure}
 	}
 	return txnRequest(conds, onSuccess2, onFailure2)
+}
+
+func clientTxnRequest(cmp []clientv3.Cmp, clientOnSuccessOps, clientOnFailure []clientv3.Op) EtcdRequest {
+	conds := []EtcdCondition{}
+	for _, cmp := range cmp {
+		conds = append(conds, toEtcdCondition(cmp))
+	}
+	modelOnSuccess := []EtcdOperation{}
+	for _, op := range clientOnSuccessOps {
+		modelOnSuccess = append(modelOnSuccess, toEtcdOperation(op))
+	}
+	modelOnFailure := []EtcdOperation{}
+	for _, op := range clientOnFailure {
+		modelOnFailure = append(modelOnFailure, toEtcdOperation(op))
+	}
+	return txnRequest(conds, modelOnSuccess, modelOnFailure)
 }
 
 func txnRequest(conds []EtcdCondition, onSuccess, onFailure []EtcdOperation) EtcdRequest {

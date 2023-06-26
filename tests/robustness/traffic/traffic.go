@@ -20,6 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
@@ -34,12 +37,12 @@ var (
 	MultiOpTxnOpCount       = 4
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []ClientReport {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []model.ClientReport {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
 	lm := identity.NewLeaseIdStorage()
-	reports := []ClientReport{}
+	reports := []model.ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
@@ -49,7 +52,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	}
 	defer cc.Close()
 	wg := sync.WaitGroup{}
-	for i := 0; i < config.clientCount; i++ {
+	for i := 0; i < config.ClientCount; i++ {
 		wg.Add(1)
 		c, err := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
 		if err != nil {
@@ -94,11 +97,29 @@ type Config struct {
 	Name        string
 	minimalQPS  float64
 	maximalQPS  float64
-	clientCount int
+	ClientCount int
 	Traffic     Traffic
 }
 
 type Traffic interface {
-	Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
+	Run(ctx context.Context, c TrafficClient, limiter Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
 	ExpectUniqueRevision() bool
+}
+
+type TrafficClient interface {
+	ClientId() int
+	Range(ctx context.Context, prefix string, end string, revision, limit int64) (*clientv3.GetResponse, error)
+	Put(ctx context.Context, key string, value string) (*clientv3.PutResponse, error)
+	Delete(ctx context.Context, key string) (*clientv3.DeleteResponse, error)
+	Txn(ctx context.Context, conditions []clientv3.Cmp, onSuccess []clientv3.Op, onFailure []clientv3.Op) (*clientv3.TxnResponse, error)
+	Get(ctx context.Context, key string, revision int64) (*mvccpb.KeyValue, int64, error)
+	LeaseGrant(ctx context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error)
+	PutWithLease(ctx context.Context, key string, value string, revision int64) (*clientv3.PutResponse, error)
+	LeaseRevoke(ctx context.Context, id int64) (*clientv3.LeaseRevokeResponse, error)
+	Defragment(ctx context.Context) (*clientv3.DefragmentResponse, error)
+	Watch(ctx context.Context, key string, rev int64, withPrefix bool, withProgressNotify bool) clientv3.WatchChan
+}
+
+type Limiter interface {
+	Wait(ctx context.Context) error
 }

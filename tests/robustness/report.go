@@ -24,16 +24,16 @@ import (
 	"testing"
 
 	"github.com/anishathalye/porcupine"
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 type report struct {
 	lg               *zap.Logger
 	clus             *e2e.EtcdProcessCluster
-	clientReports    []traffic.ClientReport
+	clientReports    []model.ClientReport
 	visualizeHistory func(path string) error
 }
 
@@ -104,7 +104,7 @@ func persistMemberDataDir(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, 
 	}
 }
 
-func persistWatchOperations(t *testing.T, lg *zap.Logger, path string, responses []traffic.WatchOperation) {
+func persistWatchOperations(t *testing.T, lg *zap.Logger, path string, responses []model.WatchOperation) {
 	lg.Info("Saving watch operations", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
@@ -121,7 +121,7 @@ func persistWatchOperations(t *testing.T, lg *zap.Logger, path string, responses
 	}
 }
 
-func persistWatchEvents(t *testing.T, lg *zap.Logger, path string, events []traffic.TimedWatchEvent) {
+func persistWatchEvents(t *testing.T, lg *zap.Logger, path string, events []model.TimedWatchEvent) {
 	lg.Info("Saving watch events", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {

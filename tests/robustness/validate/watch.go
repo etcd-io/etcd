@@ -21,10 +21,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
-	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func validateWatch(t *testing.T, cfg Config, reports []traffic.ClientReport) []model.WatchEvent {
+func validateWatch(t *testing.T, cfg Config, reports []model.ClientReport) []model.WatchEvent {
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
 		validateOrdered(t, r)
@@ -42,7 +41,7 @@ func validateWatch(t *testing.T, cfg Config, reports []traffic.ClientReport) []m
 	return eventHistory
 }
 
-func validateBookmarkable(t *testing.T, report traffic.ClientReport) {
+func validateBookmarkable(t *testing.T, report model.ClientReport) {
 	var lastProgressNotifyRevision int64 = 0
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
@@ -58,7 +57,7 @@ func validateBookmarkable(t *testing.T, report traffic.ClientReport) {
 	}
 }
 
-func validateOrdered(t *testing.T, report traffic.ClientReport) {
+func validateOrdered(t *testing.T, report model.ClientReport) {
 	var lastEventRevision int64 = 1
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
@@ -72,7 +71,7 @@ func validateOrdered(t *testing.T, report traffic.ClientReport) {
 	}
 }
 
-func validateUnique(t *testing.T, expectUniqueRevision bool, report traffic.ClientReport) {
+func validateUnique(t *testing.T, expectUniqueRevision bool, report model.ClientReport) {
 	uniqueOperations := map[interface{}]struct{}{}
 
 	for _, op := range report.Watch {
@@ -96,7 +95,7 @@ func validateUnique(t *testing.T, expectUniqueRevision bool, report traffic.Clie
 	}
 }
 
-func validateAtomic(t *testing.T, report traffic.ClientReport) {
+func validateAtomic(t *testing.T, report model.ClientReport) {
 	var lastEventRevision int64 = 1
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
@@ -110,7 +109,7 @@ func validateAtomic(t *testing.T, report traffic.ClientReport) {
 	}
 }
 
-func validateReliable(t *testing.T, events []model.WatchEvent, report traffic.ClientReport) {
+func validateReliable(t *testing.T, events []model.WatchEvent, report model.ClientReport) {
 	for _, op := range report.Watch {
 		index := 0
 		revision := firstRevision(op)
@@ -131,7 +130,7 @@ func validateReliable(t *testing.T, events []model.WatchEvent, report traffic.Cl
 	}
 }
 
-func validateResumable(t *testing.T, events []model.WatchEvent, report traffic.ClientReport) {
+func validateResumable(t *testing.T, events []model.WatchEvent, report model.ClientReport) {
 	for _, op := range report.Watch {
 		index := 0
 		revision := op.Request.Revision
@@ -149,7 +148,7 @@ func validateResumable(t *testing.T, events []model.WatchEvent, report traffic.C
 	}
 }
 
-func firstRevision(op traffic.WatchOperation) int64 {
+func firstRevision(op model.WatchOperation) int64 {
 	for _, resp := range op.Responses {
 		for _, event := range resp.Events {
 			return event.Revision
@@ -158,7 +157,7 @@ func firstRevision(op traffic.WatchOperation) int64 {
 	return 0
 }
 
-func firstWatchEvent(op traffic.WatchOperation) *model.WatchEvent {
+func firstWatchEvent(op model.WatchOperation) *model.WatchEvent {
 	for _, resp := range op.Responses {
 		for _, event := range resp.Events {
 			return &event
@@ -167,7 +166,7 @@ func firstWatchEvent(op traffic.WatchOperation) *model.WatchEvent {
 	return nil
 }
 
-func mergeWatchEventHistory(t *testing.T, reports []traffic.ClientReport) []model.WatchEvent {
+func mergeWatchEventHistory(t *testing.T, reports []model.ClientReport) []model.WatchEvent {
 	type revisionEvents struct {
 		events   []model.WatchEvent
 		revision int64

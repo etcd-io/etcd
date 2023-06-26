@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
@@ -171,9 +172,9 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	panicked = false
 }
 
-func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []traffic.ClientReport) {
+func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []model.ClientReport) {
 	g := errgroup.Group{}
-	var operationReport, watchReport []traffic.ClientReport
+	var operationReport, watchReport []model.ClientReport
 	finishTraffic := make(chan struct{})
 
 	// using baseTime time-measuring operation to get monotonic clock reading
@@ -201,7 +202,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	return append(operationReport, watchReport...)
 }
 
-func operationsMaxRevision(reports []traffic.ClientReport) int64 {
+func operationsMaxRevision(reports []model.ClientReport) int64 {
 	var maxRevision int64
 	for _, r := range reports {
 		revision := r.KeyValue.MaxRevision()

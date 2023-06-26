@@ -18,16 +18,15 @@ import (
 	"github.com/anishathalye/porcupine"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
-	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func patchedOperationHistory(reports []traffic.ClientReport) []porcupine.Operation {
+func patchedOperationHistory(reports []model.ClientReport) []porcupine.Operation {
 	allOperations := operations(reports)
 	uniqueEvents := uniqueWatchEvents(reports)
 	return patchOperationsWithWatchEvents(allOperations, uniqueEvents)
 }
 
-func operations(reports []traffic.ClientReport) []porcupine.Operation {
+func operations(reports []model.ClientReport) []porcupine.Operation {
 	var ops []porcupine.Operation
 	for _, r := range reports {
 		ops = append(ops, r.KeyValue.Operations()...)
@@ -35,13 +34,13 @@ func operations(reports []traffic.ClientReport) []porcupine.Operation {
 	return ops
 }
 
-func uniqueWatchEvents(reports []traffic.ClientReport) map[model.Event]traffic.TimedWatchEvent {
-	persisted := map[model.Event]traffic.TimedWatchEvent{}
+func uniqueWatchEvents(reports []model.ClientReport) map[model.Event]model.TimedWatchEvent {
+	persisted := map[model.Event]model.TimedWatchEvent{}
 	for _, r := range reports {
 		for _, op := range r.Watch {
 			for _, resp := range op.Responses {
 				for _, event := range resp.Events {
-					persisted[event.Event] = traffic.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
+					persisted[event.Event] = model.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
 				}
 			}
 		}
@@ -49,7 +48,7 @@ func uniqueWatchEvents(reports []traffic.ClientReport) map[model.Event]traffic.T
 	return persisted
 }
 
-func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvents map[model.Event]traffic.TimedWatchEvent) []porcupine.Operation {
+func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvents map[model.Event]model.TimedWatchEvent) []porcupine.Operation {
 
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 	lastObservedOperation := lastOperationObservedInWatch(operations, watchEvents)
@@ -80,7 +79,7 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 	return newOperations
 }
 
-func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.Event]traffic.TimedWatchEvent) porcupine.Operation {
+func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.Event]model.TimedWatchEvent) porcupine.Operation {
 	var maxCallTime int64
 	var lastOperation porcupine.Operation
 	for _, op := range operations {
@@ -97,7 +96,7 @@ func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents 
 	return lastOperation
 }
 
-func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]traffic.TimedWatchEvent) *traffic.TimedWatchEvent {
+func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]model.TimedWatchEvent) *model.TimedWatchEvent {
 	for _, etcdOp := range append(request.OperationsOnSuccess, request.OperationsOnFailure...) {
 		if etcdOp.Type == model.PutOperation {
 			event, ok := watchEvents[model.Event{

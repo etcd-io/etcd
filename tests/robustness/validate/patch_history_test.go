@@ -23,7 +23,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
-	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 func TestPatchHistory(t *testing.T) {
@@ -313,7 +312,7 @@ func TestPatchHistory(t *testing.T) {
 			time.Sleep(time.Nanosecond)
 			stop := time.Since(baseTime)
 			history.AppendPut("tombstone", "true", start, stop, &clientv3.PutResponse{Header: &etcdserverpb.ResponseHeader{Revision: 3}}, nil)
-			watch := []traffic.WatchResponse{
+			watch := []model.WatchResponse{
 				{
 					Events:   []model.WatchEvent{{Event: tc.event, Revision: 2}},
 					Revision: 2,
@@ -331,11 +330,11 @@ func TestPatchHistory(t *testing.T) {
 					Time:     time.Since(baseTime),
 				},
 			}
-			operations := patchedOperationHistory([]traffic.ClientReport{
+			operations := patchedOperationHistory([]model.ClientReport{
 				{
 					ClientId: 0,
 					KeyValue: history.History,
-					Watch:    []traffic.WatchOperation{{Responses: watch}},
+					Watch:    []model.WatchOperation{{Responses: watch}},
 				},
 			})
 			remains := len(operations) == history.Len()

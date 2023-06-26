@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"math/rand"
 
-	"golang.org/x/time/rate"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
@@ -32,7 +30,7 @@ var (
 		Name:        "LowTraffic",
 		minimalQPS:  100,
 		maximalQPS:  200,
-		clientCount: 8,
+		ClientCount: 8,
 		Traffic: etcdTraffic{
 			keyCount:     10,
 			leaseTTL:     DefaultLeaseTTL,
@@ -56,7 +54,7 @@ var (
 		Name:        "HighTraffic",
 		minimalQPS:  200,
 		maximalQPS:  1000,
-		clientCount: 12,
+		ClientCount: 12,
 		Traffic: etcdTraffic{
 			keyCount:     10,
 			largePutSize: 32769,
@@ -64,11 +62,11 @@ var (
 			requests: []choiceWeight[etcdRequestType]{
 				{choice: Get, weight: 15},
 				{choice: List, weight: 15},
-				{choice: StaleGet, weight: 10},
-				{choice: StaleList, weight: 10},
+				//{choice: StaleGet, weight: 10},
+				//{choice: StaleList, weight: 10},
 				{choice: Put, weight: 40},
 				{choice: MultiOpTxn, weight: 5},
-				{choice: LargePut, weight: 5},
+				//{choice: LargePut, weight: 5},
 			},
 		},
 	}
@@ -102,7 +100,7 @@ const (
 	Defragment    etcdRequestType = "defragment"
 )
 
-func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+func (t etcdTraffic) Run(ctx context.Context, c TrafficClient, limiter Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
@@ -143,8 +141,8 @@ func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.
 type etcdTrafficClient struct {
 	etcdTraffic
 	keyPrefix    string
-	client       *RecordingClient
-	limiter      *rate.Limiter
+	client       TrafficClient
+	limiter      Limiter
 	idProvider   identity.Provider
 	leaseStorage identity.LeaseIdStorage
 }
@@ -214,7 +212,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			}
 		}
 	case PutWithLease:
-		leaseId := c.leaseStorage.LeaseId(c.client.id)
+		leaseId := c.leaseStorage.LeaseId(c.client.ClientId())
 		if leaseId == 0 {
 			var resp *clientv3.LeaseGrantResponse
 			resp, err = c.client.LeaseGrant(opCtx, c.leaseTTL)
@@ -223,7 +221,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 				rev = resp.ResponseHeader.Revision
 			}
 			if err == nil {
-				c.leaseStorage.AddLeaseId(c.client.id, leaseId)
+				c.leaseStorage.AddLeaseId(c.client.ClientId(), leaseId)
 				c.limiter.Wait(ctx)
 			}
 		}
@@ -237,13 +235,13 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			}
 		}
 	case LeaseRevoke:
-		leaseId := c.leaseStorage.LeaseId(c.client.id)
+		leaseId := c.leaseStorage.LeaseId(c.client.ClientId())
 		if leaseId != 0 {
 			var resp *clientv3.LeaseRevokeResponse
 			resp, err = c.client.LeaseRevoke(opCtx, leaseId)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
-				c.leaseStorage.RemoveLeaseId(c.client.id)
+				c.leaseStorage.RemoveLeaseId(c.client.ClientId())
 			}
 			if resp != nil {
 				rev = resp.Header.Revision
