@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 )
 
 func NewReplay(eventHistory []WatchEvent) *EtcdReplay {
@@ -105,4 +106,19 @@ type Event struct {
 	Type  OperationType
 	Key   string
 	Value ValueOrHash
+}
+
+func (e Event) Match(request WatchRequest) bool {
+	if request.WithPrefix {
+		return strings.HasPrefix(e.Key, request.Key)
+	} else {
+		return e.Key == request.Key
+	}
+}
+
+type WatchRequest struct {
+	Key                string
+	Revision           int64
+	WithPrefix         bool
+	WithProgressNotify bool
 }
