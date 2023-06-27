@@ -92,7 +92,7 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, clusterVersion, newInst
 	newCfg.Version = newInstanceVersion
 	newCfg.SnapshotCatchUpEntries = 10
 	t.Log("Starting a new etcd instance")
-	err = epc.StartNewProc(context.TODO(), &newCfg, t)
+	_, err = epc.StartNewProc(context.TODO(), &newCfg, t, false /* addAsLearner */)
 	require.NoError(t, err, "failed to start the new etcd instance: %v", err)
 	defer epc.CloseProc(context.TODO(), nil)
 

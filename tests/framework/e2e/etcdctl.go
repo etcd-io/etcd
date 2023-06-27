@@ -302,6 +302,12 @@ func (ctl *EtcdctlV3) MemberRemove(ctx context.Context, id uint64) (*clientv3.Me
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) MemberPromote(ctx context.Context, id uint64) (*clientv3.MemberPromoteResponse, error) {
+	var resp clientv3.MemberPromoteResponse
+	err := ctl.spawnJsonCmd(ctx, &resp, "member", "promote", fmt.Sprintf("%x", id))
+	return &resp, err
+}
+
 func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
 	cmdArgs := []string{BinPath.Etcdctl}
 	for k, v := range ctl.flags() {
