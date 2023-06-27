@@ -98,7 +98,7 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
 		} else {
 			if request.Range.Revision > s.Revision {
-				return s, MaybeEtcdResponse{Err: EtcdFutureRevErr}
+				return s, MaybeEtcdResponse{Error: EtcdFutureRevErr.Error()}
 			}
 			return s, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: s.Revision}}
 		}
@@ -312,7 +312,7 @@ type DefragmentRequest struct{}
 type MaybeEtcdResponse struct {
 	EtcdResponse
 	PartialResponse bool
-	Err             error
+	Error           string
 }
 
 var EtcdFutureRevErr = errors.New("future rev")

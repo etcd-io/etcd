@@ -22,8 +22,8 @@ import (
 )
 
 func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) string {
-	if response.Err != nil {
-		return fmt.Sprintf("err: %q", response.Err)
+	if response.Error != "" {
+		return fmt.Sprintf("err: %q", response.Error)
 	}
 	if response.PartialResponse {
 		return fmt.Sprintf("unknown, rev: %d", response.Revision)

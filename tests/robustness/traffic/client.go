@@ -22,6 +22,8 @@ import (
 
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/tests/v3/robustness/report"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
@@ -39,22 +41,10 @@ type RecordingClient struct {
 	baseTime time.Time
 
 	watchMux        sync.Mutex
-	watchOperations []WatchOperation
+	watchOperations []model.WatchOperation
 	// mux ensures order of request appending.
 	kvMux        sync.Mutex
 	kvOperations *model.AppendableHistory
-}
-
-type WatchOperation struct {
-	Request   model.WatchRequest
-	Responses []WatchResponse
-}
-
-type WatchResponse struct {
-	Events           []model.WatchEvent
-	IsProgressNotify bool
-	Revision         int64
-	Time             time.Duration
 }
 
 type TimedWatchEvent struct {
@@ -84,28 +74,12 @@ func (c *RecordingClient) Close() error {
 	return c.client.Close()
 }
 
-func (c *RecordingClient) Report() ClientReport {
-	return ClientReport{
+func (c *RecordingClient) Report() report.ClientReport {
+	return report.ClientReport{
 		ClientId: c.id,
-		KeyValue: c.kvOperations.History,
+		KeyValue: c.kvOperations.History.Operations(),
 		Watch:    c.watchOperations,
 	}
-}
-
-type ClientReport struct {
-	ClientId int
-	KeyValue model.History
-	Watch    []WatchOperation
-}
-
-func (r ClientReport) WatchEventCount() int {
-	count := 0
-	for _, op := range r.Watch {
-		for _, resp := range op.Responses {
-			count += len(resp.Events)
-		}
-	}
-	return count
 }
 
 func (c *RecordingClient) Get(ctx context.Context, key string, revision int64) (kv *mvccpb.KeyValue, rev int64, err error) {
@@ -245,9 +219,9 @@ func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest)
 	respCh := make(chan clientv3.WatchResponse)
 
 	c.watchMux.Lock()
-	c.watchOperations = append(c.watchOperations, WatchOperation{
+	c.watchOperations = append(c.watchOperations, model.WatchOperation{
 		Request:   request,
-		Responses: []WatchResponse{},
+		Responses: []model.WatchResponse{},
 	})
 	index := len(c.watchOperations) - 1
 	c.watchMux.Unlock()
@@ -270,10 +244,10 @@ func (c *RecordingClient) RequestProgress(ctx context.Context) error {
 	return c.client.RequestProgress(ctx)
 }
 
-func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) WatchResponse {
+func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) model.WatchResponse {
 	// using time.Since time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
-	resp := WatchResponse{Time: time.Since(baseTime)}
+	resp := model.WatchResponse{Time: time.Since(baseTime)}
 	for _, event := range r.Events {
 		resp.Events = append(resp.Events, toWatchEvent(*event))
 	}

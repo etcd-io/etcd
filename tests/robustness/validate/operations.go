@@ -34,13 +34,13 @@ func validateOperationsAndVisualize(t *testing.T, lg *zap.Logger, operations []p
 	result, visualize := validateLinearizableOperationAndVisualize(lg, operations, timeout)
 	switch result {
 	case porcupine.Illegal:
-		t.Error("Linearization failed for provided operations")
+		t.Error("Linearization failed")
 		return
 	case porcupine.Unknown:
-		t.Error("Model is not linearizable")
+		t.Error("Linearization has timed out")
 		return
 	case porcupine.Ok:
-		t.Log("Linearization passed")
+		t.Log("Linearization success")
 	default:
 		t.Fatalf("Unknown Linearization")
 	}
@@ -89,7 +89,7 @@ func filterSerializableReads(operations []porcupine.Operation) []porcupine.Opera
 }
 
 func validateSerializableOperation(t *testing.T, replay *model.EtcdReplay, request model.EtcdRequest, response model.MaybeEtcdResponse) {
-	if response.PartialResponse || response.Err != nil {
+	if response.PartialResponse || response.Error != "" {
 		return
 	}
 	state, err := replay.StateForRevision(request.Range.Revision)

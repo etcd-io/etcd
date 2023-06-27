@@ -23,6 +23,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	"go.etcd.io/etcd/tests/v3/robustness/report"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
@@ -34,12 +36,12 @@ var (
 	MultiOpTxnOpCount       = 4
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []ClientReport {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []report.ClientReport {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
 	lm := identity.NewLeaseIdStorage()
-	reports := []ClientReport{}
+	reports := []report.ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
@@ -78,7 +80,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	var operationCount int
 	for _, r := range reports {
-		operationCount += r.KeyValue.Len()
+		operationCount += len(r.KeyValue)
 	}
 	lg.Info("Recorded operations", zap.Int("operationCount", operationCount))
 

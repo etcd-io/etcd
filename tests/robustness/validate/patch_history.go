@@ -17,25 +17,27 @@ package validate
 import (
 	"github.com/anishathalye/porcupine"
 
+	"go.etcd.io/etcd/tests/v3/robustness/report"
+
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func patchedOperationHistory(reports []traffic.ClientReport) []porcupine.Operation {
+func patchedOperationHistory(reports []report.ClientReport) []porcupine.Operation {
 	allOperations := operations(reports)
 	uniqueEvents := uniqueWatchEvents(reports)
 	return patchOperationsWithWatchEvents(allOperations, uniqueEvents)
 }
 
-func operations(reports []traffic.ClientReport) []porcupine.Operation {
+func operations(reports []report.ClientReport) []porcupine.Operation {
 	var ops []porcupine.Operation
 	for _, r := range reports {
-		ops = append(ops, r.KeyValue.Operations()...)
+		ops = append(ops, r.KeyValue...)
 	}
 	return ops
 }
 
-func uniqueWatchEvents(reports []traffic.ClientReport) map[model.Event]traffic.TimedWatchEvent {
+func uniqueWatchEvents(reports []report.ClientReport) map[model.Event]traffic.TimedWatchEvent {
 	persisted := map[model.Event]traffic.TimedWatchEvent{}
 	for _, r := range reports {
 		for _, op := range r.Watch {
@@ -57,7 +59,7 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 	for _, op := range operations {
 		request := op.Input.(model.EtcdRequest)
 		resp := op.Output.(model.MaybeEtcdResponse)
-		if resp.Err == nil || op.Call > lastObservedOperation.Call || request.Type != model.Txn {
+		if resp.Error == "" || op.Call > lastObservedOperation.Call || request.Type != model.Txn {
 			// Cannot patch those requests.
 			newOperations = append(newOperations, op)
 			continue
