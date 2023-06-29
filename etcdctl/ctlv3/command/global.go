@@ -15,6 +15,7 @@
 package command
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -171,11 +172,12 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 	if i < len(args) {
 		return args[i], nil
 	}
-	bytes, err := io.ReadAll(stdin)
-	if string(bytes) == "" || err != nil {
+	s := bufio.NewScanner(os.Stdin)
+	s.Scan()
+	if string(s.Text()) == "" {
 		return "", errors.New("no available argument and stdin")
 	}
-	return string(bytes), nil
+	return string(s.Text()), nil
 }
 
 func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
