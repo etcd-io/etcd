@@ -29,8 +29,9 @@ func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDialTimeout(0))
 func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 	testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS()), withFlagByEnv())
 }
-func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
-func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
+func TestCtlV3PutIgnoreValue(t *testing.T)  { testCtl(t, putTestIgnoreValue) }
+func TestCtlV3PutIgnoreLease(t *testing.T)  { testCtl(t, putTestIgnoreLease) }
+func TestCtlV3PutMissingValue(t *testing.T) { testCtl(t, putTestMissingValue) }
 
 func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDialTimeout(0)) }
 
@@ -115,6 +116,16 @@ func putTestIgnoreLease(cx ctlCtx) {
 	}
 	if err := ctlV3Get(cx, []string{"key"}); err != nil { // expect no output
 		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
+	}
+}
+
+func putTestMissingValue(cx ctlCtx) {
+	errStr := "Error: put command needs 1 argument and input from stdin or 2 arguments"
+	if err := ctlV3PutStdIn(cx, []string{"myKey"}, errStr, []string{""}); err != nil {
+		cx.t.Fatalf("putTestMissingValue: ctlV3PutStdIn missing value return the correct error (%v)", err)
+	}
+	if err := ctlV3PutStdIn(cx, []string{"myKey"}, "OK", []string{"myValue"}); err != nil {
+		cx.t.Fatalf("putTestMissingValue: ctlV3PutStdIn with value in stdin (%v)", err)
 	}
 }
 
@@ -375,4 +386,25 @@ func ctlV3Del(cx ctlCtx, args []string, num int) error {
 	cmdArgs := append(cx.PrefixArgs(), "del")
 	cmdArgs = append(cmdArgs, args...)
 	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, fmt.Sprintf("%d", num))
+}
+
+func ctlV3PutStdIn(cx ctlCtx, args []string, expStr string, stdIn []string) error {
+	cmdArgs := append(cx.PrefixArgs(), "put")
+	cmdArgs = append(cmdArgs, args...)
+
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	if err != nil {
+		return err
+	}
+	defer proc.Close()
+
+	// Send 'stdIn' strings as input.
+	for _, s := range stdIn {
+		if err = proc.Send(s + "\r"); err != nil {
+			return err
+		}
+	}
+
+	_, err = proc.Expect(expStr)
+	return err
 }
