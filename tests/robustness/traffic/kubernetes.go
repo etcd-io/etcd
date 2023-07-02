@@ -32,10 +32,11 @@ import (
 
 var (
 	KubernetesTraffic = Config{
-		Name:        "Kubernetes",
-		minimalQPS:  200,
-		maximalQPS:  1000,
-		clientCount: 12,
+		Name:                           "Kubernetes",
+		minimalQPS:                     200,
+		maximalQPS:                     1000,
+		clientCount:                    12,
+		maxNonUniqueRequestConcurrency: 3,
 		Traffic: kubernetesTraffic{
 			averageKeyCount: 10,
 			resource:        "pods",
@@ -60,7 +61,7 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -99,7 +100,7 @@ func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter 
 					continue
 				}
 			}
-			err := t.Write(ctx, kc, ids, s, limiter)
+			err := t.Write(ctx, kc, ids, s, limiter, nonUniqueWriteLimiter)
 			lastWriteFailed = err != nil
 			if err != nil {
 				continue
@@ -140,7 +141,7 @@ func (t kubernetesTraffic) Read(ctx context.Context, kc *kubernetesClient, s *st
 	return revision, nil
 }
 
-func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids identity.Provider, s *storage, limiter *rate.Limiter) (err error) {
+func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids identity.Provider, s *storage, limiter *rate.Limiter, nonUniqueWriteLimiter ConcurrencyLimiter) (err error) {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 	count := s.Count()
@@ -151,13 +152,19 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 		if rev == 0 {
 			return errors.New("storage empty")
 		}
-		if count > t.averageKeyCount*3/2 {
+		if count > t.averageKeyCount*3/2 && nonUniqueWriteLimiter.Take() {
 			_, err = kc.OptimisticDelete(writeCtx, key, rev)
+			nonUniqueWriteLimiter.Return()
 		} else {
-			op := pickRandom(t.writeChoices)
+			choices := t.writeChoices
+			if !nonUniqueWriteLimiter.Take() {
+				choices = filterOutNonUniqueKuberntesWrites(t.writeChoices)
+			}
+			op := pickRandom(choices)
 			switch op {
 			case KubernetesDelete:
 				_, err = kc.OptimisticDelete(writeCtx, key, rev)
+				nonUniqueWriteLimiter.Return()
 			case KubernetesUpdate:
 				_, err = kc.OptimisticUpdate(writeCtx, key, fmt.Sprintf("%d", ids.NewRequestId()), rev)
 			case KubernetesCreate:
@@ -172,6 +179,15 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 	}
 	limiter.Wait(ctx)
 	return nil
+}
+
+func filterOutNonUniqueKuberntesWrites(choices []choiceWeight[KubernetesRequestType]) (resp []choiceWeight[KubernetesRequestType]) {
+	for _, choice := range choices {
+		if choice.choice != KubernetesDelete {
+			resp = append(resp, choice)
+		}
+	}
+	return resp
 }
 
 func (t kubernetesTraffic) Watch(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string, revision int64) {
