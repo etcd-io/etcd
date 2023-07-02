@@ -390,7 +390,7 @@ func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) MaybeEtc
 }
 
 func failedResponse(err error) MaybeEtcdResponse {
-	return MaybeEtcdResponse{Err: err}
+	return MaybeEtcdResponse{Error: err.Error()}
 }
 
 func partialResponse(revision int64) MaybeEtcdResponse {

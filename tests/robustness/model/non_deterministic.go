@@ -57,7 +57,7 @@ type nonDeterministicState []EtcdState
 func (states nonDeterministicState) apply(request EtcdRequest, response MaybeEtcdResponse) (bool, nonDeterministicState) {
 	var newStates nonDeterministicState
 	switch {
-	case response.Err != nil:
+	case response.Error != "":
 		newStates = states.stepFailedResponse(request)
 	case response.PartialResponse:
 		newStates = states.applyResponseRevision(request, response.EtcdResponse.Revision)

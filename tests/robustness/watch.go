@@ -22,13 +22,14 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time, ids identity.Provider) []traffic.ClientReport {
+func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time, ids identity.Provider) []report.ClientReport {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
-	reports := make([]traffic.ClientReport, len(clus.Procs))
+	reports := make([]report.ClientReport, len(clus.Procs))
 	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
 	for i, member := range clus.Procs {
 		c, err := traffic.NewClient(member.EndpointsGRPC(), ids, baseTime)
@@ -109,7 +110,7 @@ func watchUntilRevision(ctx context.Context, t *testing.T, c *traffic.RecordingC
 	}
 }
 
-func validateGotAtLeastOneProgressNotify(t *testing.T, reports []traffic.ClientReport, expectProgressNotify bool) {
+func validateGotAtLeastOneProgressNotify(t *testing.T, reports []report.ClientReport, expectProgressNotify bool) {
 	var gotProgressNotify = false
 external:
 	for _, r := range reports {

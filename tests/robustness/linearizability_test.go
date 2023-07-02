@@ -19,9 +19,13 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/tests/v3/robustness/model"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
+
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -136,18 +140,18 @@ type testScenario struct {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario) {
-	r := report{lg: lg}
+	report := report.TestReport{Logger: lg}
 	var err error
-	r.clus, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
+	report.Cluster, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.clus.Close()
+	defer report.Cluster.Close()
 
 	if s.failpoint == nil {
-		s.failpoint = pickRandomFailpoint(t, r.clus)
+		s.failpoint = pickRandomFailpoint(t, report.Cluster)
 	} else {
-		err = validateFailpoint(r.clus, s.failpoint)
+		err = validateFailpoint(report.Cluster, s.failpoint)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -158,22 +162,22 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		r.Report(t, panicked)
+		report.Report(t, panicked)
 	}()
-	r.clientReports = s.run(ctx, t, lg, r.clus)
-	forcestopCluster(r.clus)
+	report.Client = s.run(ctx, t, lg, report.Cluster)
+	forcestopCluster(report.Cluster)
 
-	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
-	validateGotAtLeastOneProgressNotify(t, r.clientReports, s.watch.requestProgress || watchProgressNotifyEnabled)
+	watchProgressNotifyEnabled := report.Cluster.Cfg.WatchProcessNotifyInterval != 0
+	validateGotAtLeastOneProgressNotify(t, report.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
 	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.Traffic.ExpectUniqueRevision()}
-	r.visualizeHistory = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.clientReports)
+	report.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, report.Client)
 
 	panicked = false
 }
 
-func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []traffic.ClientReport) {
+func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
 	g := errgroup.Group{}
-	var operationReport, watchReport []traffic.ClientReport
+	var operationReport, watchReport []report.ClientReport
 	finishTraffic := make(chan struct{})
 
 	// using baseTime time-measuring operation to get monotonic clock reading
@@ -201,12 +205,14 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	return append(operationReport, watchReport...)
 }
 
-func operationsMaxRevision(reports []traffic.ClientReport) int64 {
+func operationsMaxRevision(reports []report.ClientReport) int64 {
 	var maxRevision int64
 	for _, r := range reports {
-		revision := r.KeyValue.MaxRevision()
-		if revision > maxRevision {
-			maxRevision = revision
+		for _, op := range r.KeyValue {
+			resp := op.Output.(model.MaybeEtcdResponse)
+			if resp.Revision > maxRevision {
+				maxRevision = resp.Revision
+			}
 		}
 	}
 	return maxRevision
