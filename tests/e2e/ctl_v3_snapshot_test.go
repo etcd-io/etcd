@@ -15,7 +15,9 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
@@ -289,4 +294,164 @@ func testIssue6361(t *testing.T, etcdutl bool) {
 		t.Fatal(err)
 	}
 	t.Log("Test logic done")
+}
+
+func TestRestoreCompactionRevBump(t *testing.T) {
+	BeforeTest(t)
+
+	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
+		clusterSize:  1,
+		initialToken: "new",
+		keepDataDir:  true,
+	})
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	defer func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	}()
+
+	dialTimeout := 10 * time.Second
+	prefixArgs := []string{ctlBinPath, "--endpoints", strings.Join(epc.EndpointsV3(), ","), "--dial-timeout", dialTimeout.String()}
+
+	ctl := newClient(t, epc.EndpointsV3(), epc.cfg.clientTLS, epc.cfg.isClientAutoTLS)
+	watchCh := ctl.Watch(context.Background(), "foo", clientv3.WithPrefix())
+	// flake-fix: the watch can sometimes miss the first put below causing test failure
+	time.Sleep(100 * time.Millisecond)
+
+	kvs := []kv{{"foo1", "val1"}, {"foo2", "val2"}, {"foo3", "val3"}}
+	for i := range kvs {
+		if err = spawnWithExpect(append(prefixArgs, "put", kvs[i].key, kvs[i].val), "OK"); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	watchTimeout := 1 * time.Second
+	watchRes, err := keyValuesFromWatchChan(watchCh, len(kvs), watchTimeout)
+	require.NoErrorf(t, err, "failed to get key-values from watch channel %s", err)
+	require.Equal(t, kvs, watchRes)
+
+	// ensure we get the right revision back for each of the keys
+	currentRev := 4
+	baseRev := 2
+	hasKVs(t, ctl, kvs, currentRev, baseRev)
+
+	fpath := filepath.Join(t.TempDir(), "test.snapshot")
+
+	t.Log("etcdctl saving snapshot...")
+	require.NoError(t, spawnWithExpect(append(prefixArgs, "snapshot", "save", fpath), fmt.Sprintf("Snapshot saved at %s", fpath)))
+
+	// add some more kvs that are not in the snapshot that will be lost after restore
+	unsnappedKVs := []kv{{"unsnapped1", "one"}, {"unsnapped2", "two"}, {"unsnapped3", "three"}}
+	for i := range unsnappedKVs {
+		if err = spawnWithExpect(append(prefixArgs, "put", unsnappedKVs[i].key, unsnappedKVs[i].val), "OK"); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Log("Stopping the original server...")
+	require.NoError(t, epc.Stop())
+
+	newDataDir := filepath.Join(t.TempDir(), "test.data")
+	t.Log("etcdctl restoring the snapshot...")
+	bumpAmount := 10000
+	err = spawnWithExpect([]string{
+		utlBinPath,
+		"snapshot",
+		"restore", fpath,
+		"--name", epc.procs[0].Config().name,
+		"--initial-cluster", epc.procs[0].Config().initialCluster,
+		"--initial-cluster-token", epc.procs[0].Config().initialToken,
+		"--initial-advertise-peer-urls", epc.procs[0].Config().purl.String(),
+		"--bump-revision", fmt.Sprintf("%d", bumpAmount),
+		"--mark-compacted",
+		"--data-dir", newDataDir,
+	}, "added member")
+	require.NoError(t, err)
+
+	t.Log("(Re)starting the etcd member using the restored snapshot...")
+	epc.procs[0].Config().dataDirPath = newDataDir
+	for i := range epc.procs[0].Config().args {
+		if epc.procs[0].Config().args[i] == "--data-dir" {
+			epc.procs[0].Config().args[i+1] = newDataDir
+		}
+	}
+
+	require.NoError(t, epc.Restart())
+
+	t.Log("Ensuring the restored member has the correct data...")
+	hasKVs(t, ctl, kvs, currentRev, baseRev)
+
+	for i := range unsnappedKVs {
+		v, err := ctl.Get(context.Background(), unsnappedKVs[i].key)
+		require.NoError(t, err)
+		require.Equal(t, int64(0), v.Count)
+	}
+
+	cancelResult, ok := <-watchCh
+	require.True(t, ok, "watchChannel should be open")
+	require.Equal(t, v3rpc.ErrCompacted, cancelResult.Err())
+	require.Truef(t, cancelResult.Canceled, "expected ongoing watch to be cancelled after restoring with --mark-compacted")
+	require.Equal(t, int64(bumpAmount+currentRev), cancelResult.CompactRevision)
+	_, ok = <-watchCh
+	require.False(t, ok, "watchChannel should be closed after restoring with --mark-compacted")
+
+	// clients might restart the watch at the old base revision, that should not yield any new data
+	// everything up until bumpAmount+currentRev should return "already compacted"
+	for i := bumpAmount - 2; i < bumpAmount+currentRev; i++ {
+		watchCh = ctl.Watch(context.Background(), "foo", clientv3.WithPrefix(), clientv3.WithRev(int64(i)))
+		cancelResult := <-watchCh
+		require.Equal(t, v3rpc.ErrCompacted, cancelResult.Err())
+		require.Truef(t, cancelResult.Canceled, "expected ongoing watch to be cancelled after restoring with --mark-compacted")
+		require.Equal(t, int64(bumpAmount+currentRev), cancelResult.CompactRevision)
+	}
+
+	// a watch after that revision should yield successful results when a new put arrives
+	ctx, cancel := context.WithTimeout(context.Background(), watchTimeout*5)
+	defer cancel()
+	watchCh = ctl.Watch(ctx, "foo", clientv3.WithPrefix(), clientv3.WithRev(int64(bumpAmount+currentRev+1)))
+	if err = spawnWithExpect(append(prefixArgs, "put", "foo4", "val4"), "OK"); err != nil {
+		t.Fatal(err)
+	}
+	watchRes, err = keyValuesFromWatchChan(watchCh, 1, watchTimeout)
+	require.NoErrorf(t, err, "failed to get key-values from watch channel %s", err)
+	require.Equal(t, []kv{{"foo4", "val4"}}, watchRes)
+
+}
+
+func hasKVs(t *testing.T, ctl *clientv3.Client, kvs []kv, currentRev int, baseRev int) {
+	for i := range kvs {
+		v, err := ctl.Get(context.Background(), kvs[i].key)
+		require.NoError(t, err)
+		require.Equal(t, int64(1), v.Count)
+		require.Equal(t, kvs[i].val, string(v.Kvs[0].Value))
+		require.Equal(t, int64(baseRev+i), v.Kvs[0].CreateRevision)
+		require.Equal(t, int64(baseRev+i), v.Kvs[0].ModRevision)
+		require.Equal(t, int64(1), v.Kvs[0].Version)
+	}
+}
+
+func keyValuesFromWatchResponse(resp clientv3.WatchResponse) (kvs []kv) {
+	for _, event := range resp.Events {
+		kvs = append(kvs, kv{string(event.Kv.Key), string(event.Kv.Value)})
+	}
+	return kvs
+}
+
+func keyValuesFromWatchChan(wch clientv3.WatchChan, wantedLen int, timeout time.Duration) (kvs []kv, err error) {
+	for {
+		select {
+		case watchResp, ok := <-wch:
+			if ok {
+				kvs = append(kvs, keyValuesFromWatchResponse(watchResp)...)
+				if len(kvs) == wantedLen {
+					return kvs, nil
+				}
+			}
+		case <-time.After(timeout):
+			return nil, errors.New("closed watcher channel should not block")
+		}
+	}
 }
