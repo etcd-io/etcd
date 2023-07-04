@@ -29,10 +29,11 @@ import (
 
 var (
 	LowTraffic = Config{
-		Name:        "LowTraffic",
-		minimalQPS:  100,
-		maximalQPS:  200,
-		clientCount: 8,
+		Name:                           "LowTraffic",
+		minimalQPS:                     100,
+		maximalQPS:                     200,
+		clientCount:                    8,
+		maxNonUniqueRequestConcurrency: 3,
 		Traffic: etcdTraffic{
 			keyCount:     10,
 			leaseTTL:     DefaultLeaseTTL,
@@ -53,10 +54,11 @@ var (
 		},
 	}
 	HighTraffic = Config{
-		Name:        "HighTraffic",
-		minimalQPS:  200,
-		maximalQPS:  1000,
-		clientCount: 12,
+		Name:                           "HighTraffic",
+		minimalQPS:                     200,
+		maximalQPS:                     1000,
+		clientCount:                    12,
+		maxNonUniqueRequestConcurrency: 3,
 		Traffic: etcdTraffic{
 			keyCount:     10,
 			largePutSize: 32769,
@@ -102,7 +104,7 @@ const (
 	Defragment    etcdRequestType = "defragment"
 )
 
-func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{}) {
+func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
@@ -124,11 +126,18 @@ func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.
 		}
 		// Avoid multiple failed writes in a row
 		if lastOperationSucceeded {
-			requestType = pickRandom(t.requests)
+			choices := t.requests
+			if !nonUniqueWriteLimiter.Take() {
+				choices = filterOutNonUniqueEtcdWrites(choices)
+			}
+			requestType = pickRandom(choices)
 		} else {
 			requestType = Get
 		}
 		rev, err := client.Request(ctx, requestType, lastRev)
+		if requestType == Delete || requestType == LeaseRevoke {
+			nonUniqueWriteLimiter.Return()
+		}
 		lastOperationSucceeded = err == nil
 		if err != nil {
 			continue
@@ -138,6 +147,15 @@ func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.
 		}
 		limiter.Wait(ctx)
 	}
+}
+
+func filterOutNonUniqueEtcdWrites(choices []choiceWeight[etcdRequestType]) (resp []choiceWeight[etcdRequestType]) {
+	for _, choice := range choices {
+		if choice.choice != Delete && choice.choice != LeaseRevoke {
+			resp = append(resp, choice)
+		}
+	}
+	return resp
 }
 
 type etcdTrafficClient struct {

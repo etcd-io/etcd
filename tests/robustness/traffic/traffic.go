@@ -51,6 +51,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	}
 	defer cc.Close()
 	wg := sync.WaitGroup{}
+	nonUniqueWriteLimiter := NewConcurrencyLimiter(config.maxNonUniqueRequestConcurrency)
 	for i := 0; i < config.clientCount; i++ {
 		wg.Add(1)
 		c, err := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
@@ -61,7 +62,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			config.Traffic.Run(ctx, c, limiter, ids, lm, finish)
+			config.Traffic.Run(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, finish)
 			mux.Lock()
 			reports = append(reports, c.Report())
 			mux.Unlock()
@@ -93,14 +94,15 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 }
 
 type Config struct {
-	Name        string
-	minimalQPS  float64
-	maximalQPS  float64
-	clientCount int
-	Traffic     Traffic
+	Name                           string
+	minimalQPS                     float64
+	maximalQPS                     float64
+	maxNonUniqueRequestConcurrency int
+	clientCount                    int
+	Traffic                        Traffic
 }
 
 type Traffic interface {
-	Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
+	Run(ctx context.Context, c *RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
 	ExpectUniqueRevision() bool
 }
