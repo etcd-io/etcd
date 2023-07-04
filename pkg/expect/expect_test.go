@@ -210,3 +210,11 @@ func TestExitCodeAfterKill(t *testing.T) {
 	assert.Equal(t, 137, code)
 	assert.NoError(t, err)
 }
+
+func TestExpectForFailFastCommand(t *testing.T) {
+	ep, err := NewExpect("sh", "-c", `echo "curl: (59) failed setting cipher list"; exit 59`)
+	require.NoError(t, err)
+
+	_, err = ep.Expect("failed setting cipher list")
+	require.NoError(t, err)
+}
