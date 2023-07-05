@@ -15,7 +15,9 @@
 package auth
 
 import (
+	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"fmt"
 	"os"
@@ -100,6 +102,8 @@ func (opts *jwtOptions) Key() (interface{}, error) {
 		return opts.rsaKey()
 	case *jwt.SigningMethodECDSA:
 		return opts.ecKey()
+	case *jwt.SigningMethodEd25519:
+		return opts.edKey()
 	case *jwt.SigningMethodHMAC:
 		return opts.hmacKey()
 	default:
@@ -171,6 +175,48 @@ func (opts *jwtOptions) ecKey() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if priv == nil {
+		if pub == nil {
+			// Neither key given
+			return nil, ErrMissingKey
+		}
+		// Public key only, can verify tokens
+		return pub, nil
+	}
+
+	// both keys provided, make sure they match
+	if pub != nil && !pub.Equal(priv.Public()) {
+		return nil, ErrKeyMismatch
+	}
+
+	return priv, nil
+}
+
+func (opts *jwtOptions) edKey() (interface{}, error) {
+	var (
+		priv ed25519.PrivateKey
+		pub  ed25519.PublicKey
+		err  error
+	)
+
+	if len(opts.PrivateKey) > 0 {
+		var privKey crypto.PrivateKey
+		privKey, err = jwt.ParseEdPrivateKeyFromPEM(opts.PrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		priv = privKey.(ed25519.PrivateKey)
+	}
+
+	if len(opts.PublicKey) > 0 {
+		var pubKey crypto.PublicKey
+		pubKey, err = jwt.ParseEdPublicKeyFromPEM(opts.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+		pub = pubKey.(ed25519.PublicKey)
 	}
 
 	if priv == nil {
