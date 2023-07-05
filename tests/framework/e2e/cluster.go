@@ -324,6 +324,14 @@ func WithCorruptCheckTime(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.CorruptCheckTime = time }
 }
 
+func WithInitialClusterToken(token string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.InitialToken = token }
+}
+
+func WithInitialCorruptCheck(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.InitialCorruptCheck = enabled }
+}
+
 func WithCompactHashCheckEnabled(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.CompactHashCheckEnabled = enabled }
 }
