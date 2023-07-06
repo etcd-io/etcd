@@ -422,13 +422,8 @@ func (s *v3Manager) copyAndVerifyDB() error {
 	if dberr != nil {
 		return dberr
 	}
-	dbClosed := false
-	defer func() {
-		if !dbClosed {
-			db.Close()
-			dbClosed = true
-		}
-	}()
+	defer db.Close()
+
 	if _, err := io.Copy(db, srcf); err != nil {
 		return err
 	}
@@ -465,7 +460,7 @@ func (s *v3Manager) copyAndVerifyDB() error {
 	}
 
 	// db hash is OK, can now modify DB so it can be part of a new cluster
-	db.Close()
+
 	return nil
 }
 
