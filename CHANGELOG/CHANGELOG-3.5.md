@@ -18,7 +18,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### Package `clientv3`
 - Fix [Multiple endpoints with same prefix got mixed up](https://github.com/etcd-io/etcd/pull/15939)
-
+- Fix [Unexpected blocking when barrier waits on a nonexistent key](https://github.com/etcd-io/etcd/pull/16188)
 <hr>
 
 ## v3.5.9 (2023-05-11)
