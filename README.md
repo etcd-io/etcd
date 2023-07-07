@@ -140,7 +140,7 @@ Now it's time to dig into the full etcd API and other guides.
 
 ### Community meetings
 
-etcd contributors and maintainers have monthly (every four weeks) meetings at 11:00 AM (USA Pacific) on Thursday.
+etcd contributors and maintainers meet every two weeks at 11:00 AM (USA Pacific) on Thursday.
 
 An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
 
