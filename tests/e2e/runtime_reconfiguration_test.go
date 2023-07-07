@@ -173,11 +173,14 @@ func addMember(ctx context.Context, t *testing.T, epc *e2e.EtcdProcessCluster) {
 }
 
 func addMemberAsLearnerAndPromote(ctx context.Context, t *testing.T, epc *e2e.EtcdProcessCluster) {
+	endpoints := epc.EndpointsGRPC()
+
 	id, err := epc.StartNewProc(ctx, nil, t, true /* addAsLearner */)
 	require.NoError(t, err)
-	newLearnerMemberProc := epc.Procs[len(epc.Procs)-1]
-	_, err = epc.Etcdctl().MemberPromote(ctx, id)
+	_, err = epc.Etcdctl(e2e.WithEndpoints(endpoints)).MemberPromote(ctx, id)
 	require.NoError(t, err)
+
+	newLearnerMemberProc := epc.Procs[len(epc.Procs)-1]
 	require.NoError(t, newLearnerMemberProc.Etcdctl().Health(ctx))
 }
 
