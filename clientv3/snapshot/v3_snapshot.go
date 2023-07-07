@@ -445,6 +445,7 @@ func (s *v3Manager) modifyLatestRevision(bumpAmount uint64) error {
 	}()
 
 	tx := be.BatchTx()
+	tx.Lock()
 	defer tx.Unlock()
 
 	latest, err := s.unsafeGetLatestRevision(tx)
