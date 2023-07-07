@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,10 +64,19 @@ func TestConnectionMultiplexing(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			cfg := etcdProcessClusterConfig{clusterSize: 1, clientTLS: tc.serverTLS, enableV2: true, clientHttpSeparate: tc.separateHttpPort}
+			cfg := etcdProcessClusterConfig{
+				clusterSize:        1,
+				clientTLS:          tc.serverTLS,
+				enableV2:           true,
+				clientHttpSeparate: tc.separateHttpPort,
+				stopSignal:         syscall.SIGTERM, // check graceful stop
+			}
 			clus, err := newEtcdProcessCluster(&cfg)
 			require.NoError(t, err)
-			defer clus.Close()
+
+			defer func() {
+				require.NoError(t, clus.Close())
+			}()
 
 			var clientScenarios []clientConnType
 			switch tc.serverTLS {
