@@ -187,7 +187,6 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 * Joe Betz
 * Gyuho Lee
 * Jingyi Hu
-* Wenjia Zhang
 * Xiang Li
 * Ben Darnell
 * Sam Batschelet
