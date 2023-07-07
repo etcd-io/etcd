@@ -42,6 +42,7 @@ var (
 	rangeTotal       int
 	rangeConsistency string
 	rangeLimit       int64
+	rangeCountOnly   bool
 )
 
 func init() {
@@ -50,6 +51,7 @@ func init() {
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 	rangeCmd.Flags().Int64Var(&rangeLimit, "limit", 0, "Maximum number of results to return from range request (0 is no limit)")
+	rangeCmd.Flags().BoolVar(&rangeCountOnly, "count-only", false, "Only returns the count of keys")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
@@ -103,6 +105,9 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	go func() {
 		for i := 0; i < rangeTotal; i++ {
 			opts := []v3.OpOption{v3.WithRange(end), v3.WithLimit(rangeLimit)}
+			if rangeCountOnly {
+				opts = append(opts, v3.WithCountOnly())
+			}
 			if rangeConsistency == "s" {
 				opts = append(opts, v3.WithSerializable())
 			}
