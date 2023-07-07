@@ -55,3 +55,9 @@ func WriteKV(be backend.Backend, kv mvccpb.KeyValue) {
 	be.BatchTx().UnsafePut(keyBucketName, ibytes, d)
 	be.BatchTx().Unlock()
 }
+
+func UnsafeSetScheduledCompact(tx backend.BatchTx, value int64) {
+	rbytes := newRevBytes()
+	revToBytes(revision{main: value}, rbytes)
+	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
+}
