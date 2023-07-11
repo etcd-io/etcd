@@ -424,18 +424,20 @@ func (e *Etcd) Close() {
 }
 
 func stopServers(ctx context.Context, ss *servers) {
-	shutdownNow := func() {
-		// first, close the http.Server
+	// first, close the http.Server
+	if ss.http != nil {
 		ss.http.Shutdown(ctx)
-		// then close grpc.Server; cancels all active RPCs
-		ss.grpc.Stop()
+	}
+
+	if ss.grpc == nil {
+		return
 	}
 
 	// do not grpc.Server.GracefulStop with TLS enabled etcd server
 	// See https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
 	// and https://github.com/etcd-io/etcd/issues/8916
 	if ss.secure && ss.http != nil {
-		shutdownNow()
+		ss.grpc.Stop()
 		return
 	}
 
@@ -453,7 +455,7 @@ func stopServers(ctx context.Context, ss *servers) {
 	case <-ctx.Done():
 		// took too long, manually close open transports
 		// e.g. watch streams
-		shutdownNow()
+		ss.grpc.Stop()
 
 		// concurrent GracefulStop should be interrupted
 		<-ch

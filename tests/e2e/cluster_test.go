@@ -133,6 +133,8 @@ type etcdProcessClusterConfig struct {
 	WatchProcessNotifyInterval time.Duration
 
 	debug bool
+
+	stopSignal os.Signal
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -151,11 +153,19 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 			epc.Close()
 			return nil, err
 		}
+
 		epc.procs[i] = proc
 	}
 
 	if err := epc.Start(); err != nil {
 		return nil, err
+	}
+
+	// overwrite the default signal
+	if cfg.stopSignal != nil {
+		for _, proc := range epc.procs {
+			proc.WithStopSignal(cfg.stopSignal)
+		}
 	}
 	return epc, nil
 }
