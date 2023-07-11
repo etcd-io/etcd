@@ -15,6 +15,7 @@
 package recipes_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -44,6 +45,11 @@ func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 	}
 	if err := b.Hold(); err == nil {
 		t.Fatalf("able to double-hold barrier")
+	}
+
+	// put a random key to move the revision forward
+	if _, err := chooseClient().Put(context.Background(), "x", ""); err != nil {
+		t.Errorf("could not put x (%v)", err)
 	}
 
 	donec := make(chan struct{})

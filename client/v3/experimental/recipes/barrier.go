@@ -60,7 +60,7 @@ func (b *Barrier) Wait() error {
 	_, err = WaitEvents(
 		b.client,
 		b.key,
-		resp.Header.Revision,
-		[]mvccpb.Event_EventType{mvccpb.PUT, mvccpb.DELETE})
+		resp.Header.Revision+1,
+		[]mvccpb.Event_EventType{mvccpb.DELETE})
 	return err
 }
