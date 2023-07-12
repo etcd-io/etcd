@@ -16,15 +16,16 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcdctl v3
 - Add [optional --bump-revision and --mark-compacted flag to etcdctl snapshot restore operation](https://github.com/etcd-io/etcd/pull/16165).
 
-### Dependencies
-- Compile binaries using [go 1.19.10](https://github.com/etcd-io/etcd/pull/16033).
-
 ### etcd grpc-proxy
 - Fix [Memberlist results not updated when proxy node down](https://github.com/etcd-io/etcd/pull/15907).
 
 ### Package `clientv3`
 - Fix [Multiple endpoints with same prefix got mixed up](https://github.com/etcd-io/etcd/pull/15939)
 - Fix [Unexpected blocking when barrier waits on a nonexistent key](https://github.com/etcd-io/etcd/pull/16188)
+
+### Dependencies
+- Compile binaries using [go 1.19.11](https://github.com/etcd-io/etcd/pull/16227).
+
 <hr>
 
 ## v3.5.9 (2023-05-11)
