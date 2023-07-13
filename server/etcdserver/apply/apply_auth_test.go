@@ -44,8 +44,10 @@ func dummyIndexWaiter(_ uint64) <-chan struct{} {
 	return ch
 }
 
+var emptyResult = Result{}
+
 func dummyApplyFunc(_ context.Context, _ *pb.InternalRaftRequest, _ membership.ShouldApplyV3) *Result {
-	return &Result{}
+	return &emptyResult
 }
 
 type fakeRaftStatusGetter struct{}
