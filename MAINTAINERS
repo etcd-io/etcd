@@ -9,7 +9,7 @@
 # Please keep the list sorted.
 
 # MAINTAINERS
-Benjamin Wang <wachao@vmware.com> (ahrtr@) pkg:*
+Benjamin Wang <wachao@vmware.com> (@ahrtr) pkg:*
 Hitoshi Mitake <h.mitake@gmail.com> (@mitake) pkg:*
 Marek Siarkowicz <siarkowicz@google.com> <marek.siarkowicz@gmail.com> (@serathius) pkg:*
 Piotr Tabor <piotr.tabor@gmail.com> (@ptabor) pkg:*
@@ -17,3 +17,4 @@ Sahdev Zala <spzala@us.ibm.com> (@spzala) pkg:*
 Wenjia Zhang <wenjiazhang@google.com> <wenjia.swe@gmail.com> (@wenjiaswe) pkg:*
 
 # REVIEWERS
+James Blair <jablair@redhat.com> <mail@jamesblair.net> (@jmhbnz) pkg:*
