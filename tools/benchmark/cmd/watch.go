@@ -88,7 +88,7 @@ func init() {
 	watchCmd.Flags().BoolVar(&watchSeqKeys, "sequential-keys", false, "Use sequential keys")
 }
 
-func watchFunc(cmd *cobra.Command, args []string) {
+func watchFunc(_ *cobra.Command, _ []string) {
 	if watchKeySpaceSize <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", watchKeySpaceSize)
 		os.Exit(1)

@@ -54,7 +54,7 @@ func init() {
 	watchLatencyCmd.Flags().IntVar(&watchLValueSize, "val-size", 32, "Value size of watch response")
 }
 
-func watchLatencyFunc(cmd *cobra.Command, args []string) {
+func watchLatencyFunc(_ *cobra.Command, _ []string) {
 	key := string(mustRandBytes(watchLKeySize))
 	value := string(mustRandBytes(watchLValueSize))
 
