@@ -23,11 +23,11 @@ Access to the infrastructure is defined by the infra admins table below:
 
 | Name                      | Github         | K8s Slack          | Email              |
 |---------------------------|----------------|--------------------|--------------------|
-| Marek Siarkowicz          | @serathius     | @ Serathius        | Ref MAINTAINERS.md |
-| Benjamin Wang             | @ahrtr         | @ Benjamin Wang    | Ref MAINTAINERS.md |
+| Marek Siarkowicz          | @serathius     | @ Serathius        | Ref MAINTAINERS    |
+| Benjamin Wang             | @ahrtr         | @ Benjamin Wang    | Ref MAINTAINERS    |
 | Davanum Srinivas          | @dimns         | @ Dims             | davanum@gmail.com  |
 | Chao Chen                 | @chaochn47     | @ Chao Chen        | chaochn@amazon.com |
-| James Blair               | @jmhbnz        | @ James Blair      | etcd@jamma.life    |
+| James Blair               | @jmhbnz        | @ James Blair      | Ref MAINTAINERS    |
 
 Individuals in this table are granted access to the infrastructure in two ways:
 
