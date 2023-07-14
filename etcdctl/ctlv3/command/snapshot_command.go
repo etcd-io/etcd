@@ -33,6 +33,7 @@ func NewSnapshotCommand() *cobra.Command {
 		Short: "Manages etcd node snapshots",
 	}
 	cmd.AddCommand(NewSnapshotSaveCommand())
+	cmd.AddCommand(NewSnapshotPipeCommand())
 	return cmd
 }
 
@@ -41,6 +42,14 @@ func NewSnapshotSaveCommand() *cobra.Command {
 		Use:   "save <filename>",
 		Short: "Stores an etcd node backend snapshot to a given file",
 		Run:   snapshotSaveCommandFunc,
+	}
+}
+
+func NewSnapshotPipeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "pipe",
+		Short: "Streams an etcd node backend snapshot to STDOUT",
+		Run:   snapshotPipeCommandFunc,
 	}
 }
 
@@ -71,5 +80,26 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Printf("Snapshot saved at %s\n", path)
 	if version != "" {
 		fmt.Printf("Server version %s\n", version)
+	}
+}
+
+func snapshotPipeCommandFunc(cmd *cobra.Command, args []string) {
+
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
+	cfg := mustClientCfgFromCmd(cmd)
+
+	// if user does not specify "--command-timeout" flag, there will be no timeout for snapshot pipe command
+	ctx, cancel := context.WithCancel(context.Background())
+	if isCommandTimeoutFlagSet(cmd) {
+		ctx, cancel = commandCtx(cmd)
+	}
+	defer cancel()
+
+	_, err = snapshot.PipeWithVersion(ctx, lg, *cfg)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitInterrupted, err)
 	}
 }

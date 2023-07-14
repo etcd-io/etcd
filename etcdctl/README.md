@@ -1012,6 +1012,21 @@ DEFRAG returns a zero exit code only if it succeeded defragmenting all given end
 
 SNAPSHOT provides commands to restore a snapshot of a running etcd server into a fresh cluster.
 
+### SNAPSHOT PIPE
+
+SNAPSHOT PIPE writes a point-in-time snapshot of the etcd backend database to stdout.
+
+#### Output
+
+The backend snapshot is written to stdout.
+
+#### Example
+
+Write a snapshot to stdout:
+```
+./etcdctl snapshot pipe
+```
+
 ### SNAPSHOT SAVE \<filename\>
 
 SNAPSHOT SAVE writes a point-in-time snapshot of the etcd backend database to a file.
