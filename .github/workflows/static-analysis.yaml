@@ -20,7 +20,7 @@ jobs:
       - name: protoc
         uses: arduino/setup-protoc@149f6c87b92550901b26acd1632e11c3662e381f # v1.3.0
         with:
-          version: '3.14.0'
+          version: '3.20.3'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: |
           set -euo pipefail
