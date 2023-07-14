@@ -299,6 +299,7 @@ func (c *Client) getToken(ctx context.Context) error {
 		if err != nil {
 			// return err without retrying other endpoints
 			if err == rpctypes.ErrAuthNotEnabled {
+				c.authTokenBundle.UpdateAuthToken("")
 				return err
 			}
 			continue

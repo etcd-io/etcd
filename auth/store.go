@@ -1302,6 +1302,9 @@ func (as *authStore) AuthInfoFromTLS(ctx context.Context) (ai *AuthInfo) {
 }
 
 func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
+	if !as.IsAuthEnabled() {
+		return nil, nil
+	}
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, nil
