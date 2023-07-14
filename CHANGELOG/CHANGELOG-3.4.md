@@ -2,6 +2,11 @@
 
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.3.md).
 
+## v3.4.28 (tbd)
+
+### Dependencies
+- Compile binaries using [go 1.19.11](https://github.com/etcd-io/etcd/pull/16228).
+
 <hr>
 
 ## v3.4.27 (2023-07-11)
