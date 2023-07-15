@@ -27,8 +27,8 @@ import (
 
 // Validate checks provided backend to confirm that schema used is supported.
 func Validate(lg *zap.Logger, tx backend.ReadTx) error {
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	return unsafeValidate(lg, tx)
 }
 

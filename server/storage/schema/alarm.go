@@ -74,8 +74,8 @@ func (s *alarmBackend) mustUnsafeDeleteAlarm(tx backend.BatchTx, alarm *etcdserv
 
 func (s *alarmBackend) GetAllAlarms() ([]*etcdserverpb.AlarmMember, error) {
 	tx := s.be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	return s.unsafeGetAllAlarms(tx)
 }
 
