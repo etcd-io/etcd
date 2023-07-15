@@ -2,7 +2,7 @@
 
 > NOTE: This project is *alpha* stage. Flags, configuration, behaviour and design may change significantly in following releases.
 
-A set of customisable Prometheus alerts for etcd.
+A customisable set of Grafana dashboard and Prometheus alerts for etcd.
 
 Instructions for use are the same as the [kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin).
 
