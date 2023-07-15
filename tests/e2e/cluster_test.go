@@ -175,6 +175,7 @@ type etcdProcessClusterConfig struct {
 	CompactHashCheckEnabled    bool
 	CompactHashCheckTime       time.Duration
 	WatchProcessNotifyInterval time.Duration
+	CompactionBatchLimit       int
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -338,6 +339,9 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs(tb testing.TB) []*
 		}
 		if cfg.WatchProcessNotifyInterval != 0 {
 			args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
+		}
+		if cfg.CompactionBatchLimit != 0 {
+			args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.CompactionBatchLimit))
 		}
 
 		etcdCfgs[i] = &etcdServerProcessConfig{
