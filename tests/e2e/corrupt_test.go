@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/datadir"
@@ -179,4 +180,62 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	alarmResponse, err := cc.AlarmList()
 	assert.NoError(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: 0}}, alarmResponse.Alarms)
+}
+
+func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
+	checkTime := time.Second
+	BeforeTest(t)
+
+	slowCompactionNodeIndex := 1
+
+	// Start a new cluster, with compact hash check enabled.
+	t.Log("creating a new cluster with 3 nodes...")
+
+	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
+		clusterSize:             3,
+		keepDataDir:             true,
+		CompactHashCheckEnabled: true,
+		CompactHashCheckTime:    checkTime,
+		logLevel:                "info",
+		CompactionBatchLimit:    1,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+
+	// Put 200 identical keys to the cluster, so that the compaction will drop some stale values.
+	// We need a relatively big number here to make the compaction takes a non-trivial time, and we can interrupt it.
+	t.Log("putting 200 values to the identical key...")
+	cc := NewEtcdctl(epc.EndpointsV3(), clientNonTLS, false, false)
+
+	for i := 0; i < 200; i++ {
+		err = cc.Put("key", fmt.Sprint(i))
+		require.NoError(t, err, "error on put")
+	}
+
+	t.Log("compaction started...")
+	_, err = cc.Compact(200)
+
+	t.Logf("restart proc %d to interrupt its compaction...", slowCompactionNodeIndex)
+	err = epc.procs[slowCompactionNodeIndex].Restart()
+	require.NoError(t, err)
+
+	// Wait until the node finished compaction.
+	_, err = epc.procs[slowCompactionNodeIndex].Logs().Expect("finished scheduled compaction")
+	require.NoError(t, err, "can't get log indicating finished scheduled compaction")
+
+	// Wait for compaction hash check
+	time.Sleep(checkTime * 5)
+
+	alarmResponse, err := cc.AlarmList()
+	require.NoError(t, err, "error on alarm list")
+	for _, alarm := range alarmResponse.Alarms {
+		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
+			t.Fatal("there should be no corruption after resuming the compaction, but corruption detected")
+		}
+	}
+	t.Log("no corruption detected.")
 }

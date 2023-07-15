@@ -333,6 +333,8 @@ func TestStoreCompact(t *testing.T) {
 	fi.indexCompactRespc <- map[revision]struct{}{{1, 0}: {}}
 	key1 := newTestKeyBytes(revision{1, 0}, false)
 	key2 := newTestKeyBytes(revision{2, 0}, false)
+	b.tx.rangeRespc <- rangeResp{[][]byte{}, [][]byte{}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{}, [][]byte{}}
 	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, [][]byte{[]byte("alice"), []byte("bob")}}
 
 	s.Compact(traceutil.TODO(), 3)
@@ -344,6 +346,8 @@ func TestStoreCompact(t *testing.T) {
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(4))
 	wact := []testutil.Action{
+		{Name: "range", Params: []interface{}{buckets.Meta, scheduledCompactKeyName, []uint8(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{buckets.Meta, finishedCompactKeyName, []uint8(nil), int64(0)}},
 		{Name: "put", Params: []interface{}{buckets.Meta, scheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
 		{Name: "range", Params: []interface{}{buckets.Key, make([]byte, 17), end, int64(10000)}},
 		{Name: "delete", Params: []interface{}{buckets.Key, key2}},
