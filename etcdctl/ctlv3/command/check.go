@@ -365,7 +365,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 		os.Exit(cobrautl.ExitError)
 	}
 
-	fmt.Println(fmt.Sprintf("Start data scale check for work load [%v key-value pairs, %v bytes per key-value, %v concurrent clients].", cfg.limit, cfg.kvSize, cfg.clients))
+	fmt.Printf("Start data scale check for work load [%v key-value pairs, %v bytes per key-value, %v concurrent clients].\n", cfg.limit, cfg.kvSize, cfg.clients)
 	bar := pb.New(cfg.limit)
 	bar.Start()
 
@@ -435,6 +435,6 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 		}
 		os.Exit(cobrautl.ExitError)
 	} else {
-		fmt.Println(fmt.Sprintf("PASS: Approximate system memory used : %v MB.", strconv.FormatFloat(mbUsed, 'f', 2, 64)))
+		fmt.Printf("PASS: Approximate system memory used : %v MB.\n", strconv.FormatFloat(mbUsed, 'f', 2, 64))
 	}
 }
