@@ -55,7 +55,7 @@ func init() {
 	txnPutCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
 }
 
-func txnPutFunc(cmd *cobra.Command, args []string) {
+func txnPutFunc(_ *cobra.Command, _ []string) {
 	if keySpaceSize <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", keySpaceSize)
 		os.Exit(1)

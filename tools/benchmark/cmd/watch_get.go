@@ -49,7 +49,7 @@ func init() {
 	watchGetCmd.Flags().IntVar(&watchEvents, "events", 8, "Number of events per watcher")
 }
 
-func watchGetFunc(cmd *cobra.Command, args []string) {
+func watchGetFunc(_ *cobra.Command, _ []string) {
 	clients := mustCreateClients(totalClients, totalConns)
 	getClient := mustCreateClients(1, 1)
 

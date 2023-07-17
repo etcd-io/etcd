@@ -69,7 +69,7 @@ type request struct {
 	op      v3.Op
 }
 
-func mixedTxnFunc(cmd *cobra.Command, args []string) {
+func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 	if keySpaceSize <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", keySpaceSize)
 		os.Exit(1)
