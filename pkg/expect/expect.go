@@ -286,7 +286,7 @@ func (ep *ExpectProcess) ExitError() error {
 // Stop signals the process to terminate via SIGTERM
 func (ep *ExpectProcess) Stop() error {
 	err := ep.Signal(syscall.SIGTERM)
-	if err != nil && strings.Contains(err.Error(), "os: process already finished") {
+	if err != nil && errors.Is(err, os.ErrProcessDone) {
 		return nil
 	}
 	return err
