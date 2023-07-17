@@ -232,19 +232,9 @@ func (s *store) checkPrevCompactionCompleted() bool {
 	tx := s.b.ReadTx()
 	tx.Lock()
 	defer tx.Unlock()
-	_, scheduledCompactBytes := tx.UnsafeRange(buckets.Meta, scheduledCompactKeyName, nil, 0)
-	scheduledCompact := int64(0)
-	if len(scheduledCompactBytes) != 0 {
-		scheduledCompact = bytesToRev(scheduledCompactBytes[0]).main
-	}
-
-	_, finishedCompactBytes := tx.UnsafeRange(buckets.Meta, finishedCompactKeyName, nil, 0)
-	finishedCompact := int64(0)
-	if len(finishedCompactBytes) != 0 {
-		finishedCompact = bytesToRev(finishedCompactBytes[0]).main
-
-	}
-	return scheduledCompact == finishedCompact
+	scheduledCompact, scheduledCompactFound := UnsafeReadScheduledCompact(tx)
+	finishedCompact, finishedCompactFound := UnsafeReadFinishedCompact(tx)
+	return scheduledCompact == finishedCompact && scheduledCompactFound == finishedCompactFound
 }
 
 func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevCompactionCompleted bool) (<-chan struct{}, error) {
@@ -343,10 +333,10 @@ func (s *store) restore() error {
 	tx := s.b.ReadTx()
 	tx.Lock()
 
-	_, finishedCompactBytes := tx.UnsafeRange(buckets.Meta, finishedCompactKeyName, nil, 0)
-	if len(finishedCompactBytes) != 0 {
+	finishedCompact, found := UnsafeReadFinishedCompact(tx)
+	if found {
 		s.revMu.Lock()
-		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
+		s.compactMainRev = finishedCompact
 
 		s.lg.Info(
 			"restored last compact revision",
@@ -356,11 +346,7 @@ func (s *store) restore() error {
 		)
 		s.revMu.Unlock()
 	}
-	_, scheduledCompactBytes := tx.UnsafeRange(buckets.Meta, scheduledCompactKeyName, nil, 0)
-	scheduledCompact := int64(0)
-	if len(scheduledCompactBytes) != 0 {
-		scheduledCompact = bytesToRev(scheduledCompactBytes[0]).main
-	}
+	scheduledCompact, _ := UnsafeReadScheduledCompact(tx)
 
 	// index keys concurrently as they're loaded in from tx
 	keysGauge.Set(0)
