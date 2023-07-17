@@ -7,6 +7,12 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### Dependencies
 - Compile binaries using [go 1.19.11](https://github.com/etcd-io/etcd/pull/16228).
 
+### etcd server
+- Improve [Skip getting authInfo from incoming context when auth is disabled](https://github.com/etcd-io/etcd/pull/16240)
+
+### Package `clientv3`
+- Fix [Reset auth token when failing to authenticate due to auth being disabled](https://github.com/etcd-io/etcd/pull/16240)
+
 <hr>
 
 ## v3.4.27 (2023-07-11)
