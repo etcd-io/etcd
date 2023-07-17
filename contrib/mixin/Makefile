@@ -7,7 +7,7 @@ PROMETHEUS_VERSION := 2.33.1
 tools:
 	go install github.com/google/go-jsonnet/cmd/jsonnet@latest
 	go install github.com/brancz/gojsontoyaml@latest
-	go install -github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
+	go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
 	wget -qO- "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.${OS}-${ARCH}.tar.gz" |\
 	tar xvz --strip-components=1 -C "$$(go env GOPATH)/bin" prometheus-${PROMETHEUS_VERSION}.${OS}-${ARCH}/promtool
 
