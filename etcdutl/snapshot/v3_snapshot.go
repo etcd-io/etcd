@@ -84,7 +84,7 @@ type v3Manager struct {
 	snapDir   string
 	cl        *membership.RaftCluster
 
-	skipHashCheck bool
+	skipHashCheck   bool
 	initialMmapSize uint64
 }
 
@@ -238,7 +238,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		PeerURLs:            pURLs,
 		InitialPeerURLsMap:  ics,
 		InitialClusterToken: cfg.InitialClusterToken,
-		InitialMmapSize: cfg.InitialMmapSize,
+		InitialMmapSize:     cfg.InitialMmapSize,
 	}
 	if err = srv.VerifyBootstrap(); err != nil {
 		return err
@@ -340,7 +340,7 @@ func (s *v3Manager) saveDB() error {
 // modifyLatestRevision can increase the latest revision by the given amount and sets the scheduled compaction
 // to that revision so that the server will consider this revision compacted.
 func (s *v3Manager) modifyLatestRevision(bumpAmount uint64) error {
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(backend.BackendConfig{Logger: s.lg, Path: s.outDbPath()})
 	defer func() {
 		be.ForceCommit()
 		be.Close()
