@@ -104,7 +104,7 @@ func endpointMemoryMetrics(host string, scfg *clientv3.SecureConfig) float64 {
 		// load client certificate
 		cert, err := tls.LoadX509KeyPair(scfg.Cert, scfg.Key)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("client certificate error: %v", err))
+			fmt.Printf("client certificate error: %v\n", err)
 			return 0.0
 		}
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
@@ -114,13 +114,13 @@ func endpointMemoryMetrics(host string, scfg *clientv3.SecureConfig) float64 {
 	}
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("fetch error: %v", err))
+		fmt.Printf("fetch error: %v\n", err)
 		return 0.0
 	}
 	byts, readerr := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if readerr != nil {
-		fmt.Println(fmt.Sprintf("fetch error: reading %s: %v", url, readerr))
+		fmt.Printf("fetch error: reading %s: %v\n", url, readerr)
 		return 0.0
 	}
 
@@ -131,12 +131,12 @@ func endpointMemoryMetrics(host string, scfg *clientv3.SecureConfig) float64 {
 		}
 	}
 	if residentMemoryValue == "" {
-		fmt.Println(fmt.Sprintf("could not find: %v", residentMemoryKey))
+		fmt.Printf("could not find: %v\n", residentMemoryKey)
 		return 0.0
 	}
 	residentMemoryBytes, parseErr := strconv.ParseFloat(residentMemoryValue, 64)
 	if parseErr != nil {
-		fmt.Println(fmt.Sprintf("parse error: %v", parseErr))
+		fmt.Printf("parse error: %v\n", parseErr)
 		return 0.0
 	}
 
