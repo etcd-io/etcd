@@ -97,20 +97,20 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 	}
 
 	kvs := make([]mvccpb.KeyValue, limit)
-	revBytes := newRevBytes()
+	revBytes := NewRevBytes()
 	for i, revpair := range revpairs[:len(kvs)] {
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("rangeKeys: context cancelled: %w", ctx.Err())
 		default:
 		}
-		revToBytes(revpair, revBytes)
+		revBytes = RevToBytes(revpair, revBytes)
 		_, vs := tr.tx.UnsafeRange(schema.Key, revBytes, nil, 0)
 		if len(vs) != 1 {
 			tr.s.lg.Fatal(
 				"range failed to find revision pair",
-				zap.Int64("revision-main", revpair.main),
-				zap.Int64("revision-sub", revpair.sub),
+				zap.Int64("revision-main", revpair.Main),
+				zap.Int64("revision-sub", revpair.Sub),
 				zap.Int64("revision-current", curRev),
 				zap.Int64("range-option-rev", ro.Rev),
 				zap.Int64("range-option-limit", ro.Limit),
@@ -202,13 +202,13 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	// get its previous leaseID
 	_, created, ver, err := tw.s.kvindex.Get(key, rev)
 	if err == nil {
-		c = created.main
+		c = created.Main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
 		tw.trace.Step("get key's previous created_revision and leaseID")
 	}
-	ibytes := newRevBytes()
-	idxRev := revision{main: rev, sub: int64(len(tw.changes))}
-	revToBytes(idxRev, ibytes)
+	ibytes := NewRevBytes()
+	idxRev := Revision{Main: rev, Sub: int64(len(tw.changes))}
+	ibytes = RevToBytes(idxRev, ibytes)
 
 	ver = ver + 1
 	kv := mvccpb.KeyValue{
@@ -279,11 +279,9 @@ func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 }
 
 func (tw *storeTxnWrite) delete(key []byte) {
-	ibytes := newRevBytes()
-	idxRev := revision{main: tw.beginRev + 1, sub: int64(len(tw.changes))}
-	revToBytes(idxRev, ibytes)
-
-	ibytes = appendMarkTombstone(tw.storeTxnCommon.s.lg, ibytes)
+	ibytes := NewRevBytes()
+	idxRev := newBucketKey(tw.beginRev+1, int64(len(tw.changes)), true)
+	ibytes = BucketKeyToBytes(idxRev, ibytes)
 
 	kv := mvccpb.KeyValue{Key: key}
 
@@ -296,7 +294,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 	}
 
 	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
-	err = tw.s.kvindex.Tombstone(key, idxRev)
+	err = tw.s.kvindex.Tombstone(key, idxRev.Revision)
 	if err != nil {
 		tw.storeTxnCommon.s.lg.Fatal(
 			"failed to tombstone an existing key",
