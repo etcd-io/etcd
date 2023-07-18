@@ -32,8 +32,8 @@ type Session struct {
 	opts   *sessionOptions
 	id     v3.LeaseID
 
+	ctx    context.Context
 	cancel context.CancelFunc
-	donec  <-chan struct{}
 }
 
 // NewSession gets the leased session for a client.
@@ -60,12 +60,11 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 		return nil, err
 	}
 
-	donec := make(chan struct{})
-	s := &Session{client: client, opts: ops, id: id, cancel: cancel, donec: donec}
+	s := &Session{client: client, opts: ops, id: id, ctx: ctx, cancel: cancel}
 
 	// keep the lease alive until client error or cancelled context
 	go func() {
-		defer close(donec)
+		defer cancel()
 		for range keepAlive {
 			// eat messages until keep alive channel closes
 		}
@@ -82,16 +81,22 @@ func (s *Session) Client() *v3.Client {
 // Lease is the lease ID for keys bound to the session.
 func (s *Session) Lease() v3.LeaseID { return s.id }
 
+// Ctx is the context attached to the session, it is canceled when the lease is orphaned, expires, or
+// is otherwise no longer being refreshed.
+func (s *Session) Ctx() context.Context {
+	return s.ctx
+}
+
 // Done returns a channel that closes when the lease is orphaned, expires, or
 // is otherwise no longer being refreshed.
-func (s *Session) Done() <-chan struct{} { return s.donec }
+func (s *Session) Done() <-chan struct{} { return s.ctx.Done() }
 
 // Orphan ends the refresh for the session lease. This is useful
 // in case the state of the client connection is indeterminate (revoke
 // would fail) or when transferring lease ownership.
 func (s *Session) Orphan() {
 	s.cancel()
-	<-s.donec
+	<-s.ctx.Done()
 }
 
 // Close orphans the session and revokes the session lease.

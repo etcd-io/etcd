@@ -82,3 +82,32 @@ func TestSessionTTLOptions(t *testing.T) {
 	}
 
 }
+
+func TestSessionCtx(t *testing.T) {
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+	lease, err := cli.Grant(context.Background(), 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := concurrency.NewSession(cli, concurrency.WithLease(lease.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	assert.Equal(t, s.Lease(), lease.ID)
+
+	childCtx, cancel := context.WithCancel(s.Ctx())
+	defer cancel()
+
+	go s.Orphan()
+	select {
+	case <-childCtx.Done():
+	case <-time.After(time.Millisecond * 100):
+		t.Fatal("child context of session context is not canceled")
+	}
+	assert.Equal(t, childCtx.Err(), context.Canceled)
+}
