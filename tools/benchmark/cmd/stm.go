@@ -69,7 +69,7 @@ func init() {
 	stmCmd.Flags().IntVar(&stmRate, "rate", 0, "Maximum STM transactions per second (0 is no limit)")
 }
 
-func stmFunc(cmd *cobra.Command, args []string) {
+func stmFunc(cmd *cobra.Command, _ []string) {
 	if stmKeyCount <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --keys, got (%v)", stmKeyCount)
 		os.Exit(1)

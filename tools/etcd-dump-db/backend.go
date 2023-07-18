@@ -113,7 +113,7 @@ func authDecoder(k, v []byte) {
 	}
 }
 
-func authRolesDecoder(k, v []byte) {
+func authRolesDecoder(_, v []byte) {
 	role := &authpb.Role{}
 	err := role.Unmarshal(v)
 	if err != nil {
@@ -122,7 +122,7 @@ func authRolesDecoder(k, v []byte) {
 	fmt.Printf("role=%q, keyPermission=%v\n", string(role.Name), role.KeyPermission)
 }
 
-func authUsersDecoder(k, v []byte) {
+func authUsersDecoder(_, v []byte) {
 	user := &authpb.User{}
 	err := user.Unmarshal(v)
 	if err != nil {

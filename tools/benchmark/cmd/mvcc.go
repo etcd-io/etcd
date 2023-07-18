@@ -59,6 +59,6 @@ func init() {
 	mvccCmd.PersistentFlags().IntVar(&batchLimit, "batch-limit", 10000, "A limit of batched transaction")
 }
 
-func mvccPreRun(cmd *cobra.Command, args []string) {
+func mvccPreRun(_ *cobra.Command, _ []string) {
 	initMVCC()
 }

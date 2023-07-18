@@ -124,6 +124,10 @@ func (op Op) IsKeysOnly() bool { return op.keysOnly }
 // IsCountOnly returns whether countOnly is set.
 func (op Op) IsCountOnly() bool { return op.countOnly }
 
+func (op Op) IsOptsWithFromKey() bool { return op.isOptsWithFromKey }
+
+func (op Op) IsOptsWithPrefix() bool { return op.isOptsWithPrefix }
+
 // MinModRev returns the operation's minimum modify revision.
 func (op Op) MinModRev() int64 { return op.minModRev }
 
