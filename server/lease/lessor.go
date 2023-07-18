@@ -279,12 +279,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 
 	// TODO: when lessor is under high load, it should give out lease
 	// with longer TTL to reduce renew load.
-	l := &Lease{
-		ID:      id,
-		ttl:     ttl,
-		itemSet: make(map[LeaseItem]struct{}),
-		revokec: make(chan struct{}),
-	}
+	l := NewLease(id, ttl)
 
 	if l.ttl < le.minLeaseTTL {
 		l.ttl = le.minLeaseTTL

@@ -17,30 +17,36 @@ package model
 import (
 	"fmt"
 	"strings"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func describeEtcdNonDeterministicResponse(request EtcdRequest, response EtcdNonDeterministicResponse) string {
-	if response.Err != nil {
-		return fmt.Sprintf("err: %q", response.Err)
+func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) string {
+	if response.Error != "" {
+		return fmt.Sprintf("err: %q", response.Error)
 	}
-	if response.ResultUnknown {
+	if response.PartialResponse {
 		return fmt.Sprintf("unknown, rev: %d", response.Revision)
 	}
-	return describeEtcdResponse(request, response.EtcdResponse)
-}
-
-func describeEtcdResponse(request EtcdRequest, response EtcdResponse) string {
-	if request.Type == Txn {
+	switch request.Type {
+	case Range:
+		return fmt.Sprintf("%s, rev: %d", describeRangeResponse(request.Range.RangeOptions, *response.Range), response.Revision)
+	case Txn:
 		return fmt.Sprintf("%s, rev: %d", describeTxnResponse(request.Txn, response.Txn), response.Revision)
+	case LeaseGrant, LeaseRevoke, Defragment:
+		if response.Revision == 0 {
+			return "ok"
+		}
+		return fmt.Sprintf("ok, rev: %d", response.Revision)
+	default:
+		return fmt.Sprintf("<! unknown request type: %q !>", request.Type)
 	}
-	if response.Revision == 0 {
-		return "ok"
-	}
-	return fmt.Sprintf("ok, rev: %d", response.Revision)
 }
 
 func describeEtcdRequest(request EtcdRequest) string {
 	switch request.Type {
+	case Range:
+		return describeRangeRequest(request.Range.RangeOptions, request.Range.Revision)
 	case Txn:
 		onSuccess := describeEtcdOperations(request.Txn.OperationsOnSuccess)
 		if len(request.Txn.Conditions) != 0 {
@@ -100,48 +106,68 @@ func describeTxnResponse(request *TxnRequest, response *TxnResponse) string {
 
 func describeEtcdOperation(op EtcdOperation) string {
 	switch op.Type {
-	case Range:
-		if op.WithPrefix {
-			if op.Limit != 0 {
-				return fmt.Sprintf("range(%q, limit=%d)", op.Key, op.Limit)
-			}
-			return fmt.Sprintf("range(%q)", op.Key)
+	case RangeOperation:
+		return describeRangeRequest(op.Range, 0)
+	case PutOperation:
+		if op.Put.LeaseID != 0 {
+			return fmt.Sprintf("put(%q, %s, %d)", op.Put.Key, describeValueOrHash(op.Put.Value), op.Put.LeaseID)
 		}
-		return fmt.Sprintf("get(%q)", op.Key)
-	case Put:
-		if op.LeaseID != 0 {
-			return fmt.Sprintf("put(%q, %s, %d)", op.Key, describeValueOrHash(op.Value), op.LeaseID)
-		}
-		return fmt.Sprintf("put(%q, %s)", op.Key, describeValueOrHash(op.Value))
-	case Delete:
-		return fmt.Sprintf("delete(%q)", op.Key)
+		return fmt.Sprintf("put(%q, %s)", op.Put.Key, describeValueOrHash(op.Put.Value))
+	case DeleteOperation:
+		return fmt.Sprintf("delete(%q)", op.Delete.Key)
 	default:
 		return fmt.Sprintf("<! unknown op: %q !>", op.Type)
 	}
 }
 
-func describeEtcdOperationResponse(req EtcdOperation, resp EtcdOperationResult) string {
-	switch req.Type {
-	case Range:
-		if req.WithPrefix {
-			kvs := make([]string, len(resp.KVs))
-			for i, kv := range resp.KVs {
-				kvs[i] = describeValueOrHash(kv.Value)
-			}
-			return fmt.Sprintf("[%s], count: %d", strings.Join(kvs, ","), resp.Count)
-		} else {
-			if len(resp.KVs) == 0 {
-				return "nil"
-			} else {
-				return describeValueOrHash(resp.KVs[0].Value)
-			}
-		}
-	case Put:
+func describeRangeRequest(opts RangeOptions, revision int64) string {
+	kwargs := []string{}
+	if revision != 0 {
+		kwargs = append(kwargs, fmt.Sprintf("rev=%d", revision))
+	}
+	if opts.Limit != 0 {
+		kwargs = append(kwargs, fmt.Sprintf("limit=%d", opts.Limit))
+	}
+	kwargsString := strings.Join(kwargs, ", ")
+	if kwargsString != "" {
+		kwargsString = ", " + kwargsString
+	}
+	switch {
+	case opts.End == "":
+		return fmt.Sprintf("get(%q%s)", opts.Start, kwargsString)
+	case opts.End == clientv3.GetPrefixRangeEnd(opts.Start):
+		return fmt.Sprintf("list(%q%s)", opts.Start, kwargsString)
+	default:
+		return fmt.Sprintf("range(%q..%q%s)", opts.Start, opts.End, kwargsString)
+	}
+}
+
+func describeEtcdOperationResponse(op EtcdOperation, resp EtcdOperationResult) string {
+	switch op.Type {
+	case RangeOperation:
+		return describeRangeResponse(op.Range, resp.RangeResponse)
+	case PutOperation:
 		return fmt.Sprintf("ok")
-	case Delete:
+	case DeleteOperation:
 		return fmt.Sprintf("deleted: %d", resp.Deleted)
 	default:
-		return fmt.Sprintf("<! unknown op: %q !>", req.Type)
+		return fmt.Sprintf("<! unknown op: %q !>", op.Type)
+	}
+}
+
+func describeRangeResponse(request RangeOptions, response RangeResponse) string {
+	if request.End != "" {
+		kvs := make([]string, len(response.KVs))
+		for i, kv := range response.KVs {
+			kvs[i] = describeValueOrHash(kv.Value)
+		}
+		return fmt.Sprintf("[%s], count: %d", strings.Join(kvs, ","), response.Count)
+	} else {
+		if len(response.KVs) == 0 {
+			return "nil"
+		} else {
+			return describeValueOrHash(response.KVs[0].Value)
+		}
 	}
 }
 

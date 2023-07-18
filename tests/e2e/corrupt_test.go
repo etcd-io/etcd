@@ -99,6 +99,89 @@ func corruptTest(cx ctlCtx) {
 	e2e.WaitReadyExpectProc(context.TODO(), proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
 }
 
+func TestInPlaceRecovery(t *testing.T) {
+	basePort := 20000
+	e2e.BeforeTest(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Initialize the cluster.
+	epcOld, err := e2e.NewEtcdProcessCluster(ctx, t,
+		e2e.WithInitialClusterToken("old"),
+		e2e.WithKeepDataDir(false),
+		e2e.WithCorruptCheckTime(time.Second),
+		e2e.WithBasePort(basePort),
+	)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	t.Cleanup(func() {
+		if errC := epcOld.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+	t.Log("old cluster started.")
+
+	//Put some data into the old cluster, so that after recovering from a blank db, the hash diverges.
+	t.Log("putting 10 keys...")
+	oldCc, err := e2e.NewEtcdctl(epcOld.Cfg.Client, epcOld.EndpointsGRPC())
+	assert.NoError(t, err)
+	for i := 0; i < 10; i++ {
+		err := oldCc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
+		assert.NoError(t, err, "error on put")
+	}
+
+	// Create a new cluster config, but with the same port numbers. In this way the new servers can stay in
+	// contact with the old ones.
+	epcNewConfig := e2e.NewConfig(
+		e2e.WithInitialClusterToken("new"),
+		e2e.WithKeepDataDir(false),
+		e2e.WithCorruptCheckTime(time.Second),
+		e2e.WithBasePort(basePort),
+		e2e.WithInitialCorruptCheck(true),
+	)
+	epcNew, err := e2e.InitEtcdProcessCluster(t, epcNewConfig)
+	if err != nil {
+		t.Fatalf("could not init etcd process cluster (%v)", err)
+	}
+	t.Cleanup(func() {
+		if errC := epcNew.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+
+	newCc, err := e2e.NewEtcdctl(epcNew.Cfg.Client, epcNew.EndpointsGRPC())
+	assert.NoError(t, err)
+
+	// Rolling recovery of the servers.
+	t.Log("rolling updating servers in place...")
+	for i, newProc := range epcNew.Procs {
+		oldProc := epcOld.Procs[i]
+		err = oldProc.Close()
+		if err != nil {
+			t.Fatalf("could not stop etcd process (%v)", err)
+		}
+		t.Logf("old cluster server %d: %s stopped.", i, oldProc.Config().Name)
+		err = newProc.Start(ctx)
+		if err != nil {
+			t.Fatalf("could not start etcd process (%v)", err)
+		}
+		t.Logf("new cluster server %d: %s started in-place with blank db.", i, newProc.Config().Name)
+		t.Log("sleeping 5 sec to let nodes do periodical check...")
+		time.Sleep(5 * time.Second)
+	}
+	t.Log("new cluster started.")
+
+	alarmResponse, err := newCc.AlarmList(ctx)
+	assert.NoError(t, err, "error on alarm list")
+	for _, alarm := range alarmResponse.Alarms {
+		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
+			t.Fatalf("there is no corruption after in-place recovery, but corruption reported.")
+		}
+	}
+	t.Log("no corruption detected.")
+}
+
 func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)

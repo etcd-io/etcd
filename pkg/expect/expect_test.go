@@ -72,8 +72,8 @@ func TestExpectFuncTimeout(t *testing.T) {
 	}
 
 	err = ep.Close()
-	require.ErrorContains(t, err, "unexpected exit code [-1] after running [/usr/bin/tail -f /dev/null]")
-	require.Equal(t, -1, ep.exitCode)
+	require.ErrorContains(t, err, "unexpected exit code [143] after running [/usr/bin/tail -f /dev/null]")
+	require.Equal(t, 143, ep.exitCode)
 }
 
 func TestExpectFuncExitFailure(t *testing.T) {
@@ -108,8 +108,9 @@ func TestExpectFuncExitFailureStop(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "unexpected exit code [1] after running [/usr/bin/tail -x]")
 	exitCode, err := ep.ExitCode()
-	require.Equal(t, 0, exitCode)
-	require.Equal(t, err, ErrProcessRunning)
+	require.Equal(t, 1, exitCode)
+	require.NoError(t, err)
+
 	if err := ep.Stop(); err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +190,7 @@ func TestSignal(t *testing.T) {
 	go func() {
 		defer close(donec)
 		err = ep.Close()
-		assert.ErrorContains(t, err, "unexpected exit code [-1]")
+		assert.ErrorContains(t, err, "unexpected exit code [130]")
 		assert.ErrorContains(t, err, "sleep 100")
 	}()
 	select {
@@ -197,4 +198,23 @@ func TestSignal(t *testing.T) {
 		t.Fatalf("signal test timed out")
 	case <-donec:
 	}
+}
+
+func TestExitCodeAfterKill(t *testing.T) {
+	ep, err := NewExpect("sleep", "100")
+	require.NoError(t, err)
+
+	ep.Signal(os.Kill)
+	ep.Wait()
+	code, err := ep.ExitCode()
+	assert.Equal(t, 137, code)
+	assert.NoError(t, err)
+}
+
+func TestExpectForFailFastCommand(t *testing.T) {
+	ep, err := NewExpect("sh", "-c", `echo "curl: (59) failed setting cipher list"; exit 59`)
+	require.NoError(t, err)
+
+	_, err = ep.Expect("failed setting cipher list")
+	require.NoError(t, err)
 }

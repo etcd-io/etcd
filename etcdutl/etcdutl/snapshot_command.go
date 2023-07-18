@@ -38,6 +38,8 @@ var (
 	restorePeerURLs     string
 	restoreName         string
 	skipHashCheck       bool
+	markCompacted       bool
+	revisionBump        uint64
 	initialMmapSize   = uint64(10 * 1024 * 1024 * 1024)
 )
 
@@ -76,6 +78,8 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
+	cmd.Flags().Uint64Var(&revisionBump, "bump-revision", 0, "How much to increase the latest revision after restore")
+	cmd.Flags().BoolVar(&markCompacted, "mark-compacted", false, "Mark the latest revision after restore as the point of scheduled compaction (required if --bump-revision > 0, disallowed otherwise)")
 	cmd.Flags().Uint64Var(&initialMmapSize, "initial-memory-map-size", initialMmapSize, "Initial memory map allocation size(bytes) for the DB. if not defined, it uses the default. Also 0 means use default")
 
 	cmd.MarkFlagDirname("data-dir")
@@ -102,7 +106,7 @@ func SnapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 
 func snapshotRestoreCommandFunc(_ *cobra.Command, args []string) {
 	SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWalDir,
-		restorePeerURLs, restoreName, skipHashCheck, initialMmapSize, args)
+		restorePeerURLs, restoreName, skipHashCheck, revisionBump, markCompacted, initialMmapSize, args)
 }
 
 func SnapshotRestoreCommandFunc(restoreCluster string,
@@ -112,10 +116,17 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 	restorePeerURLs string,
 	restoreName string,
 	skipHashCheck bool,
+	revisionBump uint64,
+	markCompacted bool,
 	initialMmapSize uint64,
 	args []string) {
 	if len(args) != 1 {
 		err := fmt.Errorf("snapshot restore requires exactly one argument")
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
+	}
+
+	if (revisionBump == 0 && markCompacted) || (revisionBump > 0 && !markCompacted) {
+		err := fmt.Errorf("--mark-compacted required if --revision-bump > 0")
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
@@ -141,6 +152,8 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 		InitialCluster:      restoreCluster,
 		InitialClusterToken: restoreClusterToken,
 		SkipHashCheck:       skipHashCheck,
+		RevisionBump:        revisionBump,
+		MarkCompacted:       markCompacted,
 		InitialMmapSize:     initialMmapSize,
 	}); err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)

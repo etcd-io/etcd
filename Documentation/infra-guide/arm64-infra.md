@@ -4,7 +4,7 @@
 
 All etcd project pipelines run via github actions. The etcd project currently maintains dedicated infrastructure for running `arm64` continuous integration testing. This is required because currently github actions runner virtual machines are only offered as `x64`.
 
-The infrastructure consists of two `c3.large.arm` bare metal servers kindly provided by [Equinix Metal](https://www.equinix.com/) via the [CNCF Community Infrastructure Lab](https://github.com/cncf/cluster/issues/227).
+The infrastructure consists of two `c3.large.arm` bare metal servers kindly provided by [Equinix Metal](https://www.equinix.com/) via the [CNCF Community Infrastructure Lab].
 
 | Hostname                      | IP             | Operating System   | Region        |
 |-------------------------------|----------------|--------------------|---------------|
@@ -13,7 +13,7 @@ The infrastructure consists of two `c3.large.arm` bare metal servers kindly prov
 
 ## Infrastructure support
 
-The etcd project aims to self manage and resolve issues with project infrastructure internally where possible, however if situations emerge where we need to engage support from Equinix Metal we can open an issue under the [CNCF Community Infrastructure Lab](https://github.com/cncf/cluster/issues) project. If the situation is urgent contact @vielmetti directly who can provide further assistance or escalation points.
+The etcd project aims to self manage and resolve issues with project infrastructure internally where possible, however if situations emerge where we need to engage support from Equinix Metal we can open an issue under the [CNCF Community Infrastructure Lab] project or contact the [Equinix Metal support team](https://deploy.equinix.com/support). If the situation is urgent contact @vielmetti directly who can provide further assistance or escalation points.
 
 ## Granting infrastructure access
 
@@ -23,11 +23,11 @@ Access to the infrastructure is defined by the infra admins table below:
 
 | Name                      | Github         | K8s Slack          | Email              |
 |---------------------------|----------------|--------------------|--------------------|
-| Marek Siarkowicz          | @serathius     | @ Serathius        | Ref MAINTAINERS.md |
-| Benjamin Wang             | @ahrtr         | @ Benjamin Wang    | Ref MAINTAINERS.md |
+| Marek Siarkowicz          | @serathius     | @ Serathius        | Ref MAINTAINERS    |
+| Benjamin Wang             | @ahrtr         | @ Benjamin Wang    | Ref MAINTAINERS    |
 | Davanum Srinivas          | @dimns         | @ Dims             | davanum@gmail.com  |
 | Chao Chen                 | @chaochn47     | @ Chao Chen        | chaochn@amazon.com |
-| James Blair               | @jmhbnz        | @ James Blair      | etcd@jamma.life    |
+| James Blair               | @jmhbnz        | @ James Blair      | Ref MAINTAINERS    |
 
 Individuals in this table are granted access to the infrastructure in two ways:
 
@@ -55,6 +55,74 @@ When a member is removed from the infra admins table existing members must revie
 
 Note: When revoking access do not delete a user or their home directory from servers, as access may need to be reinstated in future.
 
-## Regular access review
+### Regular access review
 
 On a regular at least quarterly basis members of the infra admins team are responsible for verifying that no unneccessary infrastructure access exists by reviewing membership of the table above and existing server access.
+
+## Provisioning new machines
+
+If the etcd project needs new `arm64` infrastructure we can open an issue with the [CNCF Community Infrastructure Lab]. An example etcd request is [here](https://github.com/cncf/cluster/issues/227).
+
+Note: `arm64` compute capacity is not currently available in all regions, this can be checked with [metal-cli](https://github.com/equinix/metal-cli) `metal capacity get | grep arm`.
+
+[CNCF Community Infrastructure Lab]: https://github.com/cncf/cluster/issues
+
+### Setting up a new github actions runner
+
+Once the new blank machine has been provisioned it needs to be set up as a github actions runner to be able to accept etcd workflow jobs. Follow the steps below to complete this:
+
+1. **Install pre-requisites**
+
+With etcd jobs running inside containers we need to ensure the `docker` container engine is present on the machine. We use the `docker.io` package maintained by Ubuntu for this however [official instructions from Docker](https://docs.docker.com/engine/install/ubuntu) are available for reference.
+
+```bash
+# Ensure all packages are up to date
+sudo apt update && sudo apt upgrade
+
+# Install pre-requisites
+sudo apt install --yes build-essential git wget curl docker.io
+
+# Check the docker service is now started and enabled
+sudo systemctl status docker.service && sudo docker ps
+```
+
+2. **Create the runner user**
+
+For security reasons we do not run the github actions runner as `root`, instead we create a new user `runner` and assign it `docker` permissions via group.
+
+```bash
+# Create new user
+sudo adduser runner
+
+# Grant permissions
+sudo usermod -aG docker runner
+```
+
+3. **Follow runner create instructions**
+
+Once pre-requisites are done we can setup the new runner. Rather than reinvent the wheel we can follow existing Github maintained [documentation](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/adding-self-hosted-runners#adding-a-self-hosted-runner-to-a-repository).
+
+This will essentially require a maintainer navigating to the following url and following the generated steps <https://github.com/etcd-io/etcd/settings/actions/runners/new?arch=arm64>.
+
+Switch to the `runner` user and ensure you are in that users home directory before running the generated setup steps.
+
+```bash
+sudo su runner && cd /home/runner
+```
+
+4. **Test and start actions runner**
+
+For a final verification, before we start the runner we should check the docker access setup above is working.
+
+If all is well we can start the runner!
+
+```bash
+# Switch to the runner user
+sudo su runner
+
+# Test runner can docker ps
+docker ps
+
+# Start the runner if all is working
+cd /home/runner/actions-runner && nohup ./run.sh &
+```

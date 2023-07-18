@@ -1104,6 +1104,14 @@ func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {
 	})
 }
 
+func verifyConsistentIndexIsLatest(lg *zap.Logger, snapshot raftpb.Snapshot, cindex uint64) {
+	verify.Verify(func() {
+		if cindex < snapshot.Metadata.Index {
+			lg.Panic(fmt.Sprintf("consistent_index(%d) is older than snapshot index (%d)", cindex, snapshot.Metadata.Index))
+		}
+	})
+}
+
 func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 	if len(apply.entries) == 0 {
 		return
@@ -1125,7 +1133,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 		return
 	}
 	var shouldstop bool
-	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState); shouldstop {
+	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState, apply.raftAdvancedC); shouldstop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 	}
 }
@@ -1641,8 +1649,9 @@ func (s *EtcdServer) AppliedIndex() uint64 { return s.getAppliedIndex() }
 func (s *EtcdServer) Term() uint64 { return s.getTerm() }
 
 type confChangeResponse struct {
-	membs []*membership.Member
-	err   error
+	membs        []*membership.Member
+	raftAdvanceC <-chan struct{}
+	err          error
 }
 
 // configure sends a configuration change through consensus and
@@ -1665,6 +1674,11 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 			lg.Panic("failed to configure")
 		}
 		resp := x.(*confChangeResponse)
+		// etcdserver need to ensure the raft has already been notified
+		// or advanced before it responds to the client. Otherwise, the
+		// following config change request may be rejected.
+		// See https://github.com/etcd-io/etcd/issues/15528.
+		<-resp.raftAdvanceC
 		lg.Info(
 			"applied a configuration change through raft",
 			zap.String("local-member-id", s.MemberId().String()),
@@ -1802,6 +1816,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 func (s *EtcdServer) apply(
 	es []raftpb.Entry,
 	confState *raftpb.ConfState,
+	raftAdvancedC <-chan struct{},
 ) (appliedt uint64, appliedi uint64, shouldStop bool) {
 	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
 	for i := range es {
@@ -1833,7 +1848,7 @@ func (s *EtcdServer) apply(
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 			shouldStop = shouldStop || removedSelf
-			s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), err})
+			s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), raftAdvancedC, err})
 
 		default:
 			lg := s.Logger()
@@ -2082,6 +2097,9 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			lg.Panic("failed to create snapshot", zap.Error(err))
 		}
+
+		verifyConsistentIndexIsLatest(lg, snap, s.consistIndex.ConsistentIndex())
+
 		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
 			lg.Panic("failed to save snapshot", zap.Error(err))

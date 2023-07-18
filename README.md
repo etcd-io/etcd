@@ -103,11 +103,7 @@ This will bring up 3 etcd members `infra1`, `infra2` and `infra3` and optionally
 
 Every cluster member and proxy accepts key value reads and key value writes.
 
-Follow the steps in [Procfile.learner](./Procfile.learner) to add a learner node to the cluster. Start the learner node with:
-
-```bash
-goreman -f ./Procfile.learner start
-```
+Follow the comments in [Procfile script](./Procfile) to add a learner node to the cluster.
 
 ### Install etcd client v3
 
@@ -144,7 +140,7 @@ Now it's time to dig into the full etcd API and other guides.
 
 ### Community meetings
 
-etcd contributors and maintainers have monthly (every four weeks) meetings at 11:00 AM (USA Pacific) on Thursday.
+etcd contributors and maintainers meet every two weeks at 11:00 AM (USA Pacific) on Thursday.
 
 An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
 
@@ -191,7 +187,6 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 * Joe Betz
 * Gyuho Lee
 * Jingyi Hu
-* Wenjia Zhang
 * Xiang Li
 * Ben Darnell
 * Sam Batschelet

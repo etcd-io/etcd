@@ -23,12 +23,13 @@ import (
 
 	"go.uber.org/zap"
 
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
+
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/contention"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 const (
@@ -64,13 +65,17 @@ func init() {
 
 // toApply contains entries, snapshot to be applied. Once
 // an toApply is consumed, the entries will be persisted to
-// to raft storage concurrently; the application must read
+// raft storage concurrently; the application must read
 // notifyc before assuming the raft messages are stable.
 type toApply struct {
 	entries  []raftpb.Entry
 	snapshot raftpb.Snapshot
 	// notifyc synchronizes etcd server applies with the raft node
 	notifyc chan struct{}
+	// raftAdvancedC notifies EtcdServer.apply that
+	// 'raftLog.applied' has advanced by r.Advance
+	// it should be used only when entries contain raftpb.EntryConfChange
+	raftAdvancedC <-chan struct{}
 }
 
 type raftNode struct {
@@ -202,10 +207,12 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 
 				notifyc := make(chan struct{}, 1)
+				raftAdvancedC := make(chan struct{}, 1)
 				ap := toApply{
-					entries:  rd.CommittedEntries,
-					snapshot: rd.Snapshot,
-					notifyc:  notifyc,
+					entries:       rd.CommittedEntries,
+					snapshot:      rd.Snapshot,
+					notifyc:       notifyc,
+					raftAdvancedC: raftAdvancedC,
 				}
 
 				updateCommittedIndex(&ap, rh)
@@ -268,6 +275,14 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 				r.raftStorage.Append(rd.Entries)
 
+				confChanged := false
+				for _, ent := range rd.CommittedEntries {
+					if ent.Type == raftpb.EntryConfChange {
+						confChanged = true
+						break
+					}
+				}
+
 				if !islead {
 					// finish processing incoming messages before we signal notifyc chan
 					msgs := r.processMessages(rd.Messages)
@@ -282,14 +297,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// on its own single-node cluster, before toApply-layer applies the config change.
 					// We simply wait for ALL pending entries to be applied for now.
 					// We might improve this later on if it causes unnecessary long blocking issues.
-					waitApply := false
-					for _, ent := range rd.CommittedEntries {
-						if ent.Type == raftpb.EntryConfChange {
-							waitApply = true
-							break
-						}
-					}
-					if waitApply {
+
+					if confChanged {
 						// blocks until 'applyAll' calls 'applyWait.Trigger'
 						// to be in sync with scheduled config-change job
 						// (assume notifyc has cap of 1)
@@ -307,7 +316,13 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					notifyc <- struct{}{}
 				}
 
+				// gofail: var raftBeforeAdvance struct{}
 				r.Advance()
+
+				if confChanged {
+					// notify etcdserver that raft has already been notified or advanced.
+					raftAdvancedC <- struct{}{}
+				}
 			case <-r.stopped:
 				return
 			}

@@ -23,6 +23,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	"go.etcd.io/etcd/tests/v3/robustness/report"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
@@ -34,12 +36,12 @@ var (
 	MultiOpTxnOpCount       = 4
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []ClientReport {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []report.ClientReport {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
 	lm := identity.NewLeaseIdStorage()
-	reports := []ClientReport{}
+	reports := []report.ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
 
 	startTime := time.Now()
@@ -49,6 +51,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	}
 	defer cc.Close()
 	wg := sync.WaitGroup{}
+	nonUniqueWriteLimiter := NewConcurrencyLimiter(config.maxNonUniqueRequestConcurrency)
 	for i := 0; i < config.clientCount; i++ {
 		wg.Add(1)
 		c, err := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
@@ -59,7 +62,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			config.Traffic.Run(ctx, c, limiter, ids, lm, finish)
+			config.Traffic.Run(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, finish)
 			mux.Lock()
 			reports = append(reports, c.Report())
 			mux.Unlock()
@@ -70,7 +73,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	// Ensure that last operation is succeeds
 	time.Sleep(time.Second)
-	err = cc.Put(ctx, "tombstone", "true")
+	_, err = cc.Put(ctx, "tombstone", "true")
 	if err != nil {
 		t.Error(err)
 	}
@@ -78,7 +81,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	var operationCount int
 	for _, r := range reports {
-		operationCount += r.OperationHistory.Len()
+		operationCount += len(r.KeyValue)
 	}
 	lg.Info("Recorded operations", zap.Int("operationCount", operationCount))
 
@@ -91,14 +94,15 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 }
 
 type Config struct {
-	Name        string
-	minimalQPS  float64
-	maximalQPS  float64
-	clientCount int
-	Traffic     Traffic
+	Name                           string
+	minimalQPS                     float64
+	maximalQPS                     float64
+	maxNonUniqueRequestConcurrency int
+	clientCount                    int
+	Traffic                        Traffic
 }
 
 type Traffic interface {
-	Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, finish <-chan struct{})
+	Run(ctx context.Context, c *RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
 	ExpectUniqueRevision() bool
 }

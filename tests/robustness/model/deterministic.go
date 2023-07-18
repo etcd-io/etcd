@@ -16,32 +16,42 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"reflect"
 	"sort"
-	"strings"
 
 	"github.com/anishathalye/porcupine"
 )
 
-// DeterministicModel assumes that all requests succeed and have a correct response.
+// DeterministicModel assumes a deterministic execution of etcd requests. All
+// requests that client called were executed and persisted by etcd. This
+// assumption is good for simulating etcd behavior (aka writing a fake), but not
+// for validating correctness as requests might be lost or interrupted. It
+// requires perfect knowledge of what happened to request which is not possible
+// in real systems.
+//
+// Model can still respond with error or partial response.
+//   - Error for etcd known errors, like future revision or compacted revision.
+//   - Incomplete response when requests is correct, but model doesn't have all
+//     to provide a full response. For example stale reads as model doesn't store
+//     whole change history as real etcd does.
 var DeterministicModel = porcupine.Model{
 	Init: func() interface{} {
-		var s etcdState
-		data, err := json.Marshal(s)
+		data, err := json.Marshal(freshEtcdState())
 		if err != nil {
 			panic(err)
 		}
 		return string(data)
 	},
 	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
-		var s etcdState
+		var s EtcdState
 		err := json.Unmarshal([]byte(st.(string)), &s)
 		if err != nil {
 			panic(err)
 		}
-		ok, s := s.Step(in.(EtcdRequest), out.(EtcdResponse))
+		ok, s := s.apply(in.(EtcdRequest), out.(EtcdResponse))
 		data, err := json.Marshal(s)
 		if err != nil {
 			panic(err)
@@ -49,73 +59,24 @@ var DeterministicModel = porcupine.Model{
 		return ok, string(data)
 	},
 	DescribeOperation: func(in, out interface{}) string {
-		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(EtcdResponse)))
+		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
 	},
 }
 
-type etcdState struct {
+type EtcdState struct {
 	Revision  int64
 	KeyValues map[string]ValueRevision
 	KeyLeases map[string]int64
 	Leases    map[int64]EtcdLease
 }
 
-func (s etcdState) Step(request EtcdRequest, response EtcdResponse) (bool, etcdState) {
-	if s.Revision == 0 {
-		return true, initState(request, response)
-	}
-	newState, gotResponse := s.step(request)
-	return reflect.DeepEqual(response, gotResponse), newState
+func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
+	newState, modelResponse := s.Step(request)
+	return Match(MaybeEtcdResponse{EtcdResponse: response}, modelResponse), newState
 }
 
-// initState tries to create etcd state based on the first request.
-func initState(request EtcdRequest, response EtcdResponse) etcdState {
-	state := emptyState()
-	state.Revision = response.Revision
-	switch request.Type {
-	case Txn:
-		if response.Txn.Failure {
-			return state
-		}
-		if len(request.Txn.OperationsOnSuccess) != len(response.Txn.Results) {
-			panic(fmt.Sprintf("Incorrect request %s, response %+v", describeEtcdRequest(request), describeEtcdResponse(request, response)))
-		}
-		for i, op := range request.Txn.OperationsOnSuccess {
-			opResp := response.Txn.Results[i]
-			switch op.Type {
-			case Range:
-				for _, kv := range opResp.KVs {
-					state.KeyValues[kv.Key] = ValueRevision{
-						Value:       kv.Value,
-						ModRevision: kv.ModRevision,
-					}
-				}
-			case Put:
-				state.KeyValues[op.Key] = ValueRevision{
-					Value:       op.Value,
-					ModRevision: response.Revision,
-				}
-			case Delete:
-			default:
-				panic("Unknown operation")
-			}
-		}
-	case LeaseGrant:
-		lease := EtcdLease{
-			LeaseID: request.LeaseGrant.LeaseID,
-			Keys:    map[string]struct{}{},
-		}
-		state.Leases[request.LeaseGrant.LeaseID] = lease
-	case LeaseRevoke:
-	case Defragment:
-	default:
-		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
-	}
-	return state
-}
-
-func emptyState() etcdState {
-	return etcdState{
+func freshEtcdState() EtcdState {
+	return EtcdState{
 		Revision:  1,
 		KeyValues: map[string]ValueRevision{},
 		KeyLeases: map[string]int64{},
@@ -123,14 +84,24 @@ func emptyState() etcdState {
 	}
 }
 
-// step handles a successful request, returning updated state and response it would generate.
-func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
+// Step handles a successful request, returning updated state and response it would generate.
+func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	newKVs := map[string]ValueRevision{}
 	for k, v := range s.KeyValues {
 		newKVs[k] = v
 	}
 	s.KeyValues = newKVs
 	switch request.Type {
+	case Range:
+		if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
+			resp := s.getRange(request.Range.RangeOptions)
+			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
+		} else {
+			if request.Range.Revision > s.Revision {
+				return s, MaybeEtcdResponse{Error: EtcdFutureRevErr.Error()}
+			}
+			return s, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: s.Revision}}
+		}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
@@ -147,54 +118,29 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		increaseRevision := false
 		for i, op := range operations {
 			switch op.Type {
-			case Range:
+			case RangeOperation:
 				opResp[i] = EtcdOperationResult{
-					KVs: []KeyValue{},
+					RangeResponse: s.getRange(op.Range),
 				}
-				if op.WithPrefix {
-					var count int64
-					for k, v := range s.KeyValues {
-						if strings.HasPrefix(k, op.Key) {
-							opResp[i].KVs = append(opResp[i].KVs, KeyValue{Key: k, ValueRevision: v})
-							count += 1
-						}
-					}
-					sort.Slice(opResp[i].KVs, func(j, k int) bool {
-						return opResp[i].KVs[j].Key < opResp[i].KVs[k].Key
-					})
-					if op.Limit != 0 && count > op.Limit {
-						opResp[i].KVs = opResp[i].KVs[:op.Limit]
-					}
-					opResp[i].Count = count
-				} else {
-					value, ok := s.KeyValues[op.Key]
-					if ok {
-						opResp[i].KVs = append(opResp[i].KVs, KeyValue{
-							Key:           op.Key,
-							ValueRevision: value,
-						})
-						opResp[i].Count = 1
-					}
-				}
-			case Put:
-				_, leaseExists := s.Leases[op.LeaseID]
-				if op.LeaseID != 0 && !leaseExists {
+			case PutOperation:
+				_, leaseExists := s.Leases[op.Put.LeaseID]
+				if op.Put.LeaseID != 0 && !leaseExists {
 					break
 				}
-				s.KeyValues[op.Key] = ValueRevision{
-					Value:       op.Value,
+				s.KeyValues[op.Put.Key] = ValueRevision{
+					Value:       op.Put.Value,
 					ModRevision: s.Revision + 1,
 				}
 				increaseRevision = true
-				s = detachFromOldLease(s, op.Key)
+				s = detachFromOldLease(s, op.Put.Key)
 				if leaseExists {
-					s = attachToNewLease(s, op.LeaseID, op.Key)
+					s = attachToNewLease(s, op.Put.LeaseID, op.Put.Key)
 				}
-			case Delete:
-				if _, ok := s.KeyValues[op.Key]; ok {
-					delete(s.KeyValues, op.Key)
+			case DeleteOperation:
+				if _, ok := s.KeyValues[op.Delete.Key]; ok {
+					delete(s.KeyValues, op.Delete.Key)
 					increaseRevision = true
-					s = detachFromOldLease(s, op.Key)
+					s = detachFromOldLease(s, op.Delete.Key)
 					opResp[i].Deleted = 1
 				}
 			default:
@@ -204,14 +150,14 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		if increaseRevision {
 			s.Revision += 1
 		}
-		return s, EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: s.Revision}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: s.Revision}}
 	case LeaseGrant:
 		lease := EtcdLease{
 			LeaseID: request.LeaseGrant.LeaseID,
 			Keys:    map[string]struct{}{},
 		}
 		s.Leases[request.LeaseGrant.LeaseID] = lease
-		return s, EtcdResponse{Revision: s.Revision, LeaseGrant: &LeaseGrantReponse{}}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: s.Revision, LeaseGrant: &LeaseGrantReponse{}}}
 	case LeaseRevoke:
 		//Delete the keys attached to the lease
 		keyDeleted := false
@@ -230,15 +176,47 @@ func (s etcdState) step(request EtcdRequest) (etcdState, EtcdResponse) {
 		if keyDeleted {
 			s.Revision += 1
 		}
-		return s, EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
 	case Defragment:
-		return s, EtcdResponse{Defragment: &DefragmentResponse{}, Revision: s.Revision}
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: s.Revision}}
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
 }
 
-func detachFromOldLease(s etcdState, key string) etcdState {
+func (s EtcdState) getRange(options RangeOptions) RangeResponse {
+	response := RangeResponse{
+		KVs: []KeyValue{},
+	}
+	if options.End != "" {
+		var count int64
+		for k, v := range s.KeyValues {
+			if k >= options.Start && k < options.End {
+				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: v})
+				count += 1
+			}
+		}
+		sort.Slice(response.KVs, func(j, k int) bool {
+			return response.KVs[j].Key < response.KVs[k].Key
+		})
+		if options.Limit != 0 && count > options.Limit {
+			response.KVs = response.KVs[:options.Limit]
+		}
+		response.Count = count
+	} else {
+		value, ok := s.KeyValues[options.Start]
+		if ok {
+			response.KVs = append(response.KVs, KeyValue{
+				Key:           options.Start,
+				ValueRevision: value,
+			})
+			response.Count = 1
+		}
+	}
+	return response
+}
+
+func detachFromOldLease(s EtcdState, key string) EtcdState {
 	if oldLeaseId, ok := s.KeyLeases[key]; ok {
 		delete(s.Leases[oldLeaseId].Keys, key)
 		delete(s.KeyLeases, key)
@@ -246,7 +224,7 @@ func detachFromOldLease(s etcdState, key string) etcdState {
 	return s
 }
 
-func attachToNewLease(s etcdState, leaseID int64, key string) etcdState {
+func attachToNewLease(s EtcdState, leaseID int64, key string) EtcdState {
 	s.KeyLeases[key] = leaseID
 	s.Leases[leaseID].Keys[key] = leased
 	return s
@@ -255,6 +233,7 @@ func attachToNewLease(s etcdState, leaseID int64, key string) etcdState {
 type RequestType string
 
 const (
+	Range       RequestType = "range"
 	Txn         RequestType = "txn"
 	LeaseGrant  RequestType = "leaseGrant"
 	LeaseRevoke RequestType = "leaseRevoke"
@@ -265,8 +244,30 @@ type EtcdRequest struct {
 	Type        RequestType
 	LeaseGrant  *LeaseGrantRequest
 	LeaseRevoke *LeaseRevokeRequest
+	Range       *RangeRequest
 	Txn         *TxnRequest
 	Defragment  *DefragmentRequest
+}
+
+type RangeRequest struct {
+	RangeOptions
+	Revision int64
+}
+
+type RangeOptions struct {
+	Start string
+	End   string
+	Limit int64
+}
+
+type PutOptions struct {
+	Key     string
+	Value   ValueOrHash
+	LeaseID int64
+}
+
+type DeleteOptions struct {
+	Key string
 }
 
 type TxnRequest struct {
@@ -281,13 +282,19 @@ type EtcdCondition struct {
 }
 
 type EtcdOperation struct {
-	Type       OperationType
-	Key        string
-	WithPrefix bool
-	Limit      int64
-	Value      ValueOrHash
-	LeaseID    int64
+	Type   OperationType
+	Range  RangeOptions
+	Put    PutOptions
+	Delete DeleteOptions
 }
+
+type OperationType string
+
+const (
+	RangeOperation  OperationType = "range-operation"
+	PutOperation    OperationType = "put-operation"
+	DeleteOperation OperationType = "delete-operation"
+)
 
 type LeaseGrantRequest struct {
 	LeaseID int64
@@ -297,17 +304,40 @@ type LeaseRevokeRequest struct {
 }
 type DefragmentRequest struct{}
 
+// MaybeEtcdResponse extends EtcdResponse to represent partial or failed responses.
+// Possible states:
+// * Normal response. Only EtcdResponse is set.
+// * Partial response. The EtcdResponse.Revision and PartialResponse are set.
+// * Failed response. Only Err is set.
+type MaybeEtcdResponse struct {
+	EtcdResponse
+	PartialResponse bool
+	Error           string
+}
+
+var EtcdFutureRevErr = errors.New("future rev")
+
 type EtcdResponse struct {
-	Revision    int64
 	Txn         *TxnResponse
+	Range       *RangeResponse
 	LeaseGrant  *LeaseGrantReponse
 	LeaseRevoke *LeaseRevokeResponse
 	Defragment  *DefragmentResponse
+	Revision    int64
+}
+
+func Match(r1, r2 MaybeEtcdResponse) bool {
+	return ((r1.PartialResponse || r2.PartialResponse) && (r1.Revision == r2.Revision)) || reflect.DeepEqual(r1, r2)
 }
 
 type TxnResponse struct {
 	Failure bool
 	Results []EtcdOperationResult
+}
+
+type RangeResponse struct {
+	KVs   []KeyValue
+	Count int64
 }
 
 type LeaseGrantReponse struct {
@@ -317,8 +347,7 @@ type LeaseRevokeResponse struct{}
 type DefragmentResponse struct{}
 
 type EtcdOperationResult struct {
-	KVs     []KeyValue
-	Count   int64
+	RangeResponse
 	Deleted int64
 }
 

@@ -32,6 +32,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -58,8 +61,6 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,
@@ -689,7 +690,9 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		Data:  pbutil.MustMarshal(cc),
 	}}
 
-	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{})
+	raftAdvancedC := make(chan struct{}, 1)
+	raftAdvancedC <- struct{}{}
+	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{}, raftAdvancedC)
 	consistIndex := srv.consistIndex.ConsistentIndex()
 	assert.Equal(t, uint64(2), appliedi)
 
@@ -763,7 +766,9 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 		ents = append(ents, ent)
 	}
 
-	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{})
+	raftAdvancedC := make(chan struct{}, 1)
+	raftAdvancedC <- struct{}{}
+	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{}, raftAdvancedC)
 	if !shouldStop {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
 	}
@@ -1017,6 +1022,9 @@ func TestSyncTrigger(t *testing.T) {
 
 // TestSnapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
+	revertFunc := verify.DisableVerifications()
+	defer revertFunc()
+
 	be, _ := betesting.NewDefaultTmpBackend(t)
 
 	s := raft.NewMemoryStorage()
@@ -1642,6 +1650,50 @@ func TestUpdateVersion(t *testing.T) {
 	if r.Val != "2.0.0" {
 		t.Errorf("val = %s, want %s", r.Val, "2.0.0")
 	}
+}
+
+func TestUpdateVersionV3(t *testing.T) {
+	n := newNodeRecorder()
+	ch := make(chan interface{}, 1)
+	// simulate that request has gone through consensus
+	ch <- &apply2.Result{}
+	w := wait.NewWithResponse(ch)
+	ctx, cancel := context.WithCancel(context.TODO())
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	srv := &EtcdServer{
+		lgMu:       new(sync.RWMutex),
+		lg:         zaptest.NewLogger(t),
+		memberId:   1,
+		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
+		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
+		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
+		cluster:    &membership.RaftCluster{},
+		w:          w,
+		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		SyncTicker: &time.Ticker{},
+		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
+		be:         be,
+
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	ver := "2.0.0"
+	srv.updateClusterVersionV3(ver)
+
+	action := n.Action()
+	if len(action) != 1 {
+		t.Fatalf("len(action) = %d, want 1", len(action))
+	}
+	if action[0].Name != "Propose" {
+		t.Fatalf("action = %s, want Propose", action[0].Name)
+	}
+	data := action[0].Params[0].([]byte)
+	var r pb.InternalRaftRequest
+	if err := r.Unmarshal(data); err != nil {
+		t.Fatalf("unmarshal request error: %v", err)
+	}
+	assert.Equal(t, &membershippb.ClusterVersionSetRequest{Ver: ver}, r.ClusterVersionSet)
 }
 
 func TestStopNotify(t *testing.T) {

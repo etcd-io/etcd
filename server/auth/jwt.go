@@ -17,6 +17,7 @@ package auth
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"errors"
 	"time"
@@ -54,6 +55,8 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 			return &k.PublicKey, nil
 		case *ecdsa.PrivateKey:
 			return &k.PublicKey, nil
+		case ed25519.PrivateKey:
+			return k.Public(), nil
 		default:
 			return t.key, nil
 		}
@@ -159,6 +162,10 @@ func newTokenProviderJWT(lg *zap.Logger, optMap map[string]string) (*tokenJWT, e
 	switch t.signMethod.(type) {
 	case *jwt.SigningMethodECDSA:
 		if _, ok := t.key.(*ecdsa.PublicKey); ok {
+			t.verifyOnly = true
+		}
+	case *jwt.SigningMethodEd25519:
+		if _, ok := t.key.(ed25519.PublicKey); ok {
 			t.verifyOnly = true
 		}
 	case *jwt.SigningMethodRSA, *jwt.SigningMethodRSAPSS:

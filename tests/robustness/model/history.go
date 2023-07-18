@@ -16,35 +16,15 @@ package model
 
 import (
 	"fmt"
-	"testing"
 	"time"
 
 	"github.com/anishathalye/porcupine"
-	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
-
-// ValidateOperationHistoryAndReturnVisualize return visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateOperationHistoryAndReturnVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation) (visualize func(basepath string)) {
-	linearizable, info := porcupine.CheckOperationsVerbose(NonDeterministicModel, operations, 5*time.Minute)
-	if linearizable == porcupine.Illegal {
-		t.Error("Model is not linearizable")
-	}
-	if linearizable == porcupine.Unknown {
-		t.Error("Linearization timed out")
-	}
-	return func(path string) {
-		lg.Info("Saving visualization", zap.String("path", path))
-		err := porcupine.VisualizePath(NonDeterministicModel, info, path)
-		if err != nil {
-			t.Errorf("Failed to visualize, err: %v", err)
-		}
-	}
-}
 
 // AppendableHistory allows to collect history of sequential operations.
 //
@@ -74,16 +54,16 @@ func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	}
 }
 
-func (h *AppendableHistory) AppendRange(key string, withPrefix bool, start, end time.Duration, resp *clientv3.GetResponse) {
-	var revision int64
+func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit int64, start, end time.Duration, resp *clientv3.GetResponse) {
+	var respRevision int64
 	if resp != nil && resp.Header != nil {
-		revision = resp.Header.Revision
+		respRevision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
 		ClientId: h.streamId,
-		Input:    rangeRequest(key, withPrefix, 0),
+		Input:    staleRangeRequest(startKey, endKey, limit, revision),
 		Call:     start.Nanoseconds(),
-		Output:   rangeResponse(resp.Kvs, resp.Count, revision),
+		Output:   rangeResponse(resp.Kvs, resp.Count, respRevision),
 		Return:   end.Nanoseconds(),
 	})
 }
@@ -259,23 +239,29 @@ func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
 	return cond
 }
 
-func toEtcdOperation(op clientv3.Op) EtcdOperation {
-	var opType OperationType
+func toEtcdOperation(option clientv3.Op) (op EtcdOperation) {
 	switch {
-	case op.IsGet():
-		opType = Range
-	case op.IsPut():
-		opType = Put
-	case op.IsDelete():
-		opType = Delete
+	case option.IsGet():
+		op.Type = RangeOperation
+		op.Range = RangeOptions{
+			Start: string(option.KeyBytes()),
+			End:   string(option.RangeBytes()),
+		}
+	case option.IsPut():
+		op.Type = PutOperation
+		op.Put = PutOptions{
+			Key:   string(option.KeyBytes()),
+			Value: ValueOrHash{Value: string(option.ValueBytes())},
+		}
+	case option.IsDelete():
+		op.Type = DeleteOperation
+		op.Delete = DeleteOptions{
+			Key: string(option.KeyBytes()),
+		}
 	default:
 		panic("Unsupported operation")
 	}
-	return EtcdOperation{
-		Type:  opType,
-		Key:   string(op.KeyBytes()),
-		Value: ValueOrHash{Value: string(op.ValueBytes())},
-	}
+	return op
 }
 
 func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
@@ -293,8 +279,10 @@ func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
 			}
 		}
 		return EtcdOperationResult{
-			KVs:   kvs,
-			Count: getResp.Count,
+			RangeResponse: RangeResponse{
+				KVs:   kvs,
+				Count: getResp.Count,
+			},
 		}
 	case resp.GetResponsePut() != nil:
 		return EtcdOperationResult{}
@@ -355,23 +343,39 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, call int64, err er
 }
 
 func getRequest(key string) EtcdRequest {
-	return rangeRequest(key, false, 0)
+	return rangeRequest(key, "", 0)
 }
 
-func rangeRequest(key string, withPrefix bool, limit int64) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: Range, Key: key, WithPrefix: withPrefix, Limit: limit}}}}
+func staleGetRequest(key string, revision int64) EtcdRequest {
+	return staleRangeRequest(key, "", 0, revision)
 }
 
-func emptyGetResponse(revision int64) EtcdNonDeterministicResponse {
+func rangeRequest(start, end string, limit int64) EtcdRequest {
+	return staleRangeRequest(start, end, limit, 0)
+}
+
+func listRequest(key string, limit int64) EtcdRequest {
+	return staleListRequest(key, limit, 0)
+}
+
+func staleListRequest(key string, limit, revision int64) EtcdRequest {
+	return staleRangeRequest(key, clientv3.GetPrefixRangeEnd(key), limit, revision)
+}
+
+func staleRangeRequest(start, end string, limit, revision int64) EtcdRequest {
+	return EtcdRequest{Type: Range, Range: &RangeRequest{RangeOptions: RangeOptions{Start: start, End: end, Limit: limit}, Revision: revision}}
+}
+
+func emptyGetResponse(revision int64) MaybeEtcdResponse {
 	return rangeResponse([]*mvccpb.KeyValue{}, 0, revision)
 }
 
-func getResponse(key, value string, modRevision, revision int64) EtcdNonDeterministicResponse {
+func getResponse(key, value string, modRevision, revision int64) MaybeEtcdResponse {
 	return rangeResponse([]*mvccpb.KeyValue{{Key: []byte(key), Value: []byte(value), ModRevision: modRevision}}, 1, revision)
 }
 
-func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) EtcdNonDeterministicResponse {
-	result := EtcdOperationResult{KVs: make([]KeyValue, len(kvs))}
+func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) MaybeEtcdResponse {
+	result := RangeResponse{KVs: make([]KeyValue, len(kvs)), Count: count}
 
 	for i, kv := range kvs {
 		result.KVs[i] = KeyValue{
@@ -381,40 +385,39 @@ func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) EtcdNonD
 				ModRevision: kv.ModRevision,
 			},
 		}
-		result.Count = count
 	}
-	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{result}}, Revision: revision}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &result, Revision: revision}}
 }
 
-func failedResponse(err error) EtcdNonDeterministicResponse {
-	return EtcdNonDeterministicResponse{Err: err}
+func failedResponse(err error) MaybeEtcdResponse {
+	return MaybeEtcdResponse{Error: err.Error()}
 }
 
-func unknownResponse(revision int64) EtcdNonDeterministicResponse {
-	return EtcdNonDeterministicResponse{ResultUnknown: true, EtcdResponse: EtcdResponse{Revision: revision}}
+func partialResponse(revision int64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: revision}}
 }
 
 func putRequest(key, value string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value)}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: key, Value: ToValueOrHash(value)}}}}}
 }
 
-func putResponse(revision int64) EtcdNonDeterministicResponse {
-	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{}}}, Revision: revision}}
+func putResponse(revision int64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{}}}, Revision: revision}}
 }
 
 func deleteRequest(key string) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: Delete, Key: key}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: DeleteOperation, Delete: DeleteOptions{Key: key}}}}}
 }
 
-func deleteResponse(deleted int64, revision int64) EtcdNonDeterministicResponse {
-	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}}
+func deleteResponse(deleted int64, revision int64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}}
 }
 
 func compareRevisionAndPutRequest(key string, expectedRevision int64, value string) EtcdRequest {
 	return txnRequestSingleOperation(compareRevision(key, expectedRevision), putOperation(key, value), nil)
 }
 
-func compareRevisionAndPutResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
+func compareRevisionAndPutResponse(succeeded bool, revision int64) MaybeEtcdResponse {
 	if succeeded {
 		return txnPutResponse(succeeded, revision)
 	}
@@ -426,7 +429,7 @@ func compareRevision(key string, expectedRevision int64) *EtcdCondition {
 }
 
 func putOperation(key, value string) *EtcdOperation {
-	return &EtcdOperation{Type: Put, Key: key, Value: ToValueOrHash(value)}
+	return &EtcdOperation{Type: PutOperation, Put: PutOptions{Key: key, Value: ToValueOrHash(value)}}
 }
 
 func txnRequestSingleOperation(cond *EtcdCondition, onSuccess, onFailure *EtcdOperation) EtcdRequest {
@@ -449,44 +452,44 @@ func txnRequest(conds []EtcdCondition, onSuccess, onFailure []EtcdOperation) Etc
 	return EtcdRequest{Type: Txn, Txn: &TxnRequest{Conditions: conds, OperationsOnSuccess: onSuccess, OperationsOnFailure: onFailure}}
 }
 
-func txnPutResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
+func txnPutResponse(succeeded bool, revision int64) MaybeEtcdResponse {
 	return txnResponse([]EtcdOperationResult{{}}, succeeded, revision)
 }
 
-func txnEmptyResponse(succeeded bool, revision int64) EtcdNonDeterministicResponse {
+func txnEmptyResponse(succeeded bool, revision int64) MaybeEtcdResponse {
 	return txnResponse([]EtcdOperationResult{}, succeeded, revision)
 }
 
-func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) EtcdNonDeterministicResponse {
-	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: result, Failure: !succeeded}, Revision: revision}}
+func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: result, Failure: !succeeded}, Revision: revision}}
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
-	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: Put, Key: key, Value: ToValueOrHash(value), LeaseID: leaseID}}}}
+	return EtcdRequest{Type: Txn, Txn: &TxnRequest{OperationsOnSuccess: []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: key, Value: ToValueOrHash(value), LeaseID: leaseID}}}}}
 }
 
 func leaseGrantRequest(leaseID int64) EtcdRequest {
 	return EtcdRequest{Type: LeaseGrant, LeaseGrant: &LeaseGrantRequest{LeaseID: leaseID}}
 }
 
-func leaseGrantResponse(revision int64) EtcdNonDeterministicResponse {
-	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision}}
+func leaseGrantResponse(revision int64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision}}
 }
 
 func leaseRevokeRequest(leaseID int64) EtcdRequest {
 	return EtcdRequest{Type: LeaseRevoke, LeaseRevoke: &LeaseRevokeRequest{LeaseID: leaseID}}
 }
 
-func leaseRevokeResponse(revision int64) EtcdNonDeterministicResponse {
-	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision}}
+func leaseRevokeResponse(revision int64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision}}
 }
 
 func defragmentRequest() EtcdRequest {
 	return EtcdRequest{Type: Defragment, Defragment: &DefragmentRequest{}}
 }
 
-func defragmentResponse(revision int64) EtcdNonDeterministicResponse {
-	return EtcdNonDeterministicResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: revision}}
+func defragmentResponse(revision int64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: revision}}
 }
 
 type History struct {
@@ -538,7 +541,7 @@ func (h History) Operations() []porcupine.Operation {
 func (h History) MaxRevision() int64 {
 	var maxRevision int64
 	for _, op := range h.successful {
-		revision := op.Output.(EtcdNonDeterministicResponse).Revision
+		revision := op.Output.(MaybeEtcdResponse).Revision
 		if revision > maxRevision {
 			maxRevision = revision
 		}

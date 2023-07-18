@@ -6,8 +6,25 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.10 (tbd)
 
+### etcd server
+- Fix [corruption check may get a `ErrCompacted` error when server has just been compacted](https://github.com/etcd-io/etcd/pull/16048)
+- Improve [Lease put performance for the case that auth is disabled or the user is admin](https://github.com/etcd-io/etcd/pull/16019)
+
+### etcdutl v3
+- Add [optional --bump-revision and --mark-compacted flag to etcdutl snapshot restore operation](https://github.com/etcd-io/etcd/pull/16165).
+
+### etcdctl v3
+- Add [optional --bump-revision and --mark-compacted flag to etcdctl snapshot restore operation](https://github.com/etcd-io/etcd/pull/16165).
+
 ### etcd grpc-proxy
 - Fix [Memberlist results not updated when proxy node down](https://github.com/etcd-io/etcd/pull/15907).
+
+### Package `clientv3`
+- Fix [Multiple endpoints with same prefix got mixed up](https://github.com/etcd-io/etcd/pull/15939)
+- Fix [Unexpected blocking when barrier waits on a nonexistent key](https://github.com/etcd-io/etcd/pull/16188)
+
+### Dependencies
+- Compile binaries using [go 1.19.11](https://github.com/etcd-io/etcd/pull/16227).
 
 <hr>
 

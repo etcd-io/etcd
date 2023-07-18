@@ -31,6 +31,9 @@ const (
 
 	jwtECPubKey  = "../../tests/fixtures/server-ecdsa.crt"
 	jwtECPrivKey = "../../tests/fixtures/server-ecdsa.key.insecure"
+
+	jwtEdPubKey  = "../../tests/fixtures/ed25519-public-key.pem"
+	jwtEdPrivKey = "../../tests/fixtures/ed25519-private-key.pem"
 )
 
 func TestJWTInfo(t *testing.T) {
@@ -62,6 +65,15 @@ func TestJWTInfo(t *testing.T) {
 			"pub-key":     jwtECPubKey,
 			"priv-key":    jwtECPrivKey,
 			"sign-method": "ES256",
+		},
+		"Ed25519-priv": {
+			"priv-key":    jwtEdPrivKey,
+			"sign-method": "EdDSA",
+		},
+		"Ed25519": {
+			"pub-key":     jwtEdPubKey,
+			"priv-key":    jwtEdPrivKey,
+			"sign-method": "EdDSA",
 		},
 		"HMAC": {
 			"priv-key":    jwtECPrivKey, // any file, raw bytes used as shared secret

@@ -19,15 +19,19 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/tests/v3/robustness/model"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 
+	"go.etcd.io/etcd/tests/v3/robustness/report"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
-	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
+	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
 
 func TestRobustness(t *testing.T) {
@@ -39,9 +43,8 @@ func TestRobustness(t *testing.T) {
 	scenarios := []testScenario{}
 	for _, traffic := range []traffic.Config{traffic.LowTraffic, traffic.HighTraffic, traffic.KubernetesTraffic} {
 		scenarios = append(scenarios, testScenario{
-			name:      traffic.Name + "ClusterOfSize1",
-			failpoint: RandomFailpoint,
-			traffic:   traffic,
+			name:    traffic.Name + "/ClusterOfSize1",
+			traffic: traffic,
 			cluster: *e2e.NewConfig(
 				e2e.WithClusterSize(1),
 				e2e.WithSnapshotCount(100),
@@ -62,12 +65,8 @@ func TestRobustness(t *testing.T) {
 			clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithSnapshotCatchUpEntries(100))
 		}
 		scenarios = append(scenarios, testScenario{
-			name:      traffic.Name + "ClusterOfSize3",
-			failpoint: RandomFailpoint,
-			traffic:   traffic,
-			watch: watchConfig{
-				expectUniqueRevision: traffic.Traffic.ExpectUniqueRevision(),
-			},
+			name:    traffic.Name + "/ClusterOfSize3",
+			traffic: traffic,
 			cluster: *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
@@ -96,8 +95,7 @@ func TestRobustness(t *testing.T) {
 		),
 	})
 	scenarios = append(scenarios, testScenario{
-		name:      "Issue15220",
-		failpoint: RandomFailpoint,
+		name: "Issue15220",
 		watch: watchConfig{
 			requestProgress: true,
 		},
@@ -105,12 +103,14 @@ func TestRobustness(t *testing.T) {
 			e2e.WithClusterSize(1),
 		),
 	})
-	if v.Compare(version.V3_5) >= 0 {
+	// TODO: Deflake waiting for waiting until snapshot for etcd versions that don't support setting snapshot catchup entries.
+	if v.Compare(version.V3_6) >= 0 {
 		scenarios = append(scenarios, testScenario{
 			name:      "Issue15271",
 			failpoint: BlackholeUntilSnapshot,
 			traffic:   traffic.HighTraffic,
 			cluster: *e2e.NewConfig(
+				e2e.WithSnapshotCatchUpEntries(100),
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
 				e2e.WithIsPeerTLS(true),
@@ -140,34 +140,44 @@ type testScenario struct {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario) {
-	r := report{lg: lg}
+	report := report.TestReport{Logger: lg}
 	var err error
-	r.clus, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
+	report.Cluster, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.clus.Close()
+	defer report.Cluster.Close()
+
+	if s.failpoint == nil {
+		s.failpoint = pickRandomFailpoint(t, report.Cluster)
+	} else {
+		err = validateFailpoint(report.Cluster, s.failpoint)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		r.Report(t, panicked)
+		report.Report(t, panicked)
 	}()
-	r.clientReports = s.run(ctx, t, lg, r.clus)
-	forcestopCluster(r.clus)
+	report.Client = s.run(ctx, t, lg, report.Cluster)
+	forcestopCluster(report.Cluster)
 
-	watchProgressNotifyEnabled := r.clus.Cfg.WatchProcessNotifyInterval != 0
-	validateGotAtLeastOneProgressNotify(t, r.clientReports, s.watch.requestProgress || watchProgressNotifyEnabled)
-	r.visualizeHistory = validateCorrectness(t, lg, s.watch, r.clientReports)
+	watchProgressNotifyEnabled := report.Cluster.Cfg.WatchProcessNotifyInterval != 0
+	validateGotAtLeastOneProgressNotify(t, report.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
+	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.Traffic.ExpectUniqueRevision()}
+	report.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, report.Client)
 
 	panicked = false
 }
 
-func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []traffic.ClientReport) {
+func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
 	g := errgroup.Group{}
-	var operationReport, watchReport []traffic.ClientReport
+	var operationReport, watchReport []report.ClientReport
 	finishTraffic := make(chan struct{})
 
 	// using baseTime time-measuring operation to get monotonic clock reading
@@ -195,12 +205,14 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	return append(operationReport, watchReport...)
 }
 
-func operationsMaxRevision(reports []traffic.ClientReport) int64 {
+func operationsMaxRevision(reports []report.ClientReport) int64 {
 	var maxRevision int64
 	for _, r := range reports {
-		revision := r.OperationHistory.MaxRevision()
-		if revision > maxRevision {
-			maxRevision = revision
+		for _, op := range r.KeyValue {
+			resp := op.Output.(model.MaybeEtcdResponse)
+			if resp.Revision > maxRevision {
+				maxRevision = resp.Revision
+			}
 		}
 	}
 	return maxRevision
@@ -212,10 +224,4 @@ func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
 		member.Kill()
 	}
 	return clus.ConcurrentStop()
-}
-
-func validateCorrectness(t *testing.T, lg *zap.Logger, cfg watchConfig, reports []traffic.ClientReport) (visualize func(basepath string)) {
-	validateWatchCorrectness(t, cfg, reports)
-	operations := operationsFromClientReports(reports)
-	return model.ValidateOperationHistoryAndReturnVisualize(t, lg, operations)
 }

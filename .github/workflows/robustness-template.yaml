@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 210
     runs-on: ${{ fromJson(inputs.runs-on) }}
     steps:
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       - id: goversion
         run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
@@ -58,7 +58,7 @@ jobs:
               exit 1
               ;;
           esac
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always()
         with:
           name: ${{ inputs.artifactName }}
