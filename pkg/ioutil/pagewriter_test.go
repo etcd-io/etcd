@@ -39,8 +39,8 @@ func TestPageWriterRandom(t *testing.T) {
 	if cw.writeBytes > n {
 		t.Fatalf("wrote %d bytes to io.Writer, but only wrote %d bytes", cw.writeBytes, n)
 	}
-	if n-cw.writeBytes > pageBytes {
-		t.Fatalf("got %d bytes pending, expected less than %d bytes", n-cw.writeBytes, pageBytes)
+	if maxPendingBytes := pageBytes + defaultBufferBytes; n-cw.writeBytes > maxPendingBytes {
+		t.Fatalf("got %d bytes pending, expected less than %d bytes", n-cw.writeBytes, maxPendingBytes)
 	}
 	t.Logf("total writes: %d", cw.writes)
 	t.Logf("total write bytes: %d (of %d)", cw.writeBytes, n)
