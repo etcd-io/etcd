@@ -783,7 +783,7 @@ func (m *Member) listenGRPC() error {
 	}
 
 	addr := grpcListener.Addr().String()
-	host, port, err = net.SplitHostPort(addr)
+	_, port, err = net.SplitHostPort(addr)
 	if err != nil {
 		return fmt.Errorf("failed to parse grpc listen port from address %s (%v)", addr, err)
 	}
