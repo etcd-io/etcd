@@ -635,8 +635,21 @@ function dep_pass {
 
 function release_pass {
   rm -f ./bin/etcd-last-release
-  # to grab latest patch release; bump this up for every minor release
-  UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.4.*" | head -1)
+
+  # Work out the previous minor release based on the version reported by etcd binary
+  binary_version=$(./bin/etcd --version | grep --only-matching --perl-regexp '(?<=etcd Version: )\d+\.\d+')
+  binary_major=$(echo "${binary_version}" | cut -d '.' -f 1)
+  binary_minor=$(echo "${binary_version}" | cut -d '.' -f 2)
+  previous_minor=$((binary_minor - 1))
+
+  # This gets a list of all remote tags for the release branch in regex
+  # Sort key is used to sort numerically by patch version
+  # Latest version is then stored for use below
+  UPGRADE_VER=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
+    | grep --only-matching --perl-regexp "(?<=v)${binary_major}.${previous_minor}.[\d]+?(?=[\^])" \
+    | sort --numeric-sort --key 1.5 | tail -1 | sed 's/^/v/')
+  log_callout "Found latest release: ${UPGRADE_VER}."
+
   if [ -n "${MANUAL_VER:-}" ]; then
     # in case, we need to test against different version
     UPGRADE_VER=$MANUAL_VER
