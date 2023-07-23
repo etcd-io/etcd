@@ -14,7 +14,9 @@
 
 package schema
 
-import "go.etcd.io/etcd/server/v3/storage/backend"
+import (
+	"go.etcd.io/etcd/server/v3/bucket"
+)
 
 type schemaChange interface {
 	upgradeAction() action
@@ -22,7 +24,7 @@ type schemaChange interface {
 }
 
 // addNewField represents adding new field when upgrading. Downgrade will remove the field.
-func addNewField(bucket backend.Bucket, fieldName []byte, fieldValue []byte) schemaChange {
+func addNewField(bucket bucket.Bucket, fieldName []byte, fieldValue []byte) schemaChange {
 	return simpleSchemaChange{
 		upgrade: setKeyAction{
 			Bucket:     bucket,

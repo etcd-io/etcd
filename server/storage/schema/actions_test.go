@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/server/v3/bucket"
+
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
@@ -35,7 +37,7 @@ func TestActionIsReversible(t *testing.T) {
 		{
 			name: "setKeyAction empty state",
 			action: setKeyAction{
-				Bucket:     Meta,
+				Bucket:     bucket.Meta,
 				FieldName:  []byte("/test"),
 				FieldValue: []byte("1"),
 			},
@@ -43,7 +45,7 @@ func TestActionIsReversible(t *testing.T) {
 		{
 			name: "setKeyAction with key",
 			action: setKeyAction{
-				Bucket:     Meta,
+				Bucket:     bucket.Meta,
 				FieldName:  []byte("/test"),
 				FieldValue: []byte("1"),
 			},
@@ -52,14 +54,14 @@ func TestActionIsReversible(t *testing.T) {
 		{
 			name: "deleteKeyAction empty state",
 			action: deleteKeyAction{
-				Bucket:    Meta,
+				Bucket:    bucket.Meta,
 				FieldName: []byte("/test"),
 			},
 		},
 		{
 			name: "deleteKeyAction with key",
 			action: deleteKeyAction{
-				Bucket:    Meta,
+				Bucket:    bucket.Meta,
 				FieldName: []byte("/test"),
 			},
 			state: map[string]string{"/test": "2"},
@@ -76,9 +78,9 @@ func TestActionIsReversible(t *testing.T) {
 			tx.Lock()
 			defer tx.Unlock()
 			UnsafeCreateMetaBucket(tx)
-			putKeyValues(tx, Meta, tc.state)
+			putKeyValues(tx, bucket.Meta, tc.state)
 
-			assertBucketState(t, tx, Meta, tc.state)
+			assertBucketState(t, tx, bucket.Meta, tc.state)
 			reverse, err := tc.action.unsafeDo(tx)
 			if err != nil {
 				t.Errorf("Failed to upgrade, err: %v", err)
@@ -87,7 +89,7 @@ func TestActionIsReversible(t *testing.T) {
 			if err != nil {
 				t.Errorf("Failed to downgrade, err: %v", err)
 			}
-			assertBucketState(t, tx, Meta, tc.state)
+			assertBucketState(t, tx, bucket.Meta, tc.state)
 		})
 	}
 }
@@ -103,17 +105,17 @@ func TestActionListRevert(t *testing.T) {
 		{
 			name: "Apply multiple actions",
 			actions: ActionList{
-				setKeyAction{Meta, []byte("/testKey1"), []byte("testValue1")},
-				setKeyAction{Meta, []byte("/testKey2"), []byte("testValue2")},
+				setKeyAction{bucket.Meta, []byte("/testKey1"), []byte("testValue1")},
+				setKeyAction{bucket.Meta, []byte("/testKey2"), []byte("testValue2")},
 			},
 			expectState: map[string]string{"/testKey1": "testValue1", "/testKey2": "testValue2"},
 		},
 		{
 			name: "Broken action should result in changes reverted",
 			actions: ActionList{
-				setKeyAction{Meta, []byte("/testKey1"), []byte("testValue1")},
+				setKeyAction{bucket.Meta, []byte("/testKey1"), []byte("testValue1")},
 				brokenAction{},
-				setKeyAction{Meta, []byte("/testKey2"), []byte("testValue2")},
+				setKeyAction{bucket.Meta, []byte("/testKey2"), []byte("testValue2")},
 			},
 			expectState: map[string]string{},
 			expectError: errBrokenAction,
@@ -138,7 +140,7 @@ func TestActionListRevert(t *testing.T) {
 			if err != tc.expectError {
 				t.Errorf("Unexpected error or lack thereof, expected: %v, got: %v", tc.expectError, err)
 			}
-			assertBucketState(t, tx, Meta, tc.expectState)
+			assertBucketState(t, tx, bucket.Meta, tc.expectState)
 		})
 	}
 }
@@ -151,7 +153,7 @@ func (c brokenAction) unsafeDo(tx backend.UnsafeReadWriter) (action, error) {
 	return nil, errBrokenAction
 }
 
-func putKeyValues(tx backend.UnsafeWriter, bucket backend.Bucket, kvs map[string]string) {
+func putKeyValues(tx backend.UnsafeWriter, bucket bucket.Bucket, kvs map[string]string) {
 	for k, v := range kvs {
 		tx.UnsafePut(bucket, []byte(k), []byte(v))
 	}

@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/auth"
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
@@ -51,9 +52,9 @@ func (abe *authBackend) CreateAuthBuckets() {
 	tx := abe.be.BatchTx()
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	tx.UnsafeCreateBucket(Auth)
-	tx.UnsafeCreateBucket(AuthUsers)
-	tx.UnsafeCreateBucket(AuthRoles)
+	tx.UnsafeCreateBucket(bucket.Auth)
+	tx.UnsafeCreateBucket(bucket.AuthUsers)
+	tx.UnsafeCreateBucket(bucket.AuthRoles)
 }
 
 func (abe *authBackend) ForceCommit() {
@@ -83,16 +84,16 @@ var _ auth.AuthBatchTx = (*authBatchTx)(nil)
 
 func (atx *authBatchTx) UnsafeSaveAuthEnabled(enabled bool) {
 	if enabled {
-		atx.tx.UnsafePut(Auth, AuthEnabledKeyName, authEnabled)
+		atx.tx.UnsafePut(bucket.Auth, bucket.AuthEnabledKeyName, authEnabled)
 	} else {
-		atx.tx.UnsafePut(Auth, AuthEnabledKeyName, authDisabled)
+		atx.tx.UnsafePut(bucket.Auth, bucket.AuthEnabledKeyName, authDisabled)
 	}
 }
 
 func (atx *authBatchTx) UnsafeSaveAuthRevision(rev uint64) {
 	revBytes := make([]byte, revBytesLen)
 	binary.BigEndian.PutUint64(revBytes, rev)
-	atx.tx.UnsafePut(Auth, AuthRevisionKeyName, revBytes)
+	atx.tx.UnsafePut(bucket.Auth, bucket.AuthRevisionKeyName, revBytes)
 }
 
 func (atx *authBatchTx) UnsafeReadAuthEnabled() bool {
@@ -119,7 +120,7 @@ func (atx *authReadTx) UnsafeReadAuthEnabled() bool {
 }
 
 func unsafeReadAuthEnabled(tx backend.UnsafeReader) bool {
-	_, vs := tx.UnsafeRange(Auth, AuthEnabledKeyName, nil, 0)
+	_, vs := tx.UnsafeRange(bucket.Auth, bucket.AuthEnabledKeyName, nil, 0)
 	if len(vs) == 1 {
 		if bytes.Equal(vs[0], authEnabled) {
 			return true
@@ -133,7 +134,7 @@ func (atx *authReadTx) UnsafeReadAuthRevision() uint64 {
 }
 
 func unsafeReadAuthRevision(tx backend.UnsafeReader) uint64 {
-	_, vs := tx.UnsafeRange(Auth, AuthRevisionKeyName, nil, 0)
+	_, vs := tx.UnsafeRange(bucket.Auth, bucket.AuthRevisionKeyName, nil, 0)
 	if len(vs) != 1 {
 		// this can happen in the initialization phase
 		return 0

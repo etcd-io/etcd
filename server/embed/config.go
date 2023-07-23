@@ -106,6 +106,9 @@ const (
 	maxElectionMs = 50000
 	// backend freelist map type
 	freelistArrayType = "array"
+
+	// DefaultBackendType defaults the backend to bolt
+	DefaultBackendType = "bolt"
 )
 
 var (
@@ -122,6 +125,8 @@ var (
 
 	// indirection for testing
 	getCluster = srv.GetCluster
+
+	SupportedBackendTypes = map[string]struct{}{"bolt": {}, "sqlite": {}}
 )
 
 var (
@@ -381,6 +386,9 @@ type Config struct {
 	// Defaults to 0.
 	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
 
+	// ExperimentalBackendType allows you to set the underlying database to sqlite.
+	ExperimentalBackendType string `json:"experimental-backend-type"`
+
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
@@ -451,6 +459,8 @@ type configJSON struct {
 
 	ClientSecurityJSON securityConfig `json:"client-transport-security"`
 	PeerSecurityJSON   securityConfig `json:"peer-transport-security"`
+
+	BackendType string `json:"backend-type"`
 }
 
 type securityConfig struct {
@@ -461,6 +471,12 @@ type securityConfig struct {
 	CertAuth       bool   `json:"client-cert-auth"`
 	TrustedCAFile  string `json:"trusted-ca-file"`
 	AutoTLS        bool   `json:"auto-tls"`
+}
+
+func NewSqliteConfig() *Config {
+	c := NewConfig()
+	c.ExperimentalBackendType = "sqlite"
+	return c
 }
 
 // NewConfig creates a new Config populated with default values.
@@ -482,6 +498,7 @@ func NewConfig() *Config {
 		MaxRequestBytes:                  DefaultMaxRequestBytes,
 		MaxConcurrentStreams:             DefaultMaxConcurrentStreams,
 		ExperimentalWarningApplyDuration: DefaultWarningApplyDuration,
+		ExperimentalBackendType:          DefaultBackendType,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
@@ -582,6 +599,11 @@ func (cfg *configYAML) configFromFile(path string) error {
 			os.Exit(1)
 		}
 		cfg.Config.ListenPeerUrls = u
+	}
+
+	// default backend type to bolt
+	if cfg.configJSON.BackendType == "" {
+		cfg.BackendType = DefaultBackendType
 	}
 
 	if cfg.configJSON.ListenClientUrls != "" {

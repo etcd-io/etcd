@@ -48,6 +48,7 @@ var (
 	backupDir    string
 	walDir       string
 	backupWalDir string
+	backendType  string
 )
 
 func NewBackupCommand() *cobra.Command {
@@ -61,6 +62,7 @@ func NewBackupCommand() *cobra.Command {
 	cmd.Flags().StringVar(&dataDir, "data-dir", "", "Path to the etcd data dir")
 	cmd.Flags().StringVar(&walDir, "wal-dir", "", "Path to the etcd wal dir")
 	cmd.Flags().StringVar(&backupDir, "backup-dir", "", "Path to the backup dir")
+	cmd.Flags().StringVar(&backendType, "backend-type", "bolt", "Default backend type")
 	cmd.Flags().StringVar(&backupWalDir, "backup-wal-dir", "", "Path to the backup wal dir")
 	cmd.Flags().BoolVar(&withV3, "with-v3", true, "Backup v3 backend data. Note -with-v3=false is not supported since etcd v3.6. Please use v3.5.x client as the last supporting this deprecated functionality.")
 	cmd.MarkFlagRequired("data-dir")
@@ -303,7 +305,7 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 	}
 
 	// trim membership info
-	be := backend.NewDefaultBackend(lg, destDB)
+	be := backend.NewDefaultBackend(lg, destDB, backendType)
 	defer be.Close()
 	ms := schema.NewMembershipBackend(lg, be)
 	if err := ms.TrimClusterFromBackend(); err != nil {

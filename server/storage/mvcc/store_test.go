@@ -20,12 +20,17 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/server/v3/bucket"
+
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/schema"
+)
+
+const (
+	defaultBackendType = "bolt"
 )
 
 // TestScheduledCompact ensures that UnsafeSetScheduledCompact&UnsafeReadScheduledCompact work well together.
@@ -55,13 +60,13 @@ func TestScheduledCompact(t *testing.T) {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			tx.UnsafeCreateBucket(schema.Meta)
+			tx.UnsafeCreateBucket(bucket.Meta)
 			UnsafeSetScheduledCompact(tx, tc.value)
 			tx.Unlock()
 			be.ForceCommit()
 			be.Close()
 
-			b := backend.NewDefaultBackend(lg, tmpPath)
+			b := backend.NewDefaultBackend(lg, tmpPath, defaultBackendType)
 			defer b.Close()
 			v, found := UnsafeReadScheduledCompact(b.BatchTx())
 			assert.Equal(t, true, found)
@@ -97,13 +102,13 @@ func TestFinishedCompact(t *testing.T) {
 				t.Fatal("batch tx is nil")
 			}
 			tx.Lock()
-			tx.UnsafeCreateBucket(schema.Meta)
+			tx.UnsafeCreateBucket(bucket.Meta)
 			UnsafeSetFinishedCompact(tx, tc.value)
 			tx.Unlock()
 			be.ForceCommit()
 			be.Close()
 
-			b := backend.NewDefaultBackend(lg, tmpPath)
+			b := backend.NewDefaultBackend(lg, tmpPath, defaultBackendType)
 			defer b.Close()
 			v, found := UnsafeReadFinishedCompact(b.BatchTx())
 			assert.Equal(t, true, found)

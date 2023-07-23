@@ -16,6 +16,7 @@ package storage
 
 import (
 	"fmt"
+
 	"os"
 	"time"
 
@@ -52,6 +53,7 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 	}
 	bcfg.Mlock = cfg.ExperimentalMemoryMlock
 	bcfg.Hooks = hooks
+	bcfg.BackendType = cfg.BackendType
 	return backend.New(bcfg)
 }
 

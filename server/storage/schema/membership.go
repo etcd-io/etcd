@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -45,7 +46,7 @@ func NewMembershipBackend(lg *zap.Logger, be backend.Backend) *membershipBackend
 }
 
 func (s *membershipBackend) MustSaveMemberToBackend(m *membership.Member) {
-	mkey := BackendMemberKey(m.ID)
+	mkey := bucket.BackendMemberKey(m.ID)
 	mvalue, err := json.Marshal(m)
 	if err != nil {
 		s.lg.Panic("failed to marshal member", zap.Error(err))
@@ -54,7 +55,7 @@ func (s *membershipBackend) MustSaveMemberToBackend(m *membership.Member) {
 	tx := s.be.BatchTx()
 	tx.LockInsideApply()
 	defer tx.Unlock()
-	tx.UnsafePut(Members, mkey, mvalue)
+	tx.UnsafePut(bucket.Members, mkey, mvalue)
 }
 
 // TrimClusterFromBackend removes all information about cluster (versions)
@@ -63,18 +64,18 @@ func (s *membershipBackend) TrimClusterFromBackend() error {
 	tx := s.be.BatchTx()
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	tx.UnsafeDeleteBucket(Cluster)
+	tx.UnsafeDeleteBucket(bucket.Cluster)
 	return nil
 }
 
 func (s *membershipBackend) MustDeleteMemberFromBackend(id types.ID) {
-	mkey := BackendMemberKey(id)
+	mkey := bucket.BackendMemberKey(id)
 
 	tx := s.be.BatchTx()
 	tx.LockInsideApply()
 	defer tx.Unlock()
-	tx.UnsafeDelete(Members, mkey)
-	tx.UnsafePut(MembersRemoved, mkey, []byte("removed"))
+	tx.UnsafeDelete(bucket.Members, mkey)
+	tx.UnsafePut(bucket.MembersRemoved, mkey, []byte("removed"))
 }
 
 func (s *membershipBackend) MustReadMembersFromBackend() (map[types.ID]*membership.Member, map[types.ID]bool) {
@@ -92,7 +93,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 	tx := s.be.ReadTx()
 	tx.RLock()
 	defer tx.RUnlock()
-	err := tx.UnsafeForEach(Members, func(k, v []byte) error {
+	err := tx.UnsafeForEach(bucket.Members, func(k, v []byte) error {
 		memberId := mustParseMemberIDFromBytes(s.lg, k)
 		m := &membership.Member{ID: memberId}
 		if err := json.Unmarshal(v, &m); err != nil {
@@ -105,7 +106,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 		return nil, nil, fmt.Errorf("couldn't read members from backend: %v", err)
 	}
 
-	err = tx.UnsafeForEach(MembersRemoved, func(k, v []byte) error {
+	err = tx.UnsafeForEach(bucket.MembersRemoved, func(k, v []byte) error {
 		memberId := mustParseMemberIDFromBytes(s.lg, k)
 		removed[memberId] = true
 		return nil
@@ -123,8 +124,8 @@ func (s *membershipBackend) TrimMembershipFromBackend() error {
 	tx := s.be.BatchTx()
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	err := tx.UnsafeForEach(Members, func(k, v []byte) error {
-		tx.UnsafeDelete(Members, k)
+	err := tx.UnsafeForEach(bucket.Members, func(k, v []byte) error {
+		tx.UnsafeDelete(bucket.Members, k)
 		s.lg.Debug("Removed member from the backend",
 			zap.Stringer("member", mustParseMemberIDFromBytes(s.lg, k)))
 		return nil
@@ -132,8 +133,8 @@ func (s *membershipBackend) TrimMembershipFromBackend() error {
 	if err != nil {
 		return err
 	}
-	return tx.UnsafeForEach(MembersRemoved, func(k, v []byte) error {
-		tx.UnsafeDelete(MembersRemoved, k)
+	return tx.UnsafeForEach(bucket.MembersRemoved, func(k, v []byte) error {
+		tx.UnsafeDelete(bucket.MembersRemoved, k)
 		s.lg.Debug("Removed removed_member from the backend",
 			zap.Stringer("member", mustParseMemberIDFromBytes(s.lg, k)))
 		return nil
@@ -143,18 +144,18 @@ func (s *membershipBackend) TrimMembershipFromBackend() error {
 // MustSaveClusterVersionToBackend saves cluster version to backend.
 // The field is populated since etcd v3.5.
 func (s *membershipBackend) MustSaveClusterVersionToBackend(ver *semver.Version) {
-	ckey := ClusterClusterVersionKeyName
+	ckey := bucket.ClusterClusterVersionKeyName
 
 	tx := s.be.BatchTx()
 	tx.LockInsideApply()
 	defer tx.Unlock()
-	tx.UnsafePut(Cluster, ckey, []byte(ver.String()))
+	tx.UnsafePut(bucket.Cluster, ckey, []byte(ver.String()))
 }
 
 // MustSaveDowngradeToBackend saves downgrade info to backend.
 // The field is populated since etcd v3.5.
 func (s *membershipBackend) MustSaveDowngradeToBackend(downgrade *version.DowngradeInfo) {
-	dkey := ClusterDowngradeKeyName
+	dkey := bucket.ClusterDowngradeKeyName
 	dvalue, err := json.Marshal(downgrade)
 	if err != nil {
 		s.lg.Panic("failed to marshal downgrade information", zap.Error(err))
@@ -162,16 +163,16 @@ func (s *membershipBackend) MustSaveDowngradeToBackend(downgrade *version.Downgr
 	tx := s.be.BatchTx()
 	tx.LockInsideApply()
 	defer tx.Unlock()
-	tx.UnsafePut(Cluster, dkey, dvalue)
+	tx.UnsafePut(bucket.Cluster, dkey, dvalue)
 }
 
 func (s *membershipBackend) MustCreateBackendBuckets() {
 	tx := s.be.BatchTx()
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	tx.UnsafeCreateBucket(Members)
-	tx.UnsafeCreateBucket(MembersRemoved)
-	tx.UnsafeCreateBucket(Cluster)
+	tx.UnsafeCreateBucket(bucket.Members)
+	tx.UnsafeCreateBucket(bucket.MembersRemoved)
+	tx.UnsafeCreateBucket(bucket.Cluster)
 }
 
 func mustParseMemberIDFromBytes(lg *zap.Logger, key []byte) types.ID {
@@ -185,11 +186,11 @@ func mustParseMemberIDFromBytes(lg *zap.Logger, key []byte) types.ID {
 // ClusterVersionFromBackend reads cluster version from backend.
 // The field is populated since etcd v3.5.
 func (s *membershipBackend) ClusterVersionFromBackend() *semver.Version {
-	ckey := ClusterClusterVersionKeyName
+	ckey := bucket.ClusterClusterVersionKeyName
 	tx := s.be.ReadTx()
 	tx.RLock()
 	defer tx.RUnlock()
-	keys, vals := tx.UnsafeRange(Cluster, ckey, nil, 0)
+	keys, vals := tx.UnsafeRange(bucket.Cluster, ckey, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}
@@ -205,11 +206,12 @@ func (s *membershipBackend) ClusterVersionFromBackend() *semver.Version {
 // DowngradeInfoFromBackend reads downgrade info from backend.
 // The field is populated since etcd v3.5.
 func (s *membershipBackend) DowngradeInfoFromBackend() *version.DowngradeInfo {
-	dkey := ClusterDowngradeKeyName
+	dkey := bucket.ClusterDowngradeKeyName
 	tx := s.be.ReadTx()
+
 	tx.RLock()
 	defer tx.RUnlock()
-	keys, vals := tx.UnsafeRange(Cluster, dkey, nil, 0)
+	keys, vals := tx.UnsafeRange(bucket.Cluster, dkey, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}

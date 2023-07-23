@@ -15,12 +15,12 @@
 package mvcc
 
 import (
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 func UnsafeReadFinishedCompact(tx backend.UnsafeReader) (finishedComact int64, found bool) {
-	_, finishedCompactBytes := tx.UnsafeRange(schema.Meta, schema.FinishedCompactKeyName, nil, 0)
+	_, finishedCompactBytes := tx.UnsafeRange(bucket.Meta, bucket.FinishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		return bytesToRev(finishedCompactBytes[0]).main, true
 	}
@@ -28,7 +28,7 @@ func UnsafeReadFinishedCompact(tx backend.UnsafeReader) (finishedComact int64, f
 }
 
 func UnsafeReadScheduledCompact(tx backend.UnsafeReader) (scheduledComact int64, found bool) {
-	_, scheduledCompactBytes := tx.UnsafeRange(schema.Meta, schema.ScheduledCompactKeyName, nil, 0)
+	_, scheduledCompactBytes := tx.UnsafeRange(bucket.Meta, bucket.ScheduledCompactKeyName, nil, 0)
 	if len(scheduledCompactBytes) != 0 {
 		return bytesToRev(scheduledCompactBytes[0]).main, true
 	}
@@ -44,7 +44,7 @@ func SetScheduledCompact(tx backend.BatchTx, value int64) {
 func UnsafeSetScheduledCompact(tx backend.UnsafeWriter, value int64) {
 	rbytes := newRevBytes()
 	revToBytes(revision{main: value}, rbytes)
-	tx.UnsafePut(schema.Meta, schema.ScheduledCompactKeyName, rbytes)
+	tx.UnsafePut(bucket.Meta, bucket.ScheduledCompactKeyName, rbytes)
 }
 
 func SetFinishedCompact(tx backend.BatchTx, value int64) {
@@ -56,5 +56,5 @@ func SetFinishedCompact(tx backend.BatchTx, value int64) {
 func UnsafeSetFinishedCompact(tx backend.UnsafeWriter, value int64) {
 	rbytes := newRevBytes()
 	revToBytes(revision{main: value}, rbytes)
-	tx.UnsafePut(schema.Meta, schema.FinishedCompactKeyName, rbytes)
+	tx.UnsafePut(bucket.Meta, bucket.FinishedCompactKeyName, rbytes)
 }

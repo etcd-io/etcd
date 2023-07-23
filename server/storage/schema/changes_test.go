@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/server/v3/bucket"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
@@ -30,7 +31,7 @@ func TestUpgradeDowngrade(t *testing.T) {
 	}{
 		{
 			name:                    "addNewField empty",
-			change:                  addNewField(Meta, []byte("/test"), []byte("1")),
+			change:                  addNewField(bucket.Meta, []byte("/test"), []byte("1")),
 			expectStateAfterUpgrade: map[string]string{"/test": "1"},
 		},
 	}
@@ -50,12 +51,12 @@ func TestUpgradeDowngrade(t *testing.T) {
 			if err != nil {
 				t.Errorf("Failed to upgrade, err: %v", err)
 			}
-			assertBucketState(t, tx, Meta, tc.expectStateAfterUpgrade)
+			assertBucketState(t, tx, bucket.Meta, tc.expectStateAfterUpgrade)
 			_, err = tc.change.downgradeAction().unsafeDo(tx)
 			if err != nil {
 				t.Errorf("Failed to downgrade, err: %v", err)
 			}
-			assertBucketState(t, tx, Meta, tc.expectStateAfterDowngrade)
+			assertBucketState(t, tx, bucket.Meta, tc.expectStateAfterDowngrade)
 		})
 	}
 }

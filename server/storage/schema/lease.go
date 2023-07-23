@@ -18,17 +18,18 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 func UnsafeCreateLeaseBucket(tx backend.UnsafeWriter) {
-	tx.UnsafeCreateBucket(Lease)
+	tx.UnsafeCreateBucket(bucket.Lease)
 }
 
 func MustUnsafeGetAllLeases(tx backend.UnsafeReader) []*leasepb.Lease {
 	ls := make([]*leasepb.Lease, 0)
-	err := tx.UnsafeForEach(Lease, func(k, v []byte) error {
+	err := tx.UnsafeForEach(bucket.Lease, func(k, v []byte) error {
 		var lpb leasepb.Lease
 		err := lpb.Unmarshal(v)
 		if err != nil {
@@ -50,15 +51,15 @@ func MustUnsafePutLease(tx backend.UnsafeWriter, lpb *leasepb.Lease) {
 	if err != nil {
 		panic("failed to marshal lease proto item")
 	}
-	tx.UnsafePut(Lease, key, val)
+	tx.UnsafePut(bucket.Lease, key, val)
 }
 
 func UnsafeDeleteLease(tx backend.UnsafeWriter, lpb *leasepb.Lease) {
-	tx.UnsafeDelete(Lease, leaseIdToBytes(lpb.ID))
+	tx.UnsafeDelete(bucket.Lease, leaseIdToBytes(lpb.ID))
 }
 
 func MustUnsafeGetLease(tx backend.UnsafeReader, leaseID int64) *leasepb.Lease {
-	_, vs := tx.UnsafeRange(Lease, leaseIdToBytes(leaseID), nil, 0)
+	_, vs := tx.UnsafeRange(bucket.Lease, leaseIdToBytes(leaseID), nil, 0)
 	if len(vs) != 1 {
 		return nil
 	}

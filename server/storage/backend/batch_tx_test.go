@@ -15,14 +15,14 @@
 package backend_test
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
+	buck "go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 func TestBatchTxPut(t *testing.T) {
@@ -34,18 +34,18 @@ func TestBatchTxPut(t *testing.T) {
 	tx.Lock()
 
 	// create bucket
-	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafeCreateBucket(buck.Test)
 
 	// put
 	v := []byte("bar")
-	tx.UnsafePut(schema.Test, []byte("foo"), v)
+	tx.UnsafePut(buck.Test, []byte("foo"), v)
 
 	tx.Unlock()
 
 	// check put result before and after tx is committed
 	for k := 0; k < 2; k++ {
 		tx.Lock()
-		_, gv := tx.UnsafeRange(schema.Test, []byte("foo"), nil, 0)
+		_, gv := tx.UnsafeRange(buck.Test, []byte("foo"), nil, 0)
 		tx.Unlock()
 		if !reflect.DeepEqual(gv[0], v) {
 			t.Errorf("v = %s, want %s", string(gv[0]), string(v))
@@ -62,12 +62,12 @@ func TestBatchTxRange(t *testing.T) {
 	tx.Lock()
 	defer tx.Unlock()
 
-	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafeCreateBucket(buck.Test)
 	// put keys
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
 	allVals := [][]byte{[]byte("bar"), []byte("bar1"), []byte("bar2")}
 	for i := range allKeys {
-		tx.UnsafePut(schema.Test, allKeys[i], allVals[i])
+		tx.UnsafePut(buck.Test, allKeys[i], allVals[i])
 	}
 
 	tests := []struct {
@@ -115,7 +115,7 @@ func TestBatchTxRange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		keys, vals := tx.UnsafeRange(schema.Test, tt.key, tt.endKey, tt.limit)
+		keys, vals := tx.UnsafeRange(buck.Test, tt.key, tt.endKey, tt.limit)
 		if !reflect.DeepEqual(keys, tt.wkeys) {
 			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
 		}
@@ -132,17 +132,17 @@ func TestBatchTxDelete(t *testing.T) {
 	tx := b.BatchTx()
 	tx.Lock()
 
-	tx.UnsafeCreateBucket(schema.Test)
-	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.UnsafeCreateBucket(buck.Test)
+	tx.UnsafePut(buck.Test, []byte("foo"), []byte("bar"))
 
-	tx.UnsafeDelete(schema.Test, []byte("foo"))
+	tx.UnsafeDelete(buck.Test, []byte("foo"))
 
 	tx.Unlock()
 
 	// check put result before and after tx is committed
 	for k := 0; k < 2; k++ {
 		tx.Lock()
-		ks, _ := tx.UnsafeRange(schema.Test, []byte("foo"), nil, 0)
+		ks, _ := tx.UnsafeRange(buck.Test, []byte("foo"), nil, 0)
 		tx.Unlock()
 		if len(ks) != 0 {
 			t.Errorf("keys on foo = %v, want nil", ks)
@@ -154,28 +154,20 @@ func TestBatchTxDelete(t *testing.T) {
 func TestBatchTxCommit(t *testing.T) {
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, b)
-
+	expectedVal := []byte("bar")
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Test)
-	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.UnsafeCreateBucket(buck.Test)
+	tx.UnsafePut(buck.Test, []byte("foo"), expectedVal)
 	tx.Unlock()
 
 	tx.Commit()
 
 	// check whether put happens via db view
-	backend.DbFromBackendForTest(b).View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(schema.Test.Name())
-		if bucket == nil {
-			t.Errorf("bucket test does not exit")
-			return nil
-		}
-		v := bucket.Get([]byte("foo"))
-		if v == nil {
-			t.Errorf("foo key failed to written in backend")
-		}
-		return nil
-	})
+	val := backend.DbFromBackendForTest(b).GetFromBucket(string(buck.Test.Name()), "foo")
+	if !bytes.Equal(val, expectedVal) {
+		t.Errorf("got %s, want %s", val, expectedVal)
+	}
 }
 
 func TestBatchTxBatchLimitCommit(t *testing.T) {
@@ -183,25 +175,17 @@ func TestBatchTxBatchLimitCommit(t *testing.T) {
 	// trigger a commit
 	b, _ := betesting.NewTmpBackend(t, time.Hour, 1)
 	defer betesting.Close(t, b)
-
+	expectedVal := []byte("bar")
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafeCreateBucket(schema.Test)
-	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.UnsafeCreateBucket(buck.Test)
+	tx.UnsafePut(buck.Test, []byte("foo"), expectedVal)
 	tx.Unlock()
 
 	// batch limit commit should have been triggered
 	// check whether put happens via db view
-	backend.DbFromBackendForTest(b).View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(schema.Test.Name())
-		if bucket == nil {
-			t.Errorf("bucket test does not exit")
-			return nil
-		}
-		v := bucket.Get([]byte("foo"))
-		if v == nil {
-			t.Errorf("foo key failed to written in backend")
-		}
-		return nil
-	})
+	val := backend.DbFromBackendForTest(b).GetFromBucket(string(buck.Test.Name()), "foo")
+	if !bytes.Equal(val, expectedVal) {
+		t.Errorf("got %s, want %s", val, expectedVal)
+	}
 }

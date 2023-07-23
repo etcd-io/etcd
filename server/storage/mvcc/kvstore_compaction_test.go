@@ -20,12 +20,13 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/server/v3/bucket"
+
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 func TestScheduleCompaction(t *testing.T) {
@@ -79,7 +80,7 @@ func TestScheduleCompaction(t *testing.T) {
 		ibytes := newRevBytes()
 		for _, rev := range revs {
 			revToBytes(rev, ibytes)
-			tx.UnsafePut(schema.Key, ibytes, []byte("bar"))
+			tx.UnsafePut(bucket.Key, ibytes, []byte("bar"))
 		}
 		tx.Unlock()
 
@@ -91,7 +92,7 @@ func TestScheduleCompaction(t *testing.T) {
 		tx.Lock()
 		for _, rev := range tt.wrevs {
 			revToBytes(rev, ibytes)
-			keys, _ := tx.UnsafeRange(schema.Key, ibytes, nil, 0)
+			keys, _ := tx.UnsafeRange(bucket.Key, ibytes, nil, 0)
 			if len(keys) != 1 {
 				t.Errorf("#%d: range on %v = %d, want 1", i, rev, len(keys))
 			}

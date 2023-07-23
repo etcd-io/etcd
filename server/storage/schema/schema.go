@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
-
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
@@ -129,7 +129,7 @@ var (
 	// schema was introduced in v3.6 as so its changes were not tracked before.
 	schemaChanges = map[semver.Version][]schemaChange{
 		version.V3_6: {
-			addNewField(Meta, MetaStorageVersionName, emptyStorageVersion),
+			addNewField(bucket.Meta, bucket.MetaStorageVersionName, emptyStorageVersion),
 		},
 	}
 	// emptyStorageVersion is used for v3.6 Step for the first time, in all other version StoragetVersion should be set by migrator.

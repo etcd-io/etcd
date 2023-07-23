@@ -20,10 +20,11 @@ import (
 	"sort"
 	"sync"
 
+	"go.etcd.io/etcd/server/v3/bucket"
+
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 const (
@@ -32,7 +33,7 @@ const (
 
 func unsafeHashByRev(tx backend.UnsafeReader, compactRevision, revision int64, keep map[revision]struct{}) (KeyValueHash, error) {
 	h := newKVHasher(compactRevision, revision, keep)
-	err := tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
+	err := tx.UnsafeForEach(bucket.Key, func(k, v []byte) error {
 		h.WriteKeyValue(k, v)
 		return nil
 	})
@@ -48,7 +49,7 @@ type kvHasher struct {
 
 func newKVHasher(compactRev, rev int64, keep map[revision]struct{}) kvHasher {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
-	h.Write(schema.Key.Name())
+	h.Write(bucket.Key.Name())
 	return kvHasher{
 		hash:            h,
 		compactRevision: compactRev,

@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schema
+package bucket
 
 import (
 	"bytes"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 var (
@@ -39,30 +38,49 @@ var (
 	testBucketName = []byte("test")
 )
 
+type BucketID int
+
+type Bucket interface {
+	// ID returns a unique identifier of a bucket.
+	// The id must NOT be persisted and can be used as lightweight identificator
+	// in the in-memory maps.
+	ID() BucketID
+	Name() []byte
+	// String implements Stringer (human readable name).
+	String() string
+
+	// IsSafeRangeBucket is a hack to avoid inadvertently reading duplicate keys;
+	// overwrites on a bucket should only fetch with limit=1, but safeRangeBucket
+	// is known to never overwrite any key so range is safe.
+	IsSafeRangeBucket() bool
+}
+
 var (
-	Key     = backend.Bucket(bucket{id: 1, name: keyBucketName, safeRangeBucket: true})
-	Meta    = backend.Bucket(bucket{id: 2, name: metaBucketName, safeRangeBucket: false})
-	Lease   = backend.Bucket(bucket{id: 3, name: leaseBucketName, safeRangeBucket: false})
-	Alarm   = backend.Bucket(bucket{id: 4, name: alarmBucketName, safeRangeBucket: false})
-	Cluster = backend.Bucket(bucket{id: 5, name: clusterBucketName, safeRangeBucket: false})
+	Key     = Bucket(bucket{id: 1, name: keyBucketName, safeRangeBucket: true})
+	Meta    = Bucket(bucket{id: 2, name: metaBucketName, safeRangeBucket: false})
+	Lease   = Bucket(bucket{id: 3, name: leaseBucketName, safeRangeBucket: false})
+	Alarm   = Bucket(bucket{id: 4, name: alarmBucketName, safeRangeBucket: false})
+	Cluster = Bucket(bucket{id: 5, name: clusterBucketName, safeRangeBucket: false})
 
-	Members        = backend.Bucket(bucket{id: 10, name: membersBucketName, safeRangeBucket: false})
-	MembersRemoved = backend.Bucket(bucket{id: 11, name: membersRemovedBucketName, safeRangeBucket: false})
+	Members        = Bucket(bucket{id: 10, name: membersBucketName, safeRangeBucket: false})
+	MembersRemoved = Bucket(bucket{id: 11, name: membersRemovedBucketName, safeRangeBucket: false})
 
-	Auth      = backend.Bucket(bucket{id: 20, name: authBucketName, safeRangeBucket: false})
-	AuthUsers = backend.Bucket(bucket{id: 21, name: authUsersBucketName, safeRangeBucket: false})
-	AuthRoles = backend.Bucket(bucket{id: 22, name: authRolesBucketName, safeRangeBucket: false})
+	Auth      = Bucket(bucket{id: 20, name: authBucketName, safeRangeBucket: false})
+	AuthUsers = Bucket(bucket{id: 21, name: authUsersBucketName, safeRangeBucket: false})
+	AuthRoles = Bucket(bucket{id: 22, name: authRolesBucketName, safeRangeBucket: false})
 
-	Test = backend.Bucket(bucket{id: 100, name: testBucketName, safeRangeBucket: false})
+	Test = Bucket(bucket{id: 100, name: testBucketName, safeRangeBucket: false})
+
+	Buckets = []Bucket{Key, Meta, Lease, Alarm, Cluster, Members, MembersRemoved, Auth, AuthUsers, AuthRoles, Test}
 )
 
 type bucket struct {
-	id              backend.BucketID
+	id              BucketID
 	name            []byte
 	safeRangeBucket bool
 }
 
-func (b bucket) ID() backend.BucketID    { return b.id }
+func (b bucket) ID() BucketID            { return b.id }
 func (b bucket) Name() []byte            { return b.name }
 func (b bucket) String() string          { return string(b.Name()) }
 func (b bucket) IsSafeRangeBucket() bool { return b.safeRangeBucket }

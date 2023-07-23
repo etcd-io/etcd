@@ -27,6 +27,10 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
+const (
+	defaultTestBackend = "bolt"
+)
+
 func TestGetAllRoles(t *testing.T) {
 	tcs := []struct {
 		name  string
@@ -122,7 +126,7 @@ func TestGetAllRoles(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(lg, tmpPath)
+			be2 := backend.NewDefaultBackend(lg, tmpPath, defaultTestBackend)
 			defer be2.Close()
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetAllRoles()
@@ -219,7 +223,7 @@ func TestGetRole(t *testing.T) {
 			abe.ForceCommit()
 			be.Close()
 
-			be2 := backend.NewDefaultBackend(lg, tmpPath)
+			be2 := backend.NewDefaultBackend(lg, tmpPath, defaultTestBackend)
 			defer be2.Close()
 			abe2 := NewAuthBackend(lg, be2)
 			users := abe2.GetRole("role1")

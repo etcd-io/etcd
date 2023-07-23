@@ -56,6 +56,7 @@ type migrateOptions struct {
 	dataDir       string
 	targetVersion string
 	force         bool
+	backendType   string
 }
 
 func newMigrateOptions() *migrateOptions {
@@ -64,6 +65,7 @@ func newMigrateOptions() *migrateOptions {
 
 func (o *migrateOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&o.dataDir, "data-dir", o.dataDir, "Path to the etcd data dir")
+	cmd.Flags().StringVar(&o.backendType, "backend-type", "bolt", "Type of backend used by etcd.")
 	cmd.MarkFlagRequired("data-dir")
 	cmd.MarkFlagDirname("data-dir")
 
@@ -92,7 +94,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	}
 
 	dbPath := datadir.ToBackendFileName(o.dataDir)
-	c.be = backend.NewDefaultBackend(GetLogger(), dbPath)
+	c.be = backend.NewDefaultBackend(GetLogger(), dbPath, backendType)
 
 	walPath := datadir.ToWalDir(o.dataDir)
 	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{})

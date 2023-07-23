@@ -18,6 +18,8 @@ import (
 	"github.com/coreos/go-semver/semver"
 
 	"go.etcd.io/bbolt"
+
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
@@ -32,7 +34,7 @@ func ReadStorageVersion(tx backend.ReadTx) *semver.Version {
 // UnsafeReadStorageVersion loads storage version from given backend transaction.
 // Populated since v3.6
 func UnsafeReadStorageVersion(tx backend.UnsafeReader) *semver.Version {
-	_, vs := tx.UnsafeRange(Meta, MetaStorageVersionName, nil, 1)
+	_, vs := tx.UnsafeRange(bucket.Meta, bucket.MetaStorageVersionName, nil, 1)
 	if len(vs) == 0 {
 		return nil
 	}
@@ -46,7 +48,7 @@ func UnsafeReadStorageVersion(tx backend.UnsafeReader) *semver.Version {
 // ReadStorageVersionFromSnapshot loads storage version from given bbolt transaction.
 // Populated since v3.6
 func ReadStorageVersionFromSnapshot(tx *bbolt.Tx) *semver.Version {
-	v := tx.Bucket(Meta.Name()).Get(MetaStorageVersionName)
+	v := tx.Bucket(bucket.Meta.Name()).Get(bucket.MetaStorageVersionName)
 	version, err := semver.NewVersion(string(v))
 	if err != nil {
 		return nil
@@ -58,10 +60,10 @@ func ReadStorageVersionFromSnapshot(tx *bbolt.Tx) *semver.Version {
 // Populated since v3.6
 func UnsafeSetStorageVersion(tx backend.UnsafeWriter, v *semver.Version) {
 	sv := semver.Version{Major: v.Major, Minor: v.Minor}
-	tx.UnsafePut(Meta, MetaStorageVersionName, []byte(sv.String()))
+	tx.UnsafePut(bucket.Meta, bucket.MetaStorageVersionName, []byte(sv.String()))
 }
 
 // UnsafeClearStorageVersion removes etcd storage version in backend.
 func UnsafeClearStorageVersion(tx backend.UnsafeWriter) {
-	tx.UnsafeDelete(Meta, MetaStorageVersionName)
+	tx.UnsafeDelete(bucket.Meta, bucket.MetaStorageVersionName)
 }

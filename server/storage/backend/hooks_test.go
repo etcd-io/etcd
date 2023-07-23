@@ -20,14 +20,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	buck "go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.uber.org/zap/zaptest"
 )
 
 var (
-	bucket = schema.Test
+	bucket = buck.Test
 	key    = []byte("key")
 )
 

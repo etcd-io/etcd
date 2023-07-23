@@ -34,6 +34,8 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
+const defaultBackendType = "bolt"
+
 func TestEtctlutlMigrate(t *testing.T) {
 	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 
@@ -165,7 +167,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			}
 
 			t.Log("etcdutl migrate...")
-			be := backend.NewDefaultBackend(lg, filepath.Join(memberDataDir, "member/snap/db"))
+			be := backend.NewDefaultBackend(lg, filepath.Join(memberDataDir, "member/snap/db"), defaultBackendType)
 			defer be.Close()
 
 			ver := schema.ReadStorageVersion(be.ReadTx())

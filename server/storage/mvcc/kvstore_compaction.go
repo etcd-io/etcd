@@ -21,7 +21,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/bucket"
 )
 
 func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyValueHash, error) {
@@ -50,11 +50,11 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 
 		tx := s.b.BatchTx()
 		tx.LockOutsideApply()
-		keys, values := tx.UnsafeRange(schema.Key, last, end, int64(batchNum))
+		keys, values := tx.UnsafeRange(bucket.Key, last, end, int64(batchNum))
 		for i := range keys {
 			rev = bytesToRev(keys[i])
 			if _, ok := keep[rev]; !ok {
-				tx.UnsafeDelete(schema.Key, keys[i])
+				tx.UnsafeDelete(bucket.Key, keys[i])
 				keyCompactions++
 			}
 			h.WriteKeyValue(keys[i], values[i])

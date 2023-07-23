@@ -20,6 +20,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -32,20 +33,20 @@ func MustUnsafeSaveConfStateToBackend(lg *zap.Logger, tx backend.UnsafeWriter, c
 		lg.Panic("Cannot marshal raftpb.ConfState", zap.Stringer("conf-state", confState), zap.Error(err))
 	}
 
-	tx.UnsafePut(Meta, MetaConfStateName, confStateBytes)
+	tx.UnsafePut(bucket.Meta, bucket.MetaConfStateName, confStateBytes)
 }
 
 // UnsafeConfStateFromBackend retrieves ConfState from the backend.
 // Returns nil if confState in backend is not persisted (e.g. backend writen by <v3.5).
 func UnsafeConfStateFromBackend(lg *zap.Logger, tx backend.UnsafeReader) *raftpb.ConfState {
-	keys, vals := tx.UnsafeRange(Meta, MetaConfStateName, nil, 0)
+	keys, vals := tx.UnsafeRange(bucket.Meta, bucket.MetaConfStateName, nil, 0)
 	if len(keys) == 0 {
 		return nil
 	}
 
 	if len(keys) != 1 {
 		lg.Panic(
-			"unexpected number of key: "+string(MetaConfStateName)+" when getting cluster version from backend",
+			"unexpected number of key: "+string(bucket.MetaConfStateName)+" when getting cluster version from backend",
 			zap.Int("number-of-key", len(keys)),
 		)
 	}

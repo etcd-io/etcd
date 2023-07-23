@@ -34,6 +34,7 @@ func NewTmpBackendFromCfg(t testing.TB, bcfg backend.BackendConfig) (backend.Bac
 	tmpPath := filepath.Join(dir, "database")
 	bcfg.Path = tmpPath
 	bcfg.Logger = zaptest.NewLogger(t)
+	bcfg.BackendType = "bolt"
 	return backend.New(bcfg), tmpPath
 }
 
