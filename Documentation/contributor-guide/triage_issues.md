@@ -99,7 +99,7 @@ New feature requests should be created via the etcd feature request template and
 
 ### Test flakes
 
-Test flakes are a specific type of bug that the etcd project tracks seperately as these are a priority to address. These should be created via the test flake template and in theory already have the `type/flake` label, however if this is missing for an issue you determine to be related to a flaking test please add the label manually.
+Test flakes are a specific type of bug that the etcd project tracks separately as these are a priority to address. These should be created via the test flake template and in theory already have the `type/flake` label, however if this is missing for an issue you determine to be related to a flaking test please add the label manually.
 
 ## Step 4 - Define the areas impacted
 
