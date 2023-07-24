@@ -25,7 +25,7 @@ jobs:
         echo "${TARGET}"
         case "${TARGET}" in
           linux-amd64-e2e)
-            PASSES='build release e2e' MANUAL_VER=v3.4.7 CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./test.sh
+            PASSES='build release e2e' CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./test.sh
             ;;
           linux-386-e2e)
             GOARCH=386 PASSES='build e2e' CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' ./test.sh
