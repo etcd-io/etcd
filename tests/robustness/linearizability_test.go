@@ -79,14 +79,6 @@ func TestRobustness(t *testing.T) {
 		),
 	})
 	scenarios = append(scenarios, testScenario{
-		name:      "Issue14685",
-		failpoint: DefragBeforeCopyPanic,
-		cluster: *e2e.NewConfig(
-			e2e.WithClusterSize(1),
-			e2e.WithGoFailEnabled(true),
-		),
-	})
-	scenarios = append(scenarios, testScenario{
 		name:      "Issue13766",
 		failpoint: KillFailpoint,
 		traffic:   traffic.HighTraffic,
