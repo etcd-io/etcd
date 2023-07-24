@@ -196,8 +196,8 @@ func unsafeReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
 // ReadConsistentIndex loads consistent index and term from given transaction.
 // returns 0 if the data are not found.
 func ReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	return unsafeReadConsistentIndex(tx)
 }
 
