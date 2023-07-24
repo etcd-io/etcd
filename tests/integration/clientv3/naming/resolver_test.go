@@ -27,7 +27,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc"
-	testpb "google.golang.org/grpc/test/grpc_testing"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
 )
 
 func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
