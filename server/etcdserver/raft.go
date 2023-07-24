@@ -223,7 +223,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					return
 				}
 
-				// the leader can write to its disk in parallel with replicating to the followers and them
+				// the leader can write to its disk in parallel with replicating to the followers and then
 				// writing to their disks.
 				// For more details, check raft thesis 10.2.1
 				if islead {
