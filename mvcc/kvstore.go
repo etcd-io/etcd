@@ -376,8 +376,8 @@ func (s *store) restore() error {
 	keyToLease := make(map[string]lease.LeaseID)
 
 	// restore index
-	tx := s.b.BatchTx()
-	tx.Lock()
+	tx := s.b.ReadTx()
+	tx.RLock()
 
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
@@ -459,7 +459,7 @@ func (s *store) restore() error {
 		}
 	}
 
-	tx.Unlock()
+	tx.RUnlock()
 
 	if scheduledCompact != 0 {
 		s.compactLockfree(scheduledCompact)
