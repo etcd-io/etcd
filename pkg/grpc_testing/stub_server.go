@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 
 	"google.golang.org/grpc"
-	testpb "google.golang.org/grpc/test/grpc_testing"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
 )
 
 // StubServer is borrowed from the interal package of grpc-go.
