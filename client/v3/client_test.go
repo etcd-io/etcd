@@ -24,13 +24,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 
 	"google.golang.org/grpc"
@@ -312,6 +315,47 @@ func TestSyncFiltersMembers(t *testing.T) {
 	}
 }
 
+func TestMinSupportedVersion(t *testing.T) {
+	testutil.BeforeTest(t)
+	var tests = []struct {
+		name                string
+		currentVersion      semver.Version
+		minSupportedVersion semver.Version
+	}{
+		{
+			name:                "v3.6 client should accept v3.5",
+			currentVersion:      version.V3_6,
+			minSupportedVersion: version.V3_5,
+		},
+		{
+			name:                "v3.7 client should accept v3.6",
+			currentVersion:      version.V3_7,
+			minSupportedVersion: version.V3_6,
+		},
+		{
+			name:                "first minor version should accept its previous version",
+			currentVersion:      version.V4_0,
+			minSupportedVersion: version.V3_7,
+		},
+		{
+			name:                "first version in list should not accept previous versions",
+			currentVersion:      version.V3_0,
+			minSupportedVersion: version.V3_0,
+		},
+	}
+
+	versionBackup := version.Version
+	t.Cleanup(func() {
+		version.Version = versionBackup
+	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			version.Version = tt.currentVersion.String()
+			require.True(t, minSupportedVersion().Equal(tt.minSupportedVersion))
+		})
+	}
+}
+
 func TestClientRejectOldCluster(t *testing.T) {
 	testutil.BeforeTest(t)
 	var tests = []struct {
@@ -323,13 +367,13 @@ func TestClientRejectOldCluster(t *testing.T) {
 		{
 			name:          "all new versions with the same value",
 			endpoints:     []string{"192.168.3.41:22379", "192.168.3.41:22479", "192.168.3.41:22579"},
-			versions:      []string{"3.5.4", "3.5.4", "3.5.4"},
+			versions:      []string{version.Version, version.Version, version.Version},
 			expectedError: nil,
 		},
 		{
 			name:          "all new versions with different values",
 			endpoints:     []string{"192.168.3.41:22379", "192.168.3.41:22479", "192.168.3.41:22579"},
-			versions:      []string{"3.5.4", "3.5.4", "3.4.0"},
+			versions:      []string{version.Version, minSupportedVersion().String(), minSupportedVersion().String()},
 			expectedError: nil,
 		},
 		{
