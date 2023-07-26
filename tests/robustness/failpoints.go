@@ -54,8 +54,8 @@ var (
 	CompactAfterCommitScheduledCompactPanic  Failpoint = goPanicFailpoint{"compactAfterCommitScheduledCompact", triggerCompact{}, AnyMember}
 	CompactBeforeSetFinishedCompactPanic     Failpoint = goPanicFailpoint{"compactBeforeSetFinishedCompact", triggerCompact{}, AnyMember}
 	CompactAfterSetFinishedCompactPanic      Failpoint = goPanicFailpoint{"compactAfterSetFinishedCompact", triggerCompact{}, AnyMember}
-	CompactBeforeCommitBatchPanic            Failpoint = goPanicFailpoint{"compactBeforeCommitBatch", triggerCompact{}, AnyMember}
-	CompactAfterCommitBatchPanic             Failpoint = goPanicFailpoint{"compactAfterCommitBatch", triggerCompact{}, AnyMember}
+	CompactBeforeCommitBatchPanic            Failpoint = goPanicFailpoint{"compactBeforeCommitBatch", triggerCompact{multiBatchCompaction: true}, AnyMember}
+	CompactAfterCommitBatchPanic             Failpoint = goPanicFailpoint{"compactAfterCommitBatch", triggerCompact{multiBatchCompaction: true}, AnyMember}
 	RaftBeforeLeaderSendPanic                Failpoint = goPanicFailpoint{"raftBeforeLeaderSend", nil, Leader}
 	BlackholePeerNetwork                     Failpoint = blackholePeerNetworkFailpoint{triggerBlackhole{waitTillSnapshot: false}}
 	BlackholeUntilSnapshot                   Failpoint = blackholePeerNetworkFailpoint{triggerBlackhole{waitTillSnapshot: true}}
@@ -338,9 +338,11 @@ func (t triggerDefrag) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) 
 	return true
 }
 
-type triggerCompact struct{}
+type triggerCompact struct {
+	multiBatchCompaction bool
+}
 
-func (t triggerCompact) Trigger(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
+func (t triggerCompact) Trigger(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            member.EndpointsGRPC(),
 		Logger:               zap.NewNop(),
@@ -351,11 +353,22 @@ func (t triggerCompact) Trigger(_ *testing.T, ctx context.Context, member e2e.Et
 		return fmt.Errorf("failed creating client: %w", err)
 	}
 	defer cc.Close()
-	resp, err := cc.Get(ctx, "/")
-	if err != nil {
-		return err
+
+	var rev int64
+	for {
+		resp, err := cc.Get(ctx, "/")
+		if err != nil {
+			return err
+		}
+
+		rev = resp.Header.Revision
+		if !t.multiBatchCompaction || rev > int64(clus.Cfg.CompactionBatchLimit) {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
-	_, err = cc.Compact(ctx, resp.Header.Revision)
+
+	_, err = cc.Compact(ctx, rev)
 	if err != nil && !strings.Contains(err.Error(), "error reading from server: EOF") {
 		return err
 	}
