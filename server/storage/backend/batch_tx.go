@@ -45,6 +45,8 @@ type Bucket interface {
 
 type BatchTx interface {
 	ReadTx
+	Lock()
+	Unlock()
 	UnsafeCreateBucket(bucket Bucket)
 	UnsafeDeleteBucket(bucket Bucket)
 	UnsafePut(bucket Bucket, key []byte, value []byte)
