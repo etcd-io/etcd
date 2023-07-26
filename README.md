@@ -161,6 +161,8 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on setting up your development e
 
 Please refer to [community-membership.md](Documentation/contributor-guide/community-membership.md#member) for information on becoming an etcd project member.  We welcome and look forward to your contributions to the project!
 
+Please also refer to [roadmap](Documentation/contributor-guide/roadmap.md) to get more details on the priorities for the next few major or minor releases.
+
 ## Reporting bugs
 
 See [reporting bugs](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md) for details about reporting any issues. Before opening an issue please check it is not covered in our [frequently asked questions].
