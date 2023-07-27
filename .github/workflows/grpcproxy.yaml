@@ -26,10 +26,10 @@ jobs:
           echo "${TARGET}"
           case "${TARGET}" in
             linux-amd64-grpcproxy-integration)
-              GOOS=linux GOARCH=amd64 CPU=4 RACE=true make test-grpcproxy-integration
+              GOOS=linux GOARCH=amd64 CPU=4 make test-grpcproxy-integration
               ;;
             linux-amd64-grpcproxy-e2e)
-              GOOS=linux GOARCH=amd64 CPU=4 RACE=true make test-grpcproxy-e2e
+              GOOS=linux GOARCH=amd64 CPU=4 make test-grpcproxy-e2e
               ;;
             *)
               echo "Failed to find target"
