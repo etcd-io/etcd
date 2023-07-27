@@ -24,8 +24,8 @@ import (
 // ReadStorageVersion loads storage version from given backend transaction.
 // Populated since v3.6
 func ReadStorageVersion(tx backend.ReadTx) *semver.Version {
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	return UnsafeReadStorageVersion(tx)
 }
 

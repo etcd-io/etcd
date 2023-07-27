@@ -207,8 +207,8 @@ func (s *membershipBackend) ClusterVersionFromBackend() *semver.Version {
 func (s *membershipBackend) DowngradeInfoFromBackend() *version.DowngradeInfo {
 	dkey := ClusterDowngradeKeyName
 	tx := s.be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	keys, vals := tx.UnsafeRange(Cluster, dkey, nil, 0)
 	if len(keys) == 0 {
 		return nil

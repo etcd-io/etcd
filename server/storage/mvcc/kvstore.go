@@ -228,8 +228,8 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, int64, error) {
 // checkPrevCompactionCompleted checks whether the previous scheduled compaction is completed.
 func (s *store) checkPrevCompactionCompleted() bool {
 	tx := s.b.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	scheduledCompact, scheduledCompactFound := UnsafeReadScheduledCompact(tx)
 	finishedCompact, finishedCompactFound := UnsafeReadFinishedCompact(tx)
 	return scheduledCompact == finishedCompact && scheduledCompactFound == finishedCompactFound
@@ -328,7 +328,7 @@ func (s *store) restore() error {
 
 	// restore index
 	tx := s.b.ReadTx()
-	tx.Lock()
+	tx.RLock()
 
 	finishedCompact, found := UnsafeReadFinishedCompact(tx)
 	if found {
@@ -384,7 +384,7 @@ func (s *store) restore() error {
 
 	for key, lid := range keyToLease {
 		if s.le == nil {
-			tx.Unlock()
+			tx.RUnlock()
 			panic("no lessor to attach lease")
 		}
 		err := s.le.Attach(lid, []lease.LeaseItem{{Key: key}})
@@ -397,7 +397,7 @@ func (s *store) restore() error {
 		}
 	}
 
-	tx.Unlock()
+	tx.RUnlock()
 
 	s.lg.Info("kvstore restored", zap.Int64("current-rev", s.currentRev))
 
