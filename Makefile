@@ -149,6 +149,19 @@ ifeq (, $(shell which yamlfmt))
 endif
 	yamlfmt -conf tools/.yamlfmt .
 
+# Tools
+
+.PHONY: install-lazyfs
+install-lazyfs: bin/lazyfs
+
+bin/lazyfs:
+	rm /tmp/lazyfs -rf
+	git clone --depth 1 --branch 0.2.0 https://github.com/dsrhaslab/lazyfs /tmp/lazyfs
+	cd /tmp/lazyfs/libs/libpcache; ./build.sh
+	cd /tmp/lazyfs/lazyfs; ./build.sh
+	mkdir -p ./bin
+	cp /tmp/lazyfs/lazyfs/build/lazyfs ./bin/lazyfs
+
 # Cleanup
 
 clean:
@@ -156,6 +169,7 @@ clean:
 	rm -rf ./covdir
 	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/etcd*
+	rm -rf ./bin/lazyfs
 	rm -rf ./default.etcd
 	rm -rf ./tests/e2e/default.etcd
 	rm -rf ./release

@@ -24,6 +24,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"testing"
 
 	"go.uber.org/zap"
 
@@ -38,12 +39,12 @@ type proxyEtcdProcess struct {
 	proxyV3 *proxyV3Proc
 }
 
-func NewEtcdProcess(cfg *EtcdServerProcessConfig) (EtcdProcess, error) {
-	return NewProxyEtcdProcess(cfg)
+func NewEtcdProcess(t testing.TB, cfg *EtcdServerProcessConfig) (EtcdProcess, error) {
+	return NewProxyEtcdProcess(t, cfg)
 }
 
-func NewProxyEtcdProcess(cfg *EtcdServerProcessConfig) (*proxyEtcdProcess, error) {
-	ep, err := NewEtcdServerProcess(cfg)
+func NewProxyEtcdProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*proxyEtcdProcess, error) {
+	ep, err := NewEtcdServerProcess(t, cfg)
 	if err != nil {
 		return nil, err
 	}

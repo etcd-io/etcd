@@ -208,7 +208,13 @@ func (f killFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
 		}
 	}
-
+	if lazyfs := member.LazyFS(); lazyfs != nil {
+		lg.Info("Removing data that was not fsynced")
+		err := lazyfs.ClearCache(ctx)
+		if err != nil {
+			return err
+		}
+	}
 	err := member.Start(ctx)
 	if err != nil {
 		return err
@@ -276,6 +282,14 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 			return fmt.Errorf("member didn't exit as expected: %v", err)
 		}
 		lg.Info("Member exited as expected", zap.String("member", member.Config().Name))
+	}
+
+	if lazyfs := member.LazyFS(); lazyfs != nil {
+		lg.Info("Removing data that was not fsynced")
+		err := lazyfs.ClearCache(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	return member.Start(ctx)
