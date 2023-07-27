@@ -15,9 +15,12 @@
 package flags
 
 import (
+	"flag"
 	"net/url"
-	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateURLsValueBad(t *testing.T) {
@@ -66,8 +69,28 @@ func TestNewURLsValue(t *testing.T) {
 	}
 	for i := range tests {
 		uu := []url.URL(*NewURLsValue(tests[i].s))
-		if !reflect.DeepEqual(tests[i].exp, uu) {
-			t.Fatalf("#%d: expected %+v, got %+v", i, tests[i].exp, uu)
-		}
+		require.Equal(t, tests[i].exp, uu)
 	}
+}
+
+func TestUniqueURLsFromFlag(t *testing.T) {
+	const name = "test"
+	urls := []string{
+		"https://1.2.3.4:1",
+		"https://1.2.3.4:2",
+		"https://1.2.3.4:3",
+		"https://1.2.3.4:1",
+	}
+	fs := flag.NewFlagSet(name, flag.ExitOnError)
+	u := NewUniqueURLsWithExceptions(strings.Join(urls, ","))
+	fs.Var(u, name, "usage")
+	uss := UniqueURLsFromFlag(fs, name)
+
+	require.Equal(t, len(u.Values), len(uss))
+
+	um := make(map[string]struct{})
+	for _, x := range uss {
+		um[x.String()] = struct{}{}
+	}
+	require.Equal(t, u.Values, um)
 }
