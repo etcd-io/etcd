@@ -106,6 +106,12 @@ func (t txMock) Lock() {
 func (t txMock) Unlock() {
 }
 
+func (t txMock) RLock() {
+}
+
+func (t txMock) RUnlock() {
+}
+
 func (t txMock) UnsafeSaveAuthEnabled(enabled bool) {
 	t.be.enabled = enabled
 }

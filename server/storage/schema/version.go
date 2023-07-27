@@ -31,7 +31,7 @@ func ReadStorageVersion(tx backend.ReadTx) *semver.Version {
 
 // UnsafeReadStorageVersion loads storage version from given backend transaction.
 // Populated since v3.6
-func UnsafeReadStorageVersion(tx backend.ReadTx) *semver.Version {
+func UnsafeReadStorageVersion(tx backend.UnsafeReader) *semver.Version {
 	_, vs := tx.UnsafeRange(Meta, MetaStorageVersionName, nil, 1)
 	if len(vs) == 0 {
 		return nil

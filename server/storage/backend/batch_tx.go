@@ -44,9 +44,9 @@ type Bucket interface {
 }
 
 type BatchTx interface {
-	ReadTx
 	Lock()
 	Unlock()
+	UnsafeReader
 	UnsafeCreateBucket(bucket Bucket)
 	UnsafeDeleteBucket(bucket Bucket)
 	UnsafePut(bucket Bucket, key []byte, value []byte)
@@ -101,18 +101,6 @@ func (t *batchTx) Unlock() {
 		t.commit(false)
 	}
 	t.Mutex.Unlock()
-}
-
-// BatchTx interface embeds ReadTx interface. But RLock() and RUnlock() do not
-// have appropriate semantics in BatchTx interface. Therefore should not be called.
-// TODO: might want to decouple ReadTx and BatchTx
-
-func (t *batchTx) RLock() {
-	panic("unexpected RLock")
-}
-
-func (t *batchTx) RUnlock() {
-	panic("unexpected RUnlock")
 }
 
 func (t *batchTx) UnsafeCreateBucket(bucket Bucket) {

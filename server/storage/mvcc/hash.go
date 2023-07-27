@@ -30,7 +30,7 @@ const (
 	hashStorageMaxSize = 10
 )
 
-func unsafeHashByRev(tx backend.ReadTx, compactRevision, revision int64, keep map[revision]struct{}) (KeyValueHash, error) {
+func unsafeHashByRev(tx backend.UnsafeReader, compactRevision, revision int64, keep map[revision]struct{}) (KeyValueHash, error) {
 	h := newKVHasher(compactRevision, revision, keep)
 	err := tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
 		h.WriteKeyValue(k, v)

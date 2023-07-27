@@ -206,7 +206,9 @@ type AuthBackend interface {
 }
 
 type AuthBatchTx interface {
-	AuthReadTx
+	Lock()
+	Unlock()
+	UnsafeAuthReader
 	UnsafeSaveAuthEnabled(enabled bool)
 	UnsafeSaveAuthRevision(rev uint64)
 	UnsafePutUser(*authpb.User)
@@ -216,14 +218,18 @@ type AuthBatchTx interface {
 }
 
 type AuthReadTx interface {
+	RLock()
+	RUnlock()
+	UnsafeAuthReader
+}
+
+type UnsafeAuthReader interface {
 	UnsafeReadAuthEnabled() bool
 	UnsafeReadAuthRevision() uint64
 	UnsafeGetUser(string) *authpb.User
 	UnsafeGetRole(string) *authpb.Role
 	UnsafeGetAllUsers() []*authpb.User
 	UnsafeGetAllRoles() []*authpb.Role
-	Lock()
-	Unlock()
 }
 
 type authStore struct {
@@ -354,8 +360,8 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 	// to avoid putting it in the critical section of the tx lock.
 	revision, err := func() (uint64, error) {
 		tx := as.be.ReadTx()
-		tx.Lock()
-		defer tx.Unlock()
+		tx.RLock()
+		defer tx.RUnlock()
 
 		user = tx.UnsafeGetUser(username)
 		if user == nil {
@@ -382,13 +388,13 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 func (as *authStore) Recover(be AuthBackend) {
 	as.be = be
 	tx := be.ReadTx()
-	tx.Lock()
+	tx.RLock()
 
 	enabled := tx.UnsafeReadAuthEnabled()
 	as.setRevision(tx.UnsafeReadAuthRevision())
 	as.refreshRangePermCache(tx)
 
-	tx.Unlock()
+	tx.RUnlock()
 
 	as.enabledMu.Lock()
 	as.enabled = enabled
@@ -864,8 +870,8 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	}
 
 	tx := as.be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 
 	user := tx.UnsafeGetUser(userName)
 	if user == nil {
@@ -906,8 +912,8 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 	}
 
 	tx := as.be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	u := tx.UnsafeGetUser(authInfo.Username)
 
 	if u == nil {
