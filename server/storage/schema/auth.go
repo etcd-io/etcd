@@ -96,13 +96,11 @@ func (atx *authBatchTx) UnsafeSaveAuthRevision(rev uint64) {
 }
 
 func (atx *authBatchTx) UnsafeReadAuthEnabled() bool {
-	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
-	return arx.UnsafeReadAuthEnabled()
+	return unsafeReadAuthEnabled(atx.tx)
 }
 
 func (atx *authBatchTx) UnsafeReadAuthRevision() uint64 {
-	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
-	return arx.UnsafeReadAuthRevision()
+	return unsafeReadAuthRevision(atx.tx)
 }
 
 func (atx *authBatchTx) Lock() {
@@ -117,7 +115,11 @@ func (atx *authBatchTx) Unlock() {
 }
 
 func (atx *authReadTx) UnsafeReadAuthEnabled() bool {
-	_, vs := atx.tx.UnsafeRange(Auth, AuthEnabledKeyName, nil, 0)
+	return unsafeReadAuthEnabled(atx.tx)
+}
+
+func unsafeReadAuthEnabled(tx backend.UnsafeReader) bool {
+	_, vs := tx.UnsafeRange(Auth, AuthEnabledKeyName, nil, 0)
 	if len(vs) == 1 {
 		if bytes.Equal(vs[0], authEnabled) {
 			return true
@@ -127,7 +129,11 @@ func (atx *authReadTx) UnsafeReadAuthEnabled() bool {
 }
 
 func (atx *authReadTx) UnsafeReadAuthRevision() uint64 {
-	_, vs := atx.tx.UnsafeRange(Auth, AuthRevisionKeyName, nil, 0)
+	return unsafeReadAuthRevision(atx.tx)
+}
+
+func unsafeReadAuthRevision(tx backend.UnsafeReader) uint64 {
+	_, vs := tx.UnsafeRange(Auth, AuthRevisionKeyName, nil, 0)
 	if len(vs) != 1 {
 		// this can happen in the initialization phase
 		return 0
@@ -135,10 +141,10 @@ func (atx *authReadTx) UnsafeReadAuthRevision() uint64 {
 	return binary.BigEndian.Uint64(vs[0])
 }
 
-func (atx *authReadTx) Lock() {
+func (atx *authReadTx) RLock() {
 	atx.tx.RLock()
 }
 
-func (atx *authReadTx) Unlock() {
+func (atx *authReadTx) RUnlock() {
 	atx.tx.RUnlock()
 }

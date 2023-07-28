@@ -37,7 +37,7 @@ func CreateMetaBucket(tx backend.BatchTx) {
 // UnsafeReadConsistentIndex loads consistent index & term from given transaction.
 // returns 0,0 if the data are not found.
 // Term is persisted since v3.5.
-func UnsafeReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
+func UnsafeReadConsistentIndex(tx backend.UnsafeReader) (uint64, uint64) {
 	_, vs := tx.UnsafeRange(Meta, MetaConsistentIndexKeyName, nil, 0)
 	if len(vs) == 0 {
 		return 0, 0

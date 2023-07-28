@@ -32,7 +32,7 @@ func Validate(lg *zap.Logger, tx backend.ReadTx) error {
 	return unsafeValidate(lg, tx)
 }
 
-func unsafeValidate(lg *zap.Logger, tx backend.ReadTx) error {
+func unsafeValidate(lg *zap.Logger, tx backend.UnsafeReader) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
 		// v3.5 requires a wal snapshot to persist its fields, so we can assign it a schema version.
@@ -91,7 +91,7 @@ func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, e
 }
 
 // UnsafeDetectSchemaVersion non-threadsafe version of DetectSchemaVersion.
-func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, err error) {
+func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.UnsafeReader) (v semver.Version, err error) {
 	vp := UnsafeReadStorageVersion(tx)
 	if vp != nil {
 		return *vp, nil

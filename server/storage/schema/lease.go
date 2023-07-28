@@ -26,7 +26,7 @@ func UnsafeCreateLeaseBucket(tx backend.BatchTx) {
 	tx.UnsafeCreateBucket(Lease)
 }
 
-func MustUnsafeGetAllLeases(tx backend.ReadTx) []*leasepb.Lease {
+func MustUnsafeGetAllLeases(tx backend.UnsafeReader) []*leasepb.Lease {
 	ls := make([]*leasepb.Lease, 0)
 	err := tx.UnsafeForEach(Lease, func(k, v []byte) error {
 		var lpb leasepb.Lease
