@@ -23,7 +23,7 @@ import (
 type action interface {
 	// unsafeDo executes the action and returns revert action, when executed
 	// should restore the state from before.
-	unsafeDo(tx backend.BatchTx) (revert action, err error)
+	unsafeDo(tx backend.UnsafeReadWriter) (revert action, err error)
 }
 
 type setKeyAction struct {
@@ -32,7 +32,7 @@ type setKeyAction struct {
 	FieldValue []byte
 }
 
-func (a setKeyAction) unsafeDo(tx backend.BatchTx) (action, error) {
+func (a setKeyAction) unsafeDo(tx backend.UnsafeReadWriter) (action, error) {
 	revert := restoreFieldValueAction(tx, a.Bucket, a.FieldName)
 	tx.UnsafePut(a.Bucket, a.FieldName, a.FieldValue)
 	return revert, nil
@@ -43,13 +43,13 @@ type deleteKeyAction struct {
 	FieldName []byte
 }
 
-func (a deleteKeyAction) unsafeDo(tx backend.BatchTx) (action, error) {
+func (a deleteKeyAction) unsafeDo(tx backend.UnsafeReadWriter) (action, error) {
 	revert := restoreFieldValueAction(tx, a.Bucket, a.FieldName)
 	tx.UnsafeDelete(a.Bucket, a.FieldName)
 	return revert, nil
 }
 
-func restoreFieldValueAction(tx backend.BatchTx, bucket backend.Bucket, fieldName []byte) action {
+func restoreFieldValueAction(tx backend.UnsafeReader, bucket backend.Bucket, fieldName []byte) action {
 	_, vs := tx.UnsafeRange(bucket, fieldName, nil, 1)
 	if len(vs) == 1 {
 		return &setKeyAction{
@@ -68,7 +68,7 @@ type ActionList []action
 
 // unsafeExecute executes actions one by one. If one of actions returns error,
 // it will revert them.
-func (as ActionList) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) error {
+func (as ActionList) unsafeExecute(lg *zap.Logger, tx backend.UnsafeReadWriter) error {
 	var revertActions = make(ActionList, 0, len(as))
 	for _, a := range as {
 		revert, err := a.unsafeDo(tx)
@@ -84,7 +84,7 @@ func (as ActionList) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) error {
 
 // unsafeExecuteInReversedOrder executes actions in revered order. Will panic on
 // action error. Should be used when reverting.
-func (as ActionList) unsafeExecuteInReversedOrder(lg *zap.Logger, tx backend.BatchTx) {
+func (as ActionList) unsafeExecuteInReversedOrder(lg *zap.Logger, tx backend.UnsafeReadWriter) {
 	for j := len(as) - 1; j >= 0; j-- {
 		_, err := as[j].unsafeDo(tx)
 		if err != nil {

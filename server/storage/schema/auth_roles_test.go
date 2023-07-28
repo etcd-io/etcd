@@ -30,17 +30,17 @@ import (
 func TestGetAllRoles(t *testing.T) {
 	tcs := []struct {
 		name  string
-		setup func(tx auth.AuthBatchTx)
+		setup func(tx auth.UnsafeAuthWriter)
 		want  []*authpb.Role
 	}{
 		{
 			name:  "Empty by default",
-			setup: func(tx auth.AuthBatchTx) {},
+			setup: func(tx auth.UnsafeAuthWriter) {},
 			want:  nil,
 		},
 		{
 			name: "Returns data put before",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutRole(&authpb.Role{
 					Name: []byte("readKey"),
 					KeyPermission: []*authpb.Permission{
@@ -67,7 +67,7 @@ func TestGetAllRoles(t *testing.T) {
 		},
 		{
 			name: "Skips deleted",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutRole(&authpb.Role{
 					Name: []byte("role1"),
 				})
@@ -80,7 +80,7 @@ func TestGetAllRoles(t *testing.T) {
 		},
 		{
 			name: "Returns data overriden by put",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutRole(&authpb.Role{
 					Name: []byte("role1"),
 					KeyPermission: []*authpb.Permission{
@@ -135,17 +135,17 @@ func TestGetAllRoles(t *testing.T) {
 func TestGetRole(t *testing.T) {
 	tcs := []struct {
 		name  string
-		setup func(tx auth.AuthBatchTx)
+		setup func(tx auth.UnsafeAuthWriter)
 		want  *authpb.Role
 	}{
 		{
 			name:  "Returns nil for missing",
-			setup: func(tx auth.AuthBatchTx) {},
+			setup: func(tx auth.UnsafeAuthWriter) {},
 			want:  nil,
 		},
 		{
 			name: "Returns data put before",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutRole(&authpb.Role{
 					Name: []byte("role1"),
 					KeyPermission: []*authpb.Permission{
@@ -170,7 +170,7 @@ func TestGetRole(t *testing.T) {
 		},
 		{
 			name: "Return nil for deleted",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutRole(&authpb.Role{
 					Name: []byte("role1"),
 				})
@@ -180,7 +180,7 @@ func TestGetRole(t *testing.T) {
 		},
 		{
 			name: "Returns data overriden by put",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutRole(&authpb.Role{
 					Name: []byte("role1"),
 					KeyPermission: []*authpb.Permission{

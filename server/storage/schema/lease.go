@@ -22,7 +22,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
-func UnsafeCreateLeaseBucket(tx backend.BatchTx) {
+func UnsafeCreateLeaseBucket(tx backend.UnsafeWriter) {
 	tx.UnsafeCreateBucket(Lease)
 }
 
@@ -43,7 +43,7 @@ func MustUnsafeGetAllLeases(tx backend.UnsafeReader) []*leasepb.Lease {
 	return ls
 }
 
-func MustUnsafePutLease(tx backend.BatchTx, lpb *leasepb.Lease) {
+func MustUnsafePutLease(tx backend.UnsafeWriter, lpb *leasepb.Lease) {
 	key := leaseIdToBytes(lpb.ID)
 
 	val, err := lpb.Marshal()
@@ -53,11 +53,11 @@ func MustUnsafePutLease(tx backend.BatchTx, lpb *leasepb.Lease) {
 	tx.UnsafePut(Lease, key, val)
 }
 
-func UnsafeDeleteLease(tx backend.BatchTx, lpb *leasepb.Lease) {
+func UnsafeDeleteLease(tx backend.UnsafeWriter, lpb *leasepb.Lease) {
 	tx.UnsafeDelete(Lease, leaseIdToBytes(lpb.ID))
 }
 
-func MustUnsafeGetLease(tx backend.BatchTx, leaseID int64) *leasepb.Lease {
+func MustUnsafeGetLease(tx backend.UnsafeReader, leaseID int64) *leasepb.Lease {
 	_, vs := tx.UnsafeRange(Lease, leaseIdToBytes(leaseID), nil, 0)
 	if len(vs) != 1 {
 		return nil

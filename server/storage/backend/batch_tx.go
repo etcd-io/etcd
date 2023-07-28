@@ -46,18 +46,26 @@ type Bucket interface {
 type BatchTx interface {
 	Lock()
 	Unlock()
-	UnsafeReader
-	UnsafeCreateBucket(bucket Bucket)
-	UnsafeDeleteBucket(bucket Bucket)
-	UnsafePut(bucket Bucket, key []byte, value []byte)
-	UnsafeSeqPut(bucket Bucket, key []byte, value []byte)
-	UnsafeDelete(bucket Bucket, key []byte)
 	// Commit commits a previous tx and begins a new writable one.
 	Commit()
 	// CommitAndStop commits the previous tx and does not create a new one.
 	CommitAndStop()
 	LockInsideApply()
 	LockOutsideApply()
+	UnsafeReadWriter
+}
+
+type UnsafeReadWriter interface {
+	UnsafeReader
+	UnsafeWriter
+}
+
+type UnsafeWriter interface {
+	UnsafeCreateBucket(bucket Bucket)
+	UnsafeDeleteBucket(bucket Bucket)
+	UnsafePut(bucket Bucket, key []byte, value []byte)
+	UnsafeSeqPut(bucket Bucket, key []byte, value []byte)
+	UnsafeDelete(bucket Bucket, key []byte)
 }
 
 type batchTx struct {

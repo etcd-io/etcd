@@ -56,7 +56,7 @@ func (p migrationPlan) Execute(lg *zap.Logger, tx backend.BatchTx) error {
 	return p.unsafeExecute(lg, tx)
 }
 
-func (p migrationPlan) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) (err error) {
+func (p migrationPlan) unsafeExecute(lg *zap.Logger, tx backend.UnsafeReadWriter) (err error) {
 	for _, s := range p {
 		err = s.unsafeExecute(lg, tx)
 		if err != nil {
@@ -98,7 +98,7 @@ func (s migrationStep) execute(lg *zap.Logger, tx backend.BatchTx) error {
 }
 
 // unsafeExecute is non thread-safe version of execute.
-func (s migrationStep) unsafeExecute(lg *zap.Logger, tx backend.BatchTx) error {
+func (s migrationStep) unsafeExecute(lg *zap.Logger, tx backend.UnsafeReadWriter) error {
 	err := s.actions.unsafeExecute(lg, tx)
 	if err != nil {
 		return err

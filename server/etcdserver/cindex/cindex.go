@@ -46,7 +46,7 @@ type ConsistentIndexer interface {
 
 	// UnsafeSave must be called holding the lock on the tx.
 	// It saves consistentIndex to the underlying stable storage.
-	UnsafeSave(tx backend.BatchTx)
+	UnsafeSave(tx backend.UnsafeReadWriter)
 
 	// SetBackend set the available backend.BatchTx for ConsistentIndexer.
 	SetBackend(be Backend)
@@ -115,7 +115,7 @@ func (ci *consistentIndex) SetConsistentIndex(v uint64, term uint64) {
 	atomic.StoreUint64(&ci.term, term)
 }
 
-func (ci *consistentIndex) UnsafeSave(tx backend.BatchTx) {
+func (ci *consistentIndex) UnsafeSave(tx backend.UnsafeReadWriter) {
 	index := atomic.LoadUint64(&ci.consistentIndex)
 	term := atomic.LoadUint64(&ci.term)
 	schema.UnsafeUpdateConsistentIndex(tx, index, term)
@@ -166,8 +166,8 @@ func (f *fakeConsistentIndex) SetConsistentApplyingIndex(index uint64, term uint
 	atomic.StoreUint64(&f.term, term)
 }
 
-func (f *fakeConsistentIndex) UnsafeSave(_ backend.BatchTx) {}
-func (f *fakeConsistentIndex) SetBackend(_ Backend)         {}
+func (f *fakeConsistentIndex) UnsafeSave(_ backend.UnsafeReadWriter) {}
+func (f *fakeConsistentIndex) SetBackend(_ Backend)                  {}
 
 func UpdateConsistentIndexForce(tx backend.BatchTx, index uint64, term uint64) {
 	tx.LockOutsideApply()

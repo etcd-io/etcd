@@ -41,7 +41,7 @@ func SetScheduledCompact(tx backend.BatchTx, value int64) {
 	UnsafeSetScheduledCompact(tx, value)
 }
 
-func UnsafeSetScheduledCompact(tx backend.BatchTx, value int64) {
+func UnsafeSetScheduledCompact(tx backend.UnsafeWriter, value int64) {
 	rbytes := newRevBytes()
 	revToBytes(revision{main: value}, rbytes)
 	tx.UnsafePut(schema.Meta, schema.ScheduledCompactKeyName, rbytes)
@@ -53,7 +53,7 @@ func SetFinishedCompact(tx backend.BatchTx, value int64) {
 	UnsafeSetFinishedCompact(tx, value)
 }
 
-func UnsafeSetFinishedCompact(tx backend.BatchTx, value int64) {
+func UnsafeSetFinishedCompact(tx backend.UnsafeWriter, value int64) {
 	rbytes := newRevBytes()
 	revToBytes(revision{main: value}, rbytes)
 	tx.UnsafePut(schema.Meta, schema.FinishedCompactKeyName, rbytes)

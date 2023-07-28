@@ -62,7 +62,7 @@ func Migrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Ver
 }
 
 // UnsafeMigrate is non thread-safe version of Migrate.
-func UnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Version) error {
+func UnsafeMigrate(lg *zap.Logger, tx backend.UnsafeReadWriter, w WALVersion, target semver.Version) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
 		return fmt.Errorf("cannot detect storage schema version: %v", err)

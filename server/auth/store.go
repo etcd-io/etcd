@@ -205,18 +205,6 @@ type AuthBackend interface {
 	GetAllRoles() []*authpb.Role
 }
 
-type AuthBatchTx interface {
-	Lock()
-	Unlock()
-	UnsafeAuthReader
-	UnsafeSaveAuthEnabled(enabled bool)
-	UnsafeSaveAuthRevision(rev uint64)
-	UnsafePutUser(*authpb.User)
-	UnsafeDeleteUser(string)
-	UnsafePutRole(*authpb.Role)
-	UnsafeDeleteRole(string)
-}
-
 type AuthReadTx interface {
 	RLock()
 	RUnlock()
@@ -230,6 +218,26 @@ type UnsafeAuthReader interface {
 	UnsafeGetRole(string) *authpb.Role
 	UnsafeGetAllUsers() []*authpb.User
 	UnsafeGetAllRoles() []*authpb.Role
+}
+
+type AuthBatchTx interface {
+	Lock()
+	Unlock()
+	UnsafeAuthReadWriter
+}
+
+type UnsafeAuthReadWriter interface {
+	UnsafeAuthReader
+	UnsafeAuthWriter
+}
+
+type UnsafeAuthWriter interface {
+	UnsafeSaveAuthEnabled(enabled bool)
+	UnsafeSaveAuthRevision(rev uint64)
+	UnsafePutUser(*authpb.User)
+	UnsafeDeleteUser(string)
+	UnsafePutRole(*authpb.Role)
+	UnsafeDeleteRole(string)
 }
 
 type authStore struct {
@@ -990,7 +998,7 @@ func hasRootRole(u *authpb.User) bool {
 	return idx != len(u.Roles) && u.Roles[idx] == rootRole
 }
 
-func (as *authStore) commitRevision(tx AuthBatchTx) {
+func (as *authStore) commitRevision(tx UnsafeAuthWriter) {
 	atomic.AddUint64(&as.revision, 1)
 	tx.UnsafeSaveAuthRevision(as.Revision())
 }

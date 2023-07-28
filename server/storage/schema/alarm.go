@@ -47,7 +47,7 @@ func (s *alarmBackend) MustPutAlarm(alarm *etcdserverpb.AlarmMember) {
 	s.mustUnsafePutAlarm(tx, alarm)
 }
 
-func (s *alarmBackend) mustUnsafePutAlarm(tx backend.BatchTx, alarm *etcdserverpb.AlarmMember) {
+func (s *alarmBackend) mustUnsafePutAlarm(tx backend.UnsafeWriter, alarm *etcdserverpb.AlarmMember) {
 	v, err := alarm.Marshal()
 	if err != nil {
 		s.lg.Panic("failed to marshal alarm member", zap.Error(err))
@@ -63,7 +63,7 @@ func (s *alarmBackend) MustDeleteAlarm(alarm *etcdserverpb.AlarmMember) {
 	s.mustUnsafeDeleteAlarm(tx, alarm)
 }
 
-func (s *alarmBackend) mustUnsafeDeleteAlarm(tx backend.BatchTx, alarm *etcdserverpb.AlarmMember) {
+func (s *alarmBackend) mustUnsafeDeleteAlarm(tx backend.UnsafeWriter, alarm *etcdserverpb.AlarmMember) {
 	v, err := alarm.Marshal()
 	if err != nil {
 		s.lg.Panic("failed to marshal alarm member", zap.Error(err))
