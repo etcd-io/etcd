@@ -51,6 +51,7 @@ type Client struct {
 	Watcher
 	Auth
 	Maintenance
+	Kubernetes Kubernetes
 
 	conn *grpc.ClientConn
 
@@ -431,6 +432,7 @@ func newClient(cfg *Config) (*Client, error) {
 	client.KV = NewKV(client)
 	client.Lease = NewLease(client)
 	client.Watcher = NewWatcher(client)
+	client.Kubernetes = NewKubernetes(client)
 	client.Auth = NewAuth(client)
 	client.Maintenance = NewMaintenance(client)
 
