@@ -68,7 +68,7 @@ fi
 
 # determine whether target supports race detection
 if [ -z "${RACE:-}" ] ; then
-  if [ "$GOARCH" == "amd64" ]; then
+  if [ "$GOARCH" == "amd64" ] || [ "$GOARCH" == "arm64" ]; then
     RACE="--race"
   else
     RACE="--race=false"

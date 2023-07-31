@@ -17,6 +17,6 @@ jobs:
     uses: ./.github/workflows/tests-arm64-template.yaml
     with:
       etcdBranch: release-3.5
-      integrationTestCmd: PASSES='integration' RACE='false' ./test.sh
+      integrationTestCmd: PASSES='integration' ./test.sh
       unitTestCmd: PASSES='unit' CPU='4' ./test.sh -p=2
       gofailMake: "no"

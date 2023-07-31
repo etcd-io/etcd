@@ -44,7 +44,7 @@ jobs:
           echo "${TARGET}"
           case "${TARGET}" in
             linux-arm64-e2e)
-              GOOS=linux GOARCH=arm64 CPU=4 EXPECT_DEBUG=true RACE=true ${{ inputs.e2eTestCmd }}
+              GOOS=linux GOARCH=arm64 CPU=4 EXPECT_DEBUG=true ${{ inputs.e2eTestCmd }}
               ;;
             *)
               echo "Failed to find target"
