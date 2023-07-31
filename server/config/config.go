@@ -204,6 +204,9 @@ type ServerConfig struct {
 	// ExperimentalMaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
 	ExperimentalMaxLearners int `json:"experimental-max-learners"`
 
+	// ExperimentalBackendType sets the backend type.
+	ExperimentalBackendType string `json:"experimental-backend-type"`
+
 	// V2Deprecation defines a phase of v2store deprecation process.
 	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
 }

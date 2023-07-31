@@ -20,6 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go.etcd.io/etcd/server/v3/databases/sqlite"
+
 	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/databases/bbolt"
 	"go.etcd.io/etcd/server/v3/interfaces"
@@ -177,8 +179,9 @@ func New(bcfg BackendConfig) Backend {
 	if bcfg.BackendType == "" || bcfg.BackendType == "bolt" {
 		return newBoltBackend(bcfg)
 	}
+	println("Using sqlite")
 	// todo(logicalhan) replace with sqlite
-	return newBoltBackend(bcfg)
+	return newSqliteBackend(bcfg)
 }
 
 func NewDefaultBackend(lg *zap.Logger, path string, backendType string) Backend {
@@ -191,8 +194,56 @@ func NewDefaultBackend(lg *zap.Logger, path string, backendType string) Backend 
 		return newBoltBackend(bcfg)
 	} else {
 		// todo(logicalhan) replace with sqlite
-		return newBoltBackend(bcfg)
+		return newSqliteBackend(bcfg)
 	}
+}
+
+func newSqliteBackend(bcfg BackendConfig) *backend {
+
+	db, err := sqlite.NewSqliteDB(bcfg.Path, bucket.Buckets...)
+	if err != nil {
+		bcfg.Logger.Panic("failed to open database", zap.String("path", bcfg.Path), zap.Error(err))
+	}
+
+	// In future, may want to make buffering optional for low-concurrency systems
+	// or dynamically swap between buffered/non-buffered depending on workload.
+	b := &backend{
+		db: db,
+
+		batchInterval: bcfg.BatchInterval,
+		batchLimit:    bcfg.BatchLimit,
+		mlock:         bcfg.Mlock,
+		backendType:   bcfg.BackendType,
+
+		readTx: &readTx{
+			baseReadTx: baseReadTx{
+				buf: txReadBuffer{
+					txBuffer:   txBuffer{make(map[bucket.BucketID]*bucketBuffer)},
+					bufVersion: 0,
+				},
+				buckets: make(map[bucket.BucketID]interfaces.Bucket),
+				txWg:    new(sync.WaitGroup),
+				txMu:    new(sync.RWMutex),
+			},
+		},
+		txReadBufferCache: txReadBufferCache{
+			mu:         sync.Mutex{},
+			bufVersion: 0,
+			buf:        nil,
+		},
+
+		stopc: make(chan struct{}),
+		donec: make(chan struct{}),
+
+		lg: bcfg.Logger,
+	}
+
+	b.batchTx = newBatchTxBuffered(b)
+	// We set it after newBatchTxBuffered to skip the 'empty' commit.
+	b.hooks = bcfg.Hooks
+
+	go b.run()
+	return b
 }
 
 func newBoltBackend(bcfg BackendConfig) *backend {

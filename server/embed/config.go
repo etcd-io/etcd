@@ -109,6 +109,9 @@ const (
 
 	// DefaultBackendType defaults the backend to bolt
 	DefaultBackendType = "bolt"
+
+	// SqliteBackendType defaults the backend to sqlite
+	SqliteBackendType = "sqlite"
 )
 
 var (
@@ -474,13 +477,10 @@ type securityConfig struct {
 }
 
 func NewSqliteConfig() *Config {
-	c := NewConfig()
-	c.ExperimentalBackendType = "sqlite"
-	return c
+	return NewGenericConfig(SqliteBackendType)
 }
 
-// NewConfig creates a new Config populated with default values.
-func NewConfig() *Config {
+func NewGenericConfig(backendType string) *Config {
 	lpurl, _ := url.Parse(DefaultListenPeerURLs)
 	apurl, _ := url.Parse(DefaultInitialAdvertisePeerURLs)
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
@@ -498,7 +498,7 @@ func NewConfig() *Config {
 		MaxRequestBytes:                  DefaultMaxRequestBytes,
 		MaxConcurrentStreams:             DefaultMaxConcurrentStreams,
 		ExperimentalWarningApplyDuration: DefaultWarningApplyDuration,
-		ExperimentalBackendType:          DefaultBackendType,
+		ExperimentalBackendType:          backendType,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
@@ -569,6 +569,11 @@ func NewConfig() *Config {
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
+}
+
+// NewConfig creates a new Config populated with default values.
+func NewConfig() *Config {
+	return NewGenericConfig(DefaultBackendType)
 }
 
 func ConfigFromFile(path string) (*Config, error) {
@@ -809,6 +814,9 @@ func (cfg *Config) Validate() error {
 		if err := validateTracingConfig(cfg.ExperimentalDistributedTracingSamplingRatePerMillion); err != nil {
 			return fmt.Errorf("distributed tracing configurition is not valid: (%v)", err)
 		}
+	}
+	if cfg.ExperimentalBackendType == "sqlite" {
+		cfg.logger.Warn("Detected sqlite as a backend.")
 	}
 
 	if !cfg.ExperimentalEnableLeaseCheckpointPersist && cfg.ExperimentalEnableLeaseCheckpoint {

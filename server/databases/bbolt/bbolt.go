@@ -275,7 +275,6 @@ func (b *BBoltDB) defrag(odb, tmpdb *bolt.DB, limit int) error {
 			return err
 		}
 	}
-
 	return tmptx.Commit()
 }
 
@@ -481,5 +480,3 @@ func (b *BBoltBucket) ForEachBucket(fn interface{}) error {
 func (b *BBoltBucket) Stats() interface{} {
 	return b.bucket.Stats()
 }
-
-//db, err := bolt.Open(bcfg.Path, 0600, bopts)
