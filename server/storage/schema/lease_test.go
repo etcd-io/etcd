@@ -30,17 +30,17 @@ import (
 func TestLeaseBackend(t *testing.T) {
 	tcs := []struct {
 		name  string
-		setup func(tx backend.BatchTx)
+		setup func(tx backend.UnsafeWriter)
 		want  []*leasepb.Lease
 	}{
 		{
 			name:  "Empty by default",
-			setup: func(tx backend.BatchTx) {},
+			setup: func(tx backend.UnsafeWriter) {},
 			want:  []*leasepb.Lease{},
 		},
 		{
 			name: "Returns data put before",
-			setup: func(tx backend.BatchTx) {
+			setup: func(tx backend.UnsafeWriter) {
 				MustUnsafePutLease(tx, &leasepb.Lease{
 					ID:  -1,
 					TTL: 2,
@@ -55,7 +55,7 @@ func TestLeaseBackend(t *testing.T) {
 		},
 		{
 			name: "Skips deleted",
-			setup: func(tx backend.BatchTx) {
+			setup: func(tx backend.UnsafeWriter) {
 				MustUnsafePutLease(tx, &leasepb.Lease{
 					ID:  -1,
 					TTL: 2,

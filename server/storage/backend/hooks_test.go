@@ -113,7 +113,7 @@ func prepareBuckenAndKey(tx backend.BatchTx) {
 
 func newTestHooksBackend(t testing.TB, baseConfig backend.BackendConfig) backend.Backend {
 	cfg := baseConfig
-	cfg.Hooks = backend.NewHooks(func(tx backend.BatchTx) {
+	cfg.Hooks = backend.NewHooks(func(tx backend.UnsafeReadWriter) {
 		k, v := tx.UnsafeRange(bucket, key, nil, 1)
 		t.Logf("OnPreCommit executed: %v %v", string(k[0]), string(v[0]))
 		assert.Len(t, k, 1)

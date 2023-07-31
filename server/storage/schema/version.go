@@ -56,12 +56,12 @@ func ReadStorageVersionFromSnapshot(tx *bbolt.Tx) *semver.Version {
 
 // UnsafeSetStorageVersion updates etcd storage version in backend.
 // Populated since v3.6
-func UnsafeSetStorageVersion(tx backend.BatchTx, v *semver.Version) {
+func UnsafeSetStorageVersion(tx backend.UnsafeWriter, v *semver.Version) {
 	sv := semver.Version{Major: v.Major, Minor: v.Minor}
 	tx.UnsafePut(Meta, MetaStorageVersionName, []byte(sv.String()))
 }
 
 // UnsafeClearStorageVersion removes etcd storage version in backend.
-func UnsafeClearStorageVersion(tx backend.BatchTx) {
+func UnsafeClearStorageVersion(tx backend.UnsafeWriter) {
 	tx.UnsafeDelete(Meta, MetaStorageVersionName)
 }

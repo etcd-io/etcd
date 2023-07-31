@@ -26,7 +26,7 @@ import (
 
 // MustUnsafeSaveConfStateToBackend persists confState using given transaction (tx).
 // confState in backend is persisted since etcd v3.5.
-func MustUnsafeSaveConfStateToBackend(lg *zap.Logger, tx backend.BatchTx, confState *raftpb.ConfState) {
+func MustUnsafeSaveConfStateToBackend(lg *zap.Logger, tx backend.UnsafeWriter, confState *raftpb.ConfState) {
 	confStateBytes, err := json.Marshal(confState)
 	if err != nil {
 		lg.Panic("Cannot marshal raftpb.ConfState", zap.Stringer("conf-state", confState), zap.Error(err))

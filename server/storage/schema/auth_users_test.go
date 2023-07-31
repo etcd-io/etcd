@@ -30,17 +30,17 @@ import (
 func TestGetAllUsers(t *testing.T) {
 	tcs := []struct {
 		name  string
-		setup func(tx auth.AuthBatchTx)
+		setup func(tx auth.UnsafeAuthWriter)
 		want  []*authpb.User
 	}{
 		{
 			name:  "Empty by default",
-			setup: func(tx auth.AuthBatchTx) {},
+			setup: func(tx auth.UnsafeAuthWriter) {},
 			want:  nil,
 		},
 		{
 			name: "Returns user put before",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutUser(&authpb.User{
 					Name:     []byte("alice"),
 					Password: []byte("alicePassword"),
@@ -63,7 +63,7 @@ func TestGetAllUsers(t *testing.T) {
 		},
 		{
 			name: "Skips deleted user",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutUser(&authpb.User{
 					Name: []byte("alice"),
 				})
@@ -76,7 +76,7 @@ func TestGetAllUsers(t *testing.T) {
 		},
 		{
 			name: "Returns data overriden by put",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutUser(&authpb.User{
 					Name:     []byte("alice"),
 					Password: []byte("oldPassword"),
@@ -123,17 +123,17 @@ func TestGetAllUsers(t *testing.T) {
 func TestGetUser(t *testing.T) {
 	tcs := []struct {
 		name  string
-		setup func(tx auth.AuthBatchTx)
+		setup func(tx auth.UnsafeAuthWriter)
 		want  *authpb.User
 	}{
 		{
 			name:  "Returns nil for missing user",
-			setup: func(tx auth.AuthBatchTx) {},
+			setup: func(tx auth.UnsafeAuthWriter) {},
 			want:  nil,
 		},
 		{
 			name: "Returns data put before",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutUser(&authpb.User{
 					Name:     []byte("alice"),
 					Password: []byte("alicePassword"),
@@ -154,7 +154,7 @@ func TestGetUser(t *testing.T) {
 		},
 		{
 			name: "Skips deleted",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutUser(&authpb.User{
 					Name: []byte("alice"),
 				})
@@ -164,7 +164,7 @@ func TestGetUser(t *testing.T) {
 		},
 		{
 			name: "Returns data overriden by put",
-			setup: func(tx auth.AuthBatchTx) {
+			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutUser(&authpb.User{
 					Name:     []byte("alice"),
 					Password: []byte("oldPassword"),

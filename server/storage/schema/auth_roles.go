@@ -21,7 +21,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
-func UnsafeCreateAuthRolesBucket(tx backend.BatchTx) {
+func UnsafeCreateAuthRolesBucket(tx backend.UnsafeWriter) {
 	tx.UnsafeCreateBucket(AuthRoles)
 }
 

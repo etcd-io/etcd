@@ -353,7 +353,7 @@ func (s *v3Manager) modifyLatestRevision(bumpAmount uint64) error {
 	return nil
 }
 
-func (s *v3Manager) unsafeBumpRevision(tx backend.BatchTx, latest revision, amount int64) revision {
+func (s *v3Manager) unsafeBumpRevision(tx backend.UnsafeWriter, latest revision, amount int64) revision {
 	s.lg.Info(
 		"bumping latest revision",
 		zap.Int64("latest-revision", latest.main),
@@ -370,7 +370,7 @@ func (s *v3Manager) unsafeBumpRevision(tx backend.BatchTx, latest revision, amou
 	return latest
 }
 
-func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.BatchTx, latest revision) {
+func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.UnsafeWriter, latest revision) {
 	s.lg.Info(
 		"marking revision compacted",
 		zap.Int64("revision", latest.main),
@@ -379,7 +379,7 @@ func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.BatchTx, latest revis
 	mvcc.UnsafeSetScheduledCompact(tx, latest.main)
 }
 
-func (s *v3Manager) unsafeGetLatestRevision(tx backend.BatchTx) (revision, error) {
+func (s *v3Manager) unsafeGetLatestRevision(tx backend.UnsafeReader) (revision, error) {
 	var latest revision
 	err := tx.UnsafeForEach(schema.Key, func(k, _ []byte) (err error) {
 		rev := bytesToRev(k)
