@@ -155,7 +155,7 @@ func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
 	if err == nil {
 		return (*AlarmResponse)(resp), nil
 	}
-	return nil, toErr(ctx, err)
+	return nil, ContextError(ctx, err)
 }
 
 func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmResponse, error) {
@@ -168,13 +168,13 @@ func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmR
 	if req.MemberID == 0 && req.Alarm == pb.AlarmType_NONE {
 		ar, err := m.AlarmList(ctx)
 		if err != nil {
-			return nil, toErr(ctx, err)
+			return nil, ContextError(ctx, err)
 		}
 		ret := AlarmResponse{}
 		for _, am := range ar.Alarms {
 			dresp, derr := m.AlarmDisarm(ctx, (*AlarmMember)(am))
 			if derr != nil {
-				return nil, toErr(ctx, derr)
+				return nil, ContextError(ctx, derr)
 			}
 			ret.Alarms = append(ret.Alarms, dresp.Alarms...)
 		}
@@ -185,18 +185,18 @@ func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmR
 	if err == nil {
 		return (*AlarmResponse)(resp), nil
 	}
-	return nil, toErr(ctx, err)
+	return nil, ContextError(ctx, err)
 }
 
 func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*DefragmentResponse, error) {
 	remote, cancel, err := m.dial(endpoint)
 	if err != nil {
-		return nil, toErr(ctx, err)
+		return nil, ContextError(ctx, err)
 	}
 	defer cancel()
 	resp, err := remote.Defragment(ctx, &pb.DefragmentRequest{}, m.callOpts...)
 	if err != nil {
-		return nil, toErr(ctx, err)
+		return nil, ContextError(ctx, err)
 	}
 	return (*DefragmentResponse)(resp), nil
 }
@@ -204,12 +204,12 @@ func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*Defragm
 func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusResponse, error) {
 	remote, cancel, err := m.dial(endpoint)
 	if err != nil {
-		return nil, toErr(ctx, err)
+		return nil, ContextError(ctx, err)
 	}
 	defer cancel()
 	resp, err := remote.Status(ctx, &pb.StatusRequest{}, m.callOpts...)
 	if err != nil {
-		return nil, toErr(ctx, err)
+		return nil, ContextError(ctx, err)
 	}
 	return (*StatusResponse)(resp), nil
 }
@@ -218,12 +218,12 @@ func (m *maintenance) HashKV(ctx context.Context, endpoint string, rev int64) (*
 	remote, cancel, err := m.dial(endpoint)
 	if err != nil {
 
-		return nil, toErr(ctx, err)
+		return nil, ContextError(ctx, err)
 	}
 	defer cancel()
 	resp, err := remote.HashKV(ctx, &pb.HashKVRequest{Revision: rev}, m.callOpts...)
 	if err != nil {
-		return nil, toErr(ctx, err)
+		return nil, ContextError(ctx, err)
 	}
 	return (*HashKVResponse)(resp), nil
 }
@@ -231,7 +231,7 @@ func (m *maintenance) HashKV(ctx context.Context, endpoint string, rev int64) (*
 func (m *maintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotResponse, error) {
 	ss, err := m.remote.Snapshot(ctx, &pb.SnapshotRequest{}, append(m.callOpts, withMax(defaultStreamMaxRetries))...)
 	if err != nil {
-		return nil, toErr(ctx, err)
+		return nil, ContextError(ctx, err)
 	}
 
 	m.lg.Info("opened snapshot stream; downloading")
@@ -274,7 +274,7 @@ func (m *maintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotRespons
 func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 	ss, err := m.remote.Snapshot(ctx, &pb.SnapshotRequest{}, append(m.callOpts, withMax(defaultStreamMaxRetries))...)
 	if err != nil {
-		return nil, toErr(ctx, err)
+		return nil, ContextError(ctx, err)
 	}
 
 	m.lg.Info("opened snapshot stream; downloading")
@@ -326,12 +326,12 @@ type snapshotReadCloser struct {
 
 func (rc *snapshotReadCloser) Read(p []byte) (n int, err error) {
 	n, err = rc.ReadCloser.Read(p)
-	return n, toErr(rc.ctx, err)
+	return n, ContextError(rc.ctx, err)
 }
 
 func (m *maintenance) MoveLeader(ctx context.Context, transfereeID uint64) (*MoveLeaderResponse, error) {
 	resp, err := m.remote.MoveLeader(ctx, &pb.MoveLeaderRequest{TargetID: transfereeID}, m.callOpts...)
-	return (*MoveLeaderResponse)(resp), toErr(ctx, err)
+	return (*MoveLeaderResponse)(resp), ContextError(ctx, err)
 }
 
 func (m *maintenance) Downgrade(ctx context.Context, action DowngradeAction, version string) (*DowngradeResponse, error) {
@@ -347,5 +347,5 @@ func (m *maintenance) Downgrade(ctx context.Context, action DowngradeAction, ver
 		return nil, errors.New("etcdclient: unknown downgrade action")
 	}
 	resp, err := m.remote.Downgrade(ctx, &pb.DowngradeRequest{Action: actionType, Version: version}, m.callOpts...)
-	return (*DowngradeResponse)(resp), toErr(ctx, err)
+	return (*DowngradeResponse)(resp), ContextError(ctx, err)
 }
