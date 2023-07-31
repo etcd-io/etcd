@@ -22,12 +22,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
+
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"google.golang.org/grpc"
-	testpb "google.golang.org/grpc/test/grpc_testing"
 )
 
 func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
