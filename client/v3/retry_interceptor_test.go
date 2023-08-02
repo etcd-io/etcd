@@ -25,16 +25,8 @@ import (
 
 type dummyAuthTokenBundle struct{}
 
-func (d dummyAuthTokenBundle) TransportCredentials() grpccredentials.TransportCredentials {
-	return nil
-}
-
 func (d dummyAuthTokenBundle) PerRPCCredentials() grpccredentials.PerRPCCredentials {
 	return nil
-}
-
-func (d dummyAuthTokenBundle) NewWithMode(mode string) (grpccredentials.Bundle, error) {
-	return nil, nil
 }
 
 func (d dummyAuthTokenBundle) UpdateAuthToken(token string) {
@@ -42,7 +34,7 @@ func (d dummyAuthTokenBundle) UpdateAuthToken(token string) {
 
 func TestClientShouldRefreshToken(t *testing.T) {
 	type fields struct {
-		authTokenBundle credentials.Bundle
+		authTokenBundle credentials.PerRPCCredentialsBundle
 	}
 	type args struct {
 		err      error

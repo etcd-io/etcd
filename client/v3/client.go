@@ -69,7 +69,7 @@ type Client struct {
 	Username string
 	// Password is a password for authentication.
 	Password        string
-	authTokenBundle credentials.Bundle
+	authTokenBundle credentials.PerRPCCredentialsBundle
 
 	callOpts []grpc.CallOption
 
@@ -338,7 +338,7 @@ func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCred
 		if c.creds != nil {
 			return c.creds
 		}
-		return credentials.NewBundle(credentials.Config{}).TransportCredentials()
+		return credentials.NewTransportCredential(nil)
 	default:
 		panic(fmt.Errorf("unsupported CredsRequirement: %v", r))
 	}
@@ -350,7 +350,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 	var creds grpccredentials.TransportCredentials
 	if cfg.TLS != nil {
-		creds = credentials.NewBundle(credentials.Config{TLSConfig: cfg.TLS}).TransportCredentials()
+		creds = credentials.NewTransportCredential(cfg.TLS)
 	}
 
 	// use a temporary skeleton client to bootstrap first connection
@@ -389,7 +389,7 @@ func newClient(cfg *Config) (*Client, error) {
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
 		client.Password = cfg.Password
-		client.authTokenBundle = credentials.NewBundle(credentials.Config{})
+		client.authTokenBundle = credentials.NewPerRPCCredentialBundle()
 	}
 	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 {
 		if cfg.MaxCallRecvMsgSize > 0 && cfg.MaxCallSendMsgSize > cfg.MaxCallRecvMsgSize {
