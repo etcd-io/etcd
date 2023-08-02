@@ -26,7 +26,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [Reset auth token when failing to authenticate due to auth being disabled](https://github.com/etcd-io/etcd/pull/16241)
 
 ### Dependencies
-- Compile binaries using [go 1.19.11](https://github.com/etcd-io/etcd/pull/16227).
+- Compile binaries using [go 1.19.12](https://github.com/etcd-io/etcd/pull/16352).
 
 <hr>
 
