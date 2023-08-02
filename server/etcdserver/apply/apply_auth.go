@@ -24,7 +24,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
 type authApplierV3 struct {
@@ -65,7 +64,7 @@ func (aa *authApplierV3) Apply(ctx context.Context, r *pb.InternalRaftRequest, s
 	return ret
 }
 
-func (aa *authApplierV3) Put(ctx context.Context, txn mvcc.TxnWrite, r *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (aa *authApplierV3) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	if err := aa.as.IsPutPermitted(&aa.authInfo, r.Key); err != nil {
 		return nil, nil, err
 	}
@@ -84,17 +83,17 @@ func (aa *authApplierV3) Put(ctx context.Context, txn mvcc.TxnWrite, r *pb.PutRe
 			return nil, nil, err
 		}
 	}
-	return aa.applierV3.Put(ctx, txn, r)
+	return aa.applierV3.Put(ctx, r)
 }
 
-func (aa *authApplierV3) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (aa *authApplierV3) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
 		return nil, err
 	}
-	return aa.applierV3.Range(ctx, txn, r)
+	return aa.applierV3.Range(ctx, r)
 }
 
-func (aa *authApplierV3) DeleteRange(txn mvcc.TxnWrite, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+func (aa *authApplierV3) DeleteRange(r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	if err := aa.as.IsDeleteRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
 		return nil, err
 	}
@@ -105,7 +104,7 @@ func (aa *authApplierV3) DeleteRange(txn mvcc.TxnWrite, r *pb.DeleteRangeRequest
 		}
 	}
 
-	return aa.applierV3.DeleteRange(txn, r)
+	return aa.applierV3.DeleteRange(r)
 }
 
 func (aa *authApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
