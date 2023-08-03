@@ -26,8 +26,13 @@ import (
 // is known to never overwrite any key so range is safe.
 
 type ReadTx interface {
+	// Lock and Unlock should only be used in the following three cases:
+	// 1. When committing a transaction. Because it will reset the read tx, including the buffer;
+	// 2. When writing the pending data back to read buf, because obviously no reading is allowed when writing the read buffer;
+	// 3. When performing defragmentation, because again it will reset the read tx, including the read buffer.
 	Lock()
 	Unlock()
+	// RLock and RUnlock should be used for all other cases.
 	RLock()
 	RUnlock()
 

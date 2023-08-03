@@ -771,8 +771,8 @@ func clusterVersionFromBackend(lg *zap.Logger, be backend.Backend) *semver.Versi
 func downgradeInfoFromBackend(lg *zap.Logger, be backend.Backend) *DowngradeInfo {
 	dkey := backendDowngradeKey()
 	tx := be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	keys, vals := tx.UnsafeRange(buckets.Cluster, dkey, nil, 0)
 	if len(keys) == 0 {
 		return nil

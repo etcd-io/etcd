@@ -332,8 +332,8 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 	// to avoid putting it in the critical section of the tx lock.
 	revision, err := func() (uint64, error) {
 		tx := as.be.ReadTx()
-		tx.Lock()
-		defer tx.Unlock()
+		tx.RLock()
+		defer tx.RUnlock()
 
 		user = getUser(as.lg, tx, username)
 		if user == nil {
@@ -361,7 +361,7 @@ func (as *authStore) Recover(be backend.Backend) {
 	enabled := false
 	as.be = be
 	tx := be.ReadTx()
-	tx.Lock()
+	tx.RLock()
 	_, vs := tx.UnsafeRange(buckets.Auth, enableFlagKey, nil, 0)
 	if len(vs) == 1 {
 		if bytes.Equal(vs[0], authEnabled) {
@@ -372,7 +372,7 @@ func (as *authStore) Recover(be backend.Backend) {
 	as.setRevision(getRevision(tx))
 	as.refreshRangePermCache(tx)
 
-	tx.Unlock()
+	tx.RUnlock()
 
 	as.enabledMu.Lock()
 	as.enabled = enabled
@@ -858,8 +858,8 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	}
 
 	tx := as.be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 
 	user := getUser(as.lg, tx, userName)
 	if user == nil {
@@ -900,9 +900,9 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 	}
 
 	tx := as.be.ReadTx()
-	tx.Lock()
+	tx.RLock()
 	u := getUser(as.lg, tx, authInfo.Username)
-	tx.Unlock()
+	tx.RUnlock()
 
 	if u == nil {
 		return ErrUserNotFound
