@@ -11,9 +11,7 @@ jobs:
     uses: ./.github/workflows/e2e-arm64-template.yaml
     with:
       etcdBranch: main
-      e2eTestCmd: make test-e2e-release
   release-35-arm64:
     uses: ./.github/workflows/e2e-arm64-template.yaml
     with:
       etcdBranch: release-3.5
-      e2eTestCmd: PASSES='build release e2e' COVER='false' ./test.sh
