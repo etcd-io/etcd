@@ -148,6 +148,22 @@ test:
 	$(TEST_OPTS) ./test 2>&1 | tee test-$(TEST_SUFFIX).log
 	! egrep "(--- FAIL:|DATA RACE|panic: test timed out|appears to have leaked)" -B50 -A10 test-$(TEST_SUFFIX).log
 
+.PHONY: test-unit
+test-unit:
+	PASSES="unit" ./test $(GO_TEST_FLAGS)
+
+.PHONY: test-integration
+test-integration:
+	PASSES="integration" ./test $(GO_TEST_FLAGS)
+
+.PHONY: test-e2e
+test-e2e:
+	PASSES="build e2e" ./test $(GO_TEST_FLAGS)
+
+.PHONY: test-e2e-release
+test-e2e-release:
+	PASSES="build release e2e" ./test $(GO_TEST_FLAGS)
+
 docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
