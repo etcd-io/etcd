@@ -17,6 +17,7 @@ package schema
 import (
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
@@ -27,7 +28,7 @@ type action interface {
 }
 
 type setKeyAction struct {
-	Bucket     backend.Bucket
+	Bucket     bucket.Bucket
 	FieldName  []byte
 	FieldValue []byte
 }
@@ -39,7 +40,7 @@ func (a setKeyAction) unsafeDo(tx backend.UnsafeReadWriter) (action, error) {
 }
 
 type deleteKeyAction struct {
-	Bucket    backend.Bucket
+	Bucket    bucket.Bucket
 	FieldName []byte
 }
 
@@ -49,7 +50,7 @@ func (a deleteKeyAction) unsafeDo(tx backend.UnsafeReadWriter) (action, error) {
 	return revert, nil
 }
 
-func restoreFieldValueAction(tx backend.UnsafeReader, bucket backend.Bucket, fieldName []byte) action {
+func restoreFieldValueAction(tx backend.UnsafeReader, bucket bucket.Bucket, fieldName []byte) action {
 	_, vs := tx.UnsafeRange(bucket, fieldName, nil, 1)
 	if len(vs) == 1 {
 		return &setKeyAction{

@@ -46,6 +46,8 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
+const defaultBackendType = "bolt"
+
 func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -185,8 +187,9 @@ func TestBootstrapBackend(t *testing.T) {
 			cfg := config.ServerConfig{
 				Name:                "demoNode",
 				DataDir:             dataDir,
-				BackendFreelistType: bolt.FreelistArrayType,
+				BackendFreelistType: string(bolt.FreelistArrayType),
 				Logger:              zaptest.NewLogger(t),
+				BackendType:         defaultBackendType,
 			}
 
 			if tt.prepareData != nil {

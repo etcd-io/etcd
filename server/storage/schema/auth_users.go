@@ -20,6 +20,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 
 	"go.etcd.io/etcd/api/v3/authpb"
+	"go.etcd.io/etcd/server/v3/bucket"
 )
 
 func (abe *authBackend) GetUser(username string) *authpb.User {
@@ -42,11 +43,11 @@ func (atx *authBatchTx) UnsafePutUser(user *authpb.User) {
 	if err != nil {
 		atx.lg.Panic("failed to unmarshal 'authpb.User'", zap.Error(err))
 	}
-	atx.tx.UnsafePut(AuthUsers, user.Name, b)
+	atx.tx.UnsafePut(bucket.AuthUsers, user.Name, b)
 }
 
 func (atx *authBatchTx) UnsafeDeleteUser(username string) {
-	atx.tx.UnsafeDelete(AuthUsers, []byte(username))
+	atx.tx.UnsafeDelete(bucket.AuthUsers, []byte(username))
 }
 
 func (atx *authReadTx) UnsafeGetUser(username string) *authpb.User {
@@ -54,7 +55,7 @@ func (atx *authReadTx) UnsafeGetUser(username string) *authpb.User {
 }
 
 func unsafeGetUser(lg *zap.Logger, tx backend.UnsafeReader, username string) *authpb.User {
-	_, vs := tx.UnsafeRange(AuthUsers, []byte(username), nil, 0)
+	_, vs := tx.UnsafeRange(bucket.AuthUsers, []byte(username), nil, 0)
 	if len(vs) == 0 {
 		return nil
 	}
@@ -84,7 +85,7 @@ func (atx *authReadTx) UnsafeGetAllUsers() []*authpb.User {
 
 func unsafeGetAllUsers(lg *zap.Logger, tx backend.UnsafeReader) []*authpb.User {
 	var vs [][]byte
-	err := tx.UnsafeForEach(AuthUsers, func(k []byte, v []byte) error {
+	err := tx.UnsafeForEach(bucket.AuthUsers, func(k []byte, v []byte) error {
 		vs = append(vs, v)
 		return nil
 	})

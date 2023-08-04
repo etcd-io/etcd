@@ -40,6 +40,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const defaultBackendType = "bolt"
+
 func TestMaintenanceHashKV(t *testing.T) {
 	integration2.BeforeTest(t)
 
@@ -270,7 +272,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	// take about 1-second to read snapshot
 	clus.Members[0].Stop(t)
 	dpath := filepath.Join(clus.Members[0].DataDir, "member", "snap", "db")
-	b := backend.NewDefaultBackend(lg, dpath)
+	b := backend.NewDefaultBackend(lg, dpath, defaultBackendType)
 	s := mvcc.NewStore(lg, b, &lease.FakeLessor{}, mvcc.StoreConfig{CompactionBatchLimit: math.MaxInt32})
 	rev := 100000
 	for i := 2; i <= rev; i++ {

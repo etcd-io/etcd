@@ -24,9 +24,13 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
+)
+
+const (
+	defaultBackendType = "bolt"
 )
 
 func snapDir(dataDir string) string {
@@ -132,9 +136,9 @@ func authUsersDecoder(_, v []byte) {
 }
 
 func metaDecoder(k, v []byte) {
-	if string(k) == string(schema.MetaConsistentIndexKeyName) || string(k) == string(schema.MetaTermKeyName) {
+	if string(k) == string(bucket.MetaConsistentIndexKeyName) || string(k) == string(bucket.MetaTermKeyName) {
 		fmt.Printf("key=%q, value=%v\n", k, binary.BigEndian.Uint64(v))
-	} else if string(k) == string(schema.ScheduledCompactKeyName) || string(k) == string(schema.FinishedCompactKeyName) {
+	} else if string(k) == string(bucket.ScheduledCompactKeyName) || string(k) == string(bucket.FinishedCompactKeyName) {
 		rev := bytesToRev(v)
 		fmt.Printf("key=%q, value=%v\n", k, rev)
 	} else {
@@ -179,8 +183,8 @@ func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error)
 }
 
 func getHash(dbPath string) (hash uint32, err error) {
-	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
-	return b.Hash(schema.DefaultIgnores)
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, defaultBackendType)
+	return b.Hash(bucket.DefaultIgnores)
 }
 
 // TODO: revert by revision and find specified hash value

@@ -18,6 +18,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
@@ -37,7 +38,7 @@ func (s *alarmBackend) CreateAlarmBucket() {
 	tx := s.be.BatchTx()
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	tx.UnsafeCreateBucket(Alarm)
+	tx.UnsafeCreateBucket(bucket.Alarm)
 }
 
 func (s *alarmBackend) MustPutAlarm(alarm *etcdserverpb.AlarmMember) {
@@ -53,7 +54,7 @@ func (s *alarmBackend) mustUnsafePutAlarm(tx backend.UnsafeWriter, alarm *etcdse
 		s.lg.Panic("failed to marshal alarm member", zap.Error(err))
 	}
 
-	tx.UnsafePut(Alarm, v, nil)
+	tx.UnsafePut(bucket.Alarm, v, nil)
 }
 
 func (s *alarmBackend) MustDeleteAlarm(alarm *etcdserverpb.AlarmMember) {
@@ -69,7 +70,7 @@ func (s *alarmBackend) mustUnsafeDeleteAlarm(tx backend.UnsafeWriter, alarm *etc
 		s.lg.Panic("failed to marshal alarm member", zap.Error(err))
 	}
 
-	tx.UnsafeDelete(Alarm, v)
+	tx.UnsafeDelete(bucket.Alarm, v)
 }
 
 func (s *alarmBackend) GetAllAlarms() ([]*etcdserverpb.AlarmMember, error) {
@@ -81,7 +82,7 @@ func (s *alarmBackend) GetAllAlarms() ([]*etcdserverpb.AlarmMember, error) {
 
 func (s *alarmBackend) unsafeGetAllAlarms(tx backend.UnsafeReader) ([]*etcdserverpb.AlarmMember, error) {
 	var ms []*etcdserverpb.AlarmMember
-	err := tx.UnsafeForEach(Alarm, func(k, v []byte) error {
+	err := tx.UnsafeForEach(bucket.Alarm, func(k, v []byte) error {
 		var m etcdserverpb.AlarmMember
 		if err := m.Unmarshal(k); err != nil {
 			return err

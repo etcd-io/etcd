@@ -28,6 +28,8 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
+const defaultBackendType = "bolt"
+
 // TestConsistentIndex ensures that LoadConsistentIndex/Save/ConsistentIndex and backend.BatchTx can work well together.
 func TestConsistentIndex(t *testing.T) {
 
@@ -56,7 +58,7 @@ func TestConsistentIndex(t *testing.T) {
 	be.ForceCommit()
 	be.Close()
 
-	b := backend.NewDefaultBackend(zaptest.NewLogger(t), tmpPath)
+	b := backend.NewDefaultBackend(zaptest.NewLogger(t), tmpPath, defaultBackendType)
 	defer b.Close()
 	ci.SetBackend(b)
 	index = ci.ConsistentIndex()
@@ -108,7 +110,7 @@ func TestConsistentIndexDecrease(t *testing.T) {
 			be.ForceCommit()
 			be.Close()
 
-			be = backend.NewDefaultBackend(zaptest.NewLogger(t), tmpPath)
+			be = backend.NewDefaultBackend(zaptest.NewLogger(t), tmpPath, defaultBackendType)
 			defer be.Close()
 			ci := NewConsistentIndex(be)
 			ci.SetConsistentIndex(tc.index, tc.term)

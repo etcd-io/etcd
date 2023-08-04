@@ -1,4 +1,4 @@
-// Copyright 2022 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package backend
+//go:build windows
 
-import (
-	"go.etcd.io/etcd/server/v3/interfaces"
-)
+package bbolt
 
-func DbFromBackendForTest(b Backend) interfaces.DB {
-	return b.(*backend).db
-}
+import bolt "go.etcd.io/bbolt"
 
-func DefragLimitForTest() int {
-	return defragLimit
-}
+var boltOpenOptions *bolt.Options = nil
 
-func CommitsForTest(b Backend) int64 {
-	return b.(*backend).Commits()
-}
+// setting mmap size != 0 on windows will allocate the entire
+// mmap size for the file, instead of growing it. So, force 0.

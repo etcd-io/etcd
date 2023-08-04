@@ -19,31 +19,32 @@ import (
 	"fmt"
 
 	"go.etcd.io/etcd/client/pkg/v3/verify"
+	"go.etcd.io/etcd/server/v3/bucket"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 // UnsafeCreateMetaBucket creates the `meta` bucket (if it does not exist yet).
 func UnsafeCreateMetaBucket(tx backend.UnsafeWriter) {
-	tx.UnsafeCreateBucket(Meta)
+	tx.UnsafeCreateBucket(bucket.Meta)
 }
 
 // CreateMetaBucket creates the `meta` bucket (if it does not exist yet).
 func CreateMetaBucket(tx backend.BatchTx) {
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	tx.UnsafeCreateBucket(Meta)
+	tx.UnsafeCreateBucket(bucket.Meta)
 }
 
 // UnsafeReadConsistentIndex loads consistent index & term from given transaction.
 // returns 0,0 if the data are not found.
 // Term is persisted since v3.5.
 func UnsafeReadConsistentIndex(tx backend.UnsafeReader) (uint64, uint64) {
-	_, vs := tx.UnsafeRange(Meta, MetaConsistentIndexKeyName, nil, 0)
+	_, vs := tx.UnsafeRange(bucket.Meta, bucket.MetaConsistentIndexKeyName, nil, 0)
 	if len(vs) == 0 {
 		return 0, 0
 	}
 	v := binary.BigEndian.Uint64(vs[0])
-	_, ts := tx.UnsafeRange(Meta, MetaTermKeyName, nil, 0)
+	_, ts := tx.UnsafeRange(bucket.Meta, bucket.MetaTermKeyName, nil, 0)
 	if len(ts) == 0 {
 		return v, 0
 	}
@@ -86,10 +87,10 @@ func unsafeUpdateConsistentIndex(tx backend.UnsafeReadWriter, index uint64, term
 
 	// put the index into the underlying backend
 	// tx has been locked in TxnBegin, so there is no need to lock it again
-	tx.UnsafePut(Meta, MetaConsistentIndexKeyName, bs1)
+	tx.UnsafePut(bucket.Meta, bucket.MetaConsistentIndexKeyName, bs1)
 	if term > 0 {
 		bs2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(bs2, term)
-		tx.UnsafePut(Meta, MetaTermKeyName, bs2)
+		tx.UnsafePut(bucket.Meta, bucket.MetaTermKeyName, bs2)
 	}
 }

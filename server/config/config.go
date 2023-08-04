@@ -30,8 +30,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
-
-	bolt "go.etcd.io/bbolt"
 )
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
@@ -41,6 +39,8 @@ type ServerConfig struct {
 	DiscoveryURL   string
 	DiscoveryProxy string
 	DiscoveryCfg   v3discovery.DiscoveryConfig
+
+	BackendType string
 
 	ClientURLs types.URLs
 	PeerURLs   types.URLs
@@ -67,7 +67,7 @@ type ServerConfig struct {
 	BackendBatchLimit int
 
 	// BackendFreelistType is the type of the backend boltdb freelist.
-	BackendFreelistType bolt.FreelistType
+	BackendFreelistType string
 
 	InitialPeerURLsMap  types.URLsMap
 	InitialClusterToken string
@@ -203,6 +203,9 @@ type ServerConfig struct {
 
 	// ExperimentalMaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
 	ExperimentalMaxLearners int `json:"experimental-max-learners"`
+
+	// ExperimentalBackendType sets the backend type.
+	ExperimentalBackendType string `json:"experimental-backend-type"`
 
 	// V2Deprecation defines a phase of v2store deprecation process.
 	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`

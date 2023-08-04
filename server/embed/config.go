@@ -106,6 +106,12 @@ const (
 	maxElectionMs = 50000
 	// backend freelist map type
 	freelistArrayType = "array"
+
+	// DefaultBackendType defaults the backend to bolt
+	DefaultBackendType = "bolt"
+
+	// SqliteBackendType defaults the backend to sqlite
+	SqliteBackendType = "sqlite"
 )
 
 var (
@@ -122,6 +128,8 @@ var (
 
 	// indirection for testing
 	getCluster = srv.GetCluster
+
+	SupportedBackendTypes = map[string]struct{}{"bolt": {}, "sqlite": {}}
 )
 
 var (
@@ -381,6 +389,9 @@ type Config struct {
 	// Defaults to 0.
 	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
 
+	// ExperimentalBackendType allows you to set the underlying database to sqlite.
+	ExperimentalBackendType string `json:"experimental-backend-type"`
+
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
@@ -451,6 +462,8 @@ type configJSON struct {
 
 	ClientSecurityJSON securityConfig `json:"client-transport-security"`
 	PeerSecurityJSON   securityConfig `json:"peer-transport-security"`
+
+	BackendType string `json:"backend-type"`
 }
 
 type securityConfig struct {
@@ -463,8 +476,11 @@ type securityConfig struct {
 	AutoTLS        bool   `json:"auto-tls"`
 }
 
-// NewConfig creates a new Config populated with default values.
-func NewConfig() *Config {
+func NewSqliteConfig() *Config {
+	return NewGenericConfig(SqliteBackendType)
+}
+
+func NewGenericConfig(backendType string) *Config {
 	lpurl, _ := url.Parse(DefaultListenPeerURLs)
 	apurl, _ := url.Parse(DefaultInitialAdvertisePeerURLs)
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
@@ -482,6 +498,7 @@ func NewConfig() *Config {
 		MaxRequestBytes:                  DefaultMaxRequestBytes,
 		MaxConcurrentStreams:             DefaultMaxConcurrentStreams,
 		ExperimentalWarningApplyDuration: DefaultWarningApplyDuration,
+		ExperimentalBackendType:          backendType,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
@@ -554,6 +571,11 @@ func NewConfig() *Config {
 	return cfg
 }
 
+// NewConfig creates a new Config populated with default values.
+func NewConfig() *Config {
+	return NewGenericConfig(DefaultBackendType)
+}
+
 func ConfigFromFile(path string) (*Config, error) {
 	cfg := &configYAML{Config: *NewConfig()}
 	if err := cfg.configFromFile(path); err != nil {
@@ -582,6 +604,11 @@ func (cfg *configYAML) configFromFile(path string) error {
 			os.Exit(1)
 		}
 		cfg.Config.ListenPeerUrls = u
+	}
+
+	// default backend type to bolt
+	if cfg.configJSON.BackendType == "" {
+		cfg.BackendType = DefaultBackendType
 	}
 
 	if cfg.configJSON.ListenClientUrls != "" {
@@ -787,6 +814,9 @@ func (cfg *Config) Validate() error {
 		if err := validateTracingConfig(cfg.ExperimentalDistributedTracingSamplingRatePerMillion); err != nil {
 			return fmt.Errorf("distributed tracing configurition is not valid: (%v)", err)
 		}
+	}
+	if cfg.ExperimentalBackendType == "sqlite" {
+		cfg.logger.Warn("Detected sqlite as a backend.")
 	}
 
 	if !cfg.ExperimentalEnableLeaseCheckpointPersist && cfg.ExperimentalEnableLeaseCheckpoint {
