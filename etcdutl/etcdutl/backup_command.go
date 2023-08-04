@@ -28,9 +28,9 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -167,7 +167,7 @@ func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster)
 		walsnap.Index, walsnap.Term, walsnap.ConfState = snapshot.Metadata.Index, snapshot.Metadata.Term, &desired.confState
 		newss := snap.New(lg, destSnap)
 		snapshot.Metadata.ConfState = desired.confState
-		snapshot.Data = mustTranslateV2store(lg, snapshot.Data, desired)
+		snapshot.Data = mustTranslateV2store(lg, desired)
 		if err = newss.SaveSnap(*snapshot); err != nil {
 			lg.Fatal("saveSnap(Snapshoter.SaveSnap) failed", zap.Error(err))
 		}
@@ -175,24 +175,12 @@ func saveSnap(lg *zap.Logger, destSnap, srcSnap string, desired *desiredCluster)
 	return walsnap
 }
 
-// mustTranslateV2store processes storeData such that they match 'desiredCluster'.
-// In particular the method overrides membership information.
-func mustTranslateV2store(lg *zap.Logger, storeData []byte, desired *desiredCluster) []byte {
-	st := v2store.New()
-	if err := st.Recovery(storeData); err != nil {
-		lg.Panic("cannot translate v2store", zap.Error(err))
-	}
-
+// mustTranslateV2store returns membership info matching 'desiredCluster' in v2 format.
+func mustTranslateV2store(lg *zap.Logger, desired *desiredCluster) []byte {
 	raftCluster := membership.NewClusterFromMembers(lg, desired.clusterId, desired.members)
 	raftCluster.SetID(desired.nodeId, desired.clusterId)
-	raftCluster.SetStore(st)
-	raftCluster.PushMembershipToStorage()
-
-	outputData, err := st.Save()
-	if err != nil {
-		lg.Panic("cannot save v2store", zap.Error(err))
-	}
-	return outputData
+	d := etcdserver.GetMembershipInfoInV2Format(lg, raftCluster)
+	return d
 }
 
 func translateWAL(lg *zap.Logger, srcWAL string, walsnap walpb.Snapshot) (etcdserverpb.Metadata, raftpb.HardState, []raftpb.Entry) {

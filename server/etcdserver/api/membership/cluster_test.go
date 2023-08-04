@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -973,5 +974,71 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
 			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 		}
+	}
+}
+
+func TestClusterStore(t *testing.T) {
+	name := "etcd"
+	clientURLs := []string{"http://127.0.0.1:4001"}
+
+	tests := []struct {
+		name    string
+		mems    []*Member
+		removed map[types.ID]bool
+	}{
+		{
+			name: "Single member, no removed members",
+			mems: []*Member{
+				newTestMember(1, nil, name, clientURLs),
+			},
+			removed: map[types.ID]bool{},
+		},
+		{
+			name: "Multiple members, no removed members",
+			mems: []*Member{
+				newTestMember(1, nil, name, clientURLs),
+				newTestMember(2, nil, name, clientURLs),
+				newTestMember(3, nil, name, clientURLs),
+			},
+			removed: map[types.ID]bool{},
+		},
+		{
+			name: "Single member, one removed member",
+			mems: []*Member{
+				newTestMember(1, nil, name, clientURLs),
+			},
+			removed: map[types.ID]bool{types.ID(2): true},
+		},
+		{
+			name: "Multiple members, some removed members",
+			mems: []*Member{
+				newTestMember(1, nil, name, clientURLs),
+				newTestMember(2, nil, name, clientURLs),
+				newTestMember(3, nil, name, clientURLs),
+			},
+			removed: map[types.ID]bool{
+				types.ID(4): true,
+				types.ID(5): true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newTestCluster(t, tt.mems)
+			c.removed = tt.removed
+
+			st := v2store.New("/0", "/1")
+			c.Store(st)
+
+			// Verify that the members are properly stored
+			mst, rst := membersFromStore(c.lg, st)
+			for _, mem := range tt.mems {
+				assert.Equal(t, mem, mst[mem.ID])
+			}
+
+			// Verify that removed members are correctly stored
+			assert.Equal(t, tt.removed, rst)
+		})
 	}
 }
