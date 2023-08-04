@@ -39,8 +39,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc.CustomCodec(&codec{}))
 	if tls != nil {
-		bundle := credentials.NewBundle(credentials.Config{TLSConfig: tls})
-		opts = append(opts, grpc.Creds(bundle.TransportCredentials()))
+		opts = append(opts, grpc.Creds(credentials.NewTransportCredential(tls)))
 	}
 	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
 		newLogUnaryInterceptor(s),

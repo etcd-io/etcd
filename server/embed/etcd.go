@@ -797,8 +797,7 @@ func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Contex
 		dtls := tlscfg.Clone()
 		// trust local server
 		dtls.InsecureSkipVerify = true
-		bundle := credentials.NewBundle(credentials.Config{TLSConfig: dtls})
-		opts = append(opts, grpc.WithTransportCredentials(bundle.TransportCredentials()))
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTransportCredential(dtls)))
 	} else {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
