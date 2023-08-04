@@ -358,6 +358,9 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 		require.NoError(t, ctl.Put(context.Background(), unsnappedKVs[i].Key, unsnappedKVs[i].Val, config.PutOptions{}))
 	}
 
+	membersBefore, err := ctl.MemberList(context.Background(), false)
+	require.NoError(t, err)
+
 	t.Log("Stopping the original server...")
 	require.NoError(t, epc.Stop())
 
@@ -380,11 +383,15 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 
 	t.Log("(Re)starting the etcd member using the restored snapshot...")
 	epc.Procs[0].Config().DataDirPath = newDataDir
+
 	for i := range epc.Procs[0].Config().Args {
 		if epc.Procs[0].Config().Args[i] == "--data-dir" {
 			epc.Procs[0].Config().Args[i+1] = newDataDir
 		}
 	}
+
+	// Verify that initial snapshot is created by the restore operation
+	verifySnapshotMembers(t, epc, membersBefore)
 
 	require.NoError(t, epc.Restart(context.Background()))
 
