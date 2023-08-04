@@ -32,12 +32,12 @@ func (a *applierV3Corrupt) Put(_ context.Context, _ *pb.PutRequest) (*pb.PutResp
 	return nil, nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) Range(_ context.Context, _ *pb.RangeRequest) (*pb.RangeResponse, error) {
-	return nil, errors.ErrCorrupt
+func (a *applierV3Corrupt) Range(_ context.Context, _ *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
+	return nil, nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) DeleteRange(_ *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	return nil, errors.ErrCorrupt
+func (a *applierV3Corrupt) DeleteRange(_ context.Context, _ *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
+	return nil, nil, errors.ErrCorrupt
 }
 
 func (a *applierV3Corrupt) Txn(_ context.Context, _ *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {

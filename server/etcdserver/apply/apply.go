@@ -72,8 +72,8 @@ type applierV3 interface {
 	Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
 
 	Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
-	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
-	DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
+	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
+	DeleteRange(ctx context.Context, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
 	Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
 
@@ -161,11 +161,11 @@ func (a *applierV3backend) Put(ctx context.Context, p *pb.PutRequest) (resp *pb.
 	return mvcctxn.Put(ctx, a.lg, a.lessor, a.kv, p)
 }
 
-func (a *applierV3backend) DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	return mvcctxn.DeleteRange(a.kv, dr)
+func (a *applierV3backend) DeleteRange(ctx context.Context, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
+	return mvcctxn.DeleteRange(ctx, a.lg, a.kv, dr)
 }
 
-func (a *applierV3backend) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (a *applierV3backend) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
 	return mvcctxn.Range(ctx, a.lg, a.kv, r)
 }
 
