@@ -153,13 +153,13 @@ func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 	switch {
 	case r.Range != nil:
 		op = "Range"
-		ar.Resp, ar.Err = a.applyV3.Range(ctx, nil, r.Range)
+		ar.Resp, ar.Err = a.applyV3.Range(ctx, r.Range)
 	case r.Put != nil:
 		op = "Put"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Put(ctx, nil, r.Put)
+		ar.Resp, ar.Trace, ar.Err = a.applyV3.Put(ctx, r.Put)
 	case r.DeleteRange != nil:
 		op = "DeleteRange"
-		ar.Resp, ar.Err = a.applyV3.DeleteRange(nil, r.DeleteRange)
+		ar.Resp, ar.Err = a.applyV3.DeleteRange(r.DeleteRange)
 	case r.Txn != nil:
 		op = "Txn"
 		ar.Resp, ar.Trace, ar.Err = a.applyV3.Txn(ctx, r.Txn)

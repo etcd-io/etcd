@@ -31,9 +31,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, txnWrite mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	resp = &pb.PutResponse{}
-	resp.Header = &pb.ResponseHeader{}
+func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
 	trace = traceutil.Get(ctx)
 	// create put tracing if the trace in context is empty
 	if trace.IsEmpty() {
@@ -42,17 +40,25 @@ func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, t
 			traceutil.Field{Key: "key", Value: string(p.Key)},
 			traceutil.Field{Key: "req_size", Value: p.Size()},
 		)
+		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 	}
-	val, leaseID := p.Value, lease.LeaseID(p.Lease)
-	if txnWrite == nil {
-		if leaseID != lease.NoLease {
-			if l := lessor.Lookup(leaseID); l == nil {
-				return nil, nil, lease.ErrLeaseNotFound
-			}
+	leaseID := lease.LeaseID(p.Lease)
+	if leaseID != lease.NoLease {
+		if l := lessor.Lookup(leaseID); l == nil {
+			return nil, nil, lease.ErrLeaseNotFound
 		}
-		txnWrite = kv.Write(trace)
-		defer txnWrite.End()
 	}
+	txnWrite := kv.Write(trace)
+	defer txnWrite.End()
+	resp, err = put(ctx, txnWrite, p)
+	return resp, trace, err
+}
+
+func put(ctx context.Context, txnWrite mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, err error) {
+	trace := traceutil.Get(ctx)
+	resp = &pb.PutResponse{}
+	resp.Header = &pb.ResponseHeader{}
+	val, leaseID := p.Value, lease.LeaseID(p.Lease)
 
 	var rr *mvcc.RangeResult
 	if p.IgnoreValue || p.IgnoreLease || p.PrevKv {
@@ -61,13 +67,13 @@ func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, t
 		}, "get previous kv pair")
 
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 	if p.IgnoreValue || p.IgnoreLease {
 		if rr == nil || len(rr.KVs) == 0 {
 			// ignore_{lease,value} flag expects previous key-value pair
-			return nil, nil, errors.ErrKeyNotFound
+			return nil, errors.ErrKeyNotFound
 		}
 	}
 	if p.IgnoreValue {
@@ -84,18 +90,20 @@ func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, t
 
 	resp.Header.Revision = txnWrite.Put(p.Key, val, leaseID)
 	trace.AddField(traceutil.Field{Key: "response_revision", Value: resp.Header.Revision})
-	return resp, trace, nil
+	return resp, nil
 }
 
-func DeleteRange(kv mvcc.KV, txnWrite mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+func DeleteRange(kv mvcc.KV, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+	txnWrite := kv.Write(traceutil.TODO())
+	defer txnWrite.End()
+	resp, err := deleteRange(txnWrite, dr)
+	return resp, err
+}
+
+func deleteRange(txnWrite mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	resp := &pb.DeleteRangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	end := mkGteRange(dr.RangeEnd)
-
-	if txnWrite == nil {
-		txnWrite = kv.Write(traceutil.TODO())
-		defer txnWrite.End()
-	}
 
 	if dr.PrevKv {
 		rr, err := txnWrite.Range(context.TODO(), dr.Key, end, mvcc.RangeOptions{})
@@ -114,16 +122,22 @@ func DeleteRange(kv mvcc.KV, txnWrite mvcc.TxnWrite, dr *pb.DeleteRangeRequest) 
 	return resp, nil
 }
 
-func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	trace := traceutil.Get(ctx)
+	if trace.IsEmpty() {
+		trace = traceutil.New("range", lg)
+		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
+	}
+	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
+	defer txnRead.End()
+	return executeRange(ctx, lg, txnRead, r)
+}
+
+func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	trace := traceutil.Get(ctx)
 
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
-
-	if txnRead == nil {
-		txnRead = kv.Read(mvcc.ConcurrentReadTxMode, trace)
-		defer txnRead.End()
-	}
 
 	limit := r.Limit
 	if r.SortOrder != pb.RangeRequest_NONE ||
@@ -226,7 +240,6 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 	}
 	isWrite := !IsTxnReadonly(rt)
-
 	// When the transaction contains write operations, we use ReadTx instead of
 	// ConcurrentReadTx to avoid extra overhead of copying buffer.
 	var txnWrite mvcc.TxnWrite
@@ -235,7 +248,6 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	} else {
 		txnWrite = mvcc.NewReadOnlyTxnWrite(kv.Read(mvcc.ConcurrentReadTxMode, trace))
 	}
-
 	var txnPath []bool
 	trace.StepWithFunction(
 		func() {
@@ -243,22 +255,11 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 		},
 		"compare",
 	)
-
-	if isWrite {
-		trace.AddField(traceutil.Field{Key: "read_only", Value: false})
-		if _, err := checkRequests(txnWrite, rt, txnPath,
-			func(rv mvcc.ReadView, ro *pb.RequestOp) error { return checkRequestPut(rv, lessor, ro) }); err != nil {
-			txnWrite.End()
-			return nil, nil, err
-		}
-	}
-	if _, err := checkRequests(txnWrite, rt, txnPath, checkRequestRange); err != nil {
+	err := checkTxn(ctx, txnWrite, rt, isWrite, lessor, txnPath)
+	if err != nil {
 		txnWrite.End()
 		return nil, nil, err
 	}
-	trace.Step("check requests")
-	txnResp, _ := newTxnResp(rt, txnPath)
-
 	// When executing mutable txnWrite ops, etcd must hold the txnWrite lock so
 	// readers do not see any intermediate results. Since writes are
 	// serialized on the raft loop, the revision in the read view will
@@ -267,7 +268,35 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 		txnWrite.End()
 		txnWrite = kv.Write(trace)
 	}
-	_, err := applyTxn(ctx, lg, kv, lessor, txnWrite, rt, txnPath, txnResp)
+	txnResp, err := txn(ctx, lg, txnWrite, rt, isWrite, txnPath)
+	txnWrite.End()
+
+	trace.AddField(
+		traceutil.Field{Key: "number_of_response", Value: len(txnResp.Responses)},
+		traceutil.Field{Key: "response_revision", Value: txnResp.Header.Revision},
+	)
+	return txnResp, trace, err
+}
+
+func checkTxn(ctx context.Context, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, lessor lease.Lessor, txnPath []bool) error {
+	trace := traceutil.Get(ctx)
+	if isWrite {
+		trace.AddField(traceutil.Field{Key: "read_only", Value: false})
+		if _, err := checkRequests(txnWrite, rt, txnPath,
+			func(rv mvcc.ReadView, ro *pb.RequestOp) error { return checkRequestPut(rv, lessor, ro) }); err != nil {
+			return err
+		}
+	}
+	if _, err := checkRequests(txnWrite, rt, txnPath, checkRequestRange); err != nil {
+		return err
+	}
+	trace.Step("check requests")
+	return nil
+}
+
+func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, txnPath []bool) (*pb.TxnResponse, error) {
+	txnResp, _ := newTxnResp(rt, txnPath)
+	_, err := executeTxn(ctx, lg, txnWrite, rt, txnPath, txnResp)
 	if err != nil {
 		if isWrite {
 			// end txn to release locks before panic
@@ -283,14 +312,8 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	if len(txnWrite.Changes()) != 0 {
 		rev++
 	}
-	txnWrite.End()
-
 	txnResp.Header.Revision = rev
-	trace.AddField(
-		traceutil.Field{Key: "number_of_response", Value: len(txnResp.Responses)},
-		traceutil.Field{Key: "response_revision", Value: txnResp.Header.Revision},
-	)
-	return txnResp, trace, err
+	return txnResp, err
 }
 
 // newTxnResp allocates a txn response for a txn request given a path.
@@ -324,7 +347,7 @@ func newTxnResp(rt *pb.TxnRequest, txnPath []bool) (txnResp *pb.TxnResponse, txn
 	return txnResp, txnCount
 }
 
-func applyTxn(ctx context.Context, lg *zap.Logger, kv mvcc.KV, lessor lease.Lessor, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse) (txns int, err error) {
+func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse) (txns int, err error) {
 	trace := traceutil.Get(ctx)
 	reqs := rt.Success
 	if !txnPath[0] {
@@ -339,7 +362,7 @@ func applyTxn(ctx context.Context, lg *zap.Logger, kv mvcc.KV, lessor lease.Less
 				traceutil.Field{Key: "req_type", Value: "range"},
 				traceutil.Field{Key: "range_begin", Value: string(tv.RequestRange.Key)},
 				traceutil.Field{Key: "range_end", Value: string(tv.RequestRange.RangeEnd)})
-			resp, err := Range(ctx, lg, kv, txnWrite, tv.RequestRange)
+			resp, err := executeRange(ctx, lg, txnWrite, tv.RequestRange)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed Range: %w", err)
 			}
@@ -350,21 +373,21 @@ func applyTxn(ctx context.Context, lg *zap.Logger, kv mvcc.KV, lessor lease.Less
 				traceutil.Field{Key: "req_type", Value: "put"},
 				traceutil.Field{Key: "key", Value: string(tv.RequestPut.Key)},
 				traceutil.Field{Key: "req_size", Value: tv.RequestPut.Size()})
-			resp, _, err := Put(ctx, lg, lessor, kv, txnWrite, tv.RequestPut)
+			resp, err := put(ctx, txnWrite, tv.RequestPut)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed Put: %w", err)
 			}
 			respi.(*pb.ResponseOp_ResponsePut).ResponsePut = resp
 			trace.StopSubTrace()
 		case *pb.RequestOp_RequestDeleteRange:
-			resp, err := DeleteRange(kv, txnWrite, tv.RequestDeleteRange)
+			resp, err := deleteRange(txnWrite, tv.RequestDeleteRange)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed DeleteRange: %w", err)
 			}
 			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
 		case *pb.RequestOp_RequestTxn:
 			resp := respi.(*pb.ResponseOp_ResponseTxn).ResponseTxn
-			applyTxns, err := applyTxn(ctx, lg, kv, lessor, txnWrite, tv.RequestTxn, txnPath[1:], resp)
+			applyTxns, err := executeTxn(ctx, lg, txnWrite, tv.RequestTxn, txnPath[1:], resp)
 			if err != nil {
 				// don't wrap the error. It's a recursive call and err should be already wrapped
 				return 0, err
