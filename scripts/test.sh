@@ -234,7 +234,7 @@ function merge_cov_files {
     if ! (( "${i}" % 20 )); then
       log_callout "${i} of ${count}: Merging file: ${f}"
     fi
-    run_go_tool "github.com/gyuho/gocovmerge" "${f}" "${cover_out_file}"  > "${coverdir}/cover.tmp" 2>/dev/null
+    run_go_tool "github.com/alexfalkowski/gocovmerge" "${f}" "${cover_out_file}"  > "${coverdir}/cover.tmp" 2>/dev/null
     if [ -s "${coverdir}"/cover.tmp ]; then
       mv "${coverdir}/cover.tmp" "${cover_out_file}"
     fi

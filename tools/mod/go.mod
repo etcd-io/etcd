@@ -3,6 +3,7 @@ module go.etcd.io/etcd/tools/v3
 go 1.19
 
 require (
+	github.com/alexfalkowski/gocovmerge v1.1.8
 	github.com/alexkohler/nakedret v1.0.2
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/cloudflare/cfssl v1.6.4
@@ -12,7 +13,6 @@ require (
 	github.com/google/yamlfmt v0.9.0
 	github.com/gordonklaus/ineffassign v0.0.0-20210914165742-4cc7213b9bc8
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
-	github.com/gyuho/gocovmerge v0.0.0-20171205171859-50c7e6afd535
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
 	github.com/mgechev/revive v1.3.2
 	github.com/mikefarah/yq/v4 v4.34.2
@@ -77,13 +77,13 @@ require (
 	github.com/zmap/zlint/v3 v3.4.1 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a // indirect
-	golang.org/x/mod v0.10.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.13.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
-	golang.org/x/tools v0.9.1 // indirect
+	golang.org/x/tools v0.11.1 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/genproto v0.0.0-20220706185917-7780775163c4 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
