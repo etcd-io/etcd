@@ -19,15 +19,15 @@ type eventQueue struct {
 	Size     int
 	Front    int
 	Back     int
-	Capacity int
+	Capacity int  // capacity must be 2^n
 }
 
 func (eq *eventQueue) insert(e *Event) {
 	eq.Events[eq.Back] = e
-	eq.Back = (eq.Back + 1) % eq.Capacity
+	eq.Back = (eq.Back + 1) & (eq.Capacity - 1)
 
 	if eq.Size == eq.Capacity { //dequeue
-		eq.Front = (eq.Front + 1) % eq.Capacity
+		eq.Front = (eq.Front + 1) & (eq.Capacity - 1)
 	} else {
 		eq.Size++
 	}

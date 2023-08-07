@@ -98,7 +98,7 @@ func newStore(namespaces ...string) *store {
 		s.Root.Add(newDir(s, namespace, s.CurrentIndex, s.Root, Permanent))
 	}
 	s.Stats = newStats()
-	s.WatcherHub = newWatchHub(1000)
+	s.WatcherHub = newWatchHub(1024)
 	s.ttlKeyHeap = newTtlKeyHeap()
 	s.readonlySet = types.NewUnsafeSet(append(namespaces, "/")...)
 	return s

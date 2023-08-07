@@ -25,7 +25,7 @@ import (
 // previous 100 events have been swapped out.
 func TestEventQueue(t *testing.T) {
 
-	eh := newEventHistory(100)
+	eh := newEventHistory(128)
 
 	// Add
 	for i := 0; i < 200; i++ {
@@ -48,7 +48,7 @@ func TestEventQueue(t *testing.T) {
 }
 
 func TestScanHistory(t *testing.T) {
-	eh := newEventHistory(100)
+	eh := newEventHistory(128)
 
 	// Add
 	eh.addEvent(newEvent(Create, "/foo", 1, 1))
@@ -91,17 +91,16 @@ func TestScanHistory(t *testing.T) {
 }
 
 func TestEventIndexHistoryCleared(t *testing.T) {
-	eh := newEventHistory(5)
+	eh := newEventHistory(4)
 
 	// Add
 	eh.addEvent(newEvent(Create, "/foo", 1, 1))
 	eh.addEvent(newEvent(Create, "/foo/bar", 2, 2))
 	eh.addEvent(newEvent(Create, "/foo/foo", 3, 3))
 	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4, 4))
-	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5, 5))
 
 	// Add a new event which will replace/de-queue the first entry
-	eh.addEvent(newEvent(Create, "/foo/bar/bar/bar", 6, 6))
+	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5, 5))
 
 	// test for the event which has been replaced.
 	_, err := eh.scan("/foo", false, 1)
@@ -115,7 +114,7 @@ func TestEventIndexHistoryCleared(t *testing.T) {
 // works still for previous events.
 func TestFullEventQueue(t *testing.T) {
 
-	eh := newEventHistory(10)
+	eh := newEventHistory(8)
 
 	// Add
 	for i := 0; i < 1000; i++ {
