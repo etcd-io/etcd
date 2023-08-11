@@ -4,7 +4,7 @@
 	"name": "Go",
 	
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/go:1.19-bullseye",
+	"image": "mcr.microsoft.com/devcontainers/go:1.20-bullseye",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
