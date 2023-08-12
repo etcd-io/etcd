@@ -136,11 +136,14 @@ func TestBackendDefrag(t *testing.T) {
 
 	defer betesting.Close(t, b)
 
+	// Put some data a bit over the defrag limit
 	tx := b.BatchTx()
 	tx.Lock()
 	tx.UnsafeCreateBucket(schema.Test)
-	for i := 0; i < backend.DefragLimitForTest()+100; i++ {
-		tx.UnsafePut(schema.Test, []byte(fmt.Sprintf("foo_%d", i)), []byte("bar"))
+	n := int(float32(backend.DefragLimitForTest())*1.1) / 1024
+	value := make([]byte, 1024)
+	for i := 0; i < n; i++ {
+		tx.UnsafePut(schema.Test, []byte(fmt.Sprintf("foo_%d", i)), value)
 	}
 	tx.Unlock()
 	b.ForceCommit()

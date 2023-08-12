@@ -34,7 +34,7 @@ var (
 	defaultBatchLimit    = 10000
 	defaultBatchInterval = 100 * time.Millisecond
 
-	defragLimit = 10000
+	defragLimit = 10 * 1024 * 1024
 
 	// initialMmapSize is the initial size of the mmapped region. Setting this larger than
 	// the potential max db size can prevent writer from blocking reader.
@@ -503,7 +503,7 @@ func (b *backend) defrag() error {
 		)
 	}
 	// gofail: var defragBeforeCopy struct{}
-	err = defragdb(b.db, tmpdb, defragLimit)
+	err = bolt.Compact(tmpdb, b.db, int64(defragLimit))
 	if err != nil {
 		tmpdb.Close()
 		if rmErr := os.RemoveAll(tmpdb.Path()); rmErr != nil {
@@ -558,65 +558,6 @@ func (b *backend) defrag() error {
 		)
 	}
 	return nil
-}
-
-func defragdb(odb, tmpdb *bolt.DB, limit int) error {
-	// open a tx on tmpdb for writes
-	tmptx, err := tmpdb.Begin(true)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			tmptx.Rollback()
-		}
-	}()
-
-	// open a tx on old db for read
-	tx, err := odb.Begin(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	c := tx.Cursor()
-
-	count := 0
-	for next, _ := c.First(); next != nil; next, _ = c.Next() {
-		b := tx.Bucket(next)
-		if b == nil {
-			return fmt.Errorf("backend: cannot defrag bucket %s", string(next))
-		}
-
-		tmpb, berr := tmptx.CreateBucketIfNotExists(next)
-		if berr != nil {
-			return berr
-		}
-		tmpb.FillPercent = 0.9 // for bucket2seq write in for each
-
-		if err = b.ForEach(func(k, v []byte) error {
-			count++
-			if count > limit {
-				err = tmptx.Commit()
-				if err != nil {
-					return err
-				}
-				tmptx, err = tmpdb.Begin(true)
-				if err != nil {
-					return err
-				}
-				tmpb = tmptx.Bucket(next)
-				tmpb.FillPercent = 0.9 // for bucket2seq write in for each
-
-				count = 0
-			}
-			return tmpb.Put(k, v)
-		}); err != nil {
-			return err
-		}
-	}
-
-	return tmptx.Commit()
 }
 
 func (b *backend) begin(write bool) *bolt.Tx {
