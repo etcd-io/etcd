@@ -29,8 +29,12 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -291,6 +295,23 @@ func verifySnapshot(t *testing.T, epc *e2e.EtcdProcessCluster) {
 		assert.NoError(t, err)
 	}
 	t.Logf("All members have a valid snapshot")
+}
+
+func verifySnapshotMembers(t *testing.T, epc *e2e.EtcdProcessCluster, expectedMembers *clientv3.MemberListResponse) {
+	for i := range epc.Procs {
+		t.Logf("Verifying snapshot for member %d", i)
+		ss := snap.New(epc.Cfg.Logger, datadir.ToSnapDir(epc.Procs[i].Config().DataDirPath))
+		snap, err := ss.Load()
+		st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
+		err = st.Recovery(snap.Data)
+		assert.NoError(t, err)
+		for _, m := range expectedMembers.Members {
+			_, err := st.Get(membership.MemberStoreKey(types.ID(m.ID)), true, true)
+			assert.NoError(t, err)
+		}
+		t.Logf("Verifed snapshot for member %d", i)
+	}
+	t.Log("All members have a valid snapshot")
 }
 
 func getMembersAndKeys(t *testing.T, epc *e2e.EtcdProcessCluster) (*clientv3.MemberListResponse, *clientv3.GetResponse) {
