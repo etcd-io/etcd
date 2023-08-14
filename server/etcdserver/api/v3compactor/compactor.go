@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	ModePeriodic = "periodic"
-	ModeRevision = "revision"
+	ModePeriodic          = "periodic"
+	ModeRevision          = "revision"
+	ModeRevisionThreshold = "revision-threshold"
 )
 
 // Compactor purges old log from the storage periodically.
@@ -47,6 +48,11 @@ type Compactable interface {
 	Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error)
 }
 
+type KvGetter interface {
+	RevGetter
+	CompactNotify() chan struct{}
+}
+
 type RevGetter interface {
 	Rev() int64
 }
@@ -56,17 +62,20 @@ func New(
 	lg *zap.Logger,
 	mode string,
 	retention time.Duration,
-	rg RevGetter,
+	kg KvGetter,
 	c Compactable,
 ) (Compactor, error) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
+
 	switch mode {
 	case ModePeriodic:
-		return newPeriodic(lg, clockwork.NewRealClock(), retention, rg, c), nil
+		return newPeriodic(lg, clockwork.NewRealClock(), retention, kg, c), nil
 	case ModeRevision:
-		return newRevision(lg, clockwork.NewRealClock(), int64(retention), rg, c), nil
+		return newRevision(lg, clockwork.NewRealClock(), int64(retention), kg, c), nil
+	case ModeRevisionThreshold:
+		return newRevisionThreshold(lg, clockwork.NewRealClock(), kg, c), nil
 	default:
 		return nil, fmt.Errorf("unsupported compaction mode %s", mode)
 	}

@@ -31,6 +31,10 @@ const (
 	// MaxQuotaBytes is the maximum number of bytes suggested for a backend
 	// quota. A larger quota may lead to degraded performance.
 	MaxQuotaBytes = int64(8 * 1024 * 1024 * 1024) // 8GB
+
+	// MaxAllowedOverflowQuotaBytes is the number of bytes the backend size
+	// can be overflow after exceeding the space quota.
+	MaxAllowedOverflowQuotaBytes = int64(1024 * 1024 * 1024) // 1GB
 )
 
 // Quota represents an arbitrary quota against arbitrary requests. Each request
@@ -130,7 +134,17 @@ func (b *BackendQuota) Available(v interface{}) bool {
 		return true
 	}
 	// TODO: maybe optimize Backend.Size()
-	return b.be.Size()+int64(cost) < b.maxBackendBytes
+
+	// Since the compact comes with allocatable pages, we should check the
+	// SizeInUse first. If there is no continuous pages for key/value and
+	// the boltdb continues to resize, it should not increase more than 1
+	// GiB. It's hard limitation.
+	//
+	// TODO: It should be enabled by flag.
+	if b.be.Size()+int64(cost)-b.maxBackendBytes >= maxAllowedOverflowBytes(b.maxBackendBytes) {
+		return false
+	}
+	return b.be.SizeInUse()+int64(cost) < b.maxBackendBytes
 }
 
 func (b *BackendQuota) Cost(v interface{}) int {
@@ -173,4 +187,12 @@ func costTxn(r *pb.TxnRequest) int {
 
 func (b *BackendQuota) Remaining() int64 {
 	return b.maxBackendBytes - b.be.Size()
+}
+
+func maxAllowedOverflowBytes(maxBackendBytes int64) int64 {
+	allow := maxBackendBytes * 10 / 100
+	if allow > MaxAllowedOverflowQuotaBytes {
+		allow = MaxAllowedOverflowQuotaBytes
+	}
+	return allow
 }

@@ -42,8 +42,9 @@ var putCmd = &cobra.Command{
 }
 
 var (
-	keySize int
-	valSize int
+	keySize      int
+	valSize      int
+	deltaValSize int
 
 	putTotal int
 	putRate  int
@@ -61,6 +62,7 @@ func init() {
 	RootCmd.AddCommand(putCmd)
 	putCmd.Flags().IntVar(&keySize, "key-size", 8, "Key size of put request")
 	putCmd.Flags().IntVar(&valSize, "val-size", 8, "Value size of put request")
+	putCmd.Flags().IntVar(&deltaValSize, "delta-val-size", 0, "Delta of value size of put request")
 	putCmd.Flags().IntVar(&putRate, "rate", 0, "Maximum puts per second (0 is no limit)")
 
 	putCmd.Flags().IntVar(&putTotal, "total", 10000, "Total number of put requests")
@@ -83,7 +85,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	}
 	limit := rate.NewLimiter(rate.Limit(putRate), 1)
 	clients := mustCreateClients(totalClients, totalConns)
-	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
+	k, v := make([]byte, keySize), string(mustRandBytes(valSize+deltaValSize))
 
 	bar = pb.New(putTotal)
 	bar.Start()
@@ -104,6 +106,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 		}(clients[i])
 	}
 
+	baseValSize := valSize - deltaValSize
 	go func() {
 		for i := 0; i < putTotal; i++ {
 			if seqKeys {
@@ -111,7 +114,11 @@ func putFunc(cmd *cobra.Command, _ []string) {
 			} else {
 				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
 			}
-			requests <- v3.OpPut(string(k), v)
+			deltaV := v
+			if deltaValSize > 0 {
+				deltaV = v[:baseValSize+rand.Intn(2*deltaValSize)]
+			}
+			requests <- v3.OpPut(string(k), deltaV)
 		}
 		close(requests)
 	}()

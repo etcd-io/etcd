@@ -180,6 +180,8 @@ func (tw *storeTxnWrite) End() {
 		// hold revMu lock to prevent new read txns from opening until writeback.
 		tw.s.revMu.Lock()
 		tw.s.currentRev++
+
+		tw.s.doCompactNotify()
 	}
 	tw.tx.Unlock()
 	if len(tw.changes) != 0 {

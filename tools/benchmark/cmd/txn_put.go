@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"time"
 
@@ -48,6 +49,7 @@ func init() {
 	RootCmd.AddCommand(txnPutCmd)
 	txnPutCmd.Flags().IntVar(&keySize, "key-size", 8, "Key size of txn put")
 	txnPutCmd.Flags().IntVar(&valSize, "val-size", 8, "Value size of txn put")
+	txnPutCmd.Flags().IntVar(&deltaValSize, "delta-val-size", 0, "Delta of value size of put request")
 	txnPutCmd.Flags().IntVar(&txnPutOpsPerTxn, "txn-ops", 1, "Number of puts per txn")
 	txnPutCmd.Flags().IntVar(&txnPutRate, "rate", 0, "Maximum txns per second (0 is no limit)")
 
@@ -73,7 +75,7 @@ func txnPutFunc(_ *cobra.Command, _ []string) {
 	}
 	limit := rate.NewLimiter(rate.Limit(txnPutRate), 1)
 	clients := mustCreateClients(totalClients, totalConns)
-	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
+	k, v := make([]byte, keySize), string(mustRandBytes(valSize+deltaValSize))
 
 	bar = pb.New(txnPutTotal)
 	bar.Start()
@@ -93,12 +95,18 @@ func txnPutFunc(_ *cobra.Command, _ []string) {
 		}(clients[i])
 	}
 
+	baseValSize := valSize - deltaValSize
 	go func() {
 		for i := 0; i < txnPutTotal; i++ {
 			ops := make([]v3.Op, txnPutOpsPerTxn)
 			for j := 0; j < txnPutOpsPerTxn; j++ {
 				binary.PutVarint(k, int64(((i*txnPutOpsPerTxn)+j)%keySpaceSize))
-				ops[j] = v3.OpPut(string(k), v)
+
+				deltaV := v
+				if deltaValSize > 0 {
+					deltaV = v[:baseValSize+rand.Intn(2*deltaValSize)]
+				}
+				ops[j] = v3.OpPut(string(k), deltaV)
 			}
 			requests <- ops
 		}

@@ -139,6 +139,14 @@ var (
 	// revision 5000 when the current revision is 6000.
 	// This runs every 5-minute if enough of logs have proceeded.
 	CompactorModeRevision = v3compactor.ModeRevision
+
+	// CompactorModeRevisionThreshold is revision-change-based compaction
+	// mode for "Config.AutoCompactionMode" field.
+	// If "AutoCompactionMode" is CompactorModeRevisionThreshold and
+	// "AutoCompactionRetention" is "10000", it compacts log on revision
+	// 10000 when the current revision is 20000. This runs if there are
+	// more than 10000 revisions have occurred since previous compaction.
+	CompactorModeRevisionThreshold = v3compactor.ModeRevisionThreshold
 )
 
 func init() {
@@ -775,7 +783,7 @@ func (cfg *Config) Validate() error {
 	}
 
 	switch cfg.AutoCompactionMode {
-	case CompactorModeRevision, CompactorModePeriodic:
+	case CompactorModeRevision, CompactorModePeriodic, CompactorModeRevisionThreshold:
 	case "":
 		return errors.New("undefined auto-compaction-mode")
 	default:
