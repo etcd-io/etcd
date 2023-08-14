@@ -3,7 +3,7 @@ module go.etcd.io/etcd/tools/v3
 go 1.20
 
 require (
-	github.com/alexfalkowski/gocovmerge v1.1.8
+	github.com/alexfalkowski/gocovmerge v1.2.0
 	github.com/alexkohler/nakedret v1.0.2
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/cloudflare/cfssl v1.6.4
@@ -83,7 +83,7 @@ require (
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
-	golang.org/x/tools v0.11.1 // indirect
+	golang.org/x/tools v0.12.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/genproto v0.0.0-20220706185917-7780775163c4 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
