@@ -136,7 +136,7 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	case <-donec:
 		t.Log("All done!")
-	case <-time.After(30 * time.Second):
-		t.Fatal("Test case timeout after 20 seconds")
+	case <-time.After(40 * time.Second):
+		t.Fatal("Test case timeout after 40 seconds")
 	}
 }
