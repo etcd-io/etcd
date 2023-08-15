@@ -7,7 +7,8 @@ Dependency management
     - [Bumping order](#bumping-order)
     - [Steps to bump a dependency](#steps-to-bump-a-dependency)
     - [Indirect dependencies](#indirect-dependencies)
-    - [About gRPC](#about-grpc)
+    - [Known incompatible dependency updates](#known-incompatible-dependency-updates)
+      - [arduino/setup-protoc](#arduinosetup-protoc)
     - [Rotation worksheet](#rotation-worksheet)
 - **[Stable branches](#stable-branches)**
 
@@ -81,14 +82,6 @@ should fix the issue and ensure all modules depend on the same version of the de
 
 ### arduino/setup-protoc
 Please refer to [build(deps): bump arduino/setup-protoc from 1.3.0 to 2.0.0](https://github.com/etcd-io/etcd/pull/16016)
-
-### About gRPC
-There is a compatible issue between etcd and gRPC 1.52.0, and there is a pending PR [pull/15131](https://github.com/etcd-io/etcd/pull/15131).
-
-The plan is to remove the dependency on some grpc-go's experimental API firstly, afterwards try to bump it again. Please get more details in
-[issues/15145](https://github.com/etcd-io/etcd/issues/15145).
-
-`go.opentelemetry.io/otel` version update is indirectly blocked due to this gRPC issue. Please get more details in [pull/15810](https://github.com/etcd-io/etcd/pull/15810).
 
 ## Rotation worksheet
 The dependabot scheduling interval is weekly; it means dependabot will automatically raise a bunch of PRs per week.
