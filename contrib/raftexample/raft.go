@@ -392,10 +392,13 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
 	}
 	if err := rc.raftStorage.Compact(compactIndex); err != nil {
-		panic(err)
+		if err != raft.ErrCompacted {
+			panic(err)
+		}
+	} else {
+		log.Printf("compacted log at index %d", compactIndex)
 	}
 
-	log.Printf("compacted log at index %d", compactIndex)
 	rc.snapshotIndex = rc.appliedIndex
 }
 
