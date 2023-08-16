@@ -38,10 +38,10 @@ Depending on your interest and experience you should check different labels:
 If any of aforementioned labels don't have unassigned issues, please [contact] one of the [maintainers] asking to triage more issues.
 
 [github issue tracker]: https://github.com/etcd-io/etcd/issues
-[good first issue]: https://github.com/etcd-io/etcd/labels/good%20first%20issue
-[help wanted]: https://github.com/etcd-io/etcd/labels/help%20wanted
+[good first issue]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22good+first+issue%22
+[help wanted]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22help+wanted%22
 [maintainers]: https://github.com/etcd-io/etcd/blob/main/MAINTAINERS
-[priority/important]: https://github.com/etcd-io/etcd/labels/priority%2Fimportant
+[priority/important]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22priority%2Fimportant%22
 
 ## Setup development environment
 
