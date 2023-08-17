@@ -17,11 +17,13 @@ package ioutil
 import (
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPageWriterRandom(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
 	// smaller buffer for stress testing
 	defaultBufferBytes = 8 * 1024
 	pageBytes := 128
