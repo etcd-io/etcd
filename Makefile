@@ -51,7 +51,7 @@ docker-remove:
 
 
 
-GO_VERSION ?= 1.19.9
+GO_VERSION ?= 1.20.7
 ETCD_VERSION ?= $(shell git rev-parse --short HEAD || echo "GitNotFound")
 
 TEST_SUFFIX = $(shell date +%s | base64 | head -c 15)
