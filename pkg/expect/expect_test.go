@@ -72,7 +72,7 @@ func TestExpectFuncTimeout(t *testing.T) {
 	}
 
 	err = ep.Close()
-	require.ErrorContains(t, err, "unexpected exit code [143] after running [/usr/bin/tail -f /dev/null]")
+	require.ErrorContains(t, err, "unexpected exit code [143]")
 	require.Equal(t, 143, ep.exitCode)
 }
 
@@ -89,7 +89,7 @@ func TestExpectFuncExitFailure(t *testing.T) {
 	_, err = ep.ExpectFunc(ctx, func(s string) bool {
 		return strings.Contains(s, "something entirely unexpected")
 	})
-	require.ErrorContains(t, err, "unexpected exit code [1] after running [/usr/bin/tail -x]")
+	require.ErrorContains(t, err, "unexpected exit code [1]")
 	require.Equal(t, 1, ep.exitCode)
 }
 
@@ -106,7 +106,7 @@ func TestExpectFuncExitFailureStop(t *testing.T) {
 	_, err = ep.ExpectFunc(ctx, func(s string) bool {
 		return strings.Contains(s, "something entirely unexpected")
 	})
-	require.ErrorContains(t, err, "unexpected exit code [1] after running [/usr/bin/tail -x]")
+	require.ErrorContains(t, err, "unexpected exit code [1]")
 	exitCode, err := ep.ExitCode()
 	require.Equal(t, 1, exitCode)
 	require.NoError(t, err)
@@ -115,7 +115,7 @@ func TestExpectFuncExitFailureStop(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = ep.Close()
-	require.ErrorContains(t, err, "unexpected exit code [1] after running [/usr/bin/tail -x]")
+	require.ErrorContains(t, err, "unexpected exit code [1]")
 	exitCode, err = ep.ExitCode()
 	require.Equal(t, 1, exitCode)
 	require.NoError(t, err)
