@@ -78,7 +78,7 @@ func TestRobustness(t *testing.T) {
 		clusterOfSize1Options := baseOptions
 		clusterOfSize1Options = append(clusterOfSize1Options, e2e.WithClusterSize(1))
 		// Add LazyFS only for traffic with lower QPS as it uses a lot of CPU lowering minimal QPS.
-		if enableLazyFS && tp.Profile.MinimalQPS <= 80 {
+		if enableLazyFS && tp.Profile.MinimalQPS <= 100 {
 			clusterOfSize1Options = append(clusterOfSize1Options, e2e.WithLazyFSEnabled(true))
 			name = filepath.Join(name, "LazyFS")
 		}

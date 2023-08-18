@@ -15,6 +15,7 @@ jobs:
       count: 80
       testTimeout: 200m
       artifactName: main
+      runs-on: "['ubuntu-latest-8-cores']"
   main-arm64:
     uses: ./.github/workflows/robustness-template.yaml
     with:
@@ -30,6 +31,7 @@ jobs:
       count: 80
       testTimeout: 200m
       artifactName: release-35
+      runs-on: "['ubuntu-latest-8-cores']"
   release-35-arm64:
     uses: ./.github/workflows/robustness-template.yaml
     with:
@@ -45,3 +47,4 @@ jobs:
       count: 80
       testTimeout: 200m
       artifactName: release-34
+      runs-on: "['ubuntu-latest-8-cores']"
