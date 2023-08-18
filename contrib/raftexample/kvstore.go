@@ -39,15 +39,11 @@ type kv struct {
 	Val string
 }
 
-func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *commit, errorC <-chan error) *kvstore {
+func newKVStore(snapshotter *snap.Snapshotter, initialSnapshot *raftpb.Snapshot, proposeC chan<- string, commitC <-chan *commit, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
-	snapshot, err := s.loadSnapshot()
-	if err != nil {
-		log.Panic(err)
-	}
-	if snapshot != nil {
-		log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-		if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+	if initialSnapshot != nil {
+		log.Printf("loading initial snapshot at term %d and index %d", initialSnapshot.Metadata.Term, initialSnapshot.Metadata.Index)
+		if err := s.recoverFromSnapshot(initialSnapshot.Data); err != nil {
 			log.Panic(err)
 		}
 	}
