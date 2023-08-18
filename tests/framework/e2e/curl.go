@@ -37,6 +37,8 @@ type CURLReq struct {
 
 	Ciphers     string
 	HttpVersion string
+
+	OutputFile string
 }
 
 func (r CURLReq) timeoutDuration() time.Duration {
@@ -91,6 +93,10 @@ func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, 
 
 	if req.Ciphers != "" {
 		cmdArgs = append(cmdArgs, "--ciphers", req.Ciphers)
+	}
+
+	if req.OutputFile != "" {
+		cmdArgs = append(cmdArgs, "--output", req.OutputFile)
 	}
 
 	switch method {
