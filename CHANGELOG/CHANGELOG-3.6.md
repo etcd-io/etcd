@@ -94,8 +94,8 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 - Add [`etcd_debugging_server_alarms`](https://github.com/etcd-io/etcd/pull/14276).
 
 ### Go
-- Require [Go 1.19+](https://github.com/etcd-io/etcd/pull/14463).
-- Compile with [Go 1.19+](https://golang.org/doc/devel/release.html#go1.19). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
+- Require [Go 1.20+](https://github.com/etcd-io/etcd/pull/16394).
+- Compile with [Go 1.20+](https://golang.org/doc/devel/release.html#go1.20). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
 
 ### Other
 

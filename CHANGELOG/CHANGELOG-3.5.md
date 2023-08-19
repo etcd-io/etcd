@@ -7,6 +7,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ## v3.5.10 (tbd)
 
 ### etcd server
+- Fix [`--socket-reuse-port` and `--socket-reuse-address` not able to be set in configuration file](https://github.com/etcd-io/etcd/pull/16435).
 - Fix [corruption check may get a `ErrCompacted` error when server has just been compacted](https://github.com/etcd-io/etcd/pull/16048)
 - Improve [Lease put performance for the case that auth is disabled or the user is admin](https://github.com/etcd-io/etcd/pull/16019)
 - Improve [Skip getting authInfo from incoming context when auth is disabled](https://github.com/etcd-io/etcd/pull/16241)
@@ -26,7 +27,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [Reset auth token when failing to authenticate due to auth being disabled](https://github.com/etcd-io/etcd/pull/16241)
 
 ### Dependencies
-- Compile binaries using [go 1.19.12](https://github.com/etcd-io/etcd/pull/16352).
+- Compile binaries using [go 1.20.7](https://github.com/etcd-io/etcd/pull/16401).
 
 <hr>
 
