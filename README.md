@@ -134,7 +134,7 @@ Now it's time to dig into the full etcd API and other guides.
 
 ## Contact
 
-* Email: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
+* Email: [etcd-dev](https://groups.google.com/g/etcd-dev)
 * Slack: [#etcd](https://kubernetes.slack.com/messages/C3HD8ARJ5/details/) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
 * [Community meetings](#community-meetings)
 
@@ -146,7 +146,7 @@ An initial agenda will be posted to the [shared Google docs][shared-meeting-note
 
 Meeting recordings are uploaded to official etcd [YouTube channel].
 
-Get calendar invitation by joining [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev) mailing group.
+Get calendar invitation by joining [etcd-dev](https://groups.google.com/g/etcd-dev) mailing group.
 
 Join Hangouts Meet: [meet.google.com/umg-nrxn-qvs](https://meet.google.com/umg-nrxn-qvs)
 
