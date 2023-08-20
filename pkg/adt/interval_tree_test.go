@@ -18,7 +18,6 @@ import (
 	"math/rand"
 	"reflect"
 	"testing"
-	"time"
 )
 
 // TestIntervalTreeInsert tests interval tree insertion.
@@ -360,7 +359,6 @@ func TestIntervalTreeRandom(t *testing.T) {
 	ivs := make(map[xy]struct{})
 	ivt := NewIntervalTree()
 	maxv := 128
-	rand.Seed(time.Now().UnixNano())
 
 	for i := rand.Intn(maxv) + 1; i != 0; i-- {
 		x, y := int64(rand.Intn(maxv)), int64(rand.Intn(maxv))

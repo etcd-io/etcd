@@ -806,7 +806,6 @@ func computeLatency(lat, rv time.Duration) time.Duration {
 		rv = lat / 10
 	}
 	now := time.Now()
-	mrand.Seed(int64(now.Nanosecond()))
 	sign := 1
 	if now.Second()%2 == 0 {
 		sign = -1

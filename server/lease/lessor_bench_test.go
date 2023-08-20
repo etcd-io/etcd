@@ -37,10 +37,6 @@ func BenchmarkLessorRenew100000(b *testing.B) { benchmarkLessorRenew(100000, b) 
 func BenchmarkLessorFindExpired10000(b *testing.B)  { benchmarkLessorFindExpired(10000, b) }
 func BenchmarkLessorFindExpired100000(b *testing.B) { benchmarkLessorFindExpired(100000, b) }
 
-func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
-}
-
 const (
 	// minTTL keep lease will not auto expire in benchmark
 	minTTL = 1000

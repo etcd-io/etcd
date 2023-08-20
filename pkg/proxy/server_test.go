@@ -628,7 +628,6 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 
 func newUnixAddr() string {
 	now := time.Now().UnixNano()
-	rand.Seed(now)
 	addr := fmt.Sprintf("%X%X.unix-conn", now, rand.Intn(35000))
 	os.RemoveAll(addr)
 	return addr
