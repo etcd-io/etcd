@@ -60,7 +60,7 @@ Binaries are pushed to gcr.io and images are pushed to quay.io and gcr.io.
 
 ## Announce to the etcd-dev Googlegroup
 
-- Follow the format of [previous release emails](https://groups.google.com/forum/#!forum/etcd-dev).
+- Follow the format of [previous release emails](https://groups.google.com/g/etcd-dev).
 - Make sure to include a list of authors that contributed since the previous release - something like the following might be handy:
 
 ```

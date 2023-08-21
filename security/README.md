@@ -1,6 +1,6 @@
 ## Security Announcements
 
-Join the [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev) group for emails about security and major announcements.
+Join the [etcd-dev](https://groups.google.com/g/etcd-dev) group for emails about security and major announcements.
 
 ## Report a Vulnerability
 
