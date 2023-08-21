@@ -1,6 +1,7 @@
 module go.etcd.io/etcd/tools/v3
 
 go 1.20
+toolchain go1.21.0
 
 require (
 	github.com/alexfalkowski/gocovmerge v1.2.0
@@ -21,7 +22,7 @@ require (
 	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
 	gotest.tools/gotestsum v1.10.1
 	gotest.tools/v3 v3.5.0
-	honnef.co/go/tools v0.4.3
+	honnef.co/go/tools v0.4.5
 	mvdan.cc/unparam v0.0.0-20220316160445-06cc5682983b
 )
 
