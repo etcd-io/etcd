@@ -20,7 +20,6 @@ import (
 	"expvar"
 	"fmt"
 	"math"
-	"math/rand"
 	"net/http"
 	"path"
 	"regexp"
@@ -120,8 +119,6 @@ var (
 )
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
-
 	expvar.Publish(
 		"file_descriptor_limit",
 		expvar.Func(

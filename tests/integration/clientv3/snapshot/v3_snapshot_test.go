@@ -130,7 +130,6 @@ func createSnapshotFile(t *testing.T, cfg *embed.Config, kvs []kv) (version stri
 func newEmbedURLs(n int) (urls []url.URL) {
 	urls = make([]url.URL, n)
 	for i := 0; i < n; i++ {
-		rand.Seed(int64(time.Now().Nanosecond()))
 		u, _ := url.Parse(fmt.Sprintf("unix://localhost:%d", rand.Intn(45000)))
 		urls[i] = *u
 	}
