@@ -93,20 +93,30 @@ func put(ctx context.Context, txnWrite mvcc.TxnWrite, p *pb.PutRequest) (resp *p
 	return resp, nil
 }
 
-func DeleteRange(kv mvcc.KV, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	txnWrite := kv.Write(traceutil.TODO())
+func DeleteRange(ctx context.Context, lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, trace *traceutil.Trace, err error) {
+	trace = traceutil.Get(ctx)
+	// create delete tracing if the trace in context is empty
+	if trace.IsEmpty() {
+		trace = traceutil.New("delete_range",
+			lg,
+			traceutil.Field{Key: "key", Value: string(dr.Key)},
+			traceutil.Field{Key: "range_end", Value: string(dr.RangeEnd)},
+		)
+		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
+	}
+	txnWrite := kv.Write(trace)
 	defer txnWrite.End()
-	resp, err := deleteRange(txnWrite, dr)
-	return resp, err
+	resp, err = deleteRange(ctx, txnWrite, dr)
+	return resp, trace, err
 }
 
-func deleteRange(txnWrite mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+func deleteRange(ctx context.Context, txnWrite mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	resp := &pb.DeleteRangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	end := mkGteRange(dr.RangeEnd)
 
 	if dr.PrevKv {
-		rr, err := txnWrite.Range(context.TODO(), dr.Key, end, mvcc.RangeOptions{})
+		rr, err := txnWrite.Range(ctx, dr.Key, end, mvcc.RangeOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -122,15 +132,16 @@ func deleteRange(txnWrite mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteR
 	return resp, nil
 }
 
-func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	trace := traceutil.Get(ctx)
+func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
+	trace = traceutil.Get(ctx)
 	if trace.IsEmpty() {
 		trace = traceutil.New("range", lg)
 		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
 	}
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
-	return executeRange(ctx, lg, txnRead, r)
+	resp, err = executeRange(ctx, lg, txnRead, r)
+	return resp, trace, err
 }
 
 func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -384,7 +395,7 @@ func executeTxn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt 
 			respi.(*pb.ResponseOp_ResponsePut).ResponsePut = resp
 			trace.StopSubTrace()
 		case *pb.RequestOp_RequestDeleteRange:
-			resp, err := deleteRange(txnWrite, tv.RequestDeleteRange)
+			resp, err := deleteRange(ctx, txnWrite, tv.RequestDeleteRange)
 			if err != nil {
 				return 0, fmt.Errorf("applyTxn: failed DeleteRange: %w", err)
 			}

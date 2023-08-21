@@ -532,7 +532,7 @@ func TestAuthApplierV3_Range(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, err := authApplier.Range(ctx, tc.request)
+			_, _, err := authApplier.Range(ctx, tc.request)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -596,7 +596,7 @@ func TestAuthApplierV3_DeleteRange(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, err := authApplier.DeleteRange(tc.request)
+			_, _, err := authApplier.DeleteRange(context.Background(), tc.request)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}

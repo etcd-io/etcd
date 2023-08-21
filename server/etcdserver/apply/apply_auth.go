@@ -86,25 +86,25 @@ func (aa *authApplierV3) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResp
 	return aa.applierV3.Put(ctx, r)
 }
 
-func (aa *authApplierV3) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (aa *authApplierV3) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
 	if err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return aa.applierV3.Range(ctx, r)
 }
 
-func (aa *authApplierV3) DeleteRange(r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+func (aa *authApplierV3) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
 	if err := aa.as.IsDeleteRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if r.PrevKv {
 		err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return aa.applierV3.DeleteRange(r)
+	return aa.applierV3.DeleteRange(ctx, r)
 }
 
 func (aa *authApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
