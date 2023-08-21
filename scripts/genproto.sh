@@ -20,17 +20,37 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
 fi
 
 GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)
-GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)
-SWAGGER_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger)
+GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)
+OPENAPIV2_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2)
 GOGOPROTO_ROOT="$(tool_pkg_dir github.com/gogo/protobuf/proto)/.."
-GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway)/.."
+GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)/.."
 RAFT_ROOT="$(tool_pkg_dir go.etcd.io/raft/v3/raftpb)/.."
+GOOGLEAPI_ROOT=$(mktemp -d -t 'googleapi.XXXXX')
+
+readonly googleapi_commit=1769846666fbeb0f9ece6ad929ddc0d563cccd8d
+
+function cleanup_googleapi() {
+  rm -rf "${GOOGLEAPI_ROOT}"
+}
+
+trap cleanup_googleapi EXIT
+
+function download_googleapi() {
+  run pushd "${GOOGLEAPI_ROOT}"
+  run git init
+  run git remote add upstream https://github.com/googleapis/googleapis.git
+  run git fetch upstream "${googleapi_commit}"
+  run git reset --hard FETCH_HEAD
+  run popd
+}
+
+download_googleapi
 
 echo
 echo "Resolved binary and packages versions:"
 echo "  - protoc-gen-gofast:       ${GOFAST_BIN}"
 echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
-echo "  - swagger:                 ${SWAGGER_BIN}"
+echo "  - openapiv2:               ${OPENAPIV2_BIN}"
 echo "  - gogoproto-root:          ${GOGOPROTO_ROOT}"
 echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
 echo "  - raft-root:               ${RAFT_ROOT}"
@@ -43,7 +63,7 @@ log_callout -e "\\nRunning gofast (gogo) proto generation..."
 
 for dir in ${DIRS}; do
   run pushd "${dir}"
-    run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GRPC_GATEWAY_ROOT}/third_party/googleapis" \
+    run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
       -I"${GRPC_GATEWAY_ROOT}" \
       --plugin="${GOFAST_BIN}" ./**/*.proto
 
@@ -64,14 +84,17 @@ rm -rf Documentation/dev-guide/apispec/swagger/*json
 for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock server/etcdserver/api/v3election/v3electionpb/v3election; do
   log_callout "grpc & swagger for: ${pb}.proto"
   run protoc -I. \
-      -I"${GRPC_GATEWAY_ROOT}"/third_party/googleapis \
+      -I"${GOOGLEAPI_ROOT}" \
       -I"${GRPC_GATEWAY_ROOT}" \
       -I"${GOGOPROTO_PATH}" \
       -I"${ETCD_ROOT_DIR}/.." \
       -I"${RAFT_ROOT}" \
       --grpc-gateway_out=logtostderr=true,paths=source_relative:. \
-      --swagger_out=logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
-      --plugin="${SWAGGER_BIN}" --plugin="${GRPC_GATEWAY_BIN}" \
+      --grpc-gateway_opt=Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types \
+      --openapiv2_out=json_names_for_fields=false,logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
+      --openapiv2_opt=Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types:. \
+      --plugin="${OPENAPIV2_BIN}" \
+      --plugin="${GRPC_GATEWAY_BIN}" \
       ${pb}.proto
   # hack to move gw files around so client won't include them
   pkgpath=$(dirname "${pb}")
