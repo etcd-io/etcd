@@ -10,3 +10,4 @@ jobs:
       count: 12
       testTimeout: 30m
       artifactName: main
+      runs-on: "['ubuntu-latest-8-cores']"
