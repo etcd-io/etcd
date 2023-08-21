@@ -1568,7 +1568,7 @@ CHECK provides commands for checking properties of the etcd cluster.
 
 CHECK PERF checks the performance of the etcd cluster for 60 seconds. Running the `check perf` often can create a large keyspace history which can be auto compacted and defragmented using the `--auto-compact` and `--auto-defrag` options as described below.
 
-Notice that different workload models use different configurations in terms of number of clients and throughtput. Here is the configuration for each load:
+Notice that different workload models use different configurations in terms of number of clients and throughput. Here is the configuration for each load:
 
 
 | Load | Number of clients | Number of put requests (requests/sec) |
