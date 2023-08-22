@@ -225,7 +225,7 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/grpc-gateway",
+		"project": "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -703,15 +703,6 @@
 	},
 	{
 		"project": "google.golang.org/genproto/googleapis/rpc",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "google.golang.org/genproto/protobuf/field_mask",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
