@@ -33,7 +33,7 @@ import (
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 )
 
 var apiPrefix = []string{"/v3"}
