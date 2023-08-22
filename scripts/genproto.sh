@@ -121,6 +121,11 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
     Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
 
+# We only upgraded grpc-gateway from v1 to v2, but keep gogo/protobuf as it's for now.
+# So we have to convert v1 message to v2 message. Once we get rid of gogo/protobuf, and
+# start to depend on protobuf v2, then we can remove this patch.
+git apply scripts/patches/v1_v2_diff.txt
+
 if [ "${1:-}" != "--skip-protodoc" ]; then
   log_callout "protodoc is auto-generating grpc API reference documentation..."
 
