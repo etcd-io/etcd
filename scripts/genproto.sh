@@ -64,6 +64,7 @@ log_callout -e "\\nRunning gofast (gogo) proto generation..."
 for dir in ${DIRS}; do
   run pushd "${dir}"
     run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
+      --gofast_opt=paths=source_relative \
       -I"${GRPC_GATEWAY_ROOT}" \
       --plugin="${GOFAST_BIN}" ./**/*.proto
 

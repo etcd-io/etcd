@@ -22,8 +22,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-
-	protov1 "github.com/golang/protobuf/proto"
 )
 
 // Suppress "imported and not used" errors
@@ -47,7 +45,7 @@ func request_Election_Campaign_0(ctx context.Context, marshaler runtime.Marshale
 	}
 
 	msg, err := client.Campaign(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 
 }
 
@@ -64,7 +62,7 @@ func local_request_Election_Campaign_0(ctx context.Context, marshaler runtime.Ma
 	}
 
 	msg, err := server.Campaign(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 
 }
 
@@ -81,7 +79,7 @@ func request_Election_Proclaim_0(ctx context.Context, marshaler runtime.Marshale
 	}
 
 	msg, err := client.Proclaim(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 
 }
 
@@ -98,7 +96,7 @@ func local_request_Election_Proclaim_0(ctx context.Context, marshaler runtime.Ma
 	}
 
 	msg, err := server.Proclaim(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 
 }
 
@@ -115,7 +113,7 @@ func request_Election_Leader_0(ctx context.Context, marshaler runtime.Marshaler,
 	}
 
 	msg, err := client.Leader(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 
 }
 
@@ -132,7 +130,7 @@ func local_request_Election_Leader_0(ctx context.Context, marshaler runtime.Mars
 	}
 
 	msg, err := server.Leader(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 
 }
 
@@ -174,7 +172,7 @@ func request_Election_Resign_0(ctx context.Context, marshaler runtime.Marshaler,
 	}
 
 	msg, err := client.Resign(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 
 }
 
@@ -191,7 +189,7 @@ func local_request_Election_Resign_0(ctx context.Context, marshaler runtime.Mars
 	}
 
 	msg, err := server.Resign(ctx, &protoReq)
-	return protov1.MessageV2(msg), metadata, err
+	return msg, metadata, err
 
 }
 
@@ -433,10 +431,7 @@ func RegisterElectionHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 			return
 		}
 
-		forward_Election_Observe_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) {
-			m1, err := resp.Recv()
-			return protov1.MessageV2(m1), err
-		}, mux.GetForwardResponseOptions()...)
+		forward_Election_Observe_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
 
 	})
 
