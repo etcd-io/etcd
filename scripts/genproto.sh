@@ -64,15 +64,11 @@ log_callout -e "\\nRunning gofast (gogo) proto generation..."
 for dir in ${DIRS}; do
   run pushd "${dir}"
     run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
-      --gofast_opt=paths=source_relative \
+      --gofast_opt=paths=source_relative,Mraftpb/raft.proto=go.etcd.io/raft/v3/raftpb,Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor \
       -I"${GRPC_GATEWAY_ROOT}" \
       --plugin="${GOFAST_BIN}" ./**/*.proto
 
-    run sed -i.bak -E 's|"etcd/api/|"go.etcd.io/etcd/api/v3/|g' ./**/*.pb.go
-    run sed -i.bak -E 's|"raftpb"|"go.etcd.io/raft/v3/raftpb"|g' ./**/*.pb.go
-    run sed -i.bak -E 's|"google/protobuf"|"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"|g' ./**/*.pb.go
 
-    rm -f ./**/*.bak
     run gofmt -s -w ./**/*.pb.go
     run_go_tool "golang.org/x/tools/cmd/goimports" -w ./**/*.pb.go
   run popd

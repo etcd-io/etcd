@@ -8,7 +8,7 @@ import (
 	math "math"
 
 	_ "github.com/gogo/protobuf/gogoproto"
-	protobuf "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	descriptor "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	proto "github.com/golang/protobuf/proto"
 )
 
@@ -24,7 +24,7 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 var E_EtcdVersionMsg = &proto.ExtensionDesc{
-	ExtendedType:  (*protobuf.MessageOptions)(nil),
+	ExtendedType:  (*descriptor.MessageOptions)(nil),
 	ExtensionType: (*string)(nil),
 	Field:         50000,
 	Name:          "versionpb.etcd_version_msg",
@@ -33,7 +33,7 @@ var E_EtcdVersionMsg = &proto.ExtensionDesc{
 }
 
 var E_EtcdVersionField = &proto.ExtensionDesc{
-	ExtendedType:  (*protobuf.FieldOptions)(nil),
+	ExtendedType:  (*descriptor.FieldOptions)(nil),
 	ExtensionType: (*string)(nil),
 	Field:         50001,
 	Name:          "versionpb.etcd_version_field",
@@ -42,7 +42,7 @@ var E_EtcdVersionField = &proto.ExtensionDesc{
 }
 
 var E_EtcdVersionEnum = &proto.ExtensionDesc{
-	ExtendedType:  (*protobuf.EnumOptions)(nil),
+	ExtendedType:  (*descriptor.EnumOptions)(nil),
 	ExtensionType: (*string)(nil),
 	Field:         50002,
 	Name:          "versionpb.etcd_version_enum",
@@ -51,7 +51,7 @@ var E_EtcdVersionEnum = &proto.ExtensionDesc{
 }
 
 var E_EtcdVersionEnumValue = &proto.ExtensionDesc{
-	ExtendedType:  (*protobuf.EnumValueOptions)(nil),
+	ExtendedType:  (*descriptor.EnumValueOptions)(nil),
 	ExtensionType: (*string)(nil),
 	Field:         50003,
 	Name:          "versionpb.etcd_version_enum_value",
