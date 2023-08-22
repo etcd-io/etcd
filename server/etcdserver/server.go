@@ -2064,6 +2064,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
+	d := GetMembershipInfoInV2Format(s.Logger(), s.cluster)
 	// commit kv to write metadata (for example: consistent index) to disk.
 	//
 	// This guarantees that Backend's consistent_index is >= index of last snapshot.
@@ -2074,7 +2075,6 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	// So KV().Commit() cannot run in parallel with toApply. It has to be called outside
 	// the go routine created below.
 	s.KV().Commit()
-	d := GetMembershipInfoInV2Format(s.Logger(), s.cluster)
 
 	s.GoAttach(func() {
 		lg := s.Logger()
