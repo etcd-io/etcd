@@ -2064,7 +2064,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
-	clone := s.v2store.Clone()
 	// commit kv to write metadata (for example: consistent index) to disk.
 	//
 	// This guarantees that Backend's consistent_index is >= index of last snapshot.
@@ -2075,16 +2074,12 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	// So KV().Commit() cannot run in parallel with toApply. It has to be called outside
 	// the go routine created below.
 	s.KV().Commit()
+	d := GetMembershipInfoInV2Format(s.Logger(), s.cluster)
 
 	s.GoAttach(func() {
 		lg := s.Logger()
 
-		d, err := clone.SaveNoCopy()
-		// TODO: current store will never fail to do a snapshot
-		// what should we do if the store might fail?
-		if err != nil {
-			lg.Panic("failed to save v2 store", zap.Error(err))
-		}
+		// For backward compatibility, generate v2 snapshot from v3 state.
 		snap, err := s.r.raftStorage.CreateSnapshot(snapi, &confState, d)
 		if err != nil {
 			// the snapshot was done asynchronously with the progress of raft.

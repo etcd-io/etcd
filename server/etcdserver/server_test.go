@@ -1047,7 +1047,10 @@ func TestSnapshot(t *testing.T) {
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
 
-	ch := make(chan struct{}, 2)
+	cl := membership.NewCluster(zaptest.NewLogger(t))
+	srv.cluster = cl
+
+	ch := make(chan struct{}, 1)
 
 	go func() {
 		gaction, _ := p.Wait(2)
@@ -1066,24 +1069,11 @@ func TestSnapshot(t *testing.T) {
 		}
 	}()
 
-	go func() {
-		gaction, _ := st.Wait(2)
-		defer func() { ch <- struct{}{} }()
-
-		if len(gaction) != 2 {
-			t.Errorf("len(action) = %d, want 2", len(gaction))
-		}
-		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
-			t.Errorf("action = %s, want Clone", gaction[0])
-		}
-		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
-			t.Errorf("action = %s, want SaveNoCopy", gaction[1])
-		}
-	}()
-
 	srv.snapshot(1, raftpb.ConfState{Voters: []uint64{1}})
 	<-ch
-	<-ch
+	if len(st.Action()) != 0 {
+		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
+	}
 }
 
 // TestSnapshotOrdering ensures raft persists snapshot onto disk before
@@ -1098,7 +1088,8 @@ func TestSnapshotOrdering(t *testing.T) {
 	n := newNopReadyNode()
 	st := v2store.New()
 	cl := membership.NewCluster(lg)
-	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	testdir := t.TempDir()
 
@@ -1118,7 +1109,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		storage:     p,
 		raftStorage: rs,
 	})
-	be, _ := betesting.NewDefaultTmpBackend(t)
 	ci := cindex.NewConsistentIndex(be)
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1210,6 +1200,9 @@ func TestTriggerSnap(t *testing.T) {
 
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	srv.be = be
+
+	cl := membership.NewCluster(zaptest.NewLogger(t))
+	srv.cluster = cl
 
 	srv.start()
 
