@@ -39,7 +39,7 @@ import (
 	v3lockgw "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 
-	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
+	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/soheilhy/cmux"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"go.uber.org/zap"
