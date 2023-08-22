@@ -22,6 +22,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+
+	protov1 "github.com/golang/protobuf/proto"
 )
 
 // Suppress "imported and not used" errors
@@ -45,7 +47,7 @@ func request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, clien
 	}
 
 	msg, err := client.Lock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
+	return protov1.MessageV2(msg), metadata, err
 
 }
 
@@ -62,7 +64,7 @@ func local_request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler,
 	}
 
 	msg, err := server.Lock(ctx, &protoReq)
-	return msg, metadata, err
+	return protov1.MessageV2(msg), metadata, err
 
 }
 
@@ -79,7 +81,7 @@ func request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, cli
 	}
 
 	msg, err := client.Unlock(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
+	return protov1.MessageV2(msg), metadata, err
 
 }
 
@@ -96,7 +98,7 @@ func local_request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshale
 	}
 
 	msg, err := server.Unlock(ctx, &protoReq)
-	return msg, metadata, err
+	return protov1.MessageV2(msg), metadata, err
 
 }
 
