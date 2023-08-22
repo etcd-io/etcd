@@ -265,7 +265,7 @@ func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v
 	rc2.Recover(func(lg *zap.Logger, v *semver.Version) { return })
 
 	//membership should match
-	if g := rc1.Members(); !reflect.DeepEqual(g, rc2.Members()) {
+	if !reflect.DeepEqual(rc1.Members(), rc2.Members()) {
 		t.Logf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v", rc1.MemberIDs(), rc2.MemberIDs())
 		t.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())
 	}
