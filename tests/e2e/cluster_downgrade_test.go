@@ -302,6 +302,7 @@ func verifySnapshotMembers(t *testing.T, epc *e2e.EtcdProcessCluster, expectedMe
 		t.Logf("Verifying snapshot for member %d", i)
 		ss := snap.New(epc.Cfg.Logger, datadir.ToSnapDir(epc.Procs[i].Config().DataDirPath))
 		snap, err := ss.Load()
+		require.NoError(t, err)
 		st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
 		err = st.Recovery(snap.Data)
 		assert.NoError(t, err)
