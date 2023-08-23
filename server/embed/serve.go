@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
+	"go.etcd.io/etcd/pkg/v3/legacygwjsonpb"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
@@ -301,7 +302,12 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 	if err != nil {
 		return nil, err
 	}
-	gwmux := gw.NewServeMux()
+
+	gwmux := gw.NewServeMux(
+		gw.WithMarshalerOption(gw.MIMEWildcard, &gw.HTTPBodyMarshaler{
+			Marshaler: &legacygwjsonpb.JSONPb{OrigName: true},
+		}),
+	)
 
 	handlers := []registerHandlerFunc{
 		etcdservergw.RegisterKVHandler,
