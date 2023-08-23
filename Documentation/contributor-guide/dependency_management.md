@@ -11,6 +11,7 @@
     - [arduino/setup-protoc](#arduinosetup-protoc)
   - [Rotation worksheet](#rotation-worksheet)
 - **[Stable branches](#stable-branches)**
+- **[Golang versions](#golang-versions)**
 
 ## Main branch
 
@@ -105,3 +106,23 @@ Usually we don't proactively bump dependencies for stable releases unless there 
 
 If we have to do it, then follow the same guidance above. Note that there is no `./scripts/fix.sh` in release-3.4, so no need to
 execute it for 3.4.
+
+## Golang versions
+
+The etcd project aims to maintain a development branch that is on the latest [Go version](https://go.dev/dl), ideally this will align with the Go version in use for Kubernetes project development. For an example on how to update etcd to a new minor release of Go refer to issue <https://github.com/etcd-io/etcd/issues/16393> and the linked pull requests.
+
+Suggested steps for performing a minor version upgrade for the etcd development branch:
+
+1. Carefully review new Go version release notes and potentially related blog for any deprecations, performance impacts or other considerations.
+2. Create a github issue to signal intent to upgrade and invite discussion, example <https://github.com/etcd-io/etcd/issues/16393>.
+3. Complete the upgrade locally in your development environment.
+4. Run performance benchmarks locally to compare before and after.
+5. Raise a pull request for the changes, example <https://github.com/etcd-io/etcd/pull/16394>.
+
+Stable etcd release branches will be maintained to stay on the latest patch release of a supported Go version, however upgrading minor versions will be avoided unless the minor version in use is now out of support. Refer to the [Go release policy](https://go.dev/doc/devel/release).
+
+For an example of how to update etcd to a new patch release of Go refer to issue <https://github.com/etcd-io/etcd/issues/16343> and the linked pull requests.
+
+References:
+
+- <https://github.com/kubernetes/sig-release/blob/master/release-engineering/handbooks/go.md>
