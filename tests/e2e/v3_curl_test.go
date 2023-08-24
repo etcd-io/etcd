@@ -180,7 +180,7 @@ func testV3CurlTxn(cx ctlCtx) {
 	if jerr != nil {
 		cx.t.Fatal(jerr)
 	}
-	expected := `"succeeded":true,"responses":[{"response_put":{"header":{"revision":"2"}}}]`
+	expected := `EXPR.*"succeeded":true,\s*"responses":\[{"response_put":{"header":{"revision":"2"}}}].*`
 	p := cx.apiPrefix
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/txn"), Value: string(jsonDat), Expected: expected}); err != nil {
 		cx.t.Fatalf("failed testV3CurlTxn txn with curl using prefix (%s) (%v)", p, err)
@@ -188,7 +188,7 @@ func testV3CurlTxn(cx ctlCtx) {
 
 	// was crashing etcd server
 	malformed := `{"compare":[{"result":0,"target":1,"key":"Zm9v","TargetUnion":null}],"success":[{"Request":{"RequestPut":{"key":"Zm9v","value":"YmFy"}}}]}`
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/txn"), Value: malformed, Expected: `"code":3,"message":"etcdserver: key not found"`}); err != nil {
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/txn"), Value: malformed, Expected: `EXPR.*"code":3,\s*"message":"etcdserver: key not found".*`}); err != nil {
 		cx.t.Fatalf("failed testV3CurlTxn put with curl using prefix (%s) (%v)", p, err)
 	}
 
@@ -239,7 +239,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		testutil.AssertNil(cx.t, err)
 
 		// fail put no auth
-		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/put"), Value: string(putreq), Expected: `"code":3,"message":"etcdserver: user name is empty"`}); err != nil {
+		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/put"), Value: string(putreq), Expected: `EXPR.*"code":3,\s*"message":"etcdserver: user name is empty".*`}); err != nil {
 			cx.t.Fatalf("failed testV3CurlAuth no auth put with curl using prefix (%s) (%v)", p, err)
 		}
 
@@ -354,7 +354,7 @@ func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
 	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
 		Value:    string(pdata),
-		Expected: `{"code":2,"message":"\"leader\" field must be provided"}`,
+		Expected: `EXPR.*{"code":2,\s*"message":".*leader.* field must be provided"}.*`,
 	}); err != nil {
 		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
 	}
@@ -370,7 +370,7 @@ func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: path.Join(cx.apiPrefix, "/election/resign"),
 		Value:    `{}`,
-		Expected: `{"code":2,"message":"\"leader\" field must be provided"}`,
+		Expected: `EXPR.*{"code":2,\s*"message":".*leader.* field must be provided"}.*`,
 	}); err != nil {
 		cx.t.Fatalf("failed post resign request (%s) (%v)", cx.apiPrefix, err)
 	}

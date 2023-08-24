@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -224,7 +225,24 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 
 // ExpectWithContext returns the first line containing the given string.
 func (ep *ExpectProcess) ExpectWithContext(ctx context.Context, s string) (string, error) {
-	return ep.ExpectFunc(ctx, func(txt string) bool { return strings.Contains(txt, s) })
+	return ep.ExpectFunc(ctx, func(txt string) bool {
+		if strings.Contains(txt, s) {
+			return true
+		}
+
+		s1 := s
+		if strings.HasPrefix(s1, "EXPR") {
+			s1 = s1[4:]
+		} else {
+			return false
+		}
+
+		r, err := regexp.Compile(s1)
+		if err != nil {
+			return false
+		}
+		return r.MatchString(txt)
+	})
 }
 
 // Expect returns the first line containing the given string.
