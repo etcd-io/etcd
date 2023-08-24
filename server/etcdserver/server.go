@@ -322,7 +322,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lgMu:                  new(sync.RWMutex),
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
-		v2store:               b.storage.st,
+		v2store:               v2store.New(StoreClusterPrefix, StoreKeysPrefix),
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
 		memberId:              b.cluster.nodeID,
@@ -340,6 +340,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": b.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
+	//TODO To be removed when RaftCluster does not need the v2store
+	srv.cluster.SetStore(srv.v2store)
 	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = b.storage.backend.be
@@ -1043,16 +1045,9 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 		lg.Info("restored auth store")
 	}
 
-	lg.Info("restoring v2 store")
-	if err := s.v2store.Recovery(toApply.snapshot.Data); err != nil {
-		lg.Panic("failed to restore v2 store", zap.Error(err))
+	if err := serverstorage.AssertV2DeprecationStage(lg, s.Cfg.V2Deprecation); err != nil {
+		lg.Panic("illegal v2store deprecation stage. This version does not recover from v2 snapshot", zap.Error(err))
 	}
-
-	if err := serverstorage.AssertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
-		lg.Panic("illegal v2store content", zap.Error(err))
-	}
-
-	lg.Info("restored v2 store")
 
 	s.cluster.SetBackend(schema.NewMembershipBackend(lg, newbe))
 
