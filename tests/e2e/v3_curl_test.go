@@ -24,13 +24,15 @@ import (
 	"strconv"
 	"testing"
 
+	protov1 "github.com/golang/protobuf/proto"
+	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.etcd.io/etcd/pkg/v3/legacygwjsonpb"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -167,8 +169,14 @@ func testV3CurlTxn(cx ctlCtx) {
 			},
 		},
 	}
-	m := &legacygwjsonpb.JSONPb{}
-	jsonDat, jerr := m.Marshal(txn)
+	m := gw.JSONPb{
+		MarshalOptions: protojson.MarshalOptions{
+			UseProtoNames:   true,
+			EmitUnpopulated: false,
+		},
+	}
+
+	jsonDat, jerr := m.Marshal(protov1.MessageV2(txn))
 	if jerr != nil {
 		cx.t.Fatal(jerr)
 	}

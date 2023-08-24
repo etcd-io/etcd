@@ -28,7 +28,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
-	"go.etcd.io/etcd/pkg/v3/legacygwjsonpb"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
@@ -47,6 +46,7 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type serveCtx struct {
@@ -304,9 +304,19 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 	}
 
 	gwmux := gw.NewServeMux(
-		gw.WithMarshalerOption(gw.MIMEWildcard, &gw.HTTPBodyMarshaler{
-			Marshaler: &legacygwjsonpb.JSONPb{OrigName: true},
-		}),
+		gw.WithMarshalerOption(gw.MIMEWildcard,
+			&gw.HTTPBodyMarshaler{
+				Marshaler: &gw.JSONPb{
+					MarshalOptions: protojson.MarshalOptions{
+						UseProtoNames:   true,
+						EmitUnpopulated: false,
+					},
+					UnmarshalOptions: protojson.UnmarshalOptions{
+						DiscardUnknown: true,
+					},
+				},
+			},
+		),
 	)
 
 	handlers := []registerHandlerFunc{

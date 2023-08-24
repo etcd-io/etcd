@@ -122,6 +122,13 @@ done
 # start to depend on protobuf v2, then we can remove this patch.
 git apply scripts/patches/v1_v2_diff.txt
 
+for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock server/etcdserver/api/v3election/v3electionpb/v3election; do
+  gwfile="$(dirname ${pb})/gw/$(basename ${pb}).pb.gw.go"
+
+  run sed -i -E "s#Decode\(\&protoReq\)#Decode\(protov1\.MessageV2\(\&protoReq\)\)#g" "${gwfile}"
+  run go fmt "${gwfile}"
+done
+
 if [ "${1:-}" != "--skip-protodoc" ]; then
   log_callout "protodoc is auto-generating grpc API reference documentation..."
 
