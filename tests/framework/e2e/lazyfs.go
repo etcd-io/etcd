@@ -65,7 +65,7 @@ func (fs *LazyFS) Start(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	_, err = fs.ep.ExpectWithContext(ctx, "waiting for fault commands")
+	_, err = fs.ep.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "waiting for fault commands"})
 	return err
 }
 
@@ -109,6 +109,6 @@ func (fs *LazyFS) ClearCache(ctx context.Context) error {
 	}
 	// TODO: Wait for response on socket instead of reading logs to get command completion.
 	// Set `fifo_path_completed` config for LazyFS to create separate socket to write when it has completed command.
-	_, err = fs.ep.ExpectWithContext(ctx, "cache is cleared")
+	_, err = fs.ep.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "cache is cleared"})
 	return err
 }

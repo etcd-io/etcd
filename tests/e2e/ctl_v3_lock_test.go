@@ -114,16 +114,16 @@ func testLock(cx ctlCtx) {
 func testLockWithCmd(cx ctlCtx) {
 	// exec command with zero exit code
 	echoCmd := []string{"echo"}
-	if err := ctlV3LockWithCmd(cx, echoCmd, ""); err != nil {
+	if err := ctlV3LockWithCmd(cx, echoCmd, expect.ExpectedResponse{Value: ""}); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	// exec command with non-zero exit code
 	code := 3
 	awkCmd := []string{"awk", fmt.Sprintf("BEGIN{exit %d}", code)}
-	expect := fmt.Sprintf("Error: exit status %d", code)
+	expect := expect.ExpectedResponse{Value: fmt.Sprintf("Error: exit status %d", code)}
 	err := ctlV3LockWithCmd(cx, awkCmd, expect)
-	require.ErrorContains(cx.t, err, expect)
+	require.ErrorContains(cx.t, err, expect.Value)
 }
 
 // ctlV3Lock creates a lock process with a channel listening for when it acquires the lock.
@@ -149,7 +149,7 @@ func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, er
 }
 
 // ctlV3LockWithCmd creates a lock process to exec command.
-func ctlV3LockWithCmd(cx ctlCtx, execCmd []string, as ...string) error {
+func ctlV3LockWithCmd(cx ctlCtx, execCmd []string, as ...expect.ExpectedResponse) error {
 	// use command as lock name
 	cmdArgs := append(cx.PrefixArgs(), "lock", execCmd[0])
 	cmdArgs = append(cmdArgs, execCmd...)

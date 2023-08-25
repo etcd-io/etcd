@@ -127,7 +127,7 @@ func TestEcho(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	l, eerr := ep.ExpectWithContext(ctx, "world")
+	l, eerr := ep.ExpectWithContext(ctx, ExpectedResponse{Value: "world"})
 	if eerr != nil {
 		t.Fatal(eerr)
 	}
@@ -138,7 +138,7 @@ func TestEcho(t *testing.T) {
 	if cerr := ep.Close(); cerr != nil {
 		t.Fatal(cerr)
 	}
-	if _, eerr = ep.ExpectWithContext(ctx, "..."); eerr == nil {
+	if _, eerr = ep.ExpectWithContext(ctx, ExpectedResponse{Value: "..."}); eerr == nil {
 		t.Fatalf("expected error on closed expect process")
 	}
 }
@@ -149,7 +149,7 @@ func TestLineCount(t *testing.T) {
 		t.Fatal(err)
 	}
 	wstr := "3"
-	l, eerr := ep.ExpectWithContext(context.Background(), wstr)
+	l, eerr := ep.ExpectWithContext(context.Background(), ExpectedResponse{Value: wstr})
 	if eerr != nil {
 		t.Fatal(eerr)
 	}
@@ -172,7 +172,7 @@ func TestSend(t *testing.T) {
 	if err := ep.Send("a\r"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ep.ExpectWithContext(context.Background(), "b"); err != nil {
+	if _, err := ep.ExpectWithContext(context.Background(), ExpectedResponse{Value: "b"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := ep.Stop(); err != nil {

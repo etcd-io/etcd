@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -73,10 +74,10 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	defer c.Close()
 
 	kubectl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(c.EndpointsGRPC(), ",")}
-	if err := e2e.SpawnWithExpect(append(kubectl, "put", "key", "value"), "OK"); err != nil {
+	if err := e2e.SpawnWithExpect(append(kubectl, "put", "key", "value"), expect.ExpectedResponse{Value: "OK"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpect(append(kubectl, "get", "key"), "value"); err != nil {
+	if err := e2e.SpawnWithExpect(append(kubectl, "get", "key"), expect.ExpectedResponse{Value: "value"}); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -20,6 +20,8 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+
+	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
 type CURLReq struct {
@@ -32,7 +34,7 @@ type CURLReq struct {
 	Endpoint string
 
 	Value    string
-	Expected string
+	Expected expect.ExpectedResponse
 	Header   string
 
 	Ciphers     string

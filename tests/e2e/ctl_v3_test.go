@@ -26,6 +26,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -88,7 +89,7 @@ func versionTest(cx ctlCtx) {
 func clusterVersionTest(cx ctlCtx, expected string) {
 	var err error
 	for i := 0; i < 35; i++ {
-		if err = e2e.CURLGet(cx.epc, e2e.CURLReq{Endpoint: "/version", Expected: expected}); err != nil {
+		if err = e2e.CURLGet(cx.epc, e2e.CURLReq{Endpoint: "/version", Expected: expect.ExpectedResponse{Value: expected}}); err != nil {
 			cx.t.Logf("#%d: v3 is not ready yet (%v)", i, err)
 			time.Sleep(200 * time.Millisecond)
 			continue
@@ -102,7 +103,7 @@ func clusterVersionTest(cx ctlCtx, expected string) {
 
 func ctlV3Version(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "version")
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, version.Version)
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: version.Version})
 }
 
 // TestCtlV3DialWithHTTPScheme ensures that client handles Endpoints with HTTPS scheme.
@@ -112,7 +113,7 @@ func TestCtlV3DialWithHTTPScheme(t *testing.T) {
 
 func dialWithSchemeTest(cx ctlCtx) {
 	cmdArgs := append(cx.prefixArgs(cx.epc.EndpointsGRPC()), "put", "foo", "bar")
-	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "OK"); err != nil {
+	if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "OK"}); err != nil {
 		cx.t.Fatal(err)
 	}
 }

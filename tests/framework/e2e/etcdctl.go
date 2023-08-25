@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
@@ -80,7 +81,7 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 }
 
 func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error {
-	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, "Downgrade enable success")
+	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "enable", version), nil, expect.ExpectedResponse{Value: "Downgrade enable success"})
 	return err
 }
 
@@ -144,7 +145,7 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 			return nil, err
 		}
 		defer cmd.Close()
-		_, err = cmd.ExpectWithContext(ctx, "Count")
+		_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Count"})
 		return &resp, err
 	}
 	err := ctl.spawnJsonCmd(ctx, &resp, args...)
@@ -157,7 +158,7 @@ func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.Pu
 	if opts.LeaseID != 0 {
 		args = append(args, "--lease", strconv.FormatInt(int64(opts.LeaseID), 16))
 	}
-	_, err := SpawnWithExpectLines(ctx, args, nil, "OK")
+	_, err := SpawnWithExpectLines(ctx, args, nil, expect.ExpectedResponse{Value: "OK"})
 	return err
 }
 
@@ -189,7 +190,7 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 		return nil, err
 	}
 	defer cmd.Close()
-	_, err = cmd.ExpectWithContext(ctx, "compares:")
+	_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "compares:"})
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +202,7 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 	if err := cmd.Send("\r"); err != nil {
 		return nil, err
 	}
-	_, err = cmd.ExpectWithContext(ctx, "success requests (get, put, del):")
+	_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "success requests (get, put, del):"})
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +215,7 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 		return nil, err
 	}
 
-	_, err = cmd.ExpectWithContext(ctx, "failure requests (get, put, del):")
+	_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "failure requests (get, put, del):"})
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +228,7 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 		return nil, err
 	}
 	var line string
-	line, err = cmd.ExpectWithContext(ctx, "header")
+	line, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "header"})
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +349,7 @@ func (ctl *EtcdctlV3) Compact(ctx context.Context, rev int64, o config.CompactOp
 		args = append(args, "--physical")
 	}
 
-	_, err := SpawnWithExpectLines(ctx, args, nil, fmt.Sprintf("compacted revision %v", rev))
+	_, err := SpawnWithExpectLines(ctx, args, nil, expect.ExpectedResponse{Value: fmt.Sprintf("compacted revision %v", rev)})
 	return nil, err
 }
 
@@ -387,9 +388,9 @@ func (ctl *EtcdctlV3) HashKV(ctx context.Context, rev int64) ([]*clientv3.HashKV
 func (ctl *EtcdctlV3) Health(ctx context.Context) error {
 	args := ctl.cmdArgs()
 	args = append(args, "endpoint", "health")
-	lines := make([]string, len(ctl.endpoints))
+	lines := make([]expect.ExpectedResponse, len(ctl.endpoints))
 	for i := range lines {
-		lines[i] = "is healthy"
+		lines[i] = expect.ExpectedResponse{Value: "is healthy"}
 	}
 	_, err := SpawnWithExpectLines(ctx, args, nil, lines...)
 	return err
@@ -404,7 +405,7 @@ func (ctl *EtcdctlV3) Grant(ctx context.Context, ttl int64) (*clientv3.LeaseGran
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseGrantResponse
-	line, err := cmd.ExpectWithContext(ctx, "ID")
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "ID"})
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +425,7 @@ func (ctl *EtcdctlV3) TimeToLive(ctx context.Context, id clientv3.LeaseID, o con
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseTimeToLiveResponse
-	line, err := cmd.ExpectWithContext(ctx, "id")
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "id"})
 	if err != nil {
 		return nil, err
 	}
@@ -437,9 +438,9 @@ func (ctl *EtcdctlV3) Defragment(ctx context.Context, o config.DefragOption) err
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
 	}
-	lines := make([]string, len(ctl.endpoints))
+	lines := make([]expect.ExpectedResponse, len(ctl.endpoints))
 	for i := range lines {
-		lines[i] = "Finished defragmenting etcd member"
+		lines[i] = expect.ExpectedResponse{Value: "Finished defragmenting etcd member"}
 	}
 	_, err := SpawnWithExpectLines(ctx, args, map[string]string{}, lines...)
 	return err
@@ -453,7 +454,7 @@ func (ctl *EtcdctlV3) Leases(ctx context.Context) (*clientv3.LeaseLeasesResponse
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseLeasesResponse
-	line, err := cmd.ExpectWithContext(ctx, "id")
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "id"})
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +470,7 @@ func (ctl *EtcdctlV3) KeepAliveOnce(ctx context.Context, id clientv3.LeaseID) (*
 	}
 	defer cmd.Close()
 	var resp clientv3.LeaseKeepAliveResponse
-	line, err := cmd.ExpectWithContext(ctx, "ID")
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "ID"})
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +499,7 @@ func (ctl *EtcdctlV3) AlarmDisarm(ctx context.Context, _ *clientv3.AlarmMember) 
 	}
 	defer ep.Close()
 	var resp clientv3.AlarmResponse
-	line, err := ep.ExpectWithContext(ctx, "alarm")
+	line, err := ep.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "alarm"})
 	if err != nil {
 		return nil, err
 	}
@@ -514,7 +515,7 @@ func (ctl *EtcdctlV3) AuthEnable(ctx context.Context) error {
 	}
 	defer cmd.Close()
 
-	_, err = cmd.ExpectWithContext(ctx, "Authentication Enabled")
+	_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Authentication Enabled"})
 	return err
 }
 
@@ -526,7 +527,7 @@ func (ctl *EtcdctlV3) AuthDisable(ctx context.Context) error {
 	}
 	defer cmd.Close()
 
-	_, err = cmd.ExpectWithContext(ctx, "Authentication Disabled")
+	_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Authentication Disabled"})
 	return err
 }
 
@@ -567,7 +568,7 @@ func (ctl *EtcdctlV3) UserAdd(ctx context.Context, name, password string, opts c
 	}
 
 	var resp clientv3.AuthUserAddResponse
-	line, err := cmd.ExpectWithContext(ctx, "header")
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "header"})
 	if err != nil {
 		return nil, err
 	}
@@ -606,7 +607,7 @@ func (ctl *EtcdctlV3) UserChangePass(ctx context.Context, user, newPass string) 
 		return err
 	}
 
-	_, err = cmd.ExpectWithContext(ctx, "Password updated")
+	_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Password updated"})
 	return err
 }
 
@@ -666,7 +667,7 @@ func (ctl *EtcdctlV3) spawnJsonCmd(ctx context.Context, output interface{}, args
 		return err
 	}
 	defer cmd.Close()
-	line, err := cmd.ExpectWithContext(ctx, "header")
+	line, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "header"})
 	if err != nil {
 		return err
 	}

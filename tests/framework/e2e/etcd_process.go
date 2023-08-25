@@ -62,7 +62,7 @@ type EtcdProcess interface {
 }
 
 type LogsExpect interface {
-	ExpectWithContext(context.Context, string) (string, error)
+	ExpectWithContext(context.Context, expect.ExpectedResponse) (string, error)
 	Lines() []string
 	LineCount() int
 }
@@ -313,7 +313,7 @@ func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
 	var err error
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	_, err = ep.Logs().ExpectWithContext(ctx, expectLog)
+	_, err = ep.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: expectLog})
 	if err != nil {
 		t.Fatal(err)
 	}

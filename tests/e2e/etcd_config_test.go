@@ -296,7 +296,7 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 		"--cacert", e2e.CaPath,
 	}
 
-	err := e2e.SpawnWithExpect(argsWithNonEmptyCN, "cert has non empty Common Name")
+	err := e2e.SpawnWithExpect(argsWithNonEmptyCN, expect.ExpectedResponse{Value: "cert has non empty Common Name"})
 	require.ErrorContains(t, err, "cert has non empty Common Name")
 
 	p, err := e2e.SpawnCmd(argsWithEmptyCN, nil)
