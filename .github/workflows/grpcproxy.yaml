@@ -5,7 +5,7 @@ permissions: read-all
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: golang:1.20-bookworm
+    container: golang:1.20-bullseye
     defaults:
       run:
         shell: bash
