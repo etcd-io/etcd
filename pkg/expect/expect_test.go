@@ -218,3 +218,59 @@ func TestExpectForFailFastCommand(t *testing.T) {
 	_, err = ep.Expect("failed setting cipher list")
 	require.NoError(t, err)
 }
+
+func TestResponseMatchRegularExpr(t *testing.T) {
+	testCases := []struct {
+		name         string
+		mockOutput   string
+		expectedResp ExpectedResponse
+		expectMatch  bool
+	}{
+		{
+			name:         "exact match",
+			mockOutput:   "hello world",
+			expectedResp: ExpectedResponse{Value: "hello world"},
+			expectMatch:  true,
+		},
+		{
+			name:         "not exact match",
+			mockOutput:   "hello world",
+			expectedResp: ExpectedResponse{Value: "hello wld"},
+			expectMatch:  false,
+		},
+		{
+			name:         "match regular expression",
+			mockOutput:   "hello world",
+			expectedResp: ExpectedResponse{Value: `.*llo\sworld`, IsRegularExpr: true},
+			expectMatch:  true,
+		},
+		{
+			name:         "not match regular expression",
+			mockOutput:   "hello world",
+			expectedResp: ExpectedResponse{Value: `.*llo wrld`, IsRegularExpr: true},
+			expectMatch:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+
+			ep, err := NewExpect("echo", "-n", tc.mockOutput)
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			l, err := ep.ExpectWithContext(ctx, tc.expectedResp)
+
+			if tc.expectMatch {
+				require.Equal(t, tc.mockOutput, l)
+			} else {
+				require.Error(t, err)
+			}
+
+			cerr := ep.Close()
+			require.NoError(t, cerr)
+		})
+	}
+}
