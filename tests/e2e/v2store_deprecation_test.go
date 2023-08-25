@@ -29,6 +29,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -58,7 +59,7 @@ func createV2store(t testing.TB, dataDirPath string) string {
 	for i := 0; i < 10; i++ {
 		if err := e2e.CURLPut(epc, e2e.CURLReq{
 			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
-			Expected: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)}); err != nil {
+			Expected: expect.ExpectedResponse{Value: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)}}); err != nil {
 			t.Fatalf("failed put with curl (%v)", err)
 		}
 	}

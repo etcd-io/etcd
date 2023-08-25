@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -93,7 +94,7 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 
 func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s revoked", leaseID))
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf("lease %s revoked", leaseID)})
 }
 
 func ctlV3LeaseTimeToLive(cx ctlCtx, leaseID string, withKeys bool) error {
@@ -101,5 +102,5 @@ func ctlV3LeaseTimeToLive(cx ctlCtx, leaseID string, withKeys bool) error {
 	if withKeys {
 		cmdArgs = append(cmdArgs, "--keys")
 	}
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("lease %s granted with", leaseID))
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf("lease %s granted with", leaseID)})
 }

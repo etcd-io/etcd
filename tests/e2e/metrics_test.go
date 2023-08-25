@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -63,7 +64,7 @@ func metricsTest(cx ctlCtx) {
 		if err := ctlV3Watch(cx, []string{"k", "--rev", "1"}, []kvExec{{key: "k", val: "v"}}...); err != nil {
 			cx.t.Fatal(err)
 		}
-		if err := e2e.CURLGet(cx.epc, e2e.CURLReq{Endpoint: test.endpoint, Expected: test.expected}); err != nil {
+		if err := e2e.CURLGet(cx.epc, e2e.CURLReq{Endpoint: test.endpoint, Expected: expect.ExpectedResponse{Value: test.expected}}); err != nil {
 			cx.t.Fatalf("failed get with curl (%v)", err)
 		}
 	}

@@ -25,6 +25,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -334,11 +335,11 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	err = epc.Procs[slowCompactionNodeIndex].Restart(ctx)
 
 	// Wait until the node finished compaction and the leader finished compaction hash check
-	_, err = epc.Procs[slowCompactionNodeIndex].Logs().ExpectWithContext(ctx, "finished scheduled compaction")
+	_, err = epc.Procs[slowCompactionNodeIndex].Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "finished scheduled compaction"})
 	require.NoError(t, err, "can't get log indicating finished scheduled compaction")
 
 	leaderIndex := epc.WaitLeader(t)
-	_, err = epc.Procs[leaderIndex].Logs().ExpectWithContext(ctx, "finished compaction hash check")
+	_, err = epc.Procs[leaderIndex].Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "finished compaction hash check"})
 	require.NoError(t, err, "can't get log indicating finished compaction hash check")
 
 	alarmResponse, err := cc.AlarmList(ctx)

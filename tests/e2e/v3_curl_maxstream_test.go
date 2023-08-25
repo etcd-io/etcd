@@ -29,6 +29,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -166,7 +167,7 @@ func submitConcurrentWatch(cx ctlCtx, number int, wgDone *sync.WaitGroup, closeC
 
 		// make sure that watch request has been created
 		expectedLine := `"created":true}}`
-		_, lerr := proc.ExpectWithContext(context.TODO(), expectedLine)
+		_, lerr := proc.ExpectWithContext(context.TODO(), expect.ExpectedResponse{Value: expectedLine})
 		if lerr != nil {
 			return fmt.Errorf("%v %v (expected %q). Try EXPECT_DEBUG=TRUE", args, lerr, expectedLine)
 		}
@@ -213,7 +214,7 @@ func submitRangeAfterConcurrentWatch(cx ctlCtx, expectedValue string) {
 	}
 
 	cx.t.Log("Submitting range request...")
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Expected: expectedValue, Timeout: 5}); err != nil {
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Expected: expect.ExpectedResponse{Value: expectedValue}, Timeout: 5}); err != nil {
 		require.ErrorContains(cx.t, err, expectedValue)
 	}
 	cx.t.Log("range request done")

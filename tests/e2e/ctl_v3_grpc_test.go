@@ -26,6 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -160,7 +161,7 @@ func templateEndpoints(t *testing.T, pattern string, clus *e2e.EtcdProcessCluste
 
 func assertAuthority(t *testing.T, expectAuthorityPattern string, clus *e2e.EtcdProcessCluster) {
 	for i := range clus.Procs {
-		line, _ := clus.Procs[i].Logs().ExpectWithContext(context.TODO(), `http2: decoded hpack field header field ":authority"`)
+		line, _ := clus.Procs[i].Logs().ExpectWithContext(context.TODO(), expect.ExpectedResponse{Value: `http2: decoded hpack field header field ":authority"`})
 		line = strings.TrimSuffix(line, "\n")
 		line = strings.TrimSuffix(line, "\r")
 

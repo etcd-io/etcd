@@ -94,7 +94,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 			"--data-dir", datadir,
 			fpath),
 		cx.envMap,
-		"expected sha256")
+		expect.ExpectedResponse{Value: "expected sha256"})
 	require.ErrorContains(cx.t, serr, "Error: expected sha256")
 }
 
@@ -125,7 +125,7 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 			"--data-dir", dataDir,
 			fpath),
 		cx.envMap,
-		"added member")
+		expect.ExpectedResponse{Value: "added member"})
 	if serr != nil {
 		cx.t.Fatal(serr)
 	}
@@ -133,7 +133,7 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 
 func ctlV3SnapshotSave(cx ctlCtx, fpath string) error {
 	cmdArgs := append(cx.PrefixArgs(), "snapshot", "save", fpath)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("Snapshot saved at %s", fpath))
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf("Snapshot saved at %s", fpath)})
 }
 
 func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
@@ -194,7 +194,7 @@ func testIssue6361(t *testing.T) {
 	t.Log("Writing some keys...")
 	kvs := []kv{{"foo1", "val1"}, {"foo2", "val2"}, {"foo3", "val3"}}
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "put", kvs[i].key, kvs[i].val), "OK"); err != nil {
+		if err = e2e.SpawnWithExpect(append(prefixArgs, "put", kvs[i].key, kvs[i].val), expect.ExpectedResponse{Value: "OK"}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -204,7 +204,7 @@ func testIssue6361(t *testing.T) {
 	t.Log("etcdctl saving snapshot...")
 	if err = e2e.SpawnWithExpects(append(prefixArgs, "snapshot", "save", fpath),
 		nil,
-		fmt.Sprintf("Snapshot saved at %s", fpath),
+		expect.ExpectedResponse{Value: fmt.Sprintf("Snapshot saved at %s", fpath)},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,14 @@ func testIssue6361(t *testing.T) {
 
 	newDataDir := filepath.Join(t.TempDir(), "test.data")
 	t.Log("etcdctl restoring the snapshot...")
-	err = e2e.SpawnWithExpect([]string{e2e.BinPath.Etcdutl, "snapshot", "restore", fpath, "--name", epc.Procs[0].Config().Name, "--initial-cluster", epc.Procs[0].Config().InitialCluster, "--initial-cluster-token", epc.Procs[0].Config().InitialToken, "--initial-advertise-peer-urls", epc.Procs[0].Config().PeerURL.String(), "--data-dir", newDataDir}, "added member")
+	err = e2e.SpawnWithExpect([]string{
+		e2e.BinPath.Etcdutl, "snapshot", "restore", fpath,
+		"--name", epc.Procs[0].Config().Name,
+		"--initial-cluster", epc.Procs[0].Config().InitialCluster,
+		"--initial-cluster-token", epc.Procs[0].Config().InitialToken,
+		"--initial-advertise-peer-urls", epc.Procs[0].Config().PeerURL.String(),
+		"--data-dir", newDataDir},
+		expect.ExpectedResponse{Value: "added member"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +241,7 @@ func testIssue6361(t *testing.T) {
 
 	t.Log("Ensuring the restored member has the correct data...")
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), kvs[i].val); err != nil {
+		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), expect.ExpectedResponse{Value: kvs[i].val}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -242,7 +249,7 @@ func testIssue6361(t *testing.T) {
 	t.Log("Adding new member into the cluster")
 	clientURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+30)
 	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+31)
-	err = e2e.SpawnWithExpect(append(prefixArgs, "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL)), " added to cluster ")
+	err = e2e.SpawnWithExpect(append(prefixArgs, "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL)), expect.ExpectedResponse{Value: " added to cluster "})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,7 +278,7 @@ func testIssue6361(t *testing.T) {
 
 	t.Log("Ensuring added member has data from incoming snapshot...")
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), kvs[i].val); err != nil {
+		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), expect.ExpectedResponse{Value: kvs[i].val}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -350,7 +357,7 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 
 	t.Log("etcdctl saving snapshot...")
 	cmdPrefix := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(epc.EndpointsGRPC(), ",")}
-	require.NoError(t, e2e.SpawnWithExpects(append(cmdPrefix, "snapshot", "save", fpath), nil, fmt.Sprintf("Snapshot saved at %s", fpath)))
+	require.NoError(t, e2e.SpawnWithExpects(append(cmdPrefix, "snapshot", "save", fpath), nil, expect.ExpectedResponse{Value: fmt.Sprintf("Snapshot saved at %s", fpath)}))
 
 	// add some more kvs that are not in the snapshot that will be lost after restore
 	unsnappedKVs := []testutils.KV{{Key: "unsnapped1", Val: "one"}, {Key: "unsnapped2", Val: "two"}, {Key: "unsnapped3", Val: "three"}}
@@ -378,7 +385,7 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 		"--bump-revision", fmt.Sprintf("%d", bumpAmount),
 		"--mark-compacted",
 		"--data-dir", newDataDir,
-	}, "added member")
+	}, expect.ExpectedResponse{Value: "added member"})
 	require.NoError(t, err)
 
 	t.Log("(Re)starting the etcd member using the restored snapshot...")

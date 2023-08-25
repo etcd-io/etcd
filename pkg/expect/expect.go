@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -36,6 +37,11 @@ const DEBUG_LINES_TAIL = 40
 var (
 	ErrProcessRunning = fmt.Errorf("process is still running")
 )
+
+type ExpectedResponse struct {
+	Value         string
+	IsRegularExpr bool
+}
 
 type ExpectProcess struct {
 	cfg expectConfig
@@ -223,14 +229,29 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 }
 
 // ExpectWithContext returns the first line containing the given string.
-func (ep *ExpectProcess) ExpectWithContext(ctx context.Context, s string) (string, error) {
-	return ep.ExpectFunc(ctx, func(txt string) bool { return strings.Contains(txt, s) })
+func (ep *ExpectProcess) ExpectWithContext(ctx context.Context, s ExpectedResponse) (string, error) {
+	var (
+		expr *regexp.Regexp
+		err  error
+	)
+	if s.IsRegularExpr {
+		expr, err = regexp.Compile(s.Value)
+		if err != nil {
+			return "", err
+		}
+	}
+	return ep.ExpectFunc(ctx, func(txt string) bool {
+		if expr != nil {
+			return expr.MatchString(txt)
+		}
+		return strings.Contains(txt, s.Value)
+	})
 }
 
 // Expect returns the first line containing the given string.
 // Deprecated: please use ExpectWithContext instead.
 func (ep *ExpectProcess) Expect(s string) (string, error) {
-	return ep.ExpectWithContext(context.Background(), s)
+	return ep.ExpectWithContext(context.Background(), ExpectedResponse{Value: s})
 }
 
 // LineCount returns the number of recorded lines since
