@@ -17,6 +17,8 @@ package ioutil
 import (
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPageWriterRandom(t *testing.T) {
@@ -108,6 +110,45 @@ func TestPageWriterOffset(t *testing.T) {
 	}
 	if w.pageOffset != 0 {
 		t.Fatalf("w.pageOffset expected 0, got %d", w.pageOffset)
+	}
+}
+
+func TestPageWriterPageBytes(t *testing.T) {
+	cases := []struct {
+		name        string
+		pageBytes   int
+		expectPanic bool
+	}{
+		{
+			name:        "normal page bytes",
+			pageBytes:   4096,
+			expectPanic: false,
+		},
+		{
+			name:        "negative page bytes",
+			pageBytes:   -1,
+			expectPanic: true,
+		},
+		{
+			name:        "zero page bytes",
+			pageBytes:   0,
+			expectPanic: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			defaultBufferBytes = 1024
+			cw := &checkPageWriter{pageBytes: tc.pageBytes, t: t}
+			if tc.expectPanic {
+				assert.Panicsf(t, func() {
+					NewPageWriter(cw, tc.pageBytes, 0)
+				}, "expected panic when pageBytes is %d", tc.pageBytes)
+			} else {
+				pw := NewPageWriter(cw, tc.pageBytes, 0)
+				assert.NotEqual(t, pw, nil)
+			}
+		})
 	}
 }
 
