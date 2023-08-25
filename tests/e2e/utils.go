@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -107,4 +108,19 @@ func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.Clie
 		return "", err
 	}
 	return strings.Join(lines, "\n"), nil
+}
+
+func runCommandAndReadJsonOutput(args []string) (map[string]interface{}, error) {
+	lines, err := e2e.RunUtilCompletion(args, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp map[string]interface{}
+	err = json.Unmarshal([]byte(strings.Join(lines, "\n")), &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
