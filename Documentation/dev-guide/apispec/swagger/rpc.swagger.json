@@ -1277,6 +1277,39 @@
     },
     "/v3/maintenance/hash": {
       "post": {
+        "summary": "Hash computes the hash of whole backend keyspace,\nincluding key, lease, and other buckets in storage.\nThis is designed for testing ONLY!\nDo not rely on this in production with ongoing transactions,\nsince Hash operation does not hold MVCC locks.\nUse \"HashKV\" API instead for \"key\" bucket consistency checks.",
+        "operationId": "Maintenance_Hash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbHashResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbHashRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/maintenance/hashkv": {
+      "post": {
         "summary": "HashKV computes the hash of all MVCC keys up to a given revision.\nIt only iterates \"key\" bucket in backend storage.",
         "operationId": "Maintenance_HashKV",
         "responses": {
