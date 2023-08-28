@@ -69,11 +69,11 @@ func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, 
 		if cfg.ConnectionType != ClientTLSAndNonTLS {
 			panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
 		}
-		cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
+		cmdArgs = append(cmdArgs, "--cacert", cfg.CAFile, "--cert", cfg.CertFile, "--key", cfg.KeyFile)
 		clientURL = ToTLS(clientURL)
 	} else if cfg.ConnectionType == ClientTLS {
 		if CN {
-			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath, "--key", PrivateKeyPath)
+			cmdArgs = append(cmdArgs, "--cacert", cfg.CAFile, "--cert", cfg.CertFile, "--key", cfg.KeyFile)
 		} else {
 			cmdArgs = append(cmdArgs, "--cacert", CaPath, "--cert", CertPath3, "--key", PrivateKeyPath3)
 		}

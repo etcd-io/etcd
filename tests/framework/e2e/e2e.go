@@ -67,6 +67,12 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 	case config.ManualTLS:
 		e2eConfig.Client.AutoTLS = false
 		e2eConfig.Client.ConnectionType = ClientTLS
+		if cfg.ClientTLSInfo != nil {
+			e2eConfig.Client.CAFile = cfg.ClientTLSInfo.TrustedCAFile
+			e2eConfig.Client.CertFile = cfg.ClientTLSInfo.CertFile
+			e2eConfig.Client.KeyFile = cfg.ClientTLSInfo.KeyFile
+			e2eConfig.Client.CAReload = cfg.ClientTLSInfo.EnableRootCAReload
+		}
 	default:
 		t.Fatalf("ClientTLS config %q not supported", cfg.ClientTLS)
 	}
@@ -80,6 +86,12 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 	case config.ManualTLS:
 		e2eConfig.IsPeerTLS = true
 		e2eConfig.IsPeerAutoTLS = false
+		if cfg.PeerTLSInfo != nil {
+			e2eConfig.PeerCAFile = cfg.PeerTLSInfo.TrustedCAFile
+			e2eConfig.PeerCertFile = cfg.PeerTLSInfo.CertFile
+			e2eConfig.PeerKeyFile = cfg.PeerTLSInfo.KeyFile
+			e2eConfig.PeerCAReload = cfg.PeerTLSInfo.EnableRootCAReload
+		}
 	default:
 		t.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
 	}

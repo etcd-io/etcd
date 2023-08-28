@@ -194,6 +194,9 @@ type TLSInfo struct {
 	// EmptyCN indicates that the cert must have empty CN.
 	// If true, ClientConfig() will return an error for a cert with non empty CN.
 	EmptyCN bool
+
+	// EnableRootCAReload indicates whether to reload root CA dynamically.
+	EnableRootCAReload bool
 }
 
 func (info TLSInfo) String() string {
@@ -435,10 +438,21 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		}
 	}
 
-	// this only reloads certs when there's a client request
-	// TODO: support server-side refresh (e.g. inotify, SIGHUP), caching
-	cfg.GetCertificate = func(clientHello *tls.ClientHelloInfo) (cert *tls.Certificate, err error) {
-		cert, err = tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+	if info.EnableRootCAReload {
+		cfg.GetConfigForClient = func(*tls.ClientHelloInfo) (*tls.Config, error) {
+			cfg, err := info.ServerConfig()
+			if err != nil {
+				if info.Logger != nil {
+					info.Logger.Warn(
+						"failed to create tls config",
+						zap.Error(err),
+					)
+				}
+			}
+			return cfg, err
+		}
+
+		cert, err := tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 		if os.IsNotExist(err) {
 			if info.Logger != nil {
 				info.Logger.Warn(
@@ -458,7 +472,33 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 				)
 			}
 		}
-		return cert, err
+		cfg.Certificates = []tls.Certificate{*cert}
+	} else {
+		// this only reloads certs when there's a client request
+		// TODO: support server-side refresh (e.g. inotify, SIGHUP), caching
+		cfg.GetCertificate = func(clientHello *tls.ClientHelloInfo) (cert *tls.Certificate, err error) {
+			cert, err = tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+			if os.IsNotExist(err) {
+				if info.Logger != nil {
+					info.Logger.Warn(
+						"failed to find peer cert files",
+						zap.String("cert-file", info.CertFile),
+						zap.String("key-file", info.KeyFile),
+						zap.Error(err),
+					)
+				}
+			} else if err != nil {
+				if info.Logger != nil {
+					info.Logger.Warn(
+						"failed to create peer certificate",
+						zap.String("cert-file", info.CertFile),
+						zap.String("key-file", info.KeyFile),
+						zap.Error(err),
+					)
+				}
+			}
+			return cert, err
+		}
 	}
 	cfg.GetClientCertificate = func(unused *tls.CertificateRequestInfo) (cert *tls.Certificate, err error) {
 		certfile, keyfile := info.CertFile, info.KeyFile
@@ -557,6 +597,32 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 
 	if info.selfCert {
 		cfg.InsecureSkipVerify = true
+	} else if info.EnableRootCAReload {
+		if len(cs) == 0 {
+			return nil, fmt.Errorf("cannot enable root CA reloading without a trusted CA file")
+		}
+
+		// Set InsecureSkipVerify to skip the default validation we are replacing.
+		// This will not disable VerifyConnection.
+		cfg.InsecureSkipVerify = true
+
+		cfg.VerifyConnection = func(connState tls.ConnectionState) error {
+			// dynamically load CA from file
+			rootCAs, err := tlsutil.NewCertPool(cs)
+			if err != nil {
+				return err
+			}
+			opts := x509.VerifyOptions{
+				DNSName:       connState.ServerName,
+				Intermediates: x509.NewCertPool(),
+				Roots:         rootCAs,
+			}
+			for _, cert := range connState.PeerCertificates[1:] {
+				opts.Intermediates.AddCert(cert)
+			}
+			_, err = connState.PeerCertificates[0].Verify(opts)
+			return err
+		}
 	}
 
 	if info.EmptyCN {

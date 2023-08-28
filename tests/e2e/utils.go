@@ -29,7 +29,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3.Client {
@@ -72,7 +71,13 @@ func tlsInfo(t testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
 			}
 			return &tls, nil
 		} else {
-			return &integration.TestTLSInfo, nil
+			tlsInfo := &transport.TLSInfo{
+				KeyFile:        cfg.KeyFile,
+				CertFile:       cfg.CertFile,
+				TrustedCAFile:  cfg.CAFile,
+				ClientCertAuth: true,
+			}
+			return tlsInfo, nil
 		}
 	default:
 		return nil, fmt.Errorf("config %v not supported", cfg)
@@ -101,7 +106,9 @@ func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error
 }
 
 func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.ClientConnType) (string, error) {
-	args := e2e.CURLPrefixArgs(endpoint, e2e.ClientConfig{ConnectionType: connType}, false, method, curlReq)
+	clientConfig := e2e.DefaultClientConfig()
+	clientConfig.ConnectionType = connType
+	args := e2e.CURLPrefixArgs(endpoint, clientConfig, false, method, curlReq)
 	lines, err := e2e.RunUtilCompletion(args, nil)
 	if err != nil {
 		return "", err

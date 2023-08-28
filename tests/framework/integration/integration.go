@@ -57,13 +57,21 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ..
 		AuthToken:                  cfg.AuthToken,
 		SnapshotCount:              uint64(cfg.SnapshotCount),
 	}
-	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
-	if err != nil {
-		t.Fatalf("ClientTLS: %s", err)
+	if cfg.ClientTLSInfo != nil {
+		integrationCfg.ClientTLS = cfg.ClientTLSInfo
+	} else {
+		integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
+		if err != nil {
+			t.Fatalf("ClientTLS: %s", err)
+		}
 	}
-	integrationCfg.PeerTLS, err = tlsInfo(t, cfg.PeerTLS)
-	if err != nil {
-		t.Fatalf("PeerTLS: %s", err)
+	if cfg.PeerTLSInfo != nil {
+		integrationCfg.PeerTLS = cfg.PeerTLSInfo
+	} else {
+		integrationCfg.PeerTLS, err = tlsInfo(t, cfg.PeerTLS)
+		if err != nil {
+			t.Fatalf("PeerTLS: %s", err)
+		}
 	}
 	return &integrationCluster{
 		Cluster: NewCluster(t, &integrationCfg),

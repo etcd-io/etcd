@@ -18,6 +18,7 @@ package common
 
 import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -80,4 +81,8 @@ func WithAuth(userName, password string) config.ClientOption {
 
 func WithEndpoints(endpoints []string) config.ClientOption {
 	return e2e.WithEndpoints(endpoints)
+}
+
+func WithTLSInfo(tlsInfo *transport.TLSInfo) config.ClientOption {
+	return e2e.WithTLSInfo(tlsInfo)
 }

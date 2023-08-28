@@ -1487,6 +1487,17 @@ func WithEndpoints(endpoints []string) framecfg.ClientOption {
 	}
 }
 
+func WithTLSInfo(tlsInfo *transport.TLSInfo) framecfg.ClientOption {
+	return func(c any) {
+		cfg := c.(*clientv3.Config)
+		tls, err := tlsInfo.ClientConfig()
+		if err != nil {
+			panic(err)
+		}
+		cfg.TLS = tls
+	}
+}
+
 func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
 	cfg := &clientv3.Config{
 		Endpoints:          c.Endpoints(),
