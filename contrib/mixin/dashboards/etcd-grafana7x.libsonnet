@@ -71,7 +71,7 @@
                 show: false,
               },
               targets: [{
-                expr: 'sum(etcd_server_has_leader{%s="$cluster"})' % $._config.clusterLabel,
+                expr: 'sum(etcd_server_has_leader{%s, %s="$cluster"})' % [$._config.etcd_selector, $._config.clusterLabel],
                 intervalFactor: 2,
                 legendFormat: '',
                 metric: 'etcd_server_has_leader',
@@ -121,7 +121,7 @@
               steppedLine: false,
               targets: [
                 {
-                  expr: 'sum(rate(grpc_server_started_total{%s="$cluster",grpc_type="unary"}[$__rate_interval]))' % $._config.clusterLabel,
+                  expr: 'sum(rate(grpc_server_started_total{%s, %s="$cluster",grpc_type="unary"}[$__rate_interval]))' % [$._config.etcd_selector, $._config.clusterLabel],
                   format: 'time_series',
                   intervalFactor: 2,
                   legendFormat: 'RPC Rate',
@@ -130,7 +130,7 @@
                   step: 2,
                 },
                 {
-                  expr: 'sum(rate(grpc_server_handled_total{%s="$cluster",grpc_type="unary",grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[$__rate_interval]))' % $._config.clusterLabel,
+                  expr: 'sum(rate(grpc_server_handled_total{%s, %s="$cluster",grpc_type="unary",grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[$__rate_interval]))' % [$._config.etcd_selector, $._config.clusterLabel],
                   format: 'time_series',
                   intervalFactor: 2,
                   legendFormat: 'RPC Failed Rate',
@@ -207,7 +207,7 @@
               steppedLine: false,
               targets: [
                 {
-                  expr: 'sum(grpc_server_started_total{%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"}) - sum(grpc_server_handled_total{%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"})' % $._config,
+                  expr: 'sum(grpc_server_started_total{%(etcd_selector)s,%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"}) - sum(grpc_server_handled_total{%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"})' % $._config,
                   intervalFactor: 2,
                   legendFormat: 'Watch Streams',
                   metric: 'grpc_server_handled_total',
@@ -215,7 +215,7 @@
                   step: 4,
                 },
                 {
-                  expr: 'sum(grpc_server_started_total{%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"}) - sum(grpc_server_handled_total{%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"})' % $._config,
+                  expr: 'sum(grpc_server_started_total{%(etcd_selector)s,%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"}) - sum(grpc_server_handled_total{%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"})' % $._config,
                   intervalFactor: 2,
                   legendFormat: 'Lease Streams',
                   metric: 'grpc_server_handled_total',
@@ -300,7 +300,7 @@
               stack: false,
               steppedLine: false,
               targets: [{
-                expr: 'etcd_mvcc_db_total_size_in_bytes{%s="$cluster"}' % $._config.clusterLabel,
+                expr: 'etcd_mvcc_db_total_size_in_bytes{%s, %s="$cluster"}' % [$._config.etcd_selector, $._config.clusterLabel],
                 hide: false,
                 interval: '',
                 intervalFactor: 2,
@@ -375,7 +375,7 @@
               steppedLine: true,
               targets: [
                 {
-                  expr: 'histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{%s="$cluster"}[$__rate_interval])) by (instance, le))' % $._config.clusterLabel,
+                  expr: 'histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{%s, %s="$cluster"}[$__rate_interval])) by (instance, le))' % [$._config.etcd_selector, $._config.clusterLabel],
                   hide: false,
                   intervalFactor: 2,
                   legendFormat: '{{instance}} WAL fsync',
@@ -384,7 +384,7 @@
                   step: 4,
                 },
                 {
-                  expr: 'histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{%s="$cluster"}[$__rate_interval])) by (instance, le))' % $._config.clusterLabel,
+                  expr: 'histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{%s, %s="$cluster"}[$__rate_interval])) by (instance, le))' % [$._config.etcd_selector, $._config.clusterLabel],
                   intervalFactor: 2,
                   legendFormat: '{{instance}} DB fsync',
                   metric: 'etcd_disk_backend_commit_duration_seconds_bucket',
@@ -457,7 +457,7 @@
               stack: false,
               steppedLine: false,
               targets: [{
-                expr: 'process_resident_memory_bytes{%s="$cluster"}' % $._config.clusterLabel,
+                expr: 'process_resident_memory_bytes{%s, %s="$cluster"}' % [$._config.etcd_selector, $._config.clusterLabel],
                 intervalFactor: 2,
                 legendFormat: '{{instance}} Resident Memory',
                 metric: 'process_resident_memory_bytes',
@@ -539,7 +539,7 @@
               stack: true,
               steppedLine: false,
               targets: [{
-                expr: 'rate(etcd_network_client_grpc_received_bytes_total{%s="$cluster"}[$__rate_interval])' % $._config.clusterLabel,
+                expr: 'rate(etcd_network_client_grpc_received_bytes_total{%s, %s="$cluster"}[$__rate_interval])' % [$._config.etcd_selector, $._config.clusterLabel],
                 intervalFactor: 2,
                 legendFormat: '{{instance}} Client Traffic In',
                 metric: 'etcd_network_client_grpc_received_bytes_total',
@@ -613,7 +613,7 @@
               stack: true,
               steppedLine: false,
               targets: [{
-                expr: 'rate(etcd_network_client_grpc_sent_bytes_total{%s="$cluster"}[$__rate_interval])' % $._config.clusterLabel,
+                expr: 'rate(etcd_network_client_grpc_sent_bytes_total{%s, %s="$cluster"}[$__rate_interval])' % [$._config.etcd_selector, $._config.clusterLabel],
                 intervalFactor: 2,
                 legendFormat: '{{instance}} Client Traffic Out',
                 metric: 'etcd_network_client_grpc_sent_bytes_total',
@@ -687,7 +687,7 @@
               stack: false,
               steppedLine: false,
               targets: [{
-                expr: 'sum(rate(etcd_network_peer_received_bytes_total{%s="$cluster"}[$__rate_interval])) by (instance)' % $._config.clusterLabel,
+                expr: 'sum(rate(etcd_network_peer_received_bytes_total{%s, %s="$cluster"}[$__rate_interval])) by (instance)' % [$._config.etcd_selector, $._config.clusterLabel],
                 intervalFactor: 2,
                 legendFormat: '{{instance}} Peer Traffic In',
                 metric: 'etcd_network_peer_received_bytes_total',
@@ -762,7 +762,7 @@
               stack: false,
               steppedLine: false,
               targets: [{
-                expr: 'sum(rate(etcd_network_peer_sent_bytes_total{%s="$cluster"}[$__rate_interval])) by (instance)' % $._config.clusterLabel,
+                expr: 'sum(rate(etcd_network_peer_sent_bytes_total{%s, %s="$cluster"}[$__rate_interval])) by (instance)' % [$._config.etcd_selector, $._config.clusterLabel],
                 hide: false,
                 interval: '',
                 intervalFactor: 2,
@@ -845,7 +845,7 @@
               steppedLine: false,
               targets: [
                 {
-                  expr: 'sum(rate(etcd_server_proposals_failed_total{%s="$cluster"}[$__rate_interval]))' % $._config.clusterLabel,
+                  expr: 'sum(rate(etcd_server_proposals_failed_total{%s, %s="$cluster"}[$__rate_interval]))' % [$._config.etcd_selector, $._config.clusterLabel],
                   intervalFactor: 2,
                   legendFormat: 'Proposal Failure Rate',
                   metric: 'etcd_server_proposals_failed_total',
@@ -853,7 +853,7 @@
                   step: 2,
                 },
                 {
-                  expr: 'sum(etcd_server_proposals_pending{%s="$cluster"})' % $._config.clusterLabel,
+                  expr: 'sum(etcd_server_proposals_pending{%s, %s="$cluster"})' % [$._config.etcd_selector, $._config.clusterLabel],
                   intervalFactor: 2,
                   legendFormat: 'Proposal Pending Total',
                   metric: 'etcd_server_proposals_pending',
@@ -861,7 +861,7 @@
                   step: 2,
                 },
                 {
-                  expr: 'sum(rate(etcd_server_proposals_committed_total{%s="$cluster"}[$__rate_interval]))' % $._config.clusterLabel,
+                  expr: 'sum(rate(etcd_server_proposals_committed_total{%s, %s="$cluster"}[$__rate_interval]))' % [$._config.etcd_selector, $._config.clusterLabel],
                   intervalFactor: 2,
                   legendFormat: 'Proposal Commit Rate',
                   metric: 'etcd_server_proposals_committed_total',
@@ -869,7 +869,7 @@
                   step: 2,
                 },
                 {
-                  expr: 'sum(rate(etcd_server_proposals_applied_total{%s="$cluster"}[$__rate_interval]))' % $._config.clusterLabel,
+                  expr: 'sum(rate(etcd_server_proposals_applied_total{%s, %s="$cluster"}[$__rate_interval]))' % [$._config.etcd_selector, $._config.clusterLabel],
                   intervalFactor: 2,
                   legendFormat: 'Proposal Apply Rate',
                   refId: 'D',
@@ -946,7 +946,7 @@
               stack: false,
               steppedLine: false,
               targets: [{
-                expr: 'changes(etcd_server_leader_changes_seen_total{%s="$cluster"}[1d])' % $._config.clusterLabel,
+                expr: 'changes(etcd_server_leader_changes_seen_total{%s, %s="$cluster"}[1d])' % [$._config.etcd_selector, $._config.clusterLabel],
                 intervalFactor: 2,
                 legendFormat: '{{instance}} Total Leader Elections Per Day',
                 metric: 'etcd_server_leader_changes_seen_total',
@@ -1044,7 +1044,7 @@
               steppedLine: false,
               targets: [
                 {
-                  expr: 'histogram_quantile(0.99, sum by (instance, le) (rate(etcd_network_peer_round_trip_time_seconds_bucket{%s="$cluster"}[$__rate_interval])))' % $._config.clusterLabel,
+                  expr: 'histogram_quantile(0.99, sum by (instance, le) (rate(etcd_network_peer_round_trip_time_seconds_bucket{%s, %s="$cluster"}[$__rate_interval])))' % [$._config.etcd_selector, $._config.clusterLabel],
                   interval: '',
                   intervalFactor: 2,
                   legendFormat: '{{instance}} Peer round trip time',
@@ -1161,7 +1161,7 @@
             multi: false,
             name: 'cluster',
             options: [],
-            query: 'label_values(etcd_server_has_leader, %s)' % $._config.clusterLabel,
+            query: 'label_values(etcd_server_has_leader{%s}, %s)' % [$._config.etcd_selector, $._config.clusterLabel],
             refresh: $._config.dashboard_var_refresh,
             regex: '',
             sort: 2,

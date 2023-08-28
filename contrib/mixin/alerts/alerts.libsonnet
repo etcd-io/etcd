@@ -193,7 +193,7 @@
           {
             alert: 'etcdDatabaseQuotaLowSpace',
             expr: |||
-              (last_over_time(etcd_mvcc_db_total_size_in_bytes[5m]) / last_over_time(etcd_server_quota_backend_bytes[5m]))*100 > 95
+              (last_over_time(etcd_mvcc_db_total_size_in_bytes{%(etcd_selector)s}[5m]) / last_over_time(etcd_server_quota_backend_bytes{%(etcd_selector)s}[5m]))*100 > 95
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -207,7 +207,7 @@
           {
             alert: 'etcdExcessiveDatabaseGrowth',
             expr: |||
-              predict_linear(etcd_mvcc_db_total_size_in_bytes[4h], 4*60*60) > etcd_server_quota_backend_bytes
+              predict_linear(etcd_mvcc_db_total_size_in_bytes{%(etcd_selector)s}[4h], 4*60*60) > etcd_server_quota_backend_bytes{%(etcd_selector)s}
             ||| % $._config,
             'for': '10m',
             labels: {
@@ -221,7 +221,7 @@
           {
             alert: 'etcdDatabaseHighFragmentationRatio',
             expr: |||
-              (last_over_time(etcd_mvcc_db_total_size_in_use_in_bytes[5m]) / last_over_time(etcd_mvcc_db_total_size_in_bytes[5m])) < 0.5 and etcd_mvcc_db_total_size_in_use_in_bytes > 104857600
+              (last_over_time(etcd_mvcc_db_total_size_in_use_in_bytes{%(etcd_selector)s}[5m]) / last_over_time(etcd_mvcc_db_total_size_in_bytes{%(etcd_selector)s}[5m])) < 0.5 and etcd_mvcc_db_total_size_in_use_in_bytes{%(etcd_selector)s} > 104857600
             ||| % $._config,
             'for': '10m',
             labels: {
