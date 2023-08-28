@@ -26,8 +26,8 @@ github.com/braydonk/yaml v0.7.0/go.mod h1:hcm3h581tudlirk8XEUPDBAimBPbmnL0Y45hCR
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/certifi/gocertifi v0.0.0-20200922220541-2c3bb06c6054 h1:uH66TXeswKn5PW5zdZ39xEwfS9an067BirqA+P4QaLI=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/chavacava/garif v0.0.0-20230227094218-b8c73b2037b8 h1:W9o46d2kbNL06lq7UNDPV0zYLzkrde/bjIqO02eoll0=
-github.com/chavacava/garif v0.0.0-20230227094218-b8c73b2037b8/go.mod h1:gakxgyXaaPkxvLw1XQxNGK4I37ys9iBRzNUx/B7pUCo=
+github.com/chavacava/garif v0.1.0 h1:2JHa3hbYf5D9dsgseMKAmc/MZ109otzgNFk5s87H9Pc=
+github.com/chavacava/garif v0.1.0/go.mod h1:XMyYCkEL58DF0oyW4qDjjnPWONs2HBqYKI+UIPD+Gww=
 github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03 h1:0wUHjDfbCAROEAZ96zAJGwcNMkPIheFaIjtQyv3QqfM=
 github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03/go.mod h1:uFE9hX+zXEwvyUThZ4gDb9vkAwc5DoHUnRSEpH0VrOs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
@@ -208,7 +208,6 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
-github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f h1:92ZQJRegaqnKjz9HY9an696Sw5EmAqRv0eie/U2IE6k=
