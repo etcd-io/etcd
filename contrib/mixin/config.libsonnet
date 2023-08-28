@@ -3,7 +3,7 @@
   _config+:: {
 
     // set to true if dashboards should be compatible with Grafana 7x or earlier
-    grafana7x: true,
+    grafana7x: false,
 
     etcd_selector: 'job=~".*etcd.*"',
     // etcd_instance_labels are the label names that are uniquely
