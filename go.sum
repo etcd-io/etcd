@@ -271,8 +271,8 @@ go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.4
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.42.0/go.mod h1:5z+/ZWJQKXa9YT34fQNx5K8Hd1EoIhvtUygUQPqEOgQ=
 go.opentelemetry.io/otel v1.16.0 h1:Z7GVAX/UkAXPKsy94IU+i6thsQS4nb7LviLpnaNeW8s=
 go.opentelemetry.io/otel v1.16.0/go.mod h1:vl0h9NUa1D5s1nv3A5vZOYWn8av4K8Ml6JDeHrT/bx4=
-go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.16.0 h1:t4ZwRPU+emrcvM2e9DHd0Fsf0JTPVcbfa/BhTDF03d0=
-go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.16.0/go.mod h1:vLarbg68dH2Wa77g71zmKQqlQ8+8Rq3GRG31uc0WcWI=
+go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.17.0 h1:eU0ffpYuEY7eQ75K+nKr9CI5KcY8h+GPk/9DDlEO1NI=
+go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.17.0/go.mod h1:9P5RK5JS2sjKepuCkqFwPp3etwV/57E0eigLw18Mn1k=
 go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.16.0 h1:cbsD4cUcviQGXdw8+bo5x2wazq10SKz8hEbtCRPcU78=
 go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.16.0/go.mod h1:JgXSGah17croqhJfhByOLVY719k1emAXC8MVhCIJlRs=
 go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.16.0 h1:TVQp/bboR4mhZSav+MdgXB8FaRho1RC8UwVn3T0vjVc=
