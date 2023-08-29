@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -263,6 +264,8 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	defer c.Unlock()
 
 	if c.be != nil {
+		c.lg.Info("Recovering membership from backend")
+		debug.PrintStack()
 		c.version = c.be.ClusterVersionFromBackend()
 		c.members, c.removed = c.be.MustReadMembersFromBackend()
 	} else {
@@ -294,6 +297,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 			zap.Strings("recovered-remote-peer-urls", m.PeerURLs),
 			zap.Bool("recovered-remote-peer-is-learner", m.IsLearner),
 		)
+		fmt.Printf("Member: %v\n", m)
 	}
 	if c.version != nil {
 		c.lg.Info(
@@ -316,9 +320,11 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldAp
 		}
 	}
 
-	if c.be != nil && shouldApplyV3 {
+	//if c.be != nil && shouldApplyV3 {
+	if c.be != nil {
 		membersMap, removedMap = c.be.MustReadMembersFromBackend()
 		if err := c.validateConfigurationChange(cc, membersMap, removedMap); err != nil {
+			c.lg.Error("failed conf change", zap.Error(err))
 			return err
 		}
 	} else {
@@ -352,6 +358,7 @@ func (c *RaftCluster) validateConfigurationChange(cc raftpb.ConfChange, membersM
 			}
 		} else { // adding a new member
 			if membersMap[id] != nil {
+				c.lg.Error("Failing to add duplicate member id", zap.String("memberid", id.String()))
 				return ErrIDExists
 			}
 
