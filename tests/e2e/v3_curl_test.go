@@ -381,6 +381,34 @@ func testV3CurlMaintenanceAlarmMissiongAlarm(cx ctlCtx) {
 	}
 }
 
+func TestV3CurlMaintenanceHash(t *testing.T) {
+	testCtl(t, testV3CurlMaintenanceHash, withCfg(*newConfigNoTLS()))
+}
+
+func testV3CurlMaintenanceHash(cx ctlCtx) {
+	if err := cURLPost(cx.epc, cURLReq{
+		endpoint: "/v3/maintenance/hash",
+		value:    "{}",
+		expected: `,"revision":"1","raft_term":"2"},"hash":`,
+	}); err != nil {
+		cx.t.Fatalf("failed post maintenance hash request (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
+func TestV3CurlMaintenanceHashKV(t *testing.T) {
+	testCtl(t, testV3CurlMaintenanceHashKV, withCfg(*newConfigNoTLS()))
+}
+
+func testV3CurlMaintenanceHashKV(cx ctlCtx) {
+	if err := cURLPost(cx.epc, cURLReq{
+		endpoint: "/v3/maintenance/hashkv",
+		value:    `{"revision": 1}`,
+		expected: `,"compact_revision":`,
+	}); err != nil {
+		cx.t.Fatalf("failed post maintenance hashKV request (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
 // to manually decode; JSON marshals integer fields with
 // string types, so can't unmarshal with epb.CampaignResponse
 type campaignResponse struct {

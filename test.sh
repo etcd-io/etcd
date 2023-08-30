@@ -195,7 +195,7 @@ function functional_pass {
 
 function grpcproxy_pass {
   run_for_module "tests" go_test "./integration/... ./e2e" "fail_fast" : \
-      -timeout=30m -tags cluster_proxy "${COMMON_TEST_FLAGS[@]}" "$@"
+      -timeout=45m -tags cluster_proxy "${COMMON_TEST_FLAGS[@]}" "$@"
 }
 
 ################# COVERAGE #####################################################
