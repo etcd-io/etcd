@@ -33,47 +33,16 @@ import (
 	"go.etcd.io/etcd/pkg/v3/expect"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
 var apiPrefix = []string{"/v3"}
 
-func TestV3CurlPutGetNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
-}
-func TestV3CurlPutGetAutoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigAutoTLS()))
-	}
-}
-func TestV3CurlPutGetAllTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigTLS()))
-	}
-}
-func TestV3CurlPutGetPeerTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigPeerTLS()))
-	}
-}
-func TestV3CurlPutGetClientTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigClientTLS()))
-	}
-}
 func TestV3CurlWatch(t *testing.T) {
 	for _, p := range apiPrefix {
 		testCtl(t, testV3CurlWatch, withApiPrefix(p))
 	}
 }
-func TestV3CurlTxn(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlTxn, withApiPrefix(p))
-	}
-}
+
 func TestV3CurlAuth(t *testing.T) {
 	for _, p := range apiPrefix {
 		testCtl(t, testV3CurlAuth, withApiPrefix(p))
@@ -82,43 +51,6 @@ func TestV3CurlAuth(t *testing.T) {
 func TestV3CurlAuthClientTLSCertAuth(t *testing.T) {
 	for _, p := range apiPrefix {
 		testCtl(t, testV3CurlAuth, withApiPrefix(p), withCfg(*e2e.NewConfigClientTLSCertAuthWithNoCN()))
-	}
-}
-
-func testV3CurlPutGet(cx ctlCtx) {
-	var (
-		key   = []byte("foo")
-		value = []byte("bar") // this will be automatically base64-encoded by Go
-
-		expectPut = `"revision":"`
-		expectGet = `"value":"`
-	)
-	putData, err := json.Marshal(&pb.PutRequest{
-		Key:   key,
-		Value: value,
-	})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	rangeData, err := json.Marshal(&pb.RangeRequest{
-		Key: key,
-	})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-
-	p := cx.apiPrefix
-
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/put"), Value: string(putData), Expected: expect.ExpectedResponse{Value: expectPut}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlPutGet put with curl using prefix (%s) (%v)", p, err)
-	}
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/range"), Value: string(rangeData), Expected: expect.ExpectedResponse{Value: expectGet}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlPutGet get with curl using prefix (%s) (%v)", p, err)
-	}
-	if cx.cfg.Client.ConnectionType == e2e.ClientTLSAndNonTLS {
-		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/range"), Value: string(rangeData), Expected: expect.ExpectedResponse{Value: expectGet}, IsTLS: true}); err != nil {
-			cx.t.Fatalf("failed testV3CurlPutGet get with curl using prefix (%s) (%v)", p, err)
-		}
 	}
 }
 
@@ -146,46 +78,6 @@ func testV3CurlWatch(cx ctlCtx) {
 	// expects "bar", timeout after 2 seconds since stream waits forever
 	err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/watch"), Value: wstr, Expected: expect.ExpectedResponse{Value: `"YmFy"`}, Timeout: 2})
 	require.ErrorContains(cx.t, err, "unexpected exit code")
-}
-
-func testV3CurlTxn(cx ctlCtx) {
-	txn := &pb.TxnRequest{
-		Compare: []*pb.Compare{
-			{
-				Key:         []byte("foo"),
-				Result:      pb.Compare_EQUAL,
-				Target:      pb.Compare_CREATE,
-				TargetUnion: &pb.Compare_CreateRevision{CreateRevision: 0},
-			},
-		},
-		Success: []*pb.RequestOp{
-			{
-				Request: &pb.RequestOp_RequestPut{
-					RequestPut: &pb.PutRequest{
-						Key:   []byte("foo"),
-						Value: []byte("bar"),
-					},
-				},
-			},
-		},
-	}
-	m := &runtime.JSONPb{}
-	jsonDat, jerr := m.Marshal(txn)
-	if jerr != nil {
-		cx.t.Fatal(jerr)
-	}
-	expected := `"succeeded":true,"responses":[{"response_put":{"header":{"revision":"2"}}}]`
-	p := cx.apiPrefix
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/txn"), Value: string(jsonDat), Expected: expect.ExpectedResponse{Value: expected}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlTxn txn with curl using prefix (%s) (%v)", p, err)
-	}
-
-	// was crashing etcd server
-	malformed := `{"compare":[{"result":0,"target":1,"key":"Zm9v","TargetUnion":null}],"success":[{"Request":{"RequestPut":{"key":"Zm9v","value":"YmFy"}}}]}`
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/txn"), Value: malformed, Expected: expect.ExpectedResponse{Value: "error"}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlTxn put with curl using prefix (%s) (%v)", p, err)
-	}
-
 }
 
 func testV3CurlAuth(cx ctlCtx) {
