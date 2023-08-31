@@ -16,86 +16,121 @@ package e2e
 
 import (
 	"encoding/json"
-	"path"
 	"testing"
+
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
-func TestV3CurlPutGetNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+func TestCurlV3KVBasicOperation(t *testing.T) {
+	testCurlV3KV(t, testCurlV3KVBasicOperation)
 }
-func TestV3CurlPutGetAutoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigAutoTLS()))
-	}
+
+func TestCurlV3KVTxn(t *testing.T) {
+	testCurlV3KV(t, testCurlV3KVTxn)
 }
-func TestV3CurlPutGetAllTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigTLS()))
-	}
+
+func TestCurlV3KVCompact(t *testing.T) {
+	testCurlV3KV(t, testCurlV3KVCompact)
 }
-func TestV3CurlPutGetPeerTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigPeerTLS()))
+
+func testCurlV3KV(t *testing.T, f func(ctlCtx)) {
+	testCases := []struct {
+		name string
+		cfg  ctlOption
+	}{
+		{
+			name: "noTLS",
+			cfg:  withCfg(*e2e.NewConfigNoTLS()),
+		},
+		{
+			name: "autoTLS",
+			cfg:  withCfg(*e2e.NewConfigAutoTLS()),
+		},
+		{
+			name: "allTLS",
+			cfg:  withCfg(*e2e.NewConfigTLS()),
+		},
+		{
+			name: "peerTLS",
+			cfg:  withCfg(*e2e.NewConfigPeerTLS()),
+		},
+		{
+			name: "clientTLS",
+			cfg:  withCfg(*e2e.NewConfigClientTLS()),
+		},
 	}
-}
-func TestV3CurlPutGetClientTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlPutGet, withApiPrefix(p), withCfg(*e2e.NewConfigClientTLS()))
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			testCtl(t, f, tc.cfg)
+		})
 	}
 }
 
-func TestV3CurlTxn(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlTxn, withApiPrefix(p))
-	}
-}
-
-func testV3CurlPutGet(cx ctlCtx) {
+func testCurlV3KVBasicOperation(cx ctlCtx) {
 	var (
 		key   = []byte("foo")
 		value = []byte("bar") // this will be automatically base64-encoded by Go
 
-		expectPut = `"revision":"`
-		expectGet = `"value":"`
+		expectedPutResponse    = `"revision":"`
+		expectedGetResponse    = `"value":"`
+		expectedDeleteResponse = `"deleted":"1"`
 	)
 	putData, err := json.Marshal(&pb.PutRequest{
 		Key:   key,
 		Value: value,
 	})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
+
 	rangeData, err := json.Marshal(&pb.RangeRequest{
 		Key: key,
 	})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 
-	p := cx.apiPrefix
+	deleteData, err := json.Marshal(&pb.DeleteRangeRequest{
+		Key: key,
+	})
+	require.NoError(cx.t, err)
 
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/put"), Value: string(putData), Expected: expect.ExpectedResponse{Value: expectPut}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlPutGet put with curl using prefix (%s) (%v)", p, err)
-	}
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/range"), Value: string(rangeData), Expected: expect.ExpectedResponse{Value: expectGet}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlPutGet get with curl using prefix (%s) (%v)", p, err)
-	}
+	err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/kv/put",
+		Value:    string(putData),
+		Expected: expect.ExpectedResponse{Value: expectedPutResponse},
+	})
+	require.NoErrorf(cx.t, err, "testCurlV3KVBasicOperation put failed")
+
+	err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/kv/range",
+		Value:    string(rangeData),
+		Expected: expect.ExpectedResponse{Value: expectedGetResponse},
+	})
+	require.NoErrorf(cx.t, err, "testCurlV3KVBasicOperation get failed")
+
 	if cx.cfg.Client.ConnectionType == e2e.ClientTLSAndNonTLS {
-		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/range"), Value: string(rangeData), Expected: expect.ExpectedResponse{Value: expectGet}, IsTLS: true}); err != nil {
-			cx.t.Fatalf("failed testV3CurlPutGet get with curl using prefix (%s) (%v)", p, err)
-		}
+		err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+			Endpoint: "/v3/kv/range",
+			Value:    string(rangeData),
+			Expected: expect.ExpectedResponse{Value: expectedGetResponse},
+			IsTLS:    true,
+		})
+		require.NoErrorf(cx.t, err, "testCurlV3KVBasicOperation get failed")
 	}
+
+	err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/kv/deleterange",
+		Value:    string(deleteData),
+		Expected: expect.ExpectedResponse{Value: expectedDeleteResponse},
+	})
+	require.NoErrorf(cx.t, err, "testCurlV3KVBasicOperation delete failed")
 }
 
-func testV3CurlTxn(cx ctlCtx) {
+func testCurlV3KVTxn(cx ctlCtx) {
 	txn := &pb.TxnRequest{
 		Compare: []*pb.Compare{
 			{
@@ -118,18 +153,38 @@ func testV3CurlTxn(cx ctlCtx) {
 	}
 	m := &runtime.JSONPb{}
 	jsonDat, jerr := m.Marshal(txn)
-	if jerr != nil {
-		cx.t.Fatal(jerr)
-	}
+	require.NoError(cx.t, jerr)
+
 	expected := `"succeeded":true,"responses":[{"response_put":{"header":{"revision":"2"}}}]`
-	p := cx.apiPrefix
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/txn"), Value: string(jsonDat), Expected: expect.ExpectedResponse{Value: expected}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlTxn txn with curl using prefix (%s) (%v)", p, err)
-	}
+	err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/kv/txn",
+		Value:    string(jsonDat),
+		Expected: expect.ExpectedResponse{Value: expected},
+	})
+	require.NoErrorf(cx.t, err, "testV3CurlTxn failed")
 
 	// was crashing etcd server
 	malformed := `{"compare":[{"result":0,"target":1,"key":"Zm9v","TargetUnion":null}],"success":[{"Request":{"RequestPut":{"key":"Zm9v","value":"YmFy"}}}]}`
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/txn"), Value: malformed, Expected: expect.ExpectedResponse{Value: "error"}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlTxn put with curl using prefix (%s) (%v)", p, err)
-	}
+	err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/kv/txn",
+		Value:    malformed,
+		Expected: expect.ExpectedResponse{Value: "error"},
+	})
+	require.NoErrorf(cx.t, err, "testV3CurlTxn with malformed request failed")
+}
+
+func testCurlV3KVCompact(cx ctlCtx) {
+	compactRequest, err := json.Marshal(&pb.CompactionRequest{
+		Revision: 10000,
+	})
+	require.NoError(cx.t, err)
+
+	err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/kv/compaction",
+		Value:    string(compactRequest),
+		Expected: expect.ExpectedResponse{
+			Value: `"message":"etcdserver: mvcc: required revision is a future revision"`,
+		},
+	})
+	require.NoErrorf(cx.t, err, "testCurlV3KVCompact failed")
 }
