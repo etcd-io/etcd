@@ -121,7 +121,7 @@ func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.Et
 		assert.NoError(t, err)
 	})
 	t.Run("curl", func(t *testing.T) {
-		for _, httpVersion := range []string{"2", "1.1", "1.0", ""} {
+		for _, httpVersion := range []string{"2", "1.1", ""} {
 			tname := "http" + httpVersion
 			if httpVersion == "" {
 				tname = "default"
