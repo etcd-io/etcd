@@ -816,13 +816,18 @@ func (le *lessor) initAndRecover() {
 
 // FakeLessor is a fake implementation of Lessor interface.
 // Used for testing only.
-type FakeLessor struct{}
+type FakeLessor struct {
+	LeaseSet map[LeaseID]struct{}
+}
 
 func (fl *FakeLessor) SetRangeDeleter(dr RangeDeleter) {}
 
 func (fl *FakeLessor) SetCheckpointer(cp Checkpointer) {}
 
-func (fl *FakeLessor) Grant(id LeaseID, ttl int64) (*Lease, error) { return nil, nil }
+func (fl *FakeLessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
+	fl.LeaseSet[id] = struct{}{}
+	return nil, nil
+}
 
 func (fl *FakeLessor) Revoke(id LeaseID) error { return nil }
 
@@ -839,7 +844,12 @@ func (fl *FakeLessor) Demote() {}
 
 func (fl *FakeLessor) Renew(id LeaseID) (int64, error) { return 10, nil }
 
-func (fl *FakeLessor) Lookup(id LeaseID) *Lease { return nil }
+func (fl *FakeLessor) Lookup(id LeaseID) *Lease {
+	if _, ok := fl.LeaseSet[id]; ok {
+		return &Lease{ID: id}
+	}
+	return nil
+}
 
 func (fl *FakeLessor) Leases() []*Lease { return nil }
 
