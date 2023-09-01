@@ -22,6 +22,8 @@ import (
 
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/pkg/v3/traceutil"
+
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -34,6 +36,242 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCheckTxn(t *testing.T) {
+
+	var futureRev int64 = 1000
+
+	tcs := []struct {
+		name            string
+		compactRevision int64
+		setupLease      int64
+		setupKey        []byte
+		txn             *pb.TxnRequest
+
+		expectError string
+	}{
+		{
+			name: "Range with revision 0 should succeed",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Revision: 0,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Range on future rev should fail",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Revision: futureRev,
+							},
+						},
+					},
+				},
+			},
+			expectError: "mvcc: required revision is a future revision",
+		},
+		{
+			name:            "Range on compacted rev should fail",
+			compactRevision: 10,
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Revision: 9,
+							},
+						},
+					},
+				},
+			},
+			expectError: "mvcc: required revision has been compacted",
+		},
+		{
+			name: "Invalid range on Failed path should succeed",
+			txn: &pb.TxnRequest{
+				Failure: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestRange{
+							RequestRange: &pb.RangeRequest{
+								Revision: futureRev,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Invalid range subtransaction should fail",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestTxn{
+							RequestTxn: &pb.TxnRequest{
+								Success: []*pb.RequestOp{
+									{
+										Request: &pb.RequestOp_RequestRange{
+											RequestRange: &pb.RangeRequest{
+												Revision: futureRev,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: "mvcc: required revision is a future revision",
+		},
+		{
+			name: "Put without lease should succeed",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Put with non-existing lease should fail",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								Lease: 123,
+							},
+						},
+					},
+				},
+			},
+			expectError: "lease not found",
+		},
+		{
+			name:       "Put with existing lease should succeed",
+			setupLease: 123,
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								Lease: 123,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Put with ignore value without previous key should fail",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								IgnoreValue: true,
+							},
+						},
+					},
+				},
+			},
+			expectError: "etcdserver: key not found",
+		},
+		{
+			name: "Put with ignore lease without previous key should fail",
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								IgnoreLease: true,
+							},
+						},
+					},
+				},
+			},
+			expectError: "etcdserver: key not found",
+		},
+		{
+			name:     "Put with ignore value with previous key should succeeded",
+			setupKey: []byte("ignore-value"),
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								IgnoreValue: true,
+								Key:         []byte("ignore-value"),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "Put with ignore lease with previous key should succeed ",
+			setupKey: []byte("ignore-lease"),
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					{
+						Request: &pb.RequestOp_RequestPut{
+							RequestPut: &pb.PutRequest{
+								IgnoreLease: true,
+								Key:         []byte("ignore-lease"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.TODO())
+			defer cancel()
+
+			b, _ := betesting.NewDefaultTmpBackend(t)
+			defer betesting.Close(t, b)
+			lessor := &lease.FakeLessor{LeaseSet: map[lease.LeaseID]struct{}{}}
+			s := mvcc.NewStore(zaptest.NewLogger(t), b, lessor, mvcc.StoreConfig{})
+			defer s.Close()
+
+			if tc.compactRevision != 0 {
+				for i := 0; int64(i) < tc.compactRevision; i++ {
+					s.Put([]byte("a"), []byte("b"), 0)
+				}
+				s.Compact(traceutil.TODO(), tc.compactRevision)
+			}
+			if tc.setupLease != 0 {
+				lessor.Grant(lease.LeaseID(tc.setupLease), 0)
+			}
+			if len(tc.setupKey) != 0 {
+				s.Put(tc.setupKey, []byte("b"), 0)
+			}
+
+			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor)
+			gotErr := ""
+			if err != nil {
+				gotErr = err.Error()
+			}
+			if gotErr != tc.expectError {
+				t.Errorf("Error not matching, got %q, expected %q", gotErr, tc.expectError)
+			}
+		})
+	}
+}
 
 func TestReadonlyTxnError(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
