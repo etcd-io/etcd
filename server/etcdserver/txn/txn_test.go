@@ -99,6 +99,16 @@ var putTestCases = []testCase{
 		},
 	},
 	{
+		name: "Put withPrevKV should succeed",
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: &pb.PutRequest{
+					PrevKv: true,
+				},
+			},
+		},
+	},
+	{
 		name: "Put with non-existing lease should fail",
 		op: &pb.RequestOp{
 			Request: &pb.RequestOp_RequestPut{
