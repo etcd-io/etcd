@@ -121,7 +121,7 @@ var (
 		ClientCertAuth: true,
 	}
 
-	defaultTokenJWT = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=1s",
+	defaultTokenJWT = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=2s",
 		MustAbsPath("../fixtures/server.crt"), MustAbsPath("../fixtures/server.key.insecure"))
 
 	// uniqueNumber is used to generate unique port numbers
