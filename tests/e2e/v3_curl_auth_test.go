@@ -21,6 +21,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -34,6 +36,26 @@ func TestCurlV3Auth(t *testing.T) {
 }
 func TestCurlV3AuthClientTLSCertAuth(t *testing.T) {
 	testCtl(t, testCurlV3Auth, withCfg(*e2e.NewConfigClientTLSCertAuthWithNoCN()))
+}
+
+func TestCurlV3AuthUserBasicOperations(t *testing.T) {
+	testCtl(t, testCurlV3AuthUserBasicOperations)
+}
+
+func TestCurlV3AuthUserGrantRevokeRoles(t *testing.T) {
+	testCtl(t, testCurlV3AuthUserGrantRevokeRoles)
+}
+
+func TestCurlV3AuthRoleBasicOperations(t *testing.T) {
+	testCtl(t, testCurlV3AuthRoleBasicOperations)
+}
+
+func TestCurlV3AuthRoleManagePermission(t *testing.T) {
+	testCtl(t, testCurlV3AuthRoleManagePermission)
+}
+
+func TestCurlV3AuthEnableDisableStatus(t *testing.T) {
+	testCtl(t, testCurlV3AuthEnableDisableStatus)
 }
 
 func testCurlV3Auth(cx ctlCtx) {
@@ -143,5 +165,293 @@ func testCurlV3Auth(cx ctlCtx) {
 		}); err != nil {
 			cx.t.Fatalf("testCurlV3Auth failed to auth put with user (%v) (%v)", usernames[i], err)
 		}
+	}
+}
+
+func testCurlV3AuthUserBasicOperations(cx ctlCtx) {
+	usernames := []string{"user1", "user2", "user3"}
+
+	// create users
+	for i := 0; i < len(usernames); i++ {
+		user, err := json.Marshal(&pb.AuthUserAddRequest{Name: usernames[i], Password: "123"})
+		require.NoError(cx.t, err)
+
+		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+			Endpoint: "/v3/auth/user/add",
+			Value:    string(user),
+			Expected: expect.ExpectedResponse{Value: "revision"},
+		}); err != nil {
+			cx.t.Fatalf("testCurlV3AuthUserBasicOperations failed to add user %v (%v)", usernames[i], err)
+		}
+	}
+
+	// change password
+	user, err := json.Marshal(&pb.AuthUserChangePasswordRequest{Name: "user1", Password: "456"})
+	require.NoError(cx.t, err)
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/user/changepw",
+		Value:    string(user),
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthUserBasicOperations failed to change user's password(%v)", err)
+	}
+
+	// get users
+	usernames = []string{"user1", "userX"}
+	expectedResponse := []string{"revision", "etcdserver: user name not found"}
+	for i := 0; i < len(usernames); i++ {
+		user, err := json.Marshal(&pb.AuthUserGetRequest{
+			Name: usernames[i],
+		})
+		require.NoError(cx.t, err)
+		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+			Endpoint: "/v3/auth/user/get",
+			Value:    string(user),
+			Expected: expect.ExpectedResponse{Value: expectedResponse[i]},
+		}); err != nil {
+			cx.t.Fatalf("testCurlV3AuthUserBasicOperations failed to get user %v (%v)", usernames[i], err)
+		}
+	}
+
+	// delete users
+	usernames = []string{"user2", "userX"}
+	expectedResponse = []string{"revision", "etcdserver: user name not found"}
+	for i := 0; i < len(usernames); i++ {
+		user, err := json.Marshal(&pb.AuthUserDeleteRequest{
+			Name: usernames[i],
+		})
+		require.NoError(cx.t, err)
+		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+			Endpoint: "/v3/auth/user/delete",
+			Value:    string(user),
+			Expected: expect.ExpectedResponse{Value: expectedResponse[i]},
+		}); err != nil {
+			cx.t.Fatalf("testCurlV3AuthUserBasicOperations failed to delete user %v (%v)", usernames[i], err)
+		}
+	}
+
+	// list users
+	clus := cx.epc
+	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", e2e.CURLReq{
+		Endpoint: "/v3/auth/user/list",
+		Value:    "{}",
+	})
+	resp, err := runCommandAndReadJsonOutput(args)
+	require.NoError(cx.t, err)
+
+	users, ok := resp["users"]
+	require.True(cx.t, ok)
+	userSlice := users.([]interface{})
+	require.Equal(cx.t, 2, len(userSlice))
+	require.Equal(cx.t, "user1", userSlice[0])
+	require.Equal(cx.t, "user3", userSlice[1])
+}
+
+func testCurlV3AuthUserGrantRevokeRoles(cx ctlCtx) {
+	var (
+		username = "user1"
+		rolename = "role1"
+	)
+
+	// create user
+	user, err := json.Marshal(&pb.AuthUserAddRequest{Name: username, Password: "123"})
+	require.NoError(cx.t, err)
+
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/user/add",
+		Value:    string(user),
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthUserGrantRevokeRoles failed to add user %v (%v)", username, err)
+	}
+
+	// create role
+	role, err := json.Marshal(&pb.AuthRoleAddRequest{Name: rolename})
+	require.NoError(cx.t, err)
+
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/role/add",
+		Value:    string(role),
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthUserGrantRevokeRoles failed to add role %v (%v)", rolename, err)
+	}
+
+	// grant role to user
+	grantRoleReq, err := json.Marshal(&pb.AuthUserGrantRoleRequest{
+		User: username,
+		Role: rolename,
+	})
+	require.NoError(cx.t, err)
+
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/user/grant",
+		Value:    string(grantRoleReq),
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthUserGrantRevokeRoles failed to grant role to user (%v)", err)
+	}
+
+	//  revoke role from user
+	revokeRoleReq, err := json.Marshal(&pb.AuthUserRevokeRoleRequest{
+		Name: username,
+		Role: rolename,
+	})
+	require.NoError(cx.t, err)
+
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/user/revoke",
+		Value:    string(revokeRoleReq),
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthUserGrantRevokeRoles failed to revoke role from user (%v)", err)
+	}
+}
+
+func testCurlV3AuthRoleBasicOperations(cx ctlCtx) {
+	rolenames := []string{"role1", "role2", "role3"}
+
+	// create roles
+	for i := 0; i < len(rolenames); i++ {
+		role, err := json.Marshal(&pb.AuthRoleAddRequest{Name: rolenames[i]})
+		require.NoError(cx.t, err)
+
+		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+			Endpoint: "/v3/auth/role/add",
+			Value:    string(role),
+			Expected: expect.ExpectedResponse{Value: "revision"},
+		}); err != nil {
+			cx.t.Fatalf("testCurlV3AuthRoleBasicOperations failed to add role %v (%v)", rolenames[i], err)
+		}
+	}
+
+	// get roles
+	rolenames = []string{"role1", "roleX"}
+	expectedResponse := []string{"revision", "etcdserver: role name not found"}
+	for i := 0; i < len(rolenames); i++ {
+		role, err := json.Marshal(&pb.AuthRoleGetRequest{
+			Role: rolenames[i],
+		})
+		require.NoError(cx.t, err)
+		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+			Endpoint: "/v3/auth/role/get",
+			Value:    string(role),
+			Expected: expect.ExpectedResponse{Value: expectedResponse[i]},
+		}); err != nil {
+			cx.t.Fatalf("testCurlV3AuthRoleBasicOperations failed to get role %v (%v)", rolenames[i], err)
+		}
+	}
+
+	// delete roles
+	rolenames = []string{"role2", "roleX"}
+	expectedResponse = []string{"revision", "etcdserver: role name not found"}
+	for i := 0; i < len(rolenames); i++ {
+		role, err := json.Marshal(&pb.AuthRoleDeleteRequest{
+			Role: rolenames[i],
+		})
+		require.NoError(cx.t, err)
+		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+			Endpoint: "/v3/auth/role/delete",
+			Value:    string(role),
+			Expected: expect.ExpectedResponse{Value: expectedResponse[i]},
+		}); err != nil {
+			cx.t.Fatalf("testCurlV3AuthRoleBasicOperations failed to delete role %v (%v)", rolenames[i], err)
+		}
+	}
+
+	// list roles
+	clus := cx.epc
+	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", e2e.CURLReq{
+		Endpoint: "/v3/auth/role/list",
+		Value:    "{}",
+	})
+	resp, err := runCommandAndReadJsonOutput(args)
+	require.NoError(cx.t, err)
+
+	roles, ok := resp["roles"]
+	require.True(cx.t, ok)
+	roleSlice := roles.([]interface{})
+	require.Equal(cx.t, 2, len(roleSlice))
+	require.Equal(cx.t, "role1", roleSlice[0])
+	require.Equal(cx.t, "role3", roleSlice[1])
+}
+
+func testCurlV3AuthRoleManagePermission(cx ctlCtx) {
+	var (
+		rolename = "role1"
+	)
+
+	// create a role
+	role, err := json.Marshal(&pb.AuthRoleAddRequest{Name: rolename})
+	require.NoError(cx.t, err)
+
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/role/add",
+		Value:    string(role),
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthRoleManagePermission failed to add role %v (%v)", rolename, err)
+	}
+
+	// grant permission
+	grantPermissionReq, err := json.Marshal(&pb.AuthRoleGrantPermissionRequest{
+		Name: rolename,
+		Perm: &authpb.Permission{
+			PermType: authpb.READ,
+			Key:      []byte("fakeKey"),
+		},
+	})
+	require.NoError(cx.t, err)
+
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/role/grant",
+		Value:    string(grantPermissionReq),
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthRoleManagePermission failed to grant permission to role %v (%v)", rolename, err)
+	}
+
+	// revoke permission
+	revokePermissionReq, err := json.Marshal(&pb.AuthRoleRevokePermissionRequest{
+		Role: rolename,
+		Key:  []byte("fakeKey"),
+	})
+	require.NoError(cx.t, err)
+
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/role/revoke",
+		Value:    string(revokePermissionReq),
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthRoleManagePermission failed to revoke permission from role %v (%v)", rolename, err)
+	}
+}
+
+func testCurlV3AuthEnableDisableStatus(cx ctlCtx) {
+	// enable auth
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/enable",
+		Value:    "{}",
+		Expected: expect.ExpectedResponse{Value: "etcdserver: root user does not exist"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthEnableDisableStatus failed to enable auth (%v)", err)
+	}
+
+	// disable auth
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/disable",
+		Value:    "{}",
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthEnableDisableStatus failed to disable auth (%v)", err)
+	}
+
+	// auth status
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/auth/status",
+		Value:    "{}",
+		Expected: expect.ExpectedResponse{Value: "revision"},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3AuthEnableDisableStatus failed to get auth status (%v)", err)
 	}
 }
