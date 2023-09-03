@@ -26,13 +26,13 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestV3CurlMaintenanceAlarmMissiongAlarm(t *testing.T) {
+func TestCurlV3MaintenanceAlarmMissiongAlarm(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlMaintenanceAlarmMissiongAlarm, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
+		testCtl(t, testCurlV3MaintenanceAlarmMissiongAlarm, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 
-func testV3CurlMaintenanceAlarmMissiongAlarm(cx ctlCtx) {
+func testCurlV3MaintenanceAlarmMissiongAlarm(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: path.Join(cx.apiPrefix, "/maintenance/alarm"),
 		Value:    `{"action": "ACTIVATE"}`,
@@ -41,11 +41,11 @@ func testV3CurlMaintenanceAlarmMissiongAlarm(cx ctlCtx) {
 	}
 }
 
-func TestV3CurlMaintenanceStatus(t *testing.T) {
-	testCtl(t, testV3CurlMaintenanceStatus, withCfg(*e2e.NewConfigNoTLS()))
+func TestCurlV3MaintenanceStatus(t *testing.T) {
+	testCtl(t, testCurlV3MaintenanceStatus, withCfg(*e2e.NewConfigNoTLS()))
 }
 
-func testV3CurlMaintenanceStatus(cx ctlCtx) {
+func testCurlV3MaintenanceStatus(cx ctlCtx) {
 	clus := cx.epc
 	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", e2e.CURLReq{
 		Endpoint: "/v3/maintenance/status",
@@ -65,11 +65,11 @@ func testV3CurlMaintenanceStatus(cx ctlCtx) {
 	require.Equal(cx.t, version.Version, actualVersion)
 }
 
-func TestV3CurlMaintenanceDefragment(t *testing.T) {
-	testCtl(t, testV3CurlMaintenanceDefragment, withCfg(*e2e.NewConfigNoTLS()))
+func TestCurlV3MaintenanceDefragment(t *testing.T) {
+	testCtl(t, testCurlV3MaintenanceDefragment, withCfg(*e2e.NewConfigNoTLS()))
 }
 
-func testV3CurlMaintenanceDefragment(cx ctlCtx) {
+func testCurlV3MaintenanceDefragment(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/maintenance/defragment",
 		Value:    "{}",
@@ -81,11 +81,11 @@ func testV3CurlMaintenanceDefragment(cx ctlCtx) {
 	}
 }
 
-func TestV3CurlMaintenanceHash(t *testing.T) {
-	testCtl(t, testV3CurlMaintenanceHash, withCfg(*e2e.NewConfigNoTLS()))
+func TestCurlV3MaintenanceHash(t *testing.T) {
+	testCtl(t, testCurlV3MaintenanceHash, withCfg(*e2e.NewConfigNoTLS()))
 }
 
-func testV3CurlMaintenanceHash(cx ctlCtx) {
+func testCurlV3MaintenanceHash(cx ctlCtx) {
 	clus := cx.epc
 	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", e2e.CURLReq{
 		Endpoint: "/v3/maintenance/hash",
@@ -102,11 +102,11 @@ func testV3CurlMaintenanceHash(cx ctlCtx) {
 	}
 }
 
-func TestV3CurlMaintenanceHashKV(t *testing.T) {
-	testCtl(t, testV3CurlMaintenanceHashKV, withCfg(*e2e.NewConfigNoTLS()))
+func TestCurlV3MaintenanceHashKV(t *testing.T) {
+	testCtl(t, testCurlV3MaintenanceHashKV, withCfg(*e2e.NewConfigNoTLS()))
 }
 
-func testV3CurlMaintenanceHashKV(cx ctlCtx) {
+func testCurlV3MaintenanceHashKV(cx ctlCtx) {
 	clus := cx.epc
 	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", e2e.CURLReq{
 		Endpoint: "/v3/maintenance/hashkv",
@@ -123,11 +123,11 @@ func testV3CurlMaintenanceHashKV(cx ctlCtx) {
 	}
 }
 
-func TestV3CurlMaintenanceSnapshot(t *testing.T) {
-	testCtl(t, testV3CurlMaintenanceSnapshot, withCfg(*e2e.NewConfigNoTLS()))
+func TestCurlV3MaintenanceSnapshot(t *testing.T) {
+	testCtl(t, testCurlV3MaintenanceSnapshot, withCfg(*e2e.NewConfigNoTLS()))
 }
 
-func testV3CurlMaintenanceSnapshot(cx ctlCtx) {
+func testCurlV3MaintenanceSnapshot(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/maintenance/snapshot",
 		Value:    "{}",
@@ -139,11 +139,11 @@ func testV3CurlMaintenanceSnapshot(cx ctlCtx) {
 	}
 }
 
-func TestV3CurlMaintenanceMoveleader(t *testing.T) {
-	testCtl(t, testV3CurlMaintenanceMoveleader, withCfg(*e2e.NewConfigNoTLS()))
+func TestCurlV3MaintenanceMoveleader(t *testing.T) {
+	testCtl(t, testCurlV3MaintenanceMoveleader, withCfg(*e2e.NewConfigNoTLS()))
 }
 
-func testV3CurlMaintenanceMoveleader(cx ctlCtx) {
+func testCurlV3MaintenanceMoveleader(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/maintenance/transfer-leadership",
 		Value:    `{"targetID": 123}`,
@@ -155,11 +155,11 @@ func testV3CurlMaintenanceMoveleader(cx ctlCtx) {
 	}
 }
 
-func TestV3CurlMaintenanceDowngrade(t *testing.T) {
-	testCtl(t, testV3CurlMaintenanceDowngrade, withCfg(*e2e.NewConfigNoTLS()))
+func TestCurlV3MaintenanceDowngrade(t *testing.T) {
+	testCtl(t, testCurlV3MaintenanceDowngrade, withCfg(*e2e.NewConfigNoTLS()))
 }
 
-func testV3CurlMaintenanceDowngrade(cx ctlCtx) {
+func testCurlV3MaintenanceDowngrade(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/maintenance/downgrade",
 		Value:    `{"action": 0, "version": "3.0"}`,

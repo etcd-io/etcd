@@ -27,9 +27,9 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestV3CurlCipherSuitesValid(t *testing.T)    { testV3CurlCipherSuites(t, true) }
-func TestV3CurlCipherSuitesMismatch(t *testing.T) { testV3CurlCipherSuites(t, false) }
-func testV3CurlCipherSuites(t *testing.T, valid bool) {
+func TestCurlV3CipherSuitesValid(t *testing.T)    { testCurlV3CipherSuites(t, true) }
+func TestCurlV3CipherSuitesMismatch(t *testing.T) { testCurlV3CipherSuites(t, false) }
+func testCurlV3CipherSuites(t *testing.T, valid bool) {
 	cc := e2e.NewConfigClientTLS()
 	cc.ClusterSize = 1
 	cc.CipherSuites = []string{

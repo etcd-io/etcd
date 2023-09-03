@@ -22,24 +22,24 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestV3CurlLeaseGrantNoTLS(t *testing.T) {
+func TestCurlV3LeaseGrantNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseGrant, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
+		testCtl(t, testCurlV3LeaseGrant, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
-func TestV3CurlLeaseRevokeNoTLS(t *testing.T) {
+func TestCurlV3LeaseRevokeNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseRevoke, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
+		testCtl(t, testCurlV3LeaseRevoke, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
-func TestV3CurlLeaseLeasesNoTLS(t *testing.T) {
+func TestCurlV3LeaseLeasesNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseLeases, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
+		testCtl(t, testCurlV3LeaseLeases, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
-func TestV3CurlLeaseKeepAliveNoTLS(t *testing.T) {
+func TestCurlV3LeaseKeepAliveNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseKeepAlive, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
+		testCtl(t, testCurlV3LeaseKeepAlive, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 
@@ -49,7 +49,7 @@ type v3cURLTest struct {
 	expected string
 }
 
-func testV3CurlLeaseGrant(cx ctlCtx) {
+func testCurlV3LeaseGrant(cx ctlCtx) {
 	leaseID := e2e.RandomLeaseID()
 
 	tests := []v3cURLTest{
@@ -75,11 +75,11 @@ func testV3CurlLeaseGrant(cx ctlCtx) {
 		},
 	}
 	if err := CURLWithExpected(cx, tests); err != nil {
-		cx.t.Fatalf("testV3CurlLeaseGrant: %v", err)
+		cx.t.Fatalf("testCurlV3LeaseGrant: %v", err)
 	}
 }
 
-func testV3CurlLeaseRevoke(cx ctlCtx) {
+func testCurlV3LeaseRevoke(cx ctlCtx) {
 	leaseID := e2e.RandomLeaseID()
 
 	tests := []v3cURLTest{
@@ -95,11 +95,11 @@ func testV3CurlLeaseRevoke(cx ctlCtx) {
 		},
 	}
 	if err := CURLWithExpected(cx, tests); err != nil {
-		cx.t.Fatalf("testV3CurlLeaseRevoke: %v", err)
+		cx.t.Fatalf("testCurlV3LeaseRevoke: %v", err)
 	}
 }
 
-func testV3CurlLeaseLeases(cx ctlCtx) {
+func testCurlV3LeaseLeases(cx ctlCtx) {
 	leaseID := e2e.RandomLeaseID()
 
 	tests := []v3cURLTest{
@@ -115,11 +115,11 @@ func testV3CurlLeaseLeases(cx ctlCtx) {
 		},
 	}
 	if err := CURLWithExpected(cx, tests); err != nil {
-		cx.t.Fatalf("testV3CurlLeaseGrant: %v", err)
+		cx.t.Fatalf("testCurlV3LeaseGrant: %v", err)
 	}
 }
 
-func testV3CurlLeaseKeepAlive(cx ctlCtx) {
+func testCurlV3LeaseKeepAlive(cx ctlCtx) {
 	leaseID := e2e.RandomLeaseID()
 
 	tests := []v3cURLTest{
@@ -135,7 +135,7 @@ func testV3CurlLeaseKeepAlive(cx ctlCtx) {
 		},
 	}
 	if err := CURLWithExpected(cx, tests); err != nil {
-		cx.t.Fatalf("testV3CurlLeaseGrant: %v", err)
+		cx.t.Fatalf("testCurlV3LeaseGrant: %v", err)
 	}
 }
 
