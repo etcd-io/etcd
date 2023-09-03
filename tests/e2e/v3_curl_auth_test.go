@@ -29,14 +29,14 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestV3CurlAuth(t *testing.T) {
-	testCtl(t, testV3CurlAuth)
+func TestCurlV3Auth(t *testing.T) {
+	testCtl(t, testCurlV3Auth)
 }
-func TestV3CurlAuthClientTLSCertAuth(t *testing.T) {
-	testCtl(t, testV3CurlAuth, withCfg(*e2e.NewConfigClientTLSCertAuthWithNoCN()))
+func TestCurlV3AuthClientTLSCertAuth(t *testing.T) {
+	testCtl(t, testCurlV3Auth, withCfg(*e2e.NewConfigClientTLSCertAuthWithNoCN()))
 }
 
-func testV3CurlAuth(cx ctlCtx) {
+func testCurlV3Auth(cx ctlCtx) {
 	usernames := []string{"root", "nonroot", "nooption"}
 	pwds := []string{"toor", "pass", "pass"}
 	options := []*authpb.UserAddOptions{{NoPassword: false}, {NoPassword: false}, nil}
@@ -51,7 +51,7 @@ func testV3CurlAuth(cx ctlCtx) {
 			Value:    string(user),
 			Expected: expect.ExpectedResponse{Value: "revision"},
 		}); err != nil {
-			cx.t.Fatalf("testV3CurlAuth failed to add user %v (%v)", usernames[i], err)
+			cx.t.Fatalf("testCurlV3Auth failed to add user %v (%v)", usernames[i], err)
 		}
 	}
 
@@ -64,7 +64,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		Value:    string(rolereq),
 		Expected: expect.ExpectedResponse{Value: "revision"},
 	}); err != nil {
-		cx.t.Fatalf("testV3CurlAuth failed to create role (%v)", err)
+		cx.t.Fatalf("testCurlV3Auth failed to create role (%v)", err)
 	}
 
 	//grant root role
@@ -77,7 +77,7 @@ func testV3CurlAuth(cx ctlCtx) {
 			Value:    string(grantroleroot),
 			Expected: expect.ExpectedResponse{Value: "revision"},
 		}); err != nil {
-			cx.t.Fatalf("testV3CurlAuth failed to grant role (%v)", err)
+			cx.t.Fatalf("testCurlV3Auth failed to grant role (%v)", err)
 		}
 	}
 
@@ -87,7 +87,7 @@ func testV3CurlAuth(cx ctlCtx) {
 		Value:    "{}",
 		Expected: expect.ExpectedResponse{Value: "revision"},
 	}); err != nil {
-		cx.t.Fatalf("testV3CurlAuth failed to enable auth (%v)", err)
+		cx.t.Fatalf("testCurlV3Auth failed to enable auth (%v)", err)
 	}
 
 	for i := 0; i < len(usernames); i++ {
@@ -101,7 +101,7 @@ func testV3CurlAuth(cx ctlCtx) {
 			Value:    string(putreq),
 			Expected: expect.ExpectedResponse{Value: "error"},
 		}); err != nil {
-			cx.t.Fatalf("testV3CurlAuth failed to put without token (%v)", err)
+			cx.t.Fatalf("testCurlV3Auth failed to put without token (%v)", err)
 		}
 
 		// auth request
@@ -141,7 +141,7 @@ func testV3CurlAuth(cx ctlCtx) {
 			Header:   authHeader,
 			Expected: expect.ExpectedResponse{Value: "revision"},
 		}); err != nil {
-			cx.t.Fatalf("testV3CurlAuth failed to auth put with user (%v) (%v)", usernames[i], err)
+			cx.t.Fatalf("testCurlV3Auth failed to auth put with user (%v) (%v)", usernames[i], err)
 		}
 	}
 }

@@ -161,7 +161,7 @@ func testCurlV3KVTxn(cx ctlCtx) {
 		Value:    string(jsonDat),
 		Expected: expect.ExpectedResponse{Value: expected},
 	})
-	require.NoErrorf(cx.t, err, "testV3CurlTxn failed")
+	require.NoErrorf(cx.t, err, "testCurlV3Txn failed")
 
 	// was crashing etcd server
 	malformed := `{"compare":[{"result":0,"target":1,"key":"Zm9v","TargetUnion":null}],"success":[{"Request":{"RequestPut":{"key":"Zm9v","value":"YmFy"}}}]}`
@@ -170,7 +170,7 @@ func testCurlV3KVTxn(cx ctlCtx) {
 		Value:    malformed,
 		Expected: expect.ExpectedResponse{Value: "error"},
 	})
-	require.NoErrorf(cx.t, err, "testV3CurlTxn with malformed request failed")
+	require.NoErrorf(cx.t, err, "testCurlV3Txn with malformed request failed")
 }
 
 func testCurlV3KVCompact(cx ctlCtx) {

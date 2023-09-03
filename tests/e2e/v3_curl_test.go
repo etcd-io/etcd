@@ -34,13 +34,13 @@ import (
 
 var apiPrefix = []string{"/v3"}
 
-func TestV3CurlWatch(t *testing.T) {
+func TestCurlV3Watch(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlWatch, withApiPrefix(p))
+		testCtl(t, testCurlV3Watch, withApiPrefix(p))
 	}
 }
 
-func testV3CurlWatch(cx ctlCtx) {
+func testCurlV3Watch(cx ctlCtx) {
 	// store "bar" into "foo"
 	putreq, err := json.Marshal(&pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 	if err != nil {
@@ -59,20 +59,20 @@ func testV3CurlWatch(cx ctlCtx) {
 	p := cx.apiPrefix
 
 	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/put"), Value: string(putreq), Expected: expect.ExpectedResponse{Value: "revision"}}); err != nil {
-		cx.t.Fatalf("failed testV3CurlWatch put with curl using prefix (%s) (%v)", p, err)
+		cx.t.Fatalf("failed testCurlV3Watch put with curl using prefix (%s) (%v)", p, err)
 	}
 	// expects "bar", timeout after 2 seconds since stream waits forever
 	err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/watch"), Value: wstr, Expected: expect.ExpectedResponse{Value: `"YmFy"`}, Timeout: 2})
 	require.ErrorContains(cx.t, err, "unexpected exit code")
 }
 
-func TestV3CurlCampaignNoTLS(t *testing.T) {
+func TestCurlV3CampaignNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlCampaign, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
+		testCtl(t, testCurlV3Campaign, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 
-func testV3CurlCampaign(cx ctlCtx) {
+func testCurlV3Campaign(cx ctlCtx) {
 	cdata, err := json.Marshal(&epb.CampaignRequest{
 		Name:  []byte("/election-prefix"),
 		Value: []byte("v1"),
@@ -128,13 +128,13 @@ func testV3CurlCampaign(cx ctlCtx) {
 	}
 }
 
-func TestV3CurlProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
+func TestCurlV3ProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlProclaimMissiongLeaderKey, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
+		testCtl(t, testCurlV3ProclaimMissiongLeaderKey, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 
-func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
+func testCurlV3ProclaimMissiongLeaderKey(cx ctlCtx) {
 	pdata, err := json.Marshal(&epb.ProclaimRequest{Value: []byte("v2")})
 	if err != nil {
 		cx.t.Fatal(err)
@@ -148,13 +148,13 @@ func testV3CurlProclaimMissiongLeaderKey(cx ctlCtx) {
 	}
 }
 
-func TestV3CurlResignMissiongLeaderKeyNoTLS(t *testing.T) {
+func TestCurlV3ResignMissiongLeaderKeyNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlResignMissiongLeaderKey, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
+		testCtl(t, testCurlV3ResignMissiongLeaderKey, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 
-func testV3CurlResignMissiongLeaderKey(cx ctlCtx) {
+func testCurlV3ResignMissiongLeaderKey(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: path.Join(cx.apiPrefix, "/election/resign"),
 		Value:    `{}`,
