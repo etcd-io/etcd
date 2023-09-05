@@ -23,24 +23,16 @@ import (
 )
 
 func TestCurlV3LeaseGrantNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3LeaseGrant, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+	testCtl(t, testCurlV3LeaseGrant, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCurlV3LeaseRevokeNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3LeaseRevoke, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+	testCtl(t, testCurlV3LeaseRevoke, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCurlV3LeaseLeasesNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3LeaseLeases, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+	testCtl(t, testCurlV3LeaseLeases, withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCurlV3LeaseKeepAliveNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3LeaseKeepAlive, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+	testCtl(t, testCurlV3LeaseKeepAlive, withCfg(*e2e.NewConfigNoTLS()))
 }
 
 type v3cURLTest struct {
@@ -54,22 +46,22 @@ func testCurlV3LeaseGrant(cx ctlCtx) {
 
 	tests := []v3cURLTest{
 		{
-			endpoint: "/lease/grant",
+			endpoint: "/v3/lease/grant",
 			value:    gwLeaseGrant(cx, leaseID, 0),
 			expected: gwLeaseIDExpected(leaseID),
 		},
 		{
-			endpoint: "/lease/grant",
+			endpoint: "/v3/lease/grant",
 			value:    gwLeaseGrant(cx, 0, 20),
 			expected: `"TTL":"20"`,
 		},
 		{
-			endpoint: "/kv/put",
+			endpoint: "/v3/kv/put",
 			value:    gwKVPutLease(cx, "foo", "bar", leaseID),
 			expected: `"revision":"`,
 		},
 		{
-			endpoint: "/lease/timetolive",
+			endpoint: "/v3/lease/timetolive",
 			value:    gwLeaseTTLWithKeys(cx, leaseID),
 			expected: `"grantedTTL"`,
 		},
@@ -84,12 +76,12 @@ func testCurlV3LeaseRevoke(cx ctlCtx) {
 
 	tests := []v3cURLTest{
 		{
-			endpoint: "/lease/grant",
+			endpoint: "/v3/lease/grant",
 			value:    gwLeaseGrant(cx, leaseID, 0),
 			expected: gwLeaseIDExpected(leaseID),
 		},
 		{
-			endpoint: "/lease/revoke",
+			endpoint: "/v3/lease/revoke",
 			value:    gwLeaseRevoke(cx, leaseID),
 			expected: `"revision":"`,
 		},
@@ -104,12 +96,12 @@ func testCurlV3LeaseLeases(cx ctlCtx) {
 
 	tests := []v3cURLTest{
 		{
-			endpoint: "/lease/grant",
+			endpoint: "/v3/lease/grant",
 			value:    gwLeaseGrant(cx, leaseID, 0),
 			expected: gwLeaseIDExpected(leaseID),
 		},
 		{
-			endpoint: "/lease/leases",
+			endpoint: "/v3/lease/leases",
 			value:    "{}",
 			expected: gwLeaseIDExpected(leaseID),
 		},
@@ -124,12 +116,12 @@ func testCurlV3LeaseKeepAlive(cx ctlCtx) {
 
 	tests := []v3cURLTest{
 		{
-			endpoint: "/lease/grant",
+			endpoint: "/v3/lease/grant",
 			value:    gwLeaseGrant(cx, leaseID, 0),
 			expected: gwLeaseIDExpected(leaseID),
 		},
 		{
-			endpoint: "/lease/keepalive",
+			endpoint: "/v3/lease/keepalive",
 			value:    gwLeaseKeepAlive(cx, leaseID),
 			expected: gwLeaseIDExpected(leaseID),
 		},
