@@ -16,7 +16,6 @@ package e2e
 
 import (
 	"math/rand"
-	"path"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,17 +26,15 @@ import (
 )
 
 func TestCurlV3MaintenanceAlarmMissiongAlarm(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3MaintenanceAlarmMissiongAlarm, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+	testCtl(t, testCurlV3MaintenanceAlarmMissiongAlarm, withCfg(*e2e.NewConfigNoTLS()))
 }
 
 func testCurlV3MaintenanceAlarmMissiongAlarm(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
-		Endpoint: path.Join(cx.apiPrefix, "/maintenance/alarm"),
+		Endpoint: "/v3/maintenance/alarm",
 		Value:    `{"action": "ACTIVATE"}`,
 	}); err != nil {
-		cx.t.Fatalf("failed post maintenance alarm (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post maintenance alarm (%v)", err)
 	}
 }
 
