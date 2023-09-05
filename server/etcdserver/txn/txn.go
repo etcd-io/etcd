@@ -160,6 +160,9 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 	if limit > 0 {
 		// fetch one extra for 'more' flag
 		limit = limit + 1
+		if r.Skip > 0 {
+			limit += r.Skip
+		}
 	}
 
 	ro := mvcc.RangeOptions{
@@ -225,6 +228,15 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 			sort.Sort(sort.Reverse(sorter))
 		}
 	}
+
+	if r.Skip > 0 {
+		if len(rr.KVs) > int(r.Skip) {
+			rr.KVs = rr.KVs[r.Skip:]
+		} else {
+			rr.KVs = rr.KVs[:0]
+		}
+	}
+
 
 	if r.Limit > 0 && len(rr.KVs) > int(r.Limit) {
 		rr.KVs = rr.KVs[:r.Limit]

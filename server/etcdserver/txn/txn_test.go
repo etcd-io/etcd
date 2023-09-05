@@ -16,6 +16,7 @@ package txn
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -380,3 +381,35 @@ var (
 		},
 	}
 )
+
+
+
+func TestBatchRange(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, b)
+	s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	defer s.Close()
+
+	ctx := context.Background()
+
+	for i := 0; i < 100; i++ {
+		s.Put([]byte("foo" + strconv.Itoa(i)), []byte("bar"), lease.NoLease)
+	}
+
+	req := &pb.RangeRequest{
+		Key:                  []byte("foo"),
+		RangeEnd:             []byte(""),
+		Limit:                10,
+		SortOrder:            pb.RangeRequest_ASCEND,
+		SortTarget:           pb.RangeRequest_KEY,
+		Skip:                 0,
+	}
+
+	for i := 0; i < 10; i++ {
+		resp, _, _ := Range(ctx, zaptest.NewLogger(t), s, req)
+		if len(resp.Kvs) != 10 {
+			t.Fatalf("Unexpected kvs length")
+		}
+		req.Skip += 10
+	}
+}

@@ -494,6 +494,9 @@ message RangeRequest {
   // max_create_revision is the upper bound for returned key create revisions; all keys with
   // greater create revisions will be filtered away.
   int64 max_create_revision = 13 [(versionpb.etcd_version_field)="3.1"];
+
+  // skip is the skip the first N keys returned for the request.
+  int64 skip = 14;
 }
 
 message RangeResponse {
