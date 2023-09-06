@@ -50,15 +50,18 @@ func TestMemberList(t *testing.T) {
 				if expectNum != gotNum {
 					t.Fatalf("number of members not equal, expect: %d, got: %d", expectNum, gotNum)
 				}
-				assert.Eventually(t, func() (done bool) {
+				assert.Eventually(t, func() bool {
+					resp, err := cc.MemberList(ctx, false)
+					if err != nil {
+						t.Logf("Failed to get member list, err: %v", err)
+						return false
+					}
 					for _, m := range resp.Members {
 						if len(m.ClientURLs) == 0 {
 							t.Logf("member is not started, memberId:%d, memberName:%s", m.ID, m.Name)
-							done = false
-							return done
+							return false
 						}
 					}
-					done = true
 					return true
 				}, time.Second*5, time.Millisecond*100)
 			})
