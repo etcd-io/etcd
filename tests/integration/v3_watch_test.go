@@ -968,6 +968,8 @@ func TestV3WatchProgressOnMemberRestart(t *testing.T) {
 
 	t.Log("Waiting for result")
 	select {
+	case <-progressNotifyC:
+		t.Log("Progress notification received")
 	case err := <-errC:
 		t.Fatal(err)
 	case <-doneC:
