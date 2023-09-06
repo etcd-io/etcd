@@ -591,18 +591,17 @@ func TestHashKVWhenCompacting(t *testing.T) {
 		defer wg.Done()
 		revHash := make(map[int64]uint32)
 		for {
-			r := <-hashCompactc
-			if revHash[r.compactRev] == 0 {
-				revHash[r.compactRev] = r.hash
-			}
-			if r.hash != revHash[r.compactRev] {
-				t.Errorf("Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
-			}
-
 			select {
+			case r := <-hashCompactc:
+				if revHash[r.compactRev] == 0 {
+					revHash[r.compactRev] = r.hash
+				}
+
+				if r.hash != revHash[r.compactRev] {
+					t.Errorf("Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
+				}
 			case <-donec:
 				return
-			default:
 			}
 		}
 	}()
