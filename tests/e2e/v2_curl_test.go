@@ -131,6 +131,8 @@ type cURLReq struct {
 
 	ciphers     string
 	httpVersion string
+
+	OutputFile string
 }
 
 // cURLPrefixArgsCluster builds the beginning of a curl command for a given key
@@ -183,6 +185,10 @@ func cURLPrefixArgs(clientURL string, connType clientConnType, CN bool, method s
 
 	if req.ciphers != "" {
 		cmdArgs = append(cmdArgs, "--ciphers", req.ciphers)
+	}
+
+	if req.OutputFile != "" {
+		cmdArgs = append(cmdArgs, "--output", req.OutputFile)
 	}
 
 	switch method {

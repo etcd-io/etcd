@@ -21,6 +21,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -137,7 +139,7 @@ func testConnectionMultiplexing(ctx context.Context, t *testing.T, member etcdPr
 			}
 			t.Run(tname, func(t *testing.T) {
 				assert.NoError(t, fetchGrpcGateway(httpEndpoint, httpVersion, connType))
-				assert.NoError(t, fetchMetrics(httpEndpoint, httpVersion, connType))
+				assert.NoError(t, fetchMetrics(t, httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchVersion(httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchHealth(httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchDebugVars(httpEndpoint, httpVersion, connType))
@@ -187,12 +189,21 @@ func validateGrpcgatewayRangeReponse(respData []byte) error {
 	return json.Unmarshal(respData, &resp)
 }
 
-func fetchMetrics(endpoint string, httpVersion string, connType clientConnType) error {
-	req := cURLReq{endpoint: "/metrics", timeout: 5, httpVersion: httpVersion}
-	respData, err := curl(endpoint, "GET", req, connType)
-	if err != nil {
+func fetchMetrics(t *testing.T, endpoint string, httpVersion string, connType clientConnType) error {
+	tmpDir := t.TempDir()
+	metricFile := filepath.Join(tmpDir, "metrics")
+
+	req := cURLReq{endpoint: "/metrics", timeout: 5, httpVersion: httpVersion, OutputFile: metricFile}
+	if _, err := curl(endpoint, "GET", req, connType); err != nil {
 		return err
 	}
+
+	rawData, err := os.ReadFile(metricFile)
+	if err != nil {
+		return fmt.Errorf("failed to read the metric: %w", err)
+	}
+	respData := string(rawData)
+
 	var parser expfmt.TextParser
 	_, err = parser.TextToMetricFamilies(strings.NewReader(strings.ReplaceAll(respData, "\r\n", "\n")))
 	return err
