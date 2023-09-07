@@ -119,9 +119,8 @@ func dialWithSchemeTest(cx ctlCtx) {
 }
 
 type ctlCtx struct {
-	t         *testing.T
-	apiPrefix string
-	cfg       e2e.EtcdProcessClusterConfig
+	t   *testing.T
+	cfg e2e.EtcdProcessClusterConfig
 
 	corruptFunc                func(string) error
 	disableStrictReconfigCheck bool
@@ -185,10 +184,6 @@ func withCorruptFunc(f func(string) error) ctlOption {
 
 func withDisableStrictReconfig() ctlOption {
 	return func(cx *ctlCtx) { cx.disableStrictReconfigCheck = true }
-}
-
-func withApiPrefix(p string) ctlOption {
-	return func(cx *ctlCtx) { cx.apiPrefix = p }
 }
 
 func withFlagByEnv() ctlOption {

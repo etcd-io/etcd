@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"path"
 	"strconv"
 	"testing"
 
@@ -32,12 +31,8 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-var apiPrefix = []string{"/v3"}
-
 func TestCurlV3Watch(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3Watch, withApiPrefix(p))
-	}
+	testCtl(t, testCurlV3Watch)
 }
 
 func testCurlV3Watch(cx ctlCtx) {
@@ -56,20 +51,17 @@ func testCurlV3Watch(cx ctlCtx) {
 	// "{"RequestUnion":{"CreateRequest":{"key":"Zm9v","start_revision":1}}}"
 	// but the gprc-gateway expects a different format..
 	wstr := `{"create_request" : ` + string(wreq) + "}"
-	p := cx.apiPrefix
 
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/kv/put"), Value: string(putreq), Expected: expect.ExpectedResponse{Value: "revision"}}); err != nil {
-		cx.t.Fatalf("failed testCurlV3Watch put with curl using prefix (%s) (%v)", p, err)
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/put", Value: string(putreq), Expected: expect.ExpectedResponse{Value: "revision"}}); err != nil {
+		cx.t.Fatalf("failed testCurlV3Watch put with curl (%v)", err)
 	}
 	// expects "bar", timeout after 2 seconds since stream waits forever
-	err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, "/watch"), Value: wstr, Expected: expect.ExpectedResponse{Value: `"YmFy"`}, Timeout: 2})
+	err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/watch", Value: wstr, Expected: expect.ExpectedResponse{Value: `"YmFy"`}, Timeout: 2})
 	require.ErrorContains(cx.t, err, "unexpected exit code")
 }
 
 func TestCurlV3CampaignNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3Campaign, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+	testCtl(t, testCurlV3Campaign, withCfg(*e2e.NewConfigNoTLS()))
 }
 
 func testCurlV3Campaign(cx ctlCtx) {
@@ -81,12 +73,12 @@ func testCurlV3Campaign(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	cargs := e2e.CURLPrefixArgsCluster(cx.epc.Cfg, cx.epc.Procs[rand.Intn(cx.epc.Cfg.ClusterSize)], "POST", e2e.CURLReq{
-		Endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
+		Endpoint: "/v3/election/campaign",
 		Value:    string(cdata),
 	})
 	lines, err := e2e.SpawnWithExpectLines(context.TODO(), cargs, cx.envMap, expect.ExpectedResponse{Value: `"leader":{"name":"`})
 	if err != nil {
-		cx.t.Fatalf("failed post campaign request (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post campaign request (%v)", err)
 	}
 	if len(lines) != 1 {
 		cx.t.Fatalf("len(lines) expected 1, got %+v", lines)
@@ -120,18 +112,16 @@ func testCurlV3Campaign(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
-		Endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
+		Endpoint: "/v3/election/proclaim",
 		Value:    string(pdata),
 		Expected: expect.ExpectedResponse{Value: `"revision":`},
 	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post proclaim request (%v)", err)
 	}
 }
 
 func TestCurlV3ProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3ProclaimMissiongLeaderKey, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+	testCtl(t, testCurlV3ProclaimMissiongLeaderKey, withCfg(*e2e.NewConfigNoTLS()))
 }
 
 func testCurlV3ProclaimMissiongLeaderKey(cx ctlCtx) {
@@ -140,27 +130,25 @@ func testCurlV3ProclaimMissiongLeaderKey(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
-		Endpoint: path.Join(cx.apiPrefix, "/election/proclaim"),
+		Endpoint: "/v3/election/proclaim",
 		Value:    string(pdata),
 		Expected: expect.ExpectedResponse{Value: `{"error":"\"leader\" field must be provided","code":2,"message":"\"leader\" field must be provided"}`},
 	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post proclaim request (%v)", err)
 	}
 }
 
 func TestCurlV3ResignMissiongLeaderKeyNoTLS(t *testing.T) {
-	for _, p := range apiPrefix {
-		testCtl(t, testCurlV3ResignMissiongLeaderKey, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
-	}
+	testCtl(t, testCurlV3ResignMissiongLeaderKey, withCfg(*e2e.NewConfigNoTLS()))
 }
 
 func testCurlV3ResignMissiongLeaderKey(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
-		Endpoint: path.Join(cx.apiPrefix, "/election/resign"),
+		Endpoint: "/v3/election/resign",
 		Value:    `{}`,
 		Expected: expect.ExpectedResponse{Value: `{"error":"\"leader\" field must be provided","code":2,"message":"\"leader\" field must be provided"}`},
 	}); err != nil {
-		cx.t.Fatalf("failed post resign request (%s) (%v)", cx.apiPrefix, err)
+		cx.t.Fatalf("failed post resign request (%v)", err)
 	}
 }
 
@@ -176,11 +164,10 @@ type campaignResponse struct {
 }
 
 func CURLWithExpected(cx ctlCtx, tests []v3cURLTest) error {
-	p := cx.apiPrefix
 	for _, t := range tests {
 		value := fmt.Sprintf("%v", t.value)
-		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: path.Join(p, t.endpoint), Value: value, Expected: expect.ExpectedResponse{Value: t.expected}}); err != nil {
-			return fmt.Errorf("prefix (%s) endpoint (%s): error (%v), wanted %v", p, t.endpoint, err, t.expected)
+		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: t.endpoint, Value: value, Expected: expect.ExpectedResponse{Value: t.expected}}); err != nil {
+			return fmt.Errorf("endpoint (%s): error (%v), wanted %v", t.endpoint, err, t.expected)
 		}
 	}
 	return nil
