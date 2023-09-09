@@ -558,15 +558,6 @@
 		]
 	},
 	{
-		"project": "go.opentelemetry.io/otel/exporters/otlp/internal/retry",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "go.opentelemetry.io/otel/exporters/otlp/otlptrace",
 		"licenses": [
 			{
