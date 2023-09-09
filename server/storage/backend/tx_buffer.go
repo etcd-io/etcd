@@ -17,6 +17,8 @@ package backend
 import (
 	"bytes"
 	"sort"
+
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 const bucketBufferInitialSize = 512
@@ -124,7 +126,7 @@ func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 		bufVersion: 0,
 	}
 	for bucketName, bucket := range txr.txBuffer.buckets {
-		txrCopy.txBuffer.buckets[bucketName] = bucket.Copy()
+		txrCopy.txBuffer.buckets[bucketName] = bucket.CopyUsed()
 	}
 	return txrCopy
 }
@@ -221,11 +223,13 @@ func (bb *bucketBuffer) Less(i, j int) bool {
 }
 func (bb *bucketBuffer) Swap(i, j int) { bb.buf[i], bb.buf[j] = bb.buf[j], bb.buf[i] }
 
-func (bb *bucketBuffer) Copy() *bucketBuffer {
+func (bb *bucketBuffer) CopyUsed() *bucketBuffer {
+	verify.Assert(bb.used <= len(bb.buf),
+		"used (%d) should never be bigger than the length of buf (%d)", bb.used, len(bb.buf))
 	bbCopy := bucketBuffer{
-		buf:  make([]kv, len(bb.buf)),
+		buf:  make([]kv, bb.used),
 		used: bb.used,
 	}
-	copy(bbCopy.buf, bb.buf)
+	copy(bbCopy.buf, bb.buf[:bb.used])
 	return &bbCopy
 }
