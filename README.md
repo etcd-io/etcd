@@ -74,7 +74,7 @@ This will bring up etcd listening on port 2379 for client communication and on p
 Next, let's set a single key, and then retrieve it:
 
 ```bash
-etcdctl put mykey "this is awesome"
+etcdctl set mykey "this is awesome"
 etcdctl get mykey
 ```
 
