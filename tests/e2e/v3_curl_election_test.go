@@ -23,42 +23,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
-
-func TestCurlV3Watch(t *testing.T) {
-	testCtl(t, testCurlV3Watch)
-}
-
-func testCurlV3Watch(cx ctlCtx) {
-	// store "bar" into "foo"
-	putreq, err := json.Marshal(&pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	// watch for first update to "foo"
-	wcr := &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 1}
-	wreq, err := json.Marshal(wcr)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	// marshaling the grpc to json gives:
-	// "{"RequestUnion":{"CreateRequest":{"key":"Zm9v","start_revision":1}}}"
-	// but the gprc-gateway expects a different format..
-	wstr := `{"create_request" : ` + string(wreq) + "}"
-
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/put", Value: string(putreq), Expected: expect.ExpectedResponse{Value: "revision"}}); err != nil {
-		cx.t.Fatalf("failed testCurlV3Watch put with curl (%v)", err)
-	}
-	// expects "bar", timeout after 2 seconds since stream waits forever
-	err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/watch", Value: wstr, Expected: expect.ExpectedResponse{Value: `"YmFy"`}, Timeout: 2})
-	require.ErrorContains(cx.t, err, "unexpected exit code")
-}
 
 func TestCurlV3CampaignNoTLS(t *testing.T) {
 	testCtl(t, testCurlV3Campaign, withCfg(*e2e.NewConfigNoTLS()))
