@@ -18,7 +18,7 @@ jobs:
           version: v1.53.3
           args: --config tools/.golangci.yaml
       - name: protoc
-        uses: arduino/setup-protoc@149f6c87b92550901b26acd1632e11c3662e381f # v1.3.0
+        uses: arduino/setup-protoc@a8b67ba40b37d35169e222f3bb352603327985b6 # v2.1.0
         with:
           version: '3.20.3'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
