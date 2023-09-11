@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/pkg/v3/expect"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -33,6 +35,7 @@ func TestCurlV3CampaignNoTLS(t *testing.T) {
 }
 
 func testCurlV3Campaign(cx ctlCtx) {
+	// campaign
 	cdata, err := json.Marshal(&epb.CampaignRequest{
 		Name:  []byte("/election-prefix"),
 		Value: []byte("v1"),
@@ -65,6 +68,27 @@ func testCurlV3Campaign(cx ctlCtx) {
 		cx.t.Fatalf("failed to decode leader key %v", err)
 	}
 
+	// observe
+	observeReq, err := json.Marshal(&epb.LeaderRequest{
+		Name: []byte("/election-prefix"),
+	})
+	require.NoError(cx.t, err)
+
+	clus := cx.epc
+	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[0], "POST", e2e.CURLReq{
+		Endpoint: "/v3/election/observe",
+		Value:    string(observeReq),
+	})
+	proc, err := e2e.SpawnCmd(args, nil)
+	require.NoError(cx.t, err)
+
+	proc.ExpectWithContext(context.TODO(), expect.ExpectedResponse{
+		Value: fmt.Sprintf(`"key":"%s"`, cresp.Leader.Key),
+	})
+	err = proc.Stop()
+	require.NoError(cx.t, err)
+
+	// proclaim
 	rev, _ := strconv.ParseInt(cresp.Leader.Rev, 10, 64)
 	lease, _ := strconv.ParseInt(cresp.Leader.Lease, 10, 64)
 	pdata, err := json.Marshal(&epb.ProclaimRequest{
@@ -117,6 +141,20 @@ func testCurlV3ResignMissiongLeaderKey(cx ctlCtx) {
 		Expected: expect.ExpectedResponse{Value: `{"error":"\"leader\" field must be provided","code":2,"message":"\"leader\" field must be provided"}`},
 	}); err != nil {
 		cx.t.Fatalf("failed post resign request (%v)", err)
+	}
+}
+
+func TestCurlV3ElectionLeader(t *testing.T) {
+	testCtl(t, testCurlV3ElectionLeader, withCfg(*e2e.NewConfigNoTLS()))
+}
+
+func testCurlV3ElectionLeader(cx ctlCtx) {
+	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		Endpoint: "/v3/election/leader",
+		Value:    `{"name": "aGVsbG8="}`, // base64 encoded string "hello"
+		Expected: expect.ExpectedResponse{Value: `election: no leader`},
+	}); err != nil {
+		cx.t.Fatalf("testCurlV3ElectionLeader failed to get leader (%v)", err)
 	}
 }
 
