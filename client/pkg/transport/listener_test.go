@@ -276,6 +276,7 @@ func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientSANVerify, goodCl
 
 	tlsInfo.SkipClientSANVerify = skipClientSANVerify
 	tlsInfo.TrustedCAFile = clientTLSInfo.CertFile
+	tlsInfo.ClientCertAuth = true
 
 	rootCAs := x509.NewCertPool()
 	loaded, err := os.ReadFile(tlsInfo.CertFile)
