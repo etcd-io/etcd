@@ -58,6 +58,7 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -182,6 +183,7 @@ func TestDoBadLocalAction(t *testing.T) {
 
 // TestApplyRepeat tests that server handles repeat raft messages gracefully
 func TestApplyRepeat(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	n := newNodeConfChangeCommitterStream()
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
@@ -189,6 +191,9 @@ func TestApplyRepeat(t *testing.T) {
 	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          zaptest.NewLogger(t),
@@ -491,7 +496,9 @@ func TestApplyRequest(t *testing.T) {
 }
 
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
-	cl := newTestCluster(t, []*membership.Member{{ID: 1}})
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl := newTestClusterWithBackend(t, []*membership.Member{{ID: 1}}, be)
 	srv := &EtcdServer{
 		lgMu:    new(sync.RWMutex),
 		lg:      zaptest.NewLogger(t),
@@ -660,13 +667,15 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 // where consistIndex equals to applied index.
 func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 
 	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
 
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
 	schema.CreateMetaBucket(be.BatchTx())
 
 	ci := cindex.NewConsistentIndex(be)
@@ -744,6 +753,9 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	cl := membership.NewCluster(lg)
 	cl.SetStore(v2store.New())
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	for i := 1; i <= 5; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
@@ -1260,6 +1272,8 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	st := v2store.New()
 	cl := membership.NewCluster(lg)
 	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	testdir := t.TempDir()
 	if err := os.MkdirAll(testdir+"/member/snap", 0755); err != nil {
@@ -1276,7 +1290,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		storage:     mockstorage.NewStorageRecorder(testdir),
 		raftStorage: rs,
 	})
-	be, _ := betesting.NewDefaultTmpBackend(t)
 	ci := cindex.NewConsistentIndex(be)
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1357,6 +1370,10 @@ func TestAddMember(t *testing.T) {
 	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
 		Node:        n,
@@ -1403,6 +1420,9 @@ func TestRemoveMember(t *testing.T) {
 	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
@@ -1442,6 +1462,8 @@ func TestRemoveMember(t *testing.T) {
 // TestUpdateMember tests RemoveMember can propose and perform node update.
 func TestUpdateMember(t *testing.T) {
 	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	n := newNodeConfChangeCommitterRecorder()
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
@@ -1449,6 +1471,7 @@ func TestUpdateMember(t *testing.T) {
 	cl := newTestCluster(t, nil)
 	st := v2store.New()
 	cl.SetStore(st)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
@@ -1909,6 +1932,16 @@ func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
 
 func newTestCluster(t testing.TB, membs []*membership.Member) *membership.RaftCluster {
 	c := membership.NewCluster(zaptest.NewLogger(t))
+	for _, m := range membs {
+		c.AddMember(m, true)
+	}
+	return c
+}
+
+func newTestClusterWithBackend(t testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
+	lg := zaptest.NewLogger(t)
+	c := membership.NewCluster(lg)
+	c.SetBackend(schema.NewMembershipBackend(lg, be))
 	for _, m := range membs {
 		c.AddMember(m, true)
 	}
