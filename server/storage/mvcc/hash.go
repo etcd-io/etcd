@@ -97,7 +97,7 @@ type HashStorage interface {
 	// HashByRev computes the hash of all MVCC revisions up to a given revision.
 	HashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error)
 
-	// Store adds hash value in local cache, allowing it can be returned by HashByRev.
+	// Store adds hash value in local cache, allowing it to be returned by HashByRev.
 	Store(valueHash KeyValueHash)
 
 	// Hashes returns list of up to `hashStorageMaxSize` newest previously stored hashes.
