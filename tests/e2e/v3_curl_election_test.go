@@ -124,7 +124,7 @@ func testCurlV3ProclaimMissiongLeaderKey(cx ctlCtx) {
 	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/election/proclaim",
 		Value:    string(pdata),
-		Expected: expect.ExpectedResponse{Value: `{"error":"\"leader\" field must be provided","code":2,"message":"\"leader\" field must be provided"}`},
+		Expected: expect.ExpectedResponse{Value: `"message":"\"leader\" field must be provided"`},
 	}); err != nil {
 		cx.t.Fatalf("failed post proclaim request (%v)", err)
 	}
@@ -138,7 +138,7 @@ func testCurlV3ResignMissiongLeaderKey(cx ctlCtx) {
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/election/resign",
 		Value:    `{}`,
-		Expected: expect.ExpectedResponse{Value: `{"error":"\"leader\" field must be provided","code":2,"message":"\"leader\" field must be provided"}`},
+		Expected: expect.ExpectedResponse{Value: `"message":"\"leader\" field must be provided"`},
 	}); err != nil {
 		cx.t.Fatalf("failed post resign request (%v)", err)
 	}

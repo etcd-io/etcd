@@ -121,7 +121,7 @@ func testCurlV3Auth(cx ctlCtx) {
 		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 			Endpoint: "/v3/kv/put",
 			Value:    string(putreq),
-			Expected: expect.ExpectedResponse{Value: "error"},
+			Expected: expect.ExpectedResponse{Value: "etcdserver: user name is empty"},
 		}); err != nil {
 			cx.t.Fatalf("testCurlV3Auth failed to put without token (%v)", err)
 		}

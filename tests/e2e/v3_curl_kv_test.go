@@ -155,22 +155,39 @@ func testCurlV3KVTxn(cx ctlCtx) {
 	jsonDat, jerr := m.Marshal(txn)
 	require.NoError(cx.t, jerr)
 
-	expected := `"succeeded":true,"responses":[{"response_put":{"header":{"revision":"2"}}}]`
-	err := e2e.CURLPost(cx.epc, e2e.CURLReq{
-		Endpoint: "/v3/kv/txn",
-		Value:    string(jsonDat),
-		Expected: expect.ExpectedResponse{Value: expected},
-	})
-	require.NoErrorf(cx.t, err, "testCurlV3Txn failed")
+	succeeded, responses := mustExecuteTxn(cx, string(jsonDat))
+	require.True(cx.t, succeeded)
+	require.Equal(cx.t, 1, len(responses))
+	putResponse := responses[0].(map[string]interface{})
+	_, ok := putResponse["response_put"]
+	require.True(cx.t, ok)
 
 	// was crashing etcd server
 	malformed := `{"compare":[{"result":0,"target":1,"key":"Zm9v","TargetUnion":null}],"success":[{"Request":{"RequestPut":{"key":"Zm9v","value":"YmFy"}}}]}`
-	err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+	err := e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/kv/txn",
 		Value:    malformed,
-		Expected: expect.ExpectedResponse{Value: "error"},
+		Expected: expect.ExpectedResponse{Value: "etcdserver: key not found"},
 	})
 	require.NoErrorf(cx.t, err, "testCurlV3Txn with malformed request failed")
+}
+
+func mustExecuteTxn(cx ctlCtx, reqData string) (bool, []interface{}) {
+	clus := cx.epc
+	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[0], "POST", e2e.CURLReq{
+		Endpoint: "/v3/kv/txn",
+		Value:    string(reqData),
+	})
+	resp, err := runCommandAndReadJsonOutput(args)
+	require.NoError(cx.t, err)
+
+	succeeded, ok := resp["succeeded"]
+	require.True(cx.t, ok)
+
+	responses, ok := resp["responses"]
+	require.True(cx.t, ok)
+
+	return succeeded.(bool), responses.([]interface{})
 }
 
 func testCurlV3KVCompact(cx ctlCtx) {
