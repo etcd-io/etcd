@@ -117,6 +117,19 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
     Documentation/dev-guide/apispec/swagger/"${swaggerName}".swagger.json
 done
 
+# We only upgraded grpc-gateway from v1 to v2, but keep gogo/protobuf as it's for now.
+# So we have to convert v1 message to v2 message. Once we get rid of gogo/protobuf, and
+# start to depend on protobuf v2, then we can remove this patch.
+for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock server/etcdserver/api/v3election/v3electionpb/v3election; do
+  gwfile="$(dirname ${pb})/gw/$(basename ${pb}).pb.gw.go"
+
+  run sed -i -E "s|import \(|import \(\n\tprotov1 \"github.com/golang/protobuf/proto\"\n|g" "${gwfile}"
+  run sed -i -E "s|return msg, metadata, err|return protov1.MessageV2\(msg\), metadata, err|g" "${gwfile}"
+  run sed -i -E "s|Decode\(\&protoReq\)|Decode\(protov1\.MessageV2\(\&protoReq\)\)|g" "${gwfile}"
+  run sed -i -E "s|return resp.Recv\(\)|\n\t\t\tm1, err := resp.Recv\(\)\n\t\t\treturn protov1.MessageV2\(m1\), err\n\t\t|g" "${gwfile}"
+  run go fmt "${gwfile}"
+done
+
 if [ "${1:-}" != "--skip-protodoc" ]; then
   log_callout "protodoc is auto-generating grpc API reference documentation..."
 
