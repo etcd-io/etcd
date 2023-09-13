@@ -27,7 +27,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/integration"
 
 	"google.golang.org/grpc"
-	testpb "google.golang.org/grpc/test/grpc_testing"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
 )
 
 // This test mimics scenario described in grpc_naming.md doc.
