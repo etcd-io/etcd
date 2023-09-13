@@ -4,6 +4,8 @@ package versionpb;
 import "gogoproto/gogo.proto";
 import "google/protobuf/descriptor.proto";
 
+option go_package = "go.etcd.io/etcd/api/v3/versionpb";
+
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 
