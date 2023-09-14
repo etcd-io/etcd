@@ -29,8 +29,15 @@ import (
 
 var (
 	// externalPackages that are not expected to have etcd version annotation.
-	externalPackages = []string{"io.prometheus.client", "grpc.binarylog.v1", "google.protobuf", "google.rpc", "google.api", "raftpb",
+	externalPackages = []string{
+		"io.prometheus.client",
+		"grpc.binarylog.v1",
+		"google.protobuf",
+		"google.rpc",
+		"google.api",
+		"raftpb",
 		"grpc.gateway.protoc_gen_swagger.options",
+		"grpc.gateway.protoc_gen_openapiv2.options",
 	}
 )
 
