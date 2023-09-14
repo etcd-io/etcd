@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 210
     runs-on: ${{ fromJson(inputs.runs-on) }}
     container:
-      image: golang:1.20-bookworm
+      image: golang:1.21-bookworm
       # Required for mounting fuse lazyfs
       options: --privileged
     defaults:

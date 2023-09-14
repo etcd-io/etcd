@@ -6,7 +6,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: golang:1.20-bookworm
+      image: golang:1.21-bookworm
     defaults:
       run:
         shell: bash
