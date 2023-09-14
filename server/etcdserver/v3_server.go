@@ -68,9 +68,8 @@ type Lessor interface {
 	// LeaseRevoke sends LeaseRevoke request to raft and toApply it after committed.
 	LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 
-	// LeaseRenew renews the lease with given ID. The renewed TTL is returned. Or an error
-	// is returned.
-	LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error)
+	// LeaseRenew renews the lease.
+	LeaseRenew(ctx context.Context, r *pb.LeaseKeepAliveRequest) (*pb.LeaseKeepAliveResponse, error)
 
 	// LeaseTimeToLive retrieves lease information.
 	LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error)
@@ -276,13 +275,73 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 	return resp.(*pb.LeaseRevokeResponse), nil
 }
 
-func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
+func (s *EtcdServer) LeaseRenewV2(ctx context.Context, id lease.LeaseID) (int64, error) {
 	if s.isLeader() {
 		if err := s.waitAppliedIndex(); err != nil {
 			return 0, err
 		}
 
-		ttl, err := s.lessor.Renew(id)
+		ttl, err := s.lessor.RenewV2(id)
+		if err == nil { // already requested to primary lessor(leader)
+			return ttl, nil
+		}
+		if err != lease.ErrNotPrimary {
+			return -1, err
+		}
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
+
+	// renewals don't go through raft; forward to leader manually
+	for cctx.Err() == nil {
+		leader, lerr := s.waitLeader(cctx)
+		if lerr != nil {
+			return -1, lerr
+		}
+		for _, url := range leader.PeerURLs {
+			lurl := url + leasehttp.LeasePrefix
+			ttl, err := leasehttp.RenewHTTP(cctx, id, lurl, s.peerRt)
+			if err == nil || err == lease.ErrLeaseNotFound {
+				return ttl, err
+			}
+		}
+		// Throttle in case of e.g. connection problems.
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	if cctx.Err() == context.DeadlineExceeded {
+		return -1, errors.ErrTimeout
+	}
+	return -1, errors.ErrCanceled
+}
+
+func (s *EtcdServer) LeaseRenew(ctx context.Context, r *pb.LeaseKeepAliveRequest) (*pb.LeaseKeepAliveResponse, error) {
+	// TODO(ahrtr): remove the legacy `leaseRenewV2` in 3.7.
+	cv := s.cluster.Version()
+	if version.LessThan(*cv, version.V3_6) {
+		resp := &pb.LeaseKeepAliveResponse{ID: r.ID, Header: s.newHeader()}
+
+		var err error
+		resp.TTL, err = s.leaseRenewV2(ctx, lease.LeaseID(r.ID))
+
+		return resp, err
+	}
+
+	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRenew: r})
+	if err != nil {
+		return nil, err
+	}
+	return resp.(*pb.LeaseKeepAliveResponse), err
+}
+
+func (s *EtcdServer) leaseRenewV2(ctx context.Context, id lease.LeaseID) (int64, error) {
+	if s.isLeader() {
+		if err := s.waitAppliedIndex(); err != nil {
+			return 0, err
+		}
+
+		ttl, err := s.lessor.RenewV2(id)
 		if err == nil { // already requested to primary lessor(leader)
 			return ttl, nil
 		}

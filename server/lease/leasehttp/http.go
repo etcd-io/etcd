@@ -73,7 +73,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, ErrLeaseHTTPTimeout.Error(), http.StatusRequestTimeout)
 			return
 		}
-		ttl, rerr := h.l.Renew(lease.LeaseID(lreq.ID))
+		ttl, rerr := h.l.RenewV2(lease.LeaseID(lreq.ID))
 		if rerr != nil {
 			if rerr == lease.ErrLeaseNotFound {
 				http.Error(w, rerr.Error(), http.StatusNotFound)

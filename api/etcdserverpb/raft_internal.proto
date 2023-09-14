@@ -44,6 +44,7 @@ message InternalRaftRequest {
   AlarmRequest alarm = 10;
 
   LeaseCheckpointRequest lease_checkpoint = 11 [(versionpb.etcd_version_field) = "3.4"];
+  LeaseKeepAliveRequest lease_renew = 12 [(versionpb.etcd_version_field) = "3.6"];
 
   AuthEnableRequest auth_enable = 1000;
   AuthDisableRequest auth_disable = 1011;
