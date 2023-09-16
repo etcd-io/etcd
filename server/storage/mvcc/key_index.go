@@ -344,11 +344,10 @@ type generation struct {
 
 func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }
 
-// walk walks through the revisions in the generation in descending order.
-// It passes the revision to the given function.
-// walk returns until: 1. it finishes walking all pairs 2. the function returns false.
-// walk returns the position at where it stopped. If it stopped after
-// finishing walking, -1 will be returned.
+// walk traverses revisions in the generation in descending order,
+// passing the current revision to the given function. It returns
+// the first position where the given function returns false, or -1
+// upon completing traversal.
 func (g *generation) walk(f func(rev revision) bool) int {
 	l := len(g.revs)
 	for i := range g.revs {
