@@ -21,7 +21,9 @@ import (
 	"testing"
 )
 
-func SplitTestArgs(args []string) (testArgs, appArgs []string) {
+func SplitTestArgs(args []string) ([]string, []string) {
+	var testArgs, appArgs []string
+
 	for i, arg := range args {
 		switch {
 		case strings.HasPrefix(arg, "-test."):
@@ -33,7 +35,7 @@ func SplitTestArgs(args []string) (testArgs, appArgs []string) {
 			appArgs = append(appArgs, arg)
 		}
 	}
-	return
+	return testArgs, appArgs
 }
 
 // TestEmpty is an empty test to avoid no-tests warning.

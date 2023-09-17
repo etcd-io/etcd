@@ -424,8 +424,7 @@ function ineffassign_pass {
 }
 
 function nakedret_pass {
-  # TODO: nakedret should work with -set_exit_status
-  run_for_modules generic_checker run_go_tool "github.com/alexkohler/nakedret"
+  run_for_modules generic_checker run_go_tool "github.com/alexkohler/nakedret/cmd/nakedret"
 }
 
 function license_header_per_module {

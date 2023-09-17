@@ -101,10 +101,10 @@ type tlsKeepaliveListener struct {
 
 // Accept waits for and returns the next incoming TLS connection.
 // The returned connection c is a *tls.Conn.
-func (l *tlsKeepaliveListener) Accept() (c net.Conn, err error) {
-	c, err = l.Listener.Accept()
+func (l *tlsKeepaliveListener) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	c = tls.Server(c, l.config)
